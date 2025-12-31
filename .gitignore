@@ -3,6 +3,7 @@
 /tools/xedit-*/   # in case multiple versions downloaded
 /tools/xedit*.zip
 /tools/xedit*.7z
+/downloads/
 /node_modules/
 
 # Temporary working dirs from learnFromMultilangMod, etc.
