@@ -1,0 +1,11 @@
+# xEdit tools
+/tools/xedit/
+/tools/xedit-*/   # in case multiple versions downloaded
+/tools/xedit*.zip
+/tools/xedit*.7z
+/node_modules/
+
+# Temporary working dirs from learnFromMultilangMod, etc.
+ml_*/
+/work_*/
+/tmp_*/
