@@ -44,7 +44,7 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 
 - **Node.js** ≥ 18 (рекомендується 20 LTS)
 - **Python** ≥ 3.10 (для компіляції `better-sqlite3` native addon)
-- **FO4Edit** (xEdit) — для export / apply (Windows-only). Завантажити з [Nexus Mods](https://www.nexusmods.com/fallout4/mods/2737) та покласти архів у `downloads/`
+- **FO4Edit** (xEdit) — для export / apply (Windows-only, завантажується скриптом `npm run xedit:download`)
 - **Ollama** — локальний LLM-сервер (основний бекенд перекладу), `http://localhost:11434`
 - **Docker** (опціонально) — для уніфікованого dev-середовища без ручного встановлення Python
 

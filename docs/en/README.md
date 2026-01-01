@@ -44,7 +44,7 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
 - **Node.js** ≥ 18 (20 LTS recommended)
 - **Python** ≥ 3.10 (for `better-sqlite3` native addon compilation)
-- **FO4Edit** (xEdit) — for export / apply (Windows-only). Download from [Nexus Mods](https://www.nexusmods.com/fallout4/mods/2737) and place the archive in `downloads/`
+- **FO4Edit** (xEdit) — for export / apply (Windows-only, downloadable via `npm run xedit:download`)
 - **Ollama** — local LLM server (primary translation backend), `http://localhost:11434`
 - **Docker** (optional) — for unified dev environment without manual Python installation
 
