@@ -27,7 +27,6 @@
 > Надійний CSV pipeline, коректна робота з даними.
 
 - [ ] **Централізований CSV parser** — винести `parseCsv()` / `csvRow()` в `src/utils/csv.ts` (RFC 4180, підтримка escaped quotes)
-- [ ] **Fix `ApplyTranslationsInPlace.pas`** — завантажувати CSV в map за FormID+Path замість послідовного читання
 - [ ] **Додати EDID колонку в `ExportTextForTranslation.pas`** — потрібна для alignment anchors
 - [ ] **Fix `upsertMod()`** — `INSERT OR IGNORE` + SELECT, обробка `undefined` row
 - [ ] **Fix `unmask()` ordering** — сортувати ключі за довжиною (від довших до коротших)
@@ -70,6 +69,7 @@
 - [ ] **ESLint + Prettier** — додати конфіги та npm скрипти
 - [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
 - [ ] **Integration tests** — translate pipeline з mock LLM provider
+- [ ] **Fix `ApplyTranslationsInPlace.pas`** — завантажувати CSV в map за FormID+Path замість послідовного читання
 
 ---
 

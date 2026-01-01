@@ -27,7 +27,6 @@
 > Reliable CSV pipeline, correct data handling.
 
 - [ ] **Centralized CSV parser** — extract `parseCsv()` / `csvRow()` into `src/utils/csv.ts` (RFC 4180, escaped quotes support)
-- [ ] **Fix `ApplyTranslationsInPlace.pas`** — load CSV into map by FormID+Path instead of sequential reading
 - [ ] **Add EDID column to `ExportTextForTranslation.pas`** — required for alignment anchors
 - [ ] **Fix `upsertMod()`** — `INSERT OR IGNORE` + SELECT, handle `undefined` row
 - [ ] **Fix `unmask()` ordering** — sort keys by length (longest first)
@@ -70,6 +69,7 @@
 - [ ] **ESLint + Prettier** — add configs and npm scripts
 - [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
 - [ ] **Integration tests** — translate pipeline with mock LLM provider
+- [ ] **Fix `ApplyTranslationsInPlace.pas`** — load CSV into map by FormID+Path instead of sequential reading
 
 ---
 
