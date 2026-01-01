@@ -6,9 +6,9 @@ import { hideBin } from 'yargs/helpers';
 import { runXEditExport } from '../xedit/runExport.js';
 import { runXEditApply } from '../xedit/runApply.js';
 import { ensureDir, copyFileSafe } from '../utils/file.js';
-import { translateBatch } from '../openai/translate.js';
+import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('xedit', { type: 'string', demandOption: true })
@@ -22,6 +22,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('glossary', { type: 'string' })
   .parse();
 
+validateConfig();
 const modPath = argv.mod as string;
 ensureDir(argv.outDir as string);
 const copyPath = path.join(argv.outDir as string, path.basename(modPath));
@@ -63,7 +64,7 @@ console.log('Done. Localized replacement:', copyPath);
 
 async function flush() {
   if (batch.length === 0) return;
-  const items = await translateBatch(batch, CONFIG.translateModel, styleMd, glossary);
+  const items = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
   for (let i=0;i<items.length;i++) {
     const { cols, ph, gl } = metas[i];
     const restored = unmask(unmask(items[i], gl), ph);

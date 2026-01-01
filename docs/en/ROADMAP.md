@@ -8,17 +8,17 @@
 
 > Provider abstraction, Ollama integration (primary backend), critical bug fixes.
 
-- [ ] **Provider abstraction** — `src/llm/provider.ts` with a unified `LLMProvider` interface (`chat`, `embed` methods); backends `ollama` | `openai`
-- [ ] **Ollama provider** — OpenAI-compatible client pointing to `http://localhost:11434/v1` via OpenAI SDK with custom `baseURL`
-- [ ] **Config: `LLM_PROVIDER`** — env var to select provider (`ollama` | `openai`, **default: `ollama`**)
-- [ ] **Config: `OLLAMA_BASE_URL`** — default `http://localhost:11434`
-- [ ] **Config: `OLLAMA_MODEL`** — model name for Ollama (e.g., `llama3`, `mistral`, `gemma2`)
-- [ ] **Config: `OPENAI_TRANSLATE_MODEL`** — default `gpt-4.1-mini` (was `gpt-5.1-mini`)
-- [ ] **Fix translate pipeline** — rewrite `src/openai/translate.ts` → `src/llm/translate.ts` using `LLMProvider.chat()` (fixes broken `openai.responses.create()`)
-- [ ] **Embedding support** — `LLMProvider.embed()` — local embeddings via Ollama, OpenAI `text-embedding-3-large` as alternative
-- [ ] **Config validation** — fail-fast on startup: check `OPENAI_API_KEY` (if provider=openai), Ollama reachability (if provider=ollama)
-- [ ] **Fix `require()` in ESM** — `src/utils/file.ts` — replace `require('crypto')` with `import crypto`
-- [ ] **Create `.env.example`** — with all LLM variables, `DATABASE_PATH`, etc.
+- [x] **Provider abstraction** — `src/llm/provider.ts` with a unified `LLMProvider` interface (`chat`, `embed` methods); backends `ollama` | `openai`
+- [x] **Ollama provider** — OpenAI-compatible client pointing to `http://localhost:11434/v1` via OpenAI SDK with custom `baseURL`
+- [x] **Config: `LLM_PROVIDER`** — env var to select provider (`ollama` | `openai`, **default: `ollama`**)
+- [x] **Config: `OLLAMA_BASE_URL`** — default `http://localhost:11434`
+- [x] **Config: `OLLAMA_MODEL`** — model name for Ollama (e.g., `llama3`, `mistral`, `gemma2`)
+- [x] **Config: `OPENAI_TRANSLATE_MODEL`** — default `gpt-4.1-mini` (was `gpt-5.1-mini`)
+- [x] **Fix translate pipeline** — rewrite `src/openai/translate.ts` → `src/llm/translate.ts` using `LLMProvider.chat()` (fixes broken `openai.responses.create()`)
+- [x] **Embedding support** — `LLMProvider.embed()` — local embeddings via Ollama, OpenAI `text-embedding-3-large` as alternative
+- [x] **Config validation** — fail-fast on startup: check `OPENAI_API_KEY` (if provider=openai), Ollama reachability (if provider=ollama)
+- [x] **Fix `require()` in ESM** — `src/utils/file.ts` — replace `require('crypto')` with `import crypto`
+- [x] **Create `.env.example`** — with all LLM variables, `DATABASE_PATH`, etc.
 
 ---
 

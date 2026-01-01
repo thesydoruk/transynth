@@ -1,6 +1,7 @@
 import { CsvRow, AlignPair } from '../types.js';
 import { fuzzyScore } from './fuzzy.js';
-import { embedMany, cosine } from '../openai/embed.js';
+import { embedMany, cosine } from '../llm/embed.js';
+import { getEmbedModel } from '../config.js';
 
 // Heuristic alignment with anchors → fuzzy → embeddings
 export async function alignPairs(
@@ -77,7 +78,7 @@ export async function alignPairs(
       if (candidates.length === 0) continue;
       const srcs = [L.Source];
       const tgts = candidates.map(i => right[i].Source);
-      const embs = await embedMany([...srcs, ...tgts], opts.embedModel || 'text-embedding-3-large');
+      const embs = await embedMany([...srcs, ...tgts], opts.embedModel || getEmbedModel());
       const q = embs[0];
       const targetEmbs = embs.slice(1);
       let bestRi = -1, best = 0;

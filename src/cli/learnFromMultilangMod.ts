@@ -68,6 +68,7 @@ import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import type { CsvRow } from '../types.js';
 import { alignPairs } from '../align/alignPairs.js';
+import { getEmbedModel } from '../config.js';
 
 // Reuse low-level process runner from xedit/runExport to add "-l:<lang>" flag
 import { execChild } from '../xedit/runExport.js';
@@ -350,7 +351,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
       fuzzyMin: Number(argv.fuzzyMin),
       fuzzyStrong: Number(argv.fuzzyStrong),
       useEmbeddings: Boolean(argv.useEmbeddings),
-      embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large'
+      embedModel: getEmbedModel()
     });
 
     for (const ap of pairs) {

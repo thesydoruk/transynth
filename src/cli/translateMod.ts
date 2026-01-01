@@ -3,10 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { translateBatch } from '../openai/translate.js';
+import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
 import { openDb, bestTranslation, addTranslation } from '../db.js';
-import { CONFIG } from '../config.js';
+import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 
 // Minimal CSV in/out to wire the flow; reading/writing via Node streams can be added later.
 type Row = { FormID: string; Signature: string; Path: string; Source: string; Hints?: string };
@@ -20,6 +20,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('glossary', { type: 'string' })
   .parse();
 
+validateConfig();
 const styleMd = argv.style ? fs.readFileSync(argv.style, 'utf8') : undefined;
 const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
 
@@ -62,7 +63,7 @@ console.log('Wrote', argv.out);
 
 async function flush() {
   if (batch.length === 0) return;
-  const translated = await translateBatch(batch, CONFIG.translateModel, styleMd, glossary);
+  const translated = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
   for (let k=0;k<translated.length;k++) {
     const { i, ph, gl } = metas[k];
     const restored = unmask(unmask(translated[k], gl), ph).trim();

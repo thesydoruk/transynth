@@ -8,17 +8,17 @@
 
 > Абстракція провайдера, інтеграція Ollama (основний бекенд), виправлення критичних багів.
 
-- [ ] **Абстракція провайдера** — `src/llm/provider.ts` з єдиним інтерфейсом `LLMProvider` (методи `chat`, `embed`); бекенди `ollama` | `openai`
-- [ ] **Ollama provider** — OpenAI-сумісний клієнт на `http://localhost:11434/v1` через OpenAI SDK з кастомним `baseURL`
-- [ ] **Конфіг: `LLM_PROVIDER`** — env var для вибору провайдера (`ollama` | `openai`, **за замовчуванням: `ollama`**)
-- [ ] **Конфіг: `OLLAMA_BASE_URL`** — за замовчуванням `http://localhost:11434`
-- [ ] **Конфіг: `OLLAMA_MODEL`** — назва моделі для Ollama (наприклад, `llama3`, `mistral`, `gemma2`)
-- [ ] **Конфіг: `OPENAI_TRANSLATE_MODEL`** — за замовчуванням `gpt-4.1-mini` (було `gpt-5.1-mini`)
-- [ ] **Fix translate pipeline** — переписати `src/openai/translate.ts` → `src/llm/translate.ts` використовуючи `LLMProvider.chat()` (виправляє зламаний `openai.responses.create()`)
-- [ ] **Підтримка ембедингів** — `LLMProvider.embed()` — локальні ембединги через Ollama, OpenAI `text-embedding-3-large` як альтернатива
-- [ ] **Валідація конфігу** — fail-fast при старті: перевірка `OPENAI_API_KEY` (якщо provider=openai), доступність Ollama (якщо provider=ollama)
-- [ ] **Fix `require()` in ESM** — `src/utils/file.ts` — замінити `require('crypto')` на `import crypto`
-- [ ] **Створити `.env.example`** — з усіма LLM-змінними, `DATABASE_PATH`, etc.
+- [x] **Абстракція провайдера** — `src/llm/provider.ts` з єдиним інтерфейсом `LLMProvider` (методи `chat`, `embed`); бекенди `ollama` | `openai`
+- [x] **Ollama provider** — OpenAI-сумісний клієнт на `http://localhost:11434/v1` через OpenAI SDK з кастомним `baseURL`
+- [x] **Конфіг: `LLM_PROVIDER`** — env var для вибору провайдера (`ollama` | `openai`, **за замовчуванням: `ollama`**)
+- [x] **Конфіг: `OLLAMA_BASE_URL`** — за замовчуванням `http://localhost:11434`
+- [x] **Конфіг: `OLLAMA_MODEL`** — назва моделі для Ollama (наприклад, `llama3`, `mistral`, `gemma2`)
+- [x] **Конфіг: `OPENAI_TRANSLATE_MODEL`** — за замовчуванням `gpt-4.1-mini` (було `gpt-5.1-mini`)
+- [x] **Fix translate pipeline** — переписати `src/openai/translate.ts` → `src/llm/translate.ts` використовуючи `LLMProvider.chat()` (виправляє зламаний `openai.responses.create()`)
+- [x] **Підтримка ембедингів** — `LLMProvider.embed()` — локальні ембединги через Ollama, OpenAI `text-embedding-3-large` як альтернатива
+- [x] **Валідація конфігу** — fail-fast при старті: перевірка `OPENAI_API_KEY` (якщо provider=openai), доступність Ollama (якщо provider=ollama)
+- [x] **Fix `require()` in ESM** — `src/utils/file.ts` — замінити `require('crypto')` на `import crypto`
+- [x] **Створити `.env.example`** — з усіма LLM-змінними, `DATABASE_PATH`, etc.
 
 ---
 
