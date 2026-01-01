@@ -28,6 +28,7 @@
 
 - [ ] **Централізований CSV parser** — винести `parseCsv()` / `csvRow()` в `src/utils/csv.ts` (RFC 4180, підтримка escaped quotes)
 - [ ] **Додати EDID колонку в `ExportTextForTranslation.pas`** — потрібна для alignment anchors
+- [ ] **Експорт усіх текстів для всіх мов** — експортувати текстові записи для кожної мови, присутньої у плагіні (не лише одна пара source/target); потрібно для multilang learning та alignment
 - [ ] **Fix `upsertMod()`** — `INSERT OR IGNORE` + SELECT, обробка `undefined` row
 - [ ] **Fix `unmask()` ordering** — сортувати ключі за довжиною (від довших до коротших)
 - [ ] **Spawn error handling** — додати `p.on('error', ...)` в `runExport.ts`
