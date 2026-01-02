@@ -38,6 +38,8 @@ export function applyGlossaryMask(text: string, glossary: string[]) {
 
 export function unmask(text: string, mapping: Record<string,string>) {
   let out = text;
-  for (const [k,v] of Object.entries(mapping)) out = out.split(k).join(v);
+  // Sort keys by length (longest first) to prevent partial matches
+  const keys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+  for (const k of keys) out = out.split(k).join(mapping[k]);
   return out;
 }

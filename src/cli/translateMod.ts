@@ -1,15 +1,12 @@
 #!/usr/bin/env tsx
 import fs from 'fs';
-import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
 import { openDb, bestTranslation, addTranslation } from '../db.js';
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
-
-// Minimal CSV in/out to wire the flow; reading/writing via Node streams can be added later.
-type Row = { FormID: string; Signature: string; Path: string; Source: string; Hints?: string };
+import { readCsv, csvRow } from '../utils/csv.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('in', { type: 'string', demandOption: true })
@@ -24,12 +21,8 @@ validateConfig();
 const styleMd = argv.style ? fs.readFileSync(argv.style, 'utf8') : undefined;
 const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
 
-const srcCsv = fs.readFileSync(argv.in, 'utf8').split(/\r?\n/);
-const header = srcCsv.shift()!;
-const rows: Row[] = srcCsv.filter(Boolean).map(line => {
-  const cols = parseCsv(line);
-  return { FormID: cols[0], Signature: cols[1], Path: cols[2], Source: cols[3], Hints: cols[4] };
-});
+const rows = readCsv(argv.in as string);
+const header = fs.readFileSync(argv.in, 'utf8').split(/\r?\n/)[0]!;
 
 const db = openDb();
 const outLines = [header.replace(/Source/i, `${argv.tgtLang}`)];
@@ -56,7 +49,10 @@ await flush();
 for (let i=0;i<rows.length;i++) {
   const r = rows[i];
   const t = outTexts[i] ?? r.Source;
-  outLines.push(csvRow([r.FormID, r.Signature, r.Path, t, r.Hints || '']));
+  const cols = [r.FormID, r.Signature];
+  if (r.EDID !== undefined) cols.push(r.EDID);
+  cols.push(r.Path, t, r.Hints || '');
+  outLines.push(csvRow(cols));
 }
 fs.writeFileSync(argv.out, outLines.join('\n'), 'utf8');
 console.log('Wrote', argv.out);
@@ -73,21 +69,4 @@ async function flush() {
     // addTranslation(db, srcStringId, argv.tgtLang, restored, 'auto', 0.9, 'model', CONFIG.translateModel);
   }
   batch.length = 0; metas.length = 0;
-}
-
-function parseCsv(line: string) {
-  // naive CSV parser for initial scaffold; replace with a robust one if needed
-  const parts: string[] = [];
-  let cur = '', inQ=false;
-  for (let ch of line) {
-    if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { parts.push(cur); cur=''; continue; }
-    cur += ch;
-  }
-  parts.push(cur);
-  return parts;
-}
-
-function csvRow(cols: string[]) {
-  return cols.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(',');
 }

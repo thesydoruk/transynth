@@ -16,10 +16,12 @@ export function runSchema(db: Tx, schemaSql: string) {
 
 export function upsertMod(db: Tx, name: string, absPath: string, versionHash: string): number {
   db.prepare(
-    `INSERT INTO mods(name, abs_path, version_hash) VALUES (?,?,?)`
+    `INSERT INTO mods(name, abs_path, version_hash) VALUES (?,?,?)
+     ON CONFLICT(name, version_hash) DO UPDATE SET abs_path=excluded.abs_path`
   ).run(name, absPath, versionHash);
-  const row = db.prepare(`SELECT id FROM mods WHERE name=? AND version_hash=?`).get(name, versionHash);
-  return row.id as number;
+  const row = db.prepare(`SELECT id FROM mods WHERE name=? AND version_hash=?`).get(name, versionHash) as {id: number} | undefined;
+  if (!row) throw new Error(`Failed to upsert mod: ${name}`);
+  return row.id;
 }
 
 export function upsertRecord(db: Tx, modId: number, signature: string, path: string, pathSimplified: string, edid: string|null, hashNorm: string|null, formidHex: string|null): number {

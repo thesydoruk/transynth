@@ -26,12 +26,12 @@
 
 > Reliable CSV pipeline, correct data handling.
 
-- [ ] **Centralized CSV parser** — extract `parseCsv()` / `csvRow()` into `src/utils/csv.ts` (RFC 4180, escaped quotes support)
-- [ ] **Add EDID column to `ExportTextForTranslation.pas`** — required for alignment anchors
-- [ ] **Multi-language export** — export all text entries for every language present in the plugin (not just one source/target pair); needed for multilang learning and alignment
-- [ ] **Fix `upsertMod()`** — `INSERT OR IGNORE` + SELECT, handle `undefined` row
-- [ ] **Fix `unmask()` ordering** — sort keys by length (longest first)
-- [ ] **Spawn error handling** — add `p.on('error', ...)` to `runExport.ts`
+- [x] **Centralized CSV parser** — extract `parseCsv()` / `csvRow()` into `src/utils/csv.ts` (RFC 4180, escaped quotes support)
+- [x] **Add EDID column to `ExportTextForTranslation.pas`** — required for alignment anchors
+- [x] **Multi-language export** — export all text entries for every language present in the plugin (not just one source/target pair); needed for multilang learning and alignment
+- [x] **Fix `upsertMod()`** — `INSERT OR IGNORE` + SELECT, handle `undefined` row
+- [x] **Fix `unmask()` ordering** — sort keys by length (longest first)
+- [x] **Spawn error handling** — add `p.on('error', ...)` to `runExport.ts`
 
 ---
 

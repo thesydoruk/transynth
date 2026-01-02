@@ -69,9 +69,8 @@ import { sha1Hex } from '../utils/hash.js';
 import type { CsvRow } from '../types.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { getEmbedModel } from '../config.js';
-
-// Reuse low-level process runner from xedit/runExport to add "-l:<lang>" flag
-import { execChild } from '../xedit/runExport.js';
+import { readCsv } from '../utils/csv.js';
+import { exportForLocale } from '../xedit/runExport.js';
 
 // ---------- Constants ----------
 
@@ -102,56 +101,6 @@ const argv = await yargs(hideBin(process.argv))
   .parse();
 
 // ---------- Helpers ----------
-
-async function exportForLocale(xeditExe: string, exporterPas: string, pluginPath: string, locale: string, outCsv: string): Promise<boolean> {
-  const pluginName = path.basename(pluginPath);
-  const args = [
-    `-l:${locale}`,
-    '-quick', '-autoload',
-    `-fo:"${pluginPath}"`,
-    '-app:FO4Edit',
-    `-script:"${exporterPas}"`,
-    `-Argument:"${pluginName}|${outCsv}"`
-  ];
-  await execChild(xeditExe, args);
-  try {
-    const stat = fs.statSync(outCsv);
-    if (stat.size === 0) return false;
-    const lines = fs.readFileSync(outCsv, 'utf8').split(/\r?\n/).filter(Boolean);
-    return lines.length > 1;
-  } catch {
-    return false;
-  }
-}
-
-function readCsv(p: string): CsvRow[] {
-  const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/).filter(Boolean);
-  if (!lines.length) return [];
-  const header = lines.shift()!;
-  const cols = header.split(',').map(s => s.replace(/^"|"$/g,''));
-  const idx = (name: string) => cols.findIndex(c => c.toLowerCase() === name.toLowerCase());
-  return lines.map(line => {
-    const f = parseCsv(line);
-    return {
-      FormID: f[idx('FormID')],
-      Signature: f[idx('Signature')],
-      Path: f[idx('Path')],
-      Source: f[idx('Source')],
-      Hints: f[idx('Hints')] || ''
-    };
-  });
-}
-
-function parseCsv(line: string) {
-  const parts: string[] = []; let cur = '', inQ=false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { parts.push(cur); cur=''; continue; }
-    cur += ch;
-  }
-  parts.push(cur);
-  return parts;
-}
 
 /** Compute coverage and normalized content hash for a locale export. */
 function summarizeLocale(rows: CsvRow[]) {

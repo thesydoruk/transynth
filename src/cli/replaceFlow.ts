@@ -9,6 +9,7 @@ import { ensureDir, copyFileSafe } from '../utils/file.js';
 import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
+import { readCsv, csvRow } from '../utils/csv.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('xedit', { type: 'string', demandOption: true })
@@ -38,22 +39,27 @@ await runXEditExport(argv.xedit as string, argv.exporter as string, modPath, csv
 const styleMd = argv.style && fs.existsSync(argv.style) ? fs.readFileSync(argv.style, 'utf8') : undefined;
 const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
 
-const srcLines = fs.readFileSync(csvSrc, 'utf8').split(/\r?\n/).filter(Boolean);
-const header = srcLines.shift()!;
+const rows = readCsv(csvSrc);
+const header = fs.readFileSync(csvSrc, 'utf8').split(/\r?\n/)[0]!;
 const tgtHeader = header.replace(/Source/i, argv.tgtLang as string);
 
 const batch: string[] = [];
 const metas: any[] = [];
 const out: string[] = [tgtHeader];
 
-for (const line of srcLines) {
-  const cols = parseCsv(line);
-  const src = cols[3];
-  if (!/\p{L}/u.test(src)) { out.push(line); continue; }
+for (const r of rows) {
+  const src = r.Source;
+  if (!/\p{L}/u.test(src)) {
+    const cols = [r.FormID, r.Signature];
+    if (r.EDID !== undefined) cols.push(r.EDID);
+    cols.push(r.Path, src, r.Hints || '');
+    out.push(csvRow(cols));
+    continue;
+  }
   const { masked: m1, mapping: ph } = maskPlaceholders(src);
   const { masked: m2, mapping: gl } = applyGlossaryMask(m1, glossary);
   batch.push(m2);
-  metas.push({ cols, ph, gl });
+  metas.push({ row: r, ph, gl });
   if (batch.length >= 30) await flush();
 }
 await flush();
@@ -66,17 +72,12 @@ async function flush() {
   if (batch.length === 0) return;
   const items = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
   for (let i=0;i<items.length;i++) {
-    const { cols, ph, gl } = metas[i];
+    const { row, ph, gl } = metas[i];
     const restored = unmask(unmask(items[i], gl), ph);
-    cols[3] = restored;
+    const cols = [row.FormID, row.Signature];
+    if (row.EDID !== undefined) cols.push(row.EDID);
+    cols.push(row.Path, restored, row.Hints || '');
     out.push(csvRow(cols));
   }
   batch.length = 0; metas.length = 0;
 }
-
-function parseCsv(line: string) {
-  const parts: string[] = []; let cur = '', inQ=false;
-  for (const ch of line) { if (ch === '"') { inQ=!inQ; continue; } if (ch===',' && !inQ){parts.push(cur); cur=''; continue;} cur+=ch; }
-  parts.push(cur); return parts;
-}
-function csvRow(cols: string[]) { return cols.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(','); }

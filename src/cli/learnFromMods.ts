@@ -8,6 +8,7 @@ import { runXEditExport } from '../xedit/runExport.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
+import { readCsv } from '../utils/csv.js';
 import type { CsvRow } from '../types.js';
 
 const argv = await yargs(hideBin(process.argv))
@@ -58,37 +59,6 @@ for (const spec of (argv.pair as string[])) {
   }
 
   console.log(`Learned from pair ${path.basename(orig)} : ${path.basename(tran)} → ${pairs.length} aligned rows`);
-}
-
-function readCsv(p: string): CsvRow[] {
-  const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/).filter(Boolean);
-  const header = lines.shift()!;
-  const cols = header.split(',').map(s => s.replace(/^"|"$/g,''));
-  const idx = (name: string) => cols.findIndex(c => c.toLowerCase() === name.toLowerCase());
-  const out: CsvRow[] = [];
-  for (const line of lines) {
-    const fields = parseCsv(line);
-    out.push({
-      FormID: fields[idx('FormID')],
-      Signature: fields[idx('Signature')],
-      Path: fields[idx('Path')],
-      Source: fields[idx('Source')],
-      Hints: fields[idx('Hints')] || '',
-    });
-  }
-  return out;
-}
-
-function parseCsv(line: string) {
-  const parts: string[] = [];
-  let cur = '', inQ=false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { parts.push(cur); cur=''; continue; }
-    cur += ch;
-  }
-  parts.push(cur);
-  return parts;
 }
 
 function ingestCsvRows(db: any, modId: number, rows: CsvRow[], lang: string, sourceKind: string) {

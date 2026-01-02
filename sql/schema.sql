@@ -83,6 +83,7 @@ CREATE TRIGGER IF NOT EXISTS strings_au AFTER UPDATE ON strings BEGIN
   INSERT INTO strings_fts(rowid,text_raw,text_norm) VALUES (new.id,new.text_raw,new.text_norm);
 END;
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);
 CREATE INDEX IF NOT EXISTS idx_records_mod ON records(mod_id);
 CREATE INDEX IF NOT EXISTS idx_records_anchors ON records(edid, signature, path_simplified, hash_norm);
 CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
