@@ -4,9 +4,10 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
-import { openDb, bestTranslation, addTranslation } from '../db.js';
+import { openDb, bestTranslation, addTranslation, findStringId } from '../db.js';
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 import { readCsv, csvRow } from '../utils/csv.js';
+import { log } from '../logger.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('in', { type: 'string', demandOption: true })
@@ -18,7 +19,13 @@ const argv = await yargs(hideBin(process.argv))
   .parse();
 
 validateConfig();
-const styleMd = argv.style ? fs.readFileSync(argv.style, 'utf8') : undefined;
+
+if (!fs.existsSync(argv.in as string)) {
+  log.error(`Input file not found: ${argv.in}`);
+  process.exit(1);
+}
+
+const styleMd = argv.style ? fs.readFileSync(argv.style as string, 'utf8') : undefined;
 const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
 
 const rows = readCsv(argv.in as string);
@@ -42,7 +49,7 @@ for (let i=0;i<rows.length;i++) {
   const { masked: m2, mapping: gl } = applyGlossaryMask(m1, glossary);
   batch.push(m2);
   metas.push({ i, ph, gl });
-  if (batch.length >= 30) await flush();
+  if (batch.length >= CONFIG.batchSize) await flush();
 }
 await flush();
 
@@ -54,19 +61,28 @@ for (let i=0;i<rows.length;i++) {
   cols.push(r.Path, t, r.Hints || '');
   outLines.push(csvRow(cols));
 }
-fs.writeFileSync(argv.out, outLines.join('\n'), 'utf8');
-console.log('Wrote', argv.out);
+fs.writeFileSync(argv.out as string, outLines.join('\n'), 'utf8');
+log.info(`Wrote ${argv.out}`);
 
 async function flush() {
   if (batch.length === 0) return;
-  const translated = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
+  let translated: string[];
+  try {
+    translated = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
+  } catch (err: any) {
+    log.error(`Translation failed: ${err?.message || err}`);
+    throw err;
+  }
   for (let k=0;k<translated.length;k++) {
     const { i, ph, gl } = metas[k];
     const restored = unmask(unmask(translated[k], gl), ph).trim();
     outTexts[i] = restored;
 
-    // optionally store into DB translations table as 'auto'
-    // addTranslation(db, srcStringId, argv.tgtLang, restored, 'auto', 0.9, 'model', CONFIG.translateModel);
+    const r = rows[i];
+    const srcStrId = findStringId(db, r.FormID, r.Path, argv.srcLang as string);
+    if (srcStrId !== undefined) {
+      addTranslation(db, srcStrId, argv.tgtLang as string, restored, 'auto', null, 'model', getTranslateModel());
+    }
   }
   batch.length = 0; metas.length = 0;
 }

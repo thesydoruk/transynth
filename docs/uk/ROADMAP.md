@@ -51,13 +51,13 @@
 
 > Обробка помилок, логування, retry.
 
-- [ ] **Error handling** — try-catch на всі async-операції (xEdit spawn, LLM API, file I/O)
-- [ ] **Використати `logger.ts`** — замінити `console.log` на `log.info/warn/error` по всьому коду
-- [ ] **LLM retry + rate limiting** — retry з exponential backoff при 429/500 (для обох провайдерів)
-- [ ] **Batch size config** — винести `30` у CONFIG, додати `BATCH_SIZE` env var
-- [ ] **Увімкнути збереження в DB в `translateMod.ts`** — розкоментувати та доробити `addTranslation()`
-- [ ] **Input validation** — перевірка існування файлів перед операціями
-- [ ] **Fallback стратегія** — спробувати основний провайдер, fallback на альтернативний якщо недоступний (конфігурується)
+- [x] **Error handling** — try-catch на всі async-операції (xEdit spawn, LLM API, file I/O)
+- [x] **Використати `logger.ts`** — замінити `console.log` на `log.info/warn/error` по всьому коду
+- [x] **LLM retry + rate limiting** — retry з exponential backoff при 429/500 (для обох провайдерів)
+- [x] **Batch size config** — винести `30` у CONFIG, додати `BATCH_SIZE` env var
+- [x] **Увімкнути збереження в DB в `translateMod.ts`** — розкоментувати та доробити `addTranslation()`
+- [x] **Input validation** — перевірка існування файлів перед операціями
+- [x] **Fallback стратегія** — спробувати основний провайдер, fallback на альтернативний якщо недоступний (конфігурується)
 
 ---
 

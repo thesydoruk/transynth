@@ -1,9 +1,8 @@
 // Embeddings via LLM provider (Ollama or OpenAI)
-import { getLLM } from './index.js';
+import { embedWithFallback } from './index.js';
 
 export async function embedMany(texts: string[], model: string): Promise<number[][]> {
-  const llm = getLLM();
-  return llm.embed(texts, model);
+  return embedWithFallback(texts, model);
 }
 
 export function cosine(a: number[], b: number[]): number {

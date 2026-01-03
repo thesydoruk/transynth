@@ -10,6 +10,7 @@ import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { readCsv } from '../utils/csv.js';
 import type { CsvRow } from '../types.js';
+import { log } from '../logger.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('xedit', { type: 'string', demandOption: true })
@@ -28,8 +29,13 @@ for (const spec of (argv.pair as string[])) {
   const enCsv = path.join(tmpDir, path.basename(orig) + '.src.csv');
   const ukCsv = path.join(tmpDir, path.basename(tran) + '.tgt.csv');
 
-  await runXEditExport(argv.xedit as string, argv.exporter as string, orig, enCsv);
-  await runXEditExport(argv.xedit as string, argv.exporter as string, tran, ukCsv);
+  try {
+    await runXEditExport(argv.xedit as string, argv.exporter as string, orig, enCsv);
+    await runXEditExport(argv.xedit as string, argv.exporter as string, tran, ukCsv);
+  } catch (err: any) {
+    log.error(`xEdit export failed for pair ${path.basename(orig)}:${path.basename(tran)}: ${err?.message || err}`);
+    continue;
+  }
 
   const left = readCsv(enCsv);
   const right = readCsv(ukCsv);
@@ -58,7 +64,7 @@ for (const spec of (argv.pair as string[])) {
     addTranslation(db, srcStrId, argv.tgtLang as string, tgtText, p.method === 'rapidfuzz' ? 'fuzzy' : 'tm', p.score, p.method);
   }
 
-  console.log(`Learned from pair ${path.basename(orig)} : ${path.basename(tran)} → ${pairs.length} aligned rows`);
+  log.info(`Learned from pair ${path.basename(orig)} : ${path.basename(tran)} → ${pairs.length} aligned rows`);
 }
 
 function ingestCsvRows(db: any, modId: number, rows: CsvRow[], lang: string, sourceKind: string) {

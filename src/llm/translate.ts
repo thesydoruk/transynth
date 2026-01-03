@@ -1,5 +1,5 @@
 // Translation via LLM provider (Ollama or OpenAI)
-import { getLLM } from './index.js';
+import { chatWithFallback } from './index.js';
 
 export async function translateBatch(
   items: string[],
@@ -16,8 +16,7 @@ export async function translateBatch(
     items
   };
 
-  const llm = getLLM();
-  const text = await llm.chat({
+  const text = await chatWithFallback({
     model,
     temperature: 0,
     responseFormat: { type: 'json_object' },

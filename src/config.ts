@@ -4,6 +4,7 @@ export type LLMProviderName = 'ollama' | 'openai';
 
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'ollama') as LLMProviderName,
+  llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
 
   // Ollama
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
@@ -16,6 +17,9 @@ export const CONFIG = {
 
   // Database
   dbPath: process.env.DATABASE_PATH || './localizer.sqlite',
+
+  // Translation batch size
+  batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
 };
 
 /** Resolve the translation model based on provider. */

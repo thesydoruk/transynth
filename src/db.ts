@@ -73,3 +73,13 @@ export function bestTranslation(db: Tx, srcStringId: number, targetLang: string)
      LIMIT 1`
   ).get(srcStringId, targetLang) as {id:number,text:string,status:string}|undefined;
 }
+
+export function findStringId(db: Tx, formidHex: string, path: string, lang: string): number | undefined {
+  if (!formidHex) return undefined;
+  const row = db.prepare(
+    `SELECT s.id FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.formid_hex=? AND r.path=? AND s.lang=? LIMIT 1`
+  ).get(formidHex, path, lang) as {id: number} | undefined;
+  return row?.id;
+}

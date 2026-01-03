@@ -10,6 +10,7 @@ import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 import { readCsv, csvRow } from '../utils/csv.js';
+import { log } from '../logger.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('xedit', { type: 'string', demandOption: true })
@@ -25,6 +26,14 @@ const argv = await yargs(hideBin(process.argv))
 
 validateConfig();
 const modPath = argv.mod as string;
+
+for (const [flag, val] of [['--xedit', argv.xedit], ['--exporter', argv.exporter], ['--applier', argv.applier], ['--mod', argv.mod]] as [string, string][]) {
+  if (!fs.existsSync(val)) {
+    log.error(`File not found for ${flag}: ${val}`);
+    process.exit(1);
+  }
+}
+
 ensureDir(argv.outDir as string);
 const copyPath = path.join(argv.outDir as string, path.basename(modPath));
 copyFileSafe(modPath, copyPath);
@@ -34,7 +43,12 @@ ensureDir(work);
 const csvSrc = path.join(work, 'strings.src.csv');
 const csvTgt = path.join(work, `strings.${argv.tgtLang}.csv`);
 
-await runXEditExport(argv.xedit as string, argv.exporter as string, modPath, csvSrc);
+try {
+  await runXEditExport(argv.xedit as string, argv.exporter as string, modPath, csvSrc);
+} catch (err: any) {
+  log.error(`xEdit export failed: ${err?.message || err}`);
+  process.exit(1);
+}
 
 const styleMd = argv.style && fs.existsSync(argv.style) ? fs.readFileSync(argv.style, 'utf8') : undefined;
 const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
@@ -60,17 +74,28 @@ for (const r of rows) {
   const { masked: m2, mapping: gl } = applyGlossaryMask(m1, glossary);
   batch.push(m2);
   metas.push({ row: r, ph, gl });
-  if (batch.length >= 30) await flush();
+  if (batch.length >= CONFIG.batchSize) await flush();
 }
 await flush();
 fs.writeFileSync(csvTgt, out.join('\n'), 'utf8');
 
-await runXEditApply(argv.xedit as string, argv.applier as string, copyPath, csvTgt);
-console.log('Done. Localized replacement:', copyPath);
+try {
+  await runXEditApply(argv.xedit as string, argv.applier as string, copyPath, csvTgt);
+} catch (err: any) {
+  log.error(`xEdit apply failed: ${err?.message || err}`);
+  process.exit(1);
+}
+log.info(`Done. Localized replacement: ${copyPath}`);
 
 async function flush() {
   if (batch.length === 0) return;
-  const items = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
+  let items: string[];
+  try {
+    items = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
+  } catch (err: any) {
+    log.error(`Translation failed: ${err?.message || err}`);
+    throw err;
+  }
   for (let i=0;i<items.length;i++) {
     const { row, ph, gl } = metas[i];
     const restored = unmask(unmask(items[i], gl), ph);

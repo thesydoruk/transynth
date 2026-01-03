@@ -51,13 +51,13 @@
 
 > Error handling, logging, retry logic.
 
-- [ ] **Error handling** — try-catch on all async operations (xEdit spawn, LLM API, file I/O)
-- [ ] **Use `logger.ts`** — replace `console.log` with `log.info/warn/error` across the codebase
-- [ ] **LLM retry + rate limiting** — retry with exponential backoff on 429/500 (for both providers)
-- [ ] **Batch size config** — extract `30` to CONFIG, add `BATCH_SIZE` env var
-- [ ] **Enable DB storage in `translateMod.ts`** — uncomment and complete `addTranslation()`
-- [ ] **Input validation** — verify files exist before operations
-- [ ] **Fallback strategy** — try primary provider, fall back to alternative if unavailable (configurable)
+- [x] **Error handling** — try-catch on all async operations (xEdit spawn, LLM API, file I/O)
+- [x] **Use `logger.ts`** — replace `console.log` with `log.info/warn/error` across the codebase
+- [x] **LLM retry + rate limiting** — retry with exponential backoff on 429/500 (for both providers)
+- [x] **Batch size config** — extract `30` to CONFIG, add `BATCH_SIZE` env var
+- [x] **Enable DB storage in `translateMod.ts`** — uncomment and complete `addTranslation()`
+- [x] **Input validation** — verify files exist before operations
+- [x] **Fallback strategy** — try primary provider, fall back to alternative if unavailable (configurable)
 
 ---
 

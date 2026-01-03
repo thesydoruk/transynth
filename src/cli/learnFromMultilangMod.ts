@@ -71,6 +71,7 @@ import { alignPairs } from '../align/alignPairs.js';
 import { getEmbedModel } from '../config.js';
 import { readCsv } from '../utils/csv.js';
 import { exportForLocale } from '../xedit/runExport.js';
+import { log } from '../logger.js';
 
 // ---------- Constants ----------
 
@@ -194,15 +195,15 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
     try {
       const ok = await exportForLocale(xedit, exporter, modPath, loc, outCsv);
       if (!ok) {
-        console.log(`[detect] ${loc}: no rows exported (unsupported or empty)`);
+        log.info(`[detect] ${loc}: no rows exported (unsupported or empty)`);
         continue;
       }
       const rows = readCsv(outCsv);
       const { coverage, hash } = summarizeLocale(rows);
       probes.push({ locale: loc, rows, hash, coverage, csv: outCsv });
-      console.log(`[detect] ${loc}: exported ${rows.length} rows, coverage ${(coverage*100).toFixed(1)}%`);
+      log.info(`[detect] ${loc}: exported ${rows.length} rows, coverage ${(coverage*100).toFixed(1)}%`);
     } catch (err: any) {
-      console.warn(`[detect] ${loc}: error during export: ${err?.message || err}`);
+      log.warn(`[detect] ${loc}: error during export: ${err?.message || err}`);
     }
   }
 
@@ -229,7 +230,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
     if (viable.length === 0) {
       // whole group is low-coverage (e.g., mostly $IDs) → drop
       const names = list.map(p => p.locale).join(', ');
-      console.log(`[filter] drop ${names}: coverage too low for all`);
+      log.info(`[filter] drop ${names}: coverage too low for all`);
       continue;
     }
 
@@ -263,12 +264,12 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
       byCanon.get(a.canonical)!.push(a.alias);
     }
     for (const [canon, ali] of byCanon.entries()) {
-      console.log(`[alias] ${ali.join(', ')} → alias of ${canon} (identical content)`);
+      log.info(`[alias] ${ali.join(', ')} → alias of ${canon} (identical content)`);
     }
   }
 
   if (kept.length < 2) {
-    console.log(`No distinct locale pairs found after collapsing duplicates. Kept: ${kept.map(k => k.locale).join(', ') || 'none'}`);
+    log.info(`No distinct locale pairs found after collapsing duplicates. Kept: ${kept.map(k => k.locale).join(', ') || 'none'}`);
     process.exit(0);
   }
 
@@ -276,7 +277,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   const idsPerLocale: Record<string,{recordId:number,stringId:number}[]> = {};
   for (const k of kept) {
     idsPerLocale[k.locale] = ingestCsvRows(db, modId, k.rows, k.locale, 'builtin');
-    console.log(`[ingest] ${k.locale}: ${k.rows.length} rows inserted`);
+    log.info(`[ingest] ${k.locale}: ${k.rows.length} rows inserted`);
   }
 
   // Build alignment pairs
@@ -288,7 +289,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
     const L = kept.find(k => k.locale === src);
     const R = kept.find(k => k.locale === tgt);
     if (!L || !R) {
-      console.log(`[align] skip ${spec} (one side missing after dedup)`);
+      log.info(`[align] skip ${spec} (one side missing after dedup)`);
       continue;
     }
 
@@ -309,14 +310,14 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
       const status = ap.method === 'rapidfuzz' ? 'fuzzy' : 'tm';
       addTranslation(db, srcStrId, tgt, tgtText, status, ap.score, ap.method);
     }
-    console.log(`[align] ${src}→${tgt}: ${pairs.length} aligned rows`);
+    log.info(`[align] ${src}→${tgt}: ${pairs.length} aligned rows`);
   }
 
-  console.log(`Done. Kept locales: ${kept.map(k => `${k.locale}(${(k.coverage*100).toFixed(1)}%)`).join(', ')}`);
+  log.info(`Done. Kept locales: ${kept.map(k => `${k.locale}(${(k.coverage*100).toFixed(1)}%)`).join(', ')}`);
   if (aliases.length) {
-    console.log(`Aliases collapsed: ${aliases.length} (see logs above).`);
+    log.info(`Aliases collapsed: ${aliases.length} (see logs above).`);
   }
 })().catch(e => {
-  console.error(e);
+  log.error(e);
   process.exit(1);
 });
