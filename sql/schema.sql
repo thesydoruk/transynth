@@ -63,11 +63,6 @@ CREATE TABLE IF NOT EXISTS glossary (
   UNIQUE(term, lang)
 );
 
-CREATE TABLE IF NOT EXISTS kv_cache (
-  key TEXT PRIMARY KEY,
-  value TEXT
-);
-
 CREATE VIRTUAL TABLE IF NOT EXISTS strings_fts USING fts5(
   text_raw, text_norm, content='strings', content_rowid='id'
 );

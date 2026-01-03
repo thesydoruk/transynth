@@ -1,7 +1,7 @@
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤ and ¤GL0¤ for easy post-replacement.
 
-const PLACEHOLDER_RE = new RegExp([
+export const PLACEHOLDER_RE = new RegExp([
   String.raw`%\d*\$?[sdif]`,
   String.raw`\{[0-9]+\}`,
   String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,

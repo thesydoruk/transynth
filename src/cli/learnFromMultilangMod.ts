@@ -63,7 +63,7 @@ import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { openDb, upsertMod, upsertRecord, insertString, addTranslation } from '../db.js';
+import { openDb, upsertMod, addTranslation } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import type { CsvRow } from '../types.js';
@@ -72,6 +72,7 @@ import { getEmbedModel } from '../config.js';
 import { readCsv } from '../utils/csv.js';
 import { exportForLocale } from '../xedit/runExport.js';
 import { log } from '../logger.js';
+import { ingestCsvRows } from '../utils/ingest.js';
 
 // ---------- Constants ----------
 
@@ -127,16 +128,7 @@ function acceptLocale(summary: {coverage:number;hash:string}, knownHashes: Set<s
   return true;
 }
 
-/** Ingest rows into DB for given mod + locale. */
-function ingestCsvRows(db: any, modId: number, rows: CsvRow[], lang: string, sourceKind: 'builtin'|'export') {
-  return rows.map(r => {
-    const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
-    const hashNorm = sha1Hex(normalizeForHash(r.Source));
-    const recId = upsertRecord(db, modId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-    const strId = insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
-    return { recordId: recId, stringId: strId };
-  });
-}
+/** Ingest rows into DB for given mod + locale — delegates to shared ingestCsvRows. */
 
 /** All ordered pairs src→tgt for locales, excluding src==tgt. */
 function allPairs(arr: string[]) {
@@ -208,7 +200,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   }
 
   if (probes.length === 0) {
-    console.log(`No locales could be exported. Exiting.`);
+    log.info(`No locales could be exported. Exiting.`);
     process.exit(0);
   }
 

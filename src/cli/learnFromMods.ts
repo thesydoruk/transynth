@@ -11,6 +11,7 @@ import { alignPairs } from '../align/alignPairs.js';
 import { readCsv } from '../utils/csv.js';
 import type { CsvRow } from '../types.js';
 import { log } from '../logger.js';
+import { ingestCsvRows } from '../utils/ingest.js';
 
 const argv = await yargs(hideBin(process.argv))
   .option('xedit', { type: 'string', demandOption: true })
@@ -65,14 +66,4 @@ for (const spec of (argv.pair as string[])) {
   }
 
   log.info(`Learned from pair ${path.basename(orig)} : ${path.basename(tran)} → ${pairs.length} aligned rows`);
-}
-
-function ingestCsvRows(db: any, modId: number, rows: CsvRow[], lang: string, sourceKind: string) {
-  return rows.map(r => {
-    const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
-    const hashNorm = sha1Hex(normalizeForHash(r.Source));
-    const recId = upsertRecord(db, modId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-    const strId = insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
-    return { recordId: recId, stringId: strId };
-  });
 }
