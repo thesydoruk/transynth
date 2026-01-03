@@ -39,11 +39,11 @@
 
 > Докеризація, уніфіковане dev-середовище.
 
-- [ ] **Dockerfile** — multi-stage build (Node.js + Python для native модулів)
-- [ ] **docker-compose.yml** — сервіси `cli`, `dev`, опціональний `ollama` (GPU passthrough)
-- [ ] **.dockerignore** — node_modules, dist, .env, *.sqlite
-- [ ] **devDependencies** — перемістити `@types/*`, `typescript`, `tsx` з dependencies
-- [ ] **Додати `@types/node`**, `@types/better-sqlite3`
+- [x] **Dockerfile** — multi-stage build (Node.js + Python для native модулів)
+- [x] **docker-compose.yml** — сервіси `cli`, `dev`, опціональний `ollama` (GPU passthrough)
+- [x] **.dockerignore** — node_modules, dist, .env, *.sqlite
+- [x] **devDependencies** — перемістити `@types/*`, `typescript`, `tsx` з dependencies
+- [x] **Додати `@types/node`**, `@types/better-sqlite3`
 
 ---
 

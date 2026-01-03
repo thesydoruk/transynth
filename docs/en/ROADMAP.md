@@ -39,11 +39,11 @@
 
 > Dockerization, unified dev environment.
 
-- [ ] **Dockerfile** — multi-stage build (Node.js + Python for native modules)
-- [ ] **docker-compose.yml** — services: `cli`, `dev`, optional `ollama` (GPU passthrough)
-- [ ] **.dockerignore** — node_modules, dist, .env, *.sqlite
-- [ ] **devDependencies** — move `@types/*`, `typescript`, `tsx` from dependencies
-- [ ] **Add `@types/node`**, `@types/better-sqlite3`
+- [x] **Dockerfile** — multi-stage build (Node.js + Python for native modules)
+- [x] **docker-compose.yml** — services: `cli`, `dev`, optional `ollama` (GPU passthrough)
+- [x] **.dockerignore** — node_modules, dist, .env, *.sqlite
+- [x] **devDependencies** — move `@types/*`, `typescript`, `tsx` from dependencies
+- [x] **Add `@types/node`**, `@types/better-sqlite3`
 
 ---
 

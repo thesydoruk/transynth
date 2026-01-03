@@ -1,0 +1,49 @@
+services:
+  # One-shot CLI runner — pass command as: docker compose run --rm cli npm run translate -- <args>
+  cli:
+    build: .
+    volumes:
+      - data:/data
+      - ./xedit:/app/xedit:ro
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /data/localizer.sqlite
+    network_mode: host   # reaches Ollama on the host at localhost:11434
+
+  # Interactive dev shell with live source mount
+  dev:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules       # keep container node_modules
+      - data:/data
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /data/localizer.sqlite
+    network_mode: host
+    stdin_open: true
+    tty: true
+    entrypoint: ["bash"]
+
+  # Optional: run Ollama inside Docker (GPU passthrough — Linux only)
+  # Uncomment if you want Ollama containerized alongside the CLI.
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ollama_models:/root/.ollama
+  #   ports:
+  #     - "11434:11434"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+
+volumes:
+  data:
+  # ollama_models:

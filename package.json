@@ -14,16 +14,20 @@
     "xedit:download": "tsx scripts/getXEdit.ts --family fo4 --dest ./tools/xedit --extract"
   },
   "dependencies": {
-    "@types/yargs": "^17.0.33",
     "better-sqlite3": "^9.6.0",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
     "fuzzball": "^2.2.2",
     "node-7z-archive": "^1.1.7",
     "openai": "^4.55.0",
-    "tsx": "^4.19.1",
-    "typescript": "^5.5.4",
     "undici": "^6.19.8",
     "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.14.0",
+    "@types/yargs": "^17.0.33",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
   }
 }

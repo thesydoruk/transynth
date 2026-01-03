@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.sqlite
+*.db
+tools/
+downloads/
+learn_*/
+ml_*/

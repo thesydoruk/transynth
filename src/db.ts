@@ -34,8 +34,9 @@ export function upsertRecord(db: Tx, modId: number, signature: string, path: str
        hash_norm=excluded.hash_norm,
        formid_hex=COALESCE(excluded.formid_hex, records.formid_hex)`
   ).run(modId, signature, path, pathSimplified, edid, hashNorm, formidHex);
-  const row = db.prepare(`SELECT id FROM records WHERE mod_id=? AND signature=? AND path=?`).get(modId, signature, path);
-  return row.id as number;
+  const row = db.prepare(`SELECT id FROM records WHERE mod_id=? AND signature=? AND path=?`).get(modId, signature, path) as {id: number} | undefined;
+  if (!row) throw new Error(`Failed to upsert record: ${path}`);
+  return row.id;
 }
 
 export function insertString(db: Tx, recordId: number, lang: string, textRaw: string, textNorm: string, sourceKind: string = 'export'): number {
@@ -53,7 +54,7 @@ export function addTranslation(db: Tx, srcStringId: number, targetLang: string, 
   ).run(srcStringId, targetLang, text, status, confidence, provenance, model ?? null);
   const row = db.prepare(
     `SELECT id FROM translations WHERE src_string_id=? AND target_lang=? AND text=?`
-  ).get(srcStringId, targetLang, text);
+  ).get(srcStringId, targetLang, text) as {id: number} | undefined;
   return row?.id ?? 0;
 }
 
