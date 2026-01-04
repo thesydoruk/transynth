@@ -27,6 +27,22 @@ services:
     tty: true
     entrypoint: ["bash"]
 
+  # Web UI server — serves Fastify API + built React SPA on port 3000
+  web:
+    build: .
+    command: ["node", "--import", "tsx/esm", "src/web/server.ts"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - data:/data
+    env_file:
+      - .env
+    environment:
+      DATABASE_PATH: /data/localizer.sqlite
+      PORT: "3000"
+    network_mode: host   # reaches Ollama on the host at localhost:11434
+    depends_on: []
+
   # Optional: run Ollama inside Docker (GPU passthrough — Linux only)
   # Uncomment if you want Ollama containerized alongside the CLI.
   #

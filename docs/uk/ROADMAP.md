@@ -113,16 +113,16 @@
 
 > Веб-воркбенч для перекладу — ядро нашої візії «EET для Fallout 4».
 
-- [ ] **Backend API** — Express/Fastify REST API поверх існуючої SQLite DB (`GET /mods`, `GET /strings`, `PATCH /strings/:id`, etc.)
-- [ ] **Frontend scaffold** — React (Vite) SPA, базовий layout: сайдбар (список модів) + основна таблиця (рядки)
-- [ ] **Таблиця рядків** — колонки: FormID, EDID, Path, Source (EN), Translation (UK), Status; сортування, фільтрація
-- [ ] **Кольорове кодування статусів** — як в EET: `translated` (зелений), `fuzzy` (бірюзовий), `untranslated` (білий), `needs-review` (сірий/жовтий)
-- [ ] **Inline-редагування** — клік по клітинці → редагування тексту перекладу, збереження при blur/Enter
-- [ ] **Approve / reject** — зміна статусу рядка (як F10 валідація в EET)
-- [ ] **Пакетний LLM переклад** — виділити неперекладені рядки → надіслати в LLM → заповнити зі статусом `fuzzy`
-- [ ] **Пошук та фільтрація** — за текстом, FormID, EDID, статусом, GRUP типом
-- [ ] **Дашборд прогресу** — статистика завершеності по моду (total / translated / approved / fuzzy)
-- [ ] **Docker сервіс** — додати `web` сервіс до docker-compose.yml (API + статичний фронтенд)
+- [x] **Backend API** — Fastify REST API поверх існуючої SQLite DB (`GET /api/mods`, `GET /api/strings`, `PATCH /api/strings/:id/translation`, `POST /api/strings/translate`, etc.)
+- [x] **Frontend scaffold** — React (Vite) SPA, layout: navbar + список модів + редактор рядків
+- [x] **Таблиця рядків** — колонки: FormID, тип запису, Source (EN), Translation (UK), Status; сторінкування, фільтрація
+- [x] **Кольорове кодування статусів** — як в EET: `human/approved` (зелений), `tm` (синій), `fuzzy` (бірюзовий), `auto` (жовтогарячий), `untranslated` (сірий)
+- [x] **Inline-редагування** — клік по клітинці перекладу → textarea-редактор, збереження Ctrl+Enter або кнопкою
+- [x] **Approve / reject** — кнопка approve для кожного рядка (статус → `human`)
+- [x] **Пакетний LLM переклад** — виділити рядки чекбоксами → надіслати в LLM → заповнити зі статусом `auto`
+- [x] **Пошук та фільтрація** — за текстом/FormID/EDID, статусом, типом запису (Signature)
+- [x] **Дашборд прогресу** — статистика завершеності по моду зі стековим прогрес-баром
+- [x] **Docker сервіс** — сервіс `web` доданий до docker-compose.yml (API + статичний фронтенд на порту 3000)
 
 ---
 

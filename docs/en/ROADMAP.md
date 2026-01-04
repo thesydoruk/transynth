@@ -113,16 +113,16 @@
 
 > Web-based translation workbench — the core of our "EET for Fallout 4" vision.
 
-- [ ] **Backend API** — Express/Fastify REST API over existing SQLite DB (`GET /mods`, `GET /strings`, `PATCH /strings/:id`, etc.)
-- [ ] **Frontend scaffold** — React (Vite) SPA, basic layout: sidebar (mods list) + main table (strings)
-- [ ] **Strings table** — columns: FormID, EDID, Path, Source (EN), Translation (UK), Status; sortable, filterable
-- [ ] **Status color coding** — like EET: `translated` (green), `fuzzy` (turquoise), `untranslated` (white), `needs-review` (grey/yellow)
-- [ ] **Inline editing** — click cell → edit translation text, save on blur/Enter
-- [ ] **Approve / reject** — per-string status toggle (like EET's F10 validate)
-- [ ] **Batch LLM translate** — select untranslated strings → send to LLM → fill in with status `fuzzy`
-- [ ] **Search & filter** — by text, FormID, EDID, status, GRUP type
-- [ ] **Progress dashboard** — per-mod completion stats (total / translated / approved / fuzzy)
-- [ ] **Docker service** — add `web` service to docker-compose.yml (API + static frontend)
+- [x] **Backend API** — Fastify REST API over existing SQLite DB (`GET /api/mods`, `GET /api/strings`, `PATCH /api/strings/:id/translation`, `POST /api/strings/translate`, etc.)
+- [x] **Frontend scaffold** — React (Vite) SPA, layout: navbar + mods list + string editor table
+- [x] **Strings table** — columns: FormID, Record Type, Source (EN), Translation (UK), Status; paginated, filterable
+- [x] **Status color coding** — like EET: `human/approved` (green), `tm` (blue), `fuzzy` (turquoise), `auto` (orange), `untranslated` (grey)
+- [x] **Inline editing** — click translation cell → textarea editor, save with Ctrl+Enter or Save button
+- [x] **Approve / reject** — per-string approve button (sets status to `human`)
+- [x] **Batch LLM translate** — select strings with checkboxes → send to LLM → fill with status `auto`
+- [x] **Search & filter** — by text/FormID/EDID, status, record type (Signature)
+- [x] **Progress dashboard** — per-mod completion stats with stacked progress bar
+- [x] **Docker service** — `web` service added to docker-compose.yml (API + static frontend on port 3000)
 
 ---
 
