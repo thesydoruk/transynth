@@ -9,6 +9,7 @@ import { modsRoutes } from './routes/mods.js';
 import { stringsRoutes } from './routes/strings.js';
 import { statsRoutes } from './routes/stats.js';
 import { glossaryRoutes } from './routes/glossary.js';
+import { searchRoutes } from './routes/search.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -42,6 +43,7 @@ await modsRoutes(app, db);
 await stringsRoutes(app, db);
 await statsRoutes(app, db);
 await glossaryRoutes(app, db);
+await searchRoutes(app, db);
 
 // Health check
 app.get('/api/health', async () => ({ ok: true, ts: new Date().toISOString() }));

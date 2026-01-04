@@ -2,19 +2,32 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ModsPage } from './pages/ModsPage';
 import { ModEditorPage } from './pages/ModEditorPage';
+import { GlossaryPage } from './pages/GlossaryPage';
+import { DiffPage } from './pages/DiffPage';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
 });
+
+const NAV_LINKS = [
+  { to: '/', label: 'Mods', exact: true },
+  { to: '/glossary', label: 'Glossary', exact: false },
+  { to: '/diff', label: 'Diff', exact: false },
+];
 
 function Nav() {
   const loc = useLocation();
   return (
     <nav style={navStyles.nav}>
       <span style={navStyles.brand}>FO4 Localizer</span>
-      <Link to="/" style={loc.pathname === '/' ? navStyles.activeLink : navStyles.link}>
-        Mods
-      </Link>
+      {NAV_LINKS.map(({ to, label, exact }) => {
+        const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);
+        return (
+          <Link key={to} to={to} style={active ? navStyles.activeLink : navStyles.link}>
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -28,6 +41,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<ModsPage />} />
             <Route path="/mods/:id" element={<ModEditorPage />} />
+            <Route path="/glossary" element={<GlossaryPage />} />
+            <Route path="/diff" element={<DiffPage />} />
           </Routes>
         </main>
       </BrowserRouter>

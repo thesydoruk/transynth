@@ -64,12 +64,48 @@ export type Signature = { signature: string; count: number };
 
 export type GlossaryEntry = { id: number; term: string; lang: string; count: number; source: string };
 
+export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
+
+export type DiffEntry = {
+  formid_hex: string;
+  path: string;
+  signature: string;
+  edid: string | null;
+  source: string;
+  translation: string | null;
+  status: string | null;
+  changeType: 'added' | 'removed' | 'changed' | 'unchanged';
+};
+
+export type DiffResult = {
+  added: DiffEntry[];
+  removed: DiffEntry[];
+  changed: DiffEntry[];
+  unchanged: number;
+};
+
+export type SearchReplaceMatch = {
+  translationId: number;
+  stringId: number;
+  formid_hex: string;
+  path: string;
+  originalText: string;
+  newText: string;
+};
+
+export type ProgressEvent = { type: 'progress'; done: number; total: number; result: { stringId: number; text?: string; error?: string } };
+export type DoneEvent = { type: 'done'; results: Array<{ stringId: number; text?: string; error?: string }> };
+
 // ── Mods ──────────────────────────────────────────────────────────────────────
 
 export const api = {
   mods: {
     list: () => req<Mod[]>('/api/mods'),
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
+    tmApply: (modId: number, targetLang = 'uk') =>
+      req<TMApplyResult>(`/api/mods/${modId}/tm-apply?targetLang=${targetLang}`, { method: 'POST' }),
+    diff: (newModId: number, compareModId: number, targetLang = 'uk') =>
+      req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
   },
 
   stats: {
@@ -106,11 +142,56 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ translationId, status }),
       }),
-    batchTranslate: (stringIds: number[], targetLang = 'uk') =>
-      req<{ results: Array<{ stringId: number; text?: string; error?: string }> }>(
-        '/api/strings/translate',
-        { method: 'POST', body: JSON.stringify({ stringIds, targetLang }) },
-      ),
+
+    /** SSE-streaming batch translate. Calls onProgress for each completed string.
+     *  Returns final results array after stream closes. */
+    async batchTranslate(
+      stringIds: number[],
+      targetLang = 'uk',
+      onProgress?: (e: ProgressEvent) => void,
+    ): Promise<Array<{ stringId: number; text?: string; error?: string }>> {
+      const response = await fetch(`${BASE}/api/strings/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stringIds, targetLang }),
+      });
+      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let results: Array<{ stringId: number; text?: string; error?: string }> = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as ProgressEvent | DoneEvent;
+            if (event.type === 'progress' && onProgress) onProgress(event);
+            if (event.type === 'done') results = event.results;
+          } catch {
+            // ignore malformed SSE line
+          }
+        }
+      }
+      return results;
+    },
+  },
+
+  search: {
+    replace: (
+      modId: number,
+      body: { search: string; replace: string; isRegex?: boolean; targetLang?: string; dryRun?: boolean },
+    ) =>
+      req<{ matches: SearchReplaceMatch[]; applied: number }>(`/api/mods/${modId}/search-replace`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
 
   glossary: {

@@ -55,6 +55,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { fetch } from 'undici';
 import { fullArchive } from 'node-7z-archive';
+import { log } from '../src/logger.js';
 
 const streamPipeline = promisify(pipeline);
 
@@ -139,7 +140,7 @@ async function download(url: string, outFile: string) {
   const dest = path.resolve(argv.dest as string);
   fs.mkdirSync(dest, { recursive: true });
 
-  console.log(`[xedit] repo=${repo} family=${family} dest=${dest} tag=${argv.tag || 'latest'}`);
+log.info(`[xedit] repo=${repo} family=${family} dest=${dest} tag=${argv.tag || 'latest'}`);
 
   const rel = argv.tag ? await getTaggedRelease(repo, argv.tag as string) : await getLatestRelease(repo);
   if (!rel.assets || rel.assets.length === 0) {
@@ -152,27 +153,27 @@ async function download(url: string, outFile: string) {
     .sort((x, y) => y.score - x.score);
 
   if (sorted[0].score <= 0) {
-    console.warn('[xedit] No family-specific asset detected; falling back to the first asset.');
+    log.warn('[xedit] No family-specific asset detected; falling back to the first asset.');
   }
 
   const chosen = sorted[0].a;
   const outFile = path.join(dest, chosen.name);
 
-  console.log(`[xedit] release=${rel.tag_name} asset=${chosen.name} → ${outFile}`);
+  log.info(`[xedit] release=${rel.tag_name} asset=${chosen.name} → ${outFile}`);
   await download(chosen.browser_download_url, outFile);
-  console.log('[xedit] downloaded');
+  log.info('[xedit] downloaded');
 
   if (argv.extract) {
     const outDir = path.join(dest, 'xedit');
 
-    console.log(`[extract] Starting extraction...`);
+    log.info(`[extract] Starting extraction...`);
     await fullArchive(outFile, outDir);
-    console.log(`[extract] Extracted to: ${outDir}`);
-    console.log(`[xedit] ready → ${outDir}`);
+    log.info(`[extract] Extracted to: ${outDir}`);
+    log.info(`[xedit] ready → ${outDir}`);
   } else {
-    console.log('[xedit] saved archive only (use --extract to unpack)');
+    log.info('[xedit] saved archive only (use --extract to unpack)');
   }
 })().catch(err => {
-  console.error(err);
+  log.error(err);
   process.exit(1);
 });

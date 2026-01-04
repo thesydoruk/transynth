@@ -130,14 +130,14 @@
 
 > Advanced TM features inspired by EET's database system.
 
-- [ ] **TM auto-apply** — on mod import, auto-match strings from TM by FormID → EDID → exact text → fuzzy text (like EET's F11)
-- [ ] **Glossary management** — Web UI CRUD for `glossary` table; enforce glossary terms during LLM translation (inject into prompt)
-- [ ] **Mod update workflow** — load new version of mod → diff against previous translation → highlight added/changed/removed strings (like EET's "Charger mod déjà traduit")
+- [x] **TM auto-apply** — on any mod, auto-match untranslated strings from TM by anchor (FormID+path) → EDID → exact text_norm; fills with status `tm` and a confidence score
+- [x] **Glossary management** — Web UI CRUD for `glossary` table (`/glossary` page); glossary terms auto-injected into LLM system prompt during batch translation
+- [x] **Translation propagation** — when saving a translation, automatically propagates to all other strings with the same `text_norm` that have no human-approved translation
+- [x] **Bulk search-replace** — `POST /api/mods/:id/search-replace` with regex/literal support + dry-run preview; accessible from the editor toolbar (Search & Replace modal)
+- [x] **SSE progress reporting** — batch LLM translate streams real-time progress via Server-Sent Events (`text/event-stream`); frontend shows live done/total counter
+- [x] **Mod update diff** — `GET /api/mods/:id/diff?compareModId=` compares two versions; `/diff` page shows added/removed/changed strings with colour coding
 - [ ] **Batch mod processing** — upload/import a directory of mods, process all in one session
-- [ ] **Bulk search-replace** — regex-based find-replace across all strings in a mod (like EET's replacement matrix)
-- [ ] **Translation propagation** — when the same source text appears multiple times, propagate translation automatically
-- [ ] **Progress reporting** — real-time progress bar for long-running operations (translation, import, alignment)
-- [ ] **Diff view** — compare two mod versions side-by-side, showing changed strings
+- [ ] **Diff view in-editor** — inline diff highlighting in the translation editor when a mod is updated
 
 ---
 

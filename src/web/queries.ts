@@ -161,6 +161,174 @@ export function updateTranslationStatus(db: Tx, translationId: number, status: s
   ).run(status, translationId);
 }
 
+// Returns text_norm for a string ID (used by propagation)
+export function getStringTextNorm(db: Tx, stringId: number): string | null {
+  const row = db
+    .prepare(`SELECT text_norm FROM strings WHERE id = ?`)
+    .get(stringId) as { text_norm: string } | undefined;
+  return row?.text_norm ?? null;
+}
+
+// ── Mod diff ──────────────────────────────────────────────────────────────────
+
+export type DiffEntry = {
+  formid_hex: string;
+  path: string;
+  signature: string;
+  edid: string | null;
+  source: string;
+  translation: string | null;
+  status: string | null;
+  changeType: 'added' | 'removed' | 'changed' | 'unchanged';
+};
+
+export function diffMods(
+  db: Tx,
+  newModId: number,
+  oldModId: number,
+  targetLang = 'uk',
+): { added: DiffEntry[]; removed: DiffEntry[]; changed: DiffEntry[]; unchanged: number } {
+  type Row = {
+    formid_hex: string;
+    path: string;
+    signature: string;
+    edid: string | null;
+    text_raw: string;
+    text_norm: string;
+    translation: string | null;
+    status: string | null;
+  };
+
+  const fetchMod = (modId: number) =>
+    db
+      .prepare(
+        `SELECT r.formid_hex, r.path, r.signature, r.edid,
+                s.text_raw, s.text_norm,
+                t.text AS translation, t.status
+         FROM strings s
+         JOIN records r ON s.record_id = r.id
+         LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = ?
+           AND t.id = (SELECT id FROM translations WHERE src_string_id = s.id AND target_lang = ?
+                       ORDER BY CASE status WHEN 'human' THEN 1 WHEN 'tm' THEN 2
+                                            WHEN 'fuzzy' THEN 3 ELSE 4 END LIMIT 1)
+         WHERE r.mod_id = ? AND s.lang = 'en'`,
+      )
+      .all(targetLang, targetLang, modId) as Row[];
+
+  const newRows = fetchMod(newModId);
+  const oldMap = new Map<string, Row>();
+  for (const r of fetchMod(oldModId)) oldMap.set(`${r.formid_hex}|${r.path}`, r);
+
+  const added: DiffEntry[] = [];
+  const changed: DiffEntry[] = [];
+  let unchanged = 0;
+
+  const newKeys = new Set<string>();
+  for (const r of newRows) {
+    const key = `${r.formid_hex}|${r.path}`;
+    newKeys.add(key);
+    const old = oldMap.get(key);
+    if (!old) {
+      added.push({ ...r, source: r.text_raw, changeType: 'added' });
+    } else if (r.text_norm !== old.text_norm) {
+      changed.push({ ...r, source: r.text_raw, changeType: 'changed' });
+    } else {
+      unchanged++;
+    }
+  }
+
+  const removed: DiffEntry[] = [];
+  for (const [key, r] of oldMap) {
+    if (!newKeys.has(key)) {
+      removed.push({ ...r, source: r.text_raw, changeType: 'removed' });
+    }
+  }
+
+  return { added, removed, changed, unchanged };
+}
+
+// ── Bulk search-replace ───────────────────────────────────────────────────────
+
+export type SearchReplaceMatch = {
+  translationId: number;
+  stringId: number;
+  formid_hex: string;
+  path: string;
+  originalText: string;
+  newText: string;
+};
+
+export function searchReplaceTranslations(
+  db: Tx,
+  modId: number,
+  search: string,
+  replace: string,
+  isRegex: boolean,
+  targetLang: string,
+  dryRun: boolean,
+): { matches: SearchReplaceMatch[]; applied: number } {
+  const rows = db
+    .prepare(
+      `SELECT t.id AS translation_id, t.text, t.src_string_id AS string_id,
+              r.formid_hex, r.path
+       FROM translations t
+       JOIN strings s ON s.id = t.src_string_id AND s.lang = 'en'
+       JOIN records r ON r.id = s.record_id
+       WHERE r.mod_id = ? AND t.target_lang = ?`,
+    )
+    .all(modId, targetLang) as Array<{
+    translation_id: number;
+    text: string;
+    string_id: number;
+    formid_hex: string;
+    path: string;
+  }>;
+
+  const matches: SearchReplaceMatch[] = [];
+
+  // Validate regex before applying to any row
+  let pattern: RegExp | null = null;
+  if (isRegex) {
+    try {
+      pattern = new RegExp(search, 'g');
+    } catch {
+      throw new Error(`Invalid regular expression: ${search}`);
+    }
+  }
+
+  for (const row of rows) {
+    let newText: string;
+    if (isRegex && pattern) {
+      pattern.lastIndex = 0; // reset global flag
+      newText = row.text.replace(pattern, replace);
+    } else {
+      newText = row.text.split(search).join(replace);
+    }
+
+    if (newText !== row.text) {
+      matches.push({
+        translationId: row.translation_id,
+        stringId: row.string_id,
+        formid_hex: row.formid_hex,
+        path: row.path,
+        originalText: row.text,
+        newText,
+      });
+    }
+  }
+
+  if (!dryRun && matches.length > 0) {
+    const update = db.prepare(
+      `UPDATE translations SET text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    );
+    db.transaction(() => {
+      for (const m of matches) update.run(m.newText, m.translationId);
+    })();
+  }
+
+  return { matches, applied: dryRun ? 0 : matches.length };
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export function getModStats(db: Tx, modId: number) {
