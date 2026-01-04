@@ -163,7 +163,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   const modId = upsertMod(db, modName, path.resolve(modPath), modHash);
 
   // Resolve candidate locales
-  let localesToTry: string[] = [];
+  let localesToTry: string[];
   let extras: string[]|null = null;
 
   if (argv.locales) {

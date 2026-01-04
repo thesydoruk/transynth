@@ -65,12 +65,12 @@
 
 > Рефакторинг, тести, лінтинг.
 
-- [ ] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → спільні модулі
-- [ ] **Видалити dead code** — `fileHashSha1()`, невикористані таблиці `kv_cache`
-- [ ] **ESLint + Prettier** — додати конфіги та npm скрипти
-- [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
+- [x] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → спільні модулі
+- [x] **Видалити dead code** — `fileHashSha1()`, невикористовувані таблиці `kv_cache`
+- [x] **ESLint + Prettier** — додати конфіги та npm скрипти
+- [x] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `normalizeForHash` (28 тестів, 3 сюіти)
 - [ ] **Integration tests** — translate pipeline з mock LLM provider
-- [ ] **Fix `ApplyTranslationsInPlace.pas`** — завантажувати CSV в map за FormID+Path замість послідовного читання
+- [x] **Fix `ApplyTranslationsInPlace.pas`** — завантажити CSV в map за FormID+Path замість послідовного читання
 
 ---
 

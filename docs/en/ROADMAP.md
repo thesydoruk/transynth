@@ -65,12 +65,12 @@
 
 > Refactoring, tests, linting.
 
-- [ ] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → shared modules
-- [ ] **Remove dead code** — `fileHashSha1()`, unused tables `kv_cache`
-- [ ] **ESLint + Prettier** — add configs and npm scripts
-- [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
+- [x] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → shared modules
+- [x] **Remove dead code** — `fileHashSha1()`, unused tables `kv_cache`
+- [x] **ESLint + Prettier** — add configs and npm scripts
+- [x] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `normalizeForHash` (28 tests, 3 suites)
 - [ ] **Integration tests** — translate pipeline with mock LLM provider
-- [ ] **Fix `ApplyTranslationsInPlace.pas`** — load CSV into map by FormID+Path instead of sequential reading
+- [x] **Fix `ApplyTranslationsInPlace.pas`** — load CSV into map by FormID+Path instead of sequential reading
 
 ---
 
