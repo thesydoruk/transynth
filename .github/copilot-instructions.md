@@ -1,32 +1,32 @@
 # Copilot Instructions — Fallout 4 Localization Project
 
-## Мова документації / Documentation language
+## Documentation language
 
-- **Вся документація ведеться двома мовами: українською (основна) та англійською.**
-- Основна мова — **українська**. Англійська додається як переклад.
-- Документація розділена по папках за мовою:
-  - Корінь (`README.md`, `ROADMAP.md`) — коротка двомовна заглушка з посиланнями.
-  - `docs/uk/` — **українська** (основна повна документація).
-  - `docs/en/` — англійська версія.
-- При зміні документації — оновлювати **обидві** мовні версії.
-- Коментарі в коді — **англійською** (стандартна практика для OSS-сумісності).
-- Commit messages — **англійською**.
-
-> **All documentation is bilingual: Ukrainian (primary) and English.**
-> Root-level docs are in Ukrainian. English versions live in `docs/en/`.
-> When updating docs, update both language versions.
-> Code comments and commit messages stay in English.
+- **All documentation is bilingual: Ukrainian (primary) and English.**
+- Primary language is **Ukrainian**. English is added as a translation.
+- Documentation is organized by language in separate folders:
+  - Root (`README.md`, `ROADMAP.md`) — short bilingual stubs with links.
+  - `docs/uk/` — **Ukrainian** (primary, full documentation).
+  - `docs/en/` — English version.
+- When updating docs — update **both** language versions.
+- Code comments — in **English** (standard practice for OSS compatibility).
+- Commit messages — in **English**.
 
 ## Docker
 
-- По максимуму використовувати Docker де це доречно.
-- **Доречно:** dev-середовище, CI/CD, CLI pipeline (translate, learn, db:init).
-- **Не доречно:** xEdit (FO4Edit) — Windows-only GUI, залишається на хості.
-- Dockerfile(и) у корені або `.docker/`.
-- docker-compose.yml для оркестрації.
-- .dockerignore обов'язковий.
-- Multi-stage builds де це зменшує розмір образу.
-- Офіційні Node.js образи з Python для native builds.
+- Use Docker wherever appropriate.
+- **Appropriate:** dev environment, CI/CD, CLI pipeline (translate, learn, db:init).
+- **Not appropriate:** xEdit (FO4Edit) — Windows-only GUI, stays on the host.
+- Dockerfile(s) in root or `.docker/`.
+- docker-compose.yml for orchestration.
+- .dockerignore is mandatory.
+- Multi-stage builds where it reduces image size.
+- Official Node.js images with Python for native builds.
+
+## Workflow
+
+- **Never make changes to code or files without explicit user confirmation.**
+- Before any modification — describe the plan and wait for approval.
 
 ## Code style
 

@@ -54,7 +54,8 @@ import { promisify } from 'util';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { fetch } from 'undici';
-import { fullArchive } from 'node-7z-archive';
+import Seven from 'node-7z';
+import { path7za } from '7zip-bin';
 import { log } from '../src/logger.js';
 
 const streamPipeline = promisify(pipeline);
@@ -167,7 +168,11 @@ log.info(`[xedit] repo=${repo} family=${family} dest=${dest} tag=${argv.tag || '
     const outDir = path.join(dest, 'xedit');
 
     log.info(`[extract] Starting extraction...`);
-    await fullArchive(outFile, outDir);
+    await new Promise<void>((resolve, reject) => {
+      const stream = Seven.extractFull(outFile, outDir, { $bin: path7za });
+      stream.on('end', () => resolve());
+      stream.on('error', (err: Error) => reject(err));
+    });
     log.info(`[extract] Extracted to: ${outDir}`);
     log.info(`[xedit] ready → ${outDir}`);
   } else {
