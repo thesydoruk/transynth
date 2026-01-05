@@ -3,13 +3,12 @@ import fs from 'fs';
 import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { openDb, upsertMod, upsertRecord, insertString, addTranslation } from '../db.js';
+import { openDb, upsertMod, addTranslation } from '../db.js';
 import { runXEditExport } from '../xedit/runExport.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { readCsv } from '../utils/csv.js';
-import type { CsvRow } from '../types.js';
 import { log } from '../logger.js';
 import { ingestCsvRows } from '../utils/ingest.js';
 
@@ -51,9 +50,9 @@ for (const spec of (argv.pair as string[])) {
   const modIdOrig = upsertMod(db, path.basename(orig), path.resolve(orig), hashOrig);
   const modIdTran = upsertMod(db, path.basename(tran), path.resolve(tran), hashTran);
 
-  // ingest rows into DB
+  // ingest rows into DB (side-effect: records/strings stored)
   const leftIds = ingestCsvRows(db, modIdOrig, left, argv.srcLang as string, 'export');
-  const rightIds = ingestCsvRows(db, modIdTran, right, argv.tgtLang as string, 'export');
+  void ingestCsvRows(db, modIdTran, right, argv.tgtLang as string, 'export');
 
   // align
   const pairs = await alignPairs(left, right, { fuzzyMin: 85, fuzzyStrong: 90, useEmbeddings: false });

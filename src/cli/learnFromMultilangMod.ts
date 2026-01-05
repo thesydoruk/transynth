@@ -128,8 +128,6 @@ function acceptLocale(summary: {coverage:number;hash:string}, knownHashes: Set<s
   return true;
 }
 
-/** Ingest rows into DB for given mod + locale — delegates to shared ingestCsvRows. */
-
 /** All ordered pairs src→tgt for locales, excluding src==tgt. */
 function allPairs(arr: string[]) {
   const res: string[] = [];

@@ -65,12 +65,12 @@
 
 > Refactoring, tests, linting.
 
-- [x] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → shared modules
-- [x] **Remove dead code** — `fileHashSha1()`, unused tables `kv_cache`
-- [x] **ESLint + Prettier** — add configs and npm scripts
-- [x] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `normalizeForHash` (28 tests, 3 suites)
+- [x] **Deduplicate** — `PLACEHOLDER_RE` exported from `placeholders.ts` and imported in `textNorm.ts`; `ingestCsvRows` extracted to `src/utils/ingest.ts`
+- [x] **Remove dead code** — `fileHashSha1()` removed; `kv_cache` removed from `schema.sql`; `src/openai/` folder deleted; `sha1Hex(Buffer)` type fixed
+- [x] **ESLint + Prettier** — configs and npm scripts added
+- [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
 - [ ] **Integration tests** — translate pipeline with mock LLM provider
-- [x] **Fix `ApplyTranslationsInPlace.pas`** — load CSV into map by FormID+Path instead of sequential reading
+- [x] **Fix `ApplyTranslationsInPlace.pas`** — CSV loaded into FormID+Path map; RFC 4180-compliant parser
 
 ---
 

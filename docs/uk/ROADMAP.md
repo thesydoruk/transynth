@@ -65,12 +65,12 @@
 
 > Рефакторинг, тести, лінтинг.
 
-- [x] **Deduplicate** — PLACEHOLDER_RE, ingestCsvRows, parseCsv → спільні модулі
-- [x] **Видалити dead code** — `fileHashSha1()`, невикористовувані таблиці `kv_cache`
-- [x] **ESLint + Prettier** — додати конфіги та npm скрипти
-- [x] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `normalizeForHash` (28 тестів, 3 сюіти)
+- [x] **Deduplicate** — `PLACEHOLDER_RE` експортується з `placeholders.ts` і імпортується в `textNorm.ts`; `ingestCsvRows` винесено в `src/utils/ingest.ts`
+- [x] **Видалити dead code** — `fileHashSha1()` видалено; `kv_cache` видалено з `schema.sql`; `src/openai/` фолдер видалено; виправлено тип `sha1Hex(Buffer)`
+- [x] **ESLint + Prettier** — конфіги та npm скрипти додано
+- [ ] **Unit tests (vitest)** — `parseCsv`, `mask/unmask` round-trip, `alignPairs`, `normalizeForHash`
 - [ ] **Integration tests** — translate pipeline з mock LLM provider
-- [x] **Fix `ApplyTranslationsInPlace.pas`** — завантажити CSV в map за FormID+Path замість послідовного читання
+- [x] **Fix `ApplyTranslationsInPlace.pas`** — завантаження CSV в map за FormID+Path; RFC 4180-парсер
 
 ---
 
