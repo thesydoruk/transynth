@@ -44,10 +44,10 @@
 
 > Читання та запис ESP/ESM/BA2/STRINGS без залежності від xEdit. Повністю автономна робота на будь-якій ОС.
 
-- [ ] **STRINGS reader** — парсинг `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` файлів (бінарний формат: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
-- [ ] **STRINGS writer** — генерація нових STRINGS файлів з перекладами
-- [ ] **BA2 reader** — розпакування Bethesda Archive 2 (GNRL тип), zlib-декомпресія окремих файлів; витягування STRINGS з BA2
-- [ ] **ESP/ESM reader** — парсинг бінарного формату: `TES4 → GRUP → Record → Subrecord`; витягування перекладних subrecords з контекстом (FormID, EDID, Signature, Path); обробка zlib-стиснених записів; localized vs embedded рядки
+- [x] **STRINGS reader** — парсинг `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` файлів (бінарний формат: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
+- [x] **STRINGS writer** — генерація нових STRINGS файлів з перекладами
+- [x] **BA2 reader** — розпакування Bethesda Archive 2 (GNRL тип), zlib-декомпресія окремих файлів; витягування STRINGS з BA2
+- [x] **ESP/ESM reader** — парсинг бінарного формату: `TES4 → GRUP → Record → Subrecord`; витягування перекладних subrecords з контекстом (FormID, EDID, Signature, Path); обробка zlib-стиснених записів; localized vs embedded рядки
 - [ ] **ESP/ESM writer** — модифікація subrecords з перекладами, перерахунок розмірів записів, збереження стиснених записів
 - [ ] **CLI імпорт** — `src/cli/importMod.ts`: нативний імпорт мода без xEdit; xEdit залишається як fallback
 - [ ] **Юніт-тести** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing на тестовому моді

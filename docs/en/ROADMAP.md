@@ -44,10 +44,10 @@ The foundation and core features are fully functional:
 
 > Read and write ESP/ESM/BA2/STRINGS without xEdit dependency. Fully autonomous operation on any OS.
 
-- [ ] **STRINGS reader** — parse `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files (binary format: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
-- [ ] **STRINGS writer** — generate new STRINGS files with translated text
-- [ ] **BA2 reader** — unpack Bethesda Archive 2 (GNRL type), zlib decompression of individual files; extract STRINGS from BA2
-- [ ] **ESP/ESM reader** — parse binary format: `TES4 → GRUP → Record → Subrecord`; extract translatable subrecords with context (FormID, EDID, Signature, Path); handle zlib-compressed records; localized vs embedded strings
+- [x] **STRINGS reader** — parse `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files (binary format: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
+- [x] **STRINGS writer** — generate new STRINGS files with translated text
+- [x] **BA2 reader** — unpack Bethesda Archive 2 (GNRL type), zlib decompression of individual files; extract STRINGS from BA2
+- [x] **ESP/ESM reader** — parse binary format: `TES4 → GRUP → Record → Subrecord`; extract translatable subrecords with context (FormID, EDID, Signature, Path); handle zlib-compressed records; localized vs embedded strings
 - [ ] **ESP/ESM writer** — modify subrecords with translations, recalculate record sizes, preserve compressed records
 - [ ] **CLI import** — `src/cli/importMod.ts`: native mod import without xEdit; xEdit remains as fallback
 - [ ] **Unit tests** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing on test mod
