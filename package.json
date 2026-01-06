@@ -28,7 +28,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/static": "^9.0.0",
     "7zip-bin": "^5.2.0",
-    "better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^12.8.0",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
     "fastify": "^5.8.4",

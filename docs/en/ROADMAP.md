@@ -40,7 +40,21 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 2 — Batch & Import Workflow 📦 `v1.1`
+## Milestone 2 — Native Plugin Parser 🔧 `v1.1`
+
+> Read and write ESP/ESM/BA2/STRINGS without xEdit dependency. Fully autonomous operation on any OS.
+
+- [ ] **STRINGS reader** — parse `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files (binary format: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
+- [ ] **STRINGS writer** — generate new STRINGS files with translated text
+- [ ] **BA2 reader** — unpack Bethesda Archive 2 (GNRL type), zlib decompression of individual files; extract STRINGS from BA2
+- [ ] **ESP/ESM reader** — parse binary format: `TES4 → GRUP → Record → Subrecord`; extract translatable subrecords with context (FormID, EDID, Signature, Path); handle zlib-compressed records; localized vs embedded strings
+- [ ] **ESP/ESM writer** — modify subrecords with translations, recalculate record sizes, preserve compressed records
+- [ ] **CLI import** — `src/cli/importMod.ts`: native mod import without xEdit; xEdit remains as fallback
+- [ ] **Unit tests** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing on test mod
+
+---
+
+## Milestone 3 — Batch & Import Workflow 📦 `v1.2`
 
 > Process multiple mods, import existing translations, drag-and-drop.
 
@@ -53,7 +67,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 3 — MCM & FOMOD Translation 📋 `v1.2`
+## Milestone 4 — MCM & FOMOD Translation 📋 `v1.3`
 
 > Translate mod configuration files — not just plugin strings.
 
@@ -64,7 +78,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 4 — Interoperability 🔄 `v1.3`
+## Milestone 5 — Interoperability 🔄 `v1.4`
 
 > Exchange translations with other tools and communities.
 
@@ -77,7 +91,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 5 — Context & Quality 🎯 `v1.4`
+## Milestone 6 — Context & Quality 🎯 `v1.5`
 
 > Help translators make better decisions.
 
@@ -90,7 +104,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 6 — Team & Community 👥 `v2.0`
+## Milestone 7 — Team & Community 👥 `v2.0`
 
 > Multi-user translation with review workflow.
 
@@ -103,7 +117,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 7 — Other Games & Scalability 🌍 `v3.0`
+## Milestone 8 — Other Games & Scalability 🌍 `v3.0`
 
 > Beyond Fallout 4.
 
@@ -121,7 +135,7 @@ The foundation and core features are fully functional:
 |---|---|---|
 | Platform | Windows desktop (Delphi) | Web (any OS, browser) |
 | Source code | Closed | Open-source |
-| Load ESP/ESM/ESL | Native parser | Via xEdit (reliable, official) |
+| Load ESP/ESM/ESL | Native parser | Native parser + xEdit as fallback (Milestone 2) |
 | Translation engine | Google Translate, DeepL, ChatGPT | Ollama (local, free), OpenAI (cloud); pluggable providers |
 | Translation Memory | BDD files, per-game static databases | SQLite TM, learned from any mod pair, auto-aligned |
 | Matching algorithm | FormID, EDID, text match | 5-pass: hash → EDID → path → fuzzy (fuzzball) → embeddings |
@@ -134,5 +148,5 @@ The foundation and core features are fully functional:
 | Multi-user review | No | Planned (Milestone 6) |
 | Translation propagation | No | Yes (auto-fills identical strings) |
 | SSE live progress | No | Yes (Server-Sent Events) |
-| BSA/BA2 reading | Yes | Not needed (xEdit handles) |
+| BSA/BA2 reading | Yes | Yes (native BA2 reader, Milestone 2) |
 | Script decompilation | Yes (partial) | Out of scope |
