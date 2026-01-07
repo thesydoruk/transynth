@@ -48,9 +48,9 @@
 - [x] **STRINGS writer** — генерація нових STRINGS файлів з перекладами
 - [x] **BA2 reader** — розпакування Bethesda Archive 2 (GNRL тип), zlib-декомпресія окремих файлів; витягування STRINGS з BA2
 - [x] **ESP/ESM reader** — парсинг бінарного формату: `TES4 → GRUP → Record → Subrecord`; витягування перекладних subrecords з контекстом (FormID, EDID, Signature, Path); обробка zlib-стиснених записів; localized vs embedded рядки
-- [ ] **ESP/ESM writer** — модифікація subrecords з перекладами, перерахунок розмірів записів, збереження стиснених записів
-- [ ] **CLI імпорт** — `src/cli/importMod.ts`: нативний імпорт мода без xEdit; xEdit залишається як fallback
-- [ ] **Юніт-тести** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing на тестовому моді
+- [x] **ESP/ESM writer** — модифікація subrecords з перекладами, перерахунок розмірів записів, збереження стиснених записів
+- [x] **CLI імпорт** — `src/cli/importMod.ts`: нативний імпорт мода без xEdit; xEdit залишається як fallback
+- [x] **Юніт-тести** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing на тестовому моді
 
 ---
 
