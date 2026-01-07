@@ -27,7 +27,20 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 1 — Stabilization 🛡️ `v1.0`
+## Milestone 1 — Translation Storage & Management System 🗄️ `v1.0`
+
+> A complete system for persisting, tracking, and managing translations: database schema, states, versioning, API.
+
+- [ ] **Database schema** — design and migrations: tables for translation strings, statuses, notes; foreign keys, indexes on `formId`, `edid`, `path`, `status`
+- [ ] **Translation state machine** — states: `untranslated → in_progress → translated → reviewed → rejected`; bulk status transitions via Web UI and CLI
+- [ ] **Translation versioning** — store every revision of a string (previous text, timestamp, optional author); view and roll back to a previous version
+- [ ] **Translation REST API** — full CRUD for translation strings; batch update; filter by `status`, `modId`, `signature`, `formId`, free text
+- [ ] **Export / import** — CLI `db:export` (dump all translations as JSON / CSV); `db:import` for restore or merge with existing database
+- [ ] **Translator notes** — note/comment field per string; displayed in Web UI editor
+
+---
+
+## Milestone 2 — Stabilization 🛡️ `v1.1`
 
 > Production-ready release: tests, edge cases, documentation.
 
@@ -40,7 +53,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 2 — Native Plugin Parser 🔧 `v1.1`
+## Milestone 3 — Native Plugin Parser 🔧 `v1.2`
 
 > Read and write ESP/ESM/BA2/STRINGS without xEdit dependency. Fully autonomous operation on any OS.
 
@@ -54,7 +67,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 3 — Batch & Import Workflow 📦 `v1.2`
+## Milestone 4 — Batch & Import Workflow 📦 `v1.3`
 
 > Process multiple mods, import existing translations, drag-and-drop.
 
@@ -67,7 +80,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 4 — MCM & FOMOD Translation 📋 `v1.3`
+## Milestone 5 — MCM & FOMOD Translation 📋 `v1.4`
 
 > Translate mod configuration files — not just plugin strings.
 
@@ -78,7 +91,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 5 — Interoperability 🔄 `v1.4`
+## Milestone 6 — Interoperability 🔄 `v1.5`
 
 > Exchange translations with other tools and communities.
 
@@ -91,7 +104,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 6 — Context & Quality 🎯 `v1.5`
+## Milestone 7 — Context & Quality 🎯 `v1.6`
 
 > Help translators make better decisions.
 
@@ -104,7 +117,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 7 — Team & Community 👥 `v2.0`
+## Milestone 8 — Team & Community 👥 `v2.0`
 
 > Multi-user translation with review workflow.
 
@@ -117,7 +130,7 @@ The foundation and core features are fully functional:
 
 ---
 
-## Milestone 8 — Other Games & Scalability 🌍 `v3.0`
+## Milestone 9 — Other Games & Scalability 🌍 `v3.0`
 
 > Beyond Fallout 4.
 
@@ -135,7 +148,7 @@ The foundation and core features are fully functional:
 |---|---|---|
 | Platform | Windows desktop (Delphi) | Web (any OS, browser) |
 | Source code | Closed | Open-source |
-| Load ESP/ESM/ESL | Native parser | Native parser + xEdit as fallback (Milestone 2) |
+| Load ESP/ESM/ESL | Native parser | Native parser + xEdit as fallback (Milestone 3) |
 | Translation engine | Google Translate, DeepL, ChatGPT | Ollama (local, free), OpenAI (cloud); pluggable providers |
 | Translation Memory | BDD files, per-game static databases | SQLite TM, learned from any mod pair, auto-aligned |
 | Matching algorithm | FormID, EDID, text match | 5-pass: hash → EDID → path → fuzzy (fuzzball) → embeddings |
@@ -143,10 +156,10 @@ The foundation and core features are fully functional:
 | Glossary | Yes | Yes (DB + Web UI CRUD + auto-inject into LLM prompt) |
 | Mass search-replace | Yes (replacement matrix) | Yes (regex/literal, dry-run, Web UI) |
 | Mod version diff | No | Yes (added/removed/changed strings) |
-| MCM/FOMOD translation | Yes | Planned (Milestone 3) |
-| TMX export | No | Planned (Milestone 4) |
-| Multi-user review | No | Planned (Milestone 6) |
+| MCM/FOMOD translation | Yes | Planned (Milestone 5) |
+| TMX export | No | Planned (Milestone 6) |
+| Multi-user review | No | Planned (Milestone 8) |
 | Translation propagation | No | Yes (auto-fills identical strings) |
 | SSE live progress | No | Yes (Server-Sent Events) |
-| BSA/BA2 reading | Yes | Yes (native BA2 reader, Milestone 2) |
+| BSA/BA2 reading | Yes | Yes (native BA2 reader, Milestone 3) |
 | Script decompilation | Yes (partial) | Out of scope |
