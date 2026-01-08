@@ -1,68 +1,131 @@
 #!/usr/bin/env tsx
+/**
+ * learnFromMods.ts
+ *
+ * Build TM from pairs of translated mods.
+ * Reads strings natively from ESP + BA2 — no external tools required.
+ *
+ * Usage:
+ *   tsx src/cli/learnFromMods.ts \
+ *     --pair Mod.esp:Mod_uk.esp \
+ *     --pair OtherMod.esp:OtherMod_uk.esp \
+ *     [--srcLang en] [--tgtLang uk]
+ */
 import fs from 'fs';
 import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { openDb, upsertMod, addTranslation } from '../db.js';
-import { runXEditExport } from '../xedit/runExport.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
-import { readCsv } from '../utils/csv.js';
 import { log } from '../logger.js';
 import { ingestCsvRows } from '../utils/ingest.js';
+import type { CsvRow } from '../types.js';
+import { EspReader } from '../bethesda/espReader.js';
+import { Ba2Reader } from '../bethesda/ba2Reader.js';
+import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
 
 const argv = await yargs(hideBin(process.argv))
-  .option('xedit', { type: 'string', demandOption: true })
-  .option('exporter', { type: 'string', demandOption: true })
-  .option('pair', { type: 'array', demandOption: true, desc: '<orig>:<translated>' })
+  .option('pair',    { type: 'array',  demandOption: true, desc: '<orig>:<translated>' })
   .option('srcLang', { type: 'string', default: 'en' })
   .option('tgtLang', { type: 'string', default: 'uk' })
   .parse();
 
-const tmpDir = fs.mkdtempSync(path.join(process.cwd(), 'learn_'));
+function discoverBa2(modPath: string): string | null {
+  const dir = path.dirname(modPath);
+  const stem = path.basename(modPath, path.extname(modPath));
+  for (const c of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
+    const p = path.join(dir, c);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function extractRows(modPath: string, lang: string): CsvRow[] {
+  const esp = new EspReader(modPath);
+  const espRows = esp.extractStrings();
+
+  if (!esp.info.isLocalized) {
+    return espRows
+      .filter(r => r.text)
+      .map(r => ({
+        FormID:    r.formId,
+        Signature: r.signature,
+        EDID:      r.edid || undefined,
+        Path:      `${r.signature}\\${r.path}`,
+        Source:    r.text,
+      }));
+  }
+
+  // Localized mod: resolve LString IDs from BA2
+  const stringsMap = new Map<number, string>();
+  const ba2Path = discoverBa2(modPath);
+  if (ba2Path) {
+    const ba2 = new Ba2Reader(ba2Path);
+    for (const ext of ['strings', 'dlstrings', 'ilstrings'] as const) {
+      for (const entry of ba2.listByExt(ext)) {
+        const base = (entry.name.replace(/\\/g, '/').split('/').pop() ?? '').toLowerCase();
+        if (!base.includes(`_${lang}.`)) continue;
+        const map = parseStringsBuffer(ba2.extractEntry(entry), stringsTypeFromPath(entry.name));
+        for (const [id, text] of map) stringsMap.set(id, text);
+      }
+    }
+  }
+
+  const rows: CsvRow[] = [];
+  for (const r of espRows) {
+    if (!r.isLstringId) continue;
+    const text = stringsMap.get(parseInt(r.text, 10));
+    if (!text) continue;
+    rows.push({
+      FormID:    r.formId,
+      Signature: r.signature,
+      EDID:      r.edid || undefined,
+      Path:      `${r.signature}\\${r.path}`,
+      Source:    text,
+    });
+  }
+  return rows;
+}
 
 const db = openDb();
 
 for (const spec of (argv.pair as string[])) {
   const [orig, tran] = spec.split(':');
-  const enCsv = path.join(tmpDir, path.basename(orig) + '.src.csv');
-  const ukCsv = path.join(tmpDir, path.basename(tran) + '.tgt.csv');
 
+  let left: CsvRow[], right: CsvRow[];
   try {
-    await runXEditExport(argv.xedit as string, argv.exporter as string, orig, enCsv);
-    await runXEditExport(argv.xedit as string, argv.exporter as string, tran, ukCsv);
+    left  = extractRows(orig, argv.srcLang as string);
+    right = extractRows(tran, argv.tgtLang as string);
   } catch (err: any) {
-    log.error(`xEdit export failed for pair ${path.basename(orig)}:${path.basename(tran)}: ${err?.message || err}`);
+    log.error(`Failed to read pair ${path.basename(orig)}:${path.basename(tran)}: ${err?.message ?? err}`);
     continue;
   }
 
-  const left = readCsv(enCsv);
-  const right = readCsv(ukCsv);
+  if (left.length === 0 || right.length === 0) {
+    log.warn(`Skipping ${path.basename(orig)}: one side has no rows.`);
+    continue;
+  }
 
-  // add normalized hash anchors
-  left.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
+  left.forEach(r  => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
   right.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
 
-  // store mods
   const hashOrig = sha1Hex(fs.readFileSync(orig));
   const hashTran = sha1Hex(fs.readFileSync(tran));
   const modIdOrig = upsertMod(db, path.basename(orig), path.resolve(orig), hashOrig);
   const modIdTran = upsertMod(db, path.basename(tran), path.resolve(tran), hashTran);
 
-  // ingest rows into DB (side-effect: records/strings stored)
-  const leftIds = ingestCsvRows(db, modIdOrig, left, argv.srcLang as string, 'export');
-  void ingestCsvRows(db, modIdTran, right, argv.tgtLang as string, 'export');
+  const leftIds = ingestCsvRows(db, modIdOrig, left,  argv.srcLang as string, 'native');
+  void ingestCsvRows(db, modIdTran, right, argv.tgtLang as string, 'native');
 
-  // align
   const pairs = await alignPairs(left, right, { fuzzyMin: 85, fuzzyStrong: 90, useEmbeddings: false });
 
-  // write TM candidates into translations as 'tm' (exact/fuzzy)
   for (const p of pairs) {
     const srcStrId = leftIds[p.leftIndex].stringId;
-    const tgtText = right[p.rightIndex].Source;
-    addTranslation(db, srcStrId, argv.tgtLang as string, tgtText, p.method === 'rapidfuzz' ? 'fuzzy' : 'tm', p.score, p.method);
+    const tgtText  = right[p.rightIndex].Source;
+    addTranslation(db, srcStrId, argv.tgtLang as string, tgtText,
+      p.method === 'rapidfuzz' ? 'fuzzy' : 'tm', p.score, p.method);
   }
-
-  log.info(`Learned from pair ${path.basename(orig)} : ${path.basename(tran)} → ${pairs.length} aligned rows`);
+  log.info(`Learned from pair ${path.basename(orig)}:${path.basename(tran)} → ${pairs.length} aligned rows`);
 }

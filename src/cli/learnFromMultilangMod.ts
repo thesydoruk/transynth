@@ -6,55 +6,40 @@
  * -------
  * Harvest parallel text from a single multi-lingual Fallout 4 plugin and build a TM.
  * The script:
- *  - auto-detects official locales (en, fr, it, de, es, pl, ru, ja) that truly exist for the mod,
- *    even when STRINGS are packed inside BA2 (delegated to xEdit);
- *  - supports custom locales via --extraLocales (added to auto list) or --locales (full override);
- *  - exports per-locale CSV via xEdit + ExportTextForTranslation.pas (one locale per run);
+ *  - auto-detects all locales found in the mod's BA2 (or loose Strings/ folder);
+ *  - supports custom locales via --extraLocales (checked against loose files) or
+ *    --locales (full override, no auto-detection);
  *  - computes per-locale coverage + content hash, filters out fake/fallback/empty locales;
- *  - detects "cloned locales" (identical content across locales) and collapses them into a single canonical locale
- *    using a stable preference order; the others become aliases and are not used to create duplicate TM pairs;
- *  - ingests accepted (non-aliased) locales into SQLite and aligns each src→tgt pair to populate TM.
+ *  - detects "cloned locales" (identical content across locales) and collapses them into a
+ *    single canonical locale using a stable preference order;
+ *  - ingests accepted (non-aliased) locales into SQLite and aligns each src→tgt pair to TM.
  *
  * Duplicate/Cloned locales
  * ------------------------
- * Some mods ship multiple STRINGS files that are actually identical (e.g., all locales contain English text copied).
- * We detect this by hashing normalized content per-locale and collapsing locales with the same hash.
- * Canonical selection uses a priority order (default favors 'en', then fr, it, de, es, pl, ru, ja, then any extras).
- * Aliased locales are logged (e.g., "ru → alias of en") and skipped from pairing so we don't pollute TM with duplicates.
- *
- * How auto-detection works
- * ------------------------
- * xEdit exposes only one active locale per run. We emulate detection by launching xEdit with "-l:<lang>" for each
- * candidate. For each candidate we export CSV and compute:
- *  - coverage: share of non-empty rows that are not "$12345" IDs (typical when plugin is localized but STRINGS missing),
- *  - content hash: SHA1 of normalized concatenated texts.
- * A locale is accepted if coverage ≥ MIN_COVERAGE AND its hash is new (not identical to an already accepted/kept hash).
+ * Some mods ship multiple STRINGS files with identical content (all locales = English copy).
+ * We hash normalized content per-locale and collapse duplicates. Canonical selection uses a
+ * priority order (default: en, fr, it, de, es, pl, ru, ja, then extras).
  *
  * Usage examples
  * --------------
- * 1) Auto-detect official locales, also try two customs (uk, zh):
+ * 1) Auto-detect from BA2, also try uk:
  *    tsx src/cli/learnFromMultilangMod.ts \
- *      --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
- *      --exporter "./xedit/ExportTextForTranslation.pas" \
  *      --mod "D:\mods\BigQuest.esp" \
- *      --extraLocales uk,zh
+ *      --extraLocales uk
  *
- * 2) Full override: only en,ru,uk (no auto-detection):
+ * 2) Full locale override (no auto-detection):
  *    tsx src/cli/learnFromMultilangMod.ts \
- *      --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
- *      --exporter "./xedit/ExportTextForTranslation.pas" \
  *      --mod "D:\mods\BigQuest.esp" \
  *      --locales en,ru,uk
  *
- * 3) Tweak duplicate resolution preference (prefer 'ru' over 'en' for identical content):
+ * 3) Prefer 'ru' as canonical over 'en' for identical content:
  *    tsx src/cli/learnFromMultilangMod.ts \
- *      --xedit "..." --exporter "..." --mod "..." \
- *      --extraLocales uk \
- *      --canonicalPrefer ru,en,fr,it,de,es,pl,ja,uk
+ *      --mod "D:\mods\BigQuest.esp" \
+ *      --canonicalPrefer ru,en,fr,it,de,es,pl,ja
  *
  * 4) Enable embeddings for ambiguous fuzzy matches:
  *    tsx src/cli/learnFromMultilangMod.ts \
- *      --xedit "..." --exporter "..." --mod "..." \
+ *      --mod "D:\mods\BigQuest.esp" \
  *      --useEmbeddings
  */
 
