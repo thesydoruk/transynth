@@ -78,6 +78,21 @@ CREATE TRIGGER IF NOT EXISTS strings_au AFTER UPDATE ON strings BEGIN
   INSERT INTO strings_fts(rowid,text_raw,text_norm) VALUES (new.id,new.text_raw,new.text_norm);
 END;
 
+CREATE TABLE IF NOT EXISTS eet_imports (
+  id INTEGER PRIMARY KEY,
+  file_name TEXT NOT NULL,
+  file_hash TEXT NOT NULL,
+  mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
+  total_records INTEGER NOT NULL DEFAULT 0,
+  imported_records INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  src_lang TEXT NOT NULL DEFAULT 'en',
+  tgt_lang TEXT NOT NULL DEFAULT 'uk',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(file_hash)
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);
 CREATE INDEX IF NOT EXISTS idx_records_mod ON records(mod_id);
 CREATE INDEX IF NOT EXISTS idx_records_anchors ON records(edid, signature, path_simplified, hash_norm);
