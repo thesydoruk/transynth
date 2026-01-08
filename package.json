@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^9.0.0",
     "7zip-bin": "^5.2.0",
     "better-sqlite3": "^12.8.0",

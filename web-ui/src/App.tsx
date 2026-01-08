@@ -4,6 +4,7 @@ import { ModsPage } from './pages/ModsPage';
 import { ModEditorPage } from './pages/ModEditorPage';
 import { GlossaryPage } from './pages/GlossaryPage';
 import { DiffPage } from './pages/DiffPage';
+import { EetImportsPage } from './pages/EetImportsPage';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
@@ -11,6 +12,7 @@ const qc = new QueryClient({
 
 const NAV_LINKS = [
   { to: '/', label: 'Mods', exact: true },
+  { to: '/eet', label: 'EET Import', exact: false },
   { to: '/glossary', label: 'Glossary', exact: false },
   { to: '/diff', label: 'Diff', exact: false },
 ];
@@ -41,6 +43,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<ModsPage />} />
             <Route path="/mods/:id" element={<ModEditorPage />} />
+            <Route path="/eet" element={<EetImportsPage />} />
             <Route path="/glossary" element={<GlossaryPage />} />
             <Route path="/diff" element={<DiffPage />} />
           </Routes>
