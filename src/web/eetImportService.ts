@@ -53,6 +53,12 @@ export function getImportJob(db: Tx, id: number): ImportJob | undefined {
   return db.prepare('SELECT * FROM eet_imports WHERE id = ?').get(id) as ImportJob | undefined;
 }
 
+export function updateJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+  db.prepare(
+    `UPDATE eet_imports SET src_lang = ?, tgt_lang = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).run(srcLang, tgtLang, id);
+}
+
 export function deleteImportJob(db: Tx, id: number) {
   db.prepare('DELETE FROM eet_imports WHERE id = ?').run(id);
 }

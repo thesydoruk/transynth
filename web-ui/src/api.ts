@@ -112,6 +112,24 @@ export type EetProgressEvent = { type: 'progress'; imported: number; total: numb
 export type EetDoneEvent = { type: 'done'; job: EetImportJob };
 export type EetErrorEvent = { type: 'error'; error: string };
 
+export type EetPreviewRow = {
+  signature: string;
+  formId: string;
+  edid: string;
+  field: string;
+  source: string;
+  target: string;
+  status: number;
+};
+
+export type EetPreviewResult = {
+  rows: EetPreviewRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  signatures: string[];
+};
+
 export type ProgressEvent = { type: 'progress'; done: number; total: number; result: { stringId: number; text?: string; error?: string } };
 export type DoneEvent = { type: 'done'; results: Array<{ stringId: number; text?: string; error?: string }> };
 
@@ -283,5 +301,20 @@ export const api = {
     pause: (jobId: number) => req<{ ok: boolean }>(`/api/eet/${jobId}/pause`, { method: 'POST' }),
     cancel: (jobId: number) => req<{ ok: boolean }>(`/api/eet/${jobId}/cancel`, { method: 'POST' }),
     remove: (jobId: number) => req<{ ok: boolean }>(`/api/eet/${jobId}`, { method: 'DELETE' }),
+
+    updateLanguages: (jobId: number, srcLang: string, tgtLang: string) =>
+      req<EetImportJob>(`/api/eet/${jobId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ srcLang, tgtLang }),
+      }),
+
+    preview: (jobId: number, params?: { page?: number; pageSize?: number; signature?: string; q?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
+      if (params?.signature) qs.set('signature', params.signature);
+      if (params?.q) qs.set('q', params.q);
+      return req<EetPreviewResult>(`/api/eet/${jobId}/preview?${qs}`);
+    },
   },
 };
