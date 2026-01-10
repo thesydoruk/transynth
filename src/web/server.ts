@@ -13,6 +13,7 @@ import { glossaryRoutes } from './routes/glossary.js';
 import { searchRoutes } from './routes/search.js';
 import { eetRoutes } from './routes/eet.js';
 import { csvRoutes } from './routes/csv.js';
+import { modImportRoutes } from './routes/modImport.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -50,6 +51,7 @@ await glossaryRoutes(app, db);
 await searchRoutes(app, db);
 await eetRoutes(app, db);
 await csvRoutes(app, db);
+await modImportRoutes(app, db);
 
 // Health check
 app.get('/api/health', async () => ({ ok: true, ts: new Date().toISOString() }));

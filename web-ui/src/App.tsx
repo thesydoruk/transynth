@@ -6,6 +6,7 @@ import { GlossaryPage } from './pages/GlossaryPage';
 import { DiffPage } from './pages/DiffPage';
 import { EetImportsPage } from './pages/EetImportsPage';
 import { CsvImportsPage } from './pages/CsvImportsPage';
+import { ModImportsPage } from './pages/ModImportsPage';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
   { to: '/', label: 'Mods', exact: true },
   { to: '/eet', label: 'EET Import', exact: false },
   { to: '/csv', label: 'CSV Import', exact: false },
+  { to: '/mod-import', label: 'Mod Import', exact: false },
   { to: '/glossary', label: 'Glossary', exact: false },
   { to: '/diff', label: 'Diff', exact: false },
 ];
@@ -47,6 +49,7 @@ export default function App() {
             <Route path="/mods/:id" element={<ModEditorPage />} />
             <Route path="/eet" element={<EetImportsPage />} />
             <Route path="/csv" element={<CsvImportsPage />} />
+            <Route path="/mod-import" element={<ModImportsPage />} />
             <Route path="/glossary" element={<GlossaryPage />} />
             <Route path="/diff" element={<DiffPage />} />
           </Routes>
