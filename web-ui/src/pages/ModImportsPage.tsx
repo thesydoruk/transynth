@@ -53,7 +53,13 @@ export function ModImportsPage() {
       }
       refresh();
       if (files.length === 1 && lastJob) {
-        setPreviewJobId(lastJob.id);
+        if (lastJob.is_localized) {
+          // Localized: import all locales immediately, no modal
+          doStartImport(lastJob.id);
+        } else {
+          // Non-localized: ask which language the text is in
+          setPreviewJobId(lastJob.id);
+        }
       }
     } finally {
       setUploading(false);
@@ -131,7 +137,7 @@ export function ModImportsPage() {
               job={job}
               live={liveProgress[job.id]}
               isRunning={job.running || !!liveProgress[job.id]}
-              onStart={() => setPreviewJobId(job.id)}
+              onStart={() => job.is_localized ? doStartImport(job.id) : setPreviewJobId(job.id)}
               onPause={() => handlePause(job.id)}
               onCancel={() => handleCancel(job.id)}
               onDelete={() => handleDelete(job.id)}
@@ -140,12 +146,12 @@ export function ModImportsPage() {
         </div>
       )}
 
-      {previewJob && (
+      {previewJob && !previewJob.is_localized && (
         <PreviewModal
           job={previewJob}
           onClose={() => setPreviewJobId(null)}
-          onConfirm={async (srcLang, tgtLang) => {
-            await api.modImport.updateLanguages(previewJob.id, srcLang, tgtLang);
+          onConfirm={async (lang) => {
+            await api.modImport.updateLanguages(previewJob.id, lang, lang);
             refresh();
             setPreviewJobId(null);
             setTimeout(() => doStartImport(previewJob.id), 100);
@@ -181,7 +187,7 @@ function JobRow({
           {job.is_localized ? <span style={st.locBadge}>localized</span> : null}
         </span>
         <span style={st.meta}>
-          {job.src_lang} → {job.tgt_lang} · {total.toLocaleString()} strings
+          {job.is_localized ? '' : `${job.src_lang} · `}{total.toLocaleString()} strings
         </span>
       </div>
       <div style={st.rowRight}>
@@ -220,10 +226,9 @@ function PreviewModal({
 }: {
   job: ModImportJob;
   onClose: () => void;
-  onConfirm: (srcLang: string, tgtLang: string) => void;
+  onConfirm: (lang: string) => void;
 }) {
-  const [srcLang, setSrcLang] = useState(job.src_lang);
-  const [tgtLang, setTgtLang] = useState(job.tgt_lang);
+  const [lang, setLang] = useState(job.src_lang);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
@@ -261,15 +266,8 @@ function PreviewModal({
 
         <div style={mo.langBar}>
           <label style={mo.langLabel}>
-            Source language
-            <select value={srcLang} onChange={e => setSrcLang(e.target.value)} style={mo.select}>
-              {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
-            </select>
-          </label>
-          <span style={{ color: '#666', fontSize: 20, padding: '0 12px', alignSelf: 'flex-end', paddingBottom: 4 }}>→</span>
-          <label style={mo.langLabel}>
-            Target language
-            <select value={tgtLang} onChange={e => setTgtLang(e.target.value)} style={mo.select}>
+            Language of this text
+            <select value={lang} onChange={e => setLang(e.target.value)} style={mo.select}>
               {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
             </select>
           </label>
@@ -338,10 +336,10 @@ function PreviewModal({
         <div style={mo.footer}>
           <button onClick={onClose} style={{ ...st.btn, background: '#444' }}>Cancel</button>
           <button
-            onClick={() => onConfirm(srcLang, tgtLang)}
+            onClick={() => onConfirm(lang)}
             style={{ ...st.btn, background: '#1b6b2d', marginLeft: 12 }}
           >
-            Start import ({job.total_records.toLocaleString()} strings)
+            Import as {lang} ({job.total_records.toLocaleString()} strings)
           </button>
         </div>
       </div>

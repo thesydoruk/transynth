@@ -437,9 +437,12 @@ export function runModImport(
     const esp = new EspReader(espPath);
     const espRows = esp.extractStrings();
 
-    // Load strings for localized plugins
-    let stringsMap: Map<number, string> | null = null;
+    let imported = job.imported_records;
+    let batchCount = 0;
+    let inTx = false;
+
     if (esp.info.isLocalized) {
+      // ── Localized plugin: import ALL locales at once ────────────────────
       const ba2Path = discoverBa2(espPath, []);
       let localesMap: Map<string, Map<number, string>>;
       if (ba2Path) {
@@ -447,50 +450,90 @@ export function runModImport(
       } else {
         localesMap = loadLocalesFromLooseFiles(espPath);
       }
-      stringsMap = localesMap.get(job.src_lang) ?? null;
-      if (!stringsMap && localesMap.size > 0) {
-        stringsMap = localesMap.values().next().value ?? null;
+      if (localesMap.size === 0) throw new Error('No locales found in BA2 / strings files');
+
+      const work: { locale: string; rows: CsvRow[] }[] = [];
+      for (const [locale, strMap] of localesMap) {
+        work.push({ locale, rows: buildCsvRows(espRows, strMap) });
       }
-    }
+      const totalAll = work.reduce((s, w) => s + w.rows.length, 0);
+      db.prepare('UPDATE mod_imports SET total_records = ? WHERE id = ?').run(totalAll, job.id);
 
-    const csvRows = buildCsvRows(espRows, stringsMap);
-    const skipCount = job.imported_records;
-    let imported = job.imported_records;
-    let batchCount = 0;
-    let inTx = false;
+      let globalIdx = 0;
 
-    for (let i = 0; i < csvRows.length; i++) {
-      if (i < skipCount) continue;
+      outer:
+      for (const { locale, rows } of work) {
+        for (const r of rows) {
+          if (globalIdx++ < job.imported_records) continue;
 
-      if (state.cancel) {
-        if (inTx) { db.exec('COMMIT'); inTx = false; }
-        markFailed(db, job.id, imported);
-        log.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
-        break;
+          if (state.cancel) {
+            if (inTx) { db.exec('COMMIT'); inTx = false; }
+            markFailed(db, job.id, imported);
+            log.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
+            break outer;
+          }
+          if (state.pause) {
+            if (inTx) { db.exec('COMMIT'); inTx = false; }
+            markPaused(db, job.id, imported);
+            log.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
+            break outer;
+          }
+
+          if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
+
+          const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
+          const hashNorm = sha1Hex(normalizeForHash(r.Source));
+          const recordId = upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+          insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import');
+
+          imported++;
+          batchCount++;
+
+          if (batchCount >= BATCH_SIZE) {
+            updateProgress(db, job.id, imported);
+            db.exec('COMMIT');
+            inTx = false;
+            onProgress?.(imported, totalAll);
+          }
+        }
       }
-      if (state.pause) {
-        if (inTx) { db.exec('COMMIT'); inTx = false; }
-        markPaused(db, job.id, imported);
-        log.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
-        break;
-      }
+    } else {
+      // ── Non-localized plugin: import with single selected language ─────
+      const csvRows = buildCsvRows(espRows, null);
 
-      if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
+      for (let i = 0; i < csvRows.length; i++) {
+        if (i < job.imported_records) continue;
 
-      const r = csvRows[i];
-      const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
-      const hashNorm = sha1Hex(normalizeForHash(r.Source));
-      const recordId = upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-      insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import');
+        if (state.cancel) {
+          if (inTx) { db.exec('COMMIT'); inTx = false; }
+          markFailed(db, job.id, imported);
+          log.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          break;
+        }
+        if (state.pause) {
+          if (inTx) { db.exec('COMMIT'); inTx = false; }
+          markPaused(db, job.id, imported);
+          log.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
+          break;
+        }
 
-      imported++;
-      batchCount++;
+        if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
 
-      if (batchCount >= BATCH_SIZE) {
-        updateProgress(db, job.id, imported);
-        db.exec('COMMIT');
-        inTx = false;
-        onProgress?.(imported, csvRows.length);
+        const r = csvRows[i];
+        const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
+        const hashNorm = sha1Hex(normalizeForHash(r.Source));
+        const recordId = upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+        insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import');
+
+        imported++;
+        batchCount++;
+
+        if (batchCount >= BATCH_SIZE) {
+          updateProgress(db, job.id, imported);
+          db.exec('COMMIT');
+          inTx = false;
+          onProgress?.(imported, csvRows.length);
+        }
       }
     }
 
@@ -498,7 +541,7 @@ export function runModImport(
 
     if (!state.cancel && !state.pause) {
       markDone(db, job.id, imported);
-      onProgress?.(imported, csvRows.length);
+      onProgress?.(imported, job.total_records);
     }
   } catch (err) {
     markFailed(db, job.id, job.imported_records);
