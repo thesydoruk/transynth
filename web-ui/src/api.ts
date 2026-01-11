@@ -209,12 +209,22 @@ export type DoneEvent = { type: 'done'; results: Array<{ stringId: number; text?
 
 // ── Mods ──────────────────────────────────────────────────────────────────────
 
+export type TMSuggestion = {
+  id: number;
+  text: string;
+  status: string;
+  confidence: number | null;
+  provenance: string | null;
+  source_text: string;
+};
+
 export const api = {
   mods: {
     list: () => req<Mod[]>('/api/mods'),
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
-    tmApply: (modId: number, targetLang = 'uk') =>
-      req<TMApplyResult>(`/api/mods/${modId}/tm-apply?targetLang=${targetLang}`, { method: 'POST' }),
+    langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
+    tmApply: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+      req<TMApplyResult>(`/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`, { method: 'POST' }),
     diff: (newModId: number, compareModId: number, targetLang = 'uk') =>
       req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
   },
@@ -227,6 +237,8 @@ export const api = {
   strings: {
     list: (params: {
       modId: number;
+      srcLang?: string;
+      targetLang?: string;
       status?: string;
       signature?: string;
       q?: string;
@@ -235,6 +247,8 @@ export const api = {
     }) => {
       const qs = new URLSearchParams();
       qs.set('modId', String(params.modId));
+      if (params.srcLang) qs.set('srcLang', params.srcLang);
+      if (params.targetLang) qs.set('targetLang', params.targetLang);
       if (params.status) qs.set('status', params.status);
       if (params.signature) qs.set('signature', params.signature);
       if (params.q) qs.set('q', params.q);
@@ -242,11 +256,17 @@ export const api = {
       if (params.pageSize) qs.set('pageSize', String(params.pageSize));
       return req<StringsResult>(`/api/strings?${qs}`);
     },
-    signatures: (modId: number) => req<Signature[]>(`/api/strings/signatures?modId=${modId}`),
-    saveTranslation: (stringId: number, text: string, status: 'human' | 'fuzzy' = 'human') =>
+    signatures: (modId: number, srcLang?: string) => {
+      const qs = new URLSearchParams({ modId: String(modId) });
+      if (srcLang) qs.set('srcLang', srcLang);
+      return req<Signature[]>(`/api/strings/signatures?${qs}`);
+    },
+    suggestions: (stringId: number, targetLang: string) =>
+      req<TMSuggestion[]>(`/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`),
+    saveTranslation: (stringId: number, text: string, status: 'human' | 'fuzzy' = 'human', targetLang = 'uk') =>
       req<{ id: number; text: string; status: string }>(`/api/strings/${stringId}/translation`, {
         method: 'PATCH',
-        body: JSON.stringify({ text, status }),
+        body: JSON.stringify({ text, status, targetLang }),
       }),
     updateStatus: (stringId: number, translationId: number, status: string) =>
       req<{ ok: boolean }>(`/api/strings/${stringId}/status`, {
@@ -258,13 +278,14 @@ export const api = {
      *  Returns final results array after stream closes. */
     async batchTranslate(
       stringIds: number[],
+      srcLang = 'en',
       targetLang = 'uk',
       onProgress?: (e: ProgressEvent) => void,
     ): Promise<Array<{ stringId: number; text?: string; error?: string }>> {
       const response = await fetch(`${BASE}/api/strings/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stringIds, targetLang }),
+        body: JSON.stringify({ stringIds, srcLang, targetLang }),
       });
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
 

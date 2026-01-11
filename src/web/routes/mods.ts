@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
-import { listMods, getMod, getModStats, diffMods } from '../queries.js';
+import { listMods, getMod, getModStats, diffMods, listModLangs } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 
@@ -23,6 +23,14 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
 
     const stats = await getModStats(db, id);
     return reply.send({ ...(mod as object), stats });
+  });
+
+  // GET /api/mods/:id/langs — list all languages available in this mod
+  app.get<{ Params: { id: string } }>('/api/mods/:id/langs', async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+    const langs = await listModLangs(db, id);
+    return reply.send(langs);
   });
 
   // POST /api/mods/:id/tm-apply — auto-fill untranslated strings from TM

@@ -1,42 +1,160 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type StringRow } from '../api';
+import { api, type StringRow, type TMSuggestion } from '../api';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
-import { InlineEditor } from '../components/InlineEditor';
 
 const STATUS_OPTS = ['all', 'untranslated', 'fuzzy', 'auto', 'tm', 'human'];
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 type TranslateProgress = { done: number; total: number };
+type BottomTab = 'suggestions' | 'related' | 'history';
+
+// Row background by translation status
+function rowBg(status: string | null): string {
+  if (!status) return '#3d1e00'; // untranslated → orange-ish
+  if (status === 'human') return 'transparent';
+  if (status === 'tm') return '#003d45';   // teal
+  if (status === 'auto') return '#003d45'; // teal
+  if (status === 'fuzzy') return '#3d3100'; // amber
+  return 'transparent';
+}
 
 export function ModEditorPage() {
   const { id } = useParams<{ id: string }>();
   const modId = Number(id);
   const qc = useQueryClient();
 
+  // Filters
+  const [srcLang, setSrcLang] = useState('en');
+  const [targetLang, setTargetLang] = useState('uk');
   const [status, setStatus] = useState('all');
   const [signature, setSignature] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  // Selection
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // Active row (detail panel)
+  const [activeRow, setActiveRow] = useState<StringRow | null>(null);
+  const [draftTranslation, setDraftTranslation] = useState('');
+  const [activeTab, setActiveTab] = useState<BottomTab>('suggestions');
+
+  // Translate progress
   const [translateProgress, setTranslateProgress] = useState<TranslateProgress | null>(null);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+  const translateInFlight = useRef(false);
+
+  // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
 
-  const stringsKey = ['strings', modId, status, signature, query, page];
+  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
-  const { data: sigs } = useQuery({ queryKey: ['sigs', modId], queryFn: () => api.strings.signatures(modId) });
+  const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
+  const { data: sigs } = useQuery({ queryKey: ['sigs', modId, srcLang], queryFn: () => api.strings.signatures(modId, srcLang) });
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
   const { data: strings, isLoading } = useQuery({
     queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE }),
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE }),
     placeholderData: (prev) => prev,
   });
 
-  // SSE-streaming batch translate
-  const [translateError, setTranslateError] = useState<string | null>(null);
-  const translateInFlight = useRef(false);
+  // TM suggestions for active row
+  const { data: suggestions } = useQuery({
+    queryKey: ['suggestions', activeRow?.string_id, targetLang],
+    queryFn: () => api.strings.suggestions(activeRow!.string_id, targetLang),
+    enabled: !!activeRow && activeTab === 'suggestions',
+  });
+
+  // Save translation
+  const saveMutation = useMutation({
+    mutationFn: ({ stringId, text }: { stringId: number; text: string }) =>
+      api.strings.saveTranslation(stringId, text, 'human', targetLang),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+      // Update active row locally
+      if (activeRow) {
+        setActiveRow({ ...activeRow, translation: draftTranslation, status: 'human' });
+      }
+    },
+  });
+
+  // Approve
+  const approveMutation = useMutation({
+    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
+      api.strings.updateStatus(stringId, translationId, 'human'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    },
+  });
+
+  // Clear translation
+  const clearMutation = useMutation({
+    mutationFn: ({ stringId }: { stringId: number }) =>
+      api.strings.saveTranslation(stringId, '', 'fuzzy', targetLang),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+      if (activeRow) setActiveRow({ ...activeRow, translation: null, status: null });
+    },
+  });
+
+  const tmApply = useMutation({
+    mutationFn: () => api.mods.tmApply(modId, srcLang, targetLang),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    },
+  });
+
+  function handleRowClick(row: StringRow) {
+    setActiveRow(row);
+    setDraftTranslation(row.translation ?? '');
+    setActiveTab('suggestions');
+  }
+
+  function handleCopySource() {
+    if (!activeRow) return;
+    setDraftTranslation(activeRow.source);
+  }
+
+  function handleSave() {
+    if (!activeRow) return;
+    saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
+  }
+
+  function handleApprove(row: StringRow) {
+    if (!row.translation_id) return;
+    approveMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
+  }
+
+  function handleClear(row: StringRow) {
+    clearMutation.mutate({ stringId: row.string_id });
+    if (activeRow?.string_id === row.string_id) {
+      setActiveRow({ ...row, translation: null, status: null });
+      setDraftTranslation('');
+    }
+  }
+
+  const toggleRow = useCallback((row: StringRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(row.string_id)) next.delete(row.string_id);
+      else next.add(row.string_id);
+      return next;
+    });
+  }, []);
+
+  function toggleAll() {
+    if (!strings) return;
+    if (selected.size === strings.rows.length) setSelected(new Set());
+    else setSelected(new Set(strings.rows.map((r) => r.string_id)));
+  }
 
   async function handleBatchTranslate() {
     if (translateInFlight.current) return;
@@ -44,7 +162,7 @@ export function ModEditorPage() {
     setTranslateError(null);
     setTranslateProgress({ done: 0, total: selected.size });
     try {
-      await api.strings.batchTranslate([...selected], 'uk', (e) => {
+      await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
         setTranslateProgress({ done: e.done, total: e.total });
       });
       qc.invalidateQueries({ queryKey: ['strings', modId] });
@@ -58,132 +176,295 @@ export function ModEditorPage() {
     }
   }
 
-  const tmApply = useMutation({
-    mutationFn: () => api.mods.tmApply(modId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-  });
-
   const totalPages = strings ? Math.ceil(strings.total / PAGE_SIZE) : 1;
 
-  function toggleRow(row: StringRow) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(row.string_id)) next.delete(row.string_id);
-      else next.add(row.string_id);
-      return next;
-    });
-  }
+  // Group counts by signature for left panel
+  const sigCounts = sigs ?? [];
 
-  function toggleAll() {
-    if (!strings) return;
-    if (selected.size === strings.rows.length) setSelected(new Set());
-    else setSelected(new Set(strings.rows.map((r) => r.string_id)));
-  }
+  // Available langs derived from mod + fallback
+  const availLangs = langs && langs.length > 0 ? langs : ['en', 'uk'];
 
   return (
-    <div style={s.page}>
-      {/* Header */}
-      <div style={s.header}>
-        <div>
-          <h1 style={s.title}>{mod?.name ?? '…'}</h1>
-          <span style={{ color: '#888', fontSize: 12 }}>{mod?.abs_path}</span>
-        </div>
+    <div style={s.root}>
+      {/* ── Top toolbar ── */}
+      <div style={s.toolbar}>
+        <span style={s.modName}>{mod?.name ?? '…'}</span>
+
+        {/* Lang selectors */}
+        <label style={s.langLabel}>
+          Source:
+          <select value={srcLang} onChange={(e) => { setSrcLang(e.target.value); setPage(1); }} style={s.langSelect}>
+            {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+          </select>
+        </label>
+        <label style={s.langLabel}>
+          Target:
+          <select value={targetLang} onChange={(e) => { setTargetLang(e.target.value); setPage(1); }} style={s.langSelect}>
+            {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+          </select>
+        </label>
+
+        <div style={s.sep} />
+
+        {/* Status filter */}
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={s.filterSelect}>
+          {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? 'All statuses' : o}</option>)}
+        </select>
+
+        {/* Search */}
+        <input placeholder="FormID / EDID / text…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} style={s.searchInput} />
+
+        <div style={s.sep} />
+
+        {/* Actions */}
+        <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} style={s.btnSec} title="Auto-fill from TM">
+          {tmApply.isPending ? 'TM…' : tmApply.isSuccess ? `TM ✓ ${(tmApply.data as { applied: number }).applied}` : 'Apply TM'}
+        </button>
+        <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
+        {selected.size > 0 && (
+          translateProgress
+            ? <span style={s.progressBadge}>{translateProgress.done}/{translateProgress.total} translating…</span>
+            : <button onClick={handleBatchTranslate} style={s.btnPri}>Auto-translate {selected.size}</button>
+        )}
+        {translateError && <span style={s.errorBadge}>{translateError}</span>}
+
+        {/* Progress bar */}
         {stats && (
-          <div style={{ minWidth: 200 }}>
+          <div style={{ marginLeft: 'auto', minWidth: 160, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <ProgressBar stats={stats} />
-            <div style={s.statRow}>
-              {([['Total', stats.total], ['Approved', stats.approved, '#4caf50'], ['Fuzzy', stats.fuzzy, '#00bcd4'], ['Auto', stats.auto_translated, '#ff9800'], ['Untranslated', stats.untranslated, '#888']] as [string, number, string?][]).map(([label, val, color]) => (
-                <span key={label} style={{ color: color ?? '#bbb', fontSize: 12 }}>
-                  {label}: <strong>{val}</strong>
-                </span>
-              ))}
-            </div>
+            <span style={{ fontSize: 11, color: '#888', textAlign: 'right' }}>
+              {stats.approved}/{stats.total} approved
+            </span>
           </div>
         )}
       </div>
 
-      {/* Toolbar */}
-      <div style={s.filters}>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={s.select}>
-          {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? 'All statuses' : o}</option>)}
-        </select>
-        <select value={signature} onChange={(e) => { setSignature(e.target.value); setPage(1); }} style={s.select}>
-          <option value="">All types</option>
-          {sigs?.map((sig) => <option key={sig.signature} value={sig.signature}>{sig.signature} ({sig.count})</option>)}
-        </select>
-        <input placeholder="Search text / FormID / EDID…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} style={s.input} />
-        <button
-          onClick={() => tmApply.mutate()}
-          disabled={tmApply.isPending}
-          style={s.btnSecondary}
-          title="Apply Translation Memory — auto-fill untranslated strings from existing translations"
-        >
-          {tmApply.isPending ? 'Applying TM…' : tmApply.isSuccess ? `TM ✓ ${(tmApply.data as { applied: number }).applied}` : 'Apply TM'}
-        </button>
-        <button onClick={() => setShowSearchReplace(true)} style={s.btnSecondary}>Search & Replace</button>
-        {selected.size > 0 && (
-          translateProgress
-            ? <span style={s.progressBadge}>{translateProgress.done}/{translateProgress.total} translating…</span>
-            : <button onClick={handleBatchTranslate} style={s.btnPrimary}>Auto-translate {selected.size}</button>
-        )}
-        {translateError && <span style={{ color: '#f44', fontSize: 12 }}>{translateError}</span>}
+      {/* ── 3-column body ── */}
+      <div style={s.body}>
+
+        {/* LEFT: signature tree */}
+        <div style={s.leftPanel}>
+          <div
+            style={{ ...s.sigRow, ...(signature === '' ? s.sigRowActive : {}) }}
+            onClick={() => { setSignature(''); setPage(1); }}
+          >
+            <span style={s.sigName}>&lt;ВСЕ&gt;</span>
+            <span style={s.sigCount}>{strings?.total ?? '…'} / {sigCounts.reduce((a, r) => a + Number(r.count), 0)}</span>
+          </div>
+          {sigCounts.map((sig) => (
+            <div
+              key={sig.signature}
+              style={{ ...s.sigRow, ...(signature === sig.signature ? s.sigRowActive : {}) }}
+              onClick={() => { setSignature(sig.signature); setPage(1); }}
+            >
+              <span style={s.sigName}>{sig.signature}</span>
+              <span style={s.sigCount}>{sig.count}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CENTER+RIGHT: table + detail panel */}
+        <div style={s.centerCol}>
+
+          {/* ── String table ── */}
+          <div style={s.tableWrap}>
+            {isLoading ? (
+              <div style={s.center}>Loading…</div>
+            ) : (
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    <th style={{ ...s.th, width: 24 }}>
+                      <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
+                    </th>
+                    <th style={{ ...s.th, width: 52 }}>GRUP</th>
+                    <th style={{ ...s.th, width: 70 }}>FormID</th>
+                    <th style={{ ...s.th, width: 160 }}>EDID</th>
+                    <th style={{ ...s.th, width: 50 }}>FIELD</th>
+                    <th style={{ ...s.th, minWidth: 220 }}>Текст оригіналу ({srcLang.toUpperCase()})</th>
+                    <th style={{ ...s.th, minWidth: 220 }}>Текст перекладу ({targetLang.toUpperCase()})</th>
+                    <th style={{ ...s.th, width: 74 }}>Дії</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {strings?.rows.map((row) => (
+                    <tr
+                      key={row.string_id}
+                      style={{ ...s.tr, background: rowBg(activeRow?.string_id === row.string_id ? '__active' : row.status) ,
+                        outline: activeRow?.string_id === row.string_id ? '1px solid #aaa' : 'none',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => handleRowClick(row)}
+                    >
+                      <td style={s.td} onClick={(e) => toggleRow(row, e)}>
+                        <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
+                      </td>
+                      <td style={{ ...s.td, color: '#999', fontSize: 11 }}>{row.signature}</td>
+                      <td style={{ ...s.td, fontFamily: 'monospace', fontSize: 11, color: '#777' }}>{row.formid_hex}</td>
+                      <td style={{ ...s.td, fontSize: 11, color: '#aaa', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.edid ?? ''}>{row.edid ?? ''}</td>
+                      <td style={{ ...s.td, fontSize: 11, color: '#999' }}>{row.path?.split('.').pop() ?? ''}</td>
+                      <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</td>
+                      <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13, color: row.translation ? '#eee' : '#666', fontStyle: row.translation ? 'normal' : 'italic' }}>
+                        {row.translation ?? '—'}
+                      </td>
+                      <td style={s.td} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          {row.translation && row.status !== 'human' && row.translation_id && (
+                            <button style={s.actionBtn('#1565c0')} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
+                          )}
+                          <button style={s.actionBtn('#7b1a1a')} title="Очистити переклад" onClick={() => handleClear(row)}>X</button>
+                          <button style={s.actionBtn('#2a5c2a')} title="Копіювати оригінал у переклад" onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
+                          <StatusBadge status={row.status} small />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* ── Pagination ── */}
+          <div style={s.pagination}>
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} style={s.pageBtn}>← Prev</button>
+            <span style={{ color: '#aaa', fontSize: 13 }}>Сторінка {page} / {totalPages} ({strings?.total ?? 0} рядків)</span>
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} style={s.pageBtn}>Next →</button>
+          </div>
+
+          {/* ── Detail edit panel ── */}
+          {activeRow && (
+            <div style={s.detailPanel}>
+              <div style={s.detailPanels}>
+                {/* Source */}
+                <div style={s.textPanel}>
+                  <div style={s.panelLabel}>Текст оригіналу ({srcLang.toUpperCase()})</div>
+                  <textarea readOnly value={activeRow.source} style={s.sourceArea} rows={4} />
+                  <div style={s.charCount}>Символів: {activeRow.source.length}</div>
+                </div>
+                {/* Translation */}
+                <div style={s.textPanel}>
+                  <div style={s.panelLabel}>Текст перекладу ({targetLang.toUpperCase()})</div>
+                  <textarea
+                    value={draftTranslation}
+                    onChange={(e) => setDraftTranslation(e.target.value)}
+                    style={s.translArea}
+                    rows={4}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
+                    placeholder="Введіть переклад…"
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={s.charCount}>Символів: {draftTranslation.length}</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button style={s.btnSec} onClick={handleCopySource} title="Копіювати оригінал">Copy src</button>
+                      <button
+                        style={s.btnPri}
+                        onClick={handleSave}
+                        disabled={saveMutation.isPending}
+                        title="Ctrl+Enter"
+                      >
+                        {saveMutation.isPending ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom tabs */}
+              <div style={s.tabs}>
+                {(['suggestions', 'related', 'history'] as BottomTab[]).map((tab) => (
+                  <button key={tab} style={{ ...s.tabBtn, ...(activeTab === tab ? s.tabBtnActive : {}) }} onClick={() => setActiveTab(tab)}>
+                    {tab === 'suggestions' ? 'Пропозиції TM' : tab === 'related' ? "Пов'язані" : 'Історія'}
+                  </button>
+                ))}
+              </div>
+              <div style={s.tabContent}>
+                {activeTab === 'suggestions' && (
+                  <SuggestionsPanel suggestions={suggestions ?? []} onApply={(text) => setDraftTranslation(text)} />
+                )}
+                {activeTab === 'related' && (
+                  <RelatedPanel modId={modId} row={activeRow} srcLang={srcLang} targetLang={targetLang} onSelect={handleRowClick} />
+                )}
+                {activeTab === 'history' && (
+                  <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Історія змін недоступна</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Search-Replace Modal */}
       {showSearchReplace && (
-        <SearchReplaceModal modId={modId} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
+        <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
       )}
 
-      {/* Table */}
-      {isLoading ? (
-        <div style={s.center}>Loading…</div>
-      ) : (
-        <>
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={{ ...s.th, width: 28 }}><input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} /></th>
-                <th style={s.th}>FormID</th>
-                <th style={s.th}>Type</th>
-                <th style={{ ...s.th, minWidth: 200 }}>Source (EN)</th>
-                <th style={{ ...s.th, minWidth: 200 }}>Translation (UK)</th>
-                <th style={s.th}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {strings?.rows.map((row) => (
-                <tr key={row.string_id} style={s.tr}>
-                  <td style={s.td}><input type="checkbox" checked={selected.has(row.string_id)} onChange={() => toggleRow(row)} /></td>
-                  <td style={{ ...s.td, fontFamily: 'monospace', fontSize: 11, color: '#888' }}>{row.formid_hex}</td>
-                  <td style={{ ...s.td, fontSize: 11 }}><span style={{ color: '#aaa' }}>{row.signature}</span></td>
-                  <td style={{ ...s.td, maxWidth: 300, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</td>
-                  <td style={{ ...s.td, maxWidth: 320 }}>
-                    <InlineEditor stringId={row.string_id} translationId={row.translation_id} text={row.translation} status={row.status} queryKey={stringsKey} />
-                  </td>
-                  <td style={s.td}><StatusBadge status={row.status} small /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={s.pagination}>
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} style={s.pageBtn}>← Prev</button>
-            <span style={{ color: '#aaa', fontSize: 13 }}>Page {page} / {totalPages} ({strings?.total ?? 0} strings)</span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} style={s.pageBtn}>Next →</button>
-          </div>
-        </>
-      )}
+      {/* Status bar */}
+      <div style={s.statusBar}>
+        <span>Вибрані рядки: {selected.size}</span>
+        {activeRow && (
+          <span style={{ marginLeft: 16, color: '#888' }}>
+            {activeRow.signature} · {activeRow.formid_hex} · {activeRow.edid ?? '—'}
+          </span>
+        )}
+        {stats && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
+            approved: {stats.approved} · tm: {stats.tm} · fuzzy: {stats.fuzzy} · auto: {stats.auto_translated} · untranslated: {stats.untranslated} · total: {stats.total}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Search & Replace Modal ────────────────────────────────────────────────────
+// ── TM Suggestions panel ─────────────────────────────────────────────────────
 
-type SRProps = { modId: number; onClose: () => void; onApplied: () => void };
+function SuggestionsPanel({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) {
+  if (suggestions.length === 0) {
+    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пропозицій TM</div>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {suggestions.map((s) => (
+        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', background: '#1a1a1a', borderRadius: 4 }}>
+          <StatusBadge status={s.status} small />
+          <span style={{ flex: 1, fontSize: 13, color: '#ddd', whiteSpace: 'pre-wrap' }}>{s.text}</span>
+          <span style={{ fontSize: 11, color: '#888' }}>{s.confidence != null ? `${Math.round(s.confidence * 100)}%` : ''}</span>
+          <button onClick={() => onApply(s.text)} style={{ background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 10px', fontSize: 12, cursor: 'pointer' }}>
+            Apply
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-function SearchReplaceModal({ modId, onClose, onApplied }: SRProps) {
+// ── Related strings panel ────────────────────────────────────────────────────
+
+function RelatedPanel({ modId, row, srcLang, targetLang, onSelect }: { modId: number; row: StringRow; srcLang: string; targetLang: string; onSelect: (r: StringRow) => void }) {
+  const { data } = useQuery({
+    queryKey: ['related', modId, row.signature, srcLang, targetLang],
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, signature: row.signature, pageSize: 20 }),
+  });
+  const rows = data?.rows.filter((r) => r.string_id !== row.string_id) ?? [];
+  if (rows.length === 0) return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пов'язаних рядків у цьому сегменті</div>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {rows.slice(0, 15).map((r) => (
+        <div key={r.string_id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 6px', background: '#1a1a1a', borderRadius: 3, cursor: 'pointer' }} onClick={() => onSelect(r)}>
+          <span style={{ fontSize: 11, color: '#888', minWidth: 60, fontFamily: 'monospace' }}>{r.formid_hex}</span>
+          <span style={{ flex: 1, fontSize: 12, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.source}</span>
+          <StatusBadge status={r.status} small />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Search & Replace Modal ───────────────────────────────────────────────────
+
+type SRProps = { modId: number; targetLang: string; onClose: () => void; onApplied: () => void };
+
+function SearchReplaceModal({ modId, targetLang, onClose, onApplied }: SRProps) {
   const [search, setSearch] = useState('');
   const [replace, setReplace] = useState('');
   const [isRegex, setIsRegex] = useState(false);
@@ -195,9 +476,8 @@ function SearchReplaceModal({ modId, onClose, onApplied }: SRProps) {
     if (!search) return;
     setStage('previewing'); setError(null);
     try {
-      const r = await api.search.replace(modId, { search, replace, isRegex, dryRun: true });
-      setPreviewResult(r);
-      setStage('idle');
+      const r = await api.search.replace(modId, { search, replace, isRegex, targetLang, dryRun: true });
+      setPreviewResult(r); setStage('idle');
     } catch (err) { setError(String(err)); setStage('idle'); }
   }
 
@@ -205,10 +485,8 @@ function SearchReplaceModal({ modId, onClose, onApplied }: SRProps) {
     if (!search) return;
     setStage('applying'); setError(null);
     try {
-      const r = await api.search.replace(modId, { search, replace, isRegex, dryRun: false });
-      setPreviewResult(r);
-      setStage('done');
-      onApplied();
+      const r = await api.search.replace(modId, { search, replace, isRegex, targetLang, dryRun: false });
+      setPreviewResult(r); setStage('done'); onApplied();
     } catch (err) { setError(String(err)); setStage('idle'); }
   }
 
@@ -240,7 +518,7 @@ function SearchReplaceModal({ modId, onClose, onApplied }: SRProps) {
                 <span style={{ color: '#8f8' }}>{m.newText.slice(0, 60)}</span>
               </div>
             ))}
-            {previewResult.matches.length > 20 && <p style={{ color: '#888' }}>…and {previewResult.matches.length - 20} more</p>}
+            {previewResult.matches.length > 20 && <p style={{ color: '#888' }}>…ще {previewResult.matches.length - 20}</p>}
           </div>
         )}
       </div>
@@ -248,29 +526,62 @@ function SearchReplaceModal({ modId, onClose, onApplied }: SRProps) {
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+const s = {
+  root: { display: 'flex', flexDirection: 'column' as const, height: 'calc(100vh - 48px)', overflow: 'hidden', background: '#111', color: '#eee' },
+  toolbar: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: '#1a1a1a', borderBottom: '1px solid #2a2a2a', flexWrap: 'wrap' as const, flexShrink: 0 },
+  modName: { fontWeight: 700, fontSize: 14, color: '#d4a843', marginRight: 8, whiteSpace: 'nowrap' as const },
+  langLabel: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#aaa' },
+  langSelect: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 3, padding: '3px 6px', fontSize: 13 } as React.CSSProperties,
+  filterSelect: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 3, padding: '4px 7px', fontSize: 13 } as React.CSSProperties,
+  searchInput: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 3, padding: '4px 8px', fontSize: 13, width: 200 } as React.CSSProperties,
+  sep: { width: 1, height: 24, background: '#333', margin: '0 4px', flexShrink: 0 },
+  btnPri: { background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } as React.CSSProperties,
+  btnSec: { background: '#252525', color: '#ccc', border: '1px solid #3a3a3a', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
+  progressBadge: { background: '#1a3a5c', color: '#7cc8ff', borderRadius: 4, padding: '4px 10px', fontSize: 13 } as React.CSSProperties,
+  errorBadge: { color: '#f44', fontSize: 12 },
+
+  body: { display: 'flex', flex: 1, overflow: 'hidden' },
+
+  leftPanel: { width: 160, flexShrink: 0, background: '#141414', borderRight: '1px solid #2a2a2a', overflowY: 'auto' as const, fontSize: 13 },
+  sigRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid #1e1e1e', userSelect: 'none' as const },
+  sigRowActive: { background: '#333' },
+  sigName: { color: '#ccc' },
+  sigCount: { color: '#666', fontSize: 11 },
+
+  centerCol: { flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' },
+
+  tableWrap: { flex: 1, overflowY: 'auto' as const, overflowX: 'auto' as const },
+  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 12 },
+  th: { textAlign: 'left' as const, color: '#777', fontSize: 10, padding: '5px 6px', borderBottom: '2px solid #2a2a2a', background: '#161616', position: 'sticky' as const, top: 0, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', whiteSpace: 'nowrap' as const },
+  tr: { borderBottom: '1px solid #1c1c1c' },
+  td: { padding: '5px 6px', verticalAlign: 'top' as const },
+  actionBtn: (bg: string) => ({ background: bg, color: '#fff', border: 'none', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', fontSize: 11, fontWeight: 700, minWidth: 20 }) as React.CSSProperties,
+
+  pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: '6px 0', background: '#141414', borderTop: '1px solid #2a2a2a', flexShrink: 0 },
+  pageBtn: { background: '#252525', color: '#ccc', border: '1px solid #3a3a3a', borderRadius: 3, padding: '4px 12px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
+
+  detailPanel: { background: '#161616', borderTop: '2px solid #2a2a2a', flexShrink: 0 },
+  detailPanels: { display: 'flex', gap: 0, borderBottom: '1px solid #2a2a2a' },
+  textPanel: { flex: 1, padding: '8px 12px', borderRight: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column' as const, gap: 4 },
+  panelLabel: { fontSize: 11, color: '#888', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
+  sourceArea: { background: '#111', color: '#bbb', border: '1px solid #2a2a2a', borderRadius: 3, padding: 6, fontFamily: 'inherit', fontSize: 13, resize: 'none' as const, width: '100%' } as React.CSSProperties,
+  translArea: { background: '#0e1a0e', color: '#eee', border: '1px solid #2a4a2a', borderRadius: 3, padding: 6, fontFamily: 'inherit', fontSize: 13, resize: 'none' as const, width: '100%' } as React.CSSProperties,
+  charCount: { fontSize: 11, color: '#666', textAlign: 'right' as const },
+
+  tabs: { display: 'flex', gap: 0, background: '#1a1a1a', borderBottom: '1px solid #2a2a2a' },
+  tabBtn: { background: 'transparent', color: '#888', border: 'none', borderBottom: '2px solid transparent', padding: '5px 16px', cursor: 'pointer', fontSize: 12, fontWeight: 500 } as React.CSSProperties,
+  tabBtnActive: { color: '#eee', borderBottom: '2px solid #1565c0', background: '#1e1e1e' } as React.CSSProperties,
+  tabContent: { minHeight: 80, maxHeight: 160, overflowY: 'auto' as const, padding: 8, background: '#141414' },
+
+  center: { padding: 32, textAlign: 'center' as const, color: '#888' },
+  statusBar: { display: 'flex', alignItems: 'center', padding: '3px 12px', background: '#0d0d0d', borderTop: '1px solid #2a2a2a', fontSize: 11, color: '#ccc', flexShrink: 0 },
+};
+
 const modal = {
-  overlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  overlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   box: { background: '#1e1e1e', border: '1px solid #333', borderRadius: 8, padding: 24, minWidth: 440, maxWidth: 600 },
   input: { background: '#252525', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', fontSize: 13, width: '100%' } as React.CSSProperties,
   btn: (bg: string) => ({ background: bg, color: '#fff', border: 'none', borderRadius: 4, padding: '7px 16px', cursor: 'pointer', fontSize: 13 }) as React.CSSProperties,
-};
-
-const s = {
-  page: { padding: '16px 24px' } as React.CSSProperties,
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 24, flexWrap: 'wrap' as const } as React.CSSProperties,
-  title: { color: '#eee', margin: 0, marginBottom: 4 } as React.CSSProperties,
-  statRow: { display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' as const } as React.CSSProperties,
-  filters: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' as const, alignItems: 'center' } as React.CSSProperties,
-  select: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '5px 8px', fontSize: 13 } as React.CSSProperties,
-  input: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '5px 10px', fontSize: 13, flex: 1, minWidth: 200 } as React.CSSProperties,
-  btnPrimary: { background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } as React.CSSProperties,
-  btnSecondary: { background: '#2a2a2a', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13 } as React.CSSProperties,
-  progressBadge: { background: '#1a3a5c', color: '#7cc8ff', borderRadius: 4, padding: '5px 12px', fontSize: 13 } as React.CSSProperties,
-  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 } as React.CSSProperties,
-  th: { textAlign: 'left' as const, color: '#888', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid #333', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em' } as React.CSSProperties,
-  tr: { borderBottom: '1px solid #1a1a1a' } as React.CSSProperties,
-  td: { padding: '8px', verticalAlign: 'top' as const } as React.CSSProperties,
-  center: { padding: 32, textAlign: 'center' as const, color: '#888' } as React.CSSProperties,
-  pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 24, paddingBottom: 32 } as React.CSSProperties,
-  pageBtn: { background: '#333', color: '#ccc', border: 'none', borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13 } as React.CSSProperties,
 };

@@ -37,6 +37,8 @@ export async function getMod(db: Tx, id: number) {
 
 export type StringsFilter = {
   modId: number;
+  srcLang?: string;
+  targetLang?: string;
   status?: string;
   query?: string;
   signature?: string;
@@ -48,6 +50,8 @@ export async function listStrings(db: Tx, f: StringsFilter) {
   const page = Math.max(1, f.page ?? 1);
   const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 50));
   const offset = (page - 1) * pageSize;
+  const srcLang = f.srcLang ?? 'en';
+  const targetLang = f.targetLang ?? 'uk';
 
   const conditions: string[] = ['r.mod_id = $1'];
   const values: unknown[] = [f.modId];
@@ -99,20 +103,20 @@ export async function listStrings(db: Tx, f: StringsFilter) {
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = 'uk'
+       ON t.src_string_id = s.id AND t.target_lang = $${idx}
           AND t.id = (
             SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = 'uk'
+            WHERE src_string_id = s.id AND target_lang = $${idx}
             ORDER BY CASE status
               WHEN 'human' THEN 1 WHEN 'tm' THEN 2
               WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 4 ELSE 5 END,
               COALESCE(confidence,0) DESC, created_at DESC
             LIMIT 1
           )
-     WHERE s.lang = 'en' AND ${where}
+     WHERE s.lang = $${idx + 1} AND ${where}
      ORDER BY r.signature, r.path
-     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-    dataValues,
+     LIMIT $${limitIdx + 2} OFFSET $${offsetIdx + 2}`,
+    [...dataValues, targetLang, srcLang],
   );
 
   const { rows: countRows } = await db.query(
@@ -120,23 +124,66 @@ export async function listStrings(db: Tx, f: StringsFilter) {
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = 'uk'
-     WHERE s.lang = 'en' AND ${where}`,
-    values,
+       ON t.src_string_id = s.id AND t.target_lang = $${idx}
+     WHERE s.lang = $${idx + 1} AND ${where}`,
+    [...values, targetLang, srcLang],
   );
 
   return { rows, total: Number(countRows[0].total), page, pageSize };
 }
 
-export async function listSignatures(db: Tx, modId: number) {
+export async function listSignatures(db: Tx, modId: number, srcLang = 'en') {
   const { rows } = await db.query(
     `SELECT DISTINCT r.signature, COUNT(*) as count
      FROM records r
-     JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
+     JOIN strings s ON s.record_id = r.id AND s.lang = $2
      WHERE r.mod_id = $1
      GROUP BY r.signature
      ORDER BY count DESC`,
+    [modId, srcLang],
+  );
+  return rows;
+}
+
+export async function listModLangs(db: Tx, modId: number): Promise<string[]> {
+  const { rows } = await db.query(
+    `SELECT DISTINCT s.lang
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1
+     ORDER BY s.lang`,
     [modId],
+  );
+  return rows.map((r: { lang: string }) => r.lang);
+}
+
+export async function getTMSuggestions(
+  db: Tx,
+  stringId: number,
+  targetLang: string,
+  limit = 5,
+) {
+  // Find strings with similar normalised source text and their translations
+  const { rows: srcRows } = await db.query(
+    `SELECT text_norm FROM strings WHERE id = $1`,
+    [stringId],
+  );
+  if (!srcRows[0]?.text_norm) return [];
+
+  const { rows } = await db.query(
+    `SELECT DISTINCT ON (t.text)
+        t.id, t.text, t.status, t.confidence, t.provenance,
+        s.text_raw AS source_text
+     FROM strings s
+     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     WHERE s.text_norm = $1
+       AND s.id <> $3
+     ORDER BY t.text, CASE t.status
+       WHEN 'human' THEN 1 WHEN 'tm' THEN 2
+       WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 4 ELSE 5 END,
+       COALESCE(t.confidence, 0) DESC
+     LIMIT $4`,
+    [srcRows[0].text_norm, targetLang, stringId, limit],
   );
   return rows;
 }
@@ -148,17 +195,18 @@ export async function upsertTranslation(
   stringId: number,
   text: string,
   status: 'human' | 'fuzzy' | 'auto' | 'tm',
+  targetLang = 'uk',
 ) {
   await db.query(
-    `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = 'uk'`,
-    [stringId],
+    `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`,
+    [stringId, targetLang],
   );
 
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-     VALUES ($1, 'uk', $2, $3, 1.0, 'human_edit', NOW())
+     VALUES ($1, $2, $3, $4, 1.0, 'human_edit', NOW())
      RETURNING id`,
-    [stringId, text, status],
+    [stringId, targetLang, text, status],
   );
 
   return { id: rows[0].id, text, status };
