@@ -35,6 +35,7 @@
 import fs from 'fs';
 import { inflateSync } from 'zlib';
 import { isTranslatableSubrecord } from './knownStrings.js';
+import { log } from '../logger.js';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -70,8 +71,10 @@ export class EspReader {
   public info!: EspPluginInfo;
 
   constructor(filePath: string) {
+    log.debug(`ESP: opening ${filePath}`);
     this.buf = fs.readFileSync(filePath);
     this.parseHeader();
+    log.info(`ESP: ${filePath} — localized=${this.info.isLocalized}, masters=[${this.info.masterFiles.join(', ')}]`);
   }
 
   private parseHeader(): void {
@@ -124,6 +127,7 @@ export class EspReader {
     const pos = RECORD_HEADER_SIZE + tes4DataSize;
 
     this.walkRange(pos, buf.length, rows, '');
+    log.debug(`ESP: extracted ${rows.length} translatable strings`);
     return rows;
   }
 
@@ -176,7 +180,8 @@ export class EspReader {
         if (recordData.length !== uncompressedSize) {
           // Tolerate minor size mismatches from padding
         }
-      } catch {
+      } catch (err) {
+        log.warn(`ESP: failed to decompress record ${formIdHex} (${recSig}): ${err}`);
         return; // skip corrupt compressed record
       }
     } else {

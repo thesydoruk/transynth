@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import type { LLMProvider, ChatOptions } from './provider.js';
 import { CONFIG } from '../config.js';
 import { withRetry } from './retry.js';
+import { log } from '../logger.js';
 
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
@@ -10,9 +11,11 @@ export class OpenAIProvider implements LLMProvider {
 
   constructor() {
     this.client = new OpenAI({ apiKey: CONFIG.openaiApiKey });
+    log.debug('OpenAI provider initialised');
   }
 
   async chat(opts: ChatOptions): Promise<string> {
+    log.debug(`OpenAI chat: model=${opts.model}, messages=${opts.messages.length}`);
     const resp = await withRetry(() => this.client.chat.completions.create({
       model: opts.model,
       messages: opts.messages,
@@ -23,6 +26,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async embed(texts: string[], model: string): Promise<number[][]> {
+    log.debug(`OpenAI embed: model=${model}, texts=${texts.length}`);
     const resp = await withRetry(() => this.client.embeddings.create({ model, input: texts }));
     return resp.data.map(v => v.embedding);
   }

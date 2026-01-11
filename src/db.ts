@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { CONFIG } from './config.js';
+import { log } from './logger.js';
 
 const { Pool } = pg;
 
@@ -11,6 +12,7 @@ let _pool: pg.Pool | null = null;
 export function openDb(): pg.Pool {
   if (!_pool) {
     _pool = new Pool({ connectionString: CONFIG.databaseUrl });
+    log.info('DB: connection pool created');
   }
   return _pool;
 }
@@ -19,6 +21,7 @@ export async function closeDb(): Promise<void> {
   if (_pool) {
     await _pool.end();
     _pool = null;
+    log.info('DB: connection pool closed');
   }
 }
 
@@ -34,11 +37,14 @@ export async function withTransaction<T>(pool: pg.Pool, fn: (client: pg.PoolClie
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    log.trace('DB: BEGIN transaction');
     const result = await fn(client);
     await client.query('COMMIT');
+    log.trace('DB: COMMIT transaction');
     return result;
   } catch (err) {
     await client.query('ROLLBACK');
+    log.warn('DB: ROLLBACK transaction', err);
     throw err;
   } finally {
     client.release();
@@ -46,6 +52,7 @@ export async function withTransaction<T>(pool: pg.Pool, fn: (client: pg.PoolClie
 }
 
 export async function upsertMod(db: Tx, name: string, absPath: string, versionHash: string): Promise<number> {
+  log.debug(`DB: upsertMod name=${name}`);
   const { rows } = await db.query(
     `INSERT INTO mods(name, abs_path, version_hash) VALUES ($1, $2, $3)
      ON CONFLICT(name, version_hash) DO UPDATE SET abs_path = EXCLUDED.abs_path

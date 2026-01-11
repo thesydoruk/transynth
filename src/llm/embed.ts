@@ -1,7 +1,9 @@
 // Embeddings via LLM provider (Ollama or OpenAI)
 import { embedWithFallback } from './index.js';
+import { log } from '../logger.js';
 
 export async function embedMany(texts: string[], model: string): Promise<number[][]> {
+  log.debug(`embedMany: ${texts.length} texts, model=${model}`);
   return embedWithFallback(texts, model);
 }
 

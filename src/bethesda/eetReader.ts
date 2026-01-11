@@ -16,6 +16,8 @@
  * str = len:u32 + utf8 bytes (no null terminator in length)
  */
 
+import { log } from '../logger.js';
+
 export interface EetHeader {
   version: number;
   gameName: string;
@@ -166,7 +168,10 @@ export function* iterEetRecords(buf: Buffer, startOffset: number): Generator<Eet
  * Parse the entire EET file and return header + all records.
  */
 export function parseEetFile(buf: Buffer): { header: EetHeader; records: EetRecord[] } {
+  log.debug(`EET: parsing buffer (${buf.length} bytes)`);
   const header = parseEetHeader(buf);
+  log.info(`EET: v${header.version}, game="${header.gameName}", declaredCount=${header.declaredCount}`);
   const records = [...iterEetRecords(buf, header.recordsOffset)];
+  log.info(`EET: parsed ${records.length} records`);
   return { header, records };
 }

@@ -1,5 +1,6 @@
 // Translation via LLM provider (Ollama or OpenAI)
 import { chatWithFallback } from './index.js';
+import { log } from '../logger.js';
 
 export async function translateBatch(
   items: string[],
@@ -7,6 +8,7 @@ export async function translateBatch(
   styleMd: string | undefined,
   glossary: string[] | undefined
 ): Promise<string[]> {
+  log.debug(`translateBatch: ${items.length} items, model=${model}`);
   const system = "You are a professional game localizer for Bethesda games. Keep masked tokens like ¤PH0¤ and ¤GL0¤ unchanged. Return a JSON array only.";
   const user = {
     source_language: "auto",
@@ -31,5 +33,6 @@ export async function translateBatch(
 
   const data = JSON.parse(text);
   if (!Array.isArray(data.items)) throw new Error("Unexpected response shape");
+  log.debug(`translateBatch: received ${data.items.length} translations`);
   return data.items as string[];
 }

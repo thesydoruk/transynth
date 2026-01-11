@@ -3,6 +3,9 @@
 # Build output
 /dist/
 
+# Log files
+/data/log/
+
 # SQLite database files
 *.sqlite
 *.sqlite-shm

@@ -69,6 +69,7 @@ async function shutdown() {
   log.info('Shutting down...');
   await app.close();
   await closeDb();
+  log.close();
   process.exit(0);
 }
 process.on('SIGINT', shutdown);

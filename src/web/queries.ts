@@ -1,6 +1,7 @@
 import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
+import { log } from '../logger.js';
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
@@ -319,6 +320,7 @@ export async function searchReplaceTranslations(
   }
 
   if (!dryRun && matches.length > 0) {
+    log.info(`search-replace: applying ${matches.length} changes`);
     await withTransaction(db as pg.Pool, async (client) => {
       for (const m of matches) {
         await client.query(

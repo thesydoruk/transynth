@@ -12,6 +12,7 @@ export function getLLM(): LLMProvider {
   _instance = CONFIG.llmProvider === 'openai'
     ? new OpenAIProvider()
     : new OllamaProvider();
+  log.info(`LLM provider: ${_instance.name}`);
   return _instance;
 }
 

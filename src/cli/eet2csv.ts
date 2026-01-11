@@ -12,6 +12,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { parseEetFile } from '../bethesda/eetReader.js';
 import { csvRow } from '../utils/csv.js';
+import { log } from '../logger.js';
 
 const { values } = parseArgs({
   options: {
@@ -22,13 +23,13 @@ const { values } = parseArgs({
 });
 
 if (!values.file) {
-  console.error('Usage: tsx src/cli/eet2csv.ts --file <path.eet> [--out <path.csv>]');
+  log.error('Usage: tsx src/cli/eet2csv.ts --file <path.eet> [--out <path.csv>]');
   process.exit(1);
 }
 
-const filePath = path.resolve(values.file);
+const filePath = path.resolve(values.file as string);
 if (!fs.existsSync(filePath)) {
-  console.error(`File not found: ${filePath}`);
+  log.error(`File not found: ${filePath}`);
   process.exit(1);
 }
 
@@ -46,8 +47,8 @@ for (const r of records) {
 const csv = lines.join('\n') + '\n';
 
 if (values.out) {
-  fs.writeFileSync(path.resolve(values.out), csv, 'utf8');
-  console.log(`Wrote ${records.length} records to ${values.out}`);
+  fs.writeFileSync(path.resolve(values.out as string), csv, 'utf8');
+  log.info(`Wrote ${records.length} records to ${values.out}`);
 } else {
   process.stdout.write(csv);
 }

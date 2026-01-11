@@ -3,6 +3,7 @@ import { upsertRecord, insertString, type Tx } from '../db.js';
 import { normalizeForHash } from './textNorm.js';
 import { sha1Hex } from './hash.js';
 import type { CsvRow } from '../types.js';
+import { log } from '../logger.js';
 
 export async function ingestCsvRows(
   db: Tx,
@@ -11,6 +12,7 @@ export async function ingestCsvRows(
   lang: string,
   sourceKind: string
 ): Promise<{ recordId: number; stringId: number }[]> {
+  log.info(`Ingest: ${rows.length} rows, lang=${lang}, source=${sourceKind}`);
   const results: { recordId: number; stringId: number }[] = [];
   for (const r of rows) {
     const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
@@ -19,5 +21,6 @@ export async function ingestCsvRows(
     const strId = await insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
     results.push({ recordId: recId, stringId: strId });
   }
+  log.debug(`Ingest: completed, ${results.length} records inserted`);
   return results;
 }

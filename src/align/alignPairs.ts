@@ -2,6 +2,7 @@ import { CsvRow, AlignPair } from '../types.js';
 import { fuzzyScore } from './fuzzy.js';
 import { embedMany, cosine } from '../llm/embed.js';
 import { getEmbedModel } from '../config.js';
+import { log } from '../logger.js';
 
 // Heuristic alignment with anchors → fuzzy → embeddings
 export async function alignPairs(
@@ -11,6 +12,7 @@ export async function alignPairs(
   const fuzzyMin = opts.fuzzyMin ?? 85;
   const fuzzyStrong = opts.fuzzyStrong ?? 90;
   const pairs: AlignPair[] = [];
+  log.info(`Alignment: left=${left.length}, right=${right.length}, fuzzyMin=${fuzzyMin}, fuzzyStrong=${fuzzyStrong}, embeddings=${!!opts.useEmbeddings}`);
 
   // Indices by anchors
   const byHash = new Map<string, number[]>();
@@ -90,5 +92,6 @@ export async function alignPairs(
     }
   }
 
+  log.info(`Alignment: ${pairs.length} pairs found (hash=${pairs.filter(p=>p.method==='hash').length} edid=${pairs.filter(p=>p.method==='edid').length} path=${pairs.filter(p=>p.method==='path').length} fuzzy=${pairs.filter(p=>p.method==='rapidfuzz').length} embed=${pairs.filter(p=>p.method==='embedding').length})`);
   return pairs;
 }

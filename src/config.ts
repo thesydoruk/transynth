@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { log } from './logger.js';
 
 export type LLMProviderName = 'ollama' | 'openai';
 
@@ -42,6 +43,7 @@ export function getEmbedModel(): string {
 
 /** Fail-fast validation — call at CLI entry points. */
 export function validateConfig(): void {
+  log.info(`Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}`);
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {
       throw new Error('OPENAI_API_KEY is required when LLM_PROVIDER=openai. Set it in .env or environment.');

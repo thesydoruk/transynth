@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
+import { log } from '../../logger.js';
 
 export async function glossaryRoutes(app: FastifyInstance, db: Tx) {
   // GET /api/glossary?lang=&q=
   app.get<{ Querystring: { lang?: string; q?: string } }>('/api/glossary', async (req, reply) => {
     const { lang, q } = req.query;
+    log.debug(`GET /api/glossary lang=${lang} q=${q}`);
     const conditions: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -32,6 +34,7 @@ export async function glossaryRoutes(app: FastifyInstance, db: Tx) {
     async (req, reply) => {
       const { term, lang, source = 'manual' } = req.body ?? {};
       if (!term || !lang) return reply.code(400).send({ error: 'term and lang are required' });
+      log.info(`POST /api/glossary term="${term}" lang=${lang}`);
 
       await db.query(
         `INSERT INTO glossary(term, lang, count, source)

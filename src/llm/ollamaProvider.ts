@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import type { LLMProvider, ChatOptions } from './provider.js';
 import { CONFIG } from '../config.js';
 import { withRetry } from './retry.js';
+import { log } from '../logger.js';
 
 export class OllamaProvider implements LLMProvider {
   readonly name = 'ollama';
@@ -13,9 +14,11 @@ export class OllamaProvider implements LLMProvider {
       baseURL: `${CONFIG.ollamaBaseUrl}/v1`,
       apiKey: 'ollama', // Ollama doesn't require a real key
     });
+    log.debug(`Ollama provider: baseURL=${CONFIG.ollamaBaseUrl}/v1`);
   }
 
   async chat(opts: ChatOptions): Promise<string> {
+    log.debug(`Ollama chat: model=${opts.model}, messages=${opts.messages.length}`);
     const resp = await withRetry(() => this.client.chat.completions.create({
       model: opts.model,
       messages: opts.messages,
@@ -26,6 +29,7 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async embed(texts: string[], model: string): Promise<number[][]> {
+    log.debug(`Ollama embed: model=${model}, texts=${texts.length}`);
     const resp = await withRetry(() => this.client.embeddings.create({ model, input: texts }));
     return resp.data.map(v => v.embedding);
   }

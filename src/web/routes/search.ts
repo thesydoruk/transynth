@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { searchReplaceTranslations } from '../queries.js';
+import { log } from '../../logger.js';
 
 export async function searchRoutes(app: FastifyInstance, db: Tx) {
   // POST /api/mods/:id/search-replace
@@ -31,6 +32,7 @@ export async function searchRoutes(app: FastifyInstance, db: Tx) {
     }
 
     try {
+      log.info(`POST /api/mods/${modId}/search-replace search="${search}" replace="${replace}" regex=${isRegex} dryRun=${dryRun}`);
       const result = await searchReplaceTranslations(
         db,
         modId,
@@ -43,6 +45,7 @@ export async function searchRoutes(app: FastifyInstance, db: Tx) {
       return reply.send(result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      log.warn(`search-replace error: ${message}`);
       return reply.code(400).send({ error: message });
     }
   });

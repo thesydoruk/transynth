@@ -32,6 +32,7 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
+import { log } from '../logger.js';
 
 const MAGIC = 'BTDX';
 const TYPE_GNRL = 'GNRL';
@@ -56,10 +57,12 @@ export class Ba2Reader {
   private nameIndex: Map<string, Ba2FileEntry>;
 
   constructor(filePath: string) {
+    log.debug(`BA2: opening ${filePath}`);
     this.buf = fs.readFileSync(filePath);
     this.entries = [];
     this.nameIndex = new Map();
     this.parse();
+    log.info(`BA2: loaded ${this.entries.length} files from ${filePath}`);
   }
 
   private parse(): void {
@@ -131,6 +134,7 @@ export class Ba2Reader {
     const raw = this.buf.subarray(offset, offset + (packedSize || unpackedSize));
 
     if (packedSize > 0 && packedSize !== unpackedSize) {
+      log.trace(`BA2: decompressing ${entry.name} (${packedSize} → ${unpackedSize} bytes)`);
       return inflateSync(raw);
     }
     return Buffer.from(raw); // copy to own buffer

@@ -14,6 +14,7 @@
  */
 
 import { inflateSync, deflateSync } from 'zlib';
+import { log } from '../logger.js';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -75,6 +76,7 @@ function buildPatchMap(patches: EspPatch[]): PatchMap {
  * @param patches   List of (formId, subrecord, newText) changes
  */
 export function patchEsp(inputBuf: Buffer, patches: EspPatch[]): Buffer {
+  log.info(`ESP patcher: applying ${patches.length} patches`);
   if (patches.length === 0) return inputBuf;
 
   const patchMap = buildPatchMap(patches);

@@ -1,6 +1,7 @@
 import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
+import { log } from '../logger.js';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ export async function applyTMToMod(
        )`,
     [modId, targetLang],
   );
+  log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
   let applied = 0;
   const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0 };
@@ -140,6 +142,8 @@ export async function propagateTranslation(
   );
 
   if (candidates.length === 0) return 0;
+  log.info(`TM propagation: ${candidates.length} candidates for text_norm propagation`);
+  log.info(`TM propagation: ${candidates.length} candidates for text_norm propagation`);
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const c of candidates) {

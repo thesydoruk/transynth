@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
+import { log } from '../../logger.js';
 
 export async function statsRoutes(app: FastifyInstance, db: Tx) {
   // GET /api/stats?modId=  — translation progress breakdown for one mod
@@ -27,6 +28,7 @@ export async function statsRoutes(app: FastifyInstance, db: Tx) {
     const row = rows[0] as Record<string, number>;
 
     const pct = row.total > 0 ? Math.round((row.translated / row.total) * 100) : 0;
+    log.trace(`GET /api/stats modId=${modId} total=${row.total} translated=${row.translated} pct=${pct}%`);
     return reply.send({ ...row, percent: pct });
   });
 

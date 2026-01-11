@@ -14,6 +14,8 @@
  * (the null terminator is still present, included in the length).
  */
 
+import { log } from '../logger.js';
+
 export type StringsType = 'STRINGS' | 'DLSTRINGS' | 'ILSTRINGS';
 
 /** A single entry read from a strings file. */
@@ -46,6 +48,8 @@ export function parseStringsBuffer(buf: Buffer, type: StringsType): Map<number, 
   const blobStart = entriesStart + count * 8;
 
   if (blobStart > buf.length) return result;
+
+  log.debug(`STRINGS: parsing ${type} buffer — ${count} entries, blob at offset ${blobStart}`);
 
   for (let i = 0; i < count; i++) {
     const entryOff = entriesStart + i * 8;
@@ -122,5 +126,6 @@ export function writeStringsBuffer(
   }
 
   blob.copy(out, headerSize);
+  log.debug(`STRINGS: wrote ${type} buffer — ${items.length} entries, ${out.length} bytes`);
   return out;
 }
