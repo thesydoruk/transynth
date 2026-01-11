@@ -9,9 +9,8 @@ export async function statsRoutes(app: FastifyInstance, db: Tx) {
       return reply.code(400).send({ error: 'modId is required' });
     }
 
-    const row = db
-      .prepare(
-        `SELECT
+    const { rows } = await db.query(
+      `SELECT
           COUNT(DISTINCT s.id)                                      AS total,
           COUNT(DISTINCT t.id)                                      AS translated,
           COUNT(DISTINCT CASE WHEN t.status='human' THEN t.id END)  AS approved,
@@ -22,9 +21,10 @@ export async function statsRoutes(app: FastifyInstance, db: Tx) {
          FROM strings s
          JOIN records r ON s.record_id = r.id
          LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = 'uk'
-         WHERE r.mod_id = ? AND s.lang = 'en'`,
-      )
-      .get(modId) as Record<string, number>;
+         WHERE r.mod_id = $1 AND s.lang = 'en'`,
+      [modId],
+    );
+    const row = rows[0] as Record<string, number>;
 
     const pct = row.total > 0 ? Math.round((row.translated / row.total) * 100) : 0;
     return reply.send({ ...row, percent: pct });
@@ -32,9 +32,8 @@ export async function statsRoutes(app: FastifyInstance, db: Tx) {
 
   // GET /api/stats/global  — aggregated stats across all mods
   app.get('/api/stats/global', async (_req, reply) => {
-    const rows = db
-      .prepare(
-        `SELECT
+    const { rows } = await db.query(
+      `SELECT
           m.id, m.name,
           COUNT(DISTINCT s.id)                                      AS total,
           COUNT(DISTINCT t.id)                                      AS translated,
@@ -45,8 +44,7 @@ export async function statsRoutes(app: FastifyInstance, db: Tx) {
          LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = 'uk'
          GROUP BY m.id
          ORDER BY m.name`,
-      )
-      .all();
+    );
 
     return reply.send(rows);
   });

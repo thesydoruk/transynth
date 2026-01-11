@@ -4,7 +4,7 @@ import staticFiles from '@fastify/static';
 import multipart from '@fastify/multipart';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { openDb } from '../db.js';
+import { openDb, closeDb } from '../db.js';
 import { log } from '../logger.js';
 import { modsRoutes } from './routes/mods.js';
 import { stringsRoutes } from './routes/strings.js';
@@ -63,3 +63,13 @@ try {
   log.error(err, 'Failed to start web server');
   process.exit(1);
 }
+
+// Graceful shutdown
+async function shutdown() {
+  log.info('Shutting down...');
+  await app.close();
+  await closeDb();
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

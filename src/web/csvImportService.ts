@@ -39,82 +39,76 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 
-export function ensureCsvImportSchema(db: Tx) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS csv_imports (
-      id INTEGER PRIMARY KEY,
-      file_name TEXT NOT NULL,
-      file_hash TEXT NOT NULL,
-      mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
-      total_records INTEGER NOT NULL DEFAULT 0,
-      imported_records INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'pending',
-      src_lang TEXT NOT NULL DEFAULT 'en',
-      tgt_lang TEXT NOT NULL DEFAULT 'uk',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(file_hash)
-    );
-  `);
+export async function ensureCsvImportSchema(_db: Tx) {
+  // Schema is now managed by sql/schema.sql — no-op
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
-export function listCsvImportJobs(db: Tx): CsvImportJob[] {
-  return db.prepare('SELECT * FROM csv_imports ORDER BY created_at DESC').all() as CsvImportJob[];
+export async function listCsvImportJobs(db: Tx): Promise<CsvImportJob[]> {
+  const { rows } = await db.query('SELECT * FROM csv_imports ORDER BY created_at DESC');
+  return rows as CsvImportJob[];
 }
 
-export function getCsvImportJob(db: Tx, id: number): CsvImportJob | undefined {
-  return db.prepare('SELECT * FROM csv_imports WHERE id = ?').get(id) as CsvImportJob | undefined;
+export async function getCsvImportJob(db: Tx, id: number): Promise<CsvImportJob | undefined> {
+  const { rows } = await db.query('SELECT * FROM csv_imports WHERE id = $1', [id]);
+  return rows[0] as CsvImportJob | undefined;
 }
 
-export function updateCsvJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
-  db.prepare(
-    `UPDATE csv_imports SET src_lang = ?, tgt_lang = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(srcLang, tgtLang, id);
+export async function updateCsvJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+  await db.query(
+    `UPDATE csv_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
+    [srcLang, tgtLang, id],
+  );
 }
 
-export function deleteCsvImportJob(db: Tx, id: number) {
-  db.prepare('DELETE FROM csv_imports WHERE id = ?').run(id);
+export async function deleteCsvImportJob(db: Tx, id: number) {
+  await db.query('DELETE FROM csv_imports WHERE id = $1', [id]);
 }
 
-function getOrCreateJob(
+async function getOrCreateJob(
   db: Tx, fileName: string, fileHash: string, modId: number,
   totalRecords: number, srcLang: string, tgtLang: string,
-): CsvImportJob {
-  const existing = db.prepare('SELECT * FROM csv_imports WHERE file_hash = ?').get(fileHash) as CsvImportJob | undefined;
-  if (existing) return existing;
+): Promise<CsvImportJob> {
+  const { rows: existing } = await db.query('SELECT * FROM csv_imports WHERE file_hash = $1', [fileHash]);
+  if (existing[0]) return existing[0] as CsvImportJob;
 
-  db.prepare(
+  await db.query(
     `INSERT INTO csv_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang)
-     VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
-  ).run(fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
+     VALUES ($1, $2, $3, $4, 'pending', $5, $6)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang],
+  );
 
-  return db.prepare('SELECT * FROM csv_imports WHERE file_hash = ?').get(fileHash) as CsvImportJob;
+  const { rows } = await db.query('SELECT * FROM csv_imports WHERE file_hash = $1', [fileHash]);
+  return rows[0] as CsvImportJob;
 }
 
-function updateProgress(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE csv_imports SET imported_records = ?, status = 'in_progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function updateProgress(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE csv_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markDone(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE csv_imports SET status = 'completed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markDone(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE csv_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markFailed(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE csv_imports SET status = 'failed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markFailed(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE csv_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markPaused(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE csv_imports SET status = 'paused', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markPaused(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE csv_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
 // ── CSV parsing ─────────────────────────────────────────────────────────────
@@ -195,26 +189,26 @@ export function* iterCsvRecords(text: string): Generator<CsvRecord> {
   }
 }
 
-function importRecord(db: Tx, modId: number, rec: CsvRecord, srcLang: string, tgtLang: string) {
+async function importRecord(db: Tx, modId: number, rec: CsvRecord, srcLang: string, tgtLang: string) {
   const recPath = rec.field || 'FULL';
   const hashNorm = normalizeForHash(rec.source);
-  const recordId = upsertRecord(db, modId, rec.signature, recPath, recPath, rec.edid || null, hashNorm, rec.formId || null);
+  const recordId = await upsertRecord(db, modId, rec.signature, recPath, recPath, rec.edid || null, hashNorm, rec.formId || null);
   const srcNorm = normalizeForHash(rec.source);
-  const srcStringId = insertString(db, recordId, srcLang, rec.source, srcNorm, 'csv');
+  const srcStringId = await insertString(db, recordId, srcLang, rec.source, srcNorm, 'csv');
   if (rec.target) {
     const status = rec.status === 0x63 ? 'human' : 'auto';
-    addTranslation(db, srcStringId, tgtLang, rec.target, status, rec.status === 0x63 ? 1.0 : 0.5, 'csv');
+    await addTranslation(db, srcStringId, tgtLang, rec.target, status, rec.status === 0x63 ? 1.0 : 0.5, 'csv');
   }
 }
 
 /** Register an uploaded CSV file (parse, create job). Returns the job. */
-export function registerCsvFile(db: Tx, fileName: string, text: string, srcLang = 'en', tgtLang = 'uk'): CsvImportJob {
+export async function registerCsvFile(db: Tx, fileName: string, text: string, srcLang = 'en', tgtLang = 'uk'): Promise<CsvImportJob> {
   const fileHash = sha1Hex(Buffer.from(text, 'utf8'));
   const records = parseCsvRecords(text);
   const totalRecords = records.length;
 
   const modName = fileName.replace(/\.csv$/i, '');
-  const modId = upsertMod(db, modName, `csv-upload/${fileName}`, fileHash);
+  const modId = await upsertMod(db, modName, `csv-upload/${fileName}`, fileHash);
 
   return getOrCreateJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
 }
@@ -246,12 +240,12 @@ export function requestCsvPause(jobId: number) {
  * Run CSV import for a single job. Reads the file text, resumes from last offset.
  * Calls onProgress after each batch.
  */
-export function runCsvImport(
+export async function runCsvImport(
   db: Tx,
   job: CsvImportJob,
   text: string,
   onProgress?: ProgressCb,
-): CsvImportJob {
+): Promise<CsvImportJob> {
   if (job.status === 'completed') return job;
   if (activeImports.has(job.id)) throw new Error(`CSV Import #${job.id} is already running`);
 
@@ -269,45 +263,45 @@ export function runCsvImport(
       if (i < skipCount) continue;
 
       if (state.cancel) {
-        if (inTx) { db.exec('COMMIT'); inTx = false; }
-        markFailed(db, job.id, imported);
+        if (inTx) { await db.query('COMMIT'); inTx = false; }
+        await markFailed(db, job.id, imported);
         log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
         break;
       }
       if (state.pause) {
-        if (inTx) { db.exec('COMMIT'); inTx = false; }
-        markPaused(db, job.id, imported);
+        if (inTx) { await db.query('COMMIT'); inTx = false; }
+        await markPaused(db, job.id, imported);
         log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
         break;
       }
 
-      if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
+      if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
 
-      importRecord(db, job.mod_id!, records[i], job.src_lang, job.tgt_lang);
+      await importRecord(db, job.mod_id!, records[i], job.src_lang, job.tgt_lang);
       imported++;
       batchCount++;
 
       if (batchCount >= BATCH_SIZE) {
-        updateProgress(db, job.id, imported);
-        db.exec('COMMIT');
+        await updateProgress(db, job.id, imported);
+        await db.query('COMMIT');
         inTx = false;
         onProgress?.(imported, job.total_records);
       }
     }
 
-    if (inTx) { db.exec('COMMIT'); inTx = false; }
+    if (inTx) { await db.query('COMMIT'); inTx = false; }
 
     if (!state.cancel && !state.pause) {
-      markDone(db, job.id, imported);
+      await markDone(db, job.id, imported);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
-    if (inTx) { try { db.exec('ROLLBACK'); } catch { /* ignore */ } }
-    markFailed(db, job.id, imported);
+    if (inTx) { try { await db.query('ROLLBACK'); } catch { /* ignore */ } }
+    await markFailed(db, job.id, imported);
     throw err;
   } finally {
     activeImports.delete(job.id);
   }
 
-  return getCsvImportJob(db, job.id)!;
+  return (await getCsvImportJob(db, job.id))!;
 }

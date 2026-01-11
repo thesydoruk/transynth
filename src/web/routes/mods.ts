@@ -6,7 +6,7 @@ import { applyTMToMod } from '../tm.js';
 export async function modsRoutes(app: FastifyInstance, db: Tx) {
   // GET /api/mods — list all mods with aggregate stats
   app.get('/api/mods', async (_req, reply) => {
-    const mods = listMods(db);
+    const mods = await listMods(db);
     return reply.send(mods);
   });
 
@@ -15,10 +15,10 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
 
-    const mod = getMod(db, id);
+    const mod = await getMod(db, id);
     if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-    const stats = getModStats(db, id);
+    const stats = await getModStats(db, id);
     return reply.send({ ...(mod as object), stats });
   });
 
@@ -30,7 +30,7 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
       if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
 
       const targetLang = req.query.targetLang ?? 'uk';
-      const result = applyTMToMod(db, id, targetLang);
+      const result = await applyTMToMod(db, id, targetLang);
       return reply.send(result);
     },
   );
@@ -45,7 +45,7 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
       if (!Number.isInteger(oldId) || oldId < 1) return reply.code(400).send({ error: 'compareModId is required' });
 
       const targetLang = req.query.targetLang ?? 'uk';
-      const result = diffMods(db, newId, oldId, targetLang);
+      const result = await diffMods(db, newId, oldId, targetLang);
       return reply.send(result);
     },
   );

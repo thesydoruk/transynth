@@ -16,7 +16,7 @@ export const CONFIG = {
   embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large',
 
   // Database
-  dbPath: process.env.DATABASE_PATH || './localizer.sqlite',
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://localizer:localizer@localhost:5432/localizer',
 
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),

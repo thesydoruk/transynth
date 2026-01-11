@@ -31,7 +31,7 @@ export async function searchRoutes(app: FastifyInstance, db: Tx) {
     }
 
     try {
-      const result = searchReplaceTranslations(
+      const result = await searchReplaceTranslations(
         db,
         modId,
         search,

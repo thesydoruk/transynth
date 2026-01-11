@@ -35,12 +35,12 @@ function eetFilePath(fileName: string) {
 }
 
 export async function eetRoutes(app: FastifyInstance, db: Tx) {
-  ensureImportSchema(db);
+  await ensureImportSchema(db);
   ensureUploadDir();
 
   // ── List all import jobs ──────────────────────────────────────────────────
   app.get('/api/eet', async () => {
-    const jobs = listImportJobs(db);
+    const jobs = await listImportJobs(db);
     return jobs.map(j => ({
       ...j,
       running: isImportRunning(j.id),
@@ -68,7 +68,7 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
       fs.renameSync(tmpPath, finalPath);
 
       const buf = fs.readFileSync(finalPath);
-      const job = registerEetFile(db, origName, buf);
+      const job = await registerEetFile(db, origName, buf);
 
       return reply.status(201).send({ ...job, running: false });
     } catch (err: unknown) {
@@ -85,7 +85,7 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
     Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
   }>('/api/eet/:id/preview', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getImportJob(db, jobId);
+    const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
     const filePath = eetFilePath(job.file_name);
@@ -131,22 +131,22 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
     '/api/eet/:id',
     async (req, reply) => {
       const jobId = Number(req.params.id);
-      const job = getImportJob(db, jobId);
+      const job = await getImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
       if (srcLang && tgtLang) {
-        updateJobLanguages(db, jobId, srcLang, tgtLang);
+        await updateJobLanguages(db, jobId, srcLang, tgtLang);
       }
-      return getImportJob(db, jobId);
+      return await getImportJob(db, jobId);
     },
   );
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/eet/:id/import', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getImportJob(db, jobId);
+    const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
     if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
@@ -166,10 +166,10 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
       reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    // Run import in a setImmediate so the SSE headers flush first
-    setImmediate(() => {
+    // Run import asynchronously — runImport is now async
+    (async () => {
       try {
-        const result = runImport(db, job, buf, (imported, total) => {
+        const result = await runImport(db, job, buf, (imported, total) => {
           send({ type: 'progress', imported, total, jobId });
         });
         send({ type: 'done', job: { ...result, running: false } });
@@ -178,7 +178,7 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
       } finally {
         reply.raw.end();
       }
-    });
+    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
@@ -200,13 +200,13 @@ export async function eetRoutes(app: FastifyInstance, db: Tx) {
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/api/eet/:id', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getImportJob(db, jobId);
+    const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
 
     const filePath = eetFilePath(job.file_name);
     try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
-    deleteImportJob(db, jobId);
+    await deleteImportJob(db, jobId);
 
     return { ok: true };
   });

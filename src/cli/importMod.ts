@@ -36,7 +36,7 @@ import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { openDb, upsertMod, addTranslation } from '../db.js';
+import { openDb, upsertMod, addTranslation, closeDb } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import { ingestCsvRows } from '../utils/ingest.js';
@@ -187,7 +187,7 @@ if (!fs.existsSync(modPath)) {
 
 const db = openDb();
 const modHash = sha1Hex(fs.readFileSync(modPath));
-const modId = upsertMod(db, path.basename(modPath), modPath, modHash);
+const modId = await upsertMod(db, path.basename(modPath), modPath, modHash);
 log.info(`Mod registered: ${path.basename(modPath)} (id=${modId})`);
 
 // Parse ESP
@@ -227,9 +227,10 @@ if (!argv.learn) {
     process.exit(0);
   }
 
-  rows.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
-  ingestCsvRows(db, modId, rows, lang, 'native');
+  rows.forEach(r => { (r as Record<string, unknown>).Hash = sha1Hex(normalizeForHash(r.Source)); });
+  await ingestCsvRows(db, modId, rows, lang, 'native');
   log.info(`Ingested ${rows.length} rows for locale "${lang}".`);
+  await closeDb();
   process.exit(0);
 }
 
@@ -253,9 +254,9 @@ const ingestedIds = new Map<string, { recordId: number; stringId: number }[]>();
 for (const locale of availableLocales) {
   const stringsMap = esp.info.isLocalized ? (localesMap.get(locale) ?? null) : null;
   const rows = buildCsvRows(espRows, stringsMap);
-  rows.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
+  rows.forEach(r => { (r as Record<string, unknown>).Hash = sha1Hex(normalizeForHash(r.Source)); });
 
-  const ids = ingestCsvRows(db, modId, rows, locale, 'native');
+  const ids = await ingestCsvRows(db, modId, rows, locale, 'native');
   ingestedIds.set(locale, ids);
   log.info(`Ingested ${rows.length} rows for locale "${locale}".`);
 }
@@ -284,7 +285,7 @@ for (const locale of targetLocales) {
   for (const p of pairs) {
     const srcStringId = srcIds[p.leftIndex].stringId;
     const tgtText = tgtRows[p.rightIndex].Source;
-    addTranslation(db, srcStringId, locale, tgtText,
+    await addTranslation(db, srcStringId, locale, tgtText,
       p.method === 'rapidfuzz' ? 'fuzzy' : 'tm', p.score, p.method);
   }
 

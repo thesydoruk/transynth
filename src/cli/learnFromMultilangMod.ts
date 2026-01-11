@@ -48,7 +48,7 @@ import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { openDb, upsertMod, addTranslation } from '../db.js';
+import { openDb, upsertMod, addTranslation, closeDb } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import type { CsvRow } from '../types.js';
@@ -143,7 +143,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   const db = openDb();
   const modName = path.basename(modPath);
   const modHash = sha1Hex(fs.readFileSync(modPath));
-  const modId = upsertMod(db, modName, path.resolve(modPath), modHash);
+  const modId = await upsertMod(db, modName, path.resolve(modPath), modHash);
 
   // Resolve candidate locales
   let localesToTry: string[];
@@ -251,7 +251,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   // Pass 3: ingest kept locales into DB
   const idsPerLocale: Record<string,{recordId:number,stringId:number}[]> = {};
   for (const k of kept) {
-    idsPerLocale[k.locale] = ingestCsvRows(db, modId, k.rows, k.locale, 'builtin');
+    idsPerLocale[k.locale] = await ingestCsvRows(db, modId, k.rows, k.locale, 'builtin');
     log.info(`[ingest] ${k.locale}: ${k.rows.length} rows inserted`);
   }
 
@@ -283,7 +283,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
       const srcStrId = idsPerLocale[src][ap.leftIndex].stringId;
       const tgtText = right[ap.rightIndex].Source;
       const status = ap.method === 'rapidfuzz' ? 'fuzzy' : 'tm';
-      addTranslation(db, srcStrId, tgt, tgtText, status, ap.score, ap.method);
+      await addTranslation(db, srcStrId, tgt, tgtText, status, ap.score, ap.method);
     }
     log.info(`[align] ${src}→${tgt}: ${pairs.length} aligned rows`);
   }

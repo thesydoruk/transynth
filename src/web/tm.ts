@@ -1,4 +1,6 @@
 import type { Tx } from '../db.js';
+import { withTransaction } from '../db.js';
+import type pg from 'pg';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
@@ -12,7 +14,7 @@ type Match = { text: string; method: MatchMethod; confidence: number };
  *   2. edid    — same EDID in any other mod
  *   3. text_norm — identical normalised source text anywhere in the DB
  */
-function findBestMatch(
+async function findBestMatch(
   db: Tx,
   formidHex: string | null,
   path: string,
@@ -20,47 +22,44 @@ function findBestMatch(
   textNorm: string,
   targetLang: string,
   excludeModId: number,
-): Match | null {
+): Promise<Match | null> {
   const orderByStatus = `ORDER BY CASE t.status WHEN 'human' THEN 1 WHEN 'tm' THEN 2 WHEN 'fuzzy' THEN 3 ELSE 4 END LIMIT 1`;
 
   // 1. Anchor: same formid + path
   if (formidHex) {
-    const row = db
-      .prepare(
-        `SELECT t.text FROM strings s
-         JOIN records r ON s.record_id = r.id
-         JOIN translations t ON t.src_string_id = s.id AND t.target_lang = ?
-         WHERE r.formid_hex = ? AND r.path = ? AND s.lang = 'en' AND r.mod_id != ?
-         ${orderByStatus}`,
-      )
-      .get(targetLang, formidHex, path, excludeModId) as { text: string } | undefined;
-    if (row) return { text: row.text, method: 'anchor', confidence: 0.95 };
+    const { rows } = await db.query(
+      `SELECT t.text FROM strings s
+       JOIN records r ON s.record_id = r.id
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+       WHERE r.formid_hex = $2 AND r.path = $3 AND s.lang = 'en' AND r.mod_id != $4
+       ${orderByStatus}`,
+      [targetLang, formidHex, path, excludeModId],
+    );
+    if (rows[0]) return { text: rows[0].text, method: 'anchor', confidence: 0.95 };
   }
 
   // 2. EDID match
   if (edid) {
-    const row = db
-      .prepare(
-        `SELECT t.text FROM strings s
-         JOIN records r ON s.record_id = r.id
-         JOIN translations t ON t.src_string_id = s.id AND t.target_lang = ?
-         WHERE r.edid = ? AND s.lang = 'en' AND r.mod_id != ?
-         ${orderByStatus}`,
-      )
-      .get(targetLang, edid, excludeModId) as { text: string } | undefined;
-    if (row) return { text: row.text, method: 'edid', confidence: 0.85 };
+    const { rows } = await db.query(
+      `SELECT t.text FROM strings s
+       JOIN records r ON s.record_id = r.id
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+       WHERE r.edid = $2 AND s.lang = 'en' AND r.mod_id != $3
+       ${orderByStatus}`,
+      [targetLang, edid, excludeModId],
+    );
+    if (rows[0]) return { text: rows[0].text, method: 'edid', confidence: 0.85 };
   }
 
   // 3. Exact text_norm match
-  const row = db
-    .prepare(
-      `SELECT t.text FROM strings s
-       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = ?
-       WHERE s.text_norm = ? AND s.lang = 'en'
-       ${orderByStatus}`,
-    )
-    .get(targetLang, textNorm) as { text: string } | undefined;
-  if (row) return { text: row.text, method: 'text_norm', confidence: 0.75 };
+  const { rows } = await db.query(
+    `SELECT t.text FROM strings s
+     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+     WHERE s.text_norm = $2 AND s.lang = 'en'
+     ${orderByStatus}`,
+    [targetLang, textNorm],
+  );
+  if (rows[0]) return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
 
   return null;
 }
@@ -70,42 +69,30 @@ function findBestMatch(
  * Only fills strings that have NO existing translation for targetLang.
  * Returns counts of applied/skipped matches and a breakdown by method.
  */
-export function applyTMToMod(
+export async function applyTMToMod(
   db: Tx,
   modId: number,
   targetLang = 'uk',
-): { applied: number; skipped: number; byMethod: Record<string, number> } {
-  const untranslated = db
-    .prepare(
-      `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
-       FROM strings s
-       JOIN records r ON s.record_id = r.id
-       WHERE r.mod_id = ? AND s.lang = 'en'
-         AND NOT EXISTS (
-           SELECT 1 FROM translations t
-           WHERE t.src_string_id = s.id AND t.target_lang = ?
-         )`,
-    )
-    .all(modId, targetLang) as Array<{
-    id: number;
-    text_norm: string;
-    formid_hex: string | null;
-    path: string;
-    edid: string | null;
-  }>;
+): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> {
+  const { rows: untranslated } = await db.query(
+    `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1 AND s.lang = 'en'
+       AND NOT EXISTS (
+         SELECT 1 FROM translations t
+         WHERE t.src_string_id = s.id AND t.target_lang = $2
+       )`,
+    [modId, targetLang],
+  );
 
   let applied = 0;
   const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0 };
 
-  const insert = db.prepare(
-    `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-     VALUES (?, ?, ?, 'tm', ?, 'tm_auto', CURRENT_TIMESTAMP)`,
-  );
-
-  db.transaction(() => {
+  await withTransaction(db as pg.Pool, async (client) => {
     for (const s of untranslated) {
-      const match = findBestMatch(
-        db,
+      const match = await findBestMatch(
+        client,
         s.formid_hex,
         s.path,
         s.edid,
@@ -114,12 +101,16 @@ export function applyTMToMod(
         modId,
       );
       if (match) {
-        insert.run(s.id, targetLang, match.text, match.confidence);
+        await client.query(
+          `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
+           VALUES ($1, $2, $3, 'tm', $4, 'tm_auto', NOW())`,
+          [s.id, targetLang, match.text, match.confidence],
+        );
         applied++;
         byMethod[match.method] = (byMethod[match.method] ?? 0) + 1;
       }
     }
-  })();
+  });
 
   return { applied, skipped: untranslated.length - applied, byMethod };
 }
@@ -131,40 +122,38 @@ export function applyTMToMod(
  * text_norm that don't yet have a human-approved translation.
  * Returns the number of strings that received the propagated translation.
  */
-export function propagateTranslation(
+export async function propagateTranslation(
   db: Tx,
   textNorm: string,
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
-): number {
-  const candidates = db
-    .prepare(
-      `SELECT s.id FROM strings s
-       WHERE s.text_norm = ? AND s.lang = 'en' AND s.id != ?
-         AND NOT EXISTS (
-           SELECT 1 FROM translations t
-           WHERE t.src_string_id = s.id AND t.target_lang = ? AND t.status = 'human'
-         )`,
-    )
-    .all(textNorm, excludeStringId, targetLang) as Array<{ id: number }>;
+): Promise<number> {
+  const { rows: candidates } = await db.query(
+    `SELECT s.id FROM strings s
+     WHERE s.text_norm = $1 AND s.lang = 'en' AND s.id != $2
+       AND NOT EXISTS (
+         SELECT 1 FROM translations t
+         WHERE t.src_string_id = s.id AND t.target_lang = $3 AND t.status = 'human'
+       )`,
+    [textNorm, excludeStringId, targetLang],
+  );
 
   if (candidates.length === 0) return 0;
 
-  const del = db.prepare(
-    `DELETE FROM translations WHERE src_string_id = ? AND target_lang = ? AND status != 'human'`,
-  );
-  const ins = db.prepare(
-    `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-     VALUES (?, ?, ?, 'tm', 0.95, 'propagation', CURRENT_TIMESTAMP)`,
-  );
-
-  db.transaction(() => {
+  await withTransaction(db as pg.Pool, async (client) => {
     for (const c of candidates) {
-      del.run(c.id, targetLang);
-      ins.run(c.id, targetLang, translatedText);
+      await client.query(
+        `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2 AND status != 'human'`,
+        [c.id, targetLang],
+      );
+      await client.query(
+        `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
+         VALUES ($1, $2, $3, 'tm', 0.95, 'propagation', NOW())`,
+        [c.id, targetLang, translatedText],
+      );
     }
-  })();
+  });
 
   return candidates.length;
 }

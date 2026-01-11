@@ -48,45 +48,31 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 
-export function ensureModImportSchema(db: Tx) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS mod_imports (
-      id INTEGER PRIMARY KEY,
-      file_name TEXT NOT NULL,
-      file_hash TEXT NOT NULL,
-      mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
-      total_records INTEGER NOT NULL DEFAULT 0,
-      imported_records INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'pending',
-      src_lang TEXT NOT NULL DEFAULT 'en',
-      tgt_lang TEXT NOT NULL DEFAULT 'uk',
-      is_localized INTEGER NOT NULL DEFAULT 0,
-      esp_path TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(file_hash)
-    );
-  `);
+export async function ensureModImportSchema(_db: Tx) {
+  // Schema is now managed by sql/schema.sql — no-op
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
-export function listModImportJobs(db: Tx): ModImportJob[] {
-  return db.prepare('SELECT * FROM mod_imports ORDER BY created_at DESC').all() as ModImportJob[];
+export async function listModImportJobs(db: Tx): Promise<ModImportJob[]> {
+  const { rows } = await db.query('SELECT * FROM mod_imports ORDER BY created_at DESC');
+  return rows as ModImportJob[];
 }
 
-export function getModImportJob(db: Tx, id: number): ModImportJob | undefined {
-  return db.prepare('SELECT * FROM mod_imports WHERE id = ?').get(id) as ModImportJob | undefined;
+export async function getModImportJob(db: Tx, id: number): Promise<ModImportJob | undefined> {
+  const { rows } = await db.query('SELECT * FROM mod_imports WHERE id = $1', [id]);
+  return rows[0] as ModImportJob | undefined;
 }
 
-export function updateModJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
-  db.prepare(
-    `UPDATE mod_imports SET src_lang = ?, tgt_lang = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(srcLang, tgtLang, id);
+export async function updateModJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+  await db.query(
+    `UPDATE mod_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
+    [srcLang, tgtLang, id],
+  );
 }
 
-export function deleteModImportJob(db: Tx, id: number) {
-  db.prepare('DELETE FROM mod_imports WHERE id = ?').run(id);
+export async function deleteModImportJob(db: Tx, id: number) {
+  await db.query('DELETE FROM mod_imports WHERE id = $1', [id]);
 }
 
 // ── Archive extraction ──────────────────────────────────────────────────────
@@ -107,7 +93,7 @@ export function extractArchive(archivePath: string, outDir: string): Promise<voi
   return new Promise((resolve, reject) => {
     const stream = Seven.extractFull(archivePath, outDir, {
       $bin: path7za,
-      yes: true,         // auto overwrite
+      yes: true,
       recursive: true,
     });
     stream.on('end', () => resolve());
@@ -117,7 +103,6 @@ export function extractArchive(archivePath: string, outDir: string): Promise<voi
 
 /**
  * Discover ESP/ESL/ESM + BA2 files inside a directory (recursive).
- * Returns { plugins: string[], ba2s: string[] }
  */
 export function discoverModFiles(dir: string): { plugins: string[]; ba2s: string[] } {
   const plugins: string[] = [];
@@ -136,18 +121,12 @@ export function discoverModFiles(dir: string): { plugins: string[]; ba2s: string
   return { plugins, ba2s };
 }
 
-/**
- * Auto-discover BA2 for a given ESP.
- * Looks for "<Stem> - Main.ba2" or "<Stem>.ba2" in the same directory.
- */
 function discoverBa2(modPath: string, ba2Candidates: string[]): string | null {
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
-  // From explicit candidates first
   for (const ba2 of ba2Candidates) {
     const ba2Base = path.basename(ba2, '.ba2').toLowerCase();
     if (ba2Base === `${stem} - main` || ba2Base === stem) return ba2;
   }
-  // Then from same directory
   const dir = path.dirname(modPath);
   for (const candidate of [`${path.basename(modPath, path.extname(modPath))} - Main.ba2`, `${path.basename(modPath, path.extname(modPath))}.ba2`]) {
     const p = path.join(dir, candidate);
@@ -156,9 +135,6 @@ function discoverBa2(modPath: string, ba2Candidates: string[]): string | null {
   return null;
 }
 
-/**
- * Load all STRINGS/DLSTRINGS/ILSTRINGS from a BA2, grouped by locale.
- */
 function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
   const reader = new Ba2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
@@ -187,9 +163,6 @@ function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
   return locales;
 }
 
-/**
- * Load STRINGS from loose files in a Strings/ subfolder.
- */
 function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, string>> {
   const dir = path.join(path.dirname(modPath), 'Strings');
   const locales = new Map<string, Map<number, string>>();
@@ -212,9 +185,6 @@ function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, str
   return locales;
 }
 
-/**
- * Build CsvRow[] from ESP reader output + optional strings map.
- */
 function buildCsvRows(
   espRows: EspStringRow[],
   stringsMap: Map<number, string> | null,
@@ -243,43 +213,38 @@ function buildCsvRows(
 
 // ── Registration ────────────────────────────────────────────────────────────
 
-/**
- * Register a single ESP/ESL plugin file.
- */
-export function registerPluginFile(
+export async function registerPluginFile(
   db: Tx,
   fileName: string,
   pluginPath: string,
   srcLang: string,
   tgtLang: string,
-): ModImportJob {
+): Promise<ModImportJob> {
   const buf = fs.readFileSync(pluginPath);
   const fileHash = sha1Hex(buf);
 
-  const existing = db.prepare('SELECT * FROM mod_imports WHERE file_hash = ?').get(fileHash) as ModImportJob | undefined;
-  if (existing) return existing;
+  const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
+  if (existing[0]) return existing[0] as ModImportJob;
 
   const esp = new EspReader(pluginPath);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
   const modName = fileName.replace(/\.(esp|esm|esl)$/i, '');
-  const modId = upsertMod(db, modName, pluginPath, fileHash);
+  const modId = await upsertMod(db, modName, pluginPath, fileHash);
 
   const totalRecords = espRows.length;
 
-  db.prepare(
+  await db.query(
     `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, esp_path)
-     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-  ).run(fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath);
+     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath],
+  );
 
-  return db.prepare('SELECT * FROM mod_imports WHERE file_hash = ?').get(fileHash) as ModImportJob;
+  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
+  return rows[0] as ModImportJob;
 }
 
-/**
- * Register an archive. Extracts, discovers plugin files, returns job for the first plugin.
- * All extracted files are stored in extractDir.
- */
 export async function registerArchiveFile(
   db: Tx,
   fileName: string,
@@ -291,10 +256,9 @@ export async function registerArchiveFile(
   const buf = fs.readFileSync(archivePath);
   const fileHash = sha1Hex(buf);
 
-  const existing = db.prepare('SELECT * FROM mod_imports WHERE file_hash = ?').get(fileHash) as ModImportJob | undefined;
-  if (existing) return existing;
+  const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
+  if (existing[0]) return existing[0] as ModImportJob;
 
-  // Extract archive
   await extractArchive(archivePath, extractDir);
 
   const { plugins } = discoverModFiles(extractDir);
@@ -303,28 +267,28 @@ export async function registerArchiveFile(
     throw new Error('No ESP/ESM/ESL plugin found in archive');
   }
 
-  // Use the first plugin found
   const pluginPath = plugins[0];
   const esp = new EspReader(pluginPath);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
   const modName = fileName.replace(/\.(zip|7z|rar)$/i, '');
-  const modId = upsertMod(db, modName, pluginPath, fileHash);
+  const modId = await upsertMod(db, modName, pluginPath, fileHash);
 
   const totalRecords = espRows.length;
 
-  db.prepare(
+  await db.query(
     `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, esp_path)
-     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-  ).run(fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath);
+     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath],
+  );
 
-  return db.prepare('SELECT * FROM mod_imports WHERE file_hash = ?').get(fileHash) as ModImportJob;
+  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
+  return rows[0] as ModImportJob;
 }
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 
-/** Generate preview rows from a mod plugin. */
 export function previewModRecords(job: ModImportJob, ba2Candidates: string[] = []): {
   rows: ModPreviewRow[];
   locales: string[];
@@ -346,7 +310,6 @@ export function previewModRecords(job: ModImportJob, ba2Candidates: string[] = [
     }
   }
 
-  // Use first available locale for preview text
   const firstLocale = localesMap.size > 0 ? [...localesMap.keys()][0] : null;
   const stringsMap = firstLocale ? (localesMap.get(firstLocale) ?? null) : null;
   const csvRows = buildCsvRows(espRows, stringsMap);
@@ -391,39 +354,39 @@ export function requestModPause(jobId: number) {
 
 // ── Import execution ────────────────────────────────────────────────────────
 
-function updateProgress(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE mod_imports SET imported_records = ?, status = 'in_progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function updateProgress(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE mod_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markDone(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE mod_imports SET status = 'completed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markDone(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE mod_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markFailed(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE mod_imports SET status = 'failed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markFailed(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE mod_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markPaused(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE mod_imports SET status = 'paused', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(importedRecords, jobId);
+async function markPaused(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE mod_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-/**
- * Run mod import — reads ESP strings, resolves from BA2 if localized,
- * ingests to DB with batch transactions.
- */
-export function runModImport(
+export async function runModImport(
   db: Tx,
   job: ModImportJob,
   onProgress?: ProgressCb,
-): ModImportJob {
+): Promise<ModImportJob> {
   if (job.status === 'completed') return job;
   if (activeImports.has(job.id)) throw new Error(`Mod Import #${job.id} is already running`);
 
@@ -442,7 +405,6 @@ export function runModImport(
     let inTx = false;
 
     if (esp.info.isLocalized) {
-      // ── Localized plugin: import ALL locales at once ────────────────────
       const ba2Path = discoverBa2(espPath, []);
       let localesMap: Map<string, Map<number, string>>;
       if (ba2Path) {
@@ -457,7 +419,7 @@ export function runModImport(
         work.push({ locale, rows: buildCsvRows(espRows, strMap) });
       }
       const totalAll = work.reduce((s, w) => s + w.rows.length, 0);
-      db.prepare('UPDATE mod_imports SET total_records = ? WHERE id = ?').run(totalAll, job.id);
+      await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [totalAll, job.id]);
 
       let globalIdx = 0;
 
@@ -467,31 +429,31 @@ export function runModImport(
           if (globalIdx++ < job.imported_records) continue;
 
           if (state.cancel) {
-            if (inTx) { db.exec('COMMIT'); inTx = false; }
-            markFailed(db, job.id, imported);
+            if (inTx) { await db.query('COMMIT'); inTx = false; }
+            await markFailed(db, job.id, imported);
             log.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
             break outer;
           }
           if (state.pause) {
-            if (inTx) { db.exec('COMMIT'); inTx = false; }
-            markPaused(db, job.id, imported);
+            if (inTx) { await db.query('COMMIT'); inTx = false; }
+            await markPaused(db, job.id, imported);
             log.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
             break outer;
           }
 
-          if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
+          if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
 
           const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
           const hashNorm = sha1Hex(normalizeForHash(r.Source));
-          const recordId = upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-          insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import');
+          const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import');
 
           imported++;
           batchCount++;
 
           if (batchCount >= BATCH_SIZE) {
-            updateProgress(db, job.id, imported);
-            db.exec('COMMIT');
+            await updateProgress(db, job.id, imported);
+            await db.query('COMMIT');
             inTx = false;
             onProgress?.(imported, totalAll);
           }
@@ -505,50 +467,50 @@ export function runModImport(
         if (i < job.imported_records) continue;
 
         if (state.cancel) {
-          if (inTx) { db.exec('COMMIT'); inTx = false; }
-          markFailed(db, job.id, imported);
+          if (inTx) { await db.query('COMMIT'); inTx = false; }
+          await markFailed(db, job.id, imported);
           log.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
           break;
         }
         if (state.pause) {
-          if (inTx) { db.exec('COMMIT'); inTx = false; }
-          markPaused(db, job.id, imported);
+          if (inTx) { await db.query('COMMIT'); inTx = false; }
+          await markPaused(db, job.id, imported);
           log.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
           break;
         }
 
-        if (!inTx) { db.exec('BEGIN'); inTx = true; batchCount = 0; }
+        if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
 
         const r = csvRows[i];
         const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
         const hashNorm = sha1Hex(normalizeForHash(r.Source));
-        const recordId = upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-        insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import');
+        const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import');
 
         imported++;
         batchCount++;
 
         if (batchCount >= BATCH_SIZE) {
-          updateProgress(db, job.id, imported);
-          db.exec('COMMIT');
+          await updateProgress(db, job.id, imported);
+          await db.query('COMMIT');
           inTx = false;
           onProgress?.(imported, csvRows.length);
         }
       }
     }
 
-    if (inTx) { db.exec('COMMIT'); inTx = false; }
+    if (inTx) { await db.query('COMMIT'); inTx = false; }
 
     if (!state.cancel && !state.pause) {
-      markDone(db, job.id, imported);
+      await markDone(db, job.id, imported);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
-    markFailed(db, job.id, job.imported_records);
+    await markFailed(db, job.id, job.imported_records);
     throw err;
   } finally {
     activeImports.delete(job.id);
   }
 
-  return getModImportJob(db, job.id)!;
+  return (await getModImportJob(db, job.id))!;
 }

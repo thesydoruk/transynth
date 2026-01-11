@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { openDb, runSchema, upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
+import { openDb, runSchema, closeDb, upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
 import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash } from '../utils/textNorm.js';
@@ -33,27 +33,9 @@ interface ImportJob {
   tgt_lang: string;
 }
 
-function ensureImportSchema(db: Tx) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS eet_imports (
-      id INTEGER PRIMARY KEY,
-      file_name TEXT NOT NULL,
-      file_hash TEXT NOT NULL,
-      mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
-      total_records INTEGER NOT NULL DEFAULT 0,
-      imported_records INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'pending',
-      src_lang TEXT NOT NULL DEFAULT 'en',
-      tgt_lang TEXT NOT NULL DEFAULT 'uk',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(file_hash)
-    );
-  `);
-}
-
-function getOrCreateImportJob(db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): ImportJob {
-  const existing = db.prepare('SELECT * FROM eet_imports WHERE file_hash = ?').get(fileHash) as ImportJob | undefined;
+async function getOrCreateImportJob(db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> {
+  const { rows: existingRows } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
+  const existing = existingRows[0] as ImportJob | undefined;
   if (existing) {
     if (existing.status === 'completed') {
       log.info(`File ${fileName} already fully imported (${existing.total_records} records). Skipping.`);
@@ -61,52 +43,54 @@ function getOrCreateImportJob(db: Tx, fileName: string, fileHash: string, modId:
     return existing;
   }
 
-  db.prepare(
+  await db.query(
     `INSERT INTO eet_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang)
-     VALUES (?, ?, ?, ?, 'in_progress', ?, ?)`
-  ).run(fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
+     VALUES ($1, $2, $3, $4, 'in_progress', $5, $6)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang],
+  );
 
-  return db.prepare('SELECT * FROM eet_imports WHERE file_hash = ?').get(fileHash) as ImportJob;
+  const { rows } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
+  return rows[0] as ImportJob;
 }
 
-function updateImportProgress(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE eet_imports SET imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).run(importedRecords, jobId);
+async function updateImportProgress(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE eet_imports SET imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markImportDone(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE eet_imports SET status = 'completed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).run(importedRecords, jobId);
+async function markImportDone(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE eet_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function markImportFailed(db: Tx, jobId: number, importedRecords: number) {
-  db.prepare(
-    `UPDATE eet_imports SET status = 'failed', imported_records = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).run(importedRecords, jobId);
+async function markImportFailed(db: Tx, jobId: number, importedRecords: number) {
+  await db.query(
+    `UPDATE eet_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
+    [importedRecords, jobId],
+  );
 }
 
-function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) {
-  // Use edid + field tag as path, matching the record schema pattern
+async function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) {
   const recPath = rec.field || 'FULL';
   const pathSimplified = recPath;
   const hashNorm = normalizeForHash(rec.source);
 
-  const recordId = upsertRecord(db, modId, rec.signature, recPath, pathSimplified, rec.edid || null, hashNorm, rec.formId || null);
+  const recordId = await upsertRecord(db, modId, rec.signature, recPath, pathSimplified, rec.edid || null, hashNorm, rec.formId || null);
 
-  // Insert source string
   const srcNorm = normalizeForHash(rec.source);
-  const srcStringId = insertString(db, recordId, srcLang, rec.source, srcNorm, 'eet');
+  const srcStringId = await insertString(db, recordId, srcLang, rec.source, srcNorm, 'eet');
 
-  // Insert translation if present
   if (rec.target) {
     const status = rec.status === 0x63 ? 'human' : 'auto';
-    addTranslation(db, srcStringId, tgtLang, rec.target, status, rec.status === 0x63 ? 1.0 : 0.5, 'eet');
+    await addTranslation(db, srcStringId, tgtLang, rec.target, status, rec.status === 0x63 ? 1.0 : 0.5, 'eet');
   }
 }
 
-function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: string) {
+async function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: string) {
   const absPath = path.resolve(filePath);
   const fileName = path.basename(absPath);
 
@@ -114,11 +98,9 @@ function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: strin
   const buf = fs.readFileSync(absPath);
   const fileHash = sha1Hex(buf);
 
-  // Parse header
   const header = parseEetHeader(buf);
   log.info(`EET v${header.version}, game="${header.gameName}", declared records=${header.declaredCount}`);
 
-  // Count total records via iteration (v1 has no declared count)
   let totalRecords = header.declaredCount;
   if (totalRecords < 0) {
     let count = 0;
@@ -126,12 +108,10 @@ function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: strin
     totalRecords = count;
   }
 
-  // Create mod entry
   const modName = fileName.replace(/\.eet$/i, '');
-  const modId = upsertMod(db, modName, absPath, fileHash);
+  const modId = await upsertMod(db, modName, absPath, fileHash);
 
-  // Create or resume import job
-  const job = getOrCreateImportJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
+  const job = await getOrCreateImportJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
   if (job.status === 'completed') return;
 
   const skipCount = job.imported_records;
@@ -140,34 +120,27 @@ function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: strin
   let processed = 0;
   let imported = job.imported_records;
   let batchCount = 0;
-
-  const runBatch = db.transaction(() => {
-    // placeholder — actual inserts happen inside the loop
-  });
-
-  // We'll use a manual transaction approach: open transaction, do BATCH_SIZE inserts, commit
   let inTx = false;
 
   try {
     for (const rec of iterEetRecords(buf, header.recordsOffset)) {
       processed++;
 
-      // Skip already-imported records
       if (processed <= skipCount) continue;
 
       if (!inTx) {
-        db.exec('BEGIN');
+        await db.query('BEGIN');
         inTx = true;
         batchCount = 0;
       }
 
-      importRecord(db, modId, rec, srcLang, tgtLang);
+      await importRecord(db, modId, rec, srcLang, tgtLang);
       imported++;
       batchCount++;
 
       if (batchCount >= BATCH_SIZE) {
-        updateImportProgress(db, job.id, imported);
-        db.exec('COMMIT');
+        await updateImportProgress(db, job.id, imported);
+        await db.query('COMMIT');
         inTx = false;
         if (imported % 10000 === 0 || imported === totalRecords) {
           log.info(`  progress: ${imported}/${totalRecords} records`);
@@ -175,19 +148,18 @@ function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: strin
       }
     }
 
-    // Commit remaining batch
     if (inTx) {
-      db.exec('COMMIT');
+      await db.query('COMMIT');
       inTx = false;
     }
 
-    markImportDone(db, job.id, imported);
+    await markImportDone(db, job.id, imported);
     log.info(`Import complete: ${imported} records from ${fileName}`);
   } catch (err) {
     if (inTx) {
-      try { db.exec('ROLLBACK'); } catch { /* ignore rollback errors */ }
+      try { await db.query('ROLLBACK'); } catch { /* ignore rollback errors */ }
     }
-    markImportFailed(db, job.id, imported);
+    await markImportFailed(db, job.id, imported);
     throw err;
   }
 }
@@ -205,13 +177,12 @@ async function main() {
 
   const schemaSql = fs.readFileSync(new URL('../../sql/schema.sql', import.meta.url), 'utf-8');
   const db = openDb();
-  runSchema(db, schemaSql);
-  ensureImportSchema(db);
+  await runSchema(db, schemaSql);
 
   if (values.file) {
-    importEetFile(db, values.file, values.srcLang!, values.tgtLang!);
+    await importEetFile(db, values.file as string, values.srcLang as string, values.tgtLang as string);
   } else {
-    const dir = path.resolve(values.dir!);
+    const dir = path.resolve(values.dir as string);
     if (!fs.existsSync(dir)) {
       log.warn(`Directory ${dir} does not exist. Creating it.`);
       fs.mkdirSync(dir, { recursive: true });
@@ -227,11 +198,11 @@ async function main() {
 
     log.info(`Found ${files.length} .eet file(s) in ${dir}`);
     for (const f of files) {
-      importEetFile(db, path.join(dir, f), values.srcLang!, values.tgtLang!);
+      await importEetFile(db, path.join(dir, f), values.srcLang as string, values.tgtLang as string);
     }
   }
 
-  db.close();
+  await closeDb();
   log.info('Done.');
 }
 

@@ -43,12 +43,12 @@ function extractDir(jobHash: string) {
 }
 
 export async function modImportRoutes(app: FastifyInstance, db: Tx) {
-  ensureModImportSchema(db);
+  await ensureModImportSchema(db);
   ensureUploadDir();
 
   // ── List all mod import jobs ──────────────────────────────────────────────
   app.get('/api/mod-import', async () => {
-    const jobs = listModImportJobs(db);
+    const jobs = await listModImportJobs(db);
     return jobs.map(j => ({
       ...j,
       running: isModImportRunning(j.id),
@@ -79,7 +79,7 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
 
       let job;
       if (isPlugin(origName)) {
-        job = registerPluginFile(db, origName, finalPath, 'en', 'uk');
+        job = await registerPluginFile(db, origName, finalPath, 'en', 'uk');
       } else {
         // Archive — extract then register
         const hash = crypto.randomBytes(8).toString('hex');
@@ -101,7 +101,7 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
     Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
   }>('/api/mod-import/:id/preview', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getModImportJob(db, jobId);
+    const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
     try {
@@ -149,22 +149,22 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
     '/api/mod-import/:id',
     async (req, reply) => {
       const jobId = Number(req.params.id);
-      const job = getModImportJob(db, jobId);
+      const job = await getModImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
       if (srcLang && tgtLang) {
-        updateModJobLanguages(db, jobId, srcLang, tgtLang);
+        await updateModJobLanguages(db, jobId, srcLang, tgtLang);
       }
-      return getModImportJob(db, jobId);
+      return await getModImportJob(db, jobId);
     },
   );
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/mod-import/:id/import', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getModImportJob(db, jobId);
+    const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
     if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
@@ -183,9 +183,9 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
       reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    setImmediate(() => {
+    (async () => {
       try {
-        const result = runModImport(db, job, (imported, total) => {
+        const result = await runModImport(db, job, (imported, total) => {
           send({ type: 'progress', imported, total, jobId });
         });
         send({ type: 'done', job: { ...result, running: false } });
@@ -194,7 +194,7 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
       } finally {
         reply.raw.end();
       }
-    });
+    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/api/mod-import/:id', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getModImportJob(db, jobId);
+    const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
 
@@ -229,7 +229,7 @@ export async function modImportRoutes(app: FastifyInstance, db: Tx) {
         fs.rmSync(parentDir, { recursive: true, force: true });
       }
     } catch { /* ignore */ }
-    deleteModImportJob(db, jobId);
+    await deleteModImportJob(db, jobId);
 
     return { ok: true };
   });

@@ -15,7 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { openDb, upsertMod, addTranslation } from '../db.js';
+import { openDb, upsertMod, addTranslation, closeDb } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
@@ -108,15 +108,15 @@ for (const spec of (argv.pair as string[])) {
     continue;
   }
 
-  left.forEach(r  => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
-  right.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
+  left.forEach(r  => { (r as Record<string, unknown>).Hash = sha1Hex(normalizeForHash(r.Source)); });
+  right.forEach(r => { (r as Record<string, unknown>).Hash = sha1Hex(normalizeForHash(r.Source)); });
 
   const hashOrig = sha1Hex(fs.readFileSync(orig));
   const hashTran = sha1Hex(fs.readFileSync(tran));
-  const modIdOrig = upsertMod(db, path.basename(orig), path.resolve(orig), hashOrig);
-  const modIdTran = upsertMod(db, path.basename(tran), path.resolve(tran), hashTran);
+  const modIdOrig = await upsertMod(db, path.basename(orig), path.resolve(orig), hashOrig);
+  const modIdTran = await upsertMod(db, path.basename(tran), path.resolve(tran), hashTran);
 
-  const leftIds = ingestCsvRows(db, modIdOrig, left,  argv.srcLang as string, 'native');
+  const leftIds = await ingestCsvRows(db, modIdOrig, left,  argv.srcLang as string, 'native');
   void ingestCsvRows(db, modIdTran, right, argv.tgtLang as string, 'native');
 
   const pairs = await alignPairs(left, right, { fuzzyMin: 85, fuzzyStrong: 90, useEmbeddings: false });
@@ -124,7 +124,7 @@ for (const spec of (argv.pair as string[])) {
   for (const p of pairs) {
     const srcStrId = leftIds[p.leftIndex].stringId;
     const tgtText  = right[p.rightIndex].Source;
-    addTranslation(db, srcStrId, argv.tgtLang as string, tgtText,
+    await addTranslation(db, srcStrId, argv.tgtLang as string, tgtText,
       p.method === 'rapidfuzz' ? 'fuzzy' : 'tm', p.score, p.method);
   }
   log.info(`Learned from pair ${path.basename(orig)}:${path.basename(tran)} → ${pairs.length} aligned rows`);

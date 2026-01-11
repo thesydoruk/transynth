@@ -4,7 +4,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { translateBatch } from '../llm/translate.js';
 import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholders.js';
-import { openDb, bestTranslation, addTranslation, findStringId } from '../db.js';
+import { openDb, bestTranslation, addTranslation, findStringId, closeDb } from '../db.js';
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 import { readCsv, csvRow } from '../utils/csv.js';
 import { log } from '../logger.js';
@@ -79,9 +79,9 @@ async function flush() {
     outTexts[i] = restored;
 
     const r = rows[i];
-    const srcStrId = findStringId(db, r.FormID, r.Path, argv.srcLang as string);
+    const srcStrId = await findStringId(db, r.FormID, r.Path, argv.srcLang as string);
     if (srcStrId !== undefined) {
-      addTranslation(db, srcStrId, argv.tgtLang as string, restored, 'auto', null, 'model', getTranslateModel());
+      await addTranslation(db, srcStrId, argv.tgtLang as string, restored, 'auto', null, 'model', getTranslateModel());
     }
   }
   batch.length = 0; metas.length = 0;

@@ -35,12 +35,12 @@ function csvFilePath(fileName: string) {
 }
 
 export async function csvRoutes(app: FastifyInstance, db: Tx) {
-  ensureCsvImportSchema(db);
+  await ensureCsvImportSchema(db);
   ensureUploadDir();
 
   // ── List all CSV import jobs ──────────────────────────────────────────────
   app.get('/api/csv', async () => {
-    const jobs = listCsvImportJobs(db);
+    const jobs = await listCsvImportJobs(db);
     return jobs.map(j => ({
       ...j,
       running: isCsvImportRunning(j.id),
@@ -67,7 +67,7 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
       fs.renameSync(tmpPath, finalPath);
 
       const text = fs.readFileSync(finalPath, 'utf8');
-      const job = registerCsvFile(db, origName, text);
+      const job = await registerCsvFile(db, origName, text);
 
       return reply.status(201).send({ ...job, running: false });
     } catch (err: unknown) {
@@ -83,7 +83,7 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
     Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
   }>('/api/csv/:id/preview', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getCsvImportJob(db, jobId);
+    const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
     const filePath = csvFilePath(job.file_name);
@@ -127,22 +127,22 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
     '/api/csv/:id',
     async (req, reply) => {
       const jobId = Number(req.params.id);
-      const job = getCsvImportJob(db, jobId);
+      const job = await getCsvImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (isCsvImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
       if (srcLang && tgtLang) {
-        updateCsvJobLanguages(db, jobId, srcLang, tgtLang);
+        await updateCsvJobLanguages(db, jobId, srcLang, tgtLang);
       }
-      return getCsvImportJob(db, jobId);
+      return await getCsvImportJob(db, jobId);
     },
   );
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/csv/:id/import', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getCsvImportJob(db, jobId);
+    const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
     if (isCsvImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
@@ -162,9 +162,9 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
       reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
-    setImmediate(() => {
+    (async () => {
       try {
-        const result = runCsvImport(db, job, text, (imported, total) => {
+        const result = await runCsvImport(db, job, text, (imported, total) => {
           send({ type: 'progress', imported, total, jobId });
         });
         send({ type: 'done', job: { ...result, running: false } });
@@ -173,7 +173,7 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
       } finally {
         reply.raw.end();
       }
-    });
+    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
@@ -195,13 +195,13 @@ export async function csvRoutes(app: FastifyInstance, db: Tx) {
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/api/csv/:id', async (req, reply) => {
     const jobId = Number(req.params.id);
-    const job = getCsvImportJob(db, jobId);
+    const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (isCsvImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
 
     const filePath = csvFilePath(job.file_name);
     try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
-    deleteCsvImportJob(db, jobId);
+    await deleteCsvImportJob(db, jobId);
 
     return { ok: true };
   });

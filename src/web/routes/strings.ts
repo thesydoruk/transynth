@@ -23,7 +23,7 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
       return reply.code(400).send({ error: 'modId is required' });
     }
 
-    const result = listStrings(db, {
+    const result = await listStrings(db, {
       modId,
       status: req.query.status,
       query: req.query.q,
@@ -41,7 +41,7 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'modId is required' });
     }
-    return reply.send(listSignatures(db, modId));
+    return reply.send(await listSignatures(db, modId));
   });
 
   // PATCH /api/strings/:stringId/translation — save inline edit
@@ -59,12 +59,12 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
       return reply.code(400).send({ error: 'text is required' });
     }
 
-    const result = upsertTranslation(db, stringId, text, status);
+    const result = await upsertTranslation(db, stringId, text, status);
 
     // Propagate to all strings with the same normalised source text
-    const textNorm = getStringTextNorm(db, stringId);
+    const textNorm = await getStringTextNorm(db, stringId);
     if (textNorm) {
-      propagateTranslation(db, textNorm, text, 'uk', stringId);
+      await propagateTranslation(db, textNorm, text, 'uk', stringId);
     }
 
     return reply.send(result);
@@ -79,13 +79,11 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
     if (!translationId || !status) {
       return reply.code(400).send({ error: 'translationId and status are required' });
     }
-    updateTranslationStatus(db, translationId, status);
+    await updateTranslationStatus(db, translationId, status);
     return reply.send({ ok: true });
   });
 
   // POST /api/strings/translate — batch LLM translate with SSE progress stream
-  // Response: text/event-stream  data: {"type":"progress","done":N,"total":M,"result":{...}}
-  //          data: {"type":"done","results":[...]}
   app.post<{
     Body: { stringIds: number[]; targetLang?: string };
   }>('/api/strings/translate', async (req, reply) => {
@@ -98,15 +96,14 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
     }
 
     // Load glossary terms to inject into system prompt
-    const glossaryRows = db
-      .prepare(
-        `SELECT term FROM glossary WHERE lang = ? ORDER BY count DESC LIMIT 80`,
-      )
-      .all(targetLang) as Array<{ term: string }>;
+    const { rows: glossaryRows } = await db.query(
+      `SELECT term FROM glossary WHERE lang = $1 ORDER BY count DESC LIMIT 80`,
+      [targetLang],
+    );
 
     const glossaryHint =
       glossaryRows.length > 0
-        ? `\n\nKey terminology to preserve:\n${glossaryRows.map((g) => `- ${g.term}`).join('\n')}`
+        ? `\n\nKey terminology to preserve:\n${glossaryRows.map((g: { term: string }) => `- ${g.term}`).join('\n')}`
         : '';
 
     const systemPrompt = `You are a professional Fallout 4 game localizer. Translate from English to ${targetLang}. Output only the translated text, nothing else.${glossaryHint}`;
@@ -130,11 +127,12 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
 
     for (let i = 0; i < stringIds.length; i++) {
       const stringId = stringIds[i];
-      const row = db
-        .prepare(`SELECT text_raw FROM strings WHERE id = ? AND lang = 'en'`)
-        .get(stringId) as { text_raw: string } | undefined;
+      const { rows: strRows } = await db.query(
+        `SELECT text_raw FROM strings WHERE id = $1 AND lang = 'en'`,
+        [stringId],
+      );
 
-      if (!row) {
+      if (!strRows[0]) {
         const r = { stringId, error: 'not found' };
         results.push(r);
         send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
@@ -146,11 +144,11 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
           model: CONFIG.translateModel,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: row.text_raw },
+            { role: 'user', content: strRows[0].text_raw },
           ],
         });
 
-        upsertTranslation(db, stringId, translated, 'auto');
+        await upsertTranslation(db, stringId, translated, 'auto');
         const r = { stringId, text: translated };
         results.push(r);
         send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });

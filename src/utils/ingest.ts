@@ -4,18 +4,20 @@ import { normalizeForHash } from './textNorm.js';
 import { sha1Hex } from './hash.js';
 import type { CsvRow } from '../types.js';
 
-export function ingestCsvRows(
+export async function ingestCsvRows(
   db: Tx,
   modId: number,
   rows: CsvRow[],
   lang: string,
   sourceKind: string
-): { recordId: number; stringId: number }[] {
-  return rows.map(r => {
+): Promise<{ recordId: number; stringId: number }[]> {
+  const results: { recordId: number; stringId: number }[] = [];
+  for (const r of rows) {
     const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
     const hashNorm = sha1Hex(normalizeForHash(r.Source));
-    const recId = upsertRecord(db, modId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-    const strId = insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
-    return { recordId: recId, stringId: strId };
-  });
+    const recId = await upsertRecord(db, modId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+    const strId = await insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
+    results.push({ recordId: recId, stringId: strId });
+  }
+  return results;
 }
