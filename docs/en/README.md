@@ -8,7 +8,7 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
 | Component | Description |
 |-----------|-------------|
-| **xEdit integration** | Headless export / import of strings via FO4Edit + Pascal scripts |
+| **Native plugin parser** | Read and write ESP/ESM/ESL plugins, BA2 archives, and STRINGS files natively — no external tools needed |
 | **LLM translation** | Batch translation via Ollama (primary) or OpenAI with placeholder masking (`%d`, `{Name}`, `<br>`) and glossary term protection |
 | **Translation Memory** | SQLite + FTS5: accumulating translations with statuses `human > tm > fuzzy > auto` |
 | **TM learning** | Learning from pairs (original ↔ translated) and from multi-lingual mods with locale auto-detection |
@@ -26,25 +26,20 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 │       │              │                  │              │
 │  ┌────▼──────────────▼──────────────────▼───────────┐  │
 │  │  Core modules                                    │  │
-│  │  llm/  align/  utils/  db.ts  config.ts          │  │
+│  │  llm/  align/  utils/  bethesda/  db.ts  config  │  │
 │  └────┬─────────────────────────────────────────────┘  │
-│       │                                                │
-│  ┌────▼──────────────────────────────────────────────┐ │
-│  │  xedit/ — Pascal scripts + Node spawn wrapper    │ │
-│  └───────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────┘
-         │                          │
-    ┌────▼────┐              ┌──────▼──────┐
-    │ SQLite  │              │ FO4Edit.exe │
-    │ (local) │              │ (host only) │
-    └─────────┘              └─────────────┘
+└───────┼────────────────────────────────────────────────┘
+        │
+   ┌────▼────┐
+   │ SQLite  │
+   │ (local) │
+   └─────────┘
 ```
 
 ## Requirements
 
 - **Node.js** ≥ 18 (20 LTS recommended)
 - **Python** ≥ 3.10 (for `better-sqlite3` native addon compilation)
-- **FO4Edit** (xEdit) — for export / apply (Windows-only, downloadable via `npm run xedit:download`)
 - **Ollama** — local LLM server (primary translation backend), `http://localhost:11434`
 - **Docker** (optional) — for unified dev environment without manual Python installation
 
@@ -71,8 +66,6 @@ npm run db:init              # create SQLite schema
 
 ```bash
 npm run learn:pairs -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
   --pair "D:\mods\Orig.esp:D:\mods\Uk.esp" \
   --srcLang en --tgtLang uk
 ```
@@ -81,8 +74,6 @@ npm run learn:pairs -- \
 
 ```bash
 npm run learn:multilang -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
   --mod "D:\mods\BigQuest.esp" \
   --extraLocales uk,zh
 ```
@@ -102,21 +93,10 @@ npm run translate -- \
 
 ```bash
 npm run replace -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
-  --applier "./xedit/ApplyTranslationsInPlace.pas" \
   --mod "D:\mods\MyMod.esp" \
   --outDir "D:\out" \
   --style configs/style.uk.md \
   --glossary configs/glossary_base.uk.txt
-```
-
-### 5. Download xEdit
-
-```bash
-npm run xedit:download
-# or with a specific tag:
-npm run xedit:download -- --tag v4.1.5
 ```
 
 ## Configuration
@@ -133,7 +113,6 @@ npm run xedit:download -- --tag v4.1.5
 | `OPENAI_EMBED_MODEL` | `text-embedding-3-large` | OpenAI embedding model (for alignment) |
 | `DATABASE_PATH` | `./localizer.sqlite` | Path to SQLite database |
 | `DEBUG` | — | Any value enables debug logs |
-| `GITHUB_TOKEN` | — | GitHub token (for `xedit:download` without rate-limit) |
 
 ### npm scripts
 
@@ -144,8 +123,7 @@ npm run xedit:download -- --tag v4.1.5
 | `learn:pairs` | Learn TM from original + translated pair |
 | `learn:multilang` | Learn TM from a multi-lingual mod |
 | `translate` | Translate CSV via LLM (Ollama / OpenAI) |
-| `replace` | Full pipeline: copy → export → translate → apply |
-| `xedit:download` | Download xEdit (FO4Edit) from GitHub |
+| `replace` | Full pipeline: read → translate → write patched plugin |
 
 ## Project structure
 
@@ -163,6 +141,12 @@ npm run xedit:download -- --tag v4.1.5
 │   │   ├── learnFromMultilangMod.ts
 │   │   ├── translateMod.ts
 │   │   └── replaceFlow.ts
+│   ├── bethesda/             # Native Bethesda format parsers
+│   │   ├── espReader.ts
+│   │   ├── espWriter.ts
+│   │   ├── ba2Reader.ts
+│   │   ├── stringsFile.ts
+│   │   └── knownStrings.ts
 │   ├── llm/                  # LLM providers (Ollama, OpenAI)
 │   │   ├── client.ts
 │   │   ├── translate.ts
@@ -175,14 +159,10 @@ npm run xedit:download -- --tag v4.1.5
 │   │   ├── hash.ts
 │   │   ├── placeholders.ts
 │   │   └── textNorm.ts
-│   ├── xedit/                # xEdit process runners
-│   │   ├── runExport.ts
-│   │   └── runApply.ts
 │   ├── config.ts
 │   ├── db.ts
 │   ├── logger.ts
 │   └── types.ts
-├── xedit/                    # Pascal scripts for xEdit
 ├── scripts/                  # Helper scripts
 ├── sql/                      # SQLite schema
 └── bin/                      # Shell/bat wrappers

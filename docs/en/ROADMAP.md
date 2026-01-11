@@ -14,7 +14,7 @@ The foundation and core features are fully functional:
 
 | Area | What works |
 |------|-----------|
-| **Plugin I/O** | Export all translatable strings from ESP/ESM → CSV via xEdit Pascal script; apply translated CSV back into plugin in-place (map-based O(1) lookup, RFC 4180 parser) |
+| **Plugin I/O** | Native ESP/ESM/ESL + BA2 + STRINGS parser: extract all translatable strings, apply translations back into plugin; works on any OS with no external dependencies |
 | **LLM translation** | Ollama (local, free) and OpenAI providers; placeholder & glossary masking; batch processing; exponential-backoff retry; auto-fallback between providers |
 | **Translation Memory** | Learn TM from mod pairs (original + translated) or multilingual mods (auto-detect up to 8 locales, collapse clones); 5-pass alignment: hash → EDID → path → fuzzy → embeddings |
 | **TM auto-apply** | Fill untranslated strings from TM by anchor (FormID+Path), EDID, or normalized text match — with confidence scores |
@@ -49,20 +49,20 @@ The foundation and core features are fully functional:
 - [ ] **E2E test** — export → translate → apply round-trip on a real small mod
 - [ ] **Edge-case handling** — empty plugins, mods with no STRINGS, CSV with only headers, Unicode edge cases (CJK, RTL)
 - [ ] **User documentation** — setup guide (Windows / Docker), step-by-step "translate your first mod" tutorial
-- [ ] **Error UX** — meaningful error messages in Web UI (LLM unavailable, mod import failed, xEdit not found)
+- [ ] **Error UX** — meaningful error messages in Web UI (LLM unavailable, mod import failed, unsupported plugin format)
 
 ---
 
 ## Milestone 3 — Native Plugin Parser 🔧 `v1.2`
 
-> Read and write ESP/ESM/BA2/STRINGS without xEdit dependency. Fully autonomous operation on any OS.
+> Read and write ESP/ESM/BA2/STRINGS natively. Fully autonomous operation on any OS.
 
 - [x] **STRINGS reader** — parse `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files (binary format: `count(u32) + dataSize(u32) + entries[{id:u32, offset:u32}] + textBlob`)
 - [x] **STRINGS writer** — generate new STRINGS files with translated text
 - [x] **BA2 reader** — unpack Bethesda Archive 2 (GNRL type), zlib decompression of individual files; extract STRINGS from BA2
 - [x] **ESP/ESM reader** — parse binary format: `TES4 → GRUP → Record → Subrecord`; extract translatable subrecords with context (FormID, EDID, Signature, Path); handle zlib-compressed records; localized vs embedded strings
 - [x] **ESP/ESM writer** — modify subrecords with translations, recalculate record sizes, preserve compressed records
-- [x] **CLI import** — `src/cli/importMod.ts`: native mod import without xEdit; xEdit remains as fallback
+- [x] **CLI import** — `src/cli/importMod.ts`: native mod import
 - [x] **Unit tests** — round-trip STRINGS read→write, BA2 extraction, ESP record parsing on test mod
 
 ---
@@ -72,7 +72,7 @@ The foundation and core features are fully functional:
 > Process multiple mods, import existing translations, drag-and-drop.
 
 - [ ] **Batch mod import** — upload / scan a directory of ESPs, register all in DB, show in mod list
-- [ ] **Drag-and-drop mod upload** — drop ESP/ESM file onto Web UI → auto-export via xEdit → ready to translate
+- [ ] **Drag-and-drop mod upload** — drop ESP/ESM file onto Web UI → auto-import → ready to translate
 - [ ] **Import existing translation** — load a pre-translated ESP as target, align against original, populate TM
 - [ ] **Mod update workflow** — re-import updated mod, auto-match previously translated strings, highlight new/changed (diff in editor)
 - [ ] **Export translated plugin** — one-click "Build" button in Web UI: apply translations → download localized ESP
@@ -134,8 +134,8 @@ The foundation and core features are fully functional:
 
 > Beyond Fallout 4.
 
-- [ ] **Skyrim SE / AE support** — parameterize xEdit family (`SSEEdit`), test with Skyrim plugins
-- [ ] **Starfield support** — `SFEdit`, adapt to Starfield's record structures
+- [ ] **Skyrim SE / AE support** — adapt parser to Skyrim record structures, test with Skyrim plugins
+- [ ] **Starfield support** — SFEdit-compatible record structures, adapt parser
 - [ ] **Oblivion / Fallout 3 / NV** — community demand-driven
 - [ ] **PostgreSQL backend** — optional migration from SQLite for large-scale community deployments
 - [ ] **Plugin API** — extension points for custom LLM providers, custom file formats, custom alignment strategies
@@ -148,7 +148,7 @@ The foundation and core features are fully functional:
 |---|---|---|
 | Platform | Windows desktop (Delphi) | Web (any OS, browser) |
 | Source code | Closed | Open-source |
-| Load ESP/ESM/ESL | Native parser | Native parser + xEdit as fallback (Milestone 3) |
+| Load ESP/ESM/ESL | Native parser | Native parser (built-in) |
 | Translation engine | Google Translate, DeepL, ChatGPT | Ollama (local, free), OpenAI (cloud); pluggable providers |
 | Translation Memory | BDD files, per-game static databases | SQLite TM, learned from any mod pair, auto-aligned |
 | Matching algorithm | FormID, EDID, text match | 5-pass: hash → EDID → path → fuzzy (fuzzball) → embeddings |
@@ -161,5 +161,5 @@ The foundation and core features are fully functional:
 | Multi-user review | No | Planned (Milestone 8) |
 | Translation propagation | No | Yes (auto-fills identical strings) |
 | SSE live progress | No | Yes (Server-Sent Events) |
-| BSA/BA2 reading | Yes | Yes (native BA2 reader, Milestone 3) |
+| BSA/BA2 reading | Yes | Yes (native BA2 reader) |
 | Script decompilation | Yes (partial) | Out of scope |

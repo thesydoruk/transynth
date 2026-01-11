@@ -48,22 +48,19 @@ import path from 'path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { openDb, upsertMod, addTranslation, closeDb } from '../db.js';
+import { openDb, upsertMod, addTranslation } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
 import type { CsvRow } from '../types.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { getEmbedModel } from '../config.js';
-import { readCsv } from '../utils/csv.js';
-import { exportForLocale } from '../xedit/runExport.js';
 import { log } from '../logger.js';
 import { ingestCsvRows } from '../utils/ingest.js';
+import { EspReader } from '../bethesda/espReader.js';
+import { Ba2Reader } from '../bethesda/ba2Reader.js';
+import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
 
 // ---------- Constants ----------
-
-// Official Fallout 4 locales (Steam/GOG)
-const OFFICIAL_LOCALES = ['en', 'fr', 'it', 'de', 'es', 'pl', 'ru', 'ja'] as const;
-type OfficialLocale = typeof OFFICIAL_LOCALES[number];
 
 // Minimal share of "real" text required to treat a locale as present
 const MIN_COVERAGE = 0.02; // 2%
@@ -74,12 +71,11 @@ const DEFAULT_CANONICAL_PREFERENCE = ['en','fr','it','de','es','pl','ru','ja'];
 // ---------- CLI ----------
 
 const argv = await yargs(hideBin(process.argv))
-  .option('xedit',     { type: 'string', demandOption: true,  desc: 'Path to FO4Edit executable (xEdit)' })
-  .option('exporter',  { type: 'string', demandOption: true,  desc: 'Path to ExportTextForTranslation.pas' })
   .option('mod',       { type: 'string', demandOption: true,  desc: 'Path to plugin (esm/esp/esl)' })
+  .option('ba2',       { type: 'string',                      desc: 'Path to BA2 archive (auto-detected if omitted)' })
   .option('locales',   { type: 'string',                      desc: 'Comma-separated locales to use (override auto-detection)' })
-  .option('extraLocales', { type: 'string',                   desc: 'Comma-separated extra locales to add to auto-detected set (e.g., uk, zh)' })
-  .option('canonicalPrefer', { type: 'string',                desc: 'Comma-separated priority order to keep among clones; defaults to en,fr,it,de,es,pl,ru,ja,(extras as given)' })
+  .option('extraLocales', { type: 'string',                   desc: 'Comma-separated extra locales to check in addition to auto-detected set' })
+  .option('canonicalPrefer', { type: 'string',                desc: 'Comma-separated priority order to keep among clones; defaults to en,fr,it,de,es,pl,ru,ja' })
   .option('pairs',     { type: 'array',                       desc: 'Optional forced pairs (e.g., en:uk,ru:uk). Default: all combinations src!=tgt among accepted (non-aliased) locales' })
   .option('tmpDir',    { type: 'string', default: '',         desc: 'Working directory for CSV exports (default: mkdtemp)' })
   .option('fuzzyMin',  { type: 'number', default: 85,         desc: 'Fuzzy minimum score (0..100) to consider for embedding rerank' })
@@ -133,26 +129,84 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
 // ---------- Main ----------
 
 (async () => {
-  const xedit = argv.xedit as string;
-  const exporter = argv.exporter as string;
   const modPath = argv.mod as string;
-
-  const workingDir = argv.tmpDir ? path.resolve(argv.tmpDir) : fs.mkdtempSync(path.join(process.cwd(), 'ml_'));
-  if (!fs.existsSync(workingDir)) fs.mkdirSync(workingDir, { recursive: true });
 
   const db = openDb();
   const modName = path.basename(modPath);
   const modHash = sha1Hex(fs.readFileSync(modPath));
   const modId = await upsertMod(db, modName, path.resolve(modPath), modHash);
 
-  // Resolve candidate locales
+  // Parse ESP
+  const esp = new EspReader(modPath);
+  const espRows = esp.extractStrings();
+
+  if (!esp.info.isLocalized) {
+    log.info('Plugin is not localized — only one locale available (embedded text).');
+    // Build CsvRow[] from embedded text
+    const rows: CsvRow[] = espRows
+      .filter(r => r.text)
+      .map(r => ({
+        FormID: r.formId,
+        Signature: r.signature,
+        EDID: r.edid || undefined,
+        Path: `${r.signature}\\${r.path}`,
+        Source: r.text,
+      }));
+    if (rows.length === 0) { log.info('No strings. Exiting.'); process.exit(0); }
+    rows.forEach(r => { (r as any).Hash = sha1Hex(normalizeForHash(r.Source)); });
+    await ingestCsvRows(db, modId, rows, 'en', 'native');
+    log.info(`Ingested ${rows.length} embedded strings as locale "en".`);
+    process.exit(0);
+  }
+
+  // Locate BA2
+  function findBa2(p: string): string | null {
+    const dir = path.dirname(p);
+    const stem = path.basename(p, path.extname(p));
+    for (const c of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
+      const full = path.join(dir, c);
+      if (fs.existsSync(full)) return full;
+    }
+    return null;
+  }
+
+  const ba2Path = argv.ba2 ? path.resolve(argv.ba2 as string) : findBa2(modPath);
+  if (!ba2Path || !fs.existsSync(ba2Path)) {
+    log.error('Localized plugin requires a BA2 archive (--ba2 or auto-detected next to the ESP).');
+    process.exit(1);
+  }
+
+  // Load all locales from BA2
+  const ba2 = new Ba2Reader(ba2Path);
+  const localesMap = new Map<string, Map<number, string>>();
+
+  const stringsEntries = [
+    ...ba2.listByExt('strings'),
+    ...ba2.listByExt('dlstrings'),
+    ...ba2.listByExt('ilstrings'),
+  ];
+
+  for (const entry of stringsEntries) {
+    const base = (entry.name.replace(/\\/g, '/').split('/').pop() ?? '').toLowerCase();
+    const m = base.match(/_([a-z]+)\.(strings|dlstrings|ilstrings)$/);
+    if (!m) continue;
+    const locale = m[1];
+    const type = stringsTypeFromPath(entry.name);
+    const map = parseStringsBuffer(ba2.extractEntry(entry), type);
+    if (!localesMap.has(locale)) localesMap.set(locale, new Map());
+    const localeMap = localesMap.get(locale)!;
+    for (const [id, text] of map) localeMap.set(id, text);
+  }
+
+  // Determine which locales to process
   let localesToTry: string[];
-  let extras: string[]|null = null;
+  let extras: string[] | null = null;
 
   if (argv.locales) {
     localesToTry = (argv.locales as string).split(',').map(s => s.trim()).filter(Boolean);
   } else {
-    localesToTry = [...OFFICIAL_LOCALES];
+    // Auto-detect from BA2 contents
+    localesToTry = [...localesMap.keys()];
     if (argv.extraLocales) {
       extras = (argv.extraLocales as string).split(',').map(s => s.trim()).filter(Boolean);
       for (const e of extras) if (!localesToTry.includes(e)) localesToTry.push(e);
@@ -161,29 +215,39 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
 
   const canonicalOrder = buildPreference(extras, argv.canonicalPrefer as string | undefined);
 
-  // Pass 1: export each locale, summarize
-  type Probe = { locale: string; rows: CsvRow[]; hash: string; coverage: number; csv: string };
+  // Build CsvRow[] per locale from ESP rows + strings map
+  type Probe = { locale: string; rows: CsvRow[]; hash: string; coverage: number };
   const probes: Probe[] = [];
 
   for (const loc of localesToTry) {
-    const outCsv = path.join(workingDir, `${modName}.${loc}.csv`);
-    try {
-      const ok = await exportForLocale(xedit, exporter, modPath, loc, outCsv);
-      if (!ok) {
-        log.info(`[detect] ${loc}: no rows exported (unsupported or empty)`);
-        continue;
-      }
-      const rows = readCsv(outCsv);
-      const { coverage, hash } = summarizeLocale(rows);
-      probes.push({ locale: loc, rows, hash, coverage, csv: outCsv });
-      log.info(`[detect] ${loc}: exported ${rows.length} rows, coverage ${(coverage*100).toFixed(1)}%`);
-    } catch (err: any) {
-      log.warn(`[detect] ${loc}: error during export: ${err?.message || err}`);
+    const strMap = localesMap.get(loc);
+    if (!strMap || strMap.size === 0) {
+      log.info(`[detect] ${loc}: no strings found in BA2`);
+      continue;
     }
+
+    const rows: CsvRow[] = [];
+    for (const r of espRows) {
+      if (!r.isLstringId) continue;
+      const id = parseInt(r.text, 10);
+      const text = strMap.get(id);
+      if (!text) continue;
+      rows.push({
+        FormID: r.formId,
+        Signature: r.signature,
+        EDID: r.edid || undefined,
+        Path: `${r.signature}\\${r.path}`,
+        Source: text,
+      });
+    }
+
+    const { coverage, hash } = summarizeLocale(rows);
+    probes.push({ locale: loc, rows, hash, coverage });
+    log.info(`[detect] ${loc}: ${rows.length} rows, coverage ${(coverage * 100).toFixed(1)}%`);
   }
 
   if (probes.length === 0) {
-    log.info(`No locales could be exported. Exiting.`);
+    log.info('No locales found. Exiting.');
     process.exit(0);
   }
 
@@ -251,7 +315,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   // Pass 3: ingest kept locales into DB
   const idsPerLocale: Record<string,{recordId:number,stringId:number}[]> = {};
   for (const k of kept) {
-    idsPerLocale[k.locale] = await ingestCsvRows(db, modId, k.rows, k.locale, 'builtin');
+    idsPerLocale[k.locale] = await ingestCsvRows(db, modId, k.rows, k.locale, 'native');
     log.info(`[ingest] ${k.locale}: ${k.rows.length} rows inserted`);
   }
 

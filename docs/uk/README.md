@@ -8,7 +8,7 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 
 | Компонент | Опис |
 |-----------|------|
-| **xEdit integration** | Headless export / import рядків через FO4Edit + Pascal-скрипти |
+| **Нативний парсер плагінів** | Читання та запис ESP/ESM/ESL плагінів, BA2-архівів та STRINGS-файлів нативно — без зовнішніх інструментів |
 | **LLM translation** | Переклад батчами через Ollama (основний) або OpenAI з маскуванням placeholder'ів (`%d`, `{Name}`, `<br>`) та glossary-термінів |
 | **Translation Memory** | SQLite + FTS5: накопичення перекладів зі статусами `human > tm > fuzzy > auto` |
 | **TM learning** | Навчання з пар (оригінал ↔ переклад) та з мультимовних модів з автодетектом локалей |
@@ -26,25 +26,20 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 │       │              │                  │              │
 │  ┌────▼──────────────▼──────────────────▼───────────┐  │
 │  │  Core modules                                    │  │
-│  │  llm/  align/  utils/  db.ts  config.ts          │  │
+│  │  llm/  align/  utils/  bethesda/  db.ts  config  │  │
 │  └────┬─────────────────────────────────────────────┘  │
-│       │                                                │
-│  ┌────▼──────────────────────────────────────────────┐ │
-│  │  xedit/ — Pascal scripts + Node spawn wrapper    │ │
-│  └───────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────┘
-         │                          │
-    ┌────▼────┐              ┌──────▼──────┐
-    │ SQLite  │              │ FO4Edit.exe │
-    │ (local) │              │ (host only) │
-    └─────────┘              └─────────────┘
+└───────┼────────────────────────────────────────────────┘
+        │
+   ┌────▼────┐
+   │ SQLite  │
+   │ (local) │
+   └─────────┘
 ```
 
 ## Вимоги
 
 - **Node.js** ≥ 18 (рекомендується 20 LTS)
 - **Python** ≥ 3.10 (для компіляції `better-sqlite3` native addon)
-- **FO4Edit** (xEdit) — для export / apply (Windows-only, завантажується скриптом `npm run xedit:download`)
 - **Ollama** — локальний LLM-сервер (основний бекенд перекладу), `http://localhost:11434`
 - **Docker** (опціонально) — для уніфікованого dev-середовища без ручного встановлення Python
 
@@ -71,8 +66,6 @@ npm run db:init              # створити SQLite-схему
 
 ```bash
 npm run learn:pairs -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
   --pair "D:\mods\Orig.esp:D:\mods\Uk.esp" \
   --srcLang en --tgtLang uk
 ```
@@ -81,8 +74,6 @@ npm run learn:pairs -- \
 
 ```bash
 npm run learn:multilang -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
   --mod "D:\mods\BigQuest.esp" \
   --extraLocales uk,zh
 ```
@@ -102,21 +93,10 @@ npm run translate -- \
 
 ```bash
 npm run replace -- \
-  --xedit "D:\Tools\FO4Edit\FO4Edit.exe" \
-  --exporter "./xedit/ExportTextForTranslation.pas" \
-  --applier "./xedit/ApplyTranslationsInPlace.pas" \
   --mod "D:\mods\MyMod.esp" \
   --outDir "D:\out" \
   --style configs/style.uk.md \
   --glossary configs/glossary_base.uk.txt
-```
-
-### 5. Завантаження xEdit
-
-```bash
-npm run xedit:download
-# або з конкретним тегом:
-npm run xedit:download -- --tag v4.1.5
 ```
 
 ## Конфігурація
@@ -133,7 +113,6 @@ npm run xedit:download -- --tag v4.1.5
 | `OPENAI_EMBED_MODEL` | `text-embedding-3-large` | Модель OpenAI для ембедингів (alignment) |
 | `DATABASE_PATH` | `./localizer.sqlite` | Шлях до SQLite бази |
 | `DEBUG` | — | Будь-яке значення вмикає debug-логи |
-| `GITHUB_TOKEN` | — | Токен GitHub (для `xedit:download` без rate-limit) |
 
 ### npm scripts
 
@@ -144,8 +123,7 @@ npm run xedit:download -- --tag v4.1.5
 | `learn:pairs` | Навчання TM з пари оригінал + переклад |
 | `learn:multilang` | Навчання TM з мультимовного моду |
 | `translate` | Переклад CSV через LLM (Ollama / OpenAI) |
-| `replace` | Повний pipeline: copy → export → translate → apply |
-| `xedit:download` | Завантажити xEdit (FO4Edit) з GitHub |
+| `replace` | Повний pipeline: зчитування → переклад → запис патченого плагіна |
 
 ## Структура проекту
 
@@ -159,15 +137,14 @@ npm run xedit:download -- --tag v4.1.5
 │       └── ROADMAP.md
 ├── src/
 │   ├── cli/                  # CLI entry-points
+│   ├── bethesda/             # Нативні парсери форматів Bethesda
 │   ├── llm/                  # LLM провайдери (Ollama, OpenAI)
 │   ├── align/                # Алгоритми вирівнювання
 │   ├── utils/                # Допоміжні утиліти
-│   ├── xedit/                # xEdit process runners
 │   ├── config.ts             # конфігурація з .env
 │   ├── db.ts                 # SQLite operations
 │   ├── logger.ts             # логер
 │   └── types.ts              # типи
-├── xedit/                    # Pascal-скрипти для xEdit
 ├── scripts/                  # Допоміжні скрипти
 ├── sql/                      # SQLite schema (DDL)
 ├── bin/                      # Shell/bat обгортки

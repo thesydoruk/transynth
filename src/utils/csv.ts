@@ -60,7 +60,7 @@ export function csvRow(fields: string[]): string {
 }
 
 /**
- * Read a CSV file exported by ExportTextForTranslation.pas into CsvRow[].
+ * Read a CSV file into CsvRow[].
  * Column mapping is derived from the header row (order-independent).
  */
 export function readCsv(filePath: string): CsvRow[] {

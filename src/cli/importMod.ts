@@ -2,7 +2,7 @@
 /**
  * importMod.ts
  *
- * Native mod import — reads strings directly from ESP/ESM/ESL + BA2 without xEdit.
+ * Native mod import — reads strings directly from ESP/ESM/ESL + BA2.
  *
  * Modes
  * -----

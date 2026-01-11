@@ -16,7 +16,6 @@
 
 - Use Docker wherever appropriate.
 - **Appropriate:** dev environment, CI/CD, CLI pipeline (translate, learn, db:init).
-- **Not appropriate:** xEdit (FO4Edit) — Windows-only GUI, stays on the host.
 - Dockerfile(s) in root or `.docker/`.
 - docker-compose.yml for orchestration.
 - .dockerignore is mandatory.

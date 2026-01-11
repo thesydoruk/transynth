@@ -108,7 +108,7 @@ const glossary = argv.glossary && fs.existsSync(argv.glossary as string)
   ? fs.readFileSync(argv.glossary as string, 'utf8').split(/\r?\n/).filter(Boolean) : [];
 
 const results: string[] = new Array(items.length);
-type Pending = { text: string; ph: Map<string,string>; gl: Map<string,string>; idx: number };
+type Pending = { text: string; ph: Record<string,string>; gl: Record<string,string>; idx: number };
 const pending: Pending[] = [];
 
 async function flush() {
@@ -172,100 +172,4 @@ if (esp.info.isLocalized) {
   const patched = patchEsp(fs.readFileSync(modPath), patches);
   fs.writeFileSync(copyPath, patched);
   log.info(`Done. Patched ESP: ${copyPath} (${patches.length} changes)`);
-}
-
-
-const argv = await yargs(hideBin(process.argv))
-  .option('xedit', { type: 'string', demandOption: true })
-  .option('exporter', { type: 'string', demandOption: true })
-  .option('applier', { type: 'string', demandOption: true })
-  .option('mod', { type: 'string', demandOption: true })
-  .option('outDir', { type: 'string', demandOption: true })
-  .option('srcLang', { type: 'string', default: 'en' })
-  .option('tgtLang', { type: 'string', default: 'uk' })
-  .option('style', { type: 'string' })
-  .option('glossary', { type: 'string' })
-  .parse();
-
-validateConfig();
-const modPath = argv.mod as string;
-
-for (const [flag, val] of [['--xedit', argv.xedit], ['--exporter', argv.exporter], ['--applier', argv.applier], ['--mod', argv.mod]] as [string, string][]) {
-  if (!fs.existsSync(val)) {
-    log.error(`File not found for ${flag}: ${val}`);
-    process.exit(1);
-  }
-}
-
-ensureDir(argv.outDir as string);
-const copyPath = path.join(argv.outDir as string, path.basename(modPath));
-copyFileSafe(modPath, copyPath);
-
-const work = path.join(argv.outDir as string, '_work');
-ensureDir(work);
-const csvSrc = path.join(work, 'strings.src.csv');
-const csvTgt = path.join(work, `strings.${argv.tgtLang}.csv`);
-
-try {
-  await runXEditExport(argv.xedit as string, argv.exporter as string, modPath, csvSrc);
-} catch (err: any) {
-  log.error(`xEdit export failed: ${err?.message || err}`);
-  process.exit(1);
-}
-
-const styleMd = argv.style && fs.existsSync(argv.style) ? fs.readFileSync(argv.style, 'utf8') : undefined;
-const glossary = argv.glossary && fs.existsSync(argv.glossary) ? fs.readFileSync(argv.glossary, 'utf8').split(/\r?\n/).filter(Boolean) : [];
-
-const rows = readCsv(csvSrc);
-const header = fs.readFileSync(csvSrc, 'utf8').split(/\r?\n/)[0]!;
-const tgtHeader = header.replace(/Source/i, argv.tgtLang as string);
-
-const batch: string[] = [];
-const metas: any[] = [];
-const out: string[] = [tgtHeader];
-
-for (const r of rows) {
-  const src = r.Source;
-  if (!/\p{L}/u.test(src)) {
-    const cols = [r.FormID, r.Signature];
-    if (r.EDID !== undefined) cols.push(r.EDID);
-    cols.push(r.Path, src, r.Hints || '');
-    out.push(csvRow(cols));
-    continue;
-  }
-  const { masked: m1, mapping: ph } = maskPlaceholders(src);
-  const { masked: m2, mapping: gl } = applyGlossaryMask(m1, glossary);
-  batch.push(m2);
-  metas.push({ row: r, ph, gl });
-  if (batch.length >= CONFIG.batchSize) await flush();
-}
-await flush();
-fs.writeFileSync(csvTgt, out.join('\n'), 'utf8');
-
-try {
-  await runXEditApply(argv.xedit as string, argv.applier as string, copyPath, csvTgt);
-} catch (err: any) {
-  log.error(`xEdit apply failed: ${err?.message || err}`);
-  process.exit(1);
-}
-log.info(`Done. Localized replacement: ${copyPath}`);
-
-async function flush() {
-  if (batch.length === 0) return;
-  let items: string[];
-  try {
-    items = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
-  } catch (err: any) {
-    log.error(`Translation failed: ${err?.message || err}`);
-    throw err;
-  }
-  for (let i=0;i<items.length;i++) {
-    const { row, ph, gl } = metas[i];
-    const restored = unmask(unmask(items[i], gl), ph);
-    const cols = [row.FormID, row.Signature];
-    if (row.EDID !== undefined) cols.push(row.EDID);
-    cols.push(row.Path, restored, row.Hints || '');
-    out.push(csvRow(cols));
-  }
-  batch.length = 0; metas.length = 0;
 }

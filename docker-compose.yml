@@ -22,8 +22,6 @@ services:
   # One-shot CLI runner — pass command as: docker compose run --rm cli npm run translate -- <args>
   cli:
     build: .
-    volumes:
-      - ./xedit:/app/xedit:ro
     env_file:
       - .env
     environment:

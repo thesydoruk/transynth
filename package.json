@@ -13,7 +13,7 @@
     "replace": "tsx src/cli/replaceFlow.ts",
     "import:eet": "tsx src/cli/importEet.ts",
     "eet2csv": "tsx src/cli/eet2csv.ts",
-    "xedit:download": "tsx scripts/getXEdit.ts --family fo4 --dest ./tools/xedit --extract",
+
     "lint": "eslint src/ scripts/",
     "lint:fix": "eslint src/ scripts/ --fix",
     "format": "prettier --write .",
