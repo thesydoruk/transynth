@@ -81,9 +81,12 @@ export async function listStrings(db: Tx, f: StringsFilter) {
 
   const where = conditions.join(' AND ');
 
-  const dataValues = [...values, pageSize, offset];
-  const limitIdx = idx;
-  const offsetIdx = idx + 1;
+  // Append targetLang, srcLang, pageSize, offset as the final parameters
+  const targetLangIdx = idx;
+  const srcLangIdx = idx + 1;
+  const limitIdx = idx + 2;
+  const offsetIdx = idx + 3;
+  const allValues = [...values, targetLang, srcLang, pageSize, offset];
 
   const { rows } = await db.query(
     `SELECT
@@ -103,20 +106,20 @@ export async function listStrings(db: Tx, f: StringsFilter) {
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $${idx}
+       ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
           AND t.id = (
             SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $${idx}
+            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
             ORDER BY CASE status
               WHEN 'human' THEN 1 WHEN 'tm' THEN 2
               WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 4 ELSE 5 END,
               COALESCE(confidence,0) DESC, created_at DESC
             LIMIT 1
           )
-     WHERE s.lang = $${idx + 1} AND ${where}
+     WHERE s.lang = $${srcLangIdx} AND ${where}
      ORDER BY r.signature, r.path
-     LIMIT $${limitIdx + 2} OFFSET $${offsetIdx + 2}`,
-    [...dataValues, targetLang, srcLang],
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    allValues,
   );
 
   const { rows: countRows } = await db.query(
@@ -124,8 +127,8 @@ export async function listStrings(db: Tx, f: StringsFilter) {
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $${idx}
-     WHERE s.lang = $${idx + 1} AND ${where}`,
+       ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+     WHERE s.lang = $${srcLangIdx} AND ${where}`,
     [...values, targetLang, srcLang],
   );
 
@@ -146,12 +149,20 @@ export async function listSignatures(db: Tx, modId: number, srcLang = 'en') {
 }
 
 export async function listModLangs(db: Tx, modId: number): Promise<string[]> {
+  // Source langs from strings table + target langs from translations table
   const { rows } = await db.query(
-    `SELECT DISTINCT s.lang
-     FROM strings s
-     JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1
-     ORDER BY s.lang`,
+    `SELECT DISTINCT lang FROM (
+       SELECT s.lang
+       FROM strings s JOIN records r ON s.record_id = r.id
+       WHERE r.mod_id = $1
+       UNION
+       SELECT t.target_lang AS lang
+       FROM translations t
+       JOIN strings s ON t.src_string_id = s.id
+       JOIN records r ON s.record_id = r.id
+       WHERE r.mod_id = $1
+     ) langs
+     ORDER BY lang`,
     [modId],
   );
   return rows.map((r: { lang: string }) => r.lang);
