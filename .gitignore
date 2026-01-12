@@ -26,3 +26,8 @@ test/BDD_Fallout4_EN-RU.eet
 ml_*/
 /work_*/
 /tmp_*/
+
+# Upload directories
+/csv-uploads/
+/eet-uploads/
+/mod-uploads/
