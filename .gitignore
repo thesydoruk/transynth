@@ -27,6 +27,9 @@ ml_*/
 /work_*/
 /tmp_*/
 
+# Environment variables
+.env
+
 # Upload directories
 /csv-uploads/
 /eet-uploads/
