@@ -9,6 +9,7 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 - Огляд поточного проєкту: [README.md](README.md)
 - Дорожня карта: [ROADMAP.md](ROADMAP.md)
 - Вікі по спадковому: [eet4-wiki/README.md](eet4-wiki/README.md)
+- Оцінка wiki і roadmap веб-імплементації: [-WEB-ROADMAP.md](-WEB-ROADMAP.md)
 
 ## Можливості
 
