@@ -264,6 +264,8 @@ export const api = {
       req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
     exportStrings: (modId: number, srcLang = 'en', targetLang = 'uk') =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+    exportEsp: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+      req<ExportStringsResult>(`/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
   },
 
   stats: {

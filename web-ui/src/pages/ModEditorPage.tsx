@@ -175,6 +175,15 @@ export function ModEditorPage() {
     },
   });
 
+  const exportEsp = useMutation({
+    mutationFn: () => api.mods.exportEsp(modId, srcLang, targetLang),
+    onSuccess: (result) => {
+      for (const file of result.files) {
+        downloadBase64File(file.fileName, file.contentBase64);
+      }
+    },
+  });
+
   function handleRowClick(row: StringRow) {
     setActiveRow(row);
     setDraftTranslation(row.translation ?? '');
@@ -291,6 +300,9 @@ export function ModEditorPage() {
         <button onClick={() => exportStrings.mutate()} disabled={exportStrings.isPending} style={s.btnSec} title="Generate localized STRINGS files from current translations">
           {exportStrings.isPending ? 'Export…' : 'Export STRINGS'}
         </button>
+        <button onClick={() => exportEsp.mutate()} disabled={exportEsp.isPending} style={s.btnSec} title="Patch ESP with translations (non-localized mods)">
+          {exportEsp.isPending ? 'Export…' : 'Export ESP'}
+        </button>
         <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
         {selected.size > 0 && (
           translateProgress
@@ -299,6 +311,7 @@ export function ModEditorPage() {
         )}
         {translateError && <span style={s.errorBadge}>{translateError}</span>}
         {exportStrings.isError && <span style={s.errorBadge}>{String(exportStrings.error)}</span>}
+        {exportEsp.isError && <span style={s.errorBadge}>{String(exportEsp.error)}</span>}
 
         {/* Progress bar */}
         {stats && (
