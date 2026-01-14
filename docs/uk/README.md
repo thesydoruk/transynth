@@ -4,6 +4,12 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 
 > **English version:** [../en/README.md](../en/README.md)
 
+## Документація
+
+- Огляд поточного проєкту: [README.md](README.md)
+- Дорожня карта: [ROADMAP.md](ROADMAP.md)
+- Вікі по спадковому: [eet4-wiki/README.md](eet4-wiki/README.md)
+
 ## Можливості
 
 | Компонент | Опис |

@@ -4,6 +4,11 @@
 
 Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
+## Documentation
+
+- Main project overview: [README.md](README.md)
+- Product roadmap: [ROADMAP.md](ROADMAP.md)
+
 ## Features
 
 | Component | Description |
