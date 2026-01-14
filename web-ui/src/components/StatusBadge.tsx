@@ -1,7 +1,10 @@
 import type { Stats } from '../api';
 
 const STATUS_LABELS: Record<string, string> = {
+  reviewed: 'Reviewed',
   human: 'Approved',
+  draft: 'Draft',
+  rejected: 'Rejected',
   tm: 'TM match',
   fuzzy: 'Fuzzy',
   auto: 'Auto',
@@ -9,7 +12,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  reviewed: '#4caf50',
   human: '#4caf50',
+  draft: '#8bc34a',
+  rejected: '#b71c1c',
   tm: '#2196f3',
   fuzzy: '#00bcd4',
   auto: '#ff9800',
@@ -45,7 +51,7 @@ export function StatusBadge({ status, small }: Props) {
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
 export function ProgressBar({ stats }: { stats: Stats }) {
-  const { total, approved, tm, fuzzy, auto_translated, untranslated } = stats;
+  const { total, approved, draft, rejected, tm, fuzzy, auto_translated, untranslated } = stats;
   if (total === 0) return <span style={{ color: '#888', fontSize: 12 }}>No strings</span>;
 
   const seg = (n: number, color: string) => ({
@@ -68,9 +74,11 @@ export function ProgressBar({ stats }: { stats: Stats }) {
         }}
       >
         <span style={seg(approved, STATUS_COLORS.human)} title={`Approved: ${approved}`} />
+        <span style={seg(draft, STATUS_COLORS.draft)} title={`Draft: ${draft}`} />
         <span style={seg(tm, STATUS_COLORS.tm)} title={`TM: ${tm}`} />
         <span style={seg(fuzzy, STATUS_COLORS.fuzzy)} title={`Fuzzy: ${fuzzy}`} />
         <span style={seg(auto_translated, STATUS_COLORS.auto)} title={`Auto: ${auto_translated}`} />
+        <span style={seg(rejected, STATUS_COLORS.rejected)} title={`Rejected: ${rejected}`} />
         <span style={seg(untranslated, STATUS_COLORS.untranslated)} title={`Untranslated: ${untranslated}`} />
       </div>
       <span style={{ fontSize: 12, color: '#bbb', minWidth: 36 }}>{stats.percent}%</span>

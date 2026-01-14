@@ -205,6 +205,7 @@ function buildCsvRows(
       Signature: row.signature,
       EDID: row.edid || undefined,
       Path: `${row.signature}\\${row.path}`,
+      LStringID: row.isLstringId ? parseInt(row.text, 10) : undefined,
       Source: text,
     });
   }

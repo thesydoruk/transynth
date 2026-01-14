@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS strings (
   id SERIAL PRIMARY KEY,
   record_id INTEGER NOT NULL REFERENCES records(id) ON DELETE CASCADE,
   lang TEXT NOT NULL,
+  lstring_id INTEGER,
   text_raw TEXT NOT NULL,
   text_norm TEXT,
   source_kind TEXT,
@@ -32,6 +33,8 @@ CREATE TABLE IF NOT EXISTS strings (
     to_tsvector('simple', COALESCE(text_raw, '') || ' ' || COALESCE(text_norm, ''))
   ) STORED
 );
+
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
 
 CREATE TABLE IF NOT EXISTS translations (
   id SERIAL PRIMARY KEY,
@@ -45,6 +48,32 @@ CREATE TABLE IF NOT EXISTS translations (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(src_string_id, target_lang, text)
+);
+
+CREATE TABLE IF NOT EXISTS translation_revisions (
+  id SERIAL PRIMARY KEY,
+  src_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
+  translation_id INTEGER REFERENCES translations(id) ON DELETE SET NULL,
+  target_lang TEXT NOT NULL,
+  text TEXT,
+  status TEXT NOT NULL,
+  provenance TEXT,
+  model TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS qa_issues (
+  id SERIAL PRIMARY KEY,
+  src_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
+  translation_id INTEGER REFERENCES translations(id) ON DELETE CASCADE,
+  target_lang TEXT NOT NULL,
+  issue_type TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS alignments (
@@ -118,5 +147,8 @@ CREATE INDEX IF NOT EXISTS idx_records_mod ON records(mod_id);
 CREATE INDEX IF NOT EXISTS idx_records_anchors ON records(edid, signature, path_simplified, hash_norm);
 CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
+CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);
 CREATE INDEX IF NOT EXISTS idx_strings_tsv ON strings USING GIN(tsv);
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
+CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);

@@ -35,11 +35,12 @@ export type StringRow = {
   source: string;
   translation_id: number | null;
   translation: string | null;
-  status: 'human' | 'fuzzy' | 'auto' | 'tm' | null;
+  status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' | null;
   confidence: number | null;
   provenance: string | null;
   model: string | null;
   updated_at: string | null;
+  qa_issue_count: number;
 };
 
 export type StringsResult = {
@@ -53,6 +54,8 @@ export type Stats = {
   total: number;
   translated: number;
   approved: number;
+  draft: number;
+  rejected: number;
   tm: number;
   fuzzy: number;
   auto_translated: number;
@@ -60,11 +63,43 @@ export type Stats = {
   percent: number;
 };
 
+export type TranslationHistoryEntry = {
+  id: number;
+  translation_id: number | null;
+  text: string | null;
+  status: string;
+  provenance: string | null;
+  model: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type QAIssue = {
+  id: number;
+  issue_type: string;
+  severity: 'warning' | 'error';
+  message: string;
+  updated_at: string;
+};
+
 export type Signature = { signature: string; count: number };
 
 export type GlossaryEntry = { id: number; term: string; lang: string; count: number; source: string };
 
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
+
+export type ExportedStringsFile = {
+  fileName: string;
+  size: number;
+  contentBase64: string;
+};
+
+export type ExportStringsResult = {
+  modId: number;
+  srcLang: string;
+  targetLang: string;
+  files: ExportedStringsFile[];
+};
 
 export type DiffEntry = {
   formid_hex: string;
@@ -227,6 +262,8 @@ export const api = {
       req<TMApplyResult>(`/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`, { method: 'POST' }),
     diff: (newModId: number, compareModId: number, targetLang = 'uk') =>
       req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
+    exportStrings: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+      req<ExportStringsResult>(`/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
   },
 
   stats: {
@@ -263,16 +300,24 @@ export const api = {
     },
     suggestions: (stringId: number, targetLang: string) =>
       req<TMSuggestion[]>(`/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`),
-    saveTranslation: (stringId: number, text: string, status: 'human' | 'fuzzy' = 'human', targetLang = 'uk') =>
+    saveTranslation: (stringId: number, text: string, status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft', targetLang = 'uk') =>
       req<{ id: number; text: string; status: string }>(`/api/strings/${stringId}/translation`, {
         method: 'PATCH',
         body: JSON.stringify({ text, status, targetLang }),
+      }),
+    clearTranslation: (stringId: number, targetLang = 'uk') =>
+      req<{ removed: number }>(`/api/strings/${stringId}/translation?targetLang=${encodeURIComponent(targetLang)}`, {
+        method: 'DELETE',
       }),
     updateStatus: (stringId: number, translationId: number, status: string) =>
       req<{ ok: boolean }>(`/api/strings/${stringId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ translationId, status }),
       }),
+    history: (stringId: number, targetLang = 'uk') =>
+      req<TranslationHistoryEntry[]>(`/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`),
+    qa: (stringId: number, targetLang = 'uk') =>
+      req<QAIssue[]>(`/api/strings/${stringId}/qa?targetLang=${encodeURIComponent(targetLang)}`),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
      *  Returns final results array after stream closes. */

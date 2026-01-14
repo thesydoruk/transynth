@@ -3,6 +3,7 @@ export type CsvRow = {
   Signature: string;
   Path: string;
   Source: string;
+  LStringID?: number;
   Hints?: string;
   EDID?: string;
   PathSimplified?: string;

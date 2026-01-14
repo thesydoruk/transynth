@@ -24,7 +24,7 @@ export function InlineEditor({ stringId, translationId, text, status, queryKey }
   }, [editing]);
 
   const save = useMutation({
-    mutationFn: () => api.strings.saveTranslation(stringId, draft, 'human'),
+    mutationFn: () => api.strings.saveTranslation(stringId, draft, 'draft'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
       setEditing(false);
@@ -34,7 +34,7 @@ export function InlineEditor({ stringId, translationId, text, status, queryKey }
   const approve = useMutation({
     mutationFn: () =>
       translationId
-        ? api.strings.updateStatus(stringId, translationId, 'human')
+        ? api.strings.updateStatus(stringId, translationId, 'reviewed')
         : Promise.reject(new Error('no translation')),
     onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
@@ -104,7 +104,7 @@ export function InlineEditor({ stringId, translationId, text, status, queryKey }
         {text ?? '(empty — click to add)'}
       </span>
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-        {text && status !== 'human' && translationId && (
+        {text && status !== 'reviewed' && status !== 'human' && translationId && (
           <button
             onClick={() => approve.mutate()}
             disabled={approve.isPending}

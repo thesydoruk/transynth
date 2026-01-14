@@ -3,6 +3,7 @@ import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, listModLangs } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
+import { exportLocalizedStringsFiles } from '../exportService.js';
 
 export async function modsRoutes(app: FastifyInstance, db: Tx) {
   // GET /api/mods — list all mods with aggregate stats
@@ -60,6 +61,29 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
       const targetLang = req.query.targetLang ?? 'uk';
       const result = await diffMods(db, newId, oldId, targetLang);
       return reply.send(result);
+    },
+  );
+
+  // GET /api/mods/:id/export/strings?srcLang=&targetLang= — generate localized STRINGS files
+  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
+    '/api/mods/:id/export/strings',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+      const srcLang = req.query.srcLang ?? 'en';
+      const targetLang = req.query.targetLang ?? 'uk';
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+
+      try {
+        const files = await exportLocalizedStringsFiles(db, id, mod.abs_path, srcLang, targetLang);
+        return reply.send({ modId: id, srcLang, targetLang, files });
+      } catch (err) {
+        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+      }
     },
   );
 }

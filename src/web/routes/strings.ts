@@ -1,6 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
-import { listStrings, listSignatures, upsertTranslation, updateTranslationStatus, getStringTextNorm, getTMSuggestions } from '../queries.js';
+import {
+  listStrings,
+  listSignatures,
+  upsertTranslation,
+  updateTranslationStatus,
+  deleteTranslation,
+  getStringTextNorm,
+  getTMSuggestions,
+  getTranslationHistory,
+  getQAIssues,
+} from '../queries.js';
 import { propagateTranslation } from '../tm.js';
 import { chatWithFallback } from '../../llm/index.js';
 import { CONFIG } from '../../config.js';
@@ -62,19 +72,49 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
     },
   );
 
+  // GET /api/strings/:stringId/history?targetLang=
+  app.get<{ Params: { stringId: string }; Querystring: { targetLang?: string } }>(
+    '/api/strings/:stringId/history',
+    async (req, reply) => {
+      const stringId = Number(req.params.stringId);
+      if (!Number.isInteger(stringId) || stringId < 1) {
+        return reply.code(400).send({ error: 'Invalid string id' });
+      }
+      const targetLang = req.query.targetLang ?? 'uk';
+      return reply.send(await getTranslationHistory(db, stringId, targetLang));
+    },
+  );
+
+  // GET /api/strings/:stringId/qa?targetLang=
+  app.get<{ Params: { stringId: string }; Querystring: { targetLang?: string } }>(
+    '/api/strings/:stringId/qa',
+    async (req, reply) => {
+      const stringId = Number(req.params.stringId);
+      if (!Number.isInteger(stringId) || stringId < 1) {
+        return reply.code(400).send({ error: 'Invalid string id' });
+      }
+      const targetLang = req.query.targetLang ?? 'uk';
+      return reply.send(await getQAIssues(db, stringId, targetLang));
+    },
+  );
+
   // PATCH /api/strings/:stringId/translation — save inline edit
   app.patch<{
     Params: { stringId: string };
-    Body: { text: string; status?: 'human' | 'fuzzy' | 'auto' | 'tm'; targetLang?: string };
+    Body: { text: string; status?: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm'; targetLang?: string };
   }>('/api/strings/:stringId/translation', async (req, reply) => {
     const stringId = Number(req.params.stringId);
     if (!Number.isInteger(stringId) || stringId < 1) {
       return reply.code(400).send({ error: 'Invalid string id' });
     }
 
-    const { text, status = 'human', targetLang = 'uk' } = req.body ?? {};
-    if (typeof text !== 'string' || text.trim() === '') {
+    const { text, status = 'draft', targetLang = 'uk' } = req.body ?? {};
+    if (typeof text !== 'string') {
       return reply.code(400).send({ error: 'text is required' });
+    }
+
+    if (text.trim() === '') {
+      return reply.send(await deleteTranslation(db, stringId, targetLang));
     }
 
     const result = await upsertTranslation(db, stringId, text, status, targetLang);
@@ -87,6 +127,19 @@ export async function stringsRoutes(app: FastifyInstance, db: Tx) {
 
     return reply.send(result);
   });
+
+  // DELETE /api/strings/:stringId/translation?targetLang=
+  app.delete<{ Params: { stringId: string }; Querystring: { targetLang?: string } }>(
+    '/api/strings/:stringId/translation',
+    async (req, reply) => {
+      const stringId = Number(req.params.stringId);
+      if (!Number.isInteger(stringId) || stringId < 1) {
+        return reply.code(400).send({ error: 'Invalid string id' });
+      }
+      const targetLang = req.query.targetLang ?? 'uk';
+      return reply.send(await deleteTranslation(db, stringId, targetLang));
+    },
+  );
 
   // PATCH /api/strings/:stringId/status — change status only (approve / reject)
   app.patch<{

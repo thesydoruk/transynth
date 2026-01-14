@@ -3,6 +3,143 @@ import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
 
+export type TranslationStatus = 'draft' | 'reviewed' | 'rejected' | 'human' | 'tm' | 'fuzzy' | 'auto' | 'deleted';
+
+const BEST_TRANSLATION_ORDER = `CASE status
+  WHEN 'draft' THEN 1
+  WHEN 'reviewed' THEN 2
+  WHEN 'human' THEN 3
+  WHEN 'tm' THEN 4
+  WHEN 'fuzzy' THEN 5
+  WHEN 'auto' THEN 6
+  WHEN 'rejected' THEN 7
+  ELSE 8 END`;
+
+const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
+
+type RevisionInput = {
+  stringId: number;
+  translationId: number | null;
+  targetLang: string;
+  text: string | null;
+  status: TranslationStatus;
+  provenance?: string | null;
+  model?: string | null;
+  note?: string | null;
+};
+
+type QAIssueInput = {
+  issueType: string;
+  severity: 'warning' | 'error';
+  message: string;
+};
+
+function extractPlaceholders(text: string): string[] {
+  const matches = text.match(/%[A-Za-z0-9_]+%|%[ds]\b|\{[^}]+\}|\$\{[^}]+\}|<[^>]+>/g) ?? [];
+  return matches.sort();
+}
+
+function buildQAIssues(source: string, translation: string): QAIssueInput[] {
+  const issues: QAIssueInput[] = [];
+  const trimmed = translation.trim();
+
+  if (trimmed.length === 0) {
+    issues.push({
+      issueType: 'empty_translation',
+      severity: 'error',
+      message: 'Translation is empty.',
+    });
+    return issues;
+  }
+
+  const srcPlaceholders = extractPlaceholders(source);
+  const dstPlaceholders = extractPlaceholders(translation);
+  if (srcPlaceholders.join('\u0000') !== dstPlaceholders.join('\u0000')) {
+    issues.push({
+      issueType: 'placeholder_mismatch',
+      severity: 'error',
+      message: `Placeholder mismatch: source=[${srcPlaceholders.join(', ')}] target=[${dstPlaceholders.join(', ')}]`,
+    });
+  }
+
+  if (source.trim() === trimmed && source.trim().length > 0) {
+    issues.push({
+      issueType: 'same_as_source',
+      severity: 'warning',
+      message: 'Translation is identical to source text.',
+    });
+  }
+
+  if (source.length >= 20) {
+    const ratio = trimmed.length / Math.max(1, source.length);
+    if (ratio > 1.6 || ratio < 0.5) {
+      issues.push({
+        issueType: 'length_delta',
+        severity: 'warning',
+        message: `Translation length ratio is ${ratio.toFixed(2)} compared to source.`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+async function recordTranslationRevision(db: Tx, input: RevisionInput): Promise<void> {
+  await db.query(
+    `INSERT INTO translation_revisions(
+       src_string_id, translation_id, target_lang, text, status, provenance, model, note
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      input.stringId,
+      input.translationId,
+      input.targetLang,
+      input.text,
+      input.status,
+      input.provenance ?? null,
+      input.model ?? null,
+      input.note ?? null,
+    ],
+  );
+}
+
+async function refreshQAIssues(db: Tx, stringId: number, targetLang: string): Promise<void> {
+  const { rows } = await db.query(
+    `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation
+     FROM strings s
+     LEFT JOIN translations t
+       ON t.src_string_id = s.id AND t.target_lang = $2
+       AND t.id = (
+         SELECT id FROM translations
+         WHERE src_string_id = s.id AND target_lang = $2
+         ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
+         LIMIT 1
+       )
+     WHERE s.id = $1`,
+    [stringId, targetLang],
+  );
+
+  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null } | undefined;
+
+  await db.query(
+    `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
+    [stringId, targetLang],
+  );
+
+  if (!row?.source || row.translation == null) {
+    return;
+  }
+
+  const issues = buildQAIssues(row.source, row.translation);
+  for (const issue of issues) {
+    await db.query(
+      `INSERT INTO qa_issues(
+         src_string_id, translation_id, target_lang, issue_type, severity, message, is_active, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())`,
+      [stringId, row.translation_id ?? null, targetLang, issue.issueType, issue.severity, issue.message],
+    );
+  }
+}
+
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
 export async function listMods(db: Tx) {
@@ -16,7 +153,7 @@ export async function listMods(db: Tx) {
       COUNT(DISTINCT r.id)          AS record_count,
       COUNT(DISTINCT s.id)          AS string_count,
       COUNT(DISTINCT t.id)          AS translated_count,
-      COUNT(DISTINCT CASE WHEN t.status='human' THEN t.id END) AS approved_count,
+      COUNT(DISTINCT CASE WHEN t.status IN ${APPROVED_STATUS_SQL} THEN t.id END) AS approved_count,
       COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy_count
      FROM mods m
      LEFT JOIN records r ON r.mod_id = m.id
@@ -102,7 +239,8 @@ export async function listStrings(db: Tx, f: StringsFilter) {
       t.confidence,
       t.provenance,
       t.model,
-      t.updated_at
+      t.updated_at,
+      COALESCE(q.issue_count, 0) AS qa_issue_count
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
@@ -110,12 +248,15 @@ export async function listStrings(db: Tx, f: StringsFilter) {
           AND t.id = (
             SELECT id FROM translations
             WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
-            ORDER BY CASE status
-              WHEN 'human' THEN 1 WHEN 'tm' THEN 2
-              WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 4 ELSE 5 END,
+            ORDER BY ${BEST_TRANSLATION_ORDER},
               COALESCE(confidence,0) DESC, created_at DESC
             LIMIT 1
           )
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS issue_count
+       FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE
+     ) q ON TRUE
      WHERE s.lang = $${srcLangIdx} AND ${where}
      ORDER BY r.signature, r.path
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
@@ -128,6 +269,12 @@ export async function listStrings(db: Tx, f: StringsFilter) {
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+          AND t.id = (
+            SELECT id FROM translations
+            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
+            ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
+            LIMIT 1
+          )
      WHERE s.lang = $${srcLangIdx} AND ${where}`,
     [...values, targetLang, srcLang],
   );
@@ -189,9 +336,7 @@ export async function getTMSuggestions(
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      WHERE s.text_norm = $1
        AND s.id <> $3
-     ORDER BY t.text, CASE t.status
-       WHEN 'human' THEN 1 WHEN 'tm' THEN 2
-       WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 4 ELSE 5 END,
+     ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
        COALESCE(t.confidence, 0) DESC
      LIMIT $4`,
     [srcRows[0].text_norm, targetLang, stringId, limit],
@@ -205,9 +350,15 @@ export async function upsertTranslation(
   db: Tx,
   stringId: number,
   text: string,
-  status: 'human' | 'fuzzy' | 'auto' | 'tm',
+  status: Exclude<TranslationStatus, 'deleted'>,
   targetLang = 'uk',
+  provenance?: string,
+  model?: string,
 ) {
+  const effectiveProvenance = provenance ?? (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
+    ? 'human_edit'
+    : `${status}_generated`);
+
   await db.query(
     `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`,
     [stringId, targetLang],
@@ -215,19 +366,88 @@ export async function upsertTranslation(
 
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-     VALUES ($1, $2, $3, $4, 1.0, 'human_edit', NOW())
+     VALUES ($1, $2, $3, $4, 1.0, $5, NOW())
      RETURNING id`,
-    [stringId, targetLang, text, status],
+    [stringId, targetLang, text, status, effectiveProvenance],
   );
 
-  return { id: rows[0].id, text, status };
+  const translationId = rows[0].id as number;
+  await recordTranslationRevision(db, {
+    stringId,
+    translationId,
+    targetLang,
+    text,
+    status,
+    provenance: effectiveProvenance,
+    model: model ?? null,
+    note: 'save',
+  });
+  await refreshQAIssues(db, stringId, targetLang);
+
+  return { id: translationId, text, status };
 }
 
 export async function updateTranslationStatus(db: Tx, translationId: number, status: string) {
-  await db.query(
-    `UPDATE translations SET status = $1, updated_at = NOW() WHERE id = $2`,
+  const { rows } = await db.query(
+    `UPDATE translations
+     SET status = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING id, src_string_id, target_lang, text, status, provenance, model`,
     [status, translationId],
   );
+
+  const updated = rows[0] as {
+    id: number;
+    src_string_id: number;
+    target_lang: string;
+    text: string;
+    status: TranslationStatus;
+    provenance: string | null;
+    model: string | null;
+  } | undefined;
+
+  if (!updated) return;
+
+  await recordTranslationRevision(db, {
+    stringId: updated.src_string_id,
+    translationId: updated.id,
+    targetLang: updated.target_lang,
+    text: updated.text,
+    status: updated.status,
+    provenance: updated.provenance,
+    model: updated.model,
+    note: 'status_change',
+  });
+  await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
+}
+
+export async function deleteTranslation(db: Tx, stringId: number, targetLang = 'uk') {
+  const { rows } = await db.query(
+    `DELETE FROM translations
+     WHERE src_string_id = $1 AND target_lang = $2
+     RETURNING id, text, provenance, model`,
+    [stringId, targetLang],
+  );
+
+  for (const row of rows as Array<{ id: number; text: string; provenance: string | null; model: string | null }>) {
+    await recordTranslationRevision(db, {
+      stringId,
+      translationId: row.id,
+      targetLang,
+      text: row.text,
+      status: 'deleted',
+      provenance: row.provenance,
+      model: row.model,
+      note: 'clear',
+    });
+  }
+
+  await db.query(
+    `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
+    [stringId, targetLang],
+  );
+
+  return { removed: rows.length };
 }
 
 // Returns text_norm for a string ID (used by propagation)
@@ -275,8 +495,7 @@ export async function diffMods(
        JOIN records r ON s.record_id = r.id
        LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
          AND t.id = (SELECT id FROM translations WHERE src_string_id = s.id AND target_lang = $1
-                     ORDER BY CASE status WHEN 'human' THEN 1 WHEN 'tm' THEN 2
-                                          WHEN 'fuzzy' THEN 3 ELSE 4 END LIMIT 1)
+                     ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1)
        WHERE r.mod_id = $2 AND s.lang = 'en'`,
       [targetLang, modId],
     );
@@ -386,6 +605,30 @@ export async function searchReplaceTranslations(
           `UPDATE translations SET text = $1, updated_at = NOW() WHERE id = $2`,
           [m.newText, m.translationId],
         );
+        const { rows: updatedRows } = await client.query(
+          `SELECT src_string_id, target_lang, status, provenance, model
+           FROM translations WHERE id = $1`,
+          [m.translationId],
+        );
+        const updated = updatedRows[0] as {
+          src_string_id: number;
+          target_lang: string;
+          status: TranslationStatus;
+          provenance: string | null;
+          model: string | null;
+        } | undefined;
+        if (!updated) continue;
+        await recordTranslationRevision(client, {
+          stringId: updated.src_string_id,
+          translationId: m.translationId,
+          targetLang: updated.target_lang,
+          text: m.newText,
+          status: updated.status,
+          provenance: updated.provenance,
+          model: updated.model,
+          note: 'search_replace',
+        });
+        await refreshQAIssues(client, updated.src_string_id, updated.target_lang);
       }
     });
   }
@@ -400,7 +643,10 @@ export async function getModStats(db: Tx, modId: number) {
     `SELECT
       COUNT(DISTINCT s.id)          AS total,
       COUNT(DISTINCT t.id)          AS translated,
-      COUNT(DISTINCT CASE WHEN t.status='human' THEN t.id END) AS approved,
+      COUNT(DISTINCT CASE WHEN t.status IN ${APPROVED_STATUS_SQL} THEN t.id END) AS approved,
+      COUNT(DISTINCT CASE WHEN t.status='draft'  THEN t.id END) AS draft,
+      COUNT(DISTINCT CASE WHEN t.status='rejected' THEN t.id END) AS rejected,
+      COUNT(DISTINCT CASE WHEN t.status='tm'     THEN t.id END) AS tm,
       COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy,
       COUNT(DISTINCT CASE WHEN t.status='auto'   THEN t.id END) AS auto_translated,
       COUNT(DISTINCT CASE WHEN t.id IS NULL       THEN s.id END) AS untranslated
@@ -411,4 +657,27 @@ export async function getModStats(db: Tx, modId: number) {
     [modId],
   );
   return rows[0];
+}
+
+export async function getTranslationHistory(db: Tx, stringId: number, targetLang = 'uk') {
+  const { rows } = await db.query(
+    `SELECT id, translation_id, text, status, provenance, model, note, created_at
+     FROM translation_revisions
+     WHERE src_string_id = $1 AND target_lang = $2
+     ORDER BY created_at DESC, id DESC
+     LIMIT 25`,
+    [stringId, targetLang],
+  );
+  return rows;
+}
+
+export async function getQAIssues(db: Tx, stringId: number, targetLang = 'uk') {
+  const { rows } = await db.query(
+    `SELECT id, issue_type, severity, message, updated_at
+     FROM qa_issues
+     WHERE src_string_id = $1 AND target_lang = $2 AND is_active = TRUE
+     ORDER BY CASE severity WHEN 'error' THEN 1 ELSE 2 END, updated_at DESC, id DESC`,
+    [stringId, targetLang],
+  );
+  return rows;
 }

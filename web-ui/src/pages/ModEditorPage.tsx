@@ -1,19 +1,36 @@
 import { useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type StringRow, type TMSuggestion } from '../api';
+import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
 
-const STATUS_OPTS = ['all', 'untranslated', 'fuzzy', 'auto', 'tm', 'human'];
+const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
 const PAGE_SIZE = 100;
 
 type TranslateProgress = { done: number; total: number };
-type BottomTab = 'suggestions' | 'related' | 'history';
+type BottomTab = 'suggestions' | 'qa' | 'history';
+
+function downloadBase64File(fileName: string, contentBase64: string) {
+  const binary = atob(contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 // Row background by translation status
 function rowBg(status: string | null): string {
   if (!status) return '#3d1e00'; // untranslated → orange-ish
-  if (status === 'human') return 'transparent';
+  if (status === 'reviewed' || status === 'human') return 'transparent';
+  if (status === 'draft') return '#183a18';
+  if (status === 'rejected') return '#3b1616';
   if (status === 'tm') return '#003d45';   // teal
   if (status === 'auto') return '#003d45'; // teal
   if (status === 'fuzzy') return '#3d3100'; // amber
@@ -67,17 +84,34 @@ export function ModEditorPage() {
     queryFn: () => api.strings.suggestions(activeRow!.string_id, targetLang),
     enabled: !!activeRow && activeTab === 'suggestions',
   });
+  const { data: qaIssues } = useQuery({
+    queryKey: ['qa', activeRow?.string_id, targetLang],
+    queryFn: () => api.strings.qa(activeRow!.string_id, targetLang),
+    enabled: !!activeRow && activeTab === 'qa',
+  });
+  const { data: history } = useQuery({
+    queryKey: ['history', activeRow?.string_id, targetLang],
+    queryFn: () => api.strings.history(activeRow!.string_id, targetLang),
+    enabled: !!activeRow && activeTab === 'history',
+  });
 
   // Save translation
   const saveMutation = useMutation({
     mutationFn: ({ stringId, text }: { stringId: number; text: string }) =>
-      api.strings.saveTranslation(stringId, text, 'human', targetLang),
-    onSuccess: () => {
+      api.strings.saveTranslation(stringId, text, 'draft', targetLang),
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
       void refetchStats();
       // Update active row locally
       if (activeRow) {
-        setActiveRow({ ...activeRow, translation: draftTranslation, status: 'human' });
+        setActiveRow({
+          ...activeRow,
+          translation: draftTranslation,
+          translation_id: result.id,
+          status: 'draft',
+        });
       }
     },
   });
@@ -85,19 +119,40 @@ export function ModEditorPage() {
   // Approve
   const approveMutation = useMutation({
     mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
-      api.strings.updateStatus(stringId, translationId, 'human'),
+      api.strings.updateStatus(stringId, translationId, 'reviewed'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
       void refetchStats();
+      if (activeRow) {
+        setActiveRow({ ...activeRow, status: 'reviewed' });
+      }
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
+      api.strings.updateStatus(stringId, translationId, 'rejected'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
+      void refetchStats();
+      if (activeRow) {
+        setActiveRow({ ...activeRow, status: 'rejected' });
+      }
     },
   });
 
   // Clear translation
   const clearMutation = useMutation({
     mutationFn: ({ stringId }: { stringId: number }) =>
-      api.strings.saveTranslation(stringId, '', 'fuzzy', targetLang),
+      api.strings.clearTranslation(stringId, targetLang),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
       void refetchStats();
       if (activeRow) setActiveRow({ ...activeRow, translation: null, status: null });
     },
@@ -108,6 +163,15 @@ export function ModEditorPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
+    },
+  });
+
+  const exportStrings = useMutation({
+    mutationFn: () => api.mods.exportStrings(modId, srcLang, targetLang),
+    onSuccess: (result) => {
+      for (const file of result.files) {
+        downloadBase64File(file.fileName, file.contentBase64);
+      }
     },
   });
 
@@ -124,6 +188,10 @@ export function ModEditorPage() {
 
   function handleSave() {
     if (!activeRow) return;
+    if (draftTranslation.trim() === '') {
+      handleClear(activeRow);
+      return;
+    }
     saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
   }
 
@@ -135,7 +203,7 @@ export function ModEditorPage() {
   function handleClear(row: StringRow) {
     clearMutation.mutate({ stringId: row.string_id });
     if (activeRow?.string_id === row.string_id) {
-      setActiveRow({ ...row, translation: null, status: null });
+      setActiveRow({ ...row, translation: null, translation_id: null, status: null, qa_issue_count: 0 });
       setDraftTranslation('');
     }
   }
@@ -220,6 +288,9 @@ export function ModEditorPage() {
         <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} style={s.btnSec} title="Auto-fill from TM">
           {tmApply.isPending ? 'TM…' : tmApply.isSuccess ? `TM ✓ ${(tmApply.data as { applied: number }).applied}` : 'Apply TM'}
         </button>
+        <button onClick={() => exportStrings.mutate()} disabled={exportStrings.isPending} style={s.btnSec} title="Generate localized STRINGS files from current translations">
+          {exportStrings.isPending ? 'Export…' : 'Export STRINGS'}
+        </button>
         <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
         {selected.size > 0 && (
           translateProgress
@@ -227,6 +298,7 @@ export function ModEditorPage() {
             : <button onClick={handleBatchTranslate} style={s.btnPri}>Auto-translate {selected.size}</button>
         )}
         {translateError && <span style={s.errorBadge}>{translateError}</span>}
+        {exportStrings.isError && <span style={s.errorBadge}>{String(exportStrings.error)}</span>}
 
         {/* Progress bar */}
         {stats && (
@@ -306,11 +378,17 @@ export function ModEditorPage() {
                       <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</td>
                       <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13, color: row.translation ? '#eee' : '#666', fontStyle: row.translation ? 'normal' : 'italic' }}>
                         {row.translation ?? '—'}
+                        {row.qa_issue_count > 0 && (
+                          <span style={s.qaHint}>{row.qa_issue_count} QA</span>
+                        )}
                       </td>
                       <td style={s.td} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 3 }}>
-                          {row.translation && row.status !== 'human' && row.translation_id && (
+                          {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
                             <button style={s.actionBtn('#1565c0')} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
+                          )}
+                          {row.translation && row.status !== 'rejected' && row.translation_id && (
+                            <button style={s.actionBtn('#7b1a1a')} title="Відхилити" onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
                           )}
                           <button style={s.actionBtn('#7b1a1a')} title="Очистити переклад" onClick={() => handleClear(row)}>X</button>
                           <button style={s.actionBtn('#2a5c2a')} title="Копіювати оригінал у переклад" onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
@@ -356,6 +434,16 @@ export function ModEditorPage() {
                     <div style={s.charCount}>Символів: {draftTranslation.length}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button style={s.btnSec} onClick={handleCopySource} title="Копіювати оригінал">Copy src</button>
+                      {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
+                        <button style={s.btnSec} onClick={() => handleApprove(activeRow)}>
+                          Review
+                        </button>
+                      )}
+                      {activeRow.translation && activeRow.translation_id && activeRow.status !== 'rejected' && (
+                        <button style={s.btnDanger} onClick={() => rejectMutation.mutate({ stringId: activeRow.string_id, translationId: activeRow.translation_id! })}>
+                          Reject
+                        </button>
+                      )}
                       <button
                         style={s.btnPri}
                         onClick={handleSave}
@@ -371,9 +459,9 @@ export function ModEditorPage() {
 
               {/* Bottom tabs */}
               <div style={s.tabs}>
-                {(['suggestions', 'related', 'history'] as BottomTab[]).map((tab) => (
+                {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
                   <button key={tab} style={{ ...s.tabBtn, ...(activeTab === tab ? s.tabBtnActive : {}) }} onClick={() => setActiveTab(tab)}>
-                    {tab === 'suggestions' ? 'Пропозиції TM' : tab === 'related' ? "Пов'язані" : 'Історія'}
+                    {tab === 'suggestions' ? 'Пропозиції TM' : tab === 'qa' ? 'QA' : 'Історія'}
                   </button>
                 ))}
               </div>
@@ -381,11 +469,11 @@ export function ModEditorPage() {
                 {activeTab === 'suggestions' && (
                   <SuggestionsPanel suggestions={suggestions ?? []} onApply={(text) => setDraftTranslation(text)} />
                 )}
-                {activeTab === 'related' && (
-                  <RelatedPanel modId={modId} row={activeRow} srcLang={srcLang} targetLang={targetLang} onSelect={handleRowClick} />
+                {activeTab === 'qa' && (
+                  <QAPanel issues={qaIssues ?? []} />
                 )}
                 {activeTab === 'history' && (
-                  <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Історія змін недоступна</div>
+                  <HistoryPanel items={history ?? []} />
                 )}
               </div>
             </div>
@@ -408,7 +496,7 @@ export function ModEditorPage() {
         )}
         {stats && (
           <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
-            approved: {stats.approved} · tm: {stats.tm} · fuzzy: {stats.fuzzy} · auto: {stats.auto_translated} · untranslated: {stats.untranslated} · total: {stats.total}
+            approved: {stats.approved} · draft: {stats.draft} · rejected: {stats.rejected} · tm: {stats.tm} · fuzzy: {stats.fuzzy} · auto: {stats.auto_translated} · untranslated: {stats.untranslated} · total: {stats.total}
           </span>
         )}
       </div>
@@ -438,22 +526,40 @@ function SuggestionsPanel({ suggestions, onApply }: { suggestions: TMSuggestion[
   );
 }
 
-// ── Related strings panel ────────────────────────────────────────────────────
+// ── QA panel ────────────────────────────────────────────────────────────────
 
-function RelatedPanel({ modId, row, srcLang, targetLang, onSelect }: { modId: number; row: StringRow; srcLang: string; targetLang: string; onSelect: (r: StringRow) => void }) {
-  const { data } = useQuery({
-    queryKey: ['related', modId, row.signature, srcLang, targetLang],
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, signature: row.signature, pageSize: 20 }),
-  });
-  const rows = data?.rows.filter((r) => r.string_id !== row.string_id) ?? [];
-  if (rows.length === 0) return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пов'язаних рядків у цьому сегменті</div>;
+function QAPanel({ issues }: { issues: QAIssue[] }) {
+  if (issues.length === 0) {
+    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>QA проблем не знайдено</div>;
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {rows.slice(0, 15).map((r) => (
-        <div key={r.string_id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 6px', background: '#1a1a1a', borderRadius: 3, cursor: 'pointer' }} onClick={() => onSelect(r)}>
-          <span style={{ fontSize: 11, color: '#888', minWidth: 60, fontFamily: 'monospace' }}>{r.formid_hex}</span>
-          <span style={{ flex: 1, fontSize: 12, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.source}</span>
-          <StatusBadge status={r.status} small />
+      {issues.map((issue) => (
+        <div key={issue.id} style={{ ...s.qaRow, ...(issue.severity === 'error' ? s.qaRowError : s.qaRowWarning) }}>
+          <span style={s.qaSeverity}>{issue.severity.toUpperCase()}</span>
+          <span style={{ flex: 1, fontSize: 12, color: '#ddd' }}>{issue.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── History panel ───────────────────────────────────────────────────────────
+
+function HistoryPanel({ items }: { items: TranslationHistoryEntry[] }) {
+  if (items.length === 0) {
+    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Історія змін порожня</div>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {items.map((item) => (
+        <div key={item.id} style={s.historyRow}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+            <StatusBadge status={item.status} small />
+            <span style={{ color: '#888', fontSize: 11 }}>{new Date(item.created_at).toLocaleString()}</span>
+            {item.note && <span style={{ color: '#666', fontSize: 11 }}>{item.note}</span>}
+          </div>
+          <div style={{ color: '#bbb', fontSize: 12, whiteSpace: 'pre-wrap' }}>{item.text ?? '— cleared —'}</div>
         </div>
       ))}
     </div>
@@ -539,8 +645,10 @@ const s = {
   sep: { width: 1, height: 24, background: '#333', margin: '0 4px', flexShrink: 0 },
   btnPri: { background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } as React.CSSProperties,
   btnSec: { background: '#252525', color: '#ccc', border: '1px solid #3a3a3a', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
+  btnDanger: { background: '#7b1a1a', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
   progressBadge: { background: '#1a3a5c', color: '#7cc8ff', borderRadius: 4, padding: '4px 10px', fontSize: 13 } as React.CSSProperties,
   errorBadge: { color: '#f44', fontSize: 12 },
+  qaHint: { display: 'inline-block', marginLeft: 8, padding: '1px 6px', borderRadius: 999, background: '#452300', color: '#ffbf66', fontSize: 10, fontWeight: 700 } as React.CSSProperties,
 
   body: { display: 'flex', flex: 1, overflow: 'hidden' },
 
@@ -574,6 +682,11 @@ const s = {
   tabBtn: { background: 'transparent', color: '#888', border: 'none', borderBottom: '2px solid transparent', padding: '5px 16px', cursor: 'pointer', fontSize: 12, fontWeight: 500 } as React.CSSProperties,
   tabBtnActive: { color: '#eee', borderBottom: '2px solid #1565c0', background: '#1e1e1e' } as React.CSSProperties,
   tabContent: { minHeight: 80, maxHeight: 160, overflowY: 'auto' as const, padding: 8, background: '#141414' },
+  qaRow: { display: 'flex', gap: 8, alignItems: 'center', padding: '5px 6px', borderRadius: 4 } as React.CSSProperties,
+  qaRowError: { background: '#351515' } as React.CSSProperties,
+  qaRowWarning: { background: '#3b2d12' } as React.CSSProperties,
+  qaSeverity: { minWidth: 52, fontSize: 10, fontWeight: 700, color: '#fff' } as React.CSSProperties,
+  historyRow: { padding: '6px 8px', background: '#1a1a1a', borderRadius: 4 } as React.CSSProperties,
 
   center: { padding: 32, textAlign: 'center' as const, color: '#888' },
   statusBar: { display: 'flex', alignItems: 'center', padding: '3px 12px', background: '#0d0d0d', borderTop: '1px solid #2a2a2a', fontSize: 11, color: '#ccc', flexShrink: 0 },

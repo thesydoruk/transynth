@@ -18,7 +18,7 @@ export async function ingestCsvRows(
     const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
     const hashNorm = sha1Hex(normalizeForHash(r.Source));
     const recId = await upsertRecord(db, modId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-    const strId = await insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind);
+    const strId = await insertString(db, recId, lang, r.Source, normalizeForHash(r.Source), sourceKind, r.LStringID ?? null);
     results.push({ recordId: recId, stringId: strId });
   }
   log.debug(`Ingest: completed, ${results.length} records inserted`);

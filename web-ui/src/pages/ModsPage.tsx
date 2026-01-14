@@ -63,6 +63,8 @@ export function ModsPage() {
                       total: mod.string_count,
                       translated: mod.translated_count,
                       approved: mod.approved_count,
+                      draft: 0,
+                      rejected: 0,
                       tm: 0,
                       fuzzy: mod.fuzzy_count,
                       auto_translated: mod.translated_count - mod.approved_count - mod.fuzzy_count,

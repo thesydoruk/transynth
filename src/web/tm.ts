@@ -2,6 +2,7 @@ import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
+import { upsertTranslation } from './queries.js';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
@@ -24,7 +25,14 @@ async function findBestMatch(
   targetLang: string,
   excludeModId: number,
 ): Promise<Match | null> {
-  const orderByStatus = `ORDER BY CASE t.status WHEN 'human' THEN 1 WHEN 'tm' THEN 2 WHEN 'fuzzy' THEN 3 ELSE 4 END LIMIT 1`;
+  const orderByStatus = `ORDER BY CASE t.status
+    WHEN 'reviewed' THEN 1
+    WHEN 'human' THEN 2
+    WHEN 'tm' THEN 3
+    WHEN 'fuzzy' THEN 4
+    WHEN 'auto' THEN 5
+    WHEN 'draft' THEN 6
+    ELSE 7 END LIMIT 1`;
 
   // 1. Anchor: same formid + path
   if (formidHex) {
@@ -103,11 +111,7 @@ export async function applyTMToMod(
         modId,
       );
       if (match) {
-        await client.query(
-          `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-           VALUES ($1, $2, $3, 'tm', $4, 'tm_auto', NOW())`,
-          [s.id, targetLang, match.text, match.confidence],
-        );
+        await upsertTranslation(client, s.id, match.text, 'tm', targetLang, 'tm_auto');
         applied++;
         byMethod[match.method] = (byMethod[match.method] ?? 0) + 1;
       }
@@ -121,7 +125,7 @@ export async function applyTMToMod(
 
 /**
  * After saving a translation, propagate it to all other strings with the same
- * text_norm that don't yet have a human-approved translation.
+ * text_norm that don't yet have a reviewed or in-progress manual translation.
  * Returns the number of strings that received the propagated translation.
  */
 export async function propagateTranslation(
@@ -136,26 +140,17 @@ export async function propagateTranslation(
      WHERE s.text_norm = $1 AND s.lang = 'en' AND s.id != $2
        AND NOT EXISTS (
          SELECT 1 FROM translations t
-         WHERE t.src_string_id = s.id AND t.target_lang = $3 AND t.status = 'human'
+         WHERE t.src_string_id = s.id AND t.target_lang = $3 AND t.status IN ('draft', 'reviewed', 'human')
        )`,
     [textNorm, excludeStringId, targetLang],
   );
 
   if (candidates.length === 0) return 0;
   log.info(`TM propagation: ${candidates.length} candidates for text_norm propagation`);
-  log.info(`TM propagation: ${candidates.length} candidates for text_norm propagation`);
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const c of candidates) {
-      await client.query(
-        `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2 AND status != 'human'`,
-        [c.id, targetLang],
-      );
-      await client.query(
-        `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-         VALUES ($1, $2, $3, 'tm', 0.95, 'propagation', NOW())`,
-        [c.id, targetLang, translatedText],
-      );
+      await upsertTranslation(client, c.id, translatedText, 'tm', targetLang, 'propagation');
     }
   });
 

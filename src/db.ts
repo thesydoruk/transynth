@@ -81,12 +81,18 @@ export async function upsertRecord(
 }
 
 export async function insertString(
-  db: Tx, recordId: number, lang: string, textRaw: string, textNorm: string, sourceKind = 'export',
+  db: Tx,
+  recordId: number,
+  lang: string,
+  textRaw: string,
+  textNorm: string,
+  sourceKind = 'export',
+  lstringId?: number | null,
 ): Promise<number> {
   const { rows } = await db.query(
-    `INSERT INTO strings(record_id, lang, text_raw, text_norm, source_kind) VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO strings(record_id, lang, lstring_id, text_raw, text_norm, source_kind) VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id`,
-    [recordId, lang, textRaw, textNorm, sourceKind],
+    [recordId, lang, lstringId ?? null, textRaw, textNorm, sourceKind],
   );
   return rows[0].id;
 }
