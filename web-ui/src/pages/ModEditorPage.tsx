@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
@@ -201,6 +201,59 @@ export function ModEditorPage() {
     setDraftTranslation(row.translation ?? '');
     setActiveTab('suggestions');
   }
+
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // Skip when typing in input/textarea/select (except Escape)
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+
+      // Escape — close detail panel or clear selection
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (activeRow) { setActiveRow(null); setDraftTranslation(''); }
+        else if (selected.size > 0) setSelected(new Set());
+        return;
+      }
+
+      // Ctrl+Shift+A — approve active row
+      if (e.key === 'A' && e.ctrlKey && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (activeRow?.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human') {
+          handleApprove(activeRow);
+        }
+        return;
+      }
+
+      // Ctrl+Shift+R — reject active row
+      if (e.key === 'R' && e.ctrlKey && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (activeRow?.translation_id && activeRow.status !== 'rejected') {
+          rejectMutation.mutate({ stringId: activeRow.string_id, translationId: activeRow.translation_id });
+        }
+        return;
+      }
+
+      // Arrow keys — navigate rows (only when not in a text field)
+      if (isInput) return;
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && strings?.rows.length) {
+        e.preventDefault();
+        const rows = strings.rows;
+        const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+        let nextIdx: number;
+        if (e.key === 'ArrowDown') {
+          nextIdx = curIdx < rows.length - 1 ? curIdx + 1 : 0;
+        } else {
+          nextIdx = curIdx > 0 ? curIdx - 1 : rows.length - 1;
+        }
+        handleRowClick(rows[nextIdx]);
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeRow, selected, strings]);
 
   function handleCopySource() {
     if (!activeRow) return;
