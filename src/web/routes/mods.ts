@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
-import { listMods, getMod, getModStats, diffMods, listModLangs } from '../queries.js';
+import { listMods, getMod, getModStats, diffMods, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportLocalizedStringsFiles, exportPatchedEsp } from '../exportService.js';
@@ -109,4 +109,21 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
       }
     },
   );
+
+  // PATCH /api/mods/:id/bulk-review — batch approve/reject selected strings
+  app.patch<{
+    Params: { id: string };
+    Body: { stringIds: number[]; status: 'reviewed' | 'rejected'; targetLang?: string };
+  }>('/api/mods/:id/bulk-review', async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+    const { stringIds, status, targetLang = 'uk' } = req.body;
+    if (!Array.isArray(stringIds) || stringIds.length === 0) return reply.code(400).send({ error: 'stringIds is required' });
+    if (status !== 'reviewed' && status !== 'rejected') return reply.code(400).send({ error: 'status must be reviewed or rejected' });
+
+    log.info(`PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length}`);
+    const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang);
+    return reply.send({ updated });
+  });
 }

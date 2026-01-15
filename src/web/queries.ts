@@ -681,3 +681,40 @@ export async function getQAIssues(db: Tx, stringId: number, targetLang = 'uk') {
   );
   return rows;
 }
+
+// ── Bulk status update ────────────────────────────────────────────────────────
+
+export async function bulkUpdateTranslationStatus(
+  db: Tx,
+  modId: number,
+  stringIds: number[],
+  newStatus: 'reviewed' | 'rejected',
+  targetLang = 'uk',
+): Promise<number> {
+  if (stringIds.length === 0) return 0;
+
+  let updated = 0;
+  await withTransaction(db as pg.Pool, async (client) => {
+    // Fetch the best translation for each requested stringId in one query
+    const placeholders = stringIds.map((_, i) => `$${i + 3}`).join(',');
+    const { rows } = await client.query(
+      `SELECT DISTINCT ON (t.src_string_id)
+              t.id AS translation_id, t.src_string_id AS string_id, t.target_lang
+       FROM translations t
+       JOIN strings s ON s.id = t.src_string_id
+       JOIN records r ON r.id = s.record_id
+       WHERE r.mod_id = $1
+         AND t.target_lang = $2
+         AND t.src_string_id IN (${placeholders})
+       ORDER BY t.src_string_id, ${BEST_TRANSLATION_ORDER}`,
+      [modId, targetLang, ...stringIds],
+    );
+
+    for (const row of rows as Array<{ translation_id: number; string_id: number; target_lang: string }>) {
+      await updateTranslationStatus(client, row.translation_id, newStatus);
+      updated++;
+    }
+  });
+
+  return updated;
+}

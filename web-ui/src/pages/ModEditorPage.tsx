@@ -184,6 +184,18 @@ export function ModEditorPage() {
     },
   });
 
+  const bulkReviewMutation = useMutation({
+    mutationFn: ({ status }: { status: 'reviewed' | 'rejected' }) =>
+      api.mods.bulkReview(modId, [...selected], status, targetLang),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
+      void refetchStats();
+      setSelected(new Set());
+    },
+  });
+
   function handleRowClick(row: StringRow) {
     setActiveRow(row);
     setDraftTranslation(row.translation ?? '');
@@ -287,6 +299,13 @@ export function ModEditorPage() {
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} style={s.filterSelect}>
           {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? 'All statuses' : o}</option>)}
         </select>
+        <button
+          onClick={() => { setStatus(status === 'draft' ? 'all' : 'draft'); setPage(1); }}
+          style={status === 'draft' ? s.btnPri : s.btnSec}
+          title="Show only drafts for review"
+        >
+          Review mode{stats?.draft ? ` (${stats.draft})` : ''}
+        </button>
 
         {/* Search */}
         <input placeholder="FormID / EDID / text…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} style={s.searchInput} />
@@ -305,9 +324,28 @@ export function ModEditorPage() {
         </button>
         <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
         {selected.size > 0 && (
-          translateProgress
-            ? <span style={s.progressBadge}>{translateProgress.done}/{translateProgress.total} translating…</span>
-            : <button onClick={handleBatchTranslate} style={s.btnPri}>Auto-translate {selected.size}</button>
+          <>
+            {translateProgress
+              ? <span style={s.progressBadge}>{translateProgress.done}/{translateProgress.total} translating…</span>
+              : <button onClick={handleBatchTranslate} style={s.btnPri}>Auto-translate {selected.size}</button>
+            }
+            <button
+              onClick={() => bulkReviewMutation.mutate({ status: 'reviewed' })}
+              disabled={bulkReviewMutation.isPending}
+              style={s.btnApprove}
+              title="Approve selected translations"
+            >
+              {bulkReviewMutation.isPending ? '…' : `Approve ${selected.size}`}
+            </button>
+            <button
+              onClick={() => bulkReviewMutation.mutate({ status: 'rejected' })}
+              disabled={bulkReviewMutation.isPending}
+              style={s.btnDanger}
+              title="Reject selected translations"
+            >
+              {bulkReviewMutation.isPending ? '…' : `Reject ${selected.size}`}
+            </button>
+          </>
         )}
         {translateError && <span style={s.errorBadge}>{translateError}</span>}
         {exportStrings.isError && <span style={s.errorBadge}>{String(exportStrings.error)}</span>}
@@ -659,6 +697,7 @@ const s = {
   btnPri: { background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } as React.CSSProperties,
   btnSec: { background: '#252525', color: '#ccc', border: '1px solid #3a3a3a', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
   btnDanger: { background: '#7b1a1a', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
+  btnApprove: { background: '#1b5e20', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 10px', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
   progressBadge: { background: '#1a3a5c', color: '#7cc8ff', borderRadius: 4, padding: '4px 10px', fontSize: 13 } as React.CSSProperties,
   errorBadge: { color: '#f44', fontSize: 12 },
   qaHint: { display: 'inline-block', marginLeft: 8, padding: '1px 6px', borderRadius: 999, background: '#452300', color: '#ffbf66', fontSize: 10, fontWeight: 700 } as React.CSSProperties,
