@@ -88,11 +88,24 @@ CREATE TABLE IF NOT EXISTS alignments (
 CREATE TABLE IF NOT EXISTS glossary (
   id SERIAL PRIMARY KEY,
   term TEXT NOT NULL,
-  lang TEXT NOT NULL,
-  count INTEGER DEFAULT 1,
+  translation TEXT,
+  src_lang TEXT NOT NULL DEFAULT 'en',
+  tgt_lang TEXT NOT NULL DEFAULT 'uk',
   source TEXT,
-  UNIQUE(term, lang)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(term, src_lang, tgt_lang)
 );
+
+-- Migration: glossary term→pair model
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS translation TEXT;
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS src_lang TEXT NOT NULL DEFAULT 'en';
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS tgt_lang TEXT NOT NULL DEFAULT 'uk';
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+-- Drop old constraint and columns if they exist
+ALTER TABLE glossary DROP CONSTRAINT IF EXISTS glossary_term_lang_key;
+ALTER TABLE glossary DROP COLUMN IF EXISTS lang;
+ALTER TABLE glossary DROP COLUMN IF EXISTS count;
+CREATE UNIQUE INDEX IF NOT EXISTS glossary_term_src_tgt_key ON glossary(term, src_lang, tgt_lang);
 
 CREATE TABLE IF NOT EXISTS eet_imports (
   id SERIAL PRIMARY KEY,

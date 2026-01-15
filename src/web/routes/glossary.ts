@@ -3,49 +3,54 @@ import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 
 export async function glossaryRoutes(app: FastifyInstance, db: Tx) {
-  // GET /api/glossary?lang=&q=
-  app.get<{ Querystring: { lang?: string; q?: string } }>('/api/glossary', async (req, reply) => {
-    const { lang, q } = req.query;
-    log.debug(`GET /api/glossary lang=${lang} q=${q}`);
+  // GET /api/glossary?srcLang=&tgtLang=&q=
+  app.get<{ Querystring: { srcLang?: string; tgtLang?: string; q?: string } }>('/api/glossary', async (req, reply) => {
+    const { srcLang, tgtLang, q } = req.query;
+    log.debug(`GET /api/glossary srcLang=${srcLang} tgtLang=${tgtLang} q=${q}`);
     const conditions: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
 
-    if (lang) {
-      conditions.push(`lang = $${idx++}`);
-      params.push(lang);
+    if (srcLang) {
+      conditions.push(`src_lang = $${idx++}`);
+      params.push(srcLang);
+    }
+    if (tgtLang) {
+      conditions.push(`tgt_lang = $${idx++}`);
+      params.push(tgtLang);
     }
     if (q) {
-      conditions.push(`term LIKE $${idx++}`);
+      conditions.push(`(term ILIKE $${idx} OR translation ILIKE $${idx})`);
+      idx++;
       params.push(`%${q}%`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const { rows } = await db.query(
-      `SELECT id, term, lang, count, source FROM glossary ${where} ORDER BY count DESC LIMIT 500`,
+      `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary ${where} ORDER BY term ASC LIMIT 500`,
       params,
     );
     return reply.send(rows);
   });
 
-  // POST /api/glossary — add or update a term
-  app.post<{ Body: { term: string; lang: string; source?: string } }>(
+  // POST /api/glossary — add or update a term pair
+  app.post<{ Body: { term: string; translation?: string; srcLang?: string; tgtLang?: string; source?: string } }>(
     '/api/glossary',
     async (req, reply) => {
-      const { term, lang, source = 'manual' } = req.body ?? {};
-      if (!term || !lang) return reply.code(400).send({ error: 'term and lang are required' });
-      log.info(`POST /api/glossary term="${term}" lang=${lang}`);
+      const { term, translation, srcLang = 'en', tgtLang = 'uk', source = 'manual' } = req.body ?? {};
+      if (!term) return reply.code(400).send({ error: 'term is required' });
+      log.info(`POST /api/glossary term="${term}" translation="${translation ?? ''}" ${srcLang}→${tgtLang}`);
 
       await db.query(
-        `INSERT INTO glossary(term, lang, count, source)
-         VALUES ($1, $2, 1, $3)
-         ON CONFLICT(term, lang) DO UPDATE SET count = glossary.count + 1, source = EXCLUDED.source`,
-        [term.trim(), lang, source],
+        `INSERT INTO glossary(term, translation, src_lang, tgt_lang, source)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT(term, src_lang, tgt_lang) DO UPDATE SET translation = EXCLUDED.translation, source = EXCLUDED.source`,
+        [term.trim(), translation?.trim() || null, srcLang, tgtLang, source],
       );
 
       const { rows } = await db.query(
-        `SELECT id, term, lang, count, source FROM glossary WHERE term = $1 AND lang = $2`,
-        [term.trim(), lang],
+        `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary WHERE term = $1 AND src_lang = $2 AND tgt_lang = $3`,
+        [term.trim(), srcLang, tgtLang],
       );
 
       return reply.code(201).send(rows[0]);

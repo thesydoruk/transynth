@@ -4,20 +4,23 @@ import { api, type GlossaryEntry } from '../api';
 
 export function GlossaryPage() {
   const qc = useQueryClient();
-  const [lang, setLang] = useState('uk');
+  const [srcLang, setSrcLang] = useState('en');
+  const [tgtLang, setTgtLang] = useState('uk');
   const [q, setQ] = useState('');
   const [newTerm, setNewTerm] = useState('');
+  const [newTranslation, setNewTranslation] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['glossary', lang, q],
-    queryFn: () => api.glossary.list({ lang: lang || undefined, q: q || undefined }),
+    queryKey: ['glossary', srcLang, tgtLang, q],
+    queryFn: () => api.glossary.list({ srcLang: srcLang || undefined, tgtLang: tgtLang || undefined, q: q || undefined }),
   });
 
   const add = useMutation({
-    mutationFn: () => api.glossary.add(newTerm.trim(), lang),
+    mutationFn: () => api.glossary.add(newTerm.trim(), newTranslation.trim() || null, srcLang, tgtLang),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['glossary'] });
       setNewTerm('');
+      setNewTranslation('');
     },
   });
 
@@ -30,17 +33,26 @@ export function GlossaryPage() {
     <div style={s.page}>
       <h1 style={s.title}>Glossary</h1>
       <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
-        Glossary terms are automatically injected into the LLM system prompt during batch translation
-        to ensure consistent terminology.
+        Glossary term pairs are used for QA validation (checking that translations contain required terms)
+        and are injected into the LLM system prompt during batch translation.
       </p>
 
       {/* Controls */}
       <div style={s.toolbar}>
-        <select value={lang} onChange={(e) => setLang(e.target.value)} style={s.select}>
-          <option value="uk">Ukrainian (uk)</option>
-          <option value="en">English (en)</option>
-          <option value="">All</option>
-        </select>
+        <label style={{ color: '#888', fontSize: 12 }}>Source:
+          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} style={{ ...s.select, marginLeft: 4 }}>
+            <option value="en">EN</option>
+            <option value="uk">UK</option>
+            <option value="">All</option>
+          </select>
+        </label>
+        <label style={{ color: '#888', fontSize: 12 }}>Target:
+          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} style={{ ...s.select, marginLeft: 4 }}>
+            <option value="uk">UK</option>
+            <option value="en">EN</option>
+            <option value="">All</option>
+          </select>
+        </label>
         <input
           placeholder="Filter terms…"
           value={q}
@@ -49,21 +61,28 @@ export function GlossaryPage() {
         />
       </div>
 
-      {/* Add term */}
+      {/* Add term pair */}
       <div style={{ ...s.toolbar, marginBottom: 24 }}>
         <input
-          placeholder="New term…"
+          placeholder="Source term (e.g. Vault)"
           value={newTerm}
           onChange={(e) => setNewTerm(e.target.value)}
+          style={{ ...s.input, maxWidth: 240 }}
+        />
+        <span style={{ color: '#666', fontSize: 15 }}>→</span>
+        <input
+          placeholder="Translation (e.g. Сховище)"
+          value={newTranslation}
+          onChange={(e) => setNewTranslation(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && newTerm.trim() && add.mutate()}
-          style={{ ...s.input, maxWidth: 300 }}
+          style={{ ...s.input, maxWidth: 240 }}
         />
         <button
           onClick={() => newTerm.trim() && add.mutate()}
           disabled={add.isPending || !newTerm.trim()}
           style={s.btnAdd}
         >
-          Add Term
+          Add Pair
         </button>
         {add.isError && <span style={{ color: '#f44', fontSize: 12 }}>{add.error?.message}</span>}
       </div>
@@ -75,17 +94,16 @@ export function GlossaryPage() {
         <div style={s.center}>
           <p>No glossary terms yet.</p>
           <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>
-            Terms are added automatically when running <code>npm run learn:multilang</code>, or
-            manually above.
+            Add source → translation term pairs above to enforce terminology consistency.
           </p>
         </div>
       ) : (
         <table style={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Term</th>
-              <th style={s.th}>Lang</th>
-              <th style={s.th}>Count</th>
+              <th style={s.th}>Source Term</th>
+              <th style={s.th}>Translation</th>
+              <th style={s.th}>Langs</th>
               <th style={s.th}>Source</th>
               <th style={s.th}></th>
             </tr>
@@ -94,10 +112,12 @@ export function GlossaryPage() {
             {data.map((entry: GlossaryEntry) => (
               <tr key={entry.id} style={s.tr}>
                 <td style={{ ...s.td, fontWeight: 500, color: '#ddd' }}>{entry.term}</td>
-                <td style={{ ...s.td, fontSize: 11 }}>
-                  <span style={s.langBadge}>{entry.lang}</span>
+                <td style={{ ...s.td, color: entry.translation ? '#b5e8a0' : '#666', fontStyle: entry.translation ? 'normal' : 'italic' }}>
+                  {entry.translation ?? '—'}
                 </td>
-                <td style={{ ...s.td, color: '#888', textAlign: 'right' }}>{entry.count}</td>
+                <td style={{ ...s.td, fontSize: 11 }}>
+                  <span style={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
+                </td>
                 <td style={{ ...s.td, color: '#666', fontSize: 12 }}>{entry.source}</td>
                 <td style={s.td}>
                   <button

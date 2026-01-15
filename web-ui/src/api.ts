@@ -84,7 +84,7 @@ export type QAIssue = {
 
 export type Signature = { signature: string; count: number };
 
-export type GlossaryEntry = { id: number; term: string; lang: string; count: number; source: string };
+export type GlossaryEntry = { id: number; term: string; translation: string | null; src_lang: string; tgt_lang: string; source: string; created_at: string };
 
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
 
@@ -379,14 +379,17 @@ export const api = {
   },
 
   glossary: {
-    list: (params?: { lang?: string; q?: string }) => {
-      const qs = new URLSearchParams(params as Record<string, string>);
+    list: (params?: { srcLang?: string; tgtLang?: string; q?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.srcLang) qs.set('srcLang', params.srcLang);
+      if (params?.tgtLang) qs.set('tgtLang', params.tgtLang);
+      if (params?.q) qs.set('q', params.q);
       return req<GlossaryEntry[]>(`/api/glossary?${qs}`);
     },
-    add: (term: string, lang: string) =>
+    add: (term: string, translation: string | null, srcLang = 'en', tgtLang = 'uk') =>
       req<GlossaryEntry>('/api/glossary', {
         method: 'POST',
-        body: JSON.stringify({ term, lang }),
+        body: JSON.stringify({ term, translation, srcLang, tgtLang }),
       }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/glossary/${id}`, { method: 'DELETE' }),
   },

@@ -130,6 +130,25 @@ async function refreshQAIssues(db: Tx, stringId: number, targetLang: string): Pr
   }
 
   const issues = buildQAIssues(row.source, row.translation);
+
+  // Glossary violation check: source contains a glossary term but translation is missing the required translation
+  const { rows: glossaryTerms } = await db.query(
+    `SELECT term, translation FROM glossary
+     WHERE src_lang = 'en' AND tgt_lang = $1 AND translation IS NOT NULL`,
+    [targetLang],
+  );
+  const srcLower = row.source.toLowerCase();
+  const tgtLower = row.translation.toLowerCase();
+  for (const g of glossaryTerms as Array<{ term: string; translation: string }>) {
+    if (srcLower.includes(g.term.toLowerCase()) && !tgtLower.includes(g.translation.toLowerCase())) {
+      issues.push({
+        issueType: 'glossary_violation',
+        severity: 'warning',
+        message: `Glossary: "${g.term}" should be translated as "${g.translation}".`,
+      });
+    }
+  }
+
   for (const issue of issues) {
     await db.query(
       `INSERT INTO qa_issues(
