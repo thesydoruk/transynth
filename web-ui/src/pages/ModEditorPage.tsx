@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
 
@@ -65,6 +66,15 @@ export function ModEditorPage() {
 
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
+
+  // Virtualizer
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: strings?.rows.length ?? 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
+  });
 
   const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page];
 
@@ -442,67 +452,80 @@ export function ModEditorPage() {
         {/* CENTER+RIGHT: table + detail panel */}
         <div style={s.centerCol}>
 
-          {/* ── String table ── */}
-          <div style={s.tableWrap}>
+          {/* ── String table (virtualized) ── */}
+          <div style={s.tableWrap} ref={scrollRef}>
             {isLoading ? (
               <div style={s.center}>Loading…</div>
             ) : (
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    <th style={{ ...s.th, width: 24 }}>
-                      <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
-                    </th>
-                    <th style={{ ...s.th, width: 52 }}>GRUP</th>
-                    <th style={{ ...s.th, width: 70 }}>FormID</th>
-                    <th style={{ ...s.th, width: 160 }}>EDID</th>
-                    <th style={{ ...s.th, width: 50 }}>FIELD</th>
-                    <th style={{ ...s.th, minWidth: 220 }}>Текст оригіналу ({srcLang.toUpperCase()})</th>
-                    <th style={{ ...s.th, minWidth: 220 }}>Текст перекладу ({targetLang.toUpperCase()})</th>
-                    <th style={{ ...s.th, width: 74 }}>Дії</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {strings?.rows.map((row) => (
-                    <tr
-                      key={row.string_id}
-                      style={{ ...s.tr, background: rowBg(activeRow?.string_id === row.string_id ? '__active' : row.status) ,
-                        outline: activeRow?.string_id === row.string_id ? '1px solid #aaa' : 'none',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => handleRowClick(row)}
-                    >
-                      <td style={s.td} onClick={(e) => toggleRow(row, e)}>
-                        <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
-                      </td>
-                      <td style={{ ...s.td, color: '#999', fontSize: 11 }}>{row.signature}</td>
-                      <td style={{ ...s.td, fontFamily: 'monospace', fontSize: 11, color: '#777' }}>{row.formid_hex}</td>
-                      <td style={{ ...s.td, fontSize: 11, color: '#aaa', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.edid ?? ''}>{row.edid ?? ''}</td>
-                      <td style={{ ...s.td, fontSize: 11, color: '#999' }}>{row.path?.split('.').pop() ?? ''}</td>
-                      <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</td>
-                      <td style={{ ...s.td, maxWidth: 280, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13, color: row.translation ? '#eee' : '#666', fontStyle: row.translation ? 'normal' : 'italic' }}>
-                        {row.translation ?? '—'}
-                        {row.qa_issue_count > 0 && (
-                          <span style={s.qaHint}>{row.qa_issue_count} QA</span>
-                        )}
-                      </td>
-                      <td style={s.td} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: 3 }}>
-                          {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
-                            <button style={s.actionBtn('#1565c0')} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
-                          )}
-                          {row.translation && row.status !== 'rejected' && row.translation_id && (
-                            <button style={s.actionBtn('#7b1a1a')} title="Відхилити" onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
-                          )}
-                          <button style={s.actionBtn('#7b1a1a')} title="Очистити переклад" onClick={() => handleClear(row)}>X</button>
-                          <button style={s.actionBtn('#2a5c2a')} title="Копіювати оригінал у переклад" onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
-                          <StatusBadge status={row.status} small />
+              <>
+                {/* Sticky header */}
+                <div style={s.gridHeader}>
+                  <div style={{ ...s.th, width: 24 }}>
+                    <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
+                  </div>
+                  <div style={{ ...s.th, width: 52 }}>GRUP</div>
+                  <div style={{ ...s.th, width: 70 }}>FormID</div>
+                  <div style={{ ...s.th, width: 160 }}>EDID</div>
+                  <div style={{ ...s.th, width: 50 }}>FIELD</div>
+                  <div style={{ ...s.th, flex: 1, minWidth: 220 }}>Текст оригіналу ({srcLang.toUpperCase()})</div>
+                  <div style={{ ...s.th, flex: 1, minWidth: 220 }}>Текст перекладу ({targetLang.toUpperCase()})</div>
+                  <div style={{ ...s.th, width: 74 }}>Дії</div>
+                </div>
+                {/* Virtualized rows */}
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                  {rowVirtualizer.getVirtualItems().map((vItem) => {
+                    const row = strings!.rows[vItem.index];
+                    const isActive = activeRow?.string_id === row.string_id;
+                    return (
+                      <div
+                        key={row.string_id}
+                        data-index={vItem.index}
+                        ref={rowVirtualizer.measureElement}
+                        style={{
+                          ...s.gridRow,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${vItem.start}px)`,
+                          background: rowBg(isActive ? '__active' : row.status),
+                          outline: isActive ? '1px solid #aaa' : 'none',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleRowClick(row)}
+                      >
+                        <div style={{ ...s.td, width: 24 }} onClick={(e) => toggleRow(row, e)}>
+                          <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div style={{ ...s.td, width: 52, color: '#999', fontSize: 11 }}>{row.signature}</div>
+                        <div style={{ ...s.td, width: 70, fontFamily: 'monospace', fontSize: 11, color: '#777' }}>{row.formid_hex}</div>
+                        <div style={{ ...s.td, width: 160, fontSize: 11, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.edid ?? ''}>{row.edid ?? ''}</div>
+                        <div style={{ ...s.td, width: 50, fontSize: 11, color: '#999' }}>{row.path?.split('.').pop() ?? ''}</div>
+                        <div style={{ ...s.td, flex: 1, minWidth: 220, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</div>
+                        <div style={{ ...s.td, flex: 1, minWidth: 220, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13, color: row.translation ? '#eee' : '#666', fontStyle: row.translation ? 'normal' : 'italic' }}>
+                          {row.translation ?? '—'}
+                          {row.qa_issue_count > 0 && (
+                            <span style={s.qaHint}>{row.qa_issue_count} QA</span>
+                          )}
+                        </div>
+                        <div style={{ ...s.td, width: 74 }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: 3 }}>
+                            {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
+                              <button style={s.actionBtn('#1565c0')} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
+                            )}
+                            {row.translation && row.status !== 'rejected' && row.translation_id && (
+                              <button style={s.actionBtn('#7b1a1a')} title="Відхилити" onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
+                            )}
+                            <button style={s.actionBtn('#7b1a1a')} title="Очистити переклад" onClick={() => handleClear(row)}>X</button>
+                            <button style={s.actionBtn('#2a5c2a')} title="Копіювати оригінал у переклад" onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
+                            <StatusBadge status={row.status} small />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
 
@@ -765,11 +788,13 @@ const s = {
 
   centerCol: { flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' },
 
-  tableWrap: { flex: 1, overflowY: 'auto' as const, overflowX: 'auto' as const },
+  tableWrap: { flex: 1, overflowY: 'auto' as const, overflowX: 'auto' as const, position: 'relative' as const },
   table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 12 },
-  th: { textAlign: 'left' as const, color: '#777', fontSize: 10, padding: '5px 6px', borderBottom: '2px solid #2a2a2a', background: '#161616', position: 'sticky' as const, top: 0, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', whiteSpace: 'nowrap' as const },
+  gridHeader: { display: 'flex', position: 'sticky' as const, top: 0, zIndex: 2, background: '#161616' },
+  gridRow: { display: 'flex', borderBottom: '1px solid #1c1c1c' },
+  th: { textAlign: 'left' as const, color: '#777', fontSize: 10, padding: '5px 6px', borderBottom: '2px solid #2a2a2a', background: '#161616', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', whiteSpace: 'nowrap' as const, boxSizing: 'border-box' as const },
   tr: { borderBottom: '1px solid #1c1c1c' },
-  td: { padding: '5px 6px', verticalAlign: 'top' as const },
+  td: { padding: '5px 6px', verticalAlign: 'top' as const, boxSizing: 'border-box' as const },
   actionBtn: (bg: string) => ({ background: bg, color: '#fff', border: 'none', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', fontSize: 11, fontWeight: 700, minWidth: 20 }) as React.CSSProperties,
 
   pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: '6px 0', background: '#141414', borderTop: '1px solid #2a2a2a', flexShrink: 0 },
