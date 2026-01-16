@@ -149,6 +149,32 @@ async function refreshQAIssues(db: Tx, stringId: number, targetLang: string): Pr
     }
   }
 
+  // Duplicate inconsistency: same source text_norm translated differently elsewhere
+  const { rows: inconsistent } = await db.query(
+    `SELECT DISTINCT t2.text
+     FROM strings s1
+     JOIN strings s2 ON s2.text_norm = s1.text_norm AND s2.lang = s1.lang AND s2.id <> s1.id
+     JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
+       AND t2.id = (
+         SELECT id FROM translations
+         WHERE src_string_id = s2.id AND target_lang = $2
+         ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
+         LIMIT 1
+       )
+     WHERE s1.id = $1 AND s1.text_norm IS NOT NULL AND s1.text_norm <> ''
+       AND t2.text <> $3
+     LIMIT 5`,
+    [stringId, targetLang, row.translation],
+  );
+  if (inconsistent.length > 0) {
+    const alts = (inconsistent as Array<{ text: string }>).map((r) => `"${r.text}"`).join(', ');
+    issues.push({
+      issueType: 'duplicate_inconsistency',
+      severity: 'warning',
+      message: `Same source text is translated differently elsewhere: ${alts}`,
+    });
+  }
+
   for (const issue of issues) {
     await db.query(
       `INSERT INTO qa_issues(
