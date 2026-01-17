@@ -58,6 +58,14 @@ export function ModEditorPage() {
   const [activeRow, setActiveRow] = useState<StringRow | null>(null);
   const [draftTranslation, setDraftTranslation] = useState('');
   const [activeTab, setActiveTab] = useState<BottomTab>('suggestions');
+  const [saveIndicator, setSaveIndicator] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Autosave refs
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeRowRef = useRef(activeRow);
+  const draftRef = useRef(draftTranslation);
+  activeRowRef.current = activeRow;
+  draftRef.current = draftTranslation;
 
   // Translate progress
   const [translateProgress, setTranslateProgress] = useState<TranslateProgress | null>(null);
@@ -109,20 +117,37 @@ export function ModEditorPage() {
   const saveMutation = useMutation({
     mutationFn: ({ stringId, text }: { stringId: number; text: string }) =>
       api.strings.saveTranslation(stringId, text, 'draft', targetLang),
+    onMutate: ({ stringId, text }) => {
+      // Optimistic update in the grid cache
+      qc.setQueriesData<{ rows: StringRow[]; total: number }>({ queryKey: ['strings', modId] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          rows: old.rows.map((r) =>
+            r.string_id === stringId ? { ...r, translation: text || null, status: text ? 'draft' : null } : r,
+          ),
+        };
+      });
+      setSaveIndicator('saving');
+    },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       qc.invalidateQueries({ queryKey: ['history'] });
       qc.invalidateQueries({ queryKey: ['qa'] });
       void refetchStats();
       // Update active row locally
-      if (activeRow) {
-        setActiveRow({
-          ...activeRow,
-          translation: draftTranslation,
-          translation_id: result.id,
-          status: 'draft',
-        });
+      if (activeRowRef.current?.string_id === result.id || (activeRowRef.current && result.id)) {
+        setActiveRow((prev) =>
+          prev
+            ? { ...prev, translation: result.text, translation_id: result.id, status: 'draft' }
+            : prev,
+        );
       }
+      setSaveIndicator('saved');
+      setTimeout(() => setSaveIndicator('idle'), 1500);
+    },
+    onError: () => {
+      setSaveIndicator('idle');
     },
   });
 
@@ -215,7 +240,26 @@ export function ModEditorPage() {
     },
   });
 
+  // Flush pending autosave immediately (used before row switch)
+  function flushAutosave() {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    const row = activeRowRef.current;
+    const text = draftRef.current;
+    if (!row) return;
+    const original = row.translation ?? '';
+    if (text === original) return;
+    if (text.trim() === '') {
+      clearMutation.mutate({ stringId: row.string_id });
+    } else {
+      saveMutation.mutate({ stringId: row.string_id, text });
+    }
+  }
+
   function handleRowClick(row: StringRow) {
+    flushAutosave();
     setActiveRow(row);
     setDraftTranslation(row.translation ?? '');
     setActiveTab('suggestions');
@@ -231,7 +275,7 @@ export function ModEditorPage() {
       // Escape — close detail panel or clear selection
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (activeRow) { setActiveRow(null); setDraftTranslation(''); }
+        if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
         else if (selected.size > 0) setSelected(new Set());
         return;
       }
@@ -274,12 +318,28 @@ export function ModEditorPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeRow, selected, strings]);
 
+  // Debounced autosave: triggers 800ms after typing stops
+  useEffect(() => {
+    if (!activeRow) return;
+    const original = activeRow.translation ?? '';
+    if (draftTranslation === original) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      autosaveTimer.current = null;
+      handleSave();
+    }, 800);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [draftTranslation]);
+
   function handleCopySource() {
     if (!activeRow) return;
     setDraftTranslation(activeRow.source);
   }
 
   function handleSave() {
+    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
     if (!activeRow) return;
     if (draftTranslation.trim() === '') {
       handleClear(activeRow);
@@ -590,7 +650,7 @@ export function ModEditorPage() {
                         disabled={saveMutation.isPending}
                         title="Ctrl+Enter"
                       >
-                        {saveMutation.isPending ? 'Saving…' : 'Save'}
+                        {saveMutation.isPending ? 'Saving…' : saveIndicator === 'saved' ? '✓ Saved' : 'Save'}
                       </button>
                     </div>
                   </div>
