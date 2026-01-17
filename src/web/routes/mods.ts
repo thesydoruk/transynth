@@ -5,7 +5,7 @@ import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp } from '../exportService.js';
 
-export async function modsRoutes(app: FastifyInstance, db: Tx) {
+export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats
   app.get('/api/mods', async (_req, reply) => {
     log.debug('GET /api/mods');

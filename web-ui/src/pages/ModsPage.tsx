@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { ProgressBar, StatusBadge } from '../components/StatusBadge';
 
-export function ModsPage() {
+export const ModsPage = () => {
   const nav = useNavigate();
   const { data, isLoading, error } = useQuery({
     queryKey: ['mods'],

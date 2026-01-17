@@ -7,7 +7,7 @@ import { log } from '../logger.js';
 
 let _instance: LLMProvider | undefined;
 
-export function getLLM(): LLMProvider {
+export const getLLM = (): LLMProvider => {
   if (_instance) return _instance;
   _instance = CONFIG.llmProvider === 'openai'
     ? new OpenAIProvider()
@@ -16,19 +16,19 @@ export function getLLM(): LLMProvider {
   return _instance;
 }
 
-function makeFallback(): LLMProvider | null {
+const makeFallback = (): LLMProvider | null => {
   if (CONFIG.llmFallback === 'none') return null;
   return CONFIG.llmFallback === 'openai' ? new OpenAIProvider() : new OllamaProvider();
 }
 
 const AVAILABILITY_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
-function isAvailabilityError(err: any): boolean {
+const isAvailabilityError = (err: any): boolean => {
   return AVAILABILITY_CODES.has(err?.code) || err?.status === 503;
 }
 
 /** Chat with automatic fallback to secondary provider on availability errors. */
-export async function chatWithFallback(opts: ChatOptions): Promise<string> {
+export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
   const primary = getLLM();
   try {
     return await primary.chat(opts);
@@ -41,7 +41,7 @@ export async function chatWithFallback(opts: ChatOptions): Promise<string> {
 }
 
 /** Embed with automatic fallback to secondary provider on availability errors. */
-export async function embedWithFallback(texts: string[], model: string): Promise<number[][]> {
+export const embedWithFallback = async (texts: string[], model: string): Promise<number[][]> => {
   const primary = getLLM();
   try {
     return await primary.embed(texts, model);

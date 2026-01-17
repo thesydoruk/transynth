@@ -39,37 +39,37 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 
-export async function ensureCsvImportSchema(_db: Tx) {
+export const ensureCsvImportSchema = async (_db: Tx) => {
   // Schema is now managed by sql/schema.sql — no-op
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
-export async function listCsvImportJobs(db: Tx): Promise<CsvImportJob[]> {
+export const listCsvImportJobs = async (db: Tx): Promise<CsvImportJob[]> => {
   const { rows } = await db.query('SELECT * FROM csv_imports ORDER BY created_at DESC');
   return rows as CsvImportJob[];
 }
 
-export async function getCsvImportJob(db: Tx, id: number): Promise<CsvImportJob | undefined> {
+export const getCsvImportJob = async (db: Tx, id: number): Promise<CsvImportJob | undefined> => {
   const { rows } = await db.query('SELECT * FROM csv_imports WHERE id = $1', [id]);
   return rows[0] as CsvImportJob | undefined;
 }
 
-export async function updateCsvJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+export const updateCsvJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
   await db.query(
     `UPDATE csv_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
     [srcLang, tgtLang, id],
   );
 }
 
-export async function deleteCsvImportJob(db: Tx, id: number) {
+export const deleteCsvImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM csv_imports WHERE id = $1', [id]);
 }
 
-async function getOrCreateJob(
+const getOrCreateJob = async (
   db: Tx, fileName: string, fileHash: string, modId: number,
   totalRecords: number, srcLang: string, tgtLang: string,
-): Promise<CsvImportJob> {
+): Promise<CsvImportJob> => {
   const { rows: existing } = await db.query('SELECT * FROM csv_imports WHERE file_hash = $1', [fileHash]);
   if (existing[0]) return existing[0] as CsvImportJob;
 
@@ -83,28 +83,28 @@ async function getOrCreateJob(
   return rows[0] as CsvImportJob;
 }
 
-async function updateProgress(db: Tx, jobId: number, importedRecords: number) {
+const updateProgress = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE csv_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markDone(db: Tx, jobId: number, importedRecords: number) {
+const markDone = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE csv_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markFailed(db: Tx, jobId: number, importedRecords: number) {
+const markFailed = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE csv_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markPaused(db: Tx, jobId: number, importedRecords: number) {
+const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE csv_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
@@ -114,7 +114,7 @@ async function markPaused(db: Tx, jobId: number, importedRecords: number) {
 // ── CSV parsing ─────────────────────────────────────────────────────────────
 
 /** Parse CSV text into structured records. */
-export function parseCsvRecords(text: string): CsvRecord[] {
+export const parseCsvRecords = (text: string): CsvRecord[] => {
   const lines = text.split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return [];
 
@@ -153,6 +153,7 @@ export function parseCsvRecords(text: string): CsvRecord[] {
 }
 
 /** Iterate CSV records one at a time (for preview). */
+// eslint-disable-next-line func-style
 export function* iterCsvRecords(text: string): Generator<CsvRecord> {
   const lines = text.split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return;
@@ -189,7 +190,7 @@ export function* iterCsvRecords(text: string): Generator<CsvRecord> {
   }
 }
 
-async function importRecord(db: Tx, modId: number, rec: CsvRecord, srcLang: string, tgtLang: string) {
+const importRecord = async (db: Tx, modId: number, rec: CsvRecord, srcLang: string, tgtLang: string) => {
   const recPath = rec.field || 'FULL';
   const hashNorm = normalizeForHash(rec.source);
   const recordId = await upsertRecord(db, modId, rec.signature, recPath, recPath, rec.edid || null, hashNorm, rec.formId || null);
@@ -202,7 +203,7 @@ async function importRecord(db: Tx, modId: number, rec: CsvRecord, srcLang: stri
 }
 
 /** Register an uploaded CSV file (parse, create job). Returns the job. */
-export async function registerCsvFile(db: Tx, fileName: string, text: string, srcLang = 'en', tgtLang = 'uk'): Promise<CsvImportJob> {
+export const registerCsvFile = async (db: Tx, fileName: string, text: string, srcLang = 'en', tgtLang = 'uk'): Promise<CsvImportJob> => {
   const fileHash = sha1Hex(Buffer.from(text, 'utf8'));
   const records = parseCsvRecords(text);
   const totalRecords = records.length;
@@ -222,16 +223,16 @@ interface ActiveImport {
 
 const activeImports = new Map<number, ActiveImport>();
 
-export function isCsvImportRunning(jobId: number): boolean {
+export const isCsvImportRunning = (jobId: number): boolean => {
   return activeImports.has(jobId);
 }
 
-export function requestCsvCancel(jobId: number) {
+export const requestCsvCancel = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.cancel = true;
 }
 
-export function requestCsvPause(jobId: number) {
+export const requestCsvPause = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.pause = true;
 }
@@ -240,12 +241,12 @@ export function requestCsvPause(jobId: number) {
  * Run CSV import for a single job. Reads the file text, resumes from last offset.
  * Calls onProgress after each batch.
  */
-export async function runCsvImport(
+export const runCsvImport = async (
   db: Tx,
   job: CsvImportJob,
   text: string,
   onProgress?: ProgressCb,
-): Promise<CsvImportJob> {
+): Promise<CsvImportJob> => {
   if (job.status === 'completed') return job;
   if (activeImports.has(job.id)) throw new Error(`CSV Import #${job.id} is already running`);
 

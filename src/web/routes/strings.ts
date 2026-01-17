@@ -16,7 +16,7 @@ import { chatWithFallback } from '../../llm/index.js';
 import { CONFIG } from '../../config.js';
 import { log } from '../../logger.js';
 
-export async function stringsRoutes(app: FastifyInstance, db: Tx) {
+export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&page=&pageSize=
   app.get<{
     Querystring: {

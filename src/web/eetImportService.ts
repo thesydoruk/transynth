@@ -26,32 +26,32 @@ export interface ImportJob {
 
 export type ProgressCb = (imported: number, total: number) => void;
 
-export async function ensureImportSchema(_db: Tx) {
+export const ensureImportSchema = async (_db: Tx) => {
   // Schema is now managed by sql/schema.sql — no-op
 }
 
-export async function listImportJobs(db: Tx): Promise<ImportJob[]> {
+export const listImportJobs = async (db: Tx): Promise<ImportJob[]> => {
   const { rows } = await db.query('SELECT * FROM eet_imports ORDER BY created_at DESC');
   return rows as ImportJob[];
 }
 
-export async function getImportJob(db: Tx, id: number): Promise<ImportJob | undefined> {
+export const getImportJob = async (db: Tx, id: number): Promise<ImportJob | undefined> => {
   const { rows } = await db.query('SELECT * FROM eet_imports WHERE id = $1', [id]);
   return rows[0] as ImportJob | undefined;
 }
 
-export async function updateJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+export const updateJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
   await db.query(
     `UPDATE eet_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
     [srcLang, tgtLang, id],
   );
 }
 
-export async function deleteImportJob(db: Tx, id: number) {
+export const deleteImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM eet_imports WHERE id = $1', [id]);
 }
 
-async function getOrCreateJob(db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> {
+const getOrCreateJob = async (db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> => {
   const { rows: existing } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
   if (existing[0]) return existing[0] as ImportJob;
 
@@ -65,35 +65,35 @@ async function getOrCreateJob(db: Tx, fileName: string, fileHash: string, modId:
   return rows[0] as ImportJob;
 }
 
-async function updateProgress(db: Tx, jobId: number, importedRecords: number) {
+const updateProgress = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markDone(db: Tx, jobId: number, importedRecords: number) {
+const markDone = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markFailed(db: Tx, jobId: number, importedRecords: number) {
+const markFailed = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markPaused(db: Tx, jobId: number, importedRecords: number) {
+const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) {
+const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) => {
   const recPath = rec.field || 'FULL';
   const hashNorm = normalizeForHash(rec.source);
   const recordId = await upsertRecord(db, modId, rec.signature, recPath, recPath, rec.edid || null, hashNorm, rec.formId || null);
@@ -106,7 +106,7 @@ async function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: stri
 }
 
 /** Register an uploaded EET file (parse header, create job). Returns the job. */
-export async function registerEetFile(db: Tx, fileName: string, buf: Buffer, srcLang = 'en', tgtLang = 'uk'): Promise<ImportJob> {
+export const registerEetFile = async (db: Tx, fileName: string, buf: Buffer, srcLang = 'en', tgtLang = 'uk'): Promise<ImportJob> => {
   const fileHash = sha1Hex(buf);
   const header = parseEetHeader(buf);
 
@@ -132,16 +132,16 @@ interface ActiveImport {
 
 const activeImports = new Map<number, ActiveImport>();
 
-export function isImportRunning(jobId: number): boolean {
+export const isImportRunning = (jobId: number): boolean => {
   return activeImports.has(jobId);
 }
 
-export function requestCancel(jobId: number) {
+export const requestCancel = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.cancel = true;
 }
 
-export function requestPause(jobId: number) {
+export const requestPause = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.pause = true;
 }
@@ -151,12 +151,12 @@ export function requestPause(jobId: number) {
  * Calls onProgress after each batch.
  * Returns the final job state.
  */
-export async function runImport(
+export const runImport = async (
   db: Tx,
   job: ImportJob,
   buf: Buffer,
   onProgress?: ProgressCb,
-): Promise<ImportJob> {
+): Promise<ImportJob> => {
   if (job.status === 'completed') return job;
   if (activeImports.has(job.id)) throw new Error(`Import #${job.id} is already running`);
 

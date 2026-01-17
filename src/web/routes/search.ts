@@ -3,7 +3,7 @@ import type { Tx } from '../../db.js';
 import { searchReplaceTranslations } from '../queries.js';
 import { log } from '../../logger.js';
 
-export async function searchRoutes(app: FastifyInstance, db: Tx) {
+export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:id/search-replace
   // body: { search, replace, isRegex?, targetLang?, dryRun? }
   // dryRun=true → returns matches without applying, dryRun=false (default) → applies changes

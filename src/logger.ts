@@ -5,7 +5,7 @@ import path from 'path';
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3, trace: 4 } as const;
 type LogLevel = keyof typeof LEVELS;
 
-function resolveLevel(): LogLevel {
+const resolveLevel = (): LogLevel => {
   const raw = (process.env.LOG_LEVEL || 'info').toLowerCase();
   if (raw in LEVELS) return raw as LogLevel;
   // Backward compat: DEBUG=1 → debug level
@@ -16,21 +16,21 @@ function resolveLevel(): LogLevel {
 const currentLevel = resolveLevel();
 const levelNum = LEVELS[currentLevel];
 
-function enabled(lvl: LogLevel): boolean {
+const enabled = (lvl: LogLevel): boolean => {
   return LEVELS[lvl] <= levelNum;
 }
 
 // ── File transport ───────────────────────────────────────────────────────────
 const logDir = process.env.LOG_DIR || './data/log';
 
-function ensureLogDir(): void {
+const ensureLogDir = (): void => {
   if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 }
 
 let _logStream: fs.WriteStream | null = null;
 let _streamDate = '';
 
-function getStream(): fs.WriteStream {
+const getStream = (): fs.WriteStream => {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   if (_logStream && _streamDate === today) return _logStream;
   if (_logStream) _logStream.end();
@@ -42,11 +42,11 @@ function getStream(): fs.WriteStream {
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────────
-function ts(): string {
+const ts = (): string => {
   return new Date().toISOString();
 }
 
-function fmt(level: LogLevel, args: unknown[]): string {
+const fmt = (level: LogLevel, args: unknown[]): string => {
   const parts = args.map(a =>
     a instanceof Error ? `${a.message}\n${a.stack ?? ''}`
       : typeof a === 'object' && a !== null ? JSON.stringify(a)
@@ -65,7 +65,7 @@ const COLOUR: Record<LogLevel, string> = {
 };
 const RESET = '\x1b[0m';
 
-function emit(level: LogLevel, args: unknown[]): void {
+const emit = (level: LogLevel, args: unknown[]): void => {
   if (!enabled(level)) return;
   const line = fmt(level, args);
 

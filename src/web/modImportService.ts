@@ -48,30 +48,30 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 
-export async function ensureModImportSchema(_db: Tx) {
+export const ensureModImportSchema = async (_db: Tx) => {
   // Schema is now managed by sql/schema.sql — no-op
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
-export async function listModImportJobs(db: Tx): Promise<ModImportJob[]> {
+export const listModImportJobs = async (db: Tx): Promise<ModImportJob[]> => {
   const { rows } = await db.query('SELECT * FROM mod_imports ORDER BY created_at DESC');
   return rows as ModImportJob[];
 }
 
-export async function getModImportJob(db: Tx, id: number): Promise<ModImportJob | undefined> {
+export const getModImportJob = async (db: Tx, id: number): Promise<ModImportJob | undefined> => {
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE id = $1', [id]);
   return rows[0] as ModImportJob | undefined;
 }
 
-export async function updateModJobLanguages(db: Tx, id: number, srcLang: string, tgtLang: string) {
+export const updateModJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
   await db.query(
     `UPDATE mod_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
     [srcLang, tgtLang, id],
   );
 }
 
-export async function deleteModImportJob(db: Tx, id: number) {
+export const deleteModImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM mod_imports WHERE id = $1', [id]);
 }
 
@@ -80,16 +80,16 @@ export async function deleteModImportJob(db: Tx, id: number) {
 const ARCHIVE_EXTS = new Set(['.zip', '.7z', '.rar']);
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 
-export function isArchive(fileName: string): boolean {
+export const isArchive = (fileName: string): boolean => {
   return ARCHIVE_EXTS.has(path.extname(fileName).toLowerCase());
 }
 
-export function isPlugin(fileName: string): boolean {
+export const isPlugin = (fileName: string): boolean => {
   return PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
 }
 
 /** Extract archive to a directory using 7-zip. Returns the output directory. */
-export function extractArchive(archivePath: string, outDir: string): Promise<void> {
+export const extractArchive = (archivePath: string, outDir: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const stream = Seven.extractFull(archivePath, outDir, {
       $bin: path7za,
@@ -104,11 +104,11 @@ export function extractArchive(archivePath: string, outDir: string): Promise<voi
 /**
  * Discover ESP/ESL/ESM + BA2 files inside a directory (recursive).
  */
-export function discoverModFiles(dir: string): { plugins: string[]; ba2s: string[] } {
+export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string[] } => {
   const plugins: string[] = [];
   const ba2s: string[] = [];
 
-  function walk(d: string) {
+  const walk = (d: string) => {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
       const full = path.join(d, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
@@ -121,7 +121,7 @@ export function discoverModFiles(dir: string): { plugins: string[]; ba2s: string
   return { plugins, ba2s };
 }
 
-function discoverBa2(modPath: string, ba2Candidates: string[]): string | null {
+const discoverBa2 = (modPath: string, ba2Candidates: string[]): string | null => {
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
   for (const ba2 of ba2Candidates) {
     const ba2Base = path.basename(ba2, '.ba2').toLowerCase();
@@ -135,7 +135,7 @@ function discoverBa2(modPath: string, ba2Candidates: string[]): string | null {
   return null;
 }
 
-function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
+const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
   const reader = new Ba2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
 
@@ -163,7 +163,7 @@ function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
   return locales;
 }
 
-function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, string>> {
+const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, string>> => {
   const dir = path.join(path.dirname(modPath), 'Strings');
   const locales = new Map<string, Map<number, string>>();
   if (!fs.existsSync(dir)) return locales;
@@ -185,10 +185,10 @@ function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, str
   return locales;
 }
 
-function buildCsvRows(
+const buildCsvRows = (
   espRows: EspStringRow[],
   stringsMap: Map<number, string> | null,
-): CsvRow[] {
+): CsvRow[] => {
   const rows: CsvRow[] = [];
   for (const row of espRows) {
     let text: string;
@@ -214,13 +214,13 @@ function buildCsvRows(
 
 // ── Registration ────────────────────────────────────────────────────────────
 
-export async function registerPluginFile(
+export const registerPluginFile = async (
   db: Tx,
   fileName: string,
   pluginPath: string,
   srcLang: string,
   tgtLang: string,
-): Promise<ModImportJob> {
+): Promise<ModImportJob> => {
   const buf = fs.readFileSync(pluginPath);
   const fileHash = sha1Hex(buf);
 
@@ -246,14 +246,14 @@ export async function registerPluginFile(
   return rows[0] as ModImportJob;
 }
 
-export async function registerArchiveFile(
+export const registerArchiveFile = async (
   db: Tx,
   fileName: string,
   archivePath: string,
   extractDir: string,
   srcLang: string,
   tgtLang: string,
-): Promise<ModImportJob> {
+): Promise<ModImportJob> => {
   const buf = fs.readFileSync(archivePath);
   const fileHash = sha1Hex(buf);
 
@@ -290,11 +290,11 @@ export async function registerArchiveFile(
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 
-export function previewModRecords(job: ModImportJob, ba2Candidates: string[] = []): {
+export const previewModRecords = (job: ModImportJob, ba2Candidates: string[] = []): {
   rows: ModPreviewRow[];
   locales: string[];
   isLocalized: boolean;
-} {
+} => {
   const espPath = job.esp_path;
   if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found on disk');
 
@@ -339,55 +339,55 @@ interface ActiveImport {
 
 const activeImports = new Map<number, ActiveImport>();
 
-export function isModImportRunning(jobId: number): boolean {
+export const isModImportRunning = (jobId: number): boolean => {
   return activeImports.has(jobId);
 }
 
-export function requestModCancel(jobId: number) {
+export const requestModCancel = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.cancel = true;
 }
 
-export function requestModPause(jobId: number) {
+export const requestModPause = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.pause = true;
 }
 
 // ── Import execution ────────────────────────────────────────────────────────
 
-async function updateProgress(db: Tx, jobId: number, importedRecords: number) {
+const updateProgress = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE mod_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markDone(db: Tx, jobId: number, importedRecords: number) {
+const markDone = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE mod_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markFailed(db: Tx, jobId: number, importedRecords: number) {
+const markFailed = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE mod_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markPaused(db: Tx, jobId: number, importedRecords: number) {
+const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE mod_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-export async function runModImport(
+export const runModImport = async (
   db: Tx,
   job: ModImportJob,
   onProgress?: ProgressCb,
-): Promise<ModImportJob> {
+): Promise<ModImportJob> => {
   if (job.status === 'completed') return job;
   if (activeImports.has(job.id)) throw new Error(`Mod Import #${job.id} is already running`);
 

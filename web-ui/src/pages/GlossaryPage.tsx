@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type GlossaryEntry } from '../api';
 
-export function GlossaryPage() {
+export const GlossaryPage = () => {
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState('en');
   const [tgtLang, setTgtLang] = useState('uk');

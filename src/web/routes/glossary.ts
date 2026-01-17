@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 
-export async function glossaryRoutes(app: FastifyInstance, db: Tx) {
+export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/glossary?srcLang=&tgtLang=&q=
   app.get<{ Querystring: { srcLang?: string; tgtLang?: string; q?: string } }>('/api/glossary', async (req, reply) => {
     const { srcLang, tgtLang, q } = req.query;

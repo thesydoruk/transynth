@@ -33,7 +33,7 @@ interface ImportJob {
   tgt_lang: string;
 }
 
-async function getOrCreateImportJob(db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> {
+const getOrCreateImportJob = async (db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> => {
   const { rows: existingRows } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
   const existing = existingRows[0] as ImportJob | undefined;
   if (existing) {
@@ -53,28 +53,28 @@ async function getOrCreateImportJob(db: Tx, fileName: string, fileHash: string, 
   return rows[0] as ImportJob;
 }
 
-async function updateImportProgress(db: Tx, jobId: number, importedRecords: number) {
+const updateImportProgress = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markImportDone(db: Tx, jobId: number, importedRecords: number) {
+const markImportDone = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function markImportFailed(db: Tx, jobId: number, importedRecords: number) {
+const markImportFailed = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
 }
 
-async function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) {
+const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) => {
   const recPath = rec.field || 'FULL';
   const pathSimplified = recPath;
   const hashNorm = normalizeForHash(rec.source);
@@ -90,7 +90,7 @@ async function importRecord(db: Tx, modId: number, rec: EetRecord, srcLang: stri
   }
 }
 
-async function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang: string) {
+const importEetFile = async (db: Tx, filePath: string, srcLang: string, tgtLang: string) => {
   const absPath = path.resolve(filePath);
   const fileName = path.basename(absPath);
 
@@ -164,7 +164,7 @@ async function importEetFile(db: Tx, filePath: string, srcLang: string, tgtLang:
   }
 }
 
-async function main() {
+const main = async () => {
   const { values } = parseArgs({
     options: {
       file: { type: 'string' },

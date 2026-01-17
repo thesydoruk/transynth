@@ -34,12 +34,12 @@ type QAIssueInput = {
   message: string;
 };
 
-function extractPlaceholders(text: string): string[] {
+const extractPlaceholders = (text: string): string[] => {
   const matches = text.match(/%[A-Za-z0-9_]+%|%[ds]\b|\{[^}]+\}|\$\{[^}]+\}|<[^>]+>/g) ?? [];
   return matches.sort();
 }
 
-function buildQAIssues(source: string, translation: string): QAIssueInput[] {
+const buildQAIssues = (source: string, translation: string): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
 
@@ -84,7 +84,7 @@ function buildQAIssues(source: string, translation: string): QAIssueInput[] {
   return issues;
 }
 
-async function recordTranslationRevision(db: Tx, input: RevisionInput): Promise<void> {
+const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<void> => {
   await db.query(
     `INSERT INTO translation_revisions(
        src_string_id, translation_id, target_lang, text, status, provenance, model, note
@@ -102,7 +102,7 @@ async function recordTranslationRevision(db: Tx, input: RevisionInput): Promise<
   );
 }
 
-async function refreshQAIssues(db: Tx, stringId: number, targetLang: string): Promise<void> {
+const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Promise<void> => {
   const { rows } = await db.query(
     `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation
      FROM strings s
@@ -187,7 +187,7 @@ async function refreshQAIssues(db: Tx, stringId: number, targetLang: string): Pr
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
-export async function listMods(db: Tx) {
+export const listMods = async (db: Tx) => {
   const { rows } = await db.query(
     `SELECT
       m.id,
@@ -210,7 +210,7 @@ export async function listMods(db: Tx) {
   return rows;
 }
 
-export async function getMod(db: Tx, id: number) {
+export const getMod = async (db: Tx, id: number) => {
   const { rows } = await db.query(`SELECT * FROM mods WHERE id = $1`, [id]);
   return rows[0];
 }
@@ -228,7 +228,7 @@ export type StringsFilter = {
   pageSize?: number;
 };
 
-export async function listStrings(db: Tx, f: StringsFilter) {
+export const listStrings = async (db: Tx, f: StringsFilter) => {
   const page = Math.max(1, f.page ?? 1);
   const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 50));
   const offset = (page - 1) * pageSize;
@@ -327,7 +327,7 @@ export async function listStrings(db: Tx, f: StringsFilter) {
   return { rows, total: Number(countRows[0].total), page, pageSize };
 }
 
-export async function listSignatures(db: Tx, modId: number, srcLang = 'en') {
+export const listSignatures = async (db: Tx, modId: number, srcLang = 'en') => {
   const { rows } = await db.query(
     `SELECT DISTINCT r.signature, COUNT(*) as count
      FROM records r
@@ -340,7 +340,7 @@ export async function listSignatures(db: Tx, modId: number, srcLang = 'en') {
   return rows;
 }
 
-export async function listModLangs(db: Tx, modId: number): Promise<string[]> {
+export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
   // Source langs from strings table + target langs from translations table
   const { rows } = await db.query(
     `SELECT DISTINCT lang FROM (
@@ -360,12 +360,12 @@ export async function listModLangs(db: Tx, modId: number): Promise<string[]> {
   return rows.map((r: { lang: string }) => r.lang);
 }
 
-export async function getTMSuggestions(
+export const getTMSuggestions = async (
   db: Tx,
   stringId: number,
   targetLang: string,
   limit = 5,
-) {
+) => {
   // Find strings with similar normalised source text and their translations
   const { rows: srcRows } = await db.query(
     `SELECT text_norm FROM strings WHERE id = $1`,
@@ -391,7 +391,7 @@ export async function getTMSuggestions(
 
 // ── Translations ──────────────────────────────────────────────────────────────
 
-export async function upsertTranslation(
+export const upsertTranslation = async (
   db: Tx,
   stringId: number,
   text: string,
@@ -399,7 +399,7 @@ export async function upsertTranslation(
   targetLang = 'uk',
   provenance?: string,
   model?: string,
-) {
+) => {
   const effectiveProvenance = provenance ?? (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
     ? 'human_edit'
     : `${status}_generated`);
@@ -432,7 +432,7 @@ export async function upsertTranslation(
   return { id: translationId, text, status };
 }
 
-export async function updateTranslationStatus(db: Tx, translationId: number, status: string) {
+export const updateTranslationStatus = async (db: Tx, translationId: number, status: string) => {
   const { rows } = await db.query(
     `UPDATE translations
      SET status = $1, updated_at = NOW()
@@ -466,7 +466,7 @@ export async function updateTranslationStatus(db: Tx, translationId: number, sta
   await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
 }
 
-export async function deleteTranslation(db: Tx, stringId: number, targetLang = 'uk') {
+export const deleteTranslation = async (db: Tx, stringId: number, targetLang = 'uk') => {
   const { rows } = await db.query(
     `DELETE FROM translations
      WHERE src_string_id = $1 AND target_lang = $2
@@ -496,7 +496,7 @@ export async function deleteTranslation(db: Tx, stringId: number, targetLang = '
 }
 
 // Returns text_norm for a string ID (used by propagation)
-export async function getStringTextNorm(db: Tx, stringId: number): Promise<string | null> {
+export const getStringTextNorm = async (db: Tx, stringId: number): Promise<string | null> => {
   const { rows } = await db.query(`SELECT text_norm FROM strings WHERE id = $1`, [stringId]);
   return rows[0]?.text_norm ?? null;
 }
@@ -514,12 +514,12 @@ export type DiffEntry = {
   changeType: 'added' | 'removed' | 'changed' | 'unchanged';
 };
 
-export async function diffMods(
+export const diffMods = async (
   db: Tx,
   newModId: number,
   oldModId: number,
   targetLang = 'uk',
-): Promise<{ added: DiffEntry[]; removed: DiffEntry[]; changed: DiffEntry[]; unchanged: number }> {
+): Promise<{ added: DiffEntry[]; removed: DiffEntry[]; changed: DiffEntry[]; unchanged: number }> => {
   type Row = {
     formid_hex: string;
     path: string;
@@ -590,7 +590,7 @@ export type SearchReplaceMatch = {
   newText: string;
 };
 
-export async function searchReplaceTranslations(
+export const searchReplaceTranslations = async (
   db: Tx,
   modId: number,
   search: string,
@@ -598,7 +598,7 @@ export async function searchReplaceTranslations(
   isRegex: boolean,
   targetLang: string,
   dryRun: boolean,
-): Promise<{ matches: SearchReplaceMatch[]; applied: number }> {
+): Promise<{ matches: SearchReplaceMatch[]; applied: number }> => {
   const { rows } = await db.query(
     `SELECT t.id AS translation_id, t.text, t.src_string_id AS string_id,
             r.formid_hex, r.path
@@ -683,7 +683,7 @@ export async function searchReplaceTranslations(
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export async function getModStats(db: Tx, modId: number) {
+export const getModStats = async (db: Tx, modId: number) => {
   const { rows } = await db.query(
     `SELECT
       COUNT(DISTINCT s.id)          AS total,
@@ -704,7 +704,7 @@ export async function getModStats(db: Tx, modId: number) {
   return rows[0];
 }
 
-export async function getTranslationHistory(db: Tx, stringId: number, targetLang = 'uk') {
+export const getTranslationHistory = async (db: Tx, stringId: number, targetLang = 'uk') => {
   const { rows } = await db.query(
     `SELECT id, translation_id, text, status, provenance, model, note, created_at
      FROM translation_revisions
@@ -716,7 +716,7 @@ export async function getTranslationHistory(db: Tx, stringId: number, targetLang
   return rows;
 }
 
-export async function getQAIssues(db: Tx, stringId: number, targetLang = 'uk') {
+export const getQAIssues = async (db: Tx, stringId: number, targetLang = 'uk') => {
   const { rows } = await db.query(
     `SELECT id, issue_type, severity, message, updated_at
      FROM qa_issues
@@ -729,13 +729,13 @@ export async function getQAIssues(db: Tx, stringId: number, targetLang = 'uk') {
 
 // ── Bulk status update ────────────────────────────────────────────────────────
 
-export async function bulkUpdateTranslationStatus(
+export const bulkUpdateTranslationStatus = async (
   db: Tx,
   modId: number,
   stringIds: number[],
   newStatus: 'reviewed' | 'rejected',
   targetLang = 'uk',
-): Promise<number> {
+): Promise<number> => {
   if (stringIds.length === 0) return 0;
 
   let updated = 0;

@@ -86,7 +86,7 @@ const argv = await yargs(hideBin(process.argv))
 // ---------- Helpers ----------
 
 /** Compute coverage and normalized content hash for a locale export. */
-function summarizeLocale(rows: CsvRow[]) {
+const summarizeLocale = (rows: CsvRow[]) => {
   const total = rows.length || 1;
   let real = 0;
   const normalized: string[] = [];
@@ -103,21 +103,21 @@ function summarizeLocale(rows: CsvRow[]) {
 }
 
 /** Decide if a locale is worth keeping on its own (not empty and not duplicate content-wise). */
-function acceptLocale(summary: {coverage:number;hash:string}, knownHashes: Set<string>) {
+const acceptLocale = (summary: {coverage:number;hash:string}, knownHashes: Set<string>) => {
   if (summary.coverage < MIN_COVERAGE) return false;
   if (knownHashes.has(summary.hash)) return false;
   return true;
 }
 
 /** All ordered pairs src→tgt for locales, excluding src==tgt. */
-function allPairs(arr: string[]) {
+const allPairs = (arr: string[]) => {
   const res: string[] = [];
   for (let i=0;i<arr.length;i++) for (let j=0;j<arr.length;j++) if (i!==j) res.push(`${arr[i]}:${arr[j]}`);
   return res;
 }
 
 /** Build canonical preference list (defaults to OFFICIAL order, then extras as given). */
-function buildPreference(extras: string[]|null, override: string|undefined) {
+const buildPreference = (extras: string[]|null, override: string|undefined) => {
   if (override && override.trim()) {
     return override.split(',').map(s => s.trim()).filter(Boolean);
   }
@@ -160,7 +160,7 @@ function buildPreference(extras: string[]|null, override: string|undefined) {
   }
 
   // Locate BA2
-  function findBa2(p: string): string | null {
+  const findBa2 = (p: string): string | null => {
     const dir = path.dirname(p);
     const stem = path.basename(p, path.extname(p));
     for (const c of [`${stem} - Main.ba2`, `${stem}.ba2`]) {

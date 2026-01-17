@@ -46,15 +46,15 @@ export interface EetRecord {
   status: number;
 }
 
-function readU32(buf: Buffer, o: number): number {
+const readU32 = (buf: Buffer, o: number): number => {
   return buf.readUInt32LE(o);
 }
 
-function readU16(buf: Buffer, o: number): number {
+const readU16 = (buf: Buffer, o: number): number => {
   return buf.readUInt16LE(o);
 }
 
-function readStr(buf: Buffer, o: number): [string, number] {
+const readStr = (buf: Buffer, o: number): [string, number] => {
   const len = readU32(buf, o);
   o += 4;
   const s = buf.toString('utf8', o, o + len);
@@ -64,7 +64,7 @@ function readStr(buf: Buffer, o: number): [string, number] {
 /**
  * Parse the EET file header.
  */
-export function parseEetHeader(buf: Buffer): EetHeader {
+export const parseEetHeader = (buf: Buffer): EetHeader => {
   let o = 0;
 
   const magic = buf.toString('ascii', o, o + 4);
@@ -111,6 +111,7 @@ export function parseEetHeader(buf: Buffer): EetHeader {
  * Uses the size-prefixed record layout to jump between records reliably.
  * Yields parsed record data for each entry.
  */
+// eslint-disable-next-line func-style
 export function* iterEetRecords(buf: Buffer, startOffset: number): Generator<EetRecord> {
   let o = startOffset;
 
@@ -167,7 +168,7 @@ export function* iterEetRecords(buf: Buffer, startOffset: number): Generator<Eet
 /**
  * Parse the entire EET file and return header + all records.
  */
-export function parseEetFile(buf: Buffer): { header: EetHeader; records: EetRecord[] } {
+export const parseEetFile = (buf: Buffer): { header: EetHeader; records: EetRecord[] } => {
   log.debug(`EET: parsing buffer (${buf.length} bytes)`);
   const header = parseEetHeader(buf);
   log.info(`EET: v${header.version}, game="${header.gameName}", declaredCount=${header.declaredCount}`);

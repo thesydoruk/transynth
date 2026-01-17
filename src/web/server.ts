@@ -65,7 +65,7 @@ try {
 }
 
 // Graceful shutdown
-async function shutdown() {
+const shutdown = async () => {
   log.info('Shutting down...');
   await app.close();
   await closeDb();

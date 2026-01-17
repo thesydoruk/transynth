@@ -5,13 +5,13 @@ import { sha1Hex } from './hash.js';
 import type { CsvRow } from '../types.js';
 import { log } from '../logger.js';
 
-export async function ingestCsvRows(
+export const ingestCsvRows = async (
   db: Tx,
   modId: number,
   rows: CsvRow[],
   lang: string,
   sourceKind: string
-): Promise<{ recordId: number; stringId: number }[]> {
+): Promise<{ recordId: number; stringId: number }[]> => {
   log.info(`Ingest: ${rows.length} rows, lang=${lang}, source=${sourceKind}`);
   const results: { recordId: number; stringId: number }[] = [];
   for (const r of rows) {

@@ -9,7 +9,7 @@ export type Tx = pg.Pool | pg.PoolClient;
 
 let _pool: pg.Pool | null = null;
 
-export function openDb(): pg.Pool {
+export const openDb = (): pg.Pool => {
   if (!_pool) {
     _pool = new Pool({ connectionString: CONFIG.databaseUrl });
     log.info('DB: connection pool created');
@@ -17,7 +17,7 @@ export function openDb(): pg.Pool {
   return _pool;
 }
 
-export async function closeDb(): Promise<void> {
+export const closeDb = async (): Promise<void> => {
   if (_pool) {
     await _pool.end();
     _pool = null;
@@ -25,7 +25,7 @@ export async function closeDb(): Promise<void> {
   }
 }
 
-export async function runSchema(db: Tx, schemaSql: string): Promise<void> {
+export const runSchema = async (db: Tx, schemaSql: string): Promise<void> => {
   await db.query(schemaSql);
 }
 
@@ -33,7 +33,7 @@ export async function runSchema(db: Tx, schemaSql: string): Promise<void> {
  * Execute a function inside a transaction.
  * Acquires a client, runs BEGIN … COMMIT, releases on completion.
  */
-export async function withTransaction<T>(pool: pg.Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+export const withTransaction = async <T>(pool: pg.Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -51,7 +51,7 @@ export async function withTransaction<T>(pool: pg.Pool, fn: (client: pg.PoolClie
   }
 }
 
-export async function upsertMod(db: Tx, name: string, absPath: string, versionHash: string): Promise<number> {
+export const upsertMod = async (db: Tx, name: string, absPath: string, versionHash: string): Promise<number> => {
   log.debug(`DB: upsertMod name=${name}`);
   const { rows } = await db.query(
     `INSERT INTO mods(name, abs_path, version_hash) VALUES ($1, $2, $3)
@@ -62,10 +62,10 @@ export async function upsertMod(db: Tx, name: string, absPath: string, versionHa
   return rows[0].id;
 }
 
-export async function upsertRecord(
+export const upsertRecord = async (
   db: Tx, modId: number, signature: string, path: string, pathSimplified: string,
   edid: string | null, hashNorm: string | null, formidHex: string | null,
-): Promise<number> {
+): Promise<number> => {
   const { rows } = await db.query(
     `INSERT INTO records(mod_id, signature, path, path_simplified, edid, hash_norm, formid_hex)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -80,7 +80,7 @@ export async function upsertRecord(
   return rows[0].id;
 }
 
-export async function insertString(
+export const insertString = async (
   db: Tx,
   recordId: number,
   lang: string,
@@ -88,7 +88,7 @@ export async function insertString(
   textNorm: string,
   sourceKind = 'export',
   lstringId?: number | null,
-): Promise<number> {
+): Promise<number> => {
   const { rows } = await db.query(
     `INSERT INTO strings(record_id, lang, lstring_id, text_raw, text_norm, source_kind) VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id`,
@@ -97,10 +97,10 @@ export async function insertString(
   return rows[0].id;
 }
 
-export async function addTranslation(
+export const addTranslation = async (
   db: Tx, srcStringId: number, targetLang: string, text: string,
   status: string, confidence: number | null, provenance: string, model?: string,
-): Promise<number> {
+): Promise<number> => {
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, model)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -117,9 +117,9 @@ export async function addTranslation(
   return existing[0]?.id ?? 0;
 }
 
-export async function bestTranslation(
+export const bestTranslation = async (
   db: Tx, srcStringId: number, targetLang: string,
-): Promise<{ id: number; text: string; status: string } | undefined> {
+): Promise<{ id: number; text: string; status: string } | undefined> => {
   const { rows } = await db.query(
     `SELECT id, text, status FROM translations
      WHERE src_string_id = $1 AND target_lang = $2
@@ -137,9 +137,9 @@ export async function bestTranslation(
   return rows[0];
 }
 
-export async function findStringId(
+export const findStringId = async (
   db: Tx, formidHex: string, path: string, lang: string,
-): Promise<number | undefined> {
+): Promise<number | undefined> => {
   if (!formidHex) return undefined;
   const { rows } = await db.query(
     `SELECT s.id FROM strings s

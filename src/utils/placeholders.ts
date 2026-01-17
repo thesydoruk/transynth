@@ -10,7 +10,7 @@ export const PLACEHOLDER_RE = new RegExp([
   String.raw`\$[A-Za-z_][A-Za-z0-9_]*`
 ].join('|'), 'g');
 
-export function maskPlaceholders(text: string) {
+export const maskPlaceholders = (text: string) => {
   const mapping: Record<string,string> = {};
   let i = 0;
   const masked = text.replace(PLACEHOLDER_RE, m => {
@@ -22,7 +22,7 @@ export function maskPlaceholders(text: string) {
   return { masked, mapping };
 }
 
-export function applyGlossaryMask(text: string, glossary: string[]) {
+export const applyGlossaryMask = (text: string, glossary: string[]) => {
   const map: Record<string,string> = {};
   let out = text;
   glossary.forEach((term, i) => {
@@ -36,7 +36,7 @@ export function applyGlossaryMask(text: string, glossary: string[]) {
   return { masked: out, mapping: map };
 }
 
-export function unmask(text: string, mapping: Record<string,string>) {
+export const unmask = (text: string, mapping: Record<string,string>) => {
   let out = text;
   // Sort keys by length (longest first) to prevent partial matches
   const keys = Object.keys(mapping).sort((a, b) => b.length - a.length);

@@ -1,7 +1,7 @@
 // Thin API client — all calls go through the same base URL
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,

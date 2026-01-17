@@ -15,7 +15,7 @@ const CHANGE_LABELS: Record<string, string> = {
   changed: 'Changed',
 };
 
-export function DiffPage() {
+export const DiffPage = () => {
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
 
   const [newModId, setNewModId] = useState('');
@@ -166,7 +166,7 @@ export function DiffPage() {
   );
 }
 
-function changeColor(type: string) {
+const changeColor = (type: string) => {
   return type === 'added' ? '#4caf50' : type === 'removed' ? '#f44336' : '#ff9800';
 }
 

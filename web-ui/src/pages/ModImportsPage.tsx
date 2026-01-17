@@ -26,7 +26,7 @@ const LANGUAGES = [
 
 const ACCEPTED = '.esp,.esm,.esl,.zip,.7z,.rar';
 
-export function ModImportsPage() {
+export const ModImportsPage = () => {
   const qc = useQueryClient();
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ['mod-imports'],
@@ -164,12 +164,12 @@ export function ModImportsPage() {
 
 // ── Job row ───────────────────────────────────────────────────────────────────
 
-function JobRow({
+const JobRow = ({
   job, live, isRunning, onStart, onPause, onCancel, onDelete,
 }: {
   job: ModImportJob; live?: LiveProgress; isRunning: boolean;
   onStart: () => void; onPause: () => void; onCancel: () => void; onDelete: () => void;
-}) {
+}) => {
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
@@ -219,7 +219,7 @@ function JobRow({
 
 // ── Preview Modal ─────────────────────────────────────────────────────────────
 
-function PreviewModal({
+const PreviewModal = ({
   job,
   onClose,
   onConfirm,
@@ -227,7 +227,7 @@ function PreviewModal({
   job: ModImportJob;
   onClose: () => void;
   onConfirm: (lang: string) => void;
-}) {
+}) => {
   const [lang, setLang] = useState(job.src_lang);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
@@ -349,7 +349,7 @@ function PreviewModal({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function statusColor(status: string): string {
+const statusColor = (status: string): string => {
   switch (status) {
     case 'pending': return '#555';
     case 'extracting': return '#6a1b9a';
@@ -361,7 +361,7 @@ function statusColor(status: string): string {
   }
 }
 
-function statusLabel(status: string): string {
+const statusLabel = (status: string): string => {
   switch (status) {
     case 'pending': return 'Pending';
     case 'extracting': return 'Extracting...';

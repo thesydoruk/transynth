@@ -33,13 +33,13 @@ for (let n = 0; n < 256; n++) {
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
   crcTable[n] = c;
 }
-function crc32(buf: Buffer): number {
+const crc32 = (buf: Buffer): number => {
   let crc = 0xffffffff;
   for (let i = 0; i < buf.length; i++) crc = crcTable[(crc ^ buf[i]) & 0xff]! ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function pathParts(fullPath: string): { dir: string; stem: string; ext: string } {
+const pathParts = (fullPath: string): { dir: string; stem: string; ext: string } => {
   const normalized = fullPath.toLowerCase().replace(/\//g, '\\');
   const lastSep = normalized.lastIndexOf('\\');
   const dir = lastSep >= 0 ? normalized.substring(0, lastSep) : '';
@@ -54,7 +54,7 @@ function pathParts(fullPath: string): { dir: string; stem: string; ext: string }
  * Build a BA2 (GNRL, version 1) archive buffer from a list of files.
  * Files are stored uncompressed (packedSize = 0).
  */
-export function writeBa2(files: Ba2InputFile[]): Buffer {
+export const writeBa2 = (files: Ba2InputFile[]): Buffer => {
   const fileCount = files.length;
   const dataStart = HEADER_SIZE + fileCount * ENTRY_SIZE;
 

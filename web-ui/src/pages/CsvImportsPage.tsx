@@ -24,7 +24,7 @@ const LANGUAGES = [
   { code: 'ko', label: 'Korean' },
 ];
 
-export function CsvImportsPage() {
+export const CsvImportsPage = () => {
   const qc = useQueryClient();
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ['csv-imports'],
@@ -152,12 +152,12 @@ export function CsvImportsPage() {
 
 // ── Job row ───────────────────────────────────────────────────────────────────
 
-function JobRow({
+const JobRow = ({
   job, live, isRunning, onStart, onPause, onCancel, onDelete,
 }: {
   job: CsvImportJob; live?: LiveProgress; isRunning: boolean;
   onStart: () => void; onPause: () => void; onCancel: () => void; onDelete: () => void;
-}) {
+}) => {
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
@@ -204,7 +204,7 @@ function JobRow({
 
 // ── Preview Modal ─────────────────────────────────────────────────────────────
 
-function PreviewModal({
+const PreviewModal = ({
   job,
   onClose,
   onConfirm,
@@ -212,7 +212,7 @@ function PreviewModal({
   job: CsvImportJob;
   onClose: () => void;
   onConfirm: (srcLang: string, tgtLang: string) => void;
-}) {
+}) => {
   const [srcLang, setSrcLang] = useState(job.src_lang);
   const [tgtLang, setTgtLang] = useState(job.tgt_lang);
   const [page, setPage] = useState(1);
@@ -341,7 +341,7 @@ function PreviewModal({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function statusColor(status: string): string {
+const statusColor = (status: string): string => {
   switch (status) {
     case 'pending': return '#555';
     case 'in_progress': return '#1565c0';
@@ -352,7 +352,7 @@ function statusColor(status: string): string {
   }
 }
 
-function statusLabel(status: string): string {
+const statusLabel = (status: string): string => {
   switch (status) {
     case 'pending': return 'Pending';
     case 'in_progress': return 'In progress';

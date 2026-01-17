@@ -21,7 +21,7 @@ const NAV_LINKS = [
   { to: '/diff', label: 'Diff', exact: false },
 ];
 
-function Nav() {
+const Nav = () => {
   const loc = useLocation();
   return (
     <nav style={navStyles.nav}>

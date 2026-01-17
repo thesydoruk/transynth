@@ -30,7 +30,7 @@ describe('stringsTypeFromPath', () => {
 // Round-trip helpers
 // ────────────────────────────────────────────────────────────────────────────
 
-function roundTrip(entries: Map<number, string>, type: StringsType): Map<number, string> {
+const roundTrip = (entries: Map<number, string>, type: StringsType): Map<number, string> => {
   const buf = writeStringsBuffer(entries, type);
   return parseStringsBuffer(buf, type);
 }

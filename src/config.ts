@@ -24,7 +24,7 @@ export const CONFIG = {
 };
 
 /** Resolve the translation model based on provider. */
-export function getTranslateModel(): string {
+export const getTranslateModel = (): string => {
   if (CONFIG.llmProvider === 'ollama') {
     if (!CONFIG.ollamaModel) throw new Error('OLLAMA_MODEL is required when LLM_PROVIDER=ollama');
     return CONFIG.ollamaModel;
@@ -33,7 +33,7 @@ export function getTranslateModel(): string {
 }
 
 /** Resolve the embedding model based on provider. */
-export function getEmbedModel(): string {
+export const getEmbedModel = (): string => {
   if (CONFIG.llmProvider === 'ollama') {
     if (!CONFIG.ollamaModel) throw new Error('OLLAMA_MODEL is required when LLM_PROVIDER=ollama');
     return CONFIG.ollamaModel;
@@ -42,7 +42,7 @@ export function getEmbedModel(): string {
 }
 
 /** Fail-fast validation — call at CLI entry points. */
-export function validateConfig(): void {
+export const validateConfig = (): void => {
   log.info(`Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}`);
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {

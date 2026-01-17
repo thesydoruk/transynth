@@ -2,12 +2,12 @@
 import { chatWithFallback } from './index.js';
 import { log } from '../logger.js';
 
-export async function translateBatch(
+export const translateBatch = async (
   items: string[],
   model: string,
   styleMd: string | undefined,
   glossary: string[] | undefined
-): Promise<string[]> {
+): Promise<string[]> => {
   log.debug(`translateBatch: ${items.length} items, model=${model}`);
   const system = "You are a professional game localizer for Bethesda games. Keep masked tokens like ¤PH0¤ and ¤GL0¤ unchanged. Return a JSON array only.";
   const user = {

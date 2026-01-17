@@ -70,7 +70,7 @@ const argv = await yargs(hideBin(process.argv))
  * Discover a BA2 archive near the ESP if --ba2 was not provided.
  * Checks for "<name> - Main.ba2" and "<name>.ba2" in the same directory.
  */
-function discoverBa2(modPath: string): string | null {
+const discoverBa2 = (modPath: string): string | null => {
   const dir = path.dirname(modPath);
   const stem = path.basename(modPath, path.extname(modPath));
 
@@ -86,7 +86,7 @@ function discoverBa2(modPath: string): string | null {
  * grouped by locale (lower-case, e.g. "en", "ru").
  * Returns a Map<locale, Map<lstringId, text>>.
  */
-function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
+const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
   const reader = new Ba2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
 
@@ -119,7 +119,7 @@ function loadLocalesFromBA2(ba2Path: string): Map<string, Map<number, string>> {
  * Load STRINGS/DLSTRINGS/ILSTRINGS from loose files next to the ESP.
  * Looks in a "Strings\" sub-directory.
  */
-function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, string>> {
+const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, string>> => {
   const dir = path.join(path.dirname(modPath), 'Strings');
   const locales = new Map<string, Map<number, string>>();
   if (!fs.existsSync(dir)) return locales;
@@ -145,10 +145,10 @@ function loadLocalesFromLooseFiles(modPath: string): Map<string, Map<number, str
  * Convert EspReader rows + resolved strings map into CsvRow[] for ingest.
  * For non-localized plugins, espRows already contain the text in row.text.
  */
-function buildCsvRows(
+const buildCsvRows = (
   espRows: Awaited<ReturnType<EspReader['extractStrings']>>,
   stringsMap: Map<number, string> | null,
-): CsvRow[] {
+): CsvRow[] => {
   const rows: CsvRow[] = [];
 
   for (const row of espRows) {

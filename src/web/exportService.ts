@@ -19,7 +19,7 @@ export type ExportedStringsFile = {
   contentBase64: string;
 };
 
-function findBa2(modPath: string): string | null {
+const findBa2 = (modPath: string): string | null => {
   const dir = path.dirname(modPath);
   const stem = path.basename(modPath, path.extname(modPath));
   for (const candidate of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
@@ -29,7 +29,7 @@ function findBa2(modPath: string): string | null {
   return null;
 }
 
-function loadSourceStringsFromBA2(ba2Path: string, srcLang: string): SourceStringsFile[] {
+const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStringsFile[] => {
   const ba2 = new Ba2Reader(ba2Path);
   const files: SourceStringsFile[] = [];
 
@@ -47,7 +47,7 @@ function loadSourceStringsFromBA2(ba2Path: string, srcLang: string): SourceStrin
   return files;
 }
 
-function loadSourceStringsFromLooseFiles(modPath: string, srcLang: string): SourceStringsFile[] {
+const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
   const dir = path.join(path.dirname(modPath), 'Strings');
   if (!fs.existsSync(dir)) return [];
 
@@ -65,7 +65,7 @@ function loadSourceStringsFromLooseFiles(modPath: string, srcLang: string): Sour
   return files;
 }
 
-function loadSourceStringsFiles(modPath: string, srcLang: string): SourceStringsFile[] {
+const loadSourceStringsFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
   const ba2Path = findBa2(modPath);
   if (ba2Path) {
     const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
@@ -74,7 +74,7 @@ function loadSourceStringsFiles(modPath: string, srcLang: string): SourceStrings
   return loadSourceStringsFromLooseFiles(modPath, srcLang);
 }
 
-async function getTranslationOverlay(db: Tx, modId: number, srcLang: string, targetLang: string): Promise<Map<number, string>> {
+const getTranslationOverlay = async (db: Tx, modId: number, srcLang: string, targetLang: string): Promise<Map<number, string>> => {
   const { rows } = await db.query(
     `SELECT DISTINCT ON (s.lstring_id)
         s.lstring_id,
@@ -111,13 +111,13 @@ async function getTranslationOverlay(db: Tx, modId: number, srcLang: string, tar
   return overlay;
 }
 
-export async function exportLocalizedStringsFiles(
+export const exportLocalizedStringsFiles = async (
   db: Tx,
   modId: number,
   modPath: string,
   srcLang: string,
   targetLang: string,
-): Promise<ExportedStringsFile[]> {
+): Promise<ExportedStringsFile[]> => {
   const sourceFiles = loadSourceStringsFiles(modPath, srcLang);
   if (sourceFiles.length === 0) {
     throw new Error(`No source .STRINGS files found for locale ${srcLang}`);
@@ -143,13 +143,13 @@ export async function exportLocalizedStringsFiles(
 // BA2 archive export — pack localized STRINGS into a BA2
 // ────────────────────────────────────────────────────────────────────────────
 
-export async function exportBa2Archive(
+export const exportBa2Archive = async (
   db: Tx,
   modId: number,
   modPath: string,
   srcLang: string,
   targetLang: string,
-): Promise<ExportedStringsFile> {
+): Promise<ExportedStringsFile> => {
   const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang);
 
   const ba2Files: Ba2InputFile[] = stringsFiles.map((f) => ({
@@ -172,12 +172,12 @@ export async function exportBa2Archive(
 // Non-localized ESP patch export
 // ────────────────────────────────────────────────────────────────────────────
 
-async function getEspPatches(
+const getEspPatches = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-): Promise<EspPatch[]> {
+): Promise<EspPatch[]> => {
   const { rows } = await db.query(
     `SELECT r.formid_hex, r.path, t.text
      FROM strings s
@@ -219,13 +219,13 @@ async function getEspPatches(
   return patches;
 }
 
-export async function exportPatchedEsp(
+export const exportPatchedEsp = async (
   db: Tx,
   modId: number,
   modPath: string,
   srcLang: string,
   targetLang: string,
-): Promise<ExportedStringsFile> {
+): Promise<ExportedStringsFile> => {
   if (!fs.existsSync(modPath)) {
     throw new Error(`Original ESP file not found: ${modPath}`);
   }

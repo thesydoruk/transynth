@@ -28,21 +28,21 @@ import {
 
 const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './mod-uploads');
 
-function ensureUploadDir() {
+const ensureUploadDir = () => {
   if (!fs.existsSync(MOD_UPLOAD_DIR)) fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
 }
 
-function modFilePath(fileName: string) {
+const modFilePath = (fileName: string) => {
   const safe = path.basename(fileName);
   return path.join(MOD_UPLOAD_DIR, safe);
 }
 
 /** Per-archive extraction directory. */
-function extractDir(jobHash: string) {
+const extractDir = (jobHash: string) => {
   return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
 }
 
-export async function modImportRoutes(app: FastifyInstance, db: Tx) {
+export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
   ensureUploadDir();
 

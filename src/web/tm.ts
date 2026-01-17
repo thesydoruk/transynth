@@ -16,7 +16,7 @@ type Match = { text: string; method: MatchMethod; confidence: number };
  *   2. edid    — same EDID in any other mod
  *   3. text_norm — identical normalised source text anywhere in the DB
  */
-async function findBestMatch(
+const findBestMatch = async (
   db: Tx,
   formidHex: string | null,
   path: string,
@@ -24,7 +24,7 @@ async function findBestMatch(
   textNorm: string,
   targetLang: string,
   excludeModId: number,
-): Promise<Match | null> {
+): Promise<Match | null> => {
   const orderByStatus = `ORDER BY CASE t.status
     WHEN 'reviewed' THEN 1
     WHEN 'human' THEN 2
@@ -78,11 +78,11 @@ async function findBestMatch(
  * Only fills strings that have NO existing translation for targetLang.
  * Returns counts of applied/skipped matches and a breakdown by method.
  */
-export async function applyTMToMod(
+export const applyTMToMod = async (
   db: Tx,
   modId: number,
   targetLang = 'uk',
-): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> {
+): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
   const { rows: untranslated } = await db.query(
     `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
      FROM strings s
@@ -128,13 +128,13 @@ export async function applyTMToMod(
  * text_norm that don't yet have a reviewed or in-progress manual translation.
  * Returns the number of strings that received the propagated translation.
  */
-export async function propagateTranslation(
+export const propagateTranslation = async (
   db: Tx,
   textNorm: string,
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
-): Promise<number> {
+): Promise<number> => {
   const { rows: candidates } = await db.query(
     `SELECT s.id FROM strings s
      WHERE s.text_norm = $1 AND s.lang = 'en' AND s.id != $2

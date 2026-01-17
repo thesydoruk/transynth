@@ -11,7 +11,7 @@ const PAGE_SIZE = 100;
 type TranslateProgress = { done: number; total: number };
 type BottomTab = 'suggestions' | 'qa' | 'history';
 
-function downloadBase64File(fileName: string, contentBase64: string) {
+const downloadBase64File = (fileName: string, contentBase64: string) => {
   const binary = atob(contentBase64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -27,7 +27,7 @@ function downloadBase64File(fileName: string, contentBase64: string) {
 }
 
 // Row background by translation status
-function rowBg(status: string | null): string {
+const rowBg = (status: string | null): string => {
   if (!status) return '#3d1e00'; // untranslated → orange-ish
   if (status === 'reviewed' || status === 'human') return 'transparent';
   if (status === 'draft') return '#183a18';
@@ -38,7 +38,7 @@ function rowBg(status: string | null): string {
   return 'transparent';
 }
 
-export function ModEditorPage() {
+export const ModEditorPage = () => {
   const { id } = useParams<{ id: string }>();
   const modId = Number(id);
   const qc = useQueryClient();
@@ -241,7 +241,7 @@ export function ModEditorPage() {
   });
 
   // Flush pending autosave immediately (used before row switch)
-  function flushAutosave() {
+  const flushAutosave = () => {
     if (autosaveTimer.current) {
       clearTimeout(autosaveTimer.current);
       autosaveTimer.current = null;
@@ -258,7 +258,7 @@ export function ModEditorPage() {
     }
   }
 
-  function handleRowClick(row: StringRow) {
+  const handleRowClick = (row: StringRow) => {
     flushAutosave();
     setActiveRow(row);
     setDraftTranslation(row.translation ?? '');
@@ -267,7 +267,7 @@ export function ModEditorPage() {
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
+    const onKeyDown = (e: KeyboardEvent) => {
       // Skip when typing in input/textarea/select (except Escape)
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
@@ -333,12 +333,12 @@ export function ModEditorPage() {
     };
   }, [draftTranslation]);
 
-  function handleCopySource() {
+  const handleCopySource = () => {
     if (!activeRow) return;
     setDraftTranslation(activeRow.source);
   }
 
-  function handleSave() {
+  const handleSave = () => {
     if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
     if (!activeRow) return;
     if (draftTranslation.trim() === '') {
@@ -348,12 +348,12 @@ export function ModEditorPage() {
     saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
   }
 
-  function handleApprove(row: StringRow) {
+  const handleApprove = (row: StringRow) => {
     if (!row.translation_id) return;
     approveMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
   }
 
-  function handleClear(row: StringRow) {
+  const handleClear = (row: StringRow) => {
     clearMutation.mutate({ stringId: row.string_id });
     if (activeRow?.string_id === row.string_id) {
       setActiveRow({ ...row, translation: null, translation_id: null, status: null, qa_issue_count: 0 });
@@ -371,13 +371,13 @@ export function ModEditorPage() {
     });
   }, []);
 
-  function toggleAll() {
+  const toggleAll = () => {
     if (!strings) return;
     if (selected.size === strings.rows.length) setSelected(new Set());
     else setSelected(new Set(strings.rows.map((r) => r.string_id)));
   }
 
-  async function handleBatchTranslate() {
+  const handleBatchTranslate = async () => {
     if (translateInFlight.current) return;
     translateInFlight.current = true;
     setTranslateError(null);
@@ -706,7 +706,7 @@ export function ModEditorPage() {
 
 // ── TM Suggestions panel ─────────────────────────────────────────────────────
 
-function SuggestionsPanel({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) {
+const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) => {
   if (suggestions.length === 0) {
     return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пропозицій TM</div>;
   }
@@ -728,7 +728,7 @@ function SuggestionsPanel({ suggestions, onApply }: { suggestions: TMSuggestion[
 
 // ── QA panel ────────────────────────────────────────────────────────────────
 
-function QAPanel({ issues }: { issues: QAIssue[] }) {
+const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
   if (issues.length === 0) {
     return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>QA проблем не знайдено</div>;
   }
@@ -746,7 +746,7 @@ function QAPanel({ issues }: { issues: QAIssue[] }) {
 
 // ── History panel ───────────────────────────────────────────────────────────
 
-function HistoryPanel({ items }: { items: TranslationHistoryEntry[] }) {
+const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
   if (items.length === 0) {
     return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Історія змін порожня</div>;
   }
@@ -770,7 +770,7 @@ function HistoryPanel({ items }: { items: TranslationHistoryEntry[] }) {
 
 type SRProps = { modId: number; targetLang: string; onClose: () => void; onApplied: () => void };
 
-function SearchReplaceModal({ modId, targetLang, onClose, onApplied }: SRProps) {
+const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) => {
   const [search, setSearch] = useState('');
   const [replace, setReplace] = useState('');
   const [isRegex, setIsRegex] = useState(false);
@@ -778,7 +778,7 @@ function SearchReplaceModal({ modId, targetLang, onClose, onApplied }: SRProps) 
   const [stage, setStage] = useState<'idle' | 'previewing' | 'applying' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  async function handlePreview() {
+  const handlePreview = async () => {
     if (!search) return;
     setStage('previewing'); setError(null);
     try {
@@ -787,7 +787,7 @@ function SearchReplaceModal({ modId, targetLang, onClose, onApplied }: SRProps) 
     } catch (err) { setError(String(err)); setStage('idle'); }
   }
 
-  async function handleApply() {
+  const handleApply = async () => {
     if (!search) return;
     setStage('applying'); setError(null);
     try {

@@ -3,7 +3,7 @@ import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 import { getModStats } from '../queries.js';
 
-export async function statsRoutes(app: FastifyInstance, db: Tx) {
+export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/stats?modId=  — translation progress breakdown for one mod
   app.get<{ Querystring: { modId?: string } }>('/api/stats', async (req, reply) => {
     const modId = Number(req.query.modId);

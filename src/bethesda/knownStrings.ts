@@ -56,6 +56,6 @@ export const TRANSLATABLE_SUBRECORDS: Record<string, Set<string>> = {
 };
 
 /** Returns true if this subrecord/record combination is translatable. */
-export function isTranslatableSubrecord(recSig: string, subSig: string): boolean {
+export const isTranslatableSubrecord = (recSig: string, subSig: string): boolean => {
   return TRANSLATABLE_SUBRECORDS[recSig]?.has(subSig) ?? false;
 }

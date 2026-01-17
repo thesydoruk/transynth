@@ -27,7 +27,7 @@ type Props = {
   small?: boolean;
 };
 
-export function StatusBadge({ status, small }: Props) {
+export const StatusBadge = ({ status, small }: Props) => {
   const key = status ?? 'untranslated';
   const color = STATUS_COLORS[key] ?? '#888';
   const label = STATUS_LABELS[key] ?? key;
@@ -50,7 +50,7 @@ export function StatusBadge({ status, small }: Props) {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-export function ProgressBar({ stats }: { stats: Stats }) {
+export const ProgressBar = ({ stats }: { stats: Stats }) => {
   const { total, approved, draft, rejected, tm, fuzzy, auto_translated, untranslated } = stats;
   if (total === 0) return <span style={{ color: '#888', fontSize: 12 }}>No strings</span>;
 

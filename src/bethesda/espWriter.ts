@@ -33,10 +33,10 @@ const FLAG_COMPRESSED = 0x00040000;
  * @param sourceMap   id → source text (from parseStringsBuffer)
  * @param translations id → translated text
  */
-export function patchStringsMap(
+export const patchStringsMap = (
   sourceMap: Map<number, string>,
   translations: Map<number, string>,
-): Map<number, string> {
+): Map<number, string> => {
   const result = new Map(sourceMap);
   for (const [id, text] of translations) {
     if (result.has(id)) result.set(id, text);
@@ -59,7 +59,7 @@ export interface EspPatch {
 /** Internal: formIdHex → (subrecordSig → newText) */
 type PatchMap = Map<string, Map<string, string>>;
 
-function buildPatchMap(patches: EspPatch[]): PatchMap {
+const buildPatchMap = (patches: EspPatch[]): PatchMap => {
   const map: PatchMap = new Map();
   for (const p of patches) {
     const key = p.formId.toUpperCase().padStart(8, '0');
@@ -75,7 +75,7 @@ function buildPatchMap(patches: EspPatch[]): PatchMap {
  * @param inputBuf  Contents of the original .esp/.esm/.esl
  * @param patches   List of (formId, subrecord, newText) changes
  */
-export function patchEsp(inputBuf: Buffer, patches: EspPatch[]): Buffer {
+export const patchEsp = (inputBuf: Buffer, patches: EspPatch[]): Buffer => {
   log.info(`ESP patcher: applying ${patches.length} patches`);
   if (patches.length === 0) return inputBuf;
 
@@ -94,7 +94,7 @@ export function patchEsp(inputBuf: Buffer, patches: EspPatch[]): Buffer {
 // Recursive rebuilder
 // ────────────────────────────────────────────────────────────────────────────
 
-function rebuildRange(buf: Buffer, start: number, end: number, patchMap: PatchMap): Buffer {
+const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMap): Buffer => {
   const chunks: Buffer[] = [];
   let pos = start;
 
@@ -142,11 +142,11 @@ function rebuildRange(buf: Buffer, start: number, end: number, patchMap: PatchMa
   return Buffer.concat(chunks);
 }
 
-function rebuildRecordData(
+const rebuildRecordData = (
   data: Buffer,
   flags: number,
   patches: Map<string, string>,
-): { newData: Buffer; newFlags: number } {
+): { newData: Buffer; newFlags: number } => {
   const isCompressed = (flags & FLAG_COMPRESSED) !== 0;
 
   let recordBuf = data;

@@ -25,16 +25,16 @@ import {
 
 const CSV_UPLOAD_DIR = path.resolve(process.env.CSV_UPLOAD_DIR ?? './csv-uploads');
 
-function ensureUploadDir() {
+const ensureUploadDir = () => {
   if (!fs.existsSync(CSV_UPLOAD_DIR)) fs.mkdirSync(CSV_UPLOAD_DIR, { recursive: true });
 }
 
-function csvFilePath(fileName: string) {
+const csvFilePath = (fileName: string) => {
   const safe = path.basename(fileName);
   return path.join(CSV_UPLOAD_DIR, safe);
 }
 
-export async function csvRoutes(app: FastifyInstance, db: Tx) {
+export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureCsvImportSchema(db);
   ensureUploadDir();
 

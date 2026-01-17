@@ -41,7 +41,7 @@ const espRows = esp.extractStrings();
 log.info(`ESP: ${espRows.length} rows (localized=${esp.info.isLocalized})`);
 
 // --- Locate BA2 next to the ESP ---
-function findBa2(p: string): string | null {
+const findBa2 = (p: string): string | null => {
   const dir = path.dirname(p);
   const stem = path.basename(p, path.extname(p));
   for (const c of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
@@ -111,7 +111,7 @@ const results: string[] = new Array(items.length);
 type Pending = { text: string; ph: Record<string,string>; gl: Record<string,string>; idx: number };
 const pending: Pending[] = [];
 
-async function flush() {
+const flush = async () => {
   if (!pending.length) return;
   let texts: string[];
   try {

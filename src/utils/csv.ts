@@ -8,7 +8,7 @@ import type { CsvRow } from '../types.js';
  * Parse a single CSV line into an array of field values (RFC 4180).
  * Supports: quoted fields, commas inside quotes, escaped quotes ("").
  */
-export function parseCsvLine(line: string): string[] {
+export const parseCsvLine = (line: string): string[] => {
   const fields: string[] = [];
   let pos = 0;
   const len = line.length;
@@ -55,7 +55,7 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /** Encode fields into a single CSV line (RFC 4180 — all fields quoted). */
-export function csvRow(fields: string[]): string {
+export const csvRow = (fields: string[]): string => {
   return fields.map(f => `"${(f ?? '').replace(/"/g, '""')}"`).join(',');
 }
 
@@ -63,7 +63,7 @@ export function csvRow(fields: string[]): string {
  * Read a CSV file into CsvRow[].
  * Column mapping is derived from the header row (order-independent).
  */
-export function readCsv(filePath: string): CsvRow[] {
+export const readCsv = (filePath: string): CsvRow[] => {
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return [];

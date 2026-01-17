@@ -24,17 +24,17 @@ import { parseEetHeader, iterEetRecords } from '../../bethesda/eetReader.js';
 
 const EET_UPLOAD_DIR = path.resolve(process.env.EET_UPLOAD_DIR ?? './eet-uploads');
 
-function ensureUploadDir() {
+const ensureUploadDir = () => {
   if (!fs.existsSync(EET_UPLOAD_DIR)) fs.mkdirSync(EET_UPLOAD_DIR, { recursive: true });
 }
 
-function eetFilePath(fileName: string) {
+const eetFilePath = (fileName: string) => {
   // Sanitize to prevent path traversal
   const safe = path.basename(fileName);
   return path.join(EET_UPLOAD_DIR, safe);
 }
 
-export async function eetRoutes(app: FastifyInstance, db: Tx) {
+export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureImportSchema(db);
   ensureUploadDir();
 

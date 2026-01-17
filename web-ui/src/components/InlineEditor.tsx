@@ -10,7 +10,7 @@ type Props = {
   queryKey: unknown[];
 };
 
-export function InlineEditor({ stringId, translationId, text, status, queryKey }: Props) {
+export const InlineEditor = ({ stringId, translationId, text, status, queryKey }: Props) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text ?? '');
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -129,7 +129,7 @@ export function InlineEditor({ stringId, translationId, text, status, queryKey }
   );
 }
 
-function btnStyle(bg: string) {
+const btnStyle = (bg: string) => {
   return {
     background: bg,
     color: '#fff',

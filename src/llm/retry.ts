@@ -5,7 +5,7 @@ import { log } from '../logger.js';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 const RETRYABLE_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
-function isRetryable(err: any): boolean {
+const isRetryable = (err: any): boolean => {
   if (RETRYABLE_CODES.has(err?.code)) return true;
   const status = err?.status ?? err?.response?.status;
   return RETRYABLE_STATUSES.has(status);
@@ -15,7 +15,7 @@ function isRetryable(err: any): boolean {
  * Retry `fn` up to `maxAttempts` times on transient errors.
  * Backoff: 1s, 2s, 4s, … (capped at 30s) + jitter.
  */
-export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+export const withRetry = async <T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> => {
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {

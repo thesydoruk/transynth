@@ -38,6 +38,29 @@ const batch: string[] = [];
 const metas: any[] = [];
 const outTexts: (string|null)[] = new Array(rows.length).fill(null);
 
+const flush = async () => {
+  if (batch.length === 0) return;
+  let translated: string[];
+  try {
+    translated = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
+  } catch (err: any) {
+    log.error(`Translation failed: ${err?.message || err}`);
+    throw err;
+  }
+  for (let k=0;k<translated.length;k++) {
+    const { i, ph, gl } = metas[k];
+    const restored = unmask(unmask(translated[k], gl), ph).trim();
+    outTexts[i] = restored;
+
+    const r = rows[i];
+    const srcStrId = await findStringId(db, r.FormID, r.Path, argv.srcLang as string);
+    if (srcStrId !== undefined) {
+      await addTranslation(db, srcStrId, argv.tgtLang as string, restored, 'auto', null, 'model', getTranslateModel());
+    }
+  }
+  batch.length = 0; metas.length = 0;
+}
+
 for (let i=0;i<rows.length;i++) {
   const src = rows[i].Source;
   if (!/\p{L}/u.test(src)) { outTexts[i] = src; continue; }
@@ -63,26 +86,3 @@ for (let i=0;i<rows.length;i++) {
 }
 fs.writeFileSync(argv.out as string, outLines.join('\n'), 'utf8');
 log.info(`Wrote ${argv.out}`);
-
-async function flush() {
-  if (batch.length === 0) return;
-  let translated: string[];
-  try {
-    translated = await translateBatch(batch, getTranslateModel(), styleMd, glossary);
-  } catch (err: any) {
-    log.error(`Translation failed: ${err?.message || err}`);
-    throw err;
-  }
-  for (let k=0;k<translated.length;k++) {
-    const { i, ph, gl } = metas[k];
-    const restored = unmask(unmask(translated[k], gl), ph).trim();
-    outTexts[i] = restored;
-
-    const r = rows[i];
-    const srcStrId = await findStringId(db, r.FormID, r.Path, argv.srcLang as string);
-    if (srcStrId !== undefined) {
-      await addTranslation(db, srcStrId, argv.tgtLang as string, restored, 'auto', null, 'model', getTranslateModel());
-    }
-  }
-  batch.length = 0; metas.length = 0;
-}

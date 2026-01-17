@@ -27,7 +27,7 @@ export interface StringsEntry {
 /**
  * Detect the type of a strings file from its extension.
  */
-export function stringsTypeFromPath(filePath: string): StringsType {
+export const stringsTypeFromPath = (filePath: string): StringsType => {
   const ext = filePath.split('.').pop()?.toUpperCase();
   if (ext === 'DLSTRINGS') return 'DLSTRINGS';
   if (ext === 'ILSTRINGS') return 'ILSTRINGS';
@@ -37,7 +37,7 @@ export function stringsTypeFromPath(filePath: string): StringsType {
 /**
  * Parse a strings file buffer and return an id→text map.
  */
-export function parseStringsBuffer(buf: Buffer, type: StringsType): Map<number, string> {
+export const parseStringsBuffer = (buf: Buffer, type: StringsType): Map<number, string> => {
   const result = new Map<number, string>();
 
   if (buf.length < 8) return result;
@@ -82,10 +82,10 @@ export function parseStringsBuffer(buf: Buffer, type: StringsType): Map<number, 
 /**
  * Serialize an id→text map to a strings file buffer.
  */
-export function writeStringsBuffer(
+export const writeStringsBuffer = (
   entries: Map<number, string> | StringsEntry[],
   type: StringsType,
-): Buffer {
+): Buffer => {
   const items: StringsEntry[] =
     entries instanceof Map
       ? Array.from(entries.entries()).map(([id, text]) => ({ id, text }))

@@ -14,6 +14,8 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+      "prefer-arrow-callback": "error",
+      "func-style": ["error", "expression"],
     },
   },
 );

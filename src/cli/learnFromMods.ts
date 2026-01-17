@@ -32,7 +32,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('tgtLang', { type: 'string', default: 'uk' })
   .parse();
 
-function discoverBa2(modPath: string): string | null {
+const discoverBa2 = (modPath: string): string | null => {
   const dir = path.dirname(modPath);
   const stem = path.basename(modPath, path.extname(modPath));
   for (const c of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
@@ -42,7 +42,7 @@ function discoverBa2(modPath: string): string | null {
   return null;
 }
 
-function extractRows(modPath: string, lang: string): CsvRow[] {
+const extractRows = (modPath: string, lang: string): CsvRow[] => {
   const esp = new EspReader(modPath);
   const espRows = esp.extractStrings();
 

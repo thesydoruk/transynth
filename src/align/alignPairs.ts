@@ -5,10 +5,10 @@ import { getEmbedModel } from '../config.js';
 import { log } from '../logger.js';
 
 // Heuristic alignment with anchors → fuzzy → embeddings
-export async function alignPairs(
+export const alignPairs = async (
   left: CsvRow[], right: CsvRow[],
   opts: { fuzzyMin?: number; fuzzyStrong?: number; useEmbeddings?: boolean; embedModel?: string }
-): Promise<AlignPair[]> {
+): Promise<AlignPair[]> => {
   const fuzzyMin = opts.fuzzyMin ?? 85;
   const fuzzyStrong = opts.fuzzyStrong ?? 90;
   const pairs: AlignPair[] = [];
