@@ -5,6 +5,7 @@ import {
   stringsTypeFromPath,
   type StringsType,
 } from './stringsFile.js';
+import { writeBa2, type Ba2InputFile } from './ba2Writer.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // stringsTypeFromPath
@@ -153,5 +154,51 @@ describe('large map round-trip', () => {
     for (const [id, text] of input) {
       expect(result.get(id)).toBe(text);
     }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// BA2 writer
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('BA2 writer', () => {
+  it('produces a valid BTDX GNRL archive', () => {
+    const content = Buffer.from('Hello BA2!');
+    const files: Ba2InputFile[] = [
+      { name: 'Strings\\Test_uk.STRINGS', data: content },
+    ];
+    const ba2 = writeBa2(files);
+
+    // Header checks
+    expect(ba2.toString('ascii', 0, 4)).toBe('BTDX');
+    expect(ba2.readUInt32LE(4)).toBe(1); // version
+    expect(ba2.toString('ascii', 8, 12)).toBe('GNRL');
+    expect(ba2.readUInt32LE(12)).toBe(1); // fileCount
+
+    // File data is stored uncompressed after header + entries (24 + 36 = 60)
+    const dataSlice = ba2.subarray(60, 60 + content.length);
+    expect(dataSlice.toString()).toBe('Hello BA2!');
+
+    // Name table at the end
+    const ntOffset = Number(ba2.readBigUInt64LE(16));
+    const nameLen = ba2.readUInt16LE(ntOffset);
+    const name = ba2.toString('utf8', ntOffset + 2, ntOffset + 2 + nameLen);
+    expect(name).toBe('Strings\\Test_uk.STRINGS');
+  });
+
+  it('round-trips STRINGS through BA2 write → manual extract', () => {
+    const map = new Map<number, string>([[1, 'Vault Boy'], [2, 'Пустка']]);
+    const strBuf = writeStringsBuffer(map, 'STRINGS');
+
+    const ba2 = writeBa2([{ name: 'Strings\\mod_uk.STRINGS', data: strBuf }]);
+
+    // Extract the file data manually (offset 60, uncompressed)
+    const unpackedSize = ba2.readUInt32LE(24 + 28); // entry[0].unpackedSize
+    const offset = Number(ba2.readBigUInt64LE(24 + 16)); // entry[0].offset
+    const extracted = ba2.subarray(offset, offset + unpackedSize);
+
+    const parsed = parseStringsBuffer(extracted, 'STRINGS');
+    expect(parsed.get(1)).toBe('Vault Boy');
+    expect(parsed.get(2)).toBe('Пустка');
   });
 });

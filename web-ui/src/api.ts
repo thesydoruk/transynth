@@ -266,6 +266,8 @@ export const api = {
       req<ExportStringsResult>(`/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
     exportEsp: (modId: number, srcLang = 'en', targetLang = 'uk') =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+    exportBa2: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+      req<ExportStringsResult>(`/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
     bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = 'uk') =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',

@@ -194,6 +194,15 @@ export function ModEditorPage() {
     },
   });
 
+  const exportBa2 = useMutation({
+    mutationFn: () => api.mods.exportBa2(modId, srcLang, targetLang),
+    onSuccess: (result) => {
+      for (const file of result.files) {
+        downloadBase64File(file.fileName, file.contentBase64);
+      }
+    },
+  });
+
   const bulkReviewMutation = useMutation({
     mutationFn: ({ status }: { status: 'reviewed' | 'rejected' }) =>
       api.mods.bulkReview(modId, [...selected], status, targetLang),
@@ -385,6 +394,9 @@ export function ModEditorPage() {
         <button onClick={() => exportEsp.mutate()} disabled={exportEsp.isPending} style={s.btnSec} title="Patch ESP with translations (non-localized mods)">
           {exportEsp.isPending ? 'Export…' : 'Export ESP'}
         </button>
+        <button onClick={() => exportBa2.mutate()} disabled={exportBa2.isPending} style={s.btnSec} title="Pack localized STRINGS into BA2 archive">
+          {exportBa2.isPending ? 'Export…' : 'Export BA2'}
+        </button>
         <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
         {selected.size > 0 && (
           <>
@@ -413,6 +425,7 @@ export function ModEditorPage() {
         {translateError && <span style={s.errorBadge}>{translateError}</span>}
         {exportStrings.isError && <span style={s.errorBadge}>{String(exportStrings.error)}</span>}
         {exportEsp.isError && <span style={s.errorBadge}>{String(exportEsp.error)}</span>}
+        {exportBa2.isError && <span style={s.errorBadge}>{String(exportBa2.error)}</span>}
 
         {/* Progress bar */}
         {stats && (

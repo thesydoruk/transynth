@@ -3,7 +3,7 @@ import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
-import { exportLocalizedStringsFiles, exportPatchedEsp } from '../exportService.js';
+import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp } from '../exportService.js';
 
 export async function modsRoutes(app: FastifyInstance, db: Tx) {
   // GET /api/mods — list all mods with aggregate stats
@@ -103,6 +103,29 @@ export async function modsRoutes(app: FastifyInstance, db: Tx) {
 
       try {
         const file = await exportPatchedEsp(db, id, mod.abs_path, srcLang, targetLang);
+        return reply.send({ modId: id, srcLang, targetLang, files: [file] });
+      } catch (err) {
+        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
+  // GET /api/mods/:id/export/ba2?srcLang=&targetLang= — pack localized STRINGS into BA2 archive
+  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
+    '/api/mods/:id/export/ba2',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+      const srcLang = req.query.srcLang ?? 'en';
+      const targetLang = req.query.targetLang ?? 'uk';
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+
+      try {
+        const file = await exportBa2Archive(db, id, mod.abs_path, srcLang, targetLang);
         return reply.send({ modId: id, srcLang, targetLang, files: [file] });
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
+import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer.js';
 import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter.js';
 import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/stringsFile.js';
 import { log } from '../logger.js';
@@ -136,6 +137,35 @@ export async function exportLocalizedStringsFiles(
       contentBase64: buf.toString('base64'),
     };
   });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// BA2 archive export — pack localized STRINGS into a BA2
+// ────────────────────────────────────────────────────────────────────────────
+
+export async function exportBa2Archive(
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+): Promise<ExportedStringsFile> {
+  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang);
+
+  const ba2Files: Ba2InputFile[] = stringsFiles.map((f) => ({
+    name: `Strings\\${f.fileName}`,
+    data: Buffer.from(f.contentBase64, 'base64'),
+  }));
+
+  const ba2Buf = writeBa2(ba2Files);
+  const stem = path.basename(modPath, path.extname(modPath));
+  const fileName = `${stem} - Main.ba2`;
+
+  return {
+    fileName,
+    size: ba2Buf.length,
+    contentBase64: ba2Buf.toString('base64'),
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
