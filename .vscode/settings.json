@@ -1,0 +1,50 @@
+{
+  // ── TypeScript ──────────────────────────────────────────────
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // ── ESLint ──────────────────────────────────────────────────
+  "eslint.enable": true,
+  "eslint.workingDirectories": [
+    { "directory": ".", "changeProcessCWD": true },
+    { "directory": "web-ui", "changeProcessCWD": true }
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // ── Formatting ──────────────────────────────────────────────
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+
+  // ── File associations ───────────────────────────────────────
+  "files.associations": {
+    "*.eet": "hex"
+  },
+
+  // ── Search / explorer exclusions ────────────────────────────
+  "search.exclude": {
+    "legacy/": true,
+    "data/log/": true,
+    "mod-uploads/": true,
+    "eet-uploads/": true,
+    "csv-uploads/": true
+  },
+  "files.exclude": {
+    "_codemod*": true,
+    "_lint*.json": true
+  },
+
+  // ── Copilot agent — allow temp file cleanup ─────────────────
+  "github.copilot.chat.agent.terminalCommand.allowlist": [
+    "Remove-Item _*",
+    "del _*"
+  ],
+
+  // ── Terminal ────────────────────────────────────────────────
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
+}
