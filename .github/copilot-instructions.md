@@ -27,6 +27,12 @@
 - **Never make changes to code or files without explicit user confirmation.**
 - Before any modification — describe the plan and wait for approval.
 
+## Temporary files
+
+- Always clean up temporary/scratch files (e.g. `_codemod.cjs`, `_lint.json`, helper scripts) **before** committing.
+- Never commit temp files to the repository.
+- If a tool policy blocks deletion commands (`Remove-Item`, `del`), add temp files to `.gitignore` or ask the user to remove them manually.
+
 ## Code style
 
 - TypeScript, ESM (`"type": "module"` in package.json).
