@@ -88,11 +88,12 @@ export const insertString = async (
   textNorm: string,
   sourceKind = 'export',
   lstringId?: number | null,
+  textNormNopunct?: string | null,
 ): Promise<number> => {
   const { rows } = await db.query(
-    `INSERT INTO strings(record_id, lang, lstring_id, text_raw, text_norm, source_kind) VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO strings(record_id, lang, lstring_id, text_raw, text_norm, source_kind, text_norm_nopunct) VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [recordId, lang, lstringId ?? null, textRaw, textNorm, sourceKind],
+    [recordId, lang, lstringId ?? null, textRaw, textNorm, sourceKind, textNormNopunct ?? null],
   );
   return rows[0].id;
 }

@@ -17,7 +17,7 @@ import { parseArgs } from 'node:util';
 import { openDb, runSchema, closeDb, upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
 import { sha1Hex } from '../utils/hash.js';
-import { normalizeForHash } from '../utils/textNorm.js';
+import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
 
 const BATCH_SIZE = 1000;
@@ -82,7 +82,7 @@ const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: stri
   const recordId = await upsertRecord(db, modId, rec.signature, recPath, pathSimplified, rec.edid || null, hashNorm, rec.formId || null);
 
   const srcNorm = normalizeForHash(rec.source);
-  const srcStringId = await insertString(db, recordId, srcLang, rec.source, srcNorm, 'eet');
+  const srcStringId = await insertString(db, recordId, srcLang, rec.source, srcNorm, 'eet', undefined, normalizeNoPunct(rec.source));
 
   if (rec.target) {
     const status = rec.status === 0x63 ? 'human' : 'auto';

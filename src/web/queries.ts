@@ -360,23 +360,47 @@ export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => 
   return rows.map((r: { lang: string }) => r.lang);
 }
 
+export type TMSuggestionRow = {
+  id: number;
+  text: string;
+  status: string;
+  confidence: number | null;
+  provenance: string | null;
+  source_text: string;
+  match_method: 'exact' | 'punct_norm' | 'fuzzy';
+  similarity: number;
+};
+
 export const getTMSuggestions = async (
   db: Tx,
   stringId: number,
   targetLang: string,
-  limit = 5,
-) => {
-  // Find strings with similar normalised source text and their translations
+  limit = 10,
+): Promise<TMSuggestionRow[]> => {
   const { rows: srcRows } = await db.query(
-    `SELECT text_norm FROM strings WHERE id = $1`,
+    `SELECT text_norm, text_norm_nopunct FROM strings WHERE id = $1`,
     [stringId],
   );
   if (!srcRows[0]?.text_norm) return [];
 
-  const { rows } = await db.query(
+  const textNorm: string = srcRows[0].text_norm;
+  const textNormNopunct: string | null = srcRows[0].text_norm_nopunct;
+  const results: TMSuggestionRow[] = [];
+  const seenTexts = new Set<string>();
+
+  const addRows = (rows: any[], method: TMSuggestionRow['match_method'], sim: number) => {
+    for (const r of rows) {
+      if (seenTexts.has(r.text)) continue;
+      seenTexts.add(r.text);
+      results.push({ ...r, match_method: method, similarity: r.similarity ?? sim });
+    }
+  };
+
+  // 1. Exact text_norm match (highest priority)
+  const { rows: exactRows } = await db.query(
     `SELECT DISTINCT ON (t.text)
         t.id, t.text, t.status, t.confidence, t.provenance,
-        s.text_raw AS source_text
+        s.text_raw AS source_text, 1.0::double precision AS similarity
      FROM strings s
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      WHERE s.text_norm = $1
@@ -384,9 +408,51 @@ export const getTMSuggestions = async (
      ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
        COALESCE(t.confidence, 0) DESC
      LIMIT $4`,
-    [srcRows[0].text_norm, targetLang, stringId, limit],
+    [textNorm, targetLang, stringId, limit],
   );
-  return rows;
+  addRows(exactRows, 'exact', 1.0);
+
+  // 2. Punctuation-normalized match (if text_norm_nopunct available and we need more)
+  if (textNormNopunct && results.length < limit) {
+    const { rows: punctRows } = await db.query(
+      `SELECT DISTINCT ON (t.text)
+          t.id, t.text, t.status, t.confidence, t.provenance,
+          s.text_raw AS source_text, 0.9::double precision AS similarity
+       FROM strings s
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+       WHERE s.text_norm_nopunct = $1
+         AND s.text_norm <> $5
+         AND s.id <> $3
+       ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
+         COALESCE(t.confidence, 0) DESC
+       LIMIT $4`,
+      [textNormNopunct, targetLang, stringId, limit - results.length, textNorm],
+    );
+    addRows(punctRows, 'punct_norm', 0.9);
+  }
+
+  // 3. Fuzzy trigram match (pg_trgm) — only if we still need more
+  if (results.length < limit && textNorm.length >= 4) {
+    const { rows: fuzzyRows } = await db.query(
+      `SELECT DISTINCT ON (t.text)
+          t.id, t.text, t.status, t.confidence, t.provenance,
+          s.text_raw AS source_text,
+          similarity(s.text_norm, $1)::double precision AS similarity
+       FROM strings s
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+       WHERE s.text_norm % $1
+         AND s.text_norm <> $1
+         AND s.id <> $3
+       ORDER BY t.text, similarity(s.text_norm, $1) DESC,
+         ${BEST_TRANSLATION_ORDER},
+         COALESCE(t.confidence, 0) DESC
+       LIMIT $4`,
+      [textNorm, targetLang, stringId, limit - results.length],
+    );
+    addRows(fuzzyRows, 'fuzzy', 0);
+  }
+
+  return results;
 }
 
 // ── Translations ──────────────────────────────────────────────────────────────

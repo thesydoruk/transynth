@@ -9,7 +9,7 @@ import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
 import { upsertMod, upsertRecord, insertString, type Tx } from '../db.js';
 import { sha1Hex } from '../utils/hash.js';
-import { normalizeForHash } from '../utils/textNorm.js';
+import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
 import { EspReader, type EspStringRow } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
@@ -447,7 +447,7 @@ export const runModImport = async (
           const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
           const hashNorm = sha1Hex(normalizeForHash(r.Source));
           const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import');
+          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
 
           imported++;
           batchCount++;
@@ -486,7 +486,7 @@ export const runModImport = async (
         const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
         const hashNorm = sha1Hex(normalizeForHash(r.Source));
         const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import');
+        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
 
         imported++;
         batchCount++;

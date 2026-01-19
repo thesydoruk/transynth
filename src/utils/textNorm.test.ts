@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeForHash } from './textNorm.js';
+import { normalizeForHash, normalizeNoPunct } from './textNorm.js';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {
@@ -29,6 +29,26 @@ describe('normalizeForHash', () => {
   it('normalizes compound text consistently', () => {
     const a = normalizeForHash('  Hello %s, you found 5 items in {chest}  ');
     const b = normalizeForHash('hello %s, you found 5 items in {chest}');
+    expect(a).toBe(b);
+  });
+});
+
+describe('normalizeNoPunct', () => {
+  it('strips punctuation on top of normalizeForHash', () => {
+    expect(normalizeNoPunct('Hello, World!')).toBe('hello world');
+  });
+
+  it('preserves placeholder and number tokens', () => {
+    expect(normalizeNoPunct('Item %s costs 42 caps.')).toBe('item ¤ph¤ costs ¤num¤ caps');
+  });
+
+  it('collapses resulting whitespace', () => {
+    expect(normalizeNoPunct('"Hello" -- World...')).toBe('hello world');
+  });
+
+  it('matches texts differing only by punctuation', () => {
+    const a = normalizeNoPunct('Yes, sir!');
+    const b = normalizeNoPunct('Yes sir');
     expect(a).toBe(b);
   });
 });

@@ -710,13 +710,18 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
   if (suggestions.length === 0) {
     return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пропозицій TM</div>;
   }
+  const methodLabel = (m: string) => m === 'exact' ? 'exact' : m === 'punct_norm' ? 'punct' : 'fuzzy';
+  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : '#2196f3';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {suggestions.map((s) => (
         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', background: '#1a1a1a', borderRadius: 4 }}>
           <StatusBadge status={s.status} small />
+          <span style={{ fontSize: 10, color: methodColor(s.match_method), fontWeight: 600, textTransform: 'uppercase', minWidth: 40 }}>
+            {methodLabel(s.match_method)}
+          </span>
           <span style={{ flex: 1, fontSize: 13, color: '#ddd', whiteSpace: 'pre-wrap' }}>{s.text}</span>
-          <span style={{ fontSize: 11, color: '#888' }}>{s.confidence != null ? `${Math.round(s.confidence * 100)}%` : ''}</span>
+          <span style={{ fontSize: 11, color: '#888' }}>{Math.round(s.similarity * 100)}%</span>
           <button onClick={() => onApply(s.text)} style={{ background: '#1565c0', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 10px', fontSize: 12, cursor: 'pointer' }}>
             Apply
           </button>

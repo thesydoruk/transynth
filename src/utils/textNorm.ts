@@ -9,3 +9,14 @@ export const normalizeForHash = (s: string): string => {
   t = t.trim().toLowerCase();
   return t;
 }
+
+/**
+ * Extra-aggressive normalization: strip all punctuation on top of normalizeForHash.
+ * Used for punctuation-insensitive TM matching.
+ */
+export const normalizeNoPunct = (s: string): string => {
+  let t = normalizeForHash(s);
+  t = t.replace(/[^\w¤ ]/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}

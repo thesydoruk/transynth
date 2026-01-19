@@ -1,5 +1,7 @@
 -- PostgreSQL schema for the Fallout 4 localizer
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS mods (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -27,6 +29,7 @@ CREATE TABLE IF NOT EXISTS strings (
   lstring_id INTEGER,
   text_raw TEXT NOT NULL,
   text_norm TEXT,
+  text_norm_nopunct TEXT,
   source_kind TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   tsv TSVECTOR GENERATED ALWAYS AS (
@@ -35,6 +38,7 @@ CREATE TABLE IF NOT EXISTS strings (
 );
 
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS text_norm_nopunct TEXT;
 
 CREATE TABLE IF NOT EXISTS translations (
   id SERIAL PRIMARY KEY,
@@ -162,6 +166,9 @@ CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
 CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);
 CREATE INDEX IF NOT EXISTS idx_strings_tsv ON strings USING GIN(tsv);
+CREATE INDEX IF NOT EXISTS idx_strings_text_norm ON strings USING HASH(text_norm);
+CREATE INDEX IF NOT EXISTS idx_strings_text_norm_nopunct ON strings USING HASH(text_norm_nopunct);
+CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);

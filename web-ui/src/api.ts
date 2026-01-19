@@ -251,6 +251,8 @@ export type TMSuggestion = {
   confidence: number | null;
   provenance: string | null;
   source_text: string;
+  match_method: 'exact' | 'punct_norm' | 'fuzzy';
+  similarity: number;
 };
 
 export const api = {

@@ -6,15 +6,17 @@ import { upsertTranslation } from './queries.js';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
-type MatchMethod = 'anchor' | 'edid' | 'text_norm';
+type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'punct_norm' | 'fuzzy';
 type Match = { text: string; method: MatchMethod; confidence: number };
 
 /**
- * Find the best existing translation for a source string using three
+ * Find the best existing translation for a source string using five
  * successive match strategies (highest confidence first):
- *   1. anchor  — same formid_hex + path in any other mod
- *   2. edid    — same EDID in any other mod
- *   3. text_norm — identical normalised source text anywhere in the DB
+ *   1. anchor     — same formid_hex + path in any other mod
+ *   2. edid       — same EDID in any other mod
+ *   3. text_norm  — identical normalised source text anywhere in the DB
+ *   4. punct_norm — identical text after stripping punctuation
+ *   5. fuzzy      — pg_trgm trigram similarity ≥ 0.3
  */
 const findBestMatch = async (
   db: Tx,
@@ -22,6 +24,7 @@ const findBestMatch = async (
   path: string,
   edid: string | null,
   textNorm: string,
+  textNormNopunct: string | null,
   targetLang: string,
   excludeModId: number,
 ): Promise<Match | null> => {
@@ -61,14 +64,48 @@ const findBestMatch = async (
   }
 
   // 3. Exact text_norm match
-  const { rows } = await db.query(
-    `SELECT t.text FROM strings s
-     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-     WHERE s.text_norm = $2 AND s.lang = 'en'
-     ${orderByStatus}`,
-    [targetLang, textNorm],
-  );
-  if (rows[0]) return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
+  {
+    const { rows } = await db.query(
+      `SELECT t.text FROM strings s
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+       WHERE s.text_norm = $2 AND s.lang = 'en'
+       ${orderByStatus}`,
+      [targetLang, textNorm],
+    );
+    if (rows[0]) return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
+  }
+
+  // 4. Punctuation-normalized match
+  if (textNormNopunct) {
+    const { rows } = await db.query(
+      `SELECT t.text FROM strings s
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+       WHERE s.text_norm_nopunct = $2 AND s.lang = 'en' AND s.text_norm <> $3
+       ${orderByStatus}`,
+      [targetLang, textNormNopunct, textNorm],
+    );
+    if (rows[0]) return { text: rows[0].text, method: 'punct_norm', confidence: 0.65 };
+  }
+
+  // 5. Fuzzy trigram match (pg_trgm)
+  if (textNorm.length >= 4) {
+    const { rows } = await db.query(
+      `SELECT t.text, similarity(s.text_norm, $2) AS sim FROM strings s
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+       WHERE s.text_norm % $2 AND s.lang = 'en' AND s.text_norm <> $2
+       ORDER BY sim DESC, CASE t.status
+         WHEN 'reviewed' THEN 1
+         WHEN 'human' THEN 2
+         WHEN 'tm' THEN 3
+         WHEN 'fuzzy' THEN 4
+         WHEN 'auto' THEN 5
+         WHEN 'draft' THEN 6
+         ELSE 7 END
+       LIMIT 1`,
+      [targetLang, textNorm],
+    );
+    if (rows[0]) return { text: rows[0].text, method: 'fuzzy', confidence: Math.round(rows[0].sim * 100) / 100 };
+  }
 
   return null;
 }
@@ -84,7 +121,7 @@ export const applyTMToMod = async (
   targetLang = 'uk',
 ): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
   const { rows: untranslated } = await db.query(
-    `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
+    `SELECT s.id, s.text_norm, s.text_norm_nopunct, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = 'en'
@@ -97,7 +134,7 @@ export const applyTMToMod = async (
   log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
   let applied = 0;
-  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, punct_norm: 0, fuzzy: 0 };
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const s of untranslated) {
@@ -107,11 +144,13 @@ export const applyTMToMod = async (
         s.path,
         s.edid,
         s.text_norm,
+        s.text_norm_nopunct,
         targetLang,
         modId,
       );
       if (match) {
-        await upsertTranslation(client, s.id, match.text, 'tm', targetLang, 'tm_auto');
+        const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' ? 'fuzzy' : 'tm';
+        await upsertTranslation(client, s.id, match.text, tmStatus, targetLang, `tm_auto_${match.method}`);
         applied++;
         byMethod[match.method] = (byMethod[match.method] ?? 0) + 1;
       }
