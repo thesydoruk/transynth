@@ -7,7 +7,6 @@ Node.js / TypeScript тулчейн для автоматичної локалі
 ## Документація
 
 - Огляд поточного проєкту: [README.md](README.md)
-- Дорожня карта: [ROADMAP.md](ROADMAP.md)
 - Вікі по спадковому: [eet4-wiki/README.md](eet4-wiki/README.md)
 - Оцінка wiki і roadmap веб-імплементації: [-WEB-ROADMAP.md](-WEB-ROADMAP.md)
 
@@ -137,11 +136,9 @@ npm run replace -- \
 ```
 ├── docs/
 │   ├── uk/                   # Документація українською
-│   │   ├── README.md             ← ви тут
-│   │   └── ROADMAP.md
+│   │   └── README.md             ← ви тут
 │   └── en/                   # Documentation in English
-│       ├── README.md
-│       └── ROADMAP.md
+│       └── README.md
 ├── src/
 │   ├── cli/                  # CLI entry-points
 │   ├── bethesda/             # Нативні парсери форматів Bethesda
@@ -181,20 +178,6 @@ Pass 3: Path + Signature  — path_simplified у межах сигнатури �
 Pass 4: RapidFuzz          — fuzzy ratio ≥ 90 у межах сигнатури → strong match
 Pass 5: Embeddings (opt)   — cosine similarity для ambiguous fuzzy (≥ 85) candidates
 ```
-
-## Дорожня карта
-
-Детальний план розвитку — у [ROADMAP.md](ROADMAP.md).
-
-| Фаза | Версія | Фокус |
-|---|---|---|
-| Phase 0 | `v0.2` | Critical Fixes ⚡ — OpenAI API, ESM, .env |
-| Phase 1 | `v0.3` | Data Integrity 🛡️ — CSV parser, Pascal-скрипти, DB |
-| Phase 2 | `v0.4` | Docker & DX 🐳 — Dockerfile, compose, devDeps |
-| Phase 3 | `v0.5` | Reliability 🔧 — error handling, retry, logging |
-| Phase 4 | `v0.6` | Code Quality 📐 — dedup, ESLint, tests |
-| Phase 5 | `v0.7` | Ollama & Local LLM 🦙 — локальний інференс |
-| Phase 6 | `v1.0` | Features 🚀 — glossary CLI, Web UI, TMX |
 
 ## Ліцензія
 

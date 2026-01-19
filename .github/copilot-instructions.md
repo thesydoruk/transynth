@@ -5,7 +5,7 @@
 - **All documentation is bilingual: Ukrainian (primary) and English.**
 - Primary language is **Ukrainian**. English is added as a translation.
 - Documentation is organized by language in separate folders:
-  - Root (`README.md`, `ROADMAP.md`) — short bilingual stubs with links.
+  - Root (`README.md`) — short bilingual stub with links.
   - `docs/uk/` — **Ukrainian** (primary, full documentation).
   - `docs/en/` — English version.
 - When updating docs — update **both** language versions.

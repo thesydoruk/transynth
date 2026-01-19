@@ -7,7 +7,6 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 ## Documentation
 
 - Main project overview: [README.md](README.md)
-- Product roadmap: [ROADMAP.md](ROADMAP.md)
 
 ## Features
 
@@ -135,11 +134,9 @@ npm run replace -- \
 ```
 ├── docs/
 │   ├── uk/                   # Документація українською
-│   │   ├── README.md
-│   │   └── ROADMAP.md
+│   │   └── README.md
 │   └── en/                   # Documentation in English
-│       ├── README.md             ← you are here
-│       └── ROADMAP.md
+│       └── README.md             ← you are here
 ├── src/
 │   ├── cli/                  # CLI entry-points
 │   │   ├── learnFromMods.ts
@@ -196,10 +193,6 @@ Pass 3: Path + Signature  — path_simplified within signature → match (score 
 Pass 4: RapidFuzz          — fuzzy ratio ≥ 90 within signature → strong match
 Pass 5: Embeddings (opt)   — cosine similarity for ambiguous fuzzy (≥ 85) candidates
 ```
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for the detailed development plan.
 
 ## License
 

@@ -8,7 +8,6 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 | 🇺🇦 Українська (основна) | 🇬🇧 English |
 |---|---|
 | [docs/uk/README.md](docs/uk/README.md) | [docs/en/README.md](docs/en/README.md) |
-| [docs/uk/ROADMAP.md](docs/uk/ROADMAP.md) | [docs/en/ROADMAP.md](docs/en/ROADMAP.md) |
 
 ## Quick start
 
