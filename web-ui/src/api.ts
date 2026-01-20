@@ -88,6 +88,27 @@ export type GlossaryEntry = { id: number; term: string; translation: string | nu
 
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
 
+export type DashboardModRow = {
+  id: number;
+  name: string;
+  total: number;
+  translated: number;
+  approved: number;
+  draft: number;
+  tm: number;
+  fuzzy: number;
+  auto: number;
+  rejected: number;
+  reviewed: number;
+  qa_issues: number;
+};
+
+export type DashboardData = {
+  mods: DashboardModRow[];
+  qaByType: { issue_type: string; count: number }[];
+  qaBySeverity: { severity: string; count: number }[];
+};
+
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -280,6 +301,7 @@ export const api = {
   stats: {
     mod: (modId: number) => req<Stats>(`/api/stats?modId=${modId}`),
     global: () => req<Array<Mod & { stats: Stats }>>('/api/stats/global'),
+    dashboard: () => req<DashboardData>('/api/stats/dashboard'),
   },
 
   strings: {

@@ -81,6 +81,18 @@ const buildQAIssues = (source: string, translation: string): QAIssueInput[] => {
     }
   }
 
+  // Forbidden characters: control chars (except \n \r \t), null bytes
+  const forbiddenRe = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+  const forbidden = translation.match(forbiddenRe);
+  if (forbidden) {
+    const unique = [...new Set(forbidden)].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`);
+    issues.push({
+      issueType: 'forbidden_chars',
+      severity: 'error',
+      message: `Contains forbidden control characters: ${unique.join(', ')}`,
+    });
+  }
+
   return issues;
 }
 

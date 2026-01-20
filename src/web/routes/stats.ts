@@ -36,4 +36,47 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
 
     return reply.send(rows);
   });
+
+  // GET /api/stats/dashboard  — full dashboard data (progress + QA breakdown)
+  app.get('/api/stats/dashboard', async (_req, reply) => {
+    const [modProgress, qaBreakdown, qaBySeverity] = await Promise.all([
+      db.query(
+        `SELECT
+           m.id, m.name,
+           COUNT(DISTINCT s.id)                                           AS total,
+           COUNT(DISTINCT t.id)                                           AS translated,
+           COUNT(DISTINCT CASE WHEN t.status = 'human' THEN t.id END)    AS approved,
+           COUNT(DISTINCT CASE WHEN t.status = 'draft' THEN t.id END)    AS draft,
+           COUNT(DISTINCT CASE WHEN t.status = 'tm' THEN t.id END)       AS tm,
+           COUNT(DISTINCT CASE WHEN t.status = 'fuzzy' THEN t.id END)    AS fuzzy,
+           COUNT(DISTINCT CASE WHEN t.status IN ('auto','auto_translated') THEN t.id END) AS auto,
+           COUNT(DISTINCT CASE WHEN t.status = 'rejected' THEN t.id END) AS rejected,
+           COUNT(DISTINCT CASE WHEN t.status = 'reviewed' THEN t.id END) AS reviewed,
+           COUNT(DISTINCT q.id)                                           AS qa_issues
+         FROM mods m
+         LEFT JOIN records r ON r.mod_id = m.id
+         LEFT JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
+         LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = 'uk'
+         LEFT JOIN qa_issues q ON q.src_string_id = s.id AND q.target_lang = 'uk' AND q.is_active = TRUE
+         GROUP BY m.id
+         ORDER BY m.name`,
+      ),
+      db.query(
+        `SELECT issue_type, COUNT(*) AS count
+         FROM qa_issues WHERE is_active = TRUE
+         GROUP BY issue_type ORDER BY count DESC`,
+      ),
+      db.query(
+        `SELECT severity, COUNT(*) AS count
+         FROM qa_issues WHERE is_active = TRUE
+         GROUP BY severity ORDER BY severity`,
+      ),
+    ]);
+
+    return reply.send({
+      mods: modProgress.rows,
+      qaByType: qaBreakdown.rows,
+      qaBySeverity: qaBySeverity.rows,
+    });
+  });
 }
