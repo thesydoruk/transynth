@@ -35,3 +35,11 @@
 - Prefer `import` over `require()`.
 - Use `src/logger.ts` (`log.info/warn/error`) instead of `console.log`.
 - Shared utilities go to `src/utils/` — avoid duplicating code across CLI files.
+
+## Code documentation
+
+- **Always** add detailed English comments to every function, class, type, and non-trivial block of code.
+- Write comments so that even someone with zero context can understand what the code does, why it exists, and how it works.
+- Every exported function/type must have a JSDoc comment explaining purpose, parameters, return value, and side effects.
+- Complex logic (algorithms, bitwise ops, SQL queries, binary formats) must have step-by-step inline comments.
+- When the "why" is not obvious from the code, explain the reasoning — not just the "what".
