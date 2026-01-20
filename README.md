@@ -3,11 +3,9 @@
 Node.js / TypeScript тулчейн для автоматичної локалізації модів Fallout 4.
 Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
-## Документація / Documentation
+## Documentation
 
-| 🇺🇦 Українська (основна) | 🇬🇧 English |
-|---|---|
-| [docs/uk/README.md](docs/uk/README.md) | [docs/en/README.md](docs/en/README.md) |
+- [docs/en/README.md](docs/en/README.md)
 
 ## Quick start
 

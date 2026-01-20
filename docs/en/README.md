@@ -1,7 +1,5 @@
 # Fallout 4 Localization Pipeline
 
-> **Українська версія:** [../uk/README.md](../uk/README.md)
-
 Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
 ## Documentation
@@ -133,8 +131,6 @@ npm run replace -- \
 
 ```
 ├── docs/
-│   ├── uk/                   # Документація українською
-│   │   └── README.md
 │   └── en/                   # Documentation in English
 │       └── README.md             ← you are here
 ├── src/
