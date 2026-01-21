@@ -35,6 +35,7 @@
 - Prefer `import` over `require()`.
 - Use `src/logger.ts` (`log.info/warn/error`) instead of `console.log`.
 - Shared utilities go to `src/utils/` — avoid duplicating code across CLI files.
+- **Styling:** Use SCSS Modules (`*.module.scss`) for component styles in `web-ui/`. No inline styles or global CSS unless unavoidable.
 
 ## Code documentation
 
