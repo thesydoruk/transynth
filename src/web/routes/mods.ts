@@ -3,7 +3,7 @@ import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
-import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp } from '../exportService.js';
+import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats
@@ -127,6 +127,32 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       try {
         const file = await exportBa2Archive(db, id, mod.abs_path, srcLang, targetLang);
         return reply.send({ modId: id, srcLang, targetLang, files: [file] });
+      } catch (err) {
+        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
+  // GET /api/mods/:id/export/project?srcLang=&targetLang= — full project ZIP (BA2 + ESP)
+  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
+    '/api/mods/:id/export/project',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+      const srcLang = req.query.srcLang ?? 'en';
+      const targetLang = req.query.targetLang ?? 'uk';
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+
+      try {
+        const { zipBuffer, zipFileName } = await exportProjectZip(db, id, mod.abs_path, srcLang, targetLang);
+        return reply
+          .header('Content-Type', 'application/zip')
+          .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
+          .send(zipBuffer);
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
       }

@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
+import archiver from 'archiver';
 import type { Tx } from '../db.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer.js';
@@ -245,4 +247,92 @@ export const exportPatchedEsp = async (
     size: patchedBuf.length,
     contentBase64: patchedBuf.toString('base64'),
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Project export — ZIP bundle with BA2 + patched ESP (everything in one file)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Builds a complete localization package as a ZIP archive.
+ *
+ * The ZIP contains:
+ * - A BA2 archive with all localized STRINGS/DLSTRINGS/ILSTRINGS files
+ *   (if the mod has any localized strings with lstring_id).
+ * - A patched ESP/ESM/ESL plugin file with non-localized string translations
+ *   (if the mod has any non-localized embedded strings).
+ *
+ * Either or both may be present depending on the mod structure.
+ * If neither is available, an error is thrown.
+ *
+ * @param db - Database connection (transaction-capable)
+ * @param modId - The mod's database ID
+ * @param modPath - Absolute filesystem path to the original mod plugin file
+ * @param srcLang - Source language code (e.g. 'en')
+ * @param targetLang - Target language code (e.g. 'uk')
+ * @returns A Buffer containing the ZIP archive
+ */
+export const exportProjectZip = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
+  const stem = path.basename(modPath, path.extname(modPath));
+  const zipFileName = `${stem}_${targetLang}.zip`;
+
+  // Collect all exportable files; at least one must succeed
+  const files: Array<{ name: string; data: Buffer }> = [];
+
+  // 1. Try to export a BA2 with localized STRINGS files
+  try {
+    const ba2 = await exportBa2Archive(db, modId, modPath, srcLang, targetLang);
+    files.push({
+      name: ba2.fileName,
+      data: Buffer.from(ba2.contentBase64, 'base64'),
+    });
+    log.info(`Project export: included BA2 (${ba2.size} bytes)`);
+  } catch {
+    log.info(`Project export: no localized STRINGS files for mod ${modId}, skipping BA2`);
+  }
+
+  // 2. Try to export a patched ESP
+  try {
+    const esp = await exportPatchedEsp(db, modId, modPath, srcLang, targetLang);
+    files.push({
+      name: esp.fileName,
+      data: Buffer.from(esp.contentBase64, 'base64'),
+    });
+    log.info(`Project export: included patched ESP (${esp.size} bytes)`);
+  } catch {
+    log.info(`Project export: no non-localized patches for mod ${modId}, skipping ESP`);
+  }
+
+  if (files.length === 0) {
+    throw new Error('No exportable content found — neither localized STRINGS nor non-localized ESP patches available.');
+  }
+
+  // 3. Pack everything into a ZIP archive using archiver (store mode — no compression,
+  //    because BA2 and ESP files are already binary and don't compress well)
+  const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const passthrough = new PassThrough();
+    passthrough.on('data', (chunk: Buffer) => chunks.push(chunk));
+    passthrough.on('end', () => resolve(Buffer.concat(chunks)));
+    passthrough.on('error', reject);
+
+    const archive = archiver('zip', { store: true });
+    archive.on('error', reject);
+    archive.pipe(passthrough);
+
+    for (const file of files) {
+      archive.append(file.data, { name: file.name });
+    }
+
+    archive.finalize();
+  });
+
+  log.info(`Project export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
+  return { zipBuffer, zipFileName };
 }

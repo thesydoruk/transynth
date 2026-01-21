@@ -13,7 +13,6 @@
     "replace": "tsx src/cli/replaceFlow.ts",
     "import:eet": "tsx src/cli/importEet.ts",
     "eet2csv": "tsx src/cli/eet2csv.ts",
-
     "lint": "eslint src/ scripts/",
     "lint:fix": "eslint src/ scripts/ --fix",
     "format": "prettier --write .",
@@ -30,7 +29,9 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^9.0.0",
+    "@types/archiver": "^7.0.0",
     "7zip-bin": "^5.2.0",
+    "archiver": "^7.0.1",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
     "fastify": "^5.8.4",

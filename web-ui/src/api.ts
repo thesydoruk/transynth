@@ -13,6 +13,36 @@ const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Fetches a binary file from the API and triggers a browser download.
+ * Used for endpoints that return raw binary content (e.g. ZIP archives)
+ * instead of JSON.
+ *
+ * @param path - API endpoint path
+ * @param fallbackName - Filename to use if the server doesn't provide one
+ */
+const downloadBinary = async (path: string, fallbackName: string): Promise<void> => {
+  const res = await fetch(`${BASE}${path}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+  // Extract filename from Content-Disposition header if available
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = disposition.match(/filename="([^"]+)"/);
+  const fileName = match?.[1] ?? fallbackName;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export type Mod = {
   id: number;
   name: string;
@@ -291,6 +321,12 @@ export const api = {
       req<ExportStringsResult>(`/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
     exportBa2: (modId: number, srcLang = 'en', targetLang = 'uk') =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+    /** Downloads a complete project ZIP (BA2 + patched ESP) as a single file */
+    exportProject: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+      downloadBinary(
+        `/api/mods/${modId}/export/project?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+        `mod_${modId}_${targetLang}.zip`,
+      ),
     bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = 'uk') =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',

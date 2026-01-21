@@ -228,6 +228,11 @@ export const ModEditorPage = () => {
     },
   });
 
+  /** Downloads a full project ZIP (BA2 + patched ESP) as a single file */
+  const exportProject = useMutation({
+    mutationFn: () => api.mods.exportProject(modId, srcLang, targetLang),
+  });
+
   const bulkReviewMutation = useMutation({
     mutationFn: ({ status }: { status: 'reviewed' | 'rejected' }) =>
       api.mods.bulkReview(modId, [...selected], status, targetLang),
@@ -456,6 +461,9 @@ export const ModEditorPage = () => {
         </button>
         <button onClick={() => exportBa2.mutate()} disabled={exportBa2.isPending} style={s.btnSec} title="Pack localized STRINGS into BA2 archive">
           {exportBa2.isPending ? 'Export…' : 'Export BA2'}
+        </button>
+        <button onClick={() => exportProject.mutate()} disabled={exportProject.isPending} style={s.btnPri} title="Download complete localization package (BA2 + ESP) as ZIP">
+          {exportProject.isPending ? 'Exporting…' : '⬇ Export ZIP'}
         </button>
         <button onClick={() => setShowSearchReplace(true)} style={s.btnSec}>Search & Replace</button>
         {selected.size > 0 && (
