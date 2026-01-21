@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
-import { listMods, getMod, getModStats, diffMods, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
+import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
@@ -61,6 +61,27 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const targetLang = req.query.targetLang ?? 'uk';
       const result = await diffMods(db, newId, oldId, targetLang);
       return reply.send(result);
+    },
+  );
+
+  // POST /api/mods/:id/carry-over?fromModId=&targetLang= — copy translations from old mod version
+  app.post<{ Params: { id: string }; Querystring: { fromModId?: string; targetLang?: string } }>(
+    '/api/mods/:id/carry-over',
+    async (req, reply) => {
+      const newModId = Number(req.params.id);
+      const oldModId = Number(req.query.fromModId);
+      if (!Number.isInteger(newModId) || newModId < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+      if (!Number.isInteger(oldModId) || oldModId < 1) return reply.code(400).send({ error: 'fromModId query param is required' });
+
+      const targetLang = req.query.targetLang ?? 'uk';
+      log.info(`POST /api/mods/${newModId}/carry-over fromModId=${oldModId} targetLang=${targetLang}`);
+
+      try {
+        const result = await carryOverTranslations(db, newModId, oldModId, targetLang);
+        return reply.send(result);
+      } catch (err) {
+        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+      }
     },
   );
 

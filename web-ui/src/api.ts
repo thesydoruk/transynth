@@ -170,6 +170,13 @@ export type DiffResult = {
   unchanged: number;
 };
 
+/** Result of carrying over translations from an old mod version to a new one */
+export type CarryOverResult = {
+  carried: number;
+  needsReview: number;
+  skipped: number;
+};
+
 export type SearchReplaceMatch = {
   translationId: number;
   stringId: number;
@@ -327,6 +334,9 @@ export const api = {
         `/api/mods/${modId}/export/project?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
         `mod_${modId}_${targetLang}.zip`,
       ),
+    /** Copy translations from an older mod version into a newer one */
+    carryOver: (newModId: number, fromModId: number, targetLang = 'uk') =>
+      req<CarryOverResult>(`/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`, { method: 'POST' }),
     bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = 'uk') =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',

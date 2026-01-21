@@ -657,6 +657,118 @@ export const diffMods = async (
   return { added, removed, changed, unchanged };
 }
 
+/**
+ * Carries over translations from an older mod version to a newer one.
+ *
+ * For each string in the new mod version that also exists in the old version
+ * (matched by FormID + path identity key):
+ *
+ * - **Unchanged source**: The translation is copied as-is with its original status.
+ * - **Changed source**: The translation is copied but marked as 'draft' so the
+ *   translator can review it for the updated source text.
+ *
+ * Strings that already have a translation in the new version are skipped.
+ * Strings that only exist in the old version (removed) are ignored.
+ *
+ * @param db - Database connection
+ * @param newModId - The ID of the newly imported mod version
+ * @param oldModId - The ID of the previous mod version to copy translations from
+ * @param targetLang - Target language code (e.g. 'uk')
+ * @returns Summary of carried-over, needs-review, and skipped counts
+ */
+export const carryOverTranslations = async (
+  db: Tx,
+  newModId: number,
+  oldModId: number,
+  targetLang = 'uk',
+): Promise<{ carried: number; needsReview: number; skipped: number }> => {
+  // Step 1: Fetch all strings in the new mod with their normalized source text
+  const { rows: newStrings } = await db.query(
+    `SELECT s.id AS string_id, r.formid_hex, r.path, s.text_norm
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1 AND s.lang = 'en'`,
+    [newModId],
+  );
+
+  // Step 2: Fetch all strings in the old mod with their best translation
+  const { rows: oldStrings } = await db.query(
+    `SELECT r.formid_hex, r.path, s.text_norm,
+            t.text AS translation, t.status, t.provenance, t.model
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+       AND t.id = (
+         SELECT id FROM translations
+         WHERE src_string_id = s.id AND target_lang = $2
+         ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1
+       )
+     WHERE r.mod_id = $1 AND s.lang = 'en'`,
+    [oldModId, targetLang],
+  );
+
+  // Build lookup map: identity key → old translation data
+  type OldEntry = { text_norm: string; translation: string; status: string; provenance: string | null; model: string | null };
+  const oldMap = new Map<string, OldEntry>();
+  for (const r of oldStrings as Array<{ formid_hex: string; path: string } & OldEntry>) {
+    oldMap.set(`${r.formid_hex}|${r.path}`, r);
+  }
+
+  // Step 3: Check which new strings already have translations (skip those)
+  const newStringIds = (newStrings as Array<{ string_id: number }>).map((r) => r.string_id);
+  const alreadyTranslated = new Set<number>();
+  if (newStringIds.length > 0) {
+    const { rows: existing } = await db.query(
+      `SELECT DISTINCT src_string_id FROM translations
+       WHERE src_string_id = ANY($1) AND target_lang = $2`,
+      [newStringIds, targetLang],
+    );
+    for (const r of existing as Array<{ src_string_id: number }>) {
+      alreadyTranslated.add(r.src_string_id);
+    }
+  }
+
+  // Step 4: Copy translations for matching strings
+  let carried = 0;
+  let needsReview = 0;
+  let skipped = 0;
+
+  for (const row of newStrings as Array<{ string_id: number; formid_hex: string; path: string; text_norm: string }>) {
+    if (alreadyTranslated.has(row.string_id)) {
+      skipped++;
+      continue;
+    }
+
+    const key = `${row.formid_hex}|${row.path}`;
+    const old = oldMap.get(key);
+    if (!old) continue; // String doesn't exist in old version
+
+    // Determine status: keep original status if source unchanged, else mark as draft
+    const sourceChanged = row.text_norm !== old.text_norm;
+    const newStatus = sourceChanged ? 'draft' : old.status;
+    const provenance = `carry_over_from_mod_${oldModId}`;
+
+    await upsertTranslation(
+      db,
+      row.string_id,
+      old.translation,
+      newStatus as Exclude<TranslationStatus, 'deleted'>,
+      targetLang,
+      provenance,
+      old.model ?? undefined,
+    );
+
+    if (sourceChanged) {
+      needsReview++;
+    } else {
+      carried++;
+    }
+  }
+
+  log.info(`Carry-over: ${carried} carried, ${needsReview} need review, ${skipped} skipped (already translated)`);
+  return { carried, needsReview, skipped };
+}
+
 // ── Bulk search-replace ───────────────────────────────────────────────────────
 
 export type SearchReplaceMatch = {

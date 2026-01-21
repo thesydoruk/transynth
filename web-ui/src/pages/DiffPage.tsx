@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type DiffEntry } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -17,6 +17,7 @@ const CHANGE_LABELS: Record<string, string> = {
 
 export const DiffPage = () => {
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
+  const queryClient = useQueryClient();
 
   const [newModId, setNewModId] = useState('');
   const [oldModId, setOldModId] = useState('');
@@ -31,6 +32,15 @@ export const DiffPage = () => {
     queryKey: ['diff', newModId, oldModId],
     queryFn: () => api.mods.diff(Number(newModId), Number(oldModId)),
     enabled: false, // manual trigger
+  });
+
+  /** Carry over translations from old version to new version */
+  const carryOver = useMutation({
+    mutationFn: () => api.mods.carryOver(Number(newModId), Number(oldModId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['diff', newModId, oldModId] });
+      refetch();
+    },
   });
 
   const allEntries: DiffEntry[] = diff
@@ -104,6 +114,29 @@ export const DiffPage = () => {
                 {CHANGE_LABELS[type as string] ?? type}: {count as number}
               </span>
             ))}
+          </div>
+
+          {/* Carry-over button — copies translations from old version to new */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+            <button
+              onClick={() => carryOver.mutate()}
+              disabled={carryOver.isPending}
+              style={{ ...s.btnCompare, background: '#2e7d32' }}
+            >
+              {carryOver.isPending ? 'Carrying over…' : '⇄ Carry Over Translations'}
+            </button>
+            {carryOver.data && (
+              <span style={{ color: '#aaa', fontSize: 13 }}>
+                Carried: <b style={{ color: '#4caf50' }}>{carryOver.data.carried}</b>
+                {' · '}Needs review: <b style={{ color: '#ff9800' }}>{carryOver.data.needsReview}</b>
+                {' · '}Skipped: <b style={{ color: '#888' }}>{carryOver.data.skipped}</b>
+              </span>
+            )}
+            {carryOver.isError && (
+              <span style={{ color: '#f44', fontSize: 13 }}>
+                Error: {String(carryOver.error)}
+              </span>
+            )}
           </div>
 
           {/* Filter buttons */}
