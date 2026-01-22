@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeForHash, normalizeNoPunct } from './textNorm.js';
+import { normalizeForHash, normalizeNoPunct, segmentPhrases } from './textNorm.js';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {
@@ -50,5 +50,37 @@ describe('normalizeNoPunct', () => {
     const a = normalizeNoPunct('Yes, sir!');
     const b = normalizeNoPunct('Yes sir');
     expect(a).toBe(b);
+  });
+});
+
+describe('segmentPhrases', () => {
+  it('splits on sentence-ending punctuation', () => {
+    const result = segmentPhrases('Hello world. How are you? Fine!');
+    expect(result).toEqual(['Hello world.', 'How are you?', 'Fine!']);
+  });
+
+  it('splits on semicolons and colons', () => {
+    const result = segmentPhrases('Option A; Option B: the best');
+    expect(result).toEqual(['Option A;', 'Option B:', 'the best']);
+  });
+
+  it('returns empty array for single-sentence text', () => {
+    expect(segmentPhrases('Just one short sentence')).toEqual([]);
+  });
+
+  it('returns empty array for very short text', () => {
+    expect(segmentPhrases('Hi')).toEqual([]);
+  });
+
+  it('filters out very short fragments', () => {
+    // "A. B. Do something." → "A." (2 chars) and "B." (2 chars) are too short
+    // Only 1 valid segment remains → returns empty (need ≥ 2)
+    const result = segmentPhrases('A. B. Do something useful.');
+    expect(result).toEqual([]);
+  });
+
+  it('splits on newlines', () => {
+    const result = segmentPhrases('First line\nSecond line\nThird line');
+    expect(result).toEqual(['First line', 'Second line', 'Third line']);
   });
 });

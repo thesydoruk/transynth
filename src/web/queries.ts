@@ -2,6 +2,7 @@ import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
+import { normalizeForHash, segmentPhrases } from '../utils/textNorm.js';
 
 export type TranslationStatus = 'draft' | 'reviewed' | 'rejected' | 'human' | 'tm' | 'fuzzy' | 'auto' | 'deleted';
 
@@ -379,7 +380,7 @@ export type TMSuggestionRow = {
   confidence: number | null;
   provenance: string | null;
   source_text: string;
-  match_method: 'exact' | 'punct_norm' | 'fuzzy';
+  match_method: 'exact' | 'punct_norm' | 'fuzzy' | 'segment';
   similarity: number;
 };
 
@@ -464,7 +465,56 @@ export const getTMSuggestions = async (
     addRows(fuzzyRows, 'fuzzy', 0);
   }
 
-  return results;
+  // 4. Phrase segment matching — split long text into clauses and look up each
+  if (results.length < limit) {
+    const { rows: srcTextRows } = await db.query(
+      `SELECT text_raw FROM strings WHERE id = $1`,
+      [stringId],
+    );
+    const rawText: string = srcTextRows[0]?.text_raw ?? '';
+    const segments = segmentPhrases(rawText);
+
+    for (const seg of segments) {
+      if (results.length >= limit) break;
+      const segNorm = normalizeForHash(seg);
+      if (!segNorm || segNorm.length < 3) continue;
+
+      const { rows: segRows } = await db.query(
+        `SELECT DISTINCT ON (t.text)
+            t.id, t.text, t.status, t.confidence, t.provenance,
+            s.text_raw AS source_text,
+            0.5::double precision AS similarity
+         FROM strings s
+         JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+         WHERE s.text_norm = $1 AND s.id <> $3
+         ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
+           COALESCE(t.confidence, 0) DESC
+         LIMIT 2`,
+        [segNorm, targetLang, stringId],
+      );
+      addRows(segRows, 'segment', 0.5);
+    }
+  }
+
+  /* ── Final ranking ─────────────────────────────────────────────────────── */
+  /* Sort by composite score: method weight × similarity, then by status.   */
+  const methodWeight: Record<string, number> = {
+    exact: 1.0,
+    punct_norm: 0.85,
+    fuzzy: 0.7,
+    segment: 0.4,
+  };
+  const statusWeight: Record<string, number> = {
+    reviewed: 6, human: 5, tm: 4, fuzzy: 3, auto: 2, draft: 1,
+  };
+  results.sort((a, b) => {
+    const scoreA = (methodWeight[a.match_method] ?? 0.5) * a.similarity;
+    const scoreB = (methodWeight[b.match_method] ?? 0.5) * b.similarity;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return (statusWeight[b.status] ?? 0) - (statusWeight[a.status] ?? 0);
+  });
+
+  return results.slice(0, limit);
 }
 
 // ── Translations ──────────────────────────────────────────────────────────────

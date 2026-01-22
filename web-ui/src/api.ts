@@ -316,7 +316,7 @@ export type TMSuggestion = {
   confidence: number | null;
   provenance: string | null;
   source_text: string;
-  match_method: 'exact' | 'punct_norm' | 'fuzzy';
+  match_method: 'exact' | 'punct_norm' | 'fuzzy' | 'segment';
   similarity: number;
 };
 

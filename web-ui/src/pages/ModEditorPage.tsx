@@ -718,8 +718,8 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
   if (suggestions.length === 0) {
     return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пропозицій TM</div>;
   }
-  const methodLabel = (m: string) => m === 'exact' ? 'exact' : m === 'punct_norm' ? 'punct' : 'fuzzy';
-  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : '#2196f3';
+  const methodLabel = (m: string) => m === 'exact' ? 'exact' : m === 'punct_norm' ? 'punct' : m === 'segment' ? 'phrase' : 'fuzzy';
+  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {suggestions.map((s) => (
