@@ -177,6 +177,13 @@ export type CarryOverResult = {
   skipped: number;
 };
 
+/** Result of importing a TMX file into the translation memory */
+export type TmxImportResult = {
+  parsed: number;
+  imported: number;
+  skipped: number;
+};
+
 export type SearchReplaceMatch = {
   translationId: number;
   stringId: number;
@@ -685,6 +692,28 @@ export const api = {
       if (params?.signature) qs.set('signature', params.signature);
       if (params?.q) qs.set('q', params.q);
       return req<ModPreviewResult>(`/api/mod-import/${jobId}/preview?${qs}`);
+    },
+  },
+
+  /** TMX (Translation Memory eXchange) import/export */
+  tmx: {
+    /** Download TMX export as a file. modId is optional — omit for global export. */
+    exportFile: (srcLang = 'en', targetLang = 'uk', modId?: number) => {
+      const qs = new URLSearchParams({ srcLang, targetLang });
+      if (modId != null) qs.set('modId', String(modId));
+      return downloadBinary(`/api/tmx/export?${qs}`, `tm_${targetLang}.tmx`);
+    },
+    /** Upload a TMX file for import. modId is optional — omit for global match. */
+    importFile: async (file: File, modId?: number): Promise<TmxImportResult> => {
+      const form = new FormData();
+      form.append('file', file);
+      const qs = modId != null ? `?modId=${modId}` : '';
+      const res = await fetch(`${BASE}/api/tmx/import${qs}`, { method: 'POST', body: form });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<TmxImportResult>;
     },
   },
 };

@@ -1,0 +1,135 @@
+@use 'sass:color';
+
+/* ── TMX Page ──────────────────────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.title {
+  color: #eee;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+/* ── Sections ──────────────────────────────────────────────────────────────── */
+
+.section {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  color: #ccc;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.sectionDesc {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* ── Controls ──────────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: #888;
+  font-size: 12px;
+}
+
+.select {
+  background: #222;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 140px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+
+.btnPrimary {
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: color.adjust(#1565c0, $lightness: 8%);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btnGreen {
+  composes: btnPrimary;
+  background: #2e7d32;
+
+  &:hover:not(:disabled) {
+    background: color.adjust(#2e7d32, $lightness: 8%);
+  }
+}
+
+/* ── File input ────────────────────────────────────────────────────────────── */
+
+.fileInput {
+  font-size: 13px;
+  color: #ccc;
+}
+
+/* ── Result banner ─────────────────────────────────────────────────────────── */
+
+.result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  background: #1b2a1b;
+  border: 1px solid #2e7d32;
+  color: #aaa;
+
+  b {
+    color: #4caf50;
+  }
+}
+
+.error {
+  composes: result;
+  background: #2a1b1b;
+  border-color: #c62828;
+  color: #f44;
+}
