@@ -1,0 +1,405 @@
+/* ── ImportPage — shared SCSS Module for EET / CSV / Mod import pages ────── */
+
+/* ── Page layout ────────────────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: #bbb;
+}
+
+.title {
+  color: #eee;
+  margin-bottom: 24px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 12px;
+  margin: -16px 0 20px 4px;
+}
+
+.empty {
+  color: #888;
+  margin-top: 32px;
+}
+
+/* ── Upload bar ─────────────────────────────────────────────────────────── */
+
+.uploadBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.fileInput {
+  flex: 1;
+  color: #ccc;
+  font-size: 13px;
+}
+
+.btn {
+  padding: 6px 16px;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnImportAll {
+  composes: btn;
+  margin-left: 8px;
+  background: #1b6b2d;
+}
+
+/* ── Job list ────────────────────────────────────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #141414;
+  border-radius: 6px;
+  border: 1px solid #2a2a2a;
+}
+
+.rowLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.fileName {
+  color: #ddd;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta {
+  color: #888;
+  font-size: 12px;
+}
+
+/* Status badge — background color is applied dynamically via inline style */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Localized plugin indicator used in ModImportsPage */
+.locBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #1565c0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Progress bar ───────────────────────────────────────────────────────── */
+
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  color: #aaa;
+  font-size: 12px;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Row action buttons ─────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 4px;
+}
+
+.actionBtn {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.actionBtnCancel {
+  composes: actionBtn;
+  color: #f44;
+}
+
+.actionBtnDelete {
+  composes: actionBtn;
+  color: #999;
+}
+
+/* ── Modal overlay ──────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: #1a1a1a;
+  border-radius: 12px;
+  width: 90vw;
+  max-width: 1100px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+}
+
+.modalHeaderTop {
+  composes: modalHeader;
+  align-items: flex-start;
+}
+
+.modalHeaderTitle {
+  margin: 0;
+  color: #eee;
+}
+
+.modalHeaderMeta {
+  color: #888;
+  font-size: 12px;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.langBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  padding: 16px 24px 8px;
+  flex-wrap: wrap;
+}
+
+.langArrow {
+  color: #666;
+  font-size: 20px;
+  padding: 0 12px;
+  align-self: flex-end;
+  padding-bottom: 4px;
+}
+
+.langLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.select {
+  background: #222;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+}
+
+.filterBarCount {
+  color: #888;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.searchInput {
+  flex: 1;
+  background: #222;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.tableWrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0 24px;
+}
+
+.tableEmpty {
+  padding: 32px;
+  text-align: center;
+  color: #888;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  color: #999;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+}
+
+.td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #222;
+  color: #ccc;
+  vertical-align: top;
+}
+
+.tdEdid {
+  composes: td;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+}
+
+.paginationLabel {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.pageBtn {
+  background: #222;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px;
+  border-top: 1px solid #333;
+}
+
+.btnConfirm {
+  composes: btn;
+  background: #1b6b2d;
+  margin-left: 12px;
+}
+
+.btnCancel {
+  composes: btn;
+  background: #444;
+}

@@ -212,6 +212,22 @@ INSERT INTO users (id, username, display_name, password_hash, role)
 VALUES (1, 'admin', 'Administrator', '__PLACEHOLDER__', 'admin')
 ON CONFLICT (id) DO NOTHING;
 
+-- ── LLM translation cache ────────────────────────────────────────────────────
+-- Caches LLM translation results so the same source text is never sent twice
+-- for the same language pair + model combination.
+CREATE TABLE IF NOT EXISTS translation_cache (
+  id SERIAL PRIMARY KEY,
+  text_norm TEXT NOT NULL,
+  src_lang TEXT NOT NULL,
+  tgt_lang TEXT NOT NULL,
+  model TEXT NOT NULL,
+  translated TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_translation_cache_lookup
+  ON translation_cache(text_norm, src_lang, tgt_lang, model);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions USING HASH(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);

@@ -1,0 +1,117 @@
+/* ── DashboardPage — SCSS Module ─────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+  color: #888;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #eee;
+}
+
+.cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 16px 24px;
+  min-width: 140px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #ccc;
+}
+
+.qaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 500px;
+}
+
+.qaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qaLabel {
+  font-size: 13px;
+  min-width: 160px;
+  text-transform: capitalize;
+}
+
+.qaCount {
+  font-size: 13px;
+  color: #aaa;
+  min-width: 36px;
+  text-align: right;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  color: #888;
+  font-weight: 600;
+}
+
+.thR {
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  color: #888;
+  font-weight: 600;
+}
+
+.tr {
+  cursor: pointer;
+  border-bottom: 1px solid #222;
+}
+
+.td {
+  padding: 8px 10px;
+  color: #ccc;
+}
+
+.tdR {
+  padding: 8px 10px;
+  color: #ccc;
+  text-align: right;
+}
+
+.tfoot {
+  border-top: 2px solid #333;
+  font-weight: 600;
+}

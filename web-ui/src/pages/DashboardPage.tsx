@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { DashboardModRow } from '../api';
+import s from './DashboardPage.module.scss';
 
 const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
@@ -33,8 +34,8 @@ export const DashboardPage = () => {
     queryFn: api.stats.dashboard,
   });
 
-  if (isLoading) return <div style={s.center}>Loading dashboard…</div>;
-  if (error) return <div style={{ ...s.center, color: '#f44' }}>Error: {String(error)}</div>;
+  if (isLoading) return <div className={s.center}>Loading dashboard…</div>;
+  if (error) return <div className={s.center} style={{ color: '#f44' }}>Error: {String(error)}</div>;
   if (!data) return null;
 
   const totals = data.mods.reduce(
@@ -56,11 +57,11 @@ export const DashboardPage = () => {
   const totalQA = data.qaByType.reduce((s, r) => s + Number(r.count), 0);
 
   return (
-    <div style={s.page}>
-      <h1 style={s.title}>Dashboard</h1>
+    <div className={s.page}>
+      <h1 className={s.title}>Dashboard</h1>
 
       {/* Summary cards */}
-      <div style={s.cards}>
+      <div className={s.cards}>
         <Card label="Strings" value={totals.total} />
         <Card label="Translated" value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
         <Card label="Approved" value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
@@ -69,16 +70,16 @@ export const DashboardPage = () => {
 
       {/* QA breakdown */}
       {data.qaByType.length > 0 && (
-        <section style={s.section}>
-          <h2 style={s.h2}>QA Issue Breakdown</h2>
-          <div style={s.qaGrid}>
+        <section className={s.section}>
+          <h2 className={s.h2}>QA Issue Breakdown</h2>
+          <div className={s.qaGrid}>
             {data.qaByType.map((r) => (
-              <div key={r.issue_type} style={s.qaRow}>
-                <span style={{ ...s.qaLabel, color: ISSUE_COLORS[r.issue_type] ?? '#aaa' }}>
+              <div key={r.issue_type} className={s.qaRow}>
+                <span className={s.qaLabel} style={{ color: ISSUE_COLORS[r.issue_type] ?? '#aaa' }}>
                   {issueLabel(r.issue_type)}
                 </span>
                 <Bar value={Number(r.count)} max={totalQA} color={ISSUE_COLORS[r.issue_type] ?? '#888'} />
-                <span style={s.qaCount}>{r.count}</span>
+                <span className={s.qaCount}>{r.count}</span>
               </div>
             ))}
           </div>
@@ -86,21 +87,21 @@ export const DashboardPage = () => {
       )}
 
       {/* Per-mod table */}
-      <section style={s.section}>
-        <h2 style={s.h2}>Mods</h2>
-        <table style={s.table}>
+      <section className={s.section}>
+        <h2 className={s.h2}>Mods</h2>
+        <table className={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Mod</th>
-              <th style={s.thR}>Strings</th>
-              <th style={s.thR}>Translated</th>
-              <th style={s.thR}>%</th>
-              <th style={{ ...s.th, minWidth: 120 }}>Progress</th>
-              <th style={s.thR}>Approved</th>
-              <th style={s.thR}>Draft</th>
-              <th style={s.thR}>TM</th>
-              <th style={s.thR}>Auto</th>
-              <th style={s.thR}>QA</th>
+              <th className={s.th}>Mod</th>
+              <th className={s.thR}>Strings</th>
+              <th className={s.thR}>Translated</th>
+              <th className={s.thR}>%</th>
+              <th className={s.th} style={{ minWidth: 120 }}>Progress</th>
+              <th className={s.thR}>Approved</th>
+              <th className={s.thR}>Draft</th>
+              <th className={s.thR}>TM</th>
+              <th className={s.thR}>Auto</th>
+              <th className={s.thR}>QA</th>
             </tr>
           </thead>
           <tbody>
@@ -109,21 +110,21 @@ export const DashboardPage = () => {
               return (
                 <tr
                   key={m.id}
-                  style={s.tr}
+                  className={s.tr}
                   onClick={() => nav(`/mods/${m.id}`)}
                 >
-                  <td style={s.td}>{m.name}</td>
-                  <td style={s.tdR}>{m.total}</td>
-                  <td style={s.tdR}>{m.translated}</td>
-                  <td style={s.tdR}>{p}%</td>
-                  <td style={s.td}>
+                  <td className={s.td}>{m.name}</td>
+                  <td className={s.tdR}>{m.total}</td>
+                  <td className={s.tdR}>{m.translated}</td>
+                  <td className={s.tdR}>{p}%</td>
+                  <td className={s.td}>
                     <Bar value={Number(m.translated)} max={Number(m.total)} color={p === 100 ? '#4caf50' : '#2196f3'} />
                   </td>
-                  <td style={s.tdR}>{Number(m.approved) + Number(m.reviewed)}</td>
-                  <td style={s.tdR}>{m.draft}</td>
-                  <td style={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
-                  <td style={s.tdR}>{m.auto}</td>
-                  <td style={{ ...s.tdR, color: Number(m.qa_issues) > 0 ? '#e55' : '#666' }}>
+                  <td className={s.tdR}>{Number(m.approved) + Number(m.reviewed)}</td>
+                  <td className={s.tdR}>{m.draft}</td>
+                  <td className={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
+                  <td className={s.tdR}>{m.auto}</td>
+                  <td className={s.tdR} style={{ color: Number(m.qa_issues) > 0 ? '#e55' : '#666' }}>
                     {m.qa_issues}
                   </td>
                 </tr>
@@ -132,19 +133,19 @@ export const DashboardPage = () => {
           </tbody>
           {data.mods.length > 1 && (
             <tfoot>
-              <tr style={s.tfoot}>
-                <td style={s.td}>Total</td>
-                <td style={s.tdR}>{totals.total}</td>
-                <td style={s.tdR}>{totals.translated}</td>
-                <td style={s.tdR}>{pct(totals.translated, totals.total)}%</td>
-                <td style={s.td}>
+              <tr className={s.tfoot}>
+                <td className={s.td}>Total</td>
+                <td className={s.tdR}>{totals.total}</td>
+                <td className={s.tdR}>{totals.translated}</td>
+                <td className={s.tdR}>{pct(totals.translated, totals.total)}%</td>
+                <td className={s.td}>
                   <Bar value={totals.translated} max={totals.total} color="#2196f3" />
                 </td>
-                <td style={s.tdR}>{totals.approved + totals.reviewed}</td>
-                <td style={s.tdR}>{totals.draft}</td>
-                <td style={s.tdR}>{totals.tm + totals.fuzzy}</td>
-                <td style={s.tdR}>{totals.auto}</td>
-                <td style={{ ...s.tdR, color: totals.qa > 0 ? '#e55' : '#666' }}>{totals.qa}</td>
+                <td className={s.tdR}>{totals.approved + totals.reviewed}</td>
+                <td className={s.tdR}>{totals.draft}</td>
+                <td className={s.tdR}>{totals.tm + totals.fuzzy}</td>
+                <td className={s.tdR}>{totals.auto}</td>
+                <td className={s.tdR} style={{ color: totals.qa > 0 ? '#e55' : '#666' }}>{totals.qa}</td>
               </tr>
             </tfoot>
           )}
@@ -155,7 +156,7 @@ export const DashboardPage = () => {
 };
 
 const Card = ({ label, value, sub, color }: { label: string; value: number; sub?: string; color?: string }) => (
-  <div style={s.card}>
+  <div className={s.card}>
     <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#fff' }}>{value.toLocaleString()}</div>
     <div style={{ fontSize: 13, color: '#999', marginTop: 2 }}>
       {label}
@@ -164,23 +165,4 @@ const Card = ({ label, value, sub, color }: { label: string; value: number; sub?
   </div>
 );
 
-const s: Record<string, React.CSSProperties> = {
-  page: { padding: '24px 32px', maxWidth: 1200, margin: '0 auto' },
-  center: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: '#888' },
-  title: { fontSize: 22, fontWeight: 700, marginBottom: 20, color: '#eee' },
-  cards: { display: 'flex', gap: 16, marginBottom: 28, flexWrap: 'wrap' as const },
-  card: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '16px 24px', minWidth: 140 },
-  section: { marginBottom: 32 },
-  h2: { fontSize: 16, fontWeight: 600, marginBottom: 12, color: '#ccc' },
-  qaGrid: { display: 'flex', flexDirection: 'column' as const, gap: 6, maxWidth: 500 },
-  qaRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  qaLabel: { fontSize: 13, minWidth: 160, textTransform: 'capitalize' as const },
-  qaCount: { fontSize: 13, color: '#aaa', minWidth: 36, textAlign: 'right' as const },
-  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 },
-  th: { textAlign: 'left' as const, padding: '8px 10px', borderBottom: '1px solid #333', color: '#888', fontWeight: 600 },
-  thR: { textAlign: 'right' as const, padding: '8px 10px', borderBottom: '1px solid #333', color: '#888', fontWeight: 600 },
-  tr: { cursor: 'pointer', borderBottom: '1px solid #222' },
-  td: { padding: '8px 10px', color: '#ccc' },
-  tdR: { padding: '8px 10px', color: '#ccc', textAlign: 'right' as const },
-  tfoot: { borderTop: '2px solid #333', fontWeight: 600 },
-};
+

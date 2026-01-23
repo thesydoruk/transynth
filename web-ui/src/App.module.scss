@@ -1,0 +1,66 @@
+/* ── App.tsx — navigation bar SCSS Module ───────────────────────────────── */
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px;
+  height: 48px;
+  background: #111;
+  border-bottom: 1px solid #2a2a2a;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 16px;
+  color: #d4a843;
+  margin-right: 12px;
+}
+
+.link {
+  color: #aaa;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.activeLink {
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.userInfo {
+  color: #aaa;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roleBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #d4a843;
+  color: #111;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.logoutBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #aaa;
+  cursor: pointer;
+}

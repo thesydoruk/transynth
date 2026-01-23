@@ -13,6 +13,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { TmxPage } from './pages/TmxPage';
 import { UsersPage } from './pages/UsersPage';
 import { ActivityPage } from './pages/ActivityPage';
+import nav from './App.module.scss';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
@@ -40,33 +41,33 @@ const Nav = () => {
   const { user, multiUser, logout } = useAuth();
 
   return (
-    <nav style={navStyles.nav}>
-      <span style={navStyles.brand}>FO4 Localizer</span>
+    <nav className={nav.nav}>
+      <span className={nav.brand}>FO4 Localizer</span>
       {NAV_LINKS
         .filter(l => !('multiUserOnly' in l && l.multiUserOnly) || multiUser)
         .map(({ to, label, exact }) => {
           const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);
           return (
-            <Link key={to} to={to} style={active ? navStyles.activeLink : navStyles.link}>
+            <Link key={to} to={to} className={active ? nav.activeLink : nav.link}>
               {label}
             </Link>
           );
         })}
 
       {/* Spacer */}
-      <span style={{ flex: 1 }} />
+      <span className={nav.spacer} />
 
       {/* User info — always visible for admin, user display in multi-user mode */}
       {user && (
-        <span style={navStyles.userInfo}>
+        <span className={nav.userInfo}>
           {user.display_name}
           {multiUser && user.role !== 'translator' && (
-            <span style={navStyles.roleBadge}>{user.role}</span>
+            <span className={nav.roleBadge}>{user.role}</span>
           )}
         </span>
       )}
       {multiUser && user && (
-        <button onClick={logout} style={navStyles.logoutBtn}>Logout</button>
+        <button onClick={logout} className={nav.logoutBtn}>Logout</button>
       )}
     </nav>
   );
@@ -119,40 +120,4 @@ export default function App() {
   );
 }
 
-const navStyles = {
-  nav: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 20,
-    padding: '0 24px',
-    height: 48,
-    background: '#111',
-    borderBottom: '1px solid #2a2a2a',
-    position: 'sticky' as const,
-    top: 0,
-    zIndex: 100,
-  },
-  brand: { fontWeight: 700, fontSize: 16, color: '#d4a843', marginRight: 12 },
-  link: { color: '#aaa', textDecoration: 'none', fontSize: 14 },
-  activeLink: { color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 },
-  userInfo: { color: '#aaa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 },
-  roleBadge: {
-    fontSize: 10,
-    padding: '1px 6px',
-    borderRadius: 3,
-    background: '#d4a843',
-    color: '#111',
-    fontWeight: 700,
-    textTransform: 'uppercase' as const,
-  },
-  logoutBtn: {
-    padding: '4px 12px',
-    fontSize: 12,
-    background: 'transparent',
-    border: '1px solid #555',
-    borderRadius: 3,
-    color: '#aaa',
-    cursor: 'pointer',
-  },
-};
 

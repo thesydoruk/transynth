@@ -1,0 +1,189 @@
+/* ── DiffPage — SCSS Module ──────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.title {
+  color: #eee;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.fieldCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: #888;
+  font-size: 12px;
+}
+
+.select {
+  background: #222;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 220px;
+}
+
+.btnCompare {
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnCarryOver {
+  composes: btnCompare;
+  background: #2e7d32;
+}
+
+.summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.carryRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.filterBtn {
+  background: #2a2a2a;
+  color: #aaa;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filterBtnActive {
+  composes: filterBtn;
+  background: #1565c0;
+  color: #fff;
+  border-color: #1565c0;
+}
+
+.empty {
+  color: #888;
+  text-align: center;
+  padding: 32px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  color: #888;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #333;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.td {
+  padding: 8px;
+  vertical-align: top;
+  color: #ccc;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.tdChange {
+  composes: td;
+  font-weight: 700;
+}
+
+.tdFormId {
+  composes: td;
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+}
+
+.tdSig {
+  composes: td;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.tdText {
+  composes: td;
+  max-width: 300px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.tdTransl {
+  composes: tdText;
+  color: #bbb;
+}
+
+.noTransl {
+  color: #555;
+  font-style: italic;
+}
+
+.error {
+  color: #f44;
+  margin-top: 12px;
+}
+
+.carryInfo {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.carryError {
+  color: #f44;
+  font-size: 13px;
+}

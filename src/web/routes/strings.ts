@@ -12,6 +12,7 @@ import {
   getQAIssues,
 } from '../queries.js';
 import { propagateTranslation } from '../tm.js';
+import { cacheLookup, cacheStore } from '../cacheService.js';
 import { chatWithFallback } from '../../llm/index.js';
 import { CONFIG } from '../../config.js';
 import { log } from '../../logger.js';
@@ -168,13 +169,13 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
 
     // Load glossary terms to inject into system prompt
     const { rows: glossaryRows } = await db.query(
-      `SELECT term FROM glossary WHERE lang = $1 ORDER BY count DESC LIMIT 80`,
-      [targetLang],
+      `SELECT term, translation FROM glossary WHERE src_lang = $1 AND tgt_lang = $2 ORDER BY term LIMIT 80`,
+      [srcLang, targetLang],
     );
 
     const glossaryHint =
       glossaryRows.length > 0
-        ? `\n\nKey terminology to preserve:\n${glossaryRows.map((g: { term: string }) => `- ${g.term}`).join('\n')}`
+        ? `\n\nKey terminology to preserve:\n${glossaryRows.map((g: { term: string; translation: string | null }) => g.translation ? `- ${g.term} → ${g.translation}` : `- ${g.term}`).join('\n')}`
         : '';
 
     const systemPrompt = `You are a professional Fallout 4 game localizer. Translate from ${srcLang} to ${targetLang}. Output only the translated text, nothing else.${glossaryHint}`;
@@ -210,14 +211,27 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         continue;
       }
 
+      const sourceText = strRows[0].text_raw;
+
       try {
-        const translated = await chatWithFallback({
-          model: CONFIG.translateModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: strRows[0].text_raw },
-          ],
-        });
+        // Check LLM translation cache first
+        const cached = await cacheLookup(db, sourceText, srcLang, targetLang, CONFIG.translateModel);
+        let translated: string;
+
+        if (cached) {
+          translated = cached.translated;
+        } else {
+          translated = await chatWithFallback({
+            model: CONFIG.translateModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: sourceText },
+            ],
+          });
+
+          // Store in cache for future lookups
+          await cacheStore(db, sourceText, srcLang, targetLang, CONFIG.translateModel, translated);
+        }
 
         await upsertTranslation(db, stringId, translated, 'auto', targetLang);
         const r = { stringId, text: translated };

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type GlossaryEntry } from '../api';
+import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
   const qc = useQueryClient();
@@ -30,24 +31,24 @@ export const GlossaryPage = () => {
   });
 
   return (
-    <div style={s.page}>
-      <h1 style={s.title}>Glossary</h1>
+    <div className={s.page}>
+      <h1 className={s.title}>Glossary</h1>
       <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
         Glossary term pairs are used for QA validation (checking that translations contain required terms)
         and are injected into the LLM system prompt during batch translation.
       </p>
 
       {/* Controls */}
-      <div style={s.toolbar}>
+      <div className={s.toolbar}>
         <label style={{ color: '#888', fontSize: 12 }}>Source:
-          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} style={{ ...s.select, marginLeft: 4 }}>
+          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.select} style={{ marginLeft: 4 }}>
             <option value="en">EN</option>
             <option value="uk">UK</option>
             <option value="">All</option>
           </select>
         </label>
         <label style={{ color: '#888', fontSize: 12 }}>Target:
-          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} style={{ ...s.select, marginLeft: 4 }}>
+          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.select} style={{ marginLeft: 4 }}>
             <option value="uk">UK</option>
             <option value="en">EN</option>
             <option value="">All</option>
@@ -57,17 +58,18 @@ export const GlossaryPage = () => {
           placeholder="Filter terms…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          style={s.input}
+          className={s.input}
         />
       </div>
 
       {/* Add term pair */}
-      <div style={{ ...s.toolbar, marginBottom: 24 }}>
+      <div className={s.toolbar} style={{ marginBottom: 24 }}>
         <input
           placeholder="Source term (e.g. Vault)"
           value={newTerm}
           onChange={(e) => setNewTerm(e.target.value)}
-          style={{ ...s.input, maxWidth: 240 }}
+          className={s.input}
+          style={{ maxWidth: 240 }}
         />
         <span style={{ color: '#666', fontSize: 15 }}>→</span>
         <input
@@ -75,12 +77,13 @@ export const GlossaryPage = () => {
           value={newTranslation}
           onChange={(e) => setNewTranslation(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && newTerm.trim() && add.mutate()}
-          style={{ ...s.input, maxWidth: 240 }}
+          className={s.input}
+          style={{ maxWidth: 240 }}
         />
         <button
           onClick={() => newTerm.trim() && add.mutate()}
           disabled={add.isPending || !newTerm.trim()}
-          style={s.btnAdd}
+          className={s.btnAdd}
         >
           Add Pair
         </button>
@@ -89,41 +92,41 @@ export const GlossaryPage = () => {
 
       {/* Table */}
       {isLoading ? (
-        <div style={s.center}>Loading…</div>
+        <div className={s.center}>Loading…</div>
       ) : !data?.length ? (
-        <div style={s.center}>
+        <div className={s.center}>
           <p>No glossary terms yet.</p>
           <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>
             Add source → translation term pairs above to enforce terminology consistency.
           </p>
         </div>
       ) : (
-        <table style={s.table}>
+        <table className={s.table}>
           <thead>
             <tr>
-              <th style={s.th}>Source Term</th>
-              <th style={s.th}>Translation</th>
-              <th style={s.th}>Langs</th>
-              <th style={s.th}>Source</th>
-              <th style={s.th}></th>
+              <th className={s.th}>Source Term</th>
+              <th className={s.th}>Translation</th>
+              <th className={s.th}>Langs</th>
+              <th className={s.th}>Source</th>
+              <th className={s.th}></th>
             </tr>
           </thead>
           <tbody>
             {data.map((entry: GlossaryEntry) => (
-              <tr key={entry.id} style={s.tr}>
-                <td style={{ ...s.td, fontWeight: 500, color: '#ddd' }}>{entry.term}</td>
-                <td style={{ ...s.td, color: entry.translation ? '#b5e8a0' : '#666', fontStyle: entry.translation ? 'normal' : 'italic' }}>
+              <tr key={entry.id} className={s.tr}>
+                <td className={s.td} style={{ fontWeight: 500, color: '#ddd' }}>{entry.term}</td>
+                <td className={s.td} style={{ color: entry.translation ? '#b5e8a0' : '#666', fontStyle: entry.translation ? 'normal' : 'italic' }}>
                   {entry.translation ?? '—'}
                 </td>
-                <td style={{ ...s.td, fontSize: 11 }}>
-                  <span style={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
+                <td className={s.td} style={{ fontSize: 11 }}>
+                  <span className={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
                 </td>
-                <td style={{ ...s.td, color: '#666', fontSize: 12 }}>{entry.source}</td>
-                <td style={s.td}>
+                <td className={s.td} style={{ color: '#666', fontSize: 12 }}>{entry.source}</td>
+                <td className={s.td}>
                   <button
                     onClick={() => remove.mutate(entry.id)}
                     disabled={remove.isPending}
-                    style={s.btnDelete}
+                    className={s.btnDelete}
                     title="Delete term"
                   >
                     ✕
@@ -137,19 +140,3 @@ export const GlossaryPage = () => {
     </div>
   );
 }
-
-const s = {
-  page: { padding: '24px 32px', maxWidth: 800, margin: '0 auto' } as React.CSSProperties,
-  title: { color: '#eee', marginBottom: 8 } as React.CSSProperties,
-  toolbar: { display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' } as React.CSSProperties,
-  select: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '5px 8px', fontSize: 13 } as React.CSSProperties,
-  input: { background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: 4, padding: '5px 10px', fontSize: 13, flex: 1, minWidth: 160 } as React.CSSProperties,
-  btnAdd: { background: '#2e7d32', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13 } as React.CSSProperties,
-  table: { width: '100%', borderCollapse: 'collapse' as const } as React.CSSProperties,
-  th: { textAlign: 'left' as const, color: '#888', fontSize: 11, padding: '6px 8px', borderBottom: '1px solid #333', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em' } as React.CSSProperties,
-  tr: { borderBottom: '1px solid #1a1a1a' } as React.CSSProperties,
-  td: { padding: '8px', verticalAlign: 'middle' as const, color: '#ccc', fontSize: 13 } as React.CSSProperties,
-  langBadge: { background: '#1a3a5c', color: '#7cc8ff', borderRadius: 3, padding: '1px 6px', fontSize: 11, fontFamily: 'monospace' } as React.CSSProperties,
-  btnDelete: { background: 'transparent', color: '#777', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', borderRadius: 3 } as React.CSSProperties,
-  center: { padding: 32, textAlign: 'center' as const, color: '#888' } as React.CSSProperties,
-};
