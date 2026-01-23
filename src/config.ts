@@ -21,6 +21,13 @@ export const CONFIG = {
 
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
+
+  // Multi-user mode: when true, authentication is required.
+  // When false (default), the app runs as a single-user tool — no login needed.
+  multiUser: process.env.MULTI_USER === 'true',
+
+  // Session lifetime in hours (default 72h). Only relevant when MULTI_USER=true.
+  sessionLifetimeHours: parseInt(process.env.SESSION_LIFETIME_HOURS || '72', 10),
 };
 
 /** Resolve the translation model based on provider. */

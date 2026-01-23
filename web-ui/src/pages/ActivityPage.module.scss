@@ -1,0 +1,118 @@
+@use 'sass:color';
+
+/* ── Activity Log Page ─────────────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.title {
+  color: #eee;
+  margin-bottom: 16px;
+}
+
+/* ── Filters ───────────────────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+
+  select, input {
+    padding: 6px 10px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 13px;
+
+    &:focus {
+      border-color: #d4a843;
+      outline: none;
+    }
+  }
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th, td {
+    padding: 7px 12px;
+    text-align: left;
+    border-bottom: 1px solid #2a2a2a;
+  }
+
+  th {
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: #ccc;
+  }
+}
+
+.actionBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #333;
+  color: #aaa;
+}
+
+.pagination {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  align-items: center;
+  color: #888;
+  font-size: 13px;
+}
+
+.pageBtn {
+  padding: 5px 14px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: #333;
+    color: #eee;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.empty {
+  color: #666;
+  text-align: center;
+  padding: 32px;
+}
+
+.details {
+  color: #777;
+  font-size: 11px;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

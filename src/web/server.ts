@@ -6,6 +6,12 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { openDb, closeDb } from '../db.js';
 import { log } from '../logger.js';
+import { CONFIG } from '../config.js';
+import { ensureDefaultAdmin, cleanExpiredSessions } from './authService.js';
+import { registerAuthHook } from './authMiddleware.js';
+import { authRoutes } from './routes/auth.js';
+import { usersRoutes } from './routes/users.js';
+import { activityRoutes } from './routes/activity.js';
 import { modsRoutes } from './routes/mods.js';
 import { stringsRoutes } from './routes/strings.js';
 import { statsRoutes } from './routes/stats.js';
@@ -23,7 +29,11 @@ const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 
 const app = Fastify({ logger: false });
 
-await app.register(cors, { origin: true });
+// CORS: in multi-user mode send cookies cross-origin (dev proxy scenario)
+await app.register(cors, {
+  origin: true,
+  credentials: CONFIG.multiUser,
+});
 await app.register(multipart, { limits: { fileSize: 200 * 1024 * 1024 } });
 
 // Serve React SPA from web-ui/dist if the directory exists
@@ -45,6 +55,19 @@ try {
 
 const db = openDb();
 
+// Ensure the default admin user exists (required for both modes)
+await ensureDefaultAdmin(db);
+
+// Register auth middleware — populates req.user on every request.
+// In single-user mode this injects the default admin with zero auth overhead.
+await registerAuthHook(app, db);
+
+// Auth, user management, and activity log routes
+await authRoutes(app, db);
+await usersRoutes(app, db);
+await activityRoutes(app, db);
+
+// Domain routes
 await modsRoutes(app, db);
 await stringsRoutes(app, db);
 await statsRoutes(app, db);
@@ -65,6 +88,19 @@ app.get('/api/health', async () => {
   }
 });
 
+// Periodically clean expired sessions (every 6 hours)
+const SESSION_CLEANUP_INTERVAL = 6 * 3600_000;
+const sessionCleanup = setInterval(async () => {
+  try {
+    const removed = await cleanExpiredSessions(db);
+    if (removed > 0) log.info(`Cleaned ${removed} expired sessions`);
+  } catch (err) {
+    log.warn('Session cleanup failed', err);
+  }
+}, SESSION_CLEANUP_INTERVAL);
+
+log.info(`Auth mode: ${CONFIG.multiUser ? 'multi-user' : 'single-user'}`);
+
 try {
   await app.listen({ port: PORT, host: HOST });
   log.info(`Web server listening at http://localhost:${PORT}`);
@@ -76,6 +112,7 @@ try {
 // Graceful shutdown
 const shutdown = async () => {
   log.info('Shutting down...');
+  clearInterval(sessionCleanup);
   await app.close();
   await closeDb();
   log.close();

@@ -172,3 +172,47 @@ CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);
+
+-- ── Auth & collaboration tables ─────────────────────────────────────────────
+-- These tables always exist regardless of MULTI_USER setting.
+-- In single-user mode they simply hold the default admin row.
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'translator',  -- admin | translator | reviewer
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS activity_log (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,          -- e.g. login, translate, import, approve, export
+  entity_type TEXT,              -- e.g. mod, string, translation, glossary
+  entity_id INTEGER,
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Default admin user (password: "admin" — change on first login in multi-user mode).
+-- The password hash is generated at runtime by dbInit.ts; this INSERT is a no-op placeholder.
+INSERT INTO users (id, username, display_name, password_hash, role)
+VALUES (1, 'admin', 'Administrator', '__PLACEHOLDER__', 'admin')
+ON CONFLICT (id) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions USING HASH(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);

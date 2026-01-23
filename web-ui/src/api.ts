@@ -3,6 +3,7 @@ const BASE = import.meta.env.VITE_API_URL ?? '';
 
 const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,
   });
@@ -22,7 +23,7 @@ const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
  * @param fallbackName - Filename to use if the server doesn't provide one
  */
 const downloadBinary = async (path: string, fallbackName: string): Promise<void> => {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${BASE}${path}`, { credentials: 'include' });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -42,6 +43,38 @@ const downloadBinary = async (path: string, fallbackName: string): Promise<void>
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Authenticated user profile. */
+export type User = {
+  id: number;
+  username: string;
+  display_name: string;
+  role: 'admin' | 'translator' | 'reviewer';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A single activity log entry returned by /api/activity. */
+export type ActivityEntry = {
+  id: number;
+  user_id: number | null;
+  username: string | null;
+  display_name: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+};
+
+/** Paginated response from /api/activity. */
+export type ActivityLogResponse = {
+  entries: ActivityEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 
 export type Mod = {
   id: number;
@@ -414,6 +447,7 @@ export const api = {
       onProgress?: (e: ProgressEvent) => void,
     ): Promise<Array<{ stringId: number; text?: string; error?: string }>> {
       const response = await fetch(`${BASE}/api/strings/translate`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stringIds, srcLang, targetLang }),
@@ -479,7 +513,7 @@ export const api = {
     upload: async (file: File): Promise<EetImportJob> => {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`${BASE}/api/eet/upload`, { method: 'POST', body: form });
+      const res = await fetch(`${BASE}/api/eet/upload`, { method: 'POST', body: form, credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -494,7 +528,7 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/eet/${jobId}/import`, { signal: ctrl.signal });
+        const res = await fetch(`${BASE}/api/eet/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -553,7 +587,7 @@ export const api = {
     upload: async (file: File): Promise<CsvImportJob> => {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`${BASE}/api/csv/upload`, { method: 'POST', body: form });
+      const res = await fetch(`${BASE}/api/csv/upload`, { method: 'POST', body: form, credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -568,7 +602,7 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/csv/${jobId}/import`, { signal: ctrl.signal });
+        const res = await fetch(`${BASE}/api/csv/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -627,7 +661,7 @@ export const api = {
     upload: async (file: File): Promise<ModImportJob> => {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`${BASE}/api/mod-import/upload`, { method: 'POST', body: form });
+      const res = await fetch(`${BASE}/api/mod-import/upload`, { method: 'POST', body: form, credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -642,7 +676,7 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/mod-import/${jobId}/import`, { signal: ctrl.signal });
+        const res = await fetch(`${BASE}/api/mod-import/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -708,12 +742,51 @@ export const api = {
       const form = new FormData();
       form.append('file', file);
       const qs = modId != null ? `?modId=${modId}` : '';
-      const res = await fetch(`${BASE}/api/tmx/import${qs}`, { method: 'POST', body: form });
+      const res = await fetch(`${BASE}/api/tmx/import${qs}`, { method: 'POST', body: form, credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       return res.json() as Promise<TmxImportResult>;
+    },
+  },
+
+  /** Auth, users, and activity log */
+  auth: {
+    /** Returns whether multi-user mode is enabled */
+    mode: () => req<{ multiUser: boolean }>('/api/auth/mode'),
+    /** Returns the current authenticated user (or default admin in single-user mode) */
+    me: () => req<User>('/api/auth/me'),
+    /** Logs in with username and password. Sets a session cookie on success. */
+    login: (username: string, password: string) =>
+      req<User>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    /** Logs out and clears the session cookie. */
+    logout: () => req<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+  },
+
+  users: {
+    /** Lists all users */
+    list: () => req<User[]>('/api/users'),
+    /** Creates a new user (admin only) */
+    create: (data: { username: string; display_name: string; password: string; role: string }) =>
+      req<User>('/api/users', { method: 'POST', body: JSON.stringify(data) }),
+    /** Updates a user's profile (admin only) */
+    update: (id: number, data: { display_name?: string; role?: string; is_active?: boolean }) =>
+      req<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    /** Changes a user's password */
+    changePassword: (id: number, new_password: string) =>
+      req<{ ok: boolean }>(`/api/users/${id}/password`, { method: 'POST', body: JSON.stringify({ new_password }) }),
+  },
+
+  activity: {
+    /** Fetches paginated activity log entries */
+    list: (params?: { limit?: number; offset?: number; userId?: number; action?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.offset) qs.set('offset', String(params.offset));
+      if (params?.userId) qs.set('userId', String(params.userId));
+      if (params?.action) qs.set('action', params.action);
+      return req<ActivityLogResponse>(`/api/activity?${qs}`);
     },
   },
 };
