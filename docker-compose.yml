@@ -30,6 +30,7 @@ services:
       db:
         condition: service_healthy
     network_mode: host   # reaches Ollama on the host at localhost:11434
+    entrypoint: ["node", "--import", "tsx/esm"]
 
   # Interactive dev shell with live source mount
   dev:
@@ -52,18 +53,21 @@ services:
   # Web UI server — serves Fastify API + built React SPA on port 3000
   web:
     build: .
-    command: ["node", "--import", "tsx/esm", "src/web/server.ts"]
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
       PORT: "3000"
+    volumes:
+      - ./data:/app/data          # persist logs + upload storage
+      - ./mod-uploads:/app/mod-uploads
+      - ./eet-uploads:/app/eet-uploads
+      - ./csv-uploads:/app/csv-uploads
     depends_on:
       db:
         condition: service_healthy
     network_mode: host   # reaches Ollama on the host at localhost:11434
+    restart: unless-stopped
 
   # Optional: run Ollama inside Docker (GPU passthrough — Linux only)
   # Uncomment if you want Ollama containerized alongside the CLI.

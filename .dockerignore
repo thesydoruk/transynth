@@ -3,7 +3,31 @@ dist/
 .env
 *.sqlite
 *.db
+
+# Build artifacts and caches
 tools/
 downloads/
 learn_*/
 ml_*/
+
+# Legacy C# project
+legacy/
+
+# Documentation — not needed in runtime image
+docs/
+.github/
+
+# Upload directories — mounted as volumes, not baked into image
+mod-uploads/
+eet-uploads/
+csv-uploads/
+
+# Runtime data — logs, caches (mounted as volumes)
+data/
+
+# Web UI node_modules excluded — only built dist is copied
+web-ui/node_modules/
+
+# Git metadata
+.git/
+.gitignore

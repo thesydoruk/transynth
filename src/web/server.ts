@@ -55,8 +55,15 @@ await csvRoutes(app, db);
 await modImportRoutes(app, db);
 await tmxRoutes(app, db);
 
-// Health check
-app.get('/api/health', async () => ({ ok: true, ts: new Date().toISOString() }));
+// Health check — verifies DB connectivity and returns uptime info
+app.get('/api/health', async () => {
+  try {
+    const { rows } = await db.query('SELECT NOW() AS now');
+    return { ok: true, ts: new Date().toISOString(), db: true, dbTime: rows[0].now };
+  } catch {
+    return { ok: false, ts: new Date().toISOString(), db: false };
+  }
+});
 
 try {
   await app.listen({ port: PORT, host: HOST });
