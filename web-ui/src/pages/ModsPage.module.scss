@@ -47,3 +47,39 @@
 .rowHover {
   cursor: pointer;
 }
+
+/* Error state text color */
+.error {
+  color: #f44;
+}
+
+/* Muted hint paragraph in empty state */
+.hintText {
+  color: #888;
+}
+
+/* Mod name cell — slightly brighter than default td color */
+.modName {
+  color: #ddd;
+}
+
+/* Right-align table cell (string count) */
+.tdRight {
+  text-align: right;
+}
+
+/* Progress bar cell — fixed minimum width */
+.tdProgress {
+  min-width: 160px;
+}
+
+/* Percentage label next to badges — shared base style */
+.pctLabel {
+  color: #bbb;
+  font-size: 12px;
+}
+
+/* Extra left spacing for the approved percentage label */
+.pctApproved {
+  margin-left: 4px;
+}

@@ -187,3 +187,24 @@
   color: #f44;
   font-size: 13px;
 }
+
+/** Wide column headers (source text, translation). */
+.thWide {
+  composes: th;
+  min-width: 220px;
+}
+
+/** Carry-over result highlighted counts. */
+.carryGreen  { color: #4caf50; }
+.carryOrange { color: #ff9800; }
+.carryGrey   { color: #888; }
+
+/** Table row background per change type. */
+.rowAdded   { background: #1b3a1b; }
+.rowRemoved { background: #3a1b1b; }
+.rowChanged { background: #2a2a0f; }
+
+/** Change-type text color for the first column. */
+.changeAdded   { color: #4caf50; }
+.changeRemoved { color: #f44336; }
+.changeChanged { color: #ff9800; }

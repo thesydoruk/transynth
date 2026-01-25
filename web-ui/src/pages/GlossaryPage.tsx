@@ -33,22 +33,22 @@ export const GlossaryPage = () => {
   return (
     <div className={s.page}>
       <h1 className={s.title}>Glossary</h1>
-      <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
+      <p className={s.description}>
         Glossary term pairs are used for QA validation (checking that translations contain required terms)
         and are injected into the LLM system prompt during batch translation.
       </p>
 
       {/* Controls */}
       <div className={s.toolbar}>
-        <label style={{ color: '#888', fontSize: 12 }}>Source:
-          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.select} style={{ marginLeft: 4 }}>
+        <label className={s.filterLabel}>Source:
+          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.selectIndent}>
             <option value="en">EN</option>
             <option value="uk">UK</option>
             <option value="">All</option>
           </select>
         </label>
-        <label style={{ color: '#888', fontSize: 12 }}>Target:
-          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.select} style={{ marginLeft: 4 }}>
+        <label className={s.filterLabel}>Target:
+          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.selectIndent}>
             <option value="uk">UK</option>
             <option value="en">EN</option>
             <option value="">All</option>
@@ -63,22 +63,20 @@ export const GlossaryPage = () => {
       </div>
 
       {/* Add term pair */}
-      <div className={s.toolbar} style={{ marginBottom: 24 }}>
+      <div className={s.toolbarAdd}>
         <input
           placeholder="Source term (e.g. Vault)"
           value={newTerm}
           onChange={(e) => setNewTerm(e.target.value)}
-          className={s.input}
-          style={{ maxWidth: 240 }}
+          className={s.inputTerm}
         />
-        <span style={{ color: '#666', fontSize: 15 }}>→</span>
+        <span className={s.arrow}>→</span>
         <input
           placeholder="Translation (e.g. Сховище)"
           value={newTranslation}
           onChange={(e) => setNewTranslation(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && newTerm.trim() && add.mutate()}
-          className={s.input}
-          style={{ maxWidth: 240 }}
+          className={s.inputTerm}
         />
         <button
           onClick={() => newTerm.trim() && add.mutate()}
@@ -87,7 +85,7 @@ export const GlossaryPage = () => {
         >
           Add Pair
         </button>
-        {add.isError && <span style={{ color: '#f44', fontSize: 12 }}>{add.error?.message}</span>}
+        {add.isError && <span className={s.addError}>{add.error?.message}</span>}
       </div>
 
       {/* Table */}
@@ -96,7 +94,7 @@ export const GlossaryPage = () => {
       ) : !data?.length ? (
         <div className={s.center}>
           <p>No glossary terms yet.</p>
-          <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>
+          <p className={s.emptyHint}>
             Add source → translation term pairs above to enforce terminology consistency.
           </p>
         </div>
@@ -114,14 +112,14 @@ export const GlossaryPage = () => {
           <tbody>
             {data.map((entry: GlossaryEntry) => (
               <tr key={entry.id} className={s.tr}>
-                <td className={s.td} style={{ fontWeight: 500, color: '#ddd' }}>{entry.term}</td>
-                <td className={s.td} style={{ color: entry.translation ? '#b5e8a0' : '#666', fontStyle: entry.translation ? 'normal' : 'italic' }}>
+                <td className={s.tdTerm}>{entry.term}</td>
+                <td className={entry.translation ? s.tdTranslFilled : s.tdTranslEmpty}>
                   {entry.translation ?? '—'}
                 </td>
-                <td className={s.td} style={{ fontSize: 11 }}>
+                <td className={s.tdLang}>
                   <span className={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
                 </td>
-                <td className={s.td} style={{ color: '#666', fontSize: 12 }}>{entry.source}</td>
+                <td className={s.tdSource}>{entry.source}</td>
                 <td className={s.td}>
                   <button
                     onClick={() => remove.mutate(entry.id)}

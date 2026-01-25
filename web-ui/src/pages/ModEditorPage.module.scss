@@ -507,3 +507,111 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+/* ── Progress section in toolbar ─────────────────────────────────────────── */
+
+/** Wraps ProgressBar + count label, pushed to the right side of toolbar. */
+.progressSection {
+  margin-left: auto;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/** Approved count label below the progress bar. */
+.progressLabel {
+  font-size: 11px;
+  color: #888;
+  text-align: right;
+}
+
+/* ── Virtual grid column widths ──────────────────────────────────────────── */
+/* Applied to both .th and .td divs in the same column for flex alignment. */
+
+.colCheck   { width: 24px;  }
+.colGrup    { width: 52px;  }
+.colFormId  { width: 70px;  }
+.colEdid    { width: 160px; }
+.colField   { width: 50px;  }
+.colText    { flex: 1; min-width: 220px; }
+.colAct     { width: 74px;  }
+
+/* ── Specialized data cell variants ─────────────────────────────────────── */
+
+.tdSig        { composes: td; color: #999; font-size: 11px; }
+.tdFid        { composes: td; font-family: monospace; font-size: 11px; color: #777; }
+.tdEdidCell   { composes: td; font-size: 11px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tdField      { composes: td; font-size: 11px; color: #999; }
+.tdText       { composes: td; flex: 1; min-width: 220px; word-break: break-word; white-space: pre-wrap; font-size: 13px; }
+.tdTranslFilled { composes: tdText; color: #eee; }
+.tdTranslEmpty  { composes: tdText; color: #666; font-style: italic; }
+
+/* ── Virtual scroller ───────────────────────────────────────────────────── */
+
+/** Outer container — only height is set by inline style (virtualizer value). */
+.virtualScroll { position: relative; }
+
+/**
+ * Individual virtual row — static positioning set by CSS;
+ * transform (vertical offset) and background are set inline at runtime.
+ */
+.virtualRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* ── Row action button cluster ───────────────────────────────────────────── */
+.actionBtnRow { display: flex; gap: 3px; }
+
+/* ── Pagination label ────────────────────────────────────────────────────── */
+.pageLabel { color: #aaa; font-size: 13px; }
+
+/* ── Status bar items ────────────────────────────────────────────────────── */
+.statusBarDetail { margin-left: 16px; color: #888; }
+.statusBarStats  { margin-left: auto; font-size: 12px; color: #888; }
+
+/* ── Detail panel button rows ────────────────────────────────────────────── */
+.detailBtnBar  { display: flex; justify-content: space-between; align-items: center; }
+.detailSaveRow { display: flex; gap: 6px; }
+
+/* ── Sub-panel "empty" placeholders ─────────────────────────────────────── */
+.panelEmpty { color: #666; font-size: 13px; padding: 8px; }
+
+/* ── Flex list containers ────────────────────────────────────────────────── */
+.panelList     { display: flex; flex-direction: column; }
+.panelListGap4 { composes: panelList; gap: 4px; }
+.panelListGap2 { composes: panelList; gap: 2px; }
+
+/* ── TM suggestion row internals ─────────────────────────────────────────── */
+
+/** Match method badge — color injected via --sugg-color CSS custom property. */
+.suggMethod { font-size: 10px; font-weight: 600; text-transform: uppercase; min-width: 40px; color: var(--sugg-color, #aaa); }
+.suggText   { flex: 1; font-size: 13px; color: #ddd; white-space: pre-wrap; }
+.suggSim    { font-size: 11px; color: #888; }
+
+/* ── QA panel ────────────────────────────────────────────────────────────── */
+.qaMsg { flex: 1; font-size: 12px; color: #ddd; }
+
+/* ── History panel ───────────────────────────────────────────────────────── */
+.histHeader { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.histDate   { color: #888; font-size: 11px; }
+.histNote   { color: #666; font-size: 11px; }
+.histText   { color: #bbb; font-size: 12px; white-space: pre-wrap; }
+
+/* ── Search & Replace Modal internals ────────────────────────────────────── */
+.modalTitle    { color: #eee; margin: 0 0 16px; }
+.modalForm     { display: flex; flex-direction: column; gap: 10px; }
+.modalRegexLbl { color: #aaa; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.modalBtnRow   { display: flex; gap: 8px; margin-top: 16px; }
+.modalErr      { color: #f44; font-size: 12px; margin-top: 8px; }
+.modalOk       { color: #4caf50; font-size: 13px; margin-top: 8px; }
+.modalPreview  { margin-top: 12px; max-height: 200px; overflow-y: auto; font-size: 12px; }
+.modalPrevItem { border-bottom: 1px solid #2a2a2a; padding: 4px 0; }
+.modalPrevId   { color: #888; margin-right: 8px; }
+.modalPrevOld  { color: #f88; }
+.modalPrevNew  { color: #8f8; }
+.modalPrevMore { color: #888; }

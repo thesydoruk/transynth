@@ -98,7 +98,7 @@ export const ModImportsPage = () => {
   const handleDelete = async (jobId: number) => { await api.modImport.remove(jobId); refresh(); };
 
   if (isLoading) return <div className={s.center}>Loading...</div>;
-  if (error) return <div className={s.center} style={{ color: '#f44' }}>Error: {String(error)}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
 
   const pendingCount = (jobs ?? []).filter(j =>
     j.status === 'pending' || j.status === 'paused' || j.status === 'failed',
@@ -193,7 +193,7 @@ const JobRow = ({
       </div>
       <div className={s.rowRight}>
         {job.status === 'completed' ? (
-          <span className={s.badge} style={{ background: '#1b6b2d' }}>Completed</span>
+          <span className={s.badgeCompleted}>Completed</span>
         ) : isRunning ? (
           <div className={s.progressWrap}>
             <div className={s.progressTrack}>
@@ -278,8 +278,7 @@ const PreviewModal = ({
           <select
             value={sigFilter}
             onChange={e => { setSigFilter(e.target.value); setPage(1); }}
-            className={s.select}
-            style={{ width: 140 }}
+            className={s.selectSig}
           >
             <option value="">All signatures</option>
             {(data?.signatures ?? []).map(sig => (
@@ -309,14 +308,14 @@ const PreviewModal = ({
                   <th className={s.th}>FormID</th>
                   <th className={s.th}>EDID</th>
                   <th className={s.th}>Path</th>
-                  <th className={s.th} style={{ minWidth: 280 }}>Source</th>
+                  <th className={s.thSourceWide}>Source</th>
                 </tr>
               </thead>
               <tbody>
                 {(data?.rows ?? []).map((r: ModPreviewRow, i: number) => (
                   <tr key={i}>
-                    <td className={s.td}><code style={{ color: '#8cb4ff' }}>{r.signature}</code></td>
-                    <td className={s.td}><code style={{ color: '#aaa' }}>{r.formId}</code></td>
+                    <td className={s.td}><code className={s.codeSignature}>{r.signature}</code></td>
+                    <td className={s.td}><code className={s.codeFormId}>{r.formId}</code></td>
                     <td className={s.tdEdid} title={r.edid}>{r.edid || '—'}</td>
                     <td className={s.td}>{r.path}</td>
                     <td className={s.td}>{r.source}</td>

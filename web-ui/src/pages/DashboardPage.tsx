@@ -6,11 +6,12 @@ import s from './DashboardPage.module.scss';
 
 const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
+/** Mini horizontal bar chart for a single metric. */
 const Bar = ({ value, max, color }: { value: number; max: number; color: string }) => {
   const w = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div style={{ background: '#222', borderRadius: 4, height: 14, flex: 1, minWidth: 60 }}>
-      <div style={{ background: color, borderRadius: 4, height: '100%', width: `${w}%`, transition: 'width .3s' }} />
+    <div className={s.barTrack}>
+      <div className={s.barFill} style={{ background: color, width: `${w}%` }} />
     </div>
   );
 };
@@ -35,7 +36,7 @@ export const DashboardPage = () => {
   });
 
   if (isLoading) return <div className={s.center}>Loading dashboard…</div>;
-  if (error) return <div className={s.center} style={{ color: '#f44' }}>Error: {String(error)}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
   if (!data) return null;
 
   const totals = data.mods.reduce(
@@ -75,7 +76,7 @@ export const DashboardPage = () => {
           <div className={s.qaGrid}>
             {data.qaByType.map((r) => (
               <div key={r.issue_type} className={s.qaRow}>
-                <span className={s.qaLabel} style={{ color: ISSUE_COLORS[r.issue_type] ?? '#aaa' }}>
+                <span className={s.qaLabel} style={{ '--label-color': ISSUE_COLORS[r.issue_type] ?? '#aaa' } as React.CSSProperties}>
                   {issueLabel(r.issue_type)}
                 </span>
                 <Bar value={Number(r.count)} max={totalQA} color={ISSUE_COLORS[r.issue_type] ?? '#888'} />
@@ -96,7 +97,7 @@ export const DashboardPage = () => {
               <th className={s.thR}>Strings</th>
               <th className={s.thR}>Translated</th>
               <th className={s.thR}>%</th>
-              <th className={s.th} style={{ minWidth: 120 }}>Progress</th>
+              <th className={s.thProgress}>Progress</th>
               <th className={s.thR}>Approved</th>
               <th className={s.thR}>Draft</th>
               <th className={s.thR}>TM</th>
@@ -124,7 +125,7 @@ export const DashboardPage = () => {
                   <td className={s.tdR}>{m.draft}</td>
                   <td className={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
                   <td className={s.tdR}>{m.auto}</td>
-                  <td className={s.tdR} style={{ color: Number(m.qa_issues) > 0 ? '#e55' : '#666' }}>
+                  <td className={Number(m.qa_issues) > 0 ? s.qaHasIssues : s.qaNoIssues}>
                     {m.qa_issues}
                   </td>
                 </tr>
@@ -145,7 +146,7 @@ export const DashboardPage = () => {
                 <td className={s.tdR}>{totals.draft}</td>
                 <td className={s.tdR}>{totals.tm + totals.fuzzy}</td>
                 <td className={s.tdR}>{totals.auto}</td>
-                <td className={s.tdR} style={{ color: totals.qa > 0 ? '#e55' : '#666' }}>{totals.qa}</td>
+                <td className={totals.qa > 0 ? s.qaHasIssues : s.qaNoIssues}>{totals.qa}</td>
               </tr>
             </tfoot>
           )}
@@ -155,12 +156,13 @@ export const DashboardPage = () => {
   );
 };
 
+/** Summary stat card shown at the top of the dashboard. */
 const Card = ({ label, value, sub, color }: { label: string; value: number; sub?: string; color?: string }) => (
-  <div className={s.card}>
-    <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#fff' }}>{value.toLocaleString()}</div>
-    <div style={{ fontSize: 13, color: '#999', marginTop: 2 }}>
+  <div className={s.card} style={{ '--card-color': color ?? '#fff' } as React.CSSProperties}>
+    <div className={s.cardValue}>{value.toLocaleString()}</div>
+    <div className={s.cardLabel}>
       {label}
-      {sub && <span style={{ marginLeft: 6, color: color ?? '#aaa', fontWeight: 600 }}>{sub}</span>}
+      {sub && <span className={s.cardSub}>{sub}</span>}
     </div>
   </div>
 );

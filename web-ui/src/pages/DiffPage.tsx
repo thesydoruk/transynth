@@ -4,16 +4,24 @@ import { api, type DiffEntry } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import s from './DiffPage.module.scss';
 
-const CHANGE_COLORS: Record<string, string> = {
-  added: '#1b3a1b',
-  removed: '#3a1b1b',
-  changed: '#2a2a0f',
-};
-
 const CHANGE_LABELS: Record<string, string> = {
   added: 'Added',
   removed: 'Removed',
   changed: 'Changed',
+};
+
+/** Maps changeType to the CSS Module row-background class. */
+const ROW_CLASS: Record<string, string> = {
+  added: s.rowAdded,
+  removed: s.rowRemoved,
+  changed: s.rowChanged,
+};
+
+/** Maps changeType to the CSS Module text-color class for the change column. */
+const CHANGE_CLASS: Record<string, string> = {
+  added: s.changeAdded,
+  removed: s.changeRemoved,
+  changed: s.changeChanged,
 };
 
 export const DiffPage = () => {
@@ -129,9 +137,9 @@ export const DiffPage = () => {
             </button>
             {carryOver.data && (
               <span className={s.carryInfo}>
-                Carried: <b style={{ color: '#4caf50' }}>{carryOver.data.carried}</b>
-                {' · '}Needs review: <b style={{ color: '#ff9800' }}>{carryOver.data.needsReview}</b>
-                {' · '}Skipped: <b style={{ color: '#888' }}>{carryOver.data.skipped}</b>
+                Carried: <b className={s.carryGreen}>{carryOver.data.carried}</b>
+                {' · '}Needs review: <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
+                {' · '}Skipped: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
               </span>
             )}
             {carryOver.isError && (
@@ -166,15 +174,15 @@ export const DiffPage = () => {
                   <th className={s.th}>Change</th>
                   <th className={s.th}>FormID</th>
                   <th className={s.th}>Type</th>
-                  <th className={s.th} style={{ minWidth: 220 }}>Source (EN)</th>
-                  <th className={s.th} style={{ minWidth: 220 }}>Translation</th>
+                  <th className={s.thWide}>Source (EN)</th>
+                  <th className={s.thWide}>Translation</th>
                   <th className={s.th}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {allEntries.map((entry, i) => (
-                  <tr key={i} style={{ background: CHANGE_COLORS[entry.changeType] ?? 'transparent' }}>
-                    <td className={s.tdChange} style={{ color: changeColor(entry.changeType) }}>
+                  <tr key={i} className={ROW_CLASS[entry.changeType] ?? ''}>
+                    <td className={`${s.tdChange} ${CHANGE_CLASS[entry.changeType] ?? ''}`}>
                       {entry.changeType}
                     </td>
                     <td className={s.tdFormId}>
@@ -199,9 +207,5 @@ export const DiffPage = () => {
       )}
     </div>
   );
-}
-
-const changeColor = (type: string) => {
-  return type === 'added' ? '#4caf50' : type === 'removed' ? '#f44336' : '#ff9800';
 }
 

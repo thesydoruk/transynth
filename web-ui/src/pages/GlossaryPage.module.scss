@@ -100,3 +100,89 @@
   text-align: center;
   color: #888;
 }
+
+/** Introductory description paragraph below the title. */
+.description {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+/** Inline label text for language filter selects. */
+.filterLabel {
+  color: #888;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/** Select inside a label — small left indent. */
+.selectIndent {
+  composes: select;
+  margin-left: 4px;
+}
+
+/** Add-term toolbar row — larger bottom margin than the filter toolbar. */
+.toolbarAdd {
+  composes: toolbar;
+  margin-bottom: 24px;
+}
+
+/** Term/translation input with capped max-width. */
+.inputTerm {
+  composes: input;
+  max-width: 240px;
+}
+
+/** Arrow separator between source and translation inputs. */
+.arrow {
+  color: #666;
+  font-size: 15px;
+}
+
+/** Add-term mutation error message. */
+.addError {
+  color: #f44;
+  font-size: 12px;
+}
+
+/** Secondary hint text shown in the empty state. */
+.emptyHint {
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/** Term column — slightly brighter than default cell text. */
+.tdTerm {
+  composes: td;
+  font-weight: 500;
+  color: #ddd;
+}
+
+/** Translation cell when a value exists — green tint. */
+.tdTranslFilled {
+  composes: td;
+  color: #b5e8a0;
+}
+
+/** Translation cell when empty — muted italic placeholder. */
+.tdTranslEmpty {
+  composes: td;
+  color: #666;
+  font-style: italic;
+}
+
+/** Language badge column — tiny font to match the badge inside. */
+.tdLang {
+  composes: td;
+  font-size: 11px;
+}
+
+/** Source / origin column — muted secondary text. */
+.tdSource {
+  composes: td;
+  color: #666;
+  font-size: 12px;
+}

@@ -498,9 +498,9 @@ export const ModEditorPage = () => {
 
         {/* Progress bar */}
         {stats && (
-          <div style={{ marginLeft: 'auto', minWidth: 160, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div className={styles.progressSection}>
             <ProgressBar stats={stats} />
-            <span style={{ fontSize: 11, color: '#888', textAlign: 'right' }}>
+            <span className={styles.progressLabel}>
               {stats.approved}/{stats.total} approved
             </span>
           </div>
@@ -542,19 +542,19 @@ export const ModEditorPage = () => {
               <>
                 {/* Sticky header */}
                 <div className={styles.gridHeader}>
-                  <div className={styles.th} style={{ width: 24 }}>
+                  <div className={`${styles.th} ${styles.colCheck}`}>
                     <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
                   </div>
-                  <div className={styles.th} style={{ width: 52 }}>GRUP</div>
-                  <div className={styles.th} style={{ width: 70 }}>FormID</div>
-                  <div className={styles.th} style={{ width: 160 }}>EDID</div>
-                  <div className={styles.th} style={{ width: 50 }}>FIELD</div>
-                  <div className={styles.th} style={{ flex: 1, minWidth: 220 }}>Текст оригіналу ({srcLang.toUpperCase()})</div>
-                  <div className={styles.th} style={{ flex: 1, minWidth: 220 }}>Текст перекладу ({targetLang.toUpperCase()})</div>
-                  <div className={styles.th} style={{ width: 74 }}>Дії</div>
+                  <div className={`${styles.th} ${styles.colGrup}`}>GRUP</div>
+                  <div className={`${styles.th} ${styles.colFormId}`}>FormID</div>
+                  <div className={`${styles.th} ${styles.colEdid}`}>EDID</div>
+                  <div className={`${styles.th} ${styles.colField}`}>FIELD</div>
+                  <div className={`${styles.th} ${styles.colText}`}>Текст оригіналу ({srcLang.toUpperCase()})</div>
+                  <div className={`${styles.th} ${styles.colText}`}>Текст перекладу ({targetLang.toUpperCase()})</div>
+                  <div className={`${styles.th} ${styles.colAct}`}>Дії</div>
                 </div>
                 {/* Virtualized rows */}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
                   {rowVirtualizer.getVirtualItems().map((vItem) => {
                     const row = strings!.rows[vItem.index];
                     const isActive = activeRow?.string_id === row.string_id;
@@ -563,35 +563,30 @@ export const ModEditorPage = () => {
                         key={row.string_id}
                         data-index={vItem.index}
                         ref={rowVirtualizer.measureElement}
-                        className={styles.gridRow}
+                        className={`${styles.gridRow} ${styles.virtualRow}`}
                         style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
                           transform: `translateY(${vItem.start}px)`,
                           background: rowBg(isActive ? '__active' : row.status),
                           outline: isActive ? '1px solid #aaa' : 'none',
-                          cursor: 'pointer',
                         }}
                         onClick={() => handleRowClick(row)}
                       >
-                        <div className={styles.td} style={{ width: 24 }} onClick={(e) => toggleRow(row, e)}>
+                        <div className={`${styles.td} ${styles.colCheck}`} onClick={(e) => toggleRow(row, e)}>
                           <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
                         </div>
-                        <div className={styles.td} style={{ width: 52, color: '#999', fontSize: 11 }}>{row.signature}</div>
-                        <div className={styles.td} style={{ width: 70, fontFamily: 'monospace', fontSize: 11, color: '#777' }}>{row.formid_hex}</div>
-                        <div className={styles.td} style={{ width: 160, fontSize: 11, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.edid ?? ''}>{row.edid ?? ''}</div>
-                        <div className={styles.td} style={{ width: 50, fontSize: 11, color: '#999' }}>{row.path?.split('.').pop() ?? ''}</div>
-                        <div className={styles.td} style={{ flex: 1, minWidth: 220, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13 }}>{row.source}</div>
-                        <div className={styles.td} style={{ flex: 1, minWidth: 220, wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13, color: row.translation ? '#eee' : '#666', fontStyle: row.translation ? 'normal' : 'italic' }}>
+                        <div className={`${styles.tdSig} ${styles.colGrup}`}>{row.signature}</div>
+                        <div className={`${styles.tdFid} ${styles.colFormId}`}>{row.formid_hex}</div>
+                        <div className={`${styles.tdEdidCell} ${styles.colEdid}`} title={row.edid ?? ''}>{row.edid ?? ''}</div>
+                        <div className={`${styles.tdField} ${styles.colField}`}>{row.path?.split('.').pop() ?? ''}</div>
+                        <div className={styles.tdText}>{row.source}</div>
+                        <div className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty}>
                           {row.translation ?? '—'}
                           {row.qa_issue_count > 0 && (
                             <span className={styles.qaHint}>{row.qa_issue_count} QA</span>
                           )}
                         </div>
-                        <div className={styles.td} style={{ width: 74 }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: 'flex', gap: 3 }}>
+                        <div className={`${styles.td} ${styles.colAct}`} onClick={(e) => e.stopPropagation()}>
+                          <div className={styles.actionBtnRow}>
                             {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
                               <button className={styles.actionBtnBlue} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
                             )}
@@ -614,7 +609,7 @@ export const ModEditorPage = () => {
           {/* ── Pagination ── */}
           <div className={styles.pagination}>
             <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>← Prev</button>
-            <span style={{ color: '#aaa', fontSize: 13 }}>Сторінка {page} / {totalPages} ({strings?.total ?? 0} рядків)</span>
+            <span className={styles.pageLabel}>Сторінка {page} / {totalPages} ({strings?.total ?? 0} рядків)</span>
             <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>Next →</button>
           </div>
 
@@ -639,9 +634,9 @@ export const ModEditorPage = () => {
                     onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
                     placeholder="Введіть переклад…"
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className={styles.detailBtnBar}>
                     <div className={styles.charCount}>Символів: {draftTranslation.length}</div>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div className={styles.detailSaveRow}>
                       <button className={styles.btnSec} onClick={handleCopySource} title="Копіювати оригінал">Copy src</button>
                       {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
                         <button className={styles.btnSec} onClick={() => handleApprove(activeRow)}>
@@ -699,12 +694,12 @@ export const ModEditorPage = () => {
       <div className={styles.statusBar}>
         <span>Вибрані рядки: {selected.size}</span>
         {activeRow && (
-          <span style={{ marginLeft: 16, color: '#888' }}>
+          <span className={styles.statusBarDetail}>
             {activeRow.signature} · {activeRow.formid_hex} · {activeRow.edid ?? '—'}
           </span>
         )}
         {stats && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
+          <span className={styles.statusBarStats}>
             approved: {stats.approved} · draft: {stats.draft} · rejected: {stats.rejected} · tm: {stats.tm} · fuzzy: {stats.fuzzy} · auto: {stats.auto_translated} · untranslated: {stats.untranslated} · total: {stats.total}
           </span>
         )}
@@ -717,20 +712,20 @@ export const ModEditorPage = () => {
 
 const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) => {
   if (suggestions.length === 0) {
-    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Немає пропозицій TM</div>;
+    return <div className={styles.panelEmpty}>Немає пропозицій TM</div>;
   }
   const methodLabel = (m: string) => m === 'exact' ? 'exact' : m === 'punct_norm' ? 'punct' : m === 'segment' ? 'phrase' : 'fuzzy';
   const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className={styles.panelListGap4}>
       {suggestions.map((s) => (
         <div key={s.id} className={styles.suggestionRow}>
           <StatusBadge status={s.status} small />
-          <span style={{ fontSize: 10, color: methodColor(s.match_method), fontWeight: 600, textTransform: 'uppercase', minWidth: 40 }}>
+          <span className={styles.suggMethod} style={{ '--sugg-color': methodColor(s.match_method) } as React.CSSProperties}>
             {methodLabel(s.match_method)}
           </span>
-          <span style={{ flex: 1, fontSize: 13, color: '#ddd', whiteSpace: 'pre-wrap' }}>{s.text}</span>
-          <span style={{ fontSize: 11, color: '#888' }}>{Math.round(s.similarity * 100)}%</span>
+          <span className={styles.suggText}>{s.text}</span>
+          <span className={styles.suggSim}>{Math.round(s.similarity * 100)}%</span>
           <button onClick={() => onApply(s.text)} className={styles.suggestionApplyBtn}>
             Apply
           </button>
@@ -744,14 +739,14 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
 
 const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
   if (issues.length === 0) {
-    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>QA проблем не знайдено</div>;
+    return <div className={styles.panelEmpty}>QA проблем не знайдено</div>;
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div className={styles.panelListGap2}>
       {issues.map((issue) => (
         <div key={issue.id} className={`${styles.qaRow} ${issue.severity === 'error' ? styles.qaRowError : styles.qaRowWarning}`}>
           <span className={styles.qaSeverity}>{issue.severity.toUpperCase()}</span>
-          <span style={{ flex: 1, fontSize: 12, color: '#ddd' }}>{issue.message}</span>
+          <span className={styles.qaMsg}>{issue.message}</span>
         </div>
       ))}
     </div>
@@ -762,18 +757,18 @@ const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
 
 const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
   if (items.length === 0) {
-    return <div style={{ color: '#666', fontSize: 13, padding: 8 }}>Історія змін порожня</div>;
+    return <div className={styles.panelEmpty}>Історія змін порожня</div>;
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className={styles.panelListGap4}>
       {items.map((item) => (
         <div key={item.id} className={styles.historyRow}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+          <div className={styles.histHeader}>
             <StatusBadge status={item.status} small />
-            <span style={{ color: '#888', fontSize: 11 }}>{new Date(item.created_at).toLocaleString()}</span>
-            {item.note && <span style={{ color: '#666', fontSize: 11 }}>{item.note}</span>}
+            <span className={styles.histDate}>{new Date(item.created_at).toLocaleString()}</span>
+            {item.note && <span className={styles.histNote}>{item.note}</span>}
           </div>
-          <div style={{ color: '#bbb', fontSize: 12, whiteSpace: 'pre-wrap' }}>{item.text ?? '— cleared —'}</div>
+          <div className={styles.histText}>{item.text ?? '— cleared —'}</div>
         </div>
       ))}
     </div>
@@ -813,32 +808,32 @@ const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ color: '#eee', margin: '0 0 16px' }}>Search & Replace Translations</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 className={styles.modalTitle}>Search & Replace Translations</h3>
+        <div className={styles.modalForm}>
           <input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} className={styles.modalInput} />
           <input placeholder="Replace with…" value={replace} onChange={(e) => setReplace(e.target.value)} className={styles.modalInput} />
-          <label style={{ color: '#aaa', fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <label className={styles.modalRegexLbl}>
             <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} /> Use regex
           </label>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <div className={styles.modalBtnRow}>
           <button onClick={handlePreview} disabled={stage !== 'idle' || !search} className={styles.modalBtnDark}>Preview ({previewResult?.matches.length ?? 0})</button>
           <button onClick={handleApply} disabled={stage !== 'idle' || !search} className={styles.modalBtnPri}>Apply</button>
           <button onClick={onClose} className={styles.modalBtnSec}>Cancel</button>
         </div>
-        {error && <p style={{ color: '#f44', fontSize: 12, marginTop: 8 }}>{error}</p>}
-        {stage === 'done' && <p style={{ color: '#4caf50', fontSize: 13, marginTop: 8 }}>Applied {previewResult?.applied} replacements</p>}
+        {error && <p className={styles.modalErr}>{error}</p>}
+        {stage === 'done' && <p className={styles.modalOk}>Applied {previewResult?.applied} replacements</p>}
         {previewResult && stage !== 'done' && previewResult.matches.length > 0 && (
-          <div style={{ marginTop: 12, maxHeight: 200, overflowY: 'auto', fontSize: 12 }}>
+          <div className={styles.modalPreview}>
             {previewResult.matches.slice(0, 20).map((m, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #2a2a2a', padding: '4px 0' }}>
-                <span style={{ color: '#888', marginRight: 8 }}>{m.formid_hex}</span>
-                <span style={{ color: '#f88' }}>{m.originalText.slice(0, 60)}</span>
+              <div key={i} className={styles.modalPrevItem}>
+                <span className={styles.modalPrevId}>{m.formid_hex}</span>
+                <span className={styles.modalPrevOld}>{m.originalText.slice(0, 60)}</span>
                 {' → '}
-                <span style={{ color: '#8f8' }}>{m.newText.slice(0, 60)}</span>
+                <span className={styles.modalPrevNew}>{m.newText.slice(0, 60)}</span>
               </div>
             ))}
-            {previewResult.matches.length > 20 && <p style={{ color: '#888' }}>…ще {previewResult.matches.length - 20}</p>}
+            {previewResult.matches.length > 20 && <p className={styles.modalPrevMore}>…ще {previewResult.matches.length - 20}</p>}
           </div>
         )}
       </div>

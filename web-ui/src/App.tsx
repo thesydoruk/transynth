@@ -89,7 +89,7 @@ const AppShell = () => {
   return (
     <>
       <Nav />
-      <main style={{ minHeight: 'calc(100vh - 48px)' }}>
+      <main className={nav.main}>
         <Routes>
           <Route path="/" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />

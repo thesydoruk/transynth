@@ -12,12 +12,12 @@ export const ModsPage = () => {
   });
 
   if (isLoading) return <div className={s.center}>Loading mods…</div>;
-  if (error) return <div className={s.center} style={{ color: '#f44' }}>Error: {String(error)}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
   if (!data?.length)
     return (
       <div className={s.center}>
         <h2>No mods found</h2>
-        <p style={{ color: '#888' }}>
+        <p className={s.hintText}>
           Run <code>npm run learn:pairs</code> or <code>npm run learn:multilang</code> to import
           translation data.
         </p>
@@ -55,10 +55,10 @@ export const ModsPage = () => {
                 onClick={() => nav(`/mods/${mod.id}`)}
               >
                 <td className={s.td}>
-                  <strong style={{ color: '#ddd' }}>{mod.name}</strong>
+                  <strong className={s.modName}>{mod.name}</strong>
                 </td>
-                <td className={s.td} style={{ textAlign: 'right' }}>{mod.string_count}</td>
-                <td className={s.td} style={{ minWidth: 160 }}>
+                <td className={`${s.td} ${s.tdRight}`}>{mod.string_count}</td>
+                <td className={`${s.td} ${s.tdProgress}`}>
                   <ProgressBar
                     stats={{
                       total: mod.string_count,
@@ -76,10 +76,10 @@ export const ModsPage = () => {
                 </td>
                 <td className={s.td}>
                   <StatusBadge status={approvedPct === 100 ? 'human' : null} small />
-                  <span style={{ marginLeft: 4, color: '#bbb', fontSize: 12 }}>{approvedPct}%</span>
+                  <span className={`${s.pctLabel} ${s.pctApproved}`}>{approvedPct}%</span>
                 </td>
                 <td className={s.td}>
-                  <span style={{ color: '#bbb', fontSize: 12 }}>{fuzzyPct}%</span>
+                  <span className={s.pctLabel}>{fuzzyPct}%</span>
                 </td>
               </tr>
             );

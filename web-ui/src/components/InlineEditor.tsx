@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
+import s from './InlineEditor.module.scss';
 
 type Props = {
   stringId: number;
@@ -41,42 +42,32 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
 
   if (editing) {
     return (
-      <div style={{ display: 'flex', gap: 4, flexDirection: 'column' }}>
+      <div className={s.editContainer}>
         <textarea
           ref={ref}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={Math.max(2, draft.split('\n').length)}
-          style={{
-            width: '100%',
-            background: '#1a1a1a',
-            color: '#eee',
-            border: '1px solid #555',
-            borderRadius: 4,
-            padding: 4,
-            fontFamily: 'inherit',
-            fontSize: 13,
-            resize: 'vertical',
-          }}
+          className={s.textarea}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save.mutate();
             if (e.key === 'Escape') setEditing(false);
           }}
         />
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className={s.btnRow}>
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
-            style={btnStyle('#4caf50')}
+            className={s.btnSave}
           >
             Save
           </button>
-          <button onClick={() => setEditing(false)} style={btnStyle('#555')}>
+          <button onClick={() => setEditing(false)} className={s.btnCancel}>
             Cancel
           </button>
         </div>
         {save.isError && (
-          <span style={{ color: '#f44', fontSize: 11 }}>{save.error?.message}</span>
+          <span className={s.saveError}>{save.error?.message}</span>
         )}
       </div>
     );
@@ -84,31 +75,22 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
 
   return (
     <div
-      style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: 'pointer' }}
+      className={s.viewContainer}
       onClick={() => {
         setDraft(text ?? '');
         setEditing(true);
       }}
       title="Click to edit"
     >
-      <span
-        style={{
-          flex: 1,
-          color: text ? '#eee' : '#666',
-          fontStyle: text ? 'normal' : 'italic',
-          fontSize: 13,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
+      <span className={text ? s.text : s.textEmpty}>
         {text ?? '(empty — click to add)'}
       </span>
-      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+      <div className={s.actions} onClick={(e) => e.stopPropagation()}>
         {text && status !== 'reviewed' && status !== 'human' && translationId && (
           <button
             onClick={() => approve.mutate()}
             disabled={approve.isPending}
-            style={btnStyle('#2196f3')}
+            className={s.btnApprove}
             title="Mark as approved"
           >
             ✓
@@ -119,7 +101,7 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
             setDraft(text ?? '');
             setEditing(true);
           }}
-          style={btnStyle('#333')}
+          className={s.btnEdit}
           title="Edit"
         >
           ✎
@@ -127,16 +109,4 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
       </div>
     </div>
   );
-}
-
-const btnStyle = (bg: string) => {
-  return {
-    background: bg,
-    color: '#fff',
-    border: 'none',
-    borderRadius: 4,
-    padding: '2px 8px',
-    cursor: 'pointer',
-    fontSize: 12,
-  };
 }

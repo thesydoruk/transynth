@@ -64,3 +64,8 @@
   color: #aaa;
   cursor: pointer;
 }
+
+/** Main content area — fills the viewport below the 48px nav bar. */
+.main {
+  min-height: calc(100vh - 48px);
+}

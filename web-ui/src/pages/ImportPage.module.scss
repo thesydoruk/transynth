@@ -399,6 +399,76 @@
   margin-left: 12px;
 }
 
+/** Cancel button in modal footer. */
+.btnCancel {
+  composes: btn;
+  background: #333;
+}
+
+/* ── Error state ────────────────────────────────────────────────────────── */
+
+/** Error message color — replaces inline style={{ color: '#f44' }}. */
+.error {
+  color: #f44;
+}
+
+/* ── Badge variants ─────────────────────────────────────────────────────── */
+
+/**
+ * Static "Completed" badge — green variant of .badge.
+ * Used instead of inline style={{ background: '#1b6b2d' }}.
+ */
+.badgeCompleted {
+  composes: badge;
+  background: #1b6b2d;
+}
+
+/* ── Filter select ──────────────────────────────────────────────────────── */
+
+/** Signature-filter dropdown — fixed narrow width for the toolbar. */
+.selectSig {
+  composes: select;
+  width: 140px;
+}
+
+/* ── Table column width modifiers ───────────────────────────────────────── */
+
+/** Wide source/target column header (200 px min). */
+.thSource {
+  composes: th;
+  min-width: 200px;
+}
+
+/** Extra-wide source column used in Mod Import preview (280 px min). */
+.thSourceWide {
+  composes: th;
+  min-width: 280px;
+}
+
+/* ── Code cell accent colors ────────────────────────────────────────────── */
+
+/** Signature code cell — blue accent. */
+.codeSignature { color: #8cb4ff; }
+
+/** FormID code cell — muted grey. */
+.codeFormId    { color: #aaa; }
+
+/* ── Misc utility ───────────────────────────────────────────────────────── */
+
+/** Empty value placeholder dash. */
+.emptyValue { color: #666; }
+
+/* ── Status dot color variants (ESP string status byte) ─────────────────── */
+
+/** Confirmed (0x63). */
+.statusDotConfirmed    { background: #4caf50; }
+
+/** Untranslated (0xFF). */
+.statusDotUntranslated { background: #888; }
+
+/** All other statuses. */
+.statusDotOther        { background: #ff9800; }
+
 .btnCancel {
   composes: btn;
   background: #444;

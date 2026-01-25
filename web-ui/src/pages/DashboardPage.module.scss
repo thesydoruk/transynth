@@ -64,6 +64,7 @@
   font-size: 13px;
   min-width: 160px;
   text-transform: capitalize;
+  color: var(--label-color, #aaa);
 }
 
 .qaCount {
@@ -113,5 +114,58 @@
 
 .tfoot {
   border-top: 2px solid #333;
+  font-weight: 600;
+}
+
+/** Error message paired with .center. */
+.error { color: #f44; }
+
+/** Bar component: track container (static layout). */
+.barTrack {
+  background: #222;
+  border-radius: 4px;
+  height: 14px;
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+}
+
+/** Bar component: filled portion — only width + background are inline (dynamic). */
+.barFill {
+  border-radius: 4px;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+/** Progress bar column header. */
+.thProgress {
+  composes: th;
+  min-width: 120px;
+}
+
+/** QA count cell — has issues (red). */
+.qaHasIssues { color: #e55; }
+
+/** QA count cell — clean (dim). */
+.qaNoIssues  { color: #666; }
+
+/** Card stat value number. */
+.cardValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--card-color, #fff);
+}
+
+/** Card label below the number. */
+.cardLabel {
+  font-size: 13px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/** Optional sub-value (percentage) beside the label. */
+.cardSub {
+  margin-left: 6px;
+  color: var(--card-color, #aaa);
   font-weight: 600;
 }
