@@ -47,6 +47,7 @@
     "fuzzy": "Нечіткий",
     "auto": "Авто",
     "untranslated": "Неперекладений",
+    "total": "Всього",
     "noStrings": "Немає рядків"
   },
   "importStatus": {

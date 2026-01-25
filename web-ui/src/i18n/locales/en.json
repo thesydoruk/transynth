@@ -47,6 +47,7 @@
     "fuzzy": "Fuzzy",
     "auto": "Auto",
     "untranslated": "Untranslated",
+    "total": "Total",
     "noStrings": "No strings"
   },
   "importStatus": {

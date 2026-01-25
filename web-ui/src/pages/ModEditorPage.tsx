@@ -702,7 +702,7 @@ export const ModEditorPage = () => {
         )}
         {stats && (
           <span className={styles.statusBarStats}>
-            approved: {stats.approved} · draft: {stats.draft} · rejected: {stats.rejected} · tm: {stats.tm} · fuzzy: {stats.fuzzy} · auto: {stats.auto_translated} · untranslated: {stats.untranslated} · total: {stats.total}
+            {t('status.approved')}: {stats.approved} · {t('status.draft')}: {stats.draft} · {t('status.rejected')}: {stats.rejected} · {t('status.tm')}: {stats.tm} · {t('status.fuzzy')}: {stats.fuzzy} · {t('status.auto')}: {stats.auto_translated} · {t('status.untranslated')}: {stats.untranslated} · {t('status.total')}: {stats.total}
           </span>
         )}
       </div>
