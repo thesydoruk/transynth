@@ -1,5 +1,5 @@
 # ── Stage 1: install backend dependencies ─────────────────────────────────────
-FROM node:20-slim AS deps
+FROM node:24-slim AS deps
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 # ── Stage 2: build web-ui (React SPA) ─────────────────────────────────────────
-FROM node:20-slim AS ui-build
+FROM node:24-slim AS ui-build
 
 WORKDIR /app/web-ui
 
@@ -18,7 +18,7 @@ COPY web-ui/ ./
 RUN npm run build
 
 # ── Stage 3: production runtime ───────────────────────────────────────────────
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 
 WORKDIR /app
 

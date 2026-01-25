@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry } from '../api';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState('en');
   const [tgtLang, setTgtLang] = useState('uk');
@@ -32,30 +34,29 @@ export const GlossaryPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Glossary</h1>
+      <h1 className={s.title}>{t('glossary.title')}</h1>
       <p className={s.description}>
-        Glossary term pairs are used for QA validation (checking that translations contain required terms)
-        and are injected into the LLM system prompt during batch translation.
+        {t('glossary.description')}
       </p>
 
       {/* Controls */}
       <div className={s.toolbar}>
-        <label className={s.filterLabel}>Source:
+        <label className={s.filterLabel}>{t('glossary.sourceLang')}
           <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.selectIndent}>
             <option value="en">EN</option>
             <option value="uk">UK</option>
-            <option value="">All</option>
+            <option value="">{t('common.all')}</option>
           </select>
         </label>
-        <label className={s.filterLabel}>Target:
+        <label className={s.filterLabel}>{t('glossary.targetLang')}
           <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.selectIndent}>
             <option value="uk">UK</option>
             <option value="en">EN</option>
-            <option value="">All</option>
+            <option value="">{t('common.all')}</option>
           </select>
         </label>
         <input
-          placeholder="Filter terms…"
+          placeholder={t('glossary.filterPlaceholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className={s.input}
@@ -65,14 +66,14 @@ export const GlossaryPage = () => {
       {/* Add term pair */}
       <div className={s.toolbarAdd}>
         <input
-          placeholder="Source term (e.g. Vault)"
+          placeholder={t('glossary.sourceTermPlaceholder')}
           value={newTerm}
           onChange={(e) => setNewTerm(e.target.value)}
           className={s.inputTerm}
         />
         <span className={s.arrow}>→</span>
         <input
-          placeholder="Translation (e.g. Сховище)"
+          placeholder={t('glossary.translationPlaceholder')}
           value={newTranslation}
           onChange={(e) => setNewTranslation(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && newTerm.trim() && add.mutate()}
@@ -83,29 +84,29 @@ export const GlossaryPage = () => {
           disabled={add.isPending || !newTerm.trim()}
           className={s.btnAdd}
         >
-          Add Pair
+          {t('glossary.addPair')}
         </button>
         {add.isError && <span className={s.addError}>{add.error?.message}</span>}
       </div>
 
       {/* Table */}
       {isLoading ? (
-        <div className={s.center}>Loading…</div>
+        <div className={s.center}>{t('common.loading')}</div>
       ) : !data?.length ? (
         <div className={s.center}>
-          <p>No glossary terms yet.</p>
+          <p>{t('glossary.noTerms')}</p>
           <p className={s.emptyHint}>
-            Add source → translation term pairs above to enforce terminology consistency.
+            {t('glossary.emptyHint')}
           </p>
         </div>
       ) : (
         <table className={s.table}>
           <thead>
             <tr>
-              <th className={s.th}>Source Term</th>
-              <th className={s.th}>Translation</th>
-              <th className={s.th}>Langs</th>
-              <th className={s.th}>Source</th>
+              <th className={s.th}>{t('glossary.sourceTerm')}</th>
+              <th className={s.th}>{t('glossary.translationCol')}</th>
+              <th className={s.th}>{t('glossary.langs')}</th>
+              <th className={s.th}>{t('glossary.sourceCol')}</th>
               <th className={s.th}></th>
             </tr>
           </thead>
@@ -125,7 +126,7 @@ export const GlossaryPage = () => {
                     onClick={() => remove.mutate(entry.id)}
                     disabled={remove.isPending}
                     className={s.btnDelete}
-                    title="Delete term"
+                    title={t('glossary.deleteTerm')}
                   >
                     ✕
                   </button>

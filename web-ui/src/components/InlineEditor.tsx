@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import s from './InlineEditor.module.scss';
 
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export const InlineEditor = ({ stringId, translationId, text, status, queryKey }: Props) => {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text ?? '');
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -60,10 +62,10 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
             disabled={save.isPending}
             className={s.btnSave}
           >
-            Save
+            {t('common.save')}
           </button>
           <button onClick={() => setEditing(false)} className={s.btnCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
         {save.isError && (
@@ -80,10 +82,10 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
         setDraft(text ?? '');
         setEditing(true);
       }}
-      title="Click to edit"
+      title={t('editor.clickToEdit')}
     >
       <span className={text ? s.text : s.textEmpty}>
-        {text ?? '(empty — click to add)'}
+        {text ?? t('editor.emptyClickToAdd')}
       </span>
       <div className={s.actions} onClick={(e) => e.stopPropagation()}>
         {text && status !== 'reviewed' && status !== 'human' && translationId && (
@@ -91,7 +93,7 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
             onClick={() => approve.mutate()}
             disabled={approve.isPending}
             className={s.btnApprove}
-            title="Mark as approved"
+            title={t('editor.markAsApproved')}
           >
             ✓
           </button>
@@ -102,7 +104,7 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
             setEditing(true);
           }}
           className={s.btnEdit}
-          title="Edit"
+          title={t('editor.edit')}
         >
           ✎
         </button>

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   api,
   type ModImportJob,
@@ -28,6 +29,7 @@ const LANGUAGES = [
 const ACCEPTED = '.esp,.esm,.esl,.zip,.7z,.rar';
 
 export const ModImportsPage = () => {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ['mod-imports'],
@@ -97,8 +99,8 @@ export const ModImportsPage = () => {
   const handleCancel = async (jobId: number) => { await api.modImport.cancel(jobId); };
   const handleDelete = async (jobId: number) => { await api.modImport.remove(jobId); refresh(); };
 
-  if (isLoading) return <div className={s.center}>Loading...</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
+  if (isLoading) return <div className={s.center}>{t('common.loading')}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
 
   const pendingCount = (jobs ?? []).filter(j =>
     j.status === 'pending' || j.status === 'paused' || j.status === 'failed',
@@ -108,27 +110,27 @@ export const ModImportsPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Mod Import</h1>
+      <h1 className={s.title}>{t('modImport.title')}</h1>
 
       <div className={s.uploadBar}>
         <input ref={fileRef} type="file" accept={ACCEPTED} multiple className={s.fileInput} />
         <button onClick={handleUpload} disabled={uploading} className={s.btn}>
-          {uploading ? 'Uploading...' : 'Upload'}
+          {uploading ? t('common.uploading') : t('common.upload')}
         </button>
         {pendingCount > 0 && (
           <button onClick={startMultiple} className={s.btnImportAll}>
-            Import all ({pendingCount})
+            {t('modImport.importAll', { count: pendingCount })}
           </button>
         )}
       </div>
 
       <p className={s.subtitle}>
-        Accepts <code>.esp</code> / <code>.esm</code> / <code>.esl</code> plugins or <code>.zip</code> / <code>.7z</code> / <code>.rar</code> archives containing plugin + BA2 files.
+        {t('modImport.accepts')}
       </p>
 
       {!jobs?.length ? (
         <p className={s.empty}>
-          No mod files uploaded yet. Upload plugin files or archives to get started.
+          {t('modImport.noFiles')}
         </p>
       ) : (
         <div className={s.list}>
@@ -171,6 +173,7 @@ const JobRow = ({
   job: ModImportJob; live?: LiveProgress; isRunning: boolean;
   onStart: () => void; onPause: () => void; onCancel: () => void; onDelete: () => void;
 }) => {
+  const { t } = useTranslation();
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
@@ -185,15 +188,15 @@ const JobRow = ({
       <div className={s.rowLeft}>
         <span className={s.fileName}>
           {job.file_name}
-          {job.is_localized ? <span className={s.locBadge}>localized</span> : null}
+          {job.is_localized ? <span className={s.locBadge}>{t('modImport.localized')}</span> : null}
         </span>
         <span className={s.meta}>
-          {job.is_localized ? '' : `${job.src_lang} · `}{total.toLocaleString()} strings
+          {job.is_localized ? '' : `${job.src_lang} · `}{t('common.strings', { count: total.toLocaleString() })}
         </span>
       </div>
       <div className={s.rowRight}>
         {job.status === 'completed' ? (
-          <span className={s.badgeCompleted}>Completed</span>
+          <span className={s.badgeCompleted}>{t('importStatus.completed')}</span>
         ) : isRunning ? (
           <div className={s.progressWrap}>
             <div className={s.progressTrack}>
@@ -203,15 +206,15 @@ const JobRow = ({
           </div>
         ) : (
           <span className={s.badge} style={{ background: statusColor(job.status) }}>
-            {statusLabel(job.status)}
+            {statusLabel(job.status, t)}
             {job.imported_records > 0 && ` (${pct}%)`}
           </span>
         )}
         <div className={s.actions}>
-          {canStart && <button onClick={onStart} className={s.actionBtn} title="Start import">▶</button>}
-          {canPause && <button onClick={onPause} className={s.actionBtn} title="Pause">⏸</button>}
-          {canCancel && <button onClick={onCancel} className={s.actionBtnCancel} title="Cancel">⏹</button>}
-          {canDelete && <button onClick={onDelete} className={s.actionBtnDelete} title="Delete">🗑</button>}
+          {canStart && <button onClick={onStart} className={s.actionBtn} title="▶">▶</button>}
+          {canPause && <button onClick={onPause} className={s.actionBtn} title="⏸">⏸</button>}
+          {canCancel && <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>⏹</button>}
+          {canDelete && <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>🗑</button>}
         </div>
       </div>
     </div>
@@ -229,6 +232,7 @@ const PreviewModal = ({
   onClose: () => void;
   onConfirm: (lang: string) => void;
 }) => {
+  const { t } = useTranslation();
   const [lang, setLang] = useState(job.src_lang);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
@@ -257,8 +261,8 @@ const PreviewModal = ({
             <h2 className={s.modalHeaderTitle}>{job.file_name}</h2>
             {data && (
               <span className={s.modalHeaderMeta}>
-                {data.isLocalized ? 'Localized plugin' : 'Non-localized plugin'}
-                {data.locales.length > 0 && ` · Locales: ${data.locales.join(', ')}`}
+                {data.isLocalized ? t('modImport.localizedPlugin') : t('modImport.nonLocalizedPlugin')}
+                {data.locales.length > 0 && ` · ${t('modImport.locales', { locales: data.locales.join(', ') })}`}
               </span>
             )}
           </div>
@@ -267,7 +271,7 @@ const PreviewModal = ({
 
         <div className={s.langBar}>
           <label className={s.langLabel}>
-            Language of this text
+            {t('modImport.languageOfText')}
             <select value={lang} onChange={e => setLang(e.target.value)} className={s.select}>
               {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
             </select>
@@ -280,35 +284,35 @@ const PreviewModal = ({
             onChange={e => { setSigFilter(e.target.value); setPage(1); }}
             className={s.selectSig}
           >
-            <option value="">All signatures</option>
+            <option value="">{t('csvImport.allSignatures')}</option>
             {(data?.signatures ?? []).map(sig => (
               <option key={sig} value={sig}>{sig}</option>
             ))}
           </select>
           <input
             type="text"
-            placeholder="Search FormID / EDID / text..."
+            placeholder={t('csvImport.searchPlaceholder')}
             value={qInput}
             onChange={e => setQInput(e.target.value)}
             className={s.searchInput}
           />
           <span className={s.filterBarCount}>
-            {data ? `${data.total.toLocaleString()} strings` : ''}
+            {data ? t('common.strings', { count: data.total.toLocaleString() }) : ''}
           </span>
         </div>
 
         <div className={s.tableWrap}>
           {isLoading ? (
-            <div className={s.tableEmpty}>Loading...</div>
+            <div className={s.tableEmpty}>{t('common.loading')}</div>
           ) : (
             <table className={s.table}>
               <thead>
                 <tr>
-                  <th className={s.th}>Signature</th>
-                  <th className={s.th}>FormID</th>
-                  <th className={s.th}>EDID</th>
-                  <th className={s.th}>Path</th>
-                  <th className={s.thSourceWide}>Source</th>
+                  <th className={s.th}>{t('csvImport.signature')}</th>
+                  <th className={s.th}>{t('csvImport.formId')}</th>
+                  <th className={s.th}>{t('csvImport.edid')}</th>
+                  <th className={s.th}>{t('modImport.path')}</th>
+                  <th className={s.thSourceWide}>{t('csvImport.sourceCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,19 +332,19 @@ const PreviewModal = ({
 
         {totalPages > 1 && (
           <div className={s.pagination}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={s.pageBtn}>← Prev</button>
-            <span className={s.paginationLabel}>Page {page} / {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={s.pageBtn}>Next →</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={s.pageBtn}>{t('common.prev')}</button>
+            <span className={s.paginationLabel}>{t('common.page', { page, totalPages })}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={s.pageBtn}>{t('common.next')}</button>
           </div>
         )}
 
         <div className={s.footer}>
-          <button onClick={onClose} className={s.btnCancel}>Cancel</button>
+          <button onClick={onClose} className={s.btnCancel}>{t('common.cancel')}</button>
           <button
             onClick={() => onConfirm(lang)}
             className={s.btnConfirm}
           >
-            Import as {lang} ({job.total_records.toLocaleString()} strings)
+            {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
           </button>
         </div>
       </div>
@@ -362,16 +366,8 @@ const statusColor = (status: string): string => {
   }
 }
 
-const statusLabel = (status: string): string => {
-  switch (status) {
-    case 'pending': return 'Pending';
-    case 'extracting': return 'Extracting...';
-    case 'in_progress': return 'In progress';
-    case 'paused': return 'Paused';
-    case 'failed': return 'Failed';
-    case 'completed': return 'Completed';
-    default: return status;
-  }
+const statusLabel = (status: string, t: (key: string) => string): string => {
+  return t(`importStatus.${status}`) || status;
 }
 
 

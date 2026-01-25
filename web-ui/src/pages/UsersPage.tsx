@@ -11,6 +11,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type User } from '../api';
 import { useAuth } from '../components/AuthContext';
 import s from './UsersPage.module.scss';
@@ -23,6 +24,7 @@ const ROLE_CLASSES: Record<string, string> = {
 };
 
 export const UsersPage = () => {
+  const { t } = useTranslation();
   const { multiUser, user: currentUser } = useAuth();
   const qc = useQueryClient();
 
@@ -65,10 +67,10 @@ export const UsersPage = () => {
   if (!multiUser) {
     return (
       <div className={s.page}>
-        <h2 className={s.title}>Users</h2>
+        <h2 className={s.title}>{t('users.title')}</h2>
         <div className={s.disabled}>
-          User management is disabled in single-user mode.<br />
-          Set <code>MULTI_USER=true</code> in <code>.env</code> to enable.
+          {t('users.disabledMessage')}<br />
+          {t('users.enableHint')}
         </div>
       </div>
     );
@@ -78,15 +80,15 @@ export const UsersPage = () => {
 
   return (
     <div className={s.page}>
-      <h2 className={s.title}>Users</h2>
+      <h2 className={s.title}>{t('users.title')}</h2>
 
       {/* Create user form — admin only */}
       {isAdmin && (
         <form className={s.form} onSubmit={handleCreate}>
-          <h3>Create User</h3>
+          <h3>{t('users.createUser')}</h3>
           <div className={s.formRow}>
             <div className={s.formField}>
-              <label>Username</label>
+              <label>{t('login.username')}</label>
               <input
                 value={newUser.username}
                 onChange={e => setNewUser(p => ({ ...p, username: e.target.value }))}
@@ -94,7 +96,7 @@ export const UsersPage = () => {
               />
             </div>
             <div className={s.formField}>
-              <label>Display Name</label>
+              <label>{t('users.displayName')}</label>
               <input
                 value={newUser.display_name}
                 onChange={e => setNewUser(p => ({ ...p, display_name: e.target.value }))}
@@ -102,7 +104,7 @@ export const UsersPage = () => {
               />
             </div>
             <div className={s.formField}>
-              <label>Password</label>
+              <label>{t('login.password')}</label>
               <input
                 type="password"
                 value={newUser.password}
@@ -112,19 +114,19 @@ export const UsersPage = () => {
               />
             </div>
             <div className={s.formField}>
-              <label>Role</label>
+              <label>{t('users.role')}</label>
               <select
                 value={newUser.role}
                 onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
               >
-                <option value="translator">Translator</option>
-                <option value="reviewer">Reviewer</option>
-                <option value="admin">Admin</option>
+                <option value="translator">{t('users.translator')}</option>
+                <option value="reviewer">{t('users.reviewer')}</option>
+                <option value="admin">{t('users.admin')}</option>
               </select>
             </div>
           </div>
           <button type="submit" className={s.submitBtn} disabled={createMut.isPending}>
-            {createMut.isPending ? 'Creating…' : 'Create User'}
+            {createMut.isPending ? t('users.creating') : t('users.createUser')}
           </button>
           {formError && <div className={s.error}>{formError}</div>}
         </form>
@@ -135,12 +137,12 @@ export const UsersPage = () => {
         <thead>
           <tr>
             <th>ID</th>
-            <th>Username</th>
-            <th>Display Name</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Created</th>
-            {isAdmin && <th>Actions</th>}
+            <th>{t('login.username')}</th>
+            <th>{t('users.displayName')}</th>
+            <th>{t('users.role')}</th>
+            <th>{t('users.statusCol')}</th>
+            <th>{t('users.created')}</th>
+            {isAdmin && <th>{t('users.actionsCol')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -154,7 +156,7 @@ export const UsersPage = () => {
                   {u.role}
                 </span>
               </td>
-              <td>{u.is_active ? 'Active' : 'Disabled'}</td>
+              <td>{u.is_active ? t('common.active') : t('common.disabled')}</td>
               <td>{new Date(u.created_at).toLocaleDateString()}</td>
               {isAdmin && (
                 <td>
@@ -163,7 +165,7 @@ export const UsersPage = () => {
                       className={s.actionBtn}
                       onClick={() => toggleMut.mutate({ id: u.id, is_active: !u.is_active })}
                     >
-                      {u.is_active ? 'Disable' : 'Enable'}
+                      {u.is_active ? t('common.disable') : t('common.enable')}
                     </button>
                   )}
                 </td>

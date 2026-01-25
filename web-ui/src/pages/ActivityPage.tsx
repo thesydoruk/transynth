@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type ActivityEntry } from '../api';
 import s from './ActivityPage.module.scss';
 
@@ -21,6 +22,7 @@ const ACTION_TYPES = [
 ];
 
 export const ActivityPage = () => {
+  const { t } = useTranslation();
   const [offset, setOffset] = useState(0);
   const [actionFilter, setActionFilter] = useState('');
 
@@ -40,7 +42,7 @@ export const ActivityPage = () => {
 
   return (
     <div className={s.page}>
-      <h2 className={s.title}>Activity Log</h2>
+      <h2 className={s.title}>{t('activity.title')}</h2>
 
       {/* Filters */}
       <div className={s.filters}>
@@ -48,7 +50,7 @@ export const ActivityPage = () => {
           value={actionFilter}
           onChange={e => { setActionFilter(e.target.value); setOffset(0); }}
         >
-          <option value="">All actions</option>
+          <option value="">{t('activity.allActions')}</option>
           {ACTION_TYPES.filter(Boolean).map(a => (
             <option key={a} value={a}>{a}</option>
           ))}
@@ -57,16 +59,16 @@ export const ActivityPage = () => {
 
       {/* Table */}
       {entries.length === 0 ? (
-        <div className={s.empty}>No activity recorded yet.</div>
+        <div className={s.empty}>{t('activity.noActivity')}</div>
       ) : (
         <table className={s.table}>
           <thead>
             <tr>
-              <th>Time</th>
-              <th>User</th>
-              <th>Action</th>
-              <th>Entity</th>
-              <th>Details</th>
+              <th>{t('activity.time')}</th>
+              <th>{t('activity.user')}</th>
+              <th>{t('activity.action')}</th>
+              <th>{t('activity.entity')}</th>
+              <th>{t('activity.details')}</th>
             </tr>
           </thead>
           <tbody>
@@ -97,15 +99,15 @@ export const ActivityPage = () => {
             disabled={offset === 0}
             onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}
           >
-            ← Prev
+            {t('common.prev')}
           </button>
-          <span>Page {page} of {totalPages} ({total} entries)</span>
+          <span>{t('common.page', { page, totalPages })} ({t('activity.entries', { total })})</span>
           <button
             className={s.pageBtn}
             disabled={offset + PAGE_SIZE >= total}
             onClick={() => setOffset(o => o + PAGE_SIZE)}
           >
-            Next →
+            {t('common.next')}
           </button>
         </div>
       )}

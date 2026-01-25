@@ -58,6 +58,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
       PORT: "3000"
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
     volumes:
       - ./data:/app/data          # persist logs + upload storage
       - ./mod-uploads:/app/mod-uploads
@@ -66,7 +67,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    network_mode: host   # reaches Ollama on the host at localhost:11434
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # reaches Ollama on the host
     restart: unless-stopped
 
   # Optional: run Ollama inside Docker (GPU passthrough — Linux only)

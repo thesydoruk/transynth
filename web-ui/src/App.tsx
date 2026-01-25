@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { UI_LANGUAGES } from './i18n';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { ModsPage } from './pages/ModsPage';
@@ -19,43 +21,56 @@ const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
 });
 
+/** Navigation link descriptors — label keys reference the nav.* i18n namespace. */
 const NAV_LINKS = [
-  { to: '/', label: 'Mods', exact: true },
-  { to: '/eet', label: 'EET Import', exact: false },
-  { to: '/csv', label: 'CSV Import', exact: false },
-  { to: '/mod-import', label: 'Mod Import', exact: false },
-  { to: '/glossary', label: 'Glossary', exact: false },
-  { to: '/dashboard', label: 'Dashboard', exact: false },
-  { to: '/tmx', label: 'TMX', exact: false },
-  { to: '/diff', label: 'Diff', exact: false },
-  { to: '/activity', label: 'Activity', exact: false },
-  { to: '/users', label: 'Users', exact: false, multiUserOnly: true },
+  { to: '/', labelKey: 'nav.mods', exact: true },
+  { to: '/eet', labelKey: 'nav.eetImport', exact: false },
+  { to: '/csv', labelKey: 'nav.csvImport', exact: false },
+  { to: '/mod-import', labelKey: 'nav.modImport', exact: false },
+  { to: '/glossary', labelKey: 'nav.glossary', exact: false },
+  { to: '/dashboard', labelKey: 'nav.dashboard', exact: false },
+  { to: '/tmx', labelKey: 'nav.tmx', exact: false },
+  { to: '/diff', labelKey: 'nav.diff', exact: false },
+  { to: '/activity', labelKey: 'nav.activity', exact: false },
+  { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
 /**
- * Navigation bar — renders links and user info.
+ * Navigation bar — renders links, user info, and language switcher.
  * In multi-user mode, shows the current user's name and a logout button.
  */
 const Nav = () => {
   const loc = useLocation();
   const { user, multiUser, logout } = useAuth();
+  const { t, i18n } = useTranslation();
 
   return (
     <nav className={nav.nav}>
-      <span className={nav.brand}>FO4 Localizer</span>
+      <span className={nav.brand}>{t('nav.brand')}</span>
       {NAV_LINKS
         .filter(l => !('multiUserOnly' in l && l.multiUserOnly) || multiUser)
-        .map(({ to, label, exact }) => {
+        .map(({ to, labelKey, exact }) => {
           const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);
           return (
             <Link key={to} to={to} className={active ? nav.activeLink : nav.link}>
-              {label}
+              {t(labelKey)}
             </Link>
           );
         })}
 
       {/* Spacer */}
       <span className={nav.spacer} />
+
+      {/* Language switcher */}
+      <select
+        className={nav.langSwitch}
+        value={i18n.language}
+        onChange={(e) => i18n.changeLanguage(e.target.value)}
+      >
+        {UI_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>{l.label}</option>
+        ))}
+      </select>
 
       {/* User info — always visible for admin, user display in multi-user mode */}
       {user && (
@@ -67,7 +82,7 @@ const Nav = () => {
         </span>
       )}
       {multiUser && user && (
-        <button onClick={logout} className={nav.logoutBtn}>Logout</button>
+        <button onClick={logout} className={nav.logoutBtn}>{t('nav.logout')}</button>
       )}
     </nav>
   );

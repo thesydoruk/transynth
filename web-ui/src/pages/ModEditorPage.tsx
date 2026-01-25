@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { useTranslation } from 'react-i18next';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
 import styles from './ModEditorPage.module.scss';
@@ -40,6 +41,7 @@ const rowBg = (status: string | null): string => {
 }
 
 export const ModEditorPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const modId = Number(id);
   const qc = useQueryClient();
@@ -76,15 +78,6 @@ export const ModEditorPage = () => {
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
 
-  // Virtualizer
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: strings?.rows.length ?? 0,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 36,
-    overscan: 10,
-  });
-
   const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
@@ -95,6 +88,15 @@ export const ModEditorPage = () => {
     queryKey: stringsKey,
     queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE }),
     placeholderData: (prev) => prev,
+  });
+
+  // Virtualizer (must be after `strings` declaration)
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: strings?.rows.length ?? 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
   });
 
   // TM suggestions for active row
@@ -419,13 +421,13 @@ export const ModEditorPage = () => {
 
         {/* Lang selectors */}
         <label className={styles.langLabel}>
-          Source:
+          {t('modEditor.source')}
           <select value={srcLang} onChange={(e) => { setSrcLang(e.target.value); setPage(1); }} className={styles.langSelect}>
             {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
           </select>
         </label>
         <label className={styles.langLabel}>
-          Target:
+          {t('modEditor.target')}
           <select value={targetLang} onChange={(e) => { setTargetLang(e.target.value); setPage(1); }} className={styles.langSelect}>
             {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
           </select>
@@ -435,59 +437,59 @@ export const ModEditorPage = () => {
 
         {/* Status filter */}
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={styles.filterSelect}>
-          {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? 'All statuses' : o}</option>)}
+          {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? t('modEditor.allStatuses') : o}</option>)}
         </select>
         <button
           onClick={() => { setStatus(status === 'draft' ? 'all' : 'draft'); setPage(1); }}
           className={status === 'draft' ? styles.btnPri : styles.btnSec}
-          title="Show only drafts for review"
+          title={t('modEditor.showDraftsTitle')}
         >
-          Review mode{stats?.draft ? ` (${stats.draft})` : ''}
+          {stats?.draft ? t('modEditor.reviewModeCount', { count: stats.draft }) : t('modEditor.reviewMode')}
         </button>
 
         {/* Search */}
-        <input placeholder="FormID / EDID / text…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} className={styles.searchInput} />
+        <input placeholder={t('modEditor.searchPlaceholder')} value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} className={styles.searchInput} />
 
         <div className={styles.sep} />
 
         {/* Actions */}
-        <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} className={styles.btnSec} title="Auto-fill from TM">
-          {tmApply.isPending ? 'TM…' : tmApply.isSuccess ? `TM ✓ ${(tmApply.data as { applied: number }).applied}` : 'Apply TM'}
+        <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} className={styles.btnSec} title={t('modEditor.autoFillTmTitle')}>
+          {tmApply.isPending ? t('modEditor.applyingTm') : tmApply.isSuccess ? t('modEditor.tmApplied', { count: (tmApply.data as { applied: number }).applied }) : t('modEditor.applyTm')}
         </button>
-        <button onClick={() => exportStrings.mutate()} disabled={exportStrings.isPending} className={styles.btnSec} title="Generate localized STRINGS files from current translations">
-          {exportStrings.isPending ? 'Export…' : 'Export STRINGS'}
+        <button onClick={() => exportStrings.mutate()} disabled={exportStrings.isPending} className={styles.btnSec} title={t('modEditor.exportStringsTitle')}>
+          {exportStrings.isPending ? t('modEditor.exporting') : t('modEditor.exportStrings')}
         </button>
-        <button onClick={() => exportEsp.mutate()} disabled={exportEsp.isPending} className={styles.btnSec} title="Patch ESP with translations (non-localized mods)">
-          {exportEsp.isPending ? 'Export…' : 'Export ESP'}
+        <button onClick={() => exportEsp.mutate()} disabled={exportEsp.isPending} className={styles.btnSec} title={t('modEditor.exportEspTitle')}>
+          {exportEsp.isPending ? t('modEditor.exporting') : t('modEditor.exportEsp')}
         </button>
-        <button onClick={() => exportBa2.mutate()} disabled={exportBa2.isPending} className={styles.btnSec} title="Pack localized STRINGS into BA2 archive">
-          {exportBa2.isPending ? 'Export…' : 'Export BA2'}
+        <button onClick={() => exportBa2.mutate()} disabled={exportBa2.isPending} className={styles.btnSec} title={t('modEditor.exportBa2Title')}>
+          {exportBa2.isPending ? t('modEditor.exporting') : t('modEditor.exportBa2')}
         </button>
-        <button onClick={() => exportProject.mutate()} disabled={exportProject.isPending} className={styles.btnPri} title="Download complete localization package (BA2 + ESP) as ZIP">
-          {exportProject.isPending ? 'Exporting…' : '⬇ Export ZIP'}
+        <button onClick={() => exportProject.mutate()} disabled={exportProject.isPending} className={styles.btnPri} title={t('modEditor.exportZipTitle')}>
+          {exportProject.isPending ? t('modEditor.exporting') : t('modEditor.exportZip')}
         </button>
-        <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>Search & Replace</button>
+        <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
         {selected.size > 0 && (
           <>
             {translateProgress
-              ? <span className={styles.progressBadge}>{translateProgress.done}/{translateProgress.total} translating…</span>
-              : <button onClick={handleBatchTranslate} className={styles.btnPri}>Auto-translate {selected.size}</button>
+              ? <span className={styles.progressBadge}>{t('modEditor.translating', { done: translateProgress.done, total: translateProgress.total })}</span>
+              : <button onClick={handleBatchTranslate} className={styles.btnPri}>{t('modEditor.autoTranslate', { count: selected.size })}</button>
             }
             <button
               onClick={() => bulkReviewMutation.mutate({ status: 'reviewed' })}
               disabled={bulkReviewMutation.isPending}
               className={styles.btnApprove}
-              title="Approve selected translations"
+              title={t('modEditor.confirm')}
             >
-              {bulkReviewMutation.isPending ? '…' : `Approve ${selected.size}`}
+              {bulkReviewMutation.isPending ? '…' : t('modEditor.approveCount', { count: selected.size })}
             </button>
             <button
               onClick={() => bulkReviewMutation.mutate({ status: 'rejected' })}
               disabled={bulkReviewMutation.isPending}
               className={styles.btnDanger}
-              title="Reject selected translations"
+              title={t('modEditor.reject')}
             >
-              {bulkReviewMutation.isPending ? '…' : `Reject ${selected.size}`}
+              {bulkReviewMutation.isPending ? '…' : t('modEditor.rejectCount', { count: selected.size })}
             </button>
           </>
         )}
@@ -501,7 +503,7 @@ export const ModEditorPage = () => {
           <div className={styles.progressSection}>
             <ProgressBar stats={stats} />
             <span className={styles.progressLabel}>
-              {stats.approved}/{stats.total} approved
+              {t('modEditor.approvedOfTotal', { approved: stats.approved, total: stats.total })}
             </span>
           </div>
         )}
@@ -516,7 +518,7 @@ export const ModEditorPage = () => {
             className={`${styles.sigRow} ${signature === '' ? styles.sigRowActive : ''}`}
             onClick={() => { setSignature(''); setPage(1); }}
           >
-            <span className={styles.sigName}>&lt;ВСЕ&gt;</span>
+            <span className={styles.sigName}>{t('modEditor.allSigs')}</span>
             <span className={styles.sigCount}>{strings?.total ?? '…'} / {sigCounts.reduce((a, r) => a + Number(r.count), 0)}</span>
           </div>
           {sigCounts.map((sig) => (
@@ -537,7 +539,7 @@ export const ModEditorPage = () => {
           {/* ── String table (virtualized) ── */}
           <div className={styles.tableWrap} ref={scrollRef}>
             {isLoading ? (
-              <div className={styles.center}>Loading…</div>
+              <div className={styles.center}>{t('common.loading')}</div>
             ) : (
               <>
                 {/* Sticky header */}
@@ -545,13 +547,13 @@ export const ModEditorPage = () => {
                   <div className={`${styles.th} ${styles.colCheck}`}>
                     <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
                   </div>
-                  <div className={`${styles.th} ${styles.colGrup}`}>GRUP</div>
-                  <div className={`${styles.th} ${styles.colFormId}`}>FormID</div>
-                  <div className={`${styles.th} ${styles.colEdid}`}>EDID</div>
-                  <div className={`${styles.th} ${styles.colField}`}>FIELD</div>
-                  <div className={`${styles.th} ${styles.colText}`}>Текст оригіналу ({srcLang.toUpperCase()})</div>
-                  <div className={`${styles.th} ${styles.colText}`}>Текст перекладу ({targetLang.toUpperCase()})</div>
-                  <div className={`${styles.th} ${styles.colAct}`}>Дії</div>
+                  <div className={`${styles.th} ${styles.colGrup}`}>{t('modEditor.grup')}</div>
+                  <div className={`${styles.th} ${styles.colFormId}`}>{t('modEditor.formId')}</div>
+                  <div className={`${styles.th} ${styles.colEdid}`}>{t('modEditor.edid')}</div>
+                  <div className={`${styles.th} ${styles.colField}`}>{t('modEditor.field')}</div>
+                  <div className={`${styles.th} ${styles.colText}`}>{t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}</div>
+                  <div className={`${styles.th} ${styles.colText}`}>{t('modEditor.translationText', { lang: targetLang.toUpperCase() })}</div>
+                  <div className={`${styles.th} ${styles.colAct}`}>{t('modEditor.actions')}</div>
                 </div>
                 {/* Virtualized rows */}
                 <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
@@ -588,13 +590,13 @@ export const ModEditorPage = () => {
                         <div className={`${styles.td} ${styles.colAct}`} onClick={(e) => e.stopPropagation()}>
                           <div className={styles.actionBtnRow}>
                             {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
-                              <button className={styles.actionBtnBlue} title="Підтвердити" onClick={() => handleApprove(row)}>V</button>
+                              <button className={styles.actionBtnBlue} title={t('modEditor.confirm')} onClick={() => handleApprove(row)}>V</button>
                             )}
                             {row.translation && row.status !== 'rejected' && row.translation_id && (
-                              <button className={styles.actionBtnRed} title="Відхилити" onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
+                              <button className={styles.actionBtnRed} title={t('modEditor.reject')} onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
                             )}
-                            <button className={styles.actionBtnRed} title="Очистити переклад" onClick={() => handleClear(row)}>X</button>
-                            <button className={styles.actionBtnGreen} title="Копіювати оригінал у переклад" onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
+                            <button className={styles.actionBtnRed} title={t('modEditor.clearTranslation')} onClick={() => handleClear(row)}>X</button>
+                            <button className={styles.actionBtnGreen} title={t('modEditor.copySourceToTranslation')} onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
                             <StatusBadge status={row.status} small />
                           </div>
                         </div>
@@ -608,9 +610,9 @@ export const ModEditorPage = () => {
 
           {/* ── Pagination ── */}
           <div className={styles.pagination}>
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>← Prev</button>
-            <span className={styles.pageLabel}>Сторінка {page} / {totalPages} ({strings?.total ?? 0} рядків)</span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>Next →</button>
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>{t('common.prev')}</button>
+            <span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>{t('common.next')}</button>
           </div>
 
           {/* ── Detail edit panel ── */}
@@ -619,33 +621,33 @@ export const ModEditorPage = () => {
               <div className={styles.detailPanels}>
                 {/* Source */}
                 <div className={styles.textPanel}>
-                  <div className={styles.panelLabel}>Текст оригіналу ({srcLang.toUpperCase()})</div>
+                  <div className={styles.panelLabel}>{t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}</div>
                   <textarea readOnly value={activeRow.source} className={styles.sourceArea} rows={4} />
-                  <div className={styles.charCount}>Символів: {activeRow.source.length}</div>
+                  <div className={styles.charCount}>{t('modEditor.charCount', { count: activeRow.source.length })}</div>
                 </div>
                 {/* Translation */}
                 <div className={styles.textPanel}>
-                  <div className={styles.panelLabel}>Текст перекладу ({targetLang.toUpperCase()})</div>
+                  <div className={styles.panelLabel}>{t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}</div>
                   <textarea
                     value={draftTranslation}
                     onChange={(e) => setDraftTranslation(e.target.value)}
                     className={styles.translArea}
                     rows={4}
                     onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
-                    placeholder="Введіть переклад…"
+                    placeholder={t('modEditor.enterTranslation')}
                   />
                   <div className={styles.detailBtnBar}>
-                    <div className={styles.charCount}>Символів: {draftTranslation.length}</div>
+                    <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>
                     <div className={styles.detailSaveRow}>
-                      <button className={styles.btnSec} onClick={handleCopySource} title="Копіювати оригінал">Copy src</button>
+                      <button className={styles.btnSec} onClick={handleCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</button>
                       {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
                         <button className={styles.btnSec} onClick={() => handleApprove(activeRow)}>
-                          Review
+                          {t('modEditor.review')}
                         </button>
                       )}
                       {activeRow.translation && activeRow.translation_id && activeRow.status !== 'rejected' && (
                         <button className={styles.btnDanger} onClick={() => rejectMutation.mutate({ stringId: activeRow.string_id, translationId: activeRow.translation_id! })}>
-                          Reject
+                          {t('modEditor.reject')}
                         </button>
                       )}
                       <button
@@ -654,7 +656,7 @@ export const ModEditorPage = () => {
                         disabled={saveMutation.isPending}
                         title="Ctrl+Enter"
                       >
-                        {saveMutation.isPending ? 'Saving…' : saveIndicator === 'saved' ? '✓ Saved' : 'Save'}
+                        {saveMutation.isPending ? t('modEditor.saving') : saveIndicator === 'saved' ? t('modEditor.saved') : t('common.save')}
                       </button>
                     </div>
                   </div>
@@ -665,7 +667,7 @@ export const ModEditorPage = () => {
               <div className={styles.tabs}>
                 {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
                   <button key={tab} className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab(tab)}>
-                    {tab === 'suggestions' ? 'Пропозиції TM' : tab === 'qa' ? 'QA' : 'Історія'}
+                    {tab === 'suggestions' ? t('modEditor.tabSuggestions') : tab === 'qa' ? t('modEditor.tabQa') : t('modEditor.tabHistory')}
                   </button>
                 ))}
               </div>
@@ -692,7 +694,7 @@ export const ModEditorPage = () => {
 
       {/* Status bar */}
       <div className={styles.statusBar}>
-        <span>Вибрані рядки: {selected.size}</span>
+        <span>{t('modEditor.selectedRows', { count: selected.size })}</span>
         {activeRow && (
           <span className={styles.statusBarDetail}>
             {activeRow.signature} · {activeRow.formid_hex} · {activeRow.edid ?? '—'}
@@ -711,10 +713,11 @@ export const ModEditorPage = () => {
 // ── TM Suggestions panel ─────────────────────────────────────────────────────
 
 const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) => {
+  const { t } = useTranslation();
   if (suggestions.length === 0) {
-    return <div className={styles.panelEmpty}>Немає пропозицій TM</div>;
+    return <div className={styles.panelEmpty}>{t('modEditor.noSuggestions')}</div>;
   }
-  const methodLabel = (m: string) => m === 'exact' ? 'exact' : m === 'punct_norm' ? 'punct' : m === 'segment' ? 'phrase' : 'fuzzy';
+  const methodLabel = (m: string) => m === 'exact' ? t('modEditor.exact') : m === 'punct_norm' ? t('modEditor.punct') : m === 'segment' ? t('modEditor.phrase') : t('modEditor.fuzzyMethod');
   const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
   return (
     <div className={styles.panelListGap4}>
@@ -727,7 +730,7 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
           <span className={styles.suggText}>{s.text}</span>
           <span className={styles.suggSim}>{Math.round(s.similarity * 100)}%</span>
           <button onClick={() => onApply(s.text)} className={styles.suggestionApplyBtn}>
-            Apply
+            {t('common.apply')}
           </button>
         </div>
       ))}
@@ -738,8 +741,9 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
 // ── QA panel ────────────────────────────────────────────────────────────────
 
 const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
+  const { t } = useTranslation();
   if (issues.length === 0) {
-    return <div className={styles.panelEmpty}>QA проблем не знайдено</div>;
+    return <div className={styles.panelEmpty}>{t('modEditor.noQaIssues')}</div>;
   }
   return (
     <div className={styles.panelListGap2}>
@@ -756,8 +760,9 @@ const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
 // ── History panel ───────────────────────────────────────────────────────────
 
 const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
+  const { t } = useTranslation();
   if (items.length === 0) {
-    return <div className={styles.panelEmpty}>Історія змін порожня</div>;
+    return <div className={styles.panelEmpty}>{t('modEditor.emptyHistory')}</div>;
   }
   return (
     <div className={styles.panelListGap4}>
@@ -768,7 +773,7 @@ const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
             <span className={styles.histDate}>{new Date(item.created_at).toLocaleString()}</span>
             {item.note && <span className={styles.histNote}>{item.note}</span>}
           </div>
-          <div className={styles.histText}>{item.text ?? '— cleared —'}</div>
+          <div className={styles.histText}>{item.text ?? t('modEditor.cleared')}</div>
         </div>
       ))}
     </div>
@@ -780,6 +785,7 @@ const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
 type SRProps = { modId: number; targetLang: string; onClose: () => void; onApplied: () => void };
 
 const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [replace, setReplace] = useState('');
   const [isRegex, setIsRegex] = useState(false);
@@ -808,21 +814,21 @@ const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-        <h3 className={styles.modalTitle}>Search & Replace Translations</h3>
+        <h3 className={styles.modalTitle}>{t('modEditor.searchReplaceTitle')}</h3>
         <div className={styles.modalForm}>
-          <input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} className={styles.modalInput} />
-          <input placeholder="Replace with…" value={replace} onChange={(e) => setReplace(e.target.value)} className={styles.modalInput} />
+          <input placeholder={t('modEditor.searchLabel')} value={search} onChange={(e) => setSearch(e.target.value)} className={styles.modalInput} />
+          <input placeholder={t('modEditor.replaceLabel')} value={replace} onChange={(e) => setReplace(e.target.value)} className={styles.modalInput} />
           <label className={styles.modalRegexLbl}>
-            <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} /> Use regex
+            <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} /> {t('modEditor.useRegex')}
           </label>
         </div>
         <div className={styles.modalBtnRow}>
-          <button onClick={handlePreview} disabled={stage !== 'idle' || !search} className={styles.modalBtnDark}>Preview ({previewResult?.matches.length ?? 0})</button>
-          <button onClick={handleApply} disabled={stage !== 'idle' || !search} className={styles.modalBtnPri}>Apply</button>
-          <button onClick={onClose} className={styles.modalBtnSec}>Cancel</button>
+          <button onClick={handlePreview} disabled={stage !== 'idle' || !search} className={styles.modalBtnDark}>{t('modEditor.preview', { count: previewResult?.matches.length ?? 0 })}</button>
+          <button onClick={handleApply} disabled={stage !== 'idle' || !search} className={styles.modalBtnPri}>{t('common.apply')}</button>
+          <button onClick={onClose} className={styles.modalBtnSec}>{t('common.cancel')}</button>
         </div>
         {error && <p className={styles.modalErr}>{error}</p>}
-        {stage === 'done' && <p className={styles.modalOk}>Applied {previewResult?.applied} replacements</p>}
+        {stage === 'done' && <p className={styles.modalOk}>{t('modEditor.applied', { count: previewResult?.applied })}</p>}
         {previewResult && stage !== 'done' && previewResult.matches.length > 0 && (
           <div className={styles.modalPreview}>
             {previewResult.matches.slice(0, 20).map((m, i) => (
@@ -833,7 +839,7 @@ const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) 
                 <span className={styles.modalPrevNew}>{m.newText.slice(0, 60)}</span>
               </div>
             ))}
-            {previewResult.matches.length > 20 && <p className={styles.modalPrevMore}>…ще {previewResult.matches.length - 20}</p>}
+            {previewResult.matches.length > 20 && <p className={styles.modalPrevMore}>{t('modEditor.more', { count: previewResult.matches.length - 20 })}</p>}
           </div>
         )}
       </div>

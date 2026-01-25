@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   api,
   type EetImportJob,
@@ -27,6 +28,7 @@ const LANGUAGES = [
 ];
 
 export const EetImportsPage = () => {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ['eet-imports'],
@@ -93,8 +95,8 @@ export const EetImportsPage = () => {
   const handleDelete = async (jobId: number) => { await api.eet.remove(jobId); refresh(); };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (isLoading) return <div className={s.center}>Loading...</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
+  if (isLoading) return <div className={s.center}>{t('common.loading')}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
 
   const pendingCount = (jobs ?? []).filter(j =>
     j.status === 'pending' || j.status === 'paused' || j.status === 'failed',
@@ -104,17 +106,17 @@ export const EetImportsPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>EET Imports</h1>
+      <h1 className={s.title}>{t('eetImport.title')}</h1>
 
       {/* Upload bar */}
       <div className={s.uploadBar}>
         <input ref={fileRef} type="file" accept=".eet" multiple className={s.fileInput} />
         <button onClick={handleUpload} disabled={uploading} className={s.btn}>
-          {uploading ? 'Uploading...' : 'Upload'}
+          {uploading ? t('common.uploading') : t('common.upload')}
         </button>
         {pendingCount > 0 && (
           <button onClick={startMultiple} className={s.btnImportAll}>
-            Import all ({pendingCount})
+            {t('eetImport.importAll', { count: pendingCount })}
           </button>
         )}
       </div>
@@ -122,7 +124,7 @@ export const EetImportsPage = () => {
       {/* Job list */}
       {!jobs?.length ? (
         <p className={s.empty}>
-          No EET files uploaded yet. Upload <code>.eet</code> files to get started.
+          {t('eetImport.noFiles')}
         </p>
       ) : (
         <div className={s.list}>
@@ -166,6 +168,7 @@ const JobRow = ({
   job: EetImportJob; live?: LiveProgress; isRunning: boolean;
   onStart: () => void; onPause: () => void; onCancel: () => void; onDelete: () => void;
 }) => {
+  const { t } = useTranslation();
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
@@ -185,7 +188,7 @@ const JobRow = ({
       </div>
       <div className={s.rowRight}>
         {job.status === 'completed' ? (
-          <span className={s.badgeCompleted}>Completed</span>
+          <span className={s.badgeCompleted}>{t('importStatus.completed')}</span>
         ) : isRunning ? (
           <div className={s.progressWrap}>
             <div className={s.progressTrack}>
@@ -195,15 +198,15 @@ const JobRow = ({
           </div>
         ) : (
           <span className={s.badge} style={{ background: statusColor(job.status) }}>
-            {statusLabel(job.status)}
+            {statusLabel(job.status, t)}
             {job.imported_records > 0 && ` (${pct}%)`}
           </span>
         )}
         <div className={s.actions}>
-          {canStart && <button onClick={onStart} className={s.actionBtn} title="Start import">▶</button>}
-          {canPause && <button onClick={onPause} className={s.actionBtn} title="Pause">⏸</button>}
-          {canCancel && <button onClick={onCancel} className={s.actionBtnCancel} title="Cancel">⏹</button>}
-          {canDelete && <button onClick={onDelete} className={s.actionBtnDelete} title="Delete">🗑</button>}
+          {canStart && <button onClick={onStart} className={s.actionBtn} title="▶">▶</button>}
+          {canPause && <button onClick={onPause} className={s.actionBtn} title="⏸">⏸</button>}
+          {canCancel && <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>⏹</button>}
+          {canDelete && <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>🗑</button>}
         </div>
       </div>
     </div>
@@ -221,6 +224,7 @@ const PreviewModal = ({
   onClose: () => void;
   onConfirm: (srcLang: string, tgtLang: string) => void;
 }) => {
+  const { t } = useTranslation();
   const [srcLang, setSrcLang] = useState(job.src_lang);
   const [tgtLang, setTgtLang] = useState(job.tgt_lang);
   const [page, setPage] = useState(1);
@@ -255,14 +259,14 @@ const PreviewModal = ({
         {/* Language selectors */}
         <div className={s.langBar}>
           <label className={s.langLabel}>
-            Source language
+            {t('csvImport.sourceLang')}
             <select value={srcLang} onChange={e => setSrcLang(e.target.value)} className={s.select}>
               {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
             </select>
           </label>
           <span className={s.langArrow}>→</span>
           <label className={s.langLabel}>
-            Target language
+            {t('csvImport.targetLang')}
             <select value={tgtLang} onChange={e => setTgtLang(e.target.value)} className={s.select}>
               {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
             </select>
@@ -276,38 +280,38 @@ const PreviewModal = ({
             onChange={e => { setSigFilter(e.target.value); setPage(1); }}
             className={s.selectSig}
           >
-            <option value="">All signatures</option>
+            <option value="">{t('csvImport.allSignatures')}</option>
             {(data?.signatures ?? []).map(sig => (
               <option key={sig} value={sig}>{sig}</option>
             ))}
           </select>
           <input
             type="text"
-            placeholder="Search FormID / EDID / text..."
+            placeholder={t('csvImport.searchPlaceholder')}
             value={qInput}
             onChange={e => setQInput(e.target.value)}
             className={s.searchInput}
           />
           <span className={s.filterBarCount}>
-            {data ? `${data.total.toLocaleString()} records` : ''}
+            {data ? t('common.records', { count: data.total.toLocaleString() }) : ''}
           </span>
         </div>
 
         {/* Table */}
         <div className={s.tableWrap}>
           {isLoading ? (
-            <div className={s.tableEmpty}>Loading...</div>
+            <div className={s.tableEmpty}>{t('common.loading')}</div>
           ) : (
             <table className={s.table}>
               <thead>
                 <tr>
-                  <th className={s.th}>Signature</th>
-                  <th className={s.th}>FormID</th>
-                  <th className={s.th}>EDID</th>
-                  <th className={s.th}>Field</th>
-                  <th className={s.thSource}>Source</th>
-                  <th className={s.thSource}>Target</th>
-                  <th className={s.th}>Status</th>
+                  <th className={s.th}>{t('csvImport.signature')}</th>
+                  <th className={s.th}>{t('csvImport.formId')}</th>
+                  <th className={s.th}>{t('csvImport.edid')}</th>
+                  <th className={s.th}>{t('csvImport.fieldCol')}</th>
+                  <th className={s.thSource}>{t('csvImport.sourceCol')}</th>
+                  <th className={s.thSource}>{t('csvImport.targetCol')}</th>
+                  <th className={s.th}>{t('csvImport.statusCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,7 +325,7 @@ const PreviewModal = ({
                     <td className={s.td}>{r.target || <span className={s.emptyValue}>—</span>}</td>
                     <td className={s.td}>
                       <span className={`${s.statusDot} ${r.status === 0x63 ? s.statusDotConfirmed : r.status === 0xFF ? s.statusDotUntranslated : s.statusDotOther}`} />
-                      {r.status === 0x63 ? 'confirmed' : r.status === 0xFF ? 'untranslated' : String(r.status)}
+                      {r.status === 0x63 ? t('csvImport.confirmed') : r.status === 0xFF ? t('csvImport.untranslated') : String(r.status)}
                     </td>
                   </tr>
                 ))}
@@ -333,20 +337,20 @@ const PreviewModal = ({
         {/* Pagination */}
         {totalPages > 1 && (
           <div className={s.pagination}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={s.pageBtn}>← Prev</button>
-            <span className={s.paginationLabel}>Page {page} / {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={s.pageBtn}>Next →</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={s.pageBtn}>{t('common.prev')}</button>
+            <span className={s.paginationLabel}>{t('common.page', { page, totalPages })}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={s.pageBtn}>{t('common.next')}</button>
           </div>
         )}
 
         {/* Confirm */}
         <div className={s.footer}>
-          <button onClick={onClose} className={s.btnCancel}>Cancel</button>
+          <button onClick={onClose} className={s.btnCancel}>{t('common.cancel')}</button>
           <button
             onClick={() => onConfirm(srcLang, tgtLang)}
             className={s.btnConfirm}
           >
-            Start import ({job.total_records.toLocaleString()} records)
+            {t('csvImport.startImport', { count: job.total_records.toLocaleString() })}
           </button>
         </div>
       </div>
@@ -367,15 +371,8 @@ const statusColor = (status: string): string => {
   }
 }
 
-const statusLabel = (status: string): string => {
-  switch (status) {
-    case 'pending': return 'Pending';
-    case 'in_progress': return 'In progress';
-    case 'paused': return 'Paused';
-    case 'failed': return 'Failed';
-    case 'completed': return 'Completed';
-    default: return status;
-  }
+const statusLabel = (status: string, t: (key: string) => string): string => {
+  return t(`importStatus.${status}`) || status;
 }
 
 

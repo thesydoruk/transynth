@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { DashboardModRow } from '../api';
 import s from './DashboardPage.module.scss';
@@ -29,14 +30,15 @@ const ISSUE_COLORS: Record<string, string> = {
 const issueLabel = (t: string) => t.replace(/_/g, ' ');
 
 export const DashboardPage = () => {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: api.stats.dashboard,
   });
 
-  if (isLoading) return <div className={s.center}>Loading dashboard…</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
+  if (isLoading) return <div className={s.center}>{t('dashboard.loadingDashboard')}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
   if (!data) return null;
 
   const totals = data.mods.reduce(
@@ -59,20 +61,20 @@ export const DashboardPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Dashboard</h1>
+      <h1 className={s.title}>{t('dashboard.title')}</h1>
 
       {/* Summary cards */}
       <div className={s.cards}>
-        <Card label="Strings" value={totals.total} />
-        <Card label="Translated" value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
-        <Card label="Approved" value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
-        <Card label="QA Issues" value={totalQA} color={totalQA > 0 ? '#e55' : '#4caf50'} />
+        <Card label={t('dashboard.cardStrings')} value={totals.total} />
+        <Card label={t('dashboard.cardTranslated')} value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
+        <Card label={t('dashboard.cardApproved')} value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
+        <Card label={t('dashboard.cardQaIssues')} value={totalQA} color={totalQA > 0 ? '#e55' : '#4caf50'} />
       </div>
 
       {/* QA breakdown */}
       {data.qaByType.length > 0 && (
         <section className={s.section}>
-          <h2 className={s.h2}>QA Issue Breakdown</h2>
+          <h2 className={s.h2}>{t('dashboard.qaBreakdown')}</h2>
           <div className={s.qaGrid}>
             {data.qaByType.map((r) => (
               <div key={r.issue_type} className={s.qaRow}>
@@ -89,20 +91,20 @@ export const DashboardPage = () => {
 
       {/* Per-mod table */}
       <section className={s.section}>
-        <h2 className={s.h2}>Mods</h2>
+        <h2 className={s.h2}>{t('dashboard.mods')}</h2>
         <table className={s.table}>
           <thead>
             <tr>
-              <th className={s.th}>Mod</th>
-              <th className={s.thR}>Strings</th>
-              <th className={s.thR}>Translated</th>
+              <th className={s.th}>{t('dashboard.mod')}</th>
+              <th className={s.thR}>{t('dashboard.thStrings')}</th>
+              <th className={s.thR}>{t('dashboard.thTranslated')}</th>
               <th className={s.thR}>%</th>
-              <th className={s.thProgress}>Progress</th>
-              <th className={s.thR}>Approved</th>
-              <th className={s.thR}>Draft</th>
-              <th className={s.thR}>TM</th>
-              <th className={s.thR}>Auto</th>
-              <th className={s.thR}>QA</th>
+              <th className={s.thProgress}>{t('mods.progress')}</th>
+              <th className={s.thR}>{t('dashboard.thApproved')}</th>
+              <th className={s.thR}>{t('dashboard.thDraft')}</th>
+              <th className={s.thR}>{t('dashboard.thTm')}</th>
+              <th className={s.thR}>{t('dashboard.thAuto')}</th>
+              <th className={s.thR}>{t('dashboard.thQa')}</th>
             </tr>
           </thead>
           <tbody>
@@ -135,7 +137,7 @@ export const DashboardPage = () => {
           {data.mods.length > 1 && (
             <tfoot>
               <tr className={s.tfoot}>
-                <td className={s.td}>Total</td>
+                <td className={s.td}>{t('dashboard.total')}</td>
                 <td className={s.tdR}>{totals.total}</td>
                 <td className={s.tdR}>{totals.translated}</td>
                 <td className={s.tdR}>{pct(totals.translated, totals.total)}%</td>

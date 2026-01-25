@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type DiffEntry } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import s from './DiffPage.module.scss';
 
 const CHANGE_LABELS: Record<string, string> = {
-  added: 'Added',
-  removed: 'Removed',
-  changed: 'Changed',
+  added: 'diff.added',
+  removed: 'diff.removed',
+  changed: 'diff.changed',
 };
 
 /** Maps changeType to the CSS Module row-background class. */
@@ -25,6 +26,7 @@ const CHANGE_CLASS: Record<string, string> = {
 };
 
 export const DiffPage = () => {
+  const { t } = useTranslation();
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
   const queryClient = useQueryClient();
 
@@ -62,17 +64,17 @@ export const DiffPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Mod Diff</h1>
+      <h1 className={s.title}>{t('diff.title')}</h1>
       <p className={s.subtitle}>
-        Compare two mod versions to see added, removed, and changed strings.
+        {t('diff.subtitle')}
       </p>
 
       {/* Controls */}
       <div className={s.toolbar}>
         <div className={s.fieldCol}>
-          <label className={s.label}>New version (updated mod)</label>
+          <label className={s.label}>{t('diff.newVersion')}</label>
           <select value={newModId} onChange={(e) => setNewModId(e.target.value)} className={s.select}>
-            <option value="">Select mod…</option>
+            <option value="">{t('diff.selectMod')}</option>
             {mods?.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -81,9 +83,9 @@ export const DiffPage = () => {
           </select>
         </div>
         <div className={s.fieldCol}>
-          <label className={s.label}>Old version (base for comparison)</label>
+          <label className={s.label}>{t('diff.oldVersion')}</label>
           <select value={oldModId} onChange={(e) => setOldModId(e.target.value)} className={s.select}>
-            <option value="">Select mod…</option>
+            <option value="">{t('diff.selectMod')}</option>
             {mods?.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -98,12 +100,12 @@ export const DiffPage = () => {
             disabled={!newModId || !oldModId || isFetching}
             className={s.btnCompare}
           >
-            {isFetching ? 'Comparing…' : 'Compare'}
+            {isFetching ? t('diff.comparing') : t('diff.compare')}
           </button>
         </div>
       </div>
 
-      {error && <p className={s.error}>Error: {String(error)}</p>}
+      {error && <p className={s.error}>{t('common.error', { message: String(error) })}</p>}
 
       {diff && (
         <>
@@ -121,7 +123,7 @@ export const DiffPage = () => {
                 style={{ borderColor: color as string, color: color as string, cursor: type !== 'unchanged' ? 'pointer' : 'default' }}
                 onClick={() => type !== 'unchanged' && setFilter(filter === type ? 'all' : (type as typeof filter))}
               >
-                {CHANGE_LABELS[type as string] ?? type}: {count as number}
+                {t(CHANGE_LABELS[type as string] ?? `diff.${type as string}`)}: {count as number}
               </span>
             ))}
           </div>
@@ -133,18 +135,18 @@ export const DiffPage = () => {
               disabled={carryOver.isPending}
               className={s.btnCarryOver}
             >
-              {carryOver.isPending ? 'Carrying over…' : '⇄ Carry Over Translations'}
+              {carryOver.isPending ? t('diff.carryingOver') : t('diff.carryOver')}
             </button>
             {carryOver.data && (
               <span className={s.carryInfo}>
-                Carried: <b className={s.carryGreen}>{carryOver.data.carried}</b>
-                {' · '}Needs review: <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
-                {' · '}Skipped: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
+                {t('diff.carried')}: <b className={s.carryGreen}>{carryOver.data.carried}</b>
+                {' · '}{t('diff.needsReview')}: <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
+                {' · '}{t('diff.skipped')}: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
               </span>
             )}
             {carryOver.isError && (
               <span className={s.carryError}>
-                Error: {String(carryOver.error)}
+                {t('common.error', { message: String(carryOver.error) })}
               </span>
             )}
           </div>
@@ -165,18 +167,18 @@ export const DiffPage = () => {
           {/* Table */}
           {allEntries.length === 0 ? (
             <p className={s.empty}>
-              No {filter === 'all' ? 'differences' : filter} entries.
+              {t('diff.noDifferences', { filter: filter === 'all' ? t('diff.filterAll') : filter })}
             </p>
           ) : (
             <table className={s.table}>
               <thead>
                 <tr>
-                  <th className={s.th}>Change</th>
-                  <th className={s.th}>FormID</th>
-                  <th className={s.th}>Type</th>
-                  <th className={s.thWide}>Source (EN)</th>
-                  <th className={s.thWide}>Translation</th>
-                  <th className={s.th}>Status</th>
+                  <th className={s.th}>{t('diff.change')}</th>
+                  <th className={s.th}>{t('modEditor.formId')}</th>
+                  <th className={s.th}>{t('diff.type')}</th>
+                  <th className={s.thWide}>{t('diff.sourceEn')}</th>
+                  <th className={s.thWide}>{t('diff.translation')}</th>
+                  <th className={s.th}>{t('csvImport.statusCol')}</th>
                 </tr>
               </thead>
               <tbody>

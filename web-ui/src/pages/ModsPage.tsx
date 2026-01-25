@@ -1,40 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { ProgressBar, StatusBadge } from '../components/StatusBadge';
 import s from './ModsPage.module.scss';
 
 export const ModsPage = () => {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const { data, isLoading, error } = useQuery({
     queryKey: ['mods'],
     queryFn: api.mods.list,
   });
 
-  if (isLoading) return <div className={s.center}>Loading mods…</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>Error: {String(error)}</div>;
+  if (isLoading) return <div className={s.center}>{t('mods.loadingMods')}</div>;
+  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
   if (!data?.length)
     return (
       <div className={s.center}>
-        <h2>No mods found</h2>
+        <h2>{t('mods.noModsFound')}</h2>
         <p className={s.hintText}>
-          Run <code>npm run learn:pairs</code> or <code>npm run learn:multilang</code> to import
-          translation data.
+          {t('mods.noModsHint')}
         </p>
       </div>
     );
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Mods</h1>
+      <h1 className={s.title}>{t('mods.title')}</h1>
       <table className={s.table}>
         <thead>
           <tr>
-            <th className={s.th}>Name</th>
-            <th className={s.th}>Strings</th>
-            <th className={s.th}>Progress</th>
-            <th className={s.th}>Approved</th>
-            <th className={s.th}>Fuzzy</th>
+            <th className={s.th}>{t('mods.name')}</th>
+            <th className={s.th}>{t('mods.strings')}</th>
+            <th className={s.th}>{t('mods.progress')}</th>
+            <th className={s.th}>{t('mods.approved')}</th>
+            <th className={s.th}>{t('mods.fuzzy')}</th>
           </tr>
         </thead>
         <tbody>

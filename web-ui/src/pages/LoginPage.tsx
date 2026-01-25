@@ -6,10 +6,12 @@
  */
 
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../components/AuthContext';
 import s from './LoginPage.module.scss';
 
 export const LoginPage = () => {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +26,7 @@ export const LoginPage = () => {
     try {
       await login(username, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('login.loginFailed'));
     } finally {
       setBusy(false);
     }
@@ -33,11 +35,11 @@ export const LoginPage = () => {
   return (
     <div className={s.wrapper}>
       <form className={s.card} onSubmit={handleSubmit}>
-        <div className={s.brand}>FO4 Localizer</div>
-        <div className={s.subtitle}>Sign in to continue</div>
+        <div className={s.brand}>{t('nav.brand')}</div>
+        <div className={s.subtitle}>{t('login.signInTitle')}</div>
 
         <div className={s.field}>
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username">{t('login.username')}</label>
           <input
             id="username"
             type="text"
@@ -49,7 +51,7 @@ export const LoginPage = () => {
         </div>
 
         <div className={s.field}>
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">{t('login.password')}</label>
           <input
             id="password"
             type="password"
@@ -62,7 +64,7 @@ export const LoginPage = () => {
         {error && <div className={s.error}>{error}</div>}
 
         <button type="submit" className={s.button} disabled={busy || !username || !password}>
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? t('login.signingIn') : t('login.signIn')}
         </button>
       </form>
     </div>

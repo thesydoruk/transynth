@@ -7,10 +7,12 @@
 
 import { useRef, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import s from './TmxPage.module.scss';
 
 export const TmxPage = () => {
+  const { t } = useTranslation();
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
 
   /* ── Export state ─────────────────────────────────────────────────────────── */
@@ -39,28 +41,23 @@ export const TmxPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Translation Memory Exchange (TMX)</h1>
-      <p className={s.subtitle}>
-        Export or import translation memory in the standard TMX 1.4b format for use with
-        external CAT tools (memoQ, SDL Trados, OmegaT, etc.).
-      </p>
+      <h1 className={s.title}>{t('tmx.title')}</h1>
+      <p className={s.subtitle}>{t('tmx.subtitle')}</p>
 
       {/* ── Export section ──────────────────────────────────────────────────── */}
       <section className={s.section}>
-        <h2 className={s.sectionTitle}>Export TMX</h2>
-        <p className={s.sectionDesc}>
-          Download all translations (or for a specific mod) as a TMX file.
-        </p>
+        <h2 className={s.sectionTitle}>{t('tmx.exportTitle')}</h2>
+        <p className={s.sectionDesc}>{t('tmx.exportDesc')}</p>
 
         <div className={s.row}>
           <div className={s.field}>
-            <label className={s.label}>Mod (optional)</label>
+            <label className={s.label}>{t('tmx.modOptional')}</label>
             <select
               className={s.select}
               value={exportModId}
               onChange={(e) => setExportModId(e.target.value)}
             >
-              <option value="">All mods</option>
+              <option value="">{t('tmx.allMods')}</option>
               {mods?.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -68,7 +65,7 @@ export const TmxPage = () => {
           </div>
 
           <div className={s.field}>
-            <label className={s.label}>Target language</label>
+            <label className={s.label}>{t('tmx.targetLanguage')}</label>
             <select
               className={s.select}
               value={exportLang}
@@ -87,35 +84,32 @@ export const TmxPage = () => {
             onClick={() => exportMutation.mutate()}
             disabled={exportMutation.isPending}
           >
-            {exportMutation.isPending ? 'Exporting…' : '⬇ Export TMX'}
+            {exportMutation.isPending ? t('tmx.exportingBtn') : t('tmx.exportBtn')}
           </button>
         </div>
 
         {exportMutation.isSuccess && (
-          <div className={s.result}>TMX file downloaded successfully.</div>
+          <div className={s.result}>{t('tmx.exportSuccess')}</div>
         )}
         {exportMutation.isError && (
-          <div className={s.error}>Error: {String(exportMutation.error)}</div>
+          <div className={s.error}>{t('common.error', { message: String(exportMutation.error) })}</div>
         )}
       </section>
 
       {/* ── Import section ──────────────────────────────────────────────────── */}
       <section className={s.section}>
-        <h2 className={s.sectionTitle}>Import TMX</h2>
-        <p className={s.sectionDesc}>
-          Upload a TMX file to populate translations. Only strings without existing
-          reviewed/human translations will be updated.
-        </p>
+        <h2 className={s.sectionTitle}>{t('tmx.importTitle')}</h2>
+        <p className={s.sectionDesc}>{t('tmx.importDesc')}</p>
 
         <div className={s.row}>
           <div className={s.field}>
-            <label className={s.label}>Match against mod (optional)</label>
+            <label className={s.label}>{t('tmx.matchAgainst')}</label>
             <select
               className={s.select}
               value={importModId}
               onChange={(e) => setImportModId(e.target.value)}
             >
-              <option value="">All mods (global)</option>
+              <option value="">{t('tmx.allModsGlobal')}</option>
               {mods?.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -123,7 +117,7 @@ export const TmxPage = () => {
           </div>
 
           <div className={s.field}>
-            <label className={s.label}>TMX file</label>
+            <label className={s.label}>{t('tmx.tmxFile')}</label>
             <input
               ref={fileRef}
               type="file"
@@ -137,19 +131,19 @@ export const TmxPage = () => {
             onClick={handleImport}
             disabled={importMutation.isPending}
           >
-            {importMutation.isPending ? 'Importing…' : '⬆ Import TMX'}
+            {importMutation.isPending ? t('tmx.importingBtn') : t('tmx.importBtn')}
           </button>
         </div>
 
         {importMutation.data && (
           <div className={s.result}>
-            Parsed: <b>{importMutation.data.parsed}</b>
-            {' · '}Imported: <b>{importMutation.data.imported}</b>
-            {' · '}Skipped: <b>{importMutation.data.skipped}</b>
+            {t('tmx.parsed')}: <b>{importMutation.data.parsed}</b>
+            {' · '}{t('tmx.imported')}: <b>{importMutation.data.imported}</b>
+            {' · '}{t('tmx.importSkipped')}: <b>{importMutation.data.skipped}</b>
           </div>
         )}
         {importMutation.isError && (
-          <div className={s.error}>Error: {String(importMutation.error)}</div>
+          <div className={s.error}>{t('common.error', { message: String(importMutation.error) })}</div>
         )}
       </section>
     </div>
