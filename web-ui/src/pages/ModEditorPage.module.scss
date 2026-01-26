@@ -220,12 +220,30 @@
   letter-spacing: 0.05em;
   white-space: nowrap;
   box-sizing: border-box;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
 }
 
 .td {
   padding: 5px 6px;
   vertical-align: top;
   box-sizing: border-box;
+}
+
+/** Drag handle at the right edge of a resizable column header cell. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
 }
 
 .actionBtnBlue {
@@ -543,7 +561,7 @@
 .tdFid        { composes: td; font-family: monospace; font-size: 11px; color: #777; }
 .tdEdidCell   { composes: td; font-size: 11px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tdField      { composes: td; font-size: 11px; color: #999; }
-.tdText       { composes: td; flex: 1; min-width: 220px; word-break: break-word; white-space: pre-wrap; font-size: 13px; }
+.tdText       { composes: td; flex: 1; min-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
 .tdTranslFilled { composes: tdText; color: #eee; }
 .tdTranslEmpty  { composes: tdText; color: #666; font-style: italic; }
 

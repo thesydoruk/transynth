@@ -40,6 +40,9 @@ const rowBg = (status: string | null): string => {
   return 'transparent';
 }
 
+/** Keys identifying each resizable column in the string grid. */
+type ColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
+
 export const ModEditorPage = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -77,6 +80,49 @@ export const ModEditorPage = () => {
 
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
+
+  // Resizable column widths in px. null = flex-fill (auto-size). Updated while dragging.
+  const [colWidths, setColWidths] = useState<Record<ColKey, number | null>>({
+    grup: 52, formid: 70, edid: 160, field: 50, src: null, transl: null, act: 170,
+  });
+  const resizeRef = useRef<{ col: ColKey; startX: number; startW: number } | null>(null);
+
+  /**
+   * Initiates a column resize drag. Reads the current rendered width of the
+   * header cell from the DOM, then tracks mousemove to adjust the column width.
+   * Global listeners are cleaned up automatically on mouseup.
+   */
+  const startResize = useCallback((col: ColKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const thEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
+    const startW = thEl.getBoundingClientRect().width;
+    resizeRef.current = { col, startX: e.clientX, startW };
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = ev.clientX - resizeRef.current.startX;
+      const newW = Math.max(30, resizeRef.current.startW + delta);
+      setColWidths((prev) => ({ ...prev, [resizeRef.current!.col]: newW }));
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
+  /**
+   * Returns the inline CSS style for a resizable column cell.
+   * Uses a fixed flex-basis (px) when the user has resized it; flex-fill otherwise.
+   */
+  const colStyle = useCallback((col: ColKey): React.CSSProperties => {
+    const w = colWidths[col];
+    return w !== null
+      ? { flex: `0 0 ${w}px`, overflow: 'hidden' }
+      : { flex: 1, minWidth: 180, overflow: 'hidden' };
+  }, [colWidths]);
 
   const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page];
 
@@ -547,13 +593,34 @@ export const ModEditorPage = () => {
                   <div className={`${styles.th} ${styles.colCheck}`}>
                     <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
                   </div>
-                  <div className={`${styles.th} ${styles.colGrup}`}>{t('modEditor.grup')}</div>
-                  <div className={`${styles.th} ${styles.colFormId}`}>{t('modEditor.formId')}</div>
-                  <div className={`${styles.th} ${styles.colEdid}`}>{t('modEditor.edid')}</div>
-                  <div className={`${styles.th} ${styles.colField}`}>{t('modEditor.field')}</div>
-                  <div className={`${styles.th} ${styles.colText}`}>{t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}</div>
-                  <div className={`${styles.th} ${styles.colText}`}>{t('modEditor.translationText', { lang: targetLang.toUpperCase() })}</div>
-                  <div className={`${styles.th} ${styles.colAct}`}>{t('modEditor.actions')}</div>
+                  <div className={styles.th} style={colStyle('grup')}>
+                    {t('modEditor.grup')}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('grup', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('formid')}>
+                    {t('modEditor.formId')}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('formid', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('edid')}>
+                    {t('modEditor.edid')}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('edid', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('field')}>
+                    {t('modEditor.field')}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('field', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('src')}>
+                    {t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('src', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('transl')}>
+                    {t('modEditor.translationText', { lang: targetLang.toUpperCase() })}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('transl', e)} />
+                  </div>
+                  <div className={styles.th} style={colStyle('act')}>
+                    {t('modEditor.actions')}
+                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('act', e)} />
+                  </div>
                 </div>
                 {/* Virtualized rows */}
                 <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
@@ -576,18 +643,18 @@ export const ModEditorPage = () => {
                         <div className={`${styles.td} ${styles.colCheck}`} onClick={(e) => toggleRow(row, e)}>
                           <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
                         </div>
-                        <div className={`${styles.tdSig} ${styles.colGrup}`}>{row.signature}</div>
-                        <div className={`${styles.tdFid} ${styles.colFormId}`}>{row.formid_hex}</div>
-                        <div className={`${styles.tdEdidCell} ${styles.colEdid}`} title={row.edid ?? ''}>{row.edid ?? ''}</div>
-                        <div className={`${styles.tdField} ${styles.colField}`}>{row.path?.split('.').pop() ?? ''}</div>
-                        <div className={styles.tdText}>{row.source}</div>
-                        <div className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty}>
+                        <div className={styles.tdSig} style={colStyle('grup')}>{row.signature}</div>
+                        <div className={styles.tdFid} style={colStyle('formid')}>{row.formid_hex}</div>
+                        <div className={styles.tdEdidCell} style={colStyle('edid')} title={row.edid ?? ''}>{row.edid ?? ''}</div>
+                        <div className={styles.tdField} style={colStyle('field')}>{row.path?.split('.').pop() ?? ''}</div>
+                        <div className={styles.tdText} style={colStyle('src')} title={row.source}>{row.source}</div>
+                        <div className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty} style={colStyle('transl')} title={row.translation ?? ''}>
                           {row.translation ?? '—'}
                           {row.qa_issue_count > 0 && (
                             <span className={styles.qaHint}>{row.qa_issue_count} QA</span>
                           )}
                         </div>
-                        <div className={`${styles.td} ${styles.colAct}`} onClick={(e) => e.stopPropagation()}>
+                        <div className={`${styles.td} ${styles.colAct}`} style={colStyle('act')} onClick={(e) => e.stopPropagation()}>
                           <div className={styles.actionBtnRow}>
                             {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
                               <button className={styles.actionBtnBlue} title={t('modEditor.confirm')} onClick={() => handleApprove(row)}>V</button>
