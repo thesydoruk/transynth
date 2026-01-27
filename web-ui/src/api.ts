@@ -2,10 +2,17 @@
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
 const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  /* Only set Content-Type: application/json when the request carries a body.
+     Fastify 5 rejects requests with Content-Type: application/json but no body
+     (FST_ERR_CTP_EMPTY_JSON_BODY), which breaks DELETE / POST calls without a payload. */
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) };
+  if (init?.body) {
+    headers['Content-Type'] ??= 'application/json';
+  }
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init,
+    headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
