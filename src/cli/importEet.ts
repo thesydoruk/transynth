@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import pg from 'pg';
 import { openDb, runSchema, closeDb, upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
 import { sha1Hex } from '../utils/hash.js';
@@ -90,7 +91,11 @@ const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: stri
   }
 }
 
-const importEetFile = async (db: Tx, filePath: string, srcLang: string, tgtLang: string) => {
+/**
+ * Import a single .eet file into the DB.
+ * Acquires a dedicated PoolClient so BEGIN/COMMIT hit the same Postgres connection.
+ */
+const importEetFile = async (pool: pg.Pool, filePath: string, srcLang: string, tgtLang: string) => {
   const absPath = path.resolve(filePath);
   const fileName = path.basename(absPath);
 
@@ -109,14 +114,16 @@ const importEetFile = async (db: Tx, filePath: string, srcLang: string, tgtLang:
   }
 
   const modName = fileName.replace(/\.eet$/i, '');
-  const modId = await upsertMod(db, modName, absPath, fileHash);
+  const modId = await upsertMod(pool, modName, absPath, fileHash);
 
-  const job = await getOrCreateImportJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
+  const job = await getOrCreateImportJob(pool, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
   if (job.status === 'completed') return;
 
   const skipCount = job.imported_records;
   log.info(`Import job #${job.id}: ${job.imported_records}/${totalRecords} done, resuming from record ${skipCount}`);
 
+  /* Dedicated client — all BEGIN/COMMIT/INSERT go through the same connection. */
+  const client = await pool.connect();
   let processed = 0;
   let imported = job.imported_records;
   let batchCount = 0;
@@ -129,18 +136,18 @@ const importEetFile = async (db: Tx, filePath: string, srcLang: string, tgtLang:
       if (processed <= skipCount) continue;
 
       if (!inTx) {
-        await db.query('BEGIN');
+        await client.query('BEGIN');
         inTx = true;
         batchCount = 0;
       }
 
-      await importRecord(db, modId, rec, srcLang, tgtLang);
+      await importRecord(client, modId, rec, srcLang, tgtLang);
       imported++;
       batchCount++;
 
       if (batchCount >= BATCH_SIZE) {
-        await updateImportProgress(db, job.id, imported);
-        await db.query('COMMIT');
+        await updateImportProgress(client, job.id, imported);
+        await client.query('COMMIT');
         inTx = false;
         if (imported % 10000 === 0 || imported === totalRecords) {
           log.info(`  progress: ${imported}/${totalRecords} records`);
@@ -149,18 +156,20 @@ const importEetFile = async (db: Tx, filePath: string, srcLang: string, tgtLang:
     }
 
     if (inTx) {
-      await db.query('COMMIT');
+      await client.query('COMMIT');
       inTx = false;
     }
 
-    await markImportDone(db, job.id, imported);
+    await markImportDone(client, job.id, imported);
     log.info(`Import complete: ${imported} records from ${fileName}`);
   } catch (err) {
     if (inTx) {
-      try { await db.query('ROLLBACK'); } catch { /* ignore rollback errors */ }
+      try { await client.query('ROLLBACK'); } catch { /* ignore rollback errors */ }
     }
-    await markImportFailed(db, job.id, imported);
+    await markImportFailed(client, job.id, imported);
     throw err;
+  } finally {
+    client.release();
   }
 }
 

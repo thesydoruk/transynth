@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
+import type pg from 'pg';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 import {
@@ -156,6 +157,10 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const buf = fs.readFileSync(filePath);
 
+    /* Hijack the response so Fastify does not try to end/serialise it itself —
+       we manage the raw SSE stream manually. */
+    reply.hijack();
+
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -169,7 +174,7 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     // Run import asynchronously — runImport is now async
     (async () => {
       try {
-        const result = await runImport(db, job, buf, (imported, total) => {
+        const result = await runImport(db as pg.Pool, job, buf, (imported, total) => {
           send({ type: 'progress', imported, total, jobId });
         });
         send({ type: 'done', job: { ...result, running: false } });

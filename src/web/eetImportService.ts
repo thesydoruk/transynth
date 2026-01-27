@@ -2,6 +2,7 @@
  * EET import service — reusable import engine for both CLI and web routes.
  * Supports pause, cancel, resume and progress callbacks.
  */
+import pg from 'pg';
 import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
 import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { sha1Hex } from '../utils/hash.js';
@@ -149,10 +150,16 @@ export const requestPause = (jobId: number) => {
 /**
  * Run the import for a single job. Reads the file buffer, resumes from last offset.
  * Calls onProgress after each batch.
+ *
+ * IMPORTANT: Accepts a pg.Pool and acquires a **dedicated PoolClient** internally
+ * so that BEGIN / COMMIT / ROLLBACK always hit the same Postgres connection.
+ * Using pool.query('BEGIN') scatters transaction statements across random clients
+ * and causes row-lock deadlocks — the classic node-pg anti-pattern.
+ *
  * Returns the final job state.
  */
 export const runImport = async (
-  db: Tx,
+  pool: pg.Pool,
   job: ImportJob,
   buf: Buffer,
   onProgress?: ProgressCb,
@@ -162,6 +169,9 @@ export const runImport = async (
 
   const state: ActiveImport = { cancel: false, pause: false };
   activeImports.set(job.id, state);
+
+  /* Acquire a dedicated client so BEGIN/COMMIT always target the same connection. */
+  const client = await pool.connect();
 
   const header = parseEetHeader(buf);
   const skipCount = job.imported_records;
@@ -176,45 +186,46 @@ export const runImport = async (
       if (processed <= skipCount) continue;
 
       if (state.cancel) {
-        if (inTx) { await db.query('COMMIT'); inTx = false; }
-        await markFailed(db, job.id, imported);
+        if (inTx) { await client.query('COMMIT'); inTx = false; }
+        await markFailed(client, job.id, imported);
         log.info(`Import #${job.id} cancelled at ${imported}/${job.total_records}`);
         break;
       }
       if (state.pause) {
-        if (inTx) { await db.query('COMMIT'); inTx = false; }
-        await markPaused(db, job.id, imported);
+        if (inTx) { await client.query('COMMIT'); inTx = false; }
+        await markPaused(client, job.id, imported);
         log.info(`Import #${job.id} paused at ${imported}/${job.total_records}`);
         break;
       }
 
-      if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
+      if (!inTx) { await client.query('BEGIN'); inTx = true; batchCount = 0; }
 
-      await importRecord(db, job.mod_id!, rec, job.src_lang, job.tgt_lang);
+      await importRecord(client, job.mod_id!, rec, job.src_lang, job.tgt_lang);
       imported++;
       batchCount++;
 
       if (batchCount >= BATCH_SIZE) {
-        await updateProgress(db, job.id, imported);
-        await db.query('COMMIT');
+        await updateProgress(client, job.id, imported);
+        await client.query('COMMIT');
         inTx = false;
         onProgress?.(imported, job.total_records);
       }
     }
 
-    if (inTx) { await db.query('COMMIT'); inTx = false; }
+    if (inTx) { await client.query('COMMIT'); inTx = false; }
 
     if (!state.cancel && !state.pause) {
-      await markDone(db, job.id, imported);
+      await markDone(client, job.id, imported);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
-    if (inTx) { try { await db.query('ROLLBACK'); } catch { /* ignore */ } }
-    await markFailed(db, job.id, imported);
+    if (inTx) { try { await client.query('ROLLBACK'); } catch { /* ignore */ } }
+    await markFailed(client, job.id, imported);
     throw err;
   } finally {
+    client.release();
     activeImports.delete(job.id);
   }
 
-  return (await getImportJob(db, job.id))!;
+  return (await getImportJob(pool, job.id))!;
 }
