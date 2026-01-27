@@ -121,10 +121,13 @@ CREATE TABLE IF NOT EXISTS eet_imports (
   status TEXT NOT NULL DEFAULT 'pending',
   src_lang TEXT NOT NULL DEFAULT 'en',
   tgt_lang TEXT NOT NULL DEFAULT 'uk',
+  last_error TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(file_hash)
 );
+-- Idempotent migration: add last_error column to existing databases
+ALTER TABLE eet_imports ADD COLUMN IF NOT EXISTS last_error TEXT;
 
 CREATE TABLE IF NOT EXISTS csv_imports (
   id SERIAL PRIMARY KEY,

@@ -197,7 +197,11 @@ const JobRow = ({
             <span className={s.progressLabel}>{pct}%</span>
           </div>
         ) : (
-          <span className={s.badge} style={{ background: statusColor(job.status) }}>
+          <span
+            className={s.badge}
+            style={{ background: statusColor(job.status) }}
+            title={job.status === 'failed' && job.last_error ? job.last_error : undefined}
+          >
             {statusLabel(job.status, t)}
             {job.imported_records > 0 && ` (${pct}%)`}
           </span>

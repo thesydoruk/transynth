@@ -21,6 +21,7 @@ export interface ImportJob {
   status: string;
   src_lang: string;
   tgt_lang: string;
+  last_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -80,10 +81,10 @@ const markDone = async (db: Tx, jobId: number, importedRecords: number) => {
   );
 }
 
-const markFailed = async (db: Tx, jobId: number, importedRecords: number) => {
+const markFailed = async (db: Tx, jobId: number, importedRecords: number, errorMsg?: string) => {
   await db.query(
-    `UPDATE eet_imports SET status = 'failed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
-    [importedRecords, jobId],
+    `UPDATE eet_imports SET status = 'failed', imported_records = $1, last_error = $2, updated_at = NOW() WHERE id = $3`,
+    [importedRecords, errorMsg ?? null, jobId],
   );
 }
 
@@ -187,7 +188,7 @@ export const runImport = async (
 
       if (state.cancel) {
         if (inTx) { await client.query('COMMIT'); inTx = false; }
-        await markFailed(client, job.id, imported);
+        await markFailed(client, job.id, imported, 'Cancelled by user');
         log.info(`Import #${job.id} cancelled at ${imported}/${job.total_records}`);
         break;
       }
@@ -220,7 +221,8 @@ export const runImport = async (
     }
   } catch (err) {
     if (inTx) { try { await client.query('ROLLBACK'); } catch { /* ignore */ } }
-    await markFailed(client, job.id, imported);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await markFailed(client, job.id, imported, errMsg);
     throw err;
   } finally {
     client.release();

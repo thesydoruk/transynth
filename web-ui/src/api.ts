@@ -236,6 +236,8 @@ export type EetImportJob = {
   status: string;
   src_lang: string;
   tgt_lang: string;
+  /** Error message stored when status transitions to 'failed'. Null otherwise. */
+  last_error: string | null;
   created_at: string;
   updated_at: string;
   running: boolean;
