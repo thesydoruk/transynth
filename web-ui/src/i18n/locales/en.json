@@ -26,6 +26,7 @@
   "nav": {
     "brand": "FO4 Localizer",
     "mods": "Mods",
+    "imports": "Imports",
     "eetImport": "EET Import",
     "csvImport": "CSV Import",
     "modImport": "Mod Import",
@@ -237,6 +238,12 @@
     "pauseBtn": "⏸",
     "cancelBtn": "⏹",
     "deleteBtn": "🗑"
+  },
+  "imports": {
+    "title": "Imports",
+    "tabEet": "EET",
+    "tabCsv": "CSV",
+    "tabMod": "Mod"
   },
   "eetImport": {
     "title": "EET Imports",

@@ -11,6 +11,7 @@ import { DiffPage } from './pages/DiffPage';
 import { EetImportsPage } from './pages/EetImportsPage';
 import { CsvImportsPage } from './pages/CsvImportsPage';
 import { ModImportsPage } from './pages/ModImportsPage';
+import { ImportsPage } from './pages/ImportsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TmxPage } from './pages/TmxPage';
 import { UsersPage } from './pages/UsersPage';
@@ -24,9 +25,7 @@ const qc = new QueryClient({
 /** Navigation link descriptors — label keys reference the nav.* i18n namespace. */
 const NAV_LINKS = [
   { to: '/', labelKey: 'nav.mods', exact: true },
-  { to: '/eet', labelKey: 'nav.eetImport', exact: false },
-  { to: '/csv', labelKey: 'nav.csvImport', exact: false },
-  { to: '/mod-import', labelKey: 'nav.modImport', exact: false },
+  { to: '/imports', labelKey: 'nav.imports', exact: false },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
   { to: '/dashboard', labelKey: 'nav.dashboard', exact: false },
   { to: '/tmx', labelKey: 'nav.tmx', exact: false },
@@ -108,6 +107,8 @@ const AppShell = () => {
         <Routes>
           <Route path="/" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />
+          <Route path="/imports" element={<ImportsPage />} />
+          {/* Legacy redirects — keep old URLs working */}
           <Route path="/eet" element={<EetImportsPage />} />
           <Route path="/csv" element={<CsvImportsPage />} />
           <Route path="/mod-import" element={<ModImportsPage />} />
