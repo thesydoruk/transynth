@@ -409,6 +409,8 @@ export const api = {
       q?: string;
       page?: number;
       pageSize?: number;
+      sort?: string;
+      order?: 'asc' | 'desc';
     }) => {
       const qs = new URLSearchParams();
       qs.set('modId', String(params.modId));
@@ -419,6 +421,8 @@ export const api = {
       if (params.q) qs.set('q', params.q);
       if (params.page) qs.set('page', String(params.page));
       if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+      if (params.sort) qs.set('sort', params.sort);
+      if (params.order) qs.set('order', params.order);
       return req<StringsResult>(`/api/strings?${qs}`);
     },
     signatures: (modId: number, srcLang?: string) => {

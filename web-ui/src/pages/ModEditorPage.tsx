@@ -43,6 +43,10 @@ const rowBg = (status: string | null): string => {
 /** Keys identifying each resizable column in the string grid. */
 type ColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
 
+/** Column keys that support server-side sorting (all except checkbox and actions). */
+type SortCol = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl';
+type SortDir = 'asc' | 'desc';
+
 export const ModEditorPage = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -56,6 +60,10 @@ export const ModEditorPage = () => {
   const [signature, setSignature] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  // Sorting
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   // Selection
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -124,7 +132,22 @@ export const ModEditorPage = () => {
       : { flex: 1, minWidth: 180, overflow: 'hidden' };
   }, [colWidths]);
 
-  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page];
+  /**
+   * Toggles sort direction for the given column, or activates sorting on it.
+   * Clicking the same column cycles: asc → desc → off.
+   */
+  const handleSort = useCallback((col: SortCol) => {
+    if (sortCol === col) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortCol(null); setSortDir('asc'); }
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+    setPage(1);
+  }, [sortCol, sortDir]);
+
+  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page, sortCol, sortDir];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
   const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
@@ -132,7 +155,7 @@ export const ModEditorPage = () => {
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
   const { data: strings, isLoading } = useQuery({
     queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE }),
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -593,28 +616,34 @@ export const ModEditorPage = () => {
                   <div className={`${styles.th} ${styles.colCheck}`}>
                     <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
                   </div>
-                  <div className={styles.th} style={colStyle('grup')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('grup')} onClick={() => handleSort('grup')}>
                     {t('modEditor.grup')}
+                    {sortCol === 'grup' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('grup', e)} />
                   </div>
-                  <div className={styles.th} style={colStyle('formid')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('formid')} onClick={() => handleSort('formid')}>
                     {t('modEditor.formId')}
+                    {sortCol === 'formid' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('formid', e)} />
                   </div>
-                  <div className={styles.th} style={colStyle('edid')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('edid')} onClick={() => handleSort('edid')}>
                     {t('modEditor.edid')}
+                    {sortCol === 'edid' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('edid', e)} />
                   </div>
-                  <div className={styles.th} style={colStyle('field')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('field')} onClick={() => handleSort('field')}>
                     {t('modEditor.field')}
+                    {sortCol === 'field' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('field', e)} />
                   </div>
-                  <div className={styles.th} style={colStyle('src')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('src')} onClick={() => handleSort('src')}>
                     {t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}
+                    {sortCol === 'src' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('src', e)} />
                   </div>
-                  <div className={styles.th} style={colStyle('transl')}>
+                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('transl')} onClick={() => handleSort('transl')}>
                     {t('modEditor.translationText', { lang: targetLang.toUpperCase() })}
+                    {sortCol === 'transl' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('transl', e)} />
                   </div>
                   <div className={styles.th} style={colStyle('act')}>

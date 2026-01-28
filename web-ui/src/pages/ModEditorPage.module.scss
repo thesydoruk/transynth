@@ -225,6 +225,19 @@
   overflow: hidden;
 }
 
+.sortable {
+  cursor: pointer;
+
+  &:hover {
+    color: #bbb;
+  }
+}
+
+.sortIcon {
+  font-size: 8px;
+  color: #aaa;
+}
+
 .td {
   padding: 5px 6px;
   vertical-align: top;

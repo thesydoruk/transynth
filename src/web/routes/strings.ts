@@ -29,6 +29,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       q?: string;
       page?: string;
       pageSize?: string;
+      sort?: string;
+      order?: string;
     };
   }>('/api/strings', async (req, reply) => {
     const modId = Number(req.query.modId);
@@ -45,6 +47,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       signature: req.query.signature,
       page: req.query.page ? Number(req.query.page) : 1,
       pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
+      sort: req.query.sort,
+      order: req.query.order === 'desc' ? 'desc' : req.query.order === 'asc' ? 'asc' : undefined,
     });
 
     return reply.send(result);

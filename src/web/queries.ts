@@ -239,6 +239,18 @@ export type StringsFilter = {
   signature?: string;
   page?: number;
   pageSize?: number;
+  sort?: string;
+  order?: 'asc' | 'desc';
+};
+
+/** Whitelist mapping from client-facing sort key to SQL column expression. */
+const SORT_COLUMNS: Record<string, string> = {
+  grup: 'r.signature',
+  formid: 'r.formid_hex',
+  edid: 'r.edid',
+  field: 'r.path',
+  src: 's.text_raw',
+  transl: 't.text',
 };
 
 export const listStrings = async (db: Tx, f: StringsFilter) => {
@@ -316,7 +328,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE
      ) q ON TRUE
      WHERE s.lang = $${srcLangIdx} AND ${where}
-     ORDER BY r.signature, r.path
+     ORDER BY ${SORT_COLUMNS[f.sort ?? ''] ? `${SORT_COLUMNS[f.sort!]} ${f.order === 'desc' ? 'DESC' : 'ASC'} NULLS LAST,` : ''} r.signature, r.path
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     allValues,
   );
