@@ -105,14 +105,14 @@ export const addTranslation = async (
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, model)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT(src_string_id, target_lang, text) DO NOTHING
+     ON CONFLICT(src_string_id, target_lang, md5(text)) DO NOTHING
      RETURNING id`,
     [srcStringId, targetLang, text, status, confidence, provenance, model ?? null],
   );
   if (rows.length > 0) return rows[0].id;
   // ON CONFLICT DO NOTHING — fetch existing
   const { rows: existing } = await db.query(
-    `SELECT id FROM translations WHERE src_string_id = $1 AND target_lang = $2 AND text = $3`,
+    `SELECT id FROM translations WHERE src_string_id = $1 AND target_lang = $2 AND md5(text) = md5($3)`,
     [srcStringId, targetLang, text],
   );
   return existing[0]?.id ?? 0;

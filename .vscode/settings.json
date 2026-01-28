@@ -29,10 +29,8 @@
   // ── Search / explorer exclusions ────────────────────────────
   "search.exclude": {
     "legacy/": true,
-    "data/log/": true,
-    "mod-uploads/": true,
-    "eet-uploads/": true,
-    "csv-uploads/": true
+    "logs/": true,
+    "uploads/": true
   },
   "files.exclude": {
     "_codemod*": true,

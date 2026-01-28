@@ -50,9 +50,13 @@ CREATE TABLE IF NOT EXISTS translations (
   provenance TEXT,
   model TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(src_string_id, target_lang, text)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Use md5(text) in the unique index to avoid btree row size limit
+-- on long translation texts (game dialogue, descriptions, etc.)
+CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_text_key
+  ON translations(src_string_id, target_lang, md5(text));
 
 CREATE TABLE IF NOT EXISTS translation_revisions (
   id SERIAL PRIMARY KEY,
@@ -164,7 +168,8 @@ CREATE TABLE IF NOT EXISTS mod_imports (
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);
 CREATE INDEX IF NOT EXISTS idx_records_mod ON records(mod_id);
-CREATE INDEX IF NOT EXISTS idx_records_anchors ON records(edid, signature, path_simplified, hash_norm);
+CREATE INDEX IF NOT EXISTS idx_records_edid ON records(edid) WHERE edid IS NOT NULL AND edid <> '';
+CREATE INDEX IF NOT EXISTS idx_records_hash_norm ON records USING HASH(hash_norm) WHERE hash_norm IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
 CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);

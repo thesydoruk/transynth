@@ -60,10 +60,8 @@ services:
       PORT: "3000"
       OLLAMA_BASE_URL: "http://host.docker.internal:11434"
     volumes:
-      - ./data:/app/data          # persist logs + upload storage
-      - ./mod-uploads:/app/mod-uploads
-      - ./eet-uploads:/app/eet-uploads
-      - ./csv-uploads:/app/csv-uploads
+      - ./logs:/app/logs            # persist logs
+      - ./uploads:/app/uploads      # persist uploads (eet, csv, mod)
     depends_on:
       db:
         condition: service_healthy

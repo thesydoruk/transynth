@@ -26,7 +26,7 @@ import {
   isPlugin,
 } from '../modImportService.js';
 
-const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './mod-uploads');
+const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
 
 const ensureUploadDir = () => {
   if (!fs.existsSync(MOD_UPLOAD_DIR)) fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
@@ -173,6 +173,11 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.status(404).send({ error: 'Plugin file not found on disk' });
     }
 
+    /* Disable socket timeout — imports can run for minutes on large files. */
+    req.raw.socket.setTimeout(0);
+
+    reply.hijack();
+
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -180,7 +185,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     });
 
     const send = (data: object) => {
-      reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      try { reply.raw.write(`data: ${JSON.stringify(data)}\n\n`); } catch { /* client disconnected */ }
     };
 
     (async () => {
@@ -190,9 +195,10 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
         });
         send({ type: 'done', job: { ...result, running: false } });
       } catch (err: unknown) {
+        log.error(`[Mod SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`);
         send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
       } finally {
-        reply.raw.end();
+        try { reply.raw.end(); } catch { /* already closed */ }
       }
     })();
   });

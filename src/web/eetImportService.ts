@@ -180,6 +180,9 @@ export const runImport = async (
   let imported = job.imported_records;
   let batchCount = 0;
   let inTx = false;
+  const startTime = Date.now();
+
+  log.info(`[EET Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount}`);
 
   try {
     for (const rec of iterEetRecords(buf, header.recordsOffset)) {
@@ -209,6 +212,8 @@ export const runImport = async (
         await updateProgress(client, job.id, imported);
         await client.query('COMMIT');
         inTx = false;
+        const pct = ((imported / job.total_records) * 100).toFixed(1);
+        log.info(`[EET Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
         onProgress?.(imported, job.total_records);
       }
     }
@@ -217,12 +222,15 @@ export const runImport = async (
 
     if (!state.cancel && !state.pause) {
       await markDone(client, job.id, imported);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      log.info(`[EET Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
     if (inTx) { try { await client.query('ROLLBACK'); } catch { /* ignore */ } }
     const errMsg = err instanceof Error ? err.message : String(err);
     await markFailed(client, job.id, imported, errMsg);
+    log.error(`[EET Import #${job.id}] Failed at ${imported}/${job.total_records}: ${errMsg}`);
     throw err;
   } finally {
     client.release();

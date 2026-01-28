@@ -21,7 +21,7 @@ const enabled = (lvl: LogLevel): boolean => {
 }
 
 // ── File transport ───────────────────────────────────────────────────────────
-const logDir = process.env.LOG_DIR || './data/log';
+const logDir = process.env.LOG_DIR || './logs';
 
 const ensureLogDir = (): void => {
   if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });

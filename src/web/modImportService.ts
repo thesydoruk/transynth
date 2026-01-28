@@ -396,6 +396,9 @@ export const runModImport = async (
 
   const state: ActiveImport = { cancel: false, pause: false };
   activeImports.set(job.id, state);
+  const startTime = Date.now();
+
+  log.info(`[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records}`);
 
   try {
     const esp = new EspReader(espPath);
@@ -456,6 +459,8 @@ export const runModImport = async (
             await updateProgress(db, job.id, imported);
             await db.query('COMMIT');
             inTx = false;
+            const pct = ((imported / totalAll) * 100).toFixed(1);
+            log.info(`[Mod Import #${job.id}] Progress: ${imported}/${totalAll} (${pct}%)`);
             onProgress?.(imported, totalAll);
           }
         }
@@ -495,6 +500,8 @@ export const runModImport = async (
           await updateProgress(db, job.id, imported);
           await db.query('COMMIT');
           inTx = false;
+          const pct = ((imported / csvRows.length) * 100).toFixed(1);
+          log.info(`[Mod Import #${job.id}] Progress: ${imported}/${csvRows.length} (${pct}%)`);
           onProgress?.(imported, csvRows.length);
         }
       }
@@ -504,9 +511,13 @@ export const runModImport = async (
 
     if (!state.cancel && !state.pause) {
       await markDone(db, job.id, imported);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      log.info(`[Mod Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    log.error(`[Mod Import #${job.id}] Failed: ${errMsg}`);
     await markFailed(db, job.id, job.imported_records);
     throw err;
   } finally {

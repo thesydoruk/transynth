@@ -4,7 +4,7 @@
 /dist/
 
 # Log files
-/data/log/
+/logs/
 
 # SQLite database files
 *.sqlite
@@ -31,6 +31,4 @@ ml_*/
 .env
 
 # Upload directories
-/csv-uploads/
-/eet-uploads/
-/mod-uploads/
+/uploads/

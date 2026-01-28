@@ -258,6 +258,9 @@ export const runCsvImport = async (
   let imported = job.imported_records;
   let batchCount = 0;
   let inTx = false;
+  const startTime = Date.now();
+
+  log.info(`[CSV Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount}`);
 
   try {
     for (let i = 0; i < records.length; i++) {
@@ -286,6 +289,8 @@ export const runCsvImport = async (
         await updateProgress(db, job.id, imported);
         await db.query('COMMIT');
         inTx = false;
+        const pct = ((imported / job.total_records) * 100).toFixed(1);
+        log.info(`[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
         onProgress?.(imported, job.total_records);
       }
     }
@@ -294,10 +299,14 @@ export const runCsvImport = async (
 
     if (!state.cancel && !state.pause) {
       await markDone(db, job.id, imported);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
     if (inTx) { try { await db.query('ROLLBACK'); } catch { /* ignore */ } }
+    const errMsg = err instanceof Error ? err.message : String(err);
+    log.error(`[CSV Import #${job.id}] Failed at ${imported}/${job.total_records}: ${errMsg}`);
     await markFailed(db, job.id, imported);
     throw err;
   } finally {
