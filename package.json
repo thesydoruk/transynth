@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/cli/translateMod.ts",
+    "dev": "concurrently -k -n db,api,ui -c blue,green,magenta \"docker compose up db\" \"wait-on tcp:5432 && tsx watch src/web/server.ts\" \"wait-on tcp:3000 && npm --prefix web-ui run dev\"",
     "db:init": "tsx scripts/dbInit.ts",
     "learn:pairs": "tsx src/cli/learnFromMods.ts",
     "learn:multilang": "tsx src/cli/learnFromMultilangMod.ts",
@@ -51,11 +51,13 @@
     "@types/pg": "^8.20.0",
     "@types/yargs": "^17.0.33",
     "@vitest/coverage-v8": "^4.1.1",
+    "concurrently": "^9.2.1",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "wait-on": "^9.0.4"
   }
 }

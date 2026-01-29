@@ -243,7 +243,9 @@
     "title": "Імпорт",
     "tabEet": "EET",
     "tabCsv": "CSV",
-    "tabMod": "Мод"
+    "tabMod": "Мод",
+    "importAll": "Імпортувати все ({{count}})",
+    "noFiles": "Файлів ще не завантажено. Завантажте EET, CSV або файли плагінів для початку."
   },
   "eetImport": {
     "title": "Імпорт EET",

@@ -243,7 +243,9 @@
     "title": "Imports",
     "tabEet": "EET",
     "tabCsv": "CSV",
-    "tabMod": "Mod"
+    "tabMod": "Mod",
+    "importAll": "Import all ({{count}})",
+    "noFiles": "No files uploaded yet. Upload EET, CSV, or plugin files to get started."
   },
   "eetImport": {
     "title": "EET Imports",

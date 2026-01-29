@@ -1,4 +1,4 @@
-/* ── ImportPage — shared SCSS Module for EET / CSV / Mod import pages ────── */
+/* ── ImportPage — unified import list SCSS Module ───────────────────────── */
 
 /* ── Page layout ────────────────────────────────────────────────────────── */
 
@@ -21,44 +21,20 @@
   margin-bottom: 16px;
 }
 
-/* ── Tab switcher ────────────────────────────────────────────────────────── */
+/* ── Type badge (EET / CSV / MOD indicator in each row) ─────────────────── */
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #333;
-  padding-bottom: 0;
-}
-
-.tab {
-  padding: 8px 20px;
-  background: transparent;
-  color: #999;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: -1px;
-  transition: color 0.15s, border-color 0.15s;
-
-  &:hover {
-    color: #ccc;
-  }
-}
-
-.tabActive {
-  composes: tab;
-  color: #90caf9;
-  border-bottom-color: #1565c0;
-}
-
-/* Used while section data is loading (replaces full-page center spinner) */
-.sectionLoading {
-  color: #bbb;
-  padding: 32px 0;
-  text-align: center;
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
 }
 
 .subtitle {
@@ -127,8 +103,8 @@
 
 .rowLeft {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
