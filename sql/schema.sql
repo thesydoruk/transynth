@@ -13,13 +13,13 @@ CREATE TABLE IF NOT EXISTS mods (
 CREATE TABLE IF NOT EXISTS records (
   id SERIAL PRIMARY KEY,
   mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  formid_hex TEXT,
+  formid_hex TEXT NOT NULL DEFAULT '',
   signature TEXT,
   path TEXT,
   path_simplified TEXT,
   edid TEXT,
   hash_norm TEXT,
-  UNIQUE(mod_id, signature, path)
+  UNIQUE(mod_id, signature, path, formid_hex)
 );
 
 CREATE TABLE IF NOT EXISTS strings (

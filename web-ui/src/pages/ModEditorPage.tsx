@@ -675,7 +675,7 @@ export const ModEditorPage = () => {
                         <div className={styles.tdSig} style={colStyle('grup')}>{row.signature}</div>
                         <div className={styles.tdFid} style={colStyle('formid')}>{row.formid_hex}</div>
                         <div className={styles.tdEdidCell} style={colStyle('edid')} title={row.edid ?? ''}>{row.edid ?? ''}</div>
-                        <div className={styles.tdField} style={colStyle('field')}>{row.path?.split('.').pop() ?? ''}</div>
+                        <div className={styles.tdField} style={colStyle('field')}>{row.path?.split('\\').pop() ?? ''}</div>
                         <div className={styles.tdText} style={colStyle('src')} title={row.source}>{row.source}</div>
                         <div className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty} style={colStyle('transl')} title={row.translation ?? ''}>
                           {row.translation ?? '—'}

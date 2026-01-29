@@ -66,16 +66,16 @@ export const upsertRecord = async (
   db: Tx, modId: number, signature: string, path: string, pathSimplified: string,
   edid: string | null, hashNorm: string | null, formidHex: string | null,
 ): Promise<number> => {
+  const fid = formidHex ?? '';
   const { rows } = await db.query(
     `INSERT INTO records(mod_id, signature, path, path_simplified, edid, hash_norm, formid_hex)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT(mod_id, signature, path) DO UPDATE SET
+     ON CONFLICT(mod_id, signature, path, formid_hex) DO UPDATE SET
        path_simplified = EXCLUDED.path_simplified,
        edid = COALESCE(EXCLUDED.edid, records.edid),
-       hash_norm = EXCLUDED.hash_norm,
-       formid_hex = COALESCE(EXCLUDED.formid_hex, records.formid_hex)
+       hash_norm = EXCLUDED.hash_norm
      RETURNING id`,
-    [modId, signature, path, pathSimplified, edid, hashNorm, formidHex],
+    [modId, signature, path, pathSimplified, edid, hashNorm, fid],
   );
   return rows[0].id;
 }
