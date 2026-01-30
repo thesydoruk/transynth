@@ -681,6 +681,72 @@
 
 /* ── Context menu ────────────────────────────────────────────── */
 
+/* ── Keyboard shortcuts overlay ──────────────────────────────────────────── */
+
+.shortcutsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shortcutsPanel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px 28px;
+  min-width: 360px;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+.shortcutsTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ccc;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.shortcutsTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  td {
+    padding: 4px 0;
+    font-size: 12px;
+    color: #aaa;
+    border-bottom: 1px solid #222;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.kbdCell {
+  white-space: nowrap;
+  width: 160px;
+  text-align: right;
+  padding-right: 16px !important;
+
+  kbd {
+    display: inline-block;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    color: #ddd;
+    margin: 0 1px;
+  }
+}
+
 /** Fixed-position dropdown that appears on right-click over a grid row. */
 .ctxMenu {
   position: fixed;

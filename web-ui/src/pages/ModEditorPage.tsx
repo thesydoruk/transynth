@@ -97,6 +97,9 @@ export const ModEditorPage = () => {
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
 
+  // Keyboard shortcuts help panel
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
   // Context menu state — position and the row it was triggered on
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
@@ -374,7 +377,7 @@ export const ModEditorPage = () => {
   // ── Keyboard shortcuts ──
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Skip when typing in input/textarea/select (except Escape)
+      // Skip when typing in input/textarea/select (except Escape, Ctrl+S, Ctrl+Shift combos)
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
 
@@ -384,6 +387,13 @@ export const ModEditorPage = () => {
         if (ctxMenu) { setCtxMenu(null); return; }
         if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
         else if (selected.size > 0) setSelected(new Set());
+        return;
+      }
+
+      // Ctrl+S — save translation (works even inside textarea)
+      if (e.key === 's' && e.ctrlKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleSave();
         return;
       }
 
@@ -405,8 +415,39 @@ export const ModEditorPage = () => {
         return;
       }
 
-      // Arrow keys — navigate rows (only when not in a text field)
+      // Ctrl+Shift+C — copy source to translation
+      if (e.key === 'C' && e.ctrlKey && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleCopySource();
+        return;
+      }
+
+      // Ctrl+Shift+X — clear translation
+      if (e.key === 'X' && e.ctrlKey && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (activeRow) handleClear(activeRow);
+        return;
+      }
+
+      // Ctrl+Shift+E — toggle detail panel (open/close)
+      if (e.key === 'E' && e.ctrlKey && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
+        else if (strings?.rows.length) handleRowClick(strings.rows[0]);
+        return;
+      }
+
+      // ? — toggle keyboard shortcuts help (only outside text fields)
+      if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
+
+      // Remaining shortcuts only work outside text fields
       if (isInput) return;
+
+      // Arrow keys — navigate rows
       if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && strings?.rows.length) {
         e.preventDefault();
         const rows = strings.rows;
@@ -418,12 +459,70 @@ export const ModEditorPage = () => {
           nextIdx = curIdx > 0 ? curIdx - 1 : rows.length - 1;
         }
         handleRowClick(rows[nextIdx]);
+        return;
+      }
+
+      // N — jump to next untranslated row
+      if (e.key === 'n' && !e.ctrlKey && !e.altKey && !e.shiftKey && strings?.rows.length) {
+        e.preventDefault();
+        const rows = strings.rows;
+        const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+        // Search forward from current position, wrapping around
+        for (let i = 1; i <= rows.length; i++) {
+          const idx = (curIdx + i) % rows.length;
+          if (!rows[idx].translation) { handleRowClick(rows[idx]); break; }
+        }
+        return;
+      }
+
+      // Enter — focus the translation textarea in detail panel
+      if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (activeRow) {
+          e.preventDefault();
+          const textarea = document.querySelector<HTMLTextAreaElement>(`.${styles.translArea}`);
+          textarea?.focus();
+        }
+        return;
+      }
+
+      // Space — toggle selection on active row
+      if (e.key === ' ' && !e.ctrlKey && !e.altKey && !e.shiftKey && activeRow) {
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(activeRow.string_id)) next.delete(activeRow.string_id);
+          else next.add(activeRow.string_id);
+          return next;
+        });
+        return;
+      }
+
+      // Ctrl+A — select / deselect all rows on current page
+      if (e.key === 'a' && e.ctrlKey && !e.shiftKey && !e.altKey && strings?.rows.length) {
+        e.preventDefault();
+        toggleAll();
+        return;
+      }
+
+      // PageDown — next page
+      if (e.key === 'PageDown' && strings) {
+        e.preventDefault();
+        const totalPages = Math.ceil(strings.total / PAGE_SIZE);
+        if (page < totalPages) setPage(page + 1);
+        return;
+      }
+
+      // PageUp — previous page
+      if (e.key === 'PageUp' && strings) {
+        e.preventDefault();
+        if (page > 1) setPage(page - 1);
+        return;
       }
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeRow, selected, strings, ctxMenu]);
+  }, [activeRow, selected, strings, ctxMenu, page]);
 
   // Debounced autosave: triggers 800ms after typing stops
   useEffect(() => {
@@ -618,6 +717,7 @@ export const ModEditorPage = () => {
           {exportProject.isPending ? t('modEditor.exporting') : t('modEditor.exportZip')}
         </button>
         <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
+        <button onClick={() => setShowShortcuts((v) => !v)} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
         {selected.size > 0 && (
           <>
             {translateProgress
@@ -891,6 +991,33 @@ export const ModEditorPage = () => {
       {/* Search-Replace Modal */}
       {showSearchReplace && (
         <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
+      )}
+
+      {/* Keyboard shortcuts help overlay */}
+      {showShortcuts && (
+        <div className={styles.shortcutsOverlay} onClick={() => setShowShortcuts(false)}>
+          <div className={styles.shortcutsPanel} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.shortcutsTitle}>{t('modEditor.shortcuts')}</div>
+            <table className={styles.shortcutsTable}>
+              <tbody>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>{t('modEditor.shortcutSave')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutApprove')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td>{t('modEditor.shortcutReject')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>{t('modEditor.shortcutCopySource')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd></td><td>{t('modEditor.shortcutClear')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>{t('modEditor.shortcutToggleDetail')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>↑</kbd> <kbd>↓</kbd></td><td>{t('modEditor.shortcutNavRows')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>N</kbd></td><td>{t('modEditor.shortcutNextUntranslated')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Enter</kbd></td><td>{t('modEditor.shortcutFocusTextarea')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Space</kbd></td><td>{t('modEditor.shortcutToggleSelect')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutSelectAll')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>PgDn</kbd> <kbd>PgUp</kbd></td><td>{t('modEditor.shortcutPageNav')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>Esc</kbd></td><td>{t('modEditor.shortcutEscape')}</td></tr>
+                <tr><td className={styles.kbdCell}><kbd>?</kbd></td><td>{t('modEditor.shortcuts')}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* ── Context menu ── */}

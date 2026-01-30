@@ -151,7 +151,21 @@
     "exportBa2Title": "Запакувати STRINGS в BA2 архів",
     "exportZipTitle": "Завантажити повний пакет локалізації (BA2 + ESP) як ZIP",
     "showDraftsTitle": "Показати лише чернетки для перевірки",
-    "autoFillTmTitle": "Автозаповнення з TM"
+    "autoFillTmTitle": "Автозаповнення з TM",
+    "shortcuts": "Гарячі клавіші",
+    "shortcutSave": "Зберегти переклад",
+    "shortcutApprove": "Підтвердити",
+    "shortcutReject": "Відхилити",
+    "shortcutCopySource": "Копіювати оригінал → переклад",
+    "shortcutClear": "Очистити переклад",
+    "shortcutToggleDetail": "Відкрити/закрити деталі",
+    "shortcutNextUntranslated": "Наступний неперекладений",
+    "shortcutFocusTextarea": "Фокус на поле перекладу",
+    "shortcutToggleSelect": "Вибрати/зняти рядок",
+    "shortcutSelectAll": "Вибрати / зняти все",
+    "shortcutNavRows": "Навігація рядками",
+    "shortcutPageNav": "Наступна / попередня сторінка",
+    "shortcutEscape": "Закрити / скасувати"
   },
   "ctx": {
     "approve": "Підтвердити",

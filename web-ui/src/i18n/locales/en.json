@@ -151,7 +151,21 @@
     "exportBa2Title": "Pack localized STRINGS into BA2 archive",
     "exportZipTitle": "Download complete localization package (BA2 + ESP) as ZIP",
     "showDraftsTitle": "Show only drafts for review",
-    "autoFillTmTitle": "Auto-fill from TM"
+    "autoFillTmTitle": "Auto-fill from TM",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcutSave": "Save translation",
+    "shortcutApprove": "Approve",
+    "shortcutReject": "Reject",
+    "shortcutCopySource": "Copy source → translation",
+    "shortcutClear": "Clear translation",
+    "shortcutToggleDetail": "Toggle detail panel",
+    "shortcutNextUntranslated": "Next untranslated",
+    "shortcutFocusTextarea": "Focus translation field",
+    "shortcutToggleSelect": "Toggle row selection",
+    "shortcutSelectAll": "Select / deselect all",
+    "shortcutNavRows": "Navigate rows",
+    "shortcutPageNav": "Next / prev page",
+    "shortcutEscape": "Close / cancel"
   },
   "ctx": {
     "approve": "Approve",
