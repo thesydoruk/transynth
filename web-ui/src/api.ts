@@ -407,6 +407,12 @@ export const api = {
       status?: string;
       signature?: string;
       q?: string;
+      grup?: string;
+      formid?: string;
+      edid?: string;
+      field?: string;
+      src?: string;
+      transl?: string;
       page?: number;
       pageSize?: number;
       sort?: string;
@@ -419,6 +425,12 @@ export const api = {
       if (params.status) qs.set('status', params.status);
       if (params.signature) qs.set('signature', params.signature);
       if (params.q) qs.set('q', params.q);
+      if (params.grup) qs.set('grup', params.grup);
+      if (params.formid) qs.set('formid', params.formid);
+      if (params.edid) qs.set('edid', params.edid);
+      if (params.field) qs.set('field', params.field);
+      if (params.src) qs.set('src', params.src);
+      if (params.transl) qs.set('transl', params.transl);
       if (params.page) qs.set('page', String(params.page));
       if (params.pageSize) qs.set('pageSize', String(params.pageSize));
       if (params.sort) qs.set('sort', params.sort);

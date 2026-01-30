@@ -238,6 +238,38 @@
   color: #aaa;
 }
 
+/* ── Per-column filter row ──────────────────────────────────── */
+
+.filterRow {
+  display: flex;
+  position: sticky;
+  top: 27px;            /* sits right below .gridHeader */
+  z-index: 2;
+  background: #161616;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 2px 0;
+}
+
+.filterInput {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  color: #ccc;
+  font-size: 10px;
+  padding: 2px 4px;
+  outline: none;
+
+  &::placeholder {
+    color: #555;
+    font-style: italic;
+  }
+
+  &:focus {
+    border-color: #4caf50;
+  }
+}
+
 .td {
   padding: 5px 6px;
   vertical-align: top;

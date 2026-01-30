@@ -61,6 +61,14 @@ export const ModEditorPage = () => {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
 
+  // Per-column filters (filter row above the grid header)
+  const [grupFilter, setGrupFilter] = useState('');
+  const [formidFilter, setFormidFilter] = useState('');
+  const [edidFilter, setEdidFilter] = useState('');
+  const [fieldFilter, setFieldFilter] = useState('');
+  const [srcFilter, setSrcFilter] = useState('');
+  const [translFilter, setTranslFilter] = useState('');
+
   // Sorting
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -168,7 +176,7 @@ export const ModEditorPage = () => {
     setPage(1);
   }, [sortCol, sortDir]);
 
-  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, page, sortCol, sortDir];
+  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
   const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
@@ -176,7 +184,7 @@ export const ModEditorPage = () => {
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
   const { data: strings, isLoading } = useQuery({
     queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -722,6 +730,30 @@ export const ModEditorPage = () => {
                     {t('modEditor.actions')}
                     <span className={styles.resizeHandle} onMouseDown={(e) => startResize('act', e)} />
                   </div>
+                </div>
+
+                {/* per-column filter row */}
+                <div className={styles.filterRow}>
+                  <div className={styles.colCheck} />
+                  <div style={colStyle('grup')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.grup')} value={grupFilter} onChange={(e) => { setGrupFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('formid')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.formId')} value={formidFilter} onChange={(e) => { setFormidFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('edid')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.edid')} value={edidFilter} onChange={(e) => { setEdidFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('field')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.field')} value={fieldFilter} onChange={(e) => { setFieldFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('src')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.sourceText', { lang: srcLang.toUpperCase() })} value={srcFilter} onChange={(e) => { setSrcFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('transl')}>
+                    <input className={styles.filterInput} placeholder={t('modEditor.translationText', { lang: targetLang.toUpperCase() })} value={translFilter} onChange={(e) => { setTranslFilter(e.target.value); setPage(1); }} />
+                  </div>
+                  <div style={colStyle('act')} />
                 </div>
                 {/* Virtualized rows */}
                 <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>

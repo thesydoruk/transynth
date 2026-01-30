@@ -18,7 +18,7 @@ import { CONFIG } from '../../config.js';
 import { log } from '../../logger.js';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
-  // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&page=&pageSize=
+  // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=
   app.get<{
     Querystring: {
       modId?: string;
@@ -27,6 +27,12 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       status?: string;
       signature?: string;
       q?: string;
+      grup?: string;
+      formid?: string;
+      edid?: string;
+      field?: string;
+      src?: string;
+      transl?: string;
       page?: string;
       pageSize?: string;
       sort?: string;
@@ -45,6 +51,12 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       status: req.query.status,
       query: req.query.q,
       signature: req.query.signature,
+      grup: req.query.grup,
+      formid: req.query.formid,
+      edid: req.query.edid,
+      field: req.query.field,
+      src: req.query.src,
+      transl: req.query.transl,
       page: req.query.page ? Number(req.query.page) : 1,
       pageSize: req.query.pageSize ? Number(req.query.pageSize) : 50,
       sort: req.query.sort,

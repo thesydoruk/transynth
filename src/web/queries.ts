@@ -237,6 +237,18 @@ export type StringsFilter = {
   status?: string;
   query?: string;
   signature?: string;
+  /** Per-column filter: record signature (GRUP) — case-insensitive substring match */
+  grup?: string;
+  /** Per-column filter: formid_hex — case-insensitive substring match */
+  formid?: string;
+  /** Per-column filter: edid — case-insensitive substring match */
+  edid?: string;
+  /** Per-column filter: path (FIELD) — case-insensitive substring match */
+  field?: string;
+  /** Per-column filter: source text — case-insensitive substring match */
+  src?: string;
+  /** Per-column filter: translation text — case-insensitive substring match */
+  transl?: string;
   page?: number;
   pageSize?: number;
   sort?: string;
@@ -283,6 +295,38 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   if (f.query) {
     conditions.push(`(s.text_raw LIKE $${idx} OR r.formid_hex LIKE $${idx} OR r.edid LIKE $${idx})`);
     values.push(`%${f.query}%`);
+    idx++;
+  }
+
+  /* Per-column filters (filter row) */
+  if (f.grup) {
+    conditions.push(`r.signature ILIKE $${idx}`);
+    values.push(`%${f.grup}%`);
+    idx++;
+  }
+  if (f.formid) {
+    conditions.push(`r.formid_hex ILIKE $${idx}`);
+    values.push(`%${f.formid}%`);
+    idx++;
+  }
+  if (f.edid) {
+    conditions.push(`r.edid ILIKE $${idx}`);
+    values.push(`%${f.edid}%`);
+    idx++;
+  }
+  if (f.field) {
+    conditions.push(`r.path ILIKE $${idx}`);
+    values.push(`%${f.field}%`);
+    idx++;
+  }
+  if (f.src) {
+    conditions.push(`s.text_raw ILIKE $${idx}`);
+    values.push(`%${f.src}%`);
+    idx++;
+  }
+  if (f.transl) {
+    conditions.push(`t.text ILIKE $${idx}`);
+    values.push(`%${f.transl}%`);
     idx++;
   }
 
