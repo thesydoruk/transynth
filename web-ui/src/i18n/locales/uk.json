@@ -153,6 +153,21 @@
     "showDraftsTitle": "Показати лише чернетки для перевірки",
     "autoFillTmTitle": "Автозаповнення з TM"
   },
+  "ctx": {
+    "approve": "Підтвердити",
+    "reject": "Відхилити",
+    "clear": "Очистити переклад",
+    "copySource": "Копіювати оригінал → переклад",
+    "uppercase": "ВЕРХНІЙ РЕГІСТР",
+    "lowercase": "нижній регістр",
+    "capitalize": "Перша літера велика",
+    "trim": "Видалити зайві пробіли",
+    "bulkGroup": "Масові дії ({{count}})",
+    "bulkApprove": "Підтвердити {{count}} рядків",
+    "bulkReject": "Відхилити {{count}} рядків",
+    "bulkTranslate": "Авто-переклад {{count}} рядків",
+    "bulkCopySource": "Копіювати оригінал → переклад ({{count}})"
+  },
   "dashboard": {
     "title": "Панель",
     "loadingDashboard": "Завантаження панелі…",

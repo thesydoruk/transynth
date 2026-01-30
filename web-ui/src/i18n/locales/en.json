@@ -153,8 +153,22 @@
     "showDraftsTitle": "Show only drafts for review",
     "autoFillTmTitle": "Auto-fill from TM"
   },
+  "ctx": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "clear": "Clear translation",
+    "copySource": "Copy source → translation",
+    "uppercase": "UPPERCASE",
+    "lowercase": "lowercase",
+    "capitalize": "Capitalize first letter",
+    "trim": "Trim whitespace",
+    "bulkGroup": "Bulk ({{count}})",
+    "bulkApprove": "Approve {{count}} rows",
+    "bulkReject": "Reject {{count}} rows",
+    "bulkTranslate": "Auto-translate {{count}} rows",
+    "bulkCopySource": "Copy source → translation ({{count}})"
+  },
   "dashboard": {
-    "title": "Dashboard",
     "loadingDashboard": "Loading dashboard…",
     "cardStrings": "Strings",
     "cardTranslated": "Translated",

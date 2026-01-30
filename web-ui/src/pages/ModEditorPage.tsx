@@ -89,6 +89,27 @@ export const ModEditorPage = () => {
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
 
+  // Context menu state — position and the row it was triggered on
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
+  const ctxMenuRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * After the context menu mounts, measures it and flips horizontally/vertically
+   * so the menu stays fully visible within the viewport.
+   */
+  useEffect(() => {
+    if (!ctxMenu || !ctxMenuRef.current) return;
+    const el = ctxMenuRef.current;
+    const rect = el.getBoundingClientRect();
+    let x = ctxMenu.x;
+    let y = ctxMenu.y;
+    if (x + rect.width > window.innerWidth) x = Math.max(0, x - rect.width);
+    if (y + rect.height > window.innerHeight) y = Math.max(0, y - rect.height);
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.opacity = '1';
+  }, [ctxMenu]);
+
   // Resizable column widths in px. null = flex-fill (auto-size). Updated while dragging.
   const [colWidths, setColWidths] = useState<Record<ColKey, number | null>>({
     grup: 52, formid: 70, edid: 160, field: 50, src: null, transl: null, act: 170,
@@ -349,9 +370,10 @@ export const ModEditorPage = () => {
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
 
-      // Escape — close detail panel or clear selection
+      // Escape — close context menu, detail panel, or clear selection
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (ctxMenu) { setCtxMenu(null); return; }
         if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
         else if (selected.size > 0) setSelected(new Set());
         return;
@@ -393,7 +415,7 @@ export const ModEditorPage = () => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeRow, selected, strings]);
+  }, [activeRow, selected, strings, ctxMenu]);
 
   // Debounced autosave: triggers 800ms after typing stops
   useEffect(() => {
@@ -473,6 +495,56 @@ export const ModEditorPage = () => {
       translateInFlight.current = false;
     }
   }
+
+  // ── Context menu handlers ──
+
+  /** Opens context menu at mouse position for the given row. */
+  const handleContextMenu = useCallback((e: React.MouseEvent, row: StringRow) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, row });
+  }, []);
+
+  /** Closes the context menu. */
+  const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
+
+  /** Close context menu when clicking outside. */
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = () => setCtxMenu(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [ctxMenu]);
+
+  /**
+   * Applies a text transform function to one or many rows' translations.
+   * If multiple rows are selected and the right-clicked row is among them,
+   * the transform applies to all selected rows. Otherwise only to the clicked row.
+   */
+  const applyTextTransform = useCallback(async (row: StringRow, transform: (text: string) => string) => {
+    const targetRows = (selected.size > 1 && selected.has(row.string_id))
+      ? strings?.rows.filter((r) => selected.has(r.string_id) && r.translation) ?? []
+      : row.translation ? [row] : [];
+    for (const r of targetRows) {
+      const newText = transform(r.translation!);
+      if (newText !== r.translation) {
+        await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
+      }
+    }
+    qc.invalidateQueries({ queryKey: ['strings', modId] });
+    void refetchStats();
+  }, [selected, strings, targetLang, qc, modId, refetchStats]);
+
+  /** Copies the source text to translation for single or multiple rows. */
+  const ctxCopySource = useCallback(async (row: StringRow) => {
+    const targetRows = (selected.size > 1 && selected.has(row.string_id))
+      ? strings?.rows.filter((r) => selected.has(r.string_id)) ?? []
+      : [row];
+    for (const r of targetRows) {
+      await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
+    }
+    qc.invalidateQueries({ queryKey: ['strings', modId] });
+    void refetchStats();
+  }, [selected, strings, targetLang, qc, modId, refetchStats]);
 
   const totalPages = strings ? Math.ceil(strings.total / PAGE_SIZE) : 1;
 
@@ -668,6 +740,7 @@ export const ModEditorPage = () => {
                           outline: isActive ? '1px solid #aaa' : 'none',
                         }}
                         onClick={() => handleRowClick(row)}
+                        onContextMenu={(e) => handleContextMenu(e, row)}
                       >
                         <div className={`${styles.td} ${styles.colCheck}`} onClick={(e) => toggleRow(row, e)}>
                           <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
@@ -787,6 +860,94 @@ export const ModEditorPage = () => {
       {showSearchReplace && (
         <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
       )}
+
+      {/* ── Context menu ── */}
+      {ctxMenu && (() => {
+        const row = ctxMenu.row;
+        const hasTrans = !!row.translation;
+        const hasTransId = !!row.translation_id;
+        const isBulk = selected.size > 1 && selected.has(row.string_id);
+        const bulkCount = selected.size;
+        return (
+          <div
+            ref={ctxMenuRef}
+            className={styles.ctxMenu}
+            style={{ top: ctxMenu.y, left: ctxMenu.x, opacity: 0 }}
+            onClick={closeCtxMenu}
+          >
+            {/* ── Status group ── */}
+            {hasTrans && hasTransId && row.status !== 'reviewed' && row.status !== 'human' && (
+              <button className={styles.ctxItem} onClick={() => handleApprove(row)}>
+                <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
+                <span className={styles.ctxLabel}>{t('ctx.approve')}</span>
+                <span className={styles.ctxKey}>Ctrl+Shift+A</span>
+              </button>
+            )}
+            {hasTrans && hasTransId && row.status !== 'rejected' && (
+              <button className={styles.ctxItem} onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>
+                <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
+                <span className={styles.ctxLabel}>{t('ctx.reject')}</span>
+                <span className={styles.ctxKey}>Ctrl+Shift+R</span>
+              </button>
+            )}
+            <button className={styles.ctxItem} onClick={() => handleClear(row)}>
+              <span className={styles.ctxIcon}>⌫</span>
+              <span className={styles.ctxLabel}>{t('ctx.clear')}</span>
+            </button>
+            <button className={styles.ctxItem} onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>
+              <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
+              <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
+            </button>
+
+            {/* ── Text utilities group ── */}
+            {hasTrans && (
+              <>
+                <div className={styles.ctxSep} />
+                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.toUpperCase())}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇧</span>
+                  <span className={styles.ctxLabel}>{t('ctx.uppercase')}</span>
+                </button>
+                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.toLowerCase())}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇩</span>
+                  <span className={styles.ctxLabel}>{t('ctx.lowercase')}</span>
+                </button>
+                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.charAt(0).toUpperCase() + tx.slice(1))}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>Aa</span>
+                  <span className={styles.ctxLabel}>{t('ctx.capitalize')}</span>
+                </button>
+                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.trim())}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>✂</span>
+                  <span className={styles.ctxLabel}>{t('ctx.trim')}</span>
+                </button>
+              </>
+            )}
+
+            {/* ── Bulk group ── */}
+            {isBulk && (
+              <>
+                <div className={styles.ctxSep} />
+                <button className={styles.ctxItem} onClick={() => bulkReviewMutation.mutate({ status: 'reviewed' })}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
+                  <span className={styles.ctxLabel}>{t('ctx.bulkApprove', { count: bulkCount })}</span>
+                  <span className={styles.ctxKey}>F10</span>
+                </button>
+                <button className={styles.ctxItem} onClick={() => bulkReviewMutation.mutate({ status: 'rejected' })}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
+                  <span className={styles.ctxLabel}>{t('ctx.bulkReject', { count: bulkCount })}</span>
+                </button>
+                <button className={styles.ctxItem} onClick={handleBatchTranslate}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
+                  <span className={styles.ctxLabel}>{t('ctx.bulkTranslate', { count: bulkCount })}</span>
+                </button>
+                <button className={styles.ctxItem} onClick={() => ctxCopySource(row)}>
+                  <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
+                  <span className={styles.ctxLabel}>{t('ctx.bulkCopySource', { count: bulkCount })}</span>
+                </button>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Status bar */}
       <div className={styles.statusBar}>
