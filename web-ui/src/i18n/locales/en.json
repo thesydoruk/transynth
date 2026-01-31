@@ -37,7 +37,9 @@
     "activity": "Activity",
     "users": "Users",
     "qaRules": "QA Rules",
-    "logout": "Logout"
+    "logout": "Logout",
+    "themeDark": "Switch to dark theme",
+    "themeLight": "Switch to light theme"
   },
   "status": {
     "reviewed": "Reviewed",

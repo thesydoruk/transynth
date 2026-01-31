@@ -6,8 +6,8 @@
   gap: 20px;
   padding: 0 24px;
   height: 48px;
-  background: #111;
-  border-bottom: 1px solid #2a2a2a;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -16,18 +16,18 @@
 .brand {
   font-weight: 700;
   font-size: 16px;
-  color: #d4a843;
+  color: var(--accent);
   margin-right: 12px;
 }
 
 .link {
-  color: #aaa;
+  color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
 }
 
 .activeLink {
-  color: #fff;
+  color: var(--text-bright);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -38,7 +38,7 @@
 }
 
 .userInfo {
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 13px;
   display: flex;
   align-items: center;
@@ -49,8 +49,8 @@
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 3px;
-  background: #d4a843;
-  color: #111;
+  background: var(--accent);
+  color: var(--accent-on);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -59,9 +59,9 @@
   padding: 4px 12px;
   font-size: 12px;
   background: transparent;
-  border: 1px solid #555;
+  border: 1px solid var(--border-heavy);
   border-radius: 3px;
-  color: #aaa;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -69,11 +69,23 @@
 .langSwitch {
   padding: 3px 6px;
   font-size: 12px;
-  background: #222;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
   border-radius: 3px;
-  color: #ccc;
+  color: var(--text);
   cursor: pointer;
+}
+
+/** Theme toggle button in nav bar — compact icon button. */
+.themeBtn {
+  padding: 3px 8px;
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
 }
 
 /** Main content area — fills the viewport below the 48px nav bar. */

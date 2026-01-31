@@ -12,9 +12,9 @@
 /** Multi-line textarea for editing the translation draft. */
 .textarea {
   width: 100%;
-  background: #1a1a1a;
-  color: #eee;
-  border: 1px solid #555;
+  background: var(--bg-card);
+  color: var(--text-bright);
+  border: 1px solid var(--border-heavy);
   border-radius: 4px;
   padding: 4px;
   font-family: inherit;
@@ -43,30 +43,30 @@
 /** Save draft button — green. */
 .btnSave {
   composes: btn;
-  background: #4caf50;
+  background: var(--success);
 }
 
 /** Cancel edit button — neutral grey. */
 .btnCancel {
   composes: btn;
-  background: #555;
+  background: var(--border-heavy);
 }
 
 /** Approve / mark-as-reviewed button — blue. */
 .btnApprove {
   composes: btn;
-  background: #2196f3;
+  background: var(--info);
 }
 
 /** Open-edit button in view mode — dark grey. */
 .btnEdit {
   composes: btn;
-  background: #333;
+  background: var(--border-light);
 }
 
 /** Inline save-mutation error message shown below buttons. */
 .saveError {
-  color: #f44;
+  color: var(--danger);
   font-size: 11px;
 }
 
@@ -83,7 +83,7 @@
 /** Translation text when a value exists. */
 .text {
   flex: 1;
-  color: #eee;
+  color: var(--text-bright);
   font-size: 13px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -92,7 +92,7 @@
 /** Placeholder text shown when the translation is empty. */
 .textEmpty {
   composes: text;
-  color: #666;
+  color: var(--text-faint);
   font-style: italic;
 }
 

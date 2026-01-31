@@ -1,6 +1,4 @@
-@use 'sass:color';
-
-/* ── Users Page ────────────────────────────────────────────────────────────── */
+/* ── Users Page ──────────────────────────────────────────────────────────── */
 
 .page {
   padding: 24px 32px;
@@ -9,12 +7,12 @@
 }
 
 .title {
-  color: #eee;
+  color: var(--text-bright);
   margin-bottom: 16px;
 }
 
 .disabled {
-  color: #888;
+  color: var(--text-dim);
   font-style: italic;
   padding: 24px;
   text-align: center;
@@ -31,11 +29,11 @@
   th, td {
     padding: 8px 12px;
     text-align: left;
-    border-bottom: 1px solid #2a2a2a;
+    border-bottom: 1px solid var(--border);
   }
 
   th {
-    color: #888;
+    color: var(--text-dim);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 11px;
@@ -43,7 +41,7 @@
   }
 
   td {
-    color: #ccc;
+    color: var(--text);
   }
 }
 
@@ -57,13 +55,13 @@
 }
 
 .roleAdmin {
-  background: #d4a843;
-  color: #111;
+  background: var(--accent);
+  color: var(--accent-on);
 }
 
 .roleReviewer {
   background: #2ecc71;
-  color: #111;
+  color: var(--accent-on);
 }
 
 .roleTranslator {
@@ -78,30 +76,30 @@
 .actionBtn {
   padding: 4px 10px;
   font-size: 12px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-input);
   border-radius: 3px;
   background: transparent;
-  color: #aaa;
+  color: var(--text-muted);
   cursor: pointer;
   margin-right: 4px;
 
   &:hover {
-    background: #333;
-    color: #eee;
+    background: var(--border-light);
+    color: var(--text-bright);
   }
 }
 
 /* ── Create user form ──────────────────────────────────────────────────────── */
 
 .form {
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 20px 24px;
   margin-bottom: 24px;
 
   h3 {
-    color: #eee;
+    color: var(--text-bright);
     margin-top: 0;
     margin-bottom: 16px;
     font-size: 15px;
@@ -121,7 +119,7 @@
 
   label {
     display: block;
-    color: #aaa;
+    color: var(--text-muted);
     font-size: 11px;
     margin-bottom: 3px;
     text-transform: uppercase;
@@ -130,15 +128,15 @@
   input, select {
     width: 100%;
     padding: 7px 10px;
-    background: #111;
-    border: 1px solid #444;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-input);
     border-radius: 4px;
-    color: #eee;
+    color: var(--text-bright);
     font-size: 13px;
     box-sizing: border-box;
 
     &:focus {
-      border-color: #d4a843;
+      border-color: var(--accent);
       outline: none;
     }
   }
@@ -146,8 +144,8 @@
 
 .submitBtn {
   padding: 8px 20px;
-  background: #d4a843;
-  color: #111;
+  background: var(--accent);
+  color: var(--accent-on);
   border: none;
   border-radius: 4px;
   font-weight: 600;
@@ -155,7 +153,7 @@
   cursor: pointer;
 
   &:hover {
-    background: color.adjust(#d4a843, $lightness: -8%);
+    filter: brightness(0.9);
   }
 
   &:disabled {
@@ -165,7 +163,7 @@
 }
 
 .error {
-  color: #e74c3c;
+  color: var(--danger);
   font-size: 13px;
   margin-top: 8px;
 }

@@ -1,6 +1,4 @@
-@use 'sass:color';
-
-/* ── TMX Page ──────────────────────────────────────────────────────────────── */
+/* ── TMX Page ────────────────────────────────────────────────────────────── */
 
 .page {
   padding: 24px 32px;
@@ -9,12 +7,12 @@
 }
 
 .title {
-  color: #eee;
+  color: var(--text-bright);
   margin-bottom: 8px;
 }
 
 .subtitle {
-  color: #888;
+  color: var(--text-dim);
   font-size: 13px;
   margin-bottom: 24px;
 }
@@ -22,22 +20,22 @@
 /* ── Sections ──────────────────────────────────────────────────────────────── */
 
 .section {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px 24px;
   margin-bottom: 20px;
 }
 
 .sectionTitle {
-  color: #ccc;
+  color: var(--text);
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 12px;
 }
 
 .sectionDesc {
-  color: #888;
+  color: var(--text-dim);
   font-size: 13px;
   margin-bottom: 16px;
 }
@@ -58,14 +56,14 @@
 }
 
 .label {
-  color: #888;
+  color: var(--text-dim);
   font-size: 12px;
 }
 
 .select {
-  background: #222;
-  color: #ccc;
-  border: 1px solid #444;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 13px;
@@ -75,7 +73,7 @@
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
 
 .btnPrimary {
-  background: #1565c0;
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -86,7 +84,7 @@
   transition: background 0.15s;
 
   &:hover:not(:disabled) {
-    background: color.adjust(#1565c0, $lightness: 8%);
+    filter: brightness(1.15);
   }
 
   &:disabled {
@@ -97,10 +95,10 @@
 
 .btnGreen {
   composes: btnPrimary;
-  background: #2e7d32;
+  background: var(--success-dark);
 
   &:hover:not(:disabled) {
-    background: color.adjust(#2e7d32, $lightness: 8%);
+    filter: brightness(1.15);
   }
 }
 
@@ -108,7 +106,7 @@
 
 .fileInput {
   font-size: 13px;
-  color: #ccc;
+  color: var(--text);
 }
 
 /* ── Result banner ─────────────────────────────────────────────────────────── */
@@ -118,18 +116,18 @@
   padding: 10px 14px;
   border-radius: 4px;
   font-size: 13px;
-  background: #1b2a1b;
-  border: 1px solid #2e7d32;
-  color: #aaa;
+  background: var(--result-ok-bg);
+  border: 1px solid var(--success-dark);
+  color: var(--text-muted);
 
   b {
-    color: #4caf50;
+    color: var(--success);
   }
 }
 
 .error {
   composes: result;
-  background: #2a1b1b;
+  background: var(--result-err-bg);
   border-color: #c62828;
-  color: #f44;
+  color: var(--danger);
 }

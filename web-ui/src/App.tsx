@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { UI_LANGUAGES } from './i18n';
 import { AuthProvider, useAuth } from './components/AuthContext';
+import { useTheme } from './components/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { ModsPage } from './pages/ModsPage';
 import { ModEditorPage } from './pages/ModEditorPage';
@@ -44,6 +45,7 @@ const Nav = () => {
   const loc = useLocation();
   const { user, multiUser, logout } = useAuth();
   const { t, i18n } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <nav className={nav.nav}>
@@ -61,6 +63,15 @@ const Nav = () => {
 
       {/* Spacer */}
       <span className={nav.spacer} />
+
+      {/* Theme toggle */}
+      <button
+        className={nav.themeBtn}
+        onClick={toggleTheme}
+        title={t(theme === 'dark' ? 'nav.themeLight' : 'nav.themeDark')}
+      >
+        {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
+      </button>
 
       {/* Language switcher */}
       <select

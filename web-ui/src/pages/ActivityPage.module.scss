@@ -1,6 +1,4 @@
-@use 'sass:color';
-
-/* ── Activity Log Page ─────────────────────────────────────────────────────── */
+/* ── Activity Log Page ───────────────────────────────────────────────────────── */
 
 .page {
   padding: 24px 32px;
@@ -9,7 +7,7 @@
 }
 
 .title {
-  color: #eee;
+  color: var(--text-bright);
   margin-bottom: 16px;
 }
 
@@ -24,14 +22,14 @@
 
   select, input {
     padding: 6px 10px;
-    background: #1a1a1a;
-    border: 1px solid #444;
+    background: var(--bg-card);
+    border: 1px solid var(--border-input);
     border-radius: 4px;
-    color: #ccc;
+    color: var(--text);
     font-size: 13px;
 
     &:focus {
-      border-color: #d4a843;
+      border-color: var(--accent);
       outline: none;
     }
   }
@@ -47,11 +45,11 @@
   th, td {
     padding: 7px 12px;
     text-align: left;
-    border-bottom: 1px solid #2a2a2a;
+    border-bottom: 1px solid var(--border);
   }
 
   th {
-    color: #888;
+    color: var(--text-dim);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 11px;
@@ -59,7 +57,7 @@
   }
 
   td {
-    color: #ccc;
+    color: var(--text);
   }
 }
 
@@ -69,8 +67,8 @@
   border-radius: 3px;
   font-size: 11px;
   font-weight: 600;
-  background: #333;
-  color: #aaa;
+  background: var(--border-light);
+  color: var(--text-muted);
 }
 
 .pagination {
@@ -78,22 +76,22 @@
   gap: 12px;
   margin-top: 16px;
   align-items: center;
-  color: #888;
+  color: var(--text-dim);
   font-size: 13px;
 }
 
 .pageBtn {
   padding: 5px 14px;
-  background: #1a1a1a;
-  border: 1px solid #444;
+  background: var(--bg-card);
+  border: 1px solid var(--border-input);
   border-radius: 4px;
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
 
   &:hover {
-    background: #333;
-    color: #eee;
+    background: var(--border-light);
+    color: var(--text-bright);
   }
 
   &:disabled {
@@ -103,13 +101,13 @@
 }
 
 .empty {
-  color: #666;
+  color: var(--text-faint);
   text-align: center;
   padding: 32px;
 }
 
 .details {
-  color: #777;
+  color: var(--text-dim);
   font-size: 11px;
   max-width: 250px;
   overflow: hidden;

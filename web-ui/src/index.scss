@@ -1,24 +1,162 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Design tokens — dark theme (default) ──────────────────────────────── */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   color-scheme: dark;
-  color: #ccc;
-  background-color: #181818;
   -webkit-font-smoothing: antialiased;
+
+  /* Surface / background hierarchy (darkest → lightest) */
+  --bg-body:      #181818;
+  --bg-deep:      #0e0e0e;
+  --bg-surface:   #111;
+  --bg-raised:    #141414;
+  --bg-panel:     #161616;
+  --bg-card:      #1a1a1a;
+  --bg-input:     #222;
+  --bg-row-alt:   #1e1e1e;
+  --bg-hover:     #252525;
+  --bg-overlay:   rgba(0, 0, 0, 0.75);
+
+  /* Borders */
+  --border:       #2a2a2a;
+  --border-light: #333;
+  --border-input: #444;
+  --border-heavy: #555;
+
+  /* Text hierarchy */
+  --text:         #ccc;
+  --text-bright:  #eee;
+  --text-muted:   #aaa;
+  --text-dim:     #888;
+  --text-faint:   #666;
+  --text-ghost:   #555;
+
+  /* Accent / brand (Fallout gold) */
+  --accent:       #d4a843;
+  --accent-on:    #111;
+
+  /* Semantic colors */
+  --primary:      #1565c0;
+  --success:      #4caf50;
+  --success-dark: #2e7d32;
+  --success-deep: #1b5e20;
+  --danger:       #f44;
+  --danger-dark:  #7b1a1a;
+  --warning:      #ff9800;
+  --info:         #2196f3;
+  --cyan:         #00bcd4;
+
+  /* Links */
+  --link:         #4fa3e0;
+  --link-hover:   #7fc3f8;
+
+  /* Scrollbar */
+  --scroll-track: #1a1a1a;
+  --scroll-thumb: #444;
+  --scroll-hover: #666;
+
+  /* Misc specific tokens */
+  --progress-track:    #333;
+  --badge-lang-bg:     #1a3a5c;
+  --badge-lang-text:   #7cc8ff;
+  --qa-error-bg:       #351515;
+  --qa-warning-bg:     #3b2d12;
+  --qa-hint-bg:        #452300;
+  --qa-hint-text:      #ffbf66;
+  --ctx-bg:            #0d2818;
+  --ctx-border:        #1a5a30;
+  --ctx-item-hover:    #1a4a28;
+  --ctx-text:          #c8d8c8;
+  --ctx-icon:          #6a8a6a;
+  --transl-area-bg:    #0e1a0e;
+  --transl-area-border:#2a4a2a;
+  --result-ok-bg:      #1b2a1b;
+  --result-err-bg:     #2a1b1b;
+  --glossary-filled:   #b5e8a0;
+
+  /* Derived from tokens above */
+  color: var(--text);
+  background-color: var(--bg-body);
+}
+
+/* ── Light theme overrides ─────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-body:      #f5f5f5;
+  --bg-deep:      #e8e8e8;
+  --bg-surface:   #fff;
+  --bg-raised:    #fafafa;
+  --bg-panel:     #f0f0f0;
+  --bg-card:      #fff;
+  --bg-input:     #fff;
+  --bg-row-alt:   #f7f7f7;
+  --bg-hover:     #eee;
+  --bg-overlay:   rgba(0, 0, 0, 0.35);
+
+  --border:       #ddd;
+  --border-light: #ccc;
+  --border-input: #bbb;
+  --border-heavy: #999;
+
+  --text:         #333;
+  --text-bright:  #111;
+  --text-muted:   #555;
+  --text-dim:     #777;
+  --text-faint:   #999;
+  --text-ghost:   #bbb;
+
+  --accent:       #b8892b;
+  --accent-on:    #fff;
+
+  --primary:      #1976d2;
+  --success:      #388e3c;
+  --success-dark: #2e7d32;
+  --success-deep: #1b5e20;
+  --danger:       #d32f2f;
+  --danger-dark:  #b71c1c;
+  --warning:      #f57c00;
+  --info:         #1976d2;
+  --cyan:         #0097a7;
+
+  --link:         #1565c0;
+  --link-hover:   #0d47a1;
+
+  --scroll-track: #e8e8e8;
+  --scroll-thumb: #bbb;
+  --scroll-hover: #999;
+
+  --progress-track:    #ddd;
+  --badge-lang-bg:     #e3f2fd;
+  --badge-lang-text:   #1565c0;
+  --qa-error-bg:       #ffebee;
+  --qa-warning-bg:     #fff8e1;
+  --qa-hint-bg:        #fff3e0;
+  --qa-hint-text:      #e65100;
+  --ctx-bg:            #e8f5e9;
+  --ctx-border:        #a5d6a7;
+  --ctx-item-hover:    #c8e6c9;
+  --ctx-text:          #2e7d32;
+  --ctx-icon:          #4caf50;
+  --transl-area-bg:    #f1f8e9;
+  --transl-area-border:#c5e1a5;
+  --result-ok-bg:      #e8f5e9;
+  --result-err-bg:     #ffebee;
+  --glossary-filled:   #2e7d32;
 }
 
 body { min-height: 100vh; }
 
-a { color: #4fa3e0; }
-a:hover { color: #7fc3f8; }
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
 
 code, pre { font-family: ui-monospace, Consolas, monospace; }
 
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #1a1a1a; }
-::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #666; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
