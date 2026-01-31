@@ -6,8 +6,8 @@
  * property so all layout/typography stays in SCSS while the color stays dynamic.
  */
 .badge {
-  background: var(--badge-bg, #888);
-  color: #fff;
+  background: var(--badge-bg, var(--text-dim));
+  color: var(--primary-on);
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;

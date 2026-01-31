@@ -77,7 +77,7 @@
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btnPri {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 5px 12px;
@@ -89,7 +89,7 @@
 .btnSec {
   background: var(--bg-hover);
   color: var(--text);
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 5px 10px;
   cursor: pointer;
@@ -98,7 +98,7 @@
 
 .btnDanger {
   background: var(--danger-dark);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 5px 10px;
@@ -108,7 +108,7 @@
 
 .btnApprove {
   background: var(--success-deep);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 5px 10px;
@@ -205,7 +205,7 @@
 
 .gridRow {
   display: flex;
-  border-bottom: 1px solid #1c1c1c;
+  border-bottom: 1px solid var(--border);
 }
 
 .th {
@@ -293,7 +293,7 @@
 
 .actionBtnBlue {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 3px;
   padding: 1px 6px;
@@ -305,7 +305,7 @@
 
 .actionBtnRed {
   background: var(--danger-dark);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 3px;
   padding: 1px 6px;
@@ -316,8 +316,8 @@
 }
 
 .actionBtnGreen {
-  background: #2a5c2a;
-  color: #fff;
+  background: var(--success-dark);
+  color: var(--primary-on);
   border: none;
   border-radius: 3px;
   padding: 1px 6px;
@@ -342,7 +342,7 @@
 .pageBtn {
   background: var(--bg-hover);
   color: var(--text);
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--border-light);
   border-radius: 3px;
   padding: 4px 12px;
   cursor: pointer;
@@ -463,7 +463,7 @@
   min-width: 52px;
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  color: var(--primary-on);
 }
 
 /* ── History ──────────────────────────────────────────────────────────────── */
@@ -484,7 +484,7 @@
   display: flex;
   align-items: center;
   padding: 3px 12px;
-  background: #0d0d0d;
+  background: var(--bg-deep);
   border-top: 1px solid var(--border);
   font-size: 11px;
   color: var(--text);
@@ -523,7 +523,7 @@
 
 .modalBtnDark {
   background: var(--border-input);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 7px 16px;
@@ -533,7 +533,7 @@
 
 .modalBtnPri {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 7px 16px;
@@ -543,7 +543,7 @@
 
 .modalBtnSec {
   background: var(--border-light);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 7px 16px;
@@ -563,7 +563,7 @@
 
 .suggestionApplyBtn {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 2px 10px;
@@ -652,7 +652,7 @@
 /* ── TM suggestion row internals ─────────────────────────────────────────── */
 
 /** Match method badge — color injected via --sugg-color CSS custom property. */
-.suggMethod { font-size: 10px; font-weight: 600; text-transform: uppercase; min-width: 40px; color: var(--sugg-color, #aaa); }
+.suggMethod { font-size: 10px; font-weight: 600; text-transform: uppercase; min-width: 40px; color: var(--sugg-color, var(--text-muted)); }
 .suggText   { flex: 1; font-size: 13px; color: var(--text-bright); white-space: pre-wrap; }
 .suggSim    { font-size: 11px; color: var(--text-dim); }
 
@@ -675,8 +675,8 @@
 .modalPreview  { margin-top: 12px; max-height: 200px; overflow-y: auto; font-size: 12px; }
 .modalPrevItem { border-bottom: 1px solid var(--border); padding: 4px 0; }
 .modalPrevId   { color: var(--text-dim); margin-right: 8px; }
-.modalPrevOld  { color: #f88; }
-.modalPrevNew  { color: #8f8; }
+.modalPrevOld  { color: var(--danger); }
+.modalPrevNew  { color: var(--success); }
 .modalPrevMore { color: var(--text-dim); }
 
 /* ── Context menu ────────────────────────────────────────────── */
@@ -777,7 +777,7 @@
 
   &:hover {
     background: var(--ctx-item-hover);
-    color: #fff;
+    color: var(--text-bright);
   }
 }
 

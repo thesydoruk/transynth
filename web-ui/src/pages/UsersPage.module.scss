@@ -60,13 +60,13 @@
 }
 
 .roleReviewer {
-  background: #2ecc71;
+  background: var(--success);
   color: var(--accent-on);
 }
 
 .roleTranslator {
-  background: #3498db;
-  color: #fff;
+  background: var(--info);
+  color: var(--primary-on);
 }
 
 .inactive {

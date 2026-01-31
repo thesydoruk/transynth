@@ -64,7 +64,7 @@
   font-size: 13px;
   min-width: 160px;
   text-transform: capitalize;
-  color: var(--label-color, #aaa);
+  color: var(--label-color, var(--text-muted));
 }
 
 .qaCount {
@@ -144,7 +144,7 @@
 }
 
 /** QA count cell — has issues (red). */
-.qaHasIssues { color: #e55; }
+.qaHasIssues { color: var(--danger); }
 
 /** QA count cell — clean (dim). */
 .qaNoIssues  { color: var(--text-faint); }
@@ -153,7 +153,7 @@
 .cardValue {
   font-size: 28px;
   font-weight: 700;
-  color: var(--card-color, #fff);
+  color: var(--card-color, var(--text-bright));
 }
 
 /** Card label below the number. */
@@ -166,6 +166,6 @@
 /** Optional sub-value (percentage) beside the label. */
 .cardSub {
   margin-left: 6px;
-  color: var(--card-color, #aaa);
+  color: var(--card-color, var(--text-muted));
   font-weight: 600;
 }

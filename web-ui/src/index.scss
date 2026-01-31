@@ -75,6 +75,11 @@
   --result-ok-bg:      #1b2a1b;
   --result-err-bg:     #2a1b1b;
   --glossary-filled:   #b5e8a0;
+  --primary-on:        #fff;
+  --diff-added-bg:     #1b3a1b;
+  --diff-removed-bg:   #3a1b1b;
+  --diff-changed-bg:   #2a2a0f;
+  --code-blue:         #8cb4ff;
 
   /* Derived from tokens above */
   color: var(--text);
@@ -145,6 +150,11 @@
   --result-ok-bg:      #e8f5e9;
   --result-err-bg:     #ffebee;
   --glossary-filled:   #2e7d32;
+  --primary-on:        #fff;
+  --diff-added-bg:     #e8f5e9;
+  --diff-removed-bg:   #ffebee;
+  --diff-changed-bg:   #fff8e1;
+  --code-blue:         #1565c0;
 }
 
 body { min-height: 100vh; }

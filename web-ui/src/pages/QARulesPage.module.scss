@@ -54,7 +54,7 @@
 
 .btnAdd {
   background: var(--success-dark);
-  color: #fff;
+  color: var(--primary-on);
   border: none;
   border-radius: 4px;
   padding: 6px 14px;
@@ -155,12 +155,12 @@
 
 .btnDelete {
   composes: btnSmall;
-  color: #c33;
-  border-color: #933;
+  color: var(--danger);
+  border-color: var(--danger-dark);
 
   &:hover {
-    color: #f55;
-    border-color: #f55;
+    color: var(--danger);
+    border-color: var(--danger);
   }
 }
 
@@ -197,7 +197,7 @@
   border-color: var(--success-dark);
 
   &:hover {
-    color: #6fcf73;
+    color: var(--success);
     border-color: var(--success);
   }
 }
