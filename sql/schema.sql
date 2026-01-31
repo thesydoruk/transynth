@@ -84,6 +84,25 @@ CREATE TABLE IF NOT EXISTS qa_issues (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Configurable QA validation rules (forbidden characters, max length per GRUP/field).
+-- Each rule targets a specific game and optionally a record signature and/or path.
+-- rule_type: 'forbidden_chars' — value contains the forbidden character set.
+-- rule_type: 'max_length'      — value contains the maximum character count (integer string).
+CREATE TABLE IF NOT EXISTS qa_rules (
+  id SERIAL PRIMARY KEY,
+  game TEXT NOT NULL DEFAULT 'fo4',
+  rule_type TEXT NOT NULL CHECK (rule_type IN ('forbidden_chars', 'max_length')),
+  signature TEXT,
+  path TEXT,
+  value TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'error',
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_qa_rules_game_type ON qa_rules(game, rule_type) WHERE is_active = TRUE;
+
 CREATE TABLE IF NOT EXISTS alignments (
   id SERIAL PRIMARY KEY,
   en_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,

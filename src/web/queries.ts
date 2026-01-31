@@ -116,9 +116,12 @@ const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<
 }
 
 const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Promise<void> => {
+  // Fetch source text, best translation, and record context (signature + path) for rule matching
   const { rows } = await db.query(
-    `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation
+    `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation,
+            r.signature, r.path
      FROM strings s
+     JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $2
        AND t.id = (
@@ -131,7 +134,7 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
     [stringId, targetLang],
   );
 
-  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null } | undefined;
+  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null; signature?: string | null; path?: string | null } | undefined;
 
   await db.query(
     `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
@@ -143,6 +146,51 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
   }
 
   const issues = buildQAIssues(row.source, row.translation);
+
+  // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
+  const { rows: qaRules } = await db.query(
+    `SELECT rule_type, value, severity, description, signature AS rule_sig, path AS rule_path
+     FROM qa_rules
+     WHERE game = 'fo4' AND is_active = TRUE`,
+    [],
+  );
+
+  for (const rule of qaRules as Array<{ rule_type: string; value: string; severity: string; description: string | null; rule_sig: string | null; rule_path: string | null }>) {
+    // Skip rule if its signature filter doesn't match this record
+    if (rule.rule_sig && rule.rule_sig !== row.signature) continue;
+    // Skip rule if its path filter doesn't match this record
+    if (rule.rule_path && rule.rule_path !== row.path) continue;
+
+    if (rule.rule_type === 'forbidden_chars') {
+      // Check if translation contains any of the forbidden characters listed in rule.value
+      const found: string[] = [];
+      for (const ch of rule.value) {
+        if (row.translation.includes(ch)) found.push(ch);
+      }
+      if (found.length > 0) {
+        const display = found.map((c) => {
+          const cp = c.codePointAt(0)!;
+          // Show printable chars as-is, non-printable as U+XXXX
+          return cp >= 0x20 && cp < 0x7F ? `"${c}"` : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+        });
+        issues.push({
+          issueType: 'forbidden_chars',
+          severity: rule.severity as 'warning' | 'error',
+          message: rule.description ?? `Forbidden characters found: ${display.join(', ')}`,
+        });
+      }
+    } else if (rule.rule_type === 'max_length') {
+      // Check if translation exceeds the maximum character length
+      const maxLen = parseInt(rule.value, 10);
+      if (!Number.isNaN(maxLen) && row.translation.length > maxLen) {
+        issues.push({
+          issueType: 'max_length',
+          severity: rule.severity as 'warning' | 'error',
+          message: rule.description ?? `Translation is ${row.translation.length} chars, exceeds max ${maxLen}.`,
+        });
+      }
+    }
+  }
 
   // Glossary violation check: source contains a glossary term but translation is missing the required translation
   const { rows: glossaryTerms } = await db.query(

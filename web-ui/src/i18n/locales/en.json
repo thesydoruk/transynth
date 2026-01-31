@@ -36,6 +36,7 @@
     "diff": "Diff",
     "activity": "Activity",
     "users": "Users",
+    "qaRules": "QA Rules",
     "logout": "Logout"
   },
   "status": {
@@ -361,5 +362,37 @@
     "ja": "Japanese",
     "zh": "Chinese",
     "ko": "Korean"
+  },
+  "qaRules": {
+    "title": "QA Rules",
+    "description": "Configurable validation rules — forbidden characters and maximum length per GRUP / field. Rules are applied automatically during translation QA.",
+    "noRules": "No QA rules defined yet.",
+    "emptyHint": "Add rules below to enforce character restrictions and length limits.",
+    "ruleType": "Type",
+    "signature": "GRUP",
+    "path": "Field",
+    "value": "Value",
+    "severity": "Severity",
+    "descriptionCol": "Description",
+    "active": "Active",
+    "actions": "Actions",
+    "forbidden_chars": "Forbidden chars",
+    "max_length": "Max length",
+    "anyGrup": "any",
+    "anyField": "any",
+    "add": "Add Rule",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "ruleTypePlaceholder": "Select type…",
+    "signaturePlaceholder": "e.g. DIAL",
+    "pathPlaceholder": "e.g. FULL",
+    "valueForbiddenPlaceholder": "e.g. <>{}",
+    "valueLengthPlaceholder": "e.g. 256",
+    "descriptionPlaceholder": "Optional description",
+    "error": "error",
+    "warning": "warning",
+    "confirmDelete": "Delete this QA rule?"
   }
 }

@@ -36,6 +36,7 @@
     "diff": "Порівняння",
     "activity": "Активність",
     "users": "Користувачі",
+    "qaRules": "QA-правила",
     "logout": "Вийти"
   },
   "status": {
@@ -362,5 +363,37 @@
     "ja": "Японська",
     "zh": "Китайська",
     "ko": "Корейська"
+  },
+  "qaRules": {
+    "title": "QA-правила",
+    "description": "Налаштовані правила валідації — заборонені символи та максимальна довжина для кожної GRUP / поля. Правила застосовуються автоматично під час QA-перевірки перекладу.",
+    "noRules": "QA-правила ще не визначені.",
+    "emptyHint": "Додайте правила нижче, щоб обмежити символи та довжину рядків.",
+    "ruleType": "Тип",
+    "signature": "GRUP",
+    "path": "Поле",
+    "value": "Значення",
+    "severity": "Важливість",
+    "descriptionCol": "Опис",
+    "active": "Активне",
+    "actions": "Дії",
+    "forbidden_chars": "Заборонені символи",
+    "max_length": "Макс. довжина",
+    "anyGrup": "будь-яка",
+    "anyField": "будь-яке",
+    "add": "Додати правило",
+    "edit": "Редагувати",
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "delete": "Видалити",
+    "ruleTypePlaceholder": "Оберіть тип…",
+    "signaturePlaceholder": "напр. DIAL",
+    "pathPlaceholder": "напр. FULL",
+    "valueForbiddenPlaceholder": "напр. <>{}",
+    "valueLengthPlaceholder": "напр. 256",
+    "descriptionPlaceholder": "Опціональний опис",
+    "error": "помилка",
+    "warning": "попередження",
+    "confirmDelete": "Видалити це QA-правило?"
   }
 }

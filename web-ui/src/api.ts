@@ -156,6 +156,21 @@ export type Signature = { signature: string; count: number };
 
 export type GlossaryEntry = { id: number; term: string; translation: string | null; src_lang: string; tgt_lang: string; source: string; created_at: string };
 
+/** A configurable QA validation rule (forbidden characters or max length per GRUP/field). */
+export type QARule = {
+  id: number;
+  game: string;
+  rule_type: 'forbidden_chars' | 'max_length';
+  signature: string | null;
+  path: string | null;
+  value: string;
+  severity: 'warning' | 'error';
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
 
 export type DashboardModRow = {
@@ -813,5 +828,22 @@ export const api = {
       if (params?.action) qs.set('action', params.action);
       return req<ActivityLogResponse>(`/api/activity?${qs}`);
     },
+  },
+
+  /** Configurable QA validation rules (forbidden characters, max length per GRUP/field). */
+  qaRules: {
+    list: (params?: { game?: string; ruleType?: string; isActive?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.game) qs.set('game', params.game);
+      if (params?.ruleType) qs.set('ruleType', params.ruleType);
+      if (params?.isActive) qs.set('isActive', params.isActive);
+      return req<QARule[]>(`/api/qa-rules?${qs}`);
+    },
+    get: (id: number) => req<QARule>(`/api/qa-rules/${id}`),
+    create: (data: Omit<QARule, 'id' | 'created_at' | 'updated_at'>) =>
+      req<QARule>('/api/qa-rules', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>>) =>
+      req<QARule>(`/api/qa-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => req<{ ok: boolean }>(`/api/qa-rules/${id}`, { method: 'DELETE' }),
   },
 };

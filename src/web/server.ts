@@ -21,6 +21,7 @@ import { eetRoutes } from './routes/eet.js';
 import { csvRoutes } from './routes/csv.js';
 import { modImportRoutes } from './routes/modImport.js';
 import { tmxRoutes } from './routes/tmx.js';
+import { qaRulesRoutes } from './routes/qaRules.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -77,6 +78,7 @@ await eetRoutes(app, db);
 await csvRoutes(app, db);
 await modImportRoutes(app, db);
 await tmxRoutes(app, db);
+await qaRulesRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {
