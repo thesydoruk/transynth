@@ -3,10 +3,11 @@ import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
 import { upsertTranslation } from './queries.js';
+import { extractNumbers, transplantNumbers } from '../utils/textNorm.js';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
-type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'punct_norm' | 'fuzzy';
+type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric' | 'punct_norm' | 'fuzzy';
 type Match = { text: string; method: MatchMethod; confidence: number };
 
 /**
@@ -25,6 +26,7 @@ const findBestMatch = async (
   edid: string | null,
   textNorm: string,
   textNormNopunct: string | null,
+  textRaw: string,
   targetLang: string,
   excludeModId: number,
 ): Promise<Match | null> => {
@@ -63,16 +65,30 @@ const findBestMatch = async (
     if (rows[0]) return { text: rows[0].text, method: 'edid', confidence: 0.85 };
   }
 
-  // 3. Exact text_norm match
+  // 3. Exact text_norm match — prefer identical raw text, then try numeric transplant
   {
     const { rows } = await db.query(
-      `SELECT t.text FROM strings s
+      `SELECT t.text, s.text_raw FROM strings s
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
        WHERE s.text_norm = $2 AND s.lang = 'en'
        ${orderByStatus}`,
       [targetLang, textNorm],
     );
-    if (rows[0]) return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
+    if (rows[0]) {
+      /* If raw texts are identical → true text_norm match. */
+      if (rows[0].text_raw === textRaw) {
+        return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
+      }
+      /* Raw texts differ → numbers changed. Try to transplant. */
+      const oldNums = extractNumbers(rows[0].text_raw);
+      const newNums = extractNumbers(textRaw);
+      const transplanted = transplantNumbers(rows[0].text, oldNums, newNums);
+      if (transplanted !== null) {
+        return { text: transplanted, method: 'numeric', confidence: 0.70 };
+      }
+      /* Transplant failed (count mismatch etc.) — still a text_norm match. */
+      return { text: rows[0].text, method: 'text_norm', confidence: 0.75 };
+    }
   }
 
   // 4. Punctuation-normalized match
@@ -121,7 +137,7 @@ export const applyTMToMod = async (
   targetLang = 'uk',
 ): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
   const { rows: untranslated } = await db.query(
-    `SELECT s.id, s.text_norm, s.text_norm_nopunct, r.formid_hex, r.path, r.edid
+    `SELECT s.id, s.text_raw, s.text_norm, s.text_norm_nopunct, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = 'en'
@@ -134,7 +150,7 @@ export const applyTMToMod = async (
   log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
   let applied = 0;
-  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, punct_norm: 0, fuzzy: 0 };
+  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, numeric: 0, punct_norm: 0, fuzzy: 0 };
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const s of untranslated) {
@@ -145,11 +161,13 @@ export const applyTMToMod = async (
         s.edid,
         s.text_norm,
         s.text_norm_nopunct,
+        s.text_raw,
         targetLang,
         modId,
       );
       if (match) {
-        const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' ? 'fuzzy' : 'tm';
+        const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' || match.method === 'numeric'
+          ? 'fuzzy' : 'tm';
         await upsertTranslation(client, s.id, match.text, tmStatus, targetLang, `tm_auto_${match.method}`);
         applied++;
         byMethod[match.method] = (byMethod[match.method] ?? 0) + 1;

@@ -2,7 +2,7 @@ import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
-import { normalizeForHash, segmentPhrases } from '../utils/textNorm.js';
+import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm.js';
 
 export type TranslationStatus = 'draft' | 'reviewed' | 'rejected' | 'human' | 'tm' | 'fuzzy' | 'auto' | 'deleted';
 
@@ -484,7 +484,7 @@ export type TMSuggestionRow = {
   confidence: number | null;
   provenance: string | null;
   source_text: string;
-  match_method: 'exact' | 'punct_norm' | 'fuzzy' | 'segment';
+  match_method: 'exact' | 'numeric' | 'punct_norm' | 'fuzzy' | 'segment';
   similarity: number;
 };
 
@@ -495,11 +495,12 @@ export const getTMSuggestions = async (
   limit = 10,
 ): Promise<TMSuggestionRow[]> => {
   const { rows: srcRows } = await db.query(
-    `SELECT text_norm, text_norm_nopunct FROM strings WHERE id = $1`,
+    `SELECT text_raw, text_norm, text_norm_nopunct FROM strings WHERE id = $1`,
     [stringId],
   );
   if (!srcRows[0]?.text_norm) return [];
 
+  const textRaw: string = srcRows[0].text_raw;
   const textNorm: string = srcRows[0].text_norm;
   const textNormNopunct: string | null = srcRows[0].text_norm_nopunct;
   const results: TMSuggestionRow[] = [];
@@ -513,8 +514,8 @@ export const getTMSuggestions = async (
     }
   };
 
-  // 1. Exact text_norm match (highest priority)
-  const { rows: exactRows } = await db.query(
+  // 1. Exact text_norm match — split into true exact vs numeric transplant
+  const { rows: normRows } = await db.query(
     `SELECT DISTINCT ON (t.text)
         t.id, t.text, t.status, t.confidence, t.provenance,
         s.text_raw AS source_text, 1.0::double precision AS similarity
@@ -527,7 +528,27 @@ export const getTMSuggestions = async (
      LIMIT $4`,
     [textNorm, targetLang, stringId, limit],
   );
+  /* Separate true exact matches (identical raw text) from numeric matches. */
+  const exactRows: typeof normRows = [];
+  const numericRows: typeof normRows = [];
+  for (const r of normRows) {
+    if (r.source_text === textRaw) {
+      exactRows.push(r);
+    } else {
+      /* Try transplanting numbers from the new source into the translation. */
+      const oldNums = extractNumbers(r.source_text);
+      const newNums = extractNumbers(textRaw);
+      const transplanted = transplantNumbers(r.text, oldNums, newNums);
+      if (transplanted !== null) {
+        numericRows.push({ ...r, text: transplanted, similarity: 0.95 });
+      } else {
+        /* Transplant failed — still show as exact match with original text. */
+        exactRows.push(r);
+      }
+    }
+  }
   addRows(exactRows, 'exact', 1.0);
+  addRows(numericRows, 'numeric', 0.95);
 
   // 2. Punctuation-normalized match (if text_norm_nopunct available and we need more)
   if (textNormNopunct && results.length < limit) {
@@ -604,6 +625,7 @@ export const getTMSuggestions = async (
   /* Sort by composite score: method weight × similarity, then by status.   */
   const methodWeight: Record<string, number> = {
     exact: 1.0,
+    numeric: 0.92,
     punct_norm: 0.85,
     fuzzy: 0.7,
     segment: 0.4,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeForHash, normalizeNoPunct, segmentPhrases } from './textNorm.js';
+import { normalizeForHash, normalizeNoPunct, segmentPhrases, extractNumbers, transplantNumbers } from './textNorm.js';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {
@@ -82,5 +82,79 @@ describe('segmentPhrases', () => {
   it('splits on newlines', () => {
     const result = segmentPhrases('First line\nSecond line\nThird line');
     expect(result).toEqual(['First line', 'Second line', 'Third line']);
+  });
+});
+
+// ── Numeric-invariant matching ────────────────────────────────────────────────
+
+describe('extractNumbers', () => {
+  it('extracts integers', () => {
+    expect(extractNumbers('Damage: 150, Weight: 2')).toEqual(['150', '2']);
+  });
+
+  it('extracts decimal numbers', () => {
+    expect(extractNumbers('Speed 3.14 and 0.5')).toEqual(['3.14', '0.5']);
+  });
+
+  it('returns empty array when no numbers', () => {
+    expect(extractNumbers('Hello World')).toEqual([]);
+  });
+
+  it('preserves order of appearance', () => {
+    expect(extractNumbers('Item 7, costs 100 caps, qty 3')).toEqual(['7', '100', '3']);
+  });
+
+  it('handles leading zeros', () => {
+    expect(extractNumbers('Code 007')).toEqual(['007']);
+  });
+});
+
+describe('transplantNumbers', () => {
+  it('replaces old numbers with new in translation', () => {
+    const result = transplantNumbers(
+      'Шкода: 100, Вага: 5',
+      ['100', '5'],
+      ['150', '8'],
+    );
+    expect(result).toBe('Шкода: 150, Вага: 8');
+  });
+
+  it('returns translation unchanged when numbers are identical', () => {
+    const result = transplantNumbers(
+      'Шкода: 100',
+      ['100'],
+      ['100'],
+    );
+    expect(result).toBe('Шкода: 100');
+  });
+
+  it('returns null on count mismatch', () => {
+    expect(transplantNumbers('Text 10 20', ['10', '20'], ['10'])).toBeNull();
+  });
+
+  it('returns null when old number is not found in translation', () => {
+    expect(transplantNumbers('Текст без чисел', ['10'], ['20'])).toBeNull();
+  });
+
+  it('returns translation as-is for empty number arrays', () => {
+    expect(transplantNumbers('No numbers here', [], [])).toBe('No numbers here');
+  });
+
+  it('replaces first occurrence only (positional)', () => {
+    const result = transplantNumbers(
+      '10 із 10 предметів',
+      ['10', '10'],
+      ['25', '50'],
+    );
+    expect(result).toBe('25 із 50 предметів');
+  });
+
+  it('handles multi-digit replacements of different lengths', () => {
+    const result = transplantNumbers(
+      'Рівень 5',
+      ['5'],
+      ['100'],
+    );
+    expect(result).toBe('Рівень 100');
   });
 });

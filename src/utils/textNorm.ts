@@ -43,3 +43,60 @@ export const segmentPhrases = (text: string): string[] => {
   /* Only useful if the text actually splits into multiple parts */
   return segments.length >= 2 ? segments : [];
 }
+
+// ── Numeric-invariant matching utilities ───────────────────────────────────────
+
+/** Regex matching integers and decimal numbers (e.g. "25", "3.14", "0.5"). */
+const NUMBER_RE = /\d+(?:\.\d+)?/g;
+
+/**
+ * Extract all numbers from a string in order of appearance.
+ * Preserves original formatting (leading zeros, decimals).
+ *
+ * @param text  Raw text to scan
+ * @returns     Ordered array of number strings, e.g. ["25", "3.14"]
+ */
+export const extractNumbers = (text: string): string[] =>
+  text.match(NUMBER_RE) ?? [];
+
+/**
+ * Transplant numbers from a new source into an existing translation.
+ *
+ * Given a matched translation where the only difference between old and new
+ * source is the numeric values, replaces each old number in the translation
+ * with the corresponding new number (matched by position).
+ *
+ * @param translation  The matched translation text containing old numbers
+ * @param oldNumbers   Numbers extracted from the matched source (positional)
+ * @param newNumbers   Numbers extracted from the new source (positional)
+ * @returns            Translation with transplanted numbers, or null if
+ *                     the transplant is impossible (count mismatch, number
+ *                     not found in translation)
+ */
+export const transplantNumbers = (
+  translation: string,
+  oldNumbers: string[],
+  newNumbers: string[],
+): string | null => {
+  /* Number counts must match for a safe 1:1 replacement. */
+  if (oldNumbers.length !== newNumbers.length) return null;
+  if (oldNumbers.length === 0) return translation;
+
+  /*
+   * Two-pass replacement to avoid substring collisions (e.g. replacing "100"
+   * with "150" then "5" with "8" would hit the "5" inside "150").
+   * Pass 1: replace each old number with a unique placeholder.
+   * Pass 2: replace each placeholder with the corresponding new number.
+   */
+  let result = translation;
+  for (let i = 0; i < oldNumbers.length; i++) {
+    if (oldNumbers[i] === newNumbers[i]) continue;
+    const idx = result.indexOf(oldNumbers[i]);
+    if (idx === -1) return null;
+    result = result.slice(0, idx) + `\x00NUM${i}\x00` + result.slice(idx + oldNumbers[i].length);
+  }
+  for (let i = 0; i < newNumbers.length; i++) {
+    result = result.replace(`\x00NUM${i}\x00`, newNumbers[i]);
+  }
+  return result;
+};
