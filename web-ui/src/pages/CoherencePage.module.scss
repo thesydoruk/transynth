@@ -1,0 +1,226 @@
+/* ── CoherencePage — SCSS Module ─────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.title {
+  color: var(--text-bright);
+  margin: 0;
+}
+
+.description {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.langLabel {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.totalBadge {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+/* ── Empty / loading state ───────────────────────────────────────────────── */
+
+.empty {
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* ── Group card ──────────────────────────────────────────────────────────── */
+
+.group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-row-alt);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.groupToggle {
+  font-size: 10px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.groupSource {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+}
+
+.groupBadge {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--primary-on);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+/* ── Variants list (inside each group) ──────────────────────────────────── */
+
+.variants {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.variant {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.variantHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-cell);
+}
+
+.variantText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-bright);
+  font-family: monospace;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.applyBtn {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.variantStrings {
+  padding: 0 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.variantString {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.modName {
+  color: var(--code-blue);
+  font-weight: 500;
+}
+
+.edidTag {
+  color: var(--text-muted, var(--text-dim));
+  font-family: monospace;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.pageBtn {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-dim);
+}

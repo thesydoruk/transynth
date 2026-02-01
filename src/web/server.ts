@@ -22,6 +22,7 @@ import { csvRoutes } from './routes/csv.js';
 import { modImportRoutes } from './routes/modImport.js';
 import { tmxRoutes } from './routes/tmx.js';
 import { qaRulesRoutes } from './routes/qaRules.js';
+import { coherenceRoutes } from './routes/coherence.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -79,6 +80,7 @@ await csvRoutes(app, db);
 await modImportRoutes(app, db);
 await tmxRoutes(app, db);
 await qaRulesRoutes(app, db);
+await coherenceRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

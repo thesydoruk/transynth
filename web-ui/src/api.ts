@@ -173,6 +173,45 @@ export type QARule = {
 
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
 
+/**
+ * A single string entry within a coherence group — one source string whose
+ * current translation differs from at least one other string in the same group.
+ */
+export type CoherenceEntry = {
+  string_id: number;
+  source_text: string;
+  text_norm: string;
+  edid: string | null;
+  signature: string;
+  path_simplified: string;
+  mod_id: number;
+  mod_name: string;
+  translation_id: number | null;
+  /** The current best translation for this string. */
+  translation: string;
+  status: string;
+};
+
+/**
+ * A coherence group — all source strings sharing the same normalised text
+ * that are currently translated inconsistently.
+ */
+export type CoherenceGroup = {
+  text_norm: string;
+  /** Representative raw source text for display. */
+  source_text: string;
+  /** Number of distinct translation variants in this group. */
+  variant_count: number;
+  entries: CoherenceEntry[];
+};
+
+/** Paginated coherence report returned by GET /api/coherence. */
+export type CoherenceResult = {
+  groups: CoherenceGroup[];
+  /** Total number of inconsistency groups (before pagination). */
+  total: number;
+};
+
 export type DashboardModRow = {
   id: number;
   name: string;
@@ -845,5 +884,32 @@ export const api = {
     update: (id: number, data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>>) =>
       req<QARule>(`/api/qa-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/qa-rules/${id}`, { method: 'DELETE' }),
+  },
+
+  /**
+   * Coherence checking — source strings that share the same normalised text
+   * but have different translations across strings/mods.
+   */
+  coherence: {
+    /**
+     * Returns a paginated coherence report.
+     * Groups are ordered by variant_count DESC (most conflicted first).
+     */
+    list: (params?: { targetLang?: string; limit?: number; offset?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.targetLang) qs.set('targetLang', params.targetLang);
+      if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+      if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+      return req<CoherenceResult>(`/api/coherence?${qs}`);
+    },
+    /**
+     * Resolves a coherence group by propagating a single chosen translation
+     * to all strings in the group that currently have a different translation.
+     */
+    resolve: (textNorm: string, translation: string, targetLang = 'uk') =>
+      req<{ updated: number }>('/api/coherence/resolve', {
+        method: 'POST',
+        body: JSON.stringify({ textNorm, translation, targetLang }),
+      }),
   },
 };

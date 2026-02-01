@@ -17,6 +17,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { TmxPage } from './pages/TmxPage';
 import { UsersPage } from './pages/UsersPage';
 import { QARulesPage } from './pages/QARulesPage';
+import { CoherencePage } from './pages/CoherencePage';
 import { ActivityPage } from './pages/ActivityPage';
 import nav from './App.module.scss';
 
@@ -34,6 +35,7 @@ const NAV_LINKS = [
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/activity', labelKey: 'nav.activity', exact: false },
   { to: '/qa-rules', labelKey: 'nav.qaRules', exact: false },
+  { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
@@ -131,6 +133,7 @@ const AppShell = () => {
           <Route path="/diff" element={<DiffPage />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/qa-rules" element={<QARulesPage />} />
+          <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </main>
