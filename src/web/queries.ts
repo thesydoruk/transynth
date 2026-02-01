@@ -311,6 +311,8 @@ const SORT_COLUMNS: Record<string, string> = {
   field: 'r.path',
   src: 's.text_raw',
   transl: 't.text',
+  /** Sort by translation confidence (ascending = least confident first for review queue). */
+  confidence: 't.confidence',
 };
 
 export const listStrings = async (db: Tx, f: StringsFilter) => {
@@ -1092,6 +1094,142 @@ export const getQAIssues = async (db: Tx, stringId: number, targetLang = 'uk') =
   );
   return rows;
 }
+
+// ── Review queue ──────────────────────────────────────────────────────────────
+
+/**
+ * One row returned by the review queue — a translated string that needs
+ * human review, including its mod context and current confidence score.
+ */
+export type ReviewQueueRow = {
+  string_id: number;
+  mod_id: number;
+  mod_name: string;
+  formid_hex: string;
+  signature: string;
+  path: string;
+  edid: string | null;
+  source: string;
+  translation_id: number;
+  translation: string;
+  status: string;
+  /** Confidence in the range [0, 1].  Lower = higher review priority. */
+  confidence: number | null;
+  model: string | null;
+  qa_issue_count: number;
+};
+
+/** Paginated result for the review queue. */
+export type ReviewQueueResult = {
+  rows: ReviewQueueRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Returns a cross-mod paginated list of translations whose status indicates
+ * they need human review (auto / fuzzy / tm / draft by default), sorted by
+ * confidence ascending so the least-certain strings surface first.
+ *
+ * @param db             - Database connection or pool.
+ * @param targetLang     - Language code to query (e.g. 'uk').
+ * @param statuses       - Array of translation statuses to include.
+ * @param modId          - Optional: limit results to a single mod.
+ * @param maxConfidence  - Optional: exclude strings with confidence > this value.
+ * @param page           - 1-based page number.
+ * @param pageSize       - Max rows per page (clamped to 1–200).
+ */
+export const listReviewQueue = async (
+  db: Tx,
+  targetLang: string,
+  statuses: string[],
+  modId: number | null,
+  maxConfidence: number | null,
+  page: number,
+  pageSize: number,
+): Promise<ReviewQueueResult> => {
+  const effectivePage = Math.max(1, page);
+  const effectivePageSize = Math.min(200, Math.max(1, pageSize));
+  const offset = (effectivePage - 1) * effectivePageSize;
+
+  // Guard: if no statuses requested, return empty immediately
+  if (statuses.length === 0) {
+    return { rows: [], total: 0, page: effectivePage, pageSize: effectivePageSize };
+  }
+
+  const conditions: string[] = [
+    't.target_lang = $1',
+    's.lang = \'en\'',
+    't.status = ANY($2)',
+  ];
+  const values: unknown[] = [targetLang, statuses];
+  let idx = 3;
+
+  if (modId !== null) {
+    conditions.push(`r.mod_id = $${idx}`);
+    values.push(modId);
+    idx++;
+  }
+  if (maxConfidence !== null) {
+    // Include strings whose confidence is NULL (uncertain) or below/equal the threshold
+    conditions.push(`(t.confidence IS NULL OR t.confidence <= $${idx})`);
+    values.push(maxConfidence);
+    idx++;
+  }
+
+  const where = conditions.join(' AND ');
+  const pageSizeIdx = idx;
+  const offsetIdx = idx + 1;
+  const allValues = [...values, effectivePageSize, offset];
+
+  const { rows } = await db.query<ReviewQueueRow>(
+    `SELECT
+      s.id              AS string_id,
+      m.id              AS mod_id,
+      m.name            AS mod_name,
+      r.formid_hex,
+      r.signature,
+      r.path,
+      r.edid,
+      s.text_raw        AS source,
+      t.id              AS translation_id,
+      t.text            AS translation,
+      t.status,
+      t.confidence,
+      t.model,
+      COALESCE(q.issue_count, 0) AS qa_issue_count
+     FROM translations t
+     JOIN strings  s ON s.id = t.src_string_id
+     JOIN records  r ON r.id = s.record_id
+     JOIN mods     m ON m.id = r.mod_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS issue_count
+       FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $1 AND qi.is_active = TRUE
+     ) q ON TRUE
+     WHERE ${where}
+     ORDER BY t.confidence ASC NULLS LAST, t.updated_at ASC
+     LIMIT $${pageSizeIdx} OFFSET $${offsetIdx}`,
+    allValues,
+  );
+
+  const { rows: countRows } = await db.query<{ total: string }>(
+    `SELECT COUNT(*) AS total
+     FROM translations t
+     JOIN strings s ON s.id = t.src_string_id
+     JOIN records r ON r.id = s.record_id
+     WHERE ${where}`,
+    values,
+  );
+
+  return {
+    rows,
+    total: Number(countRows[0]?.total ?? 0),
+    page: effectivePage,
+    pageSize: effectivePageSize,
+  };
+};
 
 // ── Bulk status update ────────────────────────────────────────────────────────
 

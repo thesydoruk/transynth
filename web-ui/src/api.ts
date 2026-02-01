@@ -212,6 +212,36 @@ export type CoherenceResult = {
   total: number;
 };
 
+/**
+ * One row from the review queue — a string that has been automatically
+ * translated (or is a draft/fuzzy match) and needs human verification.
+ */
+export type ReviewQueueRow = {
+  string_id: number;
+  mod_id: number;
+  mod_name: string;
+  formid_hex: string;
+  signature: string;
+  path: string;
+  edid: string | null;
+  source: string;
+  translation_id: number;
+  translation: string;
+  status: string;
+  /** Confidence in [0, 1] — null means unknown.  Lower = higher review priority. */
+  confidence: number | null;
+  model: string | null;
+  qa_issue_count: number;
+};
+
+/** Paginated result from GET /api/review-queue. */
+export type ReviewQueueResult = {
+  rows: ReviewQueueRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type DashboardModRow = {
   id: number;
   name: string;
@@ -911,5 +941,33 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ textNorm, translation, targetLang }),
       }),
+  },
+
+  /**
+   * Review queue — cross-mod list of translations that need human review,
+   * sorted by confidence ascending (least certain first).
+   */
+  reviewQueue: {
+    /**
+     * Returns a paginated list of strings awaiting review.
+     * Defaults: statuses = [auto, fuzzy, tm, draft], all mods, no confidence ceiling.
+     */
+    list: (params?: {
+      targetLang?: string;
+      statuses?: string[];
+      modId?: number;
+      maxConfidence?: number;
+      page?: number;
+      pageSize?: number;
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.targetLang) qs.set('targetLang', params.targetLang);
+      if (params?.statuses?.length) qs.set('statuses', params.statuses.join(','));
+      if (params?.modId !== undefined) qs.set('modId', String(params.modId));
+      if (params?.maxConfidence !== undefined) qs.set('maxConfidence', String(params.maxConfidence));
+      if (params?.page !== undefined) qs.set('page', String(params.page));
+      if (params?.pageSize !== undefined) qs.set('pageSize', String(params.pageSize));
+      return req<ReviewQueueResult>(`/api/review-queue?${qs}`);
+    },
   },
 };

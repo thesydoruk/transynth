@@ -18,6 +18,7 @@ import { TmxPage } from './pages/TmxPage';
 import { UsersPage } from './pages/UsersPage';
 import { QARulesPage } from './pages/QARulesPage';
 import { CoherencePage } from './pages/CoherencePage';
+import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { ActivityPage } from './pages/ActivityPage';
 import nav from './App.module.scss';
 
@@ -36,6 +37,7 @@ const NAV_LINKS = [
   { to: '/activity', labelKey: 'nav.activity', exact: false },
   { to: '/qa-rules', labelKey: 'nav.qaRules', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
+  { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
@@ -134,6 +136,7 @@ const AppShell = () => {
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
+          <Route path="/review-queue" element={<ReviewQueuePage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </main>

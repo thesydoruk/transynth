@@ -23,6 +23,7 @@ import { modImportRoutes } from './routes/modImport.js';
 import { tmxRoutes } from './routes/tmx.js';
 import { qaRulesRoutes } from './routes/qaRules.js';
 import { coherenceRoutes } from './routes/coherence.js';
+import { reviewQueueRoutes } from './routes/reviewQueue.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -81,6 +82,7 @@ await modImportRoutes(app, db);
 await tmxRoutes(app, db);
 await qaRulesRoutes(app, db);
 await coherenceRoutes(app, db);
+await reviewQueueRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

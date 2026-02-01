@@ -38,6 +38,7 @@
     "users": "Users",
     "qaRules": "QA Rules",
     "coherence": "Consistency",
+    "reviewQueue": "Review Queue",
     "logout": "Logout",
     "themeDark": "Switch to dark theme",
     "themeLight": "Switch to light theme"
@@ -408,6 +409,32 @@
     "variantsBadge": "{{count}} variants",
     "applyToAll": "Apply to All",
     "applyToAllTitle": "Replace all other variants with this translation",
+    "page": "Page {{current}} of {{total}}"
+  },
+  "reviewQueue": {
+    "title": "Review Queue",
+    "description": "Strings with auto, fuzzy, or draft translations sorted by confidence ascending. Approve or reject each string with a single click.",
+    "lang": "Language",
+    "statusFilter": "Status",
+    "mod": "Mod",
+    "allMods": "All mods",
+    "maxConf": "Max confidence",
+    "total": "{{count}} strings",
+    "loading": "Loading…",
+    "empty": "Nothing to review.",
+    "noStatuses": "Select at least one status.",
+    "colMod": "Mod",
+    "colGrup": "GRUP",
+    "colEdid": "EDID",
+    "colSource": "Source",
+    "colTranslation": "Translation",
+    "colStatus": "Status",
+    "colConf": "Confidence",
+    "colQA": "QA",
+    "colActions": "Actions",
+    "approve": "Approve",
+    "reject": "Reject",
+    "openInEditor": "Open in editor",
     "page": "Page {{current}} of {{total}}"
   }
 }
