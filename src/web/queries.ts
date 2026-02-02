@@ -947,6 +947,53 @@ export const carryOverTranslations = async (
   return { carried, needsReview, skipped };
 }
 
+// ── Previous versions ─────────────────────────────────────────────────────────
+
+/**
+ * Row returned by {@link listPreviousVersions} — one per older mod version
+ * sharing the same name but a different file hash.
+ */
+export type PreviousVersionRow = {
+  id: number;
+  name: string;
+  version_hash: string;
+  created_at: string;
+  total_strings: number;
+  translated_strings: number;
+};
+
+/**
+ * Lists all other mod rows that share the same `name` as the given mod but
+ * have a different `version_hash` (i.e. different file content).
+ *
+ * This is used after import to detect whether a previous version of the same
+ * mod already exists so the user can be prompted to carry over translations.
+ *
+ * @param db    - Database connection
+ * @param modId - The newly imported mod ID
+ * @returns Array of previous-version summaries, newest first
+ */
+export const listPreviousVersions = async (
+  db: Tx,
+  modId: number,
+): Promise<PreviousVersionRow[]> => {
+  const { rows } = await db.query(
+    `SELECT m.id, m.name, m.version_hash, m.created_at::text,
+            COUNT(DISTINCT s.id)::int                  AS total_strings,
+            COUNT(DISTINCT t.src_string_id)::int       AS translated_strings
+     FROM mods m
+     LEFT JOIN records r ON r.mod_id = m.id
+     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
+     LEFT JOIN translations t ON t.src_string_id = s.id
+     WHERE m.name = (SELECT name FROM mods WHERE id = $1)
+       AND m.id != $1
+     GROUP BY m.id
+     ORDER BY m.created_at DESC`,
+    [modId],
+  );
+  return rows as PreviousVersionRow[];
+};
+
 // ── Bulk search-replace ───────────────────────────────────────────────────────
 
 export type SearchReplaceMatch = {

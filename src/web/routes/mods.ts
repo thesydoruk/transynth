@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
-import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus } from '../queries.js';
+import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus, listPreviousVersions } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
@@ -32,6 +32,14 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
     const langs = await listModLangs(db, id);
     return reply.send(langs);
+  });
+
+  // GET /api/mods/:id/previous-versions — list older versions of this mod (same name, different hash)
+  app.get<{ Params: { id: string } }>('/api/mods/:id/previous-versions', async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+    const rows = await listPreviousVersions(db, id);
+    return reply.send(rows);
   });
 
   // POST /api/mods/:id/tm-apply — auto-fill untranslated strings from TM

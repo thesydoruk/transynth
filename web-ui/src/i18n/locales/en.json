@@ -172,7 +172,9 @@
     "shortcutPageNav": "Next / prev page",
     "shortcutEscape": "Close / cancel",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Open Instance Naming Rules editor"
+    "innrEditorTitle": "Open Instance Naming Rules editor",
+    "updateMod": "⬆ Update",
+    "updateModTitle": "Upload a new version of this mod and migrate translations"
   },
   "ctx": {
     "approve": "Approve",
@@ -232,7 +234,8 @@
     "filterAll": "all",
     "filterAdded": "added",
     "filterRemoved": "removed",
-    "filterChanged": "changed"
+    "filterChanged": "changed",
+    "openInEditor": "Open in Editor (Drafts)"
   },
   "glossary": {
     "title": "Glossary",
@@ -462,5 +465,18 @@
     "save": "Save",
     "clear": "Clear",
     "qaIssues": "{{count}} QA issue(s)"
+  },
+  "reimport": {
+    "title": "Previous Version Detected",
+    "subtitle": "The following older versions of \"{{name}}\" were found. Do you want to carry over their translations to the newly imported version?",
+    "strings": "{{count}} strings",
+    "translated": "{{count}} translated",
+    "select": "Carry Over from This Version",
+    "carrying": "Carrying over…",
+    "carried": "Carried",
+    "needsReview": "Needs review",
+    "skipped": "Skipped",
+    "viewDiff": "View Diff",
+    "cancel": "Skip"
   }
 }

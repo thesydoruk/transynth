@@ -19,7 +19,9 @@ import {
   type ModImportJob,
   type ModProgressEvent,
   type ModPreviewRow,
+  type PreviousVersionRow,
 } from '../api';
+import { ReimportModal } from '../components/ReimportModal';
 import s from './ImportPage.module.scss';
 
 // ── Shared types & constants ───────────────────────────────────────────────────
@@ -119,6 +121,10 @@ export const ImportsPage = () => {
   const [csvPreviewId, setCsvPreviewId] = useState<number | null>(null);
   const [modPreviewId, setModPreviewId] = useState<number | null>(null);
 
+  /* ── Reimport detection — shown after a mod import completes ──────────── */
+  /** State for the reimport modal: newModId + list of previous versions */
+  const [reimport, setReimport] = useState<{ newModId: number; prevVersions: PreviousVersionRow[] } | null>(null);
+
   /** Invalidate all three import lists. */
   const refreshAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['eet-imports'] });
@@ -136,6 +142,18 @@ export const ImportsPage = () => {
       setLiveProgress(prev => { const c = { ...prev }; delete c[key]; return c; });
       delete abortRefs.current[key];
       refreshAll();
+      // After a mod import finishes, check for previous versions of the same mod
+      if (kind === 'mod') {
+        // Re-fetch the job to get the assigned mod_id, then query previous versions
+        api.modImport.list().then((jobs) => {
+          const job = jobs.find((j) => j.id === jobId);
+          if (job?.mod_id != null) {
+            api.mods.previousVersions(job.mod_id).then((prev) => {
+              if (prev.length > 0) setReimport({ newModId: job.mod_id!, prevVersions: prev });
+            }).catch(() => {/* ignore */});
+          }
+        }).catch(() => {/* ignore */});
+      }
     };
 
     let promise: Promise<unknown>;
@@ -301,6 +319,15 @@ export const ImportsPage = () => {
             setModPreviewId(null);
             setTimeout(() => doStart('mod', modPreviewJob.id), 100);
           }}
+        />
+      )}
+
+      {/* ── Reimport modal — offer carry-over when a previous version exists ── */}
+      {reimport && (
+        <ReimportModal
+          newModId={reimport.newModId}
+          prevVersions={reimport.prevVersions}
+          onClose={() => setReimport(null)}
         />
       )}
     </div>

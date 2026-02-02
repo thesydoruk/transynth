@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
@@ -99,6 +99,40 @@ export const ModEditorPage = () => {
 
   // Keyboard shortcuts help panel
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Hidden file input ref for "Update Mod" — uploads a new version of the current mod
+  const updateFileRef = useRef<HTMLInputElement>(null);
+  const [updating, setUpdating] = useState(false);
+  const navigate = useNavigate();
+
+  /**
+   * Handles "Update Mod": uploads the selected file as a new import job, starts
+   * it immediately (localized) or shows the preview modal, then navigates to the
+   * Diff page with the new and current mod IDs pre-filled.
+   */
+  const handleUpdateMod = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUpdating(true);
+    try {
+      const job = await api.modImport.upload(file);
+      if (!job) return;
+      // Start import immediately for localized mods; non-localized still need language selection
+      if (job.is_localized) {
+        const { promise } = api.modImport.startImport(job.id, () => {});
+        await promise;
+      }
+      // Fetch updated job to get the new mod_id
+      const jobs = await api.modImport.list();
+      const finished = jobs.find((j) => j.id === job.id);
+      if (finished?.mod_id) {
+        navigate(`/diff?newModId=${finished.mod_id}&oldModId=${modId}`);
+      }
+    } catch {/* ignore — user sees nothing happen */} finally {
+      setUpdating(false);
+      if (updateFileRef.current) updateFileRef.current.value = '';
+    }
+  };
 
   // Context menu state — position and the row it was triggered on
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
@@ -723,6 +757,22 @@ export const ModEditorPage = () => {
             {t('modEditor.innrEditor')}
           </Link>
         )}
+        {/* Update mod — upload a newer version of this mod and go to the Diff page */}
+        <input
+          ref={updateFileRef}
+          type="file"
+          accept=".esp,.esm,.esl,.zip,.7z,.rar"
+          style={{ display: 'none' }}
+          onChange={handleUpdateMod}
+        />
+        <button
+          onClick={() => updateFileRef.current?.click()}
+          disabled={updating}
+          className={styles.btnSec}
+          title={t('modEditor.updateModTitle')}
+        >
+          {updating ? t('modEditor.updating') : t('modEditor.updateMod')}
+        </button>
         <button onClick={() => setShowShortcuts((v) => !v)} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
         {selected.size > 0 && (
           <>

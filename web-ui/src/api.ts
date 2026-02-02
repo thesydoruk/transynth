@@ -336,6 +336,19 @@ export type CarryOverResult = {
   skipped: number;
 };
 
+/**
+ * One row from GET /api/mods/:id/previous-versions.
+ * Represents an older version of the same mod (same name, different file hash).
+ */
+export type PreviousVersionRow = {
+  id: number;
+  name: string;
+  version_hash: string;
+  created_at: string;
+  total_strings: number;
+  translated_strings: number;
+};
+
 /** Result of importing a TMX file into the translation memory */
 export type TmxImportResult = {
   parsed: number;
@@ -505,6 +518,9 @@ export const api = {
     /** Copy translations from an older mod version into a newer one */
     carryOver: (newModId: number, fromModId: number, targetLang = 'uk') =>
       req<CarryOverResult>(`/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`, { method: 'POST' }),
+    /** List older versions (same mod name, different file hash) for a given mod ID */
+    previousVersions: (modId: number) =>
+      req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),
     bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = 'uk') =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',

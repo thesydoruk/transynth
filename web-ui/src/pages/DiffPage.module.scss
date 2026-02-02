@@ -62,6 +62,15 @@
   background: var(--success-dark);
 }
 
+/** Link-styled button that opens the new mod in editor filtered to drafts */
+.btnOpenEditor {
+  composes: btnCompare;
+  background: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .summary {
   display: flex;
   gap: 12px;

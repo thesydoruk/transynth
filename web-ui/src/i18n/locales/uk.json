@@ -172,7 +172,9 @@
     "shortcutPageNav": "Наступна / попередня сторінка",
     "shortcutEscape": "Закрити / скасувати",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Відкрити редактор правил іменування INNR"
+    "innrEditorTitle": "Відкрити редактор правил іменування INNR",
+    "updateMod": "⬆ Оновити",
+    "updateModTitle": "Завантажити нову версію мода та перенести переклади"
   },
   "ctx": {
     "approve": "Підтвердити",
@@ -233,7 +235,8 @@
     "filterAll": "Усі",
     "filterAdded": "Додані",
     "filterRemoved": "Видалені",
-    "filterChanged": "Змінені"
+    "filterChanged": "Змінені",
+    "openInEditor": "Відкрити в редакторі (чернетки)"
   },
   "glossary": {
     "title": "Глосарій",
@@ -463,5 +466,18 @@
     "save": "Зберегти",
     "clear": "Очистити",
     "qaIssues": "{{count}} проблем(и) QA"
+  },
+  "reimport": {
+    "title": "Виявлено попередню версію",
+    "subtitle": "Знайдено старіші версії \"{{name}}\". Перенести переклади до щойно імпортованої версії?",
+    "strings": "{{count}} рядків",
+    "translated": "{{count}} перекладено",
+    "select": "Перенести з цієї версії",
+    "carrying": "Перенесення…",
+    "carried": "Перенесено",
+    "needsReview": "Потребує перевірки",
+    "skipped": "Пропущено",
+    "viewDiff": "Переглянути різницю",
+    "cancel": "Пропустити"
   }
 }

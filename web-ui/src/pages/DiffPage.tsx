@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
 import s from './DiffPage.module.scss';
@@ -29,9 +30,10 @@ export const DiffPage = () => {
   const { t } = useTranslation();
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
 
-  const [newModId, setNewModId] = useState('');
-  const [oldModId, setOldModId] = useState('');
+  const [newModId, setNewModId] = useState(searchParams.get('newModId') ?? '');
+  const [oldModId, setOldModId] = useState(searchParams.get('oldModId') ?? '');
   const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
 
   const {
@@ -44,6 +46,18 @@ export const DiffPage = () => {
     queryFn: () => api.mods.diff(Number(newModId), Number(oldModId)),
     enabled: false, // manual trigger
   });
+
+  /**
+   * Auto-trigger comparison when both mod IDs come from URL params (e.g. after
+   * navigating from the ReimportModal).
+   */
+  useEffect(() => {
+    if (searchParams.get('newModId') && searchParams.get('oldModId')) {
+      refetch();
+    }
+  // Run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Carry over translations from old version to new version */
   const carryOver = useMutation({
@@ -143,6 +157,16 @@ export const DiffPage = () => {
                 {' · '}{t('diff.needsReview')}: <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
                 {' · '}{t('diff.skipped')}: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
               </span>
+            )}
+            {/* After carry-over, offer a direct link to the new mod's editor filtered to drafts */}
+            {carryOver.isSuccess && carryOver.data && carryOver.data.needsReview > 0 && newModId && (
+              <Link
+                to={`/mods/${newModId}?status=draft`}
+                className={s.btnOpenEditor}
+                title={t('diff.openInEditorTitle')}
+              >
+                {t('diff.openInEditor', { count: carryOver.data.needsReview })}
+              </Link>
             )}
             {carryOver.isError && (
               <span className={s.carryError}>
