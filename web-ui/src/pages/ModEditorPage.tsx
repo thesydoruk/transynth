@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
@@ -717,6 +717,12 @@ export const ModEditorPage = () => {
           {exportProject.isPending ? t('modEditor.exporting') : t('modEditor.exportZip')}
         </button>
         <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
+        {/* Show INNR editor button only when the mod contains INNR records */}
+        {sigs?.some((s: { signature: string }) => s.signature === 'INNR') && (
+          <Link to={`/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
+            {t('modEditor.innrEditor')}
+          </Link>
+        )}
         <button onClick={() => setShowShortcuts((v) => !v)} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
         {selected.size > 0 && (
           <>

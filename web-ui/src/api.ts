@@ -242,6 +242,41 @@ export type ReviewQueueResult = {
   pageSize: number;
 };
 
+/**
+ * One component row within an INNR naming rule group.
+ *
+ * Each row represents a single INNR FormID — one component slot (e.g. material,
+ * quality, item type) within a compound naming rule.  Translators must see all
+ * slots of the same rule together to maintain grammatical agreement.
+ */
+export type InnrRow = {
+  string_id: number;
+  formid_hex: string;
+  /** Full EDID including numeric suffix, e.g. "ArmorMaterialSteel001". */
+  edid: string | null;
+  source: string;
+  translation_id: number | null;
+  translation: string | null;
+  status: string | null;
+  confidence: number | null;
+  qa_issue_count: number;
+};
+
+/** A group of INNR rows sharing the same base EDID prefix. */
+export type InnrGroup = {
+  /** Base EDID without numeric suffix, e.g. "ArmorMaterialSteel". */
+  base_edid: string;
+  rows: InnrRow[];
+};
+
+/** Response from GET /api/mods/:modId/innr. */
+export type InnrResult = {
+  mod_id: number;
+  mod_name: string;
+  total_rows: number;
+  groups: InnrGroup[];
+};
+
 export type DashboardModRow = {
   id: number;
   name: string;
@@ -968,6 +1003,22 @@ export const api = {
       if (params?.page !== undefined) qs.set('page', String(params.page));
       if (params?.pageSize !== undefined) qs.set('pageSize', String(params.pageSize));
       return req<ReviewQueueResult>(`/api/review-queue?${qs}`);
+    },
+  },
+
+  /**
+   * INNR editor — Instance Naming Rules grouped by base EDID for a single mod.
+   */
+  innr: {
+    /**
+     * Returns all INNR strings for a mod, grouped by base EDID prefix.
+     * Translators see all naming rule slots together for grammatical agreement.
+     */
+    list: (modId: number, params?: { targetLang?: string; srcLang?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.targetLang) qs.set('targetLang', params.targetLang);
+      if (params?.srcLang) qs.set('srcLang', params.srcLang);
+      return req<InnrResult>(`/api/mods/${modId}/innr?${qs}`);
     },
   },
 };

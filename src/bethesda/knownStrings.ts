@@ -31,6 +31,12 @@ export const TRANSLATABLE_SUBRECORDS: Record<string, Set<string>> = {
   HDPT: new Set(['FULL']),
   INFO: new Set(['NAM1', 'RNAM']),
   INGR: new Set(['FULL']),
+  /**
+   * Instance Naming Rules — each INNR FormID has a single FULL subrecord
+   * containing one component of a compound item name (material, type, quality, etc.).
+   * Multiple INNR records share an EDID prefix and are grouped for display.
+   */
+  INNR: new Set(['FULL']),
   KEYM: new Set(['FULL']),
   LVLI: new Set(['ONAM']),
   LCTN: new Set(['FULL']),

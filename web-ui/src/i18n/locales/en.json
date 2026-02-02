@@ -170,7 +170,9 @@
     "shortcutSelectAll": "Select / deselect all",
     "shortcutNavRows": "Navigate rows",
     "shortcutPageNav": "Next / prev page",
-    "shortcutEscape": "Close / cancel"
+    "shortcutEscape": "Close / cancel",
+    "innrEditor": "INNR",
+    "innrEditorTitle": "Open Instance Naming Rules editor"
   },
   "ctx": {
     "approve": "Approve",
@@ -436,5 +438,29 @@
     "reject": "Reject",
     "openInEditor": "Open in editor",
     "page": "Page {{current}} of {{total}}"
+  },
+  "innr": {
+    "title": "INNR Editor",
+    "loading": "Loading\u2026",
+    "noRecords": "This mod contains no INNR records.",
+    "noResults": "No naming rules match the search.",
+    "backToEditor": "Back to editor",
+    "lang": "Language",
+    "search": "Filter",
+    "searchPlaceholder": "Base EDID\u2026",
+    "groups": "groups",
+    "translated": "translated",
+    "colSlot": "Slot",
+    "colFormId": "FormID",
+    "colSource": "Source",
+    "colTranslation": "Translation",
+    "colStatus": "Status",
+    "colQA": "QA",
+    "colActions": "Actions",
+    "translPlaceholder": "Enter translation\u2026",
+    "translLabel": "Translation for {{source}}",
+    "save": "Save",
+    "clear": "Clear",
+    "qaIssues": "{{count}} QA issue(s)"
   }
 }

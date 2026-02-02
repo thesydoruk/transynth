@@ -1,0 +1,332 @@
+/* ── INNRPage — SCSS Module ──────────────────────────────────────────────── */
+
+/* The INNR editor displays Instance Naming Rule components grouped by base    */
+/* EDID.  Each group is a collapsible card; within it, a compact table shows  */
+/* all component slots side-by-side so the translator sees how the final item  */
+/* name assembles and can maintain grammatical agreement between parts.        */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.backBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+}
+
+.title {
+  color: var(--text-bright);
+  margin: 0;
+  font-size: 18px;
+}
+
+.modName {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.searchInput {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  width: 200px;
+}
+
+.statsBar {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 12px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+
+  strong {
+    font-size: 15px;
+    color: var(--text-bright);
+  }
+}
+
+/* ── State messages ──────────────────────────────────────────────────────── */
+
+.empty {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* ── Group cards ─────────────────────────────────────────────────────────── */
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-table-header);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.chevron {
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 12px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+
+  &.open {
+    transform: rotate(90deg);
+  }
+}
+
+.baseEdid {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.groupCount {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-tag);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.groupProgress {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.progressDone {
+  color: var(--color-success, #4ade80);
+}
+
+/* ── Component table (inside each group) ────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--bg-table-header);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.tr {
+  border-bottom: 1px solid var(--border-subtle, var(--border));
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--bg-row-hover, var(--bg-hover));
+  }
+}
+
+.td {
+  padding: 5px 10px;
+  vertical-align: middle;
+}
+
+/* Slot number — the numeric suffix (001, 002, …) shown in a monospace badge */
+.slotBadge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--bg-tag);
+  color: var(--text-dim);
+}
+
+/* FormID monospace */
+.formid {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Source and translation text cells */
+.srcText {
+  color: var(--text-dim);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/* Translation input — fills the cell */
+.translInput {
+  width: 100%;
+  min-width: 200px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  &.dirty {
+    border-color: var(--color-warning, #f59e0b);
+  }
+
+  &.saved {
+    border-color: var(--color-success, #4ade80);
+  }
+}
+
+/* QA issue count badge */
+.qaBadge {
+  display: inline-block;
+  background: var(--color-warning, #f59e0b);
+  color: #000;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Save / status action buttons */
+.actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.saveBtn {
+  background: var(--accent);
+  color: var(--accent-fg, #fff);
+  border: none;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.clearBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--color-error, #f87171);
+    border-color: var(--color-error, #f87171);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}

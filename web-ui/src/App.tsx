@@ -19,6 +19,7 @@ import { UsersPage } from './pages/UsersPage';
 import { QARulesPage } from './pages/QARulesPage';
 import { CoherencePage } from './pages/CoherencePage';
 import { ReviewQueuePage } from './pages/ReviewQueuePage';
+import { INNRPage } from './pages/INNRPage';
 import { ActivityPage } from './pages/ActivityPage';
 import nav from './App.module.scss';
 
@@ -137,6 +138,7 @@ const AppShell = () => {
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
+          <Route path="/mods/:modId/innr" element={<INNRPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </main>

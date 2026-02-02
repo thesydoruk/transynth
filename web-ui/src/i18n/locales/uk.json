@@ -170,7 +170,9 @@
     "shortcutSelectAll": "Вибрати / зняти все",
     "shortcutNavRows": "Навігація рядками",
     "shortcutPageNav": "Наступна / попередня сторінка",
-    "shortcutEscape": "Закрити / скасувати"
+    "shortcutEscape": "Закрити / скасувати",
+    "innrEditor": "INNR",
+    "innrEditorTitle": "Відкрити редактор правил іменування INNR"
   },
   "ctx": {
     "approve": "Підтвердити",
@@ -437,5 +439,29 @@
     "reject": "Відхилити",
     "openInEditor": "Відкрити в редакторі",
     "page": "Сторінка {{current}} з {{total}}"
+  },
+  "innr": {
+    "title": "Редактор INNR",
+    "loading": "Завантаження\u2026",
+    "noRecords": "Цей мод не містить записів INNR.",
+    "noResults": "Жодне правило іменування не відповідає пошуку.",
+    "backToEditor": "Повернутися до редактора",
+    "lang": "Мова",
+    "search": "Фільтр",
+    "searchPlaceholder": "Base EDID\u2026",
+    "groups": "груп",
+    "translated": "перекладено",
+    "colSlot": "Слот",
+    "colFormId": "FormID",
+    "colSource": "Оригінал",
+    "colTranslation": "Переклад",
+    "colStatus": "Статус",
+    "colQA": "QA",
+    "colActions": "Дії",
+    "translPlaceholder": "Введіть переклад\u2026",
+    "translLabel": "Переклад для {{source}}",
+    "save": "Зберегти",
+    "clear": "Очистити",
+    "qaIssues": "{{count}} проблем(и) QA"
   }
 }
