@@ -14,6 +14,7 @@ import { log } from '../logger.js';
 import { EspReader, type EspStringRow } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
+import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
 import type { CsvRow } from '../types.js';
 
 const BATCH_SIZE = 1000;
@@ -185,6 +186,107 @@ const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, str
   return locales;
 }
 
+/**
+ * Load all MCM translation files from a BA2 archive.
+ * Only considers files under the Interface\Translations\ path.
+ * Returns a Map of lowercase locale name (e.g. "english") → Map of $key → text.
+ *
+ * @param ba2Path - Absolute path to the BA2 archive
+ */
+const loadMcmLocalesFromBA2 = (ba2Path: string): Map<string, Map<string, string>> => {
+  const reader = new Ba2Reader(ba2Path);
+  const locales = new Map<string, Map<string, string>>();
+
+  // Only look at .txt files inside the Interface\Translations\ directory.
+  const txtEntries = reader
+    .listByExt('txt')
+    .filter((e) => e.name.toLowerCase().includes('interface') && e.name.toLowerCase().includes('translations'));
+
+  for (const entry of txtEntries) {
+    const locale = mcmLocaleFromPath(entry.name);
+    if (!locale) continue;
+
+    const buf = reader.extractEntry(entry);
+    const mcmMap = parseMcmBuffer(buf);
+    if (mcmMap.size === 0) continue;
+
+    if (!locales.has(locale)) locales.set(locale, new Map());
+    const existing = locales.get(locale)!;
+    for (const [k, v] of mcmMap) existing.set(k, v);
+  }
+
+  return locales;
+};
+
+/**
+ * Load MCM translation files from loose files on disk.
+ * Looks in <modDir>/Interface/Translations/ for *.txt files.
+ *
+ * @param modDir - Directory containing the mod files
+ */
+const loadMcmLocalesFromLooseFiles = (modDir: string): Map<string, Map<string, string>> => {
+  const dir = path.join(modDir, 'Interface', 'Translations');
+  const locales = new Map<string, Map<string, string>>();
+  if (!fs.existsSync(dir)) return locales;
+
+  for (const file of fs.readdirSync(dir)) {
+    if (!file.toLowerCase().endsWith('.txt')) continue;
+    const locale = mcmLocaleFromPath(file);
+    if (!locale) continue;
+
+    const buf = fs.readFileSync(path.join(dir, file));
+    const mcmMap = parseMcmBuffer(buf);
+    if (mcmMap.size === 0) continue;
+
+    if (!locales.has(locale)) locales.set(locale, new Map());
+    const existing = locales.get(locale)!;
+    for (const [k, v] of mcmMap) existing.set(k, v);
+  }
+
+  return locales;
+};
+
+/**
+ * Collect all MCM locales for a plugin by scanning all BA2s in the plugin’s
+ * directory and any loose Interface\Translations files.
+ *
+ * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
+ */
+const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> => {
+  const modDir = path.dirname(espPath);
+  const merged = new Map<string, Map<string, string>>();
+
+  // Scan every BA2 in the mod directory for MCM translation txt files
+  let ba2Files: string[] = [];
+  try {
+    ba2Files = fs
+      .readdirSync(modDir)
+      .filter((f) => f.toLowerCase().endsWith('.ba2'))
+      .map((f) => path.join(modDir, f));
+  } catch {
+    // Directory unreadable — skip
+  }
+
+  for (const ba2Path of ba2Files) {
+    try {
+      for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path)) {
+        if (!merged.has(locale)) merged.set(locale, new Map());
+        for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
+      }
+    } catch (err) {
+      log.warn(`MCM: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  // Also check loose Interface/Translations files
+  for (const [locale, mcmMap] of loadMcmLocalesFromLooseFiles(modDir)) {
+    if (!merged.has(locale)) merged.set(locale, new Map());
+    for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
+  }
+
+  return merged;
+};
+
 const buildCsvRows = (
   espRows: EspStringRow[],
   stringsMap: Map<number, string> | null,
@@ -211,6 +313,26 @@ const buildCsvRows = (
   }
   return rows;
 }
+
+/**
+ * Convert an MCM locale's key→text map into generic CsvRow objects.
+ *
+ * Each MCM key becomes:
+ *   FormID   : ''            (MCM strings have no record FormID)
+ *   Signature: 'MCM'         (distinguishing signature in the records table)
+ *   Path     : 'MCM\\$key'   (the MCM token as the path, e.g. MCM\\$OptionLabel)
+ *   Source   : translated text
+ *
+ * @param mcmMap - Map of MCM $key → text string for a single locale
+ */
+const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
+  Array.from(mcmMap.entries()).map(([key, text]) => ({
+    FormID: '',
+    Signature: 'MCM',
+    Path: `MCM\\${key}`,
+    PathSimplified: `MCM\\${key}`,
+    Source: text,
+  }));
 
 // ── Registration ────────────────────────────────────────────────────────────
 
@@ -504,6 +626,38 @@ export const runModImport = async (
           log.info(`[Mod Import #${job.id}] Progress: ${imported}/${csvRows.length} (${pct}%)`);
           onProgress?.(imported, csvRows.length);
         }
+      }
+    }
+
+    // ── MCM strings: ingest any Interface\Translations\*.txt from BA2s ──
+    // This runs after all ESP records are processed, so cancellation during
+    // ESP short-circuits safely. MCM strings use Signature='MCM' to keep
+    // them visually distinct from ESP-sourced strings in the editor.
+    if (!state.cancel && !state.pause) {
+      const mcmLocales = collectMcmLocales(espPath);
+      if (mcmLocales.size > 0) {
+        log.info(`[Mod Import #${job.id}] MCM translations found for ${mcmLocales.size} locale(s)`);
+        for (const [locale, mcmMap] of mcmLocales) {
+          const mcmRows = buildMcmCsvRows(mcmMap);
+          if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
+          for (const r of mcmRows) {
+            const hashNorm = sha1Hex(normalizeForHash(r.Source));
+            const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
+            await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mcm', undefined, normalizeNoPunct(r.Source));
+            imported++;
+            batchCount++;
+            if (batchCount >= BATCH_SIZE) {
+              await updateProgress(db, job.id, imported);
+              await db.query('COMMIT');
+              inTx = false;
+              batchCount = 0;
+              onProgress?.(imported, imported);
+            }
+          }
+          log.info(`[Mod Import #${job.id}] MCM locale "${locale}": ${mcmRows.length} strings`);
+        }
+      } else {
+        log.debug(`[Mod Import #${job.id}] No MCM translation files found`);
       }
     }
 
