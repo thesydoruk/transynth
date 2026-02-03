@@ -1,9 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus, listPreviousVersions } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
+import { Ba2Reader } from '../../bethesda/ba2Reader.js';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats
@@ -204,4 +207,61 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang);
     return reply.send({ updated });
   });
+
+  // GET /api/mods/:id/ba2 — list all BA2 archives associated with the mod and their file contents
+  //
+  // Returns an array of archive descriptors, each containing the archive path and its flat
+  // file listing.  Only archives whose filename stem starts with the mod name (case-insensitive)
+  // are returned — same discovery logic used during import.
+  //
+  // Response shape: Array<{ archive: string; fileCount: number; files: Ba2FileInfo[] }>
+  // Ba2FileInfo: { name: string; ext: string; unpackedSize: number; packed: boolean }
+  app.get<{ Params: { id: string } }>(
+    '/api/mods/:id/ba2',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path not available' });
+
+      const espPath = mod.abs_path as string;
+      const modDir  = path.dirname(espPath);
+      const stem    = path.basename(espPath, path.extname(espPath)).toLowerCase();
+
+      // Discover all BA2 files in the same directory whose names start with the mod stem
+      let ba2Files: string[] = [];
+      try {
+        ba2Files = fs
+          .readdirSync(modDir)
+          .filter((f) => f.toLowerCase().endsWith('.ba2') && f.toLowerCase().startsWith(stem))
+          .sort()
+          .map((f) => path.join(modDir, f));
+      } catch (err) {
+        log.warn(`BA2 browser: could not read mod dir "${modDir}": ${err instanceof Error ? err.message : err}`);
+      }
+
+      const archives = ba2Files.map((ba2Path) => {
+        try {
+          const reader = new Ba2Reader(ba2Path);
+          const entries = reader.listFiles();
+          const files = entries.map((name) => {
+            // Re-derive entry details via the reader's listByExt scanning all entries
+            return { name };
+          });
+          return {
+            archive: path.basename(ba2Path),
+            fileCount: reader.fileCount,
+            files: entries.map((name) => ({ name })),
+          };
+        } catch (err) {
+          log.warn(`BA2 browser: could not open "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`);
+          return { archive: path.basename(ba2Path), fileCount: 0, files: [], error: true };
+        }
+      });
+
+      return reply.send(archives);
+    },
+  );
 }

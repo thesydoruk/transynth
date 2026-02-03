@@ -41,7 +41,8 @@
     "reviewQueue": "Черга рецензій",
     "logout": "Вийти",
     "themeDark": "Перемкнути на темну тему",
-    "themeLight": "Перемкнути на світлу тему"
+    "themeLight": "Перемкнути на світлу тему",
+    "ba2Browser": "BA2 Браузер"
   },
   "status": {
     "reviewed": "Перевірений",
@@ -450,13 +451,13 @@
   },
   "innr": {
     "title": "Редактор INNR",
-    "loading": "Завантаження\u2026",
+    "loading": "Завантаження…",
     "noRecords": "Цей мод не містить записів INNR.",
     "noResults": "Жодне правило іменування не відповідає пошуку.",
     "backToEditor": "Повернутися до редактора",
     "lang": "Мова",
     "search": "Фільтр",
-    "searchPlaceholder": "Base EDID\u2026",
+    "searchPlaceholder": "Base EDID…",
     "groups": "груп",
     "translated": "перекладено",
     "colSlot": "Слот",
@@ -466,7 +467,7 @@
     "colStatus": "Статус",
     "colQA": "QA",
     "colActions": "Дії",
-    "translPlaceholder": "Введіть переклад\u2026",
+    "translPlaceholder": "Введіть переклад…",
     "translLabel": "Переклад для {{source}}",
     "save": "Зберегти",
     "clear": "Очистити",
@@ -484,5 +485,21 @@
     "skipped": "Пропущено",
     "viewDiff": "Переглянути різницю",
     "cancel": "Пропустити"
+  },
+  "ba2Browser": {
+    "title": "Браузер BA2-архівів",
+    "hint": "Перегляд BA2-архівів, що входять до складу мода.",
+    "selectMod": "Мод:",
+    "selectModPlaceholder": "Оберіть мод…",
+    "searchPlaceholder": "Фільтр файлів…",
+    "loading": "Завантаження архівів…",
+    "error": "Не вдалося завантажити архіви.",
+    "noArchives": "BA2-архіви для цього мода не знайдено.",
+    "fileCount": "{{count}} файлів",
+    "readError": "Не вдалося відкрити архів",
+    "noMatch": "Немає файлів, що відповідають фільтру.",
+    "filterInfo": "Показано {{shown}} з {{total}} файлів",
+    "colPath": "Шлях",
+    "colExt": "Розш."
   }
 }

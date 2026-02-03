@@ -41,7 +41,8 @@
     "reviewQueue": "Review Queue",
     "logout": "Logout",
     "themeDark": "Switch to dark theme",
-    "themeLight": "Switch to light theme"
+    "themeLight": "Switch to light theme",
+    "ba2Browser": "BA2 Browser"
   },
   "status": {
     "reviewed": "Reviewed",
@@ -449,13 +450,13 @@
   },
   "innr": {
     "title": "INNR Editor",
-    "loading": "Loading\u2026",
+    "loading": "Loading…",
     "noRecords": "This mod contains no INNR records.",
     "noResults": "No naming rules match the search.",
     "backToEditor": "Back to editor",
     "lang": "Language",
     "search": "Filter",
-    "searchPlaceholder": "Base EDID\u2026",
+    "searchPlaceholder": "Base EDID…",
     "groups": "groups",
     "translated": "translated",
     "colSlot": "Slot",
@@ -465,7 +466,7 @@
     "colStatus": "Status",
     "colQA": "QA",
     "colActions": "Actions",
-    "translPlaceholder": "Enter translation\u2026",
+    "translPlaceholder": "Enter translation…",
     "translLabel": "Translation for {{source}}",
     "save": "Save",
     "clear": "Clear",
@@ -483,5 +484,21 @@
     "skipped": "Skipped",
     "viewDiff": "View Diff",
     "cancel": "Skip"
+  },
+  "ba2Browser": {
+    "title": "BA2 Archive Browser",
+    "hint": "Inspect the BA2 archives bundled with each mod.",
+    "selectMod": "Mod:",
+    "selectModPlaceholder": "Select a mod…",
+    "searchPlaceholder": "Filter files…",
+    "loading": "Loading archives…",
+    "error": "Failed to load archives.",
+    "noArchives": "No BA2 archives found for this mod.",
+    "fileCount": "{{count}} files",
+    "readError": "Could not read archive",
+    "noMatch": "No files match the filter.",
+    "filterInfo": "Showing {{shown}} of {{total}} files",
+    "colPath": "Path",
+    "colExt": "Ext"
   }
 }

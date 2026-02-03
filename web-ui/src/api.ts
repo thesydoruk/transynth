@@ -505,6 +505,25 @@ export type TMSuggestion = {
   similarity: number;
 };
 
+/**
+ * One file entry within a BA2 archive as returned by GET /api/mods/:id/ba2.
+ * Only the archive-relative path is returned (size info is not exposed by this endpoint).
+ */
+export type Ba2FileEntry = {
+  name: string;
+};
+
+/**
+ * One BA2 archive descriptor returned by GET /api/mods/:id/ba2.
+ */
+export type Ba2ArchiveInfo = {
+  archive: string;
+  fileCount: number;
+  files: Ba2FileEntry[];
+  /** Present and true when the archive could not be opened. */
+  error?: boolean;
+};
+
 export const api = {
   mods: {
     list: () => req<Mod[]>('/api/mods'),
@@ -537,6 +556,9 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ stringIds, status, targetLang }),
       }),
+    /** List all BA2 archives associated with a mod and their file contents */
+    ba2Files: (modId: number) =>
+      req<Ba2ArchiveInfo[]>(`/api/mods/${modId}/ba2`),
   },
 
   stats: {

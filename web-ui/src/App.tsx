@@ -21,6 +21,7 @@ import { CoherencePage } from './pages/CoherencePage';
 import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { INNRPage } from './pages/INNRPage';
 import { ActivityPage } from './pages/ActivityPage';
+import { Ba2BrowserPage } from './pages/Ba2BrowserPage';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({
@@ -39,6 +40,7 @@ const NAV_LINKS = [
   { to: '/qa-rules', labelKey: 'nav.qaRules', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
+  { to: '/ba2-browser', labelKey: 'nav.ba2Browser', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
@@ -139,6 +141,7 @@ const AppShell = () => {
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
           <Route path="/mods/:modId/innr" element={<INNRPage />} />
+          <Route path="/ba2-browser" element={<Ba2BrowserPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </main>
