@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
-import { getModStats } from '../queries.js';
+import { getModStats, getModStatsByGrup } from '../queries.js';
 
 export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/stats?modId=  — translation progress breakdown for one mod
@@ -78,5 +78,17 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
       qaByType: qaBreakdown.rows,
       qaBySeverity: qaBySeverity.rows,
     });
+  });
+
+  // GET /api/stats/grup?modId=X&lang=uk
+  // Returns translation progress broken down by record signature (GRUP type) for one mod.
+  app.get<{ Querystring: { modId?: string; lang?: string } }>('/api/stats/grup', async (req, reply) => {
+    const modId = Number(req.query.modId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'modId is required' });
+    }
+    const lang = req.query.lang ?? 'uk';
+    const rows = await getModStatsByGrup(db, modId, lang);
+    return reply.send(rows);
   });
 }

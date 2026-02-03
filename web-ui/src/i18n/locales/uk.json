@@ -208,7 +208,12 @@
     "thTm": "TM",
     "thAuto": "Авто",
     "thQa": "QA",
-    "total": "Всього"
+    "total": "Всього",
+    "expandGrup": "Показати розбивку за GRUP",
+    "collapseGrup": "Сховати розбивку за GRUP",
+    "grupSignature": "Сигнатура",
+    "loadingGrup": "Завантаження статистики GRUP…",
+    "noGrupData": "Даних GRUP немає."
   },
   "diff": {
     "title": "Порівняння модів",

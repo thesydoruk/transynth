@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
-import type { DashboardModRow } from '../api';
+import type { DashboardModRow, GrupStatRow } from '../api';
 import s from './DashboardPage.module.scss';
 
 const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
@@ -31,7 +32,9 @@ const issueLabel = (t: string) => t.replace(/_/g, ' ');
 
 export const DashboardPage = () => {
   const { t } = useTranslation();
-  const nav = useNavigate();
+  /** ID of the mod whose GRUP breakdown is currently expanded (null = none). */
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: api.stats.dashboard,
@@ -95,6 +98,8 @@ export const DashboardPage = () => {
         <table className={s.table}>
           <thead>
             <tr>
+              {/* Extra column for the expand toggle */}
+              <th className={s.thExpand} />
               <th className={s.th}>{t('dashboard.mod')}</th>
               <th className={s.thR}>{t('dashboard.thStrings')}</th>
               <th className={s.thR}>{t('dashboard.thTranslated')}</th>
@@ -110,33 +115,58 @@ export const DashboardPage = () => {
           <tbody>
             {data.mods.map((m: DashboardModRow) => {
               const p = pct(Number(m.translated), Number(m.total));
+              const isOpen = expanded === m.id;
               return (
-                <tr
-                  key={m.id}
-                  className={s.tr}
-                  onClick={() => nav(`/mods/${m.id}`)}
-                >
-                  <td className={s.td}>{m.name}</td>
-                  <td className={s.tdR}>{m.total}</td>
-                  <td className={s.tdR}>{m.translated}</td>
-                  <td className={s.tdR}>{p}%</td>
-                  <td className={s.td}>
-                    <Bar value={Number(m.translated)} max={Number(m.total)} color={p === 100 ? '#4caf50' : '#2196f3'} />
-                  </td>
-                  <td className={s.tdR}>{Number(m.approved) + Number(m.reviewed)}</td>
-                  <td className={s.tdR}>{m.draft}</td>
-                  <td className={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
-                  <td className={s.tdR}>{m.auto}</td>
-                  <td className={Number(m.qa_issues) > 0 ? s.qaHasIssues : s.qaNoIssues}>
-                    {m.qa_issues}
-                  </td>
-                </tr>
+                <>
+                  <tr key={m.id} className={s.tr}>
+                    {/* Expand / collapse toggle */}
+                    <td
+                      className={s.tdExpand}
+                      onClick={() => setExpanded(isOpen ? null : m.id)}
+                      title={t(isOpen ? 'dashboard.collapseGrup' : 'dashboard.expandGrup')}
+                    >
+                      {isOpen ? '▾' : '▸'}
+                    </td>
+                    {/* Mod name links to its editor */}
+                    <td className={s.td}>
+                      <Link
+                        to={`/mods/${m.id}`}
+                        className={s.modLink}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {m.name}
+                      </Link>
+                    </td>
+                    <td className={s.tdR}>{m.total}</td>
+                    <td className={s.tdR}>{m.translated}</td>
+                    <td className={s.tdR}>{p}%</td>
+                    <td className={s.td}>
+                      <Bar value={Number(m.translated)} max={Number(m.total)} color={p === 100 ? '#4caf50' : '#2196f3'} />
+                    </td>
+                    <td className={s.tdR}>{Number(m.approved) + Number(m.reviewed)}</td>
+                    <td className={s.tdR}>{m.draft}</td>
+                    <td className={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
+                    <td className={s.tdR}>{m.auto}</td>
+                    <td className={Number(m.qa_issues) > 0 ? s.qaHasIssues : s.qaNoIssues}>
+                      {m.qa_issues}
+                    </td>
+                  </tr>
+                  {/* GRUP breakdown sub-row — rendered only when expanded */}
+                  {isOpen && (
+                    <tr key={`${m.id}-grup`} className={s.grupRow}>
+                      <td colSpan={11} className={s.grupCell}>
+                        <GrupSubTable modId={m.id} />
+                      </td>
+                    </tr>
+                  )}
+                </>
               );
             })}
           </tbody>
           {data.mods.length > 1 && (
             <tfoot>
               <tr className={s.tfoot}>
+                <td />
                 <td className={s.td}>{t('dashboard.total')}</td>
                 <td className={s.tdR}>{totals.total}</td>
                 <td className={s.tdR}>{totals.translated}</td>
@@ -169,4 +199,58 @@ const Card = ({ label, value, sub, color }: { label: string; value: number; sub?
   </div>
 );
 
+/**
+ * Expandable sub-table rendered below a mod row in the dashboard.
+ * Fetches and displays translation progress broken down by GRUP signature
+ * (e.g. DIAL, INFO, NPC_, BOOK) for the given mod.
+ */
+const GrupSubTable = ({ modId }: { modId: number }) => {
+  const { t } = useTranslation();
+  const { data, isLoading } = useQuery({
+    queryKey: ['grupStats', modId],
+    queryFn: () => api.stats.grup(modId),
+  });
 
+  if (isLoading) return <div className={s.grupLoading}>{t('dashboard.loadingGrup')}</div>;
+  if (!data || data.length === 0) return <div className={s.grupLoading}>{t('dashboard.noGrupData')}</div>;
+
+  const maxTotal = Math.max(...data.map((r: GrupStatRow) => r.total), 1);
+
+  return (
+    <table className={s.grupTable}>
+      <thead>
+        <tr>
+          <th className={s.grupTh}>{t('dashboard.grupSignature')}</th>
+          <th className={s.grupThR}>{t('dashboard.thStrings')}</th>
+          <th className={s.grupThR}>{t('dashboard.thTranslated')}</th>
+          <th className={s.grupThR}>%</th>
+          <th className={s.grupThProgress}>{t('mods.progress')}</th>
+          <th className={s.grupThR}>{t('dashboard.thApproved')}</th>
+          <th className={s.grupThR}>{t('dashboard.thDraft')}</th>
+          <th className={s.grupThR}>{t('dashboard.thTm')}</th>
+          <th className={s.grupThR}>{t('dashboard.thAuto')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((r: GrupStatRow) => {
+          const p = pct(r.translated, r.total);
+          return (
+            <tr key={r.signature} className={s.grupDataRow}>
+              <td className={s.grupSig}>{r.signature}</td>
+              <td className={s.grupTdR}>{r.total}</td>
+              <td className={s.grupTdR}>{r.translated}</td>
+              <td className={s.grupTdR}>{p}%</td>
+              <td className={s.grupTdProgress}>
+                <Bar value={r.translated} max={maxTotal} color={p === 100 ? '#4caf50' : '#2196f3'} />
+              </td>
+              <td className={s.grupTdR}>{r.approved}</td>
+              <td className={s.grupTdR}>{r.draft}</td>
+              <td className={s.grupTdR}>{r.tm}</td>
+              <td className={s.grupTdR}>{r.auto}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+};

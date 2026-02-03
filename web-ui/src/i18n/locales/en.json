@@ -207,7 +207,12 @@
     "thTm": "TM",
     "thAuto": "Auto",
     "thQa": "QA",
-    "total": "Total"
+    "total": "Total",
+    "expandGrup": "Show GRUP breakdown",
+    "collapseGrup": "Hide GRUP breakdown",
+    "grupSignature": "Signature",
+    "loadingGrup": "Loading GRUP stats…",
+    "noGrupData": "No GRUP data."
   },
   "diff": {
     "title": "Mod Diff",

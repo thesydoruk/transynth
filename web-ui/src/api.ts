@@ -298,6 +298,17 @@ export type DashboardData = {
   qaBySeverity: { severity: string; count: number }[];
 };
 
+/** One row from GET /api/stats/grup — translation progress for a single GRUP signature. */
+export type GrupStatRow = {
+  signature: string;
+  total: number;
+  translated: number;
+  approved: number;
+  draft: number;
+  tm: number;
+  auto: number;
+};
+
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -532,6 +543,7 @@ export const api = {
     mod: (modId: number) => req<Stats>(`/api/stats?modId=${modId}`),
     global: () => req<Array<Mod & { stats: Stats }>>('/api/stats/global'),
     dashboard: () => req<DashboardData>('/api/stats/dashboard'),
+    grup: (modId: number, lang = 'uk') => req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
   },
 
   strings: {
