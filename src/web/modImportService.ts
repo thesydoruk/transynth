@@ -15,6 +15,7 @@ import { EspReader, type EspStringRow } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
 import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
+import { parsePexBuffer } from '../bethesda/pexReader.js';
 import type { CsvRow } from '../types.js';
 
 const BATCH_SIZE = 1000;
@@ -333,7 +334,146 @@ const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
     PathSimplified: `MCM\\${key}`,
     Source: text,
   }));
+// ── PEX (Papyrus compiled script) helpers ────────────────────────────────────
 
+/**
+ * Extract translatable strings from all .pex script files inside a BA2 archive.
+ * Returns a Map of script name (stem without .psc extension) → string[]
+ * so callers can attach a meaningful path to each record.
+ *
+ * @param ba2Path - Absolute path to the BA2 archive
+ */
+const loadPexStringsFromBA2 = (ba2Path: string): Map<string, string[]> => {
+  const reader = new Ba2Reader(ba2Path);
+  const result = new Map<string, string[]>();
+
+  for (const entry of reader.listByExt('pex')) {
+    try {
+      const buf = reader.extractEntry(entry);
+      const { info, strings } = parsePexBuffer(buf);
+      if (strings.length === 0) continue;
+      // Use the declared source file name (without extension) as the key
+      const scriptName = info.sourceFile.replace(/\.psc$/i, '') || entry.name;
+      result.set(scriptName, strings);
+    } catch (err) {
+      log.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  return result;
+};
+
+/**
+ * Extract translatable strings from loose .pex files found under
+ * `<modDir>/Scripts/` on disk.
+ * Returns the same Map<scriptName, string[]> shape as {@link loadPexStringsFromBA2}.
+ *
+ * @param modDir - Directory containing the mod files (parent of the .esp)
+ */
+const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => {
+  const scriptsDir = path.join(modDir, 'Scripts');
+  const result = new Map<string, string[]>();
+  if (!fs.existsSync(scriptsDir)) return result;
+
+  let files: string[];
+  try {
+    files = fs.readdirSync(scriptsDir).filter((f) => f.toLowerCase().endsWith('.pex'));
+  } catch {
+    return result;
+  }
+
+  for (const file of files) {
+    try {
+      const buf = fs.readFileSync(path.join(scriptsDir, file));
+      const { info, strings } = parsePexBuffer(buf);
+      if (strings.length === 0) continue;
+      const scriptName = info.sourceFile.replace(/\.psc$/i, '') || file.replace(/\.pex$/i, '');
+      result.set(scriptName, strings);
+    } catch (err) {
+      log.debug(`PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  return result;
+};
+
+/**
+ * Collect all PEX translatable strings for a plugin by scanning every BA2
+ * in the plugin's directory and any loose `Scripts/*.pex` files.
+ *
+ * Merges results so that a script appearing in both a BA2 and loose files
+ * prefers the loose file (which may be a patched version).
+ *
+ * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
+ */
+const collectPexStrings = (espPath: string): Map<string, string[]> => {
+  const modDir = path.dirname(espPath);
+  const merged = new Map<string, string[]>();
+
+  // Scan every BA2 in the mod directory
+  let ba2Files: string[] = [];
+  try {
+    ba2Files = fs
+      .readdirSync(modDir)
+      .filter((f) => f.toLowerCase().endsWith('.ba2'))
+      .map((f) => path.join(modDir, f));
+  } catch {
+    // Directory unreadable — skip
+  }
+
+  for (const ba2Path of ba2Files) {
+    try {
+      for (const [script, strings] of loadPexStringsFromBA2(ba2Path)) {
+        if (!merged.has(script)) merged.set(script, strings);
+        // If already present, BA2 entry wins only if loose files not yet merged
+      }
+    } catch (err) {
+      log.warn(`PEX: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  // Loose files override BA2 — applied after so they win on collision
+  for (const [script, strings] of loadPexStringsFromLooseFiles(modDir)) {
+    merged.set(script, strings);
+  }
+
+  return merged;
+};
+
+/**
+ * Convert a Map of scriptName → string[] into CsvRow objects for DB ingestion.
+ *
+ * Each unique string in a given script becomes one row:
+ *   FormID    : ''              (PEX strings have no ESM FormID)
+ *   Signature : 'PEX'           (distinguishes PEX rows in the editor)
+ *   Path      : 'PEX\\<script>' (e.g. PEX\\CraftingScript)
+ *   Source    : the string literal text
+ *
+ * Duplicate strings within the same script are deduplicated here to avoid
+ * inserting the same text twice (the PEX string table may repeat entries
+ * that are referenced from multiple call sites).
+ *
+ * @param pexMap - Map of script name → array of user-visible strings
+ */
+const buildPexCsvRows = (pexMap: Map<string, string[]>): CsvRow[] => {
+  const rows: CsvRow[] = [];
+  for (const [scriptName, strings] of pexMap) {
+    const path = `PEX\\${scriptName}`;
+    const seen = new Set<string>();
+    for (const text of strings) {
+      if (seen.has(text)) continue;
+      seen.add(text);
+      rows.push({
+        FormID: '',
+        Signature: 'PEX',
+        Path: path,
+        PathSimplified: path,
+        Source: text,
+      });
+    }
+  }
+  return rows;
+};
 // ── Registration ────────────────────────────────────────────────────────────
 
 export const registerPluginFile = async (
@@ -658,6 +798,37 @@ export const runModImport = async (
         }
       } else {
         log.debug(`[Mod Import #${job.id}] No MCM translation files found`);
+      }
+    }
+
+    // ── PEX strings: ingest translatable literals from compiled Papyrus scripts ──
+    // This runs after MCM, using the same cancel/pause guard. PEX strings use
+    // Signature='PEX' and are stored against the source language of the mod.
+    // Only runs if the import has not been cancelled or paused.
+    if (!state.cancel && !state.pause) {
+      const pexMap = collectPexStrings(espPath);
+      if (pexMap.size > 0) {
+        const pexRows = buildPexCsvRows(pexMap);
+        log.info(`[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`);
+        if (pexRows.length > 0) {
+          if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
+          for (const r of pexRows) {
+            const hashNorm = sha1Hex(normalizeForHash(r.Source));
+            const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
+            await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'pex', undefined, normalizeNoPunct(r.Source));
+            imported++;
+            batchCount++;
+            if (batchCount >= BATCH_SIZE) {
+              await updateProgress(db, job.id, imported);
+              await db.query('COMMIT');
+              inTx = false;
+              batchCount = 0;
+              onProgress?.(imported, imported);
+            }
+          }
+        }
+      } else {
+        log.debug(`[Mod Import #${job.id}] No PEX scripts with translatable strings found`);
       }
     }
 
