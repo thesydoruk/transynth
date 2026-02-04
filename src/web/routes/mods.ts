@@ -7,6 +7,7 @@ import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
 import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
 import { Ba2Reader } from '../../bethesda/ba2Reader.js';
+import { EspReader } from '../../bethesda/espReader.js';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats
@@ -262,6 +263,71 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       });
 
       return reply.send(archives);
+    },
+  );
+
+  // GET /api/mods/:id/esp/grups — list all top-level GRUP types in the mod's ESP file
+  //
+  // Reads the ESP/ESM/ESL plugin at mod.abs_path and returns the list of top-level
+  // record-group types together with the record count inside each group.  Used by
+  // the ESP record explorer page to populate the left-side group selector.
+  //
+  // Response shape: Array<{ signature: string; recordCount: number }>
+  app.get<{ Params: { id: string } }>(
+    '/api/mods/:id/esp/grups',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path not available' });
+
+      try {
+        const reader = new EspReader(mod.abs_path as string);
+        return reply.send(reader.listGrups());
+      } catch (err) {
+        log.warn(`ESP explorer grups: failed to open "${mod.abs_path}": ${err instanceof Error ? err.message : err}`);
+        return reply.code(500).send({ error: 'Failed to parse ESP file' });
+      }
+    },
+  );
+
+  // GET /api/mods/:id/esp/records — paginated record browser for the ESP explorer
+  //
+  // Query parameters:
+  //   sig      — 4-char record type to filter by (e.g. "ARMO"). Omit for all records.
+  //   page     — 0-based page number (default 0).
+  //   pageSize — Records per page, capped at 200 (default 50).
+  //   q        — Optional search term matched against FormID, EDID, and subrecord text hints.
+  //
+  // Response shape: { records: EspRecordView[]; total: number }
+  app.get<{
+    Params: { id: string };
+    Querystring: { sig?: string; page?: string; pageSize?: string; q?: string };
+  }>(
+    '/api/mods/:id/esp/records',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path not available' });
+
+      const sig      = (req.query.sig ?? '').toUpperCase().slice(0, 4);
+      const page     = Math.max(0, Number(req.query.page ?? 0));
+      const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize ?? 50)));
+      const q        = req.query.q ?? '';
+
+      try {
+        const reader = new EspReader(mod.abs_path as string);
+        const result = reader.getRecordsPage(sig, page * pageSize, pageSize, q);
+        return reply.send(result);
+      } catch (err) {
+        log.warn(`ESP explorer records: failed to read "${mod.abs_path}": ${err instanceof Error ? err.message : err}`);
+        return reply.code(500).send({ error: 'Failed to read ESP records' });
+      }
     },
   );
 }

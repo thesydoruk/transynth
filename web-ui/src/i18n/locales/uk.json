@@ -42,7 +42,8 @@
     "logout": "Вийти",
     "themeDark": "Перемкнути на темну тему",
     "themeLight": "Перемкнути на світлу тему",
-    "ba2Browser": "BA2 Браузер"
+    "ba2Browser": "BA2 Браузер",
+    "espExplorer": "ESP Провідник"
   },
   "status": {
     "reviewed": "Перевірений",
@@ -501,5 +502,28 @@
     "filterInfo": "Показано {{shown}} з {{total}} файлів",
     "colPath": "Шлях",
     "colExt": "Розш."
+  },
+  "espExplorer": {
+    "title": "Провідник ESP-записів",
+    "hint": "Перегляд сирих записів і підзаписів у плагіні ESP/ESM/ESL. Корисно для діагностики імпорту та перевірки FormID.",
+    "selectMod": "Мод:",
+    "selectModPlaceholder": "Оберіть мод…",
+    "loading": "Завантаження…",
+    "error": "Не вдалося завантажити.",
+    "allRecords": "Усі записи",
+    "recordCount": "{{count}} записів",
+    "pageInfo": "сторінка {{page}} / {{total}}",
+    "searchPlaceholder": "Пошук FormID, EDID, тексту підзапису…",
+    "searchBtn": "Пошук",
+    "noRecords": "Записів не знайдено.",
+    "colFormId": "FormID",
+    "colType": "Тип",
+    "colFlags": "Прапори",
+    "colEdid": "EDID",
+    "noSubrecords": "Підзаписів немає.",
+    "colSubSig": "Sub",
+    "colSubSize": "Байт",
+    "colSubHex": "Hex-перегляд",
+    "colSubText": "Текст"
   }
 }
