@@ -37,6 +37,15 @@
 - Shared utilities go to `src/utils/` — avoid duplicating code across CLI files.
 - **Styling:** Use SCSS Modules (`*.module.scss`) for component styles in `web-ui/`. No inline styles or global CSS unless unavoidable.
 
+## User-facing wiki (`doc/`)
+
+- The `doc/` folder contains the **user-facing wiki** — documentation for translators who use the tool.
+- **Always keep the wiki up to date.** When a feature is added, changed, or removed, update the relevant `doc/*.md` file(s) in the same commit/PR.
+- If a new page is needed for the feature, create it and add it to `doc/README.md`.
+- `> TODO:` placeholders in the wiki are intentional stubs — fill them in when implementing the described feature.
+- Wiki pages use `> TODO:` blocks for unimplemented or unverified sections. Do not remove a `> TODO:` unless the content has been fully written.
+- Navigation footers (`← Prev | Home | Next →`) must remain consistent — update them if pages are added or reordered.
+
 ## Code documentation
 
 - **Always** add detailed English comments to every function, class, type, and non-trivial block of code.
