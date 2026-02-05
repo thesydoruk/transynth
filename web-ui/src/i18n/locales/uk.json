@@ -525,5 +525,21 @@
     "colSubSize": "Байт",
     "colSubHex": "Hex-перегляд",
     "colSubText": "Текст"
+  },
+  "bookEditor": {
+    "openBtn": "Редактор книг",
+    "title": "Редактор книг / HTML",
+    "subtitle": "Редагуйте HTML-розмітку внутрігрової книги. Натисніть «Перегляд», щоб побачити результат рендеру.",
+    "sourceLabel": "Джерело",
+    "translationLabel": "Переклад",
+    "previewBtn": "Перегляд",
+    "rawBtn": "Raw",
+    "showPreview": "Перейти до рендеру",
+    "showRaw": "Перейти до сирого розмітки",
+    "sourcePreviewTitle": "Перегляд джерельної книги",
+    "translPreviewTitle": "Перегляд перекладу книги",
+    "placeholder": "Введіть переклад HTML-розмітки…",
+    "markupHint": "Підтримувані теги: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://…\">",
+    "charCount": "{{count}} симв."
   }
 }

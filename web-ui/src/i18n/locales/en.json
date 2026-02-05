@@ -524,5 +524,21 @@
     "colSubSize": "Bytes",
     "colSubHex": "Hex Preview",
     "colSubText": "Text"
+  },
+  "bookEditor": {
+    "openBtn": "Book editor",
+    "title": "Book / HTML Editor",
+    "subtitle": "Edit in-game book markup. Toggle \u201cPreview\u201d to see the rendered result.",
+    "sourceLabel": "Source",
+    "translationLabel": "Translation",
+    "previewBtn": "Preview",
+    "rawBtn": "Raw",
+    "showPreview": "Switch to rendered preview",
+    "showRaw": "Switch to raw markup",
+    "sourcePreviewTitle": "Source book preview",
+    "translPreviewTitle": "Translation book preview",
+    "placeholder": "Enter translated markup here\u2026",
+    "markupHint": "Supported tags: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://\u2026\">",
+    "charCount": "{{count}} chars"
   }
 }

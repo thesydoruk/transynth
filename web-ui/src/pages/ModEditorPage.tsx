@@ -5,6 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
+import { BookEditorModal } from '../components/BookEditorModal';
 import styles from './ModEditorPage.module.scss';
 
 const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
@@ -96,6 +97,8 @@ export const ModEditorPage = () => {
 
   // Search & Replace
   const [showSearchReplace, setShowSearchReplace] = useState(false);
+  /** Whether the Book/HTML editor modal is open for the current active row. */
+  const [showBookEditor, setShowBookEditor] = useState(false);
 
   // Keyboard shortcuts help panel
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -984,7 +987,20 @@ export const ModEditorPage = () => {
                 </div>
                 {/* Translation */}
                 <div className={styles.textPanel}>
-                  <div className={styles.panelLabel}>{t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}</div>
+                  <div className={styles.panelLabel}>
+                    {t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}
+                    {/* Show the Book editor button when the record is a BOOK or the source contains HTML markup */}
+                    {(activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source)) && (
+                      <button
+                        className={styles.btnSec}
+                        style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: '12px' }}
+                        onClick={() => setShowBookEditor(true)}
+                        title={t('bookEditor.openBtn')}
+                      >
+                        📖 {t('bookEditor.openBtn')}
+                      </button>
+                    )}
+                  </div>
                   <textarea
                     value={draftTranslation}
                     onChange={(e) => setDraftTranslation(e.target.value)}
@@ -1047,6 +1063,19 @@ export const ModEditorPage = () => {
       {/* Search-Replace Modal */}
       {showSearchReplace && (
         <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
+      )}
+
+      {/* Book / HTML editor modal — for BOOK records and records with HTML markup */}
+      {showBookEditor && activeRow && (
+        <BookEditorModal
+          source={activeRow.source}
+          translation={draftTranslation}
+          onSave={(markup) => {
+            setDraftTranslation(markup);
+            setShowBookEditor(false);
+          }}
+          onClose={() => setShowBookEditor(false)}
+        />
       )}
 
       {/* Keyboard shortcuts help overlay */}
