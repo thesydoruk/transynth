@@ -38,11 +38,15 @@ Set the following environment variable and restart the service:
 MULTI_USER=true
 ```
 
-> TODO: Describe what changes when multi-user mode is enabled:
-> - Login page appears before accessing any other page.
-> - Admin creates accounts for each team member.
-> - Users page becomes visible in the navigation.
-> Link to [Configuration](17-configuration.md) for full env variable reference.
+When `MULTI_USER=true` is set:
+
+- A **Login page** appears at `/login`. All other routes redirect to login until the user authenticates.
+- A default **admin** account is created on first startup (check the server startup log for the initial credentials).
+- The **Users** page (`/users`) becomes visible in the navigation bar (admin accounts only).
+- Every string edit, import, export, approval, and user-management action is attributed to the logged-in user in the **Activity Log**.
+- Role-based access control (RBAC) is enforced on all API endpoints.
+
+See [Configuration](17-configuration.md) for the full environment variable reference.
 
 ---
 
@@ -54,9 +58,7 @@ MULTI_USER=true
 | **Translator** | Import mods, translate strings, run LLM, export |
 | **Reviewer** | Read all strings, approve or reject translations, cannot import or export |
 
-> TODO: Verify exact role names and permission matrix from
-> `src/web/routes/users.ts` or auth middleware.
-> Describe how to assign a role when creating a user.
+Roles are assigned at user creation and can be changed by an admin at any time via the Users page.
 
 ---
 
@@ -65,22 +67,51 @@ MULTI_USER=true
 Navigate to **Users** in the top navigation bar (route: `/users`).
 This page is only visible to Admins and only when multi-user mode is enabled.
 
-> TODO: Describe the Users page:
-> - List of users with name, email, role, last active date
-> - "Add User" form (name, email, temporary password, role)
-> - Edit role button
-> - Deactivate / delete user
-> Screenshot placeholder.
+The Users table lists all accounts with the following columns:
+
+| Column | Description |
+|--------|-------------|
+| **ID** | Internal numeric user ID |
+| **Username** | Login name used on the login page |
+| **Display Name** | Friendly name shown in the Activity Log and string attribution |
+| **Role** | Colour-coded badge: Admin / Translator / Reviewer |
+| **Status** | Active (green) or Inactive (grey) |
+| **Created** | Account creation timestamp |
+| **Actions** | Visible to admins only (see below) |
+
+**Admin actions (per row):**
+- **Toggle Active / Inactive** — deactivates the account without deleting it.
+  An inactive user cannot log in but their history is preserved.
+- **Change Password** — set a new password for any user (admin does not need the current password).
+
+**Add User form (Admin only):**
+
+Fields: Username, Display Name, temporary Password (minimum 4 characters), Role.
+Click **Create User**. The new user can log in immediately with the temporary password.
+
+> There is no permanent delete — deactivate inactive users instead.
 
 ---
 
 ## Login and Session
 
-> TODO: Describe the login page (email + password).
-> Describe session behaviour (how long sessions last, remember-me option if any).
-> Describe logout (nav bar button).
-> Describe password change flow.
-> Note: no OAuth or SSO in current version (planned for future).
+**Login page** (`/login`): enter your **username** and **password** (not an email address),
+then click **Sign in**.
+
+**Session behaviour:**
+- Sessions are stored in the database and expire after **72 hours** by default
+  (configurable via `SESSION_LIFETIME_HOURS` in `.env`).
+- The browser receives an HTTP-only, SameSite=Strict session cookie. No local-storage tokens are used.
+- There is no "remember me" option; all sessions expire at the configured TTL.
+
+**Logout** — click your username in the top navigation bar then **Log out**.
+The session is deleted from the server immediately and the cookie is cleared.
+
+**Password change:**
+- Any user can change their own password via the Users page (password icon on their own row).
+- Admins can change any user’s password without knowing the current one.
+
+> Note: OAuth / SSO (Google, GitHub, etc.) is not implemented in the current version.
 
 ---
 
@@ -97,19 +128,35 @@ The Activity Log records every significant action taken in the system:
 
 ### Filtering the Log
 
-> TODO: Describe filter options:
-> - Date range
-> - User
-> - Action type (translate, approve, import, export, …)
-> - Mod
-> Screenshot placeholder.
+The Activity Log supports one filter:
+
+| Filter | Options |
+|--------|---------|
+| **Action type** | All / login / logout / translate / import / approve / export / create_user / update_user / change_password |
+
+Results are paginated at **50 entries per page**. Each row shows:
+
+| Column | Description |
+|--------|-------------|
+| **Time** | Timestamp of the action (browser-localised) |
+| **User** | Display name of the actor |
+| **Action** | Action type badge |
+| **Entity** | Affected record type and ID (e.g. `user #5`, `string #1042`) |
+| **Details** | Additional context as a JSON snippet (new role, mod ID, etc.) |
+
+> Note: date-range, user, and mod filters are not available in the current version.
+> Use the Action filter or your browser’s in-page search (`Ctrl+F`) to narrow results.
 
 ### Using the Log for Accountability
 
-> TODO: Practical guidance:
-> - As a team lead, use the log to see daily translator output.
-> - Use "who changed this string last?" to resolve disputes.
-> - Export the log as CSV for reporting.
+- **Track daily translator output** — filter by action type `translate` to see how many
+  strings each team member has worked on today.
+- **Resolve disputes** — look up `translate` or `approve` events for a specific time period
+  to see who changed a string and when.
+- **Audit imports** — filter by `import` to see when each mod version was brought in and by whom.
+
+> Note: the log cannot currently be exported as CSV from the UI.
+> For bulk reporting, query the `activity_log` table in PostgreSQL directly.
 
 ---
 
@@ -129,9 +176,17 @@ Translator corrects flagged strings
 Admin exports final translation
 ```
 
-> TODO: Describe how to use the Review Queue in a multi-user context.
-> Link to [Review Queue](15-review-queue.md).
-> Explain notification workflow (currently manual — no email notifications).
+After the Translator’s LLM or manual translation run, the Reviewer opens the
+[Review Queue](15-review-queue.md) and works through strings with **Auto**, **Fuzzy**,
+or **TM** status — approving correct ones and resetting incorrect ones for re-translation.
+
+**There are no automated email notifications.**
+Coordinate handoffs through your existing communication tools (chat, issue tracker, etc.).
+
+Typical handoff signals:
+- Translator announces: “LLM run complete — 300 Auto strings ready for review.”
+- Reviewer opens Review Queue, filters by **Auto**, works through the batch.
+- Reviewer announces: “Done — 280 approved, 20 reset. Please re-check resets.”
 
 ---
 

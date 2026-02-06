@@ -45,7 +45,7 @@ LLM batch translate  ←── OpenAI / Ollama
    ↓
 Human review in web editor
    ↓
-QA check             ←── 6 issue types + configurable rules
+QA check             ←── 9 issue types + configurable rules
    ↓
 Export (STRINGS / patched ESP / BA2)
 ```

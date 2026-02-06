@@ -28,28 +28,53 @@ letting you translate each name slot inline.
 
 ### Opening the INNR Editor
 
-From the Mod Editor page, click the **INNR Editor** button (or navigate
-directly to `/mods/:id/innr`).
-
-> TODO: Screenshot of the INNR editor page.
+From the Mod Editor page, click the **INNR Editor** button in the toolbar
+(visible only when the mod contains INNR records), or navigate directly
+to `/mods/:id/innr`.
 
 ### Reading the INNR Grid
 
-| Column | Description |
-|--------|-------------|
-| Slot | Position in the naming rule (prefix, noun, suffix…) |
-| EDID | Base Editor ID of the naming rule |
-| Source | Original English name fragment |
-| Translation | Your translated name fragment |
+| Column      | Description                                         |
+| ----------- | --------------------------------------------------- |
+| Slot        | Position in the naming rule (prefix, noun, suffix…) |
+| EDID        | Base Editor ID of the naming rule                   |
+| Source      | Original English name fragment                      |
+| Translation | Your translated name fragment                       |
 
 ### Editing Name Slots
 
 Click any row to edit the Translation cell inline.
 Press **Enter** to save, **Escape** to cancel.
 
-> TODO: Describe auto-save behaviour.
-> Explain how slots combine to form the final item name (show a worked example).
-> Describe target language selector.
+**Auto-save behaviour:** translations are saved automatically when the
+input field loses focus (blur) or when you press **Enter**. There is also
+an explicit **Save** button on each row for manual confirmation.
+
+- While the field has unsaved changes, the input border turns **orange** (dirty state).
+- Immediately after a successful save it flashes **green**, then returns to neutral.
+- Press **Escape** to discard the current change and revert to the last saved value.
+- The **✕** button on a row clears its translation entirely.
+
+**Target language:** use the **Language** dropdown at the top of the
+page to switch between `uk` (Ukrainian), `ru`, `de`, `fr`, and `pl`.
+The page reloads its data for the selected language automatically.
+
+**How slots combine:** INNR records define component strings identified
+by a numeric slot suffix in the EDID (e.g., `WeaponModType001`,
+`WeaponModType002`). The game concatenates configured slot values at
+runtime to build the final item name. For example:
+
+| Slot   | Source       | Translation      |
+| ------ | ------------ | ---------------- |
+| 001    | Powerful     | Потужна          |
+| 002    | Automatic    | Автоматична      |
+| (base) | Combat Rifle | Бойова гвинтівка |
+
+→ Final name: **Потужна Автоматична Бойова гвинтівка**
+
+Because Slavic languages use grammatical agreement, all slots within the
+same group must be translated together — that is why the INNR Editor
+groups them by base EDID instead of mixing them into the main string list.
 
 ---
 
@@ -77,18 +102,28 @@ matching the in-game appearance.
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Enter` | Save and close |
-| `Escape` | Close without saving |
+| Shortcut     | Action               |
+| ------------ | -------------------- |
+| `Ctrl+Enter` | Save and close       |
+| `Escape`     | Close without saving |
 
 ### Tips
 
-> TODO:
-> - Keep HTML tags intact — only translate the text between tags.
-> - Use the preview to check line lengths (long lines may not wrap correctly in-game).
-> - Font tags with `face=` attribute control the Pip-Boy font — do not translate these.
-> - `<br>` and `<p>` tags control spacing — preserve them.
+- **Only translate the text between tags** — copy the surrounding markup
+  exactly as-is. For example: `<b>Vault</b>` → `<b>Сховище</b>`.
+- **Never translate `font face=` attribute values.** The `face=` attribute
+  selects the game's internal font resource — changing it will break rendering.
+- **Preserve `<br>` and `<p>` tags for spacing.** In-game line breaks and
+  paragraph gaps are controlled entirely by the markup, not by newlines.
+- **Leave `<img src="img://...">` unchanged.** These are game-internal image
+  references. The preview shows them as placeholder boxes; the game renders
+  the actual asset.
+- **Use the preview to check length.** Switch the right panel to **Preview**
+  after writing a paragraph to verify that lines don't overflow the Pip-Boy
+  reading frame. Long translated lines often exceed the original.
+- **Toggle Raw / Preview independently** on each side. You can keep the
+  source side in Preview (rendered) and the translation side in Raw
+  (editable textarea) for a convenient side-by-side workflow.
 
 ---
 
@@ -105,9 +140,17 @@ alongside a mod, without extracting it.
 2. Browse the file tree — folders and files are shown hierarchically.
 3. Click a file to preview its content (text files shown inline; images rendered).
 
-> TODO: Screenshot of the BA2 browser page.
-> List what file types can be previewed (`.txt`, `.json`, `.png`, `.dds`, etc.).
-> Explain which archives are available (only those uploaded with mods).
+The BA2 Browser lists **all `.ba2` files** found in the same directory as
+the mod's plugin file whose filename starts with the mod's name (the same
+discovery logic used during import). Only mods whose source files are
+still accessible on the server will have archives listed here.
+
+The browser shows a **flat file listing** — path and extension for each
+archive entry. There is no inline file content preview; the tool is
+intended for verifying that expected files (STRINGS, PEX, MCM JSON) are
+present in the archive and under the correct paths.
+
+Use the **search bar** to filter entries by filename across all archives.
 
 ### What to Look For
 
@@ -135,25 +178,45 @@ values, or debug unusual strings that don't appear in the normal editor.
 4. Use the search bar to filter by FormID, EDID, or field content.
 5. Click a record row to expand it and see all subrecords with hex and text views.
 
-> TODO: Screenshot of the ESP explorer two-panel layout.
+Once a mod is selected, the two-panel view appears. The left sidebar shows
+every top-level GRUP type found in that plugin, each with its record count.
+Click a GRUP entry to filter the right panel to only that record type.
+Click **All Records** to clear the filter.
+
+The right panel shows **50 records per page**. Use the **Previous / Next**
+pagination controls to browse.
+
+The search bar in the right panel accepts FormID (hex), EDID string, or
+free text. Type a query and press **Enter** or click **Search** to commit.
+Click **✕** to clear the search.
+
+Click any record row to expand it and reveal the **subrecord detail table**,
+which shows every subrecord with four columns:
+
+| Column   | Content                                                        |
+| -------- | -------------------------------------------------------------- |
+| **Sig**  | 4-char subrecord signature (e.g., `FULL`, `DESC`, `EDID`)      |
+| **Size** | Data size in bytes                                             |
+| **Hex**  | First 32 bytes of data as space-separated hex                  |
+| **Text** | Best-effort UTF-8 interpretation of the data (blank if binary) |
 
 ### Reading the Record Table
 
-| Column | Description |
-|--------|-------------|
-| FormID | Unique record identifier in hex |
-| Type | Record signature (e.g. `DIAL`, `INFO`, `NPC_`) |
-| Flags | Status flags: LOC (localised), CMPRS (compressed), DEL (deleted), MASTER |
-| EDID | Editor ID (if present in the record) |
+| Column | Description                                                              |
+| ------ | ------------------------------------------------------------------------ |
+| FormID | Unique record identifier in hex                                          |
+| Type   | Record signature (e.g. `DIAL`, `INFO`, `NPC_`)                           |
+| Flags  | Status flags: LOC (localised), CMPRS (compressed), DEL (deleted), MASTER |
+| EDID   | Editor ID (if present in the record)                                     |
 
 ### Record Flags
 
-| Flag | Meaning |
-|------|---------|
-| **LOC** | Record uses external STRINGS files (its strings will appear in the editor) |
-| **CMPRS** | Record data is zlib-compressed (decompressed automatically for viewing) |
-| **DEL** | Record is marked as deleted (usually safe to ignore) |
-| **MASTER** | Record is a master record override |
+| Flag       | Meaning                                                                    |
+| ---------- | -------------------------------------------------------------------------- |
+| **LOC**    | Record uses external STRINGS files (its strings will appear in the editor) |
+| **CMPRS**  | Record data is zlib-compressed (decompressed automatically for viewing)    |
+| **DEL**    | Record is marked as deleted (usually safe to ignore)                       |
+| **MASTER** | Record is a master record override                                         |
 
 ---
 

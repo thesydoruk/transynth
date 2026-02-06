@@ -25,12 +25,12 @@ its preferred **target translation**.
 
 Example:
 
-| Source term | Translation |
-|-------------|-------------|
-| Synth | Синт |
+| Source term          | Translation    |
+| -------------------- | -------------- |
+| Synth                | Синт           |
 | Brotherhood of Steel | Братство Сталі |
-| Vault | Сховище |
-| Pip-Boy | Пін-Бой |
+| Vault                | Сховище        |
+| Pip-Boy              | Пін-Бой        |
 
 Using the glossary ensures that every translator and every LLM call uses the
 same terminology — vital for a cohesive, professional translation.
@@ -41,27 +41,41 @@ same terminology — vital for a cohesive, professional translation.
 
 Navigate to **Glossary** in the top navigation bar (route: `/glossary`).
 
-> TODO: Screenshot placeholder.
+The page opens showing terms for the currently selected language pair
+(default: EN → UK).
 
 ---
 
 ## Adding Terms
 
-> TODO: Describe the "Add Term" form:
-> - Source language dropdown (default: EN)
-> - Target language dropdown (default: UK)
-> - Source term field
-> - Translation field (optional — you can add the source term now and fill
->   the translation later)
-> - Click "Add" or press Enter
+The add form is at the top of the page, below the language filter controls.
+
+1. Select the desired **source language** and **target language** in the
+   dropdowns above the table (these set the language pair for the new term).
+2. Type the **source term** in the left input field.
+3. Optionally type the **translation** in the right input field.
+   You can leave the translation empty and fill it in later — empty translations
+   are stored and shown as `—` in the table.
+4. Click **Add Pair** or press **Enter** (from the translation field) to save.
+
+The source term field must not be empty; the Add button is disabled otherwise.
+Adding a duplicate `(term, src_lang, tgt_lang)` triple returns an error —
+the unique constraint on the database prevents it.
 
 ---
 
 ## Editing and Removing Terms
 
-> TODO: Describe how to edit an existing term (click pencil icon or inline edit).
-> Describe the removal flow (click trash icon → confirmation).
-> Note that removing a term does not affect already-saved translations.
+There is no inline edit for existing terms in the current UI.
+To correct a term:
+
+1. Delete the old entry with the **✕** button in the last column.
+2. Re-add it with the corrected values.
+
+To **remove** a term, click **✕** on its row. The deletion is immediate with
+no confirmation prompt. Removing a term does not affect any already-saved
+translations — it only stops injecting that term into future LLM prompts
+and stops generating glossary-violation QA warnings for it.
 
 ---
 
@@ -70,17 +84,29 @@ Navigate to **Glossary** in the top navigation bar (route: `/glossary`).
 Use the search bar at the top of the glossary list to filter terms by
 source text, translation, or both.
 
-> TODO: Describe the search behaviour (real-time filter vs. server-side search).
+Search is **server-side**: the page re-fetches from the API on every
+keystroke (debounced by React Query). The query is passed as the `q`
+parameter and performs a case-insensitive substring match against both the
+`term` column and the `translation` column in the database.
 
 ---
 
 ## Language Pairs
 
 The glossary supports multiple language pairs.
-Use the language dropdowns to switch between pairs (e.g. EN→UK, EN→RU).
+Use the **Source lang** and **Target lang** dropdowns to switch between pairs.
 
-> TODO: Explain how language pairs work.
-> Note that a term added for EN→UK is separate from EN→RU.
+The dropdowns control both the **filter** (what rows are shown) and the
+**add form** (what language pair a new term is created for).
+
+Available options: `EN`, `UK`, and `All` (shows all pairs).
+
+A term added for EN→UK is stored separately from EN→RU — the unique
+constraint is `(term, src_lang, tgt_lang)`. You must create separate entries
+for each target language you support.
+
+The LLM translation route uses whatever pair matches the request's `srcLang`
+and `targetLang` parameters (default `en`→`uk`).
 
 ---
 
@@ -88,28 +114,55 @@ Use the language dropdowns to switch between pairs (e.g. EN→UK, EN→RU).
 
 When a batch LLM translation is triggered, the pipeline:
 
-1. Fetches up to **100 top glossary terms** for the relevant language pair.
-2. Formats them as a reference list in the LLM system prompt.
-3. The LLM is instructed to respect glossary entries when translating.
+1. Fetches up to **80 glossary terms** (web UI route) for the relevant
+   language pair, ordered alphabetically.
+2. Inserts them as a reference block in the LLM system prompt:
 
-> TODO: Explain what "top 100 terms" means — is there prioritisation?
-> Add example of what a generated system prompt looks like with glossary terms.
-> Note that the LLM may still deviate — always review **Auto** strings for
-> glossary compliance.
-> Mention that QA terminology enforcement (planned feature) will flag violations.
+```
+You are a professional Fallout 4 game localizer. Translate from en to uk.
+Output only the translated text, nothing else.
+
+Key terminology to preserve:
+- Brotherhood of Steel → Братство Сталі
+- Institute → Інститут
+- synth → синт
+- Vault → Сховище
+```
+
+3. The LLM is instructed to preserve glossary entries when translating.
+
+Terms are sorted alphabetically (no priority ranking). All active terms for
+the selected language pair are included up to the 80-term limit — if you
+have more than 80 terms, the first 80 alphabetically are used.
+
+Terms that have no translation (empty `translation` column) are **not**
+included in the hint — only pairs with a defined translation are injected.
+
+The LLM may still deviate from glossary entries, especially for short or
+ambiguous terms. Always review **Auto** strings for glossary compliance.
+The QA engine generates a `glossary_violation` warning for any translation
+where the expected target term is absent from the translation text.
 
 ---
 
 ## Best Practices
 
-> TODO:
-> - Add terms before running LLM translation for the first time.
-> - Prioritise proper nouns: faction names, item names, locations, character names.
-> - Use the same capitalisation as it appears in game.
-> - For terms with multiple valid translations (e.g. regional dialect variations),
->   pick one and stick with it.
-> - Review LLM output for glossary compliance and correct manually if needed.
-> - Export the glossary periodically as a CSV/TMX backup.
+- **Add terms before running LLM translation.** The glossary is injected into
+  every LLM call, so terms added after a translation run will only benefit
+  future retranslations.
+- **Prioritise proper nouns:** faction names (`Brotherhood of Steel`, `Institute`),
+  item/weapon names, location names, companion names, and game-specific
+  concepts (`Pip-Boy`, `Vault`, `synth`).
+- **Match in-game capitalisation.** The injection and the QA check are both
+  case-insensitive for detection, but the stored translation is used as-is
+  in the system prompt, so consistent capitalisation looks more professional.
+- **One canonical translation per term.** For terms with regional or stylistic
+  variants, pick one and add only that. Conflicting entries for the same term
+  confuse the model.
+- **Review LLM output for glossary compliance.** After a translation run,
+  filter by status `auto` and look for `glossary_violation` QA warnings.
+- **Export regularly as a backup.** The glossary is stored in the database
+  only; export a CSV of the glossary table if you want an external backup.
 
 ---
 

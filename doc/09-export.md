@@ -21,12 +21,12 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format | File | Purpose |
-|--------|------|---------|
-| **STRINGS** | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine |
-| **Patched ESP** | `.esp` / `.esm` | Mod plugin with translations embedded directly |
-| **BA2 Archive** | `.ba2` | Archive containing translated STRINGS files and/or assets |
-| **Project ZIP** | `.zip` | All of the above bundled for distribution |
+| Format          | File                                   | Purpose                                                   |
+| --------------- | -------------------------------------- | --------------------------------------------------------- |
+| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine       |
+| **Patched ESP**І | `.esp` / `.esm`                        | Mod plugin with translations embedded directly            |
+| **BA2 Archive** | `.ba2`                                 | Archive containing translated STRINGS files and/or assets |
+| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                 |
 
 ---
 
@@ -41,13 +41,22 @@ MyMod_en.DLSTRINGS
 MyMod_en.ILSTRINGS
 ```
 
-> TODO: Explain the three file types:
-> - `.STRINGS` — generic string table
-> - `.DLSTRINGS` — dialogue strings (with length prefix)
-> - `.ILSTRINGS` — info/internal strings (with length prefix)
-> Explain where players put these files (Data/Strings/).
-> Note that only strings that use external string tables are exported this way;
-> some fields are embedded directly in the ESP.
+Fallout 4 uses three distinct string table formats, identified by their file
+extension:
+
+| Extension    | Format                                        | Usage                                               |
+| ------------ | --------------------------------------------- | --------------------------------------------------- |
+| `.STRINGS`   | Null-terminated UTF-8 strings                 | Generic text: item names, book titles, descriptions |
+| `.DLSTRINGS` | uint32 length prefix + text + null terminator | Dialogue text shown in conversation menus           |
+| `.ILSTRINGS` | Same binary layout as DLSTRINGS               | NPC topics, Pip-Boy notes, internal info strings    |
+
+**Player installation:** Translated `.STRINGS`, `.DLSTRINGS`, and `.ILSTRINGS`
+files go in the `Data\Strings\` subfolder of the player's Fallout 4 installation
+directory.
+
+Only **localized mods** (those where text was moved to external string tables)
+use this export format. Non-localized mods embed text directly in the plugin
+binary — those are handled by the [Patched ESP](#patched-esp) export.
 
 ---
 
@@ -56,9 +65,19 @@ MyMod_en.ILSTRINGS
 An alternative to STRINGS files is to write the translations directly into
 a copy of the ESP/ESM plugin.
 
-> TODO: Explain when this is useful (mods that don't use external STRINGS,
-> or when distributing a standalone translated ESP).
-> Warn about patched ESP compatibility with mod updates.
+Use the Patched ESP option when a mod is **non-localized** — it stores text
+directly inside the plugin binary as subrecord fields (e.g., `FULL` for names,
+`DESC` for descriptions) rather than referencing an external string table.
+
+The export reads the original mod's ESP/ESM file from the server, walks
+all records that have a translation in the database, and rewrites the
+corresponding subrecord fields with the translated text. The result is a
+binary-compatible ESP that players drop into their `Data\` folder.
+
+**Compatibility warning:** The patched ESP is derived from the _original_
+mod file snapshot stored at import time. If the mod author releases an
+update, your patched ESP will be based on the old version. Always
+re-import the updated mod and redo the export after a mod update.
 
 ---
 
@@ -67,46 +86,101 @@ a copy of the ESP/ESM plugin.
 The tool can pack the generated STRINGS files into a `.ba2` archive,
 which is the format Fallout 4 uses for mod assets.
 
-> TODO: Explain BA2 archive naming convention (e.g. `MyMod - Main.ba2`).
-> Explain that the game loads BA2s listed in the plugin's archive entries.
-> Describe the BA2 export option in the UI.
+The generated BA2 uses the standard Fallout 4 naming convention:
+
+```
+{PluginStem} - Main.ba2
+```
+
+For example, for `MyMod.esp` the archive will be named `MyMod - Main.ba2`.
+
+Inside the archive, STRINGS files are stored at the path
+`Strings\{filename}` (e.g., `Strings\MyMod_uk.STRINGS`).
+
+The game automatically loads BA2 archives that follow the
+`{PluginStem} - {Name}.ba2` naming scheme when the associated ESP is
+active in the load order. The exported BA2 is an uncompressed GNRL-type
+archive (version 1) for maximum compatibility across all game versions
+and mod managers.
+
+The **Export BA2** and **Export ZIP** buttons in the Mod Editor toolbar
+both generate a BA2 archive. The ZIP variant bundles the BA2 together
+with a patched ESP (if applicable) into a single distributable file.
 
 ---
 
 ## Project ZIP
 
 The Project ZIP bundles:
+
 - The patched ESP (optional)
 - The STRINGS files (or BA2 archive containing them)
 - A `README.txt` with installation instructions (generated automatically)
 
-> TODO: Describe how to generate the ZIP.
-> Describe the generated README.txt contents.
-> Explain that this ZIP is ready to upload to Nexus Mods.
+Click **Export ZIP** in the Mod Editor toolbar. The server generates the
+ZIP on the fly and the browser downloads it automatically.
+
+ZIP file naming:
+
+```
+{PluginStem}_{targetLang}.zip    (e.g., MyMod_uk.zip)
+```
+
+The ZIP is generated in **store mode** (no compression), because BA2 and
+ESP files are already binary-packed and don't benefit from further
+compression.
+
+**Note:** No `README.txt` is included in the ZIP automatically. Add
+your own installation instructions before uploading to Nexus Mods or
+sharing with players.
 
 ---
 
 ## Triggering an Export
 
-> TODO: Describe the Export button / section in the Mod Editor or Mod List:
-> 1. Open the mod in the editor (or select it from the Mods list).
-> 2. Click "Export".
-> 3. Choose format(s): STRINGS / ESP / BA2 / ZIP.
-> 4. Choose target language.
-> 5. Click "Generate" and wait.
-> 6. Download the file(s).
-> Screenshot placeholder.
+All export buttons are located in the **Mod Editor toolbar** at the top
+of the editor page (`/editor/:modId`).
+
+1. Open the mod in the editor by clicking its name in the Mods list.
+2. Ensure the correct **Source language** and **Target language** are
+   selected in the toolbar dropdowns. The export uses these values.
+3. Click one of the four export buttons:
+
+| Button             | What downloads                                                          |
+| ------------------ | ----------------------------------------------------------------------- |
+| **Export STRINGS** | Raw `.STRINGS`, `.DLSTRINGS`, `.ILSTRINGS` files (one per string table) |
+| **Export ESP**     | Patched plugin file with embedded translations                          |
+| **Export BA2**     | A single `{Stem} - Main.ba2` archive containing the STRINGS files       |
+| **Export ZIP**     | A `.zip` bundle: BA2 + patched ESP (whichever applies)                  |
+
+4. The file downloads immediately via the browser once the server
+   finishes generating it. The button label changes to "Exporting…" while
+   the request is in flight.
 
 ---
 
 ## What to Include in a Mod Release
 
-> TODO: Practical guidance for publishing a translation on Nexus Mods:
-> - Minimum: STRINGS files or patched ESP.
-> - Recommended: BA2 archive for large mods.
-> - Always include installation instructions.
-> - Credit original mod author.
-> - Test in-game before publishing.
+| Mod type                                | Minimum release             | Recommended release                |
+| --------------------------------------- | --------------------------- | ---------------------------------- |
+| Localized (uses external string tables) | Loose STRINGS files         | BA2 archive (mod manager friendly) |
+| Non-localized (text in ESP)             | Patched ESP                 | Patched ESP (same thing)           |
+| Mixed (both)                            | STRINGS files + Patched ESP | Project ZIP (bundles both)         |
+
+Practical checklist before publishing:
+
+1. **Test in-game** — load the translation in a Fallout 4 build before
+   publishing. Look for encoding issues, text overflow, and placeholder
+   corruption.
+2. **Include installation instructions** — tell players where to place
+   the files. A mod manager (Vortex, NMM, MO2) FOMOD installer is ideal
+   for complex setups.
+3. **Credit the original mod author** — translations are derivative
+   works. Always link the original mod page and credit the author.
+4. **Declare the base mod version** — state which version of the mod your
+   translation is based on, so players know if it's outdated.
+5. **Use descriptive tags** — on Nexus Mods, tag the translation file
+   with the target language for discoverability.
 
 ---
 
@@ -116,8 +190,19 @@ You can export at any stage — even if not all strings are translated.
 Untranslated strings will use the original English (or base language) text
 as a fallback.
 
-> TODO: Explain the fallback mechanism.
-> Recommend exporting a draft early for in-game testing even before full translation.
+The export queries use `COALESCE(translation, source_text)` as the
+fallback: for every string slot, if a translation exists in the database
+it is used; if not, the original source text is written instead. No
+string slot in the output file is left blank.
+
+When multiple translations exist for one string (different statuses or
+attempts), the best available is chosen by quality priority:
+`reviewed` > `human` > `draft` > `tm` > `fuzzy` > `auto` > `rejected`.
+
+**Recommendation:** export a draft early and load it in-game before the
+translation is complete. This lets you spot layout issues, broken
+placeholders, and missing context while most of the original English
+text is still in place as a fallback. Much easier to fix early.
 
 ---
 

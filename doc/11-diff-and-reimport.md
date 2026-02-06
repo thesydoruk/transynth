@@ -54,32 +54,51 @@ Navigate to **Diff** in the top navigation bar (route: `/diff`).
 
 ### Selecting Two Versions
 
-> TODO: Describe the two mod selectors (Old Version, New Version).
-> Both selectors show all imported mods — select the old and new versions
-> of the same mod.
-> Click "Compare" to run the diff.
-> Screenshot placeholder.
+The Diff page has two mod dropdowns:
+
+- **New Version** — the freshly imported (updated) mod.
+- **Old Version** — the previous version you translated.
+
+Both dropdowns list every mod currently in the database, so you can
+compare any two mods — they don't have to share the same name.
+
+If you navigate to the Diff page from the
+[ReimportModal](#the-reimportmodal) or from the **Update Mod** button
+in the editor, both selectors are pre-filled automatically from URL
+parameters (`?newModId=X&oldModId=Y`) and the comparison runs immediately
+on page load.
+
+Otherwise, select the two mods manually and click **Compare**.
+The button label changes to "Comparing…" while the request is in flight.
 
 ### Reading the Diff Table
 
-> TODO: Describe the diff table columns:
-> - Change type badge (Added / Removed / Changed / Unchanged)
-> - FormID
-> - GRUP / Field
-> - EDID
-> - Old source text
-> - New source text
-> - Existing translation (if any)
-> Screenshot placeholder.
+After the comparison runs, a summary row of coloured chips shows the
+total count for each change category. Clicking a chip (except
+**Unchanged**) filters the table to that category. Below the summary,
+the diff table has the following columns:
+
+| Column          | Content                                                   |
+| --------------- | --------------------------------------------------------- |
+| **Change**      | Badge: `added` / `removed` / `changed`                    |
+| **FormID**      | 8-digit hex FormID of the record                          |
+| **Type**        | Record group signature (e.g., `NPC_`, `WEAP`, `DIAL`)     |
+| **Source EN**   | The source text of the string in this version             |
+| **Translation** | Existing translation (from whichever side has it), or `—` |
+| **Status**      | Translation status badge                                  |
+
+> **Note:** Unchanged strings are **not** listed in the table — they
+> are only counted in the summary chip (`Unchanged: N`). The table
+> exclusively shows strings that differ (added, removed, or changed).
 
 ### Change Types
 
-| Badge | Colour | Meaning |
-|-------|--------|---------|
-| **Added** | Green | New string in the updated mod |
-| **Removed** | Red | String deleted from the updated mod |
-| **Changed** | Yellow | Source text modified — translation may be outdated |
-| **Unchanged** | Grey | Source text identical — translation carries over safely |
+| Badge         | Colour | Meaning                                                 |
+| ------------- | ------ | ------------------------------------------------------- |
+| **Added**     | Green  | New string in the updated mod                           |
+| **Removed**   | Red    | String deleted from the updated mod                     |
+| **Changed**   | Yellow | Source text modified — translation may be outdated      |
+| **Unchanged** | Grey   | Source text identical — translation carries over safely |
 
 ---
 
@@ -89,13 +108,35 @@ After reviewing the diff, click **Carry Over** to copy translations from
 the old version to the new version's matching strings.
 
 Rules:
+
 - Only **Unchanged** strings receive the translation automatically.
 - **Changed** strings receive the old translation with status **Draft**,
   flagged for review.
 - **Added** strings start with status **Empty**.
 
-> TODO: Confirm carry-over rules from `src/web/modImportService.ts` or the
-> relevant source.
+Verified carry-over behaviour from `src/web/queries.ts`
+(`carryOverTranslations`):
+
+| String situation                  | What happens                                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Unchanged** source text         | Translation copied to new version with its **original status** (reviewed, human, draft, etc.) |
+| **Changed** source text           | Translation copied to new version with status forced to **`draft`**                           |
+| **Added** (not in old version)    | No carry-over; string starts with status `empty` / untranslated                               |
+| Already translated in new version | **Skipped** — carry-over never overwrites an existing translation                             |
+
+After the carry-over completes, the result summary is shown inline:
+
+```
+Carried: 820 · Needs review: 43 · Skipped: 12
+```
+
+- **Carried** — strings where source was unchanged; translation applied with original status.
+- **Needs review** — strings where source changed; translation applied as `draft`.
+- **Skipped** — strings already translated in the new version or absent from the old version.
+
+When there are strings that need review, an **Open in Editor (N drafts)**
+link appears next to the summary, taking you directly to the new mod's
+editor pre-filtered to `status=draft`.
 
 ---
 
@@ -105,11 +146,35 @@ If you import a mod that already has an older version in the database,
 the tool automatically shows the **ReimportModal** dialogue.
 
 The modal prompts you to:
+
 1. Confirm that the new file is an updated version of the existing mod.
 2. Choose whether to carry over translations immediately.
 
-> TODO: Describe the modal's Yes/No/Skip options.
-> Screenshot placeholder.
+If you upload a mod whose name matches a mod already in the database
+(same filename stem, different file hash), the tool automatically
+shows the **ReimportModal** after the import job finishes.
+
+The modal displays a list of all previous versions of that mod, each
+showing:
+
+- The mod name
+- The date it was imported
+- Its total string count
+- Its translation completion percentage
+
+If only one previous version exists, it is pre-selected. If several
+exist, click the desired row to select it.
+
+Two action buttons are available:
+
+| Button        | Action                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| **Open Diff** | Navigates to `/diff?newModId=X&oldModId=Y`; the comparison runs automatically |
+| **Skip**      | Dismisses the modal without any carry-over                                    |
+
+You can also close the modal by clicking the **✕** button or clicking
+outside it. Skipping or closing is safe — you can always open the Diff
+page manually at any time to carry over translations later.
 
 ---
 
@@ -127,11 +192,21 @@ After carrying over translations:
 
 ## Tips
 
-> TODO:
-> - Always diff before discarding the old mod version from the database.
-> - Use the filter (Change Type = Changed) to focus only on what needs attention.
-> - Unchanged strings with status Approved remain Approved after carry-over.
-> - A complete re-import workflow typically takes minutes even for large mods.
+- **Always diff before deleting the old mod version.** Once an old mod
+  is removed from the database, its translations can no longer be
+  carried over.
+- **Focus on the Changed category.** Click the orange `changed` chip
+  in the summary bar to filter the table to only modified strings.
+  These are the only ones that require manual review after carry-over.
+- **Unchanged strings keep their original status.** If a string was
+  `reviewed` in the old version and the source text didn't change, it
+  remains `reviewed` in the new version — no re-approval needed.
+- **Use the "Open in Editor" shortcut.** After carry-over, if there are
+  draft strings, a direct link appears on the Diff page that opens the
+  new mod's editor pre-filtered to `status=draft`.
+- **Run QA after carry-over.** Changed-source strings carry the old
+  translation as a `draft`. Placeholders, length, and terminology may
+  have shifted — run QA to catch those issues quickly.
 
 ---
 

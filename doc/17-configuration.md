@@ -28,8 +28,47 @@ cp .env.example .env
 The `.env` file is never committed to version control.
 All settings have defaults where possible; only required settings must be provided.
 
-> TODO: Embed the contents of `.env.example` here (auto-sync note: keep in sync
-> with the actual file).
+```env
+# --- LLM Provider ---
+# ollama (default) | openai
+LLM_PROVIDER=ollama
+
+# Fallback provider if primary is unavailable (none | ollama | openai)
+LLM_FALLBACK=none
+
+# --- Ollama ---
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma3:12b
+
+# --- OpenAI (only if LLM_PROVIDER=openai) ---
+# OPENAI_API_KEY=sk-...
+# OPENAI_TRANSLATE_MODEL=gpt-4.1-mini
+# OPENAI_EMBED_MODEL=text-embedding-3-large
+
+# --- Database ---
+DATABASE_URL=postgresql://localizer:localizer@localhost:5432/localizer
+POSTGRES_USER=localizer
+POSTGRES_PASSWORD=localizer
+POSTGRES_DB=localizer
+
+# --- Translation ---
+# Number of strings sent to LLM per batch
+BATCH_SIZE=30
+
+# --- Logging ---
+# Log level: error | warn | info | debug | trace (default: info)
+LOG_LEVEL=info
+
+# Directory for log files (default: ./logs/)
+# LOG_DIR=./logs/
+
+# --- Multi-user mode ---
+# MULTI_USER=true
+# SESSION_LIFETIME_HOURS=72
+
+# --- Debug ---
+# DEBUG=1
+```
 
 ---
 
@@ -39,8 +78,17 @@ All settings have defaults where possible; only required settings must be provid
 |----------|---------|-------------|
 | `DATABASE_URL` | *(required)* | PostgreSQL connection string, e.g. `postgresql://user:pass@localhost:5432/f4loc` |
 
-> TODO: Explain connection string format.
-> Note that Docker Compose sets `DATABASE_URL` automatically via service name.
+The connection string format is:
+
+```
+postgresql://USERNAME:PASSWORD@HOST:PORT/DBNAME
+```
+
+Example: `postgresql://localizer:localizer@localhost:5432/localizer`
+
+When using **Docker Compose**, `DATABASE_URL` is set automatically by `docker-compose.yml`
+using the `db` service name as the host: `postgresql://localizer:localizer@db:5432/localizer`.
+You do not need to set it manually when running the full stack with `docker compose up`.
 
 ---
 
@@ -48,15 +96,16 @@ All settings have defaults where possible; only required settings must be provid
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | `ollama` | Primary provider: `openai` or `ollama` |
-| `LLM_FALLBACK_PROVIDER` | *(none)* | Fallback provider if primary fails |
+| `LLM_PROVIDER` | `ollama` | Primary LLM provider: `openai` or `ollama` |
+| `LLM_FALLBACK` | `none` | Fallback provider if primary fails: `none`, `openai`, or `ollama` |
 | `OPENAI_API_KEY` | *(required for OpenAI)* | Your OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model name |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini` | OpenAI model used for translation |
+| `OPENAI_EMBED_MODEL` | `text-embedding-3-large` | OpenAI model used for embeddings |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `llama3` | Ollama model name |
+| `OLLAMA_MODEL` | *(required for Ollama)* | Ollama model name, e.g. `gemma3:12b`, `llama3`, `mistral` |
 
-> TODO: Add any additional LLM settings (temperature, max tokens, retry count).
-> Confirm exact variable names from `src/config.ts`.
+> Note: temperature, max tokens, and retry count are not currently configurable via
+> environment variables. The backend uses provider defaults.
 
 ---
 
@@ -68,7 +117,9 @@ All settings have defaults where possible; only required settings must be provid
 | `HOST` | `0.0.0.0` | Backend bind address |
 | `VITE_API_BASE` | `http://localhost:3000` | Frontend API base URL (used by Vite dev server) |
 
-> TODO: Confirm variable names and defaults from `src/config.ts`.
+> Note: `PORT`, `HOST`, and `VITE_API_BASE` are read directly from `process.env` by the
+> server and Vite dev server respectively. They are not part of the `CONFIG` object in
+> `src/config.ts`. The defaults shown above apply when the variables are not set.
 
 ---
 
@@ -77,20 +128,21 @@ All settings have defaults where possible; only required settings must be provid
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MULTI_USER` | `false` | Set to `true` to enable login and RBAC |
-| `SESSION_SECRET` | *(required when MULTI_USER=true)* | Random secret for session signing (min 32 chars) |
-| `SESSION_TTL_HOURS` | `24` | Session lifetime in hours |
+| `SESSION_LIFETIME_HOURS` | `72` | Session lifetime in hours; sessions expire after this TTL |
 
-> TODO: Add any additional auth variables (cookie domain, secure flag, etc.).
+> Note: sessions are stored as tokens in the database. There is no JWT signing secret —
+> `SESSION_SECRET` is not used. No additional cookie-domain or secure-flag variables exist;
+> the session cookie is always HTTP-only and SameSite=Strict.
 
 ---
 
 ## Feature Flags
 
-> TODO: List any feature flags that can be enabled/disabled via env vars:
-> - `ENABLE_EET_IMPORT` — enable legacy EET file import
-> - `ENABLE_CSV_IMPORT` — enable CSV import tab
-> - etc.
-> Confirm from source.
+There are no feature flags in the current version.
+All features are enabled by default and cannot be selectively disabled via environment variables.
+
+The only optional toggle is **`MULTI_USER=true`** (described above), which activates
+authentication and role-based access control.
 
 ---
 
@@ -125,22 +177,67 @@ docker compose down
 PostgreSQL data is stored in a Docker volume (`pgdata`).
 This volume persists across `docker compose down` and restarts.
 
-> TODO: Explain how to back up and restore the Docker volume.
-> Explain how to access the database directly from the host (port mapping).
+**Backup the PostgreSQL data volume:**
+
+```bash
+docker compose exec db pg_dump -U localizer localizer > backup_$(date +%Y%m%d).sql
+```
+
+**Restore from a backup:**
+
+```bash
+cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
+```
+
+**Access the database from the host machine:**
+
+Add a port mapping to `docker-compose.yml` (or a local override file):
+
+```yaml
+services:
+  db:
+    ports:
+      - "5432:5432"
+```
+
+Then connect with any PostgreSQL client (e.g. pgAdmin, DBeaver) to `localhost:5432`
+using the credentials from your `.env` file.
 
 ---
 
 ## Production Deployment Tips
 
-> TODO: Cover:
-> - Use `docker compose -f docker-compose.prod.yml up` with a production compose file.
-> - Set `NODE_ENV=production`.
-> - Build the frontend static bundle (`npm run build` in `web-ui/`) and serve it via nginx.
-> - Use a reverse proxy (nginx / Caddy) in front of the backend.
-> - Set `SESSION_SECRET` to a long random value (never the default).
-> - Enable HTTPS on the reverse proxy.
-> - Set up database backups (daily `pg_dump`).
-> - Consider Docker resource limits (memory, CPU) for LLM calls.
+1. **Create a production compose override** (`docker-compose.prod.yml`):
+   - Pin image tags to specific versions.
+   - Remove the Vite dev server; serve the built frontend via nginx or Caddy.
+   - Add `deploy.resources.limits.memory` for the backend — LLM API calls can be memory-intensive.
+
+2. **Build the frontend bundle:**
+   ```bash
+   cd web-ui && npm run build
+   # Serve the dist/ directory from your reverse proxy
+   ```
+
+3. **Reverse proxy (nginx / Caddy):**
+   - Put a reverse proxy in front of the backend on port 3000.
+   - Terminate TLS at the proxy — always run production over HTTPS.
+
+4. **Environment variables to set in production:**
+   - `DATABASE_URL` — use a strong, unique password.
+   - `MULTI_USER=true` and create named user accounts.
+   - `SESSION_LIFETIME_HOURS` — keep at 72h or adjust to your security policy.
+   - `LLM_PROVIDER` + the appropriate API key or Ollama URL.
+   - `LOG_LEVEL=warn` — reduce log verbosity in production.
+
+5. **Database backups:**
+   Schedule a daily `pg_dump` (cron or Docker sidecar):
+   ```bash
+   0 3 * * * docker compose -f /srv/app/docker-compose.yml exec -T db \
+     pg_dump -U localizer localizer | gzip > /backups/f4loc_$(date +\%Y\%m\%d).sql.gz
+   ```
+
+6. **Persistent data** lives in the `pgdata` Docker volume.
+   Never run `docker compose down -v` in production unless you intend to wipe all translation data.
 
 ---
 
