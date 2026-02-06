@@ -22,13 +22,13 @@ Learn how to bring a Fallout 4 mod into the tool so its strings are ready to tra
 
 ## Supported File Types
 
-| File | Description |
-|------|-------------|
-| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings |
-| `.zip` / `.7z` / `.rar` | Mod archive containing a plugin and, optionally, matching `.ba2` files or loose assets |
-| `.eet` | Legacy project file — imports existing translations |
-| `.csv` | RFC 4180-style comma-separated translation table |
-| `.ba2` | Not uploaded directly in the current UI. BA2 content is discovered automatically when it sits next to the plugin or inside an uploaded archive |
+| File                     | Description                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings                                                                                   |
+| `.zip` / `.7z` / `.rar`  | Mod archive containing a plugin and, optionally, matching `.ba2` files or loose assets                                                         |
+| `.eet`                   | Legacy project file — imports existing translations                                                                                       |
+| `.csv`                   | RFC 4180-style comma-separated translation table                                                                                               |
+| `.ba2`                   | Not uploaded directly in the current UI. BA2 content is discovered automatically when it sits next to the plugin or inside an uploaded archive |
 
 ---
 
@@ -138,24 +138,24 @@ When you import a mod, the pipeline:
 In the current web importer, the workflow is:
 
 1. **Register the uploaded file as an import job.**
-	The backend stores the upload under `uploads/`, hashes the file, and reuses an existing job if the exact same file hash was uploaded before.
+   The backend stores the upload under `uploads/`, hashes the file, and reuses an existing job if the exact same file hash was uploaded before.
 
 2. **For archive uploads, extract the archive and discover mod files.**
-	`.zip`, `.7z`, and `.rar` uploads are unpacked with 7-Zip. The importer searches the extracted tree for plugin files and BA2 archives.
+   `.zip`, `.7z`, and `.rar` uploads are unpacked with 7-Zip. The importer searches the extracted tree for plugin files and BA2 archives.
 
 3. **Read the plugin and preview translatable rows.**
-	The importer parses the plugin with the ESP reader and extracts translatable rows before full ingestion. This preview is what you see in the modal.
+   The importer parses the plugin with the ESP reader and extracts translatable rows before full ingestion. This preview is what you see in the modal.
 
 4. **Handle localized and non-localized plugins differently.**
-	For a localized plugin, the importer looks for matching `.strings`, `.dlstrings`, and `.ilstrings` data in a sibling BA2 or loose `Strings/` directory. For a non-localized plugin, it imports raw text directly from the plugin and uses the language you selected in the modal.
+   For a localized plugin, the importer looks for matching `.strings`, `.dlstrings`, and `.ilstrings` data in a sibling BA2 or loose `Strings/` directory. For a non-localized plugin, it imports raw text directly from the plugin and uses the language you selected in the modal.
 
 5. **Store records and strings in the database.**
-	The importer writes mod rows, record rows, and source-string rows. Each string is associated with the mod, record signature, path, editor ID when available, and normalized text used by later search and matching features.
+   The importer writes mod rows, record rows, and source-string rows. Each string is associated with the mod, record signature, path, editor ID when available, and normalized text used by later search and matching features.
 
 6. **Optionally ingest BA2-derived text.**
-	After the main plugin pass, the importer scans BA2 files or loose assets for:
-	- **MCM text** in `Interface/Translations/*.txt`, stored with signature `MCM`
-	- **PEX strings** from compiled Papyrus scripts, stored with signature `PEX`
+   After the main plugin pass, the importer scans BA2 files or loose assets for:
+   - **MCM text** in `Interface/Translations/*.txt`, stored with signature `MCM`
+   - **PEX strings** from compiled Papyrus scripts, stored with signature `PEX`
 
 Important correction: the current web import workers do **not** automatically run the Translation Memory waterfall during import.
 TM application is a separate action you run later from the mod editor.
@@ -211,6 +211,7 @@ If you upload the exact same file again, the backend reuses the existing import 
 ## Importing BA2 Archives
 
 BA2 archives can contain:
+
 - **MCM strings** — Mod Configuration Menu option labels
 - **PEX scripts** — compiled Papyrus script string literals
 
@@ -324,28 +325,28 @@ Conflict handling in the current UI:
 ## Troubleshooting
 
 - **"File too large"**
-	The web server limits multipart uploads to `200 MB`. Split oversized archives, upload only the needed plugin, or remove unneeded assets before uploading.
+  The web server limits multipart uploads to `200 MB`. Split oversized archives, upload only the needed plugin, or remove unneeded assets before uploading.
 
 - **"Unsupported format"**
-	The current accepted upload types are `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.
+  The current accepted upload types are `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.
 
 - **"No ESP/ESM/ESL plugin found in archive"**
-	Your `.zip`, `.7z`, or `.rar` file did not contain a supported plugin. Extract it locally and confirm that the archive really contains the plugin you expect.
+  Your `.zip`, `.7z`, or `.rar` file did not contain a supported plugin. Extract it locally and confirm that the archive really contains the plugin you expect.
 
 - **Localized mod imports fail because no locale files are found**
-	For localized plugins, the importer expects matching STRINGS data in a BA2 or loose `Strings/` folder. If those files are missing, the import cannot resolve the LString text.
+  For localized plugins, the importer expects matching STRINGS data in a BA2 or loose `Strings/` folder. If those files are missing, the import cannot resolve the LString text.
 
 - **Import seems stuck or the SSE stream is lost**
-	Refresh the page and inspect the job row. The list refreshes automatically, so a running or completed job should reappear with updated counts. If the job is `paused` or `failed`, press **Start** to resume from the last committed checkpoint.
+  Refresh the page and inspect the job row. The list refreshes automatically, so a running or completed job should reappear with updated counts. If the job is `paused` or `failed`, press **Start** to resume from the last committed checkpoint.
 
 - **Pause or Cancel did not undo imported rows**
-	This is expected in the current implementation. Imports commit in batches and preserve already imported records. Pause/cancel stop future work; they do not roll the database back.
+  This is expected in the current implementation. Imports commit in batches and preserve already imported records. Pause/cancel stop future work; they do not roll the database back.
 
 - **Duplicate upload behavior is confusing**
-	The backend deduplicates by file hash. Uploading the exact same file again usually returns the existing job. Uploading a different file with the same mod name creates another mod version, which can later be compared in the diff workflow.
+  The backend deduplicates by file hash. Uploading the exact same file again usually returns the existing job. Uploading a different file with the same mod name creates another mod version, which can later be compared in the diff workflow.
 
 - **Archive contains multiple plugins**
-	The current importer uses the first plugin it discovers inside the archive. If you need a specific plugin, upload that plugin directly or build a smaller archive with only the intended files.
+  The current importer uses the first plugin it discovers inside the archive. If you need a specific plugin, upload that plugin directly or build a smaller archive with only the intended files.
 
 ---
 

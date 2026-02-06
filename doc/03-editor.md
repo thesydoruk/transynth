@@ -42,16 +42,16 @@ By default, 100 rows are shown per page.
 
 ### Columns
 
-| Column | Description |
-|--------|-------------|
-| **Select** | Checkbox for bulk operations on the current page |
-| **GRUP** | Record type signature (e.g. `DIAL`, `BOOK`, `NPC_`, `QUST`) |
-| **FormID** | Unique hexadecimal record identifier |
-| **EDID** | Editor ID — the author's internal name for the record |
-| **Field** | Sub-record field name (e.g. `FULL`, `DESC`, `NNAM`) |
-| **Source** | Original English (or base-language) text |
-| **Translation** | Current best translation, plus a small QA count hint when issues exist |
-| **Actions** | Quick actions: approve, reject, clear, copy source, and the current status badge |
+| Column          | Description                                                                      |
+| --------------- | -------------------------------------------------------------------------------- |
+| **Select**      | Checkbox for bulk operations on the current page                                 |
+| **GRUP**        | Record type signature (e.g. `DIAL`, `BOOK`, `NPC_`, `QUST`)                      |
+| **FormID**      | Unique hexadecimal record identifier                                             |
+| **EDID**        | Editor ID — the author's internal name for the record                            |
+| **Field**       | Sub-record field name (e.g. `FULL`, `DESC`, `NNAM`)                              |
+| **Source**      | Original English (or base-language) text                                         |
+| **Translation** | Current best translation, plus a small QA count hint when issues exist           |
+| **Actions**     | Quick actions: approve, reject, clear, copy source, and the current status badge |
 
 ### Pagination
 
@@ -100,14 +100,14 @@ You can also resize all data columns by dragging the resize handle in the header
 Directly below the column headers is a filter row.
 Each input filters the corresponding column as you type.
 
-| Filter | Behaviour |
-|--------|-----------|
-| GRUP | Case-insensitive substring match |
-| FormID | Case-insensitive substring match |
-| EDID | Case-insensitive substring match |
-| Field | Case-insensitive substring match against the record path |
-| Source | Case-insensitive substring match |
-| Translation | Case-insensitive substring match |
+| Filter      | Behaviour                                                |
+| ----------- | -------------------------------------------------------- |
+| GRUP        | Case-insensitive substring match                         |
+| FormID      | Case-insensitive substring match                         |
+| EDID        | Case-insensitive substring match                         |
+| Field       | Case-insensitive substring match against the record path |
+| Source      | Case-insensitive substring match                         |
+| Translation | Case-insensitive substring match                         |
 
 Above the grid, the toolbar also provides higher-level filters:
 
@@ -248,16 +248,16 @@ It also does **not** offer a one-click restore button from history.
 
 Every string has a status that describes its translation state:
 
-| Status | Meaning |
-|--------|---------|
-| **Untranslated** | No translation exists yet |
-| **Draft** | Human-entered translation, not yet reviewed |
-| **Reviewed** | Manually reviewed and confirmed in the editor |
+| Status                 | Meaning                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| **Untranslated**       | No translation exists yet                                     |
+| **Draft**              | Human-entered translation, not yet reviewed                   |
+| **Reviewed**           | Manually reviewed and confirmed in the editor                 |
 | **Approved** (`human`) | Imported or otherwise marked as a confirmed human translation |
-| **TM** | Filled automatically from Translation Memory |
-| **Fuzzy** | Filled from a fuzzy TM-style match |
-| **Auto** | Filled automatically by LLM translation |
-| **Rejected** | Explicitly marked as rejected |
+| **TM**                 | Filled automatically from Translation Memory                  |
+| **Fuzzy**              | Filled from a fuzzy TM-style match                            |
+| **Auto**               | Filled automatically by LLM translation                       |
+| **Rejected**           | Explicitly marked as rejected                                 |
 
 How statuses change today:
 

@@ -16,13 +16,13 @@ All shortcuts are active when the editor page is focused.
 
 ## Editor Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+S` | Save the current translation |
-| `Ctrl+Enter` | Save from the translation textarea in the Detail Panel |
-| `Enter` | Focus the translation textarea for the active row |
-| `Escape` | Close the context menu, close the Detail Panel, or clear selection |
-| `?` | Toggle the keyboard shortcuts help overlay |
+| Shortcut     | Action                                                             |
+| ------------ | ------------------------------------------------------------------ |
+| `Ctrl+S`     | Save the current translation                                       |
+| `Ctrl+Enter` | Save from the translation textarea in the Detail Panel             |
+| `Enter`      | Focus the translation textarea for the active row                  |
+| `Escape`     | Close the context menu, close the Detail Panel, or clear selection |
+| `?`          | Toggle the keyboard shortcuts help overlay                         |
 
 Important corrections:
 
@@ -34,12 +34,12 @@ Important corrections:
 
 ## Navigation Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `↑` / `↓` | Move selection up / down one row |
-| `Page Up` / `Page Down` | Move to previous / next page |
-| `N` | Jump to next empty (untranslated) string |
-| `Ctrl+Shift+E` | Toggle the Detail Panel open or closed |
+| Shortcut                | Action                                   |
+| ----------------------- | ---------------------------------------- |
+| `↑` / `↓`               | Move selection up / down one row         |
+| `Page Up` / `Page Down` | Move to previous / next page             |
+| `N`                     | Jump to next empty (untranslated) string |
+| `Ctrl+Shift+E`          | Toggle the Detail Panel open or closed   |
 
 Navigation details:
 
@@ -52,14 +52,14 @@ Navigation details:
 
 ## Status Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+A` | Approve the active row |
-| `Ctrl+Shift+R` | Reject the active row |
+| Shortcut       | Action                                          |
+| -------------- | ----------------------------------------------- |
+| `Ctrl+Shift+A` | Approve the active row                          |
+| `Ctrl+Shift+R` | Reject the active row                           |
 | `Ctrl+Shift+C` | Copy the source text into the translation field |
-| `Ctrl+Shift+X` | Clear the current translation |
-| `Space` | Toggle selection for the active row |
-| `Ctrl+A` | Select or deselect all rows on the current page |
+| `Ctrl+Shift+X` | Clear the current translation                   |
+| `Space`        | Toggle selection for the active row             |
+| `Ctrl+A`       | Select or deselect all rows on the current page |
 
 Important corrections:
 
