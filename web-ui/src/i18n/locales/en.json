@@ -290,7 +290,8 @@
     "tabCsv": "CSV",
     "tabMod": "Mod",
     "importAll": "Import all ({{count}})",
-    "noFiles": "No files uploaded yet. Upload EET, CSV, or plugin files to get started."
+    "noFiles": "No files uploaded yet. Upload EET, CSV, or plugin files to get started.",
+    "gameLabel": "Game"
   },
   "eetImport": {
     "title": "EET Imports",

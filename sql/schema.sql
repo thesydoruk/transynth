@@ -7,8 +7,12 @@ CREATE TABLE IF NOT EXISTS mods (
   name TEXT NOT NULL,
   abs_path TEXT,
   version_hash TEXT,
+  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | sse
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: add game column if it does not yet exist (idempotent).
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4';
 
 CREATE TABLE IF NOT EXISTS records (
   id SERIAL PRIMARY KEY,
@@ -178,11 +182,15 @@ CREATE TABLE IF NOT EXISTS mod_imports (
   src_lang TEXT NOT NULL DEFAULT 'en',
   tgt_lang TEXT NOT NULL DEFAULT 'uk',
   is_localized INTEGER NOT NULL DEFAULT 0,
+  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | sse
   esp_path TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(file_hash)
 );
+
+-- Migration: add game column to mod_imports if it does not yet exist.
+ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4';
 
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);

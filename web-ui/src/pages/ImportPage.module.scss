@@ -60,6 +60,17 @@
   margin-bottom: 24px;
 }
 
+.gameSelect {
+  padding: 5px 10px;
+  background: var(--bg-input, var(--bg-card));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .fileInput {
   flex: 1;
   color: var(--text);

@@ -8,6 +8,7 @@ import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
+import type { GameType } from '../../types.js';
 import { log } from '../../logger.js';
 import {
   ensureModImportSchema,
@@ -56,11 +57,14 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // ── Upload mod file (ESP/ESL or archive) ──────────────────────────────────
-  app.post('/api/mod-import/upload', async (req, reply) => {
+  app.post<{ Querystring: { game?: string; srcLang?: string; tgtLang?: string } }>('/api/mod-import/upload', async (req, reply) => {
     const data = await req.file();
     if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
     const origName = data.filename;
+    const game: GameType = (req.query.game === 'sse' || req.query.game === 'sle') ? req.query.game : 'fo4';
+    const srcLang = req.query.srcLang ?? 'en';
+    const tgtLang = req.query.tgtLang ?? 'uk';
 
     if (!isPlugin(origName) && !isArchive(origName)) {
       return reply.status(400).send({
@@ -79,12 +83,12 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
       let job;
       if (isPlugin(origName)) {
-        job = await registerPluginFile(db, origName, finalPath, 'en', 'uk');
+        job = await registerPluginFile(db, origName, finalPath, srcLang, tgtLang, game);
       } else {
         // Archive — extract then register
         const hash = crypto.randomBytes(8).toString('hex');
         const outDir = extractDir(hash);
-        job = await registerArchiveFile(db, origName, finalPath, outDir, 'en', 'uk');
+        job = await registerArchiveFile(db, origName, finalPath, outDir, srcLang, tgtLang, game);
       }
 
       return reply.status(201).send({ ...job, running: false });

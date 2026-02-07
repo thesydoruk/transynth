@@ -35,6 +35,7 @@
 import fs from 'fs';
 import { inflateSync } from 'zlib';
 import { isTranslatableSubrecord } from './knownStrings.js';
+import type { GameType } from '../types.js';
 import { log } from '../logger.js';
 
 const RECORD_HEADER_SIZE = 24;
@@ -155,9 +156,16 @@ export interface EspPluginInfo {
 export class EspReader {
   private buf: Buffer;
   public info!: EspPluginInfo;
+  /** Target game — determines which subrecords are extracted. */
+  private readonly game: GameType;
 
-  constructor(filePath: string) {
-    log.debug(`ESP: opening ${filePath}`);
+  /**
+   * @param filePath - Absolute path to the .esp/.esm/.esl plugin file.
+   * @param game     - Set to `'sse'` for Skyrim SE plugins; defaults to `'fo4'`.
+   */
+  constructor(filePath: string, game: GameType = 'fo4') {
+    log.debug(`ESP: opening ${filePath} (game=${game})`);
+    this.game = game;
     this.buf = fs.readFileSync(filePath);
     this.parseHeader();
     log.info(`ESP: ${filePath} — localized=${this.info.isLocalized}, masters=[${this.info.masterFiles.join(', ')}]`);
@@ -286,7 +294,7 @@ export class EspReader {
 
       if (subSig === 'EDID') {
         edid = recordData.toString('utf8', dataStart, dataEnd).replace(/\0/g, '');
-      } else if (isTranslatableSubrecord(recSig, subSig)) {
+      } else if (isTranslatableSubrecord(recSig, subSig, this.game)) {
         if (this.info.isLocalized && subSize === 4) {
           // LString ID
           const lstrId = recordData.readUInt32LE(dataStart);

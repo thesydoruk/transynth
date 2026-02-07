@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { CONFIG } from './config.js';
+import type { GameType } from './types.js';
 import { log } from './logger.js';
 
 const { Pool } = pg;
@@ -51,13 +52,19 @@ export const withTransaction = async <T>(pool: pg.Pool, fn: (client: pg.PoolClie
   }
 }
 
-export const upsertMod = async (db: Tx, name: string, absPath: string, versionHash: string): Promise<number> => {
-  log.debug(`DB: upsertMod name=${name}`);
+export const upsertMod = async (
+  db: Tx,
+  name: string,
+  absPath: string,
+  versionHash: string,
+  game: GameType = 'fo4',
+): Promise<number> => {
+  log.debug(`DB: upsertMod name=${name} game=${game}`);
   const { rows } = await db.query(
-    `INSERT INTO mods(name, abs_path, version_hash) VALUES ($1, $2, $3)
-     ON CONFLICT(name, version_hash) DO UPDATE SET abs_path = EXCLUDED.abs_path
+    `INSERT INTO mods(name, abs_path, version_hash, game) VALUES ($1, $2, $3, $4)
+     ON CONFLICT(name, version_hash) DO UPDATE SET abs_path = EXCLUDED.abs_path, game = EXCLUDED.game
      RETURNING id`,
-    [name, absPath, versionHash],
+    [name, absPath, versionHash, game],
   );
   return rows[0].id;
 }

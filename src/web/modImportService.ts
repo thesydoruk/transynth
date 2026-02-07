@@ -13,10 +13,11 @@ import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
 import { EspReader, type EspStringRow } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
+import { BsaReader } from '../bethesda/bsaReader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
 import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
 import { parsePexBuffer } from '../bethesda/pexReader.js';
-import type { CsvRow } from '../types.js';
+import type { CsvRow, GameType } from '../types.js';
 
 const BATCH_SIZE = 1000;
 
@@ -33,6 +34,7 @@ export interface ModImportJob {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;    // 0 | 1
+  game: GameType;          // fo4 | sse
   esp_path: string | null;
   created_at: string;
   updated_at: string;
@@ -90,6 +92,69 @@ export const isPlugin = (fileName: string): boolean => {
   return PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
 }
 
+/**
+ * Return the BSA archive paired with a Skyrim SE plugin, if one exists.
+ * SSE archives use the naming convention `{Stem}.bsa` or `{Stem} - Strings.bsa`
+ * (the Strings variant contains only STRINGS/DLSTRINGS/ILSTRINGS files).
+ * We look for BSA files in the same directory as the plugin, preferring the
+ * `{Stem} - Strings.bsa` variant because it is smaller and faster to load.
+ *
+ * @param modPath      - Absolute path to the .esp/.esm plugin.
+ * @param bsaCandidates - Pre-discovered BSA paths to search first.
+ */
+const discoverBsa = (modPath: string, bsaCandidates: string[]): string | null => {
+  const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
+  const variants = [
+    `${stem} - strings`,
+    `${stem} - textures`,  // occasionally contains strings in Strings subfolder
+    stem,
+  ];
+  for (const bsa of bsaCandidates) {
+    const base = path.basename(bsa, '.bsa').toLowerCase();
+    if (variants.includes(base)) return bsa;
+  }
+  const dir = path.dirname(modPath);
+  for (const variant of variants) {
+    const p = path.join(dir, `${variant}.bsa`);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+/**
+ * Load all STRINGS/DLSTRINGS/ILSTRINGS locales from a Skyrim SE BSA archive.
+ * BSA archives store strings files under the `strings\\` folder path.
+ *
+ * @param bsaPath - Absolute path to the .bsa archive.
+ */
+const loadLocalesFromBSA = (bsaPath: string): Map<string, Map<number, string>> => {
+  const reader = new BsaReader(bsaPath);
+  const locales = new Map<string, Map<number, string>>();
+
+  const stringsEntries = [
+    ...reader.listByExt('strings'),
+    ...reader.listByExt('dlstrings'),
+    ...reader.listByExt('ilstrings'),
+  ];
+
+  for (const entry of stringsEntries) {
+    const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? '';
+    const m = base.match(/_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
+    if (!m) continue;
+
+    const locale = m[1].toLowerCase();
+    const type = stringsTypeFromPath(entry.name);
+    const buf = reader.extractEntry(entry);
+    const map = parseStringsBuffer(buf, type);
+
+    if (!locales.has(locale)) locales.set(locale, new Map());
+    const localeMap = locales.get(locale)!;
+    for (const [id, text] of map) localeMap.set(id, text);
+  }
+
+  return locales;
+}
+
 /** Extract archive to a directory using 7-zip. Returns the output directory. */
 export const extractArchive = (archivePath: string, outDir: string): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -104,11 +169,12 @@ export const extractArchive = (archivePath: string, outDir: string): Promise<voi
 }
 
 /**
- * Discover ESP/ESL/ESM + BA2 files inside a directory (recursive).
+ * Discover ESP/ESL/ESM + BA2 (FO4) and BSA (SSE) files inside a directory (recursive).
  */
-export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string[] } => {
+export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string[]; bsas: string[] } => {
   const plugins: string[] = [];
   const ba2s: string[] = [];
+  const bsas: string[] = [];
 
   const walk = (d: string) => {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
@@ -117,10 +183,11 @@ export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string
       const ext = path.extname(entry.name).toLowerCase();
       if (PLUGIN_EXTS.has(ext)) plugins.push(full);
       else if (ext === '.ba2') ba2s.push(full);
+      else if (ext === '.bsa') bsas.push(full);
     }
   }
   walk(dir);
-  return { plugins, ba2s };
+  return { plugins, ba2s, bsas };
 }
 
 const discoverBa2 = (modPath: string, ba2Candidates: string[]): string | null => {
@@ -165,6 +232,39 @@ const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> =
   return locales;
 }
 
+/**
+ * Load strings locales for a given game, trying all archive types and loose files.
+ * For FO4: looks for a BA2 archive first, then loose Strings\ files.
+ * For SSE: looks for a BSA archive first, then loose Strings\ files.
+ *
+ * @param espPath      - Absolute path to the plugin.
+ * @param game         - Target game ('fo4' or 'sse').
+ * @param ba2Candidates - Pre-discovered archive paths (any type).
+ */
+const loadLocalesForGame = (
+  espPath: string,
+  game: GameType,
+  ba2Candidates: string[] = [],
+): Map<string, Map<number, string>> => {
+  if (game === 'sse') {
+    const bsaCandidates = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.bsa'));
+    const bsaPath = discoverBsa(espPath, bsaCandidates);
+    if (bsaPath) return loadLocalesFromBSA(bsaPath);
+    return loadLocalesFromLooseFiles(espPath);
+  }
+  // fo4 (default)
+  const ba2Cands = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.ba2'));
+  const ba2Path = discoverBa2(espPath, ba2Cands);
+  if (ba2Path) return loadLocalesFromBA2(ba2Path);
+  return loadLocalesFromLooseFiles(espPath);
+};
+
+/**
+ * Load all STRINGS/DLSTRINGS/ILSTRINGS files from loose disk files.
+ * Looks in <modDir>/Strings/ for files matching `{stem}_{locale}.{ext}`.
+ *
+ * @param modPath - Absolute path to the .esp/.esm plugin.
+ */
 const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, string>> => {
   const dir = path.join(path.dirname(modPath), 'Strings');
   const locales = new Map<string, Map<number, string>>();
@@ -482,6 +582,7 @@ export const registerPluginFile = async (
   pluginPath: string,
   srcLang: string,
   tgtLang: string,
+  game: GameType = 'fo4',
 ): Promise<ModImportJob> => {
   const buf = fs.readFileSync(pluginPath);
   const fileHash = sha1Hex(buf);
@@ -489,19 +590,19 @@ export const registerPluginFile = async (
   const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
   if (existing[0]) return existing[0] as ModImportJob;
 
-  const esp = new EspReader(pluginPath);
+  const esp = new EspReader(pluginPath, game);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
   const modName = fileName.replace(/\.(esp|esm|esl)$/i, '');
-  const modId = await upsertMod(db, modName, pluginPath, fileHash);
+  const modId = await upsertMod(db, modName, pluginPath, fileHash, game);
 
   const totalRecords = espRows.length;
 
   await db.query(
-    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, esp_path)
-     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)`,
-    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath],
+    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
+     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
   );
 
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
@@ -515,6 +616,7 @@ export const registerArchiveFile = async (
   extractDir: string,
   srcLang: string,
   tgtLang: string,
+  game: GameType = 'fo4',
 ): Promise<ModImportJob> => {
   const buf = fs.readFileSync(archivePath);
   const fileHash = sha1Hex(buf);
@@ -531,19 +633,19 @@ export const registerArchiveFile = async (
   }
 
   const pluginPath = plugins[0];
-  const esp = new EspReader(pluginPath);
+  const esp = new EspReader(pluginPath, game);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
   const modName = fileName.replace(/\.(zip|7z|rar)$/i, '');
-  const modId = await upsertMod(db, modName, pluginPath, fileHash);
+  const modId = await upsertMod(db, modName, pluginPath, fileHash, game);
 
   const totalRecords = espRows.length;
 
   await db.query(
-    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, esp_path)
-     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)`,
-    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, pluginPath],
+    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
+     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
+    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
   );
 
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
@@ -560,17 +662,13 @@ export const previewModRecords = (job: ModImportJob, ba2Candidates: string[] = [
   const espPath = job.esp_path;
   if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found on disk');
 
-  const esp = new EspReader(espPath);
+  const game: GameType = (job.game as GameType) ?? 'fo4';
+  const esp = new EspReader(espPath, game);
   const espRows = esp.extractStrings();
 
   let localesMap = new Map<string, Map<number, string>>();
   if (esp.info.isLocalized) {
-    const ba2Path = discoverBa2(espPath, ba2Candidates);
-    if (ba2Path) {
-      localesMap = loadLocalesFromBA2(ba2Path);
-    } else {
-      localesMap = loadLocalesFromLooseFiles(espPath);
-    }
+    localesMap = loadLocalesForGame(espPath, game, ba2Candidates);
   }
 
   const firstLocale = localesMap.size > 0 ? [...localesMap.keys()][0] : null;
@@ -663,7 +761,8 @@ export const runModImport = async (
   log.info(`[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records}`);
 
   try {
-    const esp = new EspReader(espPath);
+    const game: GameType = (job.game as GameType) ?? 'fo4';
+    const esp = new EspReader(espPath, game);
     const espRows = esp.extractStrings();
 
     let imported = job.imported_records;
@@ -671,13 +770,7 @@ export const runModImport = async (
     let inTx = false;
 
     if (esp.info.isLocalized) {
-      const ba2Path = discoverBa2(espPath, []);
-      let localesMap: Map<string, Map<number, string>>;
-      if (ba2Path) {
-        localesMap = loadLocalesFromBA2(ba2Path);
-      } else {
-        localesMap = loadLocalesFromLooseFiles(espPath);
-      }
+      const localesMap: Map<string, Map<number, string>> = loadLocalesForGame(espPath, game, []);
       if (localesMap.size === 0) throw new Error('No locales found in BA2 / strings files');
 
       const work: { locale: string; rows: CsvRow[] }[] = [];
