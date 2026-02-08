@@ -56,11 +56,11 @@ API key і доступ до інтернету не потрібні, але п
 
 Орієнтовні вимоги до апаратури:
 
-| Розмір моделі | Потрібно VRAM | Примітки                                      |
-| ------------- | ------------- | --------------------------------------------- |
-| 7B            | 6–8 GB        | `llama3`, `mistral:7b`, `gemma2:9b`           |
-| 13B           | 10–12 GB      | Краща якість перекладу                        |
-| 70B           | 40+ GB        | Якість близька до GPT-4, але повільно вдома   |
+| Розмір моделі | Потрібно VRAM | Примітки                                    |
+| ------------- | ------------- | ------------------------------------------- |
+| 7B            | 6–8 GB        | `llama3`, `mistral:7b`, `gemma2:9b`         |
+| 13B           | 10–12 GB      | Краща якість перекладу                      |
+| 70B           | 40+ GB        | Якість близька до GPT-4, але повільно вдома |
 
 Інференс на CPU можливий, але приблизно у 10–50 разів повільніший за GPU.
 Для великих модів GPU-прорахунок практично обов’язковий.
@@ -95,16 +95,16 @@ Fallback спрацьовує лише для **availability errors**:
 
 Усі LLM-параметри задаються через `.env`:
 
-| Змінна                   | Значення за замовчуванням | Опис                                               |
-| ------------------------ | ------------------------- | -------------------------------------------------- |
-| `LLM_PROVIDER`           | `ollama`                  | Основний провайдер: `openai` або `ollama`          |
-| `LLM_FALLBACK`           | `none`                    | Fallback: `openai`, `ollama` або `none`            |
-| `OPENAI_API_KEY`         | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=openai`             |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`            | OpenAI-модель для перекладу                        |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large`  | OpenAI-модель для embeddings                       |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434`  | Адреса Ollama-сервера                              |
-| `OLLAMA_MODEL`           | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=ollama`             |
-| `BATCH_SIZE`             | `30`                      | Кількість рядків у LLM-batch для CLI               |
+| Змінна                   | Значення за замовчуванням | Опис                                      |
+| ------------------------ | ------------------------- | ----------------------------------------- |
+| `LLM_PROVIDER`           | `ollama`                  | Основний провайдер: `openai` або `ollama` |
+| `LLM_FALLBACK`           | `none`                    | Fallback: `openai`, `ollama` або `none`   |
+| `OPENAI_API_KEY`         | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=openai`    |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`            | OpenAI-модель для перекладу               |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large`  | OpenAI-модель для embeddings              |
+| `OLLAMA_BASE_URL`        | `http://localhost:11434`  | Адреса Ollama-сервера                     |
+| `OLLAMA_MODEL`           | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=ollama`    |
+| `BATCH_SIZE`             | `30`                      | Кількість рядків у LLM-batch для CLI      |
 
 Повний перелік дивіться на сторінці [Конфігурація](17-configuration.md).
 

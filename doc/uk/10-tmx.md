@@ -99,12 +99,12 @@ Parsed: 1 240 · Imported: 820 · Skipped: 420
 
 TMX 1.4b, який генерує цей інструмент, сумісний із:
 
-| Інструмент         | Примітка                                             |
-| ------------------ | ---------------------------------------------------- |
-| SDL Trados Studio  | Імпорт/експорт через Translation Memories panel      |
-| memoQ              | Import через Translation Memories → Import           |
-| OmegaT             | Досить покласти `.tmx` у папку `tm/` проєкту         |
-| Wordfast           | Імпорт через TM Manager                              |
+| Інструмент        | Примітка                                        |
+| ----------------- | ----------------------------------------------- |
+| SDL Trados Studio | Імпорт/експорт через Translation Memories panel |
+| memoQ             | Import через Translation Memories → Import      |
+| OmegaT            | Досить покласти `.tmx` у папку `tm/` проєкту    |
+| Wordfast          | Імпорт через TM Manager                         |
 
 Експорт використовує стандартне UTF-8, `xml:lang` в елементах `<tuv>` і не містить vendor-specific extensions, тому додаткового mapping не потрібно.
 

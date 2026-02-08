@@ -57,9 +57,9 @@ LOG_LEVEL=info
 
 ## Налаштування бази даних
 
-| Змінна          | За замовчуванням | Опис                                                                |
-| --------------- | ---------------- | ------------------------------------------------------------------- |
-| `DATABASE_URL`  | *(required)*     | PostgreSQL connection string                                        |
+| Змінна         | За замовчуванням | Опис                         |
+| -------------- | ---------------- | ---------------------------- |
+| `DATABASE_URL` | _(required)_     | PostgreSQL connection string |
 
 Формат рядка підключення:
 
@@ -79,15 +79,15 @@ postgresql://localizer:localizer@localhost:5432/localizer
 
 ## Налаштування LLM-провайдера
 
-| Змінна                   | За замовчуванням      | Опис                                                   |
-| ------------------------ | --------------------- | ------------------------------------------------------ |
-| `LLM_PROVIDER`           | `ollama`              | Основний провайдер: `openai` або `ollama`              |
-| `LLM_FALLBACK`           | `none`                | Fallback: `none`, `openai` або `ollama`                |
-| `OPENAI_API_KEY`         | *(для OpenAI)*        | Ваш OpenAI API key                                     |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`        | Модель OpenAI для перекладу                            |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                        |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434` | API endpoint Ollama                                 |
-| `OLLAMA_MODEL`           | *(для Ollama)*        | Назва локальної моделі, наприклад `gemma3:12b`         |
+| Змінна                   | За замовчуванням         | Опис                                           |
+| ------------------------ | ------------------------ | ---------------------------------------------- |
+| `LLM_PROVIDER`           | `ollama`                 | Основний провайдер: `openai` або `ollama`      |
+| `LLM_FALLBACK`           | `none`                   | Fallback: `none`, `openai` або `ollama`        |
+| `OPENAI_API_KEY`         | _(для OpenAI)_           | Ваш OpenAI API key                             |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | Модель OpenAI для перекладу                    |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                   |
+| `OLLAMA_BASE_URL`        | `http://localhost:11434` | API endpoint Ollama                            |
+| `OLLAMA_MODEL`           | _(для Ollama)_           | Назва локальної моделі, наприклад `gemma3:12b` |
 
 Поточна реалізація не дає конфігурувати через `.env` температуру, max tokens чи retry-count — backend використовує вбудовані defaults.
 
@@ -95,11 +95,11 @@ postgresql://localizer:localizer@localhost:5432/localizer
 
 ## Налаштування сервера
 
-| Змінна          | За замовчуванням      | Опис                                  |
-| ---------------- | --------------------- | ------------------------------------- |
-| `PORT`           | `3000`                | HTTP-порт backend-сервера             |
-| `HOST`           | `0.0.0.0`             | Bind-address сервера                  |
-| `VITE_API_BASE`  | `http://localhost:3000` | API base URL для Vite dev server    |
+| Змінна          | За замовчуванням        | Опис                             |
+| --------------- | ----------------------- | -------------------------------- |
+| `PORT`          | `3000`                  | HTTP-порт backend-сервера        |
+| `HOST`          | `0.0.0.0`               | Bind-address сервера             |
+| `VITE_API_BASE` | `http://localhost:3000` | API base URL для Vite dev server |
 
 Ці значення читаються безпосередньо з `process.env` сервером і Vite dev server, а не через `CONFIG` у `src/config.ts`.
 
@@ -107,10 +107,10 @@ postgresql://localizer:localizer@localhost:5432/localizer
 
 ## Multi-user і auth
 
-| Змінна                    | За замовчуванням | Опис                                         |
-| ------------------------- | ---------------- | -------------------------------------------- |
-| `MULTI_USER`              | `false`          | Увімкнути логін і RBAC                        |
-| `SESSION_LIFETIME_HOURS`  | `72`             | Скільки годин живе сесія                      |
+| Змінна                   | За замовчуванням | Опис                     |
+| ------------------------ | ---------------- | ------------------------ |
+| `MULTI_USER`             | `false`          | Увімкнути логін і RBAC   |
+| `SESSION_LIFETIME_HOURS` | `72`             | Скільки годин живе сесія |
 
 Сесії зберігаються як токени в базі даних.
 JWT-secret у поточній архітектурі не використовується, `SESSION_SECRET` тут не потрібен.
