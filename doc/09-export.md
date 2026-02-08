@@ -21,12 +21,12 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format          | File                                   | Purpose                                                   |
-| --------------- | -------------------------------------- | --------------------------------------------------------- |
-| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine       |
+| Format           | File                                   | Purpose                                                   |
+| ---------------- | -------------------------------------- | --------------------------------------------------------- |
+| **STRINGS**      | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine       |
 | **Patched ESP**І | `.esp` / `.esm`                        | Mod plugin with translations embedded directly            |
-| **BA2 Archive** | `.ba2`                                 | Archive containing translated STRINGS files and/or assets |
-| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                 |
+| **BA2 Archive**  | `.ba2`                                 | Archive containing translated STRINGS files and/or assets |
+| **Project ZIP**  | `.zip`                                 | All of the above bundled for distribution                 |
 
 ---
 
@@ -203,6 +203,32 @@ attempts), the best available is chosen by quality priority:
 translation is complete. This lets you spot layout issues, broken
 placeholders, and missing context while most of the original English
 text is still in place as a fallback. Much easier to fix early.
+
+---
+
+## Export Invariants
+
+The current export pipeline is regression-tested against a small **golden
+corpus** of canonical STRINGS, DLSTRINGS, and ILSTRINGS files.
+
+These tests assert the following invariants:
+
+1. **File inventory is preserved.** If the source localized mod contains
+   three string tables, the export produces the same three tables. The
+   basename stays the same and only the locale suffix changes.
+2. **Unknown IDs are ignored.** A translation row for an ID that does not
+   exist in the source file is not injected into the output.
+3. **Missing translations fall back to source text.** Untranslated slots
+   keep the original source text instead of becoming blank.
+4. **UTF-8 text survives round-trip.** Non-ASCII text is preserved when the
+   tool writes `.strings`, `.dlstrings`, `.ilstrings`, and BA2 output.
+5. **BA2 output is structurally predictable.** Exported archives contain
+   only the generated strings tables under `Strings\` and keep the expected
+   Fallout 4 archive naming pattern.
+
+This corpus is intentionally synthetic and compact so it can run in the normal
+test suite quickly. It is a regression safety net, not a substitute for
+in-game validation on real mods.
 
 ---
 

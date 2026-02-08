@@ -10,6 +10,7 @@ import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type Strin
 import { log } from '../logger.js';
 
 type SourceStringsFile = {
+  sourceFileName: string;
   nameStem: string;
   type: StringsType;
   sourceMap: Map<number, string>;
@@ -20,6 +21,50 @@ export type ExportedStringsFile = {
   size: number;
   contentBase64: string;
 };
+
+/**
+ * Parse a localized strings table file name while preserving the original
+ * basename casing.
+ *
+ * Expected shape: `{Stem}_{locale}.{STRINGS|DLSTRINGS|ILSTRINGS}`.
+ * Matching is case-insensitive, but the returned stem keeps the exact bytes
+ * from the original file name so exports can preserve the visible file naming.
+ *
+ * @param fileName - Basename only, without directory components.
+ * @returns Parsed descriptor or null if the file is not a strings table.
+ */
+const parseStringsFileName = (
+  fileName: string,
+): { nameStem: string; locale: string; type: StringsType } | null => {
+  const match = fileName.match(/^(.*)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
+  if (!match) return null;
+  return {
+    nameStem: match[1],
+    locale: match[2].toLowerCase(),
+    type: stringsTypeFromPath(fileName),
+  };
+}
+
+/**
+ * Keep strings file export order deterministic regardless of filesystem or
+ * archive iteration order.
+ *
+ * @param files - Parsed source strings files.
+ * @returns A stable, case-insensitive sort by source file name.
+ */
+const sortSourceStringsFiles = (files: SourceStringsFile[]): SourceStringsFile[] => {
+  const typeOrder: Record<StringsType, number> = {
+    STRINGS: 0,
+    DLSTRINGS: 1,
+    ILSTRINGS: 2,
+  };
+
+  return [...files].sort((left, right) => {
+    const stemCompare = left.nameStem.localeCompare(right.nameStem, undefined, { sensitivity: 'base' });
+    if (stemCompare !== 0) return stemCompare;
+    return typeOrder[left.type] - typeOrder[right.type];
+  });
+}
 
 const findBa2 = (modPath: string): string | null => {
   const dir = path.dirname(modPath);
@@ -37,16 +82,20 @@ const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStrin
 
   for (const ext of ['strings', 'dlstrings', 'ilstrings'] as const) {
     for (const entry of ba2.listByExt(ext)) {
-      const base = (entry.name.replace(/\\/g, '/').split('/').pop() ?? '').toLowerCase();
-      if (!base.includes(`_${srcLang.toLowerCase()}.`)) continue;
-      const type = stringsTypeFromPath(entry.name);
-      const sourceMap = parseStringsBuffer(ba2.extractEntry(entry), type);
-      const nameStem = base.replace(new RegExp(`_${srcLang.toLowerCase()}\.(strings|dlstrings|ilstrings)$`), '');
-      files.push({ nameStem, type, sourceMap });
+      const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? '';
+      const parsed = parseStringsFileName(base);
+      if (!parsed || parsed.locale !== srcLang.toLowerCase()) continue;
+      const sourceMap = parseStringsBuffer(ba2.extractEntry(entry), parsed.type);
+      files.push({
+        sourceFileName: base,
+        nameStem: parsed.nameStem,
+        type: parsed.type,
+        sourceMap,
+      });
     }
   }
 
-  return files;
+  return sortSourceStringsFiles(files);
 }
 
 const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
@@ -55,16 +104,18 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
 
   const files: SourceStringsFile[] = [];
   for (const file of fs.readdirSync(dir)) {
-    const lower = file.toLowerCase();
-    if (!lower.includes(`_${srcLang.toLowerCase()}.`)) continue;
-    const match = lower.match(/^(.*)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
-    if (!match) continue;
-    const type = stringsTypeFromPath(file);
-    const sourceMap = parseStringsBuffer(fs.readFileSync(path.join(dir, file)), type);
-    files.push({ nameStem: match[1], type, sourceMap });
+    const parsed = parseStringsFileName(file);
+    if (!parsed || parsed.locale !== srcLang.toLowerCase()) continue;
+    const sourceMap = parseStringsBuffer(fs.readFileSync(path.join(dir, file)), parsed.type);
+    files.push({
+      sourceFileName: file,
+      nameStem: parsed.nameStem,
+      type: parsed.type,
+      sourceMap,
+    });
   }
 
-  return files;
+  return sortSourceStringsFiles(files);
 }
 
 const loadSourceStringsFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {

@@ -1,11 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, it, expect } from 'vitest';
 import {
   parseStringsBuffer,
   writeStringsBuffer,
   stringsTypeFromPath,
   type StringsType,
 } from './stringsFile.js';
+import { Ba2Reader } from './ba2Reader.js';
 import { writeBa2, type Ba2InputFile } from './ba2Writer.js';
+import {
+  LOCALIZED_EXPORT_GOLDEN_CORPUS,
+  goldenFixtureToMap,
+} from '../testdata/exportGoldenCorpus.js';
 
 // ────────────────────────────────────────────────────────────────────────────
 // stringsTypeFromPath
@@ -34,6 +42,16 @@ const roundTrip = (entries: Map<number, string>, type: StringsType): Map<number,
   const buf = writeStringsBuffer(entries, type);
   return parseStringsBuffer(buf, type);
 }
+
+/** Track temporary archive files created by BA2 regression tests. */
+const tempArtifacts: string[] = [];
+
+afterEach(() => {
+  while (tempArtifacts.length > 0) {
+    const target = tempArtifacts.pop();
+    if (target && fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
+  }
+});
 
 // ────────────────────────────────────────────────────────────────────────────
 // STRINGS
@@ -200,5 +218,28 @@ describe('BA2 writer', () => {
     const parsed = parseStringsBuffer(extracted, 'STRINGS');
     expect(parsed.get(1)).toBe('Vault Boy');
     expect(parsed.get(2)).toBe('Пустка');
+  });
+
+  it('preserves the golden corpus file inventory and per-file payloads', () => {
+    const files: Ba2InputFile[] = LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles.map((file) => ({
+      name: `Strings\\${file.fileName}`,
+      data: writeStringsBuffer(goldenFixtureToMap(file), file.type),
+    }));
+
+    const archive = writeBa2(files);
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bethesda-ba2-'));
+    const archivePath = path.join(tempDir, 'golden.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(archivePath, archive);
+
+    const reader = new Ba2Reader(archivePath);
+    expect(reader.listFiles()).toEqual(files.map((file) => file.name));
+
+    for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+      const extracted = reader.extractByName(`Strings\\${file.fileName}`);
+      expect(extracted).not.toBeNull();
+      const parsed = parseStringsBuffer(extracted!, file.type);
+      expect([...parsed.entries()]).toEqual([...goldenFixtureToMap(file).entries()]);
+    }
   });
 });
