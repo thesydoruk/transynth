@@ -11,6 +11,7 @@ The Dashboard gives you a visual overview of translation progress across all mod
 - [Progress by GRUP](#progress-by-grup)
 - [QA Summary](#qa-summary)
 - [Using Statistics to Plan Work](#using-statistics-to-plan-work)
+- [Health & Operations Panel](#health--operations-panel)
 
 ---
 
@@ -117,6 +118,59 @@ name link and filter by QA badge in the editor.
 - **Track milestone completeness.** The `%` column and the bar give you
   an at-a-glance milestone metric. Share a dashboard screenshot with your
   team to show progress without giving access to the tool itself.
+
+---
+
+## Health & Operations Panel
+
+A separate **Health** page (route: `/ops`, nav link "Health") provides
+real-time monitoring of the server and its background processes.
+
+### System
+
+Five cards at the top:
+
+| Card            | Description                                            |
+| --------------- | ------------------------------------------------------ |
+| **Uptime**      | How long the server has been running (e.g. `2d 5h 12m`)|
+| **Node.js**     | Runtime version (e.g. `v20.11.0`)                      |
+| **Heap used**   | V8 heap memory currently in use                        |
+| **RSS**         | Resident Set Size — total process memory               |
+| **Database**    | Green "Connected" when DB is reachable, red otherwise  |
+
+### Import Jobs
+
+A table listing the **30 most recent** import jobs across all three
+sources (EET, CSV, Mod), sorted newest-first.  Each row shows:
+
+- **Type** — badge: `EET`, `CSV` or `MOD`.
+- **File** — the uploaded file name.
+- **Status** — colour-coded badge (green = completed, blue = in progress,
+  red = failed, orange = paused, dim = pending).
+- **Progress** — `imported / total (%)` counter.
+- **Error** — the `last_error` message when a job fails; "—" otherwise.
+- **Updated** — timestamp of the last status change.
+
+### LLM / Auto-translate
+
+Two cards:
+
+| Card                | Meaning                                        |
+| ------------------- | ---------------------------------------------- |
+| **Cache entries**   | Rows in the LLM translation cache              |
+| **Auto-translated** | Total translations produced by an LLM provider |
+
+Below the cards, a **per-model breakdown** table shows how many
+strings each model has produced (e.g. `openai:gpt-4o`, `ollama:llama3`).
+
+### Database
+
+One card with the **total database size** (e.g. `42 MB`), followed by a
+table listing every core table with its estimated row count and disk
+footprint. Useful for spotting unusually large tables or planning
+backups.
+
+The page auto-refreshes every 30 seconds.
 
 ---
 

@@ -25,6 +25,7 @@ import { qaRulesRoutes } from './routes/qaRules.js';
 import { coherenceRoutes } from './routes/coherence.js';
 import { reviewQueueRoutes } from './routes/reviewQueue.js';
 import { innrRoutes } from './routes/innr.js';
+import { opsRoutes } from './routes/ops.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -85,6 +86,7 @@ await qaRulesRoutes(app, db);
 await coherenceRoutes(app, db);
 await reviewQueueRoutes(app, db);
 await innrRoutes(app, db);
+await opsRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

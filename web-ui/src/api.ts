@@ -309,6 +309,49 @@ export type GrupStatRow = {
   auto: number;
 };
 
+/* ── Ops / Health dashboard types ──────────────────────────────────────── */
+
+/** A single import job row (EET / CSV / Mod — unified). */
+export type OpsImportJob = {
+  id: number;
+  kind: 'eet' | 'csv' | 'mod';
+  file_name: string;
+  status: string;
+  total_records: number;
+  imported_records: number;
+  last_error: string | null;
+  updated_at: string;
+};
+
+/** Per-model breakdown of auto-translated strings. */
+export type OpsModelBreakdown = { model: string; count: number };
+
+/** Row count + disk size for one database table. */
+export type OpsTableSize = { table_name: string; row_count: number; size: string };
+
+/** Full response from GET /api/ops. */
+export type OpsOverview = {
+  system: {
+    uptimeSeconds: number;
+    nodeVersion: string;
+    memoryRssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    dbConnected: boolean;
+    dbTime: string | null;
+  };
+  importJobs: OpsImportJob[];
+  llm: {
+    cacheEntries: number;
+    autoTranslated: number;
+    byModel: OpsModelBreakdown[];
+  };
+  db: {
+    totalSize: string;
+    tables: OpsTableSize[];
+  };
+};
+
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -637,6 +680,10 @@ export const api = {
     global: () => req<Array<Mod & { stats: Stats }>>('/api/stats/global'),
     dashboard: () => req<DashboardData>('/api/stats/dashboard'),
     grup: (modId: number, lang = 'uk') => req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
+  },
+
+  ops: {
+    overview: () => req<OpsOverview>('/api/ops'),
   },
 
   strings: {

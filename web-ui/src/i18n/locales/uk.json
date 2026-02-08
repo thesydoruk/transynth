@@ -43,7 +43,8 @@
     "themeDark": "Перемкнути на темну тему",
     "themeLight": "Перемкнути на світлу тему",
     "ba2Browser": "BA2 Браузер",
-    "espExplorer": "ESP Провідник"
+    "espExplorer": "ESP Провідник",
+    "ops": "Стан"
   },
   "status": {
     "reviewed": "Перевірений",
@@ -542,5 +543,35 @@
     "placeholder": "Введіть переклад HTML-розмітки…",
     "markupHint": "Підтримувані теги: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://…\">",
     "charCount": "{{count}} симв."
+  },
+  "ops": {
+    "title": "Стан та Операції",
+    "loading": "Завантаження даних…",
+    "system": "Система",
+    "uptime": "Час роботи",
+    "nodeVersion": "Node.js",
+    "memory": "Купа (heap)",
+    "rss": "RSS",
+    "dbStatus": "База даних",
+    "dbOk": "Підключено",
+    "dbDown": "Недоступна",
+    "importJobs": "Завдання імпорту",
+    "noJobs": "Завдань імпорту не записано.",
+    "jobKind": "Тип",
+    "jobFile": "Файл",
+    "jobStatus": "Статус",
+    "jobProgress": "Прогрес",
+    "jobError": "Помилка",
+    "jobUpdated": "Оновлено",
+    "llm": "LLM / Автопереклад",
+    "cacheEntries": "Записів кешу",
+    "autoTranslated": "Автоперекладено",
+    "model": "Модель",
+    "count": "Кількість",
+    "database": "База даних",
+    "totalDbSize": "Загальний розмір БД",
+    "tableName": "Таблиця",
+    "rows": "Рядків",
+    "diskSize": "Розмір на диску"
   }
 }

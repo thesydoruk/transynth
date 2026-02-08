@@ -1,0 +1,191 @@
+/* ── OpsPage — Health & Operations dashboard SCSS Module ─────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+  color: var(--text-dim);
+}
+
+.error { color: var(--danger); }
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-bright);
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+
+.cards {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  min-width: 120px;
+}
+
+.cardValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--card-color, var(--text-bright));
+}
+
+.cardLabel {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.cardSub {
+  margin-left: 4px;
+  color: var(--text-muted);
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.compactTable {
+  composes: table;
+  max-width: 600px;
+}
+
+.th {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.thR {
+  composes: th;
+  text-align: right;
+}
+
+.tr {
+  border-bottom: 1px solid var(--bg-input);
+}
+
+.td {
+  padding: 6px 10px;
+  color: var(--text);
+}
+
+.tdR {
+  padding: 6px 10px;
+  color: var(--text);
+  text-align: right;
+}
+
+.tdMono {
+  padding: 6px 10px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.tdDim {
+  padding: 6px 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.tdErr {
+  padding: 6px 10px;
+  color: var(--danger);
+  font-size: 12px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pctDim {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.empty {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ── Badges ────────────────────────────────────────────────────────────────── */
+
+.kindBadge {
+  display: inline-block;
+  background: var(--bg-input);
+  color: var(--text-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.badgeOk {
+  display: inline-block;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badgeErr {
+  composes: badgeOk;
+  background: rgba(229, 85, 85, 0.15);
+  color: #e55;
+}
+
+.badgeRun {
+  composes: badgeOk;
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+}
+
+.badgeWarn {
+  composes: badgeOk;
+  background: rgba(232, 167, 53, 0.15);
+  color: #e8a735;
+}
+
+.badgeDim {
+  composes: badgeOk;
+  background: var(--bg-input);
+  color: var(--text-faint);
+}

@@ -43,7 +43,8 @@
     "themeDark": "Switch to dark theme",
     "themeLight": "Switch to light theme",
     "ba2Browser": "BA2 Browser",
-    "espExplorer": "ESP Explorer"
+    "espExplorer": "ESP Explorer",
+    "ops": "Health"
   },
   "status": {
     "reviewed": "Reviewed",
@@ -541,5 +542,35 @@
     "placeholder": "Enter translated markup here\u2026",
     "markupHint": "Supported tags: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://\u2026\">",
     "charCount": "{{count}} chars"
+  },
+  "ops": {
+    "title": "Health & Operations",
+    "loading": "Loading ops data…",
+    "system": "System",
+    "uptime": "Uptime",
+    "nodeVersion": "Node.js",
+    "memory": "Heap used",
+    "rss": "RSS",
+    "dbStatus": "Database",
+    "dbOk": "Connected",
+    "dbDown": "Unreachable",
+    "importJobs": "Import Jobs",
+    "noJobs": "No import jobs recorded.",
+    "jobKind": "Type",
+    "jobFile": "File",
+    "jobStatus": "Status",
+    "jobProgress": "Progress",
+    "jobError": "Error",
+    "jobUpdated": "Updated",
+    "llm": "LLM / Auto-translate",
+    "cacheEntries": "Cache entries",
+    "autoTranslated": "Auto-translated",
+    "model": "Model",
+    "count": "Count",
+    "database": "Database",
+    "totalDbSize": "Total DB size",
+    "tableName": "Table",
+    "rows": "Rows",
+    "diskSize": "Disk size"
   }
 }

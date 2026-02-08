@@ -23,6 +23,7 @@ import { INNRPage } from './pages/INNRPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { Ba2BrowserPage } from './pages/Ba2BrowserPage';
 import { EspExplorerPage } from './pages/EspExplorerPage';
+import { OpsPage } from './pages/OpsPage';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({
@@ -43,6 +44,7 @@ const NAV_LINKS = [
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
   { to: '/ba2-browser', labelKey: 'nav.ba2Browser', exact: false },
   { to: '/esp-explorer', labelKey: 'nav.espExplorer', exact: false },
+  { to: '/ops', labelKey: 'nav.ops', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
@@ -145,6 +147,7 @@ const AppShell = () => {
           <Route path="/mods/:modId/innr" element={<INNRPage />} />
           <Route path="/ba2-browser" element={<Ba2BrowserPage />} />
           <Route path="/esp-explorer" element={<EspExplorerPage />} />
+          <Route path="/ops" element={<OpsPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </main>
