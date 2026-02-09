@@ -130,18 +130,18 @@ real-time monitoring of the server and its background processes.
 
 Five cards at the top:
 
-| Card            | Description                                            |
-| --------------- | ------------------------------------------------------ |
-| **Uptime**      | How long the server has been running (e.g. `2d 5h 12m`)|
-| **Node.js**     | Runtime version (e.g. `v20.11.0`)                      |
-| **Heap used**   | V8 heap memory currently in use                        |
-| **RSS**         | Resident Set Size — total process memory               |
-| **Database**    | Green "Connected" when DB is reachable, red otherwise  |
+| Card          | Description                                             |
+| ------------- | ------------------------------------------------------- |
+| **Uptime**    | How long the server has been running (e.g. `2d 5h 12m`) |
+| **Node.js**   | Runtime version (e.g. `v20.11.0`)                       |
+| **Heap used** | V8 heap memory currently in use                         |
+| **RSS**       | Resident Set Size — total process memory                |
+| **Database**  | Green "Connected" when DB is reachable, red otherwise   |
 
 ### Import Jobs
 
 A table listing the **30 most recent** import jobs across all three
-sources (EET, CSV, Mod), sorted newest-first.  Each row shows:
+sources (EET, CSV, Mod), sorted newest-first. Each row shows:
 
 - **Type** — badge: `EET`, `CSV` or `MOD`.
 - **File** — the uploaded file name.
