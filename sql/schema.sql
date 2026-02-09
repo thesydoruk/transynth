@@ -267,3 +267,34 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions USING HASH(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);
+
+-- ── TradAuto — pattern-match translation rules ──────────────────────────
+-- Port of TradAuto rule engine. Rules contain source/target patterns
+-- with %VAR1%, %VAR2%, … placeholders that capture/substitute substrings.
+-- Rules are scoped by game, GRUP signature, and field path, with a numeric
+-- priority (lower = higher precedence). First matching rule wins per string.
+
+CREATE TABLE IF NOT EXISTS tradauto_rules (
+  id SERIAL PRIMARY KEY,
+  game TEXT NOT NULL DEFAULT 'fo4',
+  /** Numeric priority — lower values are checked first. */
+  priority INTEGER NOT NULL DEFAULT 100,
+  /** Source pattern with %VARn% placeholders, e.g. "Iron %VAR1% Sword". */
+  pattern TEXT NOT NULL,
+  /** Target pattern with the same placeholders, e.g. "Залізний %VAR1% Меч". */
+  replacement TEXT NOT NULL,
+  /** Record-type filter: NULL = any GRUP. */
+  signature TEXT,
+  /** Field-path filter: NULL = any field. */
+  path TEXT,
+  src_lang TEXT NOT NULL DEFAULT 'en',
+  tgt_lang TEXT NOT NULL DEFAULT 'uk',
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tradauto_rules_active
+  ON tradauto_rules(game, src_lang, tgt_lang, priority)
+  WHERE is_active = TRUE;

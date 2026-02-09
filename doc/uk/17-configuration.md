@@ -191,4 +191,4 @@ cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 
 ---
 
-← [Команда та користувачі](16-team-and-users.md) | [Головна](README.md)
+← [Команда та користувачі](16-team-and-users.md) | [Головна](README.md) | [TradAuto](18-tradauto.md) →

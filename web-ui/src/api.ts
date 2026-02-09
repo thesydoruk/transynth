@@ -352,6 +352,39 @@ export type OpsOverview = {
   };
 };
 
+/* ── TradAuto (pattern-match translation rules) ───────────────────────── */
+
+/** A single TradAuto rule row from the DB. */
+export type TradAutoRule = {
+  id: number;
+  game: string;
+  priority: number;
+  pattern: string;
+  replacement: string;
+  signature: string | null;
+  path: string | null;
+  src_lang: string;
+  tgt_lang: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Result of testing rules against sample texts. */
+export type TradAutoTestResult = {
+  results: (({ ruleId: number; translated: string }) | null)[];
+};
+
+/** Result of applying rules to a mod's untranslated strings. */
+export type TradAutoApplyResult = {
+  matched: number;
+  saved: number;
+  total: number;
+  dryRun?: boolean;
+  message?: string;
+};
+
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -1122,6 +1155,33 @@ export const api = {
     update: (id: number, data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>>) =>
       req<QARule>(`/api/qa-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/qa-rules/${id}`, { method: 'DELETE' }),
+  },
+
+  /** TradAuto — pattern-match automatic translation rules. */
+  tradAuto: {
+    list: (params?: { game?: string; srcLang?: string; tgtLang?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.game) qs.set('game', params.game);
+      if (params?.srcLang) qs.set('srcLang', params.srcLang);
+      if (params?.tgtLang) qs.set('tgtLang', params.tgtLang);
+      return req<TradAutoRule[]>(`/api/tradauto?${qs}`);
+    },
+    get: (id: number) => req<TradAutoRule>(`/api/tradauto/${id}`),
+    create: (data: Omit<TradAutoRule, 'id' | 'created_at' | 'updated_at'>) =>
+      req<TradAutoRule>('/api/tradauto', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Omit<TradAutoRule, 'id' | 'created_at' | 'updated_at'>>) =>
+      req<TradAutoRule>(`/api/tradauto/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => req<{ ok: boolean }>(`/api/tradauto/${id}`, { method: 'DELETE' }),
+    test: (texts: string[], game?: string, srcLang?: string, tgtLang?: string) =>
+      req<TradAutoTestResult>('/api/tradauto/test', {
+        method: 'POST',
+        body: JSON.stringify({ texts, game, srcLang, tgtLang }),
+      }),
+    apply: (modId: number, dryRun = false, targetLang = 'uk') =>
+      req<TradAutoApplyResult>(`/api/tradauto/apply/${modId}`, {
+        method: 'POST',
+        body: JSON.stringify({ dryRun, targetLang }),
+      }),
   },
 
   /**

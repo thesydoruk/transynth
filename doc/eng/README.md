@@ -29,6 +29,7 @@ mod translations. You don't need programming knowledge to follow these guides.
 | 15  | [Review Queue](15-review-queue.md)             | Reviewing low-confidence or auto-translated strings               |
 | 16  | [Team & Users](16-team-and-users.md)           | Multi-user mode, roles, permissions, activity log                 |
 | 17  | [Configuration](17-configuration.md)           | Environment variables, Docker setup, provider settings            |
+| 18  | [TradAuto Rules](18-tradauto.md)               | Pattern-match auto-translation engine, rule management            |
 
 ---
 

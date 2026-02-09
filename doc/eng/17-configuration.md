@@ -74,9 +74,9 @@ LOG_LEVEL=info
 
 ## Database Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | *(required)* | PostgreSQL connection string, e.g. `postgresql://user:pass@localhost:5432/f4loc` |
+| Variable       | Default      | Description                                                                      |
+| -------------- | ------------ | -------------------------------------------------------------------------------- |
+| `DATABASE_URL` | _(required)_ | PostgreSQL connection string, e.g. `postgresql://user:pass@localhost:5432/f4loc` |
 
 The connection string format is:
 
@@ -94,15 +94,15 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## LLM Provider Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LLM_PROVIDER` | `ollama` | Primary LLM provider: `openai` or `ollama` |
-| `LLM_FALLBACK` | `none` | Fallback provider if primary fails: `none`, `openai`, or `ollama` |
-| `OPENAI_API_KEY` | *(required for OpenAI)* | Your OpenAI API key |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini` | OpenAI model used for translation |
-| `OPENAI_EMBED_MODEL` | `text-embedding-3-large` | OpenAI model used for embeddings |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API endpoint |
-| `OLLAMA_MODEL` | *(required for Ollama)* | Ollama model name, e.g. `gemma3:12b`, `llama3`, `mistral` |
+| Variable                 | Default                  | Description                                                       |
+| ------------------------ | ------------------------ | ----------------------------------------------------------------- |
+| `LLM_PROVIDER`           | `ollama`                 | Primary LLM provider: `openai` or `ollama`                        |
+| `LLM_FALLBACK`           | `none`                   | Fallback provider if primary fails: `none`, `openai`, or `ollama` |
+| `OPENAI_API_KEY`         | _(required for OpenAI)_  | Your OpenAI API key                                               |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model used for translation                                 |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model used for embeddings                                  |
+| `OLLAMA_BASE_URL`        | `http://localhost:11434` | Ollama API endpoint                                               |
+| `OLLAMA_MODEL`           | _(required for Ollama)_  | Ollama model name, e.g. `gemma3:12b`, `llama3`, `mistral`         |
 
 > Note: temperature, max tokens, and retry count are not currently configurable via
 > environment variables. The backend uses provider defaults.
@@ -111,10 +111,10 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## Server Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Backend HTTP server port |
-| `HOST` | `0.0.0.0` | Backend bind address |
+| Variable        | Default                 | Description                                     |
+| --------------- | ----------------------- | ----------------------------------------------- |
+| `PORT`          | `3000`                  | Backend HTTP server port                        |
+| `HOST`          | `0.0.0.0`               | Backend bind address                            |
 | `VITE_API_BASE` | `http://localhost:3000` | Frontend API base URL (used by Vite dev server) |
 
 > Note: `PORT`, `HOST`, and `VITE_API_BASE` are read directly from `process.env` by the
@@ -125,10 +125,10 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## Multi-user and Auth Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MULTI_USER` | `false` | Set to `true` to enable login and RBAC |
-| `SESSION_LIFETIME_HOURS` | `72` | Session lifetime in hours; sessions expire after this TTL |
+| Variable                 | Default | Description                                               |
+| ------------------------ | ------- | --------------------------------------------------------- |
+| `MULTI_USER`             | `false` | Set to `true` to enable login and RBAC                    |
+| `SESSION_LIFETIME_HOURS` | `72`    | Session lifetime in hours; sessions expire after this TTL |
 
 > Note: sessions are stored as tokens in the database. There is no JWT signing secret —
 > `SESSION_SECRET` is not used. No additional cookie-domain or secure-flag variables exist;
@@ -197,7 +197,7 @@ Add a port mapping to `docker-compose.yml` (or a local override file):
 services:
   db:
     ports:
-      - "5432:5432"
+      - '5432:5432'
 ```
 
 Then connect with any PostgreSQL client (e.g. pgAdmin, DBeaver) to `localhost:5432`
@@ -213,6 +213,7 @@ using the credentials from your `.env` file.
    - Add `deploy.resources.limits.memory` for the backend — LLM API calls can be memory-intensive.
 
 2. **Build the frontend bundle:**
+
    ```bash
    cd web-ui && npm run build
    # Serve the dist/ directory from your reverse proxy
@@ -231,6 +232,7 @@ using the credentials from your `.env` file.
 
 5. **Database backups:**
    Schedule a daily `pg_dump` (cron or Docker sidecar):
+
    ```bash
    0 3 * * * docker compose -f /srv/app/docker-compose.yml exec -T db \
      pg_dump -U localizer localizer | gzip > /backups/f4loc_$(date +\%Y\%m\%d).sql.gz
@@ -241,4 +243,4 @@ using the credentials from your `.env` file.
 
 ---
 
-← [Team & Users](16-team-and-users.md) | [Home](README.md)
+← [Team & Users](16-team-and-users.md) | [Home](README.md) | [TradAuto](18-tradauto.md) →
