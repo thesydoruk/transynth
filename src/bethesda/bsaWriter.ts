@@ -1,15 +1,16 @@
 /**
  * bsaWriter.ts
  *
- * Writer for Bethesda Soft Archive (BSA) — version 105 (Skyrim SE).
- * Creates a valid BSA archive from a list of named file buffers.
- * Files are stored **uncompressed** for maximum compatibility.
+ * Writer for Bethesda Soft Archive (BSA) — version 104 (Skyrim LE) and
+ * version 105 (Skyrim SE).  Creates a valid BSA archive from a list of
+ * named file buffers.  Files are stored **uncompressed** for maximum
+ * compatibility.
  *
  * Binary layout matches bsaReader.ts:
  *
  *   Header (36 bytes):
  *     magic                 : char[4]  = "BSA\0"
- *     version               : uint32   = 105
+ *     version               : uint32   = 104 or 105
  *     folderRecordOffset    : uint32   = 36
  *     archiveFlags          : uint32   = 0x03 (hasDirectoryNames | hasFileNames)
  *     folderCount           : uint32
@@ -18,13 +19,9 @@
  *     totalFileNameLength   : uint32
  *     contentFlags          : uint32   = 0 (generic)
  *
- *   Folder records (folderCount × 24 bytes each for v105):
- *     nameHash  : uint64
- *     fileCount : uint32
- *     unk       : uint32  = 0
- *     offset    : uint64  — byte offset to the folder's data block from the
- *                           start of the file (includes totalFileNameLength
- *                           adjustment per Bethesda convention)
+ *   Folder records (folderCount × N bytes each):
+ *     v104: 16 bytes — nameHash(uint64) + fileCount(uint32) + offset(uint32)
+ *     v105: 24 bytes — nameHash(uint64) + fileCount(uint32) + unk(uint32) + offset(uint64)
  *
  *   Folder data blocks (one per folder, in folder-record order):
  *     nameLen : uint8   — byte length of folder name including null terminator
@@ -46,10 +43,14 @@ import { log } from '../logger.js';
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
 const BSA_MAGIC = 'BSA\0';
-const BSA_VERSION = 105;           // Skyrim SE
 const HEADER_SIZE = 36;
-const FOLDER_RECORD_SIZE = 24;     // v105: 8 + 4 + 4 + 8
 const FILE_RECORD_SIZE = 16;       // 8 + 4 + 4
+
+/** Folder record size differs between versions. */
+const FOLDER_RECORD_SIZE: Record<number, number> = {
+  104: 16,   // uint64 hash + uint32 fileCount + uint32 offset
+  105: 24,   // uint64 hash + uint32 fileCount + uint32 unk + uint64 offset
+};
 
 /**
  * Archive flags:
@@ -189,16 +190,24 @@ const splitPath = (fullPath: string): { folder: string; baseName: string; stem: 
 /* ── Writer ──────────────────────────────────────────────────────────────── */
 
 /**
- * Build a BSA (version 105, Skyrim SE) archive buffer from a list of files.
- * Files are stored **uncompressed** (archive flag bit 2 is not set).
+ * Build a BSA archive buffer from a list of files.
  *
- * @param files - Array of named file buffers to pack.
+ * @param files   - Array of named file buffers to pack.
+ * @param version - BSA version: 104 (Skyrim LE) or 105 (Skyrim SE, default).
+ *                  The only structural difference is folder record size:
+ *                  v104 uses 16-byte records with uint32 offset,
+ *                  v105 uses 24-byte records with uint32 padding + uint64 offset.
  * @returns A Buffer containing the complete BSA archive.
  */
-export const writeBsa = (files: BsaInputFile[]): Buffer => {
+export const writeBsa = (files: BsaInputFile[], version: number = 105): Buffer => {
   if (files.length === 0) {
     throw new Error('BSA writer: cannot create an empty archive');
   }
+  if (version !== 104 && version !== 105) {
+    throw new Error(`BSA writer: unsupported version ${version} (expected 104 or 105)`);
+  }
+
+  const folderRecordSize = FOLDER_RECORD_SIZE[version];
 
   // ── Step 1: Group files by folder and sort ────────────────────────────
   const folderMap = new Map<string, FileEntry[]>();
@@ -251,7 +260,7 @@ export const writeBsa = (files: BsaInputFile[]): Buffer => {
   }
 
   // Region sizes
-  const folderRecordsSize = folderCount * FOLDER_RECORD_SIZE;
+  const folderRecordsSize = folderCount * folderRecordSize;
   const folderDataSize = folders.reduce((acc, folder) => {
     // bstring: 1 byte (length) + folderName.length + 1 (\0) + N × FILE_RECORD_SIZE
     return acc + 1 + folder.folderPath.length + 1 + folder.files.length * FILE_RECORD_SIZE;
@@ -281,7 +290,7 @@ export const writeBsa = (files: BsaInputFile[]): Buffer => {
 
   // ── Header (36 bytes) ──
   buf.write(BSA_MAGIC, 0, 4, 'ascii');
-  buf.writeUInt32LE(BSA_VERSION, 4);
+  buf.writeUInt32LE(version, 4);
   buf.writeUInt32LE(HEADER_SIZE, 8);          // folderRecordOffset (always 36)
   buf.writeUInt32LE(ARCHIVE_FLAGS, 12);       // archiveFlags
   buf.writeUInt32LE(folderCount, 16);
@@ -300,12 +309,21 @@ export const writeBsa = (files: BsaInputFile[]): Buffer => {
     pos += 8;
     buf.writeUInt32LE(folder.files.length, pos);            // fileCount
     pos += 4;
-    buf.writeUInt32LE(0, pos);                              // unk (padding for v105)
-    pos += 4;
+
     // offset: absolute position of this folder's data block + totalFileNameLength
     const adjustedOffset = folderDataPos + totalFileNameLength;
-    buf.writeBigUInt64LE(BigInt(adjustedOffset), pos);      // offset (uint64 for v105)
-    pos += 8;
+
+    if (version === 105) {
+      // v105: 4-byte padding + 8-byte uint64 offset
+      buf.writeUInt32LE(0, pos);                            // unk (padding for v105)
+      pos += 4;
+      buf.writeBigUInt64LE(BigInt(adjustedOffset), pos);    // offset (uint64)
+      pos += 8;
+    } else {
+      // v104: 4-byte uint32 offset (no padding)
+      buf.writeUInt32LE(adjustedOffset, pos);               // offset (uint32)
+      pos += 4;
+    }
 
     // Advance folderDataPos past this folder's data block
     folderDataPos += 1 + folder.folderPath.length + 1 + folder.files.length * FILE_RECORD_SIZE;
@@ -351,6 +369,6 @@ export const writeBsa = (files: BsaInputFile[]): Buffer => {
     }
   }
 
-  log.info(`BSA: wrote v${BSA_VERSION} archive with ${fileCount} files in ${folderCount} folders, ${totalSize} bytes`);
+  log.info(`BSA: wrote v${version} archive with ${fileCount} files in ${folderCount} folders, ${totalSize} bytes`);
   return buf;
 };

@@ -304,7 +304,9 @@ export const exportBsaArchive = async (
     data: Buffer.from(f.contentBase64, 'base64'),
   }));
 
-  const bsaBuf = writeBsa(bsaFiles);
+  // SLE (Skyrim LE) uses BSA v104; SSE (Skyrim SE) uses BSA v105
+  const bsaVersion = game === 'sle' ? 104 : 105;
+  const bsaBuf = writeBsa(bsaFiles, bsaVersion);
   const stem = path.basename(modPath, path.extname(modPath));
   const fileName = `${stem} - Strings.bsa`;
 

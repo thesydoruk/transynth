@@ -132,10 +132,10 @@ export const TRANSLATABLE_SUBRECORDS = FO4_TRANSLATABLE_SUBRECORDS;
 /**
  * Return the correct translatable-subrecords map for the given game.
  *
- * @param game - `'fo4'` (default) or `'sse'`.
+ * @param game - `'fo4'` (default), `'sse'`, or `'sle'`.
  */
 export const getTranslatableSubrecords = (game: GameType): Record<string, Set<string>> =>
-  game === 'sse' ? SSE_TRANSLATABLE_SUBRECORDS : FO4_TRANSLATABLE_SUBRECORDS;
+  game === 'sse' || game === 'sle' ? SSE_TRANSLATABLE_SUBRECORDS : FO4_TRANSLATABLE_SUBRECORDS;
 
 /**
  * Returns true if this subrecord/record combination is translatable for the given game.
