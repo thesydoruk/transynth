@@ -42,7 +42,7 @@ import { sha1Hex } from '../utils/hash.js';
 import { ingestCsvRows } from '../utils/ingest.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { log } from '../logger.js';
-import type { CsvRow } from '../types.js';
+import type { CsvRow, GameType } from '../types.js';
 
 import { EspReader } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
@@ -55,6 +55,7 @@ import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile
 const argv = await yargs(hideBin(process.argv))
   .option('mod',     { type: 'string', demandOption: true,  desc: 'Path to the .esp/.esm/.esl file' })
   .option('ba2',     { type: 'string',                      desc: 'Path to the BA2 archive (auto-detected if omitted)' })
+  .option('game',    { type: 'string', default: 'fo4',       desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
   .option('lang',    { type: 'string', default: 'en',       desc: 'Locale to import in single-locale mode' })
   .option('learn',   { type: 'boolean', default: false,     desc: 'Import all locales and build TM pairs' })
   .option('srcLang', { type: 'string', default: 'en',       desc: '[--learn] Source locale for TM alignment' })
@@ -192,7 +193,8 @@ const modId = await upsertMod(db, path.basename(modPath), modPath, modHash);
 log.info(`Mod registered: ${path.basename(modPath)} (id=${modId})`);
 
 // Parse ESP
-const esp = new EspReader(modPath);
+const game = argv.game as GameType;
+const esp = new EspReader(modPath, game);
 const espRows = esp.extractStrings();
 log.info(`ESP rows extracted: ${espRows.length} (localized=${esp.info.isLocalized})`);
 

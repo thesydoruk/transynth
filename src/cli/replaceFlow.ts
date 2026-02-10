@@ -9,6 +9,7 @@ import { maskPlaceholders, applyGlossaryMask, unmask } from '../utils/placeholde
 import { CONFIG, getTranslateModel, validateConfig } from '../config.js';
 import { log } from '../logger.js';
 import { EspReader } from '../bethesda/espReader.js';
+import type { GameType } from '../types.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import {
   parseStringsBuffer,
@@ -20,6 +21,7 @@ import { patchEsp, type EspPatch } from '../bethesda/espWriter.js';
 const argv = await yargs(hideBin(process.argv))
   .option('mod',      { type: 'string', demandOption: true })
   .option('ba2',      { type: 'string', desc: 'BA2 archive (auto-detected if omitted)' })
+  .option('game',     { type: 'string', default: 'fo4', desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
   .option('outDir',   { type: 'string', demandOption: true })
   .option('srcLang',  { type: 'string', default: 'en' })
   .option('tgtLang',  { type: 'string', default: 'uk' })
@@ -36,7 +38,8 @@ const copyPath = path.join(argv.outDir as string, path.basename(modPath));
 copyFileSafe(modPath, copyPath);
 
 // --- Parse ESP ---
-const esp = new EspReader(modPath);
+const game = argv.game as GameType;
+const esp = new EspReader(modPath, game);
 const espRows = esp.extractStrings();
 log.info(`ESP: ${espRows.length} rows (localized=${esp.info.isLocalized})`);
 

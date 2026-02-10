@@ -5,9 +5,11 @@ import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus, listPreviousVersions } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
-import { exportBa2Archive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
+import { exportArchive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
 import { Ba2Reader } from '../../bethesda/ba2Reader.js';
+import { BsaReader } from '../../bethesda/bsaReader.js';
 import { EspReader } from '../../bethesda/espReader.js';
+import type { GameType } from '../../types.js';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats
@@ -112,7 +114,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
-        const files = await exportLocalizedStringsFiles(db, id, mod.abs_path, srcLang, targetLang);
+        const game = (mod.game ?? 'fo4') as GameType;
+        const files = await exportLocalizedStringsFiles(db, id, mod.abs_path, srcLang, targetLang, game);
         return reply.send({ modId: id, srcLang, targetLang, files });
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
@@ -158,7 +161,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
-        const file = await exportBa2Archive(db, id, mod.abs_path, srcLang, targetLang);
+        const game = (mod.game ?? 'fo4') as GameType;
+        const file = await exportArchive(db, id, mod.abs_path, srcLang, targetLang, game);
         return reply.send({ modId: id, srcLang, targetLang, files: [file] });
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
@@ -181,7 +185,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
-        const { zipBuffer, zipFileName } = await exportProjectZip(db, id, mod.abs_path, srcLang, targetLang);
+        const game = (mod.game ?? 'fo4') as GameType;
+        const { zipBuffer, zipFileName } = await exportProjectZip(db, id, mod.abs_path, srcLang, targetLang, game);
         return reply
           .header('Content-Type', 'application/zip')
           .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
@@ -231,34 +236,53 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const modDir  = path.dirname(espPath);
       const stem    = path.basename(espPath, path.extname(espPath)).toLowerCase();
 
-      // Discover all BA2 files in the same directory whose names start with the mod stem
-      let ba2Files: string[] = [];
+      const game = ((mod as Record<string, unknown>).game ?? 'fo4') as GameType;
+
+      // Discover all BA2 / BSA files in the same directory whose names start with the mod stem
+      let archiveFiles: string[] = [];
       try {
-        ba2Files = fs
-          .readdirSync(modDir)
-          .filter((f) => f.toLowerCase().endsWith('.ba2') && f.toLowerCase().startsWith(stem))
-          .sort()
-          .map((f) => path.join(modDir, f));
+        const allFiles = fs.readdirSync(modDir);
+        if (game === 'sse' || game === 'sle') {
+          // Skyrim: look for BSA files first, also include BA2 for hybrid mods
+          archiveFiles = allFiles
+            .filter((f) => {
+              const fl = f.toLowerCase();
+              return fl.startsWith(stem) && (fl.endsWith('.bsa') || fl.endsWith('.ba2'));
+            })
+            .sort()
+            .map((f) => path.join(modDir, f));
+        } else {
+          archiveFiles = allFiles
+            .filter((f) => f.toLowerCase().endsWith('.ba2') && f.toLowerCase().startsWith(stem))
+            .sort()
+            .map((f) => path.join(modDir, f));
+        }
       } catch (err) {
-        log.warn(`BA2 browser: could not read mod dir "${modDir}": ${err instanceof Error ? err.message : err}`);
+        log.warn(`Archive browser: could not read mod dir "${modDir}": ${err instanceof Error ? err.message : err}`);
       }
 
-      const archives = ba2Files.map((ba2Path) => {
+      const archives = archiveFiles.map((archivePath) => {
+        const isBsa = archivePath.toLowerCase().endsWith('.bsa');
         try {
-          const reader = new Ba2Reader(ba2Path);
+          if (isBsa) {
+            const reader = new BsaReader(archivePath);
+            const entries = reader.list();
+            return {
+              archive: path.basename(archivePath),
+              fileCount: entries.length,
+              files: entries.map((e) => ({ name: e.name })),
+            };
+          }
+          const reader = new Ba2Reader(archivePath);
           const entries = reader.listFiles();
-          const files = entries.map((name) => {
-            // Re-derive entry details via the reader's listByExt scanning all entries
-            return { name };
-          });
           return {
-            archive: path.basename(ba2Path),
+            archive: path.basename(archivePath),
             fileCount: reader.fileCount,
             files: entries.map((name) => ({ name })),
           };
         } catch (err) {
-          log.warn(`BA2 browser: could not open "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`);
-          return { archive: path.basename(ba2Path), fileCount: 0, files: [], error: true };
+          log.warn(`Archive browser: could not open "${path.basename(archivePath)}": ${err instanceof Error ? err.message : err}`);
+          return { archive: path.basename(archivePath), fileCount: 0, files: [], error: true };
         }
       });
 
@@ -284,7 +308,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path not available' });
 
       try {
-        const reader = new EspReader(mod.abs_path as string);
+        const game = ((mod as Record<string, unknown>).game ?? 'fo4') as GameType;
+        const reader = new EspReader(mod.abs_path as string, game);
         return reply.send(reader.listGrups());
       } catch (err) {
         log.warn(`ESP explorer grups: failed to open "${mod.abs_path}": ${err instanceof Error ? err.message : err}`);
@@ -321,7 +346,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const q        = req.query.q ?? '';
 
       try {
-        const reader = new EspReader(mod.abs_path as string);
+        const game = ((mod as Record<string, unknown>).game ?? 'fo4') as GameType;
+        const reader = new EspReader(mod.abs_path as string, game);
         const result = reader.getRecordsPage(sig, page * pageSize, pageSize, q);
         return reply.send(result);
       } catch (err) {

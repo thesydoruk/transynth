@@ -21,12 +21,13 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format           | File                                   | Purpose                                                   |
-| ---------------- | -------------------------------------- | --------------------------------------------------------- |
-| **STRINGS**      | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine       |
-| **Patched ESP**І | `.esp` / `.esm`                        | Mod plugin with translations embedded directly            |
-| **BA2 Archive**  | `.ba2`                                 | Archive containing translated STRINGS files and/or assets |
-| **Project ZIP**  | `.zip`                                 | All of the above bundled for distribution                 |
+| Format          | File                                   | Purpose                                                  |
+| --------------- | -------------------------------------- | -------------------------------------------------------- |
+| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine      |
+| **Patched ESP** | `.esp` / `.esm`                        | Mod plugin with translations embedded directly           |
+| **BA2 Archive** | `.ba2`                                 | Fallout 4 archive containing translated STRINGS files    |
+| **BSA Archive** | `.bsa`                                 | Skyrim SE/LE archive containing translated STRINGS files |
+| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                |
 
 ---
 
@@ -81,7 +82,7 @@ re-import the updated mod and redo the export after a mod update.
 
 ---
 
-## BA2 Archive
+## BA2 Archive (Fallout 4)
 
 The tool can pack the generated STRINGS files into a `.ba2` archive,
 which is the format Fallout 4 uses for mod assets.
@@ -106,6 +107,29 @@ and mod managers.
 The **Export BA2** and **Export ZIP** buttons in the Mod Editor toolbar
 both generate a BA2 archive. The ZIP variant bundles the BA2 together
 with a patched ESP (if applicable) into a single distributable file.
+
+---
+
+## BSA Archive (Skyrim SE / LE)
+
+For Skyrim SE and Skyrim LE mods, the tool packs translated STRINGS files
+into a `.bsa` archive instead of a BA2.
+
+The generated BSA uses the standard Skyrim naming convention:
+
+```
+{PluginStem} - Strings.bsa
+```
+
+For example, for `MyMod.esp` the archive will be named `MyMod - Strings.bsa`.
+
+Inside the archive, STRINGS files are stored at `Strings\{filename}`,
+identically to BA2 archives. The tool writes BSA v105 (Skyrim SE format)
+archives with uncompressed data blocks for maximum compatibility.
+
+The export format is selected **automatically** based on the game type
+stored with the mod. Fallout 4 mods produce BA2, Skyrim SE/LE mods
+produce BSA. No manual selection is needed.
 
 ---
 
@@ -150,8 +174,8 @@ of the editor page (`/editor/:modId`).
 | ------------------ | ----------------------------------------------------------------------- |
 | **Export STRINGS** | Raw `.STRINGS`, `.DLSTRINGS`, `.ILSTRINGS` files (one per string table) |
 | **Export ESP**     | Patched plugin file with embedded translations                          |
-| **Export BA2**     | A single `{Stem} - Main.ba2` archive containing the STRINGS files       |
-| **Export ZIP**     | A `.zip` bundle: BA2 + patched ESP (whichever applies)                  |
+| **Export BA2**     | A single archive (`.ba2` for FO4 or `.bsa` for SSE) containing STRINGS  |
+| **Export ZIP**     | A `.zip` bundle: archive + patched ESP (whichever applies)              |
 
 4. The file downloads immediately via the browser once the server
    finishes generating it. The button label changes to "Exporting…" while
@@ -169,9 +193,9 @@ of the editor page (`/editor/:modId`).
 
 Practical checklist before publishing:
 
-1. **Test in-game** — load the translation in a Fallout 4 build before
-   publishing. Look for encoding issues, text overflow, and placeholder
-   corruption.
+1. **Test in-game** — load the translation in Fallout 4 or Skyrim SE
+   before publishing. Look for encoding issues, text overflow, and
+   placeholder corruption.
 2. **Include installation instructions** — tell players where to place
    the files. A mod manager (Vortex, NMM, MO2) FOMOD installer is ideal
    for complex setups.

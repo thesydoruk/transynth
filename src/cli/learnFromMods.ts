@@ -21,7 +21,7 @@ import { sha1Hex } from '../utils/hash.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { log } from '../logger.js';
 import { ingestCsvRows } from '../utils/ingest.js';
-import type { CsvRow } from '../types.js';
+import type { CsvRow, GameType } from '../types.js';
 import { EspReader } from '../bethesda/espReader.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
@@ -30,6 +30,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('pair',    { type: 'array',  demandOption: true, desc: '<orig>:<translated>' })
   .option('srcLang', { type: 'string', default: 'en' })
   .option('tgtLang', { type: 'string', default: 'uk' })
+  .option('game',    { type: 'string', default: 'fo4', desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
   .parse();
 
 const discoverBa2 = (modPath: string): string | null => {
@@ -43,7 +44,8 @@ const discoverBa2 = (modPath: string): string | null => {
 }
 
 const extractRows = (modPath: string, lang: string): CsvRow[] => {
-  const esp = new EspReader(modPath);
+  const game = argv.game as GameType;
+  const esp = new EspReader(modPath, game);
   const espRows = esp.extractStrings();
 
   if (!esp.info.isLocalized) {

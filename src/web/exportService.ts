@@ -3,8 +3,11 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
 import type { Tx } from '../db.js';
+import type { GameType } from '../types.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
+import { BsaReader } from '../bethesda/bsaReader.js';
 import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer.js';
+import { writeBsa, type BsaInputFile } from '../bethesda/bsaWriter.js';
 import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter.js';
 import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/stringsFile.js';
 import { log } from '../logger.js';
@@ -76,6 +79,45 @@ const findBa2 = (modPath: string): string | null => {
   return null;
 }
 
+/**
+ * Discover a BSA archive (Skyrim SE) next to the mod plugin file.
+ * Prefers "Stem - Strings.bsa", then "Stem.bsa".
+ */
+const findBsa = (modPath: string): string | null => {
+  const dir = path.dirname(modPath);
+  const stem = path.basename(modPath, path.extname(modPath));
+  for (const candidate of [`${stem} - Strings.bsa`, `${stem}.bsa`]) {
+    const full = path.join(dir, candidate);
+    if (fs.existsSync(full)) return full;
+  }
+  return null;
+}
+
+/**
+ * Load source STRINGS files from a BSA archive (Skyrim SE/LE).
+ */
+const loadSourceStringsFromBSA = (bsaPath: string, srcLang: string): SourceStringsFile[] => {
+  const bsa = new BsaReader(bsaPath);
+  const files: SourceStringsFile[] = [];
+
+  for (const ext of ['strings', 'dlstrings', 'ilstrings'] as const) {
+    for (const entry of bsa.listByExt(ext)) {
+      const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? '';
+      const parsed = parseStringsFileName(base);
+      if (!parsed || parsed.locale !== srcLang.toLowerCase()) continue;
+      const sourceMap = parseStringsBuffer(bsa.extractEntry(entry), parsed.type);
+      files.push({
+        sourceFileName: base,
+        nameStem: parsed.nameStem,
+        type: parsed.type,
+        sourceMap,
+      });
+    }
+  }
+
+  return sortSourceStringsFiles(files);
+}
+
 const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStringsFile[] => {
   const ba2 = new Ba2Reader(ba2Path);
   const files: SourceStringsFile[] = [];
@@ -118,7 +160,15 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
   return sortSourceStringsFiles(files);
 }
 
-const loadSourceStringsFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
+const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType = 'fo4'): SourceStringsFile[] => {
+  if (game === 'sse' || game === 'sle') {
+    // Skyrim: try BSA first, then BA2 (some SSE mods use BA2), then loose files
+    const bsaPath = findBsa(modPath);
+    if (bsaPath) {
+      const bsaFiles = loadSourceStringsFromBSA(bsaPath, srcLang);
+      if (bsaFiles.length > 0) return bsaFiles;
+    }
+  }
   const ba2Path = findBa2(modPath);
   if (ba2Path) {
     const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
@@ -170,8 +220,9 @@ export const exportLocalizedStringsFiles = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
+  game: GameType = 'fo4',
 ): Promise<ExportedStringsFile[]> => {
-  const sourceFiles = loadSourceStringsFiles(modPath, srcLang);
+  const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
   if (sourceFiles.length === 0) {
     throw new Error(`No source .STRINGS files found for locale ${srcLang}`);
   }
@@ -202,8 +253,9 @@ export const exportBa2Archive = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
+  game: GameType = 'fo4',
 ): Promise<ExportedStringsFile> => {
-  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang);
+  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
 
   const ba2Files: Ba2InputFile[] = stringsFiles.map((f) => ({
     name: `Strings\\${f.fileName}`,
@@ -219,6 +271,67 @@ export const exportBa2Archive = async (
     size: ba2Buf.length,
     contentBase64: ba2Buf.toString('base64'),
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// BSA archive export — pack localized STRINGS into a BSA (Skyrim SE / SLE)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Builds a BSA v105 archive containing localized STRINGS/DLSTRINGS/ILSTRINGS
+ * files.  This is the Skyrim SE equivalent of exportBa2Archive.
+ *
+ * @param db - Database connection
+ * @param modId - Mod database ID
+ * @param modPath - Path to the original plugin file (.esp/.esm/.esl)
+ * @param srcLang - Source language code
+ * @param targetLang - Target language code
+ * @param game - Game type (should be 'sse' or 'sle')
+ * @returns An ExportedStringsFile with the BSA contents (base-64 encoded)
+ */
+export const exportBsaArchive = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  game: GameType = 'sse',
+): Promise<ExportedStringsFile> => {
+  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
+
+  const bsaFiles: BsaInputFile[] = stringsFiles.map((f) => ({
+    name: `Strings\\${f.fileName}`,
+    data: Buffer.from(f.contentBase64, 'base64'),
+  }));
+
+  const bsaBuf = writeBsa(bsaFiles);
+  const stem = path.basename(modPath, path.extname(modPath));
+  const fileName = `${stem} - Strings.bsa`;
+
+  return {
+    fileName,
+    size: bsaBuf.length,
+    contentBase64: bsaBuf.toString('base64'),
+  };
+}
+
+/**
+ * Game-aware archive dispatcher: exports a BA2 for Fallout 4 or a BSA for
+ * Skyrim SE / Skyrim LE.  Routes and CLI code should call this instead of
+ * exportBa2Archive / exportBsaArchive directly.
+ */
+export const exportArchive = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  game: GameType = 'fo4',
+): Promise<ExportedStringsFile> => {
+  if (game === 'sse' || game === 'sle') {
+    return exportBsaArchive(db, modId, modPath, srcLang, targetLang, game);
+  }
+  return exportBa2Archive(db, modId, modPath, srcLang, targetLang, game);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -329,6 +442,7 @@ export const exportProjectZip = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
+  game: GameType = 'fo4',
 ): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
   const stem = path.basename(modPath, path.extname(modPath));
   const zipFileName = `${stem}_${targetLang}.zip`;
@@ -336,16 +450,16 @@ export const exportProjectZip = async (
   // Collect all exportable files; at least one must succeed
   const files: Array<{ name: string; data: Buffer }> = [];
 
-  // 1. Try to export a BA2 with localized STRINGS files
+  // 1. Try to export a BA2/BSA with localized STRINGS files (game-aware)
   try {
-    const ba2 = await exportBa2Archive(db, modId, modPath, srcLang, targetLang);
+    const archive = await exportArchive(db, modId, modPath, srcLang, targetLang, game);
     files.push({
-      name: ba2.fileName,
-      data: Buffer.from(ba2.contentBase64, 'base64'),
+      name: archive.fileName,
+      data: Buffer.from(archive.contentBase64, 'base64'),
     });
-    log.info(`Project export: included BA2 (${ba2.size} bytes)`);
+    log.info(`Project export: included archive ${archive.fileName} (${archive.size} bytes)`);
   } catch {
-    log.info(`Project export: no localized STRINGS files for mod ${modId}, skipping BA2`);
+    log.info(`Project export: no localized STRINGS files for mod ${modId}, skipping archive`);
   }
 
   // 2. Try to export a patched ESP

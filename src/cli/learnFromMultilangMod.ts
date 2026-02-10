@@ -51,7 +51,7 @@ import { hideBin } from 'yargs/helpers';
 import { openDb, upsertMod, addTranslation } from '../db.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { sha1Hex } from '../utils/hash.js';
-import type { CsvRow } from '../types.js';
+import type { CsvRow, GameType } from '../types.js';
 import { alignPairs } from '../align/alignPairs.js';
 import { getEmbedModel } from '../config.js';
 import { log } from '../logger.js';
@@ -73,6 +73,7 @@ const DEFAULT_CANONICAL_PREFERENCE = ['en','fr','it','de','es','pl','ru','ja'];
 const argv = await yargs(hideBin(process.argv))
   .option('mod',       { type: 'string', demandOption: true,  desc: 'Path to plugin (esm/esp/esl)' })
   .option('ba2',       { type: 'string',                      desc: 'Path to BA2 archive (auto-detected if omitted)' })
+  .option('game',      { type: 'string', default: 'fo4',      desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
   .option('locales',   { type: 'string',                      desc: 'Comma-separated locales to use (override auto-detection)' })
   .option('extraLocales', { type: 'string',                   desc: 'Comma-separated extra locales to check in addition to auto-detected set' })
   .option('canonicalPrefer', { type: 'string',                desc: 'Comma-separated priority order to keep among clones; defaults to en,fr,it,de,es,pl,ru,ja' })
@@ -137,7 +138,8 @@ const buildPreference = (extras: string[]|null, override: string|undefined) => {
   const modId = await upsertMod(db, modName, path.resolve(modPath), modHash);
 
   // Parse ESP
-  const esp = new EspReader(modPath);
+  const game = argv.game as GameType;
+  const esp = new EspReader(modPath, game);
   const espRows = esp.extractStrings();
 
   if (!esp.info.isLocalized) {

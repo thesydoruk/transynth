@@ -1,6 +1,6 @@
 # 02 — Importing Mods
 
-Learn how to bring a Fallout 4 mod into the tool so its strings are ready to translate.
+Learn how to bring a Fallout 4 or Skyrim SE mod into the tool so its strings are ready to translate.
 
 ---
 
@@ -22,13 +22,14 @@ Learn how to bring a Fallout 4 mod into the tool so its strings are ready to tra
 
 ## Supported File Types
 
-| File                     | Description                                                                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings                                                                                   |
-| `.zip` / `.7z` / `.rar`  | Mod archive containing a plugin and, optionally, matching `.ba2` files or loose assets                                                         |
-| `.eet`                   | Legacy project file — imports existing translations                                                                                       |
-| `.csv`                   | RFC 4180-style comma-separated translation table                                                                                               |
-| `.ba2`                   | Not uploaded directly in the current UI. BA2 content is discovered automatically when it sits next to the plugin or inside an uploaded archive |
+| File                     | Description                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (Fallout 4 and Skyrim SE)           |
+| `.zip` / `.7z` / `.rar`  | Mod archive containing a plugin and, optionally, matching `.ba2` / `.bsa` files or loose assets  |
+| `.eet`                   | Legacy project file — imports existing translations                                         |
+| `.csv`                   | RFC 4180-style comma-separated translation table                                                 |
+| `.ba2`                   | Fallout 4 archive — discovered automatically next to the plugin or inside an uploaded archive    |
+| `.bsa`                   | Skyrim SE/LE archive — discovered automatically next to the plugin or inside an uploaded archive |
 
 ---
 
