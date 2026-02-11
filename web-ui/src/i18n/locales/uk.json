@@ -142,6 +142,7 @@
     "selectedRows": "Вибрані рядки: {{count}}",
     "noSuggestions": "Немає пропозицій TM",
     "exact": "точний",
+    "numeric": "числовий",
     "punct": "пунктуац.",
     "phrase": "фраза",
     "fuzzyMethod": "нечіткий",

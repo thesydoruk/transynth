@@ -3,21 +3,25 @@ import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
 import { upsertTranslation } from './queries.js';
-import { extractNumbers, transplantNumbers } from '../utils/textNorm.js';
+import { extractNumbers, transplantNumbers, segmentPhrases, normalizeForHash } from '../utils/textNorm.js';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
-type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric' | 'punct_norm' | 'fuzzy';
+type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric' | 'punct_norm' | 'fuzzy' | 'phrase';
 type Match = { text: string; method: MatchMethod; confidence: number };
 
 /**
- * Find the best existing translation for a source string using five
+ * Find the best existing translation for a source string using six
  * successive match strategies (highest confidence first):
  *   1. anchor     — same formid_hex + path in any other mod
  *   2. edid       — same EDID in any other mod
  *   3. text_norm  — identical normalised source text anywhere in the DB
+ *   3b. numeric   — text_norm match with number transplant
  *   4. punct_norm — identical text after stripping punctuation
  *   5. fuzzy      — pg_trgm trigram similarity ≥ 0.3
+ *   6. phrase     — split into sentence/clause segments, look up each;
+ *                   only produces a match when ALL segments have a
+ *                   text_norm translation ("DicoBy_Phrase" all-or-nothing)
  */
 const findBestMatch = async (
   db: Tx,
@@ -123,6 +127,54 @@ const findBestMatch = async (
     if (rows[0]) return { text: rows[0].text, method: 'fuzzy', confidence: Math.round(rows[0].sim * 100) / 100 };
   }
 
+  // 6. Phrase segmentation — split text into clauses, look up each segment.
+  //    "DicoBy_Phrase" all-or-nothing: every segment must have a text_norm
+  //    translation, otherwise no match is produced. The concatenated result is
+  //    returned with confidence 0.55 and saved as 'fuzzy' status.
+  {
+    const segments = segmentPhrases(textRaw);
+    if (segments.length >= 2) {
+      const parts: string[] = [];
+      let allFound = true;
+
+      for (const seg of segments) {
+        const segNorm = normalizeForHash(seg);
+        if (!segNorm || segNorm.length < 3) {
+          /* Tiny fragment (pure punctuation / whitespace) — pass through as-is */
+          parts.push(seg);
+          continue;
+        }
+
+        const { rows: segRows } = await db.query(
+          `SELECT t.text FROM strings s
+           JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
+           WHERE s.text_norm = $2 AND s.lang = 'en'
+           ORDER BY CASE t.status
+             WHEN 'reviewed' THEN 1
+             WHEN 'human' THEN 2
+             WHEN 'tm' THEN 3
+             WHEN 'fuzzy' THEN 4
+             WHEN 'auto' THEN 5
+             WHEN 'draft' THEN 6
+             ELSE 7 END
+           LIMIT 1`,
+          [targetLang, segNorm],
+        );
+
+        if (segRows[0]) {
+          parts.push(segRows[0].text);
+        } else {
+          allFound = false;
+          break;
+        }
+      }
+
+      if (allFound && parts.length >= 2) {
+        return { text: parts.join(' '), method: 'phrase', confidence: 0.55 };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -150,7 +202,7 @@ export const applyTMToMod = async (
   log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
   let applied = 0;
-  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, numeric: 0, punct_norm: 0, fuzzy: 0 };
+  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, numeric: 0, punct_norm: 0, fuzzy: 0, phrase: 0 };
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const s of untranslated) {
@@ -166,7 +218,7 @@ export const applyTMToMod = async (
         modId,
       );
       if (match) {
-        const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' || match.method === 'numeric'
+        const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' || match.method === 'numeric' || match.method === 'phrase'
           ? 'fuzzy' : 'tm';
         await upsertTranslation(client, s.id, match.text, tmStatus, targetLang, `tm_auto_${match.method}`);
         applied++;

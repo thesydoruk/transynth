@@ -142,6 +142,7 @@
     "selectedRows": "Selected rows: {{count}}",
     "noSuggestions": "No TM suggestions",
     "exact": "exact",
+    "numeric": "numeric",
     "punct": "punct",
     "phrase": "phrase",
     "fuzzyMethod": "fuzzy",

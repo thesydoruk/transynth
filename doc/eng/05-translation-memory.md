@@ -8,12 +8,13 @@ automatically, reducing repetitive effort and improving consistency.
 ## Table of Contents
 
 - [What is the Translation Memory?](#what-is-the-translation-memory)
-- [The 5-Method Waterfall](#the-5-method-waterfall)
+- [The 6-Method Waterfall](#the-6-method-waterfall)
   - [1. Anchor Match](#1-anchor-match)
   - [2. EDID Match](#2-edid-match)
   - [3. Text-Norm Match](#3-text-norm-match)
   - [4. Punct-Norm Match](#4-punct-norm-match)
   - [5. Fuzzy Match](#5-fuzzy-match)
+  - [6. Phrase Segmentation Match](#6-phrase-segmentation-match)
 - [Numeric-Invariant Matching](#numeric-invariant-matching)
 - [Auto-Apply on Import](#auto-apply-on-import)
 - [Manually Applying TM Suggestions](#manually-applying-tm-suggestions)
@@ -36,7 +37,7 @@ The TM grows over time as you translate more mods.
 
 ---
 
-## The 5-Method Waterfall
+## The 6-Method Waterfall
 
 Matching is attempted in order from most precise to most fuzzy.
 The first method that finds a match wins; subsequent methods are skipped.
@@ -115,6 +116,35 @@ Fuzzy candidates are ranked by **similarity score descending**, then by
 translation status priority (`reviewed` > `human` > `tm` > `fuzzy` > `auto` > `draft`).
 The single best candidate is applied during auto-import.
 
+### 6. Phrase Segmentation Match
+
+If no previous method matched, the source text is split into **sentence-level
+segments** using punctuation delimiters (`.`, `!`, `?`, `;`, `:`, newline).
+Each segment is normalised and looked up as an exact `text_norm` match.
+
+**All-or-nothing rule ("DicoBy_Phrase"):** a phrase segmentation match
+is only produced when **every** segment has a translation in the TM. If any
+single segment fails to find a match, the entire phrase match is aborted and
+no translation is produced for this string.
+
+When all segments are found, their translations are concatenated with spaces
+and returned as a single composite translation (confidence: **0.55**, status:
+`fuzzy`, provenance: `tm_auto_phrase`).
+
+**When it helps:**
+
+- Long dialogue lines that combine two or more sentences, each of which
+  already exists in the TM from a different record or mod.
+- Strings where minor rewording at the sentence boundary changed the full
+  `text_norm` but individual clauses still match exactly.
+
+**Constraints:**
+
+- The text must split into at least **2** segments (single-sentence text is not eligible).
+- Segments shorter than 3 characters after normalisation are passed through as-is.
+- Phrase segmentation runs **after** fuzzy matching — it is the last resort
+  before giving up on a string entirely.
+
 ---
 
 ## Numeric-Invariant Matching
@@ -186,7 +216,7 @@ using the batch **Apply TM** action.
 ## TM Suggestions Tab in the Detail Panel
 
 The TM Suggestions tab shows up to **10** candidates for the current string.
-Candidates come from a dedicated query that runs all five match methods
+Candidates come from a dedicated query that runs all six match methods
 (exact, numeric, punct_norm, fuzzy, and phrase-segment) and deduplicates
 results by translated text.
 
@@ -196,7 +226,7 @@ by translation status priority.
 | Column       | Description                                                  |
 | ------------ | ------------------------------------------------------------ |
 | Status badge | The status of the source translation (e.g. `reviewed`, `tm`) |
-| Method label | `Exact`, `Punct`, `Phrase`, or `Fuzzy`                       |
+| Method label | `Exact`, `Numeric`, `Punct`, `Phrase`, or `Fuzzy`            |
 | Translation  | The suggested translation text                               |
 | Score        | Similarity score displayed as a percentage (0–100%)          |
 | Apply button | Copies the suggestion text into the translation field        |
@@ -211,8 +241,11 @@ At that point the status you have selected in the Detail Panel is saved
 
 **Phrase-segment method:** if the full string has no match but can be split
 into sentence-delimited clauses (`.`, `!`, `?`, `;`, `:`, newline), each
-clause is looked up independently. Matched clause translations are shown as
-separate suggestions with similarity **50%** and the label `Phrase`.
+clause is looked up independently. In the interactive Suggestions tab, matched
+clause translations are shown as separate suggestions with similarity **50%**
+and the label `Phrase`. In the batch auto-apply, phrase matching follows the
+all-or-nothing rule: all segments must match, and the result is concatenated
+into a single composite translation (confidence **55%**, status `fuzzy`).
 
 ---
 

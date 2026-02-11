@@ -1218,8 +1218,8 @@ const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[
   if (suggestions.length === 0) {
     return <div className={styles.panelEmpty}>{t('modEditor.noSuggestions')}</div>;
   }
-  const methodLabel = (m: string) => m === 'exact' ? t('modEditor.exact') : m === 'punct_norm' ? t('modEditor.punct') : m === 'segment' ? t('modEditor.phrase') : t('modEditor.fuzzyMethod');
-  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
+  const methodLabel = (m: string) => m === 'exact' ? t('modEditor.exact') : m === 'numeric' ? t('modEditor.numeric') : m === 'punct_norm' ? t('modEditor.punct') : m === 'segment' ? t('modEditor.phrase') : t('modEditor.fuzzyMethod');
+  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'numeric' ? '#66bb6a' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
   return (
     <div className={styles.panelListGap4}>
       {suggestions.map((s) => (
