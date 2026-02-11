@@ -617,6 +617,17 @@
     "dryRun": "Dry run",
     "apply": "Apply Rules",
     "applyResult": "Matched {{matched}} of {{total}} strings; saved {{saved}}.",
-    "applyDryResult": "Dry run: {{matched}} of {{total}} strings would match."
+    "applyDryResult": "Dry run: {{matched}} of {{total}} strings would match.",
+    "learnTitle": "Learn Rules from TM",
+    "learnDescription": "Discover candidate rules by analyzing common prefix/suffix patterns in existing translations. Found patterns can be approved as new rules.",
+    "learnMinOcc": "Min occurrences",
+    "learnRun": "Discover Patterns",
+    "learnRunning": "Discovering…",
+    "learnFound": "Found {{count}} candidate pattern(s).",
+    "learnNone": "No patterns discovered. Try lowering the minimum occurrences threshold or adding more translations.",
+    "learnOccurrences": "Occurrences",
+    "learnExamples": "Examples",
+    "learnPairs": "pairs",
+    "learnApprove": "Add as Rule"
   }
 }

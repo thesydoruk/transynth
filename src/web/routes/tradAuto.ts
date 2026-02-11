@@ -1,5 +1,5 @@
 /**
- * tradAuto.ts — CRUD + apply routes for the TradAuto rule engine.
+ * tradAuto.ts — CRUD + apply + learn routes for the TradAuto rule engine.
  *
  * Endpoints:
  *
@@ -12,6 +12,7 @@
  * | DELETE | `/api/tradauto/:id`           | Delete a rule                            |
  * | POST   | `/api/tradauto/test`          | Dry-run: test rules against sample text  |
  * | POST   | `/api/tradauto/apply/:modId`  | Apply rules to untranslated strings      |
+ * | POST   | `/api/tradauto/learn`         | Discover rule candidates from TM pairs   |
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -25,6 +26,7 @@ import {
   type MatchInput,
 } from '../tradAutoEngine.js';
 import { upsertTranslation } from '../queries.js';
+import { discoverPatterns, type DiscoverOptions } from '../tradAutoLearn.js';
 
 /* ── Route registration ──────────────────────────────────────────────────── */
 
@@ -356,5 +358,52 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
       total: untranslated.length,
       dryRun,
     });
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /*  Rule Learning (pattern discovery from TM)                            */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+
+  /**
+   * POST /api/tradauto/learn — discover rule candidates from translation
+   * memory using prefix/suffix pattern analysis.
+   *
+   * Body: `{ game?, srcLang?, tgtLang?, minOccurrences?, limit? }`
+   * Returns: `{ candidates: RuleCandidate[] }`
+   *
+   * The returned candidates are **not** saved automatically — the user
+   * reviews them on the frontend and adds approved ones via the normal
+   * `POST /api/tradauto` create endpoint.
+   */
+  app.post<{
+    Body: {
+      game?: string;
+      srcLang?: string;
+      tgtLang?: string;
+      minOccurrences?: number;
+      limit?: number;
+    };
+  }>('/api/tradauto/learn', async (req, reply) => {
+    const body = (req.body ?? {}) as DiscoverOptions;
+
+    const minOcc = Number(body.minOccurrences) || 3;
+    if (minOcc < 2 || minOcc > 100) {
+      return reply.code(400).send({ error: 'minOccurrences must be between 2 and 100' });
+    }
+
+    const lim = Number(body.limit) || 50;
+    if (lim < 1 || lim > 500) {
+      return reply.code(400).send({ error: 'limit must be between 1 and 500' });
+    }
+
+    const candidates = await discoverPatterns(db, {
+      game: body.game,
+      srcLang: body.srcLang,
+      tgtLang: body.tgtLang,
+      minOccurrences: minOcc,
+      limit: lim,
+    });
+
+    return reply.send({ candidates });
   });
 };

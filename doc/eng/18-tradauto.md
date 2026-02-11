@@ -106,4 +106,47 @@ to actually save the translations. Saved translations get:
 
 ---
 
+## Rule Learning from TM
+
+The **Learn Rules from TM** panel (below the Test & Apply panels) automatically discovers
+candidate rules by analysing patterns in your existing translations.
+
+### How it works
+
+The algorithm (see _TradAutoGRUP_ subsystem):
+
+1. Loads all validated translation pairs from the database for the current game and language pair.
+2. Groups them by **GRUP** (signature) and **Field** (path).
+3. Within each group, compares every pair of translations looking for common **prefixes** and
+   **suffixes** at word boundaries.
+4. The differing middle portion becomes `%VAR1%`, forming a candidate pattern → replacement pair.
+5. Identical candidates are aggregated — the **occurrences** counter shows how many unique source
+   strings matched each pattern.
+6. Candidates that already exist as active rules are filtered out.
+7. Results are sorted by occurrence count (highest first).
+
+### Using the panel
+
+1. Set the **Min occurrences** threshold (default 3) — only patterns supported by at least this
+   many distinct source strings are shown.
+2. Click **Discover Patterns**.
+3. Review the candidate table:
+   - **Pattern / Replacement** — the discovered rule templates.
+   - **GRUP / Field** — the scope (inherited from the source data).
+   - **Occurrences** — how many translations back this pattern.
+   - **Examples** — expand to see sample (source → target) pairs.
+4. Click **Add as Rule** on any candidate you want to keep. It will be saved as a regular TradAuto
+   rule with priority 100 and an auto-generated description.
+
+### Tips
+
+- Start with a higher threshold (5–10) to see only the most reliable patterns.
+- After adding rules, click **Discover** again — already-added patterns are excluded.
+- The learning algorithm only produces single-variable (`%VAR1%`) patterns. For multi-variable
+  rules, create them manually.
+- Rule learning works best with game item names (weapons, armour, ingredients) where the same
+  material/type prefixes repeat across many entries.
+
+---
+
 ← [Configuration](17-configuration.md) | [Home](README.md)

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type TradAutoRule, type Mod } from '../api';
+import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../api';
 import s from './TradAutoPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -46,6 +46,11 @@ export const TradAutoPage = () => {
   const [applyModId, setApplyModId] = useState('');
   const [applyDry, setApplyDry] = useState(true);
   const [applyMsg, setApplyMsg] = useState('');
+
+  // ── Learn panel state ──────────────────────────────────────────────────
+  const [learnMinOcc, setLearnMinOcc] = useState(3);
+  const [learnCandidates, setLearnCandidates] = useState<TradAutoCandidate[] | null>(null);
+  const [learnMsg, setLearnMsg] = useState('');
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: rules, isLoading } = useQuery({
@@ -108,6 +113,41 @@ export const TradAutoPage = () => {
         setApplyMsg(t('tradAuto.applyResult', { matched: data.matched, total: data.total, saved: data.saved }));
         qc.invalidateQueries({ queryKey: ['strings'] });
       }
+    },
+  });
+
+  const learnMut = useMutation({
+    mutationFn: () => api.tradAuto.learn({ minOccurrences: learnMinOcc }),
+    onSuccess: (data) => {
+      setLearnCandidates(data.candidates);
+      setLearnMsg(
+        data.candidates.length
+          ? t('tradAuto.learnFound', { count: data.candidates.length })
+          : t('tradAuto.learnNone'),
+      );
+    },
+  });
+
+  /** Approve a discovered candidate — creates it as a real TradAuto rule. */
+  const approveMut = useMutation({
+    mutationFn: (c: TradAutoCandidate) =>
+      api.tradAuto.create({
+        game: 'fo4',
+        priority: 100,
+        pattern: c.pattern,
+        replacement: c.replacement,
+        signature: c.signature,
+        path: c.path,
+        src_lang: 'en',
+        tgt_lang: 'uk',
+        description: `Learned from TM (${c.occurrences} occurrences)`,
+        is_active: true,
+      }),
+    onSuccess: (_data, candidate) => {
+      qc.invalidateQueries({ queryKey: ['tradAutoRules'] });
+      setLearnCandidates((prev) =>
+        prev ? prev.filter((c) => c.pattern !== candidate.pattern || c.replacement !== candidate.replacement) : prev,
+      );
     },
   });
 
@@ -383,6 +423,85 @@ export const TradAutoPage = () => {
           {applyMut.isError && <span className={s.mutError}>{applyMut.error?.message}</span>}
           {applyMsg && <div className={s.applyMsg}>{applyMsg}</div>}
         </div>
+      </div>
+
+      {/* ── Learn from TM panel ──────────────────────────────────────────── */}
+      <div className={s.learnSection}>
+        <h3 className={s.panelTitle}>{t('tradAuto.learnTitle')}</h3>
+        <p className={s.panelDesc}>{t('tradAuto.learnDescription')}</p>
+        <div className={s.applyRow}>
+          <label className={s.checkLabel}>
+            {t('tradAuto.learnMinOcc')}
+            <input
+              className={s.inputNarrow}
+              type="number"
+              min={2}
+              max={100}
+              value={learnMinOcc}
+              onChange={(e) => setLearnMinOcc(Number(e.target.value))}
+            />
+          </label>
+          <button
+            className={s.btnPrimary}
+            disabled={learnMut.isPending}
+            onClick={() => { setLearnMsg(''); setLearnCandidates(null); learnMut.mutate(); }}
+          >
+            {learnMut.isPending ? t('tradAuto.learnRunning') : t('tradAuto.learnRun')}
+          </button>
+        </div>
+        {learnMut.isError && <span className={s.mutError}>{learnMut.error?.message}</span>}
+        {learnMsg && <div className={s.applyMsg}>{learnMsg}</div>}
+
+        {learnCandidates && learnCandidates.length > 0 && (
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th className={s.th}>{t('tradAuto.pattern')}</th>
+                <th className={s.th}>{t('tradAuto.replacement')}</th>
+                <th className={s.th}>{t('tradAuto.signature')}</th>
+                <th className={s.th}>{t('tradAuto.path')}</th>
+                <th className={s.th}>{t('tradAuto.learnOccurrences')}</th>
+                <th className={s.th}>{t('tradAuto.learnExamples')}</th>
+                <th className={s.th}>{t('tradAuto.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {learnCandidates.map((c, idx) => (
+                <tr key={idx}>
+                  <td className={s.tdMono}>{c.pattern}</td>
+                  <td className={s.tdMono}>{c.replacement}</td>
+                  <td className={c.signature ? s.tdMono : s.tdAny}>
+                    {c.signature ?? t('tradAuto.anyGrup')}
+                  </td>
+                  <td className={c.path ? s.tdMono : s.tdAny}>
+                    {c.path ?? t('tradAuto.anyField')}
+                  </td>
+                  <td className={s.td}>{c.occurrences}</td>
+                  <td className={s.td}>
+                    <details className={s.examplesDetails}>
+                      <summary>{c.examples.length} {t('tradAuto.learnPairs')}</summary>
+                      {c.examples.map((ex, i) => (
+                        <div key={i} className={s.exampleLine}>
+                          <span className={s.testInput}>{ex.source}</span>
+                          <span className={s.testOutput}>→ {ex.target}</span>
+                        </div>
+                      ))}
+                    </details>
+                  </td>
+                  <td className={s.td}>
+                    <button
+                      className={s.btnAdd}
+                      disabled={approveMut.isPending}
+                      onClick={() => approveMut.mutate(c)}
+                    >
+                      {t('tradAuto.learnApprove')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

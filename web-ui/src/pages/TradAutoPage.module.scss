@@ -318,3 +318,33 @@
   align-items: center;
   gap: 4px;
 }
+
+/* ── Learn from TM panel ─────────────────────────────────────────────────── */
+
+.learnSection {
+  margin-top: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.examplesDetails {
+  font-size: 12px;
+  cursor: pointer;
+
+  summary {
+    color: var(--text-dim);
+    &:hover {
+      color: var(--text-bright);
+    }
+  }
+}
+
+.exampleLine {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+}

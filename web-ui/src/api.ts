@@ -385,6 +385,21 @@ export type TradAutoApplyResult = {
   message?: string;
 };
 
+/** A discovered rule candidate from TM pattern learning. */
+export type TradAutoCandidate = {
+  pattern: string;
+  replacement: string;
+  signature: string | null;
+  path: string | null;
+  occurrences: number;
+  examples: Array<{ source: string; target: string }>;
+};
+
+/** Result of the rule-learning discovery endpoint. */
+export type TradAutoLearnResult = {
+  candidates: TradAutoCandidate[];
+};
+
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -1181,6 +1196,11 @@ export const api = {
       req<TradAutoApplyResult>(`/api/tradauto/apply/${modId}`, {
         method: 'POST',
         body: JSON.stringify({ dryRun, targetLang }),
+      }),
+    learn: (opts?: { game?: string; srcLang?: string; tgtLang?: string; minOccurrences?: number; limit?: number }) =>
+      req<TradAutoLearnResult>('/api/tradauto/learn', {
+        method: 'POST',
+        body: JSON.stringify(opts ?? {}),
       }),
   },
 
