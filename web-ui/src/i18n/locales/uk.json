@@ -263,7 +263,12 @@
     "translationCol": "Переклад",
     "langs": "Мови",
     "sourceCol": "Джерело",
-    "deleteTerm": "Видалити термін"
+    "deleteTerm": "Видалити термін",
+    "enforceLabel": "Застосувати глосарій:",
+    "allMods": "Усі моди",
+    "enforceBtn": "Запустити перевірку",
+    "enforcing": "Перевірка…",
+    "enforceResult": "Перевірено {{checked}} рядків — знайдено {{violations}} порушень."
   },
   "csvImport": {
     "title": "Імпорт CSV",

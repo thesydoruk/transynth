@@ -262,7 +262,12 @@
     "translationCol": "Translation",
     "langs": "Langs",
     "sourceCol": "Source",
-    "deleteTerm": "Delete term"
+    "deleteTerm": "Delete term",
+    "enforceLabel": "Enforce glossary:",
+    "allMods": "All mods",
+    "enforceBtn": "Run Enforcement",
+    "enforcing": "Enforcing…",
+    "enforceResult": "Checked {{checked}} strings — {{violations}} violation(s) found."
   },
   "csvImport": {
     "title": "CSV Imports",

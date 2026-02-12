@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type GlossaryEntry } from '../api';
+import { api, type GlossaryEntry, type Mod } from '../api';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
@@ -13,6 +13,24 @@ export const GlossaryPage = () => {
   const [newTerm, setNewTerm] = useState('');
   const [newTranslation, setNewTranslation] = useState('');
 
+  /* ── Enforce panel state ─────────────────────────────────────────────── */
+  const [enforceModId, setEnforceModId] = useState<number | ''>('');
+
+  const { data: mods } = useQuery({
+    queryKey: ['mods'],
+    queryFn: () => api.mods.list(),
+  });
+
+  const enforce = useMutation({
+    mutationFn: () =>
+      api.glossary.enforce({
+        modId: enforceModId !== '' ? enforceModId : undefined,
+        targetLang: tgtLang || 'uk',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['qa'] });
+    },
+  });
   const { data, isLoading } = useQuery({
     queryKey: ['glossary', srcLang, tgtLang, q],
     queryFn: () => api.glossary.list({ srcLang: srcLang || undefined, tgtLang: tgtLang || undefined, q: q || undefined }),
@@ -87,6 +105,37 @@ export const GlossaryPage = () => {
           {t('glossary.addPair')}
         </button>
         {add.isError && <span className={s.addError}>{add.error?.message}</span>}
+      </div>
+
+      {/* ── Enforce glossary panel ─────────────────────────────────── */}
+      <div className={s.enforcePanel}>
+        <span className={s.enforceLabel}>{t('glossary.enforceLabel')}</span>
+        <select
+          value={enforceModId}
+          onChange={(e) => setEnforceModId(e.target.value === '' ? '' : Number(e.target.value))}
+          className={s.selectIndent}
+        >
+          <option value="">{t('glossary.allMods')}</option>
+          {mods?.map((m: Mod) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => enforce.mutate()}
+          disabled={enforce.isPending}
+          className={s.btnEnforce}
+        >
+          {enforce.isPending ? t('glossary.enforcing') : t('glossary.enforceBtn')}
+        </button>
+        {enforce.isSuccess && (
+          <span className={s.enforceResult}>
+            {t('glossary.enforceResult', {
+              checked: enforce.data.checked,
+              violations: enforce.data.violations,
+            })}
+          </span>
+        )}
+        {enforce.isError && <span className={s.addError}>{enforce.error?.message}</span>}
       </div>
 
       {/* Table */}

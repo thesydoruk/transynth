@@ -156,6 +156,9 @@ export type Signature = { signature: string; count: number };
 
 export type GlossaryEntry = { id: number; term: string; translation: string | null; src_lang: string; tgt_lang: string; source: string; created_at: string };
 
+/** Result of a batch glossary enforcement run. */
+export type GlossaryEnforceResult = { checked: number; violations: number };
+
 /** A configurable QA validation rule (forbidden characters or max length per GRUP/field). */
 export type QARule = {
   id: number;
@@ -865,6 +868,13 @@ export const api = {
         body: JSON.stringify({ term, translation, srcLang, tgtLang }),
       }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/glossary/${id}`, { method: 'DELETE' }),
+
+    /** Batch-enforce glossary terms as QA rules across translated strings. */
+    enforce: (opts?: { modId?: number; targetLang?: string }) =>
+      req<GlossaryEnforceResult>('/api/glossary/enforce', {
+        method: 'POST',
+        body: JSON.stringify(opts ?? {}),
+      }),
   },
 
   eet: {

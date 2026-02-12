@@ -1,6 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
+import { withTransaction } from '../../db.js';
+import type pg from 'pg';
 import { log } from '../../logger.js';
+import { enforceGlossary } from '../queries.js';
 
 export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/glossary?srcLang=&tgtLang=&q=
@@ -67,4 +70,39 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
 
     return reply.send({ ok: true });
   });
+
+  /**
+   * POST /api/glossary/enforce — batch-enforce glossary as a QA rule.
+   *
+   * Re-scans all translated strings (optionally restricted to a single mod)
+   * and creates `glossary_violation` QA issues wherever a glossary source term
+   * appears in the English source text but the required translation is missing
+   * from the target text.  Previous glossary_violation issues in scope are
+   * deleted before the scan so the result set is always up-to-date.
+   *
+   * Body (all optional):
+   *   - `modId`      — restrict to a single mod's strings.
+   *   - `targetLang` — target language code (default `'uk'`).
+   *
+   * Returns `{ checked, violations }`.
+   */
+  app.post<{ Body: { modId?: number; targetLang?: string } }>(
+    '/api/glossary/enforce',
+    async (req, reply) => {
+      const modId = req.body?.modId ? Number(req.body.modId) : undefined;
+      const targetLang = req.body?.targetLang ?? 'uk';
+
+      if (modId !== undefined && (!Number.isInteger(modId) || modId < 1)) {
+        return reply.code(400).send({ error: 'Invalid modId' });
+      }
+
+      log.info(`POST /api/glossary/enforce modId=${modId ?? 'all'} targetLang=${targetLang}`);
+
+      const result = await withTransaction(db as pg.Pool, async (client) =>
+        enforceGlossary(client, { modId, targetLang }),
+      );
+
+      return reply.send(result);
+    },
+  );
 }

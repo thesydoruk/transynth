@@ -14,6 +14,7 @@ into LLM prompts to ensure consistent terminology across all mods.
 - [Searching the Glossary](#searching-the-glossary)
 - [Language Pairs](#language-pairs)
 - [LLM Injection](#llm-injection)
+- [Batch Enforcement](#batch-enforcement)
 - [Best Practices](#best-practices)
 
 ---
@@ -142,6 +143,51 @@ The LLM may still deviate from glossary entries, especially for short or
 ambiguous terms. Always review **Auto** strings for glossary compliance.
 The QA engine generates a `glossary_violation` warning for any translation
 where the expected target term is absent from the translation text.
+
+---
+
+## Batch Enforcement
+
+Normally, glossary violations are detected **on save** — each time a
+translation is saved or updated, `refreshQAIssues` checks it against the
+current glossary. But what if you add new glossary terms **after**
+translations have already been saved?
+
+The **Enforce Glossary** panel at the bottom of the Glossary page lets you
+re-scan all existing translations in bulk.
+
+### How to run batch enforcement
+
+1. Navigate to **Glossary** in the top nav.
+2. In the **Enforce glossary** panel (below the add-term form), optionally
+   select a specific mod from the dropdown — or leave it at **All mods**.
+3. Click **Run Enforcement**.
+4. The engine deletes all previous `glossary_violation` QA issues in scope,
+   then checks every translated string against the current glossary.
+5. A summary appears: _"Checked N strings — M violation(s) found."_
+
+### Details
+
+- **Word-boundary matching** — the source-side check uses `\b` anchors,
+  so a glossary term "iron" will **not** match inside "environment" or
+  "ironed". This prevents false positives.
+- **Case-insensitive** — both source and target comparisons ignore case.
+- The target-side check uses a plain substring match (no word boundaries)
+  because Cyrillic words are often inflected.
+- The operation runs inside a single database transaction, so either all
+  changes commit or none do.
+- After enforcement, navigate to any mod editor and check the **QA** tab
+  to review newly created `glossary_violation` warnings.
+
+### API endpoint
+
+```
+POST /api/glossary/enforce
+Body (JSON, all optional):
+  { "modId": 42, "targetLang": "uk" }
+Response:
+  { "checked": 1234, "violations": 17 }
+```
 
 ---
 

@@ -186,3 +186,47 @@
   color: var(--text-faint);
   font-size: 12px;
 }
+
+/* ── Enforce glossary panel ──────────────────────────────────────────── */
+
+/** Container for the batch-enforcement controls (mod select + run button). */
+.enforcePanel {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+}
+
+/** "Enforce glossary:" label text. */
+.enforceLabel {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/** Primary action button for running batch glossary enforcement. */
+.btnEnforce {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btnEnforce:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/** Summary text shown after a successful enforcement run. */
+.enforceResult {
+  color: var(--success);
+  font-size: 12px;
+}
