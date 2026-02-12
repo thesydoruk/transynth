@@ -132,12 +132,13 @@ const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<
 }
 
 const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Promise<void> => {
-  // Fetch source text, best translation, and record context (signature + path) for rule matching
+  // Fetch source text, best translation, and record context (signature + path + game) for rule matching
   const { rows } = await db.query(
     `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation,
-            r.signature, r.path
+            r.signature, r.path, m.game
      FROM strings s
      JOIN records r ON r.id = s.record_id
+     JOIN mods m ON m.id = r.mod_id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $2
        AND t.id = (
@@ -150,7 +151,7 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
     [stringId, targetLang],
   );
 
-  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null; signature?: string | null; path?: string | null } | undefined;
+  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null; signature?: string | null; path?: string | null; game?: string } | undefined;
 
   await db.query(
     `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
@@ -164,11 +165,14 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
   const issues = buildQAIssues(row.source, row.translation);
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
+  // FO76 shares the same record format as FO4, so QA rules configured for
+  // 'fo4' also apply to 'fo76' strings.
+  const ruleGame = row.game === 'fo76' ? 'fo4' : (row.game ?? 'fo4');
   const { rows: qaRules } = await db.query(
     `SELECT rule_type, value, severity, description, signature AS rule_sig, path AS rule_path
      FROM qa_rules
-     WHERE game = 'fo4' AND is_active = TRUE`,
-    [],
+     WHERE game = $1 AND is_active = TRUE`,
+    [ruleGame],
   );
 
   for (const rule of qaRules as Array<{ rule_type: string; value: string; severity: string; description: string | null; rule_sig: string | null; rule_path: string | null }>) {

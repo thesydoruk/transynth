@@ -128,7 +128,7 @@ identically to BA2 archives. The tool writes BSA v105 (Skyrim SE format)
 archives with uncompressed data blocks for maximum compatibility.
 
 The export format is selected **automatically** based on the game type
-stored with the mod. Fallout 4 mods produce BA2, Skyrim SE/LE mods
+stored with the mod. Fallout 4 and Fallout 76 mods produce BA2, Skyrim SE/LE mods
 produce BSA. No manual selection is needed.
 
 ---

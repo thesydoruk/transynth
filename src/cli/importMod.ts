@@ -55,7 +55,7 @@ import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile
 const argv = await yargs(hideBin(process.argv))
   .option('mod',     { type: 'string', demandOption: true,  desc: 'Path to the .esp/.esm/.esl file' })
   .option('ba2',     { type: 'string',                      desc: 'Path to the BA2 archive (auto-detected if omitted)' })
-  .option('game',    { type: 'string', default: 'fo4',       desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
+  .option('game',    { type: 'string', default: 'fo4',       desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'sse', 'sle'] as const })
   .option('lang',    { type: 'string', default: 'en',       desc: 'Locale to import in single-locale mode' })
   .option('learn',   { type: 'boolean', default: false,     desc: 'Import all locales and build TM pairs' })
   .option('srcLang', { type: 'string', default: 'en',       desc: '[--learn] Source locale for TM alignment' })

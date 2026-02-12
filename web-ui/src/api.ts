@@ -557,7 +557,7 @@ export type ModImportJob = {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;
-  game: 'fo4' | 'sse' | 'sle';
+  game: 'fo4' | 'fo76' | 'sse' | 'sle';
   esp_path: string | null;
   created_at: string;
   updated_at: string;
@@ -1028,7 +1028,7 @@ export const api = {
   modImport: {
     list: () => req<ModImportJob[]>('/api/mod-import'),
 
-    upload: async (file: File, options?: { game?: 'fo4' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string }): Promise<ModImportJob> => {
+    upload: async (file: File, options?: { game?: 'fo4' | 'fo76' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string }): Promise<ModImportJob> => {
       const qs = new URLSearchParams();
       if (options?.game) qs.set('game', options.game);
       if (options?.srcLang) qs.set('srcLang', options.srcLang);

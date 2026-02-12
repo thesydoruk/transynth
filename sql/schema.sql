@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS mods (
   name TEXT NOT NULL,
   abs_path TEXT,
   version_hash TEXT,
-  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | sse
+  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | fo76 | sse | sle
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS mod_imports (
   src_lang TEXT NOT NULL DEFAULT 'en',
   tgt_lang TEXT NOT NULL DEFAULT 'uk',
   is_localized INTEGER NOT NULL DEFAULT 0,
-  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | sse
+  game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | fo76 | sse | sle
   esp_path TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

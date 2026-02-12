@@ -62,7 +62,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
     const origName = data.filename;
-    const game: GameType = (req.query.game === 'sse' || req.query.game === 'sle') ? req.query.game : 'fo4';
+    const game: GameType = (req.query.game === 'sse' || req.query.game === 'sle' || req.query.game === 'fo76') ? req.query.game : 'fo4';
     const srcLang = req.query.srcLang ?? 'en';
     const tgtLang = req.query.tgtLang ?? 'uk';
 

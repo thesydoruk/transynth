@@ -21,7 +21,7 @@ import { patchEsp, type EspPatch } from '../bethesda/espWriter.js';
 const argv = await yargs(hideBin(process.argv))
   .option('mod',      { type: 'string', demandOption: true })
   .option('ba2',      { type: 'string', desc: 'BA2 archive (auto-detected if omitted)' })
-  .option('game',     { type: 'string', default: 'fo4', desc: 'Game type: fo4, sse, or sle', choices: ['fo4', 'sse', 'sle'] as const })
+  .option('game',     { type: 'string', default: 'fo4', desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'sse', 'sle'] as const })
   .option('outDir',   { type: 'string', demandOption: true })
   .option('srcLang',  { type: 'string', default: 'en' })
   .option('tgtLang',  { type: 'string', default: 'uk' })

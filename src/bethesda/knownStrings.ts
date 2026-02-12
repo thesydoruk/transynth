@@ -132,7 +132,10 @@ export const TRANSLATABLE_SUBRECORDS = FO4_TRANSLATABLE_SUBRECORDS;
 /**
  * Return the correct translatable-subrecords map for the given game.
  *
- * @param game - `'fo4'` (default), `'sse'`, or `'sle'`.
+ * FO76 uses the same Creation Engine record types as FO4, so both share
+ * the FO4 table.  Skyrim SE / LE use a separate table.
+ *
+ * @param game - `'fo4'` | `'fo76'` (default FO4 table), `'sse'`, or `'sle'`.
  */
 export const getTranslatableSubrecords = (game: GameType): Record<string, Set<string>> =>
   game === 'sse' || game === 'sle' ? SSE_TRANSLATABLE_SUBRECORDS : FO4_TRANSLATABLE_SUBRECORDS;

@@ -1,6 +1,6 @@
 # 02 — Importing Mods
 
-Learn how to bring a Fallout 4, Skyrim SE, or Skyrim LE mod into the tool so its strings are ready to translate.
+Learn how to bring a Fallout 4, Fallout 76, Skyrim SE, or Skyrim LE mod into the tool so its strings are ready to translate.
 
 ---
 

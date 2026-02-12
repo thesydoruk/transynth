@@ -109,7 +109,7 @@ export const ImportsPage = () => {
   ].sort((a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime());
 
   /* ── Upload state ─────────────────────────────────────────────────────── */
-  const [uploading, setUploading] = useState(false);  const [uploadGame, setUploadGame] = useState<'fo4' | 'sse' | 'sle'>('fo4');  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);  const [uploadGame, setUploadGame] = useState<'fo4' | 'fo76' | 'sse' | 'sle'>('fo4');  const fileRef = useRef<HTMLInputElement>(null);
 
   /* ── Live progress for running imports (keyed by "kind:id") ───────────── */
   const [liveProgress, setLiveProgress] = useState<Record<string, LiveProgress>>({});
@@ -229,11 +229,12 @@ export const ImportsPage = () => {
       <div className={s.uploadBar}>
         <select
           value={uploadGame}
-          onChange={e => setUploadGame(e.target.value as 'fo4' | 'sse' | 'sle')}
+          onChange={e => setUploadGame(e.target.value as 'fo4' | 'fo76' | 'sse' | 'sle')}
           className={s.gameSelect}
           title={t('imports.gameLabel')}
         >
           <option value="fo4">Fallout 4</option>
+          <option value="fo76">Fallout 76</option>
           <option value="sse">Skyrim SE</option>
           <option value="sle">Skyrim LE</option>
         </select>
