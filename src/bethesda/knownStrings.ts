@@ -9,8 +9,11 @@
  * For non-localized plugins they contain null-terminated UTF-8 text directly.
  *
  * Games:
- *  - `fo4` — Fallout 4
- *  - `sse` — Skyrim Special Edition (and Skyrim LE — same record types)
+ *  - `fo4`  — Fallout 4
+ *  - `fo76` — Fallout 76 (shares FO4 table)
+ *  - `fo3`  — Fallout 3
+ *  - `fnv`  — Fallout: New Vegas (extends FO3 table with NV-specific records)
+ *  - `sse`  — Skyrim Special Edition (and Skyrim LE — same record types)
  */
 
 import type { GameType } from '../types.js';
@@ -124,6 +127,84 @@ export const SSE_TRANSLATABLE_SUBRECORDS: Record<string, Set<string>> = {
 };
 
 /**
+ * Fallout 3 translatable subrecords.
+ *
+ * FO3 uses the Gamebryo engine (pre-Creation Engine). Most FO3 mods are
+ * non-localized — strings are embedded inline in ESP records rather than
+ * externalized to .STRINGS/.DLSTRINGS/.ILSTRINGS files.
+ *
+ * Key differences from FO4:
+ *  - No INNR, SCEN, COBJ, ARMA, OMOD, LCTN, SLGM (FO4/SSE-specific).
+ *  - No ATTX subrecord on ACTI/FURN.
+ *  - FACT has MNAM/FNAM (male/female rank names).
+ *  - NOTE has TNAM (text content of notes).
+ *  - TERM has BTXT/RNAM (button and result text).
+ *  - MGEF uses DESC (not DNAM like FO4).
+ *  - DIAL records with FULL (dialog topic names).
+ */
+export const FO3_TRANSLATABLE_SUBRECORDS: Record<string, Set<string>> = {
+  ACTI: new Set(['FULL']),
+  ALCH: new Set(['FULL']),
+  AMMO: new Set(['FULL']),
+  ARMO: new Set(['FULL', 'DESC']),
+  BOOK: new Set(['FULL', 'DESC']),
+  CELL: new Set(['FULL']),
+  CLAS: new Set(['FULL', 'DESC']),
+  CONT: new Set(['FULL']),
+  DIAL: new Set(['FULL']),
+  DOOR: new Set(['FULL']),
+  ENCH: new Set(['FULL']),
+  EXPL: new Set(['FULL']),
+  EYES: new Set(['FULL']),
+  FACT: new Set(['FULL', 'MNAM', 'FNAM']),
+  FLOR: new Set(['FULL']),
+  FURN: new Set(['FULL']),
+  HDPT: new Set(['FULL']),
+  INFO: new Set(['NAM1']),
+  INGR: new Set(['FULL']),
+  KEYM: new Set(['FULL']),
+  LIGH: new Set(['FULL']),
+  MESG: new Set(['FULL', 'DESC', 'ITXT']),
+  MGEF: new Set(['FULL', 'DESC']),
+  MISC: new Set(['FULL']),
+  NOTE: new Set(['FULL', 'TNAM']),
+  NPC_: new Set(['FULL', 'SHRT']),
+  PERK: new Set(['FULL', 'DESC']),
+  PROJ: new Set(['FULL']),
+  QUST: new Set(['FULL', 'NNAM']),
+  RACE: new Set(['FULL', 'DESC']),
+  SPEL: new Set(['FULL']),
+  TERM: new Set(['FULL', 'DESC', 'ITXT', 'RNAM', 'BTXT']),
+  WEAP: new Set(['FULL', 'DESC']),
+  WRLD: new Set(['FULL']),
+};
+
+/**
+ * Fallout: New Vegas translatable subrecords.
+ *
+ * FNV extends the FO3 engine with several New Vegas-specific record types:
+ *  - CHAL (Challenge) — quest-like challenges with FULL + DESC.
+ *  - CCRD (Caravan Card) — Caravan mini-game cards.
+ *  - CMNY (Caravan Money) — Caravan currency items.
+ *  - CSNO (Casino) — casino definitions with display names.
+ *  - IMOD (Item Mod) — weapon/armor modification items with FULL + DESC.
+ *  - RCPE (Recipe) — crafting recipes with display names.
+ *  - REPU (Reputation) — faction reputation entries.
+ *
+ * All other records share the FO3 table.
+ */
+export const FNV_TRANSLATABLE_SUBRECORDS: Record<string, Set<string>> = {
+  ...FO3_TRANSLATABLE_SUBRECORDS,
+  CHAL: new Set(['FULL', 'DESC']),
+  CCRD: new Set(['FULL']),
+  CMNY: new Set(['FULL']),
+  CSNO: new Set(['FULL']),
+  IMOD: new Set(['FULL', 'DESC']),
+  RCPE: new Set(['FULL']),
+  REPU: new Set(['FULL']),
+};
+
+/**
  * Backward-compatible alias — points to the FO4 table.
  * @deprecated Use `getTranslatableSubrecords(game)` instead.
  */
@@ -132,13 +213,26 @@ export const TRANSLATABLE_SUBRECORDS = FO4_TRANSLATABLE_SUBRECORDS;
 /**
  * Return the correct translatable-subrecords map for the given game.
  *
- * FO76 uses the same Creation Engine record types as FO4, so both share
- * the FO4 table.  Skyrim SE / LE use a separate table.
+ * - `fo4` / `fo76` → FO4 table (FO76 uses the same Creation Engine records).
+ * - `fo3`          → FO3 table.
+ * - `fnv`          → FNV table (extends FO3 with New Vegas-specific records).
+ * - `sse` / `sle`  → SSE table.
  *
- * @param game - `'fo4'` | `'fo76'` (default FO4 table), `'sse'`, or `'sle'`.
+ * @param game - Target game identifier.
  */
-export const getTranslatableSubrecords = (game: GameType): Record<string, Set<string>> =>
-  game === 'sse' || game === 'sle' ? SSE_TRANSLATABLE_SUBRECORDS : FO4_TRANSLATABLE_SUBRECORDS;
+export const getTranslatableSubrecords = (game: GameType): Record<string, Set<string>> => {
+  switch (game) {
+    case 'sse':
+    case 'sle':
+      return SSE_TRANSLATABLE_SUBRECORDS;
+    case 'fo3':
+      return FO3_TRANSLATABLE_SUBRECORDS;
+    case 'fnv':
+      return FNV_TRANSLATABLE_SUBRECORDS;
+    default:
+      return FO4_TRANSLATABLE_SUBRECORDS;
+  }
+};
 
 /**
  * Returns true if this subrecord/record combination is translatable for the given game.

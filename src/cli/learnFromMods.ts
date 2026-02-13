@@ -30,7 +30,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('pair',    { type: 'array',  demandOption: true, desc: '<orig>:<translated>' })
   .option('srcLang', { type: 'string', default: 'en' })
   .option('tgtLang', { type: 'string', default: 'uk' })
-  .option('game',    { type: 'string', default: 'fo4', desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'sse', 'sle'] as const })
+  .option('game',    { type: 'string', default: 'fo4', desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'fo3', 'fnv', 'sse', 'sle'] as const })
   .parse();
 
 const discoverBa2 = (modPath: string): string | null => {

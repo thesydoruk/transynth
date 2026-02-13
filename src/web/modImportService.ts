@@ -246,8 +246,8 @@ const loadLocalesForGame = (
   game: GameType,
   ba2Candidates: string[] = [],
 ): Map<string, Map<number, string>> => {
-  if (game === 'sse' || game === 'sle') {
-    // Skyrim SE / LE: prefer BSA archives, fall back to loose files
+  if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
+    // Skyrim SE / LE / FO3 / FNV: prefer BSA archives, fall back to loose files
     const bsaCandidates = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.bsa'));
     const bsaPath = discoverBsa(espPath, bsaCandidates);
     if (bsaPath) return loadLocalesFromBSA(bsaPath);

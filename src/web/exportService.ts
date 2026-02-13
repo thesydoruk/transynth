@@ -304,8 +304,8 @@ export const exportBsaArchive = async (
     data: Buffer.from(f.contentBase64, 'base64'),
   }));
 
-  // SLE (Skyrim LE) uses BSA v104; SSE (Skyrim SE) uses BSA v105
-  const bsaVersion = game === 'sle' ? 104 : 105;
+  // FO3, FNV, and SLE (Skyrim LE) use BSA v104; SSE (Skyrim SE) uses BSA v105
+  const bsaVersion = game === 'sse' ? 105 : 104;
   const bsaBuf = writeBsa(bsaFiles, bsaVersion);
   const stem = path.basename(modPath, path.extname(modPath));
   const fileName = `${stem} - Strings.bsa`;
@@ -318,9 +318,9 @@ export const exportBsaArchive = async (
 }
 
 /**
- * Game-aware archive dispatcher: exports a BA2 for Fallout 4 or a BSA for
- * Skyrim SE / Skyrim LE.  Routes and CLI code should call this instead of
- * exportBa2Archive / exportBsaArchive directly.
+ * Game-aware archive dispatcher: exports a BA2 for Fallout 4/76 or a BSA for
+ * Skyrim SE / Skyrim LE / Fallout 3 / Fallout NV.  Routes and CLI code should
+ * call this instead of exportBa2Archive / exportBsaArchive directly.
  */
 export const exportArchive = async (
   db: Tx,
@@ -330,7 +330,7 @@ export const exportArchive = async (
   targetLang: string,
   game: GameType = 'fo4',
 ): Promise<ExportedStringsFile> => {
-  if (game === 'sse' || game === 'sle') {
+  if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
     return exportBsaArchive(db, modId, modPath, srcLang, targetLang, game);
   }
   return exportBa2Archive(db, modId, modPath, srcLang, targetLang, game);

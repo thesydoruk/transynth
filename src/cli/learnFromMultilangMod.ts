@@ -73,7 +73,7 @@ const DEFAULT_CANONICAL_PREFERENCE = ['en','fr','it','de','es','pl','ru','ja'];
 const argv = await yargs(hideBin(process.argv))
   .option('mod',       { type: 'string', demandOption: true,  desc: 'Path to plugin (esm/esp/esl)' })
   .option('ba2',       { type: 'string',                      desc: 'Path to BA2 archive (auto-detected if omitted)' })
-  .option('game',      { type: 'string', default: 'fo4',      desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'sse', 'sle'] as const })
+  .option('game',      { type: 'string', default: 'fo4',      desc: 'Game type: fo4, fo76, sse, or sle', choices: ['fo4', 'fo76', 'fo3', 'fnv', 'sse', 'sle'] as const })
   .option('locales',   { type: 'string',                      desc: 'Comma-separated locales to use (override auto-detection)' })
   .option('extraLocales', { type: 'string',                   desc: 'Comma-separated extra locales to check in addition to auto-detected set' })
   .option('canonicalPrefer', { type: 'string',                desc: 'Comma-separated priority order to keep among clones; defaults to en,fr,it,de,es,pl,ru,ja' })

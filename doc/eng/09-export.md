@@ -21,13 +21,13 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format          | File                                   | Purpose                                                  |
-| --------------- | -------------------------------------- | -------------------------------------------------------- |
-| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine      |
-| **Patched ESP** | `.esp` / `.esm`                        | Mod plugin with translations embedded directly           |
-| **BA2 Archive** | `.ba2`                                 | Fallout 4 archive containing translated STRINGS files    |
-| **BSA Archive** | `.bsa`                                 | Skyrim SE/LE archive containing translated STRINGS files |
-| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                |
+| Format          | File                                   | Purpose                                                              |
+| --------------- | -------------------------------------- | -------------------------------------------------------------------- |
+| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine                  |
+| **Patched ESP** | `.esp` / `.esm`                        | Mod plugin with translations embedded directly                       |
+| **BA2 Archive** | `.ba2`                                 | Fallout 4/76 archive containing translated STRINGS files             |
+| **BSA Archive** | `.bsa`                                 | Skyrim SE/LE and FO3/FNV archive containing translated STRINGS files |
+| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                            |
 
 ---
 
@@ -82,10 +82,10 @@ re-import the updated mod and redo the export after a mod update.
 
 ---
 
-## BA2 Archive (Fallout 4)
+## BA2 Archive (Fallout 4 / Fallout 76)
 
 The tool can pack the generated STRINGS files into a `.ba2` archive,
-which is the format Fallout 4 uses for mod assets.
+which is the format Fallout 4 and Fallout 76 use for mod assets.
 
 The generated BA2 uses the standard Fallout 4 naming convention:
 
@@ -110,10 +110,10 @@ with a patched ESP (if applicable) into a single distributable file.
 
 ---
 
-## BSA Archive (Skyrim SE / LE)
+## BSA Archive (Skyrim SE / LE / Fallout 3 / Fallout NV)
 
-For Skyrim SE and Skyrim LE mods, the tool packs translated STRINGS files
-into a `.bsa` archive instead of a BA2.
+For Skyrim SE, Skyrim LE, Fallout 3, and Fallout: New Vegas mods, the tool
+packs translated STRINGS files into a `.bsa` archive instead of a BA2.
 
 The generated BSA uses the standard Skyrim naming convention:
 
@@ -128,8 +128,8 @@ identically to BA2 archives. The tool writes BSA v105 (Skyrim SE format)
 archives with uncompressed data blocks for maximum compatibility.
 
 The export format is selected **automatically** based on the game type
-stored with the mod. Fallout 4 and Fallout 76 mods produce BA2, Skyrim SE/LE mods
-produce BSA. No manual selection is needed.
+stored with the mod. Fallout 4 and Fallout 76 mods produce BA2; Skyrim SE/LE,
+Fallout 3, and Fallout: New Vegas mods produce BSA. No manual selection is needed.
 
 ---
 

@@ -242,8 +242,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       let archiveFiles: string[] = [];
       try {
         const allFiles = fs.readdirSync(modDir);
-        if (game === 'sse' || game === 'sle') {
-          // Skyrim: look for BSA files first, also include BA2 for hybrid mods
+        if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
+          // Skyrim / FO3 / FNV: look for BSA files first, also include BA2 for hybrid mods
           archiveFiles = allFiles
             .filter((f) => {
               const fl = f.toLowerCase();
