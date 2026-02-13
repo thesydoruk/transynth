@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +48,7 @@ interface RowProps {
  * Tracks a local "dirty" state while the user types.  The translation is
  * saved on blur or when the user presses Enter.
  */
-const InnrRowItem = ({ row, targetLang, onSave, onClear, isSaving }: RowProps) => {
+const InnrRowItem = ({ row, onSave, onClear, isSaving }: RowProps) => {
   const { t } = useTranslation();
   const [value, setValue] = useState(row.translation ?? '');
   const [saveState, setSaveState] = useState<'idle' | 'dirty' | 'saved'>('idle');

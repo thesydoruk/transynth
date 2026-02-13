@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type CoherenceGroup, type CoherenceEntry } from '../api';
 import s from './CoherencePage.module.scss';
@@ -159,7 +159,7 @@ export const CoherencePage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['coherence', targetLang, page],
     queryFn: () => api.coherence.list({ targetLang, limit: PAGE_SIZE, offset }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const totalGroups = data?.total ?? 0;

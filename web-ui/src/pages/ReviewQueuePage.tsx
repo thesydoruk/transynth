@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -120,7 +120,7 @@ export const ReviewQueuePage = () => {
         page,
         pageSize: PAGE_SIZE,
       }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     enabled: statuses.length > 0,
   });
 
