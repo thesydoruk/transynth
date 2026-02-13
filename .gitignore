@@ -6,22 +6,6 @@
 # Log files
 /logs/
 
-# SQLite database files
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
-
-# Temporary inspection/probe scripts
-scripts/inspectBa2.mjs
-scripts/probeBa2.mjs
-
-# Test mod archives and extracted content
-test/Creation Club - Horse Power Armor.7z
-test/horse-armor/
-
-# Large EET test files (keep small ones for unit tests)
-test/BDD_Fallout4_EN-RU.eet
-
 # Temporary working dirs from learnFromMultilangMod, etc.
 ml_*/
 /work_*/
