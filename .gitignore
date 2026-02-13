@@ -6,6 +6,9 @@
 # Log files
 /logs/
 
+# Test assets
+/test/
+
 # Temporary working dirs from learnFromMultilangMod, etc.
 ml_*/
 /work_*/
