@@ -16,6 +16,8 @@ import { cacheLookup, cacheStore } from '../cacheService.js';
 import { chatWithFallback } from '../../llm/index.js';
 import { CONFIG } from '../../config.js';
 import { log } from '../../logger.js';
+import { reachableStatuses, isValidTranslationStatus } from '../statusMachine.js';
+import type { TranslationStatus } from '../statusMachine.js';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=
@@ -73,6 +75,29 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'modId is required' });
     }
     return reply.send(await listSignatures(db, modId, req.query.srcLang));
+  });
+
+  // GET /api/strings/status-transitions?from=
+  //
+  // Returns the list of statuses that the currently authenticated user can
+  // transition to from a given current status.  The frontend uses this to
+  // enable/disable status-change actions in the editor toolbar and context menu.
+  //
+  // Query params:
+  //   from  — current TranslationStatus value (required)
+  //
+  // Response: { from: string; actor: string; reachable: string[] }
+  app.get<{ Querystring: { from?: string } }>('/api/strings/status-transitions', async (req, reply) => {
+    const from = req.query.from ?? '';
+    if (!isValidTranslationStatus(from)) {
+      return reply.code(400).send({ error: `Invalid 'from' status: '${from}'` });
+    }
+    const actor = req.user?.role ?? 'translator';
+    return reply.send({
+      from,
+      actor,
+      reachable: reachableStatuses(from as TranslationStatus, actor),
+    });
   });
 
   // GET /api/strings/:stringId/suggestions?targetLang=
@@ -167,7 +192,15 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!translationId || !status) {
       return reply.code(400).send({ error: 'translationId and status are required' });
     }
-    await updateTranslationStatus(db, translationId, status);
+    // Derive the actor from the authenticated user's role so the state machine
+    // can enforce permission constraints (e.g. only reviewer/admin may approve).
+    const actor = req.user?.role ?? 'translator';
+    try {
+      await updateTranslationStatus(db, translationId, status, actor);
+    } catch (err) {
+      const code = (err as { statusCode?: number }).statusCode ?? 500;
+      return reply.code(code).send({ error: err instanceof Error ? err.message : String(err) });
+    }
     return reply.send({ ok: true });
   });
 

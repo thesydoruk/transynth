@@ -209,8 +209,9 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Array.isArray(stringIds) || stringIds.length === 0) return reply.code(400).send({ error: 'stringIds is required' });
     if (status !== 'reviewed' && status !== 'rejected') return reply.code(400).send({ error: 'status must be reviewed or rejected' });
 
-    log.info(`PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length}`);
-    const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang);
+    const actor = req.user?.role ?? 'translator';
+    log.info(`PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length} actor=${actor}`);
+    const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang, actor);
     return reply.send({ updated });
   });
 

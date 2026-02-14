@@ -3,8 +3,12 @@ import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
 import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm.js';
+import { assertTransition, isValidTranslationStatus } from './statusMachine.js';
+import type { TranslationStatus, StatusActor } from './statusMachine.js';
 
-export type TranslationStatus = 'draft' | 'reviewed' | 'rejected' | 'human' | 'tm' | 'fuzzy' | 'auto' | 'deleted';
+// Re-export so existing callers that import TranslationStatus from queries.ts
+// continue to work without changes.
+export type { TranslationStatus } from './statusMachine.js';
 
 const BEST_TRANSLATION_ORDER = `CASE status
   WHEN 'draft' THEN 1
@@ -710,7 +714,29 @@ export const upsertTranslation = async (
   return { id: translationId, text, status };
 }
 
-export const updateTranslationStatus = async (db: Tx, translationId: number, status: string) => {
+export const updateTranslationStatus = async (
+  db: Tx,
+  translationId: number,
+  status: string,
+  /** Who is requesting the change. Defaults to 'system' for backward-compat with
+   *  internal callers (TM engine, import pipelines) that don't supply an actor. */
+  actor: StatusActor = 'system',
+) => {
+  // Validate the requested status value at the API boundary.
+  if (!isValidTranslationStatus(status)) {
+    throw Object.assign(new Error(`Invalid status value: '${status}'`), { statusCode: 400 });
+  }
+
+  // Fetch the current status so the state machine can enforce allowed transitions.
+  const { rows: current } = await db.query<{ status: TranslationStatus }>(
+    `SELECT status FROM translations WHERE id = $1`,
+    [translationId],
+  );
+  const currentStatus = current[0]?.status ?? null;
+
+  // Throws with statusCode 403 when the transition is illegal for this actor.
+  assertTransition(currentStatus, status, actor);
+
   const { rows } = await db.query(
     `UPDATE translations
      SET status = $1, updated_at = NOW()
@@ -1716,6 +1742,8 @@ export const bulkUpdateTranslationStatus = async (
   stringIds: number[],
   newStatus: 'reviewed' | 'rejected',
   targetLang = 'uk',
+  /** Actor performing the bulk action.  Passed through to the state machine. */
+  actor: StatusActor = 'system',
 ): Promise<number> => {
   if (stringIds.length === 0) return 0;
 
@@ -1737,7 +1765,7 @@ export const bulkUpdateTranslationStatus = async (
     );
 
     for (const row of rows as Array<{ translation_id: number; string_id: number; target_lang: string }>) {
-      await updateTranslationStatus(client, row.translation_id, newStatus);
+      await updateTranslationStatus(client, row.translation_id, newStatus, actor);
       updated++;
     }
   });
