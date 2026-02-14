@@ -19,6 +19,7 @@ The editor is the main workspace for reviewing, correcting, and completing trans
   - [QA Issues Tab](#qa-issues-tab)
   - [Revision History Tab](#revision-history-tab)
 - [Status Badges](#status-badges)
+  - [Status State Machine](#status-state-machine)
 - [Batch Actions](#batch-actions)
 - [Search and Replace](#search-and-replace)
 - [Context Menu](#context-menu)
@@ -267,6 +268,32 @@ How statuses change today:
 - **Apply TM** creates `tm` or `fuzzy` statuses depending on match type.
 - Batch auto-translate creates `auto` translations.
 - Clearing removes the translation and returns the row to `untranslated`.
+
+### Status State Machine
+
+Every status change is validated by a formal state machine (`src/web/statusMachine.ts`).
+Not every actor can move a translation to any status — the rules are as follows:
+
+| From (current)                                      | To (new)   | Who can do this                |
+| --------------------------------------------------- | ---------- | ------------------------------ |
+| _(none / any)_                                      | `draft`    | translator, reviewer, admin    |
+| _(any)_                                             | `tm`       | system only (TM engine)        |
+| _(any)_                                             | `fuzzy`    | system only (TM engine)        |
+| _(any)_                                             | `auto`     | system only (LLM batch)        |
+| _(any)_                                             | `human`    | system only (EET / CSV import) |
+| `draft`, `tm`, `fuzzy`, `auto`, `human`             | `reviewed` | reviewer, admin                |
+| `draft`, `tm`, `fuzzy`, `auto`, `human`, `reviewed` | `rejected` | reviewer, admin                |
+
+Key rules:
+
+- **Translators cannot approve** their own work — they can only save drafts.
+- **Reviewers can approve or reject** any non-deleted translation.
+- **Rejected strings** can be re-opened by saving a new text (→ `draft`) and then re-approved.
+- **System actor** (automated pipelines) bypasses all restrictions so imports and TM auto-apply always work.
+
+The frontend endpoint `GET /api/strings/status-transitions?from=<status>` returns the list of
+statuses reachable from the current one for the logged-in user, which the editor uses to
+enable or disable the Approve / Reject buttons accordingly.
 
 Where you can change status:
 
