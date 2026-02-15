@@ -638,11 +638,19 @@
     "learnPairs": "пар",
     "learnApprove": "Додати як правило"
   },
+  "home": {
+    "autoTranslated": "Авто-перекладено",
+    "techDetails": "LLM і база даних"
+  },
   "settings": {
     "title": "Налаштування",
     "tabs": {
       "general": "Загальні",
       "llm": "LLM / Авто-переклад",
+      "qaRules": "Правила QA",
+      "tradAuto": "TradAuto",
+      "tmx": "TMX",
+      "activity": "Активність",
       "data": "Дані",
       "users": "Користувачі"
     },

@@ -18,6 +18,12 @@
   font-size: 16px;
   color: var(--accent);
   margin-right: 12px;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 .link {

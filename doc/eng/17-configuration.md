@@ -26,12 +26,12 @@ Open it from the **Settings** link in the top navigation bar.
 
 The page is organised into four tabs:
 
-| Tab | Contents |
-|---|---|
-| **General** | Default source/target languages, UI language (English/Ukrainian), light/dark theme |
+| Tab                      | Contents                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| **General**              | Default source/target languages, UI language (English/Ukrainian), light/dark theme |
 | **LLM / Auto-translate** | Read-only display of the active LLM provider, models, batch size, and system flags |
-| **Data** | Quick-access cards for QA Rules, TradAuto rules, and Glossary |
-| **Users** | Quick-access card to the Users page *(multi-user mode only)* |
+| **Data**                 | Quick-access cards for QA Rules, TradAuto rules, and Glossary                      |
+| **Users**                | Quick-access card to the Users page _(multi-user mode only)_                       |
 
 ### General tab
 
@@ -39,18 +39,18 @@ Settings in the **General** tab are stored in your browser’s `localStorage`.
 They have no server-side effect but pre-fill language selectors across all pages
 (Imports, Editor, TMX, Coherence …).
 
-| Setting | localStorage key | Default |
-|---|---|---|
-| Default source language | `fo4-src-lang` | `en` |
-| Default target language | `fo4-tgt-lang` | `uk` |
-| UI language | `ui-lang` | `uk` |
-| Theme | `fo4-theme` | `dark` |
+| Setting                 | localStorage key | Default |
+| ----------------------- | ---------------- | ------- |
+| Default source language | `fo4-src-lang`   | `en`    |
+| Default target language | `fo4-tgt-lang`   | `uk`    |
+| UI language             | `ui-lang`        | `uk`    |
+| Theme                   | `fo4-theme`      | `dark`  |
 
 ### LLM tab
 
 All values are **read-only** in the UI — they reflect the currently active runtime
-configuration sourced from environment variables.  To change them, edit `.env`
-and restart the server.  The OpenAI API key is never sent to the browser; only
+configuration sourced from environment variables. To change them, edit `.env`
+and restart the server. The OpenAI API key is never sent to the browser; only
 whether it is configured is shown.
 
 ---

@@ -1,0 +1,473 @@
+/**
+ * HomePage styles — merged project overview page.
+ *
+ * Layout:
+ *   .page         — outer wrapper, constrained max-width
+ *   .section      — padded card-like content block
+ *   .bigCards     — row of large summary stat cards
+ *   .sysStrip     — horizontal row of compact system-status cards
+ *   .table / .compactTable  — data tables
+ *   .grupRow      — expandable GRUP sub-row
+ *   .techGrid     — two-column LLM + DB layout in the collapsible section
+ */
+
+/* ── Page wrapper ───────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 48px;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 10px;
+  opacity: 0.8;
+}
+
+/* ── Big stat cards (project summary) ───────────────────────────────────── */
+
+.bigCards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.bigCard {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--card-color, var(--accent));
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.bigCardValue {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--card-color, var(--text-bright));
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.bigCardLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bigCardSub {
+  color: var(--card-color, var(--accent));
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+/* ── QA issue chips ──────────────────────────────────────────────────────── */
+
+.qaStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.qaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--chip-color, #888);
+  color: var(--chip-color, #888);
+  font-size: 12px;
+  text-transform: capitalize;
+  white-space: nowrap;
+
+  strong {
+    font-weight: 700;
+    color: var(--chip-color, var(--text-bright));
+  }
+}
+
+/* ── System status strip (compact cards) ────────────────────────────────── */
+
+.sysStrip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.smCards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.smCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.smCardValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--card-color, var(--text-bright));
+}
+
+.smCardLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Progress bar ────────────────────────────────────────────────────────── */
+
+.barTrack {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ── Data tables ─────────────────────────────────────────────────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.compactTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.th,
+.thR,
+.thProgress,
+.thExpand,
+.grupTh,
+.grupThR,
+.grupThProgress {
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.thR,
+.grupThR {
+  text-align: right;
+}
+
+.thExpand {
+  width: 24px;
+  padding: 7px 4px;
+}
+
+.thProgress,
+.grupThProgress {
+  width: 100px;
+  min-width: 80px;
+}
+
+.tr {
+  cursor: pointer;
+
+  &:hover td {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+}
+
+.tfoot tr td {
+  font-weight: 600;
+  color: var(--text-bright);
+  border-top: 1px solid var(--border);
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.td,
+.tdR,
+.tdDim,
+.tdErr,
+.tdMono,
+.tdExpand {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.tdR {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tdDim {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.tdErr {
+  color: #e55;
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdMono {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.tdExpand {
+  width: 24px;
+  padding: 7px 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  user-select: none;
+}
+
+.pctDim {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ── Mod link ────────────────────────────────────────────────────────────── */
+
+.modLink {
+  color: var(--text-bright);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+}
+
+/* ── QA issue count cells ────────────────────────────────────────────────── */
+
+.qaHasIssues {
+  text-align: right;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: #e55;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.qaNoIssues {
+  text-align: right;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── GRUP sub-table ──────────────────────────────────────────────────────── */
+
+.grupRow {
+  background: var(--bg);
+}
+
+.grupCell {
+  padding: 0 0 0 32px;
+  border-bottom: 2px solid var(--border);
+}
+
+.grupTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.grupDataRow {
+  &:hover td {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+}
+
+.grupSig {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: monospace;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.grupTdR,
+.grupTdProgress {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.grupTdProgress {
+  text-align: left;
+  width: 80px;
+  min-width: 60px;
+}
+
+.grupLoading {
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ── Kind / status badges ────────────────────────────────────────────────── */
+
+.kindBadge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.badgeOk {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, #4caf50 18%, transparent);
+  color: #4caf50;
+}
+
+.badgeErr {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, #e55 18%, transparent);
+  color: #e55;
+}
+
+.badgeRun {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, #2196f3 18%, transparent);
+  color: #2196f3;
+}
+
+.badgeWarn {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, #e8a735 18%, transparent);
+  color: #e8a735;
+}
+
+.badgeDim {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-muted);
+}
+
+/* ── Collapsible tech details ────────────────────────────────────────────── */
+
+.collapseToggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--text-bright);
+  }
+}
+
+.techGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}

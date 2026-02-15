@@ -637,11 +637,19 @@
     "learnPairs": "pairs",
     "learnApprove": "Add as Rule"
   },
+  "home": {
+    "autoTranslated": "Auto-translated",
+    "techDetails": "LLM & Database details"
+  },
   "settings": {
     "title": "Settings",
     "tabs": {
       "general": "General",
       "llm": "LLM / Auto-translate",
+      "qaRules": "QA Rules",
+      "tradAuto": "TradAuto",
+      "tmx": "TMX",
+      "activity": "Activity",
       "data": "Data",
       "users": "Users"
     },

@@ -5,6 +5,7 @@ import { UI_LANGUAGES } from './i18n';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { useTheme } from './components/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
+import { HomePage } from './pages/HomePage';
 import { ModsPage } from './pages/ModsPage';
 import { ModEditorPage } from './pages/ModEditorPage';
 import { GlossaryPage } from './pages/GlossaryPage';
@@ -32,22 +33,27 @@ const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 10_000, retry: 1 } },
 });
 
-/** Navigation link descriptors — label keys reference the nav.* i18n namespace. */
+/**
+ * Navigation link descriptors — label keys reference the nav.* i18n namespace.
+ *
+ * Removed from nav (now live inside Settings tabs or the home Overview page):
+ *   /dashboard, /ops    — merged into / (HomePage)
+ *   /qa-rules           — Settings → QA Rules tab
+ *   /tradauto           — Settings → TradAuto tab
+ *   /tmx                — Settings → TMX tab
+ *   /activity           — Settings → Activity tab
+ *
+ * The home page (/) is accessible only via the brand "FO4 Localizer" click.
+ */
 const NAV_LINKS = [
-  { to: '/', labelKey: 'nav.mods', exact: true },
+  { to: '/mods', labelKey: 'nav.mods', exact: false },
   { to: '/imports', labelKey: 'nav.imports', exact: false },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
-  { to: '/dashboard', labelKey: 'nav.dashboard', exact: false },
-  { to: '/tmx', labelKey: 'nav.tmx', exact: false },
   { to: '/diff', labelKey: 'nav.diff', exact: false },
-  { to: '/activity', labelKey: 'nav.activity', exact: false },
-  { to: '/qa-rules', labelKey: 'nav.qaRules', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
   { to: '/ba2-browser', labelKey: 'nav.ba2Browser', exact: false },
   { to: '/esp-explorer', labelKey: 'nav.espExplorer', exact: false },
-  { to: '/ops', labelKey: 'nav.ops', exact: false },
-  { to: '/tradauto', labelKey: 'nav.tradAuto', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
   { to: '/settings', labelKey: 'nav.settings', exact: false },
 ];
@@ -64,7 +70,8 @@ const Nav = () => {
 
   return (
     <nav className={nav.nav}>
-      <span className={nav.brand}>{t('nav.brand')}</span>
+      {/* Brand click navigates to the project overview / home page */}
+      <Link to="/" className={nav.brand}>{t('nav.brand')}</Link>
       {NAV_LINKS
         .filter(l => !('multiUserOnly' in l && l.multiUserOnly) || multiUser)
         .map(({ to, labelKey, exact }) => {
@@ -133,7 +140,10 @@ const AppShell = () => {
       <Nav />
       <main className={nav.main}>
         <Routes>
-          <Route path="/" element={<ModsPage />} />
+          {/* Home — merged Dashboard + Ops overview (accessible via brand click) */}
+          <Route path="/" element={<HomePage />} />
+          {/* Mods list — main day-to-day page */}
+          <Route path="/mods" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />
           <Route path="/imports" element={<ImportsPage />} />
           {/* Legacy redirects — keep old URLs working */}
