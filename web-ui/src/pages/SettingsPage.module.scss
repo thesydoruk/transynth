@@ -1,0 +1,201 @@
+/* ── SettingsPage — Project Settings SCSS Module ──────────────────────────── */
+
+/* ── Page shell ───────────────────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-bright);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 28px;
+}
+
+.tab {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.tabActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 36px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ── Field grid ───────────────────────────────────────────────────────────── */
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 10px 16px;
+  align-items: center;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.fieldValue {
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.fieldNote {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ── Read-only banner ─────────────────────────────────────────────────────── */
+
+.readonlyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badgeOk {
+  background: color-mix(in srgb, var(--ok) 20%, transparent);
+  color: var(--ok);
+}
+
+.badgeWarn {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+/* ── Select (theme / language controls) ──────────────────────────────────── */
+
+.select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+/* ── Link cards (QA / TradAuto / Users) ───────────────────────────────────── */
+
+.linkCards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.linkCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  min-width: 180px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+}
+
+.linkCardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.linkCardDesc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.linkCardBadge {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Loading / error states ───────────────────────────────────────────────── */
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+}

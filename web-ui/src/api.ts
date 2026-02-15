@@ -332,6 +332,33 @@ export type OpsModelBreakdown = { model: string; count: number };
 /** Row count + disk size for one database table. */
 export type OpsTableSize = { table_name: string; row_count: number; size: string };
 
+/**
+ * Runtime configuration snapshot returned by `GET /api/settings`.
+ * All values are safe to display — no secrets are included.
+ */
+export type SettingsPayload = {
+  /** Active LLM provider: 'ollama' | 'openai'. */
+  llmProvider: string;
+  /** Fallback LLM provider when the primary fails: 'ollama' | 'openai' | 'none'. */
+  llmFallback: string;
+  /** Ollama base URL. */
+  ollamaBaseUrl: string;
+  /** Ollama model used for translation/embedding. */
+  ollamaModel: string;
+  /** OpenAI model name used for translation. */
+  translateModel: string;
+  /** OpenAI model name used for embeddings. */
+  embedModel: string;
+  /** Whether the OpenAI API key is configured (key itself is never sent). */
+  openaiKeyConfigured: boolean;
+  /** Translation batch size for LLM auto-translate jobs. */
+  batchSize: number;
+  /** Whether multi-user authentication mode is active. */
+  multiUser: boolean;
+  /** Session lifetime in hours. */
+  sessionLifetimeHours: number;
+};
+
 /** Full response from GET /api/ops. */
 export type OpsOverview = {
   system: {
@@ -1283,5 +1310,14 @@ export const api = {
       if (params?.srcLang) qs.set('srcLang', params.srcLang);
       return req<InnrResult>(`/api/mods/${modId}/innr?${qs}`);
     },
+  },
+
+  /**
+   * Project settings — exposes active runtime configuration (read-only).
+   * All sensitive values (API keys, DB URL) are omitted on the server side.
+   */
+  settings: {
+    /** Returns the current server configuration snapshot. */
+    get: () => req<SettingsPayload>('/api/settings'),
   },
 };

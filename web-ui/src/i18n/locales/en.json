@@ -21,6 +21,7 @@
     "enable": "Enable",
     "disable": "Disable",
     "active": "Active",
+    "enabled": "Enabled",
     "disabled": "Disabled"
   },
   "nav": {
@@ -45,7 +46,8 @@
     "ba2Browser": "BA2 Browser",
     "espExplorer": "ESP Explorer",
     "ops": "Health",
-    "tradAuto": "TradAuto"
+    "tradAuto": "TradAuto",
+    "settings": "Settings"
   },
   "status": {
     "reviewed": "Reviewed",
@@ -634,5 +636,62 @@
     "learnExamples": "Examples",
     "learnPairs": "pairs",
     "learnApprove": "Add as Rule"
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "general": "General",
+      "llm": "LLM / Auto-translate",
+      "data": "Data",
+      "users": "Users"
+    },
+    "general": {
+      "languagesTitle": "Default Languages",
+      "languagesDesc": "Pre-fills language selectors across all pages (Imports, Editor, TMX, Coherence). Stored locally in your browser.",
+      "srcLang": "Source language",
+      "tgtLang": "Target language",
+      "interfaceTitle": "Interface",
+      "uiLang": "UI language",
+      "theme": "Theme",
+      "themeDark": "Switch to dark",
+      "themeLight": "Switch to light"
+    },
+    "llm": {
+      "readonlyNote": "These settings are read-only — they are defined in the .env file and require a server restart to change.",
+      "providerSection": "Provider",
+      "provider": "Active provider",
+      "fallback": "Fallback provider",
+      "batchSize": "Batch size",
+      "ollamaSection": "Ollama",
+      "ollamaUrl": "Base URL",
+      "ollamaModel": "Model",
+      "openaiSection": "OpenAI",
+      "openaiKey": "API key",
+      "keySet": "configured",
+      "keyNotSet": "not set",
+      "translateModel": "Translation model",
+      "embedModel": "Embedding model",
+      "systemSection": "System",
+      "multiUser": "Multi-user mode",
+      "sessionLifetime": "Session lifetime"
+    },
+    "data": {
+      "title": "Data Configuration",
+      "desc": "Manage rules and vocabulary that affect automatic translation and quality checks.",
+      "qaRules": "QA Rules",
+      "qaRulesDesc": "Forbidden characters, max-length limits, and other quality checks.",
+      "tradAuto": "TradAuto Rules",
+      "tradAutoDesc": "Pattern-match rules for automatic translation of repetitive strings.",
+      "glossary": "Glossary",
+      "glossaryDesc": "Approved term pairs that enforce consistent vocabulary.",
+      "ruleCount": "{{count}} rules",
+      "termCount": "{{count}} terms"
+    },
+    "users": {
+      "title": "User Management",
+      "manage": "Manage Users",
+      "manageDesc": "Create, edit, and deactivate user accounts. Set roles: admin, reviewer, translator.",
+      "userCount": "{{count}} users"
+    }
   }
 }

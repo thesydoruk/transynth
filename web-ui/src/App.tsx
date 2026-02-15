@@ -25,6 +25,7 @@ import { Ba2BrowserPage } from './pages/Ba2BrowserPage';
 import { EspExplorerPage } from './pages/EspExplorerPage';
 import { OpsPage } from './pages/OpsPage';
 import { TradAutoPage } from './pages/TradAutoPage';
+import { SettingsPage } from './pages/SettingsPage';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({
@@ -48,6 +49,7 @@ const NAV_LINKS = [
   { to: '/ops', labelKey: 'nav.ops', exact: false },
   { to: '/tradauto', labelKey: 'nav.tradAuto', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
+  { to: '/settings', labelKey: 'nav.settings', exact: false },
 ];
 
 /**
@@ -152,6 +154,7 @@ const AppShell = () => {
           <Route path="/ops" element={<OpsPage />} />
           <Route path="/tradauto" element={<TradAutoPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </>

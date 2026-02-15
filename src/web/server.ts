@@ -27,6 +27,7 @@ import { reviewQueueRoutes } from './routes/reviewQueue.js';
 import { innrRoutes } from './routes/innr.js';
 import { opsRoutes } from './routes/ops.js';
 import { tradAutoRoutes } from './routes/tradAuto.js';
+import { settingsRoutes } from './routes/settings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -89,6 +90,7 @@ await reviewQueueRoutes(app, db);
 await innrRoutes(app, db);
 await opsRoutes(app, db);
 await tradAutoRoutes(app, db);
+await settingsRoutes(app);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {
