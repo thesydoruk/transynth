@@ -108,10 +108,66 @@ export type GameInfo = {
   releaseYear: number;
   /** NexusMods numeric game ID, used to build the cover image URL */
   nexusId: number;
+  /**
+   * NexusMods URL-safe domain name (e.g. "fallout4").
+   * Used as the gameDomainName filter in NexusMods GraphQL requests.
+   */
+  domainName: string;
   /** Engine family label */
   engine: string;
   /** Whether the game uses localized (external .STRINGS) plugins */
   localized: boolean;
+};
+
+/**
+ * A mod record returned by the NexusMods GraphQL API v2.
+ * Matches NexusMod in src/nexus/types.ts (shapes are kept in sync).
+ */
+export type NexusModItem = {
+  id: number;
+  modId: number;
+  uid: string;
+  name: string;
+  summary: string;
+  version: string;
+  status: string;
+  author: string | null;
+  createdAt: string;
+  updatedAt: string;
+  downloads: number;
+  endorsements: number;
+  adultContent: boolean | null;
+  pictureUrl: string | null;
+  thumbnailUrl: string | null;
+  gameId: number;
+  game: { id: number; name: string; domainName: string };
+  uploader: { memberId: number | null; name: string } | null;
+  tags: string[];
+};
+
+/** Paginated NexusMods mod search result from GET /api/games/:gameId/nexus/mods */
+export type NexusModsPage = {
+  totalCount: number;
+  nodesCount: number;
+  items: NexusModItem[];
+};
+
+/** A scored translation candidate from GET /api/games/:gameId/nexus/translations */
+export type NexusTranslationCandidate = {
+  mod: NexusModItem;
+  /** Heuristic relevance score — higher is more likely a translation */
+  score: number;
+  /** Human-readable scoring reason tags, e.g. ["same-game", "title-contains-translation"] */
+  reasons: string[];
+};
+
+/** Full result from GET /api/games/:gameId/nexus/translations */
+export type NexusTranslationsResult = {
+  sourceMod: NexusModItem;
+  totalCount: number;
+  nodesCount: number;
+  /** Candidates sorted by score descending. Score-0 entries are excluded. */
+  items: NexusTranslationCandidate[];
 };
 
 export type StringRow = {
@@ -1349,5 +1405,29 @@ export const api = {
     list: () => req<GameInfo[]>('/api/games'),
     /** Returns the URL for a game's cover image (served via backend cache). */
     coverUrl: (gameId: string) => `${BASE}/api/games/cover/${gameId}`,
+    /**
+     * Searches NexusMods for mods in a specific game.
+     * Requires NEXUS_API_KEY to be configured on the server.
+     *
+     * @param gameId  - Internal game ID (e.g. "fo4")
+     * @param query   - Search query (mod title / keywords)
+     * @param count   - Max results per page (default 20, max 50)
+     */
+    searchMods: (gameId: string, query: string, count = 20) =>
+      req<NexusModsPage>(`/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}`),
+    /**
+     * Finds heuristically ranked translation candidates for a mod.
+     * Requires NEXUS_API_KEY to be configured on the server.
+     *
+     * @param gameId   - Internal game ID (e.g. "fo4")
+     * @param modId    - NexusMods public mod ID of the source mod
+     * @param language - Optional language filter (e.g. "ukrainian", "russian")
+     * @param count    - Max raw candidates to score (default 50, max 100)
+     */
+    findTranslations: (gameId: string, modId: number, language?: string, count = 50) => {
+      const params = new URLSearchParams({ modId: String(modId), count: String(count) });
+      if (language) params.set('language', language);
+      return req<NexusTranslationsResult>(`/api/games/${encodeURIComponent(gameId)}/nexus/translations?${params.toString()}`);
+    },
   },
 };
