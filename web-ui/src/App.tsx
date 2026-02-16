@@ -27,6 +27,7 @@ import { EspExplorerPage } from './pages/EspExplorerPage';
 import { OpsPage } from './pages/OpsPage';
 import { TradAutoPage } from './pages/TradAutoPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { GamesPage } from './pages/GamesPage';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({
@@ -46,6 +47,7 @@ const qc = new QueryClient({
  * The home page (/) is accessible only via the brand "FO4 Localizer" click.
  */
 const NAV_LINKS = [
+  { to: '/games', labelKey: 'nav.games', exact: false },
   { to: '/mods', labelKey: 'nav.mods', exact: false },
   { to: '/imports', labelKey: 'nav.imports', exact: false },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
@@ -142,6 +144,8 @@ const AppShell = () => {
         <Routes>
           {/* Home — merged Dashboard + Ops overview (accessible via brand click) */}
           <Route path="/" element={<HomePage />} />
+          {/* Games catalogue — supported games tile grid with cover art */}
+          <Route path="/games" element={<GamesPage />} />
           {/* Mods list — main day-to-day page */}
           <Route path="/mods" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />

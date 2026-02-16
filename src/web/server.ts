@@ -28,6 +28,7 @@ import { innrRoutes } from './routes/innr.js';
 import { opsRoutes } from './routes/ops.js';
 import { tradAutoRoutes } from './routes/tradAuto.js';
 import { settingsRoutes } from './routes/settings.js';
+import { gamesRoutes } from './routes/games.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -91,6 +92,7 @@ await innrRoutes(app, db);
 await opsRoutes(app, db);
 await tradAutoRoutes(app, db);
 await settingsRoutes(app);
+await gamesRoutes(app);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

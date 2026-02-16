@@ -47,7 +47,8 @@
     "espExplorer": "ESP Explorer",
     "ops": "Health",
     "tradAuto": "TradAuto",
-    "settings": "Settings"
+    "settings": "Settings",
+    "games": "Games"
   },
   "status": {
     "reviewed": "Reviewed",
@@ -701,5 +702,11 @@
       "manageDesc": "Create, edit, and deactivate user accounts. Set roles: admin, reviewer, translator.",
       "userCount": "{{count}} users"
     }
+  },
+  "games": {
+    "title": "Supported Games",
+    "subtitle": "Games supported by the localization pipeline",
+    "localizedPlugin": "External strings",
+    "inlinePlugin": "Inline strings"
   }
 }

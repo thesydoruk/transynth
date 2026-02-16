@@ -96,6 +96,24 @@ export type Mod = {
   fuzzy_count: number;
 };
 
+/** A single entry from GET /api/games — matches GameInfo in src/web/routes/games.ts */
+export type GameInfo = {
+  /** Internal game identifier: fo4 | fo76 | fo3 | fnv | sse | sle */
+  id: string;
+  /** Human-readable title, e.g. "Fallout 4" */
+  name: string;
+  /** Developer / studio name */
+  developer: string;
+  /** Original release year */
+  releaseYear: number;
+  /** NexusMods numeric game ID, used to build the cover image URL */
+  nexusId: number;
+  /** Engine family label */
+  engine: string;
+  /** Whether the game uses localized (external .STRINGS) plugins */
+  localized: boolean;
+};
+
 export type StringRow = {
   string_id: number;
   formid_hex: string;
@@ -1319,5 +1337,17 @@ export const api = {
   settings: {
     /** Returns the current server configuration snapshot. */
     get: () => req<SettingsPayload>('/api/settings'),
+  },
+
+  /**
+   * Supported games catalogue.
+   * Cover images are served by the backend which fetches from NexusMods CDN
+   * and caches to disk on first request.
+   */
+  games: {
+    /** Returns all supported games as a JSON array. */
+    list: () => req<GameInfo[]>('/api/games'),
+    /** Returns the URL for a game's cover image (served via backend cache). */
+    coverUrl: (gameId: string) => `${BASE}/api/games/cover/${gameId}`,
   },
 };
