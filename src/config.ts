@@ -22,6 +22,12 @@ export const CONFIG = {
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
 
+  // Nexus Mods personal API key (Bearer token).
+  // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
+  // Required for NexusMods GraphQL API v2 queries (mod search, translations).
+  // The static cover-image CDN does NOT require this key.
+  nexusApiKey: process.env.NEXUS_API_KEY || '',
+
   // Multi-user mode: when true, authentication is required.
   // When false (default), the app runs as a single-user tool — no login needed.
   multiUser: process.env.MULTI_USER === 'true',
