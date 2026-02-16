@@ -19,3 +19,6 @@ ml_*/
 
 # Upload directories
 /uploads/
+
+# Runtime data (cache, logs, etc.)
+/data/
