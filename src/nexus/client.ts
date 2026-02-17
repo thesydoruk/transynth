@@ -150,7 +150,8 @@ export class NexusModsClient {
     // We keep the option for API compatibility, but always use `name` wildcard
     // to avoid GraphQL validation failures that surface as 502 in our routes.
     filterClauses.push({
-      name: [{ value: `*${normalizedName}*`, op: 'WILDCARD' }],
+      // Nexus `WILDCARD` for `name` expects plain query text (no *...* wrapper).
+      name: [{ value: normalizedName, op: 'WILDCARD' }],
     });
 
     // Optional game domain name filter
@@ -296,7 +297,7 @@ export class NexusModsClient {
     // Build an OR group for source tokens using wildcard title matching.
     // This is more broadly schema-compatible than `nameStemmed`.
     const tokenClauses = sourceTokens.map((token) => ({
-      name: [{ value: `*${token}*`, op: 'WILDCARD' }],
+      name: [{ value: token, op: 'WILDCARD' }],
     }));
 
     if (tokenClauses.length > 0) {
@@ -307,7 +308,7 @@ export class NexusModsClient {
     // We use title wildcard matching instead of `languageName` for compatibility.
     if (language) {
       rootClauses.push({
-        name: [{ value: `*${language}*`, op: 'WILDCARD' }],
+        name: [{ value: language, op: 'WILDCARD' }],
       });
     }
 
