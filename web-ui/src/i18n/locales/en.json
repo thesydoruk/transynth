@@ -707,6 +707,21 @@
     "title": "Supported Games",
     "subtitle": "Games supported by the localization pipeline",
     "localizedPlugin": "External strings",
-    "inlinePlugin": "Inline strings"
+    "inlinePlugin": "Inline strings",
+    "backToGames": "← Back to games",
+    "modsTitle": "{{game}} — Mods",
+    "modsSubtitle": "Search NexusMods and browse mods for the selected game",
+    "searchPlaceholder": "Search mods by name (e.g. unofficial patch)",
+    "searchAction": "Search",
+    "searchHint": "Enter a query and press Search to load mods from NexusMods.",
+    "resultsCount": "{{count}} results for \"{{query}}\"",
+    "noResults": "No mods found for this query.",
+    "noSummary": "No summary provided",
+    "downloads": "Downloads: {{count}}",
+    "endorsements": "Endorsements: {{count}}",
+    "unknownAuthor": "Unknown author",
+    "openOnNexus": "Open on NexusMods",
+    "notFoundTitle": "Game not found",
+    "notFoundSubtitle": "This game is not in the supported catalogue."
   }
 }

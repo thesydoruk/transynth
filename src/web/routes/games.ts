@@ -26,6 +26,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '../../logger.js';
 import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../../nexus/index.js';
+import { CONFIG } from '../../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -245,6 +246,10 @@ export const gamesRoutes = async (app: FastifyInstance) => {
     const { gameId } = req.params;
     const { q, count: rawCount } = req.query;
 
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
+
     // Validate game
     const game = SUPPORTED_GAMES.find(g => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
@@ -268,7 +273,7 @@ export const gamesRoutes = async (app: FastifyInstance) => {
     } catch (err) {
       if (err instanceof NexusModsError) {
         log.warn(`NexusMods mod search failed for ${gameId}: ${err.message}`);
-        return reply.code(502).send({ error: err.message });
+        return reply.code(502).send({ error: `NexusMods search failed: ${err.message}` });
       }
       throw err;
     }
@@ -299,6 +304,10 @@ export const gamesRoutes = async (app: FastifyInstance) => {
   }>('/api/games/:gameId/nexus/translations', async (req, reply) => {
     const { gameId } = req.params;
     const { modId: rawModId, language, count: rawCount } = req.query;
+
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
 
     // Validate game
     const game = SUPPORTED_GAMES.find(g => g.id === gameId);

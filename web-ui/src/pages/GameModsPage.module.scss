@@ -1,0 +1,212 @@
+/**
+ * GameModsPage styles — search and cards for NexusMods results.
+ */
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.header {
+  margin-bottom: 18px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+
+  &:hover {
+    color: var(--text-bright);
+    text-decoration: underline;
+  }
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.searchBar {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-bright);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.searchButton {
+  border: 1px solid var(--border);
+  background: var(--surface-2, #1f2530);
+  color: var(--text-bright);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent, #4a9eff);
+  }
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.count {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 6px 0 14px;
+}
+
+.loading {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 28px;
+}
+
+.error {
+  color: var(--danger, #e05);
+  text-align: center;
+  padding: 28px;
+}
+
+.empty {
+  color: var(--text-muted);
+  padding: 18px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.imageWrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-2, #1a1a1a);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.imageFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.cardBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.modName {
+  margin: 0;
+  color: var(--text-bright);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  min-height: 34px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metaChip {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-2, #1f232a);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.author {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.openLink {
+  color: var(--accent, #4a9eff);
+  text-decoration: none;
+  font-size: 12px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (max-width: 680px) {
+  .searchBar {
+    flex-direction: column;
+  }
+
+  .searchButton {
+    width: 100%;
+  }
+}

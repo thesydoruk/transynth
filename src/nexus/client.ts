@@ -106,7 +106,7 @@ export class NexusModsClient {
       'Content-Type': 'application/json',
       'User-Agent': options.userAgent ?? 'storywealth-localizer/1.0',
       ...(options.accessToken
-        ? { Authorization: `Bearer ${options.accessToken}` }
+        ? { apikey: options.accessToken }
         : {}),
     };
   }
@@ -145,16 +145,13 @@ export class NexusModsClient {
     // Build the filter clause array. Each entry is ANDed together.
     const filterClauses: unknown[] = [];
 
-    // Name filter — either stemmed or wildcard
-    if (options.useStemmedSearch) {
-      filterClauses.push({
-        nameStemmed: [{ value: normalizedName, op: 'MATCHES' }],
-      });
-    } else {
-      filterClauses.push({
-        name: [{ value: `*${normalizedName}*`, op: 'WILDCARD' }],
-      });
-    }
+    // Name filter.
+    // NOTE: Some Nexus GraphQL schema revisions do not expose `nameStemmed`.
+    // We keep the option for API compatibility, but always use `name` wildcard
+    // to avoid GraphQL validation failures that surface as 502 in our routes.
+    filterClauses.push({
+      name: [{ value: `*${normalizedName}*`, op: 'WILDCARD' }],
+    });
 
     // Optional game domain name filter
     if (typeof options.gameDomainName === 'string' && options.gameDomainName.trim()) {
@@ -176,12 +173,6 @@ export class NexusModsClient {
       filter: { op: 'AND', filter: filterClauses },
       offset: options.offset ?? 0,
       count: options.count ?? 20,
-      sort: [
-        {
-          field: 'UPDATED_AT',
-          direction: this.normalizeSortDirection(options.updatedSortDirection),
-        },
-      ],
     });
 
     return {
@@ -300,15 +291,23 @@ export class NexusModsClient {
       {
         gameDomainName: [{ value: sourceMod.game.domainName, op: 'EQUALS' }],
       },
-      {
-        nameStemmed: sourceTokens.map((token) => ({ value: token, op: 'MATCHES' })),
-      },
     ];
 
-    // Optionally add a language name filter to bias the API-side results
+    // Build an OR group for source tokens using wildcard title matching.
+    // This is more broadly schema-compatible than `nameStemmed`.
+    const tokenClauses = sourceTokens.map((token) => ({
+      name: [{ value: `*${token}*`, op: 'WILDCARD' }],
+    }));
+
+    if (tokenClauses.length > 0) {
+      rootClauses.push({ op: 'OR', filter: tokenClauses });
+    }
+
+    // Optionally add a language token filter to bias API-side results.
+    // We use title wildcard matching instead of `languageName` for compatibility.
     if (language) {
       rootClauses.push({
-        languageName: [{ value: language, op: 'MATCHES' }],
+        name: [{ value: `*${language}*`, op: 'WILDCARD' }],
       });
     }
 

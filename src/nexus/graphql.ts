@@ -103,9 +103,8 @@ export const SEARCH_MODS_BY_NAME_QUERY = `
     $filter: ModsFilter
     $offset: Int
     $count: Int
-    $sort: [ModsSort!]
   ) {
-    mods(filter: $filter, offset: $offset, count: $count, sort: $sort) {
+    mods(filter: $filter, offset: $offset, count: $count) {
       totalCount
       nodesCount
       nodes {

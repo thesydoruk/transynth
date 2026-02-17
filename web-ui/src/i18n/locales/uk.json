@@ -708,6 +708,21 @@
     "title": "Підтримувані ігри",
     "subtitle": "Ігри, що підтримуються пайплайном локалізації",
     "localizedPlugin": "Зовнішні рядки",
-    "inlinePlugin": "Вбудовані рядки"
+    "inlinePlugin": "Вбудовані рядки",
+    "backToGames": "← До списку ігор",
+    "modsTitle": "{{game}} — Моди",
+    "modsSubtitle": "Пошук модів на NexusMods для вибраної гри",
+    "searchPlaceholder": "Пошук модів за назвою (наприклад, unofficial patch)",
+    "searchAction": "Шукати",
+    "searchHint": "Введіть запит і натисніть Шукати, щоб завантажити моди з NexusMods.",
+    "resultsCount": "{{count}} результатів за запитом \"{{query}}\"",
+    "noResults": "За цим запитом модів не знайдено.",
+    "noSummary": "Опис відсутній",
+    "downloads": "Завантаження: {{count}}",
+    "endorsements": "Вподобання: {{count}}",
+    "unknownAuthor": "Невідомий автор",
+    "openOnNexus": "Відкрити на NexusMods",
+    "notFoundTitle": "Гру не знайдено",
+    "notFoundSubtitle": "Цієї гри немає у каталозі підтримуваних."
   }
 }

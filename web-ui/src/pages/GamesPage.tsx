@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GameInfo } from '../api';
@@ -65,7 +66,9 @@ export const GamesPage = () => {
       <p className={s.subtitle}>{t('games.subtitle')}</p>
       <div className={s.grid}>
         {(data ?? []).map((game) => (
-          <GameTile key={game.id} game={game} />
+          <Link key={game.id} to={`/games/${game.id}`} className={s.tileLink}>
+            <GameTile game={game} />
+          </Link>
         ))}
       </div>
     </div>
