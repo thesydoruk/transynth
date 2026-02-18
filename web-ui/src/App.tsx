@@ -29,6 +29,7 @@ import { TradAutoPage } from './pages/TradAutoPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GamesPage } from './pages/GamesPage';
 import { GameModsPage } from './pages/GameModsPage';
+import { GameModDetailsPage } from './pages/GameModDetailsPage';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({
@@ -149,6 +150,8 @@ const AppShell = () => {
           <Route path="/games" element={<GamesPage />} />
           {/* Game-specific NexusMods search page (opened from games tiles) */}
           <Route path="/games/:gameId" element={<GameModsPage />} />
+          {/* Detailed Nexus mod page: metadata, attached files, likely translations */}
+          <Route path="/games/:gameId/mods/:modId" element={<GameModDetailsPage />} />
           {/* Mods list — main day-to-day page */}
           <Route path="/mods" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />

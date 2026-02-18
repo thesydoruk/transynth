@@ -723,6 +723,20 @@
     "unknownAuthor": "Невідомий автор",
     "openOnNexus": "Відкрити на NexusMods",
     "notFoundTitle": "Гру не знайдено",
-    "notFoundSubtitle": "Цієї гри немає у каталозі підтримуваних."
+    "notFoundSubtitle": "Цієї гри немає у каталозі підтримуваних.",
+    "backToMods": "← Назад до модів",
+    "modIdLabel": "ID мода: {{modId}}",
+    "modInfo": "Інформація про мод",
+    "filesTitle": "Прикріплені файли",
+    "noFiles": "Прикріплених файлів не знайдено.",
+    "fileName": "Назва",
+    "fileCategory": "Категорія",
+    "fileVersion": "Версія",
+    "fileSize": "Розмір",
+    "fileUploaded": "Завантажено",
+    "primaryFile": "Основний",
+    "likelyTranslations": "Ймовірні моди-переклади",
+    "noTranslations": "Ймовірних перекладів не знайдено.",
+    "scoreLabel": "Оцінка: {{score}}"
   }
 }

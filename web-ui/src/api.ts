@@ -129,6 +129,8 @@ export type NexusModItem = {
   uid: string;
   name: string;
   summary: string;
+  description?: string;
+  category?: string;
   version: string;
   status: string;
   author: string | null;
@@ -143,6 +145,25 @@ export type NexusModItem = {
   game: { id: number; name: string; domainName: string };
   uploader: { memberId: number | null; name: string } | null;
   tags: string[];
+};
+
+/** A single attached archive/file for a Nexus mod. */
+export type NexusModFile = {
+  fileId: number;
+  name: string;
+  version: string | null;
+  categoryName: string | null;
+  isPrimary: boolean;
+  uploadedTime: string | null;
+  sizeBytes: number | null;
+  fileName: string | null;
+  description: string | null;
+};
+
+/** Compound response for mod details page. */
+export type NexusModDetails = {
+  mod: NexusModItem;
+  files: NexusModFile[];
 };
 
 /** Paginated NexusMods mod search result from GET /api/games/:gameId/nexus/mods */
@@ -1415,6 +1436,14 @@ export const api = {
      */
     searchMods: (gameId: string, query: string, count = 20) =>
       req<NexusModsPage>(`/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}`),
+    /**
+     * Loads one mod with full metadata and all attached files.
+     *
+     * @param gameId - Internal game ID (e.g. "fo4")
+     * @param modId  - Nexus public mod ID
+     */
+    modDetails: (gameId: string, modId: number) =>
+      req<NexusModDetails>(`/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}`),
     /**
      * Finds heuristically ranked translation candidates for a mod.
      * Requires NEXUS_API_KEY to be configured on the server.

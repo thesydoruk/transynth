@@ -722,6 +722,20 @@
     "unknownAuthor": "Unknown author",
     "openOnNexus": "Open on NexusMods",
     "notFoundTitle": "Game not found",
-    "notFoundSubtitle": "This game is not in the supported catalogue."
+    "notFoundSubtitle": "This game is not in the supported catalogue.",
+    "backToMods": "← Back to mods",
+    "modIdLabel": "Mod ID: {{modId}}",
+    "modInfo": "Mod Information",
+    "filesTitle": "Attached Files",
+    "noFiles": "No attached files found.",
+    "fileName": "Name",
+    "fileCategory": "Category",
+    "fileVersion": "Version",
+    "fileSize": "Size",
+    "fileUploaded": "Uploaded",
+    "primaryFile": "Primary",
+    "likelyTranslations": "Likely Translation Mods",
+    "noTranslations": "No likely translations found.",
+    "scoreLabel": "Score: {{score}}"
   }
 }

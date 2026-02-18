@@ -39,6 +39,220 @@ const CACHE_DIR = path.resolve(__dirname, '../../../data/cache/games');
 /** NexusMods 4:3 tile art base URL. */
 const NM_TILE_BASE = 'https://staticdelivery.nexusmods.com/Images/games/4_3/tile_';
 
+/**
+ * A single Nexus file attachment returned by v1 files endpoint.
+ *
+ * We intentionally normalize only the fields needed by the UI and keep the
+ * shape stable regardless of minor upstream response changes.
+ */
+interface NexusFileAttachment {
+  fileId: number;
+  name: string;
+  version: string | null;
+  categoryName: string | null;
+  isPrimary: boolean;
+  uploadedTime: string | null;
+  sizeBytes: number | null;
+  fileName: string | null;
+  description: string | null;
+}
+
+/**
+ * Minimal normalized shape for a Nexus mod object returned to the frontend.
+ *
+ * This matches the frontend `NexusModItem` contract used on the mod details
+ * and likely-translations pages.
+ */
+interface NexusModView {
+  id: number;
+  modId: number;
+  uid: string;
+  name: string;
+  summary: string;
+  description: string;
+  version: string;
+  category: string;
+  status: string;
+  author: string | null;
+  createdAt: string;
+  updatedAt: string;
+  downloads: number;
+  endorsements: number;
+  adultContent: boolean | null;
+  pictureUrl: string | null;
+  thumbnailUrl: string | null;
+  gameId: number;
+  game: {
+    id: number;
+    name: string;
+    domainName: string;
+    genre: string | null;
+    forumUrl: string | null;
+    modCount: number | null;
+    downloadCount: string | null;
+    uniqueDownloadCount: string | null;
+  };
+  uploader: { memberId: number | null; name: string } | null;
+  tags: string[];
+}
+
+/**
+ * Fetches a single mod from Nexus REST v1 endpoint.
+ *
+ * Endpoint:
+ *   GET https://api.nexusmods.com/v1/games/:domain/mods/:modId.json
+ */
+const fetchNexusModInfo = async (
+  domainName: string,
+  modId: number,
+): Promise<Record<string, unknown>> => {
+  const key = CONFIG.nexusApiKey;
+  if (!key) {
+    throw new Error('NEXUS_API_KEY is not configured on the server');
+  }
+
+  const url = `https://api.nexusmods.com/v1/games/${domainName}/mods/${modId}.json`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: key,
+      'User-Agent': 'storywealth-localizer/1.0',
+    },
+  });
+
+  if (res.status === 404) {
+    throw new NexusModsNotFoundError(`Mod "${domainName}/${modId}" was not found.`);
+  }
+  if (!res.ok) {
+    throw new Error(`Nexus mod info API returned HTTP ${res.status}`);
+  }
+
+  return (await res.json()) as Record<string, unknown>;
+};
+
+/**
+ * Maps REST v1 mod payload into the frontend-facing normalized shape.
+ */
+const mapRestModToView = (
+  raw: Record<string, unknown>,
+  game: GameInfo,
+): NexusModView => {
+  const n = (v: unknown): number => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string' && v.trim()) {
+      const parsed = Number(v);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  };
+  const s = (v: unknown): string => (typeof v === 'string' ? v : '');
+  const sn = (v: unknown): string | null => {
+    const value = s(v).trim();
+    return value ? value : null;
+  };
+
+  const user = (raw.user ?? null) as Record<string, unknown> | null;
+  const memberId = user ? n(user.member_id) : 0;
+
+  return {
+    id: n(raw.uid) || n(raw.mod_id),
+    modId: n(raw.mod_id),
+    uid: String(raw.uid ?? raw.mod_id ?? ''),
+    name: s(raw.name),
+    summary: s(raw.summary),
+    description: s(raw.description),
+    version: s(raw.version),
+    category: String(raw.category_id ?? ''),
+    status: s(raw.status),
+    author: sn(raw.author),
+    createdAt: s(raw.created_time),
+    updatedAt: s(raw.updated_time),
+    downloads: n(raw.mod_downloads),
+    endorsements: n(raw.endorsement_count),
+    adultContent: typeof raw.contains_adult_content === 'boolean' ? raw.contains_adult_content : null,
+    pictureUrl: sn(raw.picture_url),
+    thumbnailUrl: sn(raw.picture_url),
+    gameId: game.nexusId,
+    game: {
+      id: game.nexusId,
+      name: game.name,
+      domainName: game.domainName,
+      genre: null,
+      forumUrl: null,
+      modCount: null,
+      downloadCount: null,
+      uniqueDownloadCount: null,
+    },
+    uploader: {
+      memberId: memberId || null,
+      name: s(raw.uploaded_by) || s(raw.author),
+    },
+    tags: [],
+  };
+};
+
+/**
+ * Fetches the attached file list for a Nexus mod using the REST v1 endpoint.
+ *
+ * Endpoint:
+ *   GET https://api.nexusmods.com/v1/games/:domain/mods/:modId/files.json
+ *
+ * Auth:
+ *   Header `apikey: <NEXUS_API_KEY>`
+ *
+ * @param domainName - Nexus game domain name, e.g. `fallout4`
+ * @param modId - Nexus public mod ID
+ * @returns Normalized file attachments array (possibly empty)
+ */
+const fetchNexusModFiles = async (
+  domainName: string,
+  modId: number,
+): Promise<NexusFileAttachment[]> => {
+  const key = CONFIG.nexusApiKey;
+  if (!key) {
+    throw new Error('NEXUS_API_KEY is not configured on the server');
+  }
+
+  const url = `https://api.nexusmods.com/v1/games/${domainName}/mods/${modId}/files.json`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: key,
+      'User-Agent': 'storywealth-localizer/1.0',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Nexus files API returned HTTP ${res.status}`);
+  }
+
+  const json = await res.json() as { files?: unknown[] };
+  const files = Array.isArray(json.files) ? json.files : [];
+
+  return files.map((raw) => {
+    const row = (raw ?? {}) as Record<string, unknown>;
+    const n = (v: unknown): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string' && v.trim()) {
+        const parsed = Number(v);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+    const s = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
+
+    return {
+      fileId: n(row.file_id) ?? 0,
+      name: s(row.name) ?? 'Unnamed file',
+      version: s(row.version),
+      categoryName: s(row.category_name),
+      isPrimary: row.is_primary === true,
+      uploadedTime: s(row.uploaded_time),
+      sizeBytes: n(row.size_in_bytes),
+      fileName: s(row.file_name),
+      description: s(row.description),
+    } satisfies NexusFileAttachment;
+  });
+};
+
 /* ── Game catalogue ─────────────────────────────────────────────────────── */
 
 /**
@@ -280,6 +494,63 @@ export const gamesRoutes = async (app: FastifyInstance) => {
   });
 
   /**
+   * GET /api/games/:gameId/nexus/mod/:modId
+   *
+   * Returns a compound payload for a single Nexus mod:
+   * - `mod`: full mod metadata from GraphQL v2
+   * - `files`: attached file list from REST v1
+   *
+   * This endpoint powers the mod details page where users review metadata
+   * and attached archives/files before choosing translation candidates.
+   */
+  app.get<{
+    Params: { gameId: string; modId: string };
+  }>('/api/games/:gameId/nexus/mod/:modId', async (req, reply) => {
+    const { gameId, modId: rawModId } = req.params;
+
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
+
+    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    if (!game) return reply.code(404).send({ error: 'Unknown game' });
+
+    const modId = parseInt(rawModId, 10);
+    if (!Number.isFinite(modId) || modId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "modId" must be a positive integer' });
+    }
+
+    try {
+      // Prefer GraphQL v2 for normalized rich shape, but fall back to REST v1
+      // for legacy mods that are visible on site yet not indexed by GraphQL.
+      let mod: NexusModView;
+      try {
+        mod = await getNexus().getModById(game.domainName, game.nexusId, modId) as NexusModView;
+      } catch (err) {
+        if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
+          log.warn(`Nexus GraphQL mod lookup fallback to REST for ${gameId}/${modId}: ${err.message}`);
+          const rest = await fetchNexusModInfo(game.domainName, modId);
+          mod = mapRestModToView(rest, game);
+        } else {
+          throw err;
+        }
+      }
+
+      const files = await fetchNexusModFiles(game.domainName, modId);
+      return reply.send({ mod, files });
+    } catch (err) {
+      if (err instanceof NexusModsNotFoundError) {
+        return reply.code(404).send({ error: err.message });
+      }
+      if (err instanceof Error) {
+        log.warn(`Nexus mod details failed for ${gameId}/${modId}: ${err.message}`);
+        return reply.code(502).send({ error: `Nexus mod details failed: ${err.message}` });
+      }
+      throw err;
+    }
+  });
+
+  /**
    * GET /api/games/:gameId/nexus/translations?modId=<n>[&language=<lang>&count=<n>]
    *
    * Finds heuristically ranked translation candidates for a given mod.
@@ -322,7 +593,7 @@ export const gamesRoutes = async (app: FastifyInstance) => {
     const count = Math.min(100, Math.max(1, parseInt(rawCount ?? '50', 10) || 50));
 
     try {
-      const result = await getNexus().findPossibleTranslations(game.domainName, modId, {
+      const result = await getNexus().findPossibleTranslations(game.domainName, game.nexusId, modId, {
         language: language?.trim() || undefined,
         count,
         includeDescriptionSearch: true,
@@ -330,12 +601,26 @@ export const gamesRoutes = async (app: FastifyInstance) => {
 
       return reply.send(result);
     } catch (err) {
-      if (err instanceof NexusModsNotFoundError) {
-        return reply.code(404).send({ error: err.message });
-      }
-      if (err instanceof NexusModsError) {
-        log.warn(`NexusMods translation search failed for ${gameId}/${modId}: ${err.message}`);
-        return reply.code(502).send({ error: err.message });
+      if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
+        // Fallback for mods unavailable in GraphQL index: return empty list
+        // instead of surfacing a hard error in UI.
+        log.warn(`NexusMods translation fallback for ${gameId}/${modId}: ${err.message}`);
+        try {
+          const rest = await fetchNexusModInfo(game.domainName, modId);
+          const sourceMod = mapRestModToView(rest, game);
+          return reply.send({
+            sourceMod,
+            totalCount: 0,
+            nodesCount: 0,
+            items: [],
+          });
+        } catch (fallbackErr) {
+          if (fallbackErr instanceof NexusModsNotFoundError) {
+            return reply.code(404).send({ error: fallbackErr.message });
+          }
+          const msg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+          return reply.code(502).send({ error: msg });
+        }
       }
       throw err;
     }

@@ -130,14 +130,12 @@ export const SEARCH_MODS_BY_NAME_QUERY = `
  * ```
  */
 export const GET_MOD_BY_ID_QUERY = `
-  query GetModById($domainName: String!, $modId: Int!) {
+  query GetModById($domainName: String!, $gameId: String!, $modId: String!) {
     mods(
       filter: {
-        op: AND
-        filter: [
-          { gameDomainName: [{ value: $domainName, op: EQUALS }] }
-          { modId: [{ value: $modId, op: EQUALS }] }
-        ]
+        gameDomainName: [{ value: $domainName, op: EQUALS }]
+        gameId: [{ value: $gameId, op: EQUALS }]
+        modId: [{ value: $modId, op: EQUALS }]
       }
       offset: 0
       count: 1

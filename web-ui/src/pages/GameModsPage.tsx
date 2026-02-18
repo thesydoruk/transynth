@@ -192,7 +192,11 @@ const ModTile = ({ game, mod }: { game: GameInfo; mod: NexusModItem }) => {
       </div>
 
       <div className={s.cardBody}>
-        <h3 className={s.modName}>{mod.name}</h3>
+        <h3 className={s.modName}>
+          <Link to={`/games/${game.id}/mods/${mod.modId}`} className={s.cardLink}>
+            {mod.name}
+          </Link>
+        </h3>
         <p className={s.summary}>{mod.summary || t('games.noSummary')}</p>
 
         <div className={s.meta}>

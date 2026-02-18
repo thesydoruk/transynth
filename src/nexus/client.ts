@@ -221,7 +221,7 @@ export class NexusModsClient {
    * @throws {NexusModsNotFoundError} If the mod does not exist.
    * @throws {NexusModsGraphQLError} If the API returns GraphQL errors.
    */
-  public async getModById(domainName: string, modId: number): Promise<NexusMod> {
+  public async getModById(domainName: string, gameId: number, modId: number): Promise<NexusMod> {
     const normalizedDomainName = domainName.trim();
 
     if (!normalizedDomainName) {
@@ -234,7 +234,11 @@ export class NexusModsClient {
 
     const data = await this.request<{
       mods: { totalCount: number; nodesCount: number; nodes: unknown[] };
-    }>(GET_MOD_BY_ID_QUERY, { domainName: normalizedDomainName, modId });
+    }>(GET_MOD_BY_ID_QUERY, {
+      domainName: normalizedDomainName,
+      gameId: String(gameId),
+      modId: String(modId),
+    });
 
     const first = data.mods.nodes[0];
 
@@ -263,6 +267,7 @@ export class NexusModsClient {
    * 5. Return candidates sorted by score descending, zero-score entries removed.
    *
    * @param domainName - Game domain name of the source mod.
+   * @param gameId - Numeric Nexus game ID of the source mod's game.
    * @param modId - Public mod ID of the source mod.
    * @param options - Optional language, pagination, and scoring options.
    * @returns Source mod + scored, ranked translation candidates.
@@ -271,10 +276,11 @@ export class NexusModsClient {
    */
   public async findPossibleTranslations(
     domainName: string,
+    gameId: number,
     modId: number,
     options: FindPossibleTranslationsOptions = {},
   ): Promise<TranslationSearchResult> {
-    const sourceMod = await this.getModById(domainName, modId);
+    const sourceMod = await this.getModById(domainName, gameId, modId);
     const language = this.normalizeLanguage(options.language);
     const sourceTokens = this.extractImportantTokens(sourceMod.name);
     const translationKeywords = this.getTranslationKeywords(language);
