@@ -284,6 +284,8 @@ export class NexusModsClient {
     const language = this.normalizeLanguage(options.language);
     const sourceTokens = this.extractImportantTokens(sourceMod.name);
     const translationKeywords = this.getTranslationKeywords(language);
+    const requestedCount = options.count ?? 50;
+    const searchWindowCount = Math.min(100, Math.max(20, requestedCount * 2));
 
     /**
      * Build a broad filter to catch common translation naming patterns:
@@ -323,7 +325,7 @@ export class NexusModsClient {
     }>(SEARCH_TRANSLATION_CANDIDATES_QUERY, {
       filter: { op: 'AND', filter: rootClauses },
       offset: options.offset ?? 0,
-      count: options.count ?? 50,
+      count: searchWindowCount,
     });
 
     const rawMods = data.mods.nodes.map((item) => this.mapMod(item));
@@ -356,11 +358,13 @@ export class NexusModsClient {
         return b.mod.updatedAt.localeCompare(a.mod.updatedAt);
       });
 
+    const limited = scored.slice(0, requestedCount);
+
     return {
       sourceMod,
       totalCount: data.mods.totalCount,
       nodesCount: data.mods.nodesCount,
-      items: scored,
+      items: limited,
     };
   }
 
@@ -520,20 +524,15 @@ export class NexusModsClient {
   /**
    * Assigns a heuristic relevance score to a single translation candidate.
    *
-   * Scoring signals (additive):
-   * | Signal | Points |
-   * |---|---|
-   * | Same game as source | +10 |
-   * | Candidate title contains full source name | +25 |
-   * | Candidate title shares ≥ 2 tokens with source | +10 |
-   * | Translation keyword in title | +20 each |
-   * | Translation keyword in summary | +8 each |
-   * | Translation keyword in description (if enabled) | +4 each |
-   * | Language name in title | +15 |
-   * | Language name in summary | +6 |
-   *
-   * Candidates with a score below 20 that don't title-contain the source name
-   * are reset to 0 to avoid returning unrelated mods sharing generic tokens.
+    * Scoring combines multiple groups of signals:
+    * - Source-mod linkage (full title containment, token overlap, coverage).
+    * - Translation intent signals (keywords in title/summary/description).
+    * - Language hints (language in title/summary/tags).
+    * - Translation-like category and lightweight popularity bonus.
+    * - Noise suppression penalties (adult/style mismatch, weak linkage).
+    *
+    * Final gating discards weak matches by zeroing scores when candidates do
+    * not demonstrate enough source linkage and translation intent.
    */
   private scoreTranslationCandidate(
     sourceMod: NexusMod,
@@ -545,10 +544,23 @@ export class NexusModsClient {
     const reasons: string[] = [];
     let score = 0;
 
-    const sourceName = sourceMod.name.toLowerCase();
-    const candidateName = candidate.name.toLowerCase();
-    const candidateSummary = candidate.summary.toLowerCase();
-    const candidateDescription = candidate.description.toLowerCase();
+    const sourceName = this.normalizeTextForMatch(sourceMod.name);
+    const candidateName = this.normalizeTextForMatch(candidate.name);
+    const candidateSummary = this.normalizeTextForMatch(candidate.summary);
+    const candidateDescription = this.normalizeTextForMatch(candidate.description);
+
+    const sourceTokens = this.extractImportantTokens(sourceMod.name);
+    const candidateTokens = this.extractImportantTokens(candidate.name);
+    const sharedTokenCount = sourceTokens.filter((token) => candidateTokens.includes(token)).length;
+    const sourceCoverage = sourceTokens.length > 0
+      ? sharedTokenCount / sourceTokens.length
+      : 0;
+
+    const titleKeywordHits = this.countKeywordHits(candidateName, translationKeywords);
+    const summaryKeywordHits = this.countKeywordHits(candidateSummary, translationKeywords);
+    const descriptionKeywordHits = includeDescriptionSearch
+      ? this.countKeywordHits(candidateDescription, translationKeywords)
+      : 0;
 
     // Same-game bonus
     if (candidate.game.domainName === sourceMod.game.domainName) {
@@ -556,56 +568,109 @@ export class NexusModsClient {
       reasons.push('same-game');
     }
 
-    // Title containment
+    // Strong source linkage by title containment
     if (candidateName.includes(sourceName)) {
-      score += 25;
+      score += 35;
       reasons.push('title-contains-source-mod-name');
-    } else {
-      // Partial token overlap fallback
-      const matchedTokenCount = this.extractImportantTokens(sourceMod.name).filter(
-        (token) => candidateName.includes(token),
-      ).length;
-
-      if (matchedTokenCount >= 2) {
-        score += 10;
-        reasons.push('title-shares-source-mod-tokens');
-      }
     }
 
-    // Translation keyword signals
-    for (const keyword of translationKeywords) {
-      if (candidateName.includes(keyword)) {
-        score += 20;
-        reasons.push(`title-contains-${keyword}`);
-      }
+    // Token overlap quality: prefer candidates that preserve key source terms.
+    if (sharedTokenCount >= 2) {
+      score += 10;
+      reasons.push('title-shares-source-mod-tokens');
+    }
 
-      if (candidateSummary.includes(keyword)) {
-        score += 8;
-        reasons.push(`summary-contains-${keyword}`);
-      }
+    if (sourceCoverage >= 0.4) {
+      score += 12;
+      reasons.push('high-source-token-coverage');
+    } else if (sourceCoverage >= 0.25) {
+      score += 6;
+      reasons.push('medium-source-token-coverage');
+    }
 
-      if (includeDescriptionSearch && candidateDescription.includes(keyword)) {
-        score += 4;
-        reasons.push(`description-contains-${keyword}`);
-      }
+    // Translation signals: capped per field to avoid over-scoring noisy text.
+    if (titleKeywordHits > 0) {
+      score += Math.min(24, 16 + (titleKeywordHits - 1) * 2);
+      reasons.push('title-has-translation-keywords');
+    }
+
+    if (summaryKeywordHits > 0) {
+      score += Math.min(12, 7 + (summaryKeywordHits - 1));
+      reasons.push('summary-has-translation-keywords');
+    }
+
+    if (includeDescriptionSearch && descriptionKeywordHits > 0) {
+      score += Math.min(8, 4 + (descriptionKeywordHits - 1));
+      reasons.push('description-has-translation-keywords');
     }
 
     // Language name signals
     if (language) {
       if (candidateName.includes(language)) {
-        score += 15;
+        score += 14;
         reasons.push(`title-contains-language-${language}`);
       }
 
       if (candidateSummary.includes(language)) {
-        score += 6;
+        score += 5;
         reasons.push(`summary-contains-language-${language}`);
       }
+
+      if (candidate.tags.some((tag) => this.normalizeTextForMatch(tag).includes(language))) {
+        score += 10;
+        reasons.push(`tag-contains-language-${language}`);
+      }
+    }
+
+    // Category-based hint: translation/localization categories are highly indicative.
+    if (this.isLikelyTranslationCategory(candidate.category)) {
+      score += 10;
+      reasons.push('translation-like-category');
+    }
+
+    // Quality preference: mods with community validation rank slightly higher.
+    if (candidate.endorsements >= 10) {
+      score += 2;
+      reasons.push('community-endorsed');
+    }
+
+    // Penalize likely unrelated adult/outfit packs when source is non-adult.
+    if ((sourceMod.adultContent ?? false) === false && (candidate.adultContent ?? false) === true) {
+      score -= 10;
+      reasons.push('adult-mismatch-penalty');
+    }
+
+    const sourceLooksAdultStyle = this.containsAdultStyleTerms(sourceName);
+    const candidateLooksAdultStyle = this.containsAdultStyleTerms(`${candidateName} ${candidateSummary}`);
+    if (!sourceLooksAdultStyle && candidateLooksAdultStyle && sourceCoverage < 0.4) {
+      score -= 8;
+      reasons.push('style-mismatch-penalty');
+    }
+
+    const hasStrongSourceLink = candidateName.includes(sourceName) || sourceCoverage >= 0.4 || sharedTokenCount >= 3;
+    const hasTranslationSignal =
+      titleKeywordHits > 0 ||
+      summaryKeywordHits > 0 ||
+      descriptionKeywordHits > 0 ||
+      (language ? candidateName.includes(language) : false) ||
+      this.isLikelyTranslationCategory(candidate.category);
+
+    if (!hasStrongSourceLink) {
+      score -= 12;
+      reasons.push('weak-source-link-penalty');
+    }
+
+    if (!hasTranslationSignal) {
+      score -= 12;
+      reasons.push('missing-translation-signal-penalty');
     }
 
     // Suppress weak generic matches — avoid returning unrelated mods that
     // merely share stop-word-free tokens with the source mod.
-    if (!candidateName.includes(sourceName) && score < 20) {
+    if (!hasStrongSourceLink && !hasTranslationSignal) {
+      score = 0;
+      reasons.push('hard-reject-no-translation-or-source-link');
+    } else if (score < 18) {
       score = 0;
       reasons.push('weak-match');
     }
@@ -698,6 +763,59 @@ export class NexusModsClient {
         .map((part) => part.trim())
         .filter((part) => part.length >= 3 && !stopWords.has(part)),
     );
+  }
+
+  /**
+   * Normalizes text for case-insensitive loose matching.
+   *
+   * Keeps letters/numbers from Latin and Cyrillic scripts, converts all other
+   * separators to spaces, and collapses repeated whitespace.
+   */
+  private normalizeTextForMatch(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яіїєґё]+/giu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Counts unique keyword hits in a normalized text field.
+   */
+  private countKeywordHits(text: string, keywords: string[]): number {
+    let count = 0;
+
+    for (const keyword of keywords) {
+      const normalizedKeyword = this.normalizeTextForMatch(keyword);
+      if (!normalizedKeyword) continue;
+      if (text.includes(normalizedKeyword)) count += 1;
+    }
+
+    return count;
+  }
+
+  /**
+   * Detects whether a mod category string is likely translation-related.
+   */
+  private isLikelyTranslationCategory(category: string | null): boolean {
+    if (!category) return false;
+    const normalized = this.normalizeTextForMatch(category);
+    return normalized.includes('translation')
+      || normalized.includes('localization')
+      || normalized.includes('localisation')
+      || normalized.includes('language');
+  }
+
+  /**
+   * Heuristic detector for adult/outfit-focused terms used for noise penalties.
+   */
+  private containsAdultStyleTerms(value: string): boolean {
+    const normalized = this.normalizeTextForMatch(value);
+    const terms = [
+      'adult', 'nsfw', 'nude', 'sexy', 'bodyslide', 'cbbe', 'outfit', 'bikini',
+      'followers', 'preset', 'beauty',
+    ];
+    return terms.some((term) => normalized.includes(term));
   }
 
   // ───────────────────────────────────────────────────────────────────────────

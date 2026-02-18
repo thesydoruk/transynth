@@ -206,7 +206,7 @@ const fmtBytes = (bytes: number | null): string => {
  *
  * Nexus descriptions often contain mixed BBCode + HTML (`<br />`), so we keep
  * existing HTML tags and normalize the most common BBCode tokens that appear
- * in mod pages: size/center/list/url/bold/italic/underline.
+ * in mod pages: size/center/list/url/img/color/bold/italic/underline.
  */
 const renderNexusDescription = (raw: string): string => {
   let html = raw;
@@ -216,6 +216,14 @@ const renderNexusDescription = (raw: string): string => {
   html = html.replace(/\[i\](.*?)\[\/i\]/gis, '<em>$1</em>');
   html = html.replace(/\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
   html = html.replace(/\[center\](.*?)\[\/center\]/gis, '<div class="bb-center">$1</div>');
+
+  // Color tags
+  html = html.replace(/\[color=(.*?)\](.*?)\[\/color\]/gis, (_m, color, text) => {
+    const safeColor = sanitizeColor(color);
+    return safeColor
+      ? `<span style="color:${safeColor}">${text}</span>`
+      : String(text);
+  });
 
   // URL tags
   html = html.replace(/\[url=(.*?)\](.*?)\[\/url\]/gis, (_m, href, text) => {
@@ -229,6 +237,14 @@ const renderNexusDescription = (raw: string): string => {
     return safeHref
       ? `<a href="${safeHref}" target="_blank" rel="noreferrer">${safeHref}</a>`
       : String(href);
+  });
+
+  // Image tags
+  html = html.replace(/\[img\](.*?)\[\/img\]/gis, (_m, src) => {
+    const safeSrc = sanitizeExternalImageUrl(src);
+    return safeSrc
+      ? `<img class="bb-inline-image" src="${safeSrc}" alt="mod description image" loading="lazy" />`
+      : '';
   });
 
   // Size tags (map Nexus size scale to simple em values)
@@ -254,6 +270,9 @@ const renderNexusDescription = (raw: string): string => {
   // Also repair malformed tag seen as <br //>
   html = html.replace(/<br\s*\/\s*>/gi, '<br />');
 
+  // Keep plain line breaks from BBCode-rich descriptions.
+  html = html.replace(/\r\n|\r|\n/g, '<br />');
+
   return html;
 };
 
@@ -263,5 +282,35 @@ const renderNexusDescription = (raw: string): string => {
 const sanitizeExternalUrl = (value: string): string | null => {
   const href = String(value).trim();
   if (/^https?:\/\//i.test(href)) return href;
+  return null;
+};
+
+/**
+ * Allows only safe HTTP(S) image URLs.
+ */
+const sanitizeExternalImageUrl = (value: string): string | null => {
+  const src = sanitizeExternalUrl(value);
+  return src;
+};
+
+/**
+ * Allows hex and a small whitelist of CSS color keywords for BBCode [color].
+ */
+const sanitizeColor = (value: string): string | null => {
+  const color = String(value).trim().toLowerCase();
+
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) {
+    return color;
+  }
+
+  const allowed = new Set([
+    'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink',
+    'white', 'black', 'gray', 'grey', 'cyan', 'magenta',
+  ]);
+
+  if (allowed.has(color)) {
+    return color;
+  }
+
   return null;
 };

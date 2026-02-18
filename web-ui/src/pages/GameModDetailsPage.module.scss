@@ -96,6 +96,16 @@
     text-align: center;
   }
 
+  :global(.bb-inline-image) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 10px auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #111;
+  }
+
   a {
     color: var(--accent, #4a9eff);
     text-decoration: none;
