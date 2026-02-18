@@ -180,3 +180,54 @@ export const SEARCH_TRANSLATION_CANDIDATES_QUERY = `
     }
   }
 `;
+
+/**
+ * Fetches the official Nexus relation list of mods that require a source mod.
+ *
+ * This relation is the closest API-level equivalent to the website block
+ * "Translations available on the Nexus". It can contain non-translation mods
+ * as well (patches, overhauls), so callers should apply additional filtering.
+ *
+ * Variables:
+ * - `domainName: String!` — source mod game domain name
+ * - `gameId: String!` — source mod game ID
+ * - `modId: String!` — source mod public mod ID
+ * - `offset: Int` — nested relation pagination offset
+ * - `count: Int` — nested relation page size
+ */
+export const GET_MODS_REQUIRING_THIS_MOD_QUERY = `
+  query GetModsRequiringThisMod(
+    $domainName: String!
+    $gameId: String!
+    $modId: String!
+    $offset: Int
+    $count: Int
+  ) {
+    mods(
+      filter: {
+        gameDomainName: [{ value: $domainName, op: EQUALS }]
+        gameId: [{ value: $gameId, op: EQUALS }]
+        modId: [{ value: $modId, op: EQUALS }]
+      }
+      offset: 0
+      count: 1
+    ) {
+      nodes {
+        modId
+        name
+        modRequirements {
+          modsRequiringThisMod(offset: $offset, count: $count) {
+            totalCount
+            nodesCount
+            nodes {
+              modId
+              modName
+              notes
+              externalRequirement
+            }
+          }
+        }
+      }
+    }
+  }
+`;

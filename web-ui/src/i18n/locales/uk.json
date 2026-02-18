@@ -737,6 +737,22 @@
     "primaryFile": "Основний",
     "likelyTranslations": "Ймовірні моди-переклади",
     "noTranslations": "Ймовірних перекладів не знайдено.",
-    "scoreLabel": "Оцінка: {{score}}"
+    "scoreLabel": "Оцінка: {{score}}",
+    "groupCountLabel": "{{count}} модів",
+    "language": {
+      "ukrainian": "Українська",
+      "russian": "Російська",
+      "polish": "Польська",
+      "german": "Німецька",
+      "french": "Французька",
+      "spanish": "Іспанська",
+      "italian": "Італійська",
+      "czech": "Чеська",
+      "japanese": "Японська",
+      "korean": "Корейська",
+      "chinese": "Китайська",
+      "english": "Англійська",
+      "unknown": "Невідома"
+    }
   }
 }

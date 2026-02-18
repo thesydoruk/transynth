@@ -45,6 +45,7 @@ import {
 import {
   GET_GAME_BY_ID_QUERY,
   GET_MOD_BY_ID_QUERY,
+  GET_MODS_REQUIRING_THIS_MOD_QUERY,
   SEARCH_MODS_BY_NAME_QUERY,
   SEARCH_TRANSLATION_CANDIDATES_QUERY,
 } from './graphql.js';
@@ -62,6 +63,16 @@ import {
 interface GraphQLResponse<TData> {
   data?: TData;
   errors?: unknown[];
+}
+
+/**
+ * A single node in the `modsRequiringThisMod` relation.
+ */
+interface ModRequirementNode {
+  modId: string;
+  modName: string;
+  notes: string | null;
+  externalRequirement: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,62 +293,25 @@ export class NexusModsClient {
   ): Promise<TranslationSearchResult> {
     const sourceMod = await this.getModById(domainName, gameId, modId);
     const language = this.normalizeLanguage(options.language);
-    const sourceTokens = this.extractImportantTokens(sourceMod.name);
     const translationKeywords = this.getTranslationKeywords(language);
     const requestedCount = options.count ?? 50;
-    const searchWindowCount = Math.min(100, Math.max(20, requestedCount * 2));
+    const official = await this.findTranslationsFromOfficialRequirements(
+      sourceMod,
+      gameId,
+      options,
+    );
 
-    /**
-     * Build a broad filter to catch common translation naming patterns:
-     *   "Mod Name - Ukrainian Translation"
-     *   "Русский перевод — Mod Name"
-     *   "Translation of Mod Name"
-     *
-     * We use stemmed matching on individual tokens rather than one exact
-     * phrase, which gives the search more flexibility.
-     */
-    const rootClauses: unknown[] = [
-      {
-        gameDomainName: [{ value: sourceMod.game.domainName, op: 'EQUALS' }],
-      },
-    ];
+    const heuristic = await this.findTranslationsFromHeuristicSearch(
+      sourceMod,
+      gameId,
+      language,
+      options,
+    );
 
-    // Build an OR group for source tokens using wildcard title matching.
-    // This is more broadly schema-compatible than `nameStemmed`.
-    const tokenClauses = sourceTokens.map((token) => ({
-      name: [{ value: token, op: 'WILDCARD' }],
-    }));
-
-    if (tokenClauses.length > 0) {
-      rootClauses.push({ op: 'OR', filter: tokenClauses });
-    }
-
-    // Optionally add a language token filter to bias API-side results.
-    // We use title wildcard matching instead of `languageName` for compatibility.
-    if (language) {
-      rootClauses.push({
-        name: [{ value: language, op: 'WILDCARD' }],
-      });
-    }
-
-    const data = await this.request<{
-      mods: { totalCount: number; nodesCount: number; nodes: unknown[] };
-    }>(SEARCH_TRANSLATION_CANDIDATES_QUERY, {
-      filter: { op: 'AND', filter: rootClauses },
-      offset: options.offset ?? 0,
-      count: searchWindowCount,
-    });
-
-    const rawMods = data.mods.nodes.map((item) => this.mapMod(item));
-
-    // Remove the source mod itself from candidates unless explicitly requested
-    const candidates = rawMods.filter((candidate) => {
-      if (options.includeOriginalMod) return true;
-      return !(
-        candidate.game.domainName === sourceMod.game.domainName &&
-        candidate.modId === sourceMod.modId
-      );
-    });
+    const candidates = this.mergeUniqueModsByGameAndModId([
+      ...official.items,
+      ...heuristic,
+    ]);
 
     // Score and sort candidates — discard anything with score === 0
     const scored: TranslationCandidate[] = candidates
@@ -362,10 +336,177 @@ export class NexusModsClient {
 
     return {
       sourceMod,
-      totalCount: data.mods.totalCount,
-      nodesCount: data.mods.nodesCount,
+      totalCount: Math.max(official.totalCount, candidates.length),
+      nodesCount: Math.max(official.nodesCount, candidates.length),
       items: limited,
     };
+  }
+
+  /**
+   * Loads translation candidates from the official Nexus relation list
+   * `modsRequiringThisMod` and hydrates them into full mod objects.
+   *
+   * The relation can include non-translation mods, so a pre-filter is applied
+   * on relation metadata (`modName`/`notes`) before hydration.
+   */
+  private async findTranslationsFromOfficialRequirements(
+    sourceMod: NexusMod,
+    gameId: number,
+    options: FindPossibleTranslationsOptions,
+  ): Promise<{ totalCount: number; nodesCount: number; items: NexusMod[] }> {
+    const requestedCount = options.count ?? 50;
+    const relationCount = Math.min(300, Math.max(60, requestedCount * 6));
+
+    const data = await this.request<{
+      mods: {
+        nodes: Array<{
+          modRequirements: {
+            modsRequiringThisMod: {
+              totalCount: number;
+              nodesCount: number;
+              nodes: ModRequirementNode[];
+            };
+          };
+        }>;
+      };
+    }>(GET_MODS_REQUIRING_THIS_MOD_QUERY, {
+      domainName: sourceMod.game.domainName,
+      gameId: String(gameId),
+      modId: String(sourceMod.modId),
+      offset: options.offset ?? 0,
+      count: relationCount,
+    });
+
+    const relation = data.mods.nodes[0]?.modRequirements?.modsRequiringThisMod;
+    if (!relation) {
+      return { totalCount: 0, nodesCount: 0, items: [] };
+    }
+
+    const idCandidates = this.uniqueNumbers(
+      relation.nodes
+        .map((node) => this.parsePositiveInteger(node.modId))
+        .filter((id): id is number => id !== null),
+    );
+
+    if (idCandidates.length === 0) {
+      return {
+        totalCount: relation.totalCount,
+        nodesCount: relation.nodesCount,
+        items: [],
+      };
+    }
+
+    const hydrated = await this.hydrateModsByIds(
+      sourceMod.game.domainName,
+      gameId,
+      idCandidates,
+      Math.min(150, Math.max(40, requestedCount * 3)),
+    );
+
+    const withoutSource = hydrated.filter((candidate) => {
+      if (options.includeOriginalMod) return true;
+      return !(
+        candidate.game.domainName === sourceMod.game.domainName &&
+        candidate.modId === sourceMod.modId
+      );
+    });
+
+    return {
+      totalCount: relation.totalCount,
+      nodesCount: relation.nodesCount,
+      items: withoutSource,
+    };
+  }
+
+  /**
+   * Fallback translation candidate search based on broad title wildcard query.
+   */
+  private async findTranslationsFromHeuristicSearch(
+    sourceMod: NexusMod,
+    gameId: number,
+    language: string | null,
+    options: FindPossibleTranslationsOptions,
+  ): Promise<NexusMod[]> {
+    const requestedCount = options.count ?? 50;
+    const sourceTokens = this.extractImportantTokens(sourceMod.name);
+    const searchWindowCount = Math.min(100, Math.max(20, requestedCount * 2));
+    const maxWindows = 3;
+    const phraseVariants = this.buildSourceNameSearchVariants(sourceMod.name);
+
+    const rootClauses: unknown[] = [
+      {
+        gameDomainName: [{ value: sourceMod.game.domainName, op: 'EQUALS' }],
+      },
+    ];
+
+    const tokenClauses = sourceTokens.map((token) => ({
+      name: [{ value: token, op: 'WILDCARD' }],
+    }));
+
+    if (tokenClauses.length > 0) {
+      rootClauses.push({ op: 'OR', filter: tokenClauses });
+    }
+
+    if (language) {
+      rootClauses.push({
+        name: [{ value: language, op: 'WILDCARD' }],
+      });
+    }
+
+    const baseOffset = options.offset ?? 0;
+    const rawMods: NexusMod[] = [];
+
+    for (let window = 0; window < maxWindows; window += 1) {
+      const offset = baseOffset + window * searchWindowCount;
+      const data = await this.request<{
+        mods: { nodesCount: number; nodes: unknown[] };
+      }>(SEARCH_TRANSLATION_CANDIDATES_QUERY, {
+        filter: { op: 'AND', filter: rootClauses },
+        offset,
+        count: searchWindowCount,
+      });
+
+      rawMods.push(...data.mods.nodes.map((item) => this.mapMod(item)));
+
+      // Stop early when server returned fewer nodes than requested page size.
+      if (data.mods.nodesCount < searchWindowCount) {
+        break;
+      }
+    }
+
+    // Additional phrase-based queries improve recall for mods that use
+    // shorthand names (e.g. "F4" instead of "Fallout 4").
+    for (const phrase of phraseVariants) {
+      const data = await this.request<{
+        mods: { nodes: unknown[] };
+      }>(SEARCH_TRANSLATION_CANDIDATES_QUERY, {
+        filter: {
+          op: 'AND',
+          filter: [
+            {
+              gameDomainName: [{ value: sourceMod.game.domainName, op: 'EQUALS' }],
+            },
+            {
+              name: [{ value: phrase, op: 'WILDCARD' }],
+            },
+          ],
+        },
+        offset: 0,
+        count: Math.min(80, Math.max(20, requestedCount * 2)),
+      });
+
+      rawMods.push(...data.mods.nodes.map((item) => this.mapMod(item)));
+    }
+
+    const uniqueRawMods = this.mergeUniqueModsByGameAndModId(rawMods);
+
+    return uniqueRawMods.filter((candidate) => {
+      if (options.includeOriginalMod) return true;
+      return !(
+        candidate.game.domainName === sourceMod.game.domainName &&
+        candidate.modId === sourceMod.modId
+      );
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -678,6 +819,37 @@ export class NexusModsClient {
     return { mod: candidate, score, reasons: this.uniqueStrings(reasons) };
   }
 
+  /**
+   * Hydrates a list of mod IDs into full mod objects using bounded concurrency.
+   */
+  private async hydrateModsByIds(
+    domainName: string,
+    gameId: number,
+    ids: number[],
+    limit: number,
+  ): Promise<NexusMod[]> {
+    const result: NexusMod[] = [];
+    const boundedIds = ids.slice(0, limit);
+    const batchSize = 8;
+
+    for (let i = 0; i < boundedIds.length; i += batchSize) {
+      const batch = boundedIds.slice(i, i + batchSize);
+      const hydratedBatch = await Promise.all(
+        batch.map(async (modId) => {
+          try {
+            return await this.getModById(domainName, gameId, modId);
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      result.push(...hydratedBatch.filter((mod): mod is NexusMod => mod !== null));
+    }
+
+    return result;
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Keyword helpers
   // ───────────────────────────────────────────────────────────────────────────
@@ -792,6 +964,76 @@ export class NexusModsClient {
     }
 
     return count;
+  }
+
+  /**
+   * Parses a positive integer and returns null for invalid values.
+   */
+  private parsePositiveInteger(value: string): number | null {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return parsed;
+  }
+
+  /**
+   * Deduplicates number values while preserving insertion order.
+   */
+  private uniqueNumbers(values: number[]): number[] {
+    const seen = new Set<number>();
+    const result: number[] = [];
+
+    for (const value of values) {
+      if (seen.has(value)) continue;
+      seen.add(value);
+      result.push(value);
+    }
+
+    return result;
+  }
+
+  /**
+   * Builds search phrase variants from the source mod title.
+   *
+   * Includes both canonical and shorthand forms (e.g. "Fallout 4" -> "F4")
+   * to catch translation mods that rename the base mod in abbreviated form.
+   */
+  private buildSourceNameSearchVariants(sourceName: string): string[] {
+    const normalized = this.normalizeQuery(sourceName)
+      .replace(/[._]+/g, ' ')
+      .replace(/\s*-\s*.*/g, '')
+      .trim();
+
+    if (!normalized) return [];
+
+    const variants = [normalized];
+
+    // Common shorthand for Fallout 4 mod names.
+    variants.push(normalized.replace(/fallout\s*4/gi, 'F4'));
+
+    // Remove bracketed suffixes to keep the core mod name phrase.
+    variants.push(normalized.replace(/\([^)]*\)|\[[^\]]*\]/g, '').trim());
+
+    return this.uniqueStrings(variants)
+      .map((value) => this.normalizeQuery(value))
+      .filter((value) => value.length >= 6)
+      .slice(0, 4);
+  }
+
+  /**
+   * Deduplicates mods by compound key `${domainName}/${modId}`.
+   */
+  private mergeUniqueModsByGameAndModId(mods: NexusMod[]): NexusMod[] {
+    const result: NexusMod[] = [];
+    const seen = new Set<string>();
+
+    for (const mod of mods) {
+      const key = `${mod.game.domainName}/${mod.modId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(mod);
+    }
+
+    return result;
   }
 
   /**

@@ -736,6 +736,22 @@
     "primaryFile": "Primary",
     "likelyTranslations": "Likely Translation Mods",
     "noTranslations": "No likely translations found.",
-    "scoreLabel": "Score: {{score}}"
+    "scoreLabel": "Score: {{score}}",
+    "groupCountLabel": "{{count}} mods",
+    "language": {
+      "ukrainian": "Ukrainian",
+      "russian": "Russian",
+      "polish": "Polish",
+      "german": "German",
+      "french": "French",
+      "spanish": "Spanish",
+      "italian": "Italian",
+      "czech": "Czech",
+      "japanese": "Japanese",
+      "korean": "Korean",
+      "chinese": "Chinese",
+      "english": "English",
+      "unknown": "Unknown"
+    }
   }
 }

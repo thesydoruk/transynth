@@ -57,6 +57,11 @@ export const GameModDetailsPage = () => {
     enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
   });
 
+  const groupedTranslations = useMemo(
+    () => groupTranslationsByLanguage(translations?.items ?? []),
+    [translations?.items],
+  );
+
   if (isGamesLoading) return <div className={s.loading}>{t('common.loading')}</div>;
   if (gamesError) return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
 
@@ -159,9 +164,25 @@ export const GameModDetailsPage = () => {
           translations.items.length === 0 ? (
             <p className={s.empty}>{t('games.noTranslations')}</p>
           ) : (
-            <div className={s.translationsGrid}>
-              {translations.items.slice(0, 24).map((row) => (
-                <TranslationCard key={`${row.mod.game.domainName}-${row.mod.modId}`} gameDomain={game.domainName} row={row} />
+            <div className={s.translationGroups}>
+              {groupedTranslations.map((group) => (
+                <section className={s.translationGroup} key={group.key}>
+                  <h3 className={s.translationGroupTitle}>
+                    <span className={s.languageFlag} aria-hidden="true">{group.flag}</span>
+                    <span>{t(group.labelKey)}</span>
+                    <span className={s.groupCount}>{t('games.groupCountLabel', { count: group.items.length })}</span>
+                  </h3>
+
+                  <ul className={s.translationList}>
+                    {group.items.map((row) => (
+                      <TranslationListItem
+                        key={`${row.mod.game.domainName}-${row.mod.modId}`}
+                        gameDomain={game.domainName}
+                        row={row}
+                      />
+                    ))}
+                  </ul>
+                </section>
               ))}
             </div>
           )
@@ -171,16 +192,20 @@ export const GameModDetailsPage = () => {
   );
 };
 
-const TranslationCard = ({ gameDomain, row }: { gameDomain: string; row: NexusTranslationCandidate }) => {
+const TranslationListItem = ({ gameDomain, row }: { gameDomain: string; row: NexusTranslationCandidate }) => {
   const { t } = useTranslation();
   return (
-    <article className={s.translationCard}>
-      <h3 className={s.translationTitle}>{row.mod.name}</h3>
-      <p className={s.translationSummary}>{row.mod.summary || t('games.noSummary')}</p>
-      <div className={s.translationMeta}>
-        <span className={s.chip}>{t('games.scoreLabel', { score: row.score })}</span>
-        <span className={s.chip}>{t('games.downloads', { count: row.mod.downloads.toLocaleString() })}</span>
+    <li className={s.translationListItem}>
+      <div className={s.translationRowMain}>
+        <h4 className={s.translationTitle}>{row.mod.name}</h4>
+        <div className={s.translationMeta}>
+          <span className={s.chip}>{t('games.scoreLabel', { score: row.score })}</span>
+          <span className={s.chip}>{t('games.downloads', { count: row.mod.downloads.toLocaleString() })}</span>
+        </div>
       </div>
+
+      <p className={s.translationSummary}>{row.mod.summary || t('games.noSummary')}</p>
+
       <a
         className={s.openLink}
         href={`https://www.nexusmods.com/${gameDomain}/mods/${row.mod.modId}`}
@@ -189,8 +214,121 @@ const TranslationCard = ({ gameDomain, row }: { gameDomain: string; row: NexusTr
       >
         {t('games.openOnNexus')}
       </a>
-    </article>
+    </li>
   );
+};
+
+type TranslationLanguageKey =
+  | 'ukrainian'
+  | 'russian'
+  | 'polish'
+  | 'german'
+  | 'french'
+  | 'spanish'
+  | 'italian'
+  | 'czech'
+  | 'japanese'
+  | 'korean'
+  | 'chinese'
+  | 'english'
+  | 'unknown';
+
+type TranslationGroup = {
+  key: TranslationLanguageKey;
+  labelKey: string;
+  flag: string;
+  items: NexusTranslationCandidate[];
+  topScore: number;
+};
+
+const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; flag: string; patterns: string[] }> = [
+  { key: 'ukrainian', flag: '🇺🇦', patterns: ['ukrainian', 'ukraine', 'україн', 'укр', 'ua'] },
+  { key: 'russian', flag: '🇷🇺', patterns: ['russian', 'рус', 'руськ', 'ru'] },
+  { key: 'polish', flag: '🇵🇱', patterns: ['polish', 'polski', 'polska', 'pl'] },
+  { key: 'german', flag: '🇩🇪', patterns: ['german', 'deutsch', 'de'] },
+  { key: 'french', flag: '🇫🇷', patterns: ['french', 'francais', 'français', 'fr'] },
+  { key: 'spanish', flag: '🇪🇸', patterns: ['spanish', 'espanol', 'español', 'es'] },
+  { key: 'italian', flag: '🇮🇹', patterns: ['italian', 'italiano', 'it'] },
+  { key: 'czech', flag: '🇨🇿', patterns: ['czech', 'cestina', 'čeština', 'cz'] },
+  { key: 'japanese', flag: '🇯🇵', patterns: ['japanese', '日本語', 'jp'] },
+  { key: 'korean', flag: '🇰🇷', patterns: ['korean', '한국어', 'kr'] },
+  { key: 'chinese', flag: '🇨🇳', patterns: ['chinese', '中文', 'zh', 'cn'] },
+  { key: 'english', flag: '🇬🇧', patterns: ['english', 'eng', 'en'] },
+];
+
+/**
+ * Groups translation candidates by inferred language.
+ *
+ * Language detection is heuristic and checks tags first, then title/summary.
+ * This mirrors Nexus naming conventions where language is often encoded in
+ * tags or in mod names like "Ukrainian Translation".
+ */
+const groupTranslationsByLanguage = (items: NexusTranslationCandidate[]): TranslationGroup[] => {
+  const groups = new Map<TranslationLanguageKey, TranslationGroup>();
+
+  for (const row of items) {
+    const key = detectTranslationLanguage(row.mod);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.items.push(row);
+      existing.topScore = Math.max(existing.topScore, row.score);
+      continue;
+    }
+
+    const spec = LANGUAGE_SPECS.find((entry) => entry.key === key);
+    groups.set(key, {
+      key,
+      labelKey: `games.language.${key}`,
+      flag: spec?.flag ?? '🏳️',
+      items: [row],
+      topScore: row.score,
+    });
+  }
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((a, b) => b.score - a.score),
+    }))
+    .sort((a, b) => {
+      if (b.topScore !== a.topScore) return b.topScore - a.topScore;
+      return a.labelKey.localeCompare(b.labelKey);
+    });
+};
+
+/**
+ * Infers translation language from tags/name/summary.
+ */
+const detectTranslationLanguage = (mod: NexusTranslationCandidate['mod']): TranslationLanguageKey => {
+  const normalizedTags = mod.tags.map((tag) => normalizeForLanguageMatch(tag));
+  const haystack = normalizeForLanguageMatch(`${mod.name} ${mod.summary} ${mod.category ?? ''}`);
+
+  // Tags are usually the strongest language signal on Nexus.
+  for (const spec of LANGUAGE_SPECS) {
+    if (normalizedTags.some((tag) => spec.patterns.some((pattern) => tag.includes(normalizeForLanguageMatch(pattern))))) {
+      return spec.key;
+    }
+  }
+
+  for (const spec of LANGUAGE_SPECS) {
+    if (spec.patterns.some((pattern) => haystack.includes(normalizeForLanguageMatch(pattern)))) {
+      return spec.key;
+    }
+  }
+
+  return 'unknown';
+};
+
+/**
+ * Produces a lowercase text form suitable for language keyword matching.
+ */
+const normalizeForLanguageMatch = (value: string): string => {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яіїєґё\u3040-\u30ff\u4e00-\u9faf\uac00-\ud7af]+/giu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 const fmtBytes = (bytes: number | null): string => {

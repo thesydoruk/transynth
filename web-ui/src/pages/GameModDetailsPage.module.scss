@@ -167,17 +167,64 @@
   padding: 1px 5px;
 }
 
-.translationsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+.translationGroups {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.translationCard {
+.translationGroup {
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px;
   background: var(--surface-2, #1d1f24);
+}
+
+.translationGroupTitle {
+  margin: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-bright);
+  font-size: 13px;
+}
+
+.languageFlag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.groupCount {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.translationList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.translationListItem {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.translationListItem:first-child {
+  border-top: 0;
+}
+
+.translationRowMain {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .translationTitle {
