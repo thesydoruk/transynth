@@ -306,13 +306,13 @@ const detectTranslationLanguage = (mod: NexusTranslationCandidate['mod']): Trans
 
   // Tags are usually the strongest language signal on Nexus.
   for (const spec of LANGUAGE_SPECS) {
-    if (normalizedTags.some((tag) => spec.patterns.some((pattern) => tag.includes(normalizeForLanguageMatch(pattern))))) {
+    if (normalizedTags.some((tag) => spec.patterns.some((pattern) => textMatchesLanguagePattern(tag, pattern)))) {
       return spec.key;
     }
   }
 
   for (const spec of LANGUAGE_SPECS) {
-    if (spec.patterns.some((pattern) => haystack.includes(normalizeForLanguageMatch(pattern)))) {
+    if (spec.patterns.some((pattern) => textMatchesLanguagePattern(haystack, pattern))) {
       return spec.key;
     }
   }
@@ -329,6 +329,24 @@ const normalizeForLanguageMatch = (value: string): string => {
     .replace(/[^a-z0-9а-яіїєґё\u3040-\u30ff\u4e00-\u9faf\uac00-\ud7af]+/giu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+/**
+ * Matches language markers in normalized text.
+ *
+ * Two-letter markers like "ua"/"pl"/"ru" are treated as standalone tokens
+ * only, preventing false matches inside words (e.g. "eventualmente").
+ */
+const textMatchesLanguagePattern = (normalizedText: string, rawPattern: string): boolean => {
+  const pattern = normalizeForLanguageMatch(rawPattern);
+  if (!pattern) return false;
+
+  if (pattern.length <= 2) {
+    const tokens = normalizedText.split(' ').filter(Boolean);
+    return tokens.includes(pattern);
+  }
+
+  return normalizedText.includes(pattern);
 };
 
 const fmtBytes = (bytes: number | null): string => {

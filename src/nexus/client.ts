@@ -356,6 +356,8 @@ export class NexusModsClient {
   ): Promise<{ totalCount: number; nodesCount: number; items: NexusMod[] }> {
     const requestedCount = options.count ?? 50;
     const relationCount = Math.min(300, Math.max(60, requestedCount * 6));
+    const language = this.normalizeLanguage(options.language);
+    const translationKeywords = this.getTranslationKeywords(language);
 
     const data = await this.request<{
       mods: {
@@ -382,8 +384,12 @@ export class NexusModsClient {
       return { totalCount: 0, nodesCount: 0, items: [] };
     }
 
+    const filteredNodes = relation.nodes.filter((node) =>
+      this.isLikelyTranslationRequirementNode(sourceMod, node, translationKeywords, language),
+    );
+
     const idCandidates = this.uniqueNumbers(
-      relation.nodes
+      filteredNodes
         .map((node) => this.parsePositiveInteger(node.modId))
         .filter((id): id is number => id !== null),
     );
@@ -817,6 +823,36 @@ export class NexusModsClient {
     }
 
     return { mod: candidate, score, reasons: this.uniqueStrings(reasons) };
+  }
+
+  /**
+   * Checks whether an official requirement relation node likely represents
+   * a translation/localization of the source mod.
+   */
+  private isLikelyTranslationRequirementNode(
+    sourceMod: NexusMod,
+    node: ModRequirementNode,
+    translationKeywords: string[],
+    language: string | null,
+  ): boolean {
+    if (node.externalRequirement) return false;
+
+    const sourceName = this.normalizeTextForMatch(sourceMod.name);
+    const sourceTokens = this.extractImportantTokens(sourceMod.name);
+    const candidateName = this.normalizeTextForMatch(node.modName);
+    const candidateNotes = this.normalizeTextForMatch(node.notes ?? '');
+    const candidateTokens = this.extractImportantTokens(node.modName);
+
+    const sharedTokenCount = sourceTokens.filter((token) => candidateTokens.includes(token)).length;
+    const hasSourceLink = candidateName.includes(sourceName) || sharedTokenCount >= 2;
+
+    const combined = `${candidateName} ${candidateNotes}`;
+    const hasKeyword = this.countKeywordHits(combined, translationKeywords) > 0;
+    const hasLanguage = language
+      ? combined.includes(this.normalizeTextForMatch(language))
+      : false;
+
+    return hasSourceLink && (hasKeyword || hasLanguage);
   }
 
   /**
