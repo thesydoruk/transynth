@@ -225,11 +225,30 @@ type TranslationLanguageKey =
   | 'german'
   | 'french'
   | 'spanish'
+  | 'portuguese'
+  | 'brazilianPortuguese'
   | 'italian'
+  | 'dutch'
+  | 'swedish'
+  | 'norwegian'
+  | 'danish'
+  | 'finnish'
   | 'czech'
+  | 'slovak'
+  | 'slovenian'
+  | 'hungarian'
+  | 'romanian'
+  | 'croatian'
+  | 'serbian'
+  | 'bulgarian'
+  | 'greek'
+  | 'turkish'
   | 'japanese'
   | 'korean'
   | 'chinese'
+  | 'thai'
+  | 'vietnamese'
+  | 'indonesian'
   | 'english'
   | 'unknown';
 
@@ -248,11 +267,30 @@ const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; f
   { key: 'german', flag: '🇩🇪', patterns: ['german', 'deutsch', 'de'] },
   { key: 'french', flag: '🇫🇷', patterns: ['french', 'francais', 'français', 'fr'] },
   { key: 'spanish', flag: '🇪🇸', patterns: ['spanish', 'espanol', 'español', 'es'] },
+  { key: 'portuguese', flag: '🇵🇹', patterns: ['portuguese', 'portugues', 'português', 'pt'] },
+  { key: 'brazilianPortuguese', flag: '🇧🇷', patterns: ['brazilian portuguese', 'pt br', 'pt-br', 'brasil', 'brasileiro'] },
   { key: 'italian', flag: '🇮🇹', patterns: ['italian', 'italiano', 'it'] },
+  { key: 'dutch', flag: '🇳🇱', patterns: ['dutch', 'nederlands', 'nl'] },
+  { key: 'swedish', flag: '🇸🇪', patterns: ['swedish', 'svenska', 'sv'] },
+  { key: 'norwegian', flag: '🇳🇴', patterns: ['norwegian', 'norsk', 'no'] },
+  { key: 'danish', flag: '🇩🇰', patterns: ['danish', 'dansk', 'da'] },
+  { key: 'finnish', flag: '🇫🇮', patterns: ['finnish', 'suomi', 'fi'] },
   { key: 'czech', flag: '🇨🇿', patterns: ['czech', 'cestina', 'čeština', 'cz'] },
+  { key: 'slovak', flag: '🇸🇰', patterns: ['slovak', 'slovencina', 'slovenčina', 'sk'] },
+  { key: 'slovenian', flag: '🇸🇮', patterns: ['slovenian', 'slovenscina', 'slovenščina', 'sl'] },
+  { key: 'hungarian', flag: '🇭🇺', patterns: ['hungarian', 'magyar', 'hu'] },
+  { key: 'romanian', flag: '🇷🇴', patterns: ['romanian', 'romana', 'română', 'ro'] },
+  { key: 'croatian', flag: '🇭🇷', patterns: ['croatian', 'hrvatski', 'hr'] },
+  { key: 'serbian', flag: '🇷🇸', patterns: ['serbian', 'srpski', 'sr'] },
+  { key: 'bulgarian', flag: '🇧🇬', patterns: ['bulgarian', 'български', 'bg'] },
+  { key: 'greek', flag: '🇬🇷', patterns: ['greek', 'ελληνικά', 'el'] },
+  { key: 'turkish', flag: '🇹🇷', patterns: ['turkish', 'turkce', 'türkçe', 'tr'] },
   { key: 'japanese', flag: '🇯🇵', patterns: ['japanese', '日本語', 'jp'] },
   { key: 'korean', flag: '🇰🇷', patterns: ['korean', '한국어', 'kr'] },
   { key: 'chinese', flag: '🇨🇳', patterns: ['chinese', '中文', 'zh', 'cn'] },
+  { key: 'thai', flag: '🇹🇭', patterns: ['thai', 'ไทย', 'th'] },
+  { key: 'vietnamese', flag: '🇻🇳', patterns: ['vietnamese', 'tieng viet', 'tiếng việt', 'vi'] },
+  { key: 'indonesian', flag: '🇮🇩', patterns: ['indonesian', 'bahasa indonesia', 'id'] },
   { key: 'english', flag: '🇬🇧', patterns: ['english', 'eng', 'en'] },
 ];
 
@@ -317,7 +355,53 @@ const detectTranslationLanguage = (mod: NexusTranslationCandidate['mod']): Trans
     }
   }
 
+  // Fallback heuristic: infer target language by the language of the word
+  // "translation" used in the title/summary (e.g. "переклад", "traduction").
+  const byTranslationWord = detectLanguageByTranslationWord(haystack);
+  if (byTranslationWord) {
+    return byTranslationWord;
+  }
+
   return 'unknown';
+};
+
+const TRANSLATION_WORD_LANGUAGE_HINTS: Array<{
+  key: Exclude<TranslationLanguageKey, 'unknown'>;
+  patterns: string[];
+}> = [
+  { key: 'ukrainian', patterns: ['переклад', 'українізатор'] },
+  { key: 'russian', patterns: ['перевод'] },
+  { key: 'polish', patterns: ['tlumaczenie', 'tłumaczenie'] },
+  { key: 'german', patterns: ['ubersetzung', 'übersetzung'] },
+  { key: 'french', patterns: ['traduction'] },
+  { key: 'spanish', patterns: ['traduccion', 'traducción'] },
+  { key: 'portuguese', patterns: ['traducao', 'tradução'] },
+  { key: 'italian', patterns: ['traduzione'] },
+  { key: 'hungarian', patterns: ['forditas', 'fordítás'] },
+  { key: 'czech', patterns: ['preklad', 'překlad'] },
+  { key: 'turkish', patterns: ['ceviri', 'çeviri'] },
+  { key: 'greek', patterns: ['μετάφραση', 'μεταφραση'] },
+  { key: 'japanese', patterns: ['翻訳'] },
+  { key: 'korean', patterns: ['번역'] },
+  { key: 'chinese', patterns: ['翻译', '翻譯'] },
+  { key: 'thai', patterns: ['แปล'] },
+  { key: 'vietnamese', patterns: ['ban dich', 'bản dịch'] },
+  { key: 'english', patterns: ['translation'] },
+];
+
+/**
+ * Infers language from localized words meaning "translation".
+ */
+const detectLanguageByTranslationWord = (
+  normalizedText: string,
+): Exclude<TranslationLanguageKey, 'unknown'> | null => {
+  for (const spec of TRANSLATION_WORD_LANGUAGE_HINTS) {
+    if (spec.patterns.some((pattern) => textMatchesLanguagePattern(normalizedText, pattern))) {
+      return spec.key;
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -326,7 +410,7 @@ const detectTranslationLanguage = (mod: NexusTranslationCandidate['mod']): Trans
 const normalizeForLanguageMatch = (value: string): string => {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9а-яіїєґё\u3040-\u30ff\u4e00-\u9faf\uac00-\ud7af]+/giu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 };

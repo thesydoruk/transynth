@@ -910,12 +910,36 @@ export class NexusModsClient {
       'localisation',
       'language pack',
       'lang pack',
-      // Slavic
-      'перевод',
+      // Romance / Iberian
+      'traduccion',
+      'traducción',
+      'traducao',
+      'tradução',
+      'traduzione',
+      // Germanic / Nordic
+      'ubersetzung',
+      'översättning',
+      'oversettelse',
+      'oversættelse',
+      'vertaling',
+      // Central / Eastern Europe
+      'tlumaczenie',
+      'forditas',
+      'fordítás',
+      'preklad',
+      'překlad',
+      'превод',
       'переклад',
-      // Romance
+      'перевод',
+      // Balkan / Turkic
+      'prijevod',
+      'prevod',
+      'çeviri',
+      'ceviri',
+      // Generic short alias
+      'trans',
+      // Slavic
       'traduction',
-      // Germanic
       'übersetzung',
       // Short alias
       'tl',
@@ -932,11 +956,30 @@ export class NexusModsClient {
       german: ['german', 'deutsch', 'de'],
       french: ['french', 'français', 'francais', 'fr'],
       spanish: ['spanish', 'español', 'espanol', 'es'],
+      portuguese: ['portuguese', 'português', 'portugues', 'pt'],
+      'brazilian portuguese': ['brazilian portuguese', 'português brasileiro', 'portugues brasileiro', 'pt-br', 'pt br'],
       italian: ['italian', 'italiano', 'it'],
+      dutch: ['dutch', 'nederlands', 'nl'],
+      swedish: ['swedish', 'svenska', 'sv'],
+      norwegian: ['norwegian', 'norsk', 'no'],
+      danish: ['danish', 'dansk', 'da'],
+      finnish: ['finnish', 'suomi', 'fi'],
       czech: ['czech', 'čeština', 'cestina', 'cz'],
+      slovak: ['slovak', 'slovenčina', 'slovencina', 'sk'],
+      slovenian: ['slovenian', 'slovenščina', 'slovenscina', 'sl'],
+      hungarian: ['hungarian', 'magyar', 'hu'],
+      romanian: ['romanian', 'română', 'romana', 'ro'],
+      croatian: ['croatian', 'hrvatski', 'hr'],
+      serbian: ['serbian', 'srpski', 'sr'],
+      bulgarian: ['bulgarian', 'български', 'bg'],
+      greek: ['greek', 'ελληνικά', 'el'],
+      turkish: ['turkish', 'türkçe', 'turkce', 'tr'],
       japanese: ['japanese', '日本語', 'jp'],
       korean: ['korean', '한국어', 'kr'],
       chinese: ['chinese', '中文', 'cn', 'zh'],
+      thai: ['thai', 'ไทย', 'th'],
+      vietnamese: ['vietnamese', 'tiếng việt', 'tieng viet', 'vi'],
+      indonesian: ['indonesian', 'bahasa indonesia', 'id'],
     };
 
     return this.uniqueStrings([
@@ -982,7 +1025,8 @@ export class NexusModsClient {
   private normalizeTextForMatch(value: string): string {
     return value
       .toLowerCase()
-      .replace(/[^a-z0-9а-яіїєґё]+/giu, ' ')
+      // Keep letters/numbers from all Unicode scripts for robust language matching.
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
