@@ -10,9 +10,6 @@ import { ModsPage } from './pages/ModsPage';
 import { ModEditorPage } from './pages/ModEditorPage';
 import { GlossaryPage } from './pages/GlossaryPage';
 import { DiffPage } from './pages/DiffPage';
-import { EetImportsPage } from './pages/EetImportsPage';
-import { CsvImportsPage } from './pages/CsvImportsPage';
-import { ModImportsPage } from './pages/ModImportsPage';
 import { ImportsPage } from './pages/ImportsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TmxPage } from './pages/TmxPage';
@@ -156,10 +153,6 @@ const AppShell = () => {
           <Route path="/mods" element={<ModsPage />} />
           <Route path="/mods/:id" element={<ModEditorPage />} />
           <Route path="/imports" element={<ImportsPage />} />
-          {/* Legacy redirects — keep old URLs working */}
-          <Route path="/eet" element={<EetImportsPage />} />
-          <Route path="/csv" element={<CsvImportsPage />} />
-          <Route path="/mod-import" element={<ModImportsPage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/tmx" element={<TmxPage />} />
