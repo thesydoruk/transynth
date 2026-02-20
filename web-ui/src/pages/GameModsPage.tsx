@@ -28,6 +28,7 @@ import s from './GameModsPage.module.scss';
 export const GameModsPage = () => {
   const { t } = useTranslation();
   const { gameId = '' } = useParams<{ gameId: string }>();
+  const pageSize = 24;
 
   /** Controlled input state for the search box. */
   const [queryInput, setQueryInput] = useState('');
@@ -37,6 +38,7 @@ export const GameModsPage = () => {
    * We update this only on form submit to avoid firing a request on every key.
    */
   const [submittedQuery, setSubmittedQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   /** Load games catalogue (static) to resolve selected game details. */
   const {
@@ -65,10 +67,14 @@ export const GameModsPage = () => {
     isFetching: isModsLoading,
     error: modsError,
   } = useQuery({
-    queryKey: ['nexus-mods', gameId, submittedQuery],
-    queryFn: () => api.games.searchMods(gameId, submittedQuery, 24),
+    queryKey: ['nexus-mods', gameId, submittedQuery, page, pageSize],
+    queryFn: () => api.games.searchMods(gameId, submittedQuery, pageSize, (page - 1) * pageSize),
     enabled: !!game && submittedQuery.trim().length > 0,
   });
+
+  const totalPages = modsPage ? Math.max(1, Math.ceil(modsPage.totalCount / pageSize)) : 1;
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   /**
    * Handles search form submit:
@@ -81,6 +87,7 @@ export const GameModsPage = () => {
     const normalized = queryInput.trim();
     if (!normalized) return;
     setSubmittedQuery(normalized);
+    setPage(1);
   };
 
   if (isGamesLoading) {
@@ -144,11 +151,43 @@ export const GameModsPage = () => {
           {modsPage.items.length === 0 ? (
             <p className={s.empty}>{t('games.noResults')}</p>
           ) : (
-            <div className={s.grid}>
-              {modsPage.items.map((mod) => (
-                <ModTile key={`${mod.game.domainName}-${mod.modId}`} game={game} mod={mod} />
-              ))}
-            </div>
+            <>
+              <div className={s.grid}>
+                {modsPage.items.map((mod) => (
+                  <ModTile key={`${mod.game.domainName}-${mod.modId}`} game={game} mod={mod} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className={s.pagination}>
+                  <button
+                    type="button"
+                    className={s.paginationButton}
+                    disabled={!canGoPrev || isModsLoading}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    {t('common.prev')}
+                  </button>
+
+                  <span className={s.paginationInfo}>
+                    {t('common.pageWithTotal', {
+                      page,
+                      totalPages,
+                      total: modsPage.totalCount.toLocaleString(),
+                    })}
+                  </span>
+
+                  <button
+                    type="button"
+                    className={s.paginationButton}
+                    disabled={!canGoNext || isModsLoading}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    {t('common.next')}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

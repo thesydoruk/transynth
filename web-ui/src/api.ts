@@ -1433,9 +1433,10 @@ export const api = {
      * @param gameId  - Internal game ID (e.g. "fo4")
      * @param query   - Search query (mod title / keywords)
      * @param count   - Max results per page (default 20, max 50)
+     * @param offset  - Zero-based result offset for pagination
      */
-    searchMods: (gameId: string, query: string, count = 20) =>
-      req<NexusModsPage>(`/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}`),
+    searchMods: (gameId: string, query: string, count = 20, offset = 0) =>
+      req<NexusModsPage>(`/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}&offset=${offset}`),
     /**
      * Loads one mod with full metadata and all attached files.
      *

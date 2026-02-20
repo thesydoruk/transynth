@@ -103,6 +103,38 @@
   gap: 16px;
 }
 
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.paginationInfo {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.paginationButton {
+  border: 1px solid var(--border);
+  background: var(--surface-2, #1f2530);
+  color: var(--text-bright);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent, #4a9eff);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -216,6 +248,15 @@
   }
 
   .searchButton {
+    width: 100%;
+  }
+
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .paginationButton {
     width: 100%;
   }
 }
