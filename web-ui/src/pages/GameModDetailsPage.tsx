@@ -168,7 +168,19 @@ export const GameModDetailsPage = () => {
               {groupedTranslations.map((group) => (
                 <section className={s.translationGroup} key={group.key}>
                   <h3 className={s.translationGroupTitle}>
-                    <span className={s.languageFlag} aria-hidden="true">{group.flag}</span>
+                    <span className={s.languageFlag} aria-hidden="true">
+                      {group.flagImageUrl ? (
+                        <img
+                          src={group.flagImageUrl}
+                          alt=""
+                          className={s.languageFlagImage}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className={s.languageFlagFallback}>?</span>
+                      )}
+                    </span>
                     <span>{t(group.labelKey)}</span>
                     <span className={s.groupCount}>{t('games.groupCountLabel', { count: group.items.length })}</span>
                   </h3>
@@ -255,43 +267,43 @@ type TranslationLanguageKey =
 type TranslationGroup = {
   key: TranslationLanguageKey;
   labelKey: string;
-  flag: string;
+  flagImageUrl: string | null;
   items: NexusTranslationCandidate[];
   topScore: number;
 };
 
-const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; flag: string; patterns: string[] }> = [
-  { key: 'ukrainian', flag: '🇺🇦', patterns: ['ukrainian', 'ukraine', 'україн', 'укр', 'ua'] },
-  { key: 'russian', flag: '🇷🇺', patterns: ['russian', 'рус', 'руськ', 'ru'] },
-  { key: 'polish', flag: '🇵🇱', patterns: ['polish', 'polski', 'polska', 'pl'] },
-  { key: 'german', flag: '🇩🇪', patterns: ['german', 'deutsch', 'de'] },
-  { key: 'french', flag: '🇫🇷', patterns: ['french', 'francais', 'français', 'fr'] },
-  { key: 'spanish', flag: '🇪🇸', patterns: ['spanish', 'espanol', 'español', 'es'] },
-  { key: 'portuguese', flag: '🇵🇹', patterns: ['portuguese', 'portugues', 'português', 'pt'] },
-  { key: 'brazilianPortuguese', flag: '🇧🇷', patterns: ['brazilian portuguese', 'pt br', 'pt-br', 'brasil', 'brasileiro'] },
-  { key: 'italian', flag: '🇮🇹', patterns: ['italian', 'italiano', 'it'] },
-  { key: 'dutch', flag: '🇳🇱', patterns: ['dutch', 'nederlands', 'nl'] },
-  { key: 'swedish', flag: '🇸🇪', patterns: ['swedish', 'svenska', 'sv'] },
-  { key: 'norwegian', flag: '🇳🇴', patterns: ['norwegian', 'norsk', 'no'] },
-  { key: 'danish', flag: '🇩🇰', patterns: ['danish', 'dansk', 'da'] },
-  { key: 'finnish', flag: '🇫🇮', patterns: ['finnish', 'suomi', 'fi'] },
-  { key: 'czech', flag: '🇨🇿', patterns: ['czech', 'cestina', 'čeština', 'cz'] },
-  { key: 'slovak', flag: '🇸🇰', patterns: ['slovak', 'slovencina', 'slovenčina', 'sk'] },
-  { key: 'slovenian', flag: '🇸🇮', patterns: ['slovenian', 'slovenscina', 'slovenščina', 'sl'] },
-  { key: 'hungarian', flag: '🇭🇺', patterns: ['hungarian', 'magyar', 'hu'] },
-  { key: 'romanian', flag: '🇷🇴', patterns: ['romanian', 'romana', 'română', 'ro'] },
-  { key: 'croatian', flag: '🇭🇷', patterns: ['croatian', 'hrvatski', 'hr'] },
-  { key: 'serbian', flag: '🇷🇸', patterns: ['serbian', 'srpski', 'sr'] },
-  { key: 'bulgarian', flag: '🇧🇬', patterns: ['bulgarian', 'български', 'bg'] },
-  { key: 'greek', flag: '🇬🇷', patterns: ['greek', 'ελληνικά', 'el'] },
-  { key: 'turkish', flag: '🇹🇷', patterns: ['turkish', 'turkce', 'türkçe', 'tr'] },
-  { key: 'japanese', flag: '🇯🇵', patterns: ['japanese', '日本語', 'jp'] },
-  { key: 'korean', flag: '🇰🇷', patterns: ['korean', '한국어', 'kr'] },
-  { key: 'chinese', flag: '🇨🇳', patterns: ['chinese', '中文', 'zh', 'cn'] },
-  { key: 'thai', flag: '🇹🇭', patterns: ['thai', 'ไทย', 'th'] },
-  { key: 'vietnamese', flag: '🇻🇳', patterns: ['vietnamese', 'tieng viet', 'tiếng việt', 'vi'] },
-  { key: 'indonesian', flag: '🇮🇩', patterns: ['indonesian', 'bahasa indonesia', 'id'] },
-  { key: 'english', flag: '🇬🇧', patterns: ['english', 'eng', 'en'] },
+const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; countryCode: string; patterns: string[] }> = [
+  { key: 'ukrainian', countryCode: 'ua', patterns: ['ukrainian', 'ukraine', 'україн', 'укр', 'ua'] },
+  { key: 'russian', countryCode: 'ru', patterns: ['russian', 'рус', 'руськ', 'ru'] },
+  { key: 'polish', countryCode: 'pl', patterns: ['polish', 'polski', 'polska', 'pl'] },
+  { key: 'german', countryCode: 'de', patterns: ['german', 'deutsch', 'de'] },
+  { key: 'french', countryCode: 'fr', patterns: ['french', 'francais', 'français', 'fr'] },
+  { key: 'spanish', countryCode: 'es', patterns: ['spanish', 'espanol', 'español', 'es'] },
+  { key: 'portuguese', countryCode: 'pt', patterns: ['portuguese', 'portugues', 'português', 'pt'] },
+  { key: 'brazilianPortuguese', countryCode: 'br', patterns: ['brazilian portuguese', 'pt br', 'pt-br', 'brasil', 'brasileiro'] },
+  { key: 'italian', countryCode: 'it', patterns: ['italian', 'italiano', 'it'] },
+  { key: 'dutch', countryCode: 'nl', patterns: ['dutch', 'nederlands', 'nl'] },
+  { key: 'swedish', countryCode: 'se', patterns: ['swedish', 'svenska', 'sv'] },
+  { key: 'norwegian', countryCode: 'no', patterns: ['norwegian', 'norsk', 'no'] },
+  { key: 'danish', countryCode: 'dk', patterns: ['danish', 'dansk', 'da'] },
+  { key: 'finnish', countryCode: 'fi', patterns: ['finnish', 'suomi', 'fi'] },
+  { key: 'czech', countryCode: 'cz', patterns: ['czech', 'cestina', 'čeština', 'cz'] },
+  { key: 'slovak', countryCode: 'sk', patterns: ['slovak', 'slovencina', 'slovenčina', 'sk'] },
+  { key: 'slovenian', countryCode: 'si', patterns: ['slovenian', 'slovenscina', 'slovenščina', 'sl'] },
+  { key: 'hungarian', countryCode: 'hu', patterns: ['hungarian', 'magyar', 'hu'] },
+  { key: 'romanian', countryCode: 'ro', patterns: ['romanian', 'romana', 'română', 'ro'] },
+  { key: 'croatian', countryCode: 'hr', patterns: ['croatian', 'hrvatski', 'hr'] },
+  { key: 'serbian', countryCode: 'rs', patterns: ['serbian', 'srpski', 'sr'] },
+  { key: 'bulgarian', countryCode: 'bg', patterns: ['bulgarian', 'български', 'bg'] },
+  { key: 'greek', countryCode: 'gr', patterns: ['greek', 'ελληνικά', 'el'] },
+  { key: 'turkish', countryCode: 'tr', patterns: ['turkish', 'turkce', 'türkçe', 'tr'] },
+  { key: 'japanese', countryCode: 'jp', patterns: ['japanese', '日本語', 'jp'] },
+  { key: 'korean', countryCode: 'kr', patterns: ['korean', '한국어', 'kr'] },
+  { key: 'chinese', countryCode: 'cn', patterns: ['chinese', '中文', 'zh', 'cn'] },
+  { key: 'thai', countryCode: 'th', patterns: ['thai', 'ไทย', 'th'] },
+  { key: 'vietnamese', countryCode: 'vn', patterns: ['vietnamese', 'tieng viet', 'tiếng việt', 'vi'] },
+  { key: 'indonesian', countryCode: 'id', patterns: ['indonesian', 'bahasa indonesia', 'id'] },
+  { key: 'english', countryCode: 'gb', patterns: ['english', 'eng', 'en'] },
 ];
 
 /**
@@ -318,7 +330,7 @@ const groupTranslationsByLanguage = (items: NexusTranslationCandidate[]): Transl
     groups.set(key, {
       key,
       labelKey: `games.language.${key}`,
-      flag: spec?.flag ?? '🏳️',
+      flagImageUrl: spec ? getFlagImageUrl(spec.countryCode) : null,
       items: [row],
       topScore: row.score,
     });
@@ -431,6 +443,14 @@ const textMatchesLanguagePattern = (normalizedText: string, rawPattern: string):
   }
 
   return normalizedText.includes(pattern);
+};
+
+/**
+ * Returns a CDN URL for a country flag image by ISO 3166-1 alpha-2 code.
+ */
+const getFlagImageUrl = (countryCode: string): string => {
+  const cc = countryCode.toLowerCase();
+  return `https://flagcdn.com/w20/${cc}.png`;
 };
 
 const fmtBytes = (bytes: number | null): string => {
