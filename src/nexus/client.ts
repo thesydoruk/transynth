@@ -297,7 +297,9 @@ export class NexusModsClient {
     const count = Math.min(200, Math.max(1, options.count ?? 100));
     const offset = Math.max(0, options.offset ?? 0);
 
-    const requiredByConnection = await this.loadRequirementConnection(
+    // Load both relation directions independently so one schema/transport
+    // failure does not erase the other relation list.
+    const requiredByConnection = await this.loadRequirementConnectionSafe(
       GET_MODS_REQUIRING_THIS_MOD_QUERY,
       sourceMod.game.domainName,
       gameId,
@@ -307,7 +309,7 @@ export class NexusModsClient {
       'modsRequiringThisMod',
     );
 
-    const requiresConnection = await this.loadRequirementConnection(
+    const requiresConnection = await this.loadRequirementConnectionSafe(
       GET_MODS_THIS_MOD_REQUIRES_QUERY,
       sourceMod.game.domainName,
       gameId,
@@ -322,6 +324,36 @@ export class NexusModsClient {
       requires: this.mapModRequirementNodes(requiresConnection.nodes),
       requiredBy: this.mapModRequirementNodes(requiredByConnection.nodes),
     };
+  }
+
+  /**
+   * Safe wrapper for relation loading.
+   *
+   * Returns an empty connection for relation-level failures so callers can
+   * still render whichever relation direction was fetched successfully.
+   */
+  private async loadRequirementConnectionSafe(
+    query: string,
+    domainName: string,
+    gameId: number,
+    modId: number,
+    offset: number,
+    count: number,
+    relationField: 'modsRequiringThisMod' | 'modsThisModRequires',
+  ): Promise<ModRequirementConnection> {
+    try {
+      return await this.loadRequirementConnection(
+        query,
+        domainName,
+        gameId,
+        modId,
+        offset,
+        count,
+        relationField,
+      );
+    } catch {
+      return { totalCount: 0, nodesCount: 0, nodes: [] };
+    }
   }
 
   /**
