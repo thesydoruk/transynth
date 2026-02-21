@@ -191,6 +191,21 @@ export type NexusTranslationsResult = {
   items: NexusTranslationCandidate[];
 };
 
+/** One Nexus mod relation entry from mod requirements data. */
+export type NexusModRelationItem = {
+  modId: number;
+  modName: string;
+  notes: string | null;
+  externalRequirement: boolean;
+};
+
+/** Full relation payload for one source mod. */
+export type NexusModRelationsResult = {
+  sourceMod: NexusModItem;
+  requires: NexusModRelationItem[];
+  requiredBy: NexusModRelationItem[];
+};
+
 export type StringRow = {
   string_id: number;
   formid_hex: string;
@@ -1445,6 +1460,17 @@ export const api = {
      */
     modDetails: (gameId: string, modId: number) =>
       req<NexusModDetails>(`/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}`),
+    /**
+     * Loads official Nexus requirement relations for one mod.
+     *
+     * @param gameId - Internal game ID (e.g. "fo4")
+     * @param modId  - Nexus public mod ID
+     * @param count  - Max items per relation list (default 100, max 200)
+     */
+    modRelations: (gameId: string, modId: number, count = 100) =>
+      req<NexusModRelationsResult>(
+        `/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}/relations?count=${count}`,
+      ),
     /**
      * Finds heuristically ranked translation candidates for a mod.
      * Requires NEXUS_API_KEY to be configured on the server.

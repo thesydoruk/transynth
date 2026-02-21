@@ -97,6 +97,16 @@ interface NexusModView {
 }
 
 /**
+ * A single requirement relation item returned to the frontend.
+ */
+interface NexusModRequirementView {
+  modId: number;
+  modName: string;
+  notes: string | null;
+  externalRequirement: boolean;
+}
+
+/**
  * Fetches a single mod from Nexus REST v1 endpoint.
  *
  * Endpoint:
@@ -548,6 +558,74 @@ export const gamesRoutes = async (app: FastifyInstance) => {
       if (err instanceof Error) {
         log.warn(`Nexus mod details failed for ${gameId}/${modId}: ${err.message}`);
         return reply.code(502).send({ error: `Nexus mod details failed: ${err.message}` });
+      }
+      throw err;
+    }
+  });
+
+  /**
+   * GET /api/games/:gameId/nexus/mod/:modId/relations[?count=<n>]
+   *
+   * Returns official Nexus relation lists for one mod:
+   * - `requires`: dependencies required by this mod
+   * - `requiredBy`: mods that depend on this mod
+   *
+   * For mods unavailable in GraphQL index, falls back to REST v1 for source
+   * mod metadata and returns empty relation lists.
+   */
+  app.get<{
+    Params: { gameId: string; modId: string };
+    Querystring: { count?: string };
+  }>('/api/games/:gameId/nexus/mod/:modId/relations', async (req, reply) => {
+    const { gameId, modId: rawModId } = req.params;
+    const { count: rawCount } = req.query;
+
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
+
+    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    if (!game) return reply.code(404).send({ error: 'Unknown game' });
+
+    const modId = parseInt(rawModId, 10);
+    if (!Number.isFinite(modId) || modId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "modId" must be a positive integer' });
+    }
+
+    const count = Math.min(200, Math.max(1, parseInt(rawCount ?? '100', 10) || 100));
+
+    try {
+      const result = await getNexus().getModRelations(game.domainName, game.nexusId, modId, {
+        count,
+      });
+
+      const requires: NexusModRequirementView[] = result.requires;
+      const requiredBy: NexusModRequirementView[] = result.requiredBy;
+
+      return reply.send({
+        sourceMod: result.sourceMod,
+        requires,
+        requiredBy,
+      });
+    } catch (err) {
+      if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
+        // Keep details page functional for REST-only mods.
+        log.warn(`Nexus relations fallback for ${gameId}/${modId}: ${err.message}`);
+        try {
+          const rest = await fetchNexusModInfo(game.domainName, modId);
+          const sourceMod = mapRestModToView(rest, game);
+          return reply.send({
+            sourceMod,
+            requires: [],
+            requiredBy: [],
+          });
+        } catch (fallbackErr) {
+          if (fallbackErr instanceof NexusModsNotFoundError) {
+            return reply.code(404).send({ error: fallbackErr.message });
+          }
+          const msg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+          return reply.code(502).send({ error: msg });
+        }
       }
       throw err;
     }

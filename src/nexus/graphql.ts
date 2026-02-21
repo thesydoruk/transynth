@@ -231,3 +231,53 @@ export const GET_MODS_REQUIRING_THIS_MOD_QUERY = `
     }
   }
 `;
+
+/**
+ * Fetches the official Nexus relation list of mods required by a source mod.
+ *
+ * This relation powers the website block usually labeled as requirements
+ * (dependencies the source mod needs in order to work).
+ *
+ * Variables:
+ * - `domainName: String!` — source mod game domain name
+ * - `gameId: String!` — source mod game ID
+ * - `modId: String!` — source mod public mod ID
+ * - `offset: Int` — nested relation pagination offset
+ * - `count: Int` — nested relation page size
+ */
+export const GET_MODS_THIS_MOD_REQUIRES_QUERY = `
+  query GetModsThisModRequires(
+    $domainName: String!
+    $gameId: String!
+    $modId: String!
+    $offset: Int
+    $count: Int
+  ) {
+    mods(
+      filter: {
+        gameDomainName: [{ value: $domainName, op: EQUALS }]
+        gameId: [{ value: $gameId, op: EQUALS }]
+        modId: [{ value: $modId, op: EQUALS }]
+      }
+      offset: 0
+      count: 1
+    ) {
+      nodes {
+        modId
+        name
+        modRequirements {
+          modsThisModRequires(offset: $offset, count: $count) {
+            totalCount
+            nodesCount
+            nodes {
+              modId
+              modName
+              notes
+              externalRequirement
+            }
+          }
+        }
+      }
+    }
+  }
+`;

@@ -172,6 +172,25 @@ export interface FindPossibleTranslationsOptions {
   includeDescriptionSearch?: boolean;
 }
 
+/**
+ * Options for {@link NexusModsClient.getModRelations}.
+ */
+export interface GetModRelationsOptions {
+  /**
+   * Pagination offset inside nested Nexus relation lists.
+   *
+   * @default 0
+   */
+  offset?: number;
+
+  /**
+   * Max number of relation nodes to request per relation list.
+   *
+   * @default 100
+   */
+  count?: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Domain entities
 // ─────────────────────────────────────────────────────────────────────────────
@@ -360,4 +379,35 @@ export interface TranslationSearchResult {
    * Only candidates with `score > 0` are included.
    */
   items: TranslationCandidate[];
+}
+
+/**
+ * A single entry in a Nexus mod requirement relation list.
+ */
+export interface NexusModRequirement {
+  /** Public mod ID of the related mod (0 when unavailable). */
+  modId: number;
+
+  /** Display name of the related mod. */
+  modName: string;
+
+  /** Optional relation note from Nexus. */
+  notes: string | null;
+
+  /** True when the requirement references an external (non-Nexus) resource. */
+  externalRequirement: boolean;
+}
+
+/**
+ * Full requirement-relation payload for a source mod.
+ */
+export interface NexusModRelationsResult {
+  /** Source mod the relation lists belong to. */
+  sourceMod: NexusMod;
+
+  /** Dependencies the source mod requires. */
+  requires: NexusModRequirement[];
+
+  /** Mods that require the source mod. */
+  requiredBy: NexusModRequirement[];
 }

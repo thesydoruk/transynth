@@ -9,16 +9,19 @@
  * - likely translation mods (heuristic ranking)
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type GameInfo, type NexusTranslationCandidate } from '../api';
+import { api, type GameInfo, type NexusModRelationItem, type NexusTranslationCandidate } from '../api';
 import s from './GameModDetailsPage.module.scss';
+
+type RelationsTabKey = 'possibleTranslations' | 'requires' | 'requiredBy';
 
 export const GameModDetailsPage = () => {
   const { t } = useTranslation();
   const { gameId = '', modId = '' } = useParams<{ gameId: string; modId: string }>();
+  const [activeTab, setActiveTab] = useState<RelationsTabKey>('possibleTranslations');
 
   const numericModId = Number(modId);
 
@@ -54,6 +57,16 @@ export const GameModDetailsPage = () => {
   } = useQuery({
     queryKey: ['nexus-translations', gameId, numericModId],
     queryFn: () => api.games.findTranslations(gameId, numericModId, undefined, 50),
+    enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
+  });
+
+  const {
+    data: relations,
+    isLoading: isRelationsLoading,
+    error: relationsError,
+  } = useQuery({
+    queryKey: ['nexus-mod-relations', gameId, numericModId],
+    queryFn: () => api.games.modRelations(gameId, numericModId, 100),
     enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
   });
 
@@ -157,50 +170,169 @@ export const GameModDetailsPage = () => {
       )}
 
       <section className={s.section}>
-        <h2 className={s.h2}>{t('games.likelyTranslations')}</h2>
-        {translationsError && <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>}
-        {isTranslationsLoading && <p className={s.loading}>{t('common.loading')}</p>}
-        {!isTranslationsLoading && translations && (
-          translations.items.length === 0 ? (
-            <p className={s.empty}>{t('games.noTranslations')}</p>
-          ) : (
-            <div className={s.translationGroups}>
-              {groupedTranslations.map((group) => (
-                <section className={s.translationGroup} key={group.key}>
-                  <h3 className={s.translationGroupTitle}>
-                    <span className={s.languageFlag} aria-hidden="true">
-                      {group.flagImageUrl ? (
-                        <img
-                          src={group.flagImageUrl}
-                          alt=""
-                          className={s.languageFlagImage}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span className={s.languageFlagFallback}>?</span>
-                      )}
-                    </span>
-                    <span>{t(group.labelKey)}</span>
-                    <span className={s.groupCount}>{t('games.groupCountLabel', { count: group.items.length })}</span>
-                  </h3>
+        <h2 className={s.h2}>{t('games.relationsTitle')}</h2>
 
-                  <ul className={s.translationList}>
-                    {group.items.map((row) => (
-                      <TranslationListItem
-                        key={`${row.mod.game.domainName}-${row.mod.modId}`}
-                        gameDomain={game.domainName}
-                        row={row}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )
+        <div className={s.tabs} role="tablist" aria-label={t('games.relationsTitle')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'possibleTranslations'}
+            className={activeTab === 'possibleTranslations' ? `${s.tab} ${s.tabActive}` : s.tab}
+            onClick={() => setActiveTab('possibleTranslations')}
+          >
+            {t('games.tabPossibleTranslations')}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'requires'}
+            className={activeTab === 'requires' ? `${s.tab} ${s.tabActive}` : s.tab}
+            onClick={() => setActiveTab('requires')}
+          >
+            {t('games.tabRequires')}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'requiredBy'}
+            className={activeTab === 'requiredBy' ? `${s.tab} ${s.tabActive}` : s.tab}
+            onClick={() => setActiveTab('requiredBy')}
+          >
+            {t('games.tabRequiredBy')}
+          </button>
+        </div>
+
+        {activeTab === 'possibleTranslations' && (
+          <div role="tabpanel" className={s.tabPanel}>
+            {translationsError && <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>}
+            {isTranslationsLoading && <p className={s.loading}>{t('common.loading')}</p>}
+            {!isTranslationsLoading && translations && (
+              translations.items.length === 0 ? (
+                <p className={s.empty}>{t('games.noTranslations')}</p>
+              ) : (
+                <div className={s.translationGroups}>
+                  {groupedTranslations.map((group) => (
+                    <section className={s.translationGroup} key={group.key}>
+                      <h3 className={s.translationGroupTitle}>
+                        <span className={s.languageFlag} aria-hidden="true">
+                          {group.flagImageUrl ? (
+                            <img
+                              src={group.flagImageUrl}
+                              alt=""
+                              className={s.languageFlagImage}
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <span className={s.languageFlagFallback}>?</span>
+                          )}
+                        </span>
+                        <span>{t(group.labelKey)}</span>
+                        <span className={s.groupCount}>{t('games.groupCountLabel', { count: group.items.length })}</span>
+                      </h3>
+
+                      <ul className={s.translationList}>
+                        {group.items.map((row) => (
+                          <TranslationListItem
+                            key={`${row.mod.game.domainName}-${row.mod.modId}`}
+                            gameDomain={game.domainName}
+                            row={row}
+                          />
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {activeTab === 'requires' && (
+          <div role="tabpanel" className={s.tabPanel}>
+            <RelationsTabContent
+              isLoading={isRelationsLoading}
+              error={relationsError}
+              emptyText={t('games.noRequires')}
+              gameDomain={game.domainName}
+              items={relations?.requires ?? []}
+            />
+          </div>
+        )}
+
+        {activeTab === 'requiredBy' && (
+          <div role="tabpanel" className={s.tabPanel}>
+            <RelationsTabContent
+              isLoading={isRelationsLoading}
+              error={relationsError}
+              emptyText={t('games.noRequiredBy')}
+              gameDomain={game.domainName}
+              items={relations?.requiredBy ?? []}
+            />
+          </div>
         )}
       </section>
     </div>
+  );
+};
+
+type RelationsTabContentProps = {
+  isLoading: boolean;
+  error: unknown;
+  emptyText: string;
+  gameDomain: string;
+  items: NexusModRelationItem[];
+};
+
+const RelationsTabContent = ({
+  isLoading,
+  error,
+  emptyText,
+  gameDomain,
+  items,
+}: RelationsTabContentProps) => {
+  const { t } = useTranslation();
+
+  if (error) {
+    return <p className={s.error}>{t('common.error', { message: String(error) })}</p>;
+  }
+
+  if (isLoading) {
+    return <p className={s.loading}>{t('common.loading')}</p>;
+  }
+
+  if (items.length === 0) {
+    return <p className={s.empty}>{emptyText}</p>;
+  }
+
+  return (
+    <ul className={s.relationList}>
+      {items.map((item) => (
+        <li key={`${item.modId}-${item.modName}`} className={s.relationListItem}>
+          <div className={s.relationRowMain}>
+            <h4 className={s.relationTitle}>{item.modName}</h4>
+            {item.externalRequirement && (
+              <span className={s.chip}>{t('games.externalRequirement')}</span>
+            )}
+          </div>
+
+          {item.notes && <p className={s.relationNotes}>{item.notes}</p>}
+
+          {item.modId > 0 && (
+            <a
+              className={s.openLink}
+              href={`https://www.nexusmods.com/${gameDomain}/mods/${item.modId}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('games.openOnNexus')}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 };
 

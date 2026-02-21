@@ -14,6 +14,7 @@ Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Skyri
 - [TM Auto-match After Import](#tm-auto-match-after-import)
 - [Re-importing an Updated Mod](#re-importing-an-updated-mod)
 - [Importing BA2 Archives](#importing-ba2-archives)
+- [Nexus Mod Relations on Mod Page](#nexus-mod-relations-on-mod-page)
 - [Importing EET Files (Legacy)](#importing-eet-files-legacy)
 - [Importing CSV Files](#importing-csv-files)
 - [Troubleshooting](#troubleshooting)
@@ -26,7 +27,7 @@ Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Skyri
 | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, SSE, SLE)                 |
 | `.zip` / `.7z` / `.rar`  | Mod archive containing a plugin and, optionally, matching `.ba2` / `.bsa` files or loose assets              |
-| `.eet`                   | Legacy project file — imports existing translations                                                     |
+| `.eet`                   | Legacy project file — imports existing translations                                                          |
 | `.csv`                   | RFC 4180-style comma-separated translation table                                                             |
 | `.ba2`                   | Fallout 4/76 archive — discovered automatically next to the plugin or inside an uploaded archive             |
 | `.bsa`                   | Skyrim SE/LE and FO3/FNV archive — discovered automatically next to the plugin or inside an uploaded archive |
@@ -235,6 +236,22 @@ BA2 is optional.
 An ESP-only import still works for non-localized plugins and for plugins whose translatable text is stored directly in the plugin records.
 
 Important limitation: if you upload an archive with multiple plugins, the current importer uses the first discovered plugin. For maximum control, upload the exact plugin or a minimal archive containing the files you intend to import.
+
+---
+
+## Nexus Mod Relations on Mod Page
+
+When you open a Nexus mod details page from Games (`/games/:gameId/mods/:modId`),
+the bottom block uses three relation tabs:
+
+- **Possible translations** — heuristic list of likely translation mods,
+  grouped by language with flags.
+- **Requires** — official Nexus dependency list for mods required by the current mod.
+- **Required by** — official Nexus relation list for mods that depend on the current mod.
+
+Each item links to Nexus when the related mod has a valid Nexus `modId`.
+If relation data is unavailable in Nexus GraphQL for that mod, the tabs show
+an empty-state message and the rest of the page continues to work.
 
 ---
 

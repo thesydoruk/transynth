@@ -27,8 +27,11 @@
 
 import {
   FindPossibleTranslationsOptions,
+  GetModRelationsOptions,
   NexusGame,
   NexusMod,
+  NexusModRelationsResult,
+  NexusModRequirement,
   NexusModSearchResult,
   NexusModsClientOptions,
   SearchModsByNameOptions,
@@ -45,6 +48,7 @@ import {
 import {
   GET_GAME_BY_ID_QUERY,
   GET_MOD_BY_ID_QUERY,
+  GET_MODS_THIS_MOD_REQUIRES_QUERY,
   GET_MODS_REQUIRING_THIS_MOD_QUERY,
   SEARCH_MODS_BY_NAME_QUERY,
   SEARCH_TRANSLATION_CANDIDATES_QUERY,
@@ -73,6 +77,15 @@ interface ModRequirementNode {
   modName: string;
   notes: string | null;
   externalRequirement: boolean;
+}
+
+/**
+ * Nested relation payload shape under `modRequirements`.
+ */
+interface ModRequirementConnection {
+  totalCount: number;
+  nodesCount: number;
+  nodes: ModRequirementNode[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -263,6 +276,55 @@ export class NexusModsClient {
   }
 
   /**
+   * Fetches requirement relations for one mod.
+   *
+   * Returned lists:
+   * - `requires`: dependencies required by the source mod.
+   * - `requiredBy`: mods that depend on the source mod.
+   *
+   * @param domainName - Game domain name (e.g. `fallout4`).
+   * @param gameId - Numeric Nexus game ID.
+   * @param modId - Public Nexus mod ID.
+   * @param options - Optional nested relation pagination.
+   */
+  public async getModRelations(
+    domainName: string,
+    gameId: number,
+    modId: number,
+    options: GetModRelationsOptions = {},
+  ): Promise<NexusModRelationsResult> {
+    const sourceMod = await this.getModById(domainName, gameId, modId);
+    const count = Math.min(200, Math.max(1, options.count ?? 100));
+    const offset = Math.max(0, options.offset ?? 0);
+
+    const requiredByConnection = await this.loadRequirementConnection(
+      GET_MODS_REQUIRING_THIS_MOD_QUERY,
+      sourceMod.game.domainName,
+      gameId,
+      sourceMod.modId,
+      offset,
+      count,
+      'modsRequiringThisMod',
+    );
+
+    const requiresConnection = await this.loadRequirementConnection(
+      GET_MODS_THIS_MOD_REQUIRES_QUERY,
+      sourceMod.game.domainName,
+      gameId,
+      sourceMod.modId,
+      offset,
+      count,
+      'modsThisModRequires',
+    );
+
+    return {
+      sourceMod,
+      requires: this.mapModRequirementNodes(requiresConnection.nodes),
+      requiredBy: this.mapModRequirementNodes(requiredByConnection.nodes),
+    };
+  }
+
+  /**
    * Searches for mods that are likely translations of a given source mod.
    *
    * ## How it works
@@ -421,6 +483,96 @@ export class NexusModsClient {
       totalCount: relation.totalCount,
       nodesCount: relation.nodesCount,
       items: withoutSource,
+    };
+  }
+
+  /**
+   * Loads one requirement relation connection by GraphQL field name.
+   *
+   * When a schema does not expose the requested relation field, returns an
+   * empty connection rather than failing the whole request.
+   */
+  private async loadRequirementConnection(
+    query: string,
+    domainName: string,
+    gameId: number,
+    modId: number,
+    offset: number,
+    count: number,
+    relationField: 'modsRequiringThisMod' | 'modsThisModRequires',
+  ): Promise<ModRequirementConnection> {
+    try {
+      const data = await this.request<{
+        mods: {
+          nodes: Array<{
+            modRequirements?: Record<string, unknown> | null;
+          }>;
+        };
+      }>(query, {
+        domainName,
+        gameId: String(gameId),
+        modId: String(modId),
+        offset,
+        count,
+      });
+
+      const rawConnection = data.mods.nodes[0]?.modRequirements?.[relationField];
+      if (!rawConnection) {
+        return { totalCount: 0, nodesCount: 0, nodes: [] };
+      }
+
+      const value = this.asRecord(rawConnection);
+      const rawNodes = Array.isArray(value['nodes']) ? value['nodes'] : [];
+
+      const nodes = rawNodes
+        .map((item) => {
+          try {
+            return this.mapRequirementNode(item);
+          } catch {
+            return null;
+          }
+        })
+        .filter((item): item is ModRequirementNode => item !== null);
+
+      return {
+        totalCount: this.toNullableNumber(value['totalCount']) ?? nodes.length,
+        nodesCount: this.toNullableNumber(value['nodesCount']) ?? nodes.length,
+        nodes,
+      };
+    } catch (error: unknown) {
+      if (error instanceof NexusModsGraphQLError) {
+        const details = JSON.stringify(error.graphqlErrors ?? []).toLowerCase();
+        if (details.includes('cannot query field')) {
+          return { totalCount: 0, nodesCount: 0, nodes: [] };
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Maps raw relation nodes to a stable, frontend-friendly requirement shape.
+   */
+  private mapModRequirementNodes(nodes: ModRequirementNode[]): NexusModRequirement[] {
+    return nodes.map((node) => ({
+      modId: this.parsePositiveInteger(node.modId) ?? 0,
+      modName: node.modName,
+      notes: node.notes,
+      externalRequirement: node.externalRequirement,
+    }));
+  }
+
+  /**
+   * Parses one relation node emitted by Nexus `modRequirements`.
+   */
+  private mapRequirementNode(input: unknown): ModRequirementNode {
+    const value = this.asRecord(input);
+
+    return {
+      modId: this.toString(value['modId']),
+      modName: this.toString(value['modName']),
+      notes: this.toNullableString(value['notes']),
+      externalRequirement: this.toNullableBoolean(value['externalRequirement']) ?? false,
     };
   }
 
