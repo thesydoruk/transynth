@@ -209,7 +209,7 @@ export const GameModDetailsPage = () => {
             {translationsError && <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>}
             {isTranslationsLoading && <p className={s.loading}>{t('common.loading')}</p>}
             {!isTranslationsLoading && translations && (
-              translations.items.length === 0 ? (
+              groupedTranslations.length === 0 ? (
                 <p className={s.empty}>{t('games.noTranslations')}</p>
               ) : (
                 <div className={s.translationGroups}>
@@ -469,6 +469,7 @@ const groupTranslationsByLanguage = (items: NexusTranslationCandidate[]): Transl
   }
 
   return [...groups.values()]
+    .filter((group) => group.key !== 'unknown')
     .map((group) => ({
       ...group,
       items: group.items.sort((a, b) => b.score - a.score),
