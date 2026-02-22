@@ -605,13 +605,13 @@ const renderNexusDescription = (raw: string): string => {
   let html = raw;
 
   // Basic formatting tags
-  html = html.replace(/\[b\](.*?)\[\/b\]/gis, '<strong>$1</strong>');
-  html = html.replace(/\[i\](.*?)\[\/i\]/gis, '<em>$1</em>');
-  html = html.replace(/\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
-  html = html.replace(/\[center\](.*?)\[\/center\]/gis, '<div class="bb-center">$1</div>');
+  html = replaceRepeatedly(html, /\[b\](.*?)\[\/b\]/gis, '<strong>$1</strong>');
+  html = replaceRepeatedly(html, /\[i\](.*?)\[\/i\]/gis, '<em>$1</em>');
+  html = replaceRepeatedly(html, /\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
+  html = replaceRepeatedly(html, /\[center\](.*?)\[\/center\]/gis, '<div class="bb-center">$1</div>');
 
   // Color tags
-  html = html.replace(/\[color=(.*?)\](.*?)\[\/color\]/gis, (_m, color, text) => {
+  html = replaceRepeatedly(html, /\[color=(.*?)\](.*?)\[\/color\]/gis, (_m, color, text) => {
     const safeColor = sanitizeColor(color);
     return safeColor
       ? `<span style="color:${safeColor}">${text}</span>`
@@ -619,13 +619,13 @@ const renderNexusDescription = (raw: string): string => {
   });
 
   // URL tags
-  html = html.replace(/\[url=(.*?)\](.*?)\[\/url\]/gis, (_m, href, text) => {
+  html = replaceRepeatedly(html, /\[url=(.*?)\](.*?)\[\/url\]/gis, (_m, href, text) => {
     const safeHref = sanitizeExternalUrl(href);
     return safeHref
       ? `<a href="${safeHref}" target="_blank" rel="noreferrer">${text}</a>`
       : String(text);
   });
-  html = html.replace(/\[url\](.*?)\[\/url\]/gis, (_m, href) => {
+  html = replaceRepeatedly(html, /\[url\](.*?)\[\/url\]/gis, (_m, href) => {
     const safeHref = sanitizeExternalUrl(href);
     return safeHref
       ? `<a href="${safeHref}" target="_blank" rel="noreferrer">${safeHref}</a>`
@@ -633,7 +633,7 @@ const renderNexusDescription = (raw: string): string => {
   });
 
   // Image tags
-  html = html.replace(/\[img\](.*?)\[\/img\]/gis, (_m, src) => {
+  html = replaceRepeatedly(html, /\[img\](.*?)\[\/img\]/gis, (_m, src) => {
     const safeSrc = sanitizeExternalImageUrl(src);
     return safeSrc
       ? `<img class="bb-inline-image" src="${safeSrc}" alt="mod description image" loading="lazy" />`
@@ -641,12 +641,18 @@ const renderNexusDescription = (raw: string): string => {
   });
 
   // Size tags (map Nexus size scale to simple em values)
-  html = html.replace(/\[size=(\d+)\](.*?)\[\/size\]/gis, (_m, size, text) => {
+  html = replaceRepeatedly(html, /\[size=(\d+)\](.*?)\[\/size\]/gis, (_m, size, text) => {
     const n = Number(size);
     const clamped = Number.isFinite(n) ? Math.min(8, Math.max(1, n)) : 3;
     const em = 0.8 + clamped * 0.1;
     return `<span style="font-size:${em.toFixed(2)}em">${text}</span>`;
   });
+
+  // Some Nexus descriptions contain broken nested size tags with missing
+  // closing pairs. Strip any residual raw size markers instead of leaking
+  // BBCode into the UI.
+  html = html.replace(/\[size=\d+\]/gi, '');
+  html = html.replace(/\[\/size\]/gi, '');
 
   // Lists: convert [list]/[list=1] and [*] markers to HTML lists
   html = html.replace(/\[list=1\]/gi, '<ul>');
@@ -663,10 +669,62 @@ const renderNexusDescription = (raw: string): string => {
   // Also repair malformed tag seen as <br //>
   html = html.replace(/<br\s*\/\s*>/gi, '<br />');
 
-  // Keep plain line breaks from BBCode-rich descriptions.
-  html = html.replace(/\r\n|\r|\n/g, '<br />');
+  // Treat single raw line breaks as soft wraps and preserve only paragraph
+  // boundaries. Nexus descriptions often contain hard-wrapped source text,
+  // and converting every `\n` to `<br />` produces visibly noisy layout.
+  html = normalizeDescriptionLineBreaks(html);
 
   return html;
+};
+
+/**
+ * Normalizes raw description whitespace into readable HTML line breaks.
+ *
+ * Rules:
+ * - Existing `<br />` tags are preserved.
+ * - Single newline characters become spaces.
+ * - Two or more consecutive newlines become paragraph breaks.
+ * - Redundant `<br />` around block-level elements are removed.
+ */
+const normalizeDescriptionLineBreaks = (value: string): string => {
+  let normalized = value.replace(/\r\n|\r/g, '\n');
+
+  normalized = normalized.replace(/[ \t]*\n[ \t]*/g, '\n');
+  normalized = normalized.replace(/\n{3,}/g, '\n\n');
+  normalized = normalized.replace(/\n\n/g, '__BB_PARAGRAPH_BREAK__');
+  normalized = normalized.replace(/\n/g, ' ');
+  normalized = normalized.replace(/__BB_PARAGRAPH_BREAK__/g, '<br /><br />');
+
+  normalized = normalized.replace(/(?:<br \/>\s*){3,}/gi, '<br /><br />');
+  normalized = normalized.replace(/<br \/>\s*(<(?:div|ul|ol|li|img)\b)/gi, '$1');
+  normalized = normalized.replace(/(<\/(?:div|ul|ol|li)>)(?:\s*<br \/>)+/gi, '$1');
+
+  return normalized;
+};
+
+/**
+ * Re-applies a BBCode replacement until the string stops changing.
+ *
+ * Nexus descriptions sometimes contain nested tags, while a single regex pass
+ * only resolves the innermost pair. Repeating the replacement keeps the logic
+ * simple and is sufficient for the short description payloads used here.
+ */
+const replaceRepeatedly = (
+  value: string,
+  pattern: RegExp,
+  replacement: string | ((substring: string, ...args: string[]) => string),
+): string => {
+  let current = value;
+
+  for (let i = 0; i < 10; i += 1) {
+    const next = current.replace(pattern, replacement as never);
+    if (next === current) {
+      break;
+    }
+    current = next;
+  }
+
+  return current;
 };
 
 /**
