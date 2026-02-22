@@ -451,13 +451,13 @@ export const gamesRoutes = async (app: FastifyInstance) => {
   /* ── NexusMods GraphQL endpoints ────────────────────────────────────── */
 
   /**
-  * GET /api/games/:gameId/nexus/mods?q=<query>[&count=<n>&offset=<n>]
+  * GET /api/games/:gameId/nexus/mods[?q=<query>&count=<n>&offset=<n>]
    *
    * Searches the NexusMods catalogue for mods belonging to the given game.
    * Results are ordered by last-updated date (newest first).
    *
    * Query parameters:
-   *   q      {string}  — required, the search query (mod title / keywords)
+  *   q      {string}  — optional, the search query (mod title / keywords)
    *   count  {number}  — optional, page size, default 20, max 50
   *   offset {number}  — optional, zero-based offset, default 0
    *
@@ -479,17 +479,12 @@ export const gamesRoutes = async (app: FastifyInstance) => {
     const game = SUPPORTED_GAMES.find(g => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
-    // Validate query
-    if (!q || !q.trim()) {
-      return reply.code(400).send({ error: 'Query parameter "q" is required' });
-    }
-
     // Clamp count to a reasonable range
     const count = Math.min(50, Math.max(1, parseInt(rawCount ?? '20', 10) || 20));
     const offset = Math.max(0, parseInt(rawOffset ?? '0', 10) || 0);
 
     try {
-      const result = await getNexus().searchModsByName(q, {
+      const result = await getNexus().searchModsByName(q?.trim() ?? '', {
         gameDomainName: game.domainName,
         count,
         offset,

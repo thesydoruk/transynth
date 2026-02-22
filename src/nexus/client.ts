@@ -150,7 +150,8 @@ export class NexusModsClient {
    *   normalises word forms. Better when the query may use alternate forms
    *   (plurals, possessives, grammatical cases).
    *
-   * @param name - The title to search for. Must not be empty or whitespace-only.
+  * @param name - Optional title query. When empty, returns paginated mods for
+  *   the selected game/filter scope without an extra title constraint.
    * @param options - Optional filters, pagination, and sort.
    * @returns Paginated list of matching mods.
    * @throws {NexusModsError} If `name` is empty or the request fails.
@@ -162,21 +163,19 @@ export class NexusModsClient {
   ): Promise<NexusModSearchResult> {
     const normalizedName = this.normalizeQuery(name);
 
-    if (!normalizedName) {
-      throw new NexusModsError('The mod name query must not be empty.');
-    }
-
     // Build the filter clause array. Each entry is ANDed together.
     const filterClauses: unknown[] = [];
 
-    // Name filter.
-    // NOTE: Some Nexus GraphQL schema revisions do not expose `nameStemmed`.
-    // We keep the option for API compatibility, but always use `name` wildcard
-    // to avoid GraphQL validation failures that surface as 502 in our routes.
-    filterClauses.push({
-      // Nexus `WILDCARD` for `name` expects plain query text (no *...* wrapper).
-      name: [{ value: normalizedName, op: 'WILDCARD' }],
-    });
+    if (normalizedName) {
+      // Name filter.
+      // NOTE: Some Nexus GraphQL schema revisions do not expose `nameStemmed`.
+      // We keep the option for API compatibility, but always use `name` wildcard
+      // to avoid GraphQL validation failures that surface as 502 in our routes.
+      filterClauses.push({
+        // Nexus `WILDCARD` for `name` expects plain query text (no *...* wrapper).
+        name: [{ value: normalizedName, op: 'WILDCARD' }],
+      });
+    }
 
     // Optional game domain name filter
     if (typeof options.gameDomainName === 'string' && options.gameDomainName.trim()) {
@@ -195,7 +194,7 @@ export class NexusModsClient {
     const data = await this.request<{
       mods: { totalCount: number; nodesCount: number; nodes: unknown[] };
     }>(SEARCH_MODS_BY_NAME_QUERY, {
-      filter: { op: 'AND', filter: filterClauses },
+      filter: filterClauses.length > 0 ? { op: 'AND', filter: filterClauses } : undefined,
       offset: options.offset ?? 0,
       count: options.count ?? 20,
     });

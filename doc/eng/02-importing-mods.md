@@ -241,6 +241,9 @@ Important limitation: if you upload an archive with multiple plugins, the curren
 
 ## Nexus Mod Relations on Mod Page
 
+On the Games route (`/games/:gameId`), leaving the search field empty now
+shows the paginated full mod list for that game.
+
 When you open a Nexus mod details page from Games (`/games/:gameId/mods/:modId`),
 the bottom block uses three relation tabs:
 

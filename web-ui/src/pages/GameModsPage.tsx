@@ -5,7 +5,7 @@
  *
  * Main responsibilities:
  * 1. Resolve the selected game by `gameId` from the games catalogue.
- * 2. Provide a search form for NexusMods mod title lookup.
+ * 2. Provide a search form for NexusMods mod title lookup or full browse mode.
  * 3. Render the results as responsive cards (tiles).
  * 4. Keep loading/error/empty states explicit and user-friendly.
  */
@@ -35,7 +35,8 @@ export const GameModsPage = () => {
 
   /**
    * Effective query used by React Query.
-   * We update this only on form submit to avoid firing a request on every key.
+  * We update this only on form submit to avoid firing a request on every key.
+  * An empty query means "browse all mods for this game".
    */
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -58,9 +59,8 @@ export const GameModsPage = () => {
   );
 
   /**
-   * Query NexusMods only after:
-   * - game is known
-   * - the user submitted a non-empty query
+  * Query NexusMods after the game is known.
+  * Empty query = paginated browse mode over all mods in the selected game.
    */
   const {
     data: modsPage,
@@ -69,7 +69,7 @@ export const GameModsPage = () => {
   } = useQuery({
     queryKey: ['nexus-mods', gameId, submittedQuery, page, pageSize],
     queryFn: () => api.games.searchMods(gameId, submittedQuery, pageSize, (page - 1) * pageSize),
-    enabled: !!game && submittedQuery.trim().length > 0,
+    enabled: !!game,
   });
 
   const totalPages = modsPage ? Math.max(1, Math.ceil(modsPage.totalCount / pageSize)) : 1;
@@ -79,13 +79,11 @@ export const GameModsPage = () => {
   /**
    * Handles search form submit:
    * - trims whitespace
-   * - ignores empty input
    * - updates effective submitted query
    */
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const normalized = queryInput.trim();
-    if (!normalized) return;
     setSubmittedQuery(normalized);
     setPage(1);
   };
@@ -129,9 +127,7 @@ export const GameModsPage = () => {
         </button>
       </form>
 
-      {submittedQuery.trim().length === 0 && (
-        <p className={s.hint}>{t('games.searchHint')}</p>
-      )}
+      <p className={s.hint}>{t('games.searchHint')}</p>
 
       {modsError && (
         <div className={s.error}>{t('common.error', { message: String(modsError) })}</div>
@@ -142,10 +138,15 @@ export const GameModsPage = () => {
       {!isModsLoading && modsPage && (
         <>
           <p className={s.count}>
-            {t('games.resultsCount', {
-              count: modsPage.totalCount.toLocaleString(),
-              query: submittedQuery,
-            })}
+            {submittedQuery.trim().length > 0
+              ? t('games.resultsCount', {
+                  count: modsPage.totalCount.toLocaleString(),
+                  query: submittedQuery,
+                })
+              : t('games.resultsCountAll', {
+                  count: modsPage.totalCount.toLocaleString(),
+                  game: game.name,
+                })}
           </p>
 
           {modsPage.items.length === 0 ? (
