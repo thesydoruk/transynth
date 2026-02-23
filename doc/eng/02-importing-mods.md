@@ -50,20 +50,20 @@ Use it like this:
 
 1. Click the file picker and select one or more files.
 2. Click **Upload**.
-3. The file is added to the job list.
-4. Start the job with the play button, or use **Import All** for all pending jobs.
+3. The file is added to the job list and import starts automatically.
+4. Use the play button for manual re-run after pause/failure, or use **Import All** for all pending jobs.
 
 There is currently **no dedicated drag-and-drop drop zone** in the web UI.
 Use the file picker instead.
 
 Language selection depends on import type:
 
-- **Mod import, non-localized plugin:** after upload, a preview modal opens and asks for one language, labeled as the language of the text in the plugin. That value is used as both source and target language metadata for the imported source strings.
-- **Mod import, localized plugin:** the importer reads available locales from the mod's STRINGS files and starts immediately, without a language confirmation modal.
-- **EET import:** the preview modal asks for both **Source Language** and **Target Language** before import starts.
-- **CSV import:** the preview modal also asks for both **Source Language** and **Target Language**.
+- **Mod import, non-localized plugin:** starts immediately using current/default languages (`srcLang` and `tgtLang`), without waiting for a modal.
+- **Mod import, localized plugin:** reads available locales from the mod's STRINGS data and also starts immediately.
+- **EET import:** starts immediately using current/default **Source Language** and **Target Language** values.
+- **CSV import:** starts immediately using current/default **Source Language** and **Target Language** values.
 
-Practical note: if you upload multiple files at once, the per-file preview modal does not automatically open for each one. Upload one file at a time if you want to inspect the preview and adjust languages before starting.
+Practical note: if you need to adjust languages manually before re-running a paused/failed job, use the job actions in the list.
 
 ---
 
@@ -146,10 +146,10 @@ In the current web importer, the workflow is:
    `.zip`, `.7z`, and `.rar` uploads are unpacked with 7-Zip. The importer searches the extracted tree for plugin files and BA2 archives.
 
 3. **Read the plugin and preview translatable rows.**
-   The importer parses the plugin with the ESP reader and extracts translatable rows before full ingestion. This preview is what you see in the modal.
+   The importer parses the plugin with the ESP reader and extracts translatable rows before full ingestion. A preview is still available in manual restart flows.
 
 4. **Handle localized and non-localized plugins differently.**
-   For a localized plugin, the importer looks for matching `.strings`, `.dlstrings`, and `.ilstrings` data in a sibling BA2 or loose `Strings/` directory. For a non-localized plugin, it imports raw text directly from the plugin and uses the language you selected in the modal.
+   For a localized plugin, the importer looks for matching `.strings`, `.dlstrings`, and `.ilstrings` data in a sibling BA2 or loose `Strings/` directory. For a non-localized plugin, it imports raw text directly from the plugin and uses current/default language settings.
 
 5. **Store records and strings in the database.**
    The importer writes mod rows, record rows, and source-string rows. Each string is associated with the mod, record signature, path, editor ID when available, and normalized text used by later search and matching features.
@@ -275,10 +275,8 @@ EET imports now live on the unified **Imports** page as jobs with the `EET` badg
 Workflow:
 
 1. Upload a `.eet` file.
-2. Open the preview modal.
-3. Choose **Source Language** and **Target Language**.
-4. Review the preview table, which shows signature, FormID, EDID, field, source text, target text, and status.
-5. Start the import.
+2. Import starts automatically with current/default languages.
+3. Track progress in the jobs list.
 
 What is imported from EET:
 
@@ -326,13 +324,11 @@ Notes about the parser:
 - Missing columns are tolerated, but the import is most useful when the table includes the columns above.
 - The `Path` column is treated as the record field/path identifier used for storage and later lookup.
 
-Preview workflow:
+Workflow:
 
 1. Upload the CSV file.
-2. Open the preview modal.
-3. Choose **Source Language** and **Target Language**.
-4. Review the preview table.
-5. Start the import.
+2. Import starts automatically with current/default languages.
+3. Track progress in the jobs list.
 
 Status handling:
 

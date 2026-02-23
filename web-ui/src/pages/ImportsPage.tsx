@@ -185,15 +185,22 @@ export const ImportsPage = () => {
         if (!kind) continue;
         if (kind === 'eet') {
           const job = await api.eet.upload(f);
-          if (files.length === 1 && job) setEetPreviewId(job.id);
+          if (job) {
+            // Start immediately with current/default languages.
+            doStart('eet', job.id);
+          }
         } else if (kind === 'csv') {
           const job = await api.csv.upload(f);
-          if (files.length === 1 && job) setCsvPreviewId(job.id);
+          if (job) {
+            // Start immediately with current/default languages.
+            doStart('csv', job.id);
+          }
         } else {
           const job = await api.modImport.upload(f, { game: uploadGame });
-          if (files.length === 1 && job) {
-            if (job.is_localized) doStart('mod', job.id);
-            else setModPreviewId(job.id);
+          if (job) {
+            // Start immediately after upload for both localized and
+            // non-localized plugins using default upload languages.
+            doStart('mod', job.id);
           }
         }
       }
