@@ -23,10 +23,21 @@
 import type { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { log } from '../../logger.js';
 import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../../nexus/index.js';
 import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db.js';
+import type { GameType } from '../../types.js';
+import {
+  isArchive,
+  isPlugin,
+  registerArchiveFile,
+  registerPluginFile,
+} from '../modImportService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +46,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * Resolved relative to project root (`data/cache/games/`).
  */
 const CACHE_DIR = path.resolve(__dirname, '../../../data/cache/games');
+const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
 
 /** NexusMods 4:3 tile art base URL. */
 const NM_TILE_BASE = 'https://staticdelivery.nexusmods.com/Images/games/4_3/tile_';
@@ -55,6 +67,11 @@ interface NexusFileAttachment {
   sizeBytes: number | null;
   fileName: string | null;
   description: string | null;
+}
+
+interface NexusDownloadLinkRow {
+  URI?: string;
+  uri?: string;
 }
 
 /**
@@ -263,6 +280,96 @@ const fetchNexusModFiles = async (
   });
 };
 
+/**
+ * Resolves a direct CDN download URL for a Nexus file.
+ */
+const fetchNexusFileDownloadUrl = async (
+  domainName: string,
+  modId: number,
+  fileId: number,
+): Promise<string> => {
+  const key = CONFIG.nexusApiKey;
+  if (!key) {
+    throw new Error('NEXUS_API_KEY is not configured on the server');
+  }
+
+  const url = `https://api.nexusmods.com/v1/games/${domainName}/mods/${modId}/files/${fileId}/download_link.json`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: key,
+      'User-Agent': 'storywealth-localizer/1.0',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Nexus download-link API returned HTTP ${res.status}`);
+  }
+
+  const json = await res.json() as NexusDownloadLinkRow[];
+  const first = Array.isArray(json) ? json[0] : null;
+  const link = first?.URI ?? first?.uri ?? null;
+  if (!link) {
+    throw new Error('Nexus download link is unavailable for this file');
+  }
+
+  return link;
+};
+
+/**
+ * Ensures the shared uploads/mod directory exists.
+ */
+const ensureModUploadDir = () => {
+  if (!fs.existsSync(MOD_UPLOAD_DIR)) {
+    fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
+  }
+};
+
+/**
+ * Returns the on-disk path used for stored mod import files.
+ */
+const modFilePath = (fileName: string) => {
+  const safe = path.basename(fileName);
+  return path.join(MOD_UPLOAD_DIR, safe);
+};
+
+/**
+ * Returns the extraction directory path for archive imports.
+ */
+const extractDir = (jobHash: string) => {
+  return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
+};
+
+/**
+ * Downloads a Nexus file into the mod uploads directory.
+ */
+const downloadNexusFileToDisk = async (
+  domainName: string,
+  modId: number,
+  fileId: number,
+  fileName: string,
+): Promise<string> => {
+  ensureModUploadDir();
+
+  const safeFileName = path.basename(fileName);
+  const finalPath = modFilePath(safeFileName);
+  const tempPath = path.join(MOD_UPLOAD_DIR, `_nexus_${crypto.randomBytes(8).toString('hex')}.tmp`);
+  const downloadUrl = await fetchNexusFileDownloadUrl(domainName, modId, fileId);
+  const res = await fetch(downloadUrl, { redirect: 'follow' });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Nexus file download returned HTTP ${res.status}`);
+  }
+
+  try {
+    await pipeline(Readable.fromWeb(res.body as never), fs.createWriteStream(tempPath));
+    fs.renameSync(tempPath, finalPath);
+    return finalPath;
+  } catch (error) {
+    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
+    throw error;
+  }
+};
+
 /* ── Game catalogue ─────────────────────────────────────────────────────── */
 
 /**
@@ -376,7 +483,7 @@ const getNexus = () => {
 
 /* ── Route registration ─────────────────────────────────────────────────── */
 
-export const gamesRoutes = async (app: FastifyInstance) => {
+export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
   /**
    * GET /api/games
    *
@@ -555,6 +662,124 @@ export const gamesRoutes = async (app: FastifyInstance) => {
         return reply.code(502).send({ error: `Nexus mod details failed: ${err.message}` });
       }
       throw err;
+    }
+  });
+
+  /**
+   * GET /api/games/:gameId/nexus/mod/:modId/file/:fileId/download
+   *
+   * Streams a Nexus file through the backend so the browser never talks to
+   * Nexus directly.
+   */
+  app.get<{
+    Params: { gameId: string; modId: string; fileId: string };
+  }>('/api/games/:gameId/nexus/mod/:modId/file/:fileId/download', async (req, reply) => {
+    const { gameId, modId: rawModId, fileId: rawFileId } = req.params;
+
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
+
+    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    if (!game) return reply.code(404).send({ error: 'Unknown game' });
+
+    const modId = parseInt(rawModId, 10);
+    const fileId = parseInt(rawFileId, 10);
+    if (!Number.isFinite(modId) || modId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "modId" must be a positive integer' });
+    }
+    if (!Number.isFinite(fileId) || fileId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "fileId" must be a positive integer' });
+    }
+
+    try {
+      const files = await fetchNexusModFiles(game.domainName, modId);
+      const file = files.find((entry) => entry.fileId === fileId);
+      if (!file) {
+        return reply.code(404).send({ error: 'Nexus file not found' });
+      }
+
+      const downloadUrl = await fetchNexusFileDownloadUrl(game.domainName, modId, fileId);
+      const upstream = await fetch(downloadUrl, { redirect: 'follow' });
+      if (!upstream.ok || !upstream.body) {
+        return reply.code(502).send({ error: `Nexus file download failed: HTTP ${upstream.status}` });
+      }
+
+      const fileName = path.basename(file.fileName ?? file.name);
+      const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+      const contentLength = upstream.headers.get('content-length');
+
+      reply.header('Content-Type', contentType);
+      reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+      if (contentLength) {
+        reply.header('Content-Length', contentLength);
+      }
+
+      return reply.send(Readable.fromWeb(upstream.body as never));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(`Nexus file proxy failed for ${gameId}/${modId}/${fileId}: ${message}`);
+      return reply.code(502).send({ error: message });
+    }
+  });
+
+  /**
+   * POST /api/games/:gameId/nexus/mod/:modId/file/:fileId/import
+   *
+   * Downloads a Nexus file to local storage and registers a mod import job.
+   * The frontend can then immediately start the import stream.
+   */
+  app.post<{
+    Params: { gameId: string; modId: string; fileId: string };
+    Body: { srcLang?: string; tgtLang?: string };
+  }>('/api/games/:gameId/nexus/mod/:modId/file/:fileId/import', async (req, reply) => {
+    const { gameId, modId: rawModId, fileId: rawFileId } = req.params;
+    const { srcLang = 'en', tgtLang = 'uk' } = req.body ?? {};
+
+    if (!CONFIG.nexusApiKey) {
+      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
+    }
+
+    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    if (!game) return reply.code(404).send({ error: 'Unknown game' });
+
+    const modId = parseInt(rawModId, 10);
+    const fileId = parseInt(rawFileId, 10);
+    if (!Number.isFinite(modId) || modId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "modId" must be a positive integer' });
+    }
+    if (!Number.isFinite(fileId) || fileId <= 0) {
+      return reply.code(400).send({ error: 'Path parameter "fileId" must be a positive integer' });
+    }
+
+    try {
+      const files = await fetchNexusModFiles(game.domainName, modId);
+      const file = files.find((entry) => entry.fileId === fileId);
+      if (!file) {
+        return reply.code(404).send({ error: 'Nexus file not found' });
+      }
+
+      const fileName = path.basename(file.fileName ?? file.name);
+      if (!isPlugin(fileName) && !isArchive(fileName)) {
+        return reply.code(400).send({ error: 'Only plugin or archive files can be imported' });
+      }
+
+      const localPath = await downloadNexusFileToDisk(game.domainName, modId, fileId, fileName);
+
+      let job;
+      if (isPlugin(fileName)) {
+        job = await registerPluginFile(db, fileName, localPath, srcLang, tgtLang, game.id as GameType);
+      } else {
+        const hash = crypto.randomBytes(8).toString('hex');
+        const outDir = extractDir(hash);
+        job = await registerArchiveFile(db, fileName, localPath, outDir, srcLang, tgtLang, game.id as GameType);
+      }
+
+      return reply.code(201).send({ ...job, running: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(`Nexus file import registration failed for ${gameId}/${modId}/${fileId}: ${message}`);
+      return reply.code(502).send({ error: message });
     }
   });
 

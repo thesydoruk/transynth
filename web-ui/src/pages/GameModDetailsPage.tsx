@@ -11,17 +11,27 @@
 
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type GameInfo, type NexusModRelationItem, type NexusTranslationCandidate } from '../api';
+import {
+  api,
+  type GameInfo,
+  type NexusModFile,
+  type NexusModRelationItem,
+  type NexusTranslationCandidate,
+} from '../api';
 import s from './GameModDetailsPage.module.scss';
 
 type RelationsTabKey = 'possibleTranslations' | 'requires' | 'requiredBy';
 
 export const GameModDetailsPage = () => {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const { gameId = '', modId = '' } = useParams<{ gameId: string; modId: string }>();
   const [activeTab, setActiveTab] = useState<RelationsTabKey>('possibleTranslations');
+  const [fileActionError, setFileActionError] = useState<string | null>(null);
+  const [fileActionInfo, setFileActionInfo] = useState<string | null>(null);
+  const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
 
   const numericModId = Number(modId);
 
@@ -74,6 +84,64 @@ export const GameModDetailsPage = () => {
     () => groupTranslationsByLanguage(translations?.items ?? []),
     [translations?.items],
   );
+
+  const handleFileDownload = async (file: NexusModFile) => {
+    setFileActionError(null);
+    setFileActionInfo(null);
+    setBusyActionKey(`download:${file.fileId}`);
+
+    try {
+      await api.games.downloadModFile(gameId, numericModId, file.fileId, file.fileName ?? file.name);
+    } catch (error) {
+      setFileActionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusyActionKey(null);
+    }
+  };
+
+  const handleFileImport = async (file: NexusModFile) => {
+    setFileActionError(null);
+    setFileActionInfo(null);
+    setBusyActionKey(`import:${file.fileId}`);
+
+    try {
+      const job = await api.games.importModFile(gameId, numericModId, file.fileId);
+
+      if (job.running) {
+        setFileActionInfo(t('games.fileImportAlreadyRunning'));
+        setBusyActionKey(null);
+        return;
+      }
+
+      if (job.status === 'completed') {
+        setFileActionInfo(t('games.fileImportAlreadyCompleted'));
+        setBusyActionKey(null);
+        return;
+      }
+
+      setFileActionInfo(t('games.fileImportStarted', { name: file.name }));
+      qc.invalidateQueries({ queryKey: ['mod-imports'] });
+
+      const { promise } = api.modImport.startImport(job.id);
+      void promise
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ['mod-imports'] });
+          setFileActionInfo(t('games.fileImportFinished', { name: file.name }));
+        })
+        .catch((error) => {
+          setFileActionError(error instanceof Error ? error.message : String(error));
+        })
+        .finally(() => {
+          setBusyActionKey((current) => (current === `import:${file.fileId}` ? null : current));
+        });
+
+      return;
+    } catch (error) {
+      setFileActionError(error instanceof Error ? error.message : String(error));
+    }
+
+    setBusyActionKey(null);
+  };
 
   if (isGamesLoading) return <div className={s.loading}>{t('common.loading')}</div>;
   if (gamesError) return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
@@ -132,6 +200,8 @@ export const GameModDetailsPage = () => {
 
           <section className={s.section}>
             <h2 className={s.h2}>{t('games.filesTitle')}</h2>
+            {fileActionError && <p className={s.error}>{fileActionError}</p>}
+            {fileActionInfo && <p className={s.hint}>{fileActionInfo}</p>}
             {details.files.length === 0 ? (
               <p className={s.empty}>{t('games.noFiles')}</p>
             ) : (
@@ -144,6 +214,7 @@ export const GameModDetailsPage = () => {
                       <th>{t('games.fileVersion')}</th>
                       <th>{t('games.fileSize')}</th>
                       <th>{t('games.fileUploaded')}</th>
+                      <th>{t('games.fileActions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -159,6 +230,32 @@ export const GameModDetailsPage = () => {
                         <td>{f.version ?? '-'}</td>
                         <td>{fmtBytes(f.sizeBytes)}</td>
                         <td>{f.uploadedTime ?? '-'}</td>
+                        <td>
+                          <div className={s.fileActions}>
+                            <button
+                              type="button"
+                              className={s.fileActionButton}
+                              onClick={() => handleFileDownload(f)}
+                              disabled={busyActionKey === `download:${f.fileId}` || busyActionKey === `import:${f.fileId}`}
+                            >
+                              {busyActionKey === `download:${f.fileId}`
+                                ? t('games.fileDownloading')
+                                : t('games.fileDownloadAction')}
+                            </button>
+
+                            <button
+                              type="button"
+                              className={s.fileActionButton}
+                              onClick={() => handleFileImport(f)}
+                              disabled={!isImportableNexusFile(f.fileName ?? f.name) || busyActionKey === `import:${f.fileId}` || busyActionKey === `download:${f.fileId}`}
+                              title={!isImportableNexusFile(f.fileName ?? f.name) ? t('games.fileImportUnsupported') : undefined}
+                            >
+                              {busyActionKey === `import:${f.fileId}`
+                                ? t('games.fileImporting')
+                                : t('games.fileImportAction')}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -276,6 +373,13 @@ export const GameModDetailsPage = () => {
       </section>
     </div>
   );
+};
+
+/**
+ * Only plugin and archive Nexus files can enter the mod import pipeline.
+ */
+const isImportableNexusFile = (fileName: string): boolean => {
+  return /\.(esp|esm|esl|zip|7z|rar)$/i.test(fileName);
 };
 
 type RelationsTabContentProps = {

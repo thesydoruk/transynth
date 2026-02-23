@@ -1460,6 +1460,21 @@ export const api = {
      */
     modDetails: (gameId: string, modId: number) =>
       req<NexusModDetails>(`/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}`),
+    /** Downloads a Nexus file through the backend proxy. */
+    downloadModFile: (gameId: string, modId: number, fileId: number, fallbackName: string) =>
+      downloadBinary(
+        `/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}/file/${fileId}/download`,
+        fallbackName,
+      ),
+    /** Downloads a Nexus file to the server and creates a mod import job. */
+    importModFile: (gameId: string, modId: number, fileId: number, srcLang = 'en', tgtLang = 'uk') =>
+      req<ModImportJob>(
+        `/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}/file/${fileId}/import`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ srcLang, tgtLang }),
+        },
+      ),
     /**
      * Loads official Nexus requirement relations for one mod.
      *

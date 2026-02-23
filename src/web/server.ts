@@ -92,7 +92,7 @@ await innrRoutes(app, db);
 await opsRoutes(app, db);
 await tradAutoRoutes(app, db);
 await settingsRoutes(app);
-await gamesRoutes(app);
+await gamesRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

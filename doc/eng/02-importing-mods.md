@@ -256,6 +256,13 @@ Each item links to Nexus when the related mod has a valid Nexus `modId`.
 If relation data is unavailable in Nexus GraphQL for that mod, the tabs show
 an empty-state message and the rest of the page continues to work.
 
+In the **Attached Files** table on the mod page, each Nexus file also has two
+actions:
+
+- **Download** — streams the file through the backend proxy.
+- **Import** — downloads the file to the server and immediately starts a mod
+  import job for the selected game.
+
 ---
 
 ## Importing EET Files (Legacy)

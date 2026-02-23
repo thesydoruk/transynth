@@ -158,6 +158,31 @@
   gap: 8px;
 }
 
+.fileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fileActionButton {
+  border: 1px solid var(--border);
+  background: var(--surface-2, #1f2530);
+  color: var(--text-bright);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent, #4a9eff);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
 .primaryBadge {
   font-size: 10px;
   color: #4ade80;
@@ -359,4 +384,10 @@
 .empty {
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 10px;
 }
