@@ -599,7 +599,7 @@ const fmtBytes = (bytes: number | null): string => {
  *
  * Nexus descriptions often contain mixed BBCode + HTML (`<br />`), so we keep
  * existing HTML tags and normalize the most common BBCode tokens that appear
- * in mod pages: size/center/list/url/img/color/bold/italic/underline.
+ * in mod pages: size/font/center/list/url/img/color/bold/italic/underline.
  */
 const renderNexusDescription = (raw: string): string => {
   let html = raw;
@@ -609,6 +609,14 @@ const renderNexusDescription = (raw: string): string => {
   html = replaceRepeatedly(html, /\[i\](.*?)\[\/i\]/gis, '<em>$1</em>');
   html = replaceRepeatedly(html, /\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
   html = replaceRepeatedly(html, /\[center\](.*?)\[\/center\]/gis, '<div class="bb-center">$1</div>');
+
+  // Font tags: keep user-visible text and apply only a restricted font-family.
+  html = replaceRepeatedly(html, /\[font=(.*?)\](.*?)\[\/font\]/gis, (_m, font, text) => {
+    const safeFont = sanitizeFontFamily(font);
+    return safeFont
+      ? `<span style="font-family:${safeFont}">${text}</span>`
+      : String(text);
+  });
 
   // Color tags
   html = replaceRepeatedly(html, /\[color=(.*?)\](.*?)\[\/color\]/gis, (_m, color, text) => {
@@ -649,10 +657,12 @@ const renderNexusDescription = (raw: string): string => {
   });
 
   // Some Nexus descriptions contain broken nested size tags with missing
-  // closing pairs. Strip any residual raw size markers instead of leaking
-  // BBCode into the UI.
+  // closing pairs. Strip any residual raw size/font markers instead of
+  // leaking BBCode into the UI.
   html = html.replace(/\[size=\d+\]/gi, '');
   html = html.replace(/\[\/size\]/gi, '');
+  html = html.replace(/\[font=.*?\]/gi, '');
+  html = html.replace(/\[\/font\]/gi, '');
 
   // Lists: convert [list]/[list=1] and [*] markers to HTML lists
   html = html.replace(/\[list=1\]/gi, '<ul>');
@@ -764,4 +774,25 @@ const sanitizeColor = (value: string): string | null => {
   }
 
   return null;
+};
+
+/**
+ * Allows a limited set of safe CSS font-family values for BBCode [font].
+ */
+const sanitizeFontFamily = (value: string): string | null => {
+  const family = String(value).trim();
+  if (!family) return null;
+
+  // Allow only letters, numbers, spaces, commas, apostrophes and hyphens.
+  if (!/^[a-z0-9 ,'-]+$/i.test(family)) {
+    return null;
+  }
+
+  const normalized = family.toLowerCase();
+  const blocked = ['expression', 'javascript', 'url(', '@import', ';', ':', '/*', '*/'];
+  if (blocked.some((token) => normalized.includes(token))) {
+    return null;
+  }
+
+  return family;
 };
