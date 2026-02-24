@@ -50,7 +50,7 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
     const [modProgress, qaBreakdown, qaBySeverity] = await Promise.all([
       db.query(
         `SELECT
-           m.id, m.name,
+           m.id, m.name, m.game,
            COUNT(DISTINCT s.id)                                           AS total,
            COUNT(DISTINCT t.id)                                           AS translated,
            COUNT(DISTINCT CASE WHEN t.status = 'human' THEN t.id END)    AS approved,

@@ -51,7 +51,7 @@ type SortDir = 'asc' | 'desc';
 
 export const ModEditorPage = () => {
   const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
+  const { id, gameId } = useParams<{ id: string; gameId: string }>();
   const modId = Number(id);
   const qc = useQueryClient();
 
@@ -757,7 +757,7 @@ export const ModEditorPage = () => {
         <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
         {/* Show INNR editor button only when the mod contains INNR records */}
         {sigs?.some((s: { signature: string }) => s.signature === 'INNR') && (
-          <Link to={`/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
+          <Link to={`/games/${gameId}/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
             {t('modEditor.innrEditor')}
           </Link>
         )}

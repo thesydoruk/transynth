@@ -13,13 +13,18 @@ import { EspReader } from '../../bethesda/espReader.js';
 import type { GameType } from '../../types.js';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
-  // GET /api/mods — list all mods with aggregate stats
-  app.get('/api/mods', async (_req, reply) => {
-    log.debug('GET /api/mods');
-    const mods = await listMods(db);
-    log.trace(`GET /api/mods → ${mods.length} mods`);
-    return reply.send(mods);
-  });
+  // GET /api/mods — list all mods with aggregate stats.
+  // Optional query params: ?game=fo4&srcLang=en&targetLang=uk
+  app.get<{ Querystring: { game?: string; srcLang?: string; targetLang?: string } }>(
+    '/api/mods',
+    async (req, reply) => {
+      const { game, srcLang, targetLang } = req.query;
+      log.debug(`GET /api/mods game=${game ?? 'all'}`);
+      const mods = await listMods(db, { game, srcLang, targetLang });
+      log.trace(`GET /api/mods → ${mods.length} mods`);
+      return reply.send(mods);
+    },
+  );
 
   // GET /api/mods/:id — single mod with progress stats
   app.get<{ Params: { id: string } }>('/api/mods/:id', async (req, reply) => {

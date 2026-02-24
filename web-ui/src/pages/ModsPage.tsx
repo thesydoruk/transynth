@@ -1,16 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { ProgressBar, StatusBadge } from '../components/StatusBadge';
 import s from './ModsPage.module.scss';
 
+/**
+ * ModsPage — imported mods list scoped to a single game.
+ * URL: /games/:gameId/mods
+ * Fetches mods filtered by gameId and renders a progress table.
+ */
 export const ModsPage = () => {
   const { t } = useTranslation();
   const nav = useNavigate();
+  const { gameId = '' } = useParams<{ gameId: string }>();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['mods'],
-    queryFn: api.mods.list,
+    queryKey: ['mods', gameId],
+    queryFn: () => api.mods.list(gameId),
   });
 
   if (isLoading) return <div className={s.center}>{t('mods.loadingMods')}</div>;
@@ -27,6 +33,9 @@ export const ModsPage = () => {
 
   return (
     <div className={s.page}>
+      <div className={s.breadcrumb}>
+        <Link to={`/games/${gameId}`}>{`\u2190 ${gameId.toUpperCase()}`}</Link>
+      </div>
       <h1 className={s.title}>{t('mods.title')}</h1>
       <table className={s.table}>
         <thead>
@@ -53,7 +62,7 @@ export const ModsPage = () => {
               <tr
                 key={mod.id}
                 className={s.rowHover}
-                onClick={() => nav(`/mods/${mod.id}`)}
+                onClick={() => nav(`/games/${gameId}/mods/${mod.id}`)}
               >
                 <td className={s.td}>
                   <strong className={s.modName}>{mod.name}</strong>

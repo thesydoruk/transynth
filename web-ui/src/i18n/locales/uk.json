@@ -791,5 +791,20 @@
       "english": "Англійська",
       "unknown": "Невідома"
     }
+  },
+  "gameHub": {
+    "mods": "Моди",
+    "strings": "Рядки",
+    "translated": "Перекладено",
+    "approved": "Затверджено",
+    "modsLink": "Імпортовані моди",
+    "modsDesc": "Перегляд та редагування перекладів імпортованих модів цієї гри.",
+    "modCount": "{{count}} модів імпортовано",
+    "nexusLink": "Браузер NexusMods",
+    "nexusDesc": "Пошук, перегляд та імпорт модів з NexusMods.",
+    "importsLink": "Історія імпорту",
+    "importsDesc": "Перегляд минулих завдань імпорту EET, CSV та модів.",
+    "recentMods": "Останні моди",
+    "viewAllMods": "Переглянути всі {{count}} модів →"
   }
 }

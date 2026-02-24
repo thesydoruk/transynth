@@ -1,0 +1,218 @@
+/**
+ * GameHubPage styles — game dashboard with stats & navigation cards.
+ *
+ * Layout:
+ *   .page       — centered page wrapper
+ *   .header     — cover thumbnail + game info
+ *   .statsRow   — horizontal row of stat cards
+ *   .navGrid    — CSS grid of navigation cards (mods, nexus, imports)
+ *   .recentSection — quick table of recently imported mods
+ */
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--link);
+  font-size: 14px;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.cover {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.headerInfo {
+  flex: 1;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin: 0 0 4px;
+}
+
+.meta {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.gameId {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ── Stats row ────────────────────────────────────────────────────────────── */
+
+.statsRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.statValue {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.statLabel {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Navigation grid ──────────────────────────────────────────────────────── */
+
+.navGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.navCard {
+  display: block;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.navTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 6px;
+}
+
+.navDesc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.navMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Recent mods section ──────────────────────────────────────────────────── */
+
+.recentSection {
+  margin-top: 8px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+}
+
+.modLink {
+  color: var(--link);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.viewAll {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--link);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

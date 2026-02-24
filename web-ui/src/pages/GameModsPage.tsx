@@ -1,7 +1,7 @@
 /**
  * GameModsPage — NexusMods search page for one selected game.
  *
- * Entry route: /games/:gameId
+ * Entry route: /games/:gameId/nexus
  *
  * Main responsibilities:
  * 1. Resolve the selected game by `gameId` from the games catalogue.
@@ -99,7 +99,7 @@ export const GameModsPage = () => {
   if (!game) {
     return (
       <div className={s.page}>
-        <Link to="/games" className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to={`/games/${gameId}`} className={s.backLink}>{t('games.backToGames')}</Link>
         <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
         <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
       </div>
@@ -109,7 +109,7 @@ export const GameModsPage = () => {
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to="/games" className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to={`/games/${gameId}`} className={s.backLink}>{t('games.backToGames')}</Link>
         <h1 className={s.title}>{t('games.modsTitle', { game: game.name })}</h1>
         <p className={s.subtitle}>{t('games.modsSubtitle')}</p>
       </div>
@@ -233,7 +233,7 @@ const ModTile = ({ game, mod }: { game: GameInfo; mod: NexusModItem }) => {
 
       <div className={s.cardBody}>
         <h3 className={s.modName}>
-          <Link to={`/games/${game.id}/mods/${mod.modId}`} className={s.cardLink}>
+          <Link to={`/games/${game.id}/nexus/${mod.modId}`} className={s.cardLink}>
             {mod.name}
           </Link>
         </h3>

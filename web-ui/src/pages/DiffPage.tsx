@@ -28,7 +28,7 @@ const CHANGE_CLASS: Record<string, string> = {
 
 export const DiffPage = () => {
   const { t } = useTranslation();
-  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
+  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
@@ -161,7 +161,7 @@ export const DiffPage = () => {
             {/* After carry-over, offer a direct link to the new mod's editor filtered to drafts */}
             {carryOver.isSuccess && carryOver.data && carryOver.data.needsReview > 0 && newModId && (
               <Link
-                to={`/mods/${newModId}?status=draft`}
+                to={`/games/${mods?.find(m => m.id === Number(newModId))?.game ?? 'fo4'}/mods/${newModId}?status=draft`}
                 className={s.btnOpenEditor}
                 title={t('diff.openInEditorTitle')}
               >

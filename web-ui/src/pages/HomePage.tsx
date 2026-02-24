@@ -288,7 +288,7 @@ const ModProgressSection = ({ data }: { data: Awaited<ReturnType<typeof api.stat
                   </td>
                   <td className={s.td}>
                     <Link
-                      to={`/mods/${m.id}`}
+                      to={`/games/${m.game}/mods/${m.id}`}
                       className={s.modLink}
                       onClick={(e) => e.stopPropagation()}
                     >

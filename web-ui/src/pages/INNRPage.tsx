@@ -241,13 +241,13 @@ const GroupCard = ({ group, defaultOpen, targetLang, onSave, onClear, isSaving }
  * This page groups all INNR components by base EDID so the translator can
  * translate an entire naming rule in one view.
  *
- * URL: /mods/:modId/innr
+ * URL: /games/:gameId/mods/:modId/innr
  * Navigated to from the ModEditor via the "INNR" button (shown when INNR
  * records are present in the mod).
  */
 export const INNRPage = () => {
   const { t } = useTranslation();
-  const { modId: modIdParam } = useParams<{ modId: string }>();
+  const { modId: modIdParam, gameId } = useParams<{ modId: string; gameId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -314,7 +314,7 @@ export const INNRPage = () => {
     <div className={s.page}>
       {/* Page header with back button */}
       <div className={s.header}>
-        <button className={s.backBtn} onClick={() => navigate(`/mods/${modId}`)}>
+        <button className={s.backBtn} onClick={() => navigate(`/games/${gameId}/mods/${modId}`)}>
           ← {t('innr.backToEditor')}
         </button>
         <h2 className={s.title}>{t('innr.title')}</h2>

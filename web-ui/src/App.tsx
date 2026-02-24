@@ -25,6 +25,7 @@ import { OpsPage } from './pages/OpsPage';
 import { TradAutoPage } from './pages/TradAutoPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GamesPage } from './pages/GamesPage';
+import { GameHubPage } from './pages/GameHubPage';
 import { GameModsPage } from './pages/GameModsPage';
 import { GameModDetailsPage } from './pages/GameModDetailsPage';
 import nav from './App.module.scss';
@@ -46,9 +47,6 @@ const qc = new QueryClient({
  * The home page (/) is accessible only via the brand "FO4 Localizer" click.
  */
 const NAV_LINKS = [
-  { to: '/games', labelKey: 'nav.games', exact: false },
-  { to: '/mods', labelKey: 'nav.mods', exact: false },
-  { to: '/imports', labelKey: 'nav.imports', exact: false },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
@@ -141,18 +139,25 @@ const AppShell = () => {
       <Nav />
       <main className={nav.main}>
         <Routes>
-          {/* Home — merged Dashboard + Ops overview (accessible via brand click) */}
-          <Route path="/" element={<HomePage />} />
-          {/* Games catalogue — supported games tile grid with cover art */}
+          {/* Home — Games catalogue (entry point) */}
+          <Route path="/" element={<GamesPage />} />
+          {/* Legacy /games redirect — brand click + direct URL both go to / */}
           <Route path="/games" element={<GamesPage />} />
-          {/* Game-specific NexusMods search page (opened from games tiles) */}
-          <Route path="/games/:gameId" element={<GameModsPage />} />
+          {/* Game hub — mod stats, quick links, language pair selector */}
+          <Route path="/games/:gameId" element={<GameHubPage />} />
+          {/* Game-scoped NexusMods browser */}
+          <Route path="/games/:gameId/nexus" element={<GameModsPage />} />
           {/* Detailed Nexus mod page: metadata, attached files, likely translations */}
-          <Route path="/games/:gameId/mods/:modId" element={<GameModDetailsPage />} />
-          {/* Mods list — main day-to-day page */}
-          <Route path="/mods" element={<ModsPage />} />
-          <Route path="/mods/:id" element={<ModEditorPage />} />
-          <Route path="/imports" element={<ImportsPage />} />
+          <Route path="/games/:gameId/nexus/:modId" element={<GameModDetailsPage />} />
+          {/* Game-scoped imported mods list */}
+          <Route path="/games/:gameId/mods" element={<ModsPage />} />
+          {/* Mod string editor */}
+          <Route path="/games/:gameId/mods/:id" element={<ModEditorPage />} />
+          {/* INNR special editor (game-scoped) */}
+          <Route path="/games/:gameId/mods/:modId/innr" element={<INNRPage />} />
+          {/* Game-scoped imports */}
+          <Route path="/games/:gameId/imports" element={<ImportsPage />} />
+          {/* Global cross-game tools */}
           <Route path="/glossary" element={<GlossaryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/tmx" element={<TmxPage />} />
@@ -161,7 +166,6 @@ const AppShell = () => {
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
-          <Route path="/mods/:modId/innr" element={<INNRPage />} />
           <Route path="/ba2-browser" element={<Ba2BrowserPage />} />
           <Route path="/esp-explorer" element={<EspExplorerPage />} />
           <Route path="/ops" element={<OpsPage />} />

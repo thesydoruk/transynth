@@ -1,7 +1,7 @@
 /**
  * GameModDetailsPage — detailed Nexus mod view.
  *
- * Route: /games/:gameId/mods/:modId
+ * Route: /games/:gameId/nexus/:modId
  *
  * Shows:
  * - full mod metadata (name, summary, description, stats)
@@ -149,7 +149,7 @@ export const GameModDetailsPage = () => {
   if (!game || !Number.isFinite(numericModId) || numericModId <= 0) {
     return (
       <div className={s.page}>
-        <Link to="/games" className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to="/" className={s.backLink}>{t('games.backToGames')}</Link>
         <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
         <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
       </div>
@@ -159,7 +159,7 @@ export const GameModDetailsPage = () => {
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to={`/games/${gameId}`} className={s.backLink}>{t('games.backToMods')}</Link>
+        <Link to={`/games/${gameId}/nexus`} className={s.backLink}>{t('games.backToMods')}</Link>
         <h1 className={s.title}>{details?.mod.name ?? t('common.loading')}</h1>
         <p className={s.subtitle}>{t('games.modIdLabel', { modId: numericModId })}</p>
       </div>

@@ -275,7 +275,25 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
-export const listMods = async (db: Tx, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang) => {
+/**
+ * List mods with aggregate translation statistics.
+ * @param db        - database connection / transaction
+ * @param opts.game       - optional game filter (e.g. 'fo4'); when omitted returns all games
+ * @param opts.srcLang    - source language for string counts
+ * @param opts.targetLang - target language for translation counts
+ */
+export const listMods = async (
+  db: Tx,
+  opts: { game?: string; srcLang?: string; targetLang?: string } = {},
+) => {
+  const srcLang    = opts.srcLang    ?? CONFIG.defaultSrcLang;
+  const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
+
+  /* Build an optional WHERE clause when a game filter is provided. */
+  const whereClause = opts.game ? 'WHERE m.game = $3' : '';
+  const params: unknown[] = [srcLang, targetLang];
+  if (opts.game) params.push(opts.game);
+
   const { rows } = await db.query(
     `SELECT
       m.id,
@@ -283,6 +301,9 @@ export const listMods = async (db: Tx, srcLang = CONFIG.defaultSrcLang, targetLa
       m.abs_path,
       m.version_hash,
       m.game,
+      m.nexus_mod_id,
+      m.nexus_name,
+      m.nexus_thumbnail,
       m.created_at,
       COUNT(DISTINCT r.id)          AS record_count,
       COUNT(DISTINCT s.id)          AS string_count,
@@ -293,9 +314,10 @@ export const listMods = async (db: Tx, srcLang = CONFIG.defaultSrcLang, targetLa
      LEFT JOIN records r ON r.mod_id = m.id
      LEFT JOIN strings s ON s.record_id = r.id AND s.lang = $1
      LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     ${whereClause}
      GROUP BY m.id
      ORDER BY m.created_at DESC`,
-    [srcLang, targetLang],
+    params,
   );
   return rows;
 }
@@ -1362,6 +1384,7 @@ export type ReviewQueueRow = {
   string_id: number;
   mod_id: number;
   mod_name: string;
+  mod_game: string;
   formid_hex: string;
   signature: string;
   path: string;
@@ -1446,6 +1469,7 @@ export const listReviewQueue = async (
       s.id              AS string_id,
       m.id              AS mod_id,
       m.name            AS mod_name,
+      m.game            AS mod_game,
       r.formid_hex,
       r.signature,
       r.path,

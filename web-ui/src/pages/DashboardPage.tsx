@@ -130,7 +130,7 @@ export const DashboardPage = () => {
                     {/* Mod name links to its editor */}
                     <td className={s.td}>
                       <Link
-                        to={`/mods/${m.id}`}
+                        to={`/games/${m.game}/mods/${m.id}`}
                         className={s.modLink}
                         onClick={(e) => e.stopPropagation()}
                       >

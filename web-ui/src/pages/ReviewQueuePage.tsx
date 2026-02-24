@@ -290,7 +290,7 @@ export const ReviewQueuePage = () => {
                       {/* Open in mod editor */}
                       <Link
                         className={s.openBtn}
-                        to={`/mods/${row.mod_id}`}
+                        to={`/games/${row.mod_game}/mods/${row.mod_id}`}
                         title={t('reviewQueue.openInEditor')}
                       >
                         ↗

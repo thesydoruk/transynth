@@ -790,5 +790,20 @@
       "english": "English",
       "unknown": "Unknown"
     }
+  },
+  "gameHub": {
+    "mods": "Mods",
+    "strings": "Strings",
+    "translated": "Translated",
+    "approved": "Approved",
+    "modsLink": "Imported Mods",
+    "modsDesc": "View and edit translations for imported mods in this game.",
+    "modCount": "{{count}} mods imported",
+    "nexusLink": "NexusMods Browser",
+    "nexusDesc": "Search, browse, and import mods from NexusMods.",
+    "importsLink": "Import History",
+    "importsDesc": "View past EET, CSV, and mod import jobs.",
+    "recentMods": "Recent Mods",
+    "viewAllMods": "View all {{count}} mods →"
   }
 }

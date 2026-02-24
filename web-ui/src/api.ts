@@ -90,6 +90,10 @@ export type Mod = {
   name: string;
   abs_path: string;
   version_hash: string;
+  game: string;
+  nexus_mod_id: number | null;
+  nexus_name: string | null;
+  nexus_thumbnail: string | null;
   created_at: string;
   record_count: number;
   string_count: number;
@@ -335,6 +339,7 @@ export type ReviewQueueRow = {
   string_id: number;
   mod_id: number;
   mod_name: string;
+  mod_game: string;
   formid_hex: string;
   signature: string;
   path: string;
@@ -395,6 +400,7 @@ export type InnrResult = {
 export type DashboardModRow = {
   id: number;
   name: string;
+  game: string;
   total: number;
   translated: number;
   approved: number;
@@ -817,7 +823,12 @@ export type EspRecordsPage = {
 
 export const api = {
   mods: {
-    list: () => req<Mod[]>('/api/mods'),
+    list: (game?: string) => {
+      const params = new URLSearchParams();
+      if (game) params.set('game', game);
+      const qs = params.toString();
+      return req<Mod[]>(`/api/mods${qs ? `?${qs}` : ''}`);
+    },
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>

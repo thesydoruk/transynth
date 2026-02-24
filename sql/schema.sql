@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS mods (
 -- Migration: add game column if it does not yet exist (idempotent).
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4';
 
+-- Migration: Nexus Mods linkage columns — allow linking a local mod to its
+-- NexusMods counterpart so both local and Nexus data merge into one view.
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_name TEXT;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_thumbnail TEXT;
+
 CREATE TABLE IF NOT EXISTS records (
   id SERIAL PRIMARY KEY,
   mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
