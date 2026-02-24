@@ -108,7 +108,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(stringId) || stringId < 1) {
         return reply.code(400).send({ error: 'Invalid string id' });
       }
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       const suggestions = await getTMSuggestions(db, stringId, targetLang);
       return reply.send(suggestions);
     },
@@ -122,7 +122,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(stringId) || stringId < 1) {
         return reply.code(400).send({ error: 'Invalid string id' });
       }
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       return reply.send(await getTranslationHistory(db, stringId, targetLang));
     },
   );
@@ -135,7 +135,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(stringId) || stringId < 1) {
         return reply.code(400).send({ error: 'Invalid string id' });
       }
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       return reply.send(await getQAIssues(db, stringId, targetLang));
     },
   );
@@ -150,7 +150,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid string id' });
     }
 
-    const { text, status = 'draft', targetLang = 'uk' } = req.body ?? {};
+    const { text, status = 'draft', targetLang = CONFIG.defaultTgtLang } = req.body ?? {};
     if (typeof text !== 'string') {
       return reply.code(400).send({ error: 'text is required' });
     }
@@ -178,7 +178,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(stringId) || stringId < 1) {
         return reply.code(400).send({ error: 'Invalid string id' });
       }
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       return reply.send(await deleteTranslation(db, stringId, targetLang));
     },
   );
@@ -208,7 +208,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
     Body: { stringIds: number[]; srcLang?: string; targetLang?: string };
   }>('/api/strings/translate', async (req, reply) => {
-    const { stringIds, srcLang = 'en', targetLang = 'uk' } = req.body ?? {};
+    const { stringIds, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang } = req.body ?? {};
     if (!Array.isArray(stringIds) || stringIds.length === 0) {
       return reply.code(400).send({ error: 'stringIds array is required' });
     }

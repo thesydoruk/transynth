@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type CoherenceGroup, type CoherenceEntry } from '../api';
+import { getTgtLang } from '../langDefaults';
 import s from './CoherencePage.module.scss';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -150,7 +151,7 @@ export const CoherencePage = () => {
   const qc = useQueryClient();
 
   // ── Local state ──────────────────────────────────────────────────────────
-  const [targetLang, setTargetLang] = useState('uk');
+  const [targetLang, setTargetLang] = useState(getTgtLang());
   const [page, setPage] = useState(0);
 
   const offset = page * PAGE_SIZE;

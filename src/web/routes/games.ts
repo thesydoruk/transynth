@@ -734,7 +734,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     Body: { srcLang?: string; tgtLang?: string };
   }>('/api/games/:gameId/nexus/mod/:modId/file/:fileId/import', async (req, reply) => {
     const { gameId, modId: rawModId, fileId: rawFileId } = req.params;
-    const { srcLang = 'en', tgtLang = 'uk' } = req.body ?? {};
+    const { srcLang = CONFIG.defaultSrcLang, tgtLang = CONFIG.defaultTgtLang } = req.body ?? {};
 
     if (!CONFIG.nexusApiKey) {
       return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });

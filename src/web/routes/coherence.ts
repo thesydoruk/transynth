@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 import { getCoherenceGroups, resolveCoherenceGroup } from '../queries.js';
+import { CONFIG } from '../../config.js';
 
 /**
  * Coherence-checking routes.
@@ -28,7 +29,7 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
   app.get<{
     Querystring: { targetLang?: string; limit?: string; offset?: string };
   }>('/api/coherence', async (req, reply) => {
-    const targetLang = req.query.targetLang ?? 'uk';
+    const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
     const limit = Math.min(200, Math.max(1, Number(req.query.limit ?? 50)));
     const offset = Math.max(0, Number(req.query.offset ?? 0));
 
@@ -52,7 +53,7 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
     Body: { textNorm: string; targetLang?: string; translation: string };
   }>('/api/coherence/resolve', async (req, reply) => {
     const { textNorm, translation } = req.body ?? {};
-    const targetLang = req.body?.targetLang ?? 'uk';
+    const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
 
     if (!textNorm || typeof textNorm !== 'string') {
       return reply.code(400).send({ error: 'textNorm is required' });

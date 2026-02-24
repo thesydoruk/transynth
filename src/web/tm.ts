@@ -2,6 +2,7 @@ import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
+import { CONFIG } from '../config.js';
 import { upsertTranslation } from './queries.js';
 import { extractNumbers, transplantNumbers, segmentPhrases, normalizeForHash } from '../utils/textNorm.js';
 
@@ -33,6 +34,7 @@ const findBestMatch = async (
   textRaw: string,
   targetLang: string,
   excludeModId: number,
+  srcLang: string,
 ): Promise<Match | null> => {
   const orderByStatus = `ORDER BY CASE t.status
     WHEN 'reviewed' THEN 1
@@ -49,9 +51,9 @@ const findBestMatch = async (
       `SELECT t.text FROM strings s
        JOIN records r ON s.record_id = r.id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE r.formid_hex = $2 AND r.path = $3 AND s.lang = 'en' AND r.mod_id != $4
+       WHERE r.formid_hex = $2 AND r.path = $3 AND s.lang = $5 AND r.mod_id != $4
        ${orderByStatus}`,
-      [targetLang, formidHex, path, excludeModId],
+      [targetLang, formidHex, path, excludeModId, srcLang],
     );
     if (rows[0]) return { text: rows[0].text, method: 'anchor', confidence: 0.95 };
   }
@@ -62,9 +64,9 @@ const findBestMatch = async (
       `SELECT t.text FROM strings s
        JOIN records r ON s.record_id = r.id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE r.edid = $2 AND s.lang = 'en' AND r.mod_id != $3
+       WHERE r.edid = $2 AND s.lang = $4 AND r.mod_id != $3
        ${orderByStatus}`,
-      [targetLang, edid, excludeModId],
+      [targetLang, edid, excludeModId, srcLang],
     );
     if (rows[0]) return { text: rows[0].text, method: 'edid', confidence: 0.85 };
   }
@@ -74,9 +76,9 @@ const findBestMatch = async (
     const { rows } = await db.query(
       `SELECT t.text, s.text_raw FROM strings s
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE s.text_norm = $2 AND s.lang = 'en'
+       WHERE s.text_norm = $2 AND s.lang = $3
        ${orderByStatus}`,
-      [targetLang, textNorm],
+      [targetLang, textNorm, srcLang],
     );
     if (rows[0]) {
       /* If raw texts are identical → true text_norm match. */
@@ -100,9 +102,9 @@ const findBestMatch = async (
     const { rows } = await db.query(
       `SELECT t.text FROM strings s
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE s.text_norm_nopunct = $2 AND s.lang = 'en' AND s.text_norm <> $3
+       WHERE s.text_norm_nopunct = $2 AND s.lang = $4 AND s.text_norm <> $3
        ${orderByStatus}`,
-      [targetLang, textNormNopunct, textNorm],
+      [targetLang, textNormNopunct, textNorm, srcLang],
     );
     if (rows[0]) return { text: rows[0].text, method: 'punct_norm', confidence: 0.65 };
   }
@@ -112,7 +114,7 @@ const findBestMatch = async (
     const { rows } = await db.query(
       `SELECT t.text, similarity(s.text_norm, $2) AS sim FROM strings s
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-       WHERE s.text_norm % $2 AND s.lang = 'en' AND s.text_norm <> $2
+       WHERE s.text_norm % $2 AND s.lang = $3 AND s.text_norm <> $2
        ORDER BY sim DESC, CASE t.status
          WHEN 'reviewed' THEN 1
          WHEN 'human' THEN 2
@@ -122,7 +124,7 @@ const findBestMatch = async (
          WHEN 'draft' THEN 6
          ELSE 7 END
        LIMIT 1`,
-      [targetLang, textNorm],
+      [targetLang, textNorm, srcLang],
     );
     if (rows[0]) return { text: rows[0].text, method: 'fuzzy', confidence: Math.round(rows[0].sim * 100) / 100 };
   }
@@ -148,7 +150,7 @@ const findBestMatch = async (
         const { rows: segRows } = await db.query(
           `SELECT t.text FROM strings s
            JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-           WHERE s.text_norm = $2 AND s.lang = 'en'
+           WHERE s.text_norm = $2 AND s.lang = $3
            ORDER BY CASE t.status
              WHEN 'reviewed' THEN 1
              WHEN 'human' THEN 2
@@ -158,7 +160,7 @@ const findBestMatch = async (
              WHEN 'draft' THEN 6
              ELSE 7 END
            LIMIT 1`,
-          [targetLang, segNorm],
+          [targetLang, segNorm, srcLang],
         );
 
         if (segRows[0]) {
@@ -186,18 +188,19 @@ const findBestMatch = async (
 export const applyTMToMod = async (
   db: Tx,
   modId: number,
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
   const { rows: untranslated } = await db.query(
     `SELECT s.id, s.text_raw, s.text_norm, s.text_norm_nopunct, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = 'en'
+     WHERE r.mod_id = $1 AND s.lang = $3
        AND NOT EXISTS (
          SELECT 1 FROM translations t
          WHERE t.src_string_id = s.id AND t.target_lang = $2
        )`,
-    [modId, targetLang],
+    [modId, targetLang, srcLang],
   );
   log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
@@ -216,6 +219,7 @@ export const applyTMToMod = async (
         s.text_raw,
         targetLang,
         modId,
+        srcLang,
       );
       if (match) {
         const tmStatus = match.method === 'fuzzy' || match.method === 'punct_norm' || match.method === 'numeric' || match.method === 'phrase'
@@ -243,15 +247,16 @@ export const propagateTranslation = async (
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<number> => {
   const { rows: candidates } = await db.query(
     `SELECT s.id FROM strings s
-     WHERE s.text_norm = $1 AND s.lang = 'en' AND s.id != $2
+     WHERE s.text_norm = $1 AND s.lang = $4 AND s.id != $2
        AND NOT EXISTS (
          SELECT 1 FROM translations t
          WHERE t.src_string_id = s.id AND t.target_lang = $3 AND t.status IN ('draft', 'reviewed', 'human')
        )`,
-    [textNorm, excludeStringId, targetLang],
+    [textNorm, excludeStringId, targetLang, srcLang],
   );
 
   if (candidates.length === 0) return 0;

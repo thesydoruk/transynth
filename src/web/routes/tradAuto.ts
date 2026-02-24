@@ -26,6 +26,7 @@ import {
   type MatchInput,
 } from '../tradAutoEngine.js';
 import { upsertTranslation } from '../queries.js';
+import { CONFIG } from '../../config.js';
 import { discoverPatterns, type DiscoverOptions } from '../tradAutoLearn.js';
 
 /* ── Route registration ──────────────────────────────────────────────────── */
@@ -109,8 +110,8 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
       replacement,
       signature = null,
       path = null,
-      src_lang = 'en',
-      tgt_lang = 'uk',
+      src_lang = CONFIG.defaultSrcLang,
+      tgt_lang = CONFIG.defaultTgtLang,
       description = null,
       is_active = true,
     } = body;
@@ -170,7 +171,7 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
         compileRule({
           id, game: body.game ?? 'fo4', priority: body.priority ?? 100,
           pattern: body.pattern, replacement: body.replacement ?? '',
-          signature: null, path: null, src_lang: 'en', tgt_lang: 'uk',
+          signature: null, path: null, src_lang: CONFIG.defaultSrcLang, tgt_lang: CONFIG.defaultTgtLang,
           description: null, is_active: true,
         });
       } catch (e) {
@@ -243,7 +244,7 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
       tgtLang?: string;
     };
   }>('/api/tradauto/test', async (req, reply) => {
-    const { texts, game = 'fo4', srcLang = 'en', tgtLang = 'uk' } = req.body ?? {} as Record<string, unknown>;
+    const { texts, game = 'fo4', srcLang = CONFIG.defaultSrcLang, tgtLang = CONFIG.defaultTgtLang } = req.body ?? {} as Record<string, unknown>;
 
     if (!Array.isArray(texts) || texts.length === 0) {
       return reply.code(400).send({ error: 'texts array is required' });
@@ -287,8 +288,8 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     const {
-      targetLang = 'uk',
-      srcLang = 'en',
+      targetLang = CONFIG.defaultTgtLang,
+      srcLang = CONFIG.defaultSrcLang,
       game = 'fo4',
       dryRun = false,
     } = req.body ?? {} as Record<string, unknown>;

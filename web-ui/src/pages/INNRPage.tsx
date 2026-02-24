@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type InnrRow, type InnrGroup } from '../api';
+import { getTgtLang } from '../langDefaults';
 import { StatusBadge } from '../components/StatusBadge';
 import s from './INNRPage.module.scss';
 
@@ -253,7 +254,7 @@ export const INNRPage = () => {
   const modId = Number(modIdParam);
 
   // ── Local state ──────────────────────────────────────────────────────────
-  const [targetLang, setTargetLang] = useState('uk');
+  const [targetLang, setTargetLang] = useState(getTgtLang());
   const [search, setSearch] = useState('');
 
   // ── Fetch INNR data ───────────────────────────────────────────────────────

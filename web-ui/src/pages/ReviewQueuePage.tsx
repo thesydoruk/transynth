@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../api';
+import { getTgtLang } from '../langDefaults';
 import { StatusBadge } from '../components/StatusBadge';
 import s from './ReviewQueuePage.module.scss';
 
@@ -80,7 +81,7 @@ export const ReviewQueuePage = () => {
   const qc = useQueryClient();
 
   // ── Local filter state ───────────────────────────────────────────────────
-  const [targetLang, setTargetLang] = useState('uk');
+  const [targetLang, setTargetLang] = useState(getTgtLang());
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
     new Set(STATUS_OPTIONS.map((o) => o.key)),
   );

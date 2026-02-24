@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { searchReplaceTranslations } from '../queries.js';
 import { log } from '../../logger.js';
+import { CONFIG } from '../../config.js';
 
 export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:id/search-replace
@@ -22,7 +23,7 @@ export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
 
-    const { search, replace, isRegex = false, targetLang = 'uk', dryRun = false } = req.body ?? {};
+    const { search, replace, isRegex = false, targetLang = CONFIG.defaultTgtLang, dryRun = false } = req.body ?? {};
 
     if (typeof search !== 'string' || search.trim() === '') {
       return reply.code(400).send({ error: 'search is required' });

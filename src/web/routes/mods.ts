@@ -5,6 +5,7 @@ import type { Tx } from '../../db.js';
 import { listMods, getMod, getModStats, diffMods, carryOverTranslations, listModLangs, bulkUpdateTranslationStatus, listPreviousVersions } from '../queries.js';
 import { applyTMToMod } from '../tm.js';
 import { log } from '../../logger.js';
+import { CONFIG } from '../../config.js';
 import { exportArchive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
 import { Ba2Reader } from '../../bethesda/ba2Reader.js';
 import { BsaReader } from '../../bethesda/bsaReader.js';
@@ -55,7 +56,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
 
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       log.info(`POST /api/mods/${id}/tm-apply lang=${targetLang}`);
       const result = await applyTMToMod(db, id, targetLang);
       log.info(`TM apply result: applied=${result.applied}, skipped=${result.skipped}`);
@@ -72,7 +73,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(newId) || newId < 1) return reply.code(400).send({ error: 'Invalid mod id' });
       if (!Number.isInteger(oldId) || oldId < 1) return reply.code(400).send({ error: 'compareModId is required' });
 
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       const result = await diffMods(db, newId, oldId, targetLang);
       return reply.send(result);
     },
@@ -87,7 +88,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(newModId) || newModId < 1) return reply.code(400).send({ error: 'Invalid mod id' });
       if (!Number.isInteger(oldModId) || oldModId < 1) return reply.code(400).send({ error: 'fromModId query param is required' });
 
-      const targetLang = req.query.targetLang ?? 'uk';
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       log.info(`POST /api/mods/${newModId}/carry-over fromModId=${oldModId} targetLang=${targetLang}`);
 
       try {
@@ -109,8 +110,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const mod = await getMod(db, id);
       if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-      const srcLang = req.query.srcLang ?? 'en';
-      const targetLang = req.query.targetLang ?? 'uk';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
@@ -133,8 +134,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const mod = await getMod(db, id);
       if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-      const srcLang = req.query.srcLang ?? 'en';
-      const targetLang = req.query.targetLang ?? 'uk';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
@@ -156,8 +157,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const mod = await getMod(db, id);
       if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-      const srcLang = req.query.srcLang ?? 'en';
-      const targetLang = req.query.targetLang ?? 'uk';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
@@ -180,8 +181,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       const mod = await getMod(db, id);
       if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-      const srcLang = req.query.srcLang ?? 'en';
-      const targetLang = req.query.targetLang ?? 'uk';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
@@ -205,7 +206,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
 
-    const { stringIds, status, targetLang = 'uk' } = req.body;
+    const { stringIds, status, targetLang = CONFIG.defaultTgtLang } = req.body;
     if (!Array.isArray(stringIds) || stringIds.length === 0) return reply.code(400).send({ error: 'stringIds is required' });
     if (status !== 'reviewed' && status !== 'rejected') return reply.code(400).send({ error: 'status must be reviewed or rejected' });
 

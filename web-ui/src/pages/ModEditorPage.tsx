@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
+import { getSrcLang, getTgtLang } from '../langDefaults';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
 import { BookEditorModal } from '../components/BookEditorModal';
 import styles from './ModEditorPage.module.scss';
@@ -55,8 +56,8 @@ export const ModEditorPage = () => {
   const qc = useQueryClient();
 
   // Filters
-  const [srcLang, setSrcLang] = useState('en');
-  const [targetLang, setTargetLang] = useState('uk');
+  const [srcLang, setSrcLang] = useState(getSrcLang());
+  const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState('all');
   const [signature, setSignature] = useState('');
   const [query, setQuery] = useState('');
@@ -696,7 +697,7 @@ export const ModEditorPage = () => {
   const sigCounts = sigs ?? [];
 
   // Available langs derived from mod + fallback
-  const availLangs = langs && langs.length > 0 ? langs : ['en', 'uk'];
+  const availLangs = langs && langs.length > 0 ? langs : [getSrcLang(), getTgtLang()];
 
   return (
     <div className={styles.root}>

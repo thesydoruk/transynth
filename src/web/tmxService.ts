@@ -15,6 +15,7 @@ import type pg from 'pg';
 import { log } from '../logger.js';
 import { normalizeForHash } from '../utils/textNorm.js';
 import { upsertTranslation } from './queries.js';
+import { CONFIG } from '../config.js';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -61,8 +62,8 @@ const escapeXml = (s: string): string =>
  */
 export const exportTmx = async (
   db: Tx,
-  srcLang = 'en',
-  tgtLang = 'uk',
+  srcLang = CONFIG.defaultSrcLang,
+  tgtLang = CONFIG.defaultTgtLang,
   modId?: number,
 ): Promise<string> => {
   /* Query: join strings → translations, optionally filtered by mod */
@@ -205,7 +206,7 @@ export const importTmx = async (
       const norm = normalizeForHash(tu.srcText);
 
       /* Find all strings with this normalised source text */
-      const params: (string | number)[] = [norm, tu.tgtLang];
+      const params: (string | number)[] = [norm, tu.tgtLang, tu.srcLang || CONFIG.defaultSrcLang];
       let modFilter = '';
       if (modId != null) {
         params.push(modId);
@@ -215,7 +216,7 @@ export const importTmx = async (
       const { rows: matches } = await client.query(
         `SELECT s.id FROM strings s
          JOIN records r ON s.record_id = r.id
-         WHERE s.text_norm = $1 AND s.lang = 'en'
+         WHERE s.text_norm = $1 AND s.lang = $3
            ${modFilter}
            AND NOT EXISTS (
              SELECT 1 FROM translations t

@@ -9,6 +9,7 @@ import { useRef, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import { getSrcLang, getTgtLang } from '../langDefaults';
 import s from './TmxPage.module.scss';
 
 export const TmxPage = () => {
@@ -17,11 +18,11 @@ export const TmxPage = () => {
 
   /* ── Export state ─────────────────────────────────────────────────────────── */
   const [exportModId, setExportModId] = useState('');
-  const [exportLang, setExportLang] = useState('uk');
+  const [exportLang, setExportLang] = useState(getTgtLang());
 
   const exportMutation = useMutation({
     mutationFn: () =>
-      api.tmx.exportFile('en', exportLang, exportModId ? Number(exportModId) : undefined),
+      api.tmx.exportFile(getSrcLang(), exportLang, exportModId ? Number(exportModId) : undefined),
   });
 
   /* ── Import state ────────────────────────────────────────────────────────── */

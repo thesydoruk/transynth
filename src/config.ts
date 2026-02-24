@@ -28,6 +28,13 @@ export const CONFIG = {
   // The static cover-image CDN does NOT require this key.
   nexusApiKey: process.env.NEXUS_API_KEY || '',
 
+  // Default language pair for translation.
+  // SRC_LANG — source language code stored in strings.lang (e.g. 'en').
+  // TGT_LANG — target translation language code (e.g. 'uk', 'pl', 'de').
+  // These are used as fallback defaults when the caller does not specify a language.
+  defaultSrcLang: process.env.SRC_LANG || 'en',
+  defaultTgtLang: process.env.TGT_LANG || 'uk',
+
   // Multi-user mode: when true, authentication is required.
   // When false (default), the app runs as a single-user tool — no login needed.
   multiUser: process.env.MULTI_USER === 'true',

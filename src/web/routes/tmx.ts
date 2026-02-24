@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { log } from '../../logger.js';
 import { exportTmx, importTmx } from '../tmxService.js';
+import { CONFIG } from '../../config.js';
 
 /**
  * Register TMX import/export routes on the Fastify app.
@@ -28,8 +29,8 @@ export const tmxRoutes = async (app: FastifyInstance, db: pg.Pool) => {
   app.get<{ Querystring: { srcLang?: string; targetLang?: string; modId?: string } }>(
     '/api/tmx/export',
     async (req, reply) => {
-      const srcLang = req.query.srcLang ?? 'en';
-      const targetLang = req.query.targetLang ?? 'uk';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       const modId = req.query.modId ? Number(req.query.modId) : undefined;
 
       if (modId != null && (!Number.isInteger(modId) || modId < 1)) {

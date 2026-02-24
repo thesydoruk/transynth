@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../api';
+import { getSrcLang, getTgtLang } from '../langDefaults';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const [srcLang, setSrcLang] = useState('en');
-  const [tgtLang, setTgtLang] = useState('uk');
+  const [srcLang, setSrcLang] = useState(getSrcLang());
+  const [tgtLang, setTgtLang] = useState(getTgtLang());
   const [q, setQ] = useState('');
   const [newTerm, setNewTerm] = useState('');
   const [newTranslation, setNewTranslation] = useState('');
@@ -25,7 +26,7 @@ export const GlossaryPage = () => {
     mutationFn: () =>
       api.glossary.enforce({
         modId: enforceModId !== '' ? enforceModId : undefined,
-        targetLang: tgtLang || 'uk',
+        targetLang: tgtLang || getTgtLang(),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qa'] });

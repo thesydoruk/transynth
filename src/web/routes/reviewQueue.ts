@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
 import { listReviewQueue } from '../queries.js';
+import { CONFIG } from '../../config.js';
 
 /** Comma-separated statuses that are valid for the review queue filter. */
 const VALID_STATUSES = new Set(['auto', 'draft', 'fuzzy', 'tm', 'human', 'reviewed', 'rejected']);
@@ -36,7 +37,7 @@ export const reviewQueueRoutes = async (app: FastifyInstance, db: Tx) => {
       pageSize?: string;
     };
   }>('/api/review-queue', async (req, reply) => {
-    const targetLang = req.query.targetLang ?? 'uk';
+    const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
 
     // Parse and validate statuses (comma-separated, fall back to defaults)
     const rawStatuses = req.query.statuses

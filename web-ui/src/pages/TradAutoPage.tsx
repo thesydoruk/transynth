@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../api';
+import { getSrcLang, getTgtLang } from '../langDefaults';
 import s from './TradAutoPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -12,8 +13,8 @@ const EMPTY_FORM = {
   replacement: '',
   signature: '',
   path: '',
-  src_lang: 'en',
-  tgt_lang: 'uk',
+  src_lang: getSrcLang(),
+  tgt_lang: getTgtLang(),
   description: '',
   is_active: true,
 };
@@ -138,8 +139,8 @@ export const TradAutoPage = () => {
         replacement: c.replacement,
         signature: c.signature,
         path: c.path,
-        src_lang: 'en',
-        tgt_lang: 'uk',
+        src_lang: getSrcLang(),
+        tgt_lang: getTgtLang(),
         description: `Learned from TM (${c.occurrences} occurrences)`,
         is_active: true,
       }),

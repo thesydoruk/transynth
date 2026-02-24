@@ -30,13 +30,7 @@ import { TradAutoPage } from './TradAutoPage';
 import { TmxPage } from './TmxPage';
 import { ActivityPage } from './ActivityPage';
 import s from './SettingsPage.module.scss';
-
-/* ── localStorage keys ──────────────────────────────────────────────────── */
-
-/** localStorage key for the default source language (e.g. "en"). */
-const LS_SRC_LANG = 'fo4-src-lang';
-/** localStorage key for the default target language (e.g. "uk"). */
-const LS_TGT_LANG = 'fo4-tgt-lang';
+import { LS_SRC_LANG, LS_TGT_LANG, DEFAULT_SRC_LANG, DEFAULT_TGT_LANG } from '../langDefaults';
 
 /* ── Supported content languages ────────────────────────────────────────── */
 
@@ -136,8 +130,8 @@ const GeneralTab = () => {
   const { theme, toggleTheme } = useTheme();
 
   // Default content language state — synced with localStorage on change
-  const [srcLang, setSrcLang] = useState(() => getLsLang(LS_SRC_LANG, 'en'));
-  const [tgtLang, setTgtLang] = useState(() => getLsLang(LS_TGT_LANG, 'uk'));
+  const [srcLang, setSrcLang] = useState(() => getLsLang(LS_SRC_LANG, DEFAULT_SRC_LANG));
+  const [tgtLang, setTgtLang] = useState(() => getLsLang(LS_TGT_LANG, DEFAULT_TGT_LANG));
 
   /** Persist source language selection to localStorage. */
   const handleSrcLang = (v: string) => {

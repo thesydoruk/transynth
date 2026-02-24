@@ -2,6 +2,7 @@ import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
+import { CONFIG } from '../config.js';
 import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm.js';
 import { assertTransition, isValidTranslationStatus } from './statusMachine.js';
 import type { TranslationStatus, StatusActor } from './statusMachine.js';
@@ -135,7 +136,7 @@ const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<
   );
 }
 
-const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Promise<void> => {
+const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, srcLang = CONFIG.defaultSrcLang): Promise<void> => {
   // Fetch source text, best translation, and record context (signature + path + game) for rule matching
   const { rows } = await db.query(
     `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation,
@@ -222,8 +223,8 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
   // substring check because Cyrillic word forms may be inflected.
   const { rows: glossaryTerms } = await db.query(
     `SELECT term, translation FROM glossary
-     WHERE src_lang = 'en' AND tgt_lang = $1 AND translation IS NOT NULL`,
-    [targetLang],
+     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
+    [srcLang, targetLang],
   );
   const tgtLower = row.translation.toLowerCase();
   for (const g of glossaryTerms as Array<{ term: string; translation: string }>) {
@@ -274,13 +275,14 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string): Pr
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
-export const listMods = async (db: Tx) => {
+export const listMods = async (db: Tx, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
     `SELECT
       m.id,
       m.name,
       m.abs_path,
       m.version_hash,
+      m.game,
       m.created_at,
       COUNT(DISTINCT r.id)          AS record_count,
       COUNT(DISTINCT s.id)          AS string_count,
@@ -289,10 +291,11 @@ export const listMods = async (db: Tx) => {
       COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy_count
      FROM mods m
      LEFT JOIN records r ON r.mod_id = m.id
-     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
-     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = 'uk'
+     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = $1
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      GROUP BY m.id
      ORDER BY m.created_at DESC`,
+    [srcLang, targetLang],
   );
   return rows;
 }
@@ -345,8 +348,8 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   const page = Math.max(1, f.page ?? 1);
   const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 50));
   const offset = (page - 1) * pageSize;
-  const srcLang = f.srcLang ?? 'en';
-  const targetLang = f.targetLang ?? 'uk';
+  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
+  const targetLang = f.targetLang ?? CONFIG.defaultTgtLang;
 
   const conditions: string[] = ['r.mod_id = $1'];
   const values: unknown[] = [f.modId];
@@ -472,7 +475,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   return { rows, total: Number(countRows[0].total), page, pageSize };
 }
 
-export const listSignatures = async (db: Tx, modId: number, srcLang = 'en') => {
+export const listSignatures = async (db: Tx, modId: number, srcLang = CONFIG.defaultSrcLang) => {
   const { rows } = await db.query(
     `SELECT DISTINCT r.signature, COUNT(*) as count
      FROM records r
@@ -678,7 +681,7 @@ export const upsertTranslation = async (
   stringId: number,
   text: string,
   status: Exclude<TranslationStatus, 'deleted'>,
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
   provenance?: string,
   model?: string,
 ) => {
@@ -770,7 +773,7 @@ export const updateTranslationStatus = async (
   await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
 }
 
-export const deleteTranslation = async (db: Tx, stringId: number, targetLang = 'uk') => {
+export const deleteTranslation = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
     `DELETE FROM translations
      WHERE src_string_id = $1 AND target_lang = $2
@@ -822,7 +825,8 @@ export const diffMods = async (
   db: Tx,
   newModId: number,
   oldModId: number,
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ added: DiffEntry[]; removed: DiffEntry[]; changed: DiffEntry[]; unchanged: number }> => {
   type Row = {
     formid_hex: string;
@@ -845,8 +849,8 @@ export const diffMods = async (
        LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
          AND t.id = (SELECT id FROM translations WHERE src_string_id = s.id AND target_lang = $1
                      ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1)
-       WHERE r.mod_id = $2 AND s.lang = 'en'`,
-      [targetLang, modId],
+       WHERE r.mod_id = $2 AND s.lang = $3`,
+      [targetLang, modId, srcLang],
     );
     return rows as Row[];
   };
@@ -906,15 +910,16 @@ export const carryOverTranslations = async (
   db: Tx,
   newModId: number,
   oldModId: number,
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ carried: number; needsReview: number; skipped: number }> => {
   // Step 1: Fetch all strings in the new mod with their normalized source text
   const { rows: newStrings } = await db.query(
     `SELECT s.id AS string_id, r.formid_hex, r.path, s.text_norm
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = 'en'`,
-    [newModId],
+     WHERE r.mod_id = $1 AND s.lang = $2`,
+    [newModId, srcLang],
   );
 
   // Step 2: Fetch all strings in the old mod with their best translation
@@ -929,8 +934,8 @@ export const carryOverTranslations = async (
          WHERE src_string_id = s.id AND target_lang = $2
          ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1
        )
-     WHERE r.mod_id = $1 AND s.lang = 'en'`,
-    [oldModId, targetLang],
+     WHERE r.mod_id = $1 AND s.lang = $3`,
+    [oldModId, targetLang, srcLang],
   );
 
   // Build lookup map: identity key → old translation data
@@ -1024,6 +1029,7 @@ export type PreviousVersionRow = {
 export const listPreviousVersions = async (
   db: Tx,
   modId: number,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<PreviousVersionRow[]> => {
   const { rows } = await db.query(
     `SELECT m.id, m.name, m.version_hash, m.created_at::text,
@@ -1031,13 +1037,13 @@ export const listPreviousVersions = async (
             COUNT(DISTINCT t.src_string_id)::int       AS translated_strings
      FROM mods m
      LEFT JOIN records r ON r.mod_id = m.id
-     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
+     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = $2
      LEFT JOIN translations t ON t.src_string_id = s.id
      WHERE m.name = (SELECT name FROM mods WHERE id = $1)
        AND m.id != $1
      GROUP BY m.id
      ORDER BY m.created_at DESC`,
-    [modId],
+    [modId, srcLang],
   );
   return rows as PreviousVersionRow[];
 };
@@ -1061,15 +1067,16 @@ export const searchReplaceTranslations = async (
   isRegex: boolean,
   targetLang: string,
   dryRun: boolean,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ matches: SearchReplaceMatch[]; applied: number }> => {
   const { rows } = await db.query(
     `SELECT t.id AS translation_id, t.text, t.src_string_id AS string_id,
             r.formid_hex, r.path
      FROM translations t
-     JOIN strings s ON s.id = t.src_string_id AND s.lang = 'en'
+     JOIN strings s ON s.id = t.src_string_id AND s.lang = $3
      JOIN records r ON r.id = s.record_id
      WHERE r.mod_id = $1 AND t.target_lang = $2`,
-    [modId, targetLang],
+    [modId, targetLang, srcLang],
   );
 
   const matches: SearchReplaceMatch[] = [];
@@ -1146,7 +1153,7 @@ export const searchReplaceTranslations = async (
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export const getModStats = async (db: Tx, modId: number) => {
+export const getModStats = async (db: Tx, modId: number, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
     `SELECT
       COUNT(DISTINCT s.id)          AS total,
@@ -1160,9 +1167,9 @@ export const getModStats = async (db: Tx, modId: number) => {
       COUNT(DISTINCT CASE WHEN t.id IS NULL       THEN s.id END) AS untranslated
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = 'uk'
-     WHERE r.mod_id = $1 AND s.lang = 'en'`,
-    [modId],
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     WHERE r.mod_id = $1 AND s.lang = $3`,
+    [modId, targetLang, srcLang],
   );
   return rows[0];
 }
@@ -1179,7 +1186,8 @@ export const getModStats = async (db: Tx, modId: number) => {
 export const getModStatsByGrup = async (
   db: Tx,
   modId: number,
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<Array<{
   signature: string;
   total: number;
@@ -1199,17 +1207,17 @@ export const getModStatsByGrup = async (
        COUNT(DISTINCT CASE WHEN t.status IN ('tm','fuzzy')        THEN t.id END)::int   AS tm,
        COUNT(DISTINCT CASE WHEN t.status IN ('auto','auto_translated') THEN t.id END)::int AS auto
      FROM records r
-     JOIN strings s ON s.record_id = r.id AND s.lang = 'en'
+     JOIN strings s ON s.record_id = r.id AND s.lang = $3
      LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      WHERE r.mod_id = $1
      GROUP BY r.signature
      ORDER BY total DESC, r.signature`,
-    [modId, targetLang],
+    [modId, targetLang, srcLang],
   );
   return rows;
 };
 
-export const getTranslationHistory = async (db: Tx, stringId: number, targetLang = 'uk') => {
+export const getTranslationHistory = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
     `SELECT id, translation_id, text, status, provenance, model, note, created_at
      FROM translation_revisions
@@ -1221,7 +1229,7 @@ export const getTranslationHistory = async (db: Tx, stringId: number, targetLang
   return rows;
 }
 
-export const getQAIssues = async (db: Tx, stringId: number, targetLang = 'uk') => {
+export const getQAIssues = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
     `SELECT id, issue_type, severity, message, updated_at
      FROM qa_issues
@@ -1252,15 +1260,15 @@ export const getQAIssues = async (db: Tx, stringId: number, targetLang = 'uk') =
  */
 export const enforceGlossary = async (
   db: Tx,
-  opts: { modId?: number; targetLang?: string } = {},
+  opts: { modId?: number; targetLang?: string; srcLang?: string } = {},
 ): Promise<{ checked: number; violations: number }> => {
-  const targetLang = opts.targetLang ?? 'uk';
+  const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
 
-  /* ── 1. Load glossary terms (en → targetLang) ───────────────────────── */
+  /* ── 1. Load glossary terms (srcLang → targetLang) ───────────────────────── */
   const { rows: glossaryTerms } = await db.query(
     `SELECT term, translation FROM glossary
-     WHERE src_lang = 'en' AND tgt_lang = $1 AND translation IS NOT NULL`,
-    [targetLang],
+     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
+    [opts.srcLang ?? CONFIG.defaultSrcLang, targetLang],
   );
   if (glossaryTerms.length === 0) return { checked: 0, violations: 0 };
 
@@ -1397,6 +1405,7 @@ export const listReviewQueue = async (
   maxConfidence: number | null,
   page: number,
   pageSize: number,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<ReviewQueueResult> => {
   const effectivePage = Math.max(1, page);
   const effectivePageSize = Math.min(200, Math.max(1, pageSize));
@@ -1409,11 +1418,11 @@ export const listReviewQueue = async (
 
   const conditions: string[] = [
     't.target_lang = $1',
-    's.lang = \'en\'',
+    `s.lang = $${3}`,
     't.status = ANY($2)',
   ];
-  const values: unknown[] = [targetLang, statuses];
-  let idx = 3;
+  const values: unknown[] = [targetLang, statuses, srcLang];
+  let idx = 4;
 
   if (modId !== null) {
     conditions.push(`r.mod_id = $${idx}`);
@@ -1553,6 +1562,7 @@ export const getCoherenceGroups = async (
   targetLang: string,
   limit = 50,
   offset = 0,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<CoherenceResult> => {
   // CTE that selects the single best translation for every (string, lang) pair.
   // Reused in multiple queries below — defined as a SQL fragment for DRY usage.
@@ -1581,13 +1591,13 @@ export const getCoherenceGroups = async (
        SELECT s.text_norm
        FROM   strings s
        JOIN   bt ON bt.src_string_id = s.id
-       WHERE  s.lang = 'en'
+       WHERE  s.lang = $2
          AND  s.text_norm IS NOT NULL
          AND  s.text_norm <> ''
        GROUP  BY s.text_norm
        HAVING COUNT(DISTINCT bt.translation) > 1
      ) x`,
-    [targetLang],
+    [targetLang, srcLang],
   );
   const total = Number(countRows[0]?.n ?? 0);
 
@@ -1605,14 +1615,14 @@ export const getCoherenceGroups = async (
             COUNT(DISTINCT bt.translation)     AS variant_count
      FROM   strings s
      JOIN   bt ON bt.src_string_id = s.id
-     WHERE  s.lang = 'en'
+     WHERE  s.lang = $2
        AND  s.text_norm IS NOT NULL
        AND  s.text_norm <> ''
      GROUP  BY s.text_norm
      HAVING COUNT(DISTINCT bt.translation) > 1
      ORDER  BY variant_count DESC, s.text_norm
-     LIMIT  $2 OFFSET $3`,
-    [targetLang, limit, offset],
+     LIMIT  $3 OFFSET $4`,
+    [targetLang, srcLang, limit, offset],
   );
 
   if (normRows.length === 0) return { groups: [], total };
@@ -1636,10 +1646,10 @@ export const getCoherenceGroups = async (
      JOIN   bt       ON bt.src_string_id = s.id
      JOIN   records  r ON r.id = s.record_id
      JOIN   mods     m ON m.id = r.mod_id
-     WHERE  s.lang = 'en'
-       AND  s.text_norm = ANY($2)
+     WHERE  s.lang = $2
+       AND  s.text_norm = ANY($3)
      ORDER  BY s.text_norm, bt.translation, m.name`,
-    [targetLang, textNorms],
+    [targetLang, srcLang, textNorms],
   );
 
   // ── Step 4: assemble groups in JS ────────────────────────────────────────
@@ -1694,6 +1704,7 @@ export const resolveCoherenceGroup = async (
   textNorm: string,
   targetLang: string,
   chosenTranslation: string,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ updated: number }> => {
   // Find all strings in the group whose best translation differs from the chosen one
   const { rows } = await db.query<{ string_id: number }>(
@@ -1711,10 +1722,10 @@ export const resolveCoherenceGroup = async (
      SELECT s.id AS string_id
      FROM   strings s
      JOIN   bt ON bt.src_string_id = s.id
-     WHERE  s.lang = 'en'
+     WHERE  s.lang = $4
        AND  s.text_norm = $2
        AND  bt.translation <> $3`,
-    [targetLang, textNorm, chosenTranslation],
+    [targetLang, textNorm, chosenTranslation, srcLang],
   );
 
   if (rows.length === 0) return { updated: 0 };
@@ -1741,7 +1752,7 @@ export const bulkUpdateTranslationStatus = async (
   modId: number,
   stringIds: number[],
   newStatus: 'reviewed' | 'rejected',
-  targetLang = 'uk',
+  targetLang = CONFIG.defaultTgtLang,
   /** Actor performing the bulk action.  Passed through to the state machine. */
   actor: StatusActor = 'system',
 ): Promise<number> => {
@@ -1835,8 +1846,8 @@ export type InnrResult = {
 export const listInnrGroups = async (
   db: Tx,
   modId: number,
-  targetLang = 'uk',
-  srcLang = 'en',
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
 ): Promise<InnrResult> => {
   // Retrieve mod name for display
   const { rows: modRows } = await db.query<{ id: number; name: string }>(

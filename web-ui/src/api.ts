@@ -1,4 +1,6 @@
 // Thin API client — all calls go through the same base URL
+import { getSrcLang, getTgtLang } from './langDefaults';
+
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
 const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -818,29 +820,29 @@ export const api = {
     list: () => req<Mod[]>('/api/mods'),
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
-    tmApply: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+    tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<TMApplyResult>(`/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`, { method: 'POST' }),
-    diff: (newModId: number, compareModId: number, targetLang = 'uk') =>
+    diff: (newModId: number, compareModId: number, targetLang = getTgtLang()) =>
       req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
-    exportStrings: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+    exportStrings: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
-    exportEsp: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+    exportEsp: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
-    exportBa2: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+    exportBa2: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<ExportStringsResult>(`/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
     /** Downloads a complete project ZIP (BA2 + patched ESP) as a single file */
-    exportProject: (modId: number, srcLang = 'en', targetLang = 'uk') =>
+    exportProject: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       downloadBinary(
         `/api/mods/${modId}/export/project?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
         `mod_${modId}_${targetLang}.zip`,
       ),
     /** Copy translations from an older mod version into a newer one */
-    carryOver: (newModId: number, fromModId: number, targetLang = 'uk') =>
+    carryOver: (newModId: number, fromModId: number, targetLang = getTgtLang()) =>
       req<CarryOverResult>(`/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`, { method: 'POST' }),
     /** List older versions (same mod name, different file hash) for a given mod ID */
     previousVersions: (modId: number) =>
       req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),
-    bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = 'uk') =>
+    bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = getTgtLang()) =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',
         body: JSON.stringify({ stringIds, status, targetLang }),
@@ -867,7 +869,7 @@ export const api = {
     mod: (modId: number) => req<Stats>(`/api/stats?modId=${modId}`),
     global: () => req<Array<Mod & { stats: Stats }>>('/api/stats/global'),
     dashboard: () => req<DashboardData>('/api/stats/dashboard'),
-    grup: (modId: number, lang = 'uk') => req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
+    grup: (modId: number, lang = getTgtLang()) => req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
   },
 
   ops: {
@@ -919,12 +921,12 @@ export const api = {
     },
     suggestions: (stringId: number, targetLang: string) =>
       req<TMSuggestion[]>(`/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`),
-    saveTranslation: (stringId: number, text: string, status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft', targetLang = 'uk') =>
+    saveTranslation: (stringId: number, text: string, status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft', targetLang = getTgtLang()) =>
       req<{ id: number; text: string; status: string }>(`/api/strings/${stringId}/translation`, {
         method: 'PATCH',
         body: JSON.stringify({ text, status, targetLang }),
       }),
-    clearTranslation: (stringId: number, targetLang = 'uk') =>
+    clearTranslation: (stringId: number, targetLang = getTgtLang()) =>
       req<{ removed: number }>(`/api/strings/${stringId}/translation?targetLang=${encodeURIComponent(targetLang)}`, {
         method: 'DELETE',
       }),
@@ -933,17 +935,17 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ translationId, status }),
       }),
-    history: (stringId: number, targetLang = 'uk') =>
+    history: (stringId: number, targetLang = getTgtLang()) =>
       req<TranslationHistoryEntry[]>(`/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`),
-    qa: (stringId: number, targetLang = 'uk') =>
+    qa: (stringId: number, targetLang = getTgtLang()) =>
       req<QAIssue[]>(`/api/strings/${stringId}/qa?targetLang=${encodeURIComponent(targetLang)}`),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
      *  Returns final results array after stream closes. */
     async batchTranslate(
       stringIds: number[],
-      srcLang = 'en',
-      targetLang = 'uk',
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
       onProgress?: (e: ProgressEvent) => void,
     ): Promise<Array<{ stringId: number; text?: string; error?: string }>> {
       const response = await fetch(`${BASE}/api/strings/translate`, {
@@ -999,7 +1001,7 @@ export const api = {
       if (params?.q) qs.set('q', params.q);
       return req<GlossaryEntry[]>(`/api/glossary?${qs}`);
     },
-    add: (term: string, translation: string | null, srcLang = 'en', tgtLang = 'uk') =>
+    add: (term: string, translation: string | null, srcLang = getSrcLang(), tgtLang = getTgtLang()) =>
       req<GlossaryEntry>('/api/glossary', {
         method: 'POST',
         body: JSON.stringify({ term, translation, srcLang, tgtLang }),
@@ -1244,7 +1246,7 @@ export const api = {
   /** TMX (Translation Memory eXchange) import/export */
   tmx: {
     /** Download TMX export as a file. modId is optional — omit for global export. */
-    exportFile: (srcLang = 'en', targetLang = 'uk', modId?: number) => {
+    exportFile: (srcLang = getSrcLang(), targetLang = getTgtLang(), modId?: number) => {
       const qs = new URLSearchParams({ srcLang, targetLang });
       if (modId != null) qs.set('modId', String(modId));
       return downloadBinary(`/api/tmx/export?${qs}`, `tm_${targetLang}.tmx`);
@@ -1339,7 +1341,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ texts, game, srcLang, tgtLang }),
       }),
-    apply: (modId: number, dryRun = false, targetLang = 'uk') =>
+    apply: (modId: number, dryRun = false, targetLang = getTgtLang()) =>
       req<TradAutoApplyResult>(`/api/tradauto/apply/${modId}`, {
         method: 'POST',
         body: JSON.stringify({ dryRun, targetLang }),
@@ -1371,7 +1373,7 @@ export const api = {
      * Resolves a coherence group by propagating a single chosen translation
      * to all strings in the group that currently have a different translation.
      */
-    resolve: (textNorm: string, translation: string, targetLang = 'uk') =>
+    resolve: (textNorm: string, translation: string, targetLang = getTgtLang()) =>
       req<{ updated: number }>('/api/coherence/resolve', {
         method: 'POST',
         body: JSON.stringify({ textNorm, translation, targetLang }),
@@ -1467,7 +1469,7 @@ export const api = {
         fallbackName,
       ),
     /** Downloads a Nexus file to the server and creates a mod import job. */
-    importModFile: (gameId: string, modId: number, fileId: number, srcLang = 'en', tgtLang = 'uk') =>
+    importModFile: (gameId: string, modId: number, fileId: number, srcLang = getSrcLang(), tgtLang = getTgtLang()) =>
       req<ModImportJob>(
         `/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}/file/${fileId}/import`,
         {

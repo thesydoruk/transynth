@@ -26,6 +26,7 @@ import {
   isArchive,
   isPlugin,
 } from '../modImportService.js';
+import { CONFIG } from '../../config.js';
 
 const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
 
@@ -63,8 +64,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const origName = data.filename;
     const game: GameType = (req.query.game === 'sse' || req.query.game === 'sle' || req.query.game === 'fo76' || req.query.game === 'fo3' || req.query.game === 'fnv') ? req.query.game : 'fo4';
-    const srcLang = req.query.srcLang ?? 'en';
-    const tgtLang = req.query.tgtLang ?? 'uk';
+    const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+    const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
 
     if (!isPlugin(origName) && !isArchive(origName)) {
       return reply.status(400).send({

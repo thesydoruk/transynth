@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { listInnrGroups } from '../queries.js';
+import { CONFIG } from '../../config.js';
 
 /**
  * INNR editor routes.
@@ -33,8 +34,8 @@ export const innrRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid modId' });
     }
 
-    const targetLang = req.query.targetLang ?? 'uk';
-    const srcLang = req.query.srcLang ?? 'en';
+    const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
+    const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
 
     const result = await listInnrGroups(db, modId, targetLang, srcLang);
     return reply.send(result);

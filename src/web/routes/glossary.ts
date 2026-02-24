@@ -4,6 +4,7 @@ import { withTransaction } from '../../db.js';
 import type pg from 'pg';
 import { log } from '../../logger.js';
 import { enforceGlossary } from '../queries.js';
+import { CONFIG } from '../../config.js';
 
 export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/glossary?srcLang=&tgtLang=&q=
@@ -40,7 +41,7 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{ Body: { term: string; translation?: string; srcLang?: string; tgtLang?: string; source?: string } }>(
     '/api/glossary',
     async (req, reply) => {
-      const { term, translation, srcLang = 'en', tgtLang = 'uk', source = 'manual' } = req.body ?? {};
+      const { term, translation, srcLang = CONFIG.defaultSrcLang, tgtLang = CONFIG.defaultTgtLang, source = 'manual' } = req.body ?? {};
       if (!term) return reply.code(400).send({ error: 'term is required' });
       log.info(`POST /api/glossary term="${term}" translation="${translation ?? ''}" ${srcLang}→${tgtLang}`);
 
@@ -90,7 +91,7 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
     '/api/glossary/enforce',
     async (req, reply) => {
       const modId = req.body?.modId ? Number(req.body.modId) : undefined;
-      const targetLang = req.body?.targetLang ?? 'uk';
+      const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
 
       if (modId !== undefined && (!Number.isInteger(modId) || modId < 1)) {
         return reply.code(400).send({ error: 'Invalid modId' });
