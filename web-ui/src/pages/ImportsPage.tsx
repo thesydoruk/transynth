@@ -6,6 +6,7 @@
  * correct backend API based on file extension.
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -94,6 +95,7 @@ const statusLabel = (status: string, t: (key: string) => string): string =>
 /** Unified imports page — one upload bar, one combined job list. */
 export const ImportsPage = () => {
   const { t } = useTranslation();
+  const { gameId = 'fo4' } = useParams<{ gameId: string }>();
   const qc = useQueryClient();
 
   /* ── Queries — fetch all three job lists in parallel ───────────────────── */
@@ -109,7 +111,8 @@ export const ImportsPage = () => {
   ].sort((a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime());
 
   /* ── Upload state ─────────────────────────────────────────────────────── */
-  const [uploading, setUploading] = useState(false);  const [uploadGame, setUploadGame] = useState<'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle'>('fo4');  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   /* ── Live progress for running imports (keyed by "kind:id") ───────────── */
   const [liveProgress, setLiveProgress] = useState<Record<string, LiveProgress>>({});
@@ -196,7 +199,7 @@ export const ImportsPage = () => {
             doStart('csv', job.id);
           }
         } else {
-          const job = await api.modImport.upload(f, { game: uploadGame });
+          const job = await api.modImport.upload(f, { game: gameId });
           if (job) {
             // Start immediately after upload for both localized and
             // non-localized plugins using default upload languages.
@@ -234,19 +237,6 @@ export const ImportsPage = () => {
 
       {/* Unified upload bar */}
       <div className={s.uploadBar}>
-        <select
-          value={uploadGame}
-          onChange={e => setUploadGame(e.target.value as 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle')}
-          className={s.gameSelect}
-          title={t('imports.gameLabel')}
-        >
-          <option value="fo4">Fallout 4</option>
-          <option value="fo76">Fallout 76</option>
-          <option value="fo3">Fallout 3</option>
-          <option value="fnv">Fallout: New Vegas</option>
-          <option value="sse">Skyrim SE</option>
-          <option value="sle">Skyrim LE</option>
-        </select>
         <input ref={fileRef} type="file" accept={ACCEPTED_ALL} multiple className={s.fileInput} />
         <button onClick={handleUpload} disabled={uploading} className={s.btn}>
           {uploading ? t('common.uploading') : t('common.upload')}

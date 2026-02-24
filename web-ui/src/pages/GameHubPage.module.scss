@@ -103,9 +103,12 @@
 
 .statValue {
   display: block;
-  font-size: 28px;
+  font-size: clamp(20px, 2.8vw, 28px);
+  line-height: 1.15;
   font-weight: 700;
   color: var(--text-bright);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
@@ -194,6 +197,10 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
   }
+}
+
+.countCell {
+  font-variant-numeric: tabular-nums;
 }
 
 .modLink {

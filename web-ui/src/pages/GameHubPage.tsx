@@ -42,10 +42,12 @@ const computeStats = (mods: Mod[]): GameStats => {
   let fuzzyStrings = 0;
 
   for (const m of mods) {
-    totalStrings += m.string_count;
-    translatedStrings += m.translated_count;
-    approvedStrings += m.approved_count;
-    fuzzyStrings += m.fuzzy_count;
+    // API aggregate counters may arrive as strings from SQL COUNT(*), so
+    // coerce explicitly to numbers to prevent string concatenation.
+    totalStrings += Number(m.string_count) || 0;
+    translatedStrings += Number(m.translated_count) || 0;
+    approvedStrings += Number(m.approved_count) || 0;
+    fuzzyStrings += Number(m.fuzzy_count) || 0;
   }
 
   const overallPct = totalStrings > 0 ? Math.round((translatedStrings / totalStrings) * 100) : 0;
@@ -54,8 +56,18 @@ const computeStats = (mods: Mod[]): GameStats => {
 };
 
 export const GameHubPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { gameId = '' } = useParams<{ gameId: string }>();
+
+  /** Locale-aware compact formatter (thousands/millions/etc.) for counters. */
+  const compactCountFmt = useMemo(
+    () => new Intl.NumberFormat(i18n.language || 'uk-UA', {
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 1,
+    }),
+    [i18n.language],
+  );
 
   /* ── Queries ──────────────────────────────────────────────────────────── */
 
@@ -127,11 +139,11 @@ export const GameHubPage = () => {
       {stats && stats.modCount > 0 && (
         <div className={s.statsRow}>
           <div className={s.statCard}>
-            <span className={s.statValue}>{stats.modCount}</span>
+            <span className={s.statValue}>{compactCountFmt.format(stats.modCount)}</span>
             <span className={s.statLabel}>{t('gameHub.mods')}</span>
           </div>
           <div className={s.statCard}>
-            <span className={s.statValue}>{stats.totalStrings.toLocaleString()}</span>
+            <span className={s.statValue}>{compactCountFmt.format(stats.totalStrings)}</span>
             <span className={s.statLabel}>{t('gameHub.strings')}</span>
           </div>
           <div className={s.statCard}>
@@ -195,7 +207,7 @@ export const GameHubPage = () => {
                         {mod.name}
                       </Link>
                     </td>
-                    <td>{mod.string_count}</td>
+                    <td className={s.countCell}>{compactCountFmt.format(mod.string_count)}</td>
                     <td>
                       <ProgressBar
                         stats={{
