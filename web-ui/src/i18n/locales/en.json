@@ -66,6 +66,7 @@
   "importStatus": {
     "pending": "Pending",
     "in_progress": "In progress",
+    "downloading": "Downloading",
     "extracting": "Extracting...",
     "paused": "Paused",
     "failed": "Failed",

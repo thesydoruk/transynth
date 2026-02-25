@@ -20,6 +20,11 @@ import {
   type NexusModRelationItem,
   type NexusTranslationCandidate,
 } from '../api';
+import {
+  patchNexusDownloadJob,
+  removeNexusDownloadJob,
+  upsertNexusDownloadJob,
+} from '../nexusDownloadQueue';
 import s from './GameModDetailsPage.module.scss';
 
 type RelationsTabKey = 'possibleTranslations' | 'requires' | 'requiredBy';
@@ -104,17 +109,41 @@ export const GameModDetailsPage = () => {
     setFileActionInfo(null);
     setBusyActionKey(`import:${file.fileId}`);
 
+    const queueId = `nexus:${gameId}:${numericModId}:${file.fileId}`;
+    upsertNexusDownloadJob({
+      id: queueId,
+      gameId,
+      modId: numericModId,
+      fileId: file.fileId,
+      fileName: file.fileName ?? file.name,
+      status: 'downloading',
+      progress: 0,
+      createdAt: Date.now(),
+    });
+
+    // Backend currently does server-side downloading. Since it does not stream
+    // byte-level progress yet, show a smooth pseudo-progress while waiting.
+    let pseudoProgress = 0;
+    const progressTick = setInterval(() => {
+      pseudoProgress = Math.min(93, pseudoProgress + (Math.random() * 7 + 2));
+      patchNexusDownloadJob(queueId, { progress: Math.round(pseudoProgress) });
+    }, 700);
+
     try {
       const job = await api.games.importModFile(gameId, numericModId, file.fileId);
 
       if (job.running) {
         setFileActionInfo(t('games.fileImportAlreadyRunning'));
+        clearInterval(progressTick);
+        removeNexusDownloadJob(queueId);
         setBusyActionKey(null);
         return;
       }
 
       if (job.status === 'completed') {
         setFileActionInfo(t('games.fileImportAlreadyCompleted'));
+        clearInterval(progressTick);
+        removeNexusDownloadJob(queueId);
         setBusyActionKey(null);
         return;
       }
@@ -122,9 +151,17 @@ export const GameModDetailsPage = () => {
       setFileActionInfo(t('games.fileImportQueued', { name: file.name }));
       qc.invalidateQueries({ queryKey: ['mod-imports'] });
 
+      clearInterval(progressTick);
+      patchNexusDownloadJob(queueId, { progress: 100 });
+      setTimeout(() => removeNexusDownloadJob(queueId), 700);
       setBusyActionKey(null);
       return;
     } catch (error) {
+      clearInterval(progressTick);
+      patchNexusDownloadJob(queueId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
       setFileActionError(error instanceof Error ? error.message : String(error));
     }
 
@@ -731,6 +768,15 @@ const renderNexusDescription = (raw: string): string => {
       ? `<a href="${safeHref}" target="_blank" rel="noreferrer">${safeHref}</a>`
       : String(href);
   });
+
+  // YouTube embeds: [youtube]VIDEO_ID[/youtube]
+  // Only accept well-formed 11-character YouTube video IDs to prevent injection.
+  // Uses youtube-nocookie.com privacy-enhanced mode.
+  html = replaceRepeatedly(html, /\[youtube\]([A-Za-z0-9_-]{11})\[\/youtube\]/gi, (_m, videoId) => {
+    return `<div class="bb-youtube"><iframe src="https://www.youtube-nocookie.com/embed/${videoId}" title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe></div>`;
+  });
+  // Strip any unrecognised [youtube] tags that didn't match the strict ID pattern.
+  html = html.replace(/\[\/?youtube\b[^\]]*\]/gi, '');
 
   // Image tags
   html = replaceRepeatedly(html, /\[img\](.*?)\[\/img\]/gis, (_m, src) => {

@@ -7,6 +7,11 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  listNexusDownloadJobs,
+  subscribeNexusDownloadJobs,
+  type NexusDownloadJob,
+} from '../nexusDownloadQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -113,6 +118,15 @@ export const ImportsPage = () => {
   /* ── Upload state ─────────────────────────────────────────────────────── */
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /* ── Nexus pre-import downloads (before backend job exists) ───────────── */
+  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
+
+  useEffect(() => {
+    return subscribeNexusDownloadJobs(() => {
+      setNexusDownloads(listNexusDownloadJobs());
+    });
+  }, []);
 
   /* ── Live progress for running imports (keyed by "kind:id") ───────────── */
   const [liveProgress, setLiveProgress] = useState<Record<string, LiveProgress>>({});
@@ -230,6 +244,7 @@ export const ImportsPage = () => {
   const eetPreviewJob = eetPreviewId != null ? (eetJobs ?? []).find(j => j.id === eetPreviewId) : null;
   const csvPreviewJob = csvPreviewId != null ? (csvJobs ?? []).find(j => j.id === csvPreviewId) : null;
   const modPreviewJob = modPreviewId != null ? (modJobs ?? []).find(j => j.id === modPreviewId) : null;
+  const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
 
   return (
     <div className={s.page}>
@@ -248,11 +263,14 @@ export const ImportsPage = () => {
         )}
       </div>
 
-      {/* Unified job list */}
-      {allJobs.length === 0 ? (
+      {/* Unified job list + Nexus downloads still in progress */}
+      {allJobs.length === 0 && visibleNexusDownloads.length === 0 ? (
         <p className={s.empty}>{t('imports.noFiles')}</p>
       ) : (
         <div className={s.list}>
+          {visibleNexusDownloads.map((d) => (
+            <NexusDownloadRow key={d.id} job={d} />
+          ))}
           {allJobs.map(u => {
             const key = `${u.kind}:${u.job.id}`;
             const live = liveProgress[key];
@@ -403,6 +421,41 @@ const UnifiedJobRow = ({ kind, job, live, isRunning, onStart, onPause, onCancel,
           {isRunning && <button onClick={onPause} className={s.actionBtn} title="⏸">⏸</button>}
           {isRunning && <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>⏹</button>}
           {!isRunning && <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>🗑</button>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** Virtual row for a Nexus file that is still downloading before import job creation. */
+const NexusDownloadRow = ({ job }: { job: NexusDownloadJob }) => {
+  const { t } = useTranslation();
+  const pct = Math.max(0, Math.min(100, Math.round(job.progress)));
+
+  return (
+    <div className={s.row}>
+      <div className={s.rowLeft}>
+        <span className={s.typeBadge} style={{ background: kindColor('mod') }}>MOD</span>
+        <div>
+          <span className={s.fileName}>{job.fileName}</span>
+          <span className={s.meta}>{job.gameId.toUpperCase()} · Nexus #{job.modId} · file #{job.fileId}</span>
+        </div>
+      </div>
+      <div className={s.rowRight}>
+        {job.status === 'failed' ? (
+          <span className={s.badge} style={{ background: statusColorBase('failed') }}>
+            {t('importStatus.failed')}
+          </span>
+        ) : (
+          <div className={s.progressWrap}>
+            <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
+            <span className={s.progressLabel}>{pct}%</span>
+          </div>
+        )}
+        <div className={s.actions}>
+          <span className={s.badge} style={{ background: statusColorBase('in_progress') }}>
+            {t('importStatus.downloading')}
+          </span>
         </div>
       </div>
     </div>

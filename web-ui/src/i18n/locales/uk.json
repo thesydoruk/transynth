@@ -66,6 +66,7 @@
   "importStatus": {
     "pending": "Очікує",
     "in_progress": "Виконується",
+    "downloading": "Скачується",
     "extracting": "Витягування...",
     "paused": "Призупинено",
     "failed": "Помилка",
