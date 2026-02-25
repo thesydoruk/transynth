@@ -742,6 +742,7 @@
     "fileImporting": "Імпорт...",
     "fileImportUnsupported": "Цей тип файла не можна імпортувати в пайплайн модів.",
     "fileImportStarted": "Імпорт {{name}} розпочато.",
+    "fileImportQueued": "{{name}} додано в чергу. Відкрий Імпорт, обери мову та запусти вручну.",
     "fileImportFinished": "Імпорт {{name}} завершено.",
     "fileImportAlreadyRunning": "Імпорт цього файла вже виконується.",
     "fileImportAlreadyCompleted": "Цей файл уже був імпортований раніше.",

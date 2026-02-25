@@ -201,9 +201,8 @@ export const ImportsPage = () => {
         } else {
           const job = await api.modImport.upload(f, { game: gameId });
           if (job) {
-            // Start immediately after upload for both localized and
-            // non-localized plugins using default upload languages.
-            doStart('mod', job.id);
+            // Mod imports must be started manually after language is selected.
+            refreshAll();
           }
         }
       }
@@ -218,7 +217,8 @@ export const ImportsPage = () => {
   const startAll = () => {
     for (const u of allJobs) {
       if (['pending', 'paused', 'failed'].includes(u.job.status)) {
-        if (u.kind === 'mod' && !(u.job as ModImportJob).is_localized) continue;
+        // Mod imports require explicit language confirmation in the preview modal.
+        if (u.kind === 'mod') continue;
         doStart(u.kind, u.job.id);
       }
     }
@@ -268,7 +268,6 @@ export const ImportsPage = () => {
                 onStart={() => {
                   if (u.kind === 'eet') setEetPreviewId(u.job.id);
                   else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
-                  else if ((u.job as ModImportJob).is_localized) doStart('mod', u.job.id);
                   else setModPreviewId(u.job.id);
                 }}
                 onPause={() => {
@@ -318,7 +317,7 @@ export const ImportsPage = () => {
           }}
         />
       )}
-      {modPreviewJob && !modPreviewJob.is_localized && (
+      {modPreviewJob && (
         <ModPreviewModal
           job={modPreviewJob}
           onClose={() => setModPreviewId(null)}

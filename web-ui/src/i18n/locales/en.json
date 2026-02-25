@@ -741,6 +741,7 @@
     "fileImporting": "Importing...",
     "fileImportUnsupported": "This file type cannot be imported into the mod pipeline.",
     "fileImportStarted": "Import started for {{name}}.",
+    "fileImportQueued": "{{name}} imported to queue. Open Imports, choose language, then start manually.",
     "fileImportFinished": "Import finished for {{name}}.",
     "fileImportAlreadyRunning": "This file is already being imported.",
     "fileImportAlreadyCompleted": "This file was already imported before.",

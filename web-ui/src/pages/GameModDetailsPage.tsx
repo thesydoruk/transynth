@@ -119,22 +119,10 @@ export const GameModDetailsPage = () => {
         return;
       }
 
-      setFileActionInfo(t('games.fileImportStarted', { name: file.name }));
+      setFileActionInfo(t('games.fileImportQueued', { name: file.name }));
       qc.invalidateQueries({ queryKey: ['mod-imports'] });
 
-      const { promise } = api.modImport.startImport(job.id);
-      void promise
-        .then(() => {
-          qc.invalidateQueries({ queryKey: ['mod-imports'] });
-          setFileActionInfo(t('games.fileImportFinished', { name: file.name }));
-        })
-        .catch((error) => {
-          setFileActionError(error instanceof Error ? error.message : String(error));
-        })
-        .finally(() => {
-          setBusyActionKey((current) => (current === `import:${file.fileId}` ? null : current));
-        });
-
+      setBusyActionKey(null);
       return;
     } catch (error) {
       setFileActionError(error instanceof Error ? error.message : String(error));
