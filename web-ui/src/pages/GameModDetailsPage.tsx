@@ -9,7 +9,7 @@
  * - likely translation mods (heuristic ranking)
  */
 
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -21,8 +21,11 @@ import {
   type NexusTranslationCandidate,
 } from '../api';
 import {
+  listNexusDownloadJobs,
+  type NexusDownloadJob,
   patchNexusDownloadJob,
   removeNexusDownloadJob,
+  subscribeNexusDownloadJobs,
   upsertNexusDownloadJob,
 } from '../nexusDownloadQueue';
 import s from './GameModDetailsPage.module.scss';
@@ -37,6 +40,11 @@ export const GameModDetailsPage = () => {
   const [fileActionError, setFileActionError] = useState<string | null>(null);
   const [fileActionInfo, setFileActionInfo] = useState<string | null>(null);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
+
+  // Subscribe to the in-memory Nexus download queue so this page re-renders
+  // as pseudo-progress updates arrive for files belonging to this mod.
+  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(listNexusDownloadJobs);
+  useEffect(() => subscribeNexusDownloadJobs(() => setNexusDownloads(listNexusDownloadJobs())), []);
 
   const numericModId = Number(modId);
 
@@ -84,6 +92,17 @@ export const GameModDetailsPage = () => {
     queryFn: () => api.games.modRelations(gameId, numericModId, 100),
     enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
   });
+
+  // Index active download jobs by fileId, scoped to this specific mod only.
+  const downloadJobMap = useMemo(() => {
+    const map = new Map<number, NexusDownloadJob>();
+    for (const job of nexusDownloads) {
+      if (job.gameId === gameId && job.modId === numericModId) {
+        map.set(job.fileId, job);
+      }
+    }
+    return map;
+  }, [nexusDownloads, gameId, numericModId]);
 
   const groupedTranslations = useMemo(
     () => groupTranslationsByLanguage(translations?.items ?? []),
@@ -243,46 +262,70 @@ export const GameModDetailsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {details.files.map((f) => (
-                      <tr key={f.fileId}>
-                        <td>
-                          <div className={s.fileNameCell}>
-                            {f.name}
-                            {f.isPrimary && <span className={s.primaryBadge}>{t('games.primaryFile')}</span>}
-                          </div>
-                        </td>
-                        <td>{f.categoryName ?? '-'}</td>
-                        <td>{f.version ?? '-'}</td>
-                        <td>{fmtBytes(f.sizeBytes)}</td>
-                        <td>{f.uploadedTime ?? '-'}</td>
-                        <td>
-                          <div className={s.fileActions}>
-                            <button
-                              type="button"
-                              className={s.fileActionButton}
-                              onClick={() => handleFileDownload(f)}
-                              disabled={busyActionKey === `download:${f.fileId}` || busyActionKey === `import:${f.fileId}`}
-                            >
-                              {busyActionKey === `download:${f.fileId}`
-                                ? t('games.fileDownloading')
-                                : t('games.fileDownloadAction')}
-                            </button>
+                    {details.files.map((f) => {
+                      const downloadJob = downloadJobMap.get(f.fileId);
+                      return (
+                        <Fragment key={f.fileId}>
+                          <tr>
+                            <td>
+                              <div className={s.fileNameCell}>
+                                {f.name}
+                                {f.isPrimary && <span className={s.primaryBadge}>{t('games.primaryFile')}</span>}
+                              </div>
+                            </td>
+                            <td>{f.categoryName ?? '-'}</td>
+                            <td>{f.version ?? '-'}</td>
+                            <td>{fmtBytes(f.sizeBytes)}</td>
+                            <td>{f.uploadedTime ?? '-'}</td>
+                            <td>
+                              <div className={s.fileActions}>
+                                <button
+                                  type="button"
+                                  className={s.fileActionButton}
+                                  onClick={() => handleFileDownload(f)}
+                                  disabled={busyActionKey === `download:${f.fileId}` || busyActionKey === `import:${f.fileId}`}
+                                >
+                                  {busyActionKey === `download:${f.fileId}`
+                                    ? t('games.fileDownloading')
+                                    : t('games.fileDownloadAction')}
+                                </button>
 
-                            <button
-                              type="button"
-                              className={s.fileActionButton}
-                              onClick={() => handleFileImport(f)}
-                              disabled={!isImportableNexusFile(f.fileName ?? f.name) || busyActionKey === `import:${f.fileId}` || busyActionKey === `download:${f.fileId}`}
-                              title={!isImportableNexusFile(f.fileName ?? f.name) ? t('games.fileImportUnsupported') : undefined}
-                            >
-                              {busyActionKey === `import:${f.fileId}`
-                                ? t('games.fileImporting')
-                                : t('games.fileImportAction')}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                                <button
+                                  type="button"
+                                  className={s.fileActionButton}
+                                  onClick={() => handleFileImport(f)}
+                                  disabled={!isImportableNexusFile(f.fileName ?? f.name) || busyActionKey === `import:${f.fileId}` || busyActionKey === `download:${f.fileId}`}
+                                  title={!isImportableNexusFile(f.fileName ?? f.name) ? t('games.fileImportUnsupported') : undefined}
+                                >
+                                  {busyActionKey === `import:${f.fileId}`
+                                    ? t('games.fileImporting')
+                                    : t('games.fileImportAction')}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Progress sub-row — only visible while a download job is active for this file */}
+                          {downloadJob && (
+                            <tr className={s.fileProgressRow}>
+                              <td colSpan={6} className={s.fileProgressCell}>
+                                <div className={s.fileProgressTrack}>
+                                  <div
+                                    className={`${s.fileProgressFill}${downloadJob.status === 'failed' ? ` ${s.fileProgressFailed}` : ''}`}
+                                    style={{ width: `${downloadJob.progress}%` }}
+                                  />
+                                </div>
+                                <span className={s.fileProgressLabel}>
+                                  {downloadJob.status === 'failed'
+                                    ? t('common.error', { message: downloadJob.error ?? '' })
+                                    : `${t('games.fileDownloading')} ${downloadJob.progress}%`}
+                                </span>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
