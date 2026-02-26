@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../api';
-import { getSrcLang, getTgtLang } from '../langDefaults';
+import { getSrcLang, getTgtLang, SUPPORTED_CONTENT_LANGUAGES } from '../langDefaults';
 import { StatusBadge, ProgressBar } from '../components/StatusBadge';
 import { BookEditorModal } from '../components/BookEditorModal';
 import styles from './ModEditorPage.module.scss';
@@ -696,8 +696,18 @@ export const ModEditorPage = () => {
   // Group counts by signature for left panel
   const sigCounts = sigs ?? [];
 
-  // Available langs derived from mod + fallback
-  const availLangs = langs && langs.length > 0 ? langs : [getSrcLang(), getTgtLang()];
+  // Always show the full supported language list in selectors.
+  // Append any extra language codes returned by API (if present) so nothing is lost.
+  const availLangs = useMemo(() => {
+    const base = [...SUPPORTED_CONTENT_LANGUAGES] as string[];
+    if (!langs || langs.length === 0) return base;
+    for (const code of langs) {
+      if (!base.includes(code)) {
+        base.push(code);
+      }
+    }
+    return base;
+  }, [langs]);
 
   return (
     <div className={styles.root}>

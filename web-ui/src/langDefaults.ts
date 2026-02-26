@@ -25,6 +25,30 @@ export const DEFAULT_SRC_LANG = 'en';
 /** Fallback target language when nothing is stored. */
 export const DEFAULT_TGT_LANG = 'uk';
 
+/* ── Supported content languages ─────────────────────────────────────────── */
+
+/**
+ * Full list of content locales supported by the translation workflow.
+ *
+ * Keep this list as the single source of truth for source/target selectors
+ * across pages that work with mod/EET/CSV content.
+ */
+export const SUPPORTED_CONTENT_LANGUAGES = [
+  'en',
+  'uk',
+  'ru',
+  'de',
+  'fr',
+  'es',
+  'it',
+  'pt',
+  'pl',
+  'cs',
+  'ja',
+  'zh',
+  'ko',
+] as const;
+
 /* ── Runtime accessors ───────────────────────────────────────────────────── */
 
 /**
