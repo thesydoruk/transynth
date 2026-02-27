@@ -22,6 +22,7 @@ import {
   requestModCancel,
   requestModPause,
   updateModJobLanguages,
+  restartModImportJob,
   previewModRecords,
   isArchive,
   isPlugin,
@@ -162,6 +163,20 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       if (srcLang && tgtLang) {
         await updateModJobLanguages(db, jobId, srcLang, tgtLang);
       }
+      return await getModImportJob(db, jobId);
+    },
+  );
+
+  // ── Restart completed/failed/paused job ──────────────────────────────────
+  app.post<{ Params: { id: string } }>(
+    '/api/mod-import/:id/restart',
+    async (req, reply) => {
+      const jobId = Number(req.params.id);
+      const job = await getModImportJob(db, jobId);
+      if (!job) return reply.status(404).send({ error: 'Import job not found' });
+      if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot restart while running' });
+
+      await restartModImportJob(db, jobId);
       return await getModImportJob(db, jobId);
     },
   );

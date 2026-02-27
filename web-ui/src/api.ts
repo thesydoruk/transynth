@@ -1259,6 +1259,7 @@ export const api = {
     pause: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/pause`, { method: 'POST' }),
     cancel: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/cancel`, { method: 'POST' }),
     remove: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}`, { method: 'DELETE' }),
+    restart: (jobId: number) => req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
 
     updateLanguages: (jobId: number, srcLang: string, tgtLang: string) =>
       req<ModImportJob>(`/api/mod-import/${jobId}`, {

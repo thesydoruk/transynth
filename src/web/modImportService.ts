@@ -76,6 +76,19 @@ export const updateModJobLanguages = async (db: Tx, id: number, srcLang: string,
   );
 }
 
+/**
+ * Resets a finished/failed/paused mod import job back to pending so it can be
+ * started again from the beginning.
+ */
+export const restartModImportJob = async (db: Tx, id: number) => {
+  await db.query(
+    `UPDATE mod_imports
+     SET status = 'pending', imported_records = 0, updated_at = NOW()
+     WHERE id = $1`,
+    [id],
+  );
+}
+
 export const deleteModImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM mod_imports WHERE id = $1', [id]);
 }

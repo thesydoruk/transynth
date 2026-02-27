@@ -356,6 +356,10 @@ export const ImportsPage = () => {
           gameId={gameId}
           onClose={() => setModPreviewId(null)}
           onConfirm={async (payload) => {
+            if (modPreviewJob.status === 'completed') {
+              await api.modImport.restart(modPreviewJob.id);
+            }
+
             await api.modImport.updateLanguages(modPreviewJob.id, payload.importLang, payload.importLang);
             refreshAll();
             setModPreviewId(null);
@@ -414,9 +418,12 @@ const UnifiedJobRow = ({ kind, job, live, isRunning, onStart, onPause, onCancel,
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
-  const canStart = !isRunning && job.status !== 'completed' && job.status !== 'in_progress';
+  const canStart = !isRunning && job.status !== 'in_progress' && (job.status !== 'completed' || kind === 'mod');
   const isMod = kind === 'mod';
   const modJob = isMod ? (job as ModImportJob) : null;
+  const startTooltip = isMod && job.status === 'completed'
+    ? t('imports.reimportTooltip')
+    : t('imports.startTooltip');
 
   return (
     <div className={s.row}>
@@ -452,7 +459,7 @@ const UnifiedJobRow = ({ kind, job, live, isRunning, onStart, onPause, onCancel,
           </span>
         )}
         <div className={s.actions}>
-          {canStart && <button onClick={onStart} className={s.actionBtn} title="▶">▶</button>}
+          {canStart && <button onClick={onStart} className={s.actionBtn} title={startTooltip} aria-label={startTooltip}>▶</button>}
           {isRunning && <button onClick={onPause} className={s.actionBtn} title="⏸">⏸</button>}
           {isRunning && <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>⏹</button>}
           {!isRunning && <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>🗑</button>}
