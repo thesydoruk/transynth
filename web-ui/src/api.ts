@@ -586,6 +586,14 @@ export type CarryOverResult = {
   skipped: number;
 };
 
+/** Result of applying imported mod strings as translations on another mod. */
+export type ApplyImportedResult = {
+  applied: number;
+  skipped: number;
+  unmatched: number;
+  empty: number;
+};
+
 /**
  * One row from GET /api/mods/:id/previous-versions.
  * Represents an older version of the same mod (same name, different file hash).
@@ -850,6 +858,20 @@ export const api = {
     /** Copy translations from an older mod version into a newer one */
     carryOver: (newModId: number, fromModId: number, targetLang = getTgtLang()) =>
       req<CarryOverResult>(`/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`, { method: 'POST' }),
+    /** Apply imported raw strings (e.g. RU translation mod) to a base mod as translations */
+    applyImported: (
+      targetModId: number,
+      fromModId: number,
+      importedLang: string,
+      targetLang = importedLang,
+      srcLang = getSrcLang(),
+    ) => req<ApplyImportedResult>(
+      `/api/mods/${targetModId}/apply-imported?fromModId=${fromModId}`
+      + `&importedLang=${encodeURIComponent(importedLang)}`
+      + `&targetLang=${encodeURIComponent(targetLang)}`
+      + `&srcLang=${encodeURIComponent(srcLang)}`,
+      { method: 'POST' },
+    ),
     /** List older versions (same mod name, different file hash) for a given mod ID */
     previousVersions: (modId: number) =>
       req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),

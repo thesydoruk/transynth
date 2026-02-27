@@ -321,7 +321,11 @@
     "importAs": "Імпортувати як {{lang}} ({{count}} рядків)",
     "localizedPlugin": "Локалізований плагін",
     "nonLocalizedPlugin": "Нелокалізований плагін",
-    "locales": "Локалі: {{locales}}"
+    "locales": "Локалі: {{locales}}",
+    "applyToExisting": "Після імпорту застосувати текст до існуючого мода",
+    "baseMod": "Базовий мод",
+    "applyTargetLang": "Мова перекладу в базовому моді",
+    "noEligibleMods": "Немає доступних модів у цій грі"
   },
   "login": {
     "signInTitle": "Увійти для продовження",

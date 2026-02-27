@@ -320,7 +320,11 @@
     "importAs": "Import as {{lang}} ({{count}} strings)",
     "localizedPlugin": "Localized plugin",
     "nonLocalizedPlugin": "Non-localized plugin",
-    "locales": "Locales: {{locales}}"
+    "locales": "Locales: {{locales}}",
+    "applyToExisting": "Apply imported text to existing mod after import",
+    "baseMod": "Base mod",
+    "applyTargetLang": "Target language in base mod",
+    "noEligibleMods": "No eligible mods in this game"
   },
   "login": {
     "signInTitle": "Sign in to continue",

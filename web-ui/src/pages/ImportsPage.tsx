@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   api,
+  type Mod,
   type EetImportJob,
   type EetProgressEvent,
   type EetPreviewRow,
@@ -40,6 +41,13 @@ type UnifiedJob =
   | { kind: 'eet'; job: EetImportJob }
   | { kind: 'csv'; job: CsvImportJob }
   | { kind: 'mod'; job: ModImportJob };
+
+type ModPreviewConfirmPayload = {
+  importLang: string;
+  applyEnabled: boolean;
+  applyToModId: number | null;
+  applyTargetLang: string;
+};
 
 /** All file extensions accepted by the unified upload input. */
 const ACCEPTED_ALL = '.eet,.csv,.esp,.esm,.esl,.zip,.7z,.rar';
@@ -149,7 +157,7 @@ export const ImportsPage = () => {
   }, [qc]);
 
   /* ── Start import by kind ─────────────────────────────────────────────── */
-  const doStart = useCallback((kind: 'eet' | 'csv' | 'mod', jobId: number) => {
+  const doStart = useCallback((kind: 'eet' | 'csv' | 'mod', jobId: number): Promise<boolean> => {
     const key = `${kind}:${jobId}`;
     const onProgress = (e: { imported: number; total: number }) => {
       setLiveProgress(prev => ({ ...prev, [key]: { imported: e.imported, total: e.total } }));
@@ -187,8 +195,15 @@ export const ImportsPage = () => {
     }
 
     abortRefs.current[key] = abort;
-    promise.then(cleanup).catch(cleanup);
+    const done = promise.then(() => {
+      cleanup();
+      return true;
+    }).catch(() => {
+      cleanup();
+      return false;
+    });
     refreshAll();
+    return done;
   }, [refreshAll]);
 
   /* ── Upload handler — routes each file to the right API by extension ── */
@@ -338,12 +353,32 @@ export const ImportsPage = () => {
       {modPreviewJob && (
         <ModPreviewModal
           job={modPreviewJob}
+          gameId={gameId}
           onClose={() => setModPreviewId(null)}
-          onConfirm={async (lang) => {
-            await api.modImport.updateLanguages(modPreviewJob.id, lang, lang);
+          onConfirm={async (payload) => {
+            await api.modImport.updateLanguages(modPreviewJob.id, payload.importLang, payload.importLang);
             refreshAll();
             setModPreviewId(null);
-            setTimeout(() => doStart('mod', modPreviewJob.id), 100);
+
+            const importOk = await doStart('mod', modPreviewJob.id);
+            if (!importOk || !payload.applyEnabled || payload.applyToModId == null) {
+              return;
+            }
+
+            // Resolve the newly imported mod_id and apply imported strings to base mod.
+            const jobs = await api.modImport.list();
+            const importedJob = jobs.find((j) => j.id === modPreviewJob.id);
+            if (!importedJob?.mod_id) {
+              throw new Error('Imported mod ID is unavailable after import completion');
+            }
+
+            await api.mods.applyImported(
+              payload.applyToModId,
+              importedJob.mod_id,
+              payload.importLang,
+              payload.applyTargetLang,
+            );
+            refreshAll();
           }}
         />
       )}
@@ -676,11 +711,17 @@ const CsvPreviewModal = ({ job, onClose, onConfirm }: {
 // ── Mod preview modal ────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const ModPreviewModal = ({ job, onClose, onConfirm }: {
-  job: ModImportJob; onClose: () => void; onConfirm: (lang: string) => void;
+const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: {
+  job: ModImportJob;
+  gameId: string;
+  onClose: () => void;
+  onConfirm: (payload: ModPreviewConfirmPayload) => void;
 }) => {
   const { t } = useTranslation();
   const [lang, setLang] = useState(job.src_lang);
+  const [applyEnabled, setApplyEnabled] = useState(false);
+  const [applyToModId, setApplyToModId] = useState<number | null>(null);
+  const [applyTargetLang, setApplyTargetLang] = useState(job.src_lang);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
@@ -697,6 +738,22 @@ const ModPreviewModal = ({ job, onClose, onConfirm }: {
     queryFn: () => api.modImport.preview(job.id, { page, pageSize, signature: sigFilter || undefined, q: qFilter || undefined }),
     staleTime: 30_000,
   });
+
+  const { data: gameMods = [] } = useQuery({
+    queryKey: ['mods', gameId],
+    queryFn: () => api.mods.list(gameId),
+    staleTime: 30_000,
+  });
+
+  const eligibleMods: Mod[] = gameMods.filter((m) => m.id !== job.mod_id);
+
+  useEffect(() => {
+    if (!applyEnabled) return;
+    if (applyToModId != null) return;
+    if (eligibleMods.length > 0) {
+      setApplyToModId(eligibleMods[0].id);
+    }
+  }, [applyEnabled, applyToModId, eligibleMods]);
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   return (
@@ -720,6 +777,41 @@ const ModPreviewModal = ({ job, onClose, onConfirm }: {
               {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
             </select>
           </label>
+
+          <label className={`${s.langLabel} ${s.langCheckboxLabel}`}>
+            <input
+              type="checkbox"
+              className={s.langCheckboxInput}
+              checked={applyEnabled}
+              onChange={(e) => setApplyEnabled(e.target.checked)}
+            />
+            {t('modImport.applyToExisting')}
+          </label>
+
+          {applyEnabled && (
+            <>
+              <label className={s.langLabel}>{t('modImport.baseMod')}
+                <select
+                  value={applyToModId ?? ''}
+                  onChange={(e) => setApplyToModId(e.target.value ? Number(e.target.value) : null)}
+                  className={s.select}
+                >
+                  {eligibleMods.length === 0 && <option value="">{t('modImport.noEligibleMods')}</option>}
+                  {eligibleMods.map((m) => <option key={m.id} value={m.id}>{m.name} (#{m.id})</option>)}
+                </select>
+              </label>
+
+              <label className={s.langLabel}>{t('modImport.applyTargetLang')}
+                <select
+                  value={applyTargetLang}
+                  onChange={(e) => setApplyTargetLang(e.target.value)}
+                  className={s.select}
+                >
+                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label} ({l.code})</option>)}
+                </select>
+              </label>
+            </>
+          )}
         </div>
         <div className={s.filterBar}>
           <select value={sigFilter} onChange={e => { setSigFilter(e.target.value); setPage(1); }} className={s.selectSig}>
@@ -762,7 +854,16 @@ const ModPreviewModal = ({ job, onClose, onConfirm }: {
         )}
         <div className={s.footer}>
           <button onClick={onClose} className={s.btnCancel}>{t('common.cancel')}</button>
-          <button onClick={() => onConfirm(lang)} className={s.btnConfirm}>
+          <button
+            onClick={() => onConfirm({
+              importLang: lang,
+              applyEnabled,
+              applyToModId,
+              applyTargetLang,
+            })}
+            className={s.btnConfirm}
+            disabled={applyEnabled && applyToModId == null}
+          >
             {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
           </button>
         </div>

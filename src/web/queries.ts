@@ -1022,6 +1022,123 @@ export const carryOverTranslations = async (
   return { carried, needsReview, skipped };
 }
 
+/**
+ * Applies imported strings from one mod as translations for another mod.
+ *
+ * Unlike {@link carryOverTranslations}, this flow does not expect the source
+ * mod to already have entries in the `translations` table. Instead, it uses
+ * raw strings from `fromImportedModId` (for `importedLang`) and writes them
+ * as translations into `targetModId` (for `targetLang`) by matching records
+ * on stable identity key: `formid_hex + path`.
+ *
+ * Typical usage: import a RU translation mod as a standalone mod, then apply
+ * its RU strings to an EN base mod as RU translations.
+ */
+export const applyImportedModStringsAsTranslations = async (
+  db: Tx,
+  targetModId: number,
+  fromImportedModId: number,
+  importedLang: string,
+  targetLang = importedLang,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
+  // Step 1: Load target mod source strings that should receive translations.
+  const { rows: targetRows } = await db.query(
+    `SELECT s.id AS string_id, r.formid_hex, r.path
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1 AND s.lang = $2`,
+    [targetModId, srcLang],
+  );
+
+  if (targetRows.length === 0) {
+    throw new Error(`Target mod has no source strings for lang "${srcLang}"`);
+  }
+
+  // Step 2: Load imported mod strings in the selected import language.
+  const { rows: importedRows } = await db.query(
+    `SELECT r.formid_hex, r.path, s.text_raw
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1 AND s.lang = $2`,
+    [fromImportedModId, importedLang],
+  );
+
+  if (importedRows.length === 0) {
+    throw new Error(`Imported mod has no strings for lang "${importedLang}"`);
+  }
+
+  // Build lookup map from imported identity key -> translated text.
+  const importedMap = new Map<string, string>();
+  for (const row of importedRows as Array<{ formid_hex: string; path: string; text_raw: string }>) {
+    const key = `${row.formid_hex}|${row.path}`;
+    if (!importedMap.has(key)) {
+      importedMap.set(key, row.text_raw ?? '');
+    }
+  }
+
+  // Step 3: Skip target strings that already have translation in targetLang.
+  const targetStringIds = (targetRows as Array<{ string_id: number }>).map((r) => r.string_id);
+  const alreadyTranslated = new Set<number>();
+  if (targetStringIds.length > 0) {
+    const { rows: existing } = await db.query(
+      `SELECT DISTINCT src_string_id
+       FROM translations
+       WHERE src_string_id = ANY($1) AND target_lang = $2`,
+      [targetStringIds, targetLang],
+    );
+    for (const row of existing as Array<{ src_string_id: number }>) {
+      alreadyTranslated.add(row.src_string_id);
+    }
+  }
+
+  // Step 4: Upsert translations by identity match inside one transaction.
+  let applied = 0;
+  let skipped = 0;
+  let unmatched = 0;
+  let empty = 0;
+
+  await withTransaction(db as pg.Pool, async (client) => {
+    for (const row of targetRows as Array<{ string_id: number; formid_hex: string; path: string }>) {
+      if (alreadyTranslated.has(row.string_id)) {
+        skipped += 1;
+        continue;
+      }
+
+      const key = `${row.formid_hex}|${row.path}`;
+      const translated = importedMap.get(key);
+      if (translated == null) {
+        unmatched += 1;
+        continue;
+      }
+
+      const text = translated.trim();
+      if (!text) {
+        empty += 1;
+        continue;
+      }
+
+      await upsertTranslation(
+        client,
+        row.string_id,
+        text,
+        'draft',
+        targetLang,
+        `imported_mod_${fromImportedModId}_${importedLang}`,
+      );
+      applied += 1;
+    }
+  });
+
+  log.info(
+    `Imported apply: targetMod=${targetModId}, importedMod=${fromImportedModId}, `
+    + `srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, `
+    + `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}`,
+  );
+
+  return { applied, skipped, unmatched, empty };
+};
+
 // ── Previous versions ─────────────────────────────────────────────────────────
 
 /**

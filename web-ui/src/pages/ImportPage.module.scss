@@ -303,6 +303,20 @@
   letter-spacing: 0.04em;
 }
 
+.langCheckboxLabel {
+  flex-direction: row;
+  align-items: center;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  margin-left: 14px;
+  padding-bottom: 6px;
+}
+
+.langCheckboxInput {
+  margin-right: 8px;
+}
+
 .select {
   background: var(--bg-input);
   color: var(--text-bright);
@@ -475,26 +489,38 @@
 /* ── Code cell accent colors ────────────────────────────────────────────── */
 
 /** Signature code cell — blue accent. */
-.codeSignature { color: var(--code-blue); }
+.codeSignature {
+  color: var(--code-blue);
+}
 
 /** FormID code cell — muted grey. */
-.codeFormId    { color: var(--text-muted); }
+.codeFormId {
+  color: var(--text-muted);
+}
 
 /* ── Misc utility ───────────────────────────────────────────────────────── */
 
 /** Empty value placeholder dash. */
-.emptyValue { color: var(--text-faint); }
+.emptyValue {
+  color: var(--text-faint);
+}
 
 /* ── Status dot color variants (ESP string status byte) ─────────────────── */
 
 /** Confirmed (0x63). */
-.statusDotConfirmed    { background: var(--success); }
+.statusDotConfirmed {
+  background: var(--success);
+}
 
 /** Untranslated (0xFF). */
-.statusDotUntranslated { background: var(--text-dim); }
+.statusDotUntranslated {
+  background: var(--text-dim);
+}
 
 /** All other statuses. */
-.statusDotOther        { background: var(--warning); }
+.statusDotOther {
+  background: var(--warning);
+}
 
 .btnCancel {
   composes: btn;
