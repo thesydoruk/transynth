@@ -4,30 +4,31 @@ import { useTranslation } from 'react-i18next';
 import { UI_LANGUAGES } from './i18n';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { useTheme } from './components/ThemeContext';
-import { LoginPage } from './pages/LoginPage';
-import { HomePage } from './pages/HomePage';
-import { ModsPage } from './pages/ModsPage';
-import { ModEditorPage } from './pages/ModEditorPage';
-import { GlossaryPage } from './pages/GlossaryPage';
-import { DiffPage } from './pages/DiffPage';
-import { ImportsPage } from './pages/ImportsPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { TmxPage } from './pages/TmxPage';
-import { UsersPage } from './pages/UsersPage';
-import { QARulesPage } from './pages/QARulesPage';
-import { CoherencePage } from './pages/CoherencePage';
-import { ReviewQueuePage } from './pages/ReviewQueuePage';
-import { INNRPage } from './pages/INNRPage';
-import { ActivityPage } from './pages/ActivityPage';
-import { Ba2BrowserPage } from './pages/Ba2BrowserPage';
-import { EspExplorerPage } from './pages/EspExplorerPage';
-import { OpsPage } from './pages/OpsPage';
-import { TradAutoPage } from './pages/TradAutoPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { GamesPage } from './pages/GamesPage';
-import { GameHubPage } from './pages/GameHubPage';
-import { GameModsPage } from './pages/GameModsPage';
-import { GameModDetailsPage } from './pages/GameModDetailsPage';
+import {
+  ActivityPage,
+  Ba2BrowserPage,
+  CoherencePage,
+  DashboardPage,
+  DiffPage,
+  EspExplorerPage,
+  GameHubPage,
+  GameModDetailsPage,
+  GameModsPage,
+  GamesPage,
+  GlossaryPage,
+  ImportsPage,
+  INNRPage,
+  LoginPage,
+  ModEditorPage,
+  ModsPage,
+  OpsPage,
+  QARulesPage,
+  ReviewQueuePage,
+  SettingsPage,
+  TmxPage,
+  TradAutoPage,
+  UsersPage,
+} from './pages';
 import nav from './App.module.scss';
 
 const qc = new QueryClient({

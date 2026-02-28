@@ -1,0 +1,1 @@
+export { INNRPage } from './INNRPage';
