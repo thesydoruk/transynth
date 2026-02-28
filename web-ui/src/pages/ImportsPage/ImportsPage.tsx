@@ -49,6 +49,8 @@ type ModPreviewConfirmPayload = {
   applyTargetLang: string;
 };
 
+type SupportedGameId = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle';
+
 /** All file extensions accepted by the unified upload input. */
 const ACCEPTED_ALL = '.eet,.csv,.esp,.esm,.esl,.zip,.7z,.rar';
 
@@ -60,6 +62,10 @@ const kindFromExt = (name: string): 'eet' | 'csv' | 'mod' | null => {
   if (['.esp', '.esm', '.esl', '.zip', '.7z', '.rar'].includes(ext)) return 'mod';
   return null;
 };
+
+/** Narrows a route gameId string to the API-supported game union. */
+const isSupportedGameId = (value: string): value is SupportedGameId =>
+  ['fo4', 'fo76', 'fo3', 'fnv', 'sse', 'sle'].includes(value);
 
 /** Language options shared by all import preview modals. */
 const LANGUAGES = [
@@ -131,9 +137,12 @@ export const ImportsPage = () => {
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
 
   useEffect(() => {
-    return subscribeNexusDownloadJobs(() => {
+    const unsubscribe = subscribeNexusDownloadJobs(() => {
       setNexusDownloads(listNexusDownloadJobs());
     });
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   /* ── Live progress for running imports (keyed by "kind:id") ───────────── */
@@ -228,7 +237,8 @@ export const ImportsPage = () => {
             doStart('csv', job.id);
           }
         } else {
-          const job = await api.modImport.upload(f, { game: gameId });
+          const uploadOptions = isSupportedGameId(gameId) ? { game: gameId } : undefined;
+          const job = await api.modImport.upload(f, uploadOptions);
           if (job) {
             // Mod imports must be started manually after language is selected.
             refreshAll();

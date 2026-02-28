@@ -14,7 +14,7 @@ import s from './TmxPage.module.scss';
 
 export const TmxPage = () => {
   const { t } = useTranslation();
-  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: api.mods.list });
+  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
 
   /* ── Export state ─────────────────────────────────────────────────────────── */
   const [exportModId, setExportModId] = useState('');

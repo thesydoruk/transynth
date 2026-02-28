@@ -44,7 +44,12 @@ export const GameModDetailsPage = () => {
   // Subscribe to the in-memory Nexus download queue so this page re-renders
   // as pseudo-progress updates arrive for files belonging to this mod.
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(listNexusDownloadJobs);
-  useEffect(() => subscribeNexusDownloadJobs(() => setNexusDownloads(listNexusDownloadJobs())), []);
+  useEffect(() => {
+    const unsubscribe = subscribeNexusDownloadJobs(() => setNexusDownloads(listNexusDownloadJobs()));
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const numericModId = Number(modId);
 

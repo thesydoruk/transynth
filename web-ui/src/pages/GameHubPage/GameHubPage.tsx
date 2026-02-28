@@ -12,7 +12,7 @@
  * Also shows aggregate translation statistics for all mods in this game.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
