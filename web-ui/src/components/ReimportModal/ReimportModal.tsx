@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { PreviousVersionRow } from '../api';
+import type { PreviousVersionRow } from '../../api';
 import s from './ReimportModal.module.scss';
 
 interface ReimportModalProps {

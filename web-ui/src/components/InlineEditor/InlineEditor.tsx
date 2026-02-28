@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api } from '../api';
+import { api } from '../../api';
 import s from './InlineEditor.module.scss';
 
 type Props = {

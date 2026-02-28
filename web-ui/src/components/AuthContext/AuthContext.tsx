@@ -10,7 +10,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { api, type User } from '../api';
+import { api, type User } from '../../api';
 
 interface AuthState {
   /** True while the initial auth check is in progress. */

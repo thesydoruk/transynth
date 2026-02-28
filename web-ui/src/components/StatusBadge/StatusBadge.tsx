@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { Stats } from '../api';
+import type { Stats } from '../../api';
 import s from './StatusBadge.module.scss';
 
 const STATUS_COLORS: Record<string, string> = {
