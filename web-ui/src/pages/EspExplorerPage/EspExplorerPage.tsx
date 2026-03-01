@@ -47,7 +47,7 @@ const FLAG_MASTER     = 0x00000001;
  * @param hex - 8-char uppercase hex flags string.
  * @returns Array of short badge strings.
  */
-function parseFlagBadges(hex: string): string[] {
+const parseFlagBadges = (hex: string): string[] => {
   const n = parseInt(hex, 16);
   const badges: string[] = [];
   if (n & FLAG_MASTER)     badges.push('MASTER');
@@ -55,7 +55,7 @@ function parseFlagBadges(hex: string): string[] {
   if (n & FLAG_LOCALIZED)  badges.push('LOC');
   if (n & FLAG_COMPRESSED) badges.push('CMPRS');
   return badges;
-}
+};
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 

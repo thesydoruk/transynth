@@ -763,14 +763,9 @@ const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: {
   });
 
   const eligibleMods: Mod[] = gameMods.filter((m) => m.id !== job.mod_id);
-
-  useEffect(() => {
-    if (!applyEnabled) return;
-    if (applyToModId != null) return;
-    if (eligibleMods.length > 0) {
-      setApplyToModId(eligibleMods[0].id);
-    }
-  }, [applyEnabled, applyToModId, eligibleMods]);
+  const effectiveApplyToModId = applyEnabled
+    ? (applyToModId ?? eligibleMods[0]?.id ?? null)
+    : null;
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   return (
@@ -809,7 +804,7 @@ const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: {
             <>
               <label className={s.langLabel}>{t('modImport.baseMod')}
                 <select
-                  value={applyToModId ?? ''}
+                  value={effectiveApplyToModId ?? ''}
                   onChange={(e) => setApplyToModId(e.target.value ? Number(e.target.value) : null)}
                   className={s.select}
                 >
@@ -875,11 +870,11 @@ const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: {
             onClick={() => onConfirm({
               importLang: lang,
               applyEnabled,
-              applyToModId,
+              applyToModId: effectiveApplyToModId,
               applyTargetLang,
             })}
             className={s.btnConfirm}
-            disabled={applyEnabled && applyToModId == null}
+            disabled={applyEnabled && effectiveApplyToModId == null}
           >
             {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
           </button>

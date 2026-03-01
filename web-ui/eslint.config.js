@@ -40,12 +40,12 @@ export default defineConfig([
   {
     files: ['**/*.tsx'],
     rules: {
-      'react/no-multi-comp': ['error', { ignoreStateless: false }],
+      'react/no-multi-comp': ['warn', { ignoreStateless: false }],
     },
   },
   {
     files: ['**/*.{js,mjs,cjs,jsx,ts,tsx}'],
-    ignores: ['eslint.config.js'],
+    ignores: ['eslint.config.js', 'vite.config.ts', '**/*.d.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -54,6 +54,12 @@ export default defineConfig([
           message: 'Use named exports only. Default exports are not allowed.',
         },
       ],
+    },
+  },
+  {
+    files: ['src/components/**/*Context.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

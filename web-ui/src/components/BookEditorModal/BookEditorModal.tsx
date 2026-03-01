@@ -79,12 +79,12 @@ const PREVIEW_CSS = `
  * @param html - Raw markup string (may be empty or partial).
  * @returns Full HTML document string safe for use as srcdoc.
  */
-function buildSrcdoc(html: string): string {
+const buildSrcdoc = (html: string): string => {
   // Replace the game's img:// protocol with a placeholder data-src so the
   // browser doesn't make spurious network requests.
   const sanitized = html.replace(/src\s*=\s*["']img:\/\/[^"']*["']/gi, 'data-game-img="1"');
   return `<!doctype html><html><head><meta charset="utf-8"><style>${PREVIEW_CSS}</style></head><body>${sanitized}</body></html>`;
-}
+};
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -106,9 +106,9 @@ interface BookEditorModalProps {
  * @param text - String to inspect.
  * @returns True when the string contains at least one HTML tag or entity.
  */
-function hasHtmlMarkup(text: string): boolean {
+const hasHtmlMarkup = (text: string): boolean => {
   return /<[a-zA-Z][^>]*>|&[a-zA-Z#][a-zA-Z0-9]*;/.test(text);
-}
+};
 
 export const BookEditorModal = ({ source, translation, onSave, onClose }: BookEditorModalProps) => {
   const { t } = useTranslation();

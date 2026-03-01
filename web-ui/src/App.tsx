@@ -177,9 +177,9 @@ const AppShell = () => {
       </main>
     </>
   );
-}
+};
 
-export default function App() {
+export const App = () => {
   return (
     <QueryClientProvider client={qc}>
       <AuthProvider>
@@ -189,6 +189,6 @@ export default function App() {
       </AuthProvider>
     </QueryClientProvider>
   );
-}
+};
 
 
