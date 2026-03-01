@@ -1,15 +1,5 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-
-type Theme = 'dark' | 'light';
-
-interface ThemeCtx {
-  theme: Theme;
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeCtx>({ theme: 'dark', toggleTheme: () => {} });
-
-const STORAGE_KEY = 'fo4-theme';
+import { useState, useEffect, type ReactNode } from 'react';
+import { STORAGE_KEY, ThemeContext, type Theme } from './themeStateContext';
 
 /**
  * Reads the saved theme from localStorage, falling back to 'dark'.
@@ -33,9 +23,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  const toggleTheme = () => setTheme((themeValue) => (themeValue === 'dark' ? 'light' : 'dark'));
 
   return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 };
-
-export const useTheme = () => useContext(ThemeContext);

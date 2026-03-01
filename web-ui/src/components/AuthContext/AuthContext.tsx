@@ -9,32 +9,9 @@
  * Exposes `user`, `multiUser`, `login()`, `logout()`, and `loading` to children.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { api, type User } from '../../api';
-
-interface AuthState {
-  /** True while the initial auth check is in progress. */
-  loading: boolean;
-  /** Whether the server has MULTI_USER enabled. */
-  multiUser: boolean;
-  /** The currently authenticated user (always set after loading, even in single-user mode). */
-  user: User | null;
-  /** Authenticate with username/password. Throws on failure. */
-  login: (username: string, password: string) => Promise<void>;
-  /** Log out and clear the session. */
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthState>({
-  loading: true,
-  multiUser: false,
-  user: null,
-  login: async () => {},
-  logout: async () => {},
-});
-
-/** Hook to access the auth context from any component. */
-export const useAuth = (): AuthState => useContext(AuthContext);
+import { AuthContext } from './authStateContext';
 
 /**
  * AuthProvider wraps the app and manages authentication lifecycle.

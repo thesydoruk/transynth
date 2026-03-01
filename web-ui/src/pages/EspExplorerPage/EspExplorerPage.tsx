@@ -21,10 +21,10 @@ import { useTranslation } from 'react-i18next';
 import {
   api,
   type EspGrupInfo,
-  type EspRecordView,
   type EspRecordsPage,
   type Mod,
 } from '../../api';
+import { SubrecordTable } from './SubrecordTable';
 import s from './EspExplorerPage.module.scss';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -55,44 +55,6 @@ const parseFlagBadges = (hex: string): string[] => {
   if (n & FLAG_LOCALIZED)  badges.push('LOC');
   if (n & FLAG_COMPRESSED) badges.push('CMPRS');
   return badges;
-};
-
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-/**
- * Renders the expandable subrecord detail table for one record.
- *
- * @param record - The parent record whose subrecords are rendered.
- */
-const SubrecordTable = ({ record }: { record: EspRecordView }) => {
-  const { t } = useTranslation();
-
-  if (record.subrecords.length === 0) {
-    return <p className={s.noSubrecords}>{t('espExplorer.noSubrecords')}</p>;
-  }
-
-  return (
-    <table className={s.subTable}>
-      <thead>
-        <tr>
-          <th className={s.thSubSig}>{t('espExplorer.colSubSig')}</th>
-          <th className={s.thSubSize}>{t('espExplorer.colSubSize')}</th>
-          <th className={s.thSubHex}>{t('espExplorer.colSubHex')}</th>
-          <th className={s.thSubText}>{t('espExplorer.colSubText')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {record.subrecords.map((sub, idx) => (
-          <tr key={idx} className={s.subRow}>
-            <td className={s.tdSubSig}>{sub.sig}</td>
-            <td className={s.tdSubSize}>{sub.size}</td>
-            <td className={s.tdSubHex}>{sub.hexPreview}</td>
-            <td className={s.tdSubText}>{sub.textHint ?? ''}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
 };
 
 // ── Main page component ────────────────────────────────────────────────────

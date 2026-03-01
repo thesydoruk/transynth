@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type CoherenceGroup, type CoherenceEntry } from '../../api';
+import { api } from '../../api';
 import { getTgtLang } from '../../langDefaults';
+import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -18,118 +19,6 @@ const LANG_OPTIONS = [
   { code: 'fr', label: 'Français (fr)' },
   { code: 'pl', label: 'Polski (pl)' },
 ];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Groups the flat entries list of a CoherenceGroup by their translation text.
- * Returns an array of { translation, entries[] } sorted by entry count DESC.
- */
-const groupByVariant = (entries: CoherenceEntry[]) => {
-  const map = new Map<string, CoherenceEntry[]>();
-  for (const e of entries) {
-    const list = map.get(e.translation);
-    if (list) {
-      list.push(e);
-    } else {
-      map.set(e.translation, [e]);
-    }
-  }
-  // Sort variants by number of strings that use them (most popular first)
-  return Array.from(map.entries())
-    .sort((a, b) => b[1].length - a[1].length)
-    .map(([translation, strings]) => ({ translation, strings }));
-};
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-type VariantCardProps = {
-  translation: string;
-  strings: CoherenceEntry[];
-  /** Called when the user clicks "Apply to All". Disabled while mutating. */
-  onApply: (translation: string) => void;
-  isApplying: boolean;
-  t: ReturnType<typeof useTranslation>['t'];
-};
-
-/**
- * Displays one translation variant within a coherence group.
- * Lists all strings that currently use this translation, and offers an
- * "Apply to All" button to propagate it to the rest of the group.
- */
-const VariantCard = ({ translation, strings, onApply, isApplying, t }: VariantCardProps) => (
-  <div className={s.variant}>
-    <div className={s.variantHeader}>
-      <span className={s.variantText}>{translation}</span>
-      <button
-        className={s.applyBtn}
-        disabled={isApplying}
-        onClick={() => onApply(translation)}
-        title={t('coherence.applyToAllTitle')}
-      >
-        {t('coherence.applyToAll')}
-      </button>
-    </div>
-    <div className={s.variantStrings}>
-      {strings.map((e) => (
-        <span key={e.string_id} className={s.variantString}>
-          <span className={s.modName}>{e.mod_name}</span>
-          {e.edid && <span className={s.edidTag}>{e.edid}</span>}
-          <span>{e.signature}{e.path_simplified ? ` › ${e.path_simplified}` : ''}</span>
-          <span>({e.status})</span>
-        </span>
-      ))}
-    </div>
-  </div>
-);
-
-type GroupCardProps = {
-  group: CoherenceGroup;
-  onResolve: (textNorm: string, translation: string) => void;
-  isResolving: boolean;
-  t: ReturnType<typeof useTranslation>['t'];
-};
-
-/**
- * Displays one coherence group — a source text with multiple inconsistent
- * translations.  Clicking the header expands the group to show all variants
- * and the strings that use them.
- */
-const GroupCard = ({ group, onResolve, isResolving, t }: GroupCardProps) => {
-  const [expanded, setExpanded] = useState(false);
-  const variants = useMemo(() => groupByVariant(group.entries), [group.entries]);
-
-  return (
-    <div className={s.group}>
-      {/* Collapsible header — shows source text and variant count badge */}
-      <div className={s.groupHeader} onClick={() => setExpanded((v) => !v)}>
-        <span className={s.groupToggle}>{expanded ? '▼' : '▶'}</span>
-        <span className={s.groupSource} title={group.source_text}>
-          {group.source_text}
-        </span>
-        <span className={s.groupBadge}>
-          {t('coherence.variantsBadge', { count: group.variant_count })}
-        </span>
-      </div>
-
-      {/* Expanded body — one card per distinct translation variant */}
-      {expanded && (
-        <div className={s.variants}>
-          {variants.map((v) => (
-            <VariantCard
-              key={v.translation}
-              translation={v.translation}
-              strings={v.strings}
-              onApply={(tr) => onResolve(group.text_norm, tr)}
-              isApplying={isResolving}
-              t={t}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -227,7 +116,6 @@ export const CoherencePage = () => {
           group={group}
           onResolve={handleResolve}
           isResolving={resolveMut.isPending}
-          t={t}
         />
       ))}
 

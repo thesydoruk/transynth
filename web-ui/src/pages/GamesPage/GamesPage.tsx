@@ -15,11 +15,11 @@
  * The frontend shows a skeleton placeholder while the image loads.
  */
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type GameInfo } from '../../api';
+import { api } from '../../api';
+import { GameTile } from './GameTile';
 import s from './GamesPage.module.scss';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -70,83 +70,6 @@ export const GamesPage = () => {
             <GameTile game={game} />
           </Link>
         ))}
-      </div>
-    </div>
-  );
-};
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-/**
- * GameTile — a single game card in the grid.
- *
- * Renders the cover image via the backend proxy endpoint.  While the image is
- * loading a grey skeleton is shown; if the image fails to load a fallback
- * placeholder with the game initials is displayed instead.
- */
-const GameTile = ({ game }: { game: GameInfo }) => {
-  const { t } = useTranslation();
-  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>('loading');
-
-  /** Initials fallback shown when the cover cannot be loaded. */
-  const initials = game.name
-    .split(' ')
-    .filter(w => /^[A-Z0-9]/i.test(w))
-    .map(w => w[0]!.toUpperCase())
-    .slice(0, 3)
-    .join('');
-
-  return (
-    <div className={s.tile}>
-      {/* ── Cover art ─────────────────────────────────────────────────── */}
-      <div className={s.cover}>
-        {/* Skeleton overlay while image is still loading */}
-        {imgState === 'loading' && <div className={s.coverSkeleton} />}
-
-        {/* Initials fallback when image failed */}
-        {imgState === 'error' && (
-          <div className={s.coverFallback}>
-            <span className={s.initials}>{initials}</span>
-          </div>
-        )}
-
-        {/* Actual cover image — hidden until loaded to avoid flash */}
-        <img
-          src={api.games.coverUrl(game.id)}
-          alt={game.name}
-          className={`${s.coverImg} ${imgState === 'loaded' ? s.coverImgVisible : ''}`}
-          onLoad={() => setImgState('loaded')}
-          onError={() => setImgState('error')}
-          loading="lazy"
-        />
-      </div>
-
-      {/* ── Tile body ─────────────────────────────────────────────────── */}
-      <div className={s.body}>
-        {/* Game title + year */}
-        <div className={s.titleRow}>
-          <span className={s.gameName}>{game.name}</span>
-          <span className={s.year}>{game.releaseYear}</span>
-        </div>
-
-        {/* Developer */}
-        <div className={s.developer}>{game.developer}</div>
-
-        {/* Tags row */}
-        <div className={s.tags}>
-          {/* Engine */}
-          <span className={s.tag}>{game.engine}</span>
-
-          {/* Localization method badge */}
-          <span className={`${s.tag} ${game.localized ? s.tagLocalized : s.tagInline}`}>
-            {game.localized ? t('games.localizedPlugin') : t('games.inlinePlugin')}
-          </span>
-        </div>
-
-        {/* Game ID chip */}
-        <div className={s.idRow}>
-          <code className={s.gameId}>{game.id}</code>
-        </div>
       </div>
     </div>
   );

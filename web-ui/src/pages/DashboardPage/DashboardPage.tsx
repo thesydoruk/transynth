@@ -3,20 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import type { DashboardModRow, GrupStatRow } from '../../api';
+import type { DashboardModRow } from '../../api';
+import { Bar } from './Bar';
+import { DashboardCard } from './DashboardCard';
+import { GrupSubTable } from './GrupSubTable';
 import s from './DashboardPage.module.scss';
 
 const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
-
-/** Mini horizontal bar chart for a single metric. */
-const Bar = ({ value, max, color }: { value: number; max: number; color: string }) => {
-  const w = max > 0 ? (value / max) * 100 : 0;
-  return (
-    <div className={s.barTrack}>
-      <div className={s.barFill} style={{ background: color, width: `${w}%` }} />
-    </div>
-  );
-};
 
 const ISSUE_COLORS: Record<string, string> = {
   placeholder_mismatch: '#e55',
@@ -68,10 +61,10 @@ export const DashboardPage = () => {
 
       {/* Summary cards */}
       <div className={s.cards}>
-        <Card label={t('dashboard.cardStrings')} value={totals.total} />
-        <Card label={t('dashboard.cardTranslated')} value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
-        <Card label={t('dashboard.cardApproved')} value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
-        <Card label={t('dashboard.cardQaIssues')} value={totalQA} color={totalQA > 0 ? '#e55' : '#4caf50'} />
+        <DashboardCard label={t('dashboard.cardStrings')} value={totals.total} />
+        <DashboardCard label={t('dashboard.cardTranslated')} value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
+        <DashboardCard label={t('dashboard.cardApproved')} value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
+        <DashboardCard label={t('dashboard.cardQaIssues')} value={totalQA} color={totalQA > 0 ? '#e55' : '#4caf50'} />
       </div>
 
       {/* QA breakdown */}
@@ -185,73 +178,6 @@ export const DashboardPage = () => {
         </table>
       </section>
     </div>
-  );
-};
-
-/** Summary stat card shown at the top of the dashboard. */
-const Card = ({ label, value, sub, color }: { label: string; value: number; sub?: string; color?: string }) => (
-  <div className={s.card} style={{ '--card-color': color ?? '#fff' } as React.CSSProperties}>
-    <div className={s.cardValue}>{value.toLocaleString()}</div>
-    <div className={s.cardLabel}>
-      {label}
-      {sub && <span className={s.cardSub}>{sub}</span>}
-    </div>
-  </div>
-);
-
-/**
- * Expandable sub-table rendered below a mod row in the dashboard.
- * Fetches and displays translation progress broken down by GRUP signature
- * (e.g. DIAL, INFO, NPC_, BOOK) for the given mod.
- */
-const GrupSubTable = ({ modId }: { modId: number }) => {
-  const { t } = useTranslation();
-  const { data, isLoading } = useQuery({
-    queryKey: ['grupStats', modId],
-    queryFn: () => api.stats.grup(modId),
-  });
-
-  if (isLoading) return <div className={s.grupLoading}>{t('dashboard.loadingGrup')}</div>;
-  if (!data || data.length === 0) return <div className={s.grupLoading}>{t('dashboard.noGrupData')}</div>;
-
-  const maxTotal = Math.max(...data.map((r: GrupStatRow) => r.total), 1);
-
-  return (
-    <table className={s.grupTable}>
-      <thead>
-        <tr>
-          <th className={s.grupTh}>{t('dashboard.grupSignature')}</th>
-          <th className={s.grupThR}>{t('dashboard.thStrings')}</th>
-          <th className={s.grupThR}>{t('dashboard.thTranslated')}</th>
-          <th className={s.grupThR}>%</th>
-          <th className={s.grupThProgress}>{t('mods.progress')}</th>
-          <th className={s.grupThR}>{t('dashboard.thApproved')}</th>
-          <th className={s.grupThR}>{t('dashboard.thDraft')}</th>
-          <th className={s.grupThR}>{t('dashboard.thTm')}</th>
-          <th className={s.grupThR}>{t('dashboard.thAuto')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((r: GrupStatRow) => {
-          const p = pct(r.translated, r.total);
-          return (
-            <tr key={r.signature} className={s.grupDataRow}>
-              <td className={s.grupSig}>{r.signature}</td>
-              <td className={s.grupTdR}>{r.total}</td>
-              <td className={s.grupTdR}>{r.translated}</td>
-              <td className={s.grupTdR}>{p}%</td>
-              <td className={s.grupTdProgress}>
-                <Bar value={r.translated} max={maxTotal} color={p === 100 ? '#4caf50' : '#2196f3'} />
-              </td>
-              <td className={s.grupTdR}>{r.approved}</td>
-              <td className={s.grupTdR}>{r.draft}</td>
-              <td className={s.grupTdR}>{r.tm}</td>
-              <td className={s.grupTdR}>{r.auto}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
   );
 };
 

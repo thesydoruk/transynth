@@ -17,7 +17,6 @@ import {
   api,
   type GameInfo,
   type NexusModFile,
-  type NexusModRelationItem,
   type NexusTranslationCandidate,
 } from '../../api';
 import {
@@ -28,6 +27,8 @@ import {
   subscribeNexusDownloadJobs,
   upsertNexusDownloadJob,
 } from '../../nexusDownloadQueue';
+import { RelationsTabContent } from './RelationsTabContent';
+import { TranslationListItem } from './TranslationListItem';
 import s from './GameModDetailsPage.module.scss';
 
 type RelationsTabKey = 'possibleTranslations' | 'requires' | 'requiredBy';
@@ -453,90 +454,6 @@ export const GameModDetailsPage = () => {
  */
 const isImportableNexusFile = (fileName: string): boolean => {
   return /\.(esp|esm|esl|zip|7z|rar)$/i.test(fileName);
-};
-
-type RelationsTabContentProps = {
-  isLoading: boolean;
-  error: unknown;
-  emptyText: string;
-  gameDomain: string;
-  items: NexusModRelationItem[];
-};
-
-const RelationsTabContent = ({
-  isLoading,
-  error,
-  emptyText,
-  gameDomain,
-  items,
-}: RelationsTabContentProps) => {
-  const { t } = useTranslation();
-
-  if (error) {
-    return <p className={s.error}>{t('common.error', { message: String(error) })}</p>;
-  }
-
-  if (isLoading) {
-    return <p className={s.loading}>{t('common.loading')}</p>;
-  }
-
-  if (items.length === 0) {
-    return <p className={s.empty}>{emptyText}</p>;
-  }
-
-  return (
-    <ul className={s.relationList}>
-      {items.map((item) => (
-        <li key={`${item.modId}-${item.modName}`} className={s.relationListItem}>
-          <div className={s.relationRowMain}>
-            <h4 className={s.relationTitle}>{item.modName}</h4>
-            {item.externalRequirement && (
-              <span className={s.chip}>{t('games.externalRequirement')}</span>
-            )}
-          </div>
-
-          {item.notes && <p className={s.relationNotes}>{item.notes}</p>}
-
-          {item.modId > 0 && (
-            <a
-              className={s.openLink}
-              href={`https://www.nexusmods.com/${gameDomain}/mods/${item.modId}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('games.openOnNexus')}
-            </a>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const TranslationListItem = ({ gameDomain, row }: { gameDomain: string; row: NexusTranslationCandidate }) => {
-  const { t } = useTranslation();
-  return (
-    <li className={s.translationListItem}>
-      <div className={s.translationRowMain}>
-        <h4 className={s.translationTitle}>{row.mod.name}</h4>
-        <div className={s.translationMeta}>
-          <span className={s.chip}>{t('games.scoreLabel', { score: row.score })}</span>
-          <span className={s.chip}>{t('games.downloads', { count: row.mod.downloads.toLocaleString() })}</span>
-        </div>
-      </div>
-
-      <p className={s.translationSummary}>{row.mod.summary || t('games.noSummary')}</p>
-
-      <a
-        className={s.openLink}
-        href={`https://www.nexusmods.com/${gameDomain}/mods/${row.mod.modId}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {t('games.openOnNexus')}
-      </a>
-    </li>
-  );
 };
 
 type TranslationLanguageKey =

@@ -3,10 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
-import { api, type QAIssue, type StringRow, type TMSuggestion, type TranslationHistoryEntry } from '../../api';
+import { api, type StringRow } from '../../api';
 import { getSrcLang, getTgtLang, SUPPORTED_CONTENT_LANGUAGES } from '../../langDefaults';
 import { StatusBadge, ProgressBar } from '../../components/StatusBadge';
 import { BookEditorModal } from '../../components/BookEditorModal';
+import { HistoryPanel } from './HistoryPanel';
+import { QAPanel } from './QAPanel';
+import { SearchReplaceModal } from './SearchReplaceModal';
+import { SuggestionsPanel } from './SuggestionsPanel';
 import styles from './ModEditorPage.module.scss';
 
 const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
@@ -1222,145 +1226,4 @@ export const ModEditorPage = () => {
   );
 }
 
-// ── TM Suggestions panel ─────────────────────────────────────────────────────
-
-const SuggestionsPanel = ({ suggestions, onApply }: { suggestions: TMSuggestion[]; onApply: (text: string) => void }) => {
-  const { t } = useTranslation();
-  if (suggestions.length === 0) {
-    return <div className={styles.panelEmpty}>{t('modEditor.noSuggestions')}</div>;
-  }
-  const methodLabel = (m: string) => m === 'exact' ? t('modEditor.exact') : m === 'numeric' ? t('modEditor.numeric') : m === 'punct_norm' ? t('modEditor.punct') : m === 'segment' ? t('modEditor.phrase') : t('modEditor.fuzzyMethod');
-  const methodColor = (m: string) => m === 'exact' ? '#4caf50' : m === 'numeric' ? '#66bb6a' : m === 'punct_norm' ? '#ff9800' : m === 'segment' ? '#ab47bc' : '#2196f3';
-  return (
-    <div className={styles.panelListGap4}>
-      {suggestions.map((s) => (
-        <div key={s.id} className={styles.suggestionRow}>
-          <StatusBadge status={s.status} small />
-          <span className={styles.suggMethod} style={{ '--sugg-color': methodColor(s.match_method) } as React.CSSProperties}>
-            {methodLabel(s.match_method)}
-          </span>
-          <span className={styles.suggText}>{s.text}</span>
-          <span className={styles.suggSim}>{Math.round(s.similarity * 100)}%</span>
-          <button onClick={() => onApply(s.text)} className={styles.suggestionApplyBtn}>
-            {t('common.apply')}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── QA panel ────────────────────────────────────────────────────────────────
-
-const QAPanel = ({ issues }: { issues: QAIssue[] }) => {
-  const { t } = useTranslation();
-  if (issues.length === 0) {
-    return <div className={styles.panelEmpty}>{t('modEditor.noQaIssues')}</div>;
-  }
-  return (
-    <div className={styles.panelListGap2}>
-      {issues.map((issue) => (
-        <div key={issue.id} className={`${styles.qaRow} ${issue.severity === 'error' ? styles.qaRowError : styles.qaRowWarning}`}>
-          <span className={styles.qaSeverity}>{issue.severity.toUpperCase()}</span>
-          <span className={styles.qaMsg}>{issue.message}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── History panel ───────────────────────────────────────────────────────────
-
-const HistoryPanel = ({ items }: { items: TranslationHistoryEntry[] }) => {
-  const { t } = useTranslation();
-  if (items.length === 0) {
-    return <div className={styles.panelEmpty}>{t('modEditor.emptyHistory')}</div>;
-  }
-  return (
-    <div className={styles.panelListGap4}>
-      {items.map((item) => (
-        <div key={item.id} className={styles.historyRow}>
-          <div className={styles.histHeader}>
-            <StatusBadge status={item.status} small />
-            <span className={styles.histDate}>{new Date(item.created_at).toLocaleString()}</span>
-            {item.note && <span className={styles.histNote}>{item.note}</span>}
-          </div>
-          <div className={styles.histText}>{item.text ?? t('modEditor.cleared')}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Search & Replace Modal ───────────────────────────────────────────────────
-
-type SRProps = { modId: number; targetLang: string; onClose: () => void; onApplied: () => void };
-
-const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: SRProps) => {
-  const { t } = useTranslation();
-  const [search, setSearch] = useState('');
-  const [replace, setReplace] = useState('');
-  const [isRegex, setIsRegex] = useState(false);
-  const [previewResult, setPreviewResult] = useState<{ matches: Array<{ originalText: string; newText: string; formid_hex: string }>; applied: number } | null>(null);
-  const [stage, setStage] = useState<'idle' | 'previewing' | 'applying' | 'done'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  const handlePreview = async () => {
-    if (!search) return;
-    setStage('previewing'); setError(null);
-    try {
-      const r = await api.search.replace(modId, { search, replace, isRegex, targetLang, dryRun: true });
-      setPreviewResult(r); setStage('idle');
-    } catch (err) { setError(String(err)); setStage('idle'); }
-  }
-
-  const handleApply = async () => {
-    if (!search) return;
-    setStage('applying'); setError(null);
-    try {
-      const r = await api.search.replace(modId, { search, replace, isRegex, targetLang, dryRun: false });
-      setPreviewResult(r); setStage('done'); onApplied();
-    } catch (err) { setError(String(err)); setStage('idle'); }
-  }
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-        <h3 className={styles.modalTitle}>{t('modEditor.searchReplaceTitle')}</h3>
-        <div className={styles.modalForm}>
-          <input placeholder={t('modEditor.searchLabel')} value={search} onChange={(e) => setSearch(e.target.value)} className={styles.modalInput} />
-          <input placeholder={t('modEditor.replaceLabel')} value={replace} onChange={(e) => setReplace(e.target.value)} className={styles.modalInput} />
-          <label className={styles.modalRegexLbl}>
-            <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} /> {t('modEditor.useRegex')}
-          </label>
-        </div>
-        <div className={styles.modalBtnRow}>
-          <button onClick={handlePreview} disabled={stage !== 'idle' || !search} className={styles.modalBtnDark}>{t('modEditor.preview', { count: previewResult?.matches.length ?? 0 })}</button>
-          <button onClick={handleApply} disabled={stage !== 'idle' || !search} className={styles.modalBtnPri}>{t('common.apply')}</button>
-          <button onClick={onClose} className={styles.modalBtnSec}>{t('common.cancel')}</button>
-        </div>
-        {error && <p className={styles.modalErr}>{error}</p>}
-        {stage === 'done' && <p className={styles.modalOk}>{t('modEditor.applied', { count: previewResult?.applied })}</p>}
-        {previewResult && stage !== 'done' && previewResult.matches.length > 0 && (
-          <div className={styles.modalPreview}>
-            {previewResult.matches.slice(0, 20).map((m, i) => (
-              <div key={i} className={styles.modalPrevItem}>
-                <span className={styles.modalPrevId}>{m.formid_hex}</span>
-                <span className={styles.modalPrevOld}>{m.originalText.slice(0, 60)}</span>
-                {' → '}
-                <span className={styles.modalPrevNew}>{m.newText.slice(0, 60)}</span>
-              </div>
-            ))}
-            {previewResult.matches.length > 20 && <p className={styles.modalPrevMore}>{t('modEditor.more', { count: previewResult.matches.length - 20 })}</p>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-// Styles are in ModEditorPage.module.scss
-// Styles are in ModEditorPage.module.scss (modal section)
 

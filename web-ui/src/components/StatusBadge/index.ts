@@ -1,1 +1,2 @@
-export { StatusBadge, ProgressBar } from './StatusBadge';
+export { StatusBadge } from './StatusBadge';
+export { ProgressBar } from './ProgressBar';

@@ -15,7 +15,8 @@ import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type GameInfo, type NexusModItem } from '../../api';
+import { api, type GameInfo } from '../../api';
+import { ModTile } from './ModTile';
 import s from './GameModsPage.module.scss';
 
 /**
@@ -193,65 +194,6 @@ export const GameModsPage = () => {
         </>
       )}
     </div>
-  );
-};
-
-/**
- * Renders one NexusMods mod card.
- *
- * Includes thumbnail fallback handling and a direct link to the original
- * mod page on NexusMods.
- */
-const ModTile = ({ game, mod }: { game: GameInfo; mod: NexusModItem }) => {
-  const { t } = useTranslation();
-  const [imgError, setImgError] = useState(false);
-
-  /**
-   * Prefer thumbnail for faster loads; fallback to full picture URL.
-   * If both are absent, render the placeholder state.
-   */
-  const imageUrl = mod.thumbnailUrl || mod.pictureUrl;
-
-  /** Canonical NexusMods URL for the mod details page. */
-  const modUrl = `https://www.nexusmods.com/${game.domainName}/mods/${mod.modId}`;
-
-  return (
-    <article className={s.card}>
-      <div className={s.imageWrap}>
-        {!imgError && imageUrl ? (
-          <img
-            className={s.image}
-            src={imageUrl}
-            alt={mod.name}
-            loading="lazy"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className={s.imageFallback}>{mod.name.slice(0, 2).toUpperCase()}</div>
-        )}
-      </div>
-
-      <div className={s.cardBody}>
-        <h3 className={s.modName}>
-          <Link to={`/games/${game.id}/nexus/${mod.modId}`} className={s.cardLink}>
-            {mod.name}
-          </Link>
-        </h3>
-        <p className={s.summary}>{mod.summary || t('games.noSummary')}</p>
-
-        <div className={s.meta}>
-          <span className={s.metaChip}>{t('games.downloads', { count: mod.downloads.toLocaleString() })}</span>
-          <span className={s.metaChip}>{t('games.endorsements', { count: mod.endorsements.toLocaleString() })}</span>
-        </div>
-
-        <div className={s.footer}>
-          <span className={s.author}>{mod.author || t('games.unknownAuthor')}</span>
-          <a className={s.openLink} href={modUrl} target="_blank" rel="noreferrer">
-            {t('games.openOnNexus')}
-          </a>
-        </div>
-      </div>
-    </article>
   );
 };
 

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
 import { getTgtLang } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
+import { ConfidenceBar } from './ConfidenceBar';
 import s from './ReviewQueuePage.module.scss';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -43,25 +44,6 @@ const CONFIDENCE_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: '< 0.75', value: 0.75 },
   { label: '< 0.60', value: 0.60 },
 ];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Renders a mini bar chart for confidence value.
- * Returns null if confidence is unknown.
- */
-const ConfidenceBar = ({ value }: { value: number | null }) => {
-  if (value === null) return <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>;
-  const pct = Math.round(value * 100);
-  return (
-    <span className={s.confCell}>
-      <span className={s.confBar}>
-        <span className={s.confFill} style={{ width: `${pct}%` }} />
-      </span>
-      <span className={s.confNum}>{pct}%</span>
-    </span>
-  );
-};
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
