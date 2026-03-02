@@ -100,8 +100,8 @@
 
 .badgeOk {
   display: inline-block;
-  background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success-strong);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -110,20 +110,20 @@
 
 .badgeErr {
   composes: badgeOk;
-  background: rgba(229, 85, 85, 0.15);
-  color: #e55;
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger);
 }
 
 .badgeRun {
   composes: badgeOk;
-  background: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
+  background: color-mix(in srgb, var(--info) 15%, transparent);
+  color: var(--info-strong);
 }
 
 .badgeWarn {
   composes: badgeOk;
-  background: rgba(232, 167, 53, 0.15);
-  color: #e8a735;
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning-strong);
 }
 
 .badgeDim {

@@ -4,7 +4,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: var(--overlay-backdrop-75);
   z-index: 200;
   display: flex;
   align-items: center;

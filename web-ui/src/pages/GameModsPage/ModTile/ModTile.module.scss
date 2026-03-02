@@ -16,7 +16,7 @@
 .imageWrap {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: var(--surface-2, #1a1a1a);
+  background: var(--surface-2);
 }
 
 .image {
@@ -85,7 +85,7 @@
 .metaChip {
   font-size: 11px;
   color: var(--text-muted);
-  background: var(--surface-2, #1f232a);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 6px;
@@ -110,7 +110,7 @@
 }
 
 .openLink {
-  color: var(--accent, #4a9eff);
+  color: var(--accent);
   text-decoration: none;
   font-size: 12px;
 

@@ -59,7 +59,7 @@
 
 .searchButton {
   border: 1px solid var(--border);
-  background: var(--surface-2, #1f2530);
+  background: var(--surface-2);
   color: var(--text-bright);
   border-radius: 8px;
   padding: 10px 14px;
@@ -67,7 +67,7 @@
   cursor: pointer;
 
   &:hover {
-    border-color: var(--accent, #4a9eff);
+    border-color: var(--accent);
   }
 }
 
@@ -89,7 +89,7 @@
 }
 
 .error {
-  color: var(--danger, #e05);
+  color: var(--danger);
   text-align: center;
   padding: 28px;
 }
@@ -120,7 +120,7 @@
 
 .paginationButton {
   border: 1px solid var(--border);
-  background: var(--surface-2, #1f2530);
+  background: var(--surface-2);
   color: var(--text-bright);
   border-radius: 8px;
   padding: 8px 12px;
@@ -128,7 +128,7 @@
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    border-color: var(--accent, #4a9eff);
+    border-color: var(--accent);
   }
 
   &:disabled {

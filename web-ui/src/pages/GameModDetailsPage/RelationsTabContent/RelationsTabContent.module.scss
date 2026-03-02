@@ -13,7 +13,7 @@
 .relationListItem {
   padding: 10px;
   border-top: 1px solid var(--border);
-  background: var(--surface-2, #1d1f24);
+  background: var(--surface-2);
 }
 
 .relationListItem:first-child {
@@ -42,7 +42,7 @@
 
 /** External link to the mod on NexusMods. */
 .openLink {
-  color: var(--accent, #4a9eff);
+  color: var(--accent);
   text-decoration: none;
   font-size: 12px;
 

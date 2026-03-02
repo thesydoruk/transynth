@@ -13,7 +13,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: var(--overlay-backdrop-75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,7 +30,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-2xl);
   overflow: hidden;
 }
 
@@ -138,7 +138,9 @@
   color: var(--text-dim);
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.1s, color 0.1s;
+  transition:
+    border-color 0.1s,
+    color 0.1s;
 
   &:hover {
     border-color: var(--accent);
@@ -183,7 +185,7 @@
 .previewFrame {
   flex: 1 1 0;
   border: none;
-  background: #1a1a12;
+  background: var(--bg-surface);
   min-height: 0;
 }
 
@@ -227,8 +229,8 @@
 
 .btnPri {
   padding: 7px 20px;
-  background: var(--accent, #3c7d38);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-fg);
   border: none;
   border-radius: 4px;
   font-size: 13px;

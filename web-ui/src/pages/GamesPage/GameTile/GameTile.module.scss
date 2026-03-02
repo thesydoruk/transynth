@@ -13,9 +13,9 @@
     box-shadow 0.15s ease;
 
   &:hover {
-    border-color: var(--accent, #4a9eff);
+    border-color: var(--accent);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-md);
   }
 }
 
@@ -32,7 +32,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: var(--surface-2, #1a1a1a);
+  background: var(--surface-2);
   overflow: hidden;
 }
 
@@ -42,9 +42,9 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    var(--surface-2, #1e1e1e) 0%,
-    var(--surface-3, #2a2a2a) 50%,
-    var(--surface-2, #1e1e1e) 100%
+    var(--surface-2) 0%,
+    var(--surface-3) 50%,
+    var(--surface-2) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite linear;
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-2, #1a1a1a);
+  background: var(--surface-2);
 }
 
 .initials {
@@ -147,7 +147,7 @@
   font-weight: 500;
   padding: 2px 7px;
   border-radius: 4px;
-  background: var(--surface-3, #2a2a2a);
+  background: var(--surface-3);
   color: var(--text-muted);
   border: 1px solid var(--border);
   white-space: nowrap;
@@ -155,14 +155,14 @@
 
 /** Green badge — game uses localized (external .STRINGS) plugins. */
 .tagLocalized {
-  background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.3);
+  background: var(--tag-localized-bg);
+  color: var(--tag-localized-text);
+  border-color: var(--tag-localized-border);
 }
 
 /** Muted badge — game uses non-localized (inline UTF-8) plugins. */
 .tagInline {
-  background: rgba(156, 163, 175, 0.1);
+  background: var(--tag-inline-bg);
   color: var(--text-muted);
   border-color: var(--border);
 }
@@ -177,7 +177,7 @@
 .gameId {
   font-size: 10px;
   color: var(--text-muted);
-  background: var(--surface-2, #1a1a1a);
+  background: var(--surface-2);
   padding: 1px 6px;
   border-radius: 3px;
   border: 1px solid var(--border);
@@ -201,9 +201,9 @@
     inset: 0;
     background: linear-gradient(
       90deg,
-      var(--surface-2, #1e1e1e) 0%,
-      var(--surface-3, #2a2a2a) 50%,
-      var(--surface-2, #1e1e1e) 100%
+      var(--surface-2) 0%,
+      var(--surface-3) 50%,
+      var(--surface-2) 100%
     );
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite linear;

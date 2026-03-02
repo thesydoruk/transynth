@@ -287,7 +287,7 @@
   z-index: 1;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--overlay-white-08);
   }
 }
 
@@ -650,7 +650,7 @@
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay-backdrop-55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -663,7 +663,7 @@
   padding: 20px 28px;
   min-width: 360px;
   max-width: 480px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-2xl);
 }
 
 .shortcutsTitle {
@@ -719,7 +719,7 @@
   border-radius: 4px;
   padding: 4px 0;
   min-width: 280px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.65);
+  box-shadow: var(--shadow-xl);
   font-family: 'Segoe UI', Tahoma, sans-serif;
 }
 

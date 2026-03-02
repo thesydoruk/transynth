@@ -77,7 +77,7 @@
 }
 
 .sideError {
-  color: var(--error, #e05b5b);
+  color: var(--error);
 }
 
 .grupItem {
@@ -162,7 +162,7 @@
 .searchBtn {
   padding: 6px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   border: none;
   border-radius: 4px;
   font-size: 13px;
@@ -200,7 +200,7 @@
 }
 
 .errorText {
-  color: var(--error, #e05b5b);
+  color: var(--error);
 }
 
 /* ── Record table ────────────────────────────────────────────────────────── */
@@ -321,20 +321,20 @@
 }
 
 .badgeLOC {
-  background: #2a4a7f;
-  color: #8bbfff;
+  background: var(--flag-loc-bg);
+  color: var(--flag-loc-text);
 }
 .badgeCMPRS {
-  background: #3a3a1a;
-  color: #d4c25a;
+  background: var(--flag-cmprs-bg);
+  color: var(--flag-cmprs-text);
 }
 .badgeDEL {
-  background: #4a1a1a;
-  color: #e06868;
+  background: var(--flag-del-bg);
+  color: var(--flag-del-text);
 }
 .badgeMASTER {
-  background: #1a3a1a;
-  color: #68c868;
+  background: var(--flag-master-bg);
+  color: var(--flag-master-text);
 }
 
 .tdEdid {

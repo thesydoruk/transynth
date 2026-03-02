@@ -145,7 +145,7 @@
 }
 
 .tdErr {
-  color: #e55;
+  color: var(--danger);
   font-size: 12px;
   max-width: 200px;
   overflow: hidden;
@@ -190,7 +190,7 @@
   text-align: right;
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
-  color: #e55;
+  color: var(--danger);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -274,8 +274,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  background: color-mix(in srgb, #4caf50 18%, transparent);
-  color: #4caf50;
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success-strong);
 }
 
 .badgeErr {
@@ -284,8 +284,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  background: color-mix(in srgb, #e55 18%, transparent);
-  color: #e55;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
 }
 
 .badgeRun {
@@ -294,8 +294,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  background: color-mix(in srgb, #2196f3 18%, transparent);
-  color: #2196f3;
+  background: color-mix(in srgb, var(--info) 18%, transparent);
+  color: var(--info-strong);
 }
 
 .badgeWarn {
@@ -304,8 +304,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  background: color-mix(in srgb, #e8a735 18%, transparent);
-  color: #e8a735;
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning-strong);
 }
 
 .badgeDim {

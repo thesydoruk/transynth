@@ -62,7 +62,7 @@
 
 .gameSelect {
   padding: 5px 10px;
-  background: var(--bg-input, var(--bg-card));
+  background: var(--bg-input);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -194,7 +194,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-backdrop-70);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,7 +392,7 @@
 
 /* ── Error state ────────────────────────────────────────────────────────── */
 
-/** Error message color — replaces inline style={{ color: '#f44' }}. */
+/** Error message color from semantic danger token. */
 .error {
   color: var(--danger);
 }

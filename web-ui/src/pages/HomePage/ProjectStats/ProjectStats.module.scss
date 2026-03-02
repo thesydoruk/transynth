@@ -20,8 +20,8 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid var(--chip-color, #888);
-  color: var(--chip-color, #888);
+  border: 1px solid var(--chip-color, var(--border-heavy));
+  color: var(--chip-color, var(--text-muted));
   font-size: 12px;
   text-transform: capitalize;
   white-space: nowrap;
