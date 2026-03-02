@@ -1,0 +1,54 @@
+/* ── UnifiedJobRow — component-unique styles ────────────────────────────── */
+/* Shared row styles (row, rowLeft, rowRight, typeBadge, fileName, meta,    */
+/* badge, progressWrap/Track/Fill/Label, actions) live in                   */
+/* ../ImportPage.module.scss and are accessed via parentS import.           */
+
+/* ── Localized plugin badge ─────────────────────────────────────────────── */
+
+/** Inline indicator shown when the mod plugin is flagged as localised. */
+.locBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--primary-on);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Row action buttons ─────────────────────────────────────────────────── */
+
+/** Base icon action button — light border, no background. */
+.actionBtn {
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/** Cancel action — red danger colour variant. */
+.actionBtnCancel {
+  composes: actionBtn;
+  color: var(--danger);
+}
+
+/** Delete action — muted colour variant. */
+.actionBtnDelete {
+  composes: actionBtn;
+  color: var(--text-dim);
+}
+
+/* ── Badge variant ──────────────────────────────────────────────────────── */
+
+/**
+ * Green "Completed" badge — extends the shared .badge shape from the parent
+ * module via cross-module composition and overrides the background colour.
+ */
+.badgeCompleted {
+  composes: badge from '../ImportPage.module.scss';
+  background: var(--success-dark);
+}

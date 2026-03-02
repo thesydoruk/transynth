@@ -1,0 +1,1 @@
+export { SearchReplaceModal } from './SearchReplaceModal';

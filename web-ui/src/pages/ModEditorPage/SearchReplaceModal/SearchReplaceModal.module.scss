@@ -1,0 +1,144 @@
+/* ── SearchReplaceModal — all styles unique to this component ────────────── */
+
+/** Full-screen dimmed overlay. */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/** Modal card container. */
+.modalBox {
+  background: var(--bg-row-alt);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 440px;
+  max-width: 600px;
+}
+
+/** Modal heading. */
+.modalTitle {
+  color: var(--text-bright);
+  margin: 0 0 16px;
+}
+
+/** Form column inside the modal. */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/** Text inputs for search and replace strings. */
+.modalInput {
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+
+/** Checkbox label for the "use regex" toggle. */
+.modalRegexLbl {
+  color: var(--text-muted);
+  font-size: 13px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/** Button row at the bottom of the form. */
+.modalBtnRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/** Dark/neutral action button (Preview). */
+.modalBtnDark {
+  background: var(--border-input);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/** Primary action button (Apply). */
+.modalBtnPri {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/** Secondary action button (Cancel). */
+.modalBtnSec {
+  background: var(--border-light);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/** Inline error message. */
+.modalErr {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/** Success confirmation message. */
+.modalOk {
+  color: var(--success);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/** Scrollable preview list container. */
+.modalPreview {
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+/** Single preview match row. */
+.modalPrevItem {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+/** FormID prefix in a preview row. */
+.modalPrevId {
+  color: var(--text-dim);
+  margin-right: 8px;
+}
+
+/** Original text (before replacement). */
+.modalPrevOld {
+  color: var(--danger);
+}
+
+/** Replacement text (after replacement). */
+.modalPrevNew {
+  color: var(--success);
+}
+
+/** Overflow indicator when matches exceed 20. */
+.modalPrevMore {
+  color: var(--text-dim);
+}

@@ -1,0 +1,77 @@
+/* ── VariantCard ─────────────────────────────────────────────────────────── */
+
+/** Root container for one translation variant inside a coherence group. */
+.variant {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/** Header row with the translation text and the "Apply to all" button. */
+.variantHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-cell);
+}
+
+/** The translation text itself — monospace, word-wrapped. */
+.variantText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-bright);
+  font-family: monospace;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/** "Apply to all" button that bulk-resolves all conflicts in the group. */
+.applyBtn {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/** List of string references that use this translation variant. */
+.variantStrings {
+  padding: 0 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/** One string reference row — mod name, EDID, signature/path, status. */
+.variantString {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+/** Mod name chip within a string reference. */
+.modName {
+  color: var(--code-blue);
+  font-weight: 500;
+}
+
+/** EDID label shown when available. */
+.edidTag {
+  color: var(--text-muted, var(--text-dim));
+  font-family: monospace;
+}

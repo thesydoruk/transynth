@@ -79,69 +79,16 @@
   font-weight: 500;
 }
 
-.fieldValue {
-  font-size: 13px;
-  color: var(--text-bright);
-  font-weight: 600;
-  font-family: monospace;
-}
-
 .fieldNote {
   font-size: 11px;
   color: var(--text-dim);
   font-style: italic;
 }
 
-/* ── Read-only banner ─────────────────────────────────────────────────────── */
-
-.readonlyNote {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 20px;
-}
-
-/* ── Status badges ────────────────────────────────────────────────────────── */
-
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.badgeOk {
-  background: color-mix(in srgb, var(--ok) 20%, transparent);
-  color: var(--ok);
-}
-
-.badgeWarn {
-  background: color-mix(in srgb, var(--warning) 20%, transparent);
-  color: var(--warning);
-}
-
-/* ── Select (theme / language controls) ──────────────────────────────────── */
-
-.select {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-input);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  min-width: 160px;
-}
+/* fieldValue moved to LlmTab/LlmTab.module.scss */
+/* readonlyNote moved to LlmTab/LlmTab.module.scss */
+/* badge styles moved to LlmTab/LlmTab.module.scss */
+/* select moved to GeneralTab/GeneralTab.module.scss */
 
 /* ── Link cards (QA / TradAuto / Users) ───────────────────────────────────── */
 
@@ -190,16 +137,4 @@
   font-weight: 700;
 }
 
-/* ── Loading / error states ───────────────────────────────────────────────── */
-
-.center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 120px;
-  color: var(--text-dim);
-}
-
-.error {
-  color: var(--danger);
-}
+/* center/error moved to LlmTab/LlmTab.module.scss */

@@ -1,0 +1,12 @@
+/* ── SystemStrip ─────────────────────────────────────────────────────────── */
+
+.sysStrip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}

@@ -1,0 +1,14 @@
+/* ── GeneralTab — Local controls styling ─────────────────────────────────── */
+/* Styles unique to the General tab (language and theme controls).            */
+
+/** Shared control look for language dropdowns and theme toggle button. */
+.select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 160px;
+}

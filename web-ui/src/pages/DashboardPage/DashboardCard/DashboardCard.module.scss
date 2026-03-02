@@ -1,0 +1,31 @@
+/* ── DashboardCard ───────────────────────────────────────────────────────── */
+
+/** Stat card container — uses --card-color CSS variable for accent styling. */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 24px;
+  min-width: 140px;
+}
+
+/** Large numeric value at the top of the card. */
+.cardValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--card-color, var(--text-bright));
+}
+
+/** Descriptive label below the value. */
+.cardLabel {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/** Optional sub-value (percentage) appended to the label. */
+.cardSub {
+  margin-left: 6px;
+  color: var(--card-color, var(--text-muted));
+  font-weight: 600;
+}

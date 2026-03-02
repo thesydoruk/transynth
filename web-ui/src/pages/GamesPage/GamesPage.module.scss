@@ -6,11 +6,9 @@
  *   .title       — page heading
  *   .subtitle    — short descriptive line under the heading
  *   .grid        — auto-filling CSS grid of game tiles
- *   .tile        — individual game card (cover + info body)
- *   .cover       — fixed-aspect image container with skeleton/fallback states
- *   .body        — text content below the cover image
- *   .tags        — horizontal row of engine/localization chips
- *   .skeleton    — full-tile shimmer placeholder shown while data is loading
+ *   .tileLink    — invisible anchor wrapper around each GameTile
+ *
+ * Tile-internal styles live in GameTile/GameTile.module.scss.
  */
 
 /* ── Page wrapper ─────────────────────────────────────────────────────────── */
@@ -48,229 +46,15 @@
   gap: 18px;
 }
 
+/** Invisible anchor that wraps each GameTile card in the grid. */
 .tileLink {
   display: block;
   color: inherit;
   text-decoration: none;
-}
 
-.tileLink:focus-visible .tile {
-  outline: 2px solid var(--accent, #4a9eff);
-  outline-offset: 2px;
-}
-
-/* ── Game tile card ───────────────────────────────────────────────────────── */
-
-.tile {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition:
-    border-color 0.15s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-
-  &:hover {
-    border-color: var(--accent, #4a9eff);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  &:focus-visible {
+    outline: 2px solid var(--accent, #4a9eff);
+    outline-offset: 2px;
+    border-radius: 8px;
   }
-}
-
-/* ── Cover image area ─────────────────────────────────────────────────────── */
-
-/**
- * .cover acts as a 4:3 aspect-ratio box.  Inside it we layer three possible
- * states:
- *   1. .coverSkeleton  — animated shimmer while the image is still fetching
- *   2. .coverImg       — the actual <img>, hidden until loaded, then faded in
- *   3. .coverFallback  — shown only when the image request fails
- */
-.cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  background: var(--surface-2, #1a1a1a);
-  overflow: hidden;
-}
-
-/* Animated shimmer skeleton */
-.coverSkeleton {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    var(--surface-2, #1e1e1e) 0%,
-    var(--surface-3, #2a2a2a) 50%,
-    var(--surface-2, #1e1e1e) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite linear;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Initials fallback placeholder */
-.coverFallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-2, #1a1a1a);
-}
-
-.initials {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 2px;
-  user-select: none;
-}
-
-/* The cover <img> — starts invisible, becomes visible once loaded */
-.coverImg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.coverImgVisible {
-  opacity: 1;
-}
-
-/* ── Tile body (text content) ─────────────────────────────────────────────── */
-
-.body {
-  padding: 12px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.titleRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.gameName {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-bright);
-  line-height: 1.3;
-  /* allow name to shrink so year stays visible */
-  flex: 1 1 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.year {
-  font-size: 12px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.developer {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* ── Tags / chips row ─────────────────────────────────────────────────────── */
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 4px;
-}
-
-.tag {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: var(--surface-3, #2a2a2a);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-/** Green badge — game uses localized (external .STRINGS) plugins. */
-.tagLocalized {
-  background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-/** Muted badge — game uses non-localized (inline UTF-8) plugins. */
-.tagInline {
-  background: rgba(156, 163, 175, 0.1);
-  color: var(--text-muted);
-  border-color: var(--border);
-}
-
-/* ── Game ID chip (bottom of card) ───────────────────────────────────────── */
-
-.idRow {
-  margin-top: auto;
-  padding-top: 8px;
-}
-
-.gameId {
-  font-size: 10px;
-  color: var(--text-muted);
-  background: var(--surface-2, #1a1a1a);
-  padding: 1px 6px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-  font-family: var(--font-mono, monospace);
-  letter-spacing: 0.05em;
-}
-
-/* ── Loading skeleton tiles ───────────────────────────────────────────────── */
-
-/**
- * .skeleton modifier on a .tile renders a full-card shimmer placeholder.
- * Used while the /api/games fetch is in flight.
- */
-.skeleton {
-  min-height: 280px;
-  pointer-events: none;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      var(--surface-2, #1e1e1e) 0%,
-      var(--surface-3, #2a2a2a) 50%,
-      var(--surface-2, #1e1e1e) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite linear;
-  }
-
-  position: relative;
-  overflow: hidden;
 }

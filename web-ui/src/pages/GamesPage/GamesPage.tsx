@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import { GameTile } from './GameTile';
+import { GameTile, SkeletonGameTile } from './GameTile';
 import s from './GamesPage.module.scss';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -45,7 +45,7 @@ export const GamesPage = () => {
         <h1 className={s.title}>{t('games.title')}</h1>
         <div className={s.grid}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`${s.tile} ${s.skeleton}`} />
+            <SkeletonGameTile key={i} />
           ))}
         </div>
       </div>

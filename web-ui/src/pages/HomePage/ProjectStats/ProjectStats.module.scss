@@ -1,0 +1,33 @@
+/* ── ProjectStats ────────────────────────────────────────────────────────── */
+
+.bigCards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.qaStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.qaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--chip-color, #888);
+  color: var(--chip-color, #888);
+  font-size: 12px;
+  text-transform: capitalize;
+  white-space: nowrap;
+
+  strong {
+    font-weight: 700;
+    color: var(--chip-color, var(--text-bright));
+  }
+}

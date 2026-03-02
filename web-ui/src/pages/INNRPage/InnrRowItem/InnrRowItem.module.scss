@@ -1,0 +1,133 @@
+/* ── InnrRowItem ─────────────────────────────────────────────────────────── */
+
+/** Table row for one INNR component slot. */
+.tr {
+  border-bottom: 1px solid var(--border-subtle, var(--border));
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--bg-row-hover, var(--bg-hover));
+  }
+}
+
+.td {
+  padding: 5px 10px;
+  vertical-align: middle;
+}
+
+/** Slot number badge — numeric suffix (001, 002, …) in monospace. */
+.slotBadge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--bg-tag);
+  color: var(--text-dim);
+}
+
+/** FormID displayed in monospace dim text. */
+.formid {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/** Source text — truncated with ellipsis when too long. */
+.srcText {
+  color: var(--text-dim);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/** Editable translation input field. */
+.translInput {
+  width: 100%;
+  min-width: 200px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /** Unsaved changes state. */
+  &.dirty {
+    border-color: var(--color-warning, #f59e0b);
+  }
+
+  /** Recently saved state. */
+  &.saved {
+    border-color: var(--color-success, #4ade80);
+  }
+}
+
+/** QA issue count badge — amber pill. */
+.qaBadge {
+  display: inline-block;
+  background: var(--color-warning, #f59e0b);
+  color: #000;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.saveBtn {
+  background: var(--accent);
+  color: var(--accent-fg, #fff);
+  border: none;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.clearBtn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--color-error, #f87171);
+    border-color: var(--color-error, #f87171);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}

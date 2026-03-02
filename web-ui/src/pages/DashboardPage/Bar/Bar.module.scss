@@ -1,0 +1,18 @@
+/* ── Bar ─────────────────────────────────────────────────────────────────── */
+
+/** Static gray track behind the colored fill. */
+.barTrack {
+  background: var(--bg-input);
+  border-radius: 4px;
+  height: 14px;
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+}
+
+/** Colored fill — only width + background are set inline (dynamic values). */
+.barFill {
+  border-radius: 4px;
+  height: 100%;
+  transition: width 0.3s;
+}

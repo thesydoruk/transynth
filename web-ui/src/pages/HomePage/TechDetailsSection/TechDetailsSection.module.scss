@@ -1,0 +1,45 @@
+/* ── TechDetailsSection ──────────────────────────────────────────────────── */
+
+.h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 10px;
+  opacity: 0.8;
+}
+
+.smCards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.collapseToggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--text-bright);
+  }
+}
+
+.techGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}

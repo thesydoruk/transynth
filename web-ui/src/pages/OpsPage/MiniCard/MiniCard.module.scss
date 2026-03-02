@@ -1,0 +1,33 @@
+/* ── MiniCard — summary metric card component ────────────────────────────── */
+
+/**
+ * Card container — supports optional --card-color CSS custom property
+ * for value colour theming, injected via inline style.
+ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  min-width: 120px;
+}
+
+/** Large value display — coloured via --card-color if provided. */
+.cardValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--card-color, var(--text-bright));
+}
+
+/** Metric label below the value. */
+.cardLabel {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/** Optional sub-label (e.g. "/ 8 GB" in memory display). */
+.cardSub {
+  margin-left: 4px;
+  color: var(--text-muted);
+}

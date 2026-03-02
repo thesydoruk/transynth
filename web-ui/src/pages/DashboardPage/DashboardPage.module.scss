@@ -28,14 +28,6 @@
   flex-wrap: wrap;
 }
 
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px 24px;
-  min-width: 140px;
-}
-
 .section {
   margin-bottom: 32px;
 }
@@ -118,23 +110,8 @@
 }
 
 /** Error message paired with .center. */
-.error { color: var(--danger); }
-
-/** Bar component: track container (static layout). */
-.barTrack {
-  background: var(--bg-input);
-  border-radius: 4px;
-  height: 14px;
-  flex: 1;
-  min-width: 60px;
-  overflow: hidden;
-}
-
-/** Bar component: filled portion — only width + background are inline (dynamic). */
-.barFill {
-  border-radius: 4px;
-  height: 100%;
-  transition: width 0.3s;
+.error {
+  color: var(--danger);
 }
 
 /** Progress bar column header. */
@@ -143,32 +120,19 @@
   min-width: 120px;
 }
 
+/* Bar styles live in Bar/Bar.module.scss */
+
 /** QA count cell — has issues (red). */
-.qaHasIssues { color: var(--danger); }
+.qaHasIssues {
+  color: var(--danger);
+}
 
 /** QA count cell — clean (dim). */
-.qaNoIssues  { color: var(--text-faint); }
-
-/** Card stat value number. */
-.cardValue {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--card-color, var(--text-bright));
+.qaNoIssues {
+  color: var(--text-faint);
 }
 
-/** Card label below the number. */
-.cardLabel {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-top: 2px;
-}
-
-/** Optional sub-value (percentage) beside the label. */
-.cardSub {
-  margin-left: 6px;
-  color: var(--card-color, var(--text-muted));
-  font-weight: 600;
-}
+/* DashboardCard styles in DashboardCard/DashboardCard.module.scss */
 
 /* ── Expand toggle column ─────────────────────────────────────────────────── */
 
@@ -189,7 +153,9 @@
   font-size: 12px;
   user-select: none;
 
-  &:hover { color: var(--accent); }
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 /** Mod name as a clickable link in the dashboard table. */
@@ -197,7 +163,10 @@
   color: var(--text);
   text-decoration: none;
 
-  &:hover { color: var(--accent); text-decoration: underline; }
+  &:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
 }
 
 /* ── GRUP sub-table ───────────────────────────────────────────────────────── */
@@ -213,59 +182,4 @@
   border-bottom: 2px solid var(--border-light);
 }
 
-/** "Loading…" / empty text inside the GRUP panel. */
-.grupLoading {
-  color: var(--text-dim);
-  font-size: 12px;
-  padding: 6px 0;
-}
-
-/** The compact GRUP breakdown table itself. */
-.grupTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.grupTh {
-  text-align: left;
-  padding: 4px 8px;
-  color: var(--text-faint);
-  font-weight: 600;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.grupThR {
-  composes: grupTh;
-  text-align: right;
-}
-
-.grupThProgress {
-  composes: grupTh;
-  min-width: 100px;
-}
-
-.grupDataRow {
-  border-bottom: 1px solid var(--bg-hover);
-}
-
-/** GRUP signature badge cell — monospace, accented. */
-.grupSig {
-  padding: 4px 8px;
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.grupTdR {
-  padding: 4px 8px;
-  text-align: right;
-  color: var(--text-muted);
-}
-
-.grupTdProgress {
-  padding: 4px 8px;
-  min-width: 100px;
-}
+/* GrupSubTable internal styles live in GrupSubTable/GrupSubTable.module.scss */

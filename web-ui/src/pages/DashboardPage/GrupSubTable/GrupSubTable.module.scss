@@ -1,0 +1,58 @@
+/* ── GrupSubTable ────────────────────────────────────────────────────────── */
+
+/** "Loading…" / empty placeholder text inside the GRUP panel. */
+.grupLoading {
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 6px 0;
+}
+
+/** The compact GRUP breakdown table. */
+.grupTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.grupTh {
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--text-faint);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.grupThR {
+  composes: grupTh;
+  text-align: right;
+}
+
+.grupThProgress {
+  composes: grupTh;
+  min-width: 100px;
+}
+
+.grupDataRow {
+  border-bottom: 1px solid var(--bg-hover);
+}
+
+/** GRUP signature badge — monospace, accent-colored. */
+.grupSig {
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.grupTdR {
+  padding: 4px 8px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.grupTdProgress {
+  padding: 4px 8px;
+  min-width: 100px;
+}

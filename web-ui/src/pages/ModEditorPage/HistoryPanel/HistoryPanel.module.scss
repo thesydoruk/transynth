@@ -1,0 +1,36 @@
+/* ── HistoryPanel — component-unique styles ──────────────────────────────── */
+/* panelEmpty and panelListGap4 live in ../ModEditorPage.module.scss.        */
+
+/** Container for a single history entry card. */
+.historyRow {
+  padding: 6px 8px;
+  background: var(--bg-card);
+  border-radius: 4px;
+}
+
+/** Header row: status badge + timestamp + optional note. */
+.histHeader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+/** History entry timestamp. */
+.histDate {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+/** Optional editor note attached to the history entry. */
+.histNote {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+/** Full text of the historical translation. */
+.histText {
+  color: var(--text);
+  font-size: 12px;
+  white-space: pre-wrap;
+}

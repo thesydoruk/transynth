@@ -1,0 +1,72 @@
+/* ── LlmTab — LLM settings read-only display ─────────────────────────────── */
+/* Styles unique to the LLM tab: loading/error states, read-only banner,     */
+/* badge pills, and monospace field values.                                   */
+
+/* ── Loading / error states ───────────────────────────────────────────────── */
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* ── Read-only banner ─────────────────────────────────────────────────────── */
+
+/** Informational banner shown at the top of the LLM tab explaining that
+ *  settings are server-controlled and cannot be edited from the UI. */
+.readonlyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+/* ── Monospace field value ─────────────────────────────────────────────────── */
+
+/** Displays a configuration value with monospace font for model names, URLs. */
+.fieldValue {
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+
+/** Base pill badge for status indicators (active / configured / enabled). */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/** Green badge — used for active providers and configured keys. */
+.badgeOk {
+  composes: badge;
+  background: color-mix(in srgb, var(--ok) 20%, transparent);
+  color: var(--ok);
+}
+
+/** Amber badge — used for missing keys or disabled features. */
+.badgeWarn {
+  composes: badge;
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}

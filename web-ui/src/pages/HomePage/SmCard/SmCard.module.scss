@@ -1,0 +1,20 @@
+/* ── SmCard ──────────────────────────────────────────────────────────────── */
+
+.smCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.smCardValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--card-color, var(--text-bright));
+}
+
+.smCardLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

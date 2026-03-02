@@ -1,0 +1,92 @@
+/* ── GroupCard ───────────────────────────────────────────────────────────── */
+
+/** Root collapsible card container. */
+.group {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/** Clickable header row — base EDID, count, and progress. */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-table-header);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+/** Expand / collapse arrow icon. */
+.chevron {
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 12px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+
+  &.open {
+    transform: rotate(90deg);
+  }
+}
+
+/** Base EDID label — monospace, prominent. */
+.baseEdid {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+/** Total row count pill. */
+.groupCount {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-tag);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+/** "translated / total" fraction indicator. */
+.groupProgress {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/** Applied when all rows in the group are translated. */
+.progressDone {
+  color: var(--color-success, #4ade80);
+}
+
+/** Scroll wrapper for the inner component table. */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/** Column header cell style. */
+.th {
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--bg-table-header);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
