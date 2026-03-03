@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeForHash, normalizeNoPunct, segmentPhrases, extractNumbers, transplantNumbers } from './textNorm.js';
+import { describe, it, expect } from '@jest/globals';
+import { normalizeForHash, normalizeNoPunct, segmentPhrases, extractNumbers, transplantNumbers } from '../textNorm.js';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {
@@ -73,8 +73,6 @@ describe('segmentPhrases', () => {
   });
 
   it('filters out very short fragments', () => {
-    // "A. B. Do something." → "A." (2 chars) and "B." (2 chars) are too short
-    // Only 1 valid segment remains → returns empty (need ≥ 2)
     const result = segmentPhrases('A. B. Do something useful.');
     expect(result).toEqual([]);
   });
@@ -84,8 +82,6 @@ describe('segmentPhrases', () => {
     expect(result).toEqual(['First line', 'Second line', 'Third line']);
   });
 });
-
-// ── Numeric-invariant matching ────────────────────────────────────────────────
 
 describe('extractNumbers', () => {
   it('extracts integers', () => {

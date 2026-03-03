@@ -1,19 +1,8 @@
 /**
  * Unit tests for MCM translation file parser.
- *
- * Tests cover:
- *  - UTF-8 plain text parsing
- *  - UTF-8 BOM stripping
- *  - UTF-16 LE BOM decoding (the most common real-world encoding)
- *  - Tab-separated key/value splitting
- *  - Skipping empty lines and non-$ lines
- *  - Values containing embedded tabs (only first tab splits)
- *  - Locale extraction from path / filename
  */
-import { describe, it, expect } from 'vitest';
-import { parseMcmBuffer, mcmLocaleFromPath } from './mcmReader.js';
-
-// ── parseMcmBuffer ───────────────────────────────────────────────────────────
+import { describe, it, expect } from '@jest/globals';
+import { parseMcmBuffer, mcmLocaleFromPath } from '../mcmReader.js';
 
 describe('parseMcmBuffer — UTF-8 plain', () => {
   it('parses a basic key-value pair', () => {
@@ -71,7 +60,6 @@ describe('parseMcmBuffer — UTF-8 plain', () => {
 
 describe('parseMcmBuffer — UTF-8 BOM', () => {
   it('strips UTF-8 BOM and parses normally', () => {
-    // BOM: EF BB BF
     const bom = Buffer.from([0xef, 0xbb, 0xbf]);
     const text = Buffer.from('$Key\tBOM Value', 'utf8');
     const map = parseMcmBuffer(Buffer.concat([bom, text]));
@@ -81,7 +69,6 @@ describe('parseMcmBuffer — UTF-8 BOM', () => {
 
 describe('parseMcmBuffer — UTF-16 LE BOM', () => {
   it('decodes UTF-16 LE (most common Bethesda encoding)', () => {
-    // BOM: FF FE
     const bom = Buffer.from([0xff, 0xfe]);
     const text = Buffer.from('$Key\tUtf16Value', 'utf16le');
     const map = parseMcmBuffer(Buffer.concat([bom, text]));
@@ -95,8 +82,6 @@ describe('parseMcmBuffer — UTF-16 LE BOM', () => {
     expect(map.get('$Ключ')).toBe('Значення');
   });
 });
-
-// ── mcmLocaleFromPath ────────────────────────────────────────────────────────
 
 describe('mcmLocaleFromPath', () => {
   it('extracts locale from archive path with backslashes', () => {

@@ -1,28 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseEetHeader, iterEetRecords, parseEetFile } from './eetReader.js';
+import { parseEetHeader, iterEetRecords, parseEetFile } from '../eetReader.js';
 
 const SMALL_EET = path.resolve('test/DOOMThatGun_DE6A1ED8.eet');
 const LARGE_EET = path.resolve('test/BDD_Fallout4_EN-RU.eet');
 
-// ────────────────────────────────────────────────────────────────────────────
-// Header parsing
-// ────────────────────────────────────────────────────────────────────────────
-
 describe('parseEetHeader', () => {
   it('parses v1 header (DOOMThatGun)', () => {
-    if (!fs.existsSync(SMALL_EET)) return; // skip if fixture not present
+    if (!fs.existsSync(SMALL_EET)) return;
     const buf = fs.readFileSync(SMALL_EET);
     const h = parseEetHeader(buf);
     expect(h.version).toBe(1);
     expect(h.gameName).toBe('Fallout 4');
-    expect(h.declaredCount).toBe(-1); // v1 has no count
+    expect(h.declaredCount).toBe(-1);
     expect(h.recordsOffset).toBeGreaterThan(0);
   });
 
   it('parses v2 header (BDD)', () => {
-    if (!fs.existsSync(LARGE_EET)) return; // skip if large file not present
+    if (!fs.existsSync(LARGE_EET)) return;
     const buf = fs.readFileSync(LARGE_EET);
     const h = parseEetHeader(buf);
     expect(h.version).toBe(2);
@@ -36,10 +32,6 @@ describe('parseEetHeader', () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Record iteration
-// ────────────────────────────────────────────────────────────────────────────
-
 describe('iterEetRecords (v1 small file)', () => {
   it('yields all records', () => {
     if (!fs.existsSync(SMALL_EET)) return;
@@ -47,7 +39,6 @@ describe('iterEetRecords (v1 small file)', () => {
     const header = parseEetHeader(buf);
     const records = [...iterEetRecords(buf, header.recordsOffset)];
     expect(records.length).toBeGreaterThan(0);
-    // DOOMThatGun has 61 records
     expect(records.length).toBe(61);
   });
 
@@ -71,14 +62,10 @@ describe('iterEetRecords (v1 small file)', () => {
     const records = [...iterEetRecords(buf, header.recordsOffset)];
     for (const r of records) {
       expect(r.signature.length).toBe(4);
-      expect(/^[A-Z0-9_]{4}$/.test(r.signature), `Bad sig: ${r.signature}`).toBe(true);
+      expect(/^[A-Z0-9_]{4}$/.test(r.signature)).toBe(true);
     }
   });
 });
-
-// ────────────────────────────────────────────────────────────────────────────
-// parseEetFile convenience
-// ────────────────────────────────────────────────────────────────────────────
 
 describe('parseEetFile', () => {
   it('returns header + records for v1 file', () => {
@@ -89,10 +76,6 @@ describe('parseEetFile', () => {
     expect(result.records.length).toBe(61);
   });
 });
-
-// ────────────────────────────────────────────────────────────────────────────
-// Large file (v2) — optional
-// ────────────────────────────────────────────────────────────────────────────
 
 describe('iterEetRecords (v2 large file)', () => {
   it('yields declared record count', () => {

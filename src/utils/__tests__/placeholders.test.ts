@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { maskPlaceholders, applyGlossaryMask, unmask } from './placeholders.js';
+import { describe, it, expect } from '@jest/globals';
+import { maskPlaceholders, applyGlossaryMask, unmask } from '../placeholders.js';
 
 describe('maskPlaceholders', () => {
   it('masks printf-style placeholders', () => {
@@ -36,7 +36,7 @@ describe('maskPlaceholders', () => {
 });
 
 describe('unmask', () => {
-  it('round-trips: mask → unmask restores original', () => {
+  it('round-trips: mask -> unmask restores original', () => {
     const original = 'Hello %s, you have %d items in {location}';
     const { masked, mapping } = maskPlaceholders(original);
     expect(unmask(masked, mapping)).toBe(original);
@@ -59,7 +59,7 @@ describe('applyGlossaryMask', () => {
     expect(mapping['¤GL0¤']).toBe('Brotherhood of Steel');
   });
 
-  it('round-trips: glossary mask → unmask', () => {
+  it('round-trips: glossary mask -> unmask', () => {
     const original = 'Visit the Brotherhood of Steel at the Institute';
     const { masked, mapping } = applyGlossaryMask(original, ['Brotherhood of Steel', 'Institute']);
     expect(unmask(masked, mapping)).toBe(original);

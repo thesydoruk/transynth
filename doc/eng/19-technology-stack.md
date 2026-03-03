@@ -86,7 +86,8 @@ At a high level, the system supports these flows:
 
 - ESLint is used for linting.
 - Prettier is used for formatting.
-- Vitest is used for unit testing.
+- Jest is used for unit testing.
+- Tests are colocated near code in local `__tests__/` folders under `src/`.
 - `tsx` is used to run TypeScript files directly in development and CLI flows.
 - `concurrently` and `wait-on` are used in development orchestration scripts.
 

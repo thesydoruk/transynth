@@ -86,7 +86,8 @@ Localization Pipeline, і пояснює роль кожної частини в
 
 - ESLint використовується для linting.
 - Prettier використовується для форматування.
-- Vitest використовується для unit tests.
+- Jest використовується для unit tests.
+- Тести лежать поруч із кодом у локальних папках `__tests__/` всередині `src/`.
 - `tsx` використовується для прямого запуску TypeScript-файлів у development і
   CLI workflow.
 - `concurrently` і `wait-on` використовуються в dev-orchestration scripts.

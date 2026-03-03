@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseCsvLine, csvRow } from './csv.js';
+import { describe, it, expect } from '@jest/globals';
+import { parseCsvLine, csvRow } from '../csv.js';
 
 describe('parseCsvLine', () => {
   it('parses simple unquoted fields', () => {
@@ -22,7 +22,7 @@ describe('parseCsvLine', () => {
     expect(parseCsvLine('a,,c')).toEqual(['a', '', 'c']);
   });
 
-  it('handles trailing comma → empty last field', () => {
+  it('handles trailing comma -> empty last field', () => {
     expect(parseCsvLine('a,b,')).toEqual(['a', 'b', '']);
   });
 
@@ -34,7 +34,7 @@ describe('parseCsvLine', () => {
     expect(parseCsvLine('')).toEqual([]);
   });
 
-  it('round-trips through csvRow → parseCsvLine', () => {
+  it('round-trips through csvRow -> parseCsvLine', () => {
     const original = ['FormID', 'NPC_ ', 'Property\\Value', 'He said "hello"', ''];
     const line = csvRow(original);
     const parsed = parseCsvLine(line);

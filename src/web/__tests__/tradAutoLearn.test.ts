@@ -5,10 +5,8 @@
  * using mock DB results.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { commonPrefix, commonSuffix, discoverPatterns } from './tradAutoLearn.js';
-
-/* ── Helper function tests ────────────────────────────────────────────────── */
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { commonPrefix, commonSuffix, discoverPatterns } from '../tradAutoLearn.js';
 
 describe('commonPrefix', () => {
   it('returns common prefix trimmed to word boundary', () => {
@@ -46,7 +44,6 @@ describe('commonSuffix', () => {
   });
 
   it('returns empty for partial word suffix', () => {
-    // 'ord' and 'Word' share 'ord' but no word boundary
     expect(commonSuffix('Lord', 'Word')).toBe('');
   });
 
@@ -59,27 +56,22 @@ describe('commonSuffix', () => {
   });
 });
 
-/* ── discoverPatterns integration tests ───────────────────────────────────── */
-
-/**
- * Creates a minimal mock DB that returns the given translation pairs and
- * optionally existing rules.
- */
 const mockDb = (
   pairs: Array<{ source: string; target: string; signature: string | null; path: string | null }>,
   existingRules: Array<{ pattern: string; replacement: string; signature: string | null; path: string | null }> = [],
 ) => ({
-  query: vi.fn().mockImplementation((sql: string) => {
+  query: ((sql: string) => {
     if (sql.includes('tradauto_rules')) {
       return { rows: existingRules };
     }
-    /* Translation pairs query. */
     return { rows: pairs };
-  }),
+  }) as unknown,
 });
 
 describe('discoverPatterns', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it('discovers prefix pattern from translation pairs', async () => {
     const db = mockDb([
@@ -120,9 +112,7 @@ describe('discoverPatterns', () => {
       { source: 'Iron Dagger', target: 'Залізний Кинджал', signature: 'WEAP', path: 'FULL' },
     ]);
 
-    /* With minOccurrences=3, only 2 sources should be below threshold. */
     const result = await discoverPatterns(db as never, { minOccurrences: 3 });
-
     expect(result).toHaveLength(0);
   });
 
@@ -133,7 +123,6 @@ describe('discoverPatterns', () => {
         { source: 'Iron Dagger', target: 'Залізний Кинджал', signature: 'WEAP', path: 'FULL' },
         { source: 'Iron Mace', target: 'Залізний Булава', signature: 'WEAP', path: 'FULL' },
       ],
-      /* Existing rule matches the candidate. */
       [{ pattern: 'Iron %VAR1%', replacement: 'Залізний %VAR1%', signature: 'WEAP', path: 'FULL' }],
     );
 
@@ -149,8 +138,6 @@ describe('discoverPatterns', () => {
       { source: 'Iron Dagger', target: 'Залізний Кинджал', signature: 'WEAP', path: 'FULL' },
     ]);
 
-    /* minOccurrences for the group size. With only 2 entries, group threshold
-       is met BUT the candidate only has 2 occurrences which is < 3. */
     const result = await discoverPatterns(db as never, { minOccurrences: 3 });
     expect(result).toHaveLength(0);
   });
@@ -179,7 +166,6 @@ describe('discoverPatterns', () => {
   });
 
   it('rejects trivially short fixed portions', async () => {
-    /* Pattern "A %VAR1%" has only 1 fixed char — should be rejected. */
     const db = mockDb([
       { source: 'A Sword', target: 'X Меч', signature: 'WEAP', path: 'FULL' },
       { source: 'A Dagger', target: 'X Кинджал', signature: 'WEAP', path: 'FULL' },
@@ -187,14 +173,11 @@ describe('discoverPatterns', () => {
     ]);
 
     const result = await discoverPatterns(db as never, { minOccurrences: 2 });
-
-    /* All candidates with "A %VAR1%" should be filtered (fixed portion < 3 chars). */
     const trivial = result.find((c) => c.pattern === 'A %VAR1%');
     expect(trivial).toBeUndefined();
   });
 
   it('respects the limit option', async () => {
-    /* Generate a larger set that would produce many candidates. */
     const pairs = Array.from({ length: 10 }, (_, i) => ({
       source: `Iron Weapon${i}`,
       target: `Залізна Зброя${i}`,

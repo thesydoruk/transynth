@@ -5,10 +5,8 @@
  * word boundaries (\b) so that e.g. "iron" doesn't match inside "environment",
  * while still correctly matching standalone occurrences and multi-word terms.
  */
-import { describe, it, expect } from 'vitest';
-import { escapeRegExp, termWordBoundaryRe } from './queries.js';
-
-// ── escapeRegExp ─────────────────────────────────────────────────────────────
+import { describe, it, expect } from '@jest/globals';
+import { escapeRegExp, termWordBoundaryRe } from '../queries.js';
 
 describe('escapeRegExp', () => {
   it('escapes regex metacharacters', () => {
@@ -25,13 +23,11 @@ describe('escapeRegExp', () => {
   });
 });
 
-// ── termWordBoundaryRe ───────────────────────────────────────────────────────
-
 describe('termWordBoundaryRe', () => {
   it('matches the term as a standalone word', () => {
     const re = termWordBoundaryRe('iron');
     expect(re.test('Find the iron ingot.')).toBe(true);
-    expect(re.test('Iron is heavy.')).toBe(true);  // case-insensitive
+    expect(re.test('Iron is heavy.')).toBe(true);
     expect(re.test('pure iron')).toBe(true);
   });
 
@@ -45,7 +41,7 @@ describe('termWordBoundaryRe', () => {
   it('matches multi-word terms', () => {
     const re = termWordBoundaryRe('Brotherhood of Steel');
     expect(re.test('Join the Brotherhood of Steel today.')).toBe(true);
-    expect(re.test('brotherhood of steel')).toBe(true);  // case-insensitive
+    expect(re.test('brotherhood of steel')).toBe(true);
   });
 
   it('does NOT match partial multi-word terms', () => {
@@ -57,7 +53,7 @@ describe('termWordBoundaryRe', () => {
   it('handles terms with regex metacharacters', () => {
     const re = termWordBoundaryRe('Pip-Boy');
     expect(re.test('Use the Pip-Boy to navigate.')).toBe(true);
-    expect(re.test('pip-boy')).toBe(true);  // case-insensitive
+    expect(re.test('pip-boy')).toBe(true);
   });
 
   it('matches at start and end of string', () => {

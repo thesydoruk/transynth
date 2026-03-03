@@ -1,33 +1,22 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import type { Tx } from '../db.js';
-import { Ba2Reader } from '../bethesda/ba2Reader.js';
-import { parseStringsBuffer, writeStringsBuffer } from '../bethesda/stringsFile.js';
+import { afterEach, describe, expect, it } from '@jest/globals';
+import type { Tx } from '../../db.js';
+import { Ba2Reader } from '../../bethesda/ba2Reader.js';
+import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/stringsFile.js';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
-} from '../testdata/exportGoldenCorpus.js';
-import { exportBa2Archive, exportLocalizedStringsFiles } from './exportService.js';
+} from '../../testdata/exportGoldenCorpus.js';
+import { exportBa2Archive, exportLocalizedStringsFiles } from '../exportService.js';
 
-/**
- * Build a transaction-compatible stub that returns a fixed localized overlay.
- *
- * @param rows - Result rows exposed by `getTranslationOverlay()`'s query.
- * @returns Minimal `Tx` implementation for export tests.
- */
 const makeOverlayDb = (rows: Array<{ lstring_id: number; export_text: string }>): Tx => {
   return {
     query: async () => ({ rows }),
   } as unknown as Tx;
-}
+};
 
-/**
- * Materialize the golden corpus as a loose-files mod directory.
- *
- * @returns Absolute path to the plugin file used as the export root.
- */
 const createLooseStringsMod = (): string => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'golden-export-'));
   const pluginPath = path.join(root, LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName);
@@ -44,9 +33,8 @@ const createLooseStringsMod = (): string => {
 
   tempDirs.push(root);
   return pluginPath;
-}
+};
 
-/** Track temp directories created by the export regression tests. */
 const tempDirs: string[] = [];
 
 afterEach(() => {

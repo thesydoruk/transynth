@@ -1,23 +1,19 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from '@jest/globals';
 import {
   parseStringsBuffer,
   writeStringsBuffer,
   stringsTypeFromPath,
   type StringsType,
-} from './stringsFile.js';
-import { Ba2Reader } from './ba2Reader.js';
-import { writeBa2, type Ba2InputFile } from './ba2Writer.js';
+} from '../stringsFile.js';
+import { Ba2Reader } from '../ba2Reader.js';
+import { writeBa2, type Ba2InputFile } from '../ba2Writer.js';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
-} from '../testdata/exportGoldenCorpus.js';
-
-// ────────────────────────────────────────────────────────────────────────────
-// stringsTypeFromPath
-// ────────────────────────────────────────────────────────────────────────────
+} from '../../testdata/exportGoldenCorpus.js';
 
 describe('stringsTypeFromPath', () => {
   it('detects STRINGS', () => {
@@ -34,16 +30,11 @@ describe('stringsTypeFromPath', () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Round-trip helpers
-// ────────────────────────────────────────────────────────────────────────────
-
 const roundTrip = (entries: Map<number, string>, type: StringsType): Map<number, string> => {
   const buf = writeStringsBuffer(entries, type);
   return parseStringsBuffer(buf, type);
-}
+};
 
-/** Track temporary archive files created by BA2 regression tests. */
 const tempArtifacts: string[] = [];
 
 afterEach(() => {
@@ -52,10 +43,6 @@ afterEach(() => {
     if (target && fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
   }
 });
-
-// ────────────────────────────────────────────────────────────────────────────
-// STRINGS
-// ────────────────────────────────────────────────────────────────────────────
 
 describe('STRINGS round-trip', () => {
   const input = new Map<number, string>([
@@ -90,21 +77,17 @@ describe('STRINGS round-trip', () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// DLSTRINGS
-// ────────────────────────────────────────────────────────────────────────────
-
 describe('DLSTRINGS round-trip', () => {
   const input = new Map<number, string>([
     [100, 'A short description.'],
-    [200, 'A longer description with\nnewlines and \"quotes\".'],
+    [200, 'A longer description with\nnewlines and "quotes".'],
   ]);
 
   it('preserves all entries', () => {
     const result = roundTrip(input, 'DLSTRINGS');
     expect(result.size).toBe(2);
     expect(result.get(100)).toBe('A short description.');
-    expect(result.get(200)).toBe('A longer description with\nnewlines and \"quotes\".');
+    expect(result.get(200)).toBe('A longer description with\nnewlines and "quotes".');
   });
 
   it('handles empty map', () => {
@@ -112,10 +95,6 @@ describe('DLSTRINGS round-trip', () => {
     expect(result.size).toBe(0);
   });
 });
-
-// ────────────────────────────────────────────────────────────────────────────
-// ILSTRINGS
-// ────────────────────────────────────────────────────────────────────────────
 
 describe('ILSTRINGS round-trip', () => {
   it('preserves dialogue text', () => {
@@ -129,15 +108,11 @@ describe('ILSTRINGS round-trip', () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// writeStringsBuffer — header correctness
-// ────────────────────────────────────────────────────────────────────────────
-
 describe('writeStringsBuffer header', () => {
   it('writes correct count in header', () => {
     const map = new Map<number, string>([[1, 'a'], [2, 'b'], [3, 'c']]);
     const buf = writeStringsBuffer(map, 'STRINGS');
-    expect(buf.readUInt32LE(0)).toBe(3); // count
+    expect(buf.readUInt32LE(0)).toBe(3);
   });
 
   it('dataSize matches actual blob length', () => {
@@ -153,14 +128,9 @@ describe('writeStringsBuffer header', () => {
     const map = new Map<number, string>([[1, 'xyz']]);
     const buf = writeStringsBuffer(map, 'DLSTRINGS');
     const dataSize = buf.readUInt32LE(4);
-    // text "xyz\0" = 4 bytes + uint32 prefix = 8 bytes
     expect(dataSize).toBe(4 + 4);
   });
 });
-
-// ────────────────────────────────────────────────────────────────────────────
-// Large map — stress test
-// ────────────────────────────────────────────────────────────────────────────
 
 describe('large map round-trip', () => {
   it('round-trips 1000 STRINGS entries', () => {
@@ -175,10 +145,6 @@ describe('large map round-trip', () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// BA2 writer
-// ────────────────────────────────────────────────────────────────────────────
-
 describe('BA2 writer', () => {
   it('produces a valid BTDX GNRL archive', () => {
     const content = Buffer.from('Hello BA2!');
@@ -187,32 +153,28 @@ describe('BA2 writer', () => {
     ];
     const ba2 = writeBa2(files);
 
-    // Header checks
     expect(ba2.toString('ascii', 0, 4)).toBe('BTDX');
-    expect(ba2.readUInt32LE(4)).toBe(1); // version
+    expect(ba2.readUInt32LE(4)).toBe(1);
     expect(ba2.toString('ascii', 8, 12)).toBe('GNRL');
-    expect(ba2.readUInt32LE(12)).toBe(1); // fileCount
+    expect(ba2.readUInt32LE(12)).toBe(1);
 
-    // File data is stored uncompressed after header + entries (24 + 36 = 60)
     const dataSlice = ba2.subarray(60, 60 + content.length);
     expect(dataSlice.toString()).toBe('Hello BA2!');
 
-    // Name table at the end
     const ntOffset = Number(ba2.readBigUInt64LE(16));
     const nameLen = ba2.readUInt16LE(ntOffset);
     const name = ba2.toString('utf8', ntOffset + 2, ntOffset + 2 + nameLen);
     expect(name).toBe('Strings\\Test_uk.STRINGS');
   });
 
-  it('round-trips STRINGS through BA2 write → manual extract', () => {
+  it('round-trips STRINGS through BA2 write -> manual extract', () => {
     const map = new Map<number, string>([[1, 'Vault Boy'], [2, 'Пустка']]);
     const strBuf = writeStringsBuffer(map, 'STRINGS');
 
     const ba2 = writeBa2([{ name: 'Strings\\mod_uk.STRINGS', data: strBuf }]);
 
-    // Extract the file data manually (offset 60, uncompressed)
-    const unpackedSize = ba2.readUInt32LE(24 + 28); // entry[0].unpackedSize
-    const offset = Number(ba2.readBigUInt64LE(24 + 16)); // entry[0].offset
+    const unpackedSize = ba2.readUInt32LE(24 + 28);
+    const offset = Number(ba2.readBigUInt64LE(24 + 16));
     const extracted = ba2.subarray(offset, offset + unpackedSize);
 
     const parsed = parseStringsBuffer(extracted, 'STRINGS');
