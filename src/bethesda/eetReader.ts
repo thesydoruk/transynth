@@ -18,6 +18,12 @@
 
 import { log } from '../logger.js';
 
+/**
+ * Header information parsed from an EET file.
+ *
+ * EET (ESP‑ESM Translator) files come in multiple versions; some store the
+ * record count in the header while older versions do not.
+ */
 export interface EetHeader {
   version: number;
   gameName: string;
@@ -27,6 +33,13 @@ export interface EetHeader {
   recordsOffset: number;
 }
 
+/**
+ * A single translation row extracted from an EET file.
+ *
+ * This is a lossy representation: the on-disk structure contains additional
+ * bookkeeping data (template blocks, hashes, etc.). The importer only needs
+ * the identifiers, source/target strings, and status marker.
+ */
 export interface EetRecord {
   /** Byte offset in file where this record starts. */
   offset: number;
@@ -46,14 +59,39 @@ export interface EetRecord {
   status: number;
 }
 
+/**
+ * Read a little-endian 32‑bit unsigned integer from the buffer.
+ *
+ * @param buf - Source buffer.
+ * @param o - Byte offset at which the value starts.
+ * @returns Parsed unsigned integer.
+ */
 const readU32 = (buf: Buffer, o: number): number => {
   return buf.readUInt32LE(o);
 }
 
+/**
+ * Read a little-endian 16‑bit unsigned integer from the buffer.
+ *
+ * @param buf - Source buffer.
+ * @param o - Byte offset at which the value starts.
+ * @returns Parsed unsigned integer.
+ */
 const readU16 = (buf: Buffer, o: number): number => {
   return buf.readUInt16LE(o);
 }
 
+/**
+ * Read an EET string at the given offset.
+ *
+ * EET strings are stored as `uint32 length` followed by that many UTF‑8 bytes.
+ * The trailing offset returned by this helper always points to the first byte
+ * *after* the string payload.
+ *
+ * @param buf - Source buffer.
+ * @param o - Offset of the length prefix.
+ * @returns Tuple of decoded string and next offset.
+ */
 const readStr = (buf: Buffer, o: number): [string, number] => {
   const len = readU32(buf, o);
   o += 4;
@@ -63,6 +101,10 @@ const readStr = (buf: Buffer, o: number): [string, number] => {
 
 /**
  * Parse the EET file header.
+ *
+ * @param buf - Full EET file contents.
+ * @returns Parsed header fields including the byte offset where records start.
+ * @throws Error if the buffer does not match the expected header tags.
  */
 export const parseEetHeader = (buf: Buffer): EetHeader => {
   let o = 0;
@@ -107,9 +149,14 @@ export const parseEetHeader = (buf: Buffer): EetHeader => {
 }
 
 /**
- * Iterate over all records in the EET file.
- * Uses the size-prefixed record layout to jump between records reliably.
- * Yields parsed record data for each entry.
+ * Iterate over records in an EET file.
+ *
+ * The record structure is size-prefixed, so the iterator can reliably jump to
+ * the next record even when it does not parse the full tail section.
+ *
+ * @param buf - Full EET file contents.
+ * @param startOffset - Byte offset of the first record (from {@link parseEetHeader}).
+ * @yields Parsed record descriptors for each row in the file.
  */
 // eslint-disable-next-line func-style
 export function* iterEetRecords(buf: Buffer, startOffset: number): Generator<EetRecord> {
@@ -166,7 +213,13 @@ export function* iterEetRecords(buf: Buffer, startOffset: number): Generator<Eet
 }
 
 /**
- * Parse the entire EET file and return header + all records.
+ * Parse a full EET file into header + a materialised record list.
+ *
+ * Prefer {@link iterEetRecords} for streaming import of large files; this
+ * convenience wrapper is primarily used by tooling that needs random access.
+ *
+ * @param buf - Full EET file contents.
+ * @returns Object containing parsed header metadata and a list of all records.
  */
 export const parseEetFile = (buf: Buffer): { header: EetHeader; records: EetRecord[] } => {
   log.debug(`EET: parsing buffer (${buf.length} bytes)`);

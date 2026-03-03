@@ -117,6 +117,23 @@ export interface EspRecordsPage {
  * @param start - Inclusive start offset.
  * @param end   - Exclusive end offset.
  */
+/**
+ * Best-effort decode of an arbitrary record payload slice as human-readable text.
+ *
+ * This is used exclusively by the "ESP Explorer" API to provide a lightweight
+ * hint for subrecords that may contain strings. Many subrecords are binary;
+ * returning `null` for those keeps the UI and API responses clean.
+ *
+ * The decode is intentionally conservative:
+ * - the scan is capped to the first 256 bytes to avoid creating huge responses,
+ * - NUL bytes are removed,
+ * - the result must contain at least one printable character to qualify.
+ *
+ * @param buf - Source buffer containing record data.
+ * @param start - Inclusive start offset of the slice.
+ * @param end - Exclusive end offset of the slice.
+ * @returns Decoded UTF‑8 string when the slice looks textual; otherwise `null`.
+ */
 function tryDecodeText(buf: Buffer, start: number, end: number): string | null {
   if (end <= start) return null;
   // Limit to first 256 bytes to keep response sizes sane
@@ -131,6 +148,14 @@ function tryDecodeText(buf: Buffer, start: number, end: number): string | null {
   }
 }
 
+/**
+ * A single extracted translatable string location within an ESP/ESM/ESL plugin.
+ *
+ * This is the canonical output of {@link EspReader.extractStrings}. Each row
+ * identifies where a translatable value lives (record FormID + subrecord path)
+ * and exposes either the literal text (non-localized plugins) or the numeric
+ * LString ID (localized plugins).
+ */
 export interface EspStringRow {
   /** FormID as hex string (8 uppercase chars), e.g. "0001A2B3" */
   formId: string;
@@ -146,6 +171,13 @@ export interface EspStringRow {
   isLstringId: boolean;
 }
 
+/**
+ * Basic metadata parsed from the TES4 header record.
+ *
+ * This is surfaced to import/export workflows so they can decide whether the
+ * plugin is localized (uses external string tables) and to show descriptive
+ * information in the UI.
+ */
 export interface EspPluginInfo {
   isLocalized: boolean;
   masterFiles: string[];
@@ -153,6 +185,18 @@ export interface EspPluginInfo {
   description: string;
 }
 
+/**
+ * Native reader for Bethesda ESP/ESM/ESL plugin files.
+ *
+ * The reader supports two primary use cases:
+ * - **Import/extraction**: scan the plugin structure and extract translatable
+ *   fields as {@link EspStringRow} values.
+ * - **Explorer API**: provide a raw record browser for debugging and QA.
+ *
+ * The constructor reads the entire plugin into memory for random access. This
+ * is acceptable for typical mod plugin sizes and greatly simplifies record
+ * traversal and decompression.
+ */
 export class EspReader {
   private buf: Buffer;
   public info!: EspPluginInfo;
@@ -171,6 +215,16 @@ export class EspReader {
     log.info(`ESP: ${filePath} — localized=${this.info.isLocalized}, masters=[${this.info.masterFiles.join(', ')}]`);
   }
 
+  /**
+   * Parse the TES4 header record and populate {@link EspReader.info}.
+   *
+   * This extracts:
+   * - the localized flag (external string tables vs inline text),
+   * - master file list (MAST subrecords),
+   * - author and description strings (CNAM/SNAM).
+   *
+   * @throws Error if the plugin does not start with a TES4 record.
+   */
   private parseHeader(): void {
     const buf = this.buf;
     if (buf.length < RECORD_HEADER_SIZE) throw new Error('ESP: file too small');
@@ -209,8 +263,12 @@ export class EspReader {
 
   /**
    * Walk all records in the plugin and extract translatable string rows.
-   * For localized plugins, `text` = string decimal ID; resolve with STRINGS files.
-   * For non-localized plugins, `text` = actual string.
+   *
+   * - For localized plugins, `text` contains a decimal LString ID that must be
+   *   resolved through `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` tables.
+   * - For non-localized plugins, `text` contains the actual inline UTF‑8 string.
+   *
+   * @returns Flat list of extracted string rows.
    */
   extractStrings(): EspStringRow[] {
     const rows: EspStringRow[] = [];
@@ -225,6 +283,17 @@ export class EspReader {
     return rows;
   }
 
+  /**
+   * Recursively walk a byte range that contains records and nested GRUP blocks.
+   *
+   * ESP plugins are arranged as a TES4 header record followed by a tree of GRUP
+   * containers. Each GRUP contains more GRUPs and/or regular records.
+   *
+   * @param start - Inclusive byte offset to begin scanning.
+   * @param end - Exclusive byte offset to stop scanning.
+   * @param rows - Accumulator for extracted translatable string rows.
+   * @param _groupLabel - Currently unused (reserved for future debugging output).
+   */
   private walkRange(start: number, end: number, rows: EspStringRow[], _groupLabel: string): void {
     const buf = this.buf;
     let pos = start;
@@ -251,6 +320,22 @@ export class EspReader {
     }
   }
 
+  /**
+   * Parse one record and extract any translatable subrecord fields.
+   *
+   * Records may be stored compressed; when the compressed flag is set, the
+   * record payload is zlib-inflated before scanning its subrecords.
+   *
+   * For localized plugins we only treat 4-byte translatable subrecords as
+   * LString IDs (uint32). For non-localized plugins we decode the subrecord
+   * payload as UTF‑8 and strip NUL bytes.
+   *
+   * @param recOffset - Byte offset of the 24-byte record header within the plugin buffer.
+   * @param formIdHex - Record FormID formatted as 8-char uppercase hex.
+   * @param recSig - 4-char record signature (type), e.g. `"ARMO"`.
+   * @param flags - Raw record flags from the record header.
+   * @param rows - Accumulator for extracted translatable string rows.
+   */
   private parseRecord(
     recOffset: number,
     formIdHex: string,

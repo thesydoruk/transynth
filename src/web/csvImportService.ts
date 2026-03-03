@@ -1,7 +1,19 @@
 /**
- * CSV import service — reusable import engine for both CLI and web routes.
- * Mirrors eetImportService but reads CSV files instead of binary EET.
- * Supports pause, cancel, resume and progress callbacks.
+ * csvImportService.ts
+ *
+ * CSV import pipeline used by the web UI.
+ *
+ * This module ingests a CSV file exported by this tool (or compatible external
+ * sources) into PostgreSQL:
+ * - creates/updates a mod row (identified by file hash),
+ * - upserts record rows keyed by (mod, signature, path, edid, formId),
+ * - inserts source strings in `src_lang`,
+ * - and optionally inserts a target translation row when `Target` is present.
+ *
+ * The implementation is resumable:
+ * - each import is represented by a `csv_imports` job row,
+ * - progress is tracked as `imported_records`,
+ * - and pause/cancel requests are honoured between record writes.
  */
 import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { sha1Hex } from '../utils/hash.js';
@@ -11,6 +23,12 @@ import { log } from '../logger.js';
 
 const BATCH_SIZE = 1000;
 
+/**
+ * Import job row stored in the `csv_imports` table.
+ *
+ * Jobs are keyed by the file hash so re-uploading the same file resumes the
+ * existing job instead of creating duplicates.
+ */
 export interface CsvImportJob {
   id: number;
   file_name: string;
@@ -25,6 +43,12 @@ export interface CsvImportJob {
   updated_at: string;
 }
 
+/**
+ * One logical translation row parsed from the uploaded CSV.
+ *
+ * The parser is tolerant to missing columns and uses sensible defaults so that
+ * partially compatible CSV exports can still be imported.
+ */
 export interface CsvRecord {
   formId: string;
   signature: string;
@@ -113,7 +137,15 @@ const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
 
 // ── CSV parsing ─────────────────────────────────────────────────────────────
 
-/** Parse CSV text into structured records. */
+/**
+ * Parse CSV text into structured {@link CsvRecord} objects.
+ *
+ * The header row is used to locate columns by name (case-insensitive). Unknown
+ * or missing columns are treated as empty strings / defaults.
+ *
+ * @param text - Full CSV file contents as UTF‑8 text.
+ * @returns Parsed record list, excluding the header row.
+ */
 export const parseCsvRecords = (text: string): CsvRecord[] => {
   const lines = text.split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return [];
@@ -152,7 +184,15 @@ export const parseCsvRecords = (text: string): CsvRecord[] => {
   return records;
 }
 
-/** Iterate CSV records one at a time (for preview). */
+/**
+ * Iterate parsed CSV records one-by-one.
+ *
+ * This generator mirrors {@link parseCsvRecords} but yields records lazily so
+ * callers can preview data without allocating the entire record list.
+ *
+ * @param text - Full CSV file contents as UTF‑8 text.
+ * @yields {@link CsvRecord} values.
+ */
 // eslint-disable-next-line func-style
 export function* iterCsvRecords(text: string): Generator<CsvRecord> {
   const lines = text.split(/\r?\n/).filter(Boolean);
@@ -202,7 +242,19 @@ const importRecord = async (db: Tx, modId: number, rec: CsvRecord, srcLang: stri
   }
 }
 
-/** Register an uploaded CSV file (parse, create job). Returns the job. */
+/**
+ * Register an uploaded CSV file by creating (or reusing) an import job row.
+ *
+ * This does not perform the import. Call {@link runCsvImport} to execute the
+ * actual ingestion.
+ *
+ * @param db - Database handle.
+ * @param fileName - Original uploaded file name (used for display/mod naming).
+ * @param text - CSV file contents.
+ * @param srcLang - Source language code for ingested strings.
+ * @param tgtLang - Target language code for ingested translations.
+ * @returns Created or existing job descriptor.
+ */
 export const registerCsvFile = async (db: Tx, fileName: string, text: string, srcLang = 'en', tgtLang = 'uk'): Promise<CsvImportJob> => {
   const fileHash = sha1Hex(Buffer.from(text, 'utf8'));
   const records = parseCsvRecords(text);
@@ -240,6 +292,18 @@ export const requestCsvPause = (jobId: number) => {
 /**
  * Run CSV import for a single job. Reads the file text, resumes from last offset.
  * Calls onProgress after each batch.
+ */
+/**
+ * Execute a CSV import job.
+ *
+ * The import resumes from `job.imported_records`. Progress is committed in
+ * batches; between batches the job can be paused or cancelled.
+ *
+ * @param db - Database handle. The implementation uses explicit BEGIN/COMMIT.
+ * @param job - Job row previously returned by {@link registerCsvFile}.
+ * @param text - CSV file contents.
+ * @param onProgress - Optional callback invoked after each committed batch.
+ * @returns Final job state.
  */
 export const runCsvImport = async (
   db: Tx,

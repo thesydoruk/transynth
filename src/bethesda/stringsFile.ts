@@ -16,6 +16,13 @@
 
 import { log } from '../logger.js';
 
+/**
+ * Supported Bethesda string table formats.
+ *
+ * - `"STRINGS"`   — generic text (item names, descriptions, UI labels).
+ * - `"DLSTRINGS"` — dialogue text shown in conversation menus.
+ * - `"ILSTRINGS"` — internal info strings (topics, notes, etc.).
+ */
 export type StringsType = 'STRINGS' | 'DLSTRINGS' | 'ILSTRINGS';
 
 /** A single entry read from a strings file. */
@@ -25,7 +32,13 @@ export interface StringsEntry {
 }
 
 /**
- * Detect the type of a strings file from its extension.
+ * Detect the string table type from a file path.
+ *
+ * Falls back to `"STRINGS"` when the extension does not explicitly match
+ * `.DLSTRINGS` or `.ILSTRINGS`. The check is case-insensitive.
+ *
+ * @param filePath - Full path or basename of the strings file.
+ * @returns The inferred {@link StringsType} value.
  */
 export const stringsTypeFromPath = (filePath: string): StringsType => {
   const ext = filePath.split('.').pop()?.toUpperCase();
@@ -35,7 +48,15 @@ export const stringsTypeFromPath = (filePath: string): StringsType => {
 }
 
 /**
- * Parse a strings file buffer and return an id→text map.
+ * Parse a STRINGS / DLSTRINGS / ILSTRINGS buffer into an id→text map.
+ *
+ * The function is intentionally defensive:
+ * - Empty or truncated buffers return an empty map instead of throwing.
+ * - Invalid offsets that would point outside the buffer are skipped.
+ *
+ * @param buf - Raw file contents.
+ * @param type - String table variant that controls how the payload is decoded.
+ * @returns A map from numeric string IDs to decoded UTF‑8 text.
  */
 export const parseStringsBuffer = (buf: Buffer, type: StringsType): Map<number, string> => {
   const result = new Map<number, string>();
@@ -80,7 +101,15 @@ export const parseStringsBuffer = (buf: Buffer, type: StringsType): Map<number, 
 }
 
 /**
- * Serialize an id→text map to a strings file buffer.
+ * Serialize an id→text collection to a STRINGS / DLSTRINGS / ILSTRINGS buffer.
+ *
+ * The output layout matches the format description in the module header and
+ * is suitable for direct use in Fallout engine archives (BA2/BSA) or as loose
+ * files under `Data\\Strings`.
+ *
+ * @param entries - Either a `Map` of `id → text` pairs or a pre-built array.
+ * @param type - Target string table type that controls encoding details.
+ * @returns A newly allocated {@link Buffer} containing the binary file.
  */
 export const writeStringsBuffer = (
   entries: Map<number, string> | StringsEntry[],

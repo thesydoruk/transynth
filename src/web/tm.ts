@@ -1,3 +1,18 @@
+/**
+ * tm.ts
+ *
+ * Translation Memory (TM) helpers used by the web application.
+ *
+ * This module provides two related features:
+ * - **TM auto-apply**: populate missing translations for a mod by searching the
+ *   existing database using increasingly relaxed match strategies.
+ * - **Propagation**: when a user saves a translation for one string, optionally
+ *   copy it to other strings with the same normalised source text that do not
+ *   yet have a strong manual translation.
+ *
+ * The TM logic intentionally prefers high-quality translations first (reviewed
+ * > human > tm > fuzzy > auto > draft) and records provenance for auditability.
+ */
 import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';
@@ -185,6 +200,21 @@ const findBestMatch = async (
  * Only fills strings that have NO existing translation for targetLang.
  * Returns counts of applied/skipped matches and a breakdown by method.
  */
+/**
+ * Auto-apply translation memory to all untranslated strings in a mod.
+ *
+ * Only strings that have **no** translation for `targetLang` are considered.
+ * Each string is matched using {@link findBestMatch}. When a match is found,
+ * a new translation is upserted with status:
+ * - `tm` for strong deterministic methods (anchor/edid/text_norm),
+ * - `fuzzy` for weaker heuristics (punct_norm/numeric/fuzzy/phrase).
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id to process.
+ * @param targetLang - Target language code.
+ * @param srcLang - Source language code.
+ * @returns Counts of applied/skipped translations and a breakdown by method.
+ */
 export const applyTMToMod = async (
   db: Tx,
   modId: number,
@@ -240,6 +270,21 @@ export const applyTMToMod = async (
  * After saving a translation, propagate it to all other strings with the same
  * text_norm that don't yet have a reviewed or in-progress manual translation.
  * Returns the number of strings that received the propagated translation.
+ */
+/**
+ * Propagate a newly saved translation to other strings with the same `text_norm`.
+ *
+ * This is used to reduce repetitive work: if two records share identical
+ * normalised source text, a manual translation can be re-used. The propagation
+ * is conservative: it does not overwrite strong existing translations.
+ *
+ * @param db - Database handle.
+ * @param textNorm - Normalised source text key (`strings.text_norm`).
+ * @param translatedText - Translation text to propagate.
+ * @param targetLang - Target language code.
+ * @param excludeStringId - Source string id that triggered the propagation (skip it).
+ * @param srcLang - Source language code.
+ * @returns Number of strings that received the propagated translation.
  */
 export const propagateTranslation = async (
   db: Tx,

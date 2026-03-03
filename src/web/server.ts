@@ -1,3 +1,19 @@
+/**
+ * server.ts
+ *
+ * Fastify HTTP server entry point for the localization web application.
+ *
+ * Responsibilities:
+ * - configure cross-origin behaviour for local development,
+ * - serve the built React SPA (when `web-ui/dist` is present),
+ * - initialise the database connection,
+ * - set up authentication (single-user vs multi-user modes),
+ * - register all REST API routes under `/api/*`,
+ * - and handle graceful shutdown.
+ *
+ * This file intentionally performs startup work at module top-level so it can
+ * be run directly via `tsx src/web/server.ts` and watched in development.
+ */
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import staticFiles from '@fastify/static';
@@ -30,11 +46,13 @@ import { tradAutoRoutes } from './routes/tradAuto.js';
 import { settingsRoutes } from './routes/settings.js';
 import { gamesRoutes } from './routes/games.js';
 
+/** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? '0.0.0.0';
 const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 
+/** Fastify app instance; Fastify logging is disabled in favour of `src/logger.ts`. */
 const app = Fastify({ logger: false });
 
 // CORS: in multi-user mode send cookies cross-origin (dev proxy scenario)
@@ -125,7 +143,12 @@ try {
   process.exit(1);
 }
 
-// Graceful shutdown
+/**
+ * Graceful shutdown handler.
+ *
+ * Stops background timers, closes the HTTP server, releases database resources,
+ * flushes logs, and exits the process.
+ */
 const shutdown = async () => {
   log.info('Shutting down...');
   clearInterval(sessionCleanup);

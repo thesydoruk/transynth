@@ -19,10 +19,16 @@ const TYPE_GNRL = 'GNRL';
 const HEADER_SIZE = 24;
 const ENTRY_SIZE = 36;
 
+/**
+ * Input file descriptor used by {@link writeBa2}.
+ *
+ * Each entry becomes one file record in the BA2 name table and one contiguous
+ * payload block in the data section.
+ */
 export interface Ba2InputFile {
-  /** Archive-relative path, e.g. "Strings\\mod_uk.STRINGS" */
+  /** Archive-relative path, e.g. `"Strings\\mod_uk.STRINGS"`. */
   name: string;
-  /** Raw file content */
+  /** Raw file bytes to store in the archive (written uncompressed). */
   data: Buffer;
 }
 
@@ -33,12 +39,31 @@ for (let n = 0; n < 256; n++) {
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
   crcTable[n] = c;
 }
+/**
+ * Compute CRC‑32 (IEEE 802.3) checksum for a buffer.
+ *
+ * BA2 archives store hashes of directory and filename stems using this
+ * algorithm. Only the lower 32 bits are used; the result is always
+ * returned as an unsigned integer.
+ *
+ * @param buf - Buffer whose contents should be hashed.
+ * @returns Unsigned 32‑bit CRC value.
+ */
 const crc32 = (buf: Buffer): number => {
   let crc = 0xffffffff;
   for (let i = 0; i < buf.length; i++) crc = crcTable[(crc ^ buf[i]) & 0xff]! ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
+/**
+ * Split an archive-relative path into directory, stem, and extension.
+ *
+ * The path is normalised to lower-case and Windows-style separators so that
+ * hash calculation matches the expectations of the Fallout 4 BA2 format.
+ *
+ * @param fullPath - Archive-relative path such as `"Strings\\MyMod_uk.STRINGS"`.
+ * @returns Object containing `dir`, `stem`, and `ext` components.
+ */
 const pathParts = (fullPath: string): { dir: string; stem: string; ext: string } => {
   const normalized = fullPath.toLowerCase().replace(/\//g, '\\');
   const lastSep = normalized.lastIndexOf('\\');
@@ -52,7 +77,14 @@ const pathParts = (fullPath: string): { dir: string; stem: string; ext: string }
 
 /**
  * Build a BA2 (GNRL, version 1) archive buffer from a list of files.
- * Files are stored uncompressed (packedSize = 0).
+ *
+ * All files are stored uncompressed (`packedSize = 0`) to keep the archive
+ * structure simple and avoid any compatibility differences between game
+ * builds. This is sufficient for string-table archives where compression
+ * gains are modest.
+ *
+ * @param files - Array of archive entries with relative name and raw data.
+ * @returns Newly allocated buffer containing the complete BA2 archive.
  */
 export const writeBa2 = (files: Ba2InputFile[]): Buffer => {
   const fileCount = files.length;

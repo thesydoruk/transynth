@@ -1,6 +1,20 @@
 /**
- * EET import service — reusable import engine for both CLI and web routes.
- * Supports pause, cancel, resume and progress callbacks.
+ * eetImportService.ts
+ *
+ * EET import pipeline used by the web UI.
+ *
+ * EET files are produced by ESP-ESM Translator and contain per-record source
+ * and target strings. This module ingests them into PostgreSQL:
+ * - creates/updates a mod row (identified by file hash),
+ * - upserts record rows,
+ * - inserts source strings in `src_lang`,
+ * - and inserts target translations in `tgt_lang` when present.
+ *
+ * The import is resumable via the `eet_imports` job table and supports
+ * pause/cancel requests between batches.
+ *
+ * IMPORTANT: {@link runImport} acquires a dedicated `pg.PoolClient` so that
+ * transaction statements are executed on the same connection.
  */
 import pg from 'pg';
 import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
@@ -11,6 +25,12 @@ import { log } from '../logger.js';
 
 const BATCH_SIZE = 1000;
 
+/**
+ * Import job row stored in the `eet_imports` table.
+ *
+ * Jobs are keyed by the file hash so re-uploading the same file resumes the
+ * existing job instead of creating duplicates.
+ */
 export interface ImportJob {
   id: number;
   file_name: string;
@@ -107,7 +127,19 @@ const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: stri
   }
 }
 
-/** Register an uploaded EET file (parse header, create job). Returns the job. */
+/**
+ * Register an uploaded EET file by creating (or reusing) an import job row.
+ *
+ * This does not perform the import. Call {@link runImport} to execute the
+ * actual ingestion.
+ *
+ * @param db - Database handle.
+ * @param fileName - Original uploaded file name (used for display/mod naming).
+ * @param buf - Raw EET file contents.
+ * @param srcLang - Source language code for ingested strings.
+ * @param tgtLang - Target language code for ingested translations.
+ * @returns Created or existing job descriptor.
+ */
 export const registerEetFile = async (db: Tx, fileName: string, buf: Buffer, srcLang = 'en', tgtLang = 'uk'): Promise<ImportJob> => {
   const fileHash = sha1Hex(buf);
   const header = parseEetHeader(buf);
@@ -158,6 +190,20 @@ export const requestPause = (jobId: number) => {
  * and causes row-lock deadlocks — the classic node-pg anti-pattern.
  *
  * Returns the final job state.
+ */
+/**
+ * Execute an EET import job.
+ *
+ * The import resumes from `job.imported_records`. Progress is committed in
+ * batches; between batches the job can be paused or cancelled.
+ *
+ * A dedicated PoolClient is used to guarantee transaction integrity.
+ *
+ * @param pool - PostgreSQL connection pool.
+ * @param job - Job row previously returned by {@link registerEetFile}.
+ * @param buf - Raw EET file contents.
+ * @param onProgress - Optional callback invoked after each committed batch.
+ * @returns Final job state.
  */
 export const runImport = async (
   pool: pg.Pool,

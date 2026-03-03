@@ -1,7 +1,23 @@
 /**
- * Mod import service — upload ESP/ESL (or archive with ESP+BA2),
- * extract strings, and ingest into the DB.
- * Supports pause, cancel, resume and progress callbacks.
+ * modImportService.ts
+ *
+ * Native mod import pipeline used by the web UI.
+ *
+ * Inputs:
+ * - a plugin file (`.esp/.esm/.esl`) or
+ * - an archive (`.zip/.7z/.rar`) containing a plugin plus its associated assets
+ *   (BA2/BSA archives and/or loose `Strings\\` files).
+ *
+ * Outputs:
+ * - a `mod_imports` job row tracking progress and resumability,
+ * - and ingested `records` + `strings` rows in the database for later
+ *   translation, review, and export.
+ *
+ * Key features:
+ * - multi-format extraction (7z for zip/7z, optional system `unrar` for rar),
+ * - automatic discovery of BA2/BSA companions,
+ * - locale enumeration for localized mods,
+ * - and pause/cancel controls via an in-memory active-job registry.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,6 +40,13 @@ const BATCH_SIZE = 1000;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+/**
+ * Import job row stored in the `mod_imports` table.
+ *
+ * A job is keyed by the file hash of the uploaded artifact (plugin or archive).
+ * This makes imports resumable and prevents duplicate work when the same file
+ * is uploaded multiple times.
+ */
 export interface ModImportJob {
   id: number;
   file_name: string;
@@ -41,6 +64,10 @@ export interface ModImportJob {
   updated_at: string;
 }
 
+/**
+ * Small preview row used by the UI to show a sample of extracted strings
+ * before running a full import.
+ */
 export interface ModPreviewRow {
   formId: string;
   signature: string;
@@ -49,6 +76,12 @@ export interface ModPreviewRow {
   source: string;
 }
 
+/**
+ * Progress callback invoked during long-running imports.
+ *
+ * @param imported - Number of records imported so far.
+ * @param total - Total records expected for the job.
+ */
 export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
@@ -59,16 +92,27 @@ export const ensureModImportSchema = async (_db: Tx) => {
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
+/**
+ * List all mod import jobs ordered by newest first.
+ */
 export const listModImportJobs = async (db: Tx): Promise<ModImportJob[]> => {
   const { rows } = await db.query('SELECT * FROM mod_imports ORDER BY created_at DESC');
   return rows as ModImportJob[];
 }
 
+/**
+ * Fetch a single import job by id.
+ */
 export const getModImportJob = async (db: Tx, id: number): Promise<ModImportJob | undefined> => {
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE id = $1', [id]);
   return rows[0] as ModImportJob | undefined;
 }
 
+/**
+ * Update the language settings stored on an import job.
+ *
+ * These values influence locale selection and later translation defaults.
+ */
 export const updateModJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
   await db.query(
     `UPDATE mod_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
@@ -89,6 +133,12 @@ export const restartModImportJob = async (db: Tx, id: number) => {
   );
 }
 
+/**
+ * Delete an import job row.
+ *
+ * Note: this does not delete any ingested strings/records for the associated
+ * mod; it only removes the job tracker.
+ */
 export const deleteModImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM mod_imports WHERE id = $1', [id]);
 }
@@ -98,10 +148,16 @@ export const deleteModImportJob = async (db: Tx, id: number) => {
 const ARCHIVE_EXTS = new Set(['.zip', '.7z', '.rar']);
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 
+/**
+ * Return true if the file name looks like a supported archive type.
+ */
 export const isArchive = (fileName: string): boolean => {
   return ARCHIVE_EXTS.has(path.extname(fileName).toLowerCase());
 }
 
+/**
+ * Return true if the file name looks like a supported plugin type.
+ */
 export const isPlugin = (fileName: string): boolean => {
   return PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
 }
@@ -218,6 +274,16 @@ const extractRar = (archivePath: string, outDir: string): Promise<void> => {
  * Extracts a ZIP, 7z, or RAR archive to the given directory.
  * Dispatches to the appropriate backend based on file extension.
  */
+/**
+ * Extract an archive into a destination directory.
+ *
+ * Uses:
+ * - bundled `7za` for `.zip` and `.7z`,
+ * - and system `unrar` for `.rar` (must be installed separately).
+ *
+ * @param archivePath - Absolute path to the archive.
+ * @param outDir - Destination directory (must exist).
+ */
 export const extractArchive = (archivePath: string, outDir: string): Promise<void> => {
   const ext = path.extname(archivePath).toLowerCase();
   if (ext === '.rar') return extractRar(archivePath, outDir);
@@ -226,6 +292,15 @@ export const extractArchive = (archivePath: string, outDir: string): Promise<voi
 
 /**
  * Discover ESP/ESL/ESM + BA2 (FO4) and BSA (SSE) files inside a directory (recursive).
+ */
+/**
+ * Recursively discover mod files within a directory.
+ *
+ * This is used after archive extraction to locate the primary plugin and any
+ * adjacent BA2/BSA companion archives.
+ *
+ * @param dir - Directory to walk recursively.
+ * @returns Lists of discovered plugins, BA2 archives, and BSA archives.
  */
 export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string[]; bsas: string[] } => {
   const plugins: string[] = [];
@@ -633,6 +708,13 @@ const buildPexCsvRows = (pexMap: Map<string, string[]>): CsvRow[] => {
 };
 // ── Registration ────────────────────────────────────────────────────────────
 
+/**
+ * Register a plugin upload as a mod import job.
+ *
+ * This performs a lightweight scan to determine whether the plugin is localized
+ * and to compute the number of translatable rows (used as initial job total).
+ * It does not ingest strings — call {@link runModImport} to perform the import.
+ */
 export const registerPluginFile = async (
   db: Tx,
   fileName: string,
@@ -666,6 +748,14 @@ export const registerPluginFile = async (
   return rows[0] as ModImportJob;
 }
 
+/**
+ * Register an archive upload as a mod import job.
+ *
+ * The archive is extracted into `extractDir`, then the first discovered plugin
+ * is used as the import target. If no plugin is found, an error is thrown.
+ *
+ * This does not ingest strings — call {@link runModImport} to perform the import.
+ */
 export const registerArchiveFile = async (
   db: Tx,
   fileName: string,
@@ -711,6 +801,16 @@ export const registerArchiveFile = async (
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 
+/**
+ * Build a preview of extracted records and detected locales for an import job.
+ *
+ * The preview uses the first available locale (when localized) to resolve
+ * LString IDs to text. The goal is to show representative data in the UI,
+ * not to fully export all locales.
+ *
+ * @param job - Import job row.
+ * @param ba2Candidates - Optional BA2 candidate list (e.g. from archive extraction).
+ */
 export const previewModRecords = (job: ModImportJob, ba2Candidates: string[] = []): {
   rows: ModPreviewRow[];
   locales: string[];
@@ -756,15 +856,30 @@ interface ActiveImport {
 
 const activeImports = new Map<number, ActiveImport>();
 
+/**
+ * Return true if this job id currently has a running import loop.
+ */
 export const isModImportRunning = (jobId: number): boolean => {
   return activeImports.has(jobId);
 }
 
+/**
+ * Request cancellation of a running import.
+ *
+ * Cancellation is cooperative: the import loop checks this flag between record
+ * writes and will mark the job as failed with a cancellation reason.
+ */
 export const requestModCancel = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.cancel = true;
 }
 
+/**
+ * Request pausing of a running import.
+ *
+ * Pausing is cooperative: the import loop checks this flag between record
+ * writes and will commit progress and mark the job as paused.
+ */
 export const requestModPause = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.pause = true;
@@ -800,6 +915,17 @@ const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   );
 }
 
+/**
+ * Execute a mod import job and ingest extracted strings into the database.
+ *
+ * The import is resumable based on `job.imported_records` and supports
+ * pause/cancel behaviour via {@link requestModPause} / {@link requestModCancel}.
+ *
+ * @param db - Database handle.
+ * @param job - Job row previously returned by {@link registerPluginFile} or {@link registerArchiveFile}.
+ * @param onProgress - Optional callback invoked after each committed batch.
+ * @returns Final job state.
+ */
 export const runModImport = async (
   db: Tx,
   job: ModImportJob,

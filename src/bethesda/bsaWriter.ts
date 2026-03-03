@@ -72,15 +72,20 @@ export interface BsaInputFile {
 /* ── Bethesda hash helpers ───────────────────────────────────────────────── */
 
 /**
- * Compute the Bethesda hash for a file **name** (basename without extension).
+ * Compute the Bethesda BSA hash for a file entry.
  *
- * Algorithm (from UESP wiki — BSA format):
- *   1. Take the lowercased file name.
- *   2. hash1 = len<<1 | name.charCodeAt(len-1)<<24 | name.charCodeAt(0) |
- *              (len >= 3 ? name.charCodeAt(len-2)<<16 : 0)
- *   3. hash2 = CRC of name[1..(len-2)] using Bethesda table
- *   4. hash3 = CRC of extension using Bethesda table
- *   5. result = (hash2 + hash3) << 32 | hash1
+ * The BSA format stores file records in hash order (per-folder). The hash is a
+ * 64-bit value composed from:
+ * - a 32-bit "lower" word derived from filename length and edge characters,
+ * - and a 32-bit "upper" word derived from a rolling hash over the middle of
+ *   the stem and the extension.
+ *
+ * This implementation follows the commonly documented algorithm used by
+ * Bethesda tooling and matches the reader's expectations.
+ *
+ * @param stem - File basename without the extension (already lowercased by caller).
+ * @param ext - File extension including the dot (e.g. `.strings`).
+ * @returns 64-bit hash as a {@link bigint}.
  */
 const bethesdaHashFile = (stem: string, ext: string): bigint => {
   const name = stem.toLowerCase();
@@ -119,11 +124,13 @@ const bethesdaHashFile = (stem: string, ext: string): bigint => {
 };
 
 /**
- * Compute Bethesda hash for a **folder** path.
+ * Compute the Bethesda BSA hash for a folder path.
  *
- * Algorithm (from UESP wiki — BSA format):
- *   Same structure as the file name hash but with an empty extension.
- *   The folder path uses backslash separators and is lowercased.
+ * Folder records in the BSA header are also ordered by hash. The folder hash
+ * uses the same structure as the file hash but does not include an extension.
+ *
+ * @param folder - Folder path within the archive (e.g. `strings`), any separators.
+ * @returns 64-bit hash as a {@link bigint}.
  */
 const bethesdaHashFolder = (folder: string): bigint => {
   const name = folder.toLowerCase().replace(/\//g, '\\');
@@ -146,6 +153,12 @@ const bethesdaHashFolder = (folder: string): bigint => {
 
 /* ── Internal grouping types ─────────────────────────────────────────────── */
 
+/**
+ * Internal normalised representation of an input file for BSA packing.
+ *
+ * This keeps precomputed hashes and canonicalised name parts so that later
+ * layout steps can be performed without re-parsing paths.
+ */
 interface FileEntry {
   /** Lowercase basename without folder, e.g. "modname_uk.strings" */
   baseName: string;
@@ -159,6 +172,13 @@ interface FileEntry {
   data: Buffer;
 }
 
+/**
+ * Internal grouping of files by their folder path.
+ *
+ * BSA archives are structured as a list of folder records followed by per-folder
+ * file record blocks. Both folders and files must be sorted by their Bethesda
+ * hashes for maximum compatibility with consumers.
+ */
 interface FolderGroup {
   /** Lowercase folder path with backslashes, e.g. "strings" */
   folderPath: string;
@@ -173,8 +193,13 @@ interface FolderGroup {
 /**
  * Split an archive-relative path into folder and file parts.
  *
- * @param fullPath - e.g. "Strings\\ModName_uk.STRINGS"
- * @returns folder (lowercased, backslash-separated) and file parts
+ * This normalises the path for BSA rules:
+ * - lower-case names,
+ * - backslash separators,
+ * - extension preserved with the leading dot.
+ *
+ * @param fullPath - Archive-relative path, e.g. `"Strings\\ModName_uk.STRINGS"`.
+ * @returns Object containing normalised folder, basename, stem, and extension.
  */
 const splitPath = (fullPath: string): { folder: string; baseName: string; stem: string; ext: string } => {
   const normalized = fullPath.toLowerCase().replace(/\//g, '\\');
@@ -286,7 +311,7 @@ export const writeBsa = (files: BsaInputFile[], version: number = 105): Buffer =
 
   // ── Step 4: Build the buffer ──────────────────────────────────────────
   const buf = Buffer.alloc(totalSize);
-  let pos = 0;
+  let pos = HEADER_SIZE;
 
   // ── Header (36 bytes) ──
   buf.write(BSA_MAGIC, 0, 4, 'ascii');
@@ -298,7 +323,6 @@ export const writeBsa = (files: BsaInputFile[], version: number = 105): Buffer =
   buf.writeUInt32LE(totalFolderNameLength, 24);
   buf.writeUInt32LE(totalFileNameLength, 28);
   buf.writeUInt32LE(0, 32);                   // contentFlags (generic)
-  pos = HEADER_SIZE;
 
   // ── Folder records ──
   // Per BSA convention, the offset stored in each folder record points to the

@@ -1,3 +1,19 @@
+/**
+ * exportService.ts
+ *
+ * Export pipeline for translated game assets.
+ *
+ * This module converts translations stored in PostgreSQL into distributable
+ * outputs that players can install:
+ * - raw `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files,
+ * - a patched ESP/ESM plugin for non-localized mods (inline text),
+ * - and archives (BA2 for Fallout 4/76, BSA for Skyrim/FO3/FNV) or ZIP bundles.
+ *
+ * The export logic is intentionally deterministic:
+ * - source file inventory is preserved (same stems/types as the imported mod),
+ * - missing translations fall back to source text,
+ * - and file ordering is stable for reproducibility and testability.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -12,6 +28,12 @@ import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter.
 import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/stringsFile.js';
 import { log } from '../logger.js';
 
+/**
+ * Parsed source strings table loaded from the original mod distribution.
+ *
+ * Each table includes its original file name (for inventory preservation),
+ * its derived stem and type, and a full `lstring_id → sourceText` map.
+ */
 type SourceStringsFile = {
   sourceFileName: string;
   nameStem: string;
@@ -19,6 +41,12 @@ type SourceStringsFile = {
   sourceMap: Map<number, string>;
 };
 
+/**
+ * File descriptor returned by export endpoints.
+ *
+ * The HTTP layer typically returns these objects directly as JSON; binary
+ * content is represented as base64 to keep the transport simple.
+ */
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -69,6 +97,16 @@ const sortSourceStringsFiles = (files: SourceStringsFile[]): SourceStringsFile[]
   });
 }
 
+/**
+ * Discover a BA2 archive (Fallout 4/76) next to the plugin file.
+ *
+ * The tool follows common Fallout naming conventions:
+ * - `{Stem} - Main.ba2`
+ * - `{Stem}.ba2`
+ *
+ * @param modPath - Absolute path to the mod plugin file.
+ * @returns Path to the discovered BA2 archive, or `null` when not found.
+ */
 const findBa2 = (modPath: string): string | null => {
   const dir = path.dirname(modPath);
   const stem = path.basename(modPath, path.extname(modPath));
@@ -118,6 +156,13 @@ const loadSourceStringsFromBSA = (bsaPath: string, srcLang: string): SourceStrin
   return sortSourceStringsFiles(files);
 }
 
+/**
+ * Load source STRINGS tables from a BA2 archive for the requested locale.
+ *
+ * @param ba2Path - Absolute path to the BA2 archive.
+ * @param srcLang - Locale suffix expected in file names (e.g. `"en"`).
+ * @returns Stable-sorted list of parsed source strings tables.
+ */
 const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStringsFile[] => {
   const ba2 = new Ba2Reader(ba2Path);
   const files: SourceStringsFile[] = [];
@@ -140,6 +185,16 @@ const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStrin
   return sortSourceStringsFiles(files);
 }
 
+/**
+ * Load source STRINGS tables from loose files next to the plugin.
+ *
+ * This is supported for mods distributed with a `Strings\\` directory rather
+ * than an archive.
+ *
+ * @param modPath - Absolute path to the mod plugin file.
+ * @param srcLang - Locale suffix expected in file names (e.g. `"en"`).
+ * @returns Stable-sorted list of parsed source strings tables.
+ */
 const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
   const dir = path.join(path.dirname(modPath), 'Strings');
   if (!fs.existsSync(dir)) return [];
@@ -160,6 +215,18 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
   return sortSourceStringsFiles(files);
 }
 
+/**
+ * Load all source strings tables for a given mod and locale.
+ *
+ * The search order depends on the game:
+ * - Skyrim: BSA → BA2 → loose files.
+ * - Fallout 4/76: BA2 → loose files.
+ *
+ * @param modPath - Absolute path to the mod plugin file.
+ * @param srcLang - Source locale suffix (e.g. `"en"`).
+ * @param game - Target game type (controls which archive types to probe first).
+ * @returns Stable-sorted list of parsed source strings tables.
+ */
 const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType = 'fo4'): SourceStringsFile[] => {
   if (game === 'sse' || game === 'sle') {
     // Skyrim: try BSA first, then BA2 (some SSE mods use BA2), then loose files
@@ -177,6 +244,20 @@ const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType
   return loadSourceStringsFromLooseFiles(modPath, srcLang);
 }
 
+/**
+ * Build an overlay map of `lstring_id → export_text` for a mod and language pair.
+ *
+ * The query selects one "best" translation per source string according to
+ * status and confidence, then falls back to the original source text when no
+ * translation exists. The result can be applied to each source strings table
+ * via {@link patchStringsMap}.
+ *
+ * @param db - Database transaction/pool wrapper.
+ * @param modId - Mod identifier.
+ * @param srcLang - Source language code of the stored strings rows.
+ * @param targetLang - Desired target language code.
+ * @returns Map keyed by `lstring_id` containing the chosen export text.
+ */
 const getTranslationOverlay = async (db: Tx, modId: number, srcLang: string, targetLang: string): Promise<Map<number, string>> => {
   const { rows } = await db.query(
     `SELECT DISTINCT ON (s.lstring_id)
@@ -214,6 +295,23 @@ const getTranslationOverlay = async (db: Tx, modId: number, srcLang: string, tar
   return overlay;
 }
 
+/**
+ * Export translated strings tables for a localized mod (external STRINGS).
+ *
+ * The export:
+ * - loads the source strings tables for `srcLang` from the mod distribution,
+ * - builds a translation overlay from the DB,
+ * - applies the overlay with source fallback,
+ * - and serialises each table to the correct binary format.
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id whose translations should be exported.
+ * @param modPath - Absolute path to the imported plugin file (used to find archives).
+ * @param srcLang - Source locale suffix (e.g. `"en"`).
+ * @param targetLang - Target locale suffix (e.g. `"uk"`).
+ * @param game - Target game type (controls archive probing rules).
+ * @returns List of exported strings files encoded as base64 payloads.
+ */
 export const exportLocalizedStringsFiles = async (
   db: Tx,
   modId: number,
@@ -247,6 +345,20 @@ export const exportLocalizedStringsFiles = async (
 // BA2 archive export — pack localized STRINGS into a BA2
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Export a single archive that contains translated strings tables.
+ *
+ * For Fallout 4/76, this produces a BA2 archive. For Skyrim/FO3/FNV, this
+ * produces a BSA archive. The choice is automatic based on {@link GameType}.
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id whose translations should be exported.
+ * @param modPath - Absolute path to the imported plugin file (used to find archives).
+ * @param srcLang - Source locale suffix (e.g. `"en"`).
+ * @param targetLang - Target locale suffix (e.g. `"uk"`).
+ * @param game - Target game type (controls archive type selection).
+ * @returns Single exported archive file encoded as base64 payload.
+ */
 export const exportBa2Archive = async (
   db: Tx,
   modId: number,

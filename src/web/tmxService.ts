@@ -8,7 +8,7 @@
  *     upsert translations for strings that don't already have a human/reviewed one.
  */
 
-import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import { XMLParser } from 'fast-xml-parser';
 import type { Tx } from '../db.js';
 import { withTransaction } from '../db.js';
 import type pg from 'pg';

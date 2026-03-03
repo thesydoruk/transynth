@@ -28,10 +28,16 @@ const FLAG_COMPRESSED = 0x00040000;
 
 /**
  * Build a translated strings map by overlaying translations on top of the
- * source locale map.  Entries without a translation keep their source text.
+ * source locale map.
  *
- * @param sourceMap   id → source text (from parseStringsBuffer)
- * @param translations id → translated text
+ * Entries that do not have an explicit translation keep their original source
+ * text. This is the core primitive used by the STRINGS export pipeline:
+ * a fully-populated source map is combined with zero or more translated
+ * entries to produce the final target-locale tables.
+ *
+ * @param sourceMap - `id → source text` pairs, typically from `parseStringsBuffer()`.
+ * @param translations - `id → translated text` overrides for a specific target language.
+ * @returns New map instance combining source and translated values.
  */
 export const patchStringsMap = (
   sourceMap: Map<number, string>,
@@ -56,9 +62,18 @@ export interface EspPatch {
   newText: string;
 }
 
-/** Internal: formIdHex → (subrecordSig → newText) */
+/** Internal: mapping of `FormID → (subrecordSig → newText)` used for fast lookup. */
 type PatchMap = Map<string, Map<string, string>>;
 
+/**
+ * Group a flat list of ESP patches by FormID and subrecord signature.
+ *
+ * The returned nested map makes it cheap to decide, for each record, whether
+ * any of its subrecords need to be rewritten.
+ *
+ * @param patches - Flat list of patch descriptors requested by the caller.
+ * @returns Nested lookup structure keyed by canonicalised FormID and subrecord.
+ */
 const buildPatchMap = (patches: EspPatch[]): PatchMap => {
   const map: PatchMap = new Map();
   for (const p of patches) {
@@ -70,10 +85,20 @@ const buildPatchMap = (patches: EspPatch[]): PatchMap => {
 }
 
 /**
- * Patch a non-localized ESP buffer.  Returns a new Buffer — the input is not modified.
+ * Apply textual patches to a non-localized ESP/ESM/ESL plugin.
  *
- * @param inputBuf  Contents of the original .esp/.esm/.esl
- * @param patches   List of (formId, subrecord, newText) changes
+ * The function walks the full plugin structure, rewriting only the specified
+ * subrecords and recalculating all affected record and group sizes. The
+ * original buffer is never mutated; a new buffer containing the patched
+ * plugin is returned instead.
+ *
+ * Compressed records are transparently decompressed, patched, and then
+ * recompressed so that the output remains structurally compatible with the
+ * source.
+ *
+ * @param inputBuf - Contents of the original plugin file.
+ * @param patches - List of `(formId, subrecord, newText)` changes to apply.
+ * @returns New {@link Buffer} representing the patched plugin.
  */
 export const patchEsp = (inputBuf: Buffer, patches: EspPatch[]): Buffer => {
   log.info(`ESP patcher: applying ${patches.length} patches`);
@@ -94,6 +119,20 @@ export const patchEsp = (inputBuf: Buffer, patches: EspPatch[]): Buffer => {
 // Recursive rebuilder
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Recursively rebuild a contiguous range of plugin records.
+ *
+ * GRUP records are reassembled with a fresh `groupSize` that reflects the
+ * total size of their rebuilt children. Non-GRUP records are either copied
+ * verbatim or rebuilt via {@link rebuildRecordData} when at least one
+ * matching subrecord patch exists.
+ *
+ * @param buf - Original plugin buffer.
+ * @param start - Inclusive start offset of the range to rebuild.
+ * @param end - Exclusive end offset of the range to rebuild.
+ * @param patchMap - Pre-grouped patch lookup map.
+ * @returns A new buffer containing the rebuilt data for the requested range.
+ */
 const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMap): Buffer => {
   const chunks: Buffer[] = [];
   let pos = start;
@@ -142,6 +181,22 @@ const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMa
   return Buffer.concat(chunks);
 }
 
+/**
+ * Rebuild a single record's data segment, applying subrecord-level patches.
+ *
+ * Compressed records are handled transparently:
+ * - decompress to a transient buffer,
+ * - apply subrecord replacements,
+ * - recompress and prepend the uncompressed-size field.
+ *
+ * When decompression fails for any reason, the original data and flags are
+ * returned unchanged to avoid corrupting the archive.
+ *
+ * @param data - Original record data payload (excluding the 24-byte record header).
+ * @param flags - Record flags controlling compression.
+ * @param patches - Map of `subrecordSig → newText` for this specific record.
+ * @returns Object containing the rebuilt data buffer and updated flags.
+ */
 const rebuildRecordData = (
   data: Buffer,
   flags: number,
