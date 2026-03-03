@@ -1028,8 +1028,18 @@ export const carryOverTranslations = async (
  * Unlike {@link carryOverTranslations}, this flow does not expect the source
  * mod to already have entries in the `translations` table. Instead, it uses
  * raw strings from `fromImportedModId` (for `importedLang`) and writes them
- * as translations into `targetModId` (for `targetLang`) by matching records
- * on stable identity key: `formid_hex + path`.
+ * as translations into `targetModId` (for `targetLang`) by running a
+ * strict-to-loose record matching cascade:
+ * 1) `formid + path`
+ * 2) `formid + signature + path_simplified`
+ * 3) `edid + signature + path_simplified`
+ * 4) `edid + path`
+ * 5) `edid + signature`
+ * 6) `formid + signature`
+ * 7) `formid` only
+ *
+ * Each key layer is ambiguity-safe: if a key points to multiple different
+ * imported texts, that key is ignored for auto-apply.
  *
  * Typical usage: import a RU translation mod as a standalone mod, then apply
  * its RU strings to an EN base mod as RU translations.
@@ -1042,9 +1052,63 @@ export const applyImportedModStringsAsTranslations = async (
   targetLang = importedLang,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
+  /**
+   * Normalize record paths so equivalent notations compare reliably.
+   * Example: "INFO\\FULL" and "info/full" become the same lookup key.
+   */
+  const normalizePath = (value: string | null | undefined): string => (value ?? '')
+    .trim()
+    .replace(/\\+/g, '/')
+    .replace(/\/+/g, '/')
+    .toLowerCase();
+
+  /**
+   * Normalize FormID as uppercase stable identity text.
+   */
+  const normalizeFormId = (value: string | null | undefined): string => (value ?? '')
+    .trim()
+    .toUpperCase();
+
+  /**
+   * Normalize EDID to case-insensitive match key.
+   */
+  const normalizeEdid = (value: string | null | undefined): string => (value ?? '')
+    .trim()
+    .toLowerCase();
+
+  /**
+   * Keep only unambiguous candidates in a key map.
+   * If two different translations map to the same key, the key is marked as
+   * ambiguous (`null`) and is no longer used for automatic application.
+   */
+  const putUnique = (map: Map<string, string | null>, key: string, text: string): void => {
+    if (!key) return;
+    const existing = map.get(key);
+    if (existing == null && !map.has(key)) {
+      map.set(key, text);
+      return;
+    }
+    if (existing !== text) {
+      map.set(key, null);
+    }
+  };
+
+  /**
+   * Read a candidate from a map only when it is unique and non-empty.
+   */
+  const getUnique = (map: Map<string, string | null>, key: string): string | null => {
+    const value = map.get(key);
+    return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  };
+
   // Step 1: Load target mod source strings that should receive translations.
   const { rows: targetRows } = await db.query(
-    `SELECT s.id AS string_id, r.formid_hex, r.path
+    `SELECT s.id AS string_id,
+            r.formid_hex,
+            r.path,
+            r.path_simplified,
+            r.signature,
+            r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = $2`,
@@ -1057,7 +1121,12 @@ export const applyImportedModStringsAsTranslations = async (
 
   // Step 2: Load imported mod strings in the selected import language.
   const { rows: importedRows } = await db.query(
-    `SELECT r.formid_hex, r.path, s.text_raw
+    `SELECT r.formid_hex,
+            r.path,
+            r.path_simplified,
+            r.signature,
+            r.edid,
+            s.text_raw
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = $2`,
@@ -1068,13 +1137,46 @@ export const applyImportedModStringsAsTranslations = async (
     throw new Error(`Imported mod has no strings for lang "${importedLang}"`);
   }
 
-  // Build lookup map from imported identity key -> translated text.
-  const importedMap = new Map<string, string>();
-  for (const row of importedRows as Array<{ formid_hex: string; path: string; text_raw: string }>) {
-    const key = `${row.formid_hex}|${row.path}`;
-    if (!importedMap.has(key)) {
-      importedMap.set(key, row.text_raw ?? '');
+  // Build lookup maps for an EET4-style cascade: strict identity first,
+  // then progressively looser keys (EDID and fallback identity variants).
+  const byIdentity = new Map<string, string | null>();
+  const byFormIdSignaturePath = new Map<string, string | null>();
+  const byFormIdSignature = new Map<string, string | null>();
+  const byEdidSignaturePath = new Map<string, string | null>();
+  const byEdidPath = new Map<string, string | null>();
+  const byEdidSignature = new Map<string, string | null>();
+  const byFormIdOnly = new Map<string, string | null>();
+
+  for (const row of importedRows as Array<{
+    formid_hex: string;
+    path: string;
+    path_simplified: string | null;
+    signature: string | null;
+    edid: string | null;
+    text_raw: string;
+  }>) {
+    const translated = (row.text_raw ?? '').trim();
+    if (!translated) continue;
+
+    const formId = normalizeFormId(row.formid_hex);
+    const pathRaw = normalizePath(row.path);
+    const pathSimplified = normalizePath(row.path_simplified) || pathRaw;
+    const signature = (row.signature ?? '').trim().toUpperCase();
+    const edid = normalizeEdid(row.edid);
+
+    putUnique(byIdentity, `${formId}|${pathRaw}`, translated);
+    if (signature) {
+      putUnique(byFormIdSignaturePath, `${formId}|${signature}|${pathSimplified}`, translated);
+      putUnique(byFormIdSignature, `${formId}|${signature}`, translated);
     }
+    if (edid) {
+      putUnique(byEdidPath, `${edid}|${pathRaw}`, translated);
+      if (signature) {
+        putUnique(byEdidSignaturePath, `${edid}|${signature}|${pathSimplified}`, translated);
+        putUnique(byEdidSignature, `${edid}|${signature}`, translated);
+      }
+    }
+    putUnique(byFormIdOnly, formId, translated);
   }
 
   // Step 3: Skip target strings that already have translation in targetLang.
@@ -1097,26 +1199,101 @@ export const applyImportedModStringsAsTranslations = async (
   let skipped = 0;
   let unmatched = 0;
   let empty = 0;
+  const matchCounters: Record<string, number> = {
+    identity: 0,
+    formid_signature_path: 0,
+    edid_signature_path: 0,
+    edid_path: 0,
+    edid_signature: 0,
+    formid_signature: 0,
+    formid_only: 0,
+  };
+
+  /**
+   * Resolve a translation candidate for a target row using a strict-to-loose
+   * matching cascade inspired by EET4 behavior.
+   */
+  const resolveImportedCandidate = (row: {
+    formid_hex: string;
+    path: string;
+    path_simplified: string | null;
+    signature: string | null;
+    edid: string | null;
+  }): { text: string; method: keyof typeof matchCounters } | null => {
+    const formId = normalizeFormId(row.formid_hex);
+    const pathRaw = normalizePath(row.path);
+    const pathSimplified = normalizePath(row.path_simplified) || pathRaw;
+    const signature = (row.signature ?? '').trim().toUpperCase();
+    const edid = normalizeEdid(row.edid);
+
+    const checks: Array<{ method: keyof typeof matchCounters; key: string; map: Map<string, string | null> }> = [
+      { method: 'identity', key: `${formId}|${pathRaw}`, map: byIdentity },
+      {
+        method: 'formid_signature_path',
+        key: signature ? `${formId}|${signature}|${pathSimplified}` : '',
+        map: byFormIdSignaturePath,
+      },
+      {
+        method: 'edid_signature_path',
+        key: edid && signature ? `${edid}|${signature}|${pathSimplified}` : '',
+        map: byEdidSignaturePath,
+      },
+      {
+        method: 'edid_path',
+        key: edid ? `${edid}|${pathRaw}` : '',
+        map: byEdidPath,
+      },
+      {
+        method: 'edid_signature',
+        key: edid && signature ? `${edid}|${signature}` : '',
+        map: byEdidSignature,
+      },
+      {
+        method: 'formid_signature',
+        key: signature ? `${formId}|${signature}` : '',
+        map: byFormIdSignature,
+      },
+      { method: 'formid_only', key: formId, map: byFormIdOnly },
+    ];
+
+    for (const check of checks) {
+      if (!check.key) continue;
+      const text = getUnique(check.map, check.key);
+      if (text != null) {
+        return { text, method: check.method };
+      }
+    }
+
+    return null;
+  };
 
   await withTransaction(db as pg.Pool, async (client) => {
-    for (const row of targetRows as Array<{ string_id: number; formid_hex: string; path: string }>) {
+    for (const row of targetRows as Array<{
+      string_id: number;
+      formid_hex: string;
+      path: string;
+      path_simplified: string | null;
+      signature: string | null;
+      edid: string | null;
+    }>) {
       if (alreadyTranslated.has(row.string_id)) {
         skipped += 1;
         continue;
       }
 
-      const key = `${row.formid_hex}|${row.path}`;
-      const translated = importedMap.get(key);
-      if (translated == null) {
+      const candidate = resolveImportedCandidate(row);
+      if (candidate == null) {
         unmatched += 1;
         continue;
       }
 
-      const text = translated.trim();
+      const text = candidate.text.trim();
       if (!text) {
         empty += 1;
         continue;
       }
+
+      matchCounters[candidate.method] += 1;
 
       await upsertTranslation(
         client,
@@ -1133,7 +1310,8 @@ export const applyImportedModStringsAsTranslations = async (
   log.info(
     `Imported apply: targetMod=${targetModId}, importedMod=${fromImportedModId}, `
     + `srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, `
-    + `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}`,
+    + `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}, `
+    + `methods=${JSON.stringify(matchCounters)}`,
   );
 
   return { applied, skipped, unmatched, empty };

@@ -13,6 +13,7 @@ Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Skyri
 - [What Happens During Import](#what-happens-during-import)
 - [TM Auto-match After Import](#tm-auto-match-after-import)
 - [Re-importing an Updated Mod](#re-importing-an-updated-mod)
+- [Applying an Imported Translation Mod](#applying-an-imported-translation-mod)
 - [Importing BA2 Archives](#importing-ba2-archives)
 - [Nexus Mod Relations on Mod Page](#nexus-mod-relations-on-mod-page)
 - [Importing EET Files (Legacy)](#importing-eet-files-legacy)
@@ -207,6 +208,87 @@ This is not an automatic copy step.
 The current UI detects the relationship and helps you jump into the diff workflow, but carry-over itself is still a separate action.
 
 If you upload the exact same file again, the backend reuses the existing import job by file hash instead of creating a duplicate job.
+
+---
+
+## Applying an Imported Translation Mod
+
+This section describes the exact backend matching logic used by
+`POST /api/mods/:id/apply-imported`.
+
+The goal is to take raw strings from an imported translation mod (for example,
+RU strings) and apply them as translations to a target base mod. This is useful
+when you imported a translated mod file and want to transfer its text into the
+translation table of another mod.
+
+### Why strict FormID-only matching fails
+
+When a translation mod is based on an older version of the original mod,
+record identifiers may shift:
+
+- FormIDs can be remapped.
+- Paths can differ by format details.
+- Some records are added/removed between versions.
+
+If matching is done only by `FormID + path`, many valid translations are missed.
+
+### EET4-style cascade used in the project
+
+The current implementation uses a strict-to-loose fallback sequence.
+The first successful unique match is applied.
+
+1. `identity`: `FormID + path`
+2. `formid_signature_path`: `FormID + signature + path_simplified`
+3. `edid_signature_path`: `EDID + signature + path_simplified`
+4. `edid_path`: `EDID + path`
+5. `edid_signature`: `EDID + signature`
+6. `formid_signature`: `FormID + signature`
+7. `formid_only`: `FormID`
+
+This order preserves safety: exact structural identity first, looser heuristics
+only when stronger keys fail.
+
+### Ambiguity guardrails
+
+For each key type, backend stores candidates in a map as **unique-only**:
+
+- If one key points to one translation text, it is usable.
+- If one key points to different translation texts, that key is marked
+  ambiguous and ignored for auto-apply.
+
+This prevents accidental writes caused by collisions in loosely matched keys,
+especially on `EDID`-based fallbacks.
+
+### Normalization rules before matching
+
+To make key comparison stable across file/style differences, backend normalizes:
+
+- `path`: lowercase, backslashes converted to forward slashes, duplicate slashes collapsed.
+- `FormID`: uppercased.
+- `EDID`: lowercased.
+
+So equivalent values like `INFO\\FULL` and `info/full` are treated as equal.
+
+### What is skipped deliberately
+
+- Target strings that already have a translation in `targetLang` are skipped.
+- Empty imported text is skipped.
+- Ambiguous fallback keys are skipped.
+- Unmatched rows are counted but not modified.
+
+### Runtime observability
+
+Server logs include per-method counters in the `methods={...}` object, so you can
+see whether matching came mostly from strict identity or fallback layers.
+
+Example (shape):
+
+```text
+methods={"identity":1200,"formid_signature_path":85,"edid_signature_path":41,"edid_path":12,"edid_signature":5,"formid_signature":8,"formid_only":3}
+```
+
+If `identity` is very low and fallback counters are high, the translation mod is
+likely from a different mod version or record structure.
 
 ---
 
