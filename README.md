@@ -5,7 +5,7 @@ Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
 
 ## Documentation
 
-- [docs/en/README.md](docs/en/README.md)
+- [doc/README.md](doc/README.md) - Project documentation wiki
 
 ## Quick start
 
@@ -25,4 +25,3 @@ docker compose run --rm cli npm run translate -- --in data/strings.en.csv --out 
 ## Ліцензія / License
 
 Private project.
-

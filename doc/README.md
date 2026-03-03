@@ -1,4 +1,4 @@
-# User Wiki
+# Project Documentation
 
 Choose a documentation language:
 
@@ -7,7 +7,7 @@ Choose a documentation language:
 
 ---
 
-The user-facing wiki now lives in language-specific folders:
+The project documentation now lives in language-specific folders:
 
-- `doc/eng/` — English source documentation
-- `doc/uk/` — Ukrainian translation
+- `doc/eng/` — English documentation
+- `doc/uk/` — Ukrainian documentation

@@ -1,10 +1,11 @@
-# Fallout 4 Localization Pipeline — User Wiki
+# Fallout 4 Localization Pipeline — Project Wiki
 
-Welcome to the documentation for the **Fallout 4 Localization Pipeline** — a web-based tool for
-translating Fallout 4 mods into any language.
+Welcome to the documentation for the **Fallout 4 Localization Pipeline** — a web-based platform
+for translating Fallout 4 mods and maintaining the surrounding localization toolchain.
 
-This wiki is written for **translators and localizers** who use the tool to produce high-quality
-mod translations. You don't need programming knowledge to follow these guides.
+This wiki now covers both **end-user workflows** and **technical project documentation**. Some
+pages are aimed at translators and reviewers, while others describe architecture, runtime
+components, and development tooling.
 
 ---
 
@@ -30,6 +31,7 @@ mod translations. You don't need programming knowledge to follow these guides.
 | 16  | [Team & Users](16-team-and-users.md)           | Multi-user mode, roles, permissions, activity log                 |
 | 17  | [Configuration](17-configuration.md)           | Environment variables, Docker setup, provider settings            |
 | 18  | [TradAuto Rules](18-tradauto.md)               | Pattern-match auto-translation engine, rule management            |
+| 19  | [Technology Stack](19-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker         |
 
 ---
 
@@ -59,3 +61,4 @@ Export (STRINGS / patched ESP / BA2)
 - **Just want to translate?** → Read [Importing Mods](02-importing-mods.md) then [The Editor](03-editor.md).
 - **Setting up AI?** → See [LLM Translation](06-llm-translation.md).
 - **Working in a team?** → See [Team & Users](16-team-and-users.md).
+- **Need development context?** → Read [Technology Stack](19-technology-stack.md).

@@ -149,4 +149,4 @@
 
 ---
 
-← [Конфігурація](17-configuration.md) | [Головна](README.md)
+← [Конфігурація](17-configuration.md) | [Головна](README.md) | [Технологічний стек](19-technology-stack.md) →

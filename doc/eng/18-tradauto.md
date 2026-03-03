@@ -149,4 +149,4 @@ The algorithm (see _TradAutoGRUP_ subsystem):
 
 ---
 
-← [Configuration](17-configuration.md) | [Home](README.md)
+← [Configuration](17-configuration.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →
