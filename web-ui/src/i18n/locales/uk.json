@@ -91,7 +91,7 @@
     "title": "Моди",
     "loadingMods": "Завантаження модів…",
     "noModsFound": "Модів не знайдено",
-    "noModsHint": "Запустіть <code>npm run learn:pairs</code> або <code>npm run learn:multilang</code> для імпорту даних перекладу.",
+    "noModsHint": "Запустіть \"npm run learn:pairs\" або \"npm run learn:multilang\" для імпорту даних перекладу.",
     "name": "Назва",
     "strings": "Рядки",
     "progress": "Прогрес",
@@ -276,7 +276,7 @@
   },
   "csvImport": {
     "title": "Імпорт CSV",
-    "noFiles": "CSV файлів ще не завантажено. Завантажте <code>.csv</code> файли для початку.",
+    "noFiles": "CSV файлів ще не завантажено. Завантажте .csv файли для початку.",
     "importAll": "Імпортувати все ({{count}})",
     "sourceLang": "Мова оригіналу",
     "targetLang": "Мова перекладу",
@@ -310,14 +310,14 @@
   },
   "eetImport": {
     "title": "Імпорт EET",
-    "noFiles": "EET файлів ще не завантажено. Завантажте <code>.eet</code> файли для початку.",
+    "noFiles": "EET файлів ще не завантажено. Завантажте .eet файли для початку.",
     "importAll": "Імпортувати все ({{count}})"
   },
   "modImport": {
     "title": "Імпорт модів",
     "noFiles": "Файлів модів ще не завантажено. Завантажте файли плагінів або архіви для початку.",
     "importAll": "Імпортувати все ({{count}})",
-    "accepts": "Приймає <code>.esp</code> / <code>.esm</code> / <code>.esl</code> плагіни або <code>.zip</code> / <code>.7z</code> / <code>.rar</code> архіви з плагіном + BA2 файлами.",
+    "accepts": "Приймає .esp / .esm / .esl плагіни або .zip / .7z / .rar архіви з плагіном + BA2 файлами.",
     "localized": "локалізований",
     "languageOfText": "Мова цього тексту",
     "importAs": "Імпортувати як {{lang}} ({{count}} рядків)",
@@ -340,7 +340,7 @@
   "users": {
     "title": "Користувачі",
     "disabledMessage": "Управління користувачами вимкнено в однокористувацькому режимі.",
-    "enableHint": "Встановіть <code>MULTI_USER=true</code> в <code>.env</code> для увімкнення.",
+    "enableHint": "Встановіть MULTI_USER=true в .env для увімкнення.",
     "createUser": "Створити користувача",
     "displayName": "Відображуване ім'я",
     "role": "Роль",
@@ -558,7 +558,7 @@
     "sourcePreviewTitle": "Перегляд джерельної книги",
     "translPreviewTitle": "Перегляд перекладу книги",
     "placeholder": "Введіть переклад HTML-розмітки…",
-    "markupHint": "Підтримувані теги: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://…\">",
+    "markupHint": "Підтримувані теги: font, b, i, p, div, br, hr, img src=\"img://...\"",
     "charCount": "{{count}} симв."
   },
   "ops": {

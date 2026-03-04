@@ -91,7 +91,7 @@
     "title": "Mods",
     "loadingMods": "Loading mods…",
     "noModsFound": "No mods found",
-    "noModsHint": "Run <code>npm run learn:pairs</code> or <code>npm run learn:multilang</code> to import translation data.",
+    "noModsHint": "Run \"npm run learn:pairs\" or \"npm run learn:multilang\" to import translation data.",
     "name": "Name",
     "strings": "Strings",
     "progress": "Progress",
@@ -275,7 +275,7 @@
   },
   "csvImport": {
     "title": "CSV Imports",
-    "noFiles": "No CSV files uploaded yet. Upload <code>.csv</code> files to get started.",
+    "noFiles": "No CSV files uploaded yet. Upload .csv files to get started.",
     "importAll": "Import all ({{count}})",
     "sourceLang": "Source language",
     "targetLang": "Target language",
@@ -309,14 +309,14 @@
   },
   "eetImport": {
     "title": "EET Imports",
-    "noFiles": "No EET files uploaded yet. Upload <code>.eet</code> files to get started.",
+    "noFiles": "No EET files uploaded yet. Upload .eet files to get started.",
     "importAll": "Import all ({{count}})"
   },
   "modImport": {
     "title": "Mod Import",
     "noFiles": "No mod files uploaded yet. Upload plugin files or archives to get started.",
     "importAll": "Import all ({{count}})",
-    "accepts": "Accepts <code>.esp</code> / <code>.esm</code> / <code>.esl</code> plugins or <code>.zip</code> / <code>.7z</code> / <code>.rar</code> archives containing plugin + BA2 files.",
+    "accepts": "Accepts .esp / .esm / .esl plugins or .zip / .7z / .rar archives containing plugin + BA2 files.",
     "localized": "localized",
     "languageOfText": "Language of this text",
     "importAs": "Import as {{lang}} ({{count}} strings)",
@@ -339,7 +339,7 @@
   "users": {
     "title": "Users",
     "disabledMessage": "User management is disabled in single-user mode.",
-    "enableHint": "Set <code>MULTI_USER=true</code> in <code>.env</code> to enable.",
+    "enableHint": "Set MULTI_USER=true in .env to enable.",
     "createUser": "Create User",
     "displayName": "Display Name",
     "role": "Role",
@@ -557,7 +557,7 @@
     "sourcePreviewTitle": "Source book preview",
     "translPreviewTitle": "Translation book preview",
     "placeholder": "Enter translated markup here\u2026",
-    "markupHint": "Supported tags: <font>, <b>, <i>, <p>, <div>, <br>, <hr>, <img src=\"img://\u2026\">",
+    "markupHint": "Supported tags: font, b, i, p, div, br, hr, img src=\"img://...\"",
     "charCount": "{{count}} chars"
   },
   "ops": {
