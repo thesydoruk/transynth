@@ -184,6 +184,23 @@ docker compose up -d
 docker compose run --rm cli npm run db:init
 ```
 
+### Повне очищення бази (лише для dev)
+
+Щоб повністю стерти поточну базу і заново створити схему з `sql/schema.sql`,
+використайте:
+
+```bash
+npm run db:reset -- --yes
+```
+
+Команда робить:
+
+- `DROP SCHEMA public CASCADE`
+- `CREATE SCHEMA public`
+- повторну ініціалізацію схеми
+
+Використовуйте цю команду тільки для dev-бази.
+
 ### Зупинка
 
 ```bash

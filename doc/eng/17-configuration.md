@@ -204,6 +204,23 @@ docker compose up -d
 docker compose run --rm cli npm run db:init
 ```
 
+### Resetting Database (Development Only)
+
+Use this command to fully wipe the current database and recreate schema objects
+from `sql/schema.sql`:
+
+```bash
+npm run db:reset -- --yes
+```
+
+What it does:
+
+- `DROP SCHEMA public CASCADE`
+- `CREATE SCHEMA public`
+- re-runs schema initialization
+
+Use this only for development databases.
+
 ### Stopping
 
 ```bash
