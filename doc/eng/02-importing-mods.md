@@ -237,13 +237,18 @@ If matching is done only by `FormID + path`, many valid translations are missed.
 The current implementation uses a strict-to-loose fallback sequence.
 The first successful unique match is applied.
 
-1. `identity`: `FormID + path`
-2. `formid_signature_path`: `FormID + signature + path_simplified`
-3. `edid_signature_path`: `EDID + signature + path_simplified`
-4. `edid_path`: `EDID + path`
-5. `edid_signature`: `EDID + signature`
-6. `formid_signature`: `FormID + signature`
-7. `formid_only`: `FormID`
+1. `identity`: `FormID + path` — exact structural match.
+2. `identity_ranked`: when the same `FormID + path` key appears multiple times
+   (as is normal for Bethesda dialogue INFO records under one topic), rows are matched
+   **positionally**: the nth imported record aligns with the nth target record within
+   the same key bucket.  This mirrors the internal INDEX field that EET4 uses to
+   distinguish duplicate-key records.
+3. `formid_signature_path`: `FormID + signature + path_simplified`
+4. `edid_signature_path`: `EDID + signature + path_simplified`
+5. `edid_path`: `EDID + path`
+6. `edid_signature`: `EDID + signature`
+7. `formid_signature`: `FormID + signature`
+8. `formid_only`: `FormID`
 
 This order preserves safety: exact structural identity first, looser heuristics
 only when stronger keys fail.
@@ -255,6 +260,11 @@ For each key type, backend stores candidates in a map as **unique-only**:
 - If one key points to one translation text, it is usable.
 - If one key points to different translation texts, that key is marked
   ambiguous and ignored for auto-apply.
+
+The `identity_ranked` step is the sole exception to this rule: it is designed
+specifically for keys that **must** be ambiguous (multiple records with the same
+`FormID + path`). Instead of discarding them, it aligns them by their SQL
+`ROW_NUMBER()` within the partition — giving each occurrence its own stable slot.
 
 This prevents accidental writes caused by collisions in loosely matched keys,
 especially on `EDID`-based fallbacks.
@@ -284,11 +294,14 @@ see whether matching came mostly from strict identity or fallback layers.
 Example (shape):
 
 ```text
-methods={"identity":1200,"formid_signature_path":85,"edid_signature_path":41,"edid_path":12,"edid_signature":5,"formid_signature":8,"formid_only":3}
+methods={"identity":6597,"identity_ranked":1524,"formid_signature_path":0,"edid_signature_path":0,"edid_path":0,"edid_signature":0,"formid_signature":0,"formid_only":0}
 ```
 
-If `identity` is very low and fallback counters are high, the translation mod is
-likely from a different mod version or record structure.
+In the example above, 6597 rows matched by exact identity and 1524 were resolved
+positionally via `identity_ranked` (duplicate-key INFO dialogue records).
+
+If `identity` and `identity_ranked` are both low while fallback counters are high,
+the translation mod is likely from a different mod version or record structure.
 
 ---
 

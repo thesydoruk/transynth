@@ -1108,7 +1108,11 @@ export const applyImportedModStringsAsTranslations = async (
             r.path,
             r.path_simplified,
             r.signature,
-            r.edid
+            r.edid,
+            ROW_NUMBER() OVER (
+              PARTITION BY r.formid_hex, r.path
+              ORDER BY s.id
+            )::int AS identity_rank
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = $2`,
@@ -1126,7 +1130,11 @@ export const applyImportedModStringsAsTranslations = async (
             r.path_simplified,
             r.signature,
             r.edid,
-            s.text_raw
+            s.text_raw,
+            ROW_NUMBER() OVER (
+              PARTITION BY r.formid_hex, r.path
+              ORDER BY s.id
+            )::int AS identity_rank
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = $2`,
@@ -1147,6 +1155,9 @@ export const applyImportedModStringsAsTranslations = async (
   const byEdidSignature = new Map<string, string | null>();
   const byFormIdOnly = new Map<string, string | null>();
 
+  // Buckets preserve ordered duplicates for rank-based fallback.
+  const identityBuckets = new Map<string, string[]>();
+
   for (const row of importedRows as Array<{
     formid_hex: string;
     path: string;
@@ -1154,6 +1165,7 @@ export const applyImportedModStringsAsTranslations = async (
     signature: string | null;
     edid: string | null;
     text_raw: string;
+    identity_rank: number;
   }>) {
     const translated = (row.text_raw ?? '').trim();
     if (!translated) continue;
@@ -1163,8 +1175,12 @@ export const applyImportedModStringsAsTranslations = async (
     const pathSimplified = normalizePath(row.path_simplified) || pathRaw;
     const signature = (row.signature ?? '').trim().toUpperCase();
     const edid = normalizeEdid(row.edid);
+    const identityKey = `${formId}|${pathRaw}`;
 
-    putUnique(byIdentity, `${formId}|${pathRaw}`, translated);
+    putUnique(byIdentity, identityKey, translated);
+    if (!identityBuckets.has(identityKey)) identityBuckets.set(identityKey, []);
+    identityBuckets.get(identityKey)!.push(translated);
+
     if (signature) {
       putUnique(byFormIdSignaturePath, `${formId}|${signature}|${pathSimplified}`, translated);
       putUnique(byFormIdSignature, `${formId}|${signature}`, translated);
@@ -1201,6 +1217,7 @@ export const applyImportedModStringsAsTranslations = async (
   let empty = 0;
   const matchCounters: Record<string, number> = {
     identity: 0,
+    identity_ranked: 0,
     formid_signature_path: 0,
     edid_signature_path: 0,
     edid_path: 0,
@@ -1219,15 +1236,17 @@ export const applyImportedModStringsAsTranslations = async (
     path_simplified: string | null;
     signature: string | null;
     edid: string | null;
+    identity_rank: number;
   }): { text: string; method: keyof typeof matchCounters } | null => {
     const formId = normalizeFormId(row.formid_hex);
     const pathRaw = normalizePath(row.path);
     const pathSimplified = normalizePath(row.path_simplified) || pathRaw;
     const signature = (row.signature ?? '').trim().toUpperCase();
     const edid = normalizeEdid(row.edid);
+    const identityKey = `${formId}|${pathRaw}`;
 
-    const checks: Array<{ method: keyof typeof matchCounters; key: string; map: Map<string, string | null> }> = [
-      { method: 'identity', key: `${formId}|${pathRaw}`, map: byIdentity },
+    const directChecks: Array<{ method: keyof typeof matchCounters; key: string; map: Map<string, string | null> }> = [
+      { method: 'identity', key: identityKey, map: byIdentity },
       {
         method: 'formid_signature_path',
         key: signature ? `${formId}|${signature}|${pathSimplified}` : '',
@@ -1256,11 +1275,21 @@ export const applyImportedModStringsAsTranslations = async (
       { method: 'formid_only', key: formId, map: byFormIdOnly },
     ];
 
-    for (const check of checks) {
+    for (const check of directChecks) {
       if (!check.key) continue;
       const text = getUnique(check.map, check.key);
       if (text != null) {
         return { text, method: check.method };
+      }
+    }
+
+    // EET4-like fallback for duplicate keys: when identity is ambiguous,
+    // align by row rank within the same FormID+path bucket.
+    const bucket = identityBuckets.get(identityKey);
+    if (bucket && row.identity_rank > 0 && row.identity_rank <= bucket.length) {
+      const ranked = bucket[row.identity_rank - 1]?.trim();
+      if (ranked) {
+        return { text: ranked, method: 'identity_ranked' };
       }
     }
 
@@ -1275,6 +1304,7 @@ export const applyImportedModStringsAsTranslations = async (
       path_simplified: string | null;
       signature: string | null;
       edid: string | null;
+      identity_rank: number;
     }>) {
       if (alreadyTranslated.has(row.string_id)) {
         skipped += 1;

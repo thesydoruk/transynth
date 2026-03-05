@@ -235,13 +235,18 @@ workflow diff і carry-over.
 Поточна реалізація використовує strict-to-loose каскад fallback-ключів.
 Застосовується перший успішний **унікальний** збіг.
 
-1. `identity`: `FormID + path`
-2. `formid_signature_path`: `FormID + signature + path_simplified`
-3. `edid_signature_path`: `EDID + signature + path_simplified`
-4. `edid_path`: `EDID + path`
-5. `edid_signature`: `EDID + signature`
-6. `formid_signature`: `FormID + signature`
-7. `formid_only`: `FormID`
+1. `identity`: `FormID + path` — точний структурний збіг.
+2. `identity_ranked`: якщо одна й та сама пара `FormID + path` зустрічається кілька
+   разів (типова ситуація для dialogue INFO-записів під одним топіком у Bethesda ESP),
+   рядки порівнюються **позиційно**: n-й імпортований рядок відповідає n-му цільовому
+   рядку в межах одного key-bucket.  Це відтворює поведінку внутрішнього поля INDEX в
+   EET4, яке розрізняє дублюючі ключі.
+3. `formid_signature_path`: `FormID + signature + path_simplified`
+4. `edid_signature_path`: `EDID + signature + path_simplified`
+5. `edid_path`: `EDID + path`
+6. `edid_signature`: `EDID + signature`
+7. `formid_signature`: `FormID + signature`
+8. `formid_only`: `FormID`
 
 Порядок підібраний так, щоб спочатку використовувати максимально надійні ключі,
 а більш ризикові fallback-кроки запускати лише якщо строгі збіги не спрацювали.
@@ -253,6 +258,11 @@ workflow diff і carry-over.
 - Якщо ключ відповідає одному тексту перекладу, він використовується.
 - Якщо ключ відповідає різним текстам, ключ позначається неоднозначним і
   не застосовується автоматично.
+
+Крок `identity_ranked` є єдиним винятком з цього правила: він розроблений
+спеціально для ключів, які **за визначенням** є неоднозначними (кілька записів
+з однаковим `FormID + path`). Замість відкидання такі записи вирівнюються за
+`ROW_NUMBER()` у SQL-партиції — кожен екземпляр отримує стабільний слот.
 
 Це зменшує ризик хибних автозаписів у слабших fallback-режимах,
 особливо для `EDID`-матчингу.
@@ -282,10 +292,13 @@ Backend лог пише лічильники по кожному методу в
 Приклад (форма):
 
 ```text
-methods={"identity":1200,"formid_signature_path":85,"edid_signature_path":41,"edid_path":12,"edid_signature":5,"formid_signature":8,"formid_only":3}
+methods={"identity":6597,"identity_ranked":1524,"formid_signature_path":0,"edid_signature_path":0,"edid_path":0,"edid_signature":0,"formid_signature":0,"formid_only":0}
 ```
 
-Якщо `identity` низький, а fallback-лічильники високі, це зазвичай означає, що
+У наведеному прикладі 6597 рядків збіглися точно, а 1524 — вирівняно позиційно
+через `identity_ranked` (дублюючі INFO-записи діалогів).
+
+Якщо `identity` і `identity_ranked` обидва низькі, а fallback-лічильники високі, це зазвичай означає, що
 перекладний мод базується на іншій версії або відмінній структурі записів.
 
 ---
