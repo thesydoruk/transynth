@@ -55,6 +55,25 @@
   --info: #45a8d8;
   --cyan: #38b6be;
 
+  /* Translation status colors (badge chips) */
+  --status-reviewed: #4caf50;
+  --status-human: #4caf50;
+  --status-draft: #cddc39;
+  --status-rejected: #b71c1c;
+  --status-tm: #2196f3;
+  --status-fuzzy: #00bcd4;
+  --status-auto: #ff9800;
+  --status-untranslated: #555;
+
+  /* Translation status row backgrounds (editor grid) */
+  --status-row-reviewed: #183a18;
+  --status-row-human: #183a18;
+  --status-row-draft: #2e3400;
+  --status-row-rejected: #3b1616;
+  --status-row-tm: #003d45;
+  --status-row-auto: #001a3d;
+  --status-row-fuzzy: #3d3100;
+
   /* Links */
   --link: #72afe5;
   --link-hover: #9cccf4;
@@ -178,6 +197,25 @@
   --warning: #c17a12;
   --info: #2f7fbf;
   --cyan: #1f8e99;
+
+  /* Translation status colors (badge chips) */
+  --status-reviewed: #3d8a50;
+  --status-human: #3d8a50;
+  --status-draft: #a1b82a;
+  --status-rejected: #b44b4b;
+  --status-tm: #2f7fbf;
+  --status-fuzzy: #1f8e99;
+  --status-auto: #c17a12;
+  --status-untranslated: #8f7e68;
+
+  /* Translation status row backgrounds (editor grid) */
+  --status-row-reviewed: #dceedd;
+  --status-row-human: #dceedd;
+  --status-row-draft: #f0f3d6;
+  --status-row-rejected: #f8e3e1;
+  --status-row-tm: #deebf7;
+  --status-row-auto: #e6edf9;
+  --status-row-fuzzy: #f7efd8;
 
   --link: #2f6fa8;
   --link-hover: #1f5689;

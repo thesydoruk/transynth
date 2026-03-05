@@ -34,15 +34,29 @@ const downloadBase64File = (fileName: string, contentBase64: string) => {
   URL.revokeObjectURL(url);
 }
 
-// Row background by translation status
+// Row background by translation status.
+//
+// Important: colours are not hardcoded here. We intentionally return CSS custom
+// properties so both dark and light themes can provide their own palette in
+// `index.scss` while preserving identical EET4 status semantics.
+//
+// EET4 mapping:
+//   _00_Vide               -> untranslated (neutral)
+//   _20_ModCharge          -> draft (loaded/unconfirmed)
+//   _50_TradAuto           -> tm
+//   _70_Internet           -> auto
+//   _80_SansPonctuation    -> fuzzy
+//   _90_Devalide           -> rejected
+//   _99_Valide             -> reviewed/human
 const rowBg = (status: string | null): string => {
-  if (!status) return '#3d1e00'; // untranslated → orange-ish
-  if (status === 'reviewed' || status === 'human') return 'transparent';
-  if (status === 'draft') return '#183a18';
-  if (status === 'rejected') return '#3b1616';
-  if (status === 'tm') return '#003d45';   // teal
-  if (status === 'auto') return '#003d45'; // teal
-  if (status === 'fuzzy') return '#3d3100'; // amber
+  if (!status) return 'transparent';                              // untranslated (neutral)
+  if (status === 'reviewed') return 'var(--status-row-reviewed)'; // EET4 _99_Valide
+  if (status === 'human')    return 'var(--status-row-human)';    // EET4 _99_Valide (human-confirmed)
+  if (status === 'draft')    return 'var(--status-row-draft)';    // EET4 _20_ModCharge
+  if (status === 'rejected') return 'var(--status-row-rejected)'; // EET4 _90_Devalide
+  if (status === 'tm')       return 'var(--status-row-tm)';       // EET4 _50_TradAuto
+  if (status === 'auto')     return 'var(--status-row-auto)';     // EET4 _70_Internet
+  if (status === 'fuzzy')    return 'var(--status-row-fuzzy)';    // EET4 _80_SansPonctuation
   return 'transparent';
 }
 

@@ -241,7 +241,7 @@ The first successful unique match is applied.
 2. `identity_ranked`: when the same `FormID + path` key appears multiple times
    (as is normal for Bethesda dialogue INFO records under one topic), rows are matched
    **positionally**: the nth imported record aligns with the nth target record within
-   the same key bucket.  This mirrors the internal INDEX field that EET4 uses to
+   the same key bucket. This mirrors the internal INDEX field that EET4 uses to
    distinguish duplicate-key records.
 3. `formid_signature_path`: `FormID + signature + path_simplified`
 4. `edid_signature_path`: `EDID + signature + path_simplified`

@@ -239,7 +239,7 @@ workflow diff і carry-over.
 2. `identity_ranked`: якщо одна й та сама пара `FormID + path` зустрічається кілька
    разів (типова ситуація для dialogue INFO-записів під одним топіком у Bethesda ESP),
    рядки порівнюються **позиційно**: n-й імпортований рядок відповідає n-му цільовому
-   рядку в межах одного key-bucket.  Це відтворює поведінку внутрішнього поля INDEX в
+   рядку в межах одного key-bucket. Це відтворює поведінку внутрішнього поля INDEX в
    EET4, яке розрізняє дублюючі ключі.
 3. `formid_signature_path`: `FormID + signature + path_simplified`
 4. `edid_signature_path`: `EDID + signature + path_simplified`
