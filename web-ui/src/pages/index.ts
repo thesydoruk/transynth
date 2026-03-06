@@ -1,9 +1,7 @@
 export { ActivityPage } from './ActivityPage';
-export { Ba2BrowserPage } from './Ba2BrowserPage';
 export { CoherencePage } from './CoherencePage';
 export { DashboardPage } from './DashboardPage';
 export { DiffPage } from './DiffPage';
-export { EspExplorerPage } from './EspExplorerPage';
 export { GameHubPage } from './GameHubPage';
 export { GameModDetailsPage } from './GameModDetailsPage';
 export { GameModsPage } from './GameModsPage';

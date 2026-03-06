@@ -753,81 +753,6 @@ export type TMSuggestion = {
   similarity: number;
 };
 
-/**
- * One file entry within a BA2 archive as returned by GET /api/mods/:id/ba2.
- * Only the archive-relative path is returned (size info is not exposed by this endpoint).
- */
-export type Ba2FileEntry = {
-  name: string;
-};
-
-/**
- * One BA2 archive descriptor returned by GET /api/mods/:id/ba2.
- */
-export type Ba2ArchiveInfo = {
-  archive: string;
-  fileCount: number;
-  files: Ba2FileEntry[];
-  /** Present and true when the archive could not be opened. */
-  error?: boolean;
-};
-
-// ──────────────────────────────────────────────────────────────────────────
-// ESP raw record explorer types — returned by GET /api/mods/:id/esp/*
-// ──────────────────────────────────────────────────────────────────────────
-
-/**
- * Summary of one top-level GRUP group inside an ESP plugin.
- * Returned by GET /api/mods/:id/esp/grups.
- */
-export type EspGrupInfo = {
-  /** 4-char record type that identifies the group, e.g. "ARMO". */
-  signature: string;
-  /** Total record count (all levels deep) inside this group. */
-  recordCount: number;
-};
-
-/**
- * One subrecord rendered for the ESP explorer.
- * Raw byte content is capped at 48 bytes for the hex preview.
- */
-export type EspSubrecordView = {
-  /** 4-char subrecord type, e.g. "FULL". */
-  sig: string;
-  /** Uncompressed byte size. */
-  size: number;
-  /** Up to 48 bytes as uppercase space-separated hex pairs. */
-  hexPreview: string;
-  /** Best-effort UTF-8 decode; null for binary data. */
-  textHint: string | null;
-};
-
-/**
- * One ESP record rendered for the explorer.
- * Subrecords are included (up to 64 per record).
- */
-export type EspRecordView = {
-  /** FormID as 8-char uppercase hex. */
-  formId: string;
-  /** 4-char record type, e.g. "ARMO". */
-  signature: string;
-  /** Raw flags field as 8-char uppercase hex. */
-  flagsHex: string;
-  /** True when the record was stored in compressed (zlib) form. */
-  compressed: boolean;
-  /** Editor ID from EDID subrecord, or empty string. */
-  edid: string;
-  /** All subrecords (up to 64). */
-  subrecords: EspSubrecordView[];
-};
-
-/**
- * Paginated response from GET /api/mods/:id/esp/records.
- */
-export type EspRecordsPage = {
-  records: EspRecordView[];
-  total: number;
-};
 
 export const api = {
   mods: {
@@ -880,22 +805,6 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ stringIds, status, targetLang }),
       }),
-    /** List all BA2 archives associated with a mod and their file contents */
-    ba2Files: (modId: number) =>
-      req<Ba2ArchiveInfo[]>(`/api/mods/${modId}/ba2`),
-    /** List top-level GRUP types for the ESP record explorer */
-    espGrups: (modId: number) =>
-      req<EspGrupInfo[]>(`/api/mods/${modId}/esp/grups`),
-    /** Paginated record browser for the ESP record explorer */
-    espRecords: (modId: number, sig: string, page: number, pageSize: number, q: string) => {
-      const params = new URLSearchParams({
-        sig,
-        page: String(page),
-        pageSize: String(pageSize),
-        q,
-      });
-      return req<EspRecordsPage>(`/api/mods/${modId}/esp/records?${params}`);
-    },
   },
 
   stats: {

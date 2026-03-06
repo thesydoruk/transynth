@@ -2,11 +2,9 @@ import { Routes, Route } from 'react-router-dom';
 import { useAuth } from './components/AuthContext';
 import {
   ActivityPage,
-  Ba2BrowserPage,
   CoherencePage,
   DashboardPage,
   DiffPage,
-  EspExplorerPage,
   GameHubPage,
   GameModDetailsPage,
   GameModsPage,
@@ -60,8 +58,6 @@ export const AppShell = () => {
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
-          <Route path="/ba2-browser" element={<Ba2BrowserPage />} />
-          <Route path="/esp-explorer" element={<EspExplorerPage />} />
           <Route path="/ops" element={<OpsPage />} />
           <Route path="/tradauto" element={<TradAutoPage />} />
           <Route path="/users" element={<UsersPage />} />

@@ -29,8 +29,6 @@ const NAV_LINKS: NavLinkDescriptor[] = [
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
-  { to: '/ba2-browser', labelKey: 'nav.ba2Browser', exact: false },
-  { to: '/esp-explorer', labelKey: 'nav.espExplorer', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
 ];
 
