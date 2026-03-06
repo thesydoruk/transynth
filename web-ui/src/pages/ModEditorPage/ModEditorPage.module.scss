@@ -523,19 +523,19 @@
 
 .tdSig {
   composes: td;
-  color: var(--text-dim);
+  color: inherit;
   font-size: 11px;
 }
 .tdFid {
   composes: td;
   font-family: monospace;
   font-size: 11px;
-  color: var(--text-dim);
+  color: inherit;
 }
 .tdEdidCell {
   composes: td;
   font-size: 11px;
-  color: var(--text-muted);
+  color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -543,7 +543,7 @@
 .tdField {
   composes: td;
   font-size: 11px;
-  color: var(--text-dim);
+  color: inherit;
 }
 .tdText {
   composes: td;
@@ -553,14 +553,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 13px;
+  color: inherit;
 }
 .tdTranslFilled {
   composes: tdText;
-  color: var(--text-bright);
+  color: inherit;
 }
 .tdTranslEmpty {
   composes: tdText;
-  color: var(--text-faint);
+  color: inherit;
   font-style: italic;
 }
 

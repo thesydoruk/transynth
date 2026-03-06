@@ -60,6 +60,66 @@ const rowBg = (status: string | null): string => {
   return 'transparent';
 }
 
+/** Parses #RGB/#RRGGBB or rgb()/rgba() strings into RGB channels. */
+const parseCssColor = (color: string): [number, number, number] | null => {
+  const c = color.trim();
+  const hex = c.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hex) {
+    const raw = hex[1];
+    const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
+    return [
+      Number.parseInt(full.slice(0, 2), 16),
+      Number.parseInt(full.slice(2, 4), 16),
+      Number.parseInt(full.slice(4, 6), 16),
+    ];
+  }
+
+  const rgb = c.match(/^rgba?\(([^)]+)\)$/i);
+  if (!rgb) return null;
+  const parts = rgb[1].split(',').map((p) => p.trim());
+  if (parts.length < 3) return null;
+  const r = Number.parseFloat(parts[0]);
+  const g = Number.parseFloat(parts[1]);
+  const b = Number.parseFloat(parts[2]);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+  return [Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b))];
+};
+
+/** Resolves `var(--token)` into a concrete CSS color value using computed root style. */
+const resolveCssColor = (color: string): string => {
+  const c = color.trim();
+  if (!c.startsWith('var(') || typeof window === 'undefined') return c;
+  const token = c.match(/^var\((--[^,)\s]+).*/)?.[1];
+  if (!token) return c;
+  const resolved = window.getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return resolved || c;
+};
+
+/** WCAG relative luminance for contrast-ratio computation. */
+const relativeLuminance = ([r, g, b]: [number, number, number]): number => {
+  const toLinear = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const [lr, lg, lb] = [toLinear(r), toLinear(g), toLinear(b)];
+  return (0.2126 * lr) + (0.7152 * lg) + (0.0722 * lb);
+};
+
+/** Picks black or white text for maximal contrast against a row background. */
+const rowTextColor = (status: string | null): string => {
+  const bg = rowBg(status);
+  if (bg === 'transparent') return 'var(--text)';
+
+  const resolved = resolveCssColor(bg);
+  const rgb = parseCssColor(resolved);
+  if (!rgb) return 'var(--text)';
+
+  const lumBg = relativeLuminance(rgb);
+  const contrastWhite = (1.05) / (lumBg + 0.05);
+  const contrastBlack = (lumBg + 0.05) / 0.05;
+  return contrastWhite >= contrastBlack ? '#fff' : '#000';
+};
+
 /** Keys identifying each resizable column in the string grid. */
 type ColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
 
@@ -126,6 +186,34 @@ export const ModEditorPage = () => {
   const updateFileRef = useRef<HTMLInputElement>(null);
   const [updating, setUpdating] = useState(false);
   const navigate = useNavigate();
+
+  // Re-render the table when theme tokens change so row text contrast is
+  // recomputed immediately (no manual page refresh required).
+  const [, setThemeRevision] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = document.documentElement;
+    const notifyThemeChanged = () => setThemeRevision((v) => v + 1);
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'attributes' && (m.attributeName === 'data-theme' || m.attributeName === 'class' || m.attributeName === 'style')) {
+          notifyThemeChanged();
+          break;
+        }
+      }
+    });
+
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+    window.addEventListener('themechange', notifyThemeChanged);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('themechange', notifyThemeChanged);
+    };
+  }, []);
 
   /**
    * Handles "Update Mod": uploads the selected file as a new import job, starts
@@ -948,6 +1036,7 @@ export const ModEditorPage = () => {
                   {rowVirtualizer.getVirtualItems().map((vItem) => {
                     const row = strings!.rows[vItem.index];
                     const isActive = activeRow?.string_id === row.string_id;
+                    const displayStatus = isActive ? '__active' : row.status;
                     return (
                       <div
                         key={row.string_id}
@@ -956,7 +1045,8 @@ export const ModEditorPage = () => {
                         className={`${styles.gridRow} ${styles.virtualRow}`}
                         style={{
                           transform: `translateY(${vItem.start}px)`,
-                          background: rowBg(isActive ? '__active' : row.status),
+                          background: rowBg(displayStatus),
+                          color: rowTextColor(displayStatus),
                           outline: isActive ? '1px solid #aaa' : 'none',
                         }}
                         onClick={() => handleRowClick(row)}
