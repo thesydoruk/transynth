@@ -94,6 +94,28 @@
   line-height: 1;
 }
 
+/** Settings icon button in nav bar — same visual style as theme toggle. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
 /** Main content area — fills the viewport below the 48px nav bar. */
 .main {
   min-height: calc(100vh - 48px);

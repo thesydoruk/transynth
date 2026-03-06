@@ -32,7 +32,6 @@ const NAV_LINKS: NavLinkDescriptor[] = [
   { to: '/ba2-browser', labelKey: 'nav.ba2Browser', exact: false },
   { to: '/esp-explorer', labelKey: 'nav.espExplorer', exact: false },
   { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
-  { to: '/settings', labelKey: 'nav.settings', exact: false },
 ];
 
 /**
@@ -68,6 +67,15 @@ export const AppNav = () => {
       >
         {theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
       </button>
+
+      <Link
+        to="/settings"
+        className={nav.iconBtn}
+        title={t('nav.settings')}
+        aria-label={t('nav.settings')}
+      >
+        {'\u2699\uFE0F'}
+      </Link>
 
       <select
         className={nav.langSwitch}
