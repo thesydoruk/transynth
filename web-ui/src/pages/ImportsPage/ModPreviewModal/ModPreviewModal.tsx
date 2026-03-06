@@ -19,7 +19,6 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
   const [lang, setLang] = useState(job.src_lang);
   const [applyEnabled, setApplyEnabled] = useState(false);
   const [applyToModId, setApplyToModId] = useState<number | null>(null);
-  const [applyTargetLang, setApplyTargetLang] = useState(job.src_lang);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
@@ -95,15 +94,6 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
                 </select>
               </label>
 
-              <label className={parentS.langLabel}>{t('modImport.applyTargetLang')}
-                <select
-                  value={applyTargetLang}
-                  onChange={(event) => setApplyTargetLang(event.target.value)}
-                  className={parentS.select}
-                >
-                  {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)}
-                </select>
-              </label>
             </>
           )}
         </div>
@@ -153,7 +143,6 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
               importLang: lang,
               applyEnabled,
               applyToModId: effectiveApplyToModId,
-              applyTargetLang,
             })}
             className={parentS.btnConfirm}
             disabled={applyEnabled && effectiveApplyToModId == null}

@@ -151,7 +151,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // ── Update job languages ──────────────────────────────────────────────────
-  app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string } }>(
+  app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string; discardAfterApply?: boolean } }>(
     '/api/mod-import/:id',
     async (req, reply) => {
       const jobId = Number(req.params.id);
@@ -159,9 +159,13 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
 
-      const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
+      const { srcLang, tgtLang, discardAfterApply } = req.body as {
+        srcLang?: string;
+        tgtLang?: string;
+        discardAfterApply?: boolean;
+      };
       if (srcLang && tgtLang) {
-        await updateModJobLanguages(db, jobId, srcLang, tgtLang);
+        await updateModJobLanguages(db, jobId, srcLang, tgtLang, !!discardAfterApply);
       }
       return await getModImportJob(db, jobId);
     },

@@ -320,7 +320,12 @@ export const ImportsPage = () => {
               await api.modImport.restart(modPreviewJob.id);
             }
 
-            await api.modImport.updateLanguages(modPreviewJob.id, payload.importLang, payload.importLang);
+            await api.modImport.updateLanguages(
+              modPreviewJob.id,
+              payload.importLang,
+              payload.importLang,
+              payload.applyEnabled,
+            );
             refreshAll();
             setModPreviewId(null);
 
@@ -340,7 +345,6 @@ export const ImportsPage = () => {
               payload.applyToModId,
               importedJob.mod_id,
               payload.importLang,
-              payload.applyTargetLang,
             );
             refreshAll();
           }}

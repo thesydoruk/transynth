@@ -710,6 +710,7 @@ export type ModImportJob = {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;
+  discard_after_apply: boolean;
   game: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle';
   esp_path: string | null;
   created_at: string;
@@ -788,12 +789,10 @@ export const api = {
       targetModId: number,
       fromModId: number,
       importedLang: string,
-      targetLang = importedLang,
       srcLang = getSrcLang(),
     ) => req<ApplyImportedResult>(
       `/api/mods/${targetModId}/apply-imported?fromModId=${fromModId}`
       + `&importedLang=${encodeURIComponent(importedLang)}`
-      + `&targetLang=${encodeURIComponent(targetLang)}`
       + `&srcLang=${encodeURIComponent(srcLang)}`,
       { method: 'POST' },
     ),
@@ -1170,10 +1169,10 @@ export const api = {
     remove: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}`, { method: 'DELETE' }),
     restart: (jobId: number) => req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
 
-    updateLanguages: (jobId: number, srcLang: string, tgtLang: string) =>
+    updateLanguages: (jobId: number, srcLang: string, tgtLang: string, discardAfterApply = false) =>
       req<ModImportJob>(`/api/mod-import/${jobId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ srcLang, tgtLang }),
+        body: JSON.stringify({ srcLang, tgtLang, discardAfterApply }),
       }),
 
     preview: (jobId: number, params?: { page?: number; pageSize?: number; signature?: string; q?: string }) => {

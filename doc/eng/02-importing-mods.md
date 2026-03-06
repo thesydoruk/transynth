@@ -221,6 +221,14 @@ RU strings) and apply them as translations to a target base mod. This is useful
 when you imported a translated mod file and want to transfer its text into the
 translation table of another mod.
 
+### Current apply workflow behavior
+
+- In **Apply to existing**, UI asks for the translation mod language and base mod only.
+- The target language for write-back is inferred automatically from the imported
+  translation language (no separate target-language selector).
+- If the file is imported specifically for apply-to-existing, that imported mod
+  is treated as temporary and removed after apply completes.
+
 ### Why strict FormID-only matching fails
 
 When a translation mod is based on an older version of the original mod,

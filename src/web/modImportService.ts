@@ -58,6 +58,7 @@ export interface ModImportJob {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;    // 0 | 1
+  discard_after_apply: boolean;
   game: GameType;          // fo4 | sse
   esp_path: string | null;
   created_at: string;
@@ -87,7 +88,12 @@ export type ProgressCb = (imported: number, total: number) => void;
 // ── Schema ──────────────────────────────────────────────────────────────────
 
 export const ensureModImportSchema = async (_db: Tx) => {
-  // Schema is now managed by sql/schema.sql — no-op
+  // Keep a lightweight runtime migration for existing dev DBs that predate
+  // the `discard_after_apply` flag.
+  await _db.query(
+    `ALTER TABLE mod_imports
+       ADD COLUMN IF NOT EXISTS discard_after_apply BOOLEAN NOT NULL DEFAULT FALSE`,
+  );
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
@@ -113,10 +119,21 @@ export const getModImportJob = async (db: Tx, id: number): Promise<ModImportJob 
  *
  * These values influence locale selection and later translation defaults.
  */
-export const updateModJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
+export const updateModJobLanguages = async (
+  db: Tx,
+  id: number,
+  srcLang: string,
+  tgtLang: string,
+  discardAfterApply = false,
+) => {
   await db.query(
-    `UPDATE mod_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
-    [srcLang, tgtLang, id],
+    `UPDATE mod_imports
+     SET src_lang = $1,
+         tgt_lang = $2,
+         discard_after_apply = $3,
+         updated_at = NOW()
+     WHERE id = $4`,
+    [srcLang, tgtLang, discardAfterApply, id],
   );
 }
 
