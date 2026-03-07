@@ -195,7 +195,7 @@ const tryMatch = (cr: CompiledRule, text: string): string | null => {
   let result = cr.rule.replacement;
   for (let i = 0; i < cr.vars.length; i++) {
     const tag = `%${cr.vars[i]}%`;
-    result = result.split(tag).join(m[i + 1]);
+    result = result.replaceAll(tag, m[i + 1]);
   }
   return result;
 };
