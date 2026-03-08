@@ -152,8 +152,8 @@ In the current web importer, the workflow is:
 4. **Handle localized and non-localized plugins differently.**
    For a localized plugin, the importer looks for matching `.strings`, `.dlstrings`, and `.ilstrings` data in a sibling BA2 or loose `Strings/` directory. For a non-localized plugin, it imports raw text directly from the plugin and uses current/default language settings.
 
-5. **Store records and strings in the database.**
-   The importer writes mod rows, record rows, and source-string rows. Each string is associated with the mod, record signature, path, editor ID when available, and normalized text used by later search and matching features.
+5. **Store records and strings in the database when a real mod import actually starts.**
+   The importer creates the `mods` row lazily at import time, not during upload. This avoids polluting the database with placeholder mods for files that are only being previewed or used as temporary translation sources. Once the import starts, each string is associated with the mod, record signature, path, editor ID when available, and normalized text used by later search and matching features.
 
 6. **Optionally ingest BA2-derived text.**
    After the main plugin pass, the importer scans BA2 files or loose assets for:
@@ -213,8 +213,7 @@ If you upload the exact same file again, the backend reuses the existing import 
 
 ## Applying an Imported Translation Mod
 
-This section describes the exact backend matching logic used by
-`POST /api/mods/:id/apply-imported`.
+This section describes the exact backend matching logic used by imported-translation apply flows.
 
 The goal is to take raw strings from an imported translation mod (for example,
 RU strings) and apply them as translations to a target base mod. This is useful
@@ -226,8 +225,10 @@ translation table of another mod.
 - In **Apply to existing**, UI asks for the translation mod language and base mod only.
 - The target language for write-back is inferred automatically from the imported
   translation language (no separate target-language selector).
-- If the file is imported specifically for apply-to-existing, that imported mod
-  is treated as temporary and removed after apply completes.
+- In the normal temporary apply flow, the backend reads strings directly from the
+  import job on disk and does **not** create a temporary standalone mod row in `mods`.
+- The uploaded file stays on disk after apply so it can be reused or inspected later.
+- The system does not automatically delete related import artifacts from the database after apply.
 
 ### Why strict FormID-only matching fails
 

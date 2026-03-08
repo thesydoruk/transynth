@@ -188,7 +188,6 @@ CREATE TABLE IF NOT EXISTS mod_imports (
   src_lang TEXT NOT NULL DEFAULT 'en',
   tgt_lang TEXT NOT NULL DEFAULT 'uk',
   is_localized INTEGER NOT NULL DEFAULT 0,
-  discard_after_apply BOOLEAN NOT NULL DEFAULT FALSE,
   game TEXT NOT NULL DEFAULT 'fo4',  -- fo4 | fo76 | fo3 | fnv | sse | sle
   esp_path TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -198,7 +197,6 @@ CREATE TABLE IF NOT EXISTS mod_imports (
 
 -- Migration: add game column to mod_imports if it does not yet exist.
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4';
-ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS discard_after_apply BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);

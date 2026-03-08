@@ -316,37 +316,32 @@ export const ImportsPage = () => {
           gameId={gameId}
           onClose={() => setModPreviewId(null)}
           onConfirm={async (payload) => {
-            if (modPreviewJob.status === 'completed') {
-              await api.modImport.restart(modPreviewJob.id);
-            }
-
             await api.modImport.updateLanguages(
               modPreviewJob.id,
               payload.importLang,
               payload.importLang,
-              payload.applyEnabled,
             );
             refreshAll();
             setModPreviewId(null);
 
-            const importOk = await doStart('mod', modPreviewJob.id);
-            if (!importOk || !payload.applyEnabled || payload.applyToModId == null) {
+            if (payload.applyEnabled && payload.applyToModId != null) {
+              await api.modImport.applyToMod(
+                modPreviewJob.id,
+                payload.applyToModId,
+                payload.importLang,
+              );
+              refreshAll();
               return;
             }
 
-            // Resolve the newly imported mod_id and apply imported strings to base mod.
-            const jobs = await api.modImport.list();
-            const importedJob = jobs.find((j) => j.id === modPreviewJob.id);
-            if (!importedJob?.mod_id) {
-              throw new Error('Imported mod ID is unavailable after import completion');
+            if (modPreviewJob.status === 'completed') {
+              await api.modImport.restart(modPreviewJob.id);
             }
 
-            await api.mods.applyImported(
-              payload.applyToModId,
-              importedJob.mod_id,
-              payload.importLang,
-            );
-            refreshAll();
+            const importOk = await doStart('mod', modPreviewJob.id);
+            if (!importOk) {
+              return;
+            }
           }}
         />
       )}

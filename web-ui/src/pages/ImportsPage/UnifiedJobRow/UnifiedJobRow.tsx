@@ -36,7 +36,7 @@ export const UnifiedJobRow = ({ kind, job, live, isRunning, onStart, onPause, on
       <div className={parentS.rowRight}>
         {job.status === 'completed' ? (
           <span className={s.badgeCompleted}>{t('importStatus.completed')}</span>
-        ) : isRunning ? (
+        ) : (isRunning || job.status === 'in_progress') ? (
           <div className={parentS.progressWrap}>
             <div className={parentS.progressTrack}><div className={parentS.progressFill} style={{ width: `${pct}%` }} /></div>
             <span className={parentS.progressLabel}>{pct}%</span>

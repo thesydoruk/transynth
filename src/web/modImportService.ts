@@ -58,7 +58,6 @@ export interface ModImportJob {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;    // 0 | 1
-  discard_after_apply: boolean;
   game: GameType;          // fo4 | sse
   esp_path: string | null;
   created_at: string;
@@ -78,6 +77,22 @@ export interface ModPreviewRow {
 }
 
 /**
+ * Canonical imported-row shape consumed by translation-apply matching.
+ *
+ * These rows mirror the subset of `records + strings` fields that the
+ * matcher needs, but they are produced directly from an import job on disk
+ * so the translation mod does not have to be ingested into the database.
+ */
+export interface ModImportApplyRow {
+  formid_hex: string;
+  path: string;
+  path_simplified: string;
+  signature: string | null;
+  edid: string | null;
+  text_raw: string;
+}
+
+/**
  * Progress callback invoked during long-running imports.
  *
  * @param imported - Number of records imported so far.
@@ -88,12 +103,8 @@ export type ProgressCb = (imported: number, total: number) => void;
 // ── Schema ──────────────────────────────────────────────────────────────────
 
 export const ensureModImportSchema = async (_db: Tx) => {
-  // Keep a lightweight runtime migration for existing dev DBs that predate
-  // the `discard_after_apply` flag.
-  await _db.query(
-    `ALTER TABLE mod_imports
-       ADD COLUMN IF NOT EXISTS discard_after_apply BOOLEAN NOT NULL DEFAULT FALSE`,
-  );
+  // No runtime schema patch is needed at the moment.
+  return;
 }
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
@@ -124,16 +135,14 @@ export const updateModJobLanguages = async (
   id: number,
   srcLang: string,
   tgtLang: string,
-  discardAfterApply = false,
 ) => {
   await db.query(
     `UPDATE mod_imports
      SET src_lang = $1,
          tgt_lang = $2,
-         discard_after_apply = $3,
          updated_at = NOW()
-     WHERE id = $4`,
-    [srcLang, tgtLang, discardAfterApply, id],
+     WHERE id = $3`,
+    [srcLang, tgtLang, id],
   );
 }
 
@@ -158,6 +167,123 @@ export const restartModImportJob = async (db: Tx, id: number) => {
  */
 export const deleteModImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM mod_imports WHERE id = $1', [id]);
+}
+
+/**
+ * Derive a stable mod display name from the uploaded file name.
+ *
+ * The same rule is used for direct plugin uploads and archive uploads so the
+ * later DB ingestion step produces the same mod name as the previous eager
+ * registration flow.
+ */
+const deriveModNameFromFileName = (fileName: string): string => {
+  return fileName.replace(/\.(esp|esm|esl|zip|7z|rar)$/i, '');
+}
+
+/**
+ * Resolve common UI language codes to Bethesda locale file names.
+ *
+ * The importer UI uses short codes such as `ru`, while localized plugin and
+ * MCM assets on disk usually use names such as `russian`. This helper accepts
+ * either form and returns the actual locale key present in the import job.
+ */
+const resolveAvailableLocale = <T>(
+  locales: Map<string, T>,
+  requestedLang: string,
+): { resolvedKey: string; value: T } | null => {
+  const requested = requestedLang.trim().toLowerCase();
+  if (!requested) return null;
+
+  const aliases = new Map<string, string[]>([
+    ['en', ['en', 'english']],
+    ['ru', ['ru', 'russian']],
+    ['uk', ['uk', 'ukrainian']],
+    ['de', ['de', 'german']],
+    ['fr', ['fr', 'french']],
+    ['es', ['es', 'spanish']],
+    ['it', ['it', 'italian']],
+    ['pt', ['pt', 'portuguese']],
+    ['pl', ['pl', 'polish']],
+    ['ja', ['ja', 'japanese']],
+    ['zh', ['zh', 'chinese']],
+    ['ko', ['ko', 'korean']],
+  ]);
+
+  const candidates = aliases.get(requested) ?? [requested];
+  for (const candidate of candidates) {
+    const value = locales.get(candidate);
+    if (value !== undefined) {
+      return { resolvedKey: candidate, value };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Convert generic CSV-style rows into the canonical imported-row shape used by
+ * the translation-apply matcher.
+ */
+const toApplyRows = (rows: CsvRow[]): ModImportApplyRow[] => rows.map((row) => ({
+  formid_hex: row.FormID ?? '',
+  path: row.Path,
+  path_simplified: row.PathSimplified ?? row.Path.replace(/\[\d+\]/g, ''),
+  signature: row.Signature ?? null,
+  edid: row.EDID ?? null,
+  text_raw: row.Source,
+}));
+
+/**
+ * Extract translatable rows directly from an import job on disk.
+ *
+ * This is the non-ingesting counterpart to {@link runModImport}. It reads the
+ * plugin, optional STRINGS locales, optional MCM translations, and optional
+ * PEX literals, then returns the same logical row data that would otherwise be
+ * loaded from `records + strings` after a full import.
+ *
+ * @param job - Existing import job.
+ * @param importedLang - Language selected by the user for the translation mod.
+ */
+export const extractModImportApplyRows = (
+  job: ModImportJob,
+  importedLang: string,
+): ModImportApplyRow[] => {
+  const espPath = job.esp_path;
+  if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found on disk');
+
+  const game: GameType = (job.game as GameType) ?? 'fo4';
+  const esp = new EspReader(espPath, game);
+  const espRows = esp.extractStrings();
+  const collected: CsvRow[] = [];
+
+  if (esp.info.isLocalized) {
+    const localesMap = loadLocalesForGame(espPath, game, []);
+    const resolved = resolveAvailableLocale(localesMap, importedLang);
+    if (!resolved) {
+      const available = [...localesMap.keys()].sort().join(', ');
+      throw new Error(
+        available
+          ? `Localized import does not contain locale "${importedLang}". Available locales: ${available}`
+          : 'Localized import does not contain any STRINGS locales',
+      );
+    }
+    collected.push(...buildCsvRows(espRows, resolved.value));
+  } else {
+    collected.push(...buildCsvRows(espRows, null));
+  }
+
+  const mcmLocales = collectMcmLocales(espPath);
+  const resolvedMcm = resolveAvailableLocale(mcmLocales, importedLang);
+  if (resolvedMcm) {
+    collected.push(...buildMcmCsvRows(resolvedMcm.value));
+  }
+
+  const pexMap = collectPexStrings(espPath);
+  if (pexMap.size > 0) {
+    collected.push(...buildPexCsvRows(pexMap));
+  }
+
+  return toApplyRows(collected);
 }
 
 // ── Archive extraction ──────────────────────────────────────────────────────
@@ -750,15 +876,12 @@ export const registerPluginFile = async (
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
-  const modName = fileName.replace(/\.(esp|esm|esl)$/i, '');
-  const modId = await upsertMod(db, modName, pluginPath, fileHash, game);
-
   const totalRecords = espRows.length;
 
   await db.query(
     `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
      VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
-    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
+    [fileName, fileHash, null, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
   );
 
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
@@ -801,15 +924,12 @@ export const registerArchiveFile = async (
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
-  const modName = fileName.replace(/\.(zip|7z|rar)$/i, '');
-  const modId = await upsertMod(db, modName, pluginPath, fileHash, game);
-
   const totalRecords = espRows.length;
 
   await db.query(
     `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
      VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
-    [fileName, fileHash, modId, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
+    [fileName, fileHash, null, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
   );
 
   const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
@@ -962,6 +1082,12 @@ export const runModImport = async (
 
   try {
     const game: GameType = (job.game as GameType) ?? 'fo4';
+    let importModId = job.mod_id;
+    if (importModId == null) {
+      const modName = deriveModNameFromFileName(job.file_name);
+      importModId = await upsertMod(db, modName, espPath, job.file_hash, game);
+      await db.query('UPDATE mod_imports SET mod_id = $1, updated_at = NOW() WHERE id = $2', [importModId, job.id]);
+    }
     const esp = new EspReader(espPath, game);
     const espRows = esp.extractStrings();
 
@@ -1004,7 +1130,7 @@ export const runModImport = async (
 
           const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
           const hashNorm = sha1Hex(normalizeForHash(r.Source));
-          const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+          const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
           await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
 
           imported++;
@@ -1045,7 +1171,7 @@ export const runModImport = async (
         const r = csvRows[i];
         const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
         const hashNorm = sha1Hex(normalizeForHash(r.Source));
-        const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
+        const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
         await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
 
         imported++;
@@ -1075,7 +1201,7 @@ export const runModImport = async (
           if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
           for (const r of mcmRows) {
             const hashNorm = sha1Hex(normalizeForHash(r.Source));
-            const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
+            const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
             await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mcm', undefined, normalizeNoPunct(r.Source));
             imported++;
             batchCount++;
@@ -1107,7 +1233,7 @@ export const runModImport = async (
           if (!inTx) { await db.query('BEGIN'); inTx = true; batchCount = 0; }
           for (const r of pexRows) {
             const hashNorm = sha1Hex(normalizeForHash(r.Source));
-            const recordId = await upsertRecord(db, job.mod_id!, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
+            const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, r.PathSimplified ?? r.Path, null, hashNorm, '');
             await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'pex', undefined, normalizeNoPunct(r.Source));
             imported++;
             batchCount++;

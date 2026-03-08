@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import {
@@ -151,42 +149,6 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
           targetLang,
           srcLang,
         );
-
-        // Translation-import jobs are temporary by design: after applying strings to
-        // the base mod, remove the imported mod and its job/artifacts.
-        const { rows: cleanupRows } = await db.query<{
-          id: number;
-          file_name: string;
-          esp_path: string | null;
-        }>(
-          `SELECT id, file_name, esp_path
-             FROM mod_imports
-            WHERE mod_id = $1 AND discard_after_apply = TRUE
-            ORDER BY created_at DESC
-            LIMIT 1`,
-          [fromModId],
-        );
-
-        const cleanupJob = cleanupRows[0];
-        if (cleanupJob) {
-          await db.query('DELETE FROM mods WHERE id = $1', [fromModId]);
-          await db.query('DELETE FROM mod_imports WHERE id = $1', [cleanupJob.id]);
-
-          const modUploadDir = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
-          const uploadedFilePath = path.join(modUploadDir, path.basename(cleanupJob.file_name));
-          try { fs.unlinkSync(uploadedFilePath); } catch { /* ignore */ }
-
-          try {
-            const parentDir = path.dirname(cleanupJob.esp_path ?? '');
-            if (parentDir.includes('_extracted_') && fs.existsSync(parentDir)) {
-              fs.rmSync(parentDir, { recursive: true, force: true });
-            }
-          } catch { /* ignore */ }
-
-          log.info(
-            `Imported apply cleanup: removed temporary mod=${fromModId}, job=${cleanupJob.id}, file="${cleanupJob.file_name}"`,
-          );
-        }
 
         return reply.send(result);
       } catch (err) {

@@ -1052,6 +1052,68 @@ export const applyImportedModStringsAsTranslations = async (
   targetLang = importedLang,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
+  const { rows: importedRows } = await db.query(
+    `SELECT r.formid_hex,
+            r.path,
+            r.path_simplified,
+            r.signature,
+            r.edid,
+            s.text_raw
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE r.mod_id = $1 AND s.lang = $2`,
+    [fromImportedModId, importedLang],
+  );
+
+  if (importedRows.length === 0) {
+    throw new Error(`Imported mod has no strings for lang "${importedLang}"`);
+  }
+
+  return applyImportedRowsAsTranslations(
+    db,
+    targetModId,
+    importedRows as Array<{
+      formid_hex: string;
+      path: string;
+      path_simplified: string | null;
+      signature: string | null;
+      edid: string | null;
+      text_raw: string;
+    }>,
+    importedLang,
+    targetLang,
+    srcLang,
+    `imported_mod_${fromImportedModId}_${importedLang}`,
+    `Imported apply: targetMod=${targetModId}, importedMod=${fromImportedModId}`,
+  );
+};
+
+/**
+ * Apply imported translation rows to a target mod without requiring the
+ * imported source to exist as a real mod in the database.
+ *
+ * This powers the direct "apply to existing mod" flow for temporary import
+ * jobs. The matching algorithm is the same as the DB-backed imported-mod
+ * variant; only the source of imported rows changes.
+ */
+export const applyImportedRowsAsTranslations = async (
+  db: Tx,
+  targetModId: number,
+  importedRows: Array<{
+    formid_hex: string;
+    path: string;
+    path_simplified: string | null;
+    signature: string | null;
+    edid: string | null;
+    text_raw: string;
+  }>,
+  importedLang: string,
+  targetLang = importedLang,
+  srcLang = CONFIG.defaultSrcLang,
+  provenance = `imported_rows_${importedLang}`,
+  logLabel = `Imported apply: targetMod=${targetModId}`,
+  onProgress?: (processed: number, total: number) => void | Promise<void>,
+): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
   /**
    * Normalize record paths so equivalent notations compare reliably.
    * Example: "INFO\\FULL" and "info/full" become the same lookup key.
@@ -1123,28 +1185,6 @@ export const applyImportedModStringsAsTranslations = async (
     throw new Error(`Target mod has no source strings for lang "${srcLang}"`);
   }
 
-  // Step 2: Load imported mod strings in the selected import language.
-  const { rows: importedRows } = await db.query(
-    `SELECT r.formid_hex,
-            r.path,
-            r.path_simplified,
-            r.signature,
-            r.edid,
-            s.text_raw,
-            ROW_NUMBER() OVER (
-              PARTITION BY r.formid_hex, r.path
-              ORDER BY s.id
-            )::int AS identity_rank
-     FROM strings s
-     JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
-    [fromImportedModId, importedLang],
-  );
-
-  if (importedRows.length === 0) {
-    throw new Error(`Imported mod has no strings for lang "${importedLang}"`);
-  }
-
   // Build lookup maps for an EET4-style cascade: strict identity first,
   // then progressively looser keys (EDID and fallback identity variants).
   const byIdentity = new Map<string, string | null>();
@@ -1165,7 +1205,6 @@ export const applyImportedModStringsAsTranslations = async (
     signature: string | null;
     edid: string | null;
     text_raw: string;
-    identity_rank: number;
   }>) {
     const translated = (row.text_raw ?? '').trim();
     if (!translated) continue;
@@ -1215,6 +1254,7 @@ export const applyImportedModStringsAsTranslations = async (
   let skipped = 0;
   let unmatched = 0;
   let empty = 0;
+  let processed = 0;
   const matchCounters: Record<string, number> = {
     identity: 0,
     identity_ranked: 0,
@@ -1308,18 +1348,30 @@ export const applyImportedModStringsAsTranslations = async (
     }>) {
       if (alreadyTranslated.has(row.string_id)) {
         skipped += 1;
+        processed += 1;
+        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
+          await onProgress(processed, targetRows.length);
+        }
         continue;
       }
 
       const candidate = resolveImportedCandidate(row);
       if (candidate == null) {
         unmatched += 1;
+        processed += 1;
+        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
+          await onProgress(processed, targetRows.length);
+        }
         continue;
       }
 
       const text = candidate.text.trim();
       if (!text) {
         empty += 1;
+        processed += 1;
+        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
+          await onProgress(processed, targetRows.length);
+        }
         continue;
       }
 
@@ -1331,15 +1383,22 @@ export const applyImportedModStringsAsTranslations = async (
         text,
         'draft',
         targetLang,
-        `imported_mod_${fromImportedModId}_${importedLang}`,
+        provenance,
       );
       applied += 1;
+      processed += 1;
+      if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
+        await onProgress(processed, targetRows.length);
+      }
     }
   });
 
+  if (onProgress && processed !== targetRows.length) {
+    await onProgress(targetRows.length, targetRows.length);
+  }
+
   log.info(
-    `Imported apply: targetMod=${targetModId}, importedMod=${fromImportedModId}, `
-    + `srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, `
+    `${logLabel}, srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, `
     + `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}, `
     + `methods=${JSON.stringify(matchCounters)}`,
   );
