@@ -301,7 +301,8 @@
     "noFiles": "No files uploaded yet. Upload EET, CSV, or plugin files to get started.",
     "gameLabel": "Game",
     "startTooltip": "Start import",
-    "reimportTooltip": "Re-import"
+    "reimportTooltip": "Re-import",
+    "confirmDeleteMod": "Delete mod import '{{name}}'? This will also remove the imported mod data and extracted files if they exist."
   },
   "eetImport": {
     "title": "EET Imports",

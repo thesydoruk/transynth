@@ -122,8 +122,10 @@ What **Cancel** means in the current implementation:
 
 What **Delete** means:
 
-- It removes the import job row and the uploaded source file.
-- It does **not** remove strings or translations that were already imported into the database.
+- For `MOD` jobs, the UI asks for explicit confirmation before deletion.
+- It removes the import job row and uploaded source file.
+- For `MOD` jobs that were fully imported, it also removes the linked mod row from the database (records/strings/translations deleted via cascade).
+- If the mod came from an extracted archive, the unpacked `_extracted_*` folder is also deleted when present.
 
 This means pause and cancel are operational controls, not transactional rollback controls.
 

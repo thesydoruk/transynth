@@ -359,6 +359,12 @@ export const ImportsPage = () => {
                   else api.modImport.cancel(u.job.id);
                 }}
                 onDelete={() => {
+                  if (u.kind === 'mod') {
+                    const confirmed = window.confirm(
+                      t('imports.confirmDeleteMod', { name: u.job.file_name }),
+                    );
+                    if (!confirmed) return;
+                  }
                   const p = u.kind === 'eet' ? api.eet.remove(u.job.id)
                     : u.kind === 'csv' ? api.csv.remove(u.job.id)
                     : api.modImport.remove(u.job.id);

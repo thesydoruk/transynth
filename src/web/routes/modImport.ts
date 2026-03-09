@@ -47,6 +47,24 @@ const extractDir = (jobHash: string) => {
   return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
 }
 
+/** Returns true when a path is inside the mod upload root directory. */
+const isInsideModUploadDir = (absPath: string): boolean => {
+  const rel = path.relative(MOD_UPLOAD_DIR, absPath);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+/**
+ * Resolves extraction parent directory for a plugin path when it follows
+ * the uploads/mod/_extracted_* layout.
+ */
+const resolveExtractedParentDir = (pluginPath: string | null | undefined): string | null => {
+  if (!pluginPath) return null;
+  const parentDir = path.dirname(pluginPath);
+  if (!isInsideModUploadDir(parentDir)) return null;
+  if (!path.basename(parentDir).startsWith('_extracted_')) return null;
+  return parentDir;
+}
+
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
   ensureUploadDir();
@@ -341,15 +359,41 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
 
-    const filePath = modFilePath(job.file_name);
-    try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
-    // Also clean up extraction directory if it exists
-    try {
-      const parentDir = path.dirname(job.esp_path ?? '');
-      if (parentDir.includes('_extracted_') && fs.existsSync(parentDir)) {
-        fs.rmSync(parentDir, { recursive: true, force: true });
-      }
-    } catch { /* ignore */ }
+    let modAbsPath: string | null = null;
+    if (job.mod_id != null) {
+      const { rows } = await db.query<{ abs_path: string | null }>(
+        `SELECT abs_path FROM mods WHERE id = $1`,
+        [job.mod_id],
+      );
+      modAbsPath = rows[0]?.abs_path ?? null;
+    }
+
+    // Remove all known plugin/archive files connected to the import.
+    const filePaths = new Set<string>();
+    filePaths.add(modFilePath(job.file_name));
+    if (job.esp_path) filePaths.add(job.esp_path);
+    if (modAbsPath) filePaths.add(modAbsPath);
+
+    for (const filePath of filePaths) {
+      try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
+    }
+
+    // Remove extracted archive folder when this import was unpacked.
+    const extractedDirs = new Set<string>();
+    const fromJobEsp = resolveExtractedParentDir(job.esp_path);
+    const fromModAbs = resolveExtractedParentDir(modAbsPath);
+    if (fromJobEsp) extractedDirs.add(fromJobEsp);
+    if (fromModAbs) extractedDirs.add(fromModAbs);
+
+    for (const dirPath of extractedDirs) {
+      try { fs.rmSync(dirPath, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
+
+    // If this import created a mod row, remove it too (records/strings cascade).
+    if (job.mod_id != null) {
+      await db.query(`DELETE FROM mods WHERE id = $1`, [job.mod_id]);
+    }
+
     await deleteModImportJob(db, jobId);
 
     return { ok: true };
