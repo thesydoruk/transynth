@@ -8,6 +8,7 @@
     "apply": "Apply",
     "upload": "Upload",
     "uploading": "Uploading...",
+    "moreActions": "More actions",
     "close": "Close",
     "search": "Search…",
     "prev": "← Prev",
@@ -102,7 +103,6 @@
     "allStatuses": "All statuses",
     "reviewMode": "Review mode",
     "reviewModeCount": "Review mode ({{count}})",
-    "searchPlaceholder": "FormID / EDID / text…",
     "applyTm": "Apply TM",
     "applyingTm": "TM…",
     "tmApplied": "TM ✓ {{count}}",
@@ -179,9 +179,7 @@
     "shortcutPageNav": "Next / prev page",
     "shortcutEscape": "Close / cancel",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Open Instance Naming Rules editor",
-    "updateMod": "⬆ Update",
-    "updateModTitle": "Upload a new version of this mod and migrate translations"
+    "innrEditorTitle": "Open Instance Naming Rules editor"
   },
   "ctx": {
     "approve": "Approve",

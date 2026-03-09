@@ -55,6 +55,13 @@ export interface UnifiedJobRowProps {
   job: EetImportJob | CsvImportJob | ModImportJob;
   live?: LiveProgress;
   isRunning: boolean;
+  exportActions?: Array<{
+    key: 'strings' | 'esp' | 'ba2' | 'zip';
+    icon: string;
+    title: string;
+    disabled?: boolean;
+    onClick: () => void;
+  }>;
   onStart: () => void;
   onPause: () => void;
   onCancel: () => void;

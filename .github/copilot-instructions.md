@@ -49,6 +49,7 @@
 - Use `src/logger.ts` (`log.info/warn/error`) instead of `console.log`.
 - Put shared utilities in `src/utils/` instead of duplicating code across CLI files.
 - **Styling:** Use SCSS Modules (`*.module.scss`) for component styles in `web-ui/`. No inline styles or global CSS unless unavoidable.
+- **Theme colors only:** All colors in `web-ui/` styles must come from theme tokens defined in `web-ui/src/index.scss` (e.g. `var(--...)`). Do not use raw color literals (`#...`, `rgb(...)`, `rgba(...)`, `hsl(...)`, `color-mix(...)`) directly in component/module styles.
 
 ## User-facing wiki (`doc/`)
 

@@ -59,6 +59,22 @@ const kindFromExt = (name: string): 'eet' | 'csv' | 'mod' | null => {
 const isSupportedGameId = (value: string): value is SupportedGameId =>
   ['fo4', 'fo76', 'fo3', 'fnv', 'sse', 'sle'].includes(value);
 
+/** Downloads a base64 payload produced by exportStrings/exportEsp/exportBa2 APIs. */
+const downloadBase64File = (fileName: string, contentBase64: string) => {
+  const binary = atob(contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 /** Unified imports page — one upload bar, one combined job list. */
@@ -107,6 +123,7 @@ export const ImportsPage = () => {
   /* ── Reimport detection — shown after a mod import completes ──────────── */
   /** State for the reimport modal: newModId + list of previous versions */
   const [reimport, setReimport] = useState<{ newModId: number; prevVersions: PreviousVersionRow[] } | null>(null);
+  const [exportBusy, setExportBusy] = useState<string | null>(null);
 
   /** Invalidate all three import lists. */
   const refreshAll = useCallback(() => {
@@ -215,6 +232,40 @@ export const ImportsPage = () => {
 
   const pendingCount = allJobs.filter(u => ['pending', 'paused', 'failed'].includes(u.job.status)).length;
 
+  const runModExport = useCallback(
+    async (
+      modJob: ModImportJob,
+      type: 'strings' | 'esp' | 'ba2' | 'zip',
+    ) => {
+      if (!modJob.mod_id) return;
+      const busyKey = `${modJob.id}:${type}`;
+      setExportBusy(busyKey);
+      try {
+        if (type === 'strings') {
+          const result = await api.mods.exportStrings(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          return;
+        }
+        if (type === 'esp') {
+          const result = await api.mods.exportEsp(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          return;
+        }
+        if (type === 'ba2') {
+          const result = await api.mods.exportBa2(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          return;
+        }
+        await api.mods.exportProject(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+      } catch (err) {
+        window.alert(String(err));
+      } finally {
+        setExportBusy(null);
+      }
+    },
+    [],
+  );
+
   /* ── Resolve preview jobs from current data ───────────────────────────── */
   const eetPreviewJob = eetPreviewId != null ? (eetJobs ?? []).find(j => j.id === eetPreviewId) : null;
   const csvPreviewJob = csvPreviewId != null ? (csvJobs ?? []).find(j => j.id === csvPreviewId) : null;
@@ -250,6 +301,39 @@ export const ImportsPage = () => {
             const key = `${u.kind}:${u.job.id}`;
             const live = liveProgress[key];
             const isRunning = u.job.running || !!live;
+            const modJob = u.kind === 'mod' ? (u.job as ModImportJob) : null;
+            const canExport = !!modJob?.mod_id && modJob.status === 'completed';
+            const isModBusy = !!modJob && exportBusy != null && exportBusy.startsWith(`${modJob.id}:`);
+            const exportActions = canExport ? [
+              {
+                key: 'strings' as const,
+                icon: '🧾',
+                title: t('modEditor.exportStringsTitle'),
+                onClick: () => { void runModExport(modJob!, 'strings'); },
+                disabled: isModBusy,
+              },
+              {
+                key: 'esp' as const,
+                icon: '🧩',
+                title: t('modEditor.exportEspTitle'),
+                onClick: () => { void runModExport(modJob!, 'esp'); },
+                disabled: isModBusy,
+              },
+              {
+                key: 'ba2' as const,
+                icon: '📦',
+                title: t('modEditor.exportBa2Title'),
+                onClick: () => { void runModExport(modJob!, 'ba2'); },
+                disabled: isModBusy,
+              },
+              {
+                key: 'zip' as const,
+                icon: '⬇',
+                title: t('modEditor.exportZipTitle'),
+                onClick: () => { void runModExport(modJob!, 'zip'); },
+                disabled: isModBusy,
+              },
+            ] : [];
 
             return (
               <UnifiedJobRow
@@ -258,6 +342,7 @@ export const ImportsPage = () => {
                 job={u.job}
                 live={live}
                 isRunning={isRunning}
+                exportActions={exportActions}
                 onStart={() => {
                   if (u.kind === 'eet') setEetPreviewId(u.job.id);
                   else if (u.kind === 'csv') setCsvPreviewId(u.job.id);

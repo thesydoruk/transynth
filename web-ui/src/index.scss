@@ -128,6 +128,8 @@
   --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.6);
   --shadow-2xl: 0 12px 48px rgba(0, 0, 0, 0.7);
+  --menu-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  --menu-item-hover-bg: rgba(77, 143, 214, 0.12);
 
   /* Semantic accent variants */
   --success-strong: #4ade80;
@@ -266,6 +268,8 @@
   --shadow-lg: 0 4px 24px rgba(32, 24, 12, 0.2);
   --shadow-xl: 0 8px 32px rgba(32, 24, 12, 0.24);
   --shadow-2xl: 0 12px 48px rgba(32, 24, 12, 0.28);
+  --menu-shadow: 0 8px 22px rgba(32, 24, 12, 0.16);
+  --menu-item-hover-bg: rgba(45, 111, 179, 0.12);
 
   --success-strong: #2d6b3b;
   --success-soft-bg: rgba(45, 107, 59, 0.12);

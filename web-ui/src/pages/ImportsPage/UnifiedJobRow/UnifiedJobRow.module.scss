@@ -28,6 +28,14 @@
   padding: 4px 8px;
   font-size: 14px;
   line-height: 1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary);
+  }
 }
 
 /** Cancel action — red danger colour variant. */
@@ -40,6 +48,68 @@
 .actionBtnDelete {
   composes: actionBtn;
   color: var(--text-dim);
+}
+
+/* ── Overflow menu ──────────────────────────────────────────────────────── */
+
+.menuWrap {
+  position: relative;
+}
+
+.menuList {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: var(--menu-shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+}
+
+.menuItem {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 7px 8px;
+  line-height: 1.2;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--menu-item-hover-bg);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.menuIcon {
+  display: inline-flex;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.menuItemDanger {
+  color: var(--danger);
 }
 
 /* ── Badge variant ──────────────────────────────────────────────────────── */

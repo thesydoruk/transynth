@@ -8,6 +8,7 @@
     "apply": "Застосувати",
     "upload": "Завантажити",
     "uploading": "Завантаження...",
+    "moreActions": "Додаткові дії",
     "close": "Закрити",
     "search": "Пошук…",
     "prev": "← Назад",
@@ -102,7 +103,6 @@
     "allStatuses": "Усі статуси",
     "reviewMode": "Режим перевірки",
     "reviewModeCount": "Режим перевірки ({{count}})",
-    "searchPlaceholder": "FormID / EDID / текст…",
     "applyTm": "Застосувати TM",
     "applyingTm": "TM…",
     "tmApplied": "TM ✓ {{count}}",
@@ -179,9 +179,7 @@
     "shortcutPageNav": "Наступна / попередня сторінка",
     "shortcutEscape": "Закрити / скасувати",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Відкрити редактор правил іменування INNR",
-    "updateMod": "⬆ Оновити",
-    "updateModTitle": "Завантажити нову версію мода та перенести переклади"
+    "innrEditorTitle": "Відкрити редактор правил іменування INNR"
   },
   "ctx": {
     "approve": "Підтвердити",

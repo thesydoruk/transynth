@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
@@ -18,21 +18,6 @@ const PAGE_SIZE = 100;
 
 type TranslateProgress = { done: number; total: number };
 type BottomTab = 'suggestions' | 'qa' | 'history';
-
-const downloadBase64File = (fileName: string, contentBase64: string) => {
-  const binary = atob(contentBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const blob = new Blob([bytes], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
 // Row background by translation status.
 //
@@ -139,7 +124,6 @@ export const ModEditorPage = () => {
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState('all');
   const [signature, setSignature] = useState('');
-  const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
 
   // Per-column filters (filter row above the grid header)
@@ -183,11 +167,6 @@ export const ModEditorPage = () => {
   // Keyboard shortcuts help panel
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Hidden file input ref for "Update Mod" — uploads a new version of the current mod
-  const updateFileRef = useRef<HTMLInputElement>(null);
-  const [updating, setUpdating] = useState(false);
-  const navigate = useNavigate();
-
   // Re-render the table when theme tokens change so row text contrast is
   // recomputed immediately (no manual page refresh required).
   const [, setThemeRevision] = useState(0);
@@ -215,35 +194,6 @@ export const ModEditorPage = () => {
       window.removeEventListener('themechange', notifyThemeChanged);
     };
   }, []);
-
-  /**
-   * Handles "Update Mod": uploads the selected file as a new import job, starts
-   * it immediately (localized) or shows the preview modal, then navigates to the
-   * Diff page with the new and current mod IDs pre-filled.
-   */
-  const handleUpdateMod = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUpdating(true);
-    try {
-      const job = await api.modImport.upload(file);
-      if (!job) return;
-      // Start import immediately for localized mods; non-localized still need language selection
-      if (job.is_localized) {
-        const { promise } = api.modImport.startImport(job.id, () => {});
-        await promise;
-      }
-      // Fetch updated job to get the new mod_id
-      const jobs = await api.modImport.list();
-      const finished = jobs.find((j) => j.id === job.id);
-      if (finished?.mod_id) {
-        navigate(`/diff?newModId=${finished.mod_id}&oldModId=${modId}`);
-      }
-    } catch {/* ignore — user sees nothing happen */} finally {
-      setUpdating(false);
-      if (updateFileRef.current) updateFileRef.current.value = '';
-    }
-  };
 
   // Context menu state — position and the row it was triggered on
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
@@ -324,7 +274,7 @@ export const ModEditorPage = () => {
     setPage(1);
   }, [sortCol, sortDir]);
 
-  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, query, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
+  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
   const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
@@ -332,7 +282,7 @@ export const ModEditorPage = () => {
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
   const { data: strings, isLoading } = useQuery({
     queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, q: query || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -448,38 +398,6 @@ export const ModEditorPage = () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
-  });
-
-  const exportStrings = useMutation({
-    mutationFn: () => api.mods.exportStrings(modId, srcLang, targetLang),
-    onSuccess: (result) => {
-      for (const file of result.files) {
-        downloadBase64File(file.fileName, file.contentBase64);
-      }
-    },
-  });
-
-  const exportEsp = useMutation({
-    mutationFn: () => api.mods.exportEsp(modId, srcLang, targetLang),
-    onSuccess: (result) => {
-      for (const file of result.files) {
-        downloadBase64File(file.fileName, file.contentBase64);
-      }
-    },
-  });
-
-  const exportBa2 = useMutation({
-    mutationFn: () => api.mods.exportBa2(modId, srcLang, targetLang),
-    onSuccess: (result) => {
-      for (const file of result.files) {
-        downloadBase64File(file.fileName, file.contentBase64);
-      }
-    },
-  });
-
-  /** Downloads a full project ZIP (BA2 + patched ESP) as a single file */
-  const exportProject = useMutation({
-    mutationFn: () => api.mods.exportProject(modId, srcLang, targetLang),
   });
 
   const bulkReviewMutation = useMutation({
@@ -850,26 +768,11 @@ export const ModEditorPage = () => {
           {stats?.draft ? t('modEditor.reviewModeCount', { count: stats.draft }) : t('modEditor.reviewMode')}
         </button>
 
-        {/* Search */}
-        <input placeholder={t('modEditor.searchPlaceholder')} value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} className={styles.searchInput} />
-
         <div className={styles.sep} />
 
         {/* Actions */}
         <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} className={styles.btnSec} title={t('modEditor.autoFillTmTitle')}>
           {tmApply.isPending ? t('modEditor.applyingTm') : tmApply.isSuccess ? t('modEditor.tmApplied', { count: (tmApply.data as { applied: number }).applied }) : t('modEditor.applyTm')}
-        </button>
-        <button onClick={() => exportStrings.mutate()} disabled={exportStrings.isPending} className={styles.btnSec} title={t('modEditor.exportStringsTitle')}>
-          {exportStrings.isPending ? t('modEditor.exporting') : t('modEditor.exportStrings')}
-        </button>
-        <button onClick={() => exportEsp.mutate()} disabled={exportEsp.isPending} className={styles.btnSec} title={t('modEditor.exportEspTitle')}>
-          {exportEsp.isPending ? t('modEditor.exporting') : t('modEditor.exportEsp')}
-        </button>
-        <button onClick={() => exportBa2.mutate()} disabled={exportBa2.isPending} className={styles.btnSec} title={t('modEditor.exportBa2Title')}>
-          {exportBa2.isPending ? t('modEditor.exporting') : t('modEditor.exportBa2')}
-        </button>
-        <button onClick={() => exportProject.mutate()} disabled={exportProject.isPending} className={styles.btnPri} title={t('modEditor.exportZipTitle')}>
-          {exportProject.isPending ? t('modEditor.exporting') : t('modEditor.exportZip')}
         </button>
         <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
         {/* Show INNR editor button only when the mod contains INNR records */}
@@ -878,22 +781,6 @@ export const ModEditorPage = () => {
             {t('modEditor.innrEditor')}
           </Link>
         )}
-        {/* Update mod — upload a newer version of this mod and go to the Diff page */}
-        <input
-          ref={updateFileRef}
-          type="file"
-          accept=".esp,.esm,.esl,.zip,.7z,.rar"
-          style={{ display: 'none' }}
-          onChange={handleUpdateMod}
-        />
-        <button
-          onClick={() => updateFileRef.current?.click()}
-          disabled={updating}
-          className={styles.btnSec}
-          title={t('modEditor.updateModTitle')}
-        >
-          {updating ? t('modEditor.updating') : t('modEditor.updateMod')}
-        </button>
         <button onClick={() => setShowShortcuts((v) => !v)} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
         {selected.size > 0 && (
           <>
@@ -920,9 +807,6 @@ export const ModEditorPage = () => {
           </>
         )}
         {translateError && <span className={styles.errorBadge}>{translateError}</span>}
-        {exportStrings.isError && <span className={styles.errorBadge}>{String(exportStrings.error)}</span>}
-        {exportEsp.isError && <span className={styles.errorBadge}>{String(exportEsp.error)}</span>}
-        {exportBa2.isError && <span className={styles.errorBadge}>{String(exportBa2.error)}</span>}
 
         {/* Progress bar */}
         {stats && (
