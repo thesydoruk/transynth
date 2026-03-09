@@ -49,6 +49,7 @@ const downloadBase64File = (fileName: string, contentBase64: string) => {
 //   _90_Devalide           -> rejected
 //   _99_Valide             -> reviewed/human
 const rowBg = (status: string | null): string => {
+  if (status === '__active') return 'var(--bg-row-hover)';         // selected row highlight
   if (!status) return 'transparent';                              // untranslated (neutral)
   if (status === 'reviewed') return 'var(--status-row-reviewed)'; // EET4 _99_Valide
   if (status === 'human')    return 'var(--status-row-human)';    // EET4 _99_Valide (human-confirmed)
