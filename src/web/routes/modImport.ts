@@ -54,15 +54,26 @@ const isInsideModUploadDir = (absPath: string): boolean => {
 }
 
 /**
- * Resolves extraction parent directory for a plugin path when it follows
- * the uploads/mod/_extracted_* layout.
+ * Resolves extraction root directory for a plugin path when it follows
+ * the uploads/mod/_extracted_* directory layout.
  */
-const resolveExtractedParentDir = (pluginPath: string | null | undefined): string | null => {
+const resolveExtractedRootDir = (pluginPath: string | null | undefined): string | null => {
   if (!pluginPath) return null;
-  const parentDir = path.dirname(pluginPath);
-  if (!isInsideModUploadDir(parentDir)) return null;
-  if (!path.basename(parentDir).startsWith('_extracted_')) return null;
-  return parentDir;
+  const absPluginPath = path.resolve(pluginPath);
+  if (!isInsideModUploadDir(absPluginPath)) return null;
+
+  let current = fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
+    ? absPluginPath
+    : path.dirname(absPluginPath);
+
+  while (isInsideModUploadDir(current)) {
+    if (path.basename(current).startsWith('_extracted_')) return current;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  return null;
 }
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -380,8 +391,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
     // Remove extracted archive folder when this import was unpacked.
     const extractedDirs = new Set<string>();
-    const fromJobEsp = resolveExtractedParentDir(job.esp_path);
-    const fromModAbs = resolveExtractedParentDir(modAbsPath);
+    const fromJobEsp = resolveExtractedRootDir(job.esp_path);
+    const fromModAbs = resolveExtractedRootDir(modAbsPath);
     if (fromJobEsp) extractedDirs.add(fromJobEsp);
     if (fromModAbs) extractedDirs.add(fromModAbs);
 
