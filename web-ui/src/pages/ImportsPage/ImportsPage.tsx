@@ -26,6 +26,7 @@ import {
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { CsvPreviewModal } from './CsvPreviewModal';
+import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
@@ -124,6 +125,8 @@ export const ImportsPage = () => {
   /** State for the reimport modal: newModId + list of previous versions */
   const [reimport, setReimport] = useState<{ newModId: number; prevVersions: PreviousVersionRow[] } | null>(null);
   const [exportBusy, setExportBusy] = useState<string | null>(null);
+  const [deleteModalJob, setDeleteModalJob] = useState<ModImportJob | null>(null);
+  const [deletingModJobId, setDeletingModJobId] = useState<number | null>(null);
 
   /** Invalidate all three import lists. */
   const refreshAll = useCallback(() => {
@@ -272,6 +275,21 @@ export const ImportsPage = () => {
   const modPreviewJob = modPreviewId != null ? (modJobs ?? []).find(j => j.id === modPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
 
+  /** Confirms MOD deletion from custom modal and then refreshes import lists. */
+  const confirmDeleteMod = useCallback(async () => {
+    if (!deleteModalJob) return;
+    setDeletingModJobId(deleteModalJob.id);
+    try {
+      await api.modImport.remove(deleteModalJob.id);
+      setDeleteModalJob(null);
+      refreshAll();
+    } catch (err) {
+      window.alert(String(err));
+    } finally {
+      setDeletingModJobId(null);
+    }
+  }, [deleteModalJob, refreshAll]);
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t('imports.title')}</h1>
@@ -360,14 +378,12 @@ export const ImportsPage = () => {
                 }}
                 onDelete={() => {
                   if (u.kind === 'mod') {
-                    const confirmed = window.confirm(
-                      t('imports.confirmDeleteMod', { name: u.job.file_name }),
-                    );
-                    if (!confirmed) return;
+                    setDeleteModalJob(u.job as ModImportJob);
+                    return;
                   }
-                  const p = u.kind === 'eet' ? api.eet.remove(u.job.id)
-                    : u.kind === 'csv' ? api.csv.remove(u.job.id)
-                    : api.modImport.remove(u.job.id);
+                  const p = u.kind === 'eet'
+                    ? api.eet.remove(u.job.id)
+                    : api.csv.remove(u.job.id);
                   p.then(refreshAll);
                 }}
               />
@@ -443,6 +459,15 @@ export const ImportsPage = () => {
           newModId={reimport.newModId}
           prevVersions={reimport.prevVersions}
           onClose={() => setReimport(null)}
+        />
+      )}
+
+      {deleteModalJob && (
+        <DeleteModConfirmModal
+          fileName={deleteModalJob.file_name}
+          deleting={deletingModJobId === deleteModalJob.id}
+          onClose={() => setDeleteModalJob(null)}
+          onConfirm={() => { void confirmDeleteMod(); }}
         />
       )}
     </div>

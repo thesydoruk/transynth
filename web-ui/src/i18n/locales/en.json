@@ -302,7 +302,10 @@
     "gameLabel": "Game",
     "startTooltip": "Start import",
     "reimportTooltip": "Re-import",
-    "confirmDeleteMod": "Delete mod import '{{name}}'? This will also remove the imported mod data and extracted files if they exist."
+    "confirmDeleteMod": "Delete mod import '{{name}}'? This will also remove the imported mod data and extracted files if they exist.",
+    "deleteModTitle": "Delete mod import",
+    "deleteModMessage": "Delete '{{name}}'?",
+    "deleteModImpact": "This action removes the import job, linked imported mod data, and extracted mod files if present."
   },
   "eetImport": {
     "title": "EET Imports",
