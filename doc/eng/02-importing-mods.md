@@ -455,7 +455,7 @@ Conflict handling in the current UI:
 ## Troubleshooting
 
 - **"File too large"**
-  The web server limits multipart uploads to `200 MB`. Split oversized archives, upload only the needed plugin, or remove unneeded assets before uploading.
+  The web server limits multipart uploads by `UPLOAD_MAX_FILE_SIZE_MB` (default: `1024`, i.e. 1 GiB). Increase that value in `.env` if needed, then restart the backend. You can also split oversized archives or upload only the needed plugin.
 
 - **"Unsupported format"**
   The current accepted upload types are `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.

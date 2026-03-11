@@ -97,6 +97,10 @@ BATCH_SIZE=30
 # Log level: error | warn | info | debug | trace (default: info)
 LOG_LEVEL=info
 
+# --- Upload limits ---
+# Maximum multipart file upload size in megabytes (default: 1024 MB = 1 GiB)
+UPLOAD_MAX_FILE_SIZE_MB=1024
+
 # Directory for log files (default: ./logs/)
 # LOG_DIR=./logs/
 
@@ -149,11 +153,12 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## Server Settings
 
-| Variable        | Default                 | Description                                     |
-| --------------- | ----------------------- | ----------------------------------------------- |
-| `PORT`          | `3000`                  | Backend HTTP server port                        |
-| `HOST`          | `0.0.0.0`               | Backend bind address                            |
-| `VITE_API_BASE` | `http://localhost:3000` | Frontend API base URL (used by Vite dev server) |
+| Variable                  | Default                 | Description                                     |
+| ------------------------- | ----------------------- | ----------------------------------------------- |
+| `PORT`                    | `3000`                  | Backend HTTP server port                        |
+| `HOST`                    | `0.0.0.0`               | Backend bind address                            |
+| `UPLOAD_MAX_FILE_SIZE_MB` | `1024`                  | Maximum multipart upload file size in megabytes |
+| `VITE_API_BASE`           | `http://localhost:3000` | Frontend API base URL (used by Vite dev server) |
 
 > Note: `PORT`, `HOST`, and `VITE_API_BASE` are read directly from `process.env` by the
 > server and Vite dev server respectively. They are not part of the `CONFIG` object in

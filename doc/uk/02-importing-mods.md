@@ -455,7 +455,7 @@ Workflow preview:
 ## Усунення проблем
 
 - **"File too large"**
-  Вебсервер обмежує multipart uploads до `200 MB`. Розбийте завеликий архів, завантажте лише потрібний plugin або приберіть зайві assets перед upload.
+  Вебсервер обмежує multipart uploads змінною `UPLOAD_MAX_FILE_SIZE_MB` (за замовчуванням: `1024`, тобто 1 GiB). За потреби збільшіть значення в `.env` і перезапустіть backend. Також можна розбити завеликий архів або завантажити лише потрібний plugin.
 
 - **"Unsupported format"**
   Поточні типи файлів, які приймає upload API: `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, `.rar`. Bare `.ba2` API не приймає.

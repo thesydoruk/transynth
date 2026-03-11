@@ -22,6 +22,7 @@ import {
   type CsvProgressEvent,
   type ModImportJob,
   type ModProgressEvent,
+  type UploadProgressEvent,
   type PreviousVersionRow,
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
@@ -43,6 +44,12 @@ type UnifiedJob =
   | { kind: 'mod'; job: ModImportJob };
 
 type SupportedGameId = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle';
+type PendingModUpload = {
+  id: string;
+  fileName: string;
+  phase: 'uploading' | 'extracting';
+  percent: number;
+};
 
 /** All file extensions accepted by the unified upload input. */
 const ACCEPTED_ALL = '.eet,.csv,.esp,.esm,.esl,.zip,.7z,.rar';
@@ -98,7 +105,23 @@ export const ImportsPage = () => {
 
   /* ── Upload state ─────────────────────────────────────────────────────── */
   const [uploading, setUploading] = useState(false);
+  const [pendingModUploads, setPendingModUploads] = useState<PendingModUpload[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const hasExtracting = pendingModUploads.some((row) => row.phase === 'extracting' && row.percent < 95);
+    if (!hasExtracting) return;
+
+    const timer = window.setInterval(() => {
+      setPendingModUploads((prev) => prev.map((row) => {
+        if (row.phase !== 'extracting') return row;
+        if (row.percent >= 95) return row;
+        return { ...row, percent: Math.min(95, row.percent + 2) };
+      }));
+    }, 250);
+
+    return () => window.clearInterval(timer);
+  }, [pendingModUploads]);
 
   /* ── Nexus pre-import downloads (before backend job exists) ───────────── */
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
@@ -208,11 +231,39 @@ export const ImportsPage = () => {
           }
         } else {
           const uploadOptions = isSupportedGameId(gameId) ? { game: gameId } : undefined;
-          const job = await api.modImport.upload(f, uploadOptions);
+          const uploadId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          setPendingModUploads((prev) => [...prev, {
+            id: uploadId,
+            fileName: f.name,
+            phase: 'uploading',
+            percent: 0,
+          }]);
+
+          const onUploadProgress = (event: UploadProgressEvent) => {
+            setPendingModUploads((prev) => prev.map((row) => {
+              if (row.id !== uploadId) return row;
+              if (row.phase !== 'uploading') return row;
+              return { ...row, percent: event.percent };
+            }));
+          };
+
+          const onExtractingStart = () => {
+            setPendingModUploads((prev) => prev.map((row) => {
+              if (row.id !== uploadId) return row;
+              return { ...row, phase: 'extracting', percent: 5 };
+            }));
+          };
+
+          const job = await api.modImport.upload(f, uploadOptions, onUploadProgress, onExtractingStart);
+          setPendingModUploads((prev) => prev.map((row) => {
+            if (row.id !== uploadId) return row;
+            return { ...row, phase: 'extracting', percent: 100 };
+          }));
           if (job) {
             // Mod imports must be started manually after language is selected.
             refreshAll();
           }
+          setPendingModUploads((prev) => prev.filter((row) => row.id !== uploadId));
         }
       }
       refreshAll();
@@ -308,10 +359,37 @@ export const ImportsPage = () => {
       </div>
 
       {/* Unified job list + Nexus downloads still in progress */}
-      {allJobs.length === 0 && visibleNexusDownloads.length === 0 ? (
+      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && pendingModUploads.length === 0 ? (
         <p className={s.empty}>{t('imports.noFiles')}</p>
       ) : (
         <div className={s.list}>
+          {pendingModUploads.map((u) => (
+            <div key={u.id} className={`${s.row} ${s.pendingUploadRow}`}>
+              <div className={s.rowLeft}>
+                <span className={s.typeBadge}>{'MOD'}</span>
+                <div>
+                  <span className={s.fileName}>{u.fileName}</span>
+                  <span className={s.meta}>
+                    {u.phase === 'uploading' ? t('common.uploading') : t('importStatus.extracting')}
+                  </span>
+                </div>
+              </div>
+              <div className={s.rowRight}>
+                <div className={s.progressWrap}>
+                  <div className={s.progressTrack}>
+                    <div
+                      className={u.phase === 'uploading' ? s.progressFill : s.progressFillExtracting}
+                      style={{ width: `${u.percent}%` }}
+                    />
+                  </div>
+                  <span className={s.progressLabel}>
+                    {`${u.percent}%`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+
           {visibleNexusDownloads.map((d) => (
             <NexusDownloadRow key={d.id} job={d} />
           ))}

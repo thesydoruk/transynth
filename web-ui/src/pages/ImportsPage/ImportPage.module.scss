@@ -112,6 +112,10 @@
   border: 1px solid var(--border);
 }
 
+.pendingUploadRow {
+  border-style: dashed;
+}
+
 .rowLeft {
   display: flex;
   align-items: center;
@@ -171,6 +175,13 @@
 .progressFill {
   height: 100%;
   background: var(--success);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressFillExtracting {
+  height: 100%;
+  background: var(--info);
   border-radius: 3px;
   transition: width 0.3s ease;
 }

@@ -3,6 +3,26 @@ import { log } from './logger.js';
 
 export type LLMProviderName = 'ollama' | 'openai';
 
+/** Default multipart upload file size limit (1 GiB) when env is not set/invalid. */
+const DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * Parses upload-size limit from env as a positive integer megabyte count.
+ * Falls back to 1 GiB when the value is missing, non-numeric, or non-positive.
+ *
+ * Backward compatibility: if UPLOAD_MAX_FILE_SIZE_MB is not set, this helper
+ * also accepts legacy UPLOAD_MAX_FILE_SIZE_BYTES.
+ */
+const parseUploadMaxFileSizeBytes = (mbValue: string | undefined, legacyBytesValue: string | undefined): number => {
+  const parsedMb = Number.parseInt(mbValue ?? '', 10);
+  if (Number.isFinite(parsedMb) && parsedMb > 0) return parsedMb * 1024 * 1024;
+
+  const parsedLegacyBytes = Number.parseInt(legacyBytesValue ?? '', 10);
+  if (Number.isFinite(parsedLegacyBytes) && parsedLegacyBytes > 0) return parsedLegacyBytes;
+
+  return DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES;
+}
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'ollama') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -18,6 +38,12 @@ export const CONFIG = {
 
   // Database
   databaseUrl: process.env.DATABASE_URL || 'postgresql://localizer:localizer@localhost:5432/localizer',
+
+  // Maximum multipart upload size in bytes (Fastify multipart fileSize limit).
+  uploadMaxFileSizeBytes: parseUploadMaxFileSizeBytes(
+    process.env.UPLOAD_MAX_FILE_SIZE_MB,
+    process.env.UPLOAD_MAX_FILE_SIZE_BYTES,
+  ),
 
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),

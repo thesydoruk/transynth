@@ -60,7 +60,7 @@ await app.register(cors, {
   origin: true,
   credentials: CONFIG.multiUser,
 });
-await app.register(multipart, { limits: { fileSize: 200 * 1024 * 1024 } });
+await app.register(multipart, { limits: { fileSize: CONFIG.uploadMaxFileSizeBytes } });
 
 // Serve React SPA from web-ui/dist if the directory exists
 try {

@@ -718,6 +718,7 @@ export type ModImportJob = {
 };
 
 export type ModProgressEvent = { type: 'progress'; imported: number; total: number; jobId: number };
+export type UploadProgressEvent = { loaded: number; total: number; percent: number };
 
 export type ModPreviewRow = {
   formId: string;
@@ -1107,7 +1108,12 @@ export const api = {
   modImport: {
     list: () => req<ModImportJob[]>('/api/mod-import'),
 
-    upload: async (file: File, options?: { game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string }): Promise<ModImportJob> => {
+    upload: async (
+      file: File,
+      options?: { game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string },
+      onUploadProgress?: (event: UploadProgressEvent) => void,
+      onExtractingStart?: () => void,
+    ): Promise<ModImportJob> => {
       const qs = new URLSearchParams();
       if (options?.game) qs.set('game', options.game);
       if (options?.srcLang) qs.set('srcLang', options.srcLang);
@@ -1115,12 +1121,43 @@ export const api = {
       const form = new FormData();
       form.append('file', file);
       const url = `${BASE}/api/mod-import/upload${qs.toString() ? '?' + qs : ''}`;
-      const res = await fetch(url, { method: 'POST', body: form, credentials: 'include' });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<ModImportJob>;
+      return await new Promise<ModImportJob>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.withCredentials = true;
+
+        xhr.upload.onprogress = (e) => {
+          if (!onUploadProgress || !e.lengthComputable) return;
+          const total = e.total || file.size || 1;
+          const percent = Math.max(0, Math.min(100, Math.round((e.loaded / total) * 100)));
+          onUploadProgress({ loaded: e.loaded, total, percent });
+        };
+
+        xhr.upload.onload = () => {
+          onExtractingStart?.();
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+
+        xhr.onload = () => {
+          let body: unknown = {};
+          try {
+            body = xhr.responseText ? JSON.parse(xhr.responseText) as unknown : {};
+          } catch {
+            body = {};
+          }
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            const message = (body as { error?: string }).error ?? `HTTP ${xhr.status}`;
+            reject(new Error(message));
+            return;
+          }
+
+          resolve(body as ModImportJob);
+        };
+
+        xhr.send(form);
+      });
     },
 
     startImport(

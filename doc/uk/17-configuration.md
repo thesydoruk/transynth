@@ -84,6 +84,9 @@ POSTGRES_DB=localizer
 BATCH_SIZE=30
 LOG_LEVEL=info
 
+# Максимальний розмір multipart upload у мегабайтах (за замовчуванням: 1024 MB = 1 GiB)
+UPLOAD_MAX_FILE_SIZE_MB=1024
+
 # LOG_DIR=./logs/
 # MULTI_USER=true
 # SESSION_LIFETIME_HOURS=72
@@ -132,11 +135,12 @@ postgresql://localizer:localizer@localhost:5432/localizer
 
 ## Налаштування сервера
 
-| Змінна          | За замовчуванням        | Опис                             |
-| --------------- | ----------------------- | -------------------------------- |
-| `PORT`          | `3000`                  | HTTP-порт backend-сервера        |
-| `HOST`          | `0.0.0.0`               | Bind-address сервера             |
-| `VITE_API_BASE` | `http://localhost:3000` | API base URL для Vite dev server |
+| Змінна                    | За замовчуванням        | Опис                                              |
+| ------------------------- | ----------------------- | ------------------------------------------------- |
+| `PORT`                    | `3000`                  | HTTP-порт backend-сервера                         |
+| `HOST`                    | `0.0.0.0`               | Bind-address сервера                              |
+| `UPLOAD_MAX_FILE_SIZE_MB` | `1024`                  | Максимальний розмір multipart upload у мегабайтах |
+| `VITE_API_BASE`           | `http://localhost:3000` | API base URL для Vite dev server                  |
 
 Ці значення читаються безпосередньо з `process.env` сервером і Vite dev server, а не через `CONFIG` у `src/config.ts`.
 
