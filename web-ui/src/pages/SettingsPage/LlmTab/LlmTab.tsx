@@ -4,6 +4,18 @@ import { api } from '../../../api';
 import parentS from '../SettingsPage.module.scss';
 import s from './LlmTab.module.scss';
 
+const ISSUE_KEY_BY_CODE: Record<string, string> = {
+  primary_openai_key_missing: 'settings.llm.issues.primaryOpenAiKeyMissing',
+  primary_ollama_model_missing: 'settings.llm.issues.primaryOllamaModelMissing',
+  fallback_openai_key_missing: 'settings.llm.issues.fallbackOpenAiKeyMissing',
+  fallback_ollama_model_missing: 'settings.llm.issues.fallbackOllamaModelMissing',
+  fallback_same_as_primary: 'settings.llm.issues.fallbackSameAsPrimary',
+  translate_model_missing_openai: 'settings.llm.issues.translateModelMissingOpenAi',
+  translate_model_missing_ollama: 'settings.llm.issues.translateModelMissingOllama',
+  embed_model_missing_openai: 'settings.llm.issues.embedModelMissingOpenAi',
+  embed_model_missing_ollama: 'settings.llm.issues.embedModelMissingOllama',
+};
+
 /** Read-only LLM configuration tab sourced from server settings. */
 export const LlmTab = () => {
   const { t } = useTranslation();
@@ -18,9 +30,70 @@ export const LlmTab = () => {
     return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
   }
 
+  const readinessBadgeClass = data.llmReadiness.level === 'ok'
+    ? s.badgeOk
+    : data.llmReadiness.level === 'warn'
+      ? s.badgeWarn
+      : s.badgeError;
+
+  const readinessLabelKey = data.llmReadiness.level === 'ok'
+    ? 'settings.llm.readiness.ok'
+    : data.llmReadiness.level === 'warn'
+      ? 'settings.llm.readiness.warn'
+      : 'settings.llm.readiness.error';
+
   return (
     <>
       <div className={s.readonlyNote}>ℹ️ {t('settings.llm.readonlyNote')}</div>
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.llm.readinessSection')}</h2>
+        <div className={s.readinessHeader}>
+          <span className={readinessBadgeClass}>{t(readinessLabelKey)}</span>
+          <span className={s.readinessHint}>
+            {data.llmReadiness.canTranslate
+              ? t('settings.llm.readiness.translateReady')
+              : t('settings.llm.readiness.translateBlocked')}
+          </span>
+        </div>
+        <div className={s.checksGrid}>
+          <span className={parentS.fieldLabel}>{t('settings.llm.checks.primaryProvider')}</span>
+          <span className={s.fieldValue}>
+            <span className={data.llmReadiness.checks.primaryProvider ? s.badgeOk : s.badgeError}>
+              {data.llmReadiness.checks.primaryProvider ? t('settings.llm.checks.present') : t('settings.llm.checks.missing')}
+            </span>
+          </span>
+
+          <span className={parentS.fieldLabel}>{t('settings.llm.checks.fallbackProvider')}</span>
+          <span className={s.fieldValue}>
+            <span className={data.llmReadiness.checks.fallbackProvider ? s.badgeOk : s.badgeWarn}>
+              {data.llmReadiness.checks.fallbackProvider ? t('settings.llm.checks.present') : t('settings.llm.checks.optionalMissing')}
+            </span>
+          </span>
+
+          <span className={parentS.fieldLabel}>{t('settings.llm.checks.translateModel')}</span>
+          <span className={s.fieldValue}>
+            <span className={data.llmReadiness.checks.translateModel ? s.badgeOk : s.badgeError}>
+              {data.llmReadiness.checks.translateModel ? t('settings.llm.checks.present') : t('settings.llm.checks.missing')}
+            </span>
+          </span>
+
+          <span className={parentS.fieldLabel}>{t('settings.llm.checks.embedModel')}</span>
+          <span className={s.fieldValue}>
+            <span className={data.llmReadiness.checks.embedModel ? s.badgeOk : s.badgeWarn}>
+              {data.llmReadiness.checks.embedModel ? t('settings.llm.checks.present') : t('settings.llm.checks.optionalMissing')}
+            </span>
+          </span>
+        </div>
+
+        {data.llmReadiness.issues.length > 0 && (
+          <ul className={s.issueList}>
+            {data.llmReadiness.issues.map((code) => {
+              const key = ISSUE_KEY_BY_CODE[code] ?? 'settings.llm.issues.unknown';
+              return <li key={code}>{t(key)}</li>;
+            })}
+          </ul>
+        )}
+      </div>
       <div className={parentS.section}>
         <h2 className={parentS.sectionTitle}>{t('settings.llm.providerSection')}</h2>
         <div className={parentS.fieldGrid}>

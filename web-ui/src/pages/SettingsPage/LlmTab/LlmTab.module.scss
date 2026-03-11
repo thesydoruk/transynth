@@ -34,6 +34,32 @@
   margin-bottom: 20px;
 }
 
+.readinessHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.readinessHint {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.checksGrid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  row-gap: 10px;
+  column-gap: 10px;
+}
+
+.issueList {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 12px;
+}
+
 /* ── Monospace field value ─────────────────────────────────────────────────── */
 
 /** Displays a configuration value with monospace font for model names, URLs. */
@@ -69,4 +95,12 @@
   composes: badge;
   background: color-mix(in srgb, var(--warning) 20%, transparent);
   color: var(--warning);
+}
+
+/** Red badge — used for blocking readiness issues. */
+.badgeError {
+  composes: badge;
+  background: var(--bg-card);
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }

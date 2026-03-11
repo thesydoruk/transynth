@@ -635,6 +635,35 @@
     },
     "llm": {
       "readonlyNote": "Ці налаштування доступні лише для читання — вони задаються у файлі .env і потребують перезапуску сервера.",
+      "readinessSection": "Готовність",
+      "readiness": {
+        "ok": "готово",
+        "warn": "обмежено",
+        "error": "заблоковано",
+        "translateReady": "Запити на переклад можуть виконуватись із поточною конфігурацією.",
+        "translateBlocked": "Запити на переклад заблоковані, доки не буде виправлено обов'язкові налаштування."
+      },
+      "checks": {
+        "primaryProvider": "Основний провайдер",
+        "fallbackProvider": "Резервний провайдер",
+        "translateModel": "Модель перекладу",
+        "embedModel": "Модель ембедингів",
+        "present": "налаштовано",
+        "missing": "відсутньо",
+        "optionalMissing": "необов'язково"
+      },
+      "issues": {
+        "primaryOpenAiKeyMissing": "Основний провайдер OpenAI, але OPENAI_API_KEY не налаштовано.",
+        "primaryOllamaModelMissing": "Основний провайдер Ollama, але OLLAMA_MODEL не налаштовано.",
+        "fallbackOpenAiKeyMissing": "Резервний провайдер OpenAI, але OPENAI_API_KEY не налаштовано.",
+        "fallbackOllamaModelMissing": "Резервний провайдер Ollama, але OLLAMA_MODEL не налаштовано.",
+        "fallbackSameAsPrimary": "Резервний провайдер збігається з основним.",
+        "translateModelMissingOpenAi": "OPENAI_TRANSLATE_MODEL відсутня для перекладу через OpenAI.",
+        "translateModelMissingOllama": "OLLAMA_MODEL відсутня для перекладу через Ollama.",
+        "embedModelMissingOpenAi": "OPENAI_EMBED_MODEL відсутня для ембедингів OpenAI.",
+        "embedModelMissingOllama": "OLLAMA_MODEL відсутня для ембедингів Ollama.",
+        "unknown": "Невідома проблема готовності LLM."
+      },
       "providerSection": "Провайдер",
       "provider": "Активний провайдер",
       "fallback": "Резервний провайдер",

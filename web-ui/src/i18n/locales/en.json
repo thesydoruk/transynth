@@ -634,6 +634,35 @@
     },
     "llm": {
       "readonlyNote": "These settings are read-only — they are defined in the .env file and require a server restart to change.",
+      "readinessSection": "Readiness",
+      "readiness": {
+        "ok": "ready",
+        "warn": "limited",
+        "error": "blocked",
+        "translateReady": "Translation requests can run with current configuration.",
+        "translateBlocked": "Translation requests are blocked until required settings are fixed."
+      },
+      "checks": {
+        "primaryProvider": "Primary provider",
+        "fallbackProvider": "Fallback provider",
+        "translateModel": "Translation model",
+        "embedModel": "Embedding model",
+        "present": "present",
+        "missing": "missing",
+        "optionalMissing": "optional"
+      },
+      "issues": {
+        "primaryOpenAiKeyMissing": "Primary provider is OpenAI, but OPENAI_API_KEY is not configured.",
+        "primaryOllamaModelMissing": "Primary provider is Ollama, but OLLAMA_MODEL is not configured.",
+        "fallbackOpenAiKeyMissing": "Fallback provider is OpenAI, but OPENAI_API_KEY is not configured.",
+        "fallbackOllamaModelMissing": "Fallback provider is Ollama, but OLLAMA_MODEL is not configured.",
+        "fallbackSameAsPrimary": "Fallback provider is the same as the primary provider.",
+        "translateModelMissingOpenAi": "OPENAI_TRANSLATE_MODEL is missing for OpenAI translation.",
+        "translateModelMissingOllama": "OLLAMA_MODEL is missing for Ollama translation.",
+        "embedModelMissingOpenAi": "OPENAI_EMBED_MODEL is missing for OpenAI embeddings.",
+        "embedModelMissingOllama": "OLLAMA_MODEL is missing for Ollama embeddings.",
+        "unknown": "Unknown LLM readiness issue."
+      },
       "providerSection": "Provider",
       "provider": "Active provider",
       "fallback": "Fallback provider",

@@ -43,6 +43,102 @@ export interface SettingsPayload {
   multiUser: boolean;
   /** Session lifetime in hours (relevant when multiUser = true). */
   sessionLifetimeHours: number;
+  /** Computed readiness snapshot for the currently configured LLM stack. */
+  llmReadiness: {
+    /** Overall readiness level used by UI badges. */
+    level: 'ok' | 'warn' | 'error';
+    /** Whether the current primary provider can process translation requests. */
+    canTranslate: boolean;
+    /** Per-check booleans for structured UI display. */
+    checks: {
+      /** Primary provider has the required credentials/model settings. */
+      primaryProvider: boolean;
+      /** Fallback provider is valid (or intentionally disabled). */
+      fallbackProvider: boolean;
+      /** Translation model config is present for the active stack. */
+      translateModel: boolean;
+      /** Embedding model config is present for the active stack. */
+      embedModel: boolean;
+    };
+    /** Machine-readable issue codes (for i18n mapping in UI). */
+    issues: string[];
+  };
+}
+
+/**
+ * Returns true when the selected provider has enough configuration to be used.
+ *
+ * This helper intentionally validates only static configuration prerequisites.
+ * It does not perform network checks (for example, probing Ollama availability)
+ * because the settings endpoint must remain fast and side-effect free.
+ */
+const isProviderConfigured = (provider: string): boolean => {
+  if (provider === 'openai') return Boolean(CONFIG.openaiApiKey);
+  if (provider === 'ollama') return Boolean(CONFIG.ollamaModel);
+  return false;
+}
+
+/**
+ * Builds a deterministic readiness snapshot for LLM configuration.
+ *
+ * The result is consumed by the Settings UI to show whether translation is
+ * currently possible and which config pieces are missing.
+ */
+const buildLlmReadiness = (): SettingsPayload['llmReadiness'] => {
+  const issues: string[] = [];
+
+  const primaryProvider = isProviderConfigured(CONFIG.llmProvider);
+  if (!primaryProvider) {
+    if (CONFIG.llmProvider === 'openai') issues.push('primary_openai_key_missing');
+    if (CONFIG.llmProvider === 'ollama') issues.push('primary_ollama_model_missing');
+  }
+
+  const fallbackProvider = CONFIG.llmFallback === 'none' || isProviderConfigured(CONFIG.llmFallback);
+  if (CONFIG.llmFallback !== 'none' && !fallbackProvider) {
+    if (CONFIG.llmFallback === 'openai') issues.push('fallback_openai_key_missing');
+    if (CONFIG.llmFallback === 'ollama') issues.push('fallback_ollama_model_missing');
+  }
+
+  if (CONFIG.llmFallback !== 'none' && CONFIG.llmFallback === CONFIG.llmProvider) {
+    issues.push('fallback_same_as_primary');
+  }
+
+  const translateModel = CONFIG.llmProvider === 'openai'
+    ? Boolean(CONFIG.translateModel)
+    : Boolean(CONFIG.ollamaModel);
+  if (!translateModel) {
+    issues.push(CONFIG.llmProvider === 'openai'
+      ? 'translate_model_missing_openai'
+      : 'translate_model_missing_ollama');
+  }
+
+  const embedModel = CONFIG.llmProvider === 'openai'
+    ? Boolean(CONFIG.embedModel)
+    : Boolean(CONFIG.ollamaModel);
+  if (!embedModel) {
+    issues.push(CONFIG.llmProvider === 'openai'
+      ? 'embed_model_missing_openai'
+      : 'embed_model_missing_ollama');
+  }
+
+  const canTranslate = primaryProvider && translateModel;
+  const level: SettingsPayload['llmReadiness']['level'] = !canTranslate
+    ? 'error'
+    : issues.length > 0
+      ? 'warn'
+      : 'ok';
+
+  return {
+    level,
+    canTranslate,
+    checks: {
+      primaryProvider,
+      fallbackProvider,
+      translateModel,
+      embedModel,
+    },
+    issues,
+  };
 }
 
 /* ── Route registration ─────────────────────────────────────────────────── */
@@ -72,6 +168,7 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       batchSize: CONFIG.batchSize,
       multiUser: CONFIG.multiUser,
       sessionLifetimeHours: CONFIG.sessionLifetimeHours,
+      llmReadiness: buildLlmReadiness(),
     };
   });
 };

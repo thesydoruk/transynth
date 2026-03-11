@@ -475,6 +475,22 @@ export type SettingsPayload = {
   multiUser: boolean;
   /** Session lifetime in hours. */
   sessionLifetimeHours: number;
+  /** Computed readiness snapshot used by the Settings LLM tab. */
+  llmReadiness: {
+    /** Overall readiness level for badges and alerts. */
+    level: 'ok' | 'warn' | 'error';
+    /** Whether current primary provider can translate with current config. */
+    canTranslate: boolean;
+    /** Per-check readiness flags. */
+    checks: {
+      primaryProvider: boolean;
+      fallbackProvider: boolean;
+      translateModel: boolean;
+      embedModel: boolean;
+    };
+    /** Machine-readable issue codes returned by backend. */
+    issues: string[];
+  };
 };
 
 /** Full response from GET /api/ops. */
