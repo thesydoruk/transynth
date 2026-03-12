@@ -141,7 +141,18 @@ export const DashboardPage = () => {
                     <td className={s.tdR}>{Number(m.tm) + Number(m.fuzzy)}</td>
                     <td className={s.tdR}>{m.auto}</td>
                     <td className={Number(m.qa_issues) > 0 ? s.qaHasIssues : s.qaNoIssues}>
-                      {m.qa_issues}
+                      {Number(m.qa_issues) > 0 ? (
+                        <Link
+                          to={`/games/${m.game}/mods/${m.id}?qaOnly=1`}
+                          className={s.qaLink}
+                          title={t('dashboard.openQaInEditor')}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {m.qa_issues}
+                        </Link>
+                      ) : (
+                        m.qa_issues
+                      )}
                     </td>
                   </tr>
                   {/* GRUP breakdown sub-row — rendered only when expanded */}

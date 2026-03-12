@@ -96,9 +96,12 @@ an issue count:
 | `duplicate inconsistency` | Teal   |
 
 The bars are proportional to the total active issue count, making it
-easy to see which issue type dominates. There is no direct filter link
-from the dashboard to the editor — navigate to a failing mod via its
-name link and filter by QA badge in the editor.
+easy to see which issue type dominates.
+
+In the per-mod table, the **QA** count is now clickable when it is
+greater than `0`. Clicking it opens that mod in the editor with the
+**QA-only** filter enabled (`qaOnly=1`), so you can jump directly into
+rows that currently have active QA issues.
 
 ---
 

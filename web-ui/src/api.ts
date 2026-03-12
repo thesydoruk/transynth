@@ -839,6 +839,7 @@ export const api = {
       srcLang?: string;
       targetLang?: string;
       status?: string;
+      qaOnly?: boolean;
       signature?: string;
       q?: string;
       grup?: string;
@@ -857,6 +858,7 @@ export const api = {
       if (params.srcLang) qs.set('srcLang', params.srcLang);
       if (params.targetLang) qs.set('targetLang', params.targetLang);
       if (params.status) qs.set('status', params.status);
+      if (params.qaOnly) qs.set('qaOnly', '1');
       if (params.signature) qs.set('signature', params.signature);
       if (params.q) qs.set('q', params.q);
       if (params.grup) qs.set('grup', params.grup);

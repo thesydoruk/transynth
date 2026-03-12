@@ -132,6 +132,15 @@
   color: var(--text-faint);
 }
 
+.qaLink {
+  color: inherit;
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
 /* DashboardCard styles in DashboardCard/DashboardCard.module.scss */
 
 /* ── Expand toggle column ─────────────────────────────────────────────────── */

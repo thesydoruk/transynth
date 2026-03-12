@@ -334,6 +334,8 @@ export type StringsFilter = {
   srcLang?: string;
   targetLang?: string;
   status?: string;
+  /** When true, return only rows that currently have active QA issues. */
+  qaOnly?: boolean;
   query?: string;
   signature?: string;
   /** Per-column filter: record signature (GRUP) — case-insensitive substring match */
@@ -438,7 +440,8 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   const srcLangIdx = idx + 1;
   const limitIdx = idx + 2;
   const offsetIdx = idx + 3;
-  const allValues = [...values, targetLang, srcLang, pageSize, offset];
+  const qaOnlyIdx = idx + 4;
+  const allValues = [...values, targetLang, srcLang, pageSize, offset, Boolean(f.qaOnly)];
 
   const { rows } = await db.query(
     `SELECT
@@ -473,10 +476,16 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE
      ) q ON TRUE
      WHERE s.lang = $${srcLangIdx} AND ${where}
+       AND ($${qaOnlyIdx}::boolean = FALSE OR COALESCE(q.issue_count, 0) > 0)
      ORDER BY ${SORT_COLUMNS[f.sort ?? ''] ? `${SORT_COLUMNS[f.sort!]} ${f.order === 'desc' ? 'DESC' : 'ASC'} NULLS LAST,` : ''} r.signature, r.path
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     allValues,
   );
+
+  const countTargetLangIdx = idx;
+  const countSrcLangIdx = idx + 1;
+  const countQaOnlyIdx = idx + 2;
+  const countValues = [...values, targetLang, srcLang, Boolean(f.qaOnly)];
 
   const { rows: countRows } = await db.query(
     `SELECT COUNT(*) AS total
@@ -486,12 +495,19 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
           AND t.id = (
             SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
+            WHERE src_string_id = s.id AND target_lang = $${countTargetLangIdx}
             ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
             LIMIT 1
           )
-     WHERE s.lang = $${srcLangIdx} AND ${where}`,
-    [...values, targetLang, srcLang],
+     WHERE s.lang = $${countSrcLangIdx} AND ${where}
+       AND ($${countQaOnlyIdx}::boolean = FALSE OR EXISTS (
+         SELECT 1
+         FROM qa_issues qi
+         WHERE qi.src_string_id = s.id
+           AND qi.target_lang = $${countTargetLangIdx}
+           AND qi.is_active = TRUE
+       ))`,
+    countValues,
   );
 
   return { rows, total: Number(countRows[0].total), page, pageSize };

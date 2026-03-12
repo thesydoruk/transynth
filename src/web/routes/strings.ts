@@ -27,6 +27,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       srcLang?: string;
       targetLang?: string;
       status?: string;
+      qaOnly?: string;
       signature?: string;
       q?: string;
       grup?: string;
@@ -51,6 +52,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       srcLang: req.query.srcLang,
       targetLang: req.query.targetLang,
       status: req.query.status,
+      qaOnly: req.query.qaOnly === '1' || req.query.qaOnly === 'true',
       query: req.query.q,
       signature: req.query.signature,
       grup: req.query.grup,

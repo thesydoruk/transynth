@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
@@ -116,13 +116,19 @@ type SortDir = 'asc' | 'desc';
 export const ModEditorPage = () => {
   const { t } = useTranslation();
   const { id, gameId } = useParams<{ id: string; gameId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const modId = Number(id);
   const qc = useQueryClient();
+
+  const initialStatus = searchParams.get('status');
+  const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
+  const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus) ? initialStatus : 'all';
 
   // Filters
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState(safeInitialStatus);
+  const [qaOnly, setQaOnly] = useState(initialQaOnly);
   const [signature, setSignature] = useState('');
   const [page, setPage] = useState(1);
 
@@ -274,7 +280,7 @@ export const ModEditorPage = () => {
     setPage(1);
   }, [sortCol, sortDir]);
 
-  const stringsKey = ['strings', modId, srcLang, targetLang, status, signature, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
+  const stringsKey = ['strings', modId, srcLang, targetLang, status, qaOnly, signature, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
   const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
@@ -282,9 +288,24 @@ export const ModEditorPage = () => {
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
   const { data: strings, isLoading } = useQuery({
     queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, signature: signature || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
+    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, qaOnly: qaOnly || undefined, signature: signature || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
     placeholderData: (prev) => prev,
   });
+
+  useEffect(() => {
+    const currentStatus = searchParams.get('status') ?? 'all';
+    const currentQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
+    if (currentStatus === status && currentQaOnly === qaOnly) return;
+
+    const next = new URLSearchParams(searchParams);
+    if (status !== 'all') next.set('status', status);
+    else next.delete('status');
+
+    if (qaOnly) next.set('qaOnly', '1');
+    else next.delete('qaOnly');
+
+    setSearchParams(next, { replace: true });
+  }, [status, qaOnly, searchParams, setSearchParams]);
 
   // Virtualizer (must be after `strings` declaration)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -760,6 +781,13 @@ export const ModEditorPage = () => {
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={styles.filterSelect}>
           {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? t('modEditor.allStatuses') : o}</option>)}
         </select>
+        <button
+          onClick={() => { setQaOnly((v) => !v); setPage(1); }}
+          className={qaOnly ? styles.btnPri : styles.btnSec}
+          title={t('modEditor.qaOnlyTitle')}
+        >
+          {t('modEditor.qaOnly')}
+        </button>
         <button
           onClick={() => { setStatus(status === 'draft' ? 'all' : 'draft'); setPage(1); }}
           className={status === 'draft' ? styles.btnPri : styles.btnSec}
