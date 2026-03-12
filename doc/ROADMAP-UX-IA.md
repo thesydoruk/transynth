@@ -237,6 +237,12 @@ Recommended phase priority order:
 - P0: Phase 0, Phase 3.
 - P1: Phase 1, Phase 4, Phase 6.
 - P2: Phase 2, Phase 5.
+- P3: Phase 7 (multi-user and team operations only).
+
+Queue policy:
+
+- Single-user translator workflow improvements come first.
+- Multi-user and team-operation improvements are intentionally scheduled last.
 
 ### Phase 0: Baseline and Safety (1 sprint, Priority P0)
 
@@ -261,7 +267,6 @@ Exit criteria:
 - Re-group pages into Discover, Import, Translate, Quality, Release, and Admin according to context.
 - Move low-frequency pages into Settings tabs or an Advanced area without hiding critical workflow entry points.
 - Preserve route compatibility while updating menu structure.
-- Apply role-aware visibility rules to navigation items.
 
 Exit criteria:
 
@@ -332,17 +337,25 @@ Exit criteria:
 - Add provider health indicator to Settings LLM tab.
 - Add post-batch-translate action card that links directly to the review queue for those strings.
 - Add Dashboard QA click-through to filtered editor sessions.
-- Add Activity log filters: date range, user, mod.
 - Add max-length visual indicator in editor detail panel for strings with length QA rules.
-- Resolve Settings taxonomy: group configuration settings separately from workflow tool tabs.
 - Add onboarding checklist on Home or Game Hub for first-time setup.
-- Evaluate moving TradAuto and TMX entry points to Quality and Release sections respectively.
 
 Exit criteria:
 
 - AI job status is visible without opening the editor or reading logs.
 - The five highest-priority known UX debts listed in this document are resolved.
-- Settings page clearly separates configuration from workflow tools.
+
+### Phase 7: Multi-user and Team Operations (1 sprint, Priority P3)
+
+- Add Activity log filters: date range, user, mod.
+- Add Activity log CSV export from the UI.
+- Resolve Settings taxonomy for team operations and admin-only surfaces.
+- Evaluate role-aware navigation visibility and empty states after single-user IA is stable.
+
+Exit criteria:
+
+- Team operations are discoverable without impacting single-user translation speed.
+- Multi-user specific surfaces are grouped consistently and do not fragment core translator flows.
 
 ## Backlog of Concrete UX Improvements
 
@@ -379,7 +392,6 @@ P0 Critical:
 
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - Dashboard QA breakdown click-through to filtered editor.
-- Activity log filters by mod, user, and date range.
 - LLM provider health or connection status in Settings.
 - Max-length visual indicator in the editor detail panel.
 
@@ -389,10 +401,8 @@ P1 High:
 - Persistent current game and language context in the app shell.
 - Per-game hub cards for Imports, Mods, Review, and Release.
 - Deep links from overview and quality pages into pre-filtered editor views.
-- Settings taxonomy that separates translators' tools from admin-only configuration.
 - Post-LLM-run action prompt linking directly to review queue.
 - Placeholder token highlighting inline in the translation textarea.
-- Translator display name in the review queue row.
 
 P2 Medium:
 
@@ -409,7 +419,11 @@ P2 Medium:
 P3 Low:
 
 - Optional page size selector in the editor grid.
+- Role-aware navigation visibility and empty states.
+- Settings taxonomy that separates translators' tools from admin-only configuration.
+- Activity log filters by mod, user, and date range.
 - Activity log CSV export from the UI.
+- Translator display name in the review queue row.
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
 
 ## Performance Targets
