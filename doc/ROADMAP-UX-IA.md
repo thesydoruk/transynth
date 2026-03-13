@@ -134,7 +134,7 @@ These are specific gaps documented or discovered during development that are not
 
 Editor:
 
-- No max-length visual indicator in the detail panel for strings with configurable length QA rules.
+- ~~No max-length visual indicator in the detail panel for strings with configurable length QA rules.~~ ✅ Resolved: `activeMaxLength` derived from QA rules is computed in `useEditorQueries` and rendered in `DetailPanel`.
 - Placeholder tokens are not highlighted inline in the translation textarea, though QA catches mismatches.
 - No page size selector in the editor grid; fixed at 100 rows per page.
 - No direct link from the Dashboard QA summary to a filtered editor view showing only failing strings.
@@ -303,11 +303,12 @@ Exit criteria:
 - Error states provide actionable recovery steps.
 - Users can tell whether a file is uploaded, extracting, importing, failed, or ready without opening logs.
 
-### Phase 4: Translation Editor Optimization (1-2 sprints, Priority P1)
+### Phase 4: Translation Editor Optimization (1-2 sprints, Priority P1) — 🔄 In Progress
 
 - Improve row focus behavior and context readability.
 - Optimize review queues and navigation shortcuts.
-- Clarify state feedback for save and validation outcomes.
+- ✅ Clarify state feedback for save and validation outcomes — `saveIndicator` (`saving / saved / idle`) implemented in `useEditorMutations`; shown in `DetailPanel`.
+- ✅ Internal architecture refactoring — `ModEditorPage` (~1300 → ~310 lines): 11 sub-components under `components/`, 5 custom hooks (`useThemeObserver`, `useEditorQueries`, `useEditorMutations`, `useAutosave`, `useEditorKeyboard`) under `hooks/`, 5 one-function utilities under `utils/`; keyboard shortcut hook uses ref-pattern, eliminating 3 `exhaustive-deps` lint warnings.
 - Remove or demote secondary actions that interrupt editing flow.
 - Add better drill-down paths from Dashboard, Review Queue, and Coherence into filtered editor sessions.
 - Improve discoverability and consistency of special editors without moving them out of the translation workflow.
@@ -337,7 +338,7 @@ Exit criteria:
 - Add provider health indicator to Settings LLM tab.
 - Add post-batch-translate action card that links directly to the review queue for those strings.
 - Add Dashboard QA click-through to filtered editor sessions.
-- Add max-length visual indicator in editor detail panel for strings with length QA rules.
+- ✅ Add max-length visual indicator in editor detail panel for strings with length QA rules — `activeMaxLength` computed from QA rules matching current row's `signature` and `path`; rendered in `DetailPanel`.
 - Add onboarding checklist on Home or Game Hub for first-time setup.
 
 Exit criteria:
@@ -378,7 +379,7 @@ Exit criteria:
 - Queue-focused navigation controls in translation workflows.
 - Deterministic empty states with immediate action buttons.
 - Placeholder token highlighting inline in the translation textarea.
-- Max-length visual indicator in the editor detail panel.
+- ✅ Max-length visual indicator in the editor detail panel.
 - Optional page size selector in the editor grid.
 - Dashboard QA breakdown click-through to filtered editor.
 - LLM provider health or connection status in Settings.
@@ -393,7 +394,7 @@ P0 Critical:
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - Dashboard QA breakdown click-through to filtered editor.
 - LLM provider health or connection status in Settings.
-- Max-length visual indicator in the editor detail panel.
+- ✅ Max-length visual indicator in the editor detail panel.
 
 P1 High:
 
