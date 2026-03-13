@@ -411,6 +411,34 @@
   text-align: right;
 }
 
+.charInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.maxLengthHint {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.maxLengthHintOk {
+  color: var(--text-dim);
+  background: var(--bg-hover);
+}
+
+.maxLengthHintWarn {
+  color: var(--warning);
+  background: var(--bg-hover);
+}
+
+.maxLengthHintError {
+  color: var(--danger);
+  background: var(--bg-hover);
+}
+
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
 .tabs {
   display: flex;

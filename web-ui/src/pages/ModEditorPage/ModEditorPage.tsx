@@ -283,6 +283,13 @@ export const ModEditorPage = () => {
   const stringsKey = ['strings', modId, srcLang, targetLang, status, qaOnly, signature, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
 
   const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
+  const qaRuleGame = (mod?.game ?? gameId ?? 'fo4').toLowerCase();
+  const { data: maxLengthRules } = useQuery({
+    queryKey: ['qaRules', 'max_length', qaRuleGame],
+    queryFn: () => api.qaRules.list({ game: qaRuleGame, ruleType: 'max_length', isActive: 'true' }),
+    enabled: Boolean(qaRuleGame),
+    staleTime: 60_000,
+  });
   const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
   const { data: sigs } = useQuery({ queryKey: ['sigs', modId, srcLang], queryFn: () => api.strings.signatures(modId, srcLang) });
   const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
@@ -755,6 +762,28 @@ export const ModEditorPage = () => {
     return base;
   }, [langs]);
 
+  const activeMaxLength = useMemo(() => {
+    if (!activeRow || !maxLengthRules?.length) return null;
+
+    const matchingLimits = maxLengthRules
+      .filter((rule) => {
+        if (rule.rule_type !== 'max_length') return false;
+        if (rule.signature && rule.signature !== activeRow.signature) return false;
+        if (rule.path && rule.path !== activeRow.path) return false;
+        return true;
+      })
+      .map((rule) => Number.parseInt(rule.value, 10))
+      .filter((n) => Number.isFinite(n) && n > 0);
+
+    if (matchingLimits.length === 0) return null;
+    // Multiple rules may match this row. Show the strictest active limit.
+    return Math.min(...matchingLimits);
+  }, [activeRow, maxLengthRules]);
+
+  const maxLengthRemaining = activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
+  const maxLengthExceeded = maxLengthRemaining != null && maxLengthRemaining < 0;
+  const maxLengthNear = maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
+
   return (
     <div className={styles.root}>
       {/* ── Top toolbar ── */}
@@ -1042,7 +1071,20 @@ export const ModEditorPage = () => {
                     placeholder={t('modEditor.enterTranslation')}
                   />
                   <div className={styles.detailBtnBar}>
-                    <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>
+                    <div className={styles.charInfo}>
+                      <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>
+                      {activeMaxLength != null && (
+                        <div
+                          className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
+                        >
+                          {t('modEditor.maxLength', { max: activeMaxLength })}
+                          {' · '}
+                          {maxLengthExceeded
+                            ? t('modEditor.maxLengthExceeded', { count: Math.abs(maxLengthRemaining ?? 0) })
+                            : t('modEditor.maxLengthRemaining', { count: maxLengthRemaining ?? 0 })}
+                        </div>
+                      )}
+                    </div>
                     <div className={styles.detailSaveRow}>
                       <button className={styles.btnSec} onClick={handleCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</button>
                       {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (

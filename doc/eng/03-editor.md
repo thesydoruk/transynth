@@ -174,13 +174,18 @@ The panel also shows:
 
 - a character counter for the source text
 - a character counter for the current translation draft
+- a max-length indicator when an active `max_length` QA rule matches the current row
 - quick buttons for **Copy src**, **Review**, **Reject**, and **Save**
 
 If the record is a `BOOK` or the source contains HTML-like markup, the panel shows a **Book / HTML editor** button.
 That opens a split-pane modal with raw markup on one side and a live preview on the other.
 
-The current editor does **not** show a dedicated max-length warning in this panel.
-It also does **not** visually highlight placeholders inline inside the textarea, although placeholder mismatches are checked by QA.
+When a matching `max_length` QA rule exists for the current GRUP/field, the panel shows a limit chip:
+
+- `Max: N · X left` while within limit
+- `Max: N · Exceeded by X` when over limit
+
+It does **not** visually highlight placeholders inline inside the textarea, although placeholder mismatches are checked by QA.
 
 ### TM Suggestions Tab
 

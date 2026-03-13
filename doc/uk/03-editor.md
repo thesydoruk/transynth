@@ -174,13 +174,18 @@ Status dropdown зараз підтримує:
 
 - лічильник символів для source text
 - лічильник символів для поточного translation draft
+- індикатор max-length, якщо для поточного рядка спрацьовує активне QA-правило `max_length`
 - швидкі кнопки **Copy src**, **Review**, **Reject** і **Save**
 
 Якщо запис має тип `BOOK` або source містить HTML-подібну markup, панель показує кнопку **Book / HTML editor**.
 Вона відкриває split-pane modal із raw markup з одного боку і live preview з іншого.
 
-Поточний редактор **не** показує окреме max-length warning прямо в цій панелі.
-Він також **не** підсвічує placeholders безпосередньо всередині textarea, хоча placeholder mismatch перевіряється через QA.
+Коли для поточного GRUP/field існує відповідне правило `max_length`, панель показує chip з лімітом:
+
+- `Макс: N · залишилось X`, якщо ліміт не перевищено
+- `Макс: N · перевищено на X`, якщо ліміт перевищено
+
+Редактор все ще **не** підсвічує placeholders безпосередньо всередині textarea, хоча placeholder mismatch перевіряється через QA.
 
 ### Вкладка TM Suggestions
 
