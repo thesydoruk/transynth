@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import type { TranslationHistoryEntry } from '../../../api';
-import { StatusBadge } from '../../../components/StatusBadge';
-import parentS from '../ModEditorPage.module.scss';
+import type { TranslationHistoryEntry } from '../../../../api';
+import { StatusBadge } from '../../../../components/StatusBadge';
+import parentS from '../../ModEditorPage.module.scss';
 import s from './HistoryPanel.module.scss';
 
 interface HistoryPanelProps {

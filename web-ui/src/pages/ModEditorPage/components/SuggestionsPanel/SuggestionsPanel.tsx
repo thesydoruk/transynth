@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import type { TMSuggestion } from '../../../api';
-import { StatusBadge } from '../../../components/StatusBadge';
-import parentS from '../ModEditorPage.module.scss';
+import type { TMSuggestion } from '../../../../api';
+import { StatusBadge } from '../../../../components/StatusBadge';
+import parentS from '../../ModEditorPage.module.scss';
 import s from './SuggestionsPanel.module.scss';
 
 interface SuggestionsPanelProps {

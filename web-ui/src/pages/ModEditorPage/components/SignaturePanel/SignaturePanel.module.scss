@@ -1,0 +1,32 @@
+/* ── SignaturePanel — SCSS Module ───────────────────────────────────────────── */
+
+.leftPanel {
+  width: 160px;
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.sigRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--bg-row-alt);
+  user-select: none;
+}
+
+.sigRowActive {
+  background: var(--border-light);
+}
+
+.sigName {
+  color: var(--text);
+}
+
+.sigCount {
+  color: var(--text-faint);
+  font-size: 11px;
+}

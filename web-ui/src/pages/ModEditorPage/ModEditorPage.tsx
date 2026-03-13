@@ -1,118 +1,42 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow } from '../../api';
-import { getSrcLang, getTgtLang, SUPPORTED_CONTENT_LANGUAGES } from '../../langDefaults';
-import { StatusBadge, ProgressBar } from '../../components/StatusBadge';
+import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
-import { HistoryPanel } from './HistoryPanel';
-import { QAPanel } from './QAPanel';
-import { SearchReplaceModal } from './SearchReplaceModal';
-import { SuggestionsPanel } from './SuggestionsPanel';
+import { SearchReplaceModal } from './components/SearchReplaceModal';
+import { EditorToolbar } from './components/EditorToolbar';
+import { SignaturePanel } from './components/SignaturePanel';
+import { StringGrid, type SortCol, type SortDir, type ColumnFilters } from './components/StringGrid';
+import { DetailPanel, type BottomTab } from './components/DetailPanel';
+import { ContextMenu } from './components/ContextMenu';
+import { ShortcutsOverlay } from './components/ShortcutsOverlay';
+import { EditorStatusBar } from './components/EditorStatusBar';
+import {
+  useThemeObserver,
+  useEditorQueries,
+  useEditorMutations,
+  useAutosave,
+  useEditorKeyboard,
+} from './hooks';
 import styles from './ModEditorPage.module.scss';
 
+/** Available status-filter values for the toolbar dropdown. */
 const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
+/** Number of string rows displayed per page. */
 const PAGE_SIZE = 100;
 
-type TranslateProgress = { done: number; total: number };
-type BottomTab = 'suggestions' | 'qa' | 'history';
-
-// Row background by translation status.
-//
-// Important: colours are not hardcoded here. We intentionally return CSS custom
-// properties so both dark and light themes can provide their own palette in
-// `index.scss` while preserving identical EET4 status semantics.
-//
-// EET4 mapping:
-//   _00_Vide               -> untranslated (neutral)
-//   _20_ModCharge          -> draft (loaded/unconfirmed)
-//   _50_TradAuto           -> tm
-//   _70_Internet           -> auto
-//   _80_SansPonctuation    -> fuzzy
-//   _90_Devalide           -> rejected
-//   _99_Valide             -> reviewed/human
-const rowBg = (status: string | null): string => {
-  if (status === '__active') return 'var(--bg-row-hover)';         // selected row highlight
-  if (!status) return 'transparent';                              // untranslated (neutral)
-  if (status === 'reviewed') return 'var(--status-row-reviewed)'; // EET4 _99_Valide
-  if (status === 'human')    return 'var(--status-row-human)';    // EET4 _99_Valide (human-confirmed)
-  if (status === 'draft')    return 'var(--status-row-draft)';    // EET4 _20_ModCharge
-  if (status === 'rejected') return 'var(--status-row-rejected)'; // EET4 _90_Devalide
-  if (status === 'tm')       return 'var(--status-row-tm)';       // EET4 _50_TradAuto
-  if (status === 'auto')     return 'var(--status-row-auto)';     // EET4 _70_Internet
-  if (status === 'fuzzy')    return 'var(--status-row-fuzzy)';    // EET4 _80_SansPonctuation
-  return 'transparent';
-}
-
-/** Parses #RGB/#RRGGBB or rgb()/rgba() strings into RGB channels. */
-const parseCssColor = (color: string): [number, number, number] | null => {
-  const c = color.trim();
-  const hex = c.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
-  if (hex) {
-    const raw = hex[1];
-    const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
-    return [
-      Number.parseInt(full.slice(0, 2), 16),
-      Number.parseInt(full.slice(2, 4), 16),
-      Number.parseInt(full.slice(4, 6), 16),
-    ];
-  }
-
-  const rgb = c.match(/^rgba?\(([^)]+)\)$/i);
-  if (!rgb) return null;
-  const parts = rgb[1].split(',').map((p) => p.trim());
-  if (parts.length < 3) return null;
-  const r = Number.parseFloat(parts[0]);
-  const g = Number.parseFloat(parts[1]);
-  const b = Number.parseFloat(parts[2]);
-  if ([r, g, b].some((n) => Number.isNaN(n))) return null;
-  return [Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b))];
-};
-
-/** Resolves `var(--token)` into a concrete CSS color value using computed root style. */
-const resolveCssColor = (color: string): string => {
-  const c = color.trim();
-  if (!c.startsWith('var(') || typeof window === 'undefined') return c;
-  const token = c.match(/^var\((--[^,)\s]+).*/)?.[1];
-  if (!token) return c;
-  const resolved = window.getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  return resolved || c;
-};
-
-/** WCAG relative luminance for contrast-ratio computation. */
-const relativeLuminance = ([r, g, b]: [number, number, number]): number => {
-  const toLinear = (v: number) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  const [lr, lg, lb] = [toLinear(r), toLinear(g), toLinear(b)];
-  return (0.2126 * lr) + (0.7152 * lg) + (0.0722 * lb);
-};
-
-/** Picks black or white text for maximal contrast against a row background. */
-const rowTextColor = (status: string | null): string => {
-  const bg = rowBg(status);
-  if (bg === 'transparent') return 'var(--text)';
-
-  const resolved = resolveCssColor(bg);
-  const rgb = parseCssColor(resolved);
-  if (!rgb) return 'var(--text)';
-
-  const lumBg = relativeLuminance(rgb);
-  const contrastWhite = (1.05) / (lumBg + 0.05);
-  const contrastBlack = (lumBg + 0.05) / 0.05;
-  return contrastWhite >= contrastBlack ? '#fff' : '#000';
-};
-
-/** Keys identifying each resizable column in the string grid. */
-type ColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
-
-/** Column keys that support server-side sorting (all except checkbox and actions). */
-type SortCol = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl';
-type SortDir = 'asc' | 'desc';
-
+/**
+ * Top-level page component for the mod-editor view.
+ *
+ * Orchestrates filter / sort / pagination state, delegates data-fetching to
+ * {@link useEditorQueries}, persistence to {@link useEditorMutations},
+ * autosave to {@link useAutosave}, and keyboard handling to
+ * {@link useEditorKeyboard}.  Rendering is delegated to the individual
+ * sub-components (EditorToolbar, SignaturePanel, StringGrid, DetailPanel,
+ * ContextMenu, ShortcutsOverlay, EditorStatusBar).
+ */
 export const ModEditorPage = () => {
   const { t } = useTranslation();
   const { id, gameId } = useParams<{ id: string; gameId: string }>();
@@ -124,151 +48,78 @@ export const ModEditorPage = () => {
   const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
   const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus) ? initialStatus : 'all';
 
-  // Filters
+  // ── Filter / sort / pagination state ──
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState(safeInitialStatus);
   const [qaOnly, setQaOnly] = useState(initialQaOnly);
   const [signature, setSignature] = useState('');
   const [page, setPage] = useState(1);
-
-  // Per-column filters (filter row above the grid header)
-  const [grupFilter, setGrupFilter] = useState('');
-  const [formidFilter, setFormidFilter] = useState('');
-  const [edidFilter, setEdidFilter] = useState('');
-  const [fieldFilter, setFieldFilter] = useState('');
-  const [srcFilter, setSrcFilter] = useState('');
-  const [translFilter, setTranslFilter] = useState('');
-
-  // Sorting
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
+    grup: '', formid: '', edid: '', field: '', src: '', transl: '',
+  });
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  // Selection
+  // ── Selection ──
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  // Active row (detail panel)
+  // ── Active row (detail panel) ──
   const [activeRow, setActiveRow] = useState<StringRow | null>(null);
   const [draftTranslation, setDraftTranslation] = useState('');
   const [activeTab, setActiveTab] = useState<BottomTab>('suggestions');
-  const [saveIndicator, setSaveIndicator] = useState<'idle' | 'saving' | 'saved'>('idle');
-
-  // Autosave refs
-  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeRowRef = useRef(activeRow);
-  const draftRef = useRef(draftTranslation);
   activeRowRef.current = activeRow;
-  draftRef.current = draftTranslation;
+  const translAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Translate progress
-  const [translateProgress, setTranslateProgress] = useState<TranslateProgress | null>(null);
+  // ── Translate progress ──
+  const [translateProgress, setTranslateProgress] = useState<{ done: number; total: number } | null>(null);
   const [translateError, setTranslateError] = useState<string | null>(null);
   const translateInFlight = useRef(false);
 
-  // Search & Replace
+  // ── Modal / overlay visibility ──
   const [showSearchReplace, setShowSearchReplace] = useState(false);
-  /** Whether the Book/HTML editor modal is open for the current active row. */
   const [showBookEditor, setShowBookEditor] = useState(false);
-
-  // Keyboard shortcuts help panel
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Re-render the table when theme tokens change so row text contrast is
-  // recomputed immediately (no manual page refresh required).
-  const [, setThemeRevision] = useState(0);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const root = document.documentElement;
-    const notifyThemeChanged = () => setThemeRevision((v) => v + 1);
-
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === 'attributes' && (m.attributeName === 'data-theme' || m.attributeName === 'class' || m.attributeName === 'style')) {
-          notifyThemeChanged();
-          break;
-        }
-      }
-    });
-
-    observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
-    window.addEventListener('themechange', notifyThemeChanged);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('themechange', notifyThemeChanged);
-    };
-  }, []);
-
-  // Context menu state — position and the row it was triggered on
+  // ── Context menu ──
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
-  const ctxMenuRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * After the context menu mounts, measures it and flips horizontally/vertically
-   * so the menu stays fully visible within the viewport.
-   */
-  useEffect(() => {
-    if (!ctxMenu || !ctxMenuRef.current) return;
-    const el = ctxMenuRef.current;
-    const rect = el.getBoundingClientRect();
-    let x = ctxMenu.x;
-    let y = ctxMenu.y;
-    if (x + rect.width > window.innerWidth) x = Math.max(0, x - rect.width);
-    if (y + rect.height > window.innerHeight) y = Math.max(0, y - rect.height);
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.opacity = '1';
-  }, [ctxMenu]);
+  // ── Custom hooks ──
+  useThemeObserver();
 
-  // Resizable column widths in px. null = flex-fill (auto-size). Updated while dragging.
-  const [colWidths, setColWidths] = useState<Record<ColKey, number | null>>({
-    grup: 52, formid: 70, edid: 160, field: 50, src: null, transl: null, act: 170,
+  const {
+    mod, strings, stats, sigs, suggestions, qaIssues, history,
+    isLoading, refetchStats, availLangs, sigCounts, totalPages, activeMaxLength,
+  } = useEditorQueries({
+    modId, gameId, srcLang, targetLang, status, qaOnly, signature,
+    columnFilters, page, pageSize: PAGE_SIZE, sortCol, sortDir,
+    activeRow, activeTab,
   });
-  const resizeRef = useRef<{ col: ColKey; startX: number; startW: number } | null>(null);
 
-  /**
-   * Initiates a column resize drag. Reads the current rendered width of the
-   * header cell from the DOM, then tracks mousemove to adjust the column width.
-   * Global listeners are cleaned up automatically on mouseup.
-   */
-  const startResize = useCallback((col: ColKey, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const thEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
-    const startW = thEl.getBoundingClientRect().width;
-    resizeRef.current = { col, startX: e.clientX, startW };
-    const onMove = (ev: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const delta = ev.clientX - resizeRef.current.startX;
-      const newW = Math.max(30, resizeRef.current.startW + delta);
-      setColWidths((prev) => ({ ...prev, [resizeRef.current!.col]: newW }));
-    };
-    const onUp = () => {
-      resizeRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+  const {
+    saveMutation, approveMutation, rejectMutation, clearMutation,
+    tmApplyMut, bulkReviewMutation, saveIndicator,
+  } = useEditorMutations({
+    modId, srcLang, targetLang, refetchStats,
+    activeRowRef, setActiveRow, setSelected,
+  });
+
+  const { flushAutosave, cancelAutosave } = useAutosave({
+    activeRow,
+    draftTranslation,
+    onSave: (stringId, text) => saveMutation.mutate({ stringId, text }),
+    onClear: (stringId) => clearMutation.mutate({ stringId }),
+  });
+
+  // ── Column-filter / sort handlers ──
+
+  const handleColumnFilterChange = useCallback((col: keyof ColumnFilters, value: string) => {
+    setColumnFilters((prev) => ({ ...prev, [col]: value }));
+    setPage(1);
   }, []);
 
-  /**
-   * Returns the inline CSS style for a resizable column cell.
-   * Uses a fixed flex-basis (px) when the user has resized it; flex-fill otherwise.
-   */
-  const colStyle = useCallback((col: ColKey): React.CSSProperties => {
-    const w = colWidths[col];
-    return w !== null
-      ? { flex: `0 0 ${w}px`, overflow: 'hidden' }
-      : { flex: 1, minWidth: 180, overflow: 'hidden' };
-  }, [colWidths]);
-
-  /**
-   * Toggles sort direction for the given column, or activates sorting on it.
-   * Clicking the same column cycles: asc → desc → off.
-   */
+  /** Toggles sort direction for a column, or activates sorting on it. */
   const handleSort = useCallback((col: SortCol) => {
     if (sortCol === col) {
       if (sortDir === 'asc') setSortDir('desc');
@@ -280,375 +131,49 @@ export const ModEditorPage = () => {
     setPage(1);
   }, [sortCol, sortDir]);
 
-  const stringsKey = ['strings', modId, srcLang, targetLang, status, qaOnly, signature, grupFilter, formidFilter, edidFilter, fieldFilter, srcFilter, translFilter, page, sortCol, sortDir];
-
-  const { data: mod } = useQuery({ queryKey: ['mods', modId], queryFn: () => api.mods.get(modId) });
-  const qaRuleGame = (mod?.game ?? gameId ?? 'fo4').toLowerCase();
-  const { data: maxLengthRules } = useQuery({
-    queryKey: ['qaRules', 'max_length', qaRuleGame],
-    queryFn: () => api.qaRules.list({ game: qaRuleGame, ruleType: 'max_length', isActive: 'true' }),
-    enabled: Boolean(qaRuleGame),
-    staleTime: 60_000,
-  });
-  const { data: langs } = useQuery({ queryKey: ['langs', modId], queryFn: () => api.mods.langs(modId) });
-  const { data: sigs } = useQuery({ queryKey: ['sigs', modId, srcLang], queryFn: () => api.strings.signatures(modId, srcLang) });
-  const { data: stats, refetch: refetchStats } = useQuery({ queryKey: ['stats', modId], queryFn: () => api.stats.mod(modId) });
-  const { data: strings, isLoading } = useQuery({
-    queryKey: stringsKey,
-    queryFn: () => api.strings.list({ modId, srcLang, targetLang, status: status === 'all' ? undefined : status, qaOnly: qaOnly || undefined, signature: signature || undefined, grup: grupFilter || undefined, formid: formidFilter || undefined, edid: edidFilter || undefined, field: fieldFilter || undefined, src: srcFilter || undefined, transl: translFilter || undefined, page, pageSize: PAGE_SIZE, sort: sortCol ?? undefined, order: sortCol ? sortDir : undefined }),
-    placeholderData: (prev) => prev,
-  });
-
+  // ── Sync status / qaOnly to URL search params ──
   useEffect(() => {
     const currentStatus = searchParams.get('status') ?? 'all';
     const currentQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
     if (currentStatus === status && currentQaOnly === qaOnly) return;
-
     const next = new URLSearchParams(searchParams);
     if (status !== 'all') next.set('status', status);
     else next.delete('status');
-
     if (qaOnly) next.set('qaOnly', '1');
     else next.delete('qaOnly');
-
     setSearchParams(next, { replace: true });
   }, [status, qaOnly, searchParams, setSearchParams]);
 
-  // Virtualizer (must be after `strings` declaration)
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: strings?.rows.length ?? 0,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 36,
-    overscan: 10,
-  });
+  // ── Action helpers ──
 
-  // TM suggestions for active row
-  const { data: suggestions } = useQuery({
-    queryKey: ['suggestions', activeRow?.string_id, targetLang],
-    queryFn: () => api.strings.suggestions(activeRow!.string_id, targetLang),
-    enabled: !!activeRow && activeTab === 'suggestions',
-  });
-  const { data: qaIssues } = useQuery({
-    queryKey: ['qa', activeRow?.string_id, targetLang],
-    queryFn: () => api.strings.qa(activeRow!.string_id, targetLang),
-    enabled: !!activeRow && activeTab === 'qa',
-  });
-  const { data: history } = useQuery({
-    queryKey: ['history', activeRow?.string_id, targetLang],
-    queryFn: () => api.strings.history(activeRow!.string_id, targetLang),
-    enabled: !!activeRow && activeTab === 'history',
-  });
-
-  // Save translation
-  const saveMutation = useMutation({
-    mutationFn: ({ stringId, text }: { stringId: number; text: string }) =>
-      api.strings.saveTranslation(stringId, text, 'draft', targetLang),
-    onMutate: ({ stringId, text }) => {
-      // Optimistic update in the grid cache
-      qc.setQueriesData<{ rows: StringRow[]; total: number }>({ queryKey: ['strings', modId] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          rows: old.rows.map((r) =>
-            r.string_id === stringId ? { ...r, translation: text || null, status: text ? 'draft' : null } : r,
-          ),
-        };
-      });
-      setSaveIndicator('saving');
-    },
-    onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      qc.invalidateQueries({ queryKey: ['history'] });
-      qc.invalidateQueries({ queryKey: ['qa'] });
-      void refetchStats();
-      // Update active row locally
-      if (activeRowRef.current?.string_id === result.id || (activeRowRef.current && result.id)) {
-        setActiveRow((prev) =>
-          prev
-            ? { ...prev, translation: result.text, translation_id: result.id, status: 'draft' }
-            : prev,
-        );
-      }
-      setSaveIndicator('saved');
-      setTimeout(() => setSaveIndicator('idle'), 1500);
-    },
-    onError: () => {
-      setSaveIndicator('idle');
-    },
-  });
-
-  // Approve
-  const approveMutation = useMutation({
-    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
-      api.strings.updateStatus(stringId, translationId, 'reviewed'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      qc.invalidateQueries({ queryKey: ['history'] });
-      qc.invalidateQueries({ queryKey: ['qa'] });
-      void refetchStats();
-      if (activeRow) {
-        setActiveRow({ ...activeRow, status: 'reviewed' });
-      }
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
-      api.strings.updateStatus(stringId, translationId, 'rejected'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      qc.invalidateQueries({ queryKey: ['history'] });
-      qc.invalidateQueries({ queryKey: ['qa'] });
-      void refetchStats();
-      if (activeRow) {
-        setActiveRow({ ...activeRow, status: 'rejected' });
-      }
-    },
-  });
-
-  // Clear translation
-  const clearMutation = useMutation({
-    mutationFn: ({ stringId }: { stringId: number }) =>
-      api.strings.clearTranslation(stringId, targetLang),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      qc.invalidateQueries({ queryKey: ['history'] });
-      qc.invalidateQueries({ queryKey: ['qa'] });
-      void refetchStats();
-      if (activeRow) setActiveRow({ ...activeRow, translation: null, status: null });
-    },
-  });
-
-  const tmApply = useMutation({
-    mutationFn: () => api.mods.tmApply(modId, srcLang, targetLang),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-  });
-
-  const bulkReviewMutation = useMutation({
-    mutationFn: ({ status }: { status: 'reviewed' | 'rejected' }) =>
-      api.mods.bulkReview(modId, [...selected], status, targetLang),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      qc.invalidateQueries({ queryKey: ['history'] });
-      qc.invalidateQueries({ queryKey: ['qa'] });
-      void refetchStats();
-      setSelected(new Set());
-    },
-  });
-
-  // Flush pending autosave immediately (used before row switch)
-  const flushAutosave = () => {
-    if (autosaveTimer.current) {
-      clearTimeout(autosaveTimer.current);
-      autosaveTimer.current = null;
-    }
-    const row = activeRowRef.current;
-    const text = draftRef.current;
-    if (!row) return;
-    const original = row.translation ?? '';
-    if (text === original) return;
-    if (text.trim() === '') {
-      clearMutation.mutate({ stringId: row.string_id });
-    } else {
-      saveMutation.mutate({ stringId: row.string_id, text });
-    }
-  }
-
-  const handleRowClick = (row: StringRow) => {
+  const handleRowClick = useCallback((row: StringRow) => {
     flushAutosave();
     setActiveRow(row);
     setDraftTranslation(row.translation ?? '');
     setActiveTab('suggestions');
-  }
-
-  // ── Keyboard shortcuts ──
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      // Skip when typing in input/textarea/select (except Escape, Ctrl+S, Ctrl+Shift combos)
-      const tag = (e.target as HTMLElement)?.tagName;
-      const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
-
-      // Escape — close context menu, detail panel, or clear selection
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (ctxMenu) { setCtxMenu(null); return; }
-        if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
-        else if (selected.size > 0) setSelected(new Set());
-        return;
-      }
-
-      // Ctrl+S — save translation (works even inside textarea)
-      if (e.key === 's' && e.ctrlKey && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleSave();
-        return;
-      }
-
-      // Ctrl+Shift+A — approve active row
-      if (e.key === 'A' && e.ctrlKey && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        if (activeRow?.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human') {
-          handleApprove(activeRow);
-        }
-        return;
-      }
-
-      // Ctrl+Shift+R — reject active row
-      if (e.key === 'R' && e.ctrlKey && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        if (activeRow?.translation_id && activeRow.status !== 'rejected') {
-          rejectMutation.mutate({ stringId: activeRow.string_id, translationId: activeRow.translation_id });
-        }
-        return;
-      }
-
-      // Ctrl+Shift+C — copy source to translation
-      if (e.key === 'C' && e.ctrlKey && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleCopySource();
-        return;
-      }
-
-      // Ctrl+Shift+X — clear translation
-      if (e.key === 'X' && e.ctrlKey && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        if (activeRow) handleClear(activeRow);
-        return;
-      }
-
-      // Ctrl+Shift+E — toggle detail panel (open/close)
-      if (e.key === 'E' && e.ctrlKey && e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        if (activeRow) { flushAutosave(); setActiveRow(null); setDraftTranslation(''); }
-        else if (strings?.rows.length) handleRowClick(strings.rows[0]);
-        return;
-      }
-
-      // ? — toggle keyboard shortcuts help (only outside text fields)
-      if (e.key === '?' && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-        return;
-      }
-
-      // Remaining shortcuts only work outside text fields
-      if (isInput) return;
-
-      // Arrow keys — navigate rows
-      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && strings?.rows.length) {
-        e.preventDefault();
-        const rows = strings.rows;
-        const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
-        let nextIdx: number;
-        if (e.key === 'ArrowDown') {
-          nextIdx = curIdx < rows.length - 1 ? curIdx + 1 : 0;
-        } else {
-          nextIdx = curIdx > 0 ? curIdx - 1 : rows.length - 1;
-        }
-        handleRowClick(rows[nextIdx]);
-        return;
-      }
-
-      // N — jump to next untranslated row
-      if (e.key === 'n' && !e.ctrlKey && !e.altKey && !e.shiftKey && strings?.rows.length) {
-        e.preventDefault();
-        const rows = strings.rows;
-        const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
-        // Search forward from current position, wrapping around
-        for (let i = 1; i <= rows.length; i++) {
-          const idx = (curIdx + i) % rows.length;
-          if (!rows[idx].translation) { handleRowClick(rows[idx]); break; }
-        }
-        return;
-      }
-
-      // Enter — focus the translation textarea in detail panel
-      if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        if (activeRow) {
-          e.preventDefault();
-          const textarea = document.querySelector<HTMLTextAreaElement>(`.${styles.translArea}`);
-          textarea?.focus();
-        }
-        return;
-      }
-
-      // Space — toggle selection on active row
-      if (e.key === ' ' && !e.ctrlKey && !e.altKey && !e.shiftKey && activeRow) {
-        e.preventDefault();
-        setSelected((prev) => {
-          const next = new Set(prev);
-          if (next.has(activeRow.string_id)) next.delete(activeRow.string_id);
-          else next.add(activeRow.string_id);
-          return next;
-        });
-        return;
-      }
-
-      // Ctrl+A — select / deselect all rows on current page
-      if (e.key === 'a' && e.ctrlKey && !e.shiftKey && !e.altKey && strings?.rows.length) {
-        e.preventDefault();
-        toggleAll();
-        return;
-      }
-
-      // PageDown — next page
-      if (e.key === 'PageDown' && strings) {
-        e.preventDefault();
-        const totalPages = Math.ceil(strings.total / PAGE_SIZE);
-        if (page < totalPages) setPage(page + 1);
-        return;
-      }
-
-      // PageUp — previous page
-      if (e.key === 'PageUp' && strings) {
-        e.preventDefault();
-        if (page > 1) setPage(page - 1);
-        return;
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeRow, selected, strings, ctxMenu, page]);
-
-  // Debounced autosave: triggers 800ms after typing stops
-  useEffect(() => {
-    if (!activeRow) return;
-    const original = activeRow.translation ?? '';
-    if (draftTranslation === original) return;
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => {
-      autosaveTimer.current = null;
-      handleSave();
-    }, 800);
-    return () => {
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    };
-  }, [draftTranslation]);
+  }, [flushAutosave]);
 
   const handleCopySource = () => {
     if (!activeRow) return;
     setDraftTranslation(activeRow.source);
-  }
+  };
 
   const handleSave = () => {
-    if (autosaveTimer.current) { clearTimeout(autosaveTimer.current); autosaveTimer.current = null; }
+    cancelAutosave();
     if (!activeRow) return;
-    if (draftTranslation.trim() === '') {
-      handleClear(activeRow);
-      return;
-    }
+    if (draftTranslation.trim() === '') { handleClear(activeRow); return; }
     saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
-  }
+  };
 
   const handleApprove = (row: StringRow) => {
     if (!row.translation_id) return;
     approveMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
-  }
+  };
+
+  const handleReject = (row: StringRow) => {
+    if (!row.translation_id) return;
+    rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
+  };
 
   const handleClear = (row: StringRow) => {
     clearMutation.mutate({ stringId: row.string_id });
@@ -656,7 +181,7 @@ export const ModEditorPage = () => {
       setActiveRow({ ...row, translation: null, translation_id: null, status: null, qa_issue_count: 0 });
       setDraftTranslation('');
     }
-  }
+  };
 
   const toggleRow = useCallback((row: StringRow, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -672,7 +197,7 @@ export const ModEditorPage = () => {
     if (!strings) return;
     if (selected.size === strings.rows.length) setSelected(new Set());
     else setSelected(new Set(strings.rows.map((r) => r.string_id)));
-  }
+  };
 
   const handleBatchTranslate = async () => {
     if (translateInFlight.current) return;
@@ -692,47 +217,27 @@ export const ModEditorPage = () => {
       setTranslateProgress(null);
       translateInFlight.current = false;
     }
-  }
+  };
 
-  // ── Context menu handlers ──
+  // ── Context menu helpers ──
 
-  /** Opens context menu at mouse position for the given row. */
   const handleContextMenu = useCallback((e: React.MouseEvent, row: StringRow) => {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, row });
   }, []);
 
-  /** Closes the context menu. */
-  const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
-
-  /** Close context menu when clicking outside. */
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const handler = () => setCtxMenu(null);
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [ctxMenu]);
-
-  /**
-   * Applies a text transform function to one or many rows' translations.
-   * If multiple rows are selected and the right-clicked row is among them,
-   * the transform applies to all selected rows. Otherwise only to the clicked row.
-   */
   const applyTextTransform = useCallback(async (row: StringRow, transform: (text: string) => string) => {
     const targetRows = (selected.size > 1 && selected.has(row.string_id))
       ? strings?.rows.filter((r) => selected.has(r.string_id) && r.translation) ?? []
       : row.translation ? [row] : [];
     for (const r of targetRows) {
       const newText = transform(r.translation!);
-      if (newText !== r.translation) {
-        await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
-      }
+      if (newText !== r.translation) await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
     }
     qc.invalidateQueries({ queryKey: ['strings', modId] });
     void refetchStats();
   }, [selected, strings, targetLang, qc, modId, refetchStats]);
 
-  /** Copies the source text to translation for single or multiple rows. */
   const ctxCopySource = useCallback(async (row: StringRow) => {
     const targetRows = (selected.size > 1 && selected.has(row.string_id))
       ? strings?.rows.filter((r) => selected.has(r.string_id)) ?? []
@@ -744,545 +249,154 @@ export const ModEditorPage = () => {
     void refetchStats();
   }, [selected, strings, targetLang, qc, modId, refetchStats]);
 
-  const totalPages = strings ? Math.ceil(strings.total / PAGE_SIZE) : 1;
+  // ── Keyboard shortcuts ──
+  useEditorKeyboard({
+    activeRow, selected, strings, ctxMenu, page,
+    pageSize: PAGE_SIZE, translAreaRef,
+    flushAutosave, handleSave, handleApprove, handleReject,
+    handleCopySource, handleClear, handleRowClick, toggleAll,
+    setActiveRow, setDraftTranslation, setSelected,
+    setCtxMenu, setPage, setShowShortcuts,
+  });
 
-  // Group counts by signature for left panel
-  const sigCounts = sigs ?? [];
-
-  // Always show the full supported language list in selectors.
-  // Append any extra language codes returned by API (if present) so nothing is lost.
-  const availLangs = useMemo(() => {
-    const base = [...SUPPORTED_CONTENT_LANGUAGES] as string[];
-    if (!langs || langs.length === 0) return base;
-    for (const code of langs) {
-      if (!base.includes(code)) {
-        base.push(code);
-      }
-    }
-    return base;
-  }, [langs]);
-
-  const activeMaxLength = useMemo(() => {
-    if (!activeRow || !maxLengthRules?.length) return null;
-
-    const matchingLimits = maxLengthRules
-      .filter((rule) => {
-        if (rule.rule_type !== 'max_length') return false;
-        if (rule.signature && rule.signature !== activeRow.signature) return false;
-        if (rule.path && rule.path !== activeRow.path) return false;
-        return true;
-      })
-      .map((rule) => Number.parseInt(rule.value, 10))
-      .filter((n) => Number.isFinite(n) && n > 0);
-
-    if (matchingLimits.length === 0) return null;
-    // Multiple rules may match this row. Show the strictest active limit.
-    return Math.min(...matchingLimits);
-  }, [activeRow, maxLengthRules]);
-
-  const maxLengthRemaining = activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
-  const maxLengthExceeded = maxLengthRemaining != null && maxLengthRemaining < 0;
-  const maxLengthNear = maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
-
+  // ── Render ──
   return (
     <div className={styles.root}>
-      {/* ── Top toolbar ── */}
-      <div className={styles.toolbar}>
-        <span className={styles.modName}>{mod?.name ?? '…'}</span>
-
-        {/* Lang selectors */}
-        <label className={styles.langLabel}>
-          {t('modEditor.source')}
-          <select value={srcLang} onChange={(e) => { setSrcLang(e.target.value); setPage(1); }} className={styles.langSelect}>
-            {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
-          </select>
-        </label>
-        <label className={styles.langLabel}>
-          {t('modEditor.target')}
-          <select value={targetLang} onChange={(e) => { setTargetLang(e.target.value); setPage(1); }} className={styles.langSelect}>
-            {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
-          </select>
-        </label>
-
-        <div className={styles.sep} />
-
-        {/* Status filter */}
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={styles.filterSelect}>
-          {STATUS_OPTS.map((o) => <option key={o} value={o}>{o === 'all' ? t('modEditor.allStatuses') : o}</option>)}
-        </select>
-        <button
-          onClick={() => { setQaOnly((v) => !v); setPage(1); }}
-          className={qaOnly ? styles.btnPri : styles.btnSec}
-          title={t('modEditor.qaOnlyTitle')}
-        >
-          {t('modEditor.qaOnly')}
-        </button>
-        <button
-          onClick={() => { setStatus(status === 'draft' ? 'all' : 'draft'); setPage(1); }}
-          className={status === 'draft' ? styles.btnPri : styles.btnSec}
-          title={t('modEditor.showDraftsTitle')}
-        >
-          {stats?.draft ? t('modEditor.reviewModeCount', { count: stats.draft }) : t('modEditor.reviewMode')}
-        </button>
-
-        <div className={styles.sep} />
-
-        {/* Actions */}
-        <button onClick={() => tmApply.mutate()} disabled={tmApply.isPending} className={styles.btnSec} title={t('modEditor.autoFillTmTitle')}>
-          {tmApply.isPending ? t('modEditor.applyingTm') : tmApply.isSuccess ? t('modEditor.tmApplied', { count: (tmApply.data as { applied: number }).applied }) : t('modEditor.applyTm')}
-        </button>
-        <button onClick={() => setShowSearchReplace(true)} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
-        {/* Show INNR editor button only when the mod contains INNR records */}
-        {sigs?.some((s: { signature: string }) => s.signature === 'INNR') && (
-          <Link to={`/games/${gameId}/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
-            {t('modEditor.innrEditor')}
-          </Link>
-        )}
-        <button onClick={() => setShowShortcuts((v) => !v)} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
-        {selected.size > 0 && (
-          <>
-            {translateProgress
-              ? <span className={styles.progressBadge}>{t('modEditor.translating', { done: translateProgress.done, total: translateProgress.total })}</span>
-              : <button onClick={handleBatchTranslate} className={styles.btnPri}>{t('modEditor.autoTranslate', { count: selected.size })}</button>
-            }
-            <button
-              onClick={() => bulkReviewMutation.mutate({ status: 'reviewed' })}
-              disabled={bulkReviewMutation.isPending}
-              className={styles.btnApprove}
-              title={t('modEditor.confirm')}
-            >
-              {bulkReviewMutation.isPending ? '…' : t('modEditor.approveCount', { count: selected.size })}
-            </button>
-            <button
-              onClick={() => bulkReviewMutation.mutate({ status: 'rejected' })}
-              disabled={bulkReviewMutation.isPending}
-              className={styles.btnDanger}
-              title={t('modEditor.reject')}
-            >
-              {bulkReviewMutation.isPending ? '…' : t('modEditor.rejectCount', { count: selected.size })}
-            </button>
-          </>
-        )}
-        {translateError && <span className={styles.errorBadge}>{translateError}</span>}
-
-        {/* Progress bar */}
-        {stats && (
-          <div className={styles.progressSection}>
-            <ProgressBar stats={stats} />
-            <span className={styles.progressLabel}>
-              {t('modEditor.approvedOfTotal', { approved: stats.approved, total: stats.total })}
-            </span>
-          </div>
-        )}
-      </div>
+      <EditorToolbar
+        modName={mod?.name}
+        srcLang={srcLang}
+        targetLang={targetLang}
+        availLangs={availLangs}
+        status={status}
+        qaOnly={qaOnly}
+        stats={stats}
+        selectedCount={selected.size}
+        translateProgress={translateProgress}
+        translateError={translateError}
+        tmApply={{
+          isPending: tmApplyMut.isPending,
+          isSuccess: tmApplyMut.isSuccess,
+          applied: (tmApplyMut.data as { applied: number } | undefined)?.applied ?? 0,
+        }}
+        bulkReviewPending={bulkReviewMutation.isPending}
+        gameId={gameId}
+        modId={modId}
+        hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
+        statusOpts={STATUS_OPTS}
+        onSrcLangChange={(l) => { setSrcLang(l); setPage(1); }}
+        onTargetLangChange={(l) => { setTargetLang(l); setPage(1); }}
+        onStatusChange={(s) => { setStatus(s); setPage(1); }}
+        onQaOnlyToggle={() => { setQaOnly((v) => !v); setPage(1); }}
+        onTmApply={() => tmApplyMut.mutate()}
+        onSearchReplace={() => setShowSearchReplace(true)}
+        onShortcuts={() => setShowShortcuts((v) => !v)}
+        onBatchTranslate={handleBatchTranslate}
+        onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
+      />
 
       {/* ── 3-column body ── */}
       <div className={styles.body}>
+        <SignaturePanel
+          sigCounts={sigCounts}
+          activeSignature={signature}
+          totalFiltered={strings?.total}
+          onSelect={(sig) => { setSignature(sig); setPage(1); }}
+        />
 
-        {/* LEFT: signature tree */}
-        <div className={styles.leftPanel}>
-          <div
-            className={`${styles.sigRow} ${signature === '' ? styles.sigRowActive : ''}`}
-            onClick={() => { setSignature(''); setPage(1); }}
-          >
-            <span className={styles.sigName}>{t('modEditor.allSigs')}</span>
-            <span className={styles.sigCount}>{strings?.total ?? '…'} / {sigCounts.reduce((a, r) => a + Number(r.count), 0)}</span>
-          </div>
-          {sigCounts.map((sig) => (
-            <div
-              key={sig.signature}
-              className={`${styles.sigRow} ${signature === sig.signature ? styles.sigRowActive : ''}`}
-              onClick={() => { setSignature(sig.signature); setPage(1); }}
-            >
-              <span className={styles.sigName}>{sig.signature}</span>
-              <span className={styles.sigCount}>{sig.count}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* CENTER+RIGHT: table + detail panel */}
         <div className={styles.centerCol}>
+          <StringGrid
+            rows={strings?.rows ?? []}
+            total={strings?.total ?? 0}
+            isLoading={isLoading}
+            selected={selected}
+            activeRow={activeRow}
+            srcLang={srcLang}
+            targetLang={targetLang}
+            sortCol={sortCol}
+            sortDir={sortDir}
+            columnFilters={columnFilters}
+            onRowClick={handleRowClick}
+            onToggleRow={toggleRow}
+            onToggleAll={toggleAll}
+            onSort={handleSort}
+            onColumnFilterChange={handleColumnFilterChange}
+            onContextMenu={handleContextMenu}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onClear={handleClear}
+            onCopySource={(row) => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}
+          />
 
-          {/* ── String table (virtualized) ── */}
-          <div className={styles.tableWrap} ref={scrollRef}>
-            {isLoading ? (
-              <div className={styles.center}>{t('common.loading')}</div>
-            ) : (
-              <>
-                {/* Sticky header */}
-                <div className={styles.gridHeader}>
-                  <div className={`${styles.th} ${styles.colCheck}`}>
-                    <input type="checkbox" checked={!!strings?.rows.length && selected.size === strings.rows.length} onChange={toggleAll} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('grup')} onClick={() => handleSort('grup')}>
-                    {t('modEditor.grup')}
-                    {sortCol === 'grup' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('grup', e)} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('formid')} onClick={() => handleSort('formid')}>
-                    {t('modEditor.formId')}
-                    {sortCol === 'formid' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('formid', e)} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('edid')} onClick={() => handleSort('edid')}>
-                    {t('modEditor.edid')}
-                    {sortCol === 'edid' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('edid', e)} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('field')} onClick={() => handleSort('field')}>
-                    {t('modEditor.field')}
-                    {sortCol === 'field' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('field', e)} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('src')} onClick={() => handleSort('src')}>
-                    {t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}
-                    {sortCol === 'src' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('src', e)} />
-                  </div>
-                  <div className={`${styles.th} ${styles.sortable}`} style={colStyle('transl')} onClick={() => handleSort('transl')}>
-                    {t('modEditor.translationText', { lang: targetLang.toUpperCase() })}
-                    {sortCol === 'transl' && <span className={styles.sortIcon}>{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('transl', e)} />
-                  </div>
-                  <div className={styles.th} style={colStyle('act')}>
-                    {t('modEditor.actions')}
-                    <span className={styles.resizeHandle} onMouseDown={(e) => startResize('act', e)} />
-                  </div>
-                </div>
-
-                {/* per-column filter row */}
-                <div className={styles.filterRow}>
-                  <div className={styles.colCheck} />
-                  <div style={colStyle('grup')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.grup')} value={grupFilter} onChange={(e) => { setGrupFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('formid')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.formId')} value={formidFilter} onChange={(e) => { setFormidFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('edid')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.edid')} value={edidFilter} onChange={(e) => { setEdidFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('field')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.field')} value={fieldFilter} onChange={(e) => { setFieldFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('src')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.sourceText', { lang: srcLang.toUpperCase() })} value={srcFilter} onChange={(e) => { setSrcFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('transl')}>
-                    <input className={styles.filterInput} placeholder={t('modEditor.translationText', { lang: targetLang.toUpperCase() })} value={translFilter} onChange={(e) => { setTranslFilter(e.target.value); setPage(1); }} />
-                  </div>
-                  <div style={colStyle('act')} />
-                </div>
-                {/* Virtualized rows */}
-                <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
-                  {rowVirtualizer.getVirtualItems().map((vItem) => {
-                    const row = strings!.rows[vItem.index];
-                    const isActive = activeRow?.string_id === row.string_id;
-                    const displayStatus = isActive ? '__active' : row.status;
-                    return (
-                      <div
-                        key={row.string_id}
-                        data-index={vItem.index}
-                        ref={rowVirtualizer.measureElement}
-                        className={`${styles.gridRow} ${styles.virtualRow}`}
-                        style={{
-                          transform: `translateY(${vItem.start}px)`,
-                          background: rowBg(displayStatus),
-                          color: rowTextColor(displayStatus),
-                          outline: isActive ? '1px solid #aaa' : 'none',
-                        }}
-                        onClick={() => handleRowClick(row)}
-                        onContextMenu={(e) => handleContextMenu(e, row)}
-                      >
-                        <div className={`${styles.td} ${styles.colCheck}`} onClick={(e) => toggleRow(row, e)}>
-                          <input type="checkbox" checked={selected.has(row.string_id)} onChange={() => {}} />
-                        </div>
-                        <div className={styles.tdSig} style={colStyle('grup')}>{row.signature}</div>
-                        <div className={styles.tdFid} style={colStyle('formid')}>{row.formid_hex}</div>
-                        <div className={styles.tdEdidCell} style={colStyle('edid')} title={row.edid ?? ''}>{row.edid ?? ''}</div>
-                        <div className={styles.tdField} style={colStyle('field')}>{row.path?.split('\\').pop() ?? ''}</div>
-                        <div className={styles.tdText} style={colStyle('src')} title={row.source}>{row.source}</div>
-                        <div className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty} style={colStyle('transl')} title={row.translation ?? ''}>
-                          {row.translation ?? '—'}
-                          {row.qa_issue_count > 0 && (
-                            <span className={styles.qaHint}>{row.qa_issue_count} QA</span>
-                          )}
-                        </div>
-                        <div className={`${styles.td} ${styles.colAct}`} style={colStyle('act')} onClick={(e) => e.stopPropagation()}>
-                          <div className={styles.actionBtnRow}>
-                            {row.translation && row.status !== 'reviewed' && row.status !== 'human' && row.translation_id && (
-                              <button className={styles.actionBtnBlue} title={t('modEditor.confirm')} onClick={() => handleApprove(row)}>V</button>
-                            )}
-                            {row.translation && row.status !== 'rejected' && row.translation_id && (
-                              <button className={styles.actionBtnRed} title={t('modEditor.reject')} onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>R</button>
-                            )}
-                            <button className={styles.actionBtnRed} title={t('modEditor.clearTranslation')} onClick={() => handleClear(row)}>X</button>
-                            <button className={styles.actionBtnGreen} title={t('modEditor.copySourceToTranslation')} onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>C</button>
-                            <StatusBadge status={row.status} small />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* ── Pagination ── */}
+          {/* Pagination */}
           <div className={styles.pagination}>
             <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>{t('common.prev')}</button>
             <span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>
             <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>{t('common.next')}</button>
           </div>
 
-          {/* ── Detail edit panel ── */}
           {activeRow && (
-            <div className={styles.detailPanel}>
-              <div className={styles.detailPanels}>
-                {/* Source */}
-                <div className={styles.textPanel}>
-                  <div className={styles.panelLabel}>{t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}</div>
-                  <textarea readOnly value={activeRow.source} className={styles.sourceArea} rows={4} />
-                  <div className={styles.charCount}>{t('modEditor.charCount', { count: activeRow.source.length })}</div>
-                </div>
-                {/* Translation */}
-                <div className={styles.textPanel}>
-                  <div className={styles.panelLabel}>
-                    {t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}
-                    {/* Show the Book editor button when the record is a BOOK or the source contains HTML markup */}
-                    {(activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source)) && (
-                      <button
-                        className={styles.btnSec}
-                        style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: '12px' }}
-                        onClick={() => setShowBookEditor(true)}
-                        title={t('bookEditor.openBtn')}
-                      >
-                        📖 {t('bookEditor.openBtn')}
-                      </button>
-                    )}
-                  </div>
-                  <textarea
-                    value={draftTranslation}
-                    onChange={(e) => setDraftTranslation(e.target.value)}
-                    className={styles.translArea}
-                    rows={4}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
-                    placeholder={t('modEditor.enterTranslation')}
-                  />
-                  <div className={styles.detailBtnBar}>
-                    <div className={styles.charInfo}>
-                      <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>
-                      {activeMaxLength != null && (
-                        <div
-                          className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
-                        >
-                          {t('modEditor.maxLength', { max: activeMaxLength })}
-                          {' · '}
-                          {maxLengthExceeded
-                            ? t('modEditor.maxLengthExceeded', { count: Math.abs(maxLengthRemaining ?? 0) })
-                            : t('modEditor.maxLengthRemaining', { count: maxLengthRemaining ?? 0 })}
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.detailSaveRow}>
-                      <button className={styles.btnSec} onClick={handleCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</button>
-                      {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
-                        <button className={styles.btnSec} onClick={() => handleApprove(activeRow)}>
-                          {t('modEditor.review')}
-                        </button>
-                      )}
-                      {activeRow.translation && activeRow.translation_id && activeRow.status !== 'rejected' && (
-                        <button className={styles.btnDanger} onClick={() => rejectMutation.mutate({ stringId: activeRow.string_id, translationId: activeRow.translation_id! })}>
-                          {t('modEditor.reject')}
-                        </button>
-                      )}
-                      <button
-                        className={styles.btnPri}
-                        onClick={handleSave}
-                        disabled={saveMutation.isPending}
-                        title="Ctrl+Enter"
-                      >
-                        {saveMutation.isPending ? t('modEditor.saving') : saveIndicator === 'saved' ? t('modEditor.saved') : t('common.save')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom tabs */}
-              <div className={styles.tabs}>
-                {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
-                  <button key={tab} className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab(tab)}>
-                    {tab === 'suggestions' ? t('modEditor.tabSuggestions') : tab === 'qa' ? t('modEditor.tabQa') : t('modEditor.tabHistory')}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.tabContent}>
-                {activeTab === 'suggestions' && (
-                  <SuggestionsPanel suggestions={suggestions ?? []} onApply={(text) => setDraftTranslation(text)} />
-                )}
-                {activeTab === 'qa' && (
-                  <QAPanel issues={qaIssues ?? []} />
-                )}
-                {activeTab === 'history' && (
-                  <HistoryPanel items={history ?? []} />
-                )}
-              </div>
-            </div>
+            <DetailPanel
+              activeRow={activeRow}
+              draftTranslation={draftTranslation}
+              srcLang={srcLang}
+              targetLang={targetLang}
+              activeTab={activeTab}
+              saveIndicator={saveIndicator}
+              savePending={saveMutation.isPending}
+              activeMaxLength={activeMaxLength}
+              suggestions={suggestions ?? []}
+              qaIssues={qaIssues ?? []}
+              history={history ?? []}
+              translAreaRef={translAreaRef}
+              onDraftChange={setDraftTranslation}
+              onSave={handleSave}
+              onCopySource={handleCopySource}
+              onApprove={() => handleApprove(activeRow)}
+              onReject={() => handleReject(activeRow)}
+              onTabChange={setActiveTab}
+              onOpenBookEditor={() => setShowBookEditor(true)}
+            />
           )}
         </div>
       </div>
 
-      {/* Search-Replace Modal */}
+      {/* Modals */}
       {showSearchReplace && (
         <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
       )}
-
-      {/* Book / HTML editor modal — for BOOK records and records with HTML markup */}
       {showBookEditor && activeRow && (
         <BookEditorModal
           source={activeRow.source}
           translation={draftTranslation}
-          onSave={(markup) => {
-            setDraftTranslation(markup);
-            setShowBookEditor(false);
-          }}
+          onSave={(markup) => { setDraftTranslation(markup); setShowBookEditor(false); }}
           onClose={() => setShowBookEditor(false)}
         />
       )}
+      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
 
-      {/* Keyboard shortcuts help overlay */}
-      {showShortcuts && (
-        <div className={styles.shortcutsOverlay} onClick={() => setShowShortcuts(false)}>
-          <div className={styles.shortcutsPanel} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.shortcutsTitle}>{t('modEditor.shortcuts')}</div>
-            <table className={styles.shortcutsTable}>
-              <tbody>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>{t('modEditor.shortcutSave')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutApprove')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td>{t('modEditor.shortcutReject')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>{t('modEditor.shortcutCopySource')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd></td><td>{t('modEditor.shortcutClear')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>{t('modEditor.shortcutToggleDetail')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>↑</kbd> <kbd>↓</kbd></td><td>{t('modEditor.shortcutNavRows')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>N</kbd></td><td>{t('modEditor.shortcutNextUntranslated')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Enter</kbd></td><td>{t('modEditor.shortcutFocusTextarea')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Space</kbd></td><td>{t('modEditor.shortcutToggleSelect')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutSelectAll')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>PgDn</kbd> <kbd>PgUp</kbd></td><td>{t('modEditor.shortcutPageNav')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>Esc</kbd></td><td>{t('modEditor.shortcutEscape')}</td></tr>
-                <tr><td className={styles.kbdCell}><kbd>?</kbd></td><td>{t('modEditor.shortcuts')}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Context menu */}
+      {ctxMenu && (
+        <ContextMenu
+          anchor={ctxMenu}
+          selected={selected}
+          rows={strings?.rows ?? []}
+          targetLang={targetLang}
+          bulkReviewPending={bulkReviewMutation.isPending}
+          onClose={() => setCtxMenu(null)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onClear={handleClear}
+          onCopySource={(row) => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}
+          onTextTransform={applyTextTransform}
+          onBulkCopySource={ctxCopySource}
+          onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
+          onBatchTranslate={handleBatchTranslate}
+        />
       )}
 
-      {/* ── Context menu ── */}
-      {ctxMenu && (() => {
-        const row = ctxMenu.row;
-        const hasTrans = !!row.translation;
-        const hasTransId = !!row.translation_id;
-        const isBulk = selected.size > 1 && selected.has(row.string_id);
-        const bulkCount = selected.size;
-        return (
-          <div
-            ref={ctxMenuRef}
-            className={styles.ctxMenu}
-            style={{ top: ctxMenu.y, left: ctxMenu.x, opacity: 0 }}
-            onClick={closeCtxMenu}
-          >
-            {/* ── Status group ── */}
-            {hasTrans && hasTransId && row.status !== 'reviewed' && row.status !== 'human' && (
-              <button className={styles.ctxItem} onClick={() => handleApprove(row)}>
-                <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
-                <span className={styles.ctxLabel}>{t('ctx.approve')}</span>
-                <span className={styles.ctxKey}>Ctrl+Shift+A</span>
-              </button>
-            )}
-            {hasTrans && hasTransId && row.status !== 'rejected' && (
-              <button className={styles.ctxItem} onClick={() => rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id! })}>
-                <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
-                <span className={styles.ctxLabel}>{t('ctx.reject')}</span>
-                <span className={styles.ctxKey}>Ctrl+Shift+R</span>
-              </button>
-            )}
-            <button className={styles.ctxItem} onClick={() => handleClear(row)}>
-              <span className={styles.ctxIcon}>⌫</span>
-              <span className={styles.ctxLabel}>{t('ctx.clear')}</span>
-            </button>
-            <button className={styles.ctxItem} onClick={() => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}>
-              <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
-              <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
-            </button>
-
-            {/* ── Text utilities group ── */}
-            {hasTrans && (
-              <>
-                <div className={styles.ctxSep} />
-                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.toUpperCase())}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇧</span>
-                  <span className={styles.ctxLabel}>{t('ctx.uppercase')}</span>
-                </button>
-                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.toLowerCase())}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇩</span>
-                  <span className={styles.ctxLabel}>{t('ctx.lowercase')}</span>
-                </button>
-                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.charAt(0).toUpperCase() + tx.slice(1))}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>Aa</span>
-                  <span className={styles.ctxLabel}>{t('ctx.capitalize')}</span>
-                </button>
-                <button className={styles.ctxItem} onClick={() => applyTextTransform(row, (tx) => tx.trim())}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>✂</span>
-                  <span className={styles.ctxLabel}>{t('ctx.trim')}</span>
-                </button>
-              </>
-            )}
-
-            {/* ── Bulk group ── */}
-            {isBulk && (
-              <>
-                <div className={styles.ctxSep} />
-                <button className={styles.ctxItem} onClick={() => bulkReviewMutation.mutate({ status: 'reviewed' })}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
-                  <span className={styles.ctxLabel}>{t('ctx.bulkApprove', { count: bulkCount })}</span>
-                  <span className={styles.ctxKey}>F10</span>
-                </button>
-                <button className={styles.ctxItem} onClick={() => bulkReviewMutation.mutate({ status: 'rejected' })}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
-                  <span className={styles.ctxLabel}>{t('ctx.bulkReject', { count: bulkCount })}</span>
-                </button>
-                <button className={styles.ctxItem} onClick={handleBatchTranslate}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
-                  <span className={styles.ctxLabel}>{t('ctx.bulkTranslate', { count: bulkCount })}</span>
-                </button>
-                <button className={styles.ctxItem} onClick={() => ctxCopySource(row)}>
-                  <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
-                  <span className={styles.ctxLabel}>{t('ctx.bulkCopySource', { count: bulkCount })}</span>
-                </button>
-              </>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Status bar */}
-      <div className={styles.statusBar}>
-        <span>{t('modEditor.selectedRows', { count: selected.size })}</span>
-        {activeRow && (
-          <span className={styles.statusBarDetail}>
-            {activeRow.signature} · {activeRow.formid_hex} · {activeRow.edid ?? '—'}
-          </span>
-        )}
-        {stats && (
-          <span className={styles.statusBarStats}>
-            {t('status.approved')}: {stats.approved} · {t('status.draft')}: {stats.draft} · {t('status.rejected')}: {stats.rejected} · {t('status.tm')}: {stats.tm} · {t('status.fuzzy')}: {stats.fuzzy} · {t('status.auto')}: {stats.auto_translated} · {t('status.untranslated')}: {stats.untranslated} · {t('status.total')}: {stats.total}
-          </span>
-        )}
-      </div>
+      <EditorStatusBar selectedCount={selected.size} activeRow={activeRow} stats={stats} />
     </div>
   );
-}
+};
 
 

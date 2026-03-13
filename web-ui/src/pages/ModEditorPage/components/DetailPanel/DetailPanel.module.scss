@@ -1,0 +1,169 @@
+/* ── DetailPanel — SCSS Module ──────────────────────────────────────────────── */
+
+.detailPanel {
+  background: var(--bg-panel);
+  border-top: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.detailPanels {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.textPanel {
+  flex: 1;
+  padding: 8px 12px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panelLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sourceArea {
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  width: 100%;
+}
+
+.translArea {
+  background: var(--transl-area-bg);
+  color: var(--text-bright);
+  border: 1px solid var(--transl-area-border);
+  border-radius: 3px;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  width: 100%;
+}
+
+.charCount {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.charInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.maxLengthHint {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.maxLengthHintOk {
+  color: var(--text-dim);
+  background: var(--bg-hover);
+}
+
+.maxLengthHintWarn {
+  color: var(--warning);
+  background: var(--bg-hover);
+}
+
+.maxLengthHintError {
+  color: var(--danger);
+  background: var(--bg-hover);
+}
+
+.detailBtnBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detailSaveRow {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Buttons ── */
+
+.btnPri {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnSec {
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btnDanger {
+  background: var(--danger-dark);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* ── Tabs ── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabBtn {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 5px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tabBtnActive {
+  color: var(--text-bright);
+  border-bottom: 2px solid var(--primary);
+  background: var(--bg-row-alt);
+}
+
+.tabContent {
+  min-height: 80px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg-raised);
+}

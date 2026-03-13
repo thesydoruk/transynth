@@ -1,12 +1,12 @@
 /* ── QAPanel — component-unique styles ──────────────────────────────────── */
-/* panelEmpty lives in ../ModEditorPage.module.scss.                         */
+/* panelEmpty lives in ../../ModEditorPage.module.scss.                      */
 
 /**
  * Flex list with 2 px gap — extends the shared panelList base via
  * cross-module CSS Modules composition.
  */
 .panelListGap2 {
-  composes: panelList from '../ModEditorPage.module.scss';
+  composes: panelList from '../../ModEditorPage.module.scss';
   gap: 2px;
 }
 

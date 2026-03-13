@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../../api';
+import { api } from '../../../../api';
 import s from './SearchReplaceModal.module.scss';
 
 interface SearchReplaceModalProps {

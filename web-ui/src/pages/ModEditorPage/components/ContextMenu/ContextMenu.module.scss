@@ -1,0 +1,75 @@
+/* ── ContextMenu — SCSS Module ──────────────────────────────────────────────── */
+
+/** Fixed-position dropdown that appears on right-click over a grid row. */
+.ctxMenu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--ctx-bg);
+  border: 1px solid var(--ctx-border);
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 280px;
+  box-shadow: var(--shadow-xl);
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+/** Clickable menu item. Full-width row with icon + label + shortcut hint. */
+.ctxItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--ctx-text);
+  font-size: 13px;
+  padding: 4px 12px 4px 8px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--ctx-item-hover);
+    color: var(--text-bright);
+  }
+}
+
+/** Unicode icon on the left of a menu item. */
+.ctxIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: var(--ctx-icon);
+}
+.ctxIconGreen {
+  color: var(--success);
+}
+.ctxIconRed {
+  color: var(--danger);
+}
+.ctxIconBlue {
+  color: var(--info);
+}
+
+/** Item label text — takes remaining space. */
+.ctxLabel {
+  flex: 1;
+}
+
+/** Right-aligned keyboard shortcut hint. */
+.ctxKey {
+  margin-left: 24px;
+  font-size: 11px;
+  color: var(--ctx-icon);
+  flex-shrink: 0;
+}
+
+/** Visual separator between context menu groups. */
+.ctxSep {
+  height: 1px;
+  background: var(--ctx-border);
+  margin: 4px 8px;
+}

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { QAIssue } from '../../../api';
-import parentS from '../ModEditorPage.module.scss';
+import type { QAIssue } from '../../../../api';
+import parentS from '../../ModEditorPage.module.scss';
 import s from './QAPanel.module.scss';
 
 interface QAPanelProps {
