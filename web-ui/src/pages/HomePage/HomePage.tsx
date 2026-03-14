@@ -11,6 +11,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import {
+  listAppJobs,
+  subscribeAppJobs,
+  type AppJob,
+} from '../../appJobsQueue';
+import {
   listNexusDownloadJobs,
   subscribeNexusDownloadJobs,
   type NexusDownloadJob,
@@ -27,6 +32,7 @@ import s from './HomePage.module.scss';
  */
 export const HomePage = () => {
   const { t } = useTranslation();
+  const [appJobs, setAppJobs] = useState<AppJob[]>(() => listAppJobs());
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
 
   const { data: dash, isLoading: dashLoading } = useQuery({
@@ -50,6 +56,15 @@ export const HomePage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = subscribeAppJobs(() => {
+      setAppJobs(listAppJobs());
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   if (dashLoading || opsLoading) {
     return <div className={s.loading}>{t('common.loading')}</div>;
   }
@@ -60,7 +75,7 @@ export const HomePage = () => {
 
       {ops && <SystemStrip data={ops} />}
       {dash && <ModProgressSection data={dash} />}
-      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} />}
+      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} appJobs={appJobs} />}
       {ops && <TechDetailsSection data={ops} />}
     </div>
   );

@@ -30,6 +30,7 @@ export const jobStatusClass = (status: string, css: Record<string, string>): str
   switch (status) {
     case 'completed': return css.badgeOk!;
     case 'failed': return css.badgeErr!;
+    case 'running': return css.badgeRun!;
     case 'in_progress':
     case 'extracting': return css.badgeRun!;
     case 'downloading': return css.badgeRun!;

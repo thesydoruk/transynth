@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow } from '../../api';
+import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
@@ -204,15 +205,58 @@ export const ModEditorPage = () => {
     translateInFlight.current = true;
     setTranslateError(null);
     setTranslateProgress({ done: 0, total: selected.size });
+    const appJobId = `llm-${modId}-${Date.now()}`;
+    const startedAt = Date.now();
+    const appJobLabel = `LLM batch translate · mod ${modId}`;
+    upsertAppJob({
+      id: appJobId,
+      kind: 'llm',
+      label: appJobLabel,
+      status: 'running',
+      progress: 0,
+      createdAt: startedAt,
+      updatedAt: startedAt,
+    });
+
     try {
       await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
         setTranslateProgress({ done: e.done, total: e.total });
+        const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
+        upsertAppJob({
+          id: appJobId,
+          kind: 'llm',
+          label: appJobLabel,
+          status: 'running',
+          progress,
+          createdAt: startedAt,
+          updatedAt: Date.now(),
+        });
       });
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
       setSelected(new Set());
+      upsertAppJob({
+        id: appJobId,
+        kind: 'llm',
+        label: appJobLabel,
+        status: 'completed',
+        progress: 100,
+        createdAt: startedAt,
+        updatedAt: Date.now(),
+      });
+      setTimeout(() => removeAppJob(appJobId), 15_000);
     } catch (err) {
       setTranslateError(String(err));
+      upsertAppJob({
+        id: appJobId,
+        kind: 'llm',
+        label: appJobLabel,
+        status: 'failed',
+        progress: null,
+        error: String(err),
+        createdAt: startedAt,
+        updatedAt: Date.now(),
+      });
     } finally {
       setTranslateProgress(null);
       translateInFlight.current = false;

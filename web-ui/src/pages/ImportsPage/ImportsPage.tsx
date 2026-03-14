@@ -12,6 +12,7 @@ import {
   subscribeNexusDownloadJobs,
   type NexusDownloadJob,
 } from '../../nexusDownloadQueue';
+import { upsertAppJob } from '../../appJobsQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -293,25 +294,83 @@ export const ImportsPage = () => {
     ) => {
       if (!modJob.mod_id) return;
       const busyKey = `${modJob.id}:${type}`;
+      const appJobId = `export-${modJob.id}-${type}-${Date.now()}`;
+      const now = Date.now();
+      const label = `${modJob.file_name} · ${type.toUpperCase()} export`;
+      upsertAppJob({
+        id: appJobId,
+        kind: 'export',
+        label,
+        status: 'running',
+        progress: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
       setExportBusy(busyKey);
       try {
         if (type === 'strings') {
           const result = await api.mods.exportStrings(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          upsertAppJob({
+            id: appJobId,
+            kind: 'export',
+            label,
+            status: 'completed',
+            progress: 100,
+            createdAt: now,
+            updatedAt: Date.now(),
+          });
           return;
         }
         if (type === 'esp') {
           const result = await api.mods.exportEsp(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          upsertAppJob({
+            id: appJobId,
+            kind: 'export',
+            label,
+            status: 'completed',
+            progress: 100,
+            createdAt: now,
+            updatedAt: Date.now(),
+          });
           return;
         }
         if (type === 'ba2') {
           const result = await api.mods.exportBa2(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+          upsertAppJob({
+            id: appJobId,
+            kind: 'export',
+            label,
+            status: 'completed',
+            progress: 100,
+            createdAt: now,
+            updatedAt: Date.now(),
+          });
           return;
         }
         await api.mods.exportProject(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+        upsertAppJob({
+          id: appJobId,
+          kind: 'export',
+          label,
+          status: 'completed',
+          progress: 100,
+          createdAt: now,
+          updatedAt: Date.now(),
+        });
       } catch (err) {
+        upsertAppJob({
+          id: appJobId,
+          kind: 'export',
+          label,
+          status: 'failed',
+          progress: null,
+          error: String(err),
+          createdAt: now,
+          updatedAt: Date.now(),
+        });
         window.alert(String(err));
       } finally {
         setExportBusy(null);
