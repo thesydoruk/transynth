@@ -6,9 +6,15 @@
  * block to a dedicated local component file to keep lint-compliant boundaries.
  */
 
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
+import {
+  listNexusDownloadJobs,
+  subscribeNexusDownloadJobs,
+  type NexusDownloadJob,
+} from '../../nexusDownloadQueue';
 import { ModProgressSection } from './ModProgressSection';
 import { ProjectStats } from './ProjectStats';
 import { RecentImports } from './RecentImports';
@@ -21,6 +27,7 @@ import s from './HomePage.module.scss';
  */
 export const HomePage = () => {
   const { t } = useTranslation();
+  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
 
   const { data: dash, isLoading: dashLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -34,6 +41,15 @@ export const HomePage = () => {
     refetchInterval: 30_000,
   });
 
+  useEffect(() => {
+    const unsubscribe = subscribeNexusDownloadJobs(() => {
+      setNexusDownloads(listNexusDownloadJobs());
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   if (dashLoading || opsLoading) {
     return <div className={s.loading}>{t('common.loading')}</div>;
   }
@@ -44,7 +60,7 @@ export const HomePage = () => {
 
       {ops && <SystemStrip data={ops} />}
       {dash && <ModProgressSection data={dash} />}
-      {ops && <RecentImports jobs={ops.importJobs} />}
+      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} />}
       {ops && <TechDetailsSection data={ops} />}
     </div>
   );

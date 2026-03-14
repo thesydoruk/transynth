@@ -32,6 +32,7 @@ export const jobStatusClass = (status: string, css: Record<string, string>): str
     case 'failed': return css.badgeErr!;
     case 'in_progress':
     case 'extracting': return css.badgeRun!;
+    case 'downloading': return css.badgeRun!;
     case 'paused': return css.badgeWarn!;
     default: return css.badgeDim!;
   }

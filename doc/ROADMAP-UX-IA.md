@@ -295,7 +295,7 @@ Exit criteria:
 - Improve failure messages and recovery guidance.
 - Keep risky actions guarded by clear confirmation text.
 - Connect Nexus download flow and import flow as one continuous intake experience.
-- Introduce a shared job center pattern for imports, downloads, and long-running operations.
+- 🔄 Introduce a shared job center pattern for imports, downloads, and long-running operations. Partial: Home overview now merges backend import jobs with live Nexus download queue in one unified jobs table.
 
 Exit criteria:
 
@@ -391,7 +391,7 @@ Exit criteria:
 
 P0 Critical:
 
-- Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
+- 🔄 Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations. Partial: Home now shows a single jobs table combining import jobs and Nexus download queue.
 - ✅ Dashboard QA breakdown click-through to filtered editor.
 - ✅ LLM provider health or readiness status in Settings.
 - ✅ Max-length visual indicator in the editor detail panel.
