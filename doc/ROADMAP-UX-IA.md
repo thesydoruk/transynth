@@ -137,7 +137,7 @@ Editor:
 - ~~No max-length visual indicator in the detail panel for strings with configurable length QA rules.~~ ✅ Resolved: `activeMaxLength` derived from QA rules is computed in `useEditorQueries` and rendered in `DetailPanel`.
 - Placeholder tokens are not highlighted inline in the translation textarea, though QA catches mismatches.
 - No page size selector in the editor grid; fixed at 100 rows per page.
-- No direct link from the Dashboard QA summary to a filtered editor view showing only failing strings.
+- ~~No direct link from the Dashboard QA summary to a filtered editor view showing only failing strings.~~ ✅ Resolved: Dashboard QA breakdown now provides drill-down into `ModEditor` with `qaOnly=1`.
 
 Activity log:
 
@@ -337,7 +337,7 @@ Exit criteria:
 
 - Add provider health indicator to Settings LLM tab.
 - Add post-batch-translate action card that links directly to the review queue for those strings.
-- Add Dashboard QA click-through to filtered editor sessions.
+- ✅ Add Dashboard QA click-through to filtered editor sessions — Dashboard QA breakdown rows now include direct drill-down to `ModEditor` with `qaOnly=1`.
 - ✅ Add max-length visual indicator in editor detail panel for strings with length QA rules — `activeMaxLength` computed from QA rules matching current row's `signature` and `path`; rendered in `DetailPanel`.
 - Add onboarding checklist on Home or Game Hub for first-time setup.
 
@@ -392,7 +392,7 @@ Exit criteria:
 P0 Critical:
 
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
-- Dashboard QA breakdown click-through to filtered editor.
+- ✅ Dashboard QA breakdown click-through to filtered editor.
 - LLM provider health or connection status in Settings.
 - ✅ Max-length visual indicator in the editor detail panel.
 

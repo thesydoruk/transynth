@@ -54,6 +54,8 @@ export const DashboardPage = () => {
   );
 
   const totalQA = data.qaByType.reduce((s, r) => s + Number(r.count), 0);
+  const firstQaMod = data.mods.find((m) => Number(m.qa_issues) > 0);
+  const qaDrilldownTo = firstQaMod ? `/games/${firstQaMod.game}/mods/${firstQaMod.id}?qaOnly=1` : null;
 
   return (
     <div className={s.page}>
@@ -78,7 +80,17 @@ export const DashboardPage = () => {
                   {issueLabel(r.issue_type)}
                 </span>
                 <Bar value={Number(r.count)} max={totalQA} color={ISSUE_COLORS[r.issue_type] ?? '#888'} />
-                <span className={s.qaCount}>{r.count}</span>
+                {qaDrilldownTo ? (
+                  <Link
+                    to={qaDrilldownTo}
+                    className={`${s.qaCount} ${s.qaBreakdownLink}`}
+                    title={t('dashboard.openQaInEditor')}
+                  >
+                    {r.count}
+                  </Link>
+                ) : (
+                  <span className={s.qaCount}>{r.count}</span>
+                )}
               </div>
             ))}
           </div>

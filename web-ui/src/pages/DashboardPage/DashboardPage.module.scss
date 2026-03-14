@@ -66,6 +66,14 @@
   text-align: right;
 }
 
+.qaBreakdownLink {
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
