@@ -112,7 +112,7 @@ Principles:
 
 Change now:
 
-- Surface a provider health or readiness indicator in the Settings LLM tab.
+- ✅ Surface a provider health or readiness indicator in the Settings LLM tab — `LlmTab` now renders `llmReadiness` level/checks/issues from `GET /api/settings`.
 - Make LLM batch translate progress visible at the global job level, not only inside the editor.
 - After a batch LLM run completes, show a direct action to open the review queue for those strings.
 - Show TM cache statistics (entries, coverage) in a useful summary rather than only a raw number.
@@ -335,7 +335,7 @@ Exit criteria:
 
 ### Phase 6: AI Pipeline Visibility and Known Debt Reduction (1-2 sprints, Priority P1)
 
-- Add provider health indicator to Settings LLM tab.
+- ✅ Add provider health indicator to Settings LLM tab — readiness badge/checks/issues are exposed in `Settings -> LLM` via `llmReadiness`.
 - Add post-batch-translate action card that links directly to the review queue for those strings.
 - ✅ Add Dashboard QA click-through to filtered editor sessions — Dashboard QA breakdown rows now include direct drill-down to `ModEditor` with `qaOnly=1`.
 - ✅ Add max-length visual indicator in editor detail panel for strings with length QA rules — `activeMaxLength` computed from QA rules matching current row's `signature` and `path`; rendered in `DetailPanel`.
@@ -382,7 +382,7 @@ Exit criteria:
 - ✅ Max-length visual indicator in the editor detail panel.
 - Optional page size selector in the editor grid.
 - Dashboard QA breakdown click-through to filtered editor.
-- LLM provider health or connection status in Settings.
+- ✅ LLM provider health or readiness status in Settings.
 - Post-LLM-run action prompt linking directly to review queue.
 - Onboarding checklist for first-time users.
 - Translator display name in the review queue row.
@@ -393,7 +393,7 @@ P0 Critical:
 
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - ✅ Dashboard QA breakdown click-through to filtered editor.
-- LLM provider health or connection status in Settings.
+- ✅ LLM provider health or readiness status in Settings.
 - ✅ Max-length visual indicator in the editor detail panel.
 
 P1 High:
