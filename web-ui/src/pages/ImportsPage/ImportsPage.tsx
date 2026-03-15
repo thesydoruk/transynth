@@ -12,7 +12,12 @@ import {
   subscribeNexusDownloadJobs,
   type NexusDownloadJob,
 } from '../../nexusDownloadQueue';
-import { upsertAppJob } from '../../appJobsQueue';
+import {
+  listAppJobs,
+  subscribeAppJobs,
+  upsertAppJob,
+  type AppJob,
+} from '../../appJobsQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,7 +38,7 @@ import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
-import { type LiveProgress } from './importsShared';
+import { statusColorBase, type LiveProgress } from './importsShared';
 import s from './ImportPage.module.scss';
 
 // ── Shared types & constants ───────────────────────────────────────────────────
@@ -126,10 +131,20 @@ export const ImportsPage = () => {
 
   /* ── Nexus pre-import downloads (before backend job exists) ───────────── */
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
+  const [appJobs, setAppJobs] = useState<AppJob[]>(() => listAppJobs());
 
   useEffect(() => {
     const unsubscribe = subscribeNexusDownloadJobs(() => {
       setNexusDownloads(listNexusDownloadJobs());
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAppJobs(() => {
+      setAppJobs(listAppJobs());
     });
     return () => {
       unsubscribe();
@@ -384,6 +399,7 @@ export const ImportsPage = () => {
   const csvPreviewJob = csvPreviewId != null ? (csvJobs ?? []).find(j => j.id === csvPreviewId) : null;
   const modPreviewJob = modPreviewId != null ? (modJobs ?? []).find(j => j.id === modPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
+  const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
 
   /** Confirms MOD deletion from custom modal and then refreshes import lists. */
   const confirmDeleteMod = useCallback(async () => {
@@ -418,7 +434,7 @@ export const ImportsPage = () => {
       </div>
 
       {/* Unified job list + Nexus downloads still in progress */}
-      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && pendingModUploads.length === 0 ? (
+      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && visibleAppJobs.length === 0 && pendingModUploads.length === 0 ? (
         <p className={s.empty}>{t('imports.noFiles')}</p>
       ) : (
         <div className={s.list}>
@@ -452,6 +468,38 @@ export const ImportsPage = () => {
           {visibleNexusDownloads.map((d) => (
             <NexusDownloadRow key={d.id} job={d} />
           ))}
+          {visibleAppJobs.map((job) => {
+            const pct = job.progress == null ? null : Math.max(0, Math.min(100, Math.round(job.progress)));
+            const kindBadge = job.kind === 'llm' ? 'LLM' : 'EXPORT';
+            return (
+              <div key={job.id} className={s.row}>
+                <div className={s.rowLeft}>
+                  <span className={s.typeBadge} style={{ background: job.kind === 'llm' ? '#1b6b2d' : '#1565c0' }}>
+                    {kindBadge}
+                  </span>
+                  <div>
+                    <span className={s.fileName}>{job.label}</span>
+                    <span className={s.meta}>{new Date(job.updatedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className={s.rowRight}>
+                  {pct == null ? (
+                    <span className={s.progressLabel}>—</span>
+                  ) : (
+                    <div className={s.progressWrap}>
+                      <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
+                      <span className={s.progressLabel}>{pct}%</span>
+                    </div>
+                  )}
+                  <div className={s.actions}>
+                    <span className={s.badge} style={{ background: statusColorBase(job.status === 'running' ? 'in_progress' : 'failed') }}>
+                      {t(`importStatus.${job.status}`, job.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
           {allJobs.map(u => {
             const key = `${u.kind}:${u.job.id}`;
             const live = liveProgress[key];
