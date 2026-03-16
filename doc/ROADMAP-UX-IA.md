@@ -383,7 +383,7 @@ Exit criteria:
 - Optional page size selector in the editor grid.
 - Dashboard QA breakdown click-through to filtered editor.
 - ✅ LLM provider health or readiness status in Settings.
-- Post-LLM-run action prompt linking directly to review queue.
+- ✅ Post-LLM-run action prompt linking directly to review queue. After batch translate completion, a banner appears with a direct link to `/review-queue?modId={{modId}}`.
 - Onboarding checklist for first-time users.
 - Translator display name in the review queue row.
 
@@ -401,8 +401,7 @@ P1 High:
 - Explicit Home or Overview navigation entry.
 - Persistent current game and language context in the app shell.
 - Per-game hub cards for Imports, Mods, Review, and Release.
-- Deep links from overview and quality pages into pre-filtered editor views.
-- Post-LLM-run action prompt linking directly to review queue.
+- ✅ Deep links from quality pages into pre-filtered editor views. ReviewQueuePage rows now link to editor with `?status={{row.status}}` parameter.
 - Placeholder token highlighting inline in the translation textarea.
 
 P2 Medium:

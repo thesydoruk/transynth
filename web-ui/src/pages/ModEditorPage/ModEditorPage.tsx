@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow } from '../../api';
@@ -76,6 +76,7 @@ export const ModEditorPage = () => {
   // ── Translate progress ──
   const [translateProgress, setTranslateProgress] = useState<{ done: number; total: number } | null>(null);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  const [translateDoneCount, setTranslateDoneCount] = useState<number | null>(null);
   const translateInFlight = useRef(false);
 
   // ── Modal / overlay visibility ──
@@ -204,6 +205,7 @@ export const ModEditorPage = () => {
     if (translateInFlight.current) return;
     translateInFlight.current = true;
     setTranslateError(null);
+    setTranslateDoneCount(null);
     setTranslateProgress({ done: 0, total: selected.size });
     const appJobId = `llm-${modId}-${Date.now()}`;
     const startedAt = Date.now();
@@ -219,7 +221,7 @@ export const ModEditorPage = () => {
     });
 
     try {
-      await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
+      const results = await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
         const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
         upsertAppJob({
           id: appJobId,
@@ -233,6 +235,8 @@ export const ModEditorPage = () => {
       }, modId);
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
+      const doneCount = results.filter((r) => r.text !== undefined).length;
+      setTranslateDoneCount(doneCount);
       setSelected(new Set());
       upsertAppJob({
         id: appJobId,
@@ -336,6 +340,23 @@ export const ModEditorPage = () => {
         onBatchTranslate={handleBatchTranslate}
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
       />
+
+      {/* Post-LLM-run action banner — shown after a successful batch translate */}
+      {translateDoneCount !== null && (
+        <div className={styles.translateBanner}>
+          <span>{t('modEditor.translateDone', { count: translateDoneCount })}</span>
+          <Link to={`/review-queue?modId=${modId}`} className={styles.translateBannerLink}>
+            {t('modEditor.openReviewQueue')}
+          </Link>
+          <button
+            className={styles.translateBannerDismiss}
+            onClick={() => setTranslateDoneCount(null)}
+            aria-label={t('common.dismiss')}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── 3-column body ── */}
       <div className={styles.body}>

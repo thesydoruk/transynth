@@ -23,7 +23,8 @@
     "disable": "Вимкнути",
     "active": "Активний",
     "enabled": "Увімкнено",
-    "disabled": "Вимкнено"
+    "disabled": "Вимкнено",
+    "dismiss": "Закрити"
   },
   "nav": {
     "brand": "FO4 Localizer",
@@ -184,7 +185,9 @@
     "shortcutPageNav": "Наступна / попередня сторінка",
     "shortcutEscape": "Закрити / скасувати",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Відкрити редактор правил іменування INNR"
+    "innrEditorTitle": "Відкрити редактор правил іменування INNR",
+    "translateDone": "{{count}} рядок(ів) перекладено автоматично. Перевірте результати перед затвердженням.",
+    "openReviewQueue": "Відкрити чергу рецензій →"
   },
   "ctx": {
     "approve": "Підтвердити",

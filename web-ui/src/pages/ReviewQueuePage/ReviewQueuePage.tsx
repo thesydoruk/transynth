@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
@@ -61,13 +61,19 @@ const CONFIDENCE_OPTIONS: Array<{ label: string; value: number | null }> = [
 export const ReviewQueuePage = () => {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   // ── Local filter state ───────────────────────────────────────────────────
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(
     new Set(STATUS_OPTIONS.map((o) => o.key)),
   );
-  const [selectedModId, setSelectedModId] = useState<number | null>(null);
+  /** Initialise from ?modId= URL param so the post-LLM banner deep-link works. */
+  const [selectedModId, setSelectedModId] = useState<number | null>(() => {
+    const raw = searchParams.get('modId');
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  });
   const [maxConfidence, setMaxConfidence] = useState<number | null>(null);
   const [page, setPage] = useState(1);
 
@@ -269,10 +275,10 @@ export const ReviewQueuePage = () => {
                       >
                         ✗
                       </button>
-                      {/* Open in mod editor */}
+                      {/* Open in mod editor — filtered by this row's status to land on relevant strings */}
                       <Link
                         className={s.openBtn}
-                        to={`/games/${row.mod_game}/mods/${row.mod_id}`}
+                        to={`/games/${row.mod_game}/mods/${row.mod_id}?status=${encodeURIComponent(row.status)}`}
                         title={t('reviewQueue.openInEditor')}
                       >
                         ↗

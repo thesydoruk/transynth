@@ -23,7 +23,8 @@
     "disable": "Disable",
     "active": "Active",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "dismiss": "Dismiss"
   },
   "nav": {
     "brand": "FO4 Localizer",
@@ -184,7 +185,9 @@
     "shortcutPageNav": "Next / prev page",
     "shortcutEscape": "Close / cancel",
     "innrEditor": "INNR",
-    "innrEditorTitle": "Open Instance Naming Rules editor"
+    "innrEditorTitle": "Open Instance Naming Rules editor",
+    "translateDone": "{{count}} string(s) auto-translated. Review the results before approving.",
+    "openReviewQueue": "Open Review Queue →"
   },
   "ctx": {
     "approve": "Approve",
