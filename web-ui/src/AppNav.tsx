@@ -21,10 +21,9 @@ type NavLinkDescriptor = {
  *   /tradauto           — Settings → TradAuto tab
  *   /tmx                — Settings → TMX tab
  *   /activity           — Settings → Activity tab
- *
- * The home page (/) is accessible only via the brand "FO4 Localizer" click.
  */
 const NAV_LINKS: NavLinkDescriptor[] = [
+  { to: '/', labelKey: 'nav.home', exact: true },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
