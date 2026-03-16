@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { OpsImportJob } from '../../../api';
+import type { OpsImportJob, OpsLlmJob } from '../../../api';
 import type { AppJob } from '../../../appJobsQueue';
 import type { NexusDownloadJob } from '../../../nexusDownloadQueue';
 import { jobPct, jobStatusClass, kindLabel } from '../homeUtils';
@@ -8,21 +8,31 @@ import s from '../HomePage.module.scss';
 interface RecentImportsProps {
   jobs: OpsImportJob[];
   nexusDownloads: NexusDownloadJob[];
+  /** Real-time in-memory app jobs (LLM/export). Only running + failed shown; completed defers to llmJobs. */
   appJobs: AppJob[];
+  /** Persisted LLM batch jobs from backend (survives page reload). */
+  llmJobs: OpsLlmJob[];
 }
 
 type UnifiedJobRow =
   | { kind: 'import'; updatedAt: string; job: OpsImportJob }
   | { kind: 'nexus'; updatedAt: string; job: NexusDownloadJob }
-  | { kind: 'app'; updatedAt: string; job: AppJob };
+  | { kind: 'app'; updatedAt: string; job: AppJob }
+  | { kind: 'backend-llm'; updatedAt: string; job: OpsLlmJob };
 
 /** Recent import jobs table shown in the overview page. */
-export const RecentImports = ({ jobs, nexusDownloads, appJobs }: RecentImportsProps) => {
+export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: RecentImportsProps) => {
   const { t } = useTranslation();
+
+  // In-memory app jobs: only show running/failed — completed ones are handled
+  // by the persisted backend llmJobs to avoid duplicate rows after completion.
+  const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
+
   const rows: UnifiedJobRow[] = [
     ...jobs.map((job) => ({ kind: 'import' as const, updatedAt: job.updated_at, job })),
     ...nexusDownloads.map((job) => ({ kind: 'nexus' as const, updatedAt: new Date(job.createdAt).toISOString(), job })),
-    ...appJobs.map((job) => ({ kind: 'app' as const, updatedAt: new Date(job.updatedAt).toISOString(), job })),
+    ...visibleAppJobs.map((job) => ({ kind: 'app' as const, updatedAt: new Date(job.updatedAt).toISOString(), job })),
+    ...llmJobs.map((job) => ({ kind: 'backend-llm' as const, updatedAt: job.updated_at, job })),
   ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   if (rows.length === 0) return null;
@@ -83,6 +93,24 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs }: RecentImportsPr
                   <td className={s.tdR}>{progressText}</td>
                   <td className={s.tdErr}>{job.error ?? '—'}</td>
                   <td className={s.tdDim}>{new Date(job.updatedAt).toLocaleString()}</td>
+                </tr>
+              );
+            }
+
+            if (row.kind === 'backend-llm') {
+              const job = row.job;
+              const label = job.mod_name ? `LLM batch · ${job.mod_name}` : `LLM batch · mod ${job.mod_id ?? '?'}`;
+              const progressText = job.string_count > 0
+                ? `${job.done_count}/${job.string_count} (${Math.round((job.done_count / job.string_count) * 100)}%)`
+                : '—';
+              return (
+                <tr key={`llm-${job.id}`} className={s.tr}>
+                  <td className={s.td}><span className={s.kindBadge}>LLM</span></td>
+                  <td className={s.td}>{label}</td>
+                  <td className={s.td}><span className={jobStatusClass(job.status, s)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
+                  <td className={s.tdR}>{progressText}</td>
+                  <td className={s.tdErr}>{job.error ?? '—'}</td>
+                  <td className={s.tdDim}>{new Date(job.updated_at).toLocaleString()}</td>
                 </tr>
               );
             }

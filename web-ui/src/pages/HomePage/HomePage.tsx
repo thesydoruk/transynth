@@ -75,7 +75,7 @@ export const HomePage = () => {
 
       {ops && <SystemStrip data={ops} />}
       {dash && <ModProgressSection data={dash} />}
-      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} appJobs={appJobs} />}
+      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} appJobs={appJobs} llmJobs={ops.llmJobs ?? []} />}
       {ops && <TechDetailsSection data={ops} />}
     </div>
   );

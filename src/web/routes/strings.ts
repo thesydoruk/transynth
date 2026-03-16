@@ -208,9 +208,9 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // POST /api/strings/translate — batch LLM translate with SSE progress stream
   app.post<{
-    Body: { stringIds: number[]; srcLang?: string; targetLang?: string };
+    Body: { stringIds: number[]; srcLang?: string; targetLang?: string; modId?: number };
   }>('/api/strings/translate', async (req, reply) => {
-    const { stringIds, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang } = req.body ?? {};
+    const { stringIds, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang, modId: bodyModId } = req.body ?? {};
     if (!Array.isArray(stringIds) || stringIds.length === 0) {
       return reply.code(400).send({ error: 'stringIds array is required' });
     }
@@ -230,6 +230,44 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         : '';
 
     const systemPrompt = `You are a professional Fallout 4 game localizer. Translate from ${srcLang} to ${targetLang}. Output only the translated text, nothing else.${glossaryHint}`;
+
+    // Resolve mod metadata for job tracking. Use bodyModId if provided, else
+    // derive from the first string. Failures here are non-fatal — we still run.
+    let resolvedModId: number | null = bodyModId ?? null;
+    let resolvedModGame: string | null = null;
+    let resolvedModName: string | null = null;
+    if (resolvedModId === null && stringIds[0] !== undefined) {
+      try {
+        const { rows: modRows } = await db.query<{ mod_id: number; game: string; name: string }>(
+          `SELECT r.mod_id, m.game, m.name
+             FROM strings s
+             JOIN records r ON r.id = s.record_id
+             JOIN mods m ON m.id = r.mod_id
+            WHERE s.id = $1 LIMIT 1`,
+          [stringIds[0]],
+        );
+        if (modRows[0]) {
+          resolvedModId = modRows[0].mod_id;
+          resolvedModGame = modRows[0].game;
+          resolvedModName = modRows[0].name;
+        }
+      } catch (lookupErr) {
+        log.warn({ lookupErr }, 'llm_jobs: failed to resolve mod for job tracking');
+      }
+    }
+
+    // Insert a running job row for persistence across page reloads.
+    let llmJobId: number | null = null;
+    try {
+      const { rows: jobRows } = await db.query<{ id: number }>(
+        `INSERT INTO llm_jobs (mod_id, mod_game, mod_name, string_count, done_count, status)
+         VALUES ($1, $2, $3, $4, 0, 'running') RETURNING id`,
+        [resolvedModId, resolvedModGame, resolvedModName, stringIds.length],
+      );
+      llmJobId = jobRows[0]?.id ?? null;
+    } catch (insertErr) {
+      log.warn({ insertErr }, 'llm_jobs: failed to insert job row');
+    }
 
     // Hijack reply and stream SSE
     reply.hijack();
@@ -298,5 +336,23 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
 
     send({ type: 'done', results });
     reply.raw.end();
+
+    // Finalize the persisted job row. Count only successfully translated strings.
+    if (llmJobId !== null) {
+      const doneCount = results.filter((r) => r.text !== undefined).length;
+      const failed = results.some((r) => r.error !== undefined && r.text === undefined);
+      const finalStatus = failed && doneCount === 0 ? 'failed' : 'completed';
+      const firstError = results.find((r) => r.error)?.error ?? null;
+      try {
+        await db.query(
+          `UPDATE llm_jobs
+              SET status = $1, done_count = $2, error = $3, updated_at = NOW()
+            WHERE id = $4`,
+          [finalStatus, doneCount, firstError, llmJobId],
+        );
+      } catch (updateErr) {
+        log.warn({ updateErr, llmJobId }, 'llm_jobs: failed to finalize job row');
+      }
+    }
   });
 }

@@ -52,6 +52,30 @@ export interface TableSizeRow {
   size: string;
 }
 
+/** A single LLM batch-translate job row from the llm_jobs table. */
+export interface LlmJobRow {
+  /** Auto-increment primary key. */
+  id: number;
+  /** FK to mods — null if the mod was deleted. */
+  mod_id: number | null;
+  /** Snapshot of mods.game at job creation time. */
+  mod_game: string | null;
+  /** Snapshot of mods.name at job creation time. */
+  mod_name: string | null;
+  /** Total strings in the batch. */
+  string_count: number;
+  /** Successfully translated strings (set at job completion). */
+  done_count: number;
+  /** running → completed | failed. */
+  status: string;
+  /** Error message for failed jobs. */
+  error: string | null;
+  /** ISO timestamp when the job was inserted. */
+  started_at: string;
+  /** ISO timestamp of last status update. */
+  updated_at: string;
+}
+
 /** Full response payload returned by GET /api/ops. */
 export interface OpsOverview {
   /** System section — runtime info. */
@@ -73,6 +97,8 @@ export interface OpsOverview {
   };
   /** Recent import jobs across all three tables, newest first. */
   importJobs: ImportJobRow[];
+  /** Recent LLM batch translate jobs, newest first (last 24 h). */
+  llmJobs: LlmJobRow[];
   /** LLM / auto-translate statistics. */
   llm: {
     /** Total rows in the translation cache. */
@@ -114,6 +140,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       eetJobs,
       csvJobs,
       modJobs,
+      llmJobsResult,
       cacheCount,
       autoCount,
       modelBreakdown,
@@ -143,6 +170,15 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
                 NULL AS last_error, updated_at
          FROM mod_imports ORDER BY updated_at DESC LIMIT 20`,
       ),
+
+      /* Recent LLM batch jobs (last 24 h, up to 30 rows) */
+      db.query(
+        `SELECT id, mod_id, mod_game, mod_name, string_count, done_count,
+                status, error, started_at, updated_at
+         FROM llm_jobs
+         WHERE updated_at > NOW() - INTERVAL '24 hours'
+         ORDER BY updated_at DESC LIMIT 30`,
+      ).catch(() => ({ rows: [] })),
 
       /* LLM translation cache row count */
       db.query('SELECT COUNT(*)::int AS count FROM translation_cache'),
@@ -211,6 +247,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
         dbTime: dbTimeRow?.now ?? null,
       },
       importJobs,
+      llmJobs: llmJobsResult.rows as unknown as LlmJobRow[],
       llm: {
         cacheEntries: (cacheCount.rows[0] as { count: number })?.count ?? 0,
         autoTranslated: (autoCount.rows[0] as { count: number })?.count ?? 0,

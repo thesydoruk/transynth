@@ -30,6 +30,7 @@ import {
   type ModProgressEvent,
   type UploadProgressEvent,
   type PreviousVersionRow,
+  type OpsLlmJob,
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { CsvPreviewModal } from './CsvPreviewModal';
@@ -101,6 +102,7 @@ export const ImportsPage = () => {
   const { data: eetJobs } = useQuery({ queryKey: ['eet-imports'], queryFn: api.eet.list, refetchInterval: 3000 });
   const { data: csvJobs } = useQuery({ queryKey: ['csv-imports'], queryFn: api.csv.list, refetchInterval: 3000 });
   const { data: modJobs } = useQuery({ queryKey: ['mod-imports'], queryFn: api.modImport.list, refetchInterval: 3000 });
+  const { data: opsData } = useQuery({ queryKey: ['ops'], queryFn: api.ops.overview, refetchInterval: 5000 });
 
   /* ── Merge into a single sorted list (newest first) ───────────────────── */
   const allJobs: UnifiedJob[] = [
@@ -400,6 +402,8 @@ export const ImportsPage = () => {
   const modPreviewJob = modPreviewId != null ? (modJobs ?? []).find(j => j.id === modPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
   const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
+  /** Persisted LLM jobs from backend ops — shown for history visibility across reloads. */
+  const backendLlmJobs: OpsLlmJob[] = opsData?.llmJobs ?? [];
 
   /** Confirms MOD deletion from custom modal and then refreshes import lists. */
   const confirmDeleteMod = useCallback(async () => {
@@ -434,7 +438,7 @@ export const ImportsPage = () => {
       </div>
 
       {/* Unified job list + Nexus downloads still in progress */}
-      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && visibleAppJobs.length === 0 && pendingModUploads.length === 0 ? (
+      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && visibleAppJobs.length === 0 && backendLlmJobs.length === 0 && pendingModUploads.length === 0 ? (
         <p className={s.empty}>{t('imports.noFiles')}</p>
       ) : (
         <div className={s.list}>
@@ -493,6 +497,36 @@ export const ImportsPage = () => {
                   )}
                   <div className={s.actions}>
                     <span className={s.badge} style={{ background: statusColorBase(job.status === 'running' ? 'in_progress' : 'failed') }}>
+                      {t(`importStatus.${job.status}`, job.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {backendLlmJobs.map((job) => {
+            const label = job.mod_name ? `LLM batch · ${job.mod_name}` : `LLM batch · mod ${job.mod_id ?? '?'}`;
+            const pct = job.string_count > 0 ? Math.round((job.done_count / job.string_count) * 100) : null;
+            return (
+              <div key={`llm-${job.id}`} className={s.row}>
+                <div className={s.rowLeft}>
+                  <span className={s.typeBadge} style={{ background: '#1b6b2d' }}>LLM</span>
+                  <div>
+                    <span className={s.fileName}>{label}</span>
+                    <span className={s.meta}>{new Date(job.updated_at).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className={s.rowRight}>
+                  {pct == null ? (
+                    <span className={s.progressLabel}>—</span>
+                  ) : (
+                    <div className={s.progressWrap}>
+                      <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
+                      <span className={s.progressLabel}>{job.done_count}/{job.string_count} ({pct}%)</span>
+                    </div>
+                  )}
+                  <div className={s.actions}>
+                    <span className={s.badge} style={{ background: statusColorBase(job.status === 'running' ? 'in_progress' : job.status === 'completed' ? 'completed' : 'failed') }}>
                       {t(`importStatus.${job.status}`, job.status)}
                     </span>
                   </div>

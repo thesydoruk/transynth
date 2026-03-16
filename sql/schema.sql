@@ -304,3 +304,29 @@ CREATE TABLE IF NOT EXISTS tradauto_rules (
 CREATE INDEX IF NOT EXISTS idx_tradauto_rules_active
   ON tradauto_rules(game, src_lang, tgt_lang, priority)
   WHERE is_active = TRUE;
+
+-- ── LLM batch translate jobs ─────────────────────────────────────────────────
+-- Tracks lifecycle of each batch-translate operation so job history survives
+-- page reloads. One row per batch: inserted when the request starts, updated
+-- to completed or failed when the loop ends. Not a high-frequency table.
+CREATE TABLE IF NOT EXISTS llm_jobs (
+  id SERIAL PRIMARY KEY,
+  /** FK to mods — nullable in case the mod is deleted later. */
+  mod_id INTEGER REFERENCES mods(id) ON DELETE SET NULL,
+  /** Snapshot of mods.game at insert time so history survives mod deletion. */
+  mod_game TEXT,
+  /** Snapshot of mods.name at insert time. */
+  mod_name TEXT,
+  /** Total strings in the batch. */
+  string_count INTEGER NOT NULL DEFAULT 0,
+  /** Strings translated so far (updated at completion, not per-string). */
+  done_count INTEGER NOT NULL DEFAULT 0,
+  /** running → completed | failed. */
+  status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed')),
+  /** Error message when status = 'failed'; null otherwise. */
+  error TEXT,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_jobs_updated ON llm_jobs(updated_at DESC);

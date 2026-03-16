@@ -220,7 +220,6 @@ export const ModEditorPage = () => {
 
     try {
       await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
-        setTranslateProgress({ done: e.done, total: e.total });
         const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
         upsertAppJob({
           id: appJobId,
@@ -231,7 +230,7 @@ export const ModEditorPage = () => {
           createdAt: startedAt,
           updatedAt: Date.now(),
         });
-      });
+      }, modId);
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
       setSelected(new Set());

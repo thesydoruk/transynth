@@ -493,6 +493,21 @@ export type SettingsPayload = {
   };
 };
 
+/** A single LLM batch-translate job row from the backend llm_jobs table. */
+export type OpsLlmJob = {
+  id: number;
+  mod_id: number | null;
+  mod_game: string | null;
+  mod_name: string | null;
+  string_count: number;
+  done_count: number;
+  /** running | completed | failed */
+  status: string;
+  error: string | null;
+  started_at: string;
+  updated_at: string;
+};
+
 /** Full response from GET /api/ops. */
 export type OpsOverview = {
   system: {
@@ -505,6 +520,7 @@ export type OpsOverview = {
     dbTime: string | null;
   };
   importJobs: OpsImportJob[];
+  llmJobs: OpsLlmJob[];
   llm: {
     cacheEntries: number;
     autoTranslated: number;
@@ -906,12 +922,13 @@ export const api = {
       srcLang = getSrcLang(),
       targetLang = getTgtLang(),
       onProgress?: (e: ProgressEvent) => void,
+      modId?: number,
     ): Promise<Array<{ stringId: number; text?: string; error?: string }>> {
       const response = await fetch(`${BASE}/api/strings/translate`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stringIds, srcLang, targetLang }),
+        body: JSON.stringify({ stringIds, srcLang, targetLang, modId }),
       });
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
 
