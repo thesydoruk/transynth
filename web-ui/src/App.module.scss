@@ -39,6 +39,39 @@
   font-weight: 600;
 }
 
+.contextStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contextBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+
+  &:hover {
+    border-color: var(--border-heavy);
+    color: var(--text-bright);
+  }
+}
+
+.contextLabel {
+  color: var(--text-dim);
+}
+
+.contextValue {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
 .spacer {
   flex: 1;
 }

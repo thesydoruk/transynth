@@ -20,6 +20,9 @@ const CONTENT_LANGUAGES = [
 ];
 
 const getLsLang = (key: string, fallback: string): string => localStorage.getItem(key) ?? fallback;
+const emitContentLanguageChange = (): void => {
+  window.dispatchEvent(new Event('content-language-change'));
+};
 
 /** General settings tab for language and theme preferences stored in localStorage. */
 export const GeneralTab = () => {
@@ -31,11 +34,13 @@ export const GeneralTab = () => {
   const handleSrcLang = (value: string) => {
     setSrcLang(value);
     localStorage.setItem(LS_SRC_LANG, value);
+    emitContentLanguageChange();
   };
 
   const handleTgtLang = (value: string) => {
     setTgtLang(value);
     localStorage.setItem(LS_TGT_LANG, value);
+    emitContentLanguageChange();
   };
 
   return (

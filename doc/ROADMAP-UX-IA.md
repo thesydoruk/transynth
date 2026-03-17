@@ -362,7 +362,7 @@ Exit criteria:
 
 - One primary CTA per major page.
 - Explicit Home or Overview navigation entry.
-- Persistent current game and language context in the app shell.
+- ✅ Persistent current game and language context in the app shell. AppNav now shows the current game workspace (persisted from game-scoped routes) plus the current source/target content language pair.
 - Per-game hub cards for Imports, Mods, Review, and Release.
 - Overflow menu for secondary actions in dense row UIs.
 - Unified status badge system and color semantics.
@@ -399,7 +399,7 @@ P0 Critical:
 P1 High:
 
 - ✅ Explicit Home or Overview navigation entry. Main nav now includes a dedicated `Home` link instead of relying on brand navigation only.
-- Persistent current game and language context in the app shell.
+- ✅ Persistent current game and language context in the app shell. The shell now persists the last game-scoped route and surfaces current game plus content-language pair directly in AppNav.
 - Per-game hub cards for Imports, Mods, Review, and Release.
 - ✅ Deep links from quality pages into pre-filtered editor views. ReviewQueuePage rows now link to editor with `?status={{row.status}}` parameter.
 - ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inside the editor field while keeping QA mismatch validation unchanged.

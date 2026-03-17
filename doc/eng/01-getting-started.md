@@ -155,6 +155,12 @@ Use the URL that matches your runtime mode:
 On first successful launch, the application opens on the **Mods** page (`/`).
 This is the main landing page for browsing imported mods and opening the editor.
 
+The top app bar now also shows:
+
+- a dedicated **Home** entry in the main navigation
+- the current **Game** workspace badge, persisted from the last game-scoped route you opened
+- the current **Content** language pair (`SRC → TGT`), mirroring the source/target language defaults from Settings
+
 ---
 
 ## Login and Multi-user Mode

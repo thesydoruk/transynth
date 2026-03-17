@@ -17,6 +17,9 @@ export const LS_SRC_LANG = 'fo4-src-lang';
 /** localStorage key for the default target language. */
 export const LS_TGT_LANG = 'fo4-tgt-lang';
 
+/** localStorage key for the last game context seen in a game-scoped route. */
+export const LS_CURRENT_GAME = 'fo4-current-game';
+
 /* ── Compile-time fallbacks ──────────────────────────────────────────────── */
 
 /** Fallback source language when nothing is stored. */
@@ -65,3 +68,12 @@ export const getSrcLang = (): string =>
  */
 export const getTgtLang = (): string =>
   localStorage.getItem(LS_TGT_LANG) ?? DEFAULT_TGT_LANG;
+
+/** Return the last persisted game context from the shell, if any. */
+export const getCurrentGame = (): string | null =>
+  localStorage.getItem(LS_CURRENT_GAME);
+
+/** Persist the current shell game context for cross-page navigation continuity. */
+export const setCurrentGame = (gameId: string): void => {
+  localStorage.setItem(LS_CURRENT_GAME, gameId);
+};

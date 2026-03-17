@@ -49,7 +49,13 @@
     "ops": "Стан",
     "tradAuto": "TradAuto",
     "settings": "Налаштування",
-    "games": "Ігри"
+    "games": "Ігри",
+    "currentGame": "Гра",
+    "contentLang": "Мови",
+    "noGameSelected": "Оберіть гру",
+    "pickGame": "Відкрити каталог ігор",
+    "currentGameLink": "Відкрити workspace гри {{game}}",
+    "contentLanguageLink": "Відкрити налаштування робочих мов"
   },
   "status": {
     "reviewed": "Перевірений",

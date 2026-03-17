@@ -1,8 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { api } from './api';
 import { UI_LANGUAGES } from './i18n';
 import { useAuth } from './components/AuthContext';
 import { useTheme } from './components/ThemeContext';
+import { getCurrentGame, getSrcLang, getTgtLang, setCurrentGame } from './langDefaults';
 import nav from './App.module.scss';
 
 type NavLinkDescriptor = {
@@ -40,6 +44,47 @@ export const AppNav = () => {
   const { user, multiUser, logout } = useAuth();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
+  const [contentLangs, setContentLangs] = useState(() => ({ src: getSrcLang(), tgt: getTgtLang() }));
+
+  const routeGameId = useMemo(() => {
+    const match = loc.pathname.match(/^\/games\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [loc.pathname]);
+
+  const currentGameId = routeGameId ?? getCurrentGame();
+
+  const { data: games } = useQuery({
+    queryKey: ['games'],
+    queryFn: api.games.list,
+    staleTime: Infinity,
+  });
+
+  const currentGame = games?.find((game) => game.id === currentGameId) ?? null;
+
+  useEffect(() => {
+    if (routeGameId) setCurrentGame(routeGameId);
+  }, [routeGameId]);
+
+  useEffect(() => {
+    const syncContentLangs = () => {
+      setContentLangs({ src: getSrcLang(), tgt: getTgtLang() });
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key == null || event.key === 'fo4-src-lang' || event.key === 'fo4-tgt-lang') {
+        syncContentLangs();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('content-language-change', syncContentLangs);
+    window.addEventListener('focus', syncContentLangs);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('content-language-change', syncContentLangs);
+      window.removeEventListener('focus', syncContentLangs);
+    };
+  }, []);
 
   return (
     <nav className={nav.nav}>
@@ -54,6 +99,25 @@ export const AppNav = () => {
             </Link>
           );
         })}
+
+      <div className={nav.contextStrip}>
+        <Link
+          to={currentGame ? `/games/${currentGame.id}` : '/games'}
+          className={nav.contextBadge}
+          title={currentGame ? t('nav.currentGameLink', { game: currentGame.name }) : t('nav.pickGame')}
+        >
+          <span className={nav.contextLabel}>{t('nav.currentGame')}</span>
+          <span className={nav.contextValue}>{currentGame?.name ?? t('nav.noGameSelected')}</span>
+        </Link>
+        <Link
+          to="/settings"
+          className={nav.contextBadge}
+          title={t('nav.contentLanguageLink')}
+        >
+          <span className={nav.contextLabel}>{t('nav.contentLang')}</span>
+          <span className={nav.contextValue}>{contentLangs.src.toUpperCase()} → {contentLangs.tgt.toUpperCase()}</span>
+        </Link>
+      </div>
 
       <span className={nav.spacer} />
 
