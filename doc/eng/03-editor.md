@@ -175,6 +175,7 @@ The panel also shows:
 - a character counter for the source text
 - a character counter for the current translation draft
 - a max-length indicator when an active `max_length` QA rule matches the current row
+- inline placeholder highlighting for formatting tokens such as `%s`, `{0}`, `{Name}`, `$var`, `[TAG]`, and HTML-like tags
 - quick buttons for **Copy src**, **Review**, **Reject**, and **Save**
 
 If the record is a `BOOK` or the source contains HTML-like markup, the panel shows a **Book / HTML editor** button.
@@ -185,7 +186,8 @@ When a matching `max_length` QA rule exists for the current GRUP/field, the pane
 - `Max: N · X left` while within limit
 - `Max: N · Exceeded by X` when over limit
 
-It does **not** visually highlight placeholders inline inside the textarea, although placeholder mismatches are checked by QA.
+Placeholder-like tokens are highlighted inline inside the translation textarea so you can visually preserve formatting markers while editing.
+QA still remains the source of truth for placeholder mismatch validation.
 
 ### TM Suggestions Tab
 

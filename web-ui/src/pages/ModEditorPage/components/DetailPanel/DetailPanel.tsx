@@ -1,8 +1,10 @@
+import { useMemo, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StringRow, TMSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
+import { getPlaceholderParts } from './utils';
 import styles from './DetailPanel.module.scss';
 
 /** Bottom-panel tab identifiers. */
@@ -72,10 +74,17 @@ export const DetailPanel = ({
   onOpenBookEditor,
 }: DetailPanelProps) => {
   const { t } = useTranslation();
+  const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
 
   const maxLengthRemaining = activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
   const maxLengthExceeded = maxLengthRemaining != null && maxLengthRemaining < 0;
   const maxLengthNear = maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
+  const syncOverlayScroll = (e: UIEvent<HTMLTextAreaElement>) => {
+    const overlay = e.currentTarget.previousElementSibling;
+    if (!(overlay instanceof HTMLDivElement)) return;
+    overlay.scrollTop = e.currentTarget.scrollTop;
+    overlay.scrollLeft = e.currentTarget.scrollLeft;
+  };
 
   return (
     <div className={styles.detailPanel}>
@@ -102,15 +111,34 @@ export const DetailPanel = ({
               </button>
             )}
           </div>
-          <textarea
-            ref={translAreaRef}
-            value={draftTranslation}
-            onChange={(e) => onDraftChange(e.target.value)}
-            className={styles.translArea}
-            rows={4}
-            onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave(); }}
-            placeholder={t('modEditor.enterTranslation')}
-          />
+          <div className={styles.translAreaWrap}>
+            <div className={styles.translAreaOverlay} aria-hidden="true">
+              <div className={styles.translAreaOverlayContent}>
+                {draftTranslation.length === 0 ? (
+                  <span className={styles.translPlaceholder}>{t('modEditor.enterTranslation')}</span>
+                ) : (
+                  placeholderParts.map((part, index) => (
+                    <span
+                      key={`${part.isPlaceholder ? 'ph' : 'txt'}-${index}`}
+                      className={part.isPlaceholder ? styles.placeholderToken : undefined}
+                    >
+                      {part.text}
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+            <textarea
+              ref={translAreaRef}
+              value={draftTranslation}
+              onChange={(e) => onDraftChange(e.target.value)}
+              className={styles.translArea}
+              rows={4}
+              onScroll={syncOverlayScroll}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave(); }}
+              placeholder={t('modEditor.enterTranslation')}
+            />
+          </div>
           <div className={styles.detailBtnBar}>
             <div className={styles.charInfo}>
               <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>

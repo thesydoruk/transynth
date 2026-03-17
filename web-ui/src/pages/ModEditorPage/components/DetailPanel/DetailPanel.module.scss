@@ -44,16 +44,62 @@
   width: 100%;
 }
 
-.translArea {
+.translAreaWrap {
+  position: relative;
+  width: 100%;
   background: var(--transl-area-bg);
-  color: var(--text-bright);
   border: 1px solid var(--transl-area-border);
   border-radius: 3px;
+  overflow: hidden;
+}
+
+.translAreaOverlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.translAreaOverlayContent {
+  min-height: 100%;
   padding: 6px;
   font-family: inherit;
   font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-bright);
+}
+
+.translPlaceholder {
+  color: var(--text-faint);
+}
+
+.placeholderToken {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--border-light);
+}
+
+.translArea {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-bright);
+  border: none;
+  border-radius: 0;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
   resize: none;
   width: 100%;
+
+  &::placeholder {
+    color: transparent;
+  }
 }
 
 .charCount {

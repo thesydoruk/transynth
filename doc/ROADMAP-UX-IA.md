@@ -135,7 +135,7 @@ These are specific gaps documented or discovered during development that are not
 Editor:
 
 - ~~No max-length visual indicator in the detail panel for strings with configurable length QA rules.~~ ✅ Resolved: `activeMaxLength` derived from QA rules is computed in `useEditorQueries` and rendered in `DetailPanel`.
-- Placeholder tokens are not highlighted inline in the translation textarea, though QA catches mismatches.
+- ~~Placeholder tokens are not highlighted inline in the translation textarea, though QA catches mismatches.~~ ✅ Resolved: `DetailPanel` now renders an inline highlight overlay for placeholder-like tokens using the same token patterns as backend placeholder protection.
 - No page size selector in the editor grid; fixed at 100 rows per page.
 - ~~No direct link from the Dashboard QA summary to a filtered editor view showing only failing strings.~~ ✅ Resolved: Dashboard QA breakdown now provides drill-down into `ModEditor` with `qaOnly=1`.
 
@@ -378,7 +378,7 @@ Exit criteria:
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
 - Queue-focused navigation controls in translation workflows.
 - Deterministic empty states with immediate action buttons.
-- Placeholder token highlighting inline in the translation textarea.
+- ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inline while QA still enforces mismatch detection.
 - ✅ Max-length visual indicator in the editor detail panel.
 - Optional page size selector in the editor grid.
 - Dashboard QA breakdown click-through to filtered editor.
@@ -402,7 +402,7 @@ P1 High:
 - Persistent current game and language context in the app shell.
 - Per-game hub cards for Imports, Mods, Review, and Release.
 - ✅ Deep links from quality pages into pre-filtered editor views. ReviewQueuePage rows now link to editor with `?status={{row.status}}` parameter.
-- Placeholder token highlighting inline in the translation textarea.
+- ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inside the editor field while keeping QA mismatch validation unchanged.
 
 P2 Medium:
 
