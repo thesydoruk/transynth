@@ -28,6 +28,7 @@
   },
   "nav": {
     "brand": "FO4 Localizer",
+    "home": "Огляд",
     "mods": "Моди",
     "imports": "Імпорт",
     "eetImport": "Імпорт EET",

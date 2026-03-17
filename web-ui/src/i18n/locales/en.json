@@ -28,6 +28,7 @@
   },
   "nav": {
     "brand": "FO4 Localizer",
+    "home": "Home",
     "mods": "Mods",
     "imports": "Imports",
     "eetImport": "EET Import",

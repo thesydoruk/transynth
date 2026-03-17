@@ -398,7 +398,7 @@ P0 Critical:
 
 P1 High:
 
-- Explicit Home or Overview navigation entry.
+- ✅ Explicit Home or Overview navigation entry. Main nav now includes a dedicated `Home` link instead of relying on brand navigation only.
 - Persistent current game and language context in the app shell.
 - Per-game hub cards for Imports, Mods, Review, and Release.
 - ✅ Deep links from quality pages into pre-filtered editor views. ReviewQueuePage rows now link to editor with `?status={{row.status}}` parameter.
