@@ -161,6 +161,15 @@ The top app bar now also shows:
 - the current **Game** workspace badge, persisted from the last game-scoped route you opened
 - the current **Content** language pair (`SRC → TGT`), mirroring the source/target language defaults from Settings
 
+When you open a game workspace (`/games/:gameId`), the **Game Hub** now serves as a workflow landing page with direct cards for:
+
+- **Import**
+- **Translate**
+- **Quality**
+- **Release**
+
+plus a secondary **Discover** card for NexusMods browsing.
+
 ---
 
 ## Login and Multi-user Mode

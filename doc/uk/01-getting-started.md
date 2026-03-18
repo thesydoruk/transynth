@@ -161,6 +161,15 @@ docker compose run --rm cli npm run db:init
 - badge поточного workspace **Game**, який зберігається з останнього відкритого game-scoped route
 - поточну пару робочих мов **Content** (`SRC → TGT`), синхронізовану з source/target мовами з Settings
 
+Коли ви відкриваєте workspace гри (`/games/:gameId`), **Game Hub** тепер працює як стартова workflow-сторінка з окремими картками для:
+
+- **Import**
+- **Translate**
+- **Quality**
+- **Release**
+
+а також із додатковою карткою **Discover** для перегляду NexusMods.
+
 ---
 
 ## Вхід і багатокористувацький режим

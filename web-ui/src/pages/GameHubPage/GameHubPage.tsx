@@ -29,6 +29,8 @@ interface GameStats {
   translatedStrings: number;
   approvedStrings: number;
   fuzzyStrings: number;
+  reviewMods: number;
+  releaseReadyMods: number;
   overallPct: number;
 }
 
@@ -40,6 +42,8 @@ const computeStats = (mods: Mod[]): GameStats => {
   let translatedStrings = 0;
   let approvedStrings = 0;
   let fuzzyStrings = 0;
+  let reviewMods = 0;
+  let releaseReadyMods = 0;
 
   for (const m of mods) {
     // API aggregate counters may arrive as strings from SQL COUNT(*), so
@@ -48,11 +52,32 @@ const computeStats = (mods: Mod[]): GameStats => {
     translatedStrings += Number(m.translated_count) || 0;
     approvedStrings += Number(m.approved_count) || 0;
     fuzzyStrings += Number(m.fuzzy_count) || 0;
+
+    const stringCount = Number(m.string_count) || 0;
+    const translatedCount = Number(m.translated_count) || 0;
+    const approvedCount = Number(m.approved_count) || 0;
+    const fuzzyCount = Number(m.fuzzy_count) || 0;
+
+    if (fuzzyCount > 0 || translatedCount > approvedCount) {
+      reviewMods += 1;
+    }
+    if (stringCount > 0 && approvedCount >= stringCount) {
+      releaseReadyMods += 1;
+    }
   }
 
   const overallPct = totalStrings > 0 ? Math.round((translatedStrings / totalStrings) * 100) : 0;
 
-  return { modCount: mods.length, totalStrings, translatedStrings, approvedStrings, fuzzyStrings, overallPct };
+  return {
+    modCount: mods.length,
+    totalStrings,
+    translatedStrings,
+    approvedStrings,
+    fuzzyStrings,
+    reviewMods,
+    releaseReadyMods,
+    overallPct,
+  };
 };
 
 export const GameHubPage = () => {
@@ -161,9 +186,21 @@ export const GameHubPage = () => {
         </div>
       )}
 
-      {/* Navigation cards */}
+      {/* Workflow cards */}
       <div className={s.navGrid}>
+        <Link to={`/games/${gameId}/imports`} className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowImport')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.importsLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.importsDesc')}</p>
+          <span className={s.navMeta}>
+            {stats?.modCount
+              ? t('gameHub.importsMeta', { count: stats.modCount })
+              : t('gameHub.importsMetaEmpty')}
+          </span>
+        </Link>
+
         <Link to={`/games/${gameId}/mods`} className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowTranslate')}</span>
           <h2 className={s.navTitle}>{t('gameHub.modsLink')}</h2>
           <p className={s.navDesc}>{t('gameHub.modsDesc')}</p>
           {isModsLoading
@@ -172,14 +209,33 @@ export const GameHubPage = () => {
           }
         </Link>
 
-        <Link to={`/games/${gameId}/nexus`} className={s.navCard}>
-          <h2 className={s.navTitle}>{t('gameHub.nexusLink')}</h2>
-          <p className={s.navDesc}>{t('gameHub.nexusDesc')}</p>
+        <Link to="/review-queue" className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowQuality')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.reviewLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.reviewDesc')}</p>
+          <span className={s.navMeta}>
+            {stats?.reviewMods
+              ? t('gameHub.reviewMeta', { count: stats.reviewMods })
+              : t('gameHub.reviewMetaEmpty')}
+          </span>
         </Link>
 
-        <Link to={`/games/${gameId}/imports`} className={s.navCard}>
-          <h2 className={s.navTitle}>{t('gameHub.importsLink')}</h2>
-          <p className={s.navDesc}>{t('gameHub.importsDesc')}</p>
+        <Link to="/diff" className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowRelease')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.releaseLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.releaseDesc')}</p>
+          <span className={s.navMeta}>
+            {stats?.releaseReadyMods
+              ? t('gameHub.releaseMeta', { count: stats.releaseReadyMods })
+              : t('gameHub.releaseMetaEmpty')}
+          </span>
+        </Link>
+
+        <Link to={`/games/${gameId}/nexus`} className={s.navCard}>
+          <span className={s.navKicker}>{t('gameHub.workflowDiscover')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.nexusLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.nexusDesc')}</p>
+          <span className={s.navMeta}>{t('gameHub.nexusMeta')}</span>
         </Link>
       </div>
 
