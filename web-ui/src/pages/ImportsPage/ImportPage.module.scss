@@ -48,6 +48,55 @@
   margin-top: 32px;
 }
 
+.emptyState {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyTitle {
+  margin: 0 0 8px;
+  color: var(--text-bright);
+  font-size: 18px;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 16px;
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: var(--border-heavy);
+    color: var(--text-bright);
+  }
+}
+
 /* ── Upload bar ─────────────────────────────────────────────────────────── */
 
 .uploadBar {

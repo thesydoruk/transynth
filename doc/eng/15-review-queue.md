@@ -31,6 +31,12 @@ It is most useful when:
 
 Navigate to **Review Queue** in the top navigation bar (route: `/review-queue`).
 
+If the queue is empty, the page now provides immediate next actions instead of showing only passive text:
+
+- **Restore review statuses** when all status chips were disabled
+- **Reset filters** when the queue is empty because of the current filter combination
+- **Open current game hub** (or the games catalogue if no game context is stored)
+
 ---
 
 ## Filters

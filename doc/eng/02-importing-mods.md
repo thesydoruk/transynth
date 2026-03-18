@@ -54,6 +54,11 @@ Use it like this:
 3. The file is added to the job list and import starts automatically.
 4. Use the play button for manual re-run after pause/failure, or use **Import All** for all pending jobs.
 
+If the page is still empty, the current UI shows a deterministic empty-state card with two direct next actions:
+
+- **Choose files** — opens the upload picker immediately
+- **Browse NexusMods** — jumps to the game-scoped Nexus browser so you can discover a mod before importing
+
 There is currently **no dedicated drag-and-drop drop zone** in the web UI.
 Use the file picker instead.
 

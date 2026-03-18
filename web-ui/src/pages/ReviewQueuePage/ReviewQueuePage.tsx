@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
+import { getCurrentGame } from '../../langDefaults';
 import { getTgtLang } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ConfidenceBar } from './ConfidenceBar';
@@ -76,6 +77,14 @@ export const ReviewQueuePage = () => {
   });
   const [maxConfidence, setMaxConfidence] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const currentGameId = getCurrentGame();
+
+  const resetFilters = () => {
+    setActiveStatuses(new Set(STATUS_OPTIONS.map((o) => o.key)));
+    setSelectedModId(null);
+    setMaxConfidence(null);
+    setPage(1);
+  };
 
   /** Toggle a single status on/off in the filter chip group. */
   const toggleStatus = (key: string) => {
@@ -204,8 +213,18 @@ export const ReviewQueuePage = () => {
       {isLoading && <div className={s.empty}>{t('reviewQueue.loading')}</div>}
 
       {!isLoading && (statuses.length === 0 || totalRows === 0) && (
-        <div className={s.empty}>
-          {statuses.length === 0 ? t('reviewQueue.noStatuses') : t('reviewQueue.empty')}
+        <div className={s.emptyState}>
+          <div className={s.emptyText}>
+            {statuses.length === 0 ? t('reviewQueue.noStatuses') : t('reviewQueue.empty')}
+          </div>
+          <div className={s.emptyActions}>
+            <button className={s.emptyBtn} onClick={resetFilters}>
+              {statuses.length === 0 ? t('reviewQueue.enableStatusesAction') : t('reviewQueue.resetFiltersAction')}
+            </button>
+            <Link className={s.emptyLinkBtn} to={currentGameId ? `/games/${currentGameId}` : '/games'}>
+              {currentGameId ? t('reviewQueue.openCurrentGameAction') : t('reviewQueue.openGamesAction')}
+            </Link>
+          </div>
         </div>
       )}
 

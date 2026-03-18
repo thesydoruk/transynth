@@ -6,7 +6,7 @@
  * correct backend API based on file extension.
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   listNexusDownloadJobs,
   subscribeNexusDownloadJobs,
@@ -404,6 +404,11 @@ export const ImportsPage = () => {
   const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
   /** Persisted LLM jobs from backend ops — shown for history visibility across reloads. */
   const backendLlmJobs: OpsLlmJob[] = opsData?.llmJobs ?? [];
+  const hasNoVisibleJobs = allJobs.length === 0
+    && visibleNexusDownloads.length === 0
+    && visibleAppJobs.length === 0
+    && backendLlmJobs.length === 0
+    && pendingModUploads.length === 0;
 
   /** Confirms MOD deletion from custom modal and then refreshes import lists. */
   const confirmDeleteMod = useCallback(async () => {
@@ -438,8 +443,22 @@ export const ImportsPage = () => {
       </div>
 
       {/* Unified job list + Nexus downloads still in progress */}
-      {allJobs.length === 0 && visibleNexusDownloads.length === 0 && visibleAppJobs.length === 0 && backendLlmJobs.length === 0 && pendingModUploads.length === 0 ? (
-        <p className={s.empty}>{t('imports.noFiles')}</p>
+      {hasNoVisibleJobs ? (
+        <div className={s.emptyState}>
+          <h2 className={s.emptyTitle}>{t('imports.emptyTitle')}</h2>
+          <p className={s.emptyText}>{t('imports.noFiles')}</p>
+          <div className={s.emptyActions}>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className={s.btn}
+            >
+              {t('imports.emptyUploadAction')}
+            </button>
+            <Link to={`/games/${gameId}/nexus`} className={s.emptyLinkBtn}>
+              {t('imports.emptyDiscoverAction')}
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className={s.list}>
           {pendingModUploads.map((u) => (
