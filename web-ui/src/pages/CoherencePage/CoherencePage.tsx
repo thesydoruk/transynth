@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getTgtLang } from '../../langDefaults';
 import { GroupCard } from './GroupCard';
@@ -107,7 +108,17 @@ export const CoherencePage = () => {
       {isLoading && <div className={s.empty}>{t('coherence.loading')}</div>}
 
       {!isLoading && totalGroups === 0 && (
-        <div className={s.empty}>{t('coherence.noIssues')}</div>
+        <div className={s.emptyState}>
+          <div className={s.emptyText}>{t('coherence.noIssues')}</div>
+          <div className={s.emptyActions}>
+            <button className={s.emptyBtn} onClick={() => qc.invalidateQueries({ queryKey: ['coherence'] })}>
+              {t('coherence.refreshAction')}
+            </button>
+            <Link className={s.emptyLinkBtn} to="/review-queue">
+              {t('coherence.openReviewQueueAction')}
+            </Link>
+          </div>
+        </div>
       )}
 
       {!isLoading && (data?.groups ?? []).map((group) => (

@@ -99,6 +99,57 @@
   padding: 18px 0;
 }
 
+.emptyState {
+  margin-top: 12px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.emptyBtn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--primary);
+  color: var(--primary-on);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  color: var(--text-bright);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

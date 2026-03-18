@@ -20,6 +20,7 @@ especially low-confidence auto-translations.
 The Review Queue is a focused view of strings that need a human decision.
 
 It is most useful when:
+
 - LLM batch translation has produced **Auto** strings and you need to verify them.
 - TM-matched strings (**TM** status) need approval before export.
 - A reviewer is checking another translator's work (**Draft** strings).
@@ -43,12 +44,12 @@ If the queue is empty, the page now provides immediate next actions instead of s
 
 The Review Queue supports several filters to focus your review effort:
 
-| Filter | Description |
-|--------|-------------|
-| **Target language** | Language to review: uk / ru / de / fr / pl. Default: **uk**. |
-| **Status** | Toggle chips: **Auto**, **Fuzzy**, **TM**, **Draft**. All four are on by default. |
-| **Mod** | Restrict to a single mod, or **All Mods** (default). |
-| **Max confidence** | Show only strings below a threshold: All / <0.95 / <0.85 / <0.75 / <0.60. Default: **All**. |
+| Filter              | Description                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| **Target language** | Language to review: uk / ru / de / fr / pl. Default: **uk**.                                |
+| **Status**          | Toggle chips: **Auto**, **Fuzzy**, **TM**, **Draft**. All four are on by default.           |
+| **Mod**             | Restrict to a single mod, or **All Mods** (default).                                        |
+| **Max confidence**  | Show only strings below a threshold: All / <0.95 / <0.85 / <0.75 / <0.60. Default: **All**. |
 
 The table always shows **50 strings per page**, sorted by confidence ascending — the strings
 you are least certain about appear first.
@@ -58,11 +59,11 @@ you are least certain about appear first.
 Every string in the queue carries a **confidence score** (0–1) displayed as a mini horizontal
 bar with a percentage:
 
-| Score source | How it is assigned |
-|---|---|
+| Score source         | How it is assigned                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
 | **Fuzzy / TM match** | Normalised text-similarity score from the TM lookup (1.0 = exact match; lower = less similar). |
-| **Auto (LLM)** | Confidence value returned by the LLM provider alongside the translation. |
-| **Unknown** | Displayed as `—`; sorted to the bottom of the queue. |
+| **Auto (LLM)**       | Confidence value returned by the LLM provider alongside the translation.                       |
+| **Unknown**          | Displayed as `—`; sorted to the bottom of the queue.                                           |
 
 A score closer to **0** means the translation was uncertain and needs close inspection.
 A score of **1.0** (100 %) typically indicates an exact TM hit and rarely needs correction.
@@ -79,16 +80,16 @@ A score of **1.0** (100 %) typically indicates an exact TM hit and rarely needs 
 
 3. **For each row in the table:**
 
-   | Column | What to check |
-   |--------|---------------|
-   | Mod | Which mod the string belongs to |
-   | GRUP | Record group (e.g. DIAL, BOOK, WEAP) |
-   | EDID | Editor ID — click to open in the Mod Editor |
-   | Source (EN) | The original English text |
-   | Translation | The auto-generated or TM-matched translation |
-   | Status | Auto / Fuzzy / TM / Draft |
-   | Conf | Confidence bar — low % needs close inspection |
-   | QA | Any active QA warnings on this string |
+   | Column      | What to check                                 |
+   | ----------- | --------------------------------------------- |
+   | Mod         | Which mod the string belongs to               |
+   | GRUP        | Record group (e.g. DIAL, BOOK, WEAP)          |
+   | EDID        | Editor ID — click to open in the Mod Editor   |
+   | Source (EN) | The original English text                     |
+   | Translation | The auto-generated or TM-matched translation  |
+   | Status      | Auto / Fuzzy / TM / Draft                     |
+   | Conf        | Confidence bar — low % needs close inspection |
+   | QA          | Any active QA warnings on this string         |
 
 4. **Take action per string:**
    - **Approve** — sets the status to `reviewed`. The row disappears from the queue.
@@ -108,10 +109,10 @@ A score of **1.0** (100 %) typically indicates an exact TM hit and rarely needs 
 Both tools can show unreviewed strings.
 The difference:
 
-| | Review Queue | Editor Filter |
-|---|-------------|---------------|
-| **Scope** | All mods at once | One mod at a time |
-| **Sorting** | By confidence (lowest first) | By any column |
+|              | Review Queue                     | Editor Filter                |
+| ------------ | -------------------------------- | ---------------------------- |
+| **Scope**    | All mods at once                 | One mod at a time            |
+| **Sorting**  | By confidence (lowest first)     | By any column                |
 | **Best for** | Quick batch review after LLM run | Deep editing of a single mod |
 
 Use the **Review Queue** for a daily review pass after overnight LLM translation.

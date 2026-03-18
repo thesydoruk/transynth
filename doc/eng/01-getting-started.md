@@ -170,6 +170,8 @@ When you open a game workspace (`/games/:gameId`), the **Game Hub** now serves a
 
 plus a secondary **Discover** card for NexusMods browsing.
 
+In the game-scoped Nexus browser (`/games/:gameId/nexus`), empty search results now include direct actions to clear the search and jump back to the game hub.
+
 ---
 
 ## Login and Multi-user Mode

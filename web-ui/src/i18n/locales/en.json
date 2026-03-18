@@ -261,7 +261,10 @@
     "filterAdded": "added",
     "filterRemoved": "removed",
     "filterChanged": "changed",
-    "openInEditor": "Open in Editor (Drafts)"
+    "openInEditor": "Open in Editor (Drafts)",
+    "showAllAction": "Show all changes",
+    "openCurrentGameAction": "Open current game hub",
+    "openGamesAction": "Open games catalog"
   },
   "glossary": {
     "title": "Glossary",
@@ -455,6 +458,8 @@
     "totalGroups": "{{count}} inconsistency groups",
     "loading": "Loading…",
     "noIssues": "No inconsistencies found. All translations are consistent.",
+    "refreshAction": "Refresh check",
+    "openReviewQueueAction": "Open Review Queue",
     "variantsBadge": "{{count}} variants",
     "applyToAll": "Apply to All",
     "applyToAllTitle": "Replace all other variants with this translation",
@@ -736,6 +741,8 @@
     "resultsCount": "{{count}} results for \"{{query}}\"",
     "resultsCountAll": "{{count}} mods in {{game}}",
     "noResults": "No mods found for this query.",
+    "clearSearchAction": "Clear search",
+    "backToGameHubAction": "Back to game hub",
     "noSummary": "No summary provided",
     "downloads": "Downloads: {{count}}",
     "endorsements": "Endorsements: {{count}}",

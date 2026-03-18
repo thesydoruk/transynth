@@ -34,6 +34,11 @@ Inconsistencies confuse players and signal a low-quality translation.
 
 Navigate to **Coherence** in the top navigation bar (route: `/coherence`).
 
+If no inconsistency groups are found, the page now provides direct actions instead of only passive text:
+
+- **Refresh check** — re-runs the coherence query
+- **Open Review Queue** — jumps into quality-review workflow immediately
+
 ---
 
 ## Reading the Results

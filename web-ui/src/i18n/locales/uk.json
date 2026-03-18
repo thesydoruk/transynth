@@ -262,7 +262,10 @@
     "filterAdded": "Додані",
     "filterRemoved": "Видалені",
     "filterChanged": "Змінені",
-    "openInEditor": "Відкрити в редакторі (чернетки)"
+    "openInEditor": "Відкрити в редакторі (чернетки)",
+    "showAllAction": "Показати всі зміни",
+    "openCurrentGameAction": "Відкрити хаб поточної гри",
+    "openGamesAction": "Відкрити каталог ігор"
   },
   "glossary": {
     "title": "Глосарій",
@@ -456,6 +459,8 @@
     "totalGroups": "{{count}} груп невідповідностей",
     "loading": "Завантаження…",
     "noIssues": "Невідповідностей не знайдено. Переклади узгоджені.",
+    "refreshAction": "Оновити перевірку",
+    "openReviewQueueAction": "Відкрити чергу рецензій",
     "variantsBadge": "{{count}} варіанти",
     "applyToAll": "Застосувати до всіх",
     "applyToAllTitle": "Замінити всі інші варіанти цим перекладом",
@@ -737,6 +742,8 @@
     "resultsCount": "{{count}} результатів за запитом \"{{query}}\"",
     "resultsCountAll": "{{count}} модів у {{game}}",
     "noResults": "За цим запитом модів не знайдено.",
+    "clearSearchAction": "Очистити пошук",
+    "backToGameHubAction": "Повернутися в хаб гри",
     "noSummary": "Опис відсутній",
     "downloads": "Завантаження: {{count}}",
     "endorsements": "Вподобання: {{count}}",

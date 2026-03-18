@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../../api';
+import { getCurrentGame } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
 import s from './DiffPage.module.scss';
 
@@ -35,6 +36,7 @@ export const DiffPage = () => {
   const [newModId, setNewModId] = useState(searchParams.get('newModId') ?? '');
   const [oldModId, setOldModId] = useState(searchParams.get('oldModId') ?? '');
   const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
+  const currentGameId = getCurrentGame();
 
   const {
     data: diff,
@@ -190,9 +192,19 @@ export const DiffPage = () => {
 
           {/* Table */}
           {allEntries.length === 0 ? (
-            <p className={s.empty}>
-              {t('diff.noDifferences', { filter: filter === 'all' ? t('diff.filterAll') : filter })}
-            </p>
+            <div className={s.emptyState}>
+              <p className={s.emptyText}>
+                {t('diff.noDifferences', { filter: filter === 'all' ? t('diff.filterAll') : filter })}
+              </p>
+              <div className={s.emptyActions}>
+                <button className={s.emptyBtn} onClick={() => setFilter('all')}>
+                  {t('diff.showAllAction')}
+                </button>
+                <Link className={s.emptyLinkBtn} to={currentGameId ? `/games/${currentGameId}` : '/games'}>
+                  {currentGameId ? t('diff.openCurrentGameAction') : t('diff.openGamesAction')}
+                </Link>
+              </div>
+            </div>
           ) : (
             <table className={s.table}>
               <thead>

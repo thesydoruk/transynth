@@ -151,7 +151,25 @@ export const GameModsPage = () => {
           </p>
 
           {modsPage.items.length === 0 ? (
-            <p className={s.empty}>{t('games.noResults')}</p>
+            <div className={s.emptyState}>
+              <p className={s.emptyText}>{t('games.noResults')}</p>
+              <div className={s.emptyActions}>
+                <button
+                  type="button"
+                  className={s.emptyBtn}
+                  onClick={() => {
+                    setQueryInput('');
+                    setSubmittedQuery('');
+                    setPage(1);
+                  }}
+                >
+                  {t('games.clearSearchAction')}
+                </button>
+                <Link to={`/games/${gameId}`} className={s.emptyLinkBtn}>
+                  {t('games.backToGameHubAction')}
+                </Link>
+              </div>
+            </div>
           ) : (
             <>
               <div className={s.grid}>

@@ -122,6 +122,57 @@
   padding: 32px;
 }
 
+.emptyState {
+  text-align: center;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyText {
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyBtn {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+  }
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -204,16 +255,34 @@
 }
 
 /** Carry-over result highlighted counts. */
-.carryGreen  { color: var(--success); }
-.carryOrange { color: var(--warning); }
-.carryGrey   { color: var(--text-dim); }
+.carryGreen {
+  color: var(--success);
+}
+.carryOrange {
+  color: var(--warning);
+}
+.carryGrey {
+  color: var(--text-dim);
+}
 
 /** Table row background per change type. */
-.rowAdded   { background: var(--diff-added-bg); }
-.rowRemoved { background: var(--diff-removed-bg); }
-.rowChanged { background: var(--diff-changed-bg); }
+.rowAdded {
+  background: var(--diff-added-bg);
+}
+.rowRemoved {
+  background: var(--diff-removed-bg);
+}
+.rowChanged {
+  background: var(--diff-changed-bg);
+}
 
 /** Change-type text color for the first column. */
-.changeAdded   { color: var(--success); }
-.changeRemoved { color: var(--danger); }
-.changeChanged { color: var(--warning); }
+.changeAdded {
+  color: var(--success);
+}
+.changeRemoved {
+  color: var(--danger);
+}
+.changeChanged {
+  color: var(--warning);
+}

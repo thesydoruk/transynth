@@ -377,7 +377,7 @@ Exit criteria:
 - Activity log CSV export from the UI.
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
 - Queue-focused navigation controls in translation workflows.
-- 🔄 Deterministic empty states with immediate action buttons. Implemented for Imports and Review Queue with direct CTA buttons; other major pages still need the same treatment.
+- ✅ Deterministic empty states with immediate action buttons. Rolled out on core workflow pages (Imports, Review Queue, Game Mods search, Coherence, and Diff) with direct next-step CTAs.
 - ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inline while QA still enforces mismatch detection.
 - ✅ Max-length visual indicator in the editor detail panel.
 - Optional page size selector in the editor grid.
@@ -413,7 +413,7 @@ P2 Medium:
 - Better wording for destructive operation outcomes.
 - Better surfacing of INNR and Book or HTML editors when relevant content exists.
 - Queue-focused navigation controls in translation workflows.
-- 🔄 Deterministic empty states with immediate action buttons. Imports and Review Queue now expose action-first empty states; the pattern still needs rollout to more pages.
+- ✅ Deterministic empty states with immediate action buttons. Core workflow pages now expose action-first empty states with direct next-step buttons.
 - Onboarding checklist for first-time users.
 
 P3 Low:

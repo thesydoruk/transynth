@@ -52,6 +52,11 @@ If found, it compares the source text:
 
 Navigate to **Diff** in the top navigation bar (route: `/diff`).
 
+When the current filter yields no rows, the page now shows an action-first empty state with immediate next steps:
+
+- **Show all changes** — resets the filter to `all`
+- **Open current game hub** (or games catalogue if no game context is persisted)
+
 ### Selecting Two Versions
 
 The Diff page has two mod dropdowns:
