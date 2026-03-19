@@ -305,6 +305,8 @@ export type CoherenceEntry = {
   path_simplified: string;
   mod_id: number;
   mod_name: string;
+  /** Game identifier for the mod — used for editor deep-links. */
+  mod_game: string;
   translation_id: number | null;
   /** The current best translation for this string. */
   translation: string;

@@ -75,3 +75,16 @@
   color: var(--text-muted, var(--text-dim));
   font-family: monospace;
 }
+
+/** Icon link that opens the mod editor pre-filtered to this string. */
+.openLink {
+  margin-left: auto;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  flex-shrink: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

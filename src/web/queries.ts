@@ -1933,6 +1933,8 @@ export type CoherenceEntry = {
   path_simplified: string;
   mod_id: number;
   mod_name: string;
+  /** Game identifier for the mod — used for editor deep-links. */
+  mod_game: string;
   translation_id: number | null;
   /** Current best translation for this string. */
   translation: string;
@@ -2063,6 +2065,7 @@ export const getCoherenceGroups = async (
             r.path_simplified,
             m.id             AS mod_id,
             m.name           AS mod_name,
+            m.game           AS mod_game,
             bt.translation_id,
             bt.translation,
             bt.status

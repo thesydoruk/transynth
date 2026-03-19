@@ -48,13 +48,14 @@ export const ModEditorPage = () => {
   const initialStatus = searchParams.get('status');
   const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
   const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus) ? initialStatus : 'all';
+  const initialSignature = searchParams.get('signature') ?? '';
 
   // ── Filter / sort / pagination state ──
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState(safeInitialStatus);
   const [qaOnly, setQaOnly] = useState(initialQaOnly);
-  const [signature, setSignature] = useState('');
+  const [signature, setSignature] = useState(initialSignature);
   const [page, setPage] = useState(1);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
     grup: '', formid: '', edid: '', field: '', src: '', transl: '',

@@ -310,7 +310,8 @@ Exit criteria:
 - ✅ Clarify state feedback for save and validation outcomes — `saveIndicator` (`saving / saved / idle`) implemented in `useEditorMutations`; shown in `DetailPanel`.
 - ✅ Internal architecture refactoring — `ModEditorPage` (~1300 → ~310 lines): 11 sub-components under `components/`, 5 custom hooks (`useThemeObserver`, `useEditorQueries`, `useEditorMutations`, `useAutosave`, `useEditorKeyboard`) under `hooks/`, 5 one-function utilities under `utils/`; keyboard shortcut hook uses ref-pattern, eliminating 3 `exhaustive-deps` lint warnings.
 - Remove or demote secondary actions that interrupt editing flow.
-- Add better drill-down paths from Dashboard, Review Queue, and Coherence into filtered editor sessions.
+- ✅ Add better drill-down paths from Dashboard, Review Queue, and Coherence into filtered editor sessions — Dashboard QA ✅, ReviewQueuePage rows link to editor with `?status=` ✅, CoherencePage VariantCard entries now include per-string ↗ links to `/games/:gameId/mods/:modId?status=…&signature=…` ✅.
+- ✅ `ModEditorPage` now reads `?signature=` from URL search params, enabling pre-filtered views from coherence and other drill-down sources.
 - Improve discoverability and consistency of special editors without moving them out of the translation workflow.
 
 Exit criteria:
@@ -339,7 +340,7 @@ Exit criteria:
 - Add post-batch-translate action card that links directly to the review queue for those strings.
 - ✅ Add Dashboard QA click-through to filtered editor sessions — Dashboard QA breakdown rows now include direct drill-down to `ModEditor` with `qaOnly=1`.
 - ✅ Add max-length visual indicator in editor detail panel for strings with length QA rules — `activeMaxLength` computed from QA rules matching current row's `signature` and `path`; rendered in `DetailPanel`.
-- Add onboarding checklist on Home or Game Hub for first-time setup.
+- ✅ Add onboarding checklist on Home or Game Hub for first-time setup — `SetupChecklist` card on HomePage shows LLM readiness, first mod import, and first translation run; auto-hides when all items are satisfied.
 
 Exit criteria:
 
@@ -384,7 +385,7 @@ Exit criteria:
 - Dashboard QA breakdown click-through to filtered editor.
 - ✅ LLM provider health or readiness status in Settings.
 - ✅ Post-LLM-run action prompt linking directly to review queue. After batch translate completion, a banner appears with a direct link to `/review-queue?modId={{modId}}`.
-- Onboarding checklist for first-time users.
+- ✅ Onboarding checklist for first-time users. `SetupChecklist` on HomePage tracks LLM readiness, first import, and first translation run.
 - Translator display name in the review queue row.
 
 ## Prioritized Backlog
@@ -414,7 +415,7 @@ P2 Medium:
 - Better surfacing of INNR and Book or HTML editors when relevant content exists.
 - Queue-focused navigation controls in translation workflows.
 - ✅ Deterministic empty states with immediate action buttons. Core workflow pages now expose action-first empty states with direct next-step buttons.
-- Onboarding checklist for first-time users.
+- ✅ Onboarding checklist for first-time users. `SetupChecklist` on HomePage tracks LLM readiness, first import, and first translation run; auto-hides when all items are satisfied.
 
 P3 Low:
 

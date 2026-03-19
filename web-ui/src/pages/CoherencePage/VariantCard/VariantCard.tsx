@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import type { CoherenceEntry } from '../../../api';
 import s from './VariantCard.module.scss';
 
@@ -36,6 +37,13 @@ export const VariantCard = ({ translation, strings, onApply, isApplying }: Varia
             {entry.edid && <span className={s.edidTag}>{entry.edid}</span>}
             <span>{entry.signature}{entry.path_simplified ? ` › ${entry.path_simplified}` : ''}</span>
             <span>({entry.status})</span>
+            <Link
+              className={s.openLink}
+              to={`/games/${entry.mod_game}/mods/${entry.mod_id}?status=${encodeURIComponent(entry.status)}&signature=${encodeURIComponent(entry.signature)}`}
+              title={t('coherence.openInEditor')}
+            >
+              ↗
+            </Link>
           </span>
         ))}
       </div>

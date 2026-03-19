@@ -23,6 +23,7 @@ import {
 import { ModProgressSection } from './ModProgressSection';
 import { ProjectStats } from './ProjectStats';
 import { RecentImports } from './RecentImports';
+import { SetupChecklist } from './SetupChecklist';
 import { SystemStrip } from './SystemStrip';
 import { TechDetailsSection } from './TechDetailsSection';
 import s from './HomePage.module.scss';
@@ -45,6 +46,13 @@ export const HomePage = () => {
     queryKey: ['ops'],
     queryFn: api.ops.overview,
     refetchInterval: 30_000,
+  });
+
+  /** Fetched for the setup checklist — stale time keeps it cheap once loaded. */
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.settings.get,
+    staleTime: 60_000,
   });
 
   useEffect(() => {
@@ -72,6 +80,8 @@ export const HomePage = () => {
   return (
     <div className={s.page}>
       {dash && <ProjectStats data={dash} />}
+
+      <SetupChecklist dash={dash} settings={settings} />
 
       {ops && <SystemStrip data={ops} />}
       {dash && <ModProgressSection data={dash} />}

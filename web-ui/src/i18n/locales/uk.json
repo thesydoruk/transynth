@@ -464,6 +464,7 @@
     "variantsBadge": "{{count}} варіанти",
     "applyToAll": "Застосувати до всіх",
     "applyToAllTitle": "Замінити всі інші варіанти цим перекладом",
+    "openInEditor": "Відкрити в редакторі",
     "page": "Сторінка {{current}} з {{total}}"
   },
   "reviewQueue": {
@@ -548,6 +549,15 @@
     "placeholder": "Введіть переклад HTML-розмітки…",
     "markupHint": "Підтримувані теги: font, b, i, p, div, br, hr, img src=\"img://...\"",
     "charCount": "{{count}} симв."
+  },
+  "setup": {
+    "title": "Початок роботи",
+    "llmItem": "LLM-провайдер налаштований і доступний",
+    "llmAction": "Налаштувати",
+    "importItem": "Принаймні один мод імпортовано",
+    "importAction": "Імпортувати",
+    "translateItem": "Автопереклад було запущено принаймні раз",
+    "translateAction": "Почати переклад"
   },
   "ops": {
     "title": "Стан та Операції",
