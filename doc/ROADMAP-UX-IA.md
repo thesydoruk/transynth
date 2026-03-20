@@ -361,18 +361,18 @@ Exit criteria:
 
 ## Backlog of Concrete UX Improvements
 
-- One primary CTA per major page.
+- ✅ One primary CTA per major page. Add/create action buttons on TradAutoPage, QARulesPage, GlossaryPage, ImportsPage, and TmxPage now use `--accent` (brand amber) for visual primary hierarchy.
 - Explicit Home or Overview navigation entry.
 - ✅ Persistent current game and language context in the app shell. AppNav now shows the current game workspace (persisted from game-scoped routes) plus the current source/target content language pair.
 - ✅ Per-game hub cards for Imports, Mods, Review, and Release. `GameHubPage` now exposes workflow cards for Import, Translate, Quality, and Release, with per-game counters plus a secondary Discover entry.
-- Overflow menu for secondary actions in dense row UIs.
-- Unified status badge system and color semantics.
+- ✅ Overflow menu for secondary actions in dense row UIs. Shared `OverflowMenu` component; TradAutoPage and QARulesPage rows keep Edit inline and collapse Delete into overflow `⋯` menu.
+- ✅ Unified status badge system and color semantics. `StatusBadge` used in all status-display contexts; CoherencePage VariantCard replaced raw status text with `<StatusBadge>`.
 - ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` replaces `window.confirm` in TradAutoPage and QARulesPage.
 - ✅ Better wording for destructive operation outcomes. Toast notification appears after rule deletion in TradAutoPage and QARulesPage.
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - Deep links from overview and quality pages into pre-filtered editor views.
-- Role-aware navigation visibility and empty states.
-- Settings taxonomy that separates translators' tools from admin-only configuration.
+- ✅ Role-aware navigation visibility and empty states. `/users` nav link and Settings Users tab gated to `admin` role.
+- ✅ Settings taxonomy that separates translators' tools from admin-only configuration. Settings tab bar shows separator before admin tabs; Users tab only for admin in multi-user mode.
 - ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar shows a BOOK button when the mod has BOOK records.
 - ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod, date-from, date-to filters, all wired to backend.
 - ✅ Activity log CSV export from the UI. Downloads filtered result via `/api/activity/csv`.
@@ -407,9 +407,9 @@ P1 High:
 
 P2 Medium:
 
-- One primary CTA per major page.
-- Overflow menu for secondary actions in dense row UIs.
-- Unified status badge system and color semantics.
+- ✅ One primary CTA per major page. Add/create action buttons on TradAutoPage, QARulesPage, GlossaryPage, ImportsPage, and TmxPage now use `--accent` (amber brand color) for visual hierarchy.
+- ✅ Overflow menu for secondary actions in dense row UIs. Shared `OverflowMenu` component extracted; TradAutoPage and QARulesPage rows now keep Edit inline and collapse Delete into an overflow `⋯` menu.
+- ✅ Unified status badge system and color semantics. `StatusBadge` is now used in all status-display contexts; CoherencePage `VariantCard` replaced raw status text with `<StatusBadge>`.
 - ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` component replaces all `window.confirm` calls in TradAutoPage and QARulesPage.
 - ✅ Better wording for destructive operation outcomes. Toast notification appears after rule deletion in TradAutoPage and QARulesPage.
 - ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar now shows a BOOK button when the mod contains BOOK records.
@@ -420,8 +420,8 @@ P2 Medium:
 P3 Low:
 
 - ✅ Optional page size selector in the editor grid. Pagination row now includes a 25 / 50 / 100 / 200 rows-per-page dropdown.
-- Role-aware navigation visibility and empty states.
-- Settings taxonomy that separates translators' tools from admin-only configuration.
+- ✅ Role-aware navigation visibility and empty states. `/users` nav link and Settings Users tab are now gated to `admin` role (not just multiUser mode).
+- ✅ Settings taxonomy that separates translators' tools from admin-only configuration. SettingsPage tab bar shows a visual separator before admin tabs; Users tab only rendered for admin role in multi-user mode.
 - ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod (entity), date-from, and date-to filters wired to backend.
 - ✅ Activity log CSV export from the UI. Export CSV button downloads filtered log via `/api/activity/csv`.
 - ✅ Translator display name in the review queue row. `translations.user_id` column added; review queue query joins users; Translator column shown in the table.

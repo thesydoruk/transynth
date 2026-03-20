@@ -73,8 +73,8 @@
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
 
 .btnPrimary {
-  background: var(--primary);
-  color: var(--primary-on);
+  background: var(--accent);
+  color: var(--accent-on);
   border: none;
   border-radius: 4px;
   padding: 7px 20px;
@@ -84,7 +84,7 @@
   transition: background 0.15s;
 
   &:hover:not(:disabled) {
-    filter: brightness(1.15);
+    filter: brightness(1.1);
   }
 
   &:disabled {

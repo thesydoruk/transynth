@@ -5,6 +5,7 @@ import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../../
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { Toast } from '../../components/Toast';
+import { OverflowMenu } from '../../components/OverflowMenu';
 import s from './TradAutoPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -343,13 +344,14 @@ export const TradAutoPage = () => {
                   </td>
                   <td className={s.td}>
                     <button className={s.btnSmall} onClick={() => startEdit(rule)}>{t('tradAuto.edit')}</button>
-                    <button
-                      className={s.btnDelete}
-                      disabled={removeMut.isPending}
-                      onClick={() => setPendingDeleteId(rule.id)}
-                    >
-                      {t('tradAuto.delete')}
-                    </button>
+                    <OverflowMenu
+                      items={[{
+                        label: t('tradAuto.delete'),
+                        onClick: () => setPendingDeleteId(rule.id),
+                        danger: true,
+                        disabled: removeMut.isPending,
+                      }]}
+                    />
                   </td>
                 </tr>
               ),

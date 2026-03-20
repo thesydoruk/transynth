@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { CoherenceEntry } from '../../../api';
+import { StatusBadge } from '../../../components/StatusBadge';
 import s from './VariantCard.module.scss';
 
 export interface VariantCardProps {
@@ -36,7 +37,7 @@ export const VariantCard = ({ translation, strings, onApply, isApplying }: Varia
             <span className={s.modName}>{entry.mod_name}</span>
             {entry.edid && <span className={s.edidTag}>{entry.edid}</span>}
             <span>{entry.signature}{entry.path_simplified ? ` › ${entry.path_simplified}` : ''}</span>
-            <span>({entry.status})</span>
+            <StatusBadge status={entry.status} small />
             <Link
               className={s.openLink}
               to={`/games/${entry.mod_game}/mods/${entry.mod_id}?status=${encodeURIComponent(entry.status)}&signature=${encodeURIComponent(entry.signature)}`}

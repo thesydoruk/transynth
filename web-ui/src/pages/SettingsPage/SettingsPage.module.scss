@@ -49,6 +49,26 @@
   border-bottom-color: var(--accent);
 }
 
+/* Admin-group separator — a subtle vertical rule between translator and admin tabs. */
+.tabGroupSep {
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  background: var(--border-heavy);
+  align-self: center;
+  margin: 0 6px;
+  opacity: 0.6;
+}
+
+/* Admin tabs have a slightly different passive color to hint at elevated access. */
+.tabAdmin {
+  color: var(--text-faint);
+
+  &:hover {
+    color: var(--text-dim);
+  }
+}
+
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 
 .section {

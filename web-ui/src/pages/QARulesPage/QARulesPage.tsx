@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type QARule } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { Toast } from '../../components/Toast';
+import { OverflowMenu } from '../../components/OverflowMenu';
 import s from './QARulesPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -121,7 +122,8 @@ export const QARulesPage = () => {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className={s.page}>
+    <>
+      <div className={s.page}>
       <h1 className={s.title}>{t('qaRules.title')}</h1>
       <p className={s.description}>{t('qaRules.description')}</p>
 
@@ -269,13 +271,14 @@ export const QARulesPage = () => {
                   </td>
                   <td className={s.td}>
                     <button className={s.btnSmall} onClick={() => startEdit(rule)}>{t('qaRules.edit')}</button>
-                    <button
-                      className={s.btnDelete}
-                      disabled={removeMut.isPending}
-                      onClick={() => setPendingDeleteId(rule.id)}
-                    >
-                      {t('qaRules.delete')}
-                    </button>
+                    <OverflowMenu
+                      items={[{
+                        label: t('qaRules.delete'),
+                        onClick: () => setPendingDeleteId(rule.id),
+                        danger: true,
+                        disabled: removeMut.isPending,
+                      }]}
+                    />
                   </td>
                 </tr>
               ),
@@ -292,13 +295,14 @@ export const QARulesPage = () => {
         confirmLabel={t('qaRules.delete')}
         pending={removeMut.isPending}
         onConfirm={() => {
-          removeMut.mutate(pendingDeleteId);
+          removeMut.mutate(pendingDeleteId!);
           setPendingDeleteId(null);
         }}
         onClose={() => setPendingDeleteId(null)}
       />
     )}
     <Toast message={toastMsg} onDismiss={() => setToastMsg(null)} />
+    </>
   );
 };
 

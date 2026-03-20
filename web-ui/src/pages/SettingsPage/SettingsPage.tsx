@@ -44,11 +44,13 @@ type TabId = 'general' | 'llm' | 'qaRules' | 'tradAuto' | 'tmx' | 'activity' | '
  */
 export const SettingsPage = () => {
   const { t } = useTranslation();
-  const { multiUser } = useAuth();
+  const { multiUser, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const [tab, setTab] = useState<TabId>('general');
 
-  const tabs: { id: TabId; label: string }[] = [
+  /** Translator workflow tabs — visible to every user. */
+  const translatorTabs: { id: TabId; label: string }[] = [
     { id: 'general',  label: t('settings.tabs.general') },
     { id: 'llm',      label: t('settings.tabs.llm') },
     { id: 'qaRules',  label: t('settings.tabs.qaRules') },
@@ -56,8 +58,12 @@ export const SettingsPage = () => {
     { id: 'tmx',      label: t('settings.tabs.tmx') },
     { id: 'activity', label: t('settings.tabs.activity') },
     { id: 'data',     label: t('settings.tabs.data') },
-    ...(multiUser ? [{ id: 'users' as TabId, label: t('settings.tabs.users') }] : []),
   ];
+
+  /** Admin-only tabs — only available when multiUser mode is active AND the current user is an admin. */
+  const adminTabs: { id: TabId; label: string }[] = multiUser && isAdmin
+    ? [{ id: 'users', label: t('settings.tabs.users') }]
+    : [];
 
   return (
     <div className={s.page}>
@@ -65,7 +71,7 @@ export const SettingsPage = () => {
 
       {/* ── Tab bar ──────────────────────────────────────────────────── */}
       <div className={s.tabs}>
-        {tabs.map(({ id, label }) => (
+        {translatorTabs.map(({ id, label }) => (
           <button
             key={id}
             className={`${s.tab} ${tab === id ? s.tabActive : ''}`}
@@ -74,6 +80,20 @@ export const SettingsPage = () => {
             {label}
           </button>
         ))}
+        {adminTabs.length > 0 && (
+          <>
+            <span className={s.tabGroupSep} aria-hidden="true" />
+            {adminTabs.map(({ id, label }) => (
+              <button
+                key={id}
+                className={`${s.tab} ${s.tabAdmin} ${tab === id ? s.tabActive : ''}`}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       {/* ── Tab panels ───────────────────────────────────────────────── */}

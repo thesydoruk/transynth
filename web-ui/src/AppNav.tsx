@@ -13,7 +13,10 @@ type NavLinkDescriptor = {
   to: string;
   labelKey: string;
   exact: boolean;
+  /** When true, hides the link unless `multiUser` mode is enabled. */
   multiUserOnly?: boolean;
+  /** When true, hides the link unless the current user has the 'admin' role. */
+  adminOnly?: boolean;
 };
 
 /**
@@ -32,7 +35,7 @@ const NAV_LINKS: NavLinkDescriptor[] = [
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
-  { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true },
+  { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true, adminOnly: true },
 ];
 
 /**
@@ -90,7 +93,7 @@ export const AppNav = () => {
     <nav className={nav.nav}>
       <Link to="/" className={nav.brand}>{t('nav.brand')}</Link>
       {NAV_LINKS
-        .filter((link) => !link.multiUserOnly || multiUser)
+        .filter((link) => (!link.multiUserOnly || multiUser) && (!link.adminOnly || user?.role === 'admin'))
         .map(({ to, labelKey, exact }) => {
           const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);
           return (
