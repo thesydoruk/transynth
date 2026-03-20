@@ -35,6 +35,41 @@
   }
 }
 
+.dateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dateLabel {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.csvBtn {
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: flex-end;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-row-hover);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
 /* ── Table ─────────────────────────────────────────────────────────────────── */
 
 .table {

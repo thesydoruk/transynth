@@ -349,9 +349,9 @@ Exit criteria:
 
 ### Phase 7: Multi-user and Team Operations (1 sprint, Priority P3)
 
-- Add Activity log filters: date range, user, mod.
-- Add Activity log CSV export from the UI.
-- Resolve Settings taxonomy for team operations and admin-only surfaces.
+- ✅ Activity log filters: date range, user, mod. ActivityPage now supports action, mod (entity), date-from, and date-to filters. Backend `getActivityLog` / `getActivityCount` accept `entityType`, `entityId`, `dateFrom`, `dateTo` params.
+- ✅ Activity log CSV export from the UI. `GET /api/activity/csv` returns a filtered CSV download (max 10 000 rows); ActivityPage has an Export CSV button.
+- Settings taxonomy for team operations and admin-only surfaces.
 - Evaluate role-aware navigation visibility and empty states after single-user IA is stable.
 
 Exit criteria:
@@ -374,14 +374,14 @@ Exit criteria:
 - Role-aware navigation visibility and empty states.
 - Settings taxonomy that separates translators' tools from admin-only configuration.
 - ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar shows a BOOK button when the mod has BOOK records.
-- Activity log filters by mod, user, and date range.
-- Activity log CSV export from the UI.
+- ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod, date-from, date-to filters, all wired to backend.
+- ✅ Activity log CSV export from the UI. Downloads filtered result via `/api/activity/csv`.
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
 - ✅ Queue-focused navigation controls in translation workflows. Visible “Next untranslated (N)” button in EditorToolbar.
 - ✅ Deterministic empty states with immediate action buttons. Rolled out on core workflow pages (Imports, Review Queue, Game Mods search, Coherence, and Diff) with direct next-step CTAs.
 - ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inline while QA still enforces mismatch detection.
 - ✅ Max-length visual indicator in the editor detail panel.
-- Optional page size selector in the editor grid.
+- ✅ Optional page size selector in the editor grid. Pagination row now includes a 25†50†100†200 rows/page select.
 - Dashboard QA breakdown click-through to filtered editor.
 - ✅ LLM provider health or readiness status in Settings.
 - ✅ Post-LLM-run action prompt linking directly to review queue. After batch translate completion, a banner appears with a direct link to `/review-queue?modId={{modId}}`.
@@ -419,11 +419,11 @@ P2 Medium:
 
 P3 Low:
 
-- Optional page size selector in the editor grid.
+- ✅ Optional page size selector in the editor grid. Pagination row now includes a 25 / 50 / 100 / 200 rows-per-page dropdown.
 - Role-aware navigation visibility and empty states.
 - Settings taxonomy that separates translators' tools from admin-only configuration.
-- Activity log filters by mod, user, and date range.
-- Activity log CSV export from the UI.
+- ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod (entity), date-from, and date-to filters wired to backend.
+- ✅ Activity log CSV export from the UI. Export CSV button downloads filtered log via `/api/activity/csv`.
 - Translator display name in the review queue row.
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
 

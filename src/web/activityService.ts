@@ -50,11 +50,15 @@ export const logActivity = async (
 /**
  * Retrieves recent activity log entries with user info joined.
  *
- * @param db    - Database pool.
- * @param limit - Maximum number of entries to return (default 100).
- * @param offset - Offset for pagination (default 0).
- * @param userId - Optional filter: only entries by this user.
- * @param action - Optional filter: only entries with this action type.
+ * @param db          - Database pool.
+ * @param limit       - Maximum number of entries to return (default 100).
+ * @param offset      - Offset for pagination (default 0).
+ * @param userId      - Optional filter: only entries by this user.
+ * @param action      - Optional filter: only entries with this action type.
+ * @param entityType  - Optional filter: only entries affecting this entity type.
+ * @param entityId    - Optional filter: only entries affecting this entity ID.
+ * @param dateFrom    - Optional ISO-8601 date string: only entries on or after this date.
+ * @param dateTo      - Optional ISO-8601 date string: only entries on or before this date.
  * @returns Array of activity entries, most recent first.
  */
 export const getActivityLog = async (
@@ -63,6 +67,10 @@ export const getActivityLog = async (
   offset = 0,
   userId?: number,
   action?: string,
+  entityType?: string,
+  entityId?: number,
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<ActivityEntry[]> => {
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -75,6 +83,23 @@ export const getActivityLog = async (
   if (action !== undefined) {
     conditions.push(`a.action = $${idx++}`);
     params.push(action);
+  }
+  if (entityType !== undefined) {
+    conditions.push(`a.entity_type = $${idx++}`);
+    params.push(entityType);
+  }
+  if (entityId !== undefined) {
+    conditions.push(`a.entity_id = $${idx++}`);
+    params.push(entityId);
+  }
+  if (dateFrom !== undefined) {
+    conditions.push(`a.created_at >= $${idx++}`);
+    params.push(dateFrom);
+  }
+  if (dateTo !== undefined) {
+    // Include the entire "to" day by extending to end-of-day
+    conditions.push(`a.created_at < ($${idx++}::date + INTERVAL '1 day')`);
+    params.push(dateTo);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -100,6 +125,10 @@ export const getActivityCount = async (
   db: pg.Pool,
   userId?: number,
   action?: string,
+  entityType?: string,
+  entityId?: number,
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<number> => {
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -112,6 +141,22 @@ export const getActivityCount = async (
   if (action !== undefined) {
     conditions.push(`action = $${idx++}`);
     params.push(action);
+  }
+  if (entityType !== undefined) {
+    conditions.push(`entity_type = $${idx++}`);
+    params.push(entityType);
+  }
+  if (entityId !== undefined) {
+    conditions.push(`entity_id = $${idx++}`);
+    params.push(entityId);
+  }
+  if (dateFrom !== undefined) {
+    conditions.push(`created_at >= $${idx++}`);
+    params.push(dateFrom);
+  }
+  if (dateTo !== undefined) {
+    conditions.push(`created_at < ($${idx++}::date + INTERVAL '1 day')`);
+    params.push(dateTo);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

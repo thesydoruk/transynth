@@ -25,8 +25,8 @@ import styles from './ModEditorPage.module.scss';
 
 /** Available status-filter values for the toolbar dropdown. */
 const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
-/** Number of string rows displayed per page. */
-const PAGE_SIZE = 100;
+/** Valid page-size options for the editor string grid. */
+const PAGE_SIZE_OPTS = [25, 50, 100, 200] as const;
 
 /**
  * Top-level page component for the mod-editor view.
@@ -62,6 +62,7 @@ export const ModEditorPage = () => {
   });
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [pageSize, setPageSize] = useState(100);
 
   // ── Selection ──
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -96,7 +97,7 @@ export const ModEditorPage = () => {
     isLoading, refetchStats, availLangs, sigCounts, totalPages, activeMaxLength,
   } = useEditorQueries({
     modId, gameId, srcLang, targetLang, status, qaOnly, signature,
-    columnFilters, page, pageSize: PAGE_SIZE, sortCol, sortDir,
+    columnFilters, page, pageSize, sortCol, sortDir,
     activeRow, activeTab,
   });
 
@@ -300,7 +301,7 @@ export const ModEditorPage = () => {
   // ── Keyboard shortcuts ──
   useEditorKeyboard({
     activeRow, selected, strings, ctxMenu, page,
-    pageSize: PAGE_SIZE, translAreaRef,
+    pageSize, translAreaRef,
     flushAutosave, handleSave, handleApprove, handleReject,
     handleCopySource, handleClear, handleRowClick, toggleAll,
     setActiveRow, setDraftTranslation, setSelected,
@@ -416,6 +417,16 @@ export const ModEditorPage = () => {
             <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>{t('common.prev')}</button>
             <span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>
             <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>{t('common.next')}</button>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className={styles.pageSizeSelect}
+              title={t('modEditor.pageSizeTitle')}
+            >
+              {PAGE_SIZE_OPTS.map((n) => (
+                <option key={n} value={n}>{n} {t('modEditor.perPage')}</option>
+              ))}
+            </select>
           </div>
 
           {activeRow && (
