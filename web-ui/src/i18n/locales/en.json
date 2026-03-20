@@ -193,6 +193,10 @@
     "shortcutEscape": "Close / cancel",
     "innrEditor": "INNR",
     "innrEditorTitle": "Open Instance Naming Rules editor",
+    "bookEditor": "BOOK",
+    "bookEditorTitle": "Filter by BOOK records",
+    "nextUntranslated": "Next untranslated ({{count}})",
+    "nextUntranslatedTitle": "Jump to next untranslated string (N)",
     "translateDone": "{{count}} string(s) auto-translated. Review the results before approving.",
     "openReviewQueue": "Open Review Queue →"
   },
@@ -449,7 +453,9 @@
     "descriptionPlaceholder": "Optional description",
     "error": "error",
     "warning": "warning",
-    "confirmDelete": "Delete this QA rule?"
+    "confirmDelete": "Delete this QA rule?",
+    "deleteTitle": "Delete QA Rule",
+    "deleteMessage": "Are you sure you want to delete this QA rule? This action cannot be undone."
   },
   "coherence": {
     "title": "Translation Consistency",
@@ -611,6 +617,8 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "confirmDelete": "Delete this TradAuto rule?",
+    "deleteTitle": "Delete TradAuto Rule",
+    "deleteMessage": "Are you sure you want to delete this TradAuto rule? This action cannot be undone.",
     "priorityPlaceholder": "e.g. 10",
     "patternPlaceholder": "e.g. %VAR1% Sword",
     "replacementPlaceholder": "e.g. Меч %VAR1%",

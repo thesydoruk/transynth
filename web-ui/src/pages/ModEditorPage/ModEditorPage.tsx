@@ -307,6 +307,22 @@ export const ModEditorPage = () => {
     setCtxMenu, setPage, setShowShortcuts,
   });
 
+  /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
+  const handleNextUntranslated = useCallback(() => {
+    if (!strings?.rows.length) return;
+    const rows = strings.rows;
+    const curIdx = activeRow
+      ? rows.findIndex((r) => r.string_id === activeRow.string_id)
+      : -1;
+    for (let i = 1; i <= rows.length; i++) {
+      const idx = (curIdx + i) % rows.length;
+      if (!rows[idx].translation) {
+        handleRowClick(rows[idx]);
+        break;
+      }
+    }
+  }, [strings, activeRow, handleRowClick]);
+
   // ── Render ──
   return (
     <div className={styles.root}>
@@ -330,6 +346,8 @@ export const ModEditorPage = () => {
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
+        hasBookSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'BOOK')}
+        untranslatedCount={stats?.untranslated}
         statusOpts={STATUS_OPTS}
         onSrcLangChange={(l) => { setSrcLang(l); setPage(1); }}
         onTargetLangChange={(l) => { setTargetLang(l); setPage(1); }}
@@ -340,6 +358,7 @@ export const ModEditorPage = () => {
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
+        onNextUntranslated={handleNextUntranslated}
       />
 
       {/* Post-LLM-run action banner — shown after a successful batch translate */}

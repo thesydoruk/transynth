@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../../api';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import s from './TradAutoPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -36,6 +37,9 @@ export const TradAutoPage = () => {
   // ── Inline edit state (null = not editing) ───────────────────────────────
   const [editId, setEditId] = useState<number | null>(null);
   const [editData, setEditData] = useState({ ...EMPTY_FORM });
+
+  // ── Pending delete confirmation ──────────────────────────────────────────
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   // ── Test panel state ─────────────────────────────────────────────────────
   const [testText, setTestText] = useState('');
@@ -203,7 +207,8 @@ export const TradAutoPage = () => {
   const testLines = testText.split('\n').map((l) => l.trim()).filter(Boolean);
 
   return (
-    <div className={s.page}>
+    <>
+      <div className={s.page}>
       <h1 className={s.title}>{t('tradAuto.title')}</h1>
       <p className={s.description}>{t('tradAuto.description')}</p>
 
@@ -336,9 +341,7 @@ export const TradAutoPage = () => {
                     <button
                       className={s.btnDelete}
                       disabled={removeMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(t('tradAuto.confirmDelete'))) removeMut.mutate(rule.id);
-                      }}
+                      onClick={() => setPendingDeleteId(rule.id)}
                     >
                       {t('tradAuto.delete')}
                     </button>
@@ -504,7 +507,22 @@ export const TradAutoPage = () => {
           </table>
         )}
       </div>
-    </div>
+      </div>
+
+      {pendingDeleteId != null && (
+        <ConfirmModal
+          title={t('tradAuto.deleteTitle')}
+          message={t('tradAuto.deleteMessage')}
+          confirmLabel={t('tradAuto.delete')}
+          pending={removeMut.isPending}
+          onConfirm={() => {
+            removeMut.mutate(pendingDeleteId!);
+            setPendingDeleteId(null);
+          }}
+          onClose={() => setPendingDeleteId(null)}
+        />
+      )}
+    </>
   );
 };
 

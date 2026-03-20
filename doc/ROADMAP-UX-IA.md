@@ -367,17 +367,17 @@ Exit criteria:
 - ✅ Per-game hub cards for Imports, Mods, Review, and Release. `GameHubPage` now exposes workflow cards for Import, Translate, Quality, and Release, with per-game counters plus a secondary Discover entry.
 - Overflow menu for secondary actions in dense row UIs.
 - Unified status badge system and color semantics.
-- Consistent danger confirmation modal pattern.
+- ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` replaces `window.confirm` in TradAutoPage and QARulesPage.
 - Better wording for destructive operation outcomes.
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - Deep links from overview and quality pages into pre-filtered editor views.
 - Role-aware navigation visibility and empty states.
 - Settings taxonomy that separates translators' tools from admin-only configuration.
-- Better surfacing of INNR and Book or HTML editors when relevant content exists.
+- ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar shows a BOOK button when the mod has BOOK records.
 - Activity log filters by mod, user, and date range.
 - Activity log CSV export from the UI.
 - Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
-- Queue-focused navigation controls in translation workflows.
+- ✅ Queue-focused navigation controls in translation workflows. Visible “Next untranslated (N)” button in EditorToolbar.
 - ✅ Deterministic empty states with immediate action buttons. Rolled out on core workflow pages (Imports, Review Queue, Game Mods search, Coherence, and Diff) with direct next-step CTAs.
 - ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inline while QA still enforces mismatch detection.
 - ✅ Max-length visual indicator in the editor detail panel.
@@ -410,10 +410,10 @@ P2 Medium:
 - One primary CTA per major page.
 - Overflow menu for secondary actions in dense row UIs.
 - Unified status badge system and color semantics.
-- Consistent danger confirmation modal pattern.
+- ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` component replaces all `window.confirm` calls in TradAutoPage and QARulesPage.
 - Better wording for destructive operation outcomes.
-- Better surfacing of INNR and Book or HTML editors when relevant content exists.
-- Queue-focused navigation controls in translation workflows.
+- ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar now shows a BOOK button when the mod contains BOOK records.
+- ✅ Queue-focused navigation controls in translation workflows. EditorToolbar now includes a visible "Next untranslated (N)" button when untranslated strings remain.
 - ✅ Deterministic empty states with immediate action buttons. Core workflow pages now expose action-first empty states with direct next-step buttons.
 - ✅ Onboarding checklist for first-time users. `SetupChecklist` on HomePage tracks LLM readiness, first import, and first translation run; auto-hides when all items are satisfied.
 

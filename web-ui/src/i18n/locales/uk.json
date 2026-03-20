@@ -193,6 +193,10 @@
     "shortcutEscape": "Закрити / скасувати",
     "innrEditor": "INNR",
     "innrEditorTitle": "Відкрити редактор правил іменування INNR",
+    "bookEditor": "BOOK",
+    "bookEditorTitle": "Фільтрувати за записами BOOK",
+    "nextUntranslated": "Наступний неперекладений ({{count}})",
+    "nextUntranslatedTitle": "Перейти до наступного неперекладеного рядка (N)",
     "translateDone": "{{count}} рядок(ів) перекладено автоматично. Перевірте результати перед затвердженням.",
     "openReviewQueue": "Відкрити чергу рецензій →"
   },
@@ -450,7 +454,9 @@
     "descriptionPlaceholder": "Опціональний опис",
     "error": "помилка",
     "warning": "попередження",
-    "confirmDelete": "Видалити це QA-правило?"
+    "confirmDelete": "Видалити це QA-правило?",
+    "deleteTitle": "Видалити QA-правило",
+    "deleteMessage": "Ви впевнені, що хочете видалити це QA-правило? Цю дію неможливо скасувати."
   },
   "coherence": {
     "title": "Узгодженість перекладів",
@@ -612,6 +618,8 @@
     "cancel": "Скасувати",
     "delete": "Видалити",
     "confirmDelete": "Видалити це правило TradAuto?",
+    "deleteTitle": "Видалити правило TradAuto",
+    "deleteMessage": "Ви впевнені, що хочете видалити це правило TradAuto? Цю дію неможливо скасувати.",
     "priorityPlaceholder": "напр. 10",
     "patternPlaceholder": "напр. %VAR1% Sword",
     "replacementPlaceholder": "напр. Меч %VAR1%",

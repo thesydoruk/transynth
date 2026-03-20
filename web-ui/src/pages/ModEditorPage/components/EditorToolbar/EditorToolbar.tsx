@@ -41,6 +41,8 @@ export interface EditorToolbarProps {
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
+  hasBookSignature: boolean;
+  untranslatedCount: number | undefined;
   statusOpts: string[];
 
   onSrcLangChange: (lang: string) => void;
@@ -52,6 +54,7 @@ export interface EditorToolbarProps {
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onBulkReview: (status: 'reviewed' | 'rejected') => void;
+  onNextUntranslated: () => void;
 }
 
 /**
@@ -77,6 +80,8 @@ export const EditorToolbar = ({
   gameId,
   modId,
   hasInnrSignature,
+  hasBookSignature,
+  untranslatedCount,
   statusOpts,
   onSrcLangChange,
   onTargetLangChange,
@@ -87,6 +92,7 @@ export const EditorToolbar = ({
   onShortcuts,
   onBatchTranslate,
   onBulkReview,
+  onNextUntranslated,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
 
@@ -136,6 +142,16 @@ export const EditorToolbar = ({
         <Link to={`/games/${gameId}/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
           {t('modEditor.innrEditor')}
         </Link>
+      )}
+      {hasBookSignature && (
+        <Link to={`/games/${gameId}/mods/${modId}?signature=BOOK`} className={styles.btnSec} title={t('modEditor.bookEditorTitle')}>
+          {t('modEditor.bookEditor')}
+        </Link>
+      )}
+      {(untranslatedCount ?? 0) > 0 && (
+        <button onClick={onNextUntranslated} className={styles.btnSec} title={t('modEditor.nextUntranslatedTitle')}>
+          {t('modEditor.nextUntranslated', { count: untranslatedCount })}
+        </button>
       )}
       <button onClick={onShortcuts} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
 

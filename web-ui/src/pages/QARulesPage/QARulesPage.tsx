@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type QARule } from '../../api';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import s from './QARulesPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -33,6 +34,9 @@ export const QARulesPage = () => {
   // ── Inline edit state (null = not editing) ───────────────────────────────
   const [editId, setEditId] = useState<number | null>(null);
   const [editData, setEditData] = useState({ ...EMPTY_FORM });
+
+  // ── Pending delete confirmation ──────────────────────────────────────────
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: rules, isLoading } = useQuery({
@@ -263,9 +267,7 @@ export const QARulesPage = () => {
                     <button
                       className={s.btnDelete}
                       disabled={removeMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(t('qaRules.confirmDelete'))) removeMut.mutate(rule.id);
-                      }}
+                      onClick={() => setPendingDeleteId(rule.id)}
                     >
                       {t('qaRules.delete')}
                     </button>
@@ -277,6 +279,20 @@ export const QARulesPage = () => {
         </table>
       )}
     </div>
+
+    {pendingDeleteId != null && (
+      <ConfirmModal
+        title={t('qaRules.deleteTitle')}
+        message={t('qaRules.deleteMessage')}
+        confirmLabel={t('qaRules.delete')}
+        pending={removeMut.isPending}
+        onConfirm={() => {
+          removeMut.mutate(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+        onClose={() => setPendingDeleteId(null)}
+      />
+    )}
   );
 };
 
