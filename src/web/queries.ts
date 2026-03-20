@@ -722,6 +722,8 @@ export const upsertTranslation = async (
   targetLang = CONFIG.defaultTgtLang,
   provenance?: string,
   model?: string,
+  /** ID of the user who saved this translation. Null for automated pipelines. */
+  userId: number | null = null,
 ) => {
   const effectiveProvenance = provenance ?? (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
     ? 'human_edit'
@@ -733,10 +735,10 @@ export const upsertTranslation = async (
   );
 
   const { rows } = await db.query(
-    `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, updated_at)
-     VALUES ($1, $2, $3, $4, 1.0, $5, NOW())
+    `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, user_id, updated_at)
+     VALUES ($1, $2, $3, $4, 1.0, $5, $6, NOW())
      RETURNING id`,
-    [stringId, targetLang, text, status, effectiveProvenance],
+    [stringId, targetLang, text, status, effectiveProvenance, userId],
   );
 
   const translationId = rows[0].id as number;
@@ -1797,6 +1799,8 @@ export type ReviewQueueRow = {
   confidence: number | null;
   model: string | null;
   qa_issue_count: number;
+  /** Display name (or username) of the last human who saved this translation. Null for automated strings. */
+  translator_name: string | null;
 };
 
 /** Paginated result for the review queue. */
@@ -1880,11 +1884,13 @@ export const listReviewQueue = async (
       t.status,
       t.confidence,
       t.model,
-      COALESCE(q.issue_count, 0) AS qa_issue_count
+      COALESCE(q.issue_count, 0) AS qa_issue_count,
+      COALESCE(u.display_name, u.username) AS translator_name
      FROM translations t
      JOIN strings  s ON s.id = t.src_string_id
      JOIN records  r ON r.id = s.record_id
      JOIN mods     m ON m.id = r.mod_id
+     LEFT JOIN users u ON u.id = t.user_id
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi

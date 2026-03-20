@@ -161,7 +161,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.send(await deleteTranslation(db, stringId, targetLang));
     }
 
-    const result = await upsertTranslation(db, stringId, text, status, targetLang);
+    const result = await upsertTranslation(db, stringId, text, status, targetLang, undefined, undefined, req.user?.id ?? null);
 
     // Propagate to all strings with the same normalised source text
     const textNorm = await getStringTextNorm(db, stringId);

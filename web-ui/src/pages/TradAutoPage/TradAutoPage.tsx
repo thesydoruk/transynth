@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../../api';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { Toast } from '../../components/Toast';
 import s from './TradAutoPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -40,6 +41,7 @@ export const TradAutoPage = () => {
 
   // ── Pending delete confirmation ──────────────────────────────────────────
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // ── Test panel state ─────────────────────────────────────────────────────
   const [testText, setTestText] = useState('');
@@ -101,7 +103,10 @@ export const TradAutoPage = () => {
 
   const removeMut = useMutation({
     mutationFn: (id: number) => api.tradAuto.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tradAutoRules'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tradAutoRules'] });
+      setToastMsg(t('tradAuto.deleteSuccess'));
+    },
   });
 
   const testMut = useMutation({
@@ -522,6 +527,7 @@ export const TradAutoPage = () => {
           onClose={() => setPendingDeleteId(null)}
         />
       )}
+      <Toast message={toastMsg} onDismiss={() => setToastMsg(null)} />
     </>
   );
 };

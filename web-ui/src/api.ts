@@ -354,6 +354,8 @@ export type ReviewQueueRow = {
   confidence: number | null;
   model: string | null;
   qa_issue_count: number;
+  /** Display name (or username) of the last human who saved this translation. Null for automated strings. */
+  translator_name: string | null;
 };
 
 /** Paginated result from GET /api/review-queue. */

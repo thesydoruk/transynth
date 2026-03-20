@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type QARule } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { Toast } from '../../components/Toast';
 import s from './QARulesPage.module.scss';
 
 /** Default values for the "add rule" form. */
@@ -37,6 +38,7 @@ export const QARulesPage = () => {
 
   // ── Pending delete confirmation ──────────────────────────────────────────
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: rules, isLoading } = useQuery({
@@ -74,7 +76,10 @@ export const QARulesPage = () => {
 
   const removeMut = useMutation({
     mutationFn: (id: number) => api.qaRules.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['qaRules'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['qaRules'] });
+      setToastMsg(t('qaRules.deleteSuccess'));
+    },
   });
 
   /** Enter inline-edit mode for a specific rule row. */
@@ -293,6 +298,7 @@ export const QARulesPage = () => {
         onClose={() => setPendingDeleteId(null)}
       />
     )}
+    <Toast message={toastMsg} onDismiss={() => setToastMsg(null)} />
   );
 };
 

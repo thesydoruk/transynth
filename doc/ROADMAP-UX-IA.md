@@ -368,7 +368,7 @@ Exit criteria:
 - Overflow menu for secondary actions in dense row UIs.
 - Unified status badge system and color semantics.
 - ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` replaces `window.confirm` in TradAutoPage and QARulesPage.
-- Better wording for destructive operation outcomes.
+- ✅ Better wording for destructive operation outcomes. Toast notification appears after rule deletion in TradAutoPage and QARulesPage.
 - Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
 - Deep links from overview and quality pages into pre-filtered editor views.
 - Role-aware navigation visibility and empty states.
@@ -386,7 +386,7 @@ Exit criteria:
 - ✅ LLM provider health or readiness status in Settings.
 - ✅ Post-LLM-run action prompt linking directly to review queue. After batch translate completion, a banner appears with a direct link to `/review-queue?modId={{modId}}`.
 - ✅ Onboarding checklist for first-time users. `SetupChecklist` on HomePage tracks LLM readiness, first import, and first translation run.
-- Translator display name in the review queue row.
+- ✅ Translator display name in the review queue row. `translations.user_id` column added; review queue query joins users; Translator column shown in the table.
 
 ## Prioritized Backlog
 
@@ -411,7 +411,7 @@ P2 Medium:
 - Overflow menu for secondary actions in dense row UIs.
 - Unified status badge system and color semantics.
 - ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` component replaces all `window.confirm` calls in TradAutoPage and QARulesPage.
-- Better wording for destructive operation outcomes.
+- ✅ Better wording for destructive operation outcomes. Toast notification appears after rule deletion in TradAutoPage and QARulesPage.
 - ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar now shows a BOOK button when the mod contains BOOK records.
 - ✅ Queue-focused navigation controls in translation workflows. EditorToolbar now includes a visible "Next untranslated (N)" button when untranslated strings remain.
 - ✅ Deterministic empty states with immediate action buttons. Core workflow pages now expose action-first empty states with direct next-step buttons.
@@ -424,8 +424,8 @@ P3 Low:
 - Settings taxonomy that separates translators' tools from admin-only configuration.
 - ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod (entity), date-from, and date-to filters wired to backend.
 - ✅ Activity log CSV export from the UI. Export CSV button downloads filtered log via `/api/activity/csv`.
-- Translator display name in the review queue row.
-- Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
+- ✅ Translator display name in the review queue row. `translations.user_id` column added; review queue query joins users; Translator column shown in the table.
+- ✅ Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation. ModEditorPage stores `{ status, qaOnly, signature }` in `localStorage[editor-intent-{modId}]` and restores on next visit (URL param always takes priority).
 
 ## Performance Targets
 

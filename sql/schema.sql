@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS translations (
   confidence DOUBLE PRECISION,
   provenance TEXT,
   model TEXT,
+  -- Linked to the user who last saved this translation manually. NULL for automated flows.
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -45,16 +45,34 @@ export const ModEditorPage = () => {
   const modId = Number(id);
   const qc = useQueryClient();
 
+  /** localStorage key scoped to this mod — persists the last-used filter intent. */
+  const storageKey = `editor-intent-${modId}`;
+  const storedIntent = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) ?? 'null') as {
+        status?: string;
+        qaOnly?: boolean;
+        signature?: string;
+      } | null;
+    } catch {
+      return null;
+    }
+  })();
+
+  // URL params take priority; localStorage provides the fallback when params are absent
   const initialStatus = searchParams.get('status');
   const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-  const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus) ? initialStatus : 'all';
-  const initialSignature = searchParams.get('signature') ?? '';
+  const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus)
+    ? initialStatus
+    : (storedIntent?.status && STATUS_OPTS.includes(storedIntent.status) ? storedIntent.status : 'all');
+  const resolvedQaOnly = searchParams.has('qaOnly') ? initialQaOnly : (storedIntent?.qaOnly ?? false);
+  const initialSignature = searchParams.get('signature') ?? storedIntent?.signature ?? '';
 
   // ── Filter / sort / pagination state ──
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState(safeInitialStatus);
-  const [qaOnly, setQaOnly] = useState(initialQaOnly);
+  const [qaOnly, setQaOnly] = useState(resolvedQaOnly);
   const [signature, setSignature] = useState(initialSignature);
   const [page, setPage] = useState(1);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
@@ -63,6 +81,15 @@ export const ModEditorPage = () => {
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [pageSize, setPageSize] = useState(100);
+
+  // Persist the active filter intent per mod so it is restored on the next visit
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ status, qaOnly, signature }));
+    } catch {
+      // Ignore quota / private-browsing errors
+    }
+  }, [status, qaOnly, signature, storageKey]);
 
   // ── Selection ──
   const [selected, setSelected] = useState<Set<number>>(new Set());

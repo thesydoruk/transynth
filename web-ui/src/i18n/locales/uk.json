@@ -464,7 +464,8 @@
     "warning": "попередження",
     "confirmDelete": "Видалити це QA-правило?",
     "deleteTitle": "Видалити QA-правило",
-    "deleteMessage": "Ви впевнені, що хочете видалити це QA-правило? Цю дію неможливо скасувати."
+    "deleteMessage": "Ви впевнені, що хочете видалити це QA-правило? Цю дію неможливо скасувати.",
+    "deleteSuccess": "QA-правило видалено."
   },
   "coherence": {
     "title": "Узгодженість перекладів",
@@ -504,6 +505,7 @@
     "colTranslation": "Переклад",
     "colStatus": "Статус",
     "colConf": "Впевненість",
+    "colTranslator": "Перекладач",
     "colQA": "QA",
     "colActions": "Дії",
     "approve": "Схвалити",
@@ -628,6 +630,7 @@
     "confirmDelete": "Видалити це правило TradAuto?",
     "deleteTitle": "Видалити правило TradAuto",
     "deleteMessage": "Ви впевнені, що хочете видалити це правило TradAuto? Цю дію неможливо скасувати.",
+    "deleteSuccess": "Правило TradAuto видалено.",
     "priorityPlaceholder": "напр. 10",
     "patternPlaceholder": "напр. %VAR1% Sword",
     "replacementPlaceholder": "напр. Меч %VAR1%",

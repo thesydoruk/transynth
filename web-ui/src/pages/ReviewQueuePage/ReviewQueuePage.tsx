@@ -241,6 +241,7 @@ export const ReviewQueuePage = () => {
                 <th className={s.th}>{t('reviewQueue.colTranslation')}</th>
                 <th className={s.th}>{t('reviewQueue.colStatus')}</th>
                 <th className={s.th}>{t('reviewQueue.colConf')}</th>
+                <th className={s.th}>{t('reviewQueue.colTranslator')}</th>
                 <th className={s.th}>{t('reviewQueue.colQA')}</th>
                 <th className={s.th}>{t('reviewQueue.colActions')}</th>
               </tr>
@@ -268,6 +269,9 @@ export const ReviewQueuePage = () => {
                   </td>
                   <td className={s.td}>
                     <ConfidenceBar value={row.confidence} />
+                  </td>
+                  <td className={s.td}>
+                    <span className={s.translatorName}>{row.translator_name ?? '—'}</span>
                   </td>
                   <td className={s.td}>
                     {row.qa_issue_count > 0 && (
