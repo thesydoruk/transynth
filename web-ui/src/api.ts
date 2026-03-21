@@ -643,6 +643,15 @@ export type PreviousVersionRow = {
   translated_strings: number;
 };
 
+/** Statistics for the translation memory for a given language pair. */
+export type TmxStats = {
+  totalStrings: number;
+  translatedStrings: number;
+  /** Coverage percentage in the range 0–100 with one decimal place (e.g. 82.7). */
+  coverage: number;
+  byStatus: { human: number; tm: number; fuzzy: number; auto: number; draft: number };
+};
+
 /** Result of importing a TMX file into the translation memory */
 export type TmxImportResult = {
   parsed: number;
@@ -1275,6 +1284,11 @@ export const api = {
       if (modId != null) qs.set('modId', String(modId));
       return downloadBinary(`/api/tmx/export?${qs}`, `tm_${targetLang}.tmx`);
     },
+    /** Returns TM statistics (total strings, translated, coverage %) for the given language pair. */
+    stats: (srcLang = getSrcLang(), targetLang = getTgtLang()) => {
+      const qs = new URLSearchParams({ srcLang, targetLang });
+      return req<TmxStats>(`/api/tmx/stats?${qs}`);
+    },
     /** Upload a TMX file for import. modId is optional — omit for global match. */
     importFile: async (file: File, modId?: number): Promise<TmxImportResult> => {
       const form = new FormData();
@@ -1443,6 +1457,15 @@ export const api = {
       req<{ updated: number }>('/api/coherence/resolve', {
         method: 'POST',
         body: JSON.stringify({ textNorm, translation, targetLang }),
+      }),
+    /**
+     * Auto-resolves all inconsistency groups for the target language in one pass.
+     * The most-used translation wins per group; ties are broken by status quality.
+     */
+    resolveAll: (targetLang = getTgtLang()) =>
+      req<{ resolved: number; updated: number }>('/api/coherence/resolve-all', {
+        method: 'POST',
+        body: JSON.stringify({ targetLang }),
       }),
   },
 

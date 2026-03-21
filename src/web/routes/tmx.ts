@@ -79,4 +79,56 @@ export const tmxRoutes = async (app: FastifyInstance, db: pg.Pool) => {
       return reply.send(result);
     },
   );
+
+  /**
+   * GET /api/tmx/stats?srcLang=en&targetLang=uk
+   *
+   * Returns aggregate translation memory statistics for the given language pair:
+   * total source strings, how many are translated, coverage percentage (0–100),
+   * and a per-status breakdown.
+   */
+  app.get<{ Querystring: { srcLang?: string; targetLang?: string } }>(
+    '/api/tmx/stats',
+    async (req, reply) => {
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
+
+      log.debug(`GET /api/tmx/stats srcLang=${srcLang} targetLang=${targetLang}`);
+
+      const { rows } = await db.query(
+        `SELECT
+           COUNT(DISTINCT s.id)::int                                                           AS total_strings,
+           COUNT(DISTINCT t.id)::int                                                           AS translated_strings,
+           COUNT(DISTINCT CASE WHEN t.status IN ('human','reviewed') THEN t.id END)::int       AS human,
+           COUNT(DISTINCT CASE WHEN t.status = 'tm'                  THEN t.id END)::int       AS tm,
+           COUNT(DISTINCT CASE WHEN t.status = 'fuzzy'               THEN t.id END)::int       AS fuzzy,
+           COUNT(DISTINCT CASE WHEN t.status IN ('auto','auto_translated') THEN t.id END)::int AS auto,
+           COUNT(DISTINCT CASE WHEN t.status = 'draft'               THEN t.id END)::int       AS draft
+         FROM strings s
+         JOIN records r ON r.id = s.record_id
+         LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+         WHERE s.lang = $1`,
+        [srcLang, targetLang],
+      );
+
+      const row = rows[0] as Record<string, number>;
+      const total = row.total_strings ?? 0;
+      const translated = row.translated_strings ?? 0;
+      // One decimal place, e.g. 82.7
+      const coverage = total > 0 ? Math.round((translated / total) * 1000) / 10 : 0;
+
+      return reply.send({
+        totalStrings: total,
+        translatedStrings: translated,
+        coverage,
+        byStatus: {
+          human: row.human ?? 0,
+          tm: row.tm ?? 0,
+          fuzzy: row.fuzzy ?? 0,
+          auto: row.auto ?? 0,
+          draft: row.draft ?? 0,
+        },
+      });
+    },
+  );
 };

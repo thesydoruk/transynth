@@ -73,7 +73,7 @@
   font-weight: 600;
 
   &:disabled {
-    opacity: .5;
+    opacity: 0.5;
     cursor: default;
   }
 }
@@ -262,7 +262,7 @@
   margin-top: 8px;
 
   &:disabled {
-    opacity: .5;
+    opacity: 0.5;
     cursor: default;
   }
 }

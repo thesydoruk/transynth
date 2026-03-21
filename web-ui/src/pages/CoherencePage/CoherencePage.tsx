@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getTgtLang } from '../../langDefaults';
+import { ConfirmModal } from '../../components/ConfirmModal';
+import { Toast } from '../../components/Toast';
 import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
 
@@ -43,6 +45,8 @@ export const CoherencePage = () => {
   // ── Local state ──────────────────────────────────────────────────────────
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [page, setPage] = useState(0);
+  const [showResolveAllConfirm, setShowResolveAllConfirm] = useState(false);
+  const [resolveAllToast, setResolveAllToast] = useState<string | null>(null);
 
   const offset = page * PAGE_SIZE;
 
@@ -76,6 +80,19 @@ export const CoherencePage = () => {
     resolveMut.mutate({ textNorm, translation });
   };
 
+  // ── Resolve-all mutation ─────────────────────────────────────────────────
+  /** Auto-resolves every group by plurality winner; shows a toast with the result. */
+  const resolveAllMut = useMutation({
+    mutationFn: () => api.coherence.resolveAll(targetLang),
+    onSuccess: (result) => {
+      setShowResolveAllConfirm(false);
+      setResolveAllToast(t('coherence.resolveAllSuccess', { groups: result.resolved, updated: result.updated }));
+      qc.invalidateQueries({ queryKey: ['coherence'] });
+      qc.invalidateQueries({ queryKey: ['qa'] });
+      qc.invalidateQueries({ queryKey: ['strings'] });
+    },
+  });
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className={s.page}>
@@ -101,6 +118,15 @@ export const CoherencePage = () => {
           <span className={s.totalBadge}>
             {t('coherence.totalGroups', { count: totalGroups })}
           </span>
+        )}
+        {!isLoading && totalGroups > 0 && (
+          <button
+            className={s.resolveAllBtn}
+            onClick={() => setShowResolveAllConfirm(true)}
+            disabled={resolveAllMut.isPending}
+          >
+            {t('coherence.resolveAllBtn')}
+          </button>
         )}
       </div>
 
@@ -152,6 +178,21 @@ export const CoherencePage = () => {
           </button>
         </div>
       )}
+
+      {/* Resolve-all confirmation modal */}
+      {showResolveAllConfirm && (
+        <ConfirmModal
+          title={t('coherence.resolveAllConfirmTitle')}
+          message={t('coherence.resolveAllConfirmBody')}
+          confirmLabel={t('coherence.resolveAllBtn')}
+          pending={resolveAllMut.isPending}
+          onConfirm={() => resolveAllMut.mutate()}
+          onClose={() => setShowResolveAllConfirm(false)}
+        />
+      )}
+
+      {/* Success toast after resolve-all */}
+      <Toast message={resolveAllToast} onDismiss={() => setResolveAllToast(null)} />
     </div>
   );
 };

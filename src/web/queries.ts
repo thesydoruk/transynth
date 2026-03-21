@@ -2180,6 +2180,88 @@ export const resolveCoherenceGroup = async (
   return { updated: rows.length };
 };
 
+/**
+ * Auto-resolves all coherence inconsistencies for a target language by
+ * applying the plurality-winner translation to every inconsistent group.
+ *
+ * Winner selection per group:
+ * 1. Usage count — the translation currently used by the most strings wins.
+ * 2. Status quality — human > reviewed > tm > fuzzy > auto > draft, as a tie-breaker.
+ * 3. Alphabetical order — for determinism when count and quality are tied.
+ *
+ * @param db         - Database pool (each group's writes use its own internal transaction).
+ * @param targetLang - Target language code to resolve (e.g. 'uk').
+ * @param srcLang    - Source language code (default: CONFIG.defaultSrcLang).
+ * @returns          - Number of groups resolved and total strings updated.
+ */
+export const resolveAllCoherenceGroups = async (
+  db: Tx,
+  targetLang: string,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<{ resolved: number; updated: number }> => {
+  // Inline status weight expression reused in both DISTINCT ON order and
+  // aggregate quality computation.
+  const statusWeight = `CASE status WHEN 'human' THEN 6 WHEN 'reviewed' THEN 5 WHEN 'tm' THEN 4 WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 2 ELSE 1 END`;
+
+  // Find the plurality winner for every inconsistent text_norm in one query:
+  //   bt            — best translation per string (mirrors the CTE used elsewhere)
+  //   group_variants — usage count + max quality per (text_norm, translation) pair
+  //   conflicted    — text_norms that have more than one distinct translation variant
+  //   page_winners  — DISTINCT ON picks best translation per group by count → quality → text
+  const { rows: winners } = await db.query<{ text_norm: string; translation: string }>(
+    `WITH bt AS (
+       SELECT DISTINCT ON (src_string_id)
+         src_string_id,
+         text                  AS translation,
+         ${statusWeight}       AS quality
+       FROM translations
+       WHERE target_lang = $1
+       ORDER BY src_string_id,
+         ${statusWeight} DESC,
+         COALESCE(confidence, 0) DESC,
+         updated_at DESC
+     ),
+     group_variants AS (
+       SELECT s.text_norm,
+              bt.translation,
+              COUNT(*)::int      AS usage_count,
+              MAX(bt.quality)::int AS best_quality
+       FROM strings s
+       JOIN bt ON bt.src_string_id = s.id
+       WHERE s.lang = $2
+         AND s.text_norm IS NOT NULL
+         AND s.text_norm <> ''
+       GROUP BY s.text_norm, bt.translation
+     ),
+     conflicted AS (
+       SELECT text_norm
+       FROM group_variants
+       GROUP BY text_norm
+       HAVING COUNT(DISTINCT translation) > 1
+     ),
+     page_winners AS (
+       SELECT DISTINCT ON (gv.text_norm)
+         gv.text_norm,
+         gv.translation
+       FROM group_variants gv
+       JOIN conflicted c ON c.text_norm = gv.text_norm
+       ORDER BY gv.text_norm, gv.usage_count DESC, gv.best_quality DESC, gv.translation
+     )
+     SELECT text_norm, translation FROM page_winners`,
+    [targetLang, srcLang],
+  );
+
+  let totalUpdated = 0;
+  for (const winner of winners) {
+    const result = await resolveCoherenceGroup(db, winner.text_norm, targetLang, winner.translation);
+    totalUpdated += result.updated;
+  }
+  log.info(
+    `resolve-all coherence: targetLang=${targetLang} resolved=${winners.length} updated=${totalUpdated}`,
+  );
+  return { resolved: winners.length, updated: totalUpdated };
+};
+
 export const bulkUpdateTranslationStatus = async (
   db: Tx,
   modId: number,

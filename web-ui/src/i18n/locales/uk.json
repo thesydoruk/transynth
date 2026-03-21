@@ -399,7 +399,10 @@
     "importingBtn": "Імпорт…",
     "parsed": "Парсинг",
     "imported": "Імпортовано",
-    "importSkipped": "Пропущено"
+    "importSkipped": "Пропущено",
+    "statsTotal": "Усього рядків",
+    "statsTranslated": "Перекладено",
+    "statsCoverage": "Покриття"
   },
   "activity": {
     "title": "Журнал активності",
@@ -480,7 +483,11 @@
     "applyToAll": "Застосувати до всіх",
     "applyToAllTitle": "Замінити всі інші варіанти цим перекладом",
     "openInEditor": "Відкрити в редакторі",
-    "page": "Сторінка {{current}} з {{total}}"
+    "page": "Сторінка {{current}} з {{total}}",
+    "resolveAllBtn": "Вирішити все (авто)",
+    "resolveAllConfirmTitle": "Авто-вирішення всіх груп",
+    "resolveAllConfirmBody": "Найпоширеніший переклад буде автоматично застосований до кожної групи невідповідностей. Цю дію неможливо скасувати.",
+    "resolveAllSuccess": "Вирішено {{groups}} груп, оновлено {{updated}} рядків."
   },
   "reviewQueue": {
     "title": "Черга рецензій",

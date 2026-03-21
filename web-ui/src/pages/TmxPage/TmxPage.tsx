@@ -20,6 +20,12 @@ export const TmxPage = () => {
   const [exportModId, setExportModId] = useState('');
   const [exportLang, setExportLang] = useState(getTgtLang());
 
+  /* ── TM stats ─────────────────────────────────────────────────────────────── */
+  const { data: stats } = useQuery({
+    queryKey: ['tmx-stats', exportLang],
+    queryFn: () => api.tmx.stats(getSrcLang(), exportLang),
+  });
+
   const exportMutation = useMutation({
     mutationFn: () =>
       api.tmx.exportFile(getSrcLang(), exportLang, exportModId ? Number(exportModId) : undefined),
@@ -44,6 +50,24 @@ export const TmxPage = () => {
     <div className={s.page}>
       <h1 className={s.title}>{t('tmx.title')}</h1>
       <p className={s.subtitle}>{t('tmx.subtitle')}</p>
+
+      {/* ── TM stats strip ──────────────────────────────────────────────────── */}
+      {stats && (
+        <div className={s.statsStrip}>
+          <div className={s.statItem}>
+            <span className={s.statLabel}>{t('tmx.statsTotal')}</span>
+            <span className={s.statValue}>{stats.totalStrings.toLocaleString()}</span>
+          </div>
+          <div className={s.statItem}>
+            <span className={s.statLabel}>{t('tmx.statsTranslated')}</span>
+            <span className={s.statValue}>{stats.translatedStrings.toLocaleString()}</span>
+          </div>
+          <div className={s.statItem}>
+            <span className={s.statLabel}>{t('tmx.statsCoverage')}</span>
+            <span className={s.statCoverage}>{stats.coverage}%</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Export section ──────────────────────────────────────────────────── */}
       <section className={s.section}>

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db.js';
 import { log } from '../../logger.js';
-import { getCoherenceGroups, resolveCoherenceGroup } from '../queries.js';
+import { getCoherenceGroups, resolveAllCoherenceGroups, resolveCoherenceGroup } from '../queries.js';
 import { CONFIG } from '../../config.js';
 
 /**
@@ -67,4 +67,21 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
     const result = await resolveCoherenceGroup(db, textNorm, targetLang, translation);
     return reply.send(result);
   });
+
+  // ── POST /api/coherence/resolve-all ───────────────────────────────────────
+  // Auto-resolves all inconsistency groups for the target language in one
+  // pass by choosing the plurality-winner translation per group (the
+  // translation used by the most strings; ties broken by status quality).
+  //
+  // Body (JSON):
+  //   targetLang — language code to resolve (default: CONFIG.defaultTgtLang)
+  app.post<{ Body: { targetLang?: string } }>(
+    '/api/coherence/resolve-all',
+    async (req, reply) => {
+      const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
+      log.info(`POST /api/coherence/resolve-all targetLang=${targetLang}`);
+      const result = await resolveAllCoherenceGroups(db, targetLang);
+      return reply.send(result);
+    },
+  );
 };

@@ -16,7 +16,43 @@
   font-size: 13px;
   margin-bottom: 24px;
 }
+/* ── Stats strip ───────────────────────────────────────────────────────── */
 
+.statsStrip {
+  display: flex;
+  gap: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.statCoverage {
+  composes: statValue;
+  color: var(--accent);
+}
 /* ── Sections ──────────────────────────────────────────────────────────────── */
 
 .section {

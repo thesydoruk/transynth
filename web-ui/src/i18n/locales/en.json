@@ -398,7 +398,10 @@
     "importingBtn": "Importing…",
     "parsed": "Parsed",
     "imported": "Imported",
-    "importSkipped": "Skipped"
+    "importSkipped": "Skipped",
+    "statsTotal": "Total strings",
+    "statsTranslated": "Translated",
+    "statsCoverage": "Coverage"
   },
   "activity": {
     "title": "Activity Log",
@@ -479,7 +482,11 @@
     "applyToAll": "Apply to All",
     "applyToAllTitle": "Replace all other variants with this translation",
     "openInEditor": "Open in editor",
-    "page": "Page {{current}} of {{total}}"
+    "page": "Page {{current}} of {{total}}",
+    "resolveAllBtn": "Resolve All (Auto)",
+    "resolveAllConfirmTitle": "Auto-resolve all groups",
+    "resolveAllConfirmBody": "The most-used translation will be applied to every inconsistency group automatically. This action cannot be undone.",
+    "resolveAllSuccess": "Resolved {{groups}} groups, updated {{updated}} strings."
   },
   "reviewQueue": {
     "title": "Review Queue",

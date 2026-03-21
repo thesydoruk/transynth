@@ -113,9 +113,9 @@ Principles:
 Change now:
 
 - ✅ Surface a provider health or readiness indicator in the Settings LLM tab — `LlmTab` now renders `llmReadiness` level/checks/issues from `GET /api/settings`.
-- Make LLM batch translate progress visible at the global job level, not only inside the editor.
-- After a batch LLM run completes, show a direct action to open the review queue for those strings.
-- Show TM cache statistics (entries, coverage) in a useful summary rather than only a raw number.
+- ✅ Make LLM batch translate progress visible at the global job level, not only inside the editor — LLM batch jobs are persisted to the `llm_jobs` DB table and visible in the unified job center on Home and Imports pages.
+- ✅ After a batch LLM run completes, show a direct action to open the review queue for those strings — a banner with a `/review-queue?modId=…` deep-link appears after batch translate completion.
+- ✅ Show TM cache statistics (entries, coverage) in a useful summary rather than only a raw number — `GET /api/tmx/stats` returns totalStrings, translatedStrings, coverage %, and a by-status breakdown; TmxPage shows a stats strip on load.
 
 Do not change now:
 
@@ -136,21 +136,21 @@ Editor:
 
 - ~~No max-length visual indicator in the detail panel for strings with configurable length QA rules.~~ ✅ Resolved: `activeMaxLength` derived from QA rules is computed in `useEditorQueries` and rendered in `DetailPanel`.
 - ~~Placeholder tokens are not highlighted inline in the translation textarea, though QA catches mismatches.~~ ✅ Resolved: `DetailPanel` now renders an inline highlight overlay for placeholder-like tokens using the same token patterns as backend placeholder protection.
-- No page size selector in the editor grid; fixed at 100 rows per page.
+- No page size selector in the editor grid; fixed at 100 rows per page. ✅ Resolved: pagination row now includes a 25 / 50 / 100 / 200 rows-per-page selector in `ModEditorPage`.
 - ~~No direct link from the Dashboard QA summary to a filtered editor view showing only failing strings.~~ ✅ Resolved: Dashboard QA breakdown now provides drill-down into `ModEditor` with `qaOnly=1`.
 
 Activity log:
 
-- No filter by date range, user, or mod.
-- Cannot be exported as CSV from the UI; requires direct database query.
+- ~~No filter by date range, user, or mod.~~ ✅ Resolved: ActivityPage supports action, mod, date-from, and date-to filters wired to backend.
+- ~~Cannot be exported as CSV from the UI; requires direct database query.~~ ✅ Resolved: `GET /api/activity/csv` returns filtered CSV; ActivityPage has an Export CSV button.
 
 Coherence:
 
-- Bulk-apply of one translation across all conflict groups requires per-group action; no single-pass resolve.
+- ~~Bulk-apply of one translation across all conflict groups requires per-group action; no single-pass resolve.~~ ✅ Resolved: `POST /api/coherence/resolve-all` auto-applies the plurality-winner translation to every group; CoherencePage has a "Resolve All (Auto)" button with confirmation.
 
 Review queue:
 
-- Does not show the display name of the translator who last modified a string.
+- ~~Does not show the display name of the translator who last modified a string.~~ ✅ Resolved: `translations.user_id` column added; review queue query joins users; translator display name shown in the Translator column.
 
 Settings tabs:
 
@@ -160,7 +160,7 @@ Settings tabs:
 
 Dashboard:
 
-- QA issue list has no click-through to a filtered editor session.
+- ~~QA issue list has no click-through to a filtered editor session.~~ ✅ Resolved: same as the Known UX Debt entry above — Dashboard QA rows drill down to `ModEditor` with `qaOnly=1`.
 - No indication of which mods have pending LLM jobs or active import jobs.
 
 ## Onboarding and First-Run Experience
@@ -337,7 +337,7 @@ Exit criteria:
 ### Phase 6: AI Pipeline Visibility and Known Debt Reduction (1-2 sprints, Priority P1)
 
 - ✅ Add provider health indicator to Settings LLM tab — readiness badge/checks/issues are exposed in `Settings -> LLM` via `llmReadiness`.
-- Add post-batch-translate action card that links directly to the review queue for those strings.
+- ✅ Add post-batch-translate action card that links directly to the review queue for those strings — a banner with a `/review-queue?modId=…` link appears after batch translate completion in the editor.
 - ✅ Add Dashboard QA click-through to filtered editor sessions — Dashboard QA breakdown rows now include direct drill-down to `ModEditor` with `qaOnly=1`.
 - ✅ Add max-length visual indicator in editor detail panel for strings with length QA rules — `activeMaxLength` computed from QA rules matching current row's `signature` and `path`; rendered in `DetailPanel`.
 - ✅ Add onboarding checklist on Home or Game Hub for first-time setup — `SetupChecklist` card on HomePage shows LLM readiness, first mod import, and first translation run; auto-hides when all items are satisfied.
@@ -362,27 +362,27 @@ Exit criteria:
 ## Backlog of Concrete UX Improvements
 
 - ✅ One primary CTA per major page. Add/create action buttons on TradAutoPage, QARulesPage, GlossaryPage, ImportsPage, and TmxPage now use `--accent` (brand amber) for visual primary hierarchy.
-- Explicit Home or Overview navigation entry.
+- ✅ Explicit Home or Overview navigation entry. Main nav now includes a dedicated `Home` link instead of relying on brand navigation only.
 - ✅ Persistent current game and language context in the app shell. AppNav now shows the current game workspace (persisted from game-scoped routes) plus the current source/target content language pair.
 - ✅ Per-game hub cards for Imports, Mods, Review, and Release. `GameHubPage` now exposes workflow cards for Import, Translate, Quality, and Release, with per-game counters plus a secondary Discover entry.
 - ✅ Overflow menu for secondary actions in dense row UIs. Shared `OverflowMenu` component; TradAutoPage and QARulesPage rows keep Edit inline and collapse Delete into overflow `⋯` menu.
 - ✅ Unified status badge system and color semantics. `StatusBadge` used in all status-display contexts; CoherencePage VariantCard replaced raw status text with `<StatusBadge>`.
 - ✅ Consistent danger confirmation modal pattern. Shared `ConfirmModal` replaces `window.confirm` in TradAutoPage and QARulesPage.
 - ✅ Better wording for destructive operation outcomes. Toast notification appears after rule deletion in TradAutoPage and QARulesPage.
-- Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations.
-- Deep links from overview and quality pages into pre-filtered editor views.
+- ✅ Unified job center for uploads, Nexus downloads, imports, exports, and LLM operations. Home and Imports now show unified job views combining import jobs, Nexus downloads, and app-level LLM/export jobs.
+- ✅ Deep links from overview and quality pages into pre-filtered editor views. ReviewQueuePage rows link to editor with `?status=` parameter; CoherencePage VariantCard entries include per-string links.
 - ✅ Role-aware navigation visibility and empty states. `/users` nav link and Settings Users tab gated to `admin` role.
 - ✅ Settings taxonomy that separates translators' tools from admin-only configuration. Settings tab bar shows separator before admin tabs; Users tab only for admin in multi-user mode.
 - ✅ Better surfacing of INNR and Book or HTML editors when relevant content exists. EditorToolbar shows a BOOK button when the mod has BOOK records.
 - ✅ Activity log filters by mod, user, and date range. ActivityPage: action, mod, date-from, date-to filters, all wired to backend.
 - ✅ Activity log CSV export from the UI. Downloads filtered result via `/api/activity/csv`.
-- Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation.
+- ✅ Persistent queue intent such as untranslated, TM, auto, or QA backlog across navigation. ModEditorPage stores `{ status, qaOnly, signature }` in `localStorage` and restores on next visit.
 - ✅ Queue-focused navigation controls in translation workflows. Visible “Next untranslated (N)” button in EditorToolbar.
 - ✅ Deterministic empty states with immediate action buttons. Rolled out on core workflow pages (Imports, Review Queue, Game Mods search, Coherence, and Diff) with direct next-step CTAs.
 - ✅ Placeholder token highlighting inline in the translation textarea. DetailPanel now highlights placeholder-like tokens inline while QA still enforces mismatch detection.
 - ✅ Max-length visual indicator in the editor detail panel.
 - ✅ Optional page size selector in the editor grid. Pagination row now includes a 25†50†100†200 rows/page select.
-- Dashboard QA breakdown click-through to filtered editor.
+- ✅ Dashboard QA breakdown click-through to filtered editor. Dashboard QA rows drill down to `ModEditor` with `qaOnly=1`.
 - ✅ LLM provider health or readiness status in Settings.
 - ✅ Post-LLM-run action prompt linking directly to review queue. After batch translate completion, a banner appears with a direct link to `/review-queue?modId={{modId}}`.
 - ✅ Onboarding checklist for first-time users. `SetupChecklist` on HomePage tracks LLM readiness, first import, and first translation run.
