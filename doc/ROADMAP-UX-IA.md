@@ -306,7 +306,7 @@ Exit criteria:
 ### Phase 4: Translation Editor Optimization (1-2 sprints, Priority P1) — 🔄 In Progress
 
 - Improve row focus behavior and context readability.
-- Optimize review queues and navigation shortcuts.
+- ~~Optimize review queues and navigation shortcuts.~~ ✅ Resolved: Mod editor now exposes both toolbar and keyboard navigation for queue work: `N` jumps to the next untranslated row and `Q` jumps to the next row with active QA issues.
 - ✅ Clarify state feedback for save and validation outcomes — `saveIndicator` (`saving / saved / idle`) implemented in `useEditorMutations`; shown in `DetailPanel`.
 - ✅ Internal architecture refactoring — `ModEditorPage` (~1300 → ~310 lines): 11 sub-components under `components/`, 5 custom hooks (`useThemeObserver`, `useEditorQueries`, `useEditorMutations`, `useAutosave`, `useEditorKeyboard`) under `hooks/`, 5 one-function utilities under `utils/`; keyboard shortcut hook uses ref-pattern, eliminating 3 `exhaustive-deps` lint warnings.
 - Remove or demote secondary actions that interrupt editing flow.

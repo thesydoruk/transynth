@@ -36,6 +36,7 @@ export interface EditorKeyboardConfig {
   handleCopySource: () => void;
   handleClear: (row: StringRow) => void;
   handleRowClick: (row: StringRow) => void;
+  handleNextQaIssue: () => void;
   toggleAll: () => void;
 
   /* ── State setters ── */
@@ -71,6 +72,7 @@ export interface EditorKeyboardConfig {
  * | `?`                  | Toggle shortcuts overlay              |
  * | `↑ / ↓`             | Navigate rows                         |
  * | `n`                  | Jump to next untranslated             |
+ * | `q`                  | Jump to next QA issue                 |
  * | `Enter`              | Focus translation textarea            |
  * | `Space`              | Toggle selection on active row        |
  * | `Ctrl+A`             | Select / deselect all                 |
@@ -201,6 +203,13 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
             break;
           }
         }
+        return;
+      }
+
+      /* ── q — next QA issue ── */
+      if (e.key === 'q' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.strings?.rows.length) {
+        e.preventDefault();
+        c.handleNextQaIssue();
         return;
       }
 

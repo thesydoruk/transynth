@@ -42,6 +42,7 @@ export interface EditorToolbarProps {
   modId: number;
   hasInnrSignature: boolean;
   hasBookSignature: boolean;
+  qaIssueRowCount: number;
   untranslatedCount: number | undefined;
   statusOpts: string[];
 
@@ -55,6 +56,7 @@ export interface EditorToolbarProps {
   onBatchTranslate: () => void;
   onBulkReview: (status: 'reviewed' | 'rejected') => void;
   onNextUntranslated: () => void;
+  onNextQaIssue: () => void;
 }
 
 /**
@@ -81,6 +83,7 @@ export const EditorToolbar = ({
   modId,
   hasInnrSignature,
   hasBookSignature,
+  qaIssueRowCount,
   untranslatedCount,
   statusOpts,
   onSrcLangChange,
@@ -93,6 +96,7 @@ export const EditorToolbar = ({
   onBatchTranslate,
   onBulkReview,
   onNextUntranslated,
+  onNextQaIssue,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
 
@@ -151,6 +155,11 @@ export const EditorToolbar = ({
       {(untranslatedCount ?? 0) > 0 && (
         <button onClick={onNextUntranslated} className={styles.btnSec} title={t('modEditor.nextUntranslatedTitle')}>
           {t('modEditor.nextUntranslated', { count: untranslatedCount })}
+        </button>
+      )}
+      {qaIssueRowCount > 0 && (
+        <button onClick={onNextQaIssue} className={styles.btnSec} title={t('modEditor.nextQaIssueTitle')}>
+          {t('modEditor.nextQaIssue', { count: qaIssueRowCount })}
         </button>
       )}
       <button onClick={onShortcuts} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>

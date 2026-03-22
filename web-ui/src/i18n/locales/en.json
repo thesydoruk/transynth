@@ -187,6 +187,7 @@
     "shortcutClear": "Clear translation",
     "shortcutToggleDetail": "Toggle detail panel",
     "shortcutNextUntranslated": "Next untranslated",
+    "shortcutNextQaIssue": "Next QA issue",
     "shortcutFocusTextarea": "Focus translation field",
     "shortcutToggleSelect": "Toggle row selection",
     "shortcutSelectAll": "Select / deselect all",
@@ -199,6 +200,8 @@
     "bookEditorTitle": "Filter by BOOK records",
     "nextUntranslated": "Next untranslated ({{count}})",
     "nextUntranslatedTitle": "Jump to next untranslated string (N)",
+    "nextQaIssue": "Next QA ({{count}})",
+    "nextQaIssueTitle": "Jump to next row with active QA issues (Q)",
     "translateDone": "{{count}} string(s) auto-translated. Review the results before approving.",
     "openReviewQueue": "Open Review Queue →"
   },

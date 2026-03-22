@@ -245,10 +245,16 @@
 }
 
 @keyframes dashBadgeSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes dashBadgePulse {
-  from { opacity: 1; }
-  to   { opacity: 0.35; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
 }

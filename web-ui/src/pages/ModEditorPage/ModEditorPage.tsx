@@ -325,16 +325,6 @@ export const ModEditorPage = () => {
     void refetchStats();
   }, [selected, strings, targetLang, qc, modId, refetchStats]);
 
-  // ── Keyboard shortcuts ──
-  useEditorKeyboard({
-    activeRow, selected, strings, ctxMenu, page,
-    pageSize, translAreaRef,
-    flushAutosave, handleSave, handleApprove, handleReject,
-    handleCopySource, handleClear, handleRowClick, toggleAll,
-    setActiveRow, setDraftTranslation, setSelected,
-    setCtxMenu, setPage, setShowShortcuts,
-  });
-
   /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
   const handleNextUntranslated = useCallback(() => {
     if (!strings?.rows.length) return;
@@ -350,6 +340,34 @@ export const ModEditorPage = () => {
       }
     }
   }, [strings, activeRow, handleRowClick]);
+
+  /** Programmatic "next QA issue" navigation — mirrors the `q` key shortcut. */
+  const handleNextQaIssue = useCallback(() => {
+    if (!strings?.rows.length) return;
+    const rows = strings.rows;
+    const curIdx = activeRow
+      ? rows.findIndex((r) => r.string_id === activeRow.string_id)
+      : -1;
+    for (let i = 1; i <= rows.length; i++) {
+      const idx = (curIdx + i) % rows.length;
+      if (rows[idx].qa_issue_count > 0) {
+        handleRowClick(rows[idx]);
+        break;
+      }
+    }
+  }, [strings, activeRow, handleRowClick]);
+
+  const qaIssueRowCount = strings?.rows.filter((row) => row.qa_issue_count > 0).length ?? 0;
+
+  // ── Keyboard shortcuts ──
+  useEditorKeyboard({
+    activeRow, selected, strings, ctxMenu, page,
+    pageSize, translAreaRef,
+    flushAutosave, handleSave, handleApprove, handleReject,
+    handleCopySource, handleClear, handleRowClick, handleNextQaIssue, toggleAll,
+    setActiveRow, setDraftTranslation, setSelected,
+    setCtxMenu, setPage, setShowShortcuts,
+  });
 
   // ── Render ──
   return (
@@ -375,6 +393,7 @@ export const ModEditorPage = () => {
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
         hasBookSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'BOOK')}
+        qaIssueRowCount={qaIssueRowCount}
         untranslatedCount={stats?.untranslated}
         statusOpts={STATUS_OPTS}
         onSrcLangChange={(l) => { setSrcLang(l); setPage(1); }}
@@ -387,6 +406,7 @@ export const ModEditorPage = () => {
         onBatchTranslate={handleBatchTranslate}
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
         onNextUntranslated={handleNextUntranslated}
+        onNextQaIssue={handleNextQaIssue}
       />
 
       {/* Post-LLM-run action banner — shown after a successful batch translate */}

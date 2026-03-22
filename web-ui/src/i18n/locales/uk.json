@@ -187,6 +187,7 @@
     "shortcutClear": "Очистити переклад",
     "shortcutToggleDetail": "Відкрити/закрити деталі",
     "shortcutNextUntranslated": "Наступний неперекладений",
+    "shortcutNextQaIssue": "Наступна QA-проблема",
     "shortcutFocusTextarea": "Фокус на поле перекладу",
     "shortcutToggleSelect": "Вибрати/зняти рядок",
     "shortcutSelectAll": "Вибрати / зняти все",
@@ -199,6 +200,8 @@
     "bookEditorTitle": "Фільтрувати за записами BOOK",
     "nextUntranslated": "Наступний неперекладений ({{count}})",
     "nextUntranslatedTitle": "Перейти до наступного неперекладеного рядка (N)",
+    "nextQaIssue": "Наступний QA ({{count}})",
+    "nextQaIssueTitle": "Перейти до наступного рядка з активними QA-проблемами (Q)",
     "translateDone": "{{count}} рядок(ів) перекладено автоматично. Перевірте результати перед затвердженням.",
     "openReviewQueue": "Відкрити чергу рецензій →"
   },

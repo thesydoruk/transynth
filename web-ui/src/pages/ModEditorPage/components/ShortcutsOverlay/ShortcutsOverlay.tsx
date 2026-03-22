@@ -28,6 +28,7 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
             <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>{t('modEditor.shortcutToggleDetail')}</td></tr>
             <tr><td className={styles.kbdCell}><kbd>↑</kbd> <kbd>↓</kbd></td><td>{t('modEditor.shortcutNavRows')}</td></tr>
             <tr><td className={styles.kbdCell}><kbd>N</kbd></td><td>{t('modEditor.shortcutNextUntranslated')}</td></tr>
+            <tr><td className={styles.kbdCell}><kbd>Q</kbd></td><td>{t('modEditor.shortcutNextQaIssue')}</td></tr>
             <tr><td className={styles.kbdCell}><kbd>Enter</kbd></td><td>{t('modEditor.shortcutFocusTextarea')}</td></tr>
             <tr><td className={styles.kbdCell}><kbd>Space</kbd></td><td>{t('modEditor.shortcutToggleSelect')}</td></tr>
             <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutSelectAll')}</td></tr>
