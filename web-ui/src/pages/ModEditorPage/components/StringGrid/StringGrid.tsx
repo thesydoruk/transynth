@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
@@ -136,6 +136,14 @@ export const StringGrid = ({
     overscan: 10,
   });
 
+  /* Scroll the active row into view whenever it changes (keyboard navigation). */
+  const activeIndex = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+  useEffect(() => {
+    if (activeIndex >= 0) {
+      rowVirtualizer.scrollToIndex(activeIndex, { align: 'auto' });
+    }
+  }, [activeIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className={styles.tableWrap} ref={scrollRef}>
       {isLoading ? (
@@ -195,12 +203,11 @@ export const StringGrid = ({
                   key={row.string_id}
                   data-index={vItem.index}
                   ref={rowVirtualizer.measureElement}
-                  className={`${styles.gridRow} ${styles.virtualRow}`}
+                  className={`${styles.gridRow} ${styles.virtualRow}${isActive ? ` ${styles.activeRow}` : ''}`}
                   style={{
                     transform: `translateY(${vItem.start}px)`,
                     background: rowBg(displayStatus),
                     color: rowTextColor(displayStatus),
-                    outline: isActive ? '1px solid #aaa' : 'none',
                   }}
                   onClick={() => onRowClick(row)}
                   onContextMenu={(e) => onContextMenu(e, row)}

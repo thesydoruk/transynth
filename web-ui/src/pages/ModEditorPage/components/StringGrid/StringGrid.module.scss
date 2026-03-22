@@ -107,6 +107,13 @@
   border-bottom: 1px solid var(--border);
 }
 
+/** Active (keyboard-selected) row — accent ring. */
+.activeRow {
+  outline: 1px solid var(--border-heavy);
+  outline-offset: -1px;
+  z-index: 1;
+}
+
 .td {
   padding: 5px 6px;
   vertical-align: top;
@@ -190,6 +197,16 @@
   gap: 3px;
   align-items: center;
   flex-wrap: nowrap;
+  /* Hidden on unfocused rows; revealed on hover or when the row is active. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+
+/** Reveal action buttons when the parent row is hovered or active. */
+:is(.gridRow:hover, .activeRow) .actionBtnRow {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .actionBtnBlue {
