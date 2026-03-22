@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../../api';
 import { getCurrentGame } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
+import { ReleaseChecklist } from './components';
 import s from './DiffPage.module.scss';
 
 const CHANGE_LABELS: Record<string, string> = {
@@ -37,6 +38,24 @@ export const DiffPage = () => {
   const [oldModId, setOldModId] = useState(searchParams.get('oldModId') ?? '');
   const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
   const currentGameId = getCurrentGame();
+  const selectedNewModId = Number(newModId);
+  const selectedNewMod = mods?.find((m) => m.id === selectedNewModId);
+  const editorBaseTo = selectedNewMod ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}` : null;
+
+  const { data: modStats } = useQuery({
+    queryKey: ['stats', selectedNewModId],
+    queryFn: () => api.stats.mod(selectedNewModId),
+    enabled: Number.isInteger(selectedNewModId) && selectedNewModId > 0,
+  });
+
+  const { data: dashboard } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: api.stats.dashboard,
+    enabled: Number.isInteger(selectedNewModId) && selectedNewModId > 0,
+    staleTime: 30_000,
+  });
+
+  const selectedDashboardMod = dashboard?.mods.find((m) => m.id === selectedNewModId);
 
   const {
     data: diff,
@@ -66,6 +85,9 @@ export const DiffPage = () => {
     mutationFn: () => api.mods.carryOver(Number(newModId), Number(oldModId)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['diff', newModId, oldModId] });
+      queryClient.invalidateQueries({ queryKey: ['stats', selectedNewModId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['mods'] });
       refetch();
     },
   });
@@ -176,6 +198,20 @@ export const DiffPage = () => {
               </span>
             )}
           </div>
+
+          {selectedNewMod && modStats && (
+            <ReleaseChecklist
+              hasCompared={true}
+              carryOverDone={carryOver.isSuccess}
+              draftCount={Number(modStats.draft)}
+              qaIssueCount={Number(selectedDashboardMod?.qa_issues ?? 0)}
+              translated={Number(modStats.translated)}
+              total={Number(modStats.total)}
+              editorTo={editorBaseTo}
+              draftReviewTo={editorBaseTo ? `${editorBaseTo}?status=draft` : null}
+              qaTo={editorBaseTo ? `${editorBaseTo}?qaOnly=1` : null}
+            />
+          )}
 
           {/* Filter buttons */}
           <div className={s.filterRow}>

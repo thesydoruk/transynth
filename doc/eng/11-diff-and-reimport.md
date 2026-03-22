@@ -15,6 +15,7 @@ and carry over your existing translations to the new version.
   - [Change Types](#change-types)
 - [Carrying Over Translations](#carrying-over-translations)
 - [The ReimportModal](#the-reimportmodal)
+- [Pre-release Checklist](#pre-release-checklist)
 - [After Re-import](#after-re-import)
 - [Tips](#tips)
 
@@ -145,6 +146,33 @@ editor pre-filtered to `status=draft`.
 
 ---
 
+## Pre-release Checklist
+
+After a comparison has loaded, the Diff page now shows a **Pre-release checklist**.
+It keeps the post-import workflow on one surface by summarising the current state of the new mod:
+
+- **Coverage** — translated strings versus total strings in the new version
+- **Drafts** — strings still needing manual review after carry-over
+- **QA issues** — active QA blockers still open on the new mod
+
+The checklist tracks these steps:
+
+1. Comparison completed
+2. Carry-over executed
+3. Drafts reviewed
+4. QA issues resolved
+5. Translation coverage completed
+6. Editor opened for final export
+
+When something is still pending, the checklist provides direct next-action links:
+
+- **Review drafts** → opens the new mod editor with `?status=draft`
+- **Fix QA issues** → opens the new mod editor with `?qaOnly=1`
+- **Continue translating in editor** → opens the new mod editor without filters
+- **Open editor for export** → returns to the editor toolbar once the checklist is clear
+
+---
+
 ## The ReimportModal
 
 If you import a mod that already has an older version in the database,
@@ -187,11 +215,13 @@ page manually at any time to carry over translations later.
 
 After carrying over translations:
 
-1. Open the new version in the editor.
-2. Filter by **Status = Draft** to find strings with changed source text.
-3. Review and update each translation as needed.
-4. Run the TM waterfall to catch any strings that match other mods.
-5. Run QA to catch placeholder issues introduced by source text changes.
+1. Use the **Pre-release checklist** on the Diff page to see current blockers immediately.
+2. Open the new version in the editor.
+3. Filter by **Status = Draft** to find strings with changed source text.
+4. Review and update each translation as needed.
+5. Run the TM waterfall to catch any strings that match other mods.
+6. Run QA to catch placeholder issues introduced by source text changes.
+7. Return to the editor toolbar to export STRINGS, BA2, or ZIP when the checklist is clear.
 
 ---
 

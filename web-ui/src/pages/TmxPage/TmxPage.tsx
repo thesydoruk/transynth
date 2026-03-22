@@ -8,6 +8,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import s from './TmxPage.module.scss';
@@ -50,6 +51,17 @@ export const TmxPage = () => {
     <div className={s.page}>
       <h1 className={s.title}>{t('tmx.title')}</h1>
       <p className={s.subtitle}>{t('tmx.subtitle')}</p>
+
+      <section className={s.workflowNote} aria-label={t('tmx.workflowNoteTitle')}>
+        <div>
+          <h2 className={s.workflowTitle}>{t('tmx.workflowNoteTitle')}</h2>
+          <p className={s.workflowText}>{t('tmx.workflowNoteBody')}</p>
+          <p className={s.workflowHint}>{t('tmx.workflowMaintenanceHint')}</p>
+        </div>
+        <Link to="/diff" className={s.workflowLink}>
+          {t('tmx.workflowReleaseAction')}
+        </Link>
+      </section>
 
       {/* ── TM stats strip ──────────────────────────────────────────────────── */}
       {stats && (

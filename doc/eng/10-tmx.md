@@ -8,6 +8,7 @@ the TMX (Translation Memory eXchange) standard.
 ## Table of Contents
 
 - [What is TMX?](#what-is-tmx)
+- [TMX vs Release Workflow](#tmx-vs-release-workflow)
 - [Exporting TMX](#exporting-tmx)
 - [Importing TMX](#importing-tmx)
 - [Compatibility](#compatibility)
@@ -29,6 +30,25 @@ A TMX file contains translation unit pairs:
   <tuv xml:lang="uk"><seg>Бережись, мандрівнику.</seg></tuv>
 </tu>
 ```
+
+---
+
+## TMX vs Release Workflow
+
+TMX is a **translation-memory maintenance surface**, not the final release surface for an updated mod.
+
+Use **TMX** when you need to:
+
+- share translation memory with another CAT tool or teammate;
+- back up the current translation memory;
+- seed a new project with previously translated material.
+
+Use **Diff + Mod Editor export** when you need to:
+
+- compare an updated mod version with the previous version;
+- carry over old translations into the new version;
+- review drafts and resolve QA blockers;
+- export STRINGS, BA2, or ZIP for the actual release package.
 
 ---
 
