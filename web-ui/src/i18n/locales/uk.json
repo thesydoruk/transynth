@@ -240,7 +240,11 @@
     "collapseGrup": "Сховати розбивку за GRUP",
     "grupSignature": "Сигнатура",
     "loadingGrup": "Завантаження статистики GRUP…",
-    "noGrupData": "Даних GRUP немає."
+    "noGrupData": "Даних GRUP немає.",
+    "llmRunning": "Пакетний LLM-переклад виконується",
+    "importRunning": "Імпорт виконується",
+    "releaseReady": "Готово до випуску — повністю перекладено, QA-проблем немає",
+    "translatedWithQa": "Повністю перекладено, але є відкриті QA-проблеми"
   },
   "diff": {
     "title": "Порівняння модів",

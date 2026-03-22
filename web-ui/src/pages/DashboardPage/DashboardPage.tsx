@@ -31,11 +31,23 @@ export const DashboardPage = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: api.stats.dashboard,
+    // Auto-refresh while at least one mod has a running LLM or import job.
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      if (!d) return false;
+      const hasActive = (d.activeJobs?.llmModIds.length ?? 0) > 0 || (d.activeJobs?.importModIds.length ?? 0) > 0;
+      return hasActive ? 8000 : false;
+    },
   });
 
   if (isLoading) return <div className={s.center}>{t('dashboard.loadingDashboard')}</div>;
   if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
   if (!data) return null;
+
+  /** Mod IDs currently running an LLM batch job. */
+  const activeLlmIds = new Set<number>(data.activeJobs?.llmModIds ?? []);
+  /** Mod IDs currently being imported (pending / extracting / in_progress). */
+  const activeImportIds = new Set<number>(data.activeJobs?.importModIds ?? []);
 
   const totals = data.mods.reduce(
     (acc, m) => ({
@@ -141,6 +153,20 @@ export const DashboardPage = () => {
                       >
                         {m.name}
                       </Link>
+                      {/* Active-job indicators — auto-dismiss when the job finishes (poll every 8 s). */}
+                      {activeLlmIds.has(m.id) && (
+                        <span className={s.jobBadgeLlm} title={t('dashboard.llmRunning')}>⚙</span>
+                      )}
+                      {activeImportIds.has(m.id) && (
+                        <span className={s.jobBadgeImport} title={t('dashboard.importRunning')}>↓</span>
+                      )}
+                      {/* Release-readiness signal: shown only when translation is complete. */}
+                      {p === 100 && Number(m.qa_issues) === 0 && (
+                        <span className={s.readyBadge} title={t('dashboard.releaseReady')}>✓</span>
+                      )}
+                      {p === 100 && Number(m.qa_issues) > 0 && (
+                        <span className={s.warnBadge} title={t('dashboard.translatedWithQa')}>!</span>
+                      )}
                     </td>
                     <td className={s.tdR}>{m.total}</td>
                     <td className={s.tdR}>{m.translated}</td>

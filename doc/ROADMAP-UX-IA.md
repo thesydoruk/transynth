@@ -161,7 +161,7 @@ Settings tabs:
 Dashboard:
 
 - ~~QA issue list has no click-through to a filtered editor session.~~ ✅ Resolved: same as the Known UX Debt entry above — Dashboard QA rows drill down to `ModEditor` with `qaOnly=1`.
-- No indication of which mods have pending LLM jobs or active import jobs.
+- ~~No indication of which mods have pending LLM jobs or active import jobs.~~ ✅ Resolved: Dashboard per-mod table now shows a spinning ⚙ badge for active LLM batch jobs and a pulsing ↓ badge for active imports; the query auto-refreshes every 8 s while at least one job is running. Release-readiness signals (✓ / !) are also shown inline for fully-translated mods.
 
 ## Onboarding and First-Run Experience
 

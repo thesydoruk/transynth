@@ -47,7 +47,7 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
   app.get<{ Querystring: { srcLang?: string; targetLang?: string } }>('/api/stats/dashboard', async (req, reply) => {
     const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
     const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-    const [modProgress, qaBreakdown, qaBySeverity] = await Promise.all([
+    const [modProgress, qaBreakdown, qaBySeverity, llmActiveResult, importActiveResult] = await Promise.all([
       db.query(
         `SELECT
            m.id, m.name, m.game,
@@ -82,12 +82,24 @@ export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
          GROUP BY severity ORDER BY severity`,
         [targetLang],
       ),
+      // Mods with a currently running LLM batch job.
+      db.query(
+        `SELECT DISTINCT mod_id FROM llm_jobs WHERE status = 'running' AND mod_id IS NOT NULL`,
+      ),
+      // Mods with an active import job (mod archive — eet/csv have no mod_id).
+      db.query(
+        `SELECT DISTINCT mod_id FROM mod_imports WHERE status IN ('pending','extracting','in_progress') AND mod_id IS NOT NULL`,
+      ),
     ]);
 
     return reply.send({
       mods: modProgress.rows,
       qaByType: qaBreakdown.rows,
       qaBySeverity: qaBySeverity.rows,
+      activeJobs: {
+        llmModIds: (llmActiveResult.rows as Array<{ mod_id: number }>).map((r) => Number(r.mod_id)),
+        importModIds: (importActiveResult.rows as Array<{ mod_id: number }>).map((r) => Number(r.mod_id)),
+      },
     });
   });
 

@@ -421,6 +421,8 @@ export type DashboardData = {
   mods: DashboardModRow[];
   qaByType: { issue_type: string; count: number }[];
   qaBySeverity: { severity: string; count: number }[];
+  /** Mod IDs that currently have an active job (used for live badges in the dashboard table). */
+  activeJobs: { llmModIds: number[]; importModIds: number[] };
 };
 
 /** One row from GET /api/stats/grup — translation progress for a single GRUP signature. */

@@ -200,3 +200,55 @@
 }
 
 /* GrupSubTable internal styles live in GrupSubTable/GrupSubTable.module.scss */
+
+/* ── Inline mod-row badges ───────────────────────────────────────────────── */
+
+/** Spinning ⚙ badge shown when an LLM batch job is running for the mod. */
+.jobBadgeLlm {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--accent);
+  vertical-align: middle;
+  animation: dashBadgeSpin 1.5s steps(8, end) infinite;
+}
+
+/** ↓ badge shown while a mod-archive import is in progress. */
+.jobBadgeImport {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  vertical-align: middle;
+  animation: dashBadgePulse 1.2s ease-in-out infinite alternate;
+}
+
+/** ✓ badge: mod is 100 % translated and has zero open QA issues. */
+.readyBadge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--success);
+  vertical-align: middle;
+}
+
+/** ! badge: 100 % translated but still has open QA issues. */
+.warnBadge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warning);
+  vertical-align: middle;
+}
+
+@keyframes dashBadgeSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dashBadgePulse {
+  from { opacity: 1; }
+  to   { opacity: 0.35; }
+}

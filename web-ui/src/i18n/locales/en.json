@@ -239,7 +239,11 @@
     "collapseGrup": "Hide GRUP breakdown",
     "grupSignature": "Signature",
     "loadingGrup": "Loading GRUP stats…",
-    "noGrupData": "No GRUP data."
+    "noGrupData": "No GRUP data.",
+    "llmRunning": "LLM batch translation in progress",
+    "importRunning": "Import in progress",
+    "releaseReady": "Release ready — fully translated with no QA issues",
+    "translatedWithQa": "Fully translated but has open QA issues"
   },
   "diff": {
     "title": "Mod Diff",
