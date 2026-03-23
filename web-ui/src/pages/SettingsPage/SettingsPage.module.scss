@@ -11,17 +11,41 @@
 .title {
   font-size: 22px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 6px;
   color: var(--text-bright);
 }
 
+.subtitle {
+  margin-bottom: 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.tabGroups {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.tabGroupSection {
+  display: grid;
+  gap: 6px;
+}
+
+.tabGroupLabel {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 
 .tabs {
   display: flex;
   gap: 4px;
   border-bottom: 2px solid var(--border);
-  margin-bottom: 28px;
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -47,17 +71,6 @@
 .tabActive {
   color: var(--accent);
   border-bottom-color: var(--accent);
-}
-
-/* Admin-group separator — a subtle vertical rule between translator and admin tabs. */
-.tabGroupSep {
-  display: inline-block;
-  width: 1px;
-  height: 22px;
-  background: var(--border-heavy);
-  align-self: center;
-  margin: 0 6px;
-  opacity: 0.6;
 }
 
 /* Admin tabs have a slightly different passive color to hint at elevated access. */

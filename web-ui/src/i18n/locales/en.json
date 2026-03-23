@@ -710,6 +710,13 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Configuration, workflow tools, and team operations are grouped separately so translators can find the right surface faster.",
+    "groups": {
+      "configuration": "Configuration",
+      "workflow": "Workflow tools",
+      "team": "Team operations",
+      "admin": "Admin only"
+    },
     "tabs": {
       "general": "General",
       "llm": "LLM / Auto-translate",

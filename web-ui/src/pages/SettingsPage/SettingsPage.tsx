@@ -17,7 +17,7 @@
  * Tabs 3–6 embed their respective standalone pages directly.
  */
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../components/AuthContext';
@@ -59,17 +59,27 @@ export const SettingsPage = () => {
     || value === 'data'
     || value === 'users';
 
-  const [tab, setTab] = useState<TabId>(() => (isTabId(tabFromUrl) ? tabFromUrl : 'general'));
+  const tab = useMemo<TabId>(() => {
+    if (!isTabId(tabFromUrl)) return 'general';
+    if (tabFromUrl === 'users' && !(multiUser && isAdmin)) return 'general';
+    return tabFromUrl;
+  }, [tabFromUrl, multiUser, isAdmin]);
 
   /** Translator workflow tabs — visible to every user. */
-  const translatorTabs: { id: TabId; label: string }[] = [
+  const configurationTabs: { id: TabId; label: string }[] = [
     { id: 'general',  label: t('settings.tabs.general') },
     { id: 'llm',      label: t('settings.tabs.llm') },
     { id: 'qaRules',  label: t('settings.tabs.qaRules') },
+  ];
+
+  const workflowTabs: { id: TabId; label: string }[] = [
     { id: 'tradAuto', label: t('settings.tabs.tradAuto') },
     { id: 'tmx',      label: t('settings.tabs.tmx') },
-    { id: 'activity', label: t('settings.tabs.activity') },
     { id: 'data',     label: t('settings.tabs.data') },
+  ];
+
+  const teamTabs: { id: TabId; label: string }[] = [
+    { id: 'activity', label: t('settings.tabs.activity') },
   ];
 
   /** Admin-only tabs — only available when multiUser mode is active AND the current user is an admin. */
@@ -77,49 +87,42 @@ export const SettingsPage = () => {
     ? [{ id: 'users', label: t('settings.tabs.users') }]
     : [];
 
-  useEffect(() => {
-    if (!isTabId(tabFromUrl)) return;
-    if (tabFromUrl === 'users' && !(multiUser && isAdmin)) return;
-    if (tabFromUrl !== tab) setTab(tabFromUrl);
-  }, [tabFromUrl, tab, multiUser, isAdmin]);
+  const tabGroups: Array<{ key: string; label: string; tabs: { id: TabId; label: string }[]; adminOnly?: boolean }> = [
+    { key: 'configuration', label: t('settings.groups.configuration'), tabs: configurationTabs },
+    { key: 'workflow', label: t('settings.groups.workflow'), tabs: workflowTabs },
+    { key: 'team', label: t('settings.groups.team'), tabs: teamTabs },
+    { key: 'admin', label: t('settings.groups.admin'), tabs: adminTabs, adminOnly: true },
+  ].filter((group) => group.tabs.length > 0);
 
-  useEffect(() => {
+  const handleTabSelect = (nextTab: TabId) => {
     const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true });
-    }
-  }, [tab, searchParams, setSearchParams]);
+    next.set('tab', nextTab);
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t('settings.title')}</h1>
+      <p className={s.subtitle}>{t('settings.subtitle')}</p>
 
       {/* ── Tab bar ──────────────────────────────────────────────────── */}
-      <div className={s.tabs}>
-        {translatorTabs.map(({ id, label }) => (
-          <button
-            key={id}
-            className={`${s.tab} ${tab === id ? s.tabActive : ''}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-        {adminTabs.length > 0 && (
-          <>
-            <span className={s.tabGroupSep} aria-hidden="true" />
-            {adminTabs.map(({ id, label }) => (
+      <div className={s.tabGroups}>
+        {tabGroups.map((group) => (
+          <section key={group.key} className={s.tabGroupSection} aria-label={group.label}>
+            <div className={s.tabGroupLabel}>{group.label}</div>
+            <div className={s.tabs}>
+              {group.tabs.map(({ id, label }) => (
               <button
                 key={id}
-                className={`${s.tab} ${s.tabAdmin} ${tab === id ? s.tabActive : ''}`}
-                onClick={() => setTab(id)}
+                className={`${s.tab} ${group.adminOnly ? s.tabAdmin : ''} ${tab === id ? s.tabActive : ''}`}
+                onClick={() => handleTabSelect(id)}
               >
                 {label}
               </button>
-            ))}
-          </>
-        )}
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
       {/* ── Tab panels ───────────────────────────────────────────────── */}

@@ -24,14 +24,18 @@ A subset of active settings can also be viewed at runtime in the **Settings page
 The **Settings** page (`/settings`) provides a centralised view of all project configuration.
 Open it from the **Settings** link in the top navigation bar.
 
-The page is organised into four tabs:
+The page is organised into interim taxonomy groups:
 
-| Tab                      | Contents                                                                           |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| **General**              | Default source/target languages, UI language (English/Ukrainian), light/dark theme |
-| **LLM / Auto-translate** | Read-only display of the active LLM provider, models, batch size, and system flags |
-| **Data**                 | Quick-access cards for QA Rules, TradAuto rules, and Glossary                      |
-| **Users**                | Quick-access card to the Users page _(multi-user mode only)_                       |
+| Group               | Tabs / Surfaces                                     |
+| ------------------- | --------------------------------------------------- |
+| **Configuration**   | **General**, **LLM / Auto-translate**, **QA Rules** |
+| **Workflow tools**  | **TradAuto**, **TMX**, **Data**                     |
+| **Team operations** | **Activity**                                        |
+| **Admin only**      | **Users** _(multi-user mode only)_                  |
+
+This grouping is intentional: TradAuto and TMX still live inside Settings for now,
+but they are visually separated from configuration because they are workflow tools,
+not core runtime settings.
 
 ### General tab
 

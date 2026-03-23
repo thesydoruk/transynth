@@ -711,6 +711,13 @@
   },
   "settings": {
     "title": "Налаштування",
+    "subtitle": "Конфігурація, workflow-інструменти й team operations згруповані окремо, щоб потрібну surface було легше знаходити.",
+    "groups": {
+      "configuration": "Конфігурація",
+      "workflow": "Workflow tools",
+      "team": "Team operations",
+      "admin": "Лише для адміністраторів"
+    },
     "tabs": {
       "general": "Загальні",
       "llm": "LLM / Авто-переклад",
