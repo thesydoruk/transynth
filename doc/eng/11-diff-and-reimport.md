@@ -171,6 +171,11 @@ When something is still pending, the checklist provides direct next-action links
 - **Continue translating in editor** → opens the new mod editor without filters
 - **Open editor for export** → returns to the editor toolbar once the checklist is clear
 
+The checklist also includes a **Recent handoff activity** block for the selected mod.
+It shows the latest mod-specific actions recorded in the audit log and includes
+an **Open full activity log** link that jumps to **Settings → Activity** with
+the current mod filter already applied.
+
 ---
 
 ## The ReimportModal

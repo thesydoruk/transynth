@@ -120,6 +120,123 @@
   letter-spacing: 0.5px;
 }
 
+.releasePanel {
+  margin-bottom: 28px;
+  padding: 18px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.releasePanelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.releasePanelKicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.releasePanelTitle {
+  color: var(--text-bright);
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.releasePanelDesc {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0;
+  max-width: 680px;
+}
+
+.releaseSummary {
+  display: grid;
+  gap: 8px;
+}
+
+.releaseSummaryItem {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.releaseSteps {
+  display: grid;
+  gap: 12px;
+}
+
+.releaseStep {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+}
+
+.releaseStepIndex {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.releaseStepTitle {
+  color: var(--text-bright);
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
+.releaseStepText {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.releaseActionPrimary,
+.releaseActionSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.releaseActionPrimary {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.releaseActionSecondary {
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+}
+
 /* ── Navigation grid ──────────────────────────────────────────────────────── */
 
 .navGrid {
@@ -233,5 +350,16 @@
 
   &:hover {
     text-decoration: underline;
+  }
+}
+
+@media (max-width: 720px) {
+  .releasePanelHeader,
+  .releaseStep {
+    grid-template-columns: 1fr;
+  }
+
+  .releaseSummaryItem {
+    text-align: left;
   }
 }

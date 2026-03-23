@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { ActivityEntry } from '../../../../api';
 import s from './ReleaseChecklist.module.scss';
+
+export interface ReleaseChecklistActivityItem {
+  id: ActivityEntry['id'];
+  action: ActivityEntry['action'];
+  createdAt: ActivityEntry['created_at'];
+  actor: string | null;
+}
 
 export interface ReleaseChecklistProps {
   hasCompared: boolean;
@@ -12,6 +20,8 @@ export interface ReleaseChecklistProps {
   editorTo: string | null;
   draftReviewTo: string | null;
   qaTo: string | null;
+  activityTo: string | null;
+  recentActivity: ReleaseChecklistActivityItem[];
 }
 
 /**
@@ -31,6 +41,8 @@ export const ReleaseChecklist = ({
   editorTo,
   draftReviewTo,
   qaTo,
+  activityTo,
+  recentActivity,
 }: ReleaseChecklistProps) => {
   const { t } = useTranslation();
 
@@ -59,6 +71,9 @@ export const ReleaseChecklist = ({
   }
   if (releaseReady && editorTo) {
     nextActions.push({ key: 'export', to: editorTo, label: t('diff.actionOpenEditorForExport'), primary: true });
+  }
+  if (activityTo) {
+    nextActions.push({ key: 'activity', to: activityTo, label: t('diff.actionOpenAuditTrail') });
   }
 
   return (
@@ -106,6 +121,31 @@ export const ReleaseChecklist = ({
             </Link>
           ) : null
         )) : <span className={s.allClear}>{t('diff.allClear')}</span>}
+      </div>
+
+      <div className={s.auditBlock}>
+        <div className={s.auditHeader}>
+          <h3 className={s.auditTitle}>{t('diff.auditTitle')}</h3>
+          {activityTo && (
+            <Link to={activityTo} className={s.auditLink}>
+              {t('diff.auditOpenFull')}
+            </Link>
+          )}
+        </div>
+        {recentActivity.length > 0 ? (
+          <ul className={s.auditList}>
+            {recentActivity.map((entry) => (
+              <li key={entry.id} className={s.auditItem}>
+                <span className={s.auditAction}>{entry.action}</span>
+                <span className={s.auditMeta}>
+                  {entry.actor ?? t('diff.auditUnknownActor')} · {new Date(entry.createdAt).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={s.auditEmpty}>{t('diff.auditEmpty')}</p>
+        )}
       </div>
     </section>
   );

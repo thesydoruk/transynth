@@ -186,6 +186,42 @@ export const GameHubPage = () => {
         </div>
       )}
 
+      {stats && stats.modCount > 0 && (
+        <section className={s.releasePanel} aria-label={t('gameHub.releasePanelTitle')}>
+          <div className={s.releasePanelHeader}>
+            <div>
+              <span className={s.releasePanelKicker}>{t('gameHub.workflowRelease')}</span>
+              <h2 className={s.releasePanelTitle}>{t('gameHub.releasePanelTitle')}</h2>
+              <p className={s.releasePanelDesc}>{t('gameHub.releasePanelDesc')}</p>
+            </div>
+            <div className={s.releaseSummary}>
+              <span className={s.releaseSummaryItem}>{t('gameHub.releaseMeta', { count: stats.releaseReadyMods })}</span>
+              <span className={s.releaseSummaryItem}>{t('gameHub.reviewMeta', { count: stats.reviewMods })}</span>
+            </div>
+          </div>
+
+          <div className={s.releaseSteps}>
+            <div className={s.releaseStep}>
+              <span className={s.releaseStepIndex}>1</span>
+              <div>
+                <h3 className={s.releaseStepTitle}>{t('gameHub.releaseStepDiffTitle')}</h3>
+                <p className={s.releaseStepText}>{t('gameHub.releaseStepDiffDesc')}</p>
+              </div>
+              <Link to="/diff" className={s.releaseActionPrimary}>{t('gameHub.releaseStepDiffAction')}</Link>
+            </div>
+
+            <div className={s.releaseStep}>
+              <span className={s.releaseStepIndex}>2</span>
+              <div>
+                <h3 className={s.releaseStepTitle}>{t('gameHub.releaseStepExportTitle')}</h3>
+                <p className={s.releaseStepText}>{t('gameHub.releaseStepExportDesc')}</p>
+              </div>
+              <Link to={`/games/${gameId}/mods`} className={s.releaseActionSecondary}>{t('gameHub.releaseStepExportAction')}</Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Workflow cards */}
       <div className={s.navGrid}>
         <Link to={`/games/${gameId}/imports`} className={s.navCard}>

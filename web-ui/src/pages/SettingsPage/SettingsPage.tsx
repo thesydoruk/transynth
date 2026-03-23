@@ -17,7 +17,8 @@
  * Tabs 3–6 embed their respective standalone pages directly.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../components/AuthContext';
 import { QARulesPage } from '../QARulesPage';
@@ -46,8 +47,19 @@ export const SettingsPage = () => {
   const { t } = useTranslation();
   const { multiUser, user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState<TabId>('general');
+  const tabFromUrl = searchParams.get('tab');
+  const isTabId = (value: string | null): value is TabId => value === 'general'
+    || value === 'llm'
+    || value === 'qaRules'
+    || value === 'tradAuto'
+    || value === 'tmx'
+    || value === 'activity'
+    || value === 'data'
+    || value === 'users';
+
+  const [tab, setTab] = useState<TabId>(() => (isTabId(tabFromUrl) ? tabFromUrl : 'general'));
 
   /** Translator workflow tabs — visible to every user. */
   const translatorTabs: { id: TabId; label: string }[] = [
@@ -64,6 +76,20 @@ export const SettingsPage = () => {
   const adminTabs: { id: TabId; label: string }[] = multiUser && isAdmin
     ? [{ id: 'users', label: t('settings.tabs.users') }]
     : [];
+
+  useEffect(() => {
+    if (!isTabId(tabFromUrl)) return;
+    if (tabFromUrl === 'users' && !(multiUser && isAdmin)) return;
+    if (tabFromUrl !== tab) setTab(tabFromUrl);
+  }, [tabFromUrl, tab, multiUser, isAdmin]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [tab, searchParams, setSearchParams]);
 
   return (
     <div className={s.page}>

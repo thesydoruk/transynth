@@ -9,9 +9,10 @@
  * CSV export downloads the full filtered result (up to 10 000 rows).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { api, type ActivityEntry, type Mod } from '../../api';
 import s from './ActivityPage.module.scss';
 
@@ -26,11 +27,15 @@ const ACTION_TYPES = [
 
 export const ActivityPage = () => {
   const { t } = useTranslation();
-  const [offset, setOffset] = useState(0);
-  const [actionFilter, setActionFilter] = useState('');
-  const [modFilter, setModFilter] = useState<number | ''>('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialOffset = Number(searchParams.get('offset') ?? '0');
+  const initialEntityType = searchParams.get('entityType');
+  const initialEntityId = Number(searchParams.get('entityId') ?? '');
+  const [offset, setOffset] = useState(Number.isFinite(initialOffset) && initialOffset >= 0 ? initialOffset : 0);
+  const [actionFilter, setActionFilter] = useState(searchParams.get('action') ?? '');
+  const [modFilter, setModFilter] = useState<number | ''>(initialEntityType === 'mod' && Number.isFinite(initialEntityId) ? initialEntityId : '');
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') ?? '');
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') ?? '');
   const [csvPending, setCsvPending] = useState(false);
 
   const params = {
@@ -59,6 +64,29 @@ export const ActivityPage = () => {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const handleFilterChange = () => setOffset(0);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'activity');
+    if (offset > 0) next.set('offset', String(offset));
+    else next.delete('offset');
+    if (actionFilter) next.set('action', actionFilter);
+    else next.delete('action');
+    if (modFilter !== '') {
+      next.set('entityType', 'mod');
+      next.set('entityId', String(modFilter));
+    } else {
+      next.delete('entityType');
+      next.delete('entityId');
+    }
+    if (dateFrom) next.set('dateFrom', dateFrom);
+    else next.delete('dateFrom');
+    if (dateTo) next.set('dateTo', dateTo);
+    else next.delete('dateTo');
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [offset, actionFilter, modFilter, dateFrom, dateTo, searchParams, setSearchParams]);
 
   const handleCsvDownload = async () => {
     setCsvPending(true);

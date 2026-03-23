@@ -41,6 +41,7 @@ export const DiffPage = () => {
   const selectedNewModId = Number(newModId);
   const selectedNewMod = mods?.find((m) => m.id === selectedNewModId);
   const editorBaseTo = selectedNewMod ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}` : null;
+  const activityTo = selectedNewMod ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}` : null;
 
   const { data: modStats } = useQuery({
     queryKey: ['stats', selectedNewModId],
@@ -56,6 +57,13 @@ export const DiffPage = () => {
   });
 
   const selectedDashboardMod = dashboard?.mods.find((m) => m.id === selectedNewModId);
+
+  const { data: recentActivity } = useQuery({
+    queryKey: ['activity', 'release-handoff', selectedNewModId],
+    queryFn: () => api.activity.list({ limit: 5, entityType: 'mod', entityId: selectedNewModId }),
+    enabled: Number.isInteger(selectedNewModId) && selectedNewModId > 0,
+    staleTime: 30_000,
+  });
 
   const {
     data: diff,
@@ -210,6 +218,13 @@ export const DiffPage = () => {
               editorTo={editorBaseTo}
               draftReviewTo={editorBaseTo ? `${editorBaseTo}?status=draft` : null}
               qaTo={editorBaseTo ? `${editorBaseTo}?qaOnly=1` : null}
+              activityTo={activityTo}
+              recentActivity={(recentActivity?.entries ?? []).map((entry) => ({
+                id: entry.id,
+                action: entry.action,
+                createdAt: entry.created_at,
+                actor: entry.display_name ?? entry.username,
+              }))}
             />
           )}
 

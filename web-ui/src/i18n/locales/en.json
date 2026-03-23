@@ -295,8 +295,13 @@
     "actionOpenQa": "Fix QA issues ({{count}})",
     "actionContinueTranslating": "Continue translating in editor",
     "actionOpenEditorForExport": "Open editor for export",
+    "actionOpenAuditTrail": "Open audit trail",
     "itemCount": "{{count}} remaining",
-    "allClear": "Checklist clear. Open the editor to export STRINGS, BA2, or ZIP."
+    "allClear": "Checklist clear. Open the editor to export STRINGS, BA2, or ZIP.",
+    "auditTitle": "Recent handoff activity",
+    "auditOpenFull": "Open full activity log",
+    "auditUnknownActor": "Unknown actor",
+    "auditEmpty": "No mod-specific activity has been recorded yet."
   },
   "glossary": {
     "title": "Glossary",
@@ -912,6 +917,14 @@
     "releaseDesc": "Prepare exports, compare versions, and finish release-stage packaging work.",
     "releaseMeta": "{{count}} mods are fully approved and look release-ready",
     "releaseMetaEmpty": "No fully approved mods are release-ready yet",
+    "releasePanelTitle": "Release workflow",
+    "releasePanelDesc": "Compare updated versions first, then return to imported mods for editor-driven export packaging.",
+    "releaseStepDiffTitle": "Compare versions and carry over translations",
+    "releaseStepDiffDesc": "Use Diff to inspect changes, run carry-over, review blockers, and hand off the updated mod with a clear audit trail.",
+    "releaseStepDiffAction": "Open Diff",
+    "releaseStepExportTitle": "Open the mod editor and export the package",
+    "releaseStepExportDesc": "Once drafts and QA blockers are cleared, return to the mod editor toolbar for STRINGS, BA2, or ZIP export.",
+    "releaseStepExportAction": "Open imported mods",
     "recentMods": "Recent Mods",
     "viewAllMods": "View all {{count}} mods →"
   }

@@ -296,8 +296,13 @@
     "actionOpenQa": "Виправити QA-проблеми ({{count}})",
     "actionContinueTranslating": "Продовжити переклад у редакторі",
     "actionOpenEditorForExport": "Відкрити редактор для експорту",
+    "actionOpenAuditTrail": "Відкрити audit trail",
     "itemCount": "залишилось {{count}}",
-    "allClear": "Чекліст чистий. Відкрийте редактор, щоб експортувати STRINGS, BA2 або ZIP."
+    "allClear": "Чекліст чистий. Відкрийте редактор, щоб експортувати STRINGS, BA2 або ZIP.",
+    "auditTitle": "Остання handoff-активність",
+    "auditOpenFull": "Відкрити повний журнал активності",
+    "auditUnknownActor": "Невідомий виконавець",
+    "auditEmpty": "Для цього мода ще не зафіксовано mod-specific активності."
   },
   "glossary": {
     "title": "Глосарій",
@@ -913,6 +918,14 @@
     "releaseDesc": "Готувати експорт, порівнювати версії та завершувати release-stage packaging workflow.",
     "releaseMeta": "{{count}} модів повністю затверджені й виглядають ready до релізу",
     "releaseMetaEmpty": "Поки що немає повністю затверджених модів, ready до релізу",
+    "releasePanelTitle": "Release workflow",
+    "releasePanelDesc": "Спочатку порівнюйте оновлені версії через Diff, а потім повертайтеся до imported mods для editor-driven експорту пакета.",
+    "releaseStepDiffTitle": "Порівняти версії й перенести переклади",
+    "releaseStepDiffDesc": "Використайте Diff, щоб переглянути зміни, запустити carry-over, побачити блокери та передати оновлений мод із прозорим audit trail.",
+    "releaseStepDiffAction": "Відкрити Diff",
+    "releaseStepExportTitle": "Відкрити редактор мода й експортувати пакет",
+    "releaseStepExportDesc": "Коли чернетки й QA-блокери закриті, поверніться до toolbar редактора для експорту STRINGS, BA2 або ZIP.",
+    "releaseStepExportAction": "Відкрити imported mods",
     "recentMods": "Останні моди",
     "viewAllMods": "Переглянути всі {{count}} модів →"
   }

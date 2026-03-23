@@ -147,6 +147,11 @@ Carried: 820 · Needs review: 43 · Skipped: 12
 - **Continue translating in editor** → відкриває редактор без фільтрів
 - **Open editor for export** → повертає до toolbar редактора, коли чекліст уже чистий
 
+Чекліст також містить блок **Recent handoff activity** для вибраного мода.
+У ньому показуються останні дії з audit log, що стосуються саме цього мода,
+а посилання **Open full activity log** відкриває **Settings → Activity** вже
+з попередньо застосованим фільтром поточного мода.
+
 ---
 
 ## ReimportModal

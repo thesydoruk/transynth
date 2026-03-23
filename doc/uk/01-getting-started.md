@@ -170,6 +170,11 @@ docker compose run --rm cli npm run db:init
 
 а також із додатковою карткою **Discover** для перегляду NexusMods.
 
+У блоці **Release** тепер також є явна двокрокова схема:
+
+1. **Open Diff** для порівняння оновлених версій і carry-over перекладів.
+2. **Open Imported Mods** для повернення в editor і експорту STRINGS, BA2 або ZIP після review та QA.
+
 У game-scoped браузері Nexus (`/games/:gameId/nexus`) порожній результат пошуку тепер містить прямі дії: очищення пошуку і повернення в хаб гри.
 
 ---

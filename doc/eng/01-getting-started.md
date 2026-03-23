@@ -170,6 +170,11 @@ When you open a game workspace (`/games/:gameId`), the **Game Hub** now serves a
 
 plus a secondary **Discover** card for NexusMods browsing.
 
+The **Release** area now also includes an explicit two-step workflow panel:
+
+1. **Open Diff** to compare updated versions and carry over translations.
+2. **Open Imported Mods** to return to the mod editor and export STRINGS, BA2, or ZIP after review and QA are complete.
+
 In the game-scoped Nexus browser (`/games/:gameId/nexus`), empty search results now include direct actions to clear the search and jump back to the game hub.
 
 ---

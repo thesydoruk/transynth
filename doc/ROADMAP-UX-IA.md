@@ -322,11 +322,11 @@ Exit criteria:
 
 ### Phase 5: Release Workflow Coherence (1 sprint, Priority P2)
 
-- Align export and diff/reimport flow under Release.
+- ~~Align export and diff/reimport flow under Release.~~ ✅ Resolved: `GameHubPage` now exposes an explicit two-step Release workflow panel that links users first to Diff/carry-over and then back to imported mods for editor export.
 - ~~Add final pre-release checklist presentation.~~ ✅ Resolved: `DiffPage` now shows a pre-release checklist after comparison with release blockers derived from mod stats and QA state.
 - ~~Make post-import and pre-release next actions explicit.~~ ✅ Resolved: the same `DiffPage` checklist now exposes direct next-action links into editor draft review, QA-only fixing, continued translation, and final export.
 - ~~Clarify when TMX belongs to release workflow versus administrative maintenance.~~ ✅ Resolved: `TmxPage` now carries an explicit workflow note that TMX is for exchange/backup/maintenance, while release packaging stays in Diff + Mod Editor export.
-- Surface activity and audit visibility where team handoff matters.
+- ~~Surface activity and audit visibility where team handoff matters.~~ ✅ Resolved: `DiffPage` release checklist now surfaces recent mod-specific activity and deep-links into `Settings -> Activity` pre-filtered to the current mod.
 
 Exit criteria:
 
