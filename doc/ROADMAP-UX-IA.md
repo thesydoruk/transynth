@@ -255,17 +255,18 @@ Queue policy:
 
 Exit criteria:
 
-- Baseline metrics documented.
-- Shared terminology approved.
-- Current-state IA map approved.
+- ✅ Baseline metrics documented.
+- ✅ Shared terminology approved.
+- ✅ Current-state IA map approved.
 
-Baseline snapshot (2026-03-31, local dev dataset):
+Baseline snapshot (2026-03-31, local dev — mod id 2, en→uk):
 
 - Command: `npm run ux:baseline -- --base-url http://localhost:3000 --samples 5 --warmup 1 --out logs/ux-baseline.json`
-- Dashboard stats: avg `4.59 ms`, p95 `6.69 ms`
-- Mods list: avg `5.43 ms`, p95 `5.90 ms`
-- Import jobs list: avg `0.84 ms`, p95 `0.89 ms`
-- Dataset note: this run returned `0` mods from `/api/mods`, so editor strings, TM suggestions, and import end-to-end timings still need a follow-up run after importing a representative mod dataset.
+- Dashboard stats: avg `15.58 ms`, p95 `15.89 ms`
+- Mods list: avg `13.96 ms`, p95 `14.48 ms`
+- Import jobs list: avg `0.62 ms`, p95 `0.69 ms`
+- Editor strings page (100 rows): avg `4.94 ms`, p95 `5.33 ms`
+- TM suggestions lookup: avg `2.88 ms`, p95 `3.07 ms`
 
 ### Phase 1: Navigation IA Refactor (1 sprint, Priority P1)
 
