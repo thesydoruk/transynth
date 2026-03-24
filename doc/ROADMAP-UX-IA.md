@@ -249,7 +249,7 @@ Queue policy:
 - Freeze structural redesign until baseline metrics are captured.
 - Define terminology glossary for consistent labels in UI.
 - Capture current user journeys for import, translate, and release.
-- Add lightweight instrumentation for key workflow timings.
+- ✅ Add lightweight instrumentation for key workflow timings. `scripts/uxBaseline.ts` now measures latency for dashboard, mods list, import jobs list, editor strings page, and TM suggestions lookup; run via `npm run ux:baseline -- --base-url http://localhost:3000 --out logs/ux-baseline.json`.
 - Audit current route-to-navigation mismatches between UI and documentation.
 - Identify where current pages are game-scoped, global, or settings-scoped.
 

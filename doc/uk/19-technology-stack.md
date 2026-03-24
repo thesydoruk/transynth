@@ -92,6 +92,16 @@ Localization Pipeline, і пояснює роль кожної частини в
   CLI workflow.
 - `concurrently` і `wait-on` використовуються в dev-orchestration scripts.
 
+### UX baseline instrumentation
+
+У репозиторії є lightweight benchmark-скрипт для фіксації baseline latency UX-критичних API у рамках roadmap.
+
+- Скрипт: `scripts/uxBaseline.ts`
+- Команда: `npm run ux:baseline -- --base-url http://localhost:3000 --samples 5 --warmup 1 --out logs/ux-baseline.json`
+- Які ендпоінти міряються: dashboard stats, mods list, import jobs list, editor strings page, TM suggestions lookup.
+
+Запускайте скрипт на працюючому сервері з репрезентативним набором даних, а згенерований JSON-звіт додавайте до оновлень roadmap.
+
 ---
 
 ## Контейнеризація
