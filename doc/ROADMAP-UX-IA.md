@@ -259,6 +259,14 @@ Exit criteria:
 - Shared terminology approved.
 - Current-state IA map approved.
 
+Baseline snapshot (2026-03-31, local dev dataset):
+
+- Command: `npm run ux:baseline -- --base-url http://localhost:3000 --samples 5 --warmup 1 --out logs/ux-baseline.json`
+- Dashboard stats: avg `4.59 ms`, p95 `6.69 ms`
+- Mods list: avg `5.43 ms`, p95 `5.90 ms`
+- Import jobs list: avg `0.84 ms`, p95 `0.89 ms`
+- Dataset note: this run returned `0` mods from `/api/mods`, so editor strings, TM suggestions, and import end-to-end timings still need a follow-up run after importing a representative mod dataset.
+
 ### Phase 1: Navigation IA Refactor (1 sprint, Priority P1)
 
 - Implement task-first top-level navigation model.

@@ -29,6 +29,7 @@ type ModRow = {
 
 type StringListResponse = {
   rows?: Array<{ string_id: number }>;
+  total?: number;
 };
 
 type BaselineReport = {
@@ -250,14 +251,17 @@ const main = async () => {
 
   try {
     const mods = await getJson<ModRow[]>(options.baseUrl, `/api/mods?${langParams}`, options.timeoutMs);
-    if (mods.length > 0) {
-      selectedModId = mods[0].id;
+    for (const mod of mods) {
       const strings = await getJson<StringListResponse>(
         options.baseUrl,
-        `/api/strings?modId=${selectedModId}&${langParams}&page=1&pageSize=100`,
+        `/api/strings?modId=${mod.id}&${langParams}&page=1&pageSize=100`,
         options.timeoutMs,
       );
-      selectedStringId = strings.rows?.[0]?.string_id ?? null;
+      if ((strings.total ?? 0) > 0 || (strings.rows?.length ?? 0) > 0) {
+        selectedModId = mod.id;
+        selectedStringId = strings.rows?.[0]?.string_id ?? null;
+        break;
+      }
     }
   } catch (error) {
     console.warn('Unable to preload mod/string context for editor and TM metrics.');
@@ -280,7 +284,7 @@ const main = async () => {
   if (selectedStringId != null) {
     endpoints.push({
       name: 'TM suggestions lookup',
-      path: `/api/strings/${selectedStringId}/tm-suggestions?targetLang=${encodeURIComponent(options.targetLang)}`,
+      path: `/api/strings/${selectedStringId}/suggestions?targetLang=${encodeURIComponent(options.targetLang)}`,
     });
   }
 
