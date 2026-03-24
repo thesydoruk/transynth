@@ -38,6 +38,56 @@
   text-align: center;
 }
 
+.emptyState {
+  padding: 28px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--text-bright);
+  font-size: 18px;
+}
+
+.emptyText {
+  max-width: 720px;
+  margin: 10px auto 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
 /* ── Tile grid ────────────────────────────────────────────────────────────── */
 
 .grid {

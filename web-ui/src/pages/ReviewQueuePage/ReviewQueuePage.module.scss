@@ -106,6 +106,14 @@
   line-height: 1.5;
 }
 
+.emptyHint {
+  margin: 10px auto 0;
+  max-width: 680px;
+  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .emptyActions {
   display: flex;
   justify-content: center;

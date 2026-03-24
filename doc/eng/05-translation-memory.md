@@ -35,6 +35,8 @@ from re-translating identical or near-identical text.
 
 The TM grows over time as you translate more mods.
 
+If the Glossary page is still empty, the UI now adds role-aware guidance instead of only passive placeholder text. Translators are prompted to seed repeated project terms first, reviewers are nudged to add disputed terminology before review, and admins get a reminder to establish the shared terminology baseline before large imports or LLM runs.
+
 ---
 
 ## The 6-Method Waterfall

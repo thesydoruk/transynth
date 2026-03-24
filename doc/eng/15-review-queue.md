@@ -38,6 +38,12 @@ If the queue is empty, the page now provides immediate next actions instead of s
 - **Reset filters** when the queue is empty because of the current filter combination
 - **Open current game hub** (or the games catalogue if no game context is stored)
 
+The empty state is also role-aware in multi-user mode:
+
+- **Translators** are told to return to the current game hub and continue the next translation pass.
+- **Reviewers** are told that the reviewer backlog is clear and can jump straight into the next mod pass.
+- **Admins** get an additional shortcut to the Activity log for handoff and audit checks.
+
 ---
 
 ## Filters

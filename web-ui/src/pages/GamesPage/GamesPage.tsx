@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
+import { useAuth } from '../../components/AuthContext';
 import { GameTile, SkeletonGameTile } from './GameTile';
 import s from './GamesPage.module.scss';
 
@@ -32,6 +33,7 @@ import s from './GamesPage.module.scss';
  */
 export const GamesPage = () => {
   const { t } = useTranslation();
+  const { multiUser, user } = useAuth();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['games'],
@@ -60,17 +62,42 @@ export const GamesPage = () => {
     );
   }
 
+  const emptyHint = multiUser && user
+    ? user.role === 'reviewer'
+      ? t('games.emptyReviewerHint')
+      : user.role === 'admin'
+        ? t('games.emptyAdminHint')
+        : t('games.emptyTranslatorHint')
+    : t('games.emptyTranslatorHint');
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t('games.title')}</h1>
       <p className={s.subtitle}>{t('games.subtitle')}</p>
-      <div className={s.grid}>
-        {(data ?? []).map((game) => (
-          <Link key={game.id} to={`/games/${game.id}`} className={s.tileLink}>
-            <GameTile game={game} />
-          </Link>
-        ))}
-      </div>
+      {(data ?? []).length === 0 ? (
+        <div className={s.emptyState}>
+          <h2 className={s.emptyTitle}>{t('games.emptyTitle')}</h2>
+          <p className={s.emptyText}>{emptyHint}</p>
+          <div className={s.emptyActions}>
+            <Link className={s.emptyLinkBtn} to="/">
+              {t('games.openHomeAction')}
+            </Link>
+            {multiUser && user?.role === 'admin' && (
+              <Link className={s.emptyLinkBtn} to="/settings">
+                {t('games.openSettingsAction')}
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className={s.grid}>
+          {(data ?? []).map((game) => (
+            <Link key={game.id} to={`/games/${game.id}`} className={s.tileLink}>
+              <GameTile game={game} />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

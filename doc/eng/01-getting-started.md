@@ -203,6 +203,12 @@ What changes when multi-user mode is enabled:
 - Role-based access control becomes active.
 - The **Users** page becomes available so admins can create accounts, disable users, and manage passwords.
 
+In multi-user mode, the app shell also exposes a small role-aware shortcut badge next to the current Game and Content badges:
+
+- **Reviewers** get a direct shortcut to **Review Queue**.
+- **Admins** get a direct shortcut to **Users**.
+- **Translators** keep the main shell focused on the translation surfaces without extra admin links.
+
 Default bootstrap account:
 
 - **Username:** `admin`

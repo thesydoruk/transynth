@@ -352,7 +352,7 @@ Exit criteria:
 - ✅ Activity log filters: date range, user, mod. ActivityPage now supports action, mod (entity), date-from, and date-to filters. Backend `getActivityLog` / `getActivityCount` accept `entityType`, `entityId`, `dateFrom`, `dateTo` params.
 - ✅ Activity log CSV export from the UI. `GET /api/activity/csv` returns a filtered CSV download (max 10 000 rows); ActivityPage has an Export CSV button.
 - ~~Settings taxonomy for team operations and admin-only surfaces.~~ ✅ Resolved: `SettingsPage` now groups tabs into Configuration, Workflow tools, Team operations, and Admin only, making the interim taxonomy explicit without moving TradAuto or TMX prematurely.
-- Evaluate role-aware navigation visibility and empty states after single-user IA is stable.
+- ✅ Role-aware navigation visibility and empty states after single-user IA is stable. AppNav now exposes reviewer/admin role shortcuts in multi-user mode, while Review Queue, Games, and Glossary empty states explain the next step differently for translators, reviewers, and admins.
 
 Exit criteria:
 

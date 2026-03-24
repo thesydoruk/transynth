@@ -202,6 +202,12 @@ MULTI_USER=true
 - Активується рольова модель доступу.
 - Стає доступною сторінка **Users**, де адміністратори можуть створювати акаунти, вимикати користувачів і керувати паролями.
 
+У multi-user mode в app shell також з’являється невеликий role-aware shortcut badge поруч із badge поточної Game та Content:
+
+- **Reviewers** отримують прямий shortcut до **Review Queue**.
+- **Admins** отримують прямий shortcut до **Users**.
+- **Translators** бачать shell, сфокусований на перекладацьких поверхнях без зайвих адмінських посилань.
+
 Bootstrap-акаунт за замовчуванням:
 
 - **Username:** `admin`

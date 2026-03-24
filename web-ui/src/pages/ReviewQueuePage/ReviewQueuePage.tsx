@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
+import { useAuth } from '../../components/AuthContext';
 import { getCurrentGame } from '../../langDefaults';
 import { getTgtLang } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -61,6 +62,7 @@ const CONFIDENCE_OPTIONS: Array<{ label: string; value: number | null }> = [
  */
 export const ReviewQueuePage = () => {
   const { t } = useTranslation();
+  const { multiUser, user } = useAuth();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
 
@@ -124,6 +126,13 @@ export const ReviewQueuePage = () => {
 
   const totalRows = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const emptyHint = multiUser && user
+    ? user.role === 'reviewer'
+      ? t('reviewQueue.emptyReviewerHint')
+      : user.role === 'admin'
+        ? t('reviewQueue.emptyAdminHint')
+        : t('reviewQueue.emptyTranslatorHint')
+    : t('reviewQueue.emptyTranslatorHint');
 
   // ── Approve / Reject mutations ────────────────────────────────────────────
   /**
@@ -217,6 +226,7 @@ export const ReviewQueuePage = () => {
           <div className={s.emptyText}>
             {statuses.length === 0 ? t('reviewQueue.noStatuses') : t('reviewQueue.empty')}
           </div>
+          {statuses.length > 0 && <p className={s.emptyHint}>{emptyHint}</p>}
           <div className={s.emptyActions}>
             <button className={s.emptyBtn} onClick={resetFilters}>
               {statuses.length === 0 ? t('reviewQueue.enableStatusesAction') : t('reviewQueue.resetFiltersAction')}
@@ -224,6 +234,11 @@ export const ReviewQueuePage = () => {
             <Link className={s.emptyLinkBtn} to={currentGameId ? `/games/${currentGameId}` : '/games'}>
               {currentGameId ? t('reviewQueue.openCurrentGameAction') : t('reviewQueue.openGamesAction')}
             </Link>
+            {multiUser && user?.role === 'admin' && statuses.length > 0 && (
+              <Link className={s.emptyLinkBtn} to="/settings?tab=activity">
+                {t('reviewQueue.openActivityAction')}
+              </Link>
+            )}
           </div>
         </div>
       )}

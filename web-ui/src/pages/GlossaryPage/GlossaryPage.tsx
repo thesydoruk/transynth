@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../../api';
+import { useAuth } from '../../components/AuthContext';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
   const { t } = useTranslation();
+  const { multiUser, user } = useAuth();
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [tgtLang, setTgtLang] = useState(getTgtLang());
   const [q, setQ] = useState('');
   const [newTerm, setNewTerm] = useState('');
   const [newTranslation, setNewTranslation] = useState('');
+  const newTermRef = useRef<HTMLInputElement | null>(null);
 
   /* ── Enforce panel state ─────────────────────────────────────────────── */
   const [enforceModId, setEnforceModId] = useState<number | ''>('');
@@ -51,6 +54,14 @@ export const GlossaryPage = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['glossary'] }),
   });
 
+  const emptyHint = multiUser && user
+    ? user.role === 'reviewer'
+      ? t('glossary.emptyReviewerHint')
+      : user.role === 'admin'
+        ? t('glossary.emptyAdminHint')
+        : t('glossary.emptyTranslatorHint')
+    : t('glossary.emptyTranslatorHint');
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t('glossary.title')}</h1>
@@ -85,6 +96,7 @@ export const GlossaryPage = () => {
       {/* Add term pair */}
       <div className={s.toolbarAdd}>
         <input
+          ref={newTermRef}
           placeholder={t('glossary.sourceTermPlaceholder')}
           value={newTerm}
           onChange={(e) => setNewTerm(e.target.value)}
@@ -143,11 +155,20 @@ export const GlossaryPage = () => {
       {isLoading ? (
         <div className={s.center}>{t('common.loading')}</div>
       ) : !data?.length ? (
-        <div className={s.center}>
-          <p>{t('glossary.noTerms')}</p>
+        <div className={s.emptyState}>
+          <p className={s.emptyLead}>{t('glossary.noTerms')}</p>
           <p className={s.emptyHint}>
-            {t('glossary.emptyHint')}
+            {emptyHint}
           </p>
+          <div className={s.emptyActions}>
+            <button
+              type="button"
+              className={s.btnAdd}
+              onClick={() => newTermRef.current?.focus()}
+            >
+              {t('glossary.focusAddAction')}
+            </button>
+          </div>
         </div>
       ) : (
         <table className={s.table}>

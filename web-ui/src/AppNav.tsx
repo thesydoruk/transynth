@@ -63,6 +63,23 @@ export const AppNav = () => {
   });
 
   const currentGame = games?.find((game) => game.id === currentGameId) ?? null;
+  const roleShortcut = multiUser && user
+    ? user.role === 'reviewer'
+      ? {
+        to: '/review-queue',
+        label: t('nav.focus'),
+        value: t('nav.reviewQueue'),
+        title: t('nav.reviewerWorkspaceLink'),
+      }
+      : user.role === 'admin'
+        ? {
+          to: '/settings?tab=users',
+          label: t('nav.admin'),
+          value: t('nav.users'),
+          title: t('nav.adminWorkspaceLink'),
+        }
+        : null
+    : null;
 
   useEffect(() => {
     if (routeGameId) setCurrentGame(routeGameId);
@@ -104,6 +121,12 @@ export const AppNav = () => {
         })}
 
       <div className={nav.contextStrip}>
+        {roleShortcut && (
+          <Link to={roleShortcut.to} className={nav.contextBadge} title={roleShortcut.title}>
+            <span className={nav.contextLabel}>{roleShortcut.label}</span>
+            <span className={nav.contextValue}>{roleShortcut.value}</span>
+          </Link>
+        )}
         <Link
           to={currentGame ? `/games/${currentGame.id}` : '/games'}
           className={nav.contextBadge}
