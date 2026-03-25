@@ -7,6 +7,7 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { PageHeader } from '../../components/PageHeader';
 import {
   listNexusDownloadJobs,
   subscribeNexusDownloadJobs,
@@ -427,7 +428,7 @@ export const ImportsPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>{t('imports.title')}</h1>
+      <PageHeader title={t('imports.title')} />
 
       {/* Unified upload bar */}
       <div className={s.uploadBar}>

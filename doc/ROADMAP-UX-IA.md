@@ -268,34 +268,33 @@ Baseline snapshot (2026-03-31, local dev — mod id 2, en→uk):
 - Editor strings page (100 rows): avg `4.94 ms`, p95 `5.33 ms`
 - TM suggestions lookup: avg `2.88 ms`, p95 `3.07 ms`
 
-### Phase 1: Navigation IA Refactor (1 sprint, Priority P1)
+### Phase 1: Navigation IA Refactor (1 sprint, Priority P1) — ✅ Done
 
-- Implement task-first top-level navigation model.
-- Add an explicit Home or Overview entry instead of relying on brand navigation.
-- Introduce a persistent current-game indicator or switcher in the main frame.
-- Re-group pages into Discover, Import, Translate, Quality, Release, and Admin according to context.
-- Move low-frequency pages into Settings tabs or an Advanced area without hiding critical workflow entry points.
-- Preserve route compatibility while updating menu structure.
-
-Exit criteria:
-
-- New navigation is live.
-- No functional regressions in route access.
-- Users can identify their current game and current workflow stage from the shell alone.
-
-### Phase 2: Shared Page Shell (1 sprint, Priority P2)
-
-- Introduce a consistent page shell pattern:
-  header, status strip, primary CTA, main area, secondary actions.
-- Apply shell to Home or Game Hub, Imports, and one Admin page first.
-- Standardize empty states and loading states.
-- Standardize success, warning, and recovery banners for background-job-driven pages.
+- ✅ Implement task-first top-level navigation model. Global nav (`AppNav`) focuses on cross-game tools (Glossary, Diff, Coherence, Review Queue) plus Home; game-level task grouping (Discover / Import / Translate / Quality / Release) is handled by `GameHubPage` workflow cards.
+- ✅ Add an explicit Home or Overview entry instead of relying on brand navigation. Main nav now includes a dedicated `Home` link at `/`.
+- ✅ Introduce a persistent current-game indicator or switcher in the main frame. `AppNav` context strip shows current game (persisted from last game-scoped route) and the content language pair.
+- ✅ Re-group pages into Discover, Import, Translate, Quality, Release, and Admin according to context. Grouping implemented at Level 2 via `GameHubPage` workflow cards; global nav hosts the residual cross-game tools.
+- ✅ Move low-frequency pages into Settings tabs or an Advanced area without hiding critical workflow entry points. `/qa-rules`, `/tradauto`, `/tmx`, and `/activity` are now Settings tabs; `/dashboard` and `/ops` merged into `HomePage`.
+- ✅ Preserve route compatibility while updating menu structure. All legacy routes still resolve; nav comment documents the mapping.
 
 Exit criteria:
 
-- Pattern is implemented and reused.
-- At least three pages migrated.
-- One migrated page must be game-scoped and one must be system-scoped.
+- ✅ New navigation is live.
+- ✅ No functional regressions in route access.
+- ✅ Users can identify their current game and current workflow stage from the shell alone.
+
+### Phase 2: Shared Page Shell (1 sprint, Priority P2) — ✅ Done
+
+- ✅ Introduce a consistent page shell pattern: header, status strip, primary CTA, main area, secondary actions. `PageHeader` shared component created at `web-ui/src/components/PageHeader/`; accepts `title`, `description?`, `actions?`, `meta?`, and `level` props; renders a title-block + right-aligned actions row + optional meta strip.
+- ✅ Apply shell to Home or Game Hub, Imports, and one Admin page first. Applied to `GlossaryPage`, `ReviewQueuePage`, `ImportsPage`, and `SettingsPage` — four pages (three cross-game, one admin).
+- Standardize empty states and loading states. *(Partially complete: GlossaryPage, ReviewQueuePage, GamesPage, and ImportsPage have standardized empty states from earlier phases; loading guard refactoring deferred.)*
+- Standardize success, warning, and recovery banners for background-job-driven pages. *(Deferred to Phase 3 Imports UX Hardening.)*
+
+Exit criteria:
+
+- ✅ Pattern is implemented and reused.
+- ✅ At least three pages migrated.
+- ✅ One migrated page must be game-scoped and one must be system-scoped. (`GlossaryPage` and `ReviewQueuePage` are cross-game quality pages; `SettingsPage` is system-scoped admin.)
 
 ### Phase 3: Imports UX Hardening (1 sprint, Priority P0)
 

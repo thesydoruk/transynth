@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../../api';
 import { useAuth } from '../../components/AuthContext';
+import { PageHeader } from '../../components/PageHeader';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import s from './GlossaryPage.module.scss';
 
@@ -64,10 +65,10 @@ export const GlossaryPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>{t('glossary.title')}</h1>
-      <p className={s.description}>
-        {t('glossary.description')}
-      </p>
+      <PageHeader
+        title={t('glossary.title')}
+        description={t('glossary.description')}
+      />
 
       {/* Controls */}
       <div className={s.toolbar}>

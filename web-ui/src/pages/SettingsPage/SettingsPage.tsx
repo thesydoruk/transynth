@@ -21,6 +21,7 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../components/AuthContext';
+import { PageHeader } from '../../components/PageHeader';
 import { QARulesPage } from '../QARulesPage';
 import { TradAutoPage } from '../TradAutoPage';
 import { TmxPage } from '../TmxPage';
@@ -102,8 +103,10 @@ export const SettingsPage = () => {
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>{t('settings.title')}</h1>
-      <p className={s.subtitle}>{t('settings.subtitle')}</p>
+      <PageHeader
+        title={t('settings.title')}
+        description={t('settings.subtitle')}
+      />
 
       {/* ── Tab bar ──────────────────────────────────────────────────── */}
       <div className={s.tabGroups}>

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
 import { useAuth } from '../../components/AuthContext';
+import { PageHeader } from '../../components/PageHeader';
 import { getCurrentGame } from '../../langDefaults';
 import { getTgtLang } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -153,9 +154,11 @@ export const ReviewQueuePage = () => {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className={s.page}>
-      {/* Header */}
-      <h2 className={s.title}>{t('reviewQueue.title')}</h2>
-      <p className={s.description}>{t('reviewQueue.description')}</p>
+      <PageHeader
+        title={t('reviewQueue.title')}
+        description={t('reviewQueue.description')}
+        level={2}
+      />
 
       {/* Toolbar */}
       <div className={s.toolbar}>

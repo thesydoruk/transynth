@@ -101,6 +101,19 @@ The repository includes a lightweight benchmark script to capture UX-facing API 
 
 Use this script while the web server is running against a representative dataset, then attach the generated JSON report to roadmap updates.
 
+### Shared UI Components
+
+Reusable React components live in `web-ui/src/components/`. Each component has its own subfolder containing the implementation, an SCSS Module, and an `index.ts` barrel export.
+
+Key shared components:
+
+| Component | Path | Purpose |
+|---|---|---|
+| `PageHeader` | `components/PageHeader/` | Consistent page-level header: title, description, right-aligned actions slot, and optional meta strip. Applied to GlossaryPage, ReviewQueuePage, ImportsPage, and SettingsPage. |
+| `StatusBadge` | `components/StatusBadge/` | Semantic status pill used in string grids, coherence cards, and review queue rows. |
+| `OverflowMenu` | `components/OverflowMenu/` | Secondary actions collapsed into a `⋯` menu for dense row UIs. |
+| `ConfirmModal` | `components/ConfirmModal/` | Reusable danger confirmation overlay (replaces `window.confirm`). |
+
 ---
 
 ## Containerization
