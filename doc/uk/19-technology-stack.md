@@ -108,12 +108,12 @@ Localization Pipeline, і пояснює роль кожної частини в
 
 Ключові спільні компоненти:
 
-| Компонент | Шлях | Призначення |
-|---|---|---|
-| `PageHeader` | `components/PageHeader/` | Єдиний заголовок сторінки: назва, опис, слот для дій праворуч і опціональний рядок meta. Застосовано до GlossaryPage, ReviewQueuePage, ImportsPage та SettingsPage. |
-| `StatusBadge` | `components/StatusBadge/` | Семантичний бейдж статусу у гридах рядків, картках coherence та рядках черги рецензування. |
-| `OverflowMenu` | `components/OverflowMenu/` | Вторинні дії, згорнуті в меню `⋯` для компактних рядкових UI. |
-| `ConfirmModal` | `components/ConfirmModal/` | Перевикористовуваний оверлей підтвердження небезпечних дій (замінює `window.confirm`). |
+| Компонент      | Шлях                       | Призначення                                                                                                                                                         |
+| -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`   | `components/PageHeader/`   | Єдиний заголовок сторінки: назва, опис, слот для дій праворуч і опціональний рядок meta. Застосовано до GlossaryPage, ReviewQueuePage, ImportsPage та SettingsPage. |
+| `StatusBadge`  | `components/StatusBadge/`  | Семантичний бейдж статусу у гридах рядків, картках coherence та рядках черги рецензування.                                                                          |
+| `OverflowMenu` | `components/OverflowMenu/` | Вторинні дії, згорнуті в меню `⋯` для компактних рядкових UI.                                                                                                       |
+| `ConfirmModal` | `components/ConfirmModal/` | Перевикористовуваний оверлей підтвердження небезпечних дій (замінює `window.confirm`).                                                                              |
 
 ---
 

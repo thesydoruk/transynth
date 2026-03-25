@@ -107,12 +107,12 @@ Reusable React components live in `web-ui/src/components/`. Each component has i
 
 Key shared components:
 
-| Component | Path | Purpose |
-|---|---|---|
-| `PageHeader` | `components/PageHeader/` | Consistent page-level header: title, description, right-aligned actions slot, and optional meta strip. Applied to GlossaryPage, ReviewQueuePage, ImportsPage, and SettingsPage. |
-| `StatusBadge` | `components/StatusBadge/` | Semantic status pill used in string grids, coherence cards, and review queue rows. |
-| `OverflowMenu` | `components/OverflowMenu/` | Secondary actions collapsed into a `⋯` menu for dense row UIs. |
-| `ConfirmModal` | `components/ConfirmModal/` | Reusable danger confirmation overlay (replaces `window.confirm`). |
+| Component      | Path                       | Purpose                                                                                                                                                                         |
+| -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`   | `components/PageHeader/`   | Consistent page-level header: title, description, right-aligned actions slot, and optional meta strip. Applied to GlossaryPage, ReviewQueuePage, ImportsPage, and SettingsPage. |
+| `StatusBadge`  | `components/StatusBadge/`  | Semantic status pill used in string grids, coherence cards, and review queue rows.                                                                                              |
+| `OverflowMenu` | `components/OverflowMenu/` | Secondary actions collapsed into a `⋯` menu for dense row UIs.                                                                                                                  |
+| `ConfirmModal` | `components/ConfirmModal/` | Reusable danger confirmation overlay (replaces `window.confirm`).                                                                                                               |
 
 ---
 
