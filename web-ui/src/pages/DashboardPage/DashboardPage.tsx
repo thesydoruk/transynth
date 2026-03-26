@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import type { DashboardModRow } from '../../api';
+import { LoadingState } from '../../components/LoadingState';
 import { Bar } from './Bar';
 import { DashboardCard } from './DashboardCard';
 import { GrupSubTable } from './GrupSubTable';
@@ -40,7 +41,7 @@ export const DashboardPage = () => {
     },
   });
 
-  if (isLoading) return <div className={s.center}>{t('dashboard.loadingDashboard')}</div>;
+  if (isLoading) return <LoadingState message={t('dashboard.loadingDashboard')} />;
   if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
   if (!data) return null;
 

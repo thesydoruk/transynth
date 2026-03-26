@@ -27,6 +27,22 @@
   }
 }
 
+.toast_success {
+  border-left-color: var(--success, #4caf50);
+}
+
+.toast_warning {
+  border-left-color: var(--warning, #e8a735);
+}
+
+.toast_error {
+  border-left-color: var(--danger, #e55);
+}
+
+.toast_info {
+  border-left-color: var(--info, #2196f3);
+}
+
 .text {
   flex: 1;
   font-size: 13px;

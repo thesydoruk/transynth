@@ -287,8 +287,8 @@ Exit criteria:
 
 - ✅ Introduce a consistent page shell pattern: header, status strip, primary CTA, main area, secondary actions. `PageHeader` shared component created at `web-ui/src/components/PageHeader/`; accepts `title`, `description?`, `actions?`, `meta?`, and `level` props; renders a title-block + right-aligned actions row + optional meta strip.
 - ✅ Apply shell to Home or Game Hub, Imports, and one Admin page first. Applied to `GlossaryPage`, `ReviewQueuePage`, `ImportsPage`, and `SettingsPage` — four pages (three cross-game, one admin).
-- Standardize empty states and loading states. _(Partially complete: GlossaryPage, ReviewQueuePage, GamesPage, and ImportsPage have standardized empty states from earlier phases; loading guard refactoring deferred.)_
-- Standardize success, warning, and recovery banners for background-job-driven pages. _(Deferred to Phase 3 Imports UX Hardening.)_
+- ✅ Standardize empty states and loading states. GlossaryPage, ReviewQueuePage, GamesPage, and ImportsPage have standardized empty states. Loading states standardized via new `LoadingState` component (`web-ui/src/components/LoadingState/`) used consistently across DashboardPage, CoherencePage, and other pages showing loading UI.
+- ✅ Standardize success, warning, and recovery banners for background-job-driven pages. `Toast` component enhanced with `type` prop (success/warning/error/info) and applied with appropriate types to CoherencePage and other background-job pages; banner border-left color changes per type for visual feedback.
 
 Exit criteria:
 

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { LoadingState } from '../../components/LoadingState';
 import { Toast } from '../../components/Toast';
 import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
@@ -131,7 +132,7 @@ export const CoherencePage = () => {
       </div>
 
       {/* Content */}
-      {isLoading && <div className={s.empty}>{t('coherence.loading')}</div>}
+      {isLoading && <LoadingState message={t('coherence.loading')} />}
 
       {!isLoading && totalGroups === 0 && (
         <div className={s.emptyState}>
@@ -192,7 +193,7 @@ export const CoherencePage = () => {
       )}
 
       {/* Success toast after resolve-all */}
-      <Toast message={resolveAllToast} onDismiss={() => setResolveAllToast(null)} />
+      <Toast message={resolveAllToast} type="success" onDismiss={() => setResolveAllToast(null)} />
     </div>
   );
 };
