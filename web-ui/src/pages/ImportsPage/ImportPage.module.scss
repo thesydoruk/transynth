@@ -43,6 +43,35 @@
   margin: -16px 0 20px 4px;
 }
 
+/* ── Phase transition chip ──────────────────────────────────────────────── */
+
+/** Colored step label shown during upload / extraction of a pending mod file. */
+.phaseChip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/** Upload step — neutral blue. */
+.phaseChipUploading {
+  composes: phaseChip;
+  background: color-mix(in srgb, var(--info) 18%, transparent);
+  color: var(--info);
+  border: 1px solid color-mix(in srgb, var(--info) 40%, transparent);
+}
+
+/** Extraction step — purple accent. */
+.phaseChipExtracting {
+  composes: phaseChip;
+  background: color-mix(in srgb, #9c27b0 18%, transparent);
+  color: #ce93d8;
+  border: 1px solid color-mix(in srgb, #9c27b0 40%, transparent);
+}
+
 .empty {
   color: var(--text-dim);
   margin-top: 32px;

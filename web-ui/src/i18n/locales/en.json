@@ -358,6 +358,7 @@
   },
   "imports": {
     "title": "Imports",
+    "pageDescription": "Upload EET archives, CSV glossary files, or mod plugins (.esp\/.esm\/.ba2\/.zip). Each file is queued for language configuration before import starts.",
     "emptyTitle": "No import activity yet",
     "tabEet": "EET",
     "tabCsv": "CSV",
@@ -368,11 +369,14 @@
     "emptyDiscoverAction": "Browse NexusMods",
     "gameLabel": "Game",
     "startTooltip": "Start import",
+    "retryLabel": "Retry",
     "reimportTooltip": "Re-import",
     "confirmDeleteMod": "Delete mod import '{{name}}'? This will also remove the imported mod data and extracted files if they exist.",
     "deleteModTitle": "Delete mod import",
     "deleteModMessage": "Delete '{{name}}'?",
-    "deleteModImpact": "This action removes the import job, linked imported mod data, and extracted mod files if present."
+    "deleteModImpact": "This action removes the import job, linked imported mod data, and extracted mod files if present.",
+    "deleteJobTitle": "Delete import",
+    "deleteJobMessage": "Delete '{{name}}'? The import job record will be removed."
   },
   "eetImport": {
     "title": "EET Imports",

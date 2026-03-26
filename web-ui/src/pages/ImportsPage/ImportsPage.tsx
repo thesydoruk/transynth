@@ -40,6 +40,7 @@ import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { statusColorBase, type LiveProgress } from './importsShared';
 import s from './ImportPage.module.scss';
 
@@ -169,6 +170,8 @@ export const ImportsPage = () => {
   const [exportBusy, setExportBusy] = useState<string | null>(null);
   const [deleteModalJob, setDeleteModalJob] = useState<ModImportJob | null>(null);
   const [deletingModJobId, setDeletingModJobId] = useState<number | null>(null);
+  /** EET or CSV job queued for confirmation before deletion. */
+  const [deleteSimpleJob, setDeleteSimpleJob] = useState<{ kind: 'eet' | 'csv'; name: string; id: number } | null>(null);
 
   /** Invalidate all three import lists. */
   const refreshAll = useCallback(() => {
@@ -428,7 +431,10 @@ export const ImportsPage = () => {
 
   return (
     <div className={s.page}>
-      <PageHeader title={t('imports.title')} />
+      <PageHeader
+        title={t('imports.title')}
+        description={t('imports.pageDescription')}
+      />
 
       {/* Unified upload bar */}
       <div className={s.uploadBar}>
@@ -469,7 +475,9 @@ export const ImportsPage = () => {
                 <div>
                   <span className={s.fileName}>{u.fileName}</span>
                   <span className={s.meta}>
-                    {u.phase === 'uploading' ? t('common.uploading') : t('importStatus.extracting')}
+                    <span className={u.phase === 'uploading' ? s.phaseChipUploading : s.phaseChipExtracting}>
+                      {u.phase === 'uploading' ? t('common.uploading') : t('importStatus.extracting')}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -620,10 +628,7 @@ export const ImportsPage = () => {
                     setDeleteModalJob(u.job as ModImportJob);
                     return;
                   }
-                  const p = u.kind === 'eet'
-                    ? api.eet.remove(u.job.id)
-                    : api.csv.remove(u.job.id);
-                  p.then(refreshAll);
+                  setDeleteSimpleJob({ kind: u.kind, name: u.job.file_name, id: u.job.id });
                 }}
               />
             );
@@ -707,6 +712,21 @@ export const ImportsPage = () => {
           deleting={deletingModJobId === deleteModalJob.id}
           onClose={() => setDeleteModalJob(null)}
           onConfirm={() => { void confirmDeleteMod(); }}
+        />
+      )}
+
+      {deleteSimpleJob && (
+        <ConfirmModal
+          title={t('imports.deleteJobTitle')}
+          message={t('imports.deleteJobMessage', { name: deleteSimpleJob.name })}
+          confirmLabel={t('common.delete')}
+          onClose={() => setDeleteSimpleJob(null)}
+          onConfirm={() => {
+            const { kind, id } = deleteSimpleJob;
+            const p = kind === 'eet' ? api.eet.remove(id) : api.csv.remove(id);
+            p.then(refreshAll);
+            setDeleteSimpleJob(null);
+          }}
         />
       )}
     </div>

@@ -112,6 +112,42 @@
   color: var(--danger);
 }
 
+/* ── Inline error message ────────────────────────────────────────────────── */
+
+/**
+ * Error description shown below the file name when a job has failed.
+ * Truncates with ellipsis to avoid breaking the row layout.
+ */
+.errorText {
+  display: block;
+  margin-top: 3px;
+  color: var(--danger);
+  font-size: 11px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Retry action button ─────────────────────────────────────────────────── */
+
+/**
+ * Danger-tinted start button shown specifically for failed jobs.
+ * Communicates "this will retry" intent without generic ▶ ambiguity.
+ */
+.actionBtnRetry {
+  composes: actionBtn;
+  color: var(--danger);
+  border-color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+}
+
 /* ── Badge variant ──────────────────────────────────────────────────────── */
 
 /**

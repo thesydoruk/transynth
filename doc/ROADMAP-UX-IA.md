@@ -296,20 +296,20 @@ Exit criteria:
 - ✅ At least three pages migrated.
 - ✅ One migrated page must be game-scoped and one must be system-scoped. (`GlossaryPage` and `ReviewQueuePage` are cross-game quality pages; `SettingsPage` is system-scoped admin.)
 
-### Phase 3: Imports UX Hardening (1 sprint, Priority P0)
+### Phase 3: Imports UX Hardening (1 sprint, Priority P0) — ✅ Done
 
-- Keep upload and extraction progress visible and understandable.
-- Add clear state transitions from upload to extraction to ready/imported.
-- Improve failure messages and recovery guidance.
-- Keep risky actions guarded by clear confirmation text.
-- Connect Nexus download flow and import flow as one continuous intake experience.
+- ✅ Keep upload and extraction progress visible and understandable. Pending mod uploads show a colored phase chip (`UPLOADING` / `EXTRACTING`) styled with distinct blue / purple tokens; progress bar color also changes per phase.
+- ✅ Add clear state transitions from upload to extraction to ready/imported. Upload → extracting phase chips are rendered as distinct colored tokens in the pending row until the backend job takes over; backend jobs then show pending → in_progress → completed / failed badge.
+- ✅ Improve failure messages and recovery guidance. `last_error` is now shown inline below the file name in `UnifiedJobRow` when `status === 'failed'` (no longer hidden in a tooltip). Failed jobs also expose a labelled "Retry" button styled in danger red instead of the generic `▶` icon.
+- ✅ Keep risky actions guarded by clear confirmation text. EET and CSV import delete now routes through `ConfirmModal` (previously executed immediately without confirmation); mod delete already used `DeleteModConfirmModal`.
+- ✅ Connect Nexus download flow and import flow as one continuous intake experience. Empty state on Imports page links directly to the NexusMods browser. `PageHeader` now shows the accepted file types description below the page title.
 - ✅ Introduce a shared job center pattern for imports, downloads, and long-running operations. Home and Imports pages merge backend import jobs, live Nexus download queue, and app-level LLM/export operations in unified job lists. LLM batch jobs are persisted to the `llm_jobs` DB table and survive page reloads; completed/failed history is loaded from `GET /api/ops` on every poll cycle.
 
 Exit criteria:
 
-- Import flow is comprehensible without internal knowledge.
-- Error states provide actionable recovery steps.
-- Users can tell whether a file is uploaded, extracting, importing, failed, or ready without opening logs.
+- ✅ Import flow is comprehensible without internal knowledge.
+- ✅ Error states provide actionable recovery steps.
+- ✅ Users can tell whether a file is uploaded, extracting, importing, failed, or ready without opening logs.
 
 ### Phase 4: Translation Editor Optimization (1-2 sprints, Priority P1) — ✅ Done
 

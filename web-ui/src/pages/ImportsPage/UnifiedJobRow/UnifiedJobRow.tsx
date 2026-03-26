@@ -17,9 +17,13 @@ export const UnifiedJobRow = ({ kind, job, live, isRunning, exportActions, onSta
   const isMod = kind === 'mod';
   const modJob = isMod ? (job as ModImportJob) : null;
   const hasExtraMenuItems = isMod && (exportActions?.length ?? 0) > 0;
-  const startTooltip = isMod && job.status === 'completed'
-    ? t('imports.reimportTooltip')
-    : t('imports.startTooltip');
+  const isFailed = job.status === 'failed';
+  const lastError = isFailed && 'last_error' in job ? (job as { last_error: string | null }).last_error : null;
+  const startTooltip = isFailed
+    ? t('imports.retryLabel')
+    : isMod && job.status === 'completed'
+      ? t('imports.reimportTooltip')
+      : t('imports.startTooltip');
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -47,6 +51,9 @@ export const UnifiedJobRow = ({ kind, job, live, isRunning, exportActions, onSta
               ? t('common.strings', { count: total.toLocaleString() })
               : `${job.src_lang} → ${job.tgt_lang} · ${total.toLocaleString()} records`}
           </span>
+          {lastError && (
+            <span className={s.errorText} title={lastError}>{lastError}</span>
+          )}
         </div>
       </div>
       <div className={parentS.rowRight}>
@@ -68,7 +75,16 @@ export const UnifiedJobRow = ({ kind, job, live, isRunning, exportActions, onSta
         )}
 
         <div className={parentS.actions}>
-          {canStart && <button onClick={onStart} className={s.actionBtn} title={startTooltip} aria-label={startTooltip}>▶</button>}
+          {canStart && (
+            <button
+              onClick={onStart}
+              className={isFailed ? s.actionBtnRetry : s.actionBtn}
+              title={startTooltip}
+              aria-label={startTooltip}
+            >
+              {isFailed ? t('imports.retryLabel') : '▶'}
+            </button>
+          )}
           {isRunning && <button onClick={onPause} className={s.actionBtn} title="⏸">⏸</button>}
           {isRunning && <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>⏹</button>}
           {!isRunning && hasExtraMenuItems && (
