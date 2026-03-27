@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type CsvImportJob, type CsvPreviewRow } from '../../../api';
+import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES } from '../importsShared';
 import s from '../ImportPage.module.scss';
 
@@ -38,12 +39,11 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   return (
-    <div className={s.overlay} onClick={onClose}>
-      <div className={s.modal} onClick={(event) => event.stopPropagation()}>
-        <div className={s.modalHeader}>
-          <h2 className={s.modalHeaderTitle}>{job.file_name}</h2>
-          <button onClick={onClose} className={s.closeBtn}>✕</button>
-        </div>
+    <ModalShell
+      onClose={onClose}
+      title={job.file_name}
+      closeAriaLabel={t('common.close')}
+    >
         <div className={s.langBar}>
           <label className={s.langLabel}>{t('csvImport.sourceLang')}
             <select value={srcLang} onChange={(event) => setSrcLang(event.target.value)} className={s.select}>
@@ -109,7 +109,6 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
             {t('csvImport.startImport', { count: job.total_records.toLocaleString() })}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

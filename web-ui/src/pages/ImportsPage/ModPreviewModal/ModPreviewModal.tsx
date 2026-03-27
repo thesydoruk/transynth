@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ModImportJob, type ModPreviewRow } from '../../../api';
+import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES, type ModPreviewConfirmPayload } from '../importsShared';
 import parentS from '../ImportPage.module.scss';
 import s from './ModPreviewModal.module.scss';
@@ -49,21 +50,27 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
   const effectiveApplyToModId = applyEnabled ? (applyToModId ?? eligibleMods[0]?.id ?? null) : null;
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
+  const header = (
+    <div className={s.modalHeaderTop}>
+      <div>
+        <h2 className={parentS.modalHeaderTitle}>{job.file_name}</h2>
+        {data && (
+          <span className={s.modalHeaderMeta}>
+            {data.isLocalized ? t('modImport.localizedPlugin') : t('modImport.nonLocalizedPlugin')}
+            {data.locales.length > 0 && ` · ${t('modImport.locales', { locales: data.locales.join(', ') })}`}
+          </span>
+        )}
+      </div>
+      <button onClick={onClose} className={parentS.closeBtn} aria-label={t('common.close')}>✕</button>
+    </div>
+  );
+
   return (
-    <div className={parentS.overlay} onClick={onClose}>
-      <div className={parentS.modal} onClick={(event) => event.stopPropagation()}>
-        <div className={s.modalHeaderTop}>
-          <div>
-            <h2 className={parentS.modalHeaderTitle}>{job.file_name}</h2>
-            {data && (
-              <span className={s.modalHeaderMeta}>
-                {data.isLocalized ? t('modImport.localizedPlugin') : t('modImport.nonLocalizedPlugin')}
-                {data.locales.length > 0 && ` · ${t('modImport.locales', { locales: data.locales.join(', ') })}`}
-              </span>
-            )}
-          </div>
-          <button onClick={onClose} className={parentS.closeBtn}>✕</button>
-        </div>
+    <ModalShell
+      onClose={onClose}
+      customHeader={header}
+      hideCloseButton
+    >
         <div className={parentS.langBar}>
           <label className={parentS.langLabel}>{t('modImport.languageOfText')}
             <select value={lang} onChange={(event) => setLang(event.target.value)} className={parentS.select}>
@@ -150,7 +157,6 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
             {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -24,6 +24,7 @@
 
 - For small, localized, low-risk changes, make the change directly and report what was done.
 - Ask for confirmation only for destructive actions, broad refactors, dependency changes, schema changes, or ambiguous requirements.
+- Never run `git push` automatically. Push to remote only when the user explicitly asks for it in the current conversation.
 
 ## Efficiency rules
 

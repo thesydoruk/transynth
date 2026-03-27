@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { PreviousVersionRow } from '../../api';
+import { ModalShell } from '../ModalShell';
 import s from './ReimportModal.module.scss';
 
 interface ReimportModalProps {
@@ -41,18 +42,23 @@ export const ReimportModal = ({ newModId, prevVersions, onClose }: ReimportModal
     navigate(`/diff?newModId=${newModId}&oldModId=${selectedId}`);
   };
 
+  const header = (
+    <div className={s.header}>
+      <span className={s.icon}>🔄</span>
+      <div className={s.headerText}>
+        <p className={s.title}>{t('reimport.title')}</p>
+        <p className={s.subtitle}>{t('reimport.subtitle', { count: prevVersions.length })}</p>
+      </div>
+      <button className={s.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
+    </div>
+  );
+
   return (
-    <div className={s.overlay} onClick={onClose}>
-      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className={s.header}>
-          <span className={s.icon}>🔄</span>
-          <div className={s.headerText}>
-            <p className={s.title}>{t('reimport.title')}</p>
-            <p className={s.subtitle}>{t('reimport.subtitle', { count: prevVersions.length })}</p>
-          </div>
-          <button className={s.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
-        </div>
+    <ModalShell
+      onClose={onClose}
+      customHeader={header}
+      hideCloseButton
+    >
 
         {/* Previous version list */}
         <div className={s.versionList}>
@@ -97,7 +103,6 @@ export const ReimportModal = ({ newModId, prevVersions, onClose }: ReimportModal
             {t('reimport.openDiff')}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

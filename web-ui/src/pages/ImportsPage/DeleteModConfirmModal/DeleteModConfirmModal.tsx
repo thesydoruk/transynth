@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModImportDeleteDataMode } from '../../../api';
+import { ModalShell } from '../../../components/ModalShell';
 import parentS from '../ImportPage.module.scss';
 import s from './DeleteModConfirmModal.module.scss';
 
@@ -19,22 +20,14 @@ export const DeleteModConfirmModal = ({ fileName, deleting, onClose, onConfirm }
   const { t } = useTranslation();
   const [deleteData, setDeleteData] = useState<ModImportDeleteDataMode>('job');
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleting) onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [deleting, onClose]);
-
   return (
-    <div className={parentS.overlay} onClick={deleting ? undefined : onClose}>
-      <div className={s.modalCompact} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="delete-mod-title">
-        <div className={parentS.modalHeader}>
-          <h2 id="delete-mod-title" className={parentS.modalHeaderTitle}>{t('imports.deleteModTitle')}</h2>
-          <button onClick={onClose} className={parentS.closeBtn} disabled={deleting} aria-label={t('common.close')}>✕</button>
-        </div>
-
+    <ModalShell
+      onClose={onClose}
+      closeDisabled={deleting}
+      title={<span id="delete-mod-title">{t('imports.deleteModTitle')}</span>}
+      ariaLabelledBy="delete-mod-title"
+      closeAriaLabel={t('common.close')}
+    >
         <div className={s.body}>
           <p className={s.primaryText}>{t('imports.deleteModMessage', { name: fileName })}</p>
           <div className={s.options} role="radiogroup" aria-label={t('imports.deleteModModeTitle')}>
@@ -91,7 +84,6 @@ export const DeleteModConfirmModal = ({ fileName, deleting, onClose, onConfirm }
             {deleting ? t('common.loading') : t('common.delete')}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

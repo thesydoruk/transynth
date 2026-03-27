@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ModalShell } from '../ModalShell';
 import s from './ConfirmModal.module.scss';
 
 export interface ConfirmModalProps {
@@ -46,47 +46,26 @@ export const ConfirmModal = ({
 }: ConfirmModalProps) => {
   const { t } = useTranslation();
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !pending) onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [pending, onClose]);
-
   return (
-    <div className={s.overlay} onClick={pending ? undefined : onClose} role="presentation">
-      <div
-        className={s.dialog}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        aria-describedby="confirm-modal-body"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={s.header}>
-          <h2 id="confirm-modal-title" className={s.title}>{title}</h2>
-          <button
-            className={s.closeBtn}
-            onClick={onClose}
-            disabled={pending}
-            aria-label={t('common.close')}
-          >
-            ✕
-          </button>
-        </div>
+    <ModalShell
+      onClose={onClose}
+      closeDisabled={pending}
+      role="alertdialog"
+      ariaLabelledBy="confirm-modal-title"
+      ariaDescribedBy="confirm-modal-body"
+      title={<span id="confirm-modal-title">{title}</span>}
+      closeAriaLabel={t('common.close')}
+    >
+      <p id="confirm-modal-body" className={s.body}>{message}</p>
 
-        <p id="confirm-modal-body" className={s.body}>{message}</p>
-
-        <div className={s.footer}>
-          <button className={s.btnCancel} onClick={onClose} disabled={pending}>
-            {t('common.cancel')}
-          </button>
-          <button className={s.btnDanger} onClick={onConfirm} disabled={pending}>
-            {pending ? '…' : (confirmLabel ?? t('common.delete'))}
-          </button>
-        </div>
+      <div className={s.footer}>
+        <button className={s.btnCancel} onClick={onClose} disabled={pending}>
+          {t('common.cancel')}
+        </button>
+        <button className={s.btnDanger} onClick={onConfirm} disabled={pending}>
+          {pending ? '…' : (confirmLabel ?? t('common.delete'))}
+        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 };

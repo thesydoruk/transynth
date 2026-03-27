@@ -8,32 +8,6 @@
  * The preview iframe is sandboxed (allow-same-origin only, no scripts/forms).
  */
 
-/* ── Backdrop ──────────────────────────────────────────────────────────────── */
-
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop-75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-}
-
-/* ── Modal container ───────────────────────────────────────────────────────── */
-
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  width: min(1140px, 96vw);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-2xl);
-  overflow: hidden;
-}
-
 /* ── Header ────────────────────────────────────────────────────────────────── */
 
 .header {

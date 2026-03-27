@@ -28,6 +28,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ModalShell } from '../ModalShell';
 import s from './BookEditorModal.module.scss';
 
 // ── Iframe preview helpers ─────────────────────────────────────────────────
@@ -130,10 +131,9 @@ export const BookEditorModal = ({ source, translation, onSave, onClose }: BookEd
     if (textareaRef.current) textareaRef.current.focus();
   }, []);
 
-  /** Close on Escape, save on Ctrl+Enter. */
+  /** Save on Ctrl+Enter. */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         onSave(draft);
@@ -143,22 +143,28 @@ export const BookEditorModal = ({ source, translation, onSave, onClose }: BookEd
     return () => window.removeEventListener('keydown', handleKey);
   }, [draft, onSave, onClose]);
 
+  const header = (
+    <div className={s.header}>
+      <span className={s.headerIcon}>📖</span>
+      <div className={s.headerText}>
+        <p className={s.title}>{t('bookEditor.title')}</p>
+        <p className={s.subtitle}>{t('bookEditor.subtitle')}</p>
+      </div>
+      <button className={s.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
+    </div>
+  );
+
   return (
-    <div className={s.overlay} onClick={onClose}>
-      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
+    <ModalShell
+      onClose={onClose}
+      customHeader={header}
+      hideCloseButton
+    >
 
-        {/* ── Modal header ──────────────────────────────────────────────── */}
-        <div className={s.header}>
-          <span className={s.headerIcon}>📖</span>
-          <div className={s.headerText}>
-            <p className={s.title}>{t('bookEditor.title')}</p>
-            <p className={s.subtitle}>{t('bookEditor.subtitle')}</p>
-          </div>
-          <button className={s.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
-        </div>
+      {/* ── Modal header ──────────────────────────────────────────────── */}
 
-        {/* ── Split panels ──────────────────────────────────────────────── */}
-        <div className={s.panels}>
+      {/* ── Split panels ──────────────────────────────────────────────── */}
+      <div className={s.panels}>
 
           {/* Left — source (read-only) */}
           <div className={s.panel}>
@@ -218,26 +224,25 @@ export const BookEditorModal = ({ source, translation, onSave, onClose }: BookEd
               />
             )}
           </div>
-        </div>
-
-        {/* ── Helper info bar ───────────────────────────────────────────── */}
-        <div className={s.infoBar}>
-          <span className={s.infoText}>{t('bookEditor.markupHint')}</span>
-          <span className={s.charCount}>{t('bookEditor.charCount', { count: draft.length })}</span>
-        </div>
-
-        {/* ── Action buttons ────────────────────────────────────────────── */}
-        <div className={s.footer}>
-          <button className={s.btnSec} onClick={onClose}>{t('common.cancel')}</button>
-          <button
-            className={s.btnPri}
-            onClick={() => onSave(draft)}
-            title="Ctrl+Enter"
-          >
-            {t('common.save')}
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* ── Helper info bar ───────────────────────────────────────────── */}
+      <div className={s.infoBar}>
+        <span className={s.infoText}>{t('bookEditor.markupHint')}</span>
+        <span className={s.charCount}>{t('bookEditor.charCount', { count: draft.length })}</span>
+      </div>
+
+      {/* ── Action buttons ────────────────────────────────────────────── */}
+      <div className={s.footer}>
+        <button className={s.btnSec} onClick={onClose}>{t('common.cancel')}</button>
+        <button
+          className={s.btnPri}
+          onClick={() => onSave(draft)}
+          title="Ctrl+Enter"
+        >
+          {t('common.save')}
+        </button>
+      </div>
+    </ModalShell>
   );
 };

@@ -1,34 +1,5 @@
 /* ── ShortcutsOverlay — SCSS Module ─────────────────────────────────────────── */
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  background: var(--overlay-backdrop-55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  padding: 20px 28px;
-  min-width: 360px;
-  max-width: 480px;
-  box-shadow: var(--shadow-2xl);
-}
-
-.title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .table {
   width: 100%;
   border-collapse: collapse;
