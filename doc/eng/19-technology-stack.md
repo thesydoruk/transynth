@@ -91,16 +91,6 @@ At a high level, the system supports these flows:
 - `tsx` is used to run TypeScript files directly in development and CLI flows.
 - `concurrently` and `wait-on` are used in development orchestration scripts.
 
-### UX Baseline Instrumentation
-
-The repository includes a lightweight benchmark script to capture UX-facing API latency baselines for roadmap tracking.
-
-- Script: `scripts/uxBaseline.ts`
-- Command: `npm run ux:baseline -- --base-url http://localhost:3000 --samples 5 --warmup 1 --out logs/ux-baseline.json`
-- Measured endpoints: dashboard stats, mods list, import jobs list, editor strings page, TM suggestions lookup.
-
-Use this script while the web server is running against a representative dataset, then attach the generated JSON report to roadmap updates.
-
 ### Shared UI Components
 
 Reusable React components live in `web-ui/src/components/`. Each component has its own subfolder containing the implementation, an SCSS Module, and an `index.ts` barrel export.
