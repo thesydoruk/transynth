@@ -107,7 +107,13 @@
     "strings": "Strings",
     "progress": "Progress",
     "approved": "Approved",
-    "fuzzy": "Fuzzy"
+    "fuzzy": "Fuzzy",
+    "actions": "Actions",
+    "clearRows": "Delete rows",
+    "clearingRows": "Deleting…",
+    "clearRowsTitle": "Delete imported rows",
+    "clearRowsMessage": "Delete all imported rows for '{{name}}'? This will erase all translation progress for this mod and cannot be undone. The mod entry will be kept.",
+    "clearRowsSuccess": "Deleted {{count}} records."
   },
   "modEditor": {
     "source": "Source:",
@@ -375,6 +381,13 @@
     "deleteModTitle": "Delete mod import",
     "deleteModMessage": "Delete '{{name}}'?",
     "deleteModImpact": "This action removes the import job, linked imported mod data, and extracted mod files if present.",
+    "deleteModModeTitle": "Choose what to delete",
+    "deleteModModeJob": "Import job only",
+    "deleteModModeJobHint": "Keeps mod data and translation rows. Removes only the import tracker and uploaded files.",
+    "deleteModModeRows": "Imported rows only",
+    "deleteModModeRowsHint": "Deletes records, strings, and translations for this mod, but keeps the mod entry.",
+    "deleteModModeMod": "Mod and all rows",
+    "deleteModModeModHint": "Deletes the mod entry and all related records, strings, and translations.",
     "deleteJobTitle": "Delete import",
     "deleteJobMessage": "Delete '{{name}}'? The import job record will be removed."
   },

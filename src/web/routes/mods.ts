@@ -43,6 +43,19 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send({ ...(mod as object), stats });
   });
 
+  // DELETE /api/mods/:id/rows — remove all imported rows for a mod but keep the mod entry.
+  app.delete<{ Params: { id: string } }>('/api/mods/:id/rows', async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+    const mod = await getMod(db, id);
+    if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+    const result = await db.query('DELETE FROM records WHERE mod_id = $1', [id]);
+    log.info(`DELETE /api/mods/${id}/rows deletedRecords=${result.rowCount ?? 0}`);
+    return reply.send({ ok: true, deletedRecords: result.rowCount ?? 0 });
+  });
+
   // GET /api/mods/:id/langs — list all languages available in this mod
   app.get<{ Params: { id: string } }>('/api/mods/:id/langs', async (req, reply) => {
     const id = Number(req.params.id);

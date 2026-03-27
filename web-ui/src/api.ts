@@ -632,6 +632,12 @@ export type ApplyImportedResult = {
   empty: number;
 };
 
+/** Result of deleting all imported rows for a mod while keeping the mod entry. */
+export type ClearModRowsResult = {
+  ok: boolean;
+  deletedRecords: number;
+};
+
 /**
  * One row from GET /api/mods/:id/previous-versions.
  * Represents an older version of the same mod (same name, different file hash).
@@ -764,6 +770,8 @@ export type ModImportJob = {
   running: boolean;
 };
 
+export type ModImportDeleteDataMode = 'job' | 'rows' | 'mod';
+
 export type ModProgressEvent = { type: 'progress'; imported: number; total: number; jobId: number };
 export type UploadProgressEvent = { loaded: number; total: number; percent: number };
 
@@ -811,6 +819,7 @@ export const api = {
       return req<Mod[]>(`/api/mods${qs ? `?${qs}` : ''}`);
     },
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
+    clearRows: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<TMApplyResult>(`/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`, { method: 'POST' }),
@@ -1252,7 +1261,8 @@ export const api = {
 
     pause: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/pause`, { method: 'POST' }),
     cancel: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/cancel`, { method: 'POST' }),
-    remove: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}`, { method: 'DELETE' }),
+    remove: (jobId: number, deleteData: ModImportDeleteDataMode = 'mod') =>
+      req<{ ok: boolean }>(`/api/mod-import/${jobId}?deleteData=${deleteData}`, { method: 'DELETE' }),
     restart: (jobId: number) => req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
     applyToMod: (jobId: number, targetModId: number, importedLang: string, srcLang = getSrcLang()) =>
       req<ApplyImportedResult>(

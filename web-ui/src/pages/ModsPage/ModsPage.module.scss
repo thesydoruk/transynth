@@ -83,3 +83,24 @@
 .pctApproved {
   margin-left: 4px;
 }
+
+.btnDangerGhost {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger-dark);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}

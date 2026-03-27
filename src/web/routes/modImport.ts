@@ -364,8 +364,15 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // ── Delete import job + uploaded file ─────────────────────────────────────
-  app.delete<{ Params: { id: string } }>('/api/mod-import/:id', async (req, reply) => {
+  app.delete<{
+    Params: { id: string };
+    Querystring: { deleteData?: 'job' | 'rows' | 'mod' };
+  }>('/api/mod-import/:id', async (req, reply) => {
     const jobId = Number(req.params.id);
+    const deleteData = req.query.deleteData ?? 'mod';
+    if (!['job', 'rows', 'mod'].includes(deleteData)) {
+      return reply.status(400).send({ error: 'Invalid deleteData mode' });
+    }
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
@@ -400,8 +407,15 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       try { fs.rmSync(dirPath, { recursive: true, force: true }); } catch { /* ignore */ }
     }
 
-    // If this import created a mod row, remove it too (records/strings cascade).
-    if (job.mod_id != null) {
+    // Split delete modes:
+    // - job  : remove import job only
+    // - rows : remove imported records/strings/translations but keep mod row
+    // - mod  : remove mod row (records/strings cascade via FK)
+    if (job.mod_id != null && deleteData === 'rows') {
+      await db.query(`DELETE FROM records WHERE mod_id = $1`, [job.mod_id]);
+    }
+
+    if (job.mod_id != null && deleteData === 'mod') {
       await db.query(`DELETE FROM mods WHERE id = $1`, [job.mod_id]);
     }
 

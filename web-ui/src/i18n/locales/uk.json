@@ -107,7 +107,13 @@
     "strings": "Рядки",
     "progress": "Прогрес",
     "approved": "Підтверджені",
-    "fuzzy": "Нечіткі"
+    "fuzzy": "Нечіткі",
+    "actions": "Дії",
+    "clearRows": "Видалити рядки",
+    "clearingRows": "Видалення…",
+    "clearRowsTitle": "Видалити імпортовані рядки",
+    "clearRowsMessage": "Видалити всі імпортовані рядки для '{{name}}'? Це видалить увесь прогрес перекладу цього мода, і дію неможливо відкотити. Запис мода буде збережено.",
+    "clearRowsSuccess": "Видалено {{count}} записів."
   },
   "modEditor": {
     "source": "Джерело:",
@@ -376,6 +382,13 @@
     "deleteModTitle": "Видалення імпорту мода",
     "deleteModMessage": "Видалити '{{name}}'?",
     "deleteModImpact": "Ця дія видаляє import job, пов’язані імпортовані дані мода та розпаковані файли мода, якщо вони існують.",
+    "deleteModModeTitle": "Оберіть, що видалити",
+    "deleteModModeJob": "Лише import job",
+    "deleteModModeJobHint": "Дані мода і рядки перекладу залишаться. Видаляється тільки запис імпорту та завантажені файли.",
+    "deleteModModeRows": "Лише імпортовані рядки",
+    "deleteModModeRowsHint": "Видаляє records, strings і translations цього мода, але залишає сам запис мода.",
+    "deleteModModeMod": "Мод і всі рядки",
+    "deleteModModeModHint": "Видаляє запис мода та всі пов’язані records, strings і translations.",
     "deleteJobTitle": "Видалити імпорт",
     "deleteJobMessage": "Видалити '{{name}}'? Запис про імпорт буде вилучено."
   },

@@ -32,6 +32,7 @@ import {
   type UploadProgressEvent,
   type PreviousVersionRow,
   type OpsLlmJob,
+  type ModImportDeleteDataMode,
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { CsvPreviewModal } from './CsvPreviewModal';
@@ -415,11 +416,11 @@ export const ImportsPage = () => {
     && pendingModUploads.length === 0;
 
   /** Confirms MOD deletion from custom modal and then refreshes import lists. */
-  const confirmDeleteMod = useCallback(async () => {
+  const confirmDeleteMod = useCallback(async (deleteData: ModImportDeleteDataMode) => {
     if (!deleteModalJob) return;
     setDeletingModJobId(deleteModalJob.id);
     try {
-      await api.modImport.remove(deleteModalJob.id);
+      await api.modImport.remove(deleteModalJob.id, deleteData);
       setDeleteModalJob(null);
       refreshAll();
     } catch (err) {
@@ -711,7 +712,7 @@ export const ImportsPage = () => {
           fileName={deleteModalJob.file_name}
           deleting={deletingModJobId === deleteModalJob.id}
           onClose={() => setDeleteModalJob(null)}
-          onConfirm={() => { void confirmDeleteMod(); }}
+          onConfirm={(deleteData) => { void confirmDeleteMod(deleteData); }}
         />
       )}
 

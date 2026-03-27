@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { ProgressBar, StatusBadge } from '../../components/StatusBadge';
+import { Toast } from '../../components/Toast';
 import s from './ModsPage.module.scss';
 
 /**
@@ -13,11 +16,30 @@ import s from './ModsPage.module.scss';
 export const ModsPage = () => {
   const { t } = useTranslation();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { gameId = '' } = useParams<{ gameId: string }>();
+  const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
+  const [clearingModId, setClearingModId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ['mods', gameId],
     queryFn: () => api.mods.list(gameId),
   });
+
+  const confirmClearRows = async () => {
+    if (!pendingClear) return;
+    setClearingModId(pendingClear.id);
+    try {
+      const result = await api.mods.clearRows(pendingClear.id);
+      await qc.invalidateQueries({ queryKey: ['mods', gameId] });
+      setToast({ message: t('mods.clearRowsSuccess', { count: result.deletedRecords }), type: 'success' });
+      setPendingClear(null);
+    } catch (err) {
+      setToast({ message: t('common.error', { message: String(err) }), type: 'error' });
+    } finally {
+      setClearingModId(null);
+    }
+  };
 
   if (isLoading) return <div className={s.center}>{t('mods.loadingMods')}</div>;
   if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
@@ -45,6 +67,7 @@ export const ModsPage = () => {
             <th className={s.th}>{t('mods.progress')}</th>
             <th className={s.th}>{t('mods.approved')}</th>
             <th className={s.th}>{t('mods.fuzzy')}</th>
+            <th className={s.th}>{t('mods.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -91,11 +114,41 @@ export const ModsPage = () => {
                 <td className={s.td}>
                   <span className={s.pctLabel}>{fuzzyPct}%</span>
                 </td>
+                <td className={s.td}>
+                  <button
+                    className={s.btnDangerGhost}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPendingClear({ id: mod.id, name: mod.name });
+                    }}
+                    disabled={clearingModId === mod.id}
+                    title={t('mods.clearRowsTitle')}
+                  >
+                    {clearingModId === mod.id ? t('mods.clearingRows') : t('mods.clearRows')}
+                  </button>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      {pendingClear && (
+        <ConfirmModal
+          title={t('mods.clearRowsTitle')}
+          message={t('mods.clearRowsMessage', { name: pendingClear.name })}
+          confirmLabel={t('mods.clearRows')}
+          pending={clearingModId === pendingClear.id}
+          onClose={() => setPendingClear(null)}
+          onConfirm={() => { void confirmClearRows(); }}
+        />
+      )}
+
+      <Toast
+        message={toast?.message ?? null}
+        type={toast?.type ?? 'info'}
+        onDismiss={() => setToast(null)}
+      />
     </div>
   );
 }
