@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { LoadingState } from '../../components/LoadingState';
+import { PaginationControls } from '../../components/PaginationControls';
 import { Toast } from '../../components/Toast';
 import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
@@ -160,23 +161,15 @@ export const CoherencePage = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className={s.pagination}>
-          <button
-            className={s.pageBtn}
-            disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            ←
-          </button>
-          <span className={s.pageInfo}>
-            {t('coherence.page', { current: page + 1, total: totalPages })}
-          </span>
-          <button
-            className={s.pageBtn}
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-          >
-            →
-          </button>
+          <PaginationControls
+            info={<span className={s.pageInfo}>{t('coherence.page', { current: page + 1, total: totalPages })}</span>}
+            onPrev={() => setPage((p) => Math.max(0, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            prevDisabled={page === 0}
+            nextDisabled={page >= totalPages - 1}
+            prevLabel="←"
+            nextLabel="→"
+          />
         </div>
       )}
 

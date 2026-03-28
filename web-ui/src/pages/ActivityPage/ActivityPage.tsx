@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api, type ActivityEntry, type Mod } from '../../api';
+import { PaginationControls } from '../../components/PaginationControls';
 import s from './ActivityPage.module.scss';
 
 /** Number of entries per page. */
@@ -196,21 +197,13 @@ export const ActivityPage = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className={s.pagination}>
-          <button
-            className={s.pageBtn}
-            disabled={offset === 0}
-            onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}
-          >
-            {t('common.prev')}
-          </button>
-          <span>{t('common.page', { page, totalPages })} ({t('activity.entries', { total })})</span>
-          <button
-            className={s.pageBtn}
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset(o => o + PAGE_SIZE)}
-          >
-            {t('common.next')}
-          </button>
+          <PaginationControls
+            info={<>{t('common.page', { page, totalPages })} ({t('activity.entries', { total })})</>}
+            onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
+            onNext={() => setOffset((o) => o + PAGE_SIZE)}
+            prevDisabled={offset === 0}
+            nextDisabled={offset + PAGE_SIZE >= total}
+          />
         </div>
       )}
     </div>

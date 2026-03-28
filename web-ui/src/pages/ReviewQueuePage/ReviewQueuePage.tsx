@@ -7,6 +7,7 @@ import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import { getCurrentGame } from '../../langDefaults';
 import { getTgtLang } from '../../langDefaults';
+import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ConfidenceBar } from './ConfidenceBar';
 import s from './ReviewQueuePage.module.scss';
@@ -336,23 +337,15 @@ export const ReviewQueuePage = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className={s.pagination}>
-          <button
-            className={s.pageBtn}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            ←
-          </button>
-          <span className={s.pageInfo}>
-            {t('reviewQueue.page', { current: page, total: totalPages })}
-          </span>
-          <button
-            className={s.pageBtn}
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            →
-          </button>
+          <PaginationControls
+            info={<span className={s.pageInfo}>{t('reviewQueue.page', { current: page, total: totalPages })}</span>}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+            prevDisabled={page <= 1}
+            nextDisabled={page >= totalPages}
+            prevLabel="←"
+            nextLabel="→"
+          />
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { api, type StringRow } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
+import { PaginationControls } from '../../components/PaginationControls';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { SignaturePanel } from './components/SignaturePanel';
@@ -461,9 +462,13 @@ export const ModEditorPage = () => {
 
           {/* Pagination */}
           <div className={styles.pagination}>
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={styles.pageBtn}>{t('common.prev')}</button>
-            <span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className={styles.pageBtn}>{t('common.next')}</button>
+            <PaginationControls
+              info={<span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>}
+              onPrev={() => setPage((p) => p - 1)}
+              onNext={() => setPage((p) => p + 1)}
+              prevDisabled={page <= 1}
+              nextDisabled={page >= totalPages}
+            />
             <select
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}

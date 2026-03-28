@@ -117,26 +117,6 @@
   font-size: 13px;
 }
 
-.pageBtn {
-  padding: 5px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-input);
-  border-radius: 4px;
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--border-light);
-    color: var(--text-bright);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-}
-
 .empty {
   color: var(--text-faint);
   text-align: center;
