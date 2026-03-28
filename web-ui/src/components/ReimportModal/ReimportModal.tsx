@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { PreviousVersionRow } from '../../api';
+import { Button } from '../Button';
 import { ModalShell } from '../ModalShell';
 import s from './ReimportModal.module.scss';
 
@@ -96,12 +97,12 @@ export const ReimportModal = ({ newModId, prevVersions, onClose }: ReimportModal
 
         {/* Footer actions */}
         <div className={s.footer}>
-          <button className={s.btnSkip} onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             {t('reimport.skip')}
-          </button>
-          <button className={s.btnDiff} disabled={selectedId == null} onClick={openDiff}>
+          </Button>
+          <Button variant="primary" disabled={selectedId == null} onClick={openDiff}>
             {t('reimport.openDiff')}
-          </button>
+          </Button>
         </div>
     </ModalShell>
   );

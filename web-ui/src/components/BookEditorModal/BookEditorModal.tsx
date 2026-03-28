@@ -28,6 +28,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../Button';
 import { ModalShell } from '../ModalShell';
 import s from './BookEditorModal.module.scss';
 
@@ -234,14 +235,14 @@ export const BookEditorModal = ({ source, translation, onSave, onClose }: BookEd
 
       {/* ── Action buttons ────────────────────────────────────────────── */}
       <div className={s.footer}>
-        <button className={s.btnSec} onClick={onClose}>{t('common.cancel')}</button>
-        <button
-          className={s.btnPri}
+        <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+        <Button
+          variant="primary"
           onClick={() => onSave(draft)}
           title="Ctrl+Enter"
         >
           {t('common.save')}
-        </button>
+        </Button>
       </div>
     </ModalShell>
   );

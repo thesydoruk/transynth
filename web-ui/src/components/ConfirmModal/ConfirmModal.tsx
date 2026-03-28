@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '../Button';
 import { ModalShell } from '../ModalShell';
 import s from './ConfirmModal.module.scss';
 
@@ -59,12 +60,12 @@ export const ConfirmModal = ({
       <p id="confirm-modal-body" className={s.body}>{message}</p>
 
       <div className={s.footer}>
-        <button className={s.btnCancel} onClick={onClose} disabled={pending}>
+        <Button variant="secondary" onClick={onClose} disabled={pending}>
           {t('common.cancel')}
-        </button>
-        <button className={s.btnDanger} onClick={onConfirm} disabled={pending}>
+        </Button>
+        <Button variant="danger" onClick={onConfirm} disabled={pending}>
           {pending ? '…' : (confirmLabel ?? t('common.delete'))}
-        </button>
+        </Button>
       </div>
     </ModalShell>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ModImportJob, type ModPreviewRow } from '../../../api';
+import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES, type ModPreviewConfirmPayload } from '../importsShared';
 import parentS from '../ImportPage.module.scss';
@@ -138,24 +139,24 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
         </div>
         {totalPages > 1 && (
           <div className={parentS.pagination}>
-            <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className={parentS.pageBtn}>{t('common.prev')}</button>
+            <Button variant="secondary" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>{t('common.prev')}</Button>
             <span className={parentS.paginationLabel}>{t('common.page', { page, totalPages })}</span>
-            <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className={parentS.pageBtn}>{t('common.next')}</button>
+            <Button variant="secondary" size="sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>{t('common.next')}</Button>
           </div>
         )}
         <div className={parentS.footer}>
-          <button onClick={onClose} className={parentS.btnCancel}>{t('common.cancel')}</button>
-          <button
+          <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button
+            variant="success"
             onClick={() => onConfirm({
               importLang: lang,
               applyEnabled,
               applyToModId: effectiveApplyToModId,
             })}
-            className={parentS.btnConfirm}
             disabled={applyEnabled && effectiveApplyToModId == null}
           >
             {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
-          </button>
+          </Button>
         </div>
     </ModalShell>
   );

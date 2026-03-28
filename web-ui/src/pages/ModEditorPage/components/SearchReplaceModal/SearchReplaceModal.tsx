@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../../../api';
+import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
 import s from './SearchReplaceModal.module.scss';
 
@@ -64,9 +65,9 @@ export const SearchReplaceModal = ({ modId, targetLang, onClose, onApplied }: Se
         </label>
       </div>
       <div className={s.modalBtnRow}>
-        <button onClick={handlePreview} disabled={stage !== 'idle' || !search} className={s.modalBtnDark}>{t('modEditor.preview', { count: previewResult?.matches.length ?? 0 })}</button>
-        <button onClick={handleApply} disabled={stage !== 'idle' || !search} className={s.modalBtnPri}>{t('common.apply')}</button>
-        <button onClick={onClose} className={s.modalBtnSec}>{t('common.cancel')}</button>
+        <Button variant="neutral" onClick={handlePreview} disabled={stage !== 'idle' || !search}>{t('modEditor.preview', { count: previewResult?.matches.length ?? 0 })}</Button>
+        <Button variant="primary" onClick={handleApply} disabled={stage !== 'idle' || !search}>{t('common.apply')}</Button>
+        <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
       </div>
       {error && <p className={s.modalErr}>{error}</p>}
       {stage === 'done' && <p className={s.modalOk}>{t('modEditor.applied', { count: previewResult?.applied })}</p>}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type CsvImportJob, type CsvPreviewRow } from '../../../api';
+import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES } from '../importsShared';
 import s from '../ImportPage.module.scss';
@@ -98,16 +99,16 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
         </div>
         {totalPages > 1 && (
           <div className={s.pagination}>
-            <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className={s.pageBtn}>{t('common.prev')}</button>
+            <Button variant="secondary" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>{t('common.prev')}</Button>
             <span className={s.paginationLabel}>{t('common.page', { page, totalPages })}</span>
-            <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className={s.pageBtn}>{t('common.next')}</button>
+            <Button variant="secondary" size="sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>{t('common.next')}</Button>
           </div>
         )}
         <div className={s.footer}>
-          <button onClick={onClose} className={s.btnCancel}>{t('common.cancel')}</button>
-          <button onClick={() => onConfirm(srcLang, tgtLang)} className={s.btnConfirm}>
+          <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="success" onClick={() => onConfirm(srcLang, tgtLang)}>
             {t('csvImport.startImport', { count: job.total_records.toLocaleString() })}
-          </button>
+          </Button>
         </div>
     </ModalShell>
   );

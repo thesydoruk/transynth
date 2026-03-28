@@ -47,10 +47,3 @@
     line-height: 1.35;
   }
 }
-
-.btnDanger {
-  composes: btn from '../ImportPage.module.scss';
-  margin-left: 12px;
-  background: var(--danger-dark);
-  border: 1px solid var(--danger-dark);
-}

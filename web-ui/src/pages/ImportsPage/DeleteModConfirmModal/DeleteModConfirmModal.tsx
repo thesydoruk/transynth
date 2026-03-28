@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModImportDeleteDataMode } from '../../../api';
+import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import parentS from '../ImportPage.module.scss';
 import s from './DeleteModConfirmModal.module.scss';
@@ -79,10 +80,10 @@ export const DeleteModConfirmModal = ({ fileName, deleting, onClose, onConfirm }
         </div>
 
         <div className={parentS.footer}>
-          <button onClick={onClose} className={parentS.btnCancel} disabled={deleting}>{t('common.cancel')}</button>
-          <button onClick={() => onConfirm(deleteData)} className={s.btnDanger} disabled={deleting}>
+          <Button variant="secondary" onClick={onClose} disabled={deleting}>{t('common.cancel')}</Button>
+          <Button variant="danger" onClick={() => onConfirm(deleteData)} disabled={deleting}>
             {deleting ? t('common.loading') : t('common.delete')}
-          </button>
+          </Button>
         </div>
     </ModalShell>
   );

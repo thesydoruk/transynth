@@ -420,33 +420,12 @@
   font-size: 13px;
 }
 
-.pageBtn {
-  background: var(--bg-input);
-  color: var(--text);
-  border: 1px solid var(--border-input);
-  border-radius: 4px;
-  padding: 4px 12px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
 .footer {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
   padding: 12px 24px;
   border-top: 1px solid var(--border-light);
-}
-
-.btnConfirm {
-  composes: btn;
-  background: var(--success-dark);
-  margin-left: 12px;
-}
-
-/** Cancel button in modal footer. */
-.btnCancel {
-  composes: btn;
-  background: var(--border-light);
 }
 
 /* ── Error state ────────────────────────────────────────────────────────── */
@@ -508,9 +487,4 @@
 /** All other statuses. */
 .statusDotOther {
   background: var(--warning);
-}
-
-.btnCancel {
-  composes: btn;
-  background: var(--border-input);
 }
