@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../../api';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
+import { Button } from '../../components/Button';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { Toast } from '../../components/Toast';
 import { OverflowMenu } from '../../components/OverflowMenu';
@@ -372,13 +373,13 @@ export const TradAutoPage = () => {
             value={testText}
             onChange={(e) => setTestText(e.target.value)}
           />
-          <button
-            className={s.btnPrimary}
+          <Button
+            variant="primary"
             disabled={!testText.trim() || testMut.isPending}
             onClick={runTest}
           >
             {t('tradAuto.runTest')}
-          </button>
+          </Button>
           {testMut.isError && <span className={s.mutError}>{testMut.error?.message}</span>}
           {testResults && (
             <div className={s.testResults}>
@@ -423,13 +424,13 @@ export const TradAutoPage = () => {
               />
               {t('tradAuto.dryRun')}
             </label>
-            <button
-              className={s.btnPrimary}
+            <Button
+              variant="primary"
               disabled={!applyModId || applyMut.isPending}
               onClick={() => applyMut.mutate()}
             >
               {t('tradAuto.apply')}
-            </button>
+            </Button>
           </div>
           {applyMut.isError && <span className={s.mutError}>{applyMut.error?.message}</span>}
           {applyMsg && <div className={s.applyMsg}>{applyMsg}</div>}
@@ -452,13 +453,13 @@ export const TradAutoPage = () => {
               onChange={(e) => setLearnMinOcc(Number(e.target.value))}
             />
           </label>
-          <button
-            className={s.btnPrimary}
+          <Button
+            variant="primary"
             disabled={learnMut.isPending}
             onClick={() => { setLearnMsg(''); setLearnCandidates(null); learnMut.mutate(); }}
           >
             {learnMut.isPending ? t('tradAuto.learnRunning') : t('tradAuto.learnRun')}
-          </button>
+          </Button>
         </div>
         {learnMut.isError && <span className={s.mutError}>{learnMut.error?.message}</span>}
         {learnMsg && <div className={s.applyMsg}>{learnMsg}</div>}

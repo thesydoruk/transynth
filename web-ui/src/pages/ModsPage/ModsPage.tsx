@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ProgressBar, StatusBadge } from '../../components/StatusBadge';
 import { Toast } from '../../components/Toast';
+import { Button } from '../../components/Button';
 import s from './ModsPage.module.scss';
 
 /**
@@ -115,8 +116,9 @@ export const ModsPage = () => {
                   <span className={s.pctLabel}>{fuzzyPct}%</span>
                 </td>
                 <td className={s.td}>
-                  <button
-                    className={s.btnDangerGhost}
+                  <Button
+                    variant="dangerGhost"
+                    size="sm"
                     onClick={(event) => {
                       event.stopPropagation();
                       setPendingClear({ id: mod.id, name: mod.name });
@@ -125,7 +127,7 @@ export const ModsPage = () => {
                     title={t('mods.clearRowsTitle')}
                   >
                     {clearingModId === mod.id ? t('mods.clearingRows') : t('mods.clearRows')}
-                  </button>
+                  </Button>
                 </td>
               </tr>
             );

@@ -1,6 +1,7 @@
 import { useMemo, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StringRow, TMSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
+import { Button } from '../../../../components/Button';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
@@ -155,25 +156,26 @@ export const DetailPanel = ({
               )}
             </div>
             <div className={styles.detailSaveRow}>
-              <button className={styles.btnSec} onClick={onCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</button>
+              <Button variant="secondary" size="sm" onClick={onCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</Button>
               {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
-                <button className={styles.btnSec} onClick={onApprove}>
+                <Button variant="secondary" size="sm" onClick={onApprove}>
                   {t('modEditor.review')}
-                </button>
+                </Button>
               )}
               {activeRow.translation && activeRow.translation_id && activeRow.status !== 'rejected' && (
-                <button className={styles.btnDanger} onClick={onReject}>
+                <Button variant="danger" size="sm" onClick={onReject}>
                   {t('modEditor.reject')}
-                </button>
+                </Button>
               )}
-              <button
-                className={styles.btnPri}
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={onSave}
                 disabled={savePending}
                 title="Ctrl+Enter"
               >
                 {savePending ? t('modEditor.saving') : saveIndicator === 'saved' ? t('modEditor.saved') : t('common.save')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
+import { Button } from '../../components/Button';
 import s from './TmxPage.module.scss';
 
 export const TmxPage = () => {
@@ -116,13 +117,13 @@ export const TmxPage = () => {
             </select>
           </div>
 
-          <button
-            className={s.btnPrimary}
+          <Button
+            variant="primary"
             onClick={() => exportMutation.mutate()}
             disabled={exportMutation.isPending}
           >
             {exportMutation.isPending ? t('tmx.exportingBtn') : t('tmx.exportBtn')}
-          </button>
+          </Button>
         </div>
 
         {exportMutation.isSuccess && (
@@ -163,13 +164,13 @@ export const TmxPage = () => {
             />
           </div>
 
-          <button
-            className={s.btnGreen}
+          <Button
+            variant="success"
             onClick={handleImport}
             disabled={importMutation.isPending}
           >
             {importMutation.isPending ? t('tmx.importingBtn') : t('tmx.importBtn')}
-          </button>
+          </Button>
         </div>
 
         {importMutation.data && (

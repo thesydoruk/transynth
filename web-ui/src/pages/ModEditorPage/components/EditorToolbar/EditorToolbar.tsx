@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ProgressBar } from '../../../../components/StatusBadge';
+import { Button } from '../../../../components/Button';
 import styles from './EditorToolbar.module.scss';
 
 /** Shape returned by the stats API. */
@@ -124,24 +125,25 @@ export const EditorToolbar = ({
       <select value={status} onChange={(e) => onStatusChange(e.target.value)} className={styles.filterSelect}>
         {statusOpts.map((o) => <option key={o} value={o}>{o === 'all' ? t('modEditor.allStatuses') : o}</option>)}
       </select>
-      <button onClick={onQaOnlyToggle} className={qaOnly ? styles.btnPri : styles.btnSec} title={t('modEditor.qaOnlyTitle')}>
+      <Button onClick={onQaOnlyToggle} variant={qaOnly ? 'primary' : 'secondary'} size="sm" title={t('modEditor.qaOnlyTitle')}>
         {t('modEditor.qaOnly')}
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={() => onStatusChange(status === 'draft' ? 'all' : 'draft')}
-        className={status === 'draft' ? styles.btnPri : styles.btnSec}
+        variant={status === 'draft' ? 'primary' : 'secondary'}
+        size="sm"
         title={t('modEditor.showDraftsTitle')}
       >
         {stats?.draft ? t('modEditor.reviewModeCount', { count: stats.draft }) : t('modEditor.reviewMode')}
-      </button>
+      </Button>
 
       <div className={styles.sep} />
 
       {/* Actions */}
-      <button onClick={onTmApply} disabled={tmApply.isPending} className={styles.btnSec} title={t('modEditor.autoFillTmTitle')}>
+      <Button onClick={onTmApply} disabled={tmApply.isPending} variant="secondary" size="sm" title={t('modEditor.autoFillTmTitle')}>
         {tmApply.isPending ? t('modEditor.applyingTm') : tmApply.isSuccess ? t('modEditor.tmApplied', { count: tmApply.applied }) : t('modEditor.applyTm')}
-      </button>
-      <button onClick={onSearchReplace} className={styles.btnSec}>{t('modEditor.searchReplace')}</button>
+      </Button>
+      <Button onClick={onSearchReplace} variant="secondary" size="sm">{t('modEditor.searchReplace')}</Button>
       {hasInnrSignature && (
         <Link to={`/games/${gameId}/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
           {t('modEditor.innrEditor')}
@@ -153,22 +155,22 @@ export const EditorToolbar = ({
         </Link>
       )}
       {(untranslatedCount ?? 0) > 0 && (
-        <button onClick={onNextUntranslated} className={styles.btnSec} title={t('modEditor.nextUntranslatedTitle')}>
+        <Button onClick={onNextUntranslated} variant="secondary" size="sm" title={t('modEditor.nextUntranslatedTitle')}>
           {t('modEditor.nextUntranslated', { count: untranslatedCount })}
-        </button>
+        </Button>
       )}
       {qaIssueRowCount > 0 && (
-        <button onClick={onNextQaIssue} className={styles.btnSec} title={t('modEditor.nextQaIssueTitle')}>
+        <Button onClick={onNextQaIssue} variant="secondary" size="sm" title={t('modEditor.nextQaIssueTitle')}>
           {t('modEditor.nextQaIssue', { count: qaIssueRowCount })}
-        </button>
+        </Button>
       )}
-      <button onClick={onShortcuts} className={styles.btnSec} title={t('modEditor.shortcuts')}>?</button>
+      <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>?</Button>
 
       {selectedCount > 0 && (
         <>
           {translateProgress
             ? <span className={styles.progressBadge}>{t('modEditor.translating', { done: translateProgress.done, total: translateProgress.total })}</span>
-            : <button onClick={onBatchTranslate} className={styles.btnPri}>{t('modEditor.autoTranslate', { count: selectedCount })}</button>
+            : <Button onClick={onBatchTranslate} variant="primary" size="sm">{t('modEditor.autoTranslate', { count: selectedCount })}</Button>
           }
           <button
             onClick={() => onBulkReview('reviewed')}
@@ -178,14 +180,15 @@ export const EditorToolbar = ({
           >
             {bulkReviewPending ? '…' : t('modEditor.approveCount', { count: selectedCount })}
           </button>
-          <button
+          <Button
             onClick={() => onBulkReview('rejected')}
             disabled={bulkReviewPending}
-            className={styles.btnDanger}
+            variant="danger"
+            size="sm"
             title={t('modEditor.reject')}
           >
             {bulkReviewPending ? '…' : t('modEditor.rejectCount', { count: selectedCount })}
-          </button>
+          </Button>
         </>
       )}
       {translateError && <span className={styles.errorBadge}>{translateError}</span>}

@@ -255,24 +255,6 @@
   box-sizing: border-box;
 }
 
-.btnPrimary {
-  background: var(--accent);
-  color: var(--accent-on);
-  border: none;
-  border-radius: 4px;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-size: 13px;
-  margin-top: 8px;
-  flex-shrink: 0;
-  white-space: nowrap;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
-
 .testResults {
   margin-top: 10px;
   font-size: 13px;
