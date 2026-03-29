@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { ProgressBar, StatusBadge } from '../../components/StatusBadge';
-import { Toast } from '../../components/Toast';
+import { Toast, useToast } from '../../components/Toast';
 import { Button } from '../../components/Button';
 import s from './ModsPage.module.scss';
 
@@ -21,7 +21,7 @@ export const ModsPage = () => {
   const { gameId = '' } = useParams<{ gameId: string }>();
   const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
   const [clearingModId, setClearingModId] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { toast, showToast, clearToast } = useToast();
   const { data, isLoading, error } = useQuery({
     queryKey: ['mods', gameId],
     queryFn: () => api.mods.list(gameId),
@@ -33,10 +33,10 @@ export const ModsPage = () => {
     try {
       const result = await api.mods.clearRows(pendingClear.id);
       await qc.invalidateQueries({ queryKey: ['mods', gameId] });
-      setToast({ message: t('mods.clearRowsSuccess', { count: result.deletedRecords }), type: 'success' });
+      showToast(t('mods.clearRowsSuccess', { count: result.deletedRecords }), 'success');
       setPendingClear(null);
     } catch (err) {
-      setToast({ message: t('common.error', { message: String(err) }), type: 'error' });
+      showToast(t('common.error', { message: String(err) }), 'error');
     } finally {
       setClearingModId(null);
     }
@@ -148,8 +148,8 @@ export const ModsPage = () => {
 
       <Toast
         message={toast?.message ?? null}
-        type={toast?.type ?? 'info'}
-        onDismiss={() => setToast(null)}
+        type={toast?.type}
+        onDismiss={clearToast}
       />
     </div>
   );

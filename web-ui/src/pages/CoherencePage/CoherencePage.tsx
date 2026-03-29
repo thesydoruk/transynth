@@ -7,7 +7,7 @@ import { getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { LoadingState } from '../../components/LoadingState';
 import { PaginationControls } from '../../components/PaginationControls';
-import { Toast } from '../../components/Toast';
+import { Toast, useToast } from '../../components/Toast';
 import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
 
@@ -48,7 +48,7 @@ export const CoherencePage = () => {
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [page, setPage] = useState(0);
   const [showResolveAllConfirm, setShowResolveAllConfirm] = useState(false);
-  const [resolveAllToast, setResolveAllToast] = useState<string | null>(null);
+  const { toast, showToast, clearToast } = useToast();
 
   const offset = page * PAGE_SIZE;
 
@@ -88,7 +88,7 @@ export const CoherencePage = () => {
     mutationFn: () => api.coherence.resolveAll(targetLang),
     onSuccess: (result) => {
       setShowResolveAllConfirm(false);
-      setResolveAllToast(t('coherence.resolveAllSuccess', { groups: result.resolved, updated: result.updated }));
+      showToast(t('coherence.resolveAllSuccess', { groups: result.resolved, updated: result.updated }), 'success');
       qc.invalidateQueries({ queryKey: ['coherence'] });
       qc.invalidateQueries({ queryKey: ['qa'] });
       qc.invalidateQueries({ queryKey: ['strings'] });
@@ -186,7 +186,7 @@ export const CoherencePage = () => {
       )}
 
       {/* Success toast after resolve-all */}
-      <Toast message={resolveAllToast} type="success" onDismiss={() => setResolveAllToast(null)} />
+      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </div>
   );
 };

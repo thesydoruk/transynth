@@ -5,7 +5,7 @@ import { api, type TradAutoRule, type TradAutoCandidate, type Mod } from '../../
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { Button } from '../../components/Button';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Toast } from '../../components/Toast';
+import { Toast, useToast } from '../../components/Toast';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import s from './TradAutoPage.module.scss';
 
@@ -43,7 +43,7 @@ export const TradAutoPage = () => {
 
   // ── Pending delete confirmation ──────────────────────────────────────────
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const { toast, showToast, clearToast } = useToast();
 
   // ── Test panel state ─────────────────────────────────────────────────────
   const [testText, setTestText] = useState('');
@@ -107,7 +107,7 @@ export const TradAutoPage = () => {
     mutationFn: (id: number) => api.tradAuto.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tradAutoRules'] });
-      setToastMsg(t('tradAuto.deleteSuccess'));
+      showToast(t('tradAuto.deleteSuccess'), 'success');
     },
   });
 
@@ -530,7 +530,7 @@ export const TradAutoPage = () => {
           onClose={() => setPendingDeleteId(null)}
         />
       )}
-      <Toast message={toastMsg} onDismiss={() => setToastMsg(null)} />
+      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </>
   );
 };

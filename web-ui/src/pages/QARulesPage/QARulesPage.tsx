@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type QARule } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Toast } from '../../components/Toast';
+import { Toast, useToast } from '../../components/Toast';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import s from './QARulesPage.module.scss';
 
@@ -39,7 +39,7 @@ export const QARulesPage = () => {
 
   // ── Pending delete confirmation ──────────────────────────────────────────
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const { toast, showToast, clearToast } = useToast();
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: rules, isLoading } = useQuery({
@@ -79,7 +79,7 @@ export const QARulesPage = () => {
     mutationFn: (id: number) => api.qaRules.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qaRules'] });
-      setToastMsg(t('qaRules.deleteSuccess'));
+      showToast(t('qaRules.deleteSuccess'), 'success');
     },
   });
 
@@ -301,7 +301,7 @@ export const QARulesPage = () => {
         onClose={() => setPendingDeleteId(null)}
       />
     )}
-    <Toast message={toastMsg} onDismiss={() => setToastMsg(null)} />
+    <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </>
   );
 };
