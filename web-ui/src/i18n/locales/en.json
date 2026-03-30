@@ -102,7 +102,7 @@
     "title": "Mods",
     "loadingMods": "Loading mods…",
     "noModsFound": "No mods found",
-    "noModsHint": "Run \"npm run learn:pairs\" or \"npm run learn:multilang\" to import translation data.",
+    "noModsHint": "Use the Import page to import translation data.",
     "name": "Name",
     "strings": "Strings",
     "progress": "Progress",

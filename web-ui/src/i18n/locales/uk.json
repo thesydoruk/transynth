@@ -102,7 +102,7 @@
     "title": "Моди",
     "loadingMods": "Завантаження модів…",
     "noModsFound": "Модів не знайдено",
-    "noModsHint": "Запустіть \"npm run learn:pairs\" або \"npm run learn:multilang\" для імпорту даних перекладу.",
+    "noModsHint": "Скористайтесь сторінкою Імпорт, щоб завантажити дані перекладу.",
     "name": "Назва",
     "strings": "Рядки",
     "progress": "Прогрес",
