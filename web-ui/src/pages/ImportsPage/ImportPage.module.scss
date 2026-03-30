@@ -369,6 +369,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
 }
 
 .th {
@@ -390,6 +391,28 @@
   border-bottom: 1px solid var(--bg-input);
   color: var(--text);
   vertical-align: top;
+  min-width: 0;
+}
+
+/**
+ * Single-line cell clamp with ellipsis for long text values.
+ * Prevents both horizontal table blowout and excessive row height.
+ */
+.cellEllipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/** Single-line variant with ellipsis (for compact code-like values). */
+.cellEllipsisOneLine {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .tdEdid {

@@ -137,11 +137,15 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
               <tbody>
                 {(data?.rows ?? []).map((row: ModPreviewRow, index: number) => (
                   <tr key={index}>
-                    <td className={parentS.td}><code className={parentS.codeSignature}>{row.signature}</code></td>
-                    <td className={parentS.td}><code className={parentS.codeFormId}>{row.formId}</code></td>
+                    <td className={parentS.td}>
+                      <code className={`${parentS.codeSignature} ${parentS.cellEllipsisOneLine}`} title={row.signature}>{row.signature}</code>
+                    </td>
+                    <td className={parentS.td}>
+                      <code className={`${parentS.codeFormId} ${parentS.cellEllipsisOneLine}`} title={row.formId}>{row.formId}</code>
+                    </td>
                     <td className={parentS.tdEdid} title={row.edid}>{row.edid || '—'}</td>
-                    <td className={parentS.td}>{row.path}</td>
-                    <td className={parentS.td}>{row.source}</td>
+                    <td className={parentS.td}><span className={parentS.cellEllipsis} title={row.path}>{row.path}</span></td>
+                    <td className={parentS.td}><span className={parentS.cellEllipsis} title={row.source}>{row.source}</span></td>
                   </tr>
                 ))}
               </tbody>

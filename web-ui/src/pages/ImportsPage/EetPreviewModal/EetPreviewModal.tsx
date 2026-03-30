@@ -92,15 +92,25 @@ export const EetPreviewModal = ({ job, onClose, onConfirm }: EetPreviewModalProp
               <tbody>
                 {(data?.rows ?? []).map((row: EetPreviewRow, index: number) => (
                   <tr key={index}>
-                    <td className={s.td}><code className={s.codeSignature}>{row.signature}</code></td>
-                    <td className={s.td}><code className={s.codeFormId}>{row.formId}</code></td>
+                    <td className={s.td}>
+                      <code className={`${s.codeSignature} ${s.cellEllipsisOneLine}`} title={row.signature}>{row.signature}</code>
+                    </td>
+                    <td className={s.td}>
+                      <code className={`${s.codeFormId} ${s.cellEllipsisOneLine}`} title={row.formId}>{row.formId}</code>
+                    </td>
                     <td className={s.tdEdid} title={row.edid}>{row.edid || '—'}</td>
-                    <td className={s.td}>{row.field}</td>
-                    <td className={s.td}>{row.source}</td>
-                    <td className={s.td}>{row.target || <span className={s.emptyValue}>—</span>}</td>
+                    <td className={s.td}><span className={s.cellEllipsis} title={row.field}>{row.field}</span></td>
+                    <td className={s.td}><span className={s.cellEllipsis} title={row.source}>{row.source}</span></td>
+                    <td className={s.td}>
+                      {row.target
+                        ? <span className={s.cellEllipsis} title={row.target}>{row.target}</span>
+                        : <span className={s.emptyValue}>—</span>}
+                    </td>
                     <td className={s.td}>
                       <span className={`${s.statusDot} ${row.status === 0x63 ? s.statusDotConfirmed : row.status === 0xFF ? s.statusDotUntranslated : s.statusDotOther}`} />
-                      {row.status === 0x63 ? t('csvImport.confirmed') : row.status === 0xFF ? t('csvImport.untranslated') : String(row.status)}
+                      <span className={s.cellEllipsisOneLine}>
+                        {row.status === 0x63 ? t('csvImport.confirmed') : row.status === 0xFF ? t('csvImport.untranslated') : String(row.status)}
+                      </span>
                     </td>
                   </tr>
                 ))}
