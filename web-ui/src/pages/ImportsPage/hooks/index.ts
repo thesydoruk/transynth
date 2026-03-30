@@ -1,0 +1,1 @@
+export { useAutoPageSize } from './useAutoPageSize';

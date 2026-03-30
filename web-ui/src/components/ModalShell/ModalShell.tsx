@@ -26,6 +26,13 @@ interface ModalShellProps {
   ariaDescribedBy?: string;
   /** Close button aria-label. */
   closeAriaLabel?: string;
+  /** Width preset. 'md' = default 680 px max-width, 'xl' = up to 1100 px. */
+  size?: 'md' | 'xl';
+  /**
+   * When true, the content area becomes a flex column container, allowing inner
+   * flex children (e.g. a tableWrap with flex: 1) to fill available modal height.
+   */
+  stretchContent?: boolean;
 }
 
 /**
@@ -46,6 +53,8 @@ export const ModalShell = ({
   ariaLabelledBy,
   ariaDescribedBy,
   closeAriaLabel = 'Close dialog',
+  size = 'md',
+  stretchContent = false,
 }: ModalShellProps) => {
   useEffect(() => {
     if (!closeOnEscape || closeDisabled) return;
@@ -65,7 +74,7 @@ export const ModalShell = ({
       role="presentation"
     >
       <div
-        className={s.container}
+        className={`${s.container}${size === 'xl' ? ` ${s.containerXl}` : ''}`}
         role={role}
         aria-modal="true"
         aria-labelledby={ariaLabelledBy}
@@ -94,7 +103,7 @@ export const ModalShell = ({
           )
         )}
 
-        <div className={s.content}>{children}</div>
+        <div className={stretchContent ? s.contentStretch : s.content}>{children}</div>
       </div>
     </div>
   );

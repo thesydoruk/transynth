@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ModImportJob, type ModPreviewRow } from '../../../api';
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES, type ModPreviewConfirmPayload } from '../importsShared';
+import { useAutoPageSize } from '../hooks';
 import parentS from '../ImportPage.module.scss';
 import s from './ModPreviewModal.module.scss';
 
@@ -14,6 +15,8 @@ interface ModPreviewModalProps {
   onClose: () => void;
   onConfirm: (payload: ModPreviewConfirmPayload) => void;
 }
+
+const PAGINATION_RESERVED_HEIGHT_PX = 56;
 
 /** Preview modal for mod imports with optional apply-to-existing workflow. */
 export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewModalProps) => {
@@ -25,7 +28,7 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
   const [qInput, setQInput] = useState('');
-  const pageSize = 50;
+  const [pageSize, tableWrapRef] = useAutoPageSize(30, PAGINATION_RESERVED_HEIGHT_PX);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -35,9 +38,15 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
     return () => clearTimeout(id);
   }, [qInput]);
 
+  useEffect(() => {
+    const id = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(id);
+  }, [pageSize]);
+
   const { data, isLoading } = useQuery({
     queryKey: ['mod-import-preview', job.id, page, pageSize, sigFilter, qFilter],
     queryFn: () => api.modImport.preview(job.id, { page, pageSize, signature: sigFilter || undefined, q: qFilter || undefined }),
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
 
@@ -71,6 +80,8 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
       onClose={onClose}
       customHeader={header}
       hideCloseButton
+      size="xl"
+      stretchContent
     >
         <div className={parentS.langBar}>
           <label className={parentS.langLabel}>{t('modImport.languageOfText')}
@@ -113,7 +124,7 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
           <input type="text" placeholder={t('csvImport.searchPlaceholder')} value={qInput} onChange={(event) => setQInput(event.target.value)} className={parentS.searchInput} />
           <span className={parentS.filterBarCount}>{data ? t('common.strings', { count: data.total.toLocaleString() }) : ''}</span>
         </div>
-        <div className={parentS.tableWrap}>
+        <div className={parentS.tableWrap} ref={tableWrapRef}>
           {isLoading ? <div className={parentS.tableEmpty}>{t('common.loading')}</div> : (
             <table className={parentS.table}>
               <thead><tr>

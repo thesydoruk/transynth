@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type CsvImportJob, type CsvPreviewRow } from '../../../api';
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { LANGUAGES } from '../importsShared';
+import { useAutoPageSize } from '../hooks';
 import s from '../ImportPage.module.scss';
 
 interface CsvPreviewModalProps {
@@ -12,6 +13,8 @@ interface CsvPreviewModalProps {
   onClose: () => void;
   onConfirm: (srcLang: string, tgtLang: string) => void;
 }
+
+const PAGINATION_RESERVED_HEIGHT_PX = 56;
 
 /** Preview modal for CSV imports with language selection and sample rows. */
 export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProps) => {
@@ -22,7 +25,7 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
   const [qInput, setQInput] = useState('');
-  const pageSize = 50;
+  const [pageSize, tableWrapRef] = useAutoPageSize(30, PAGINATION_RESERVED_HEIGHT_PX);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -32,9 +35,15 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
     return () => clearTimeout(id);
   }, [qInput]);
 
+  useEffect(() => {
+    const id = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(id);
+  }, [pageSize]);
+
   const { data, isLoading } = useQuery({
     queryKey: ['csv-preview', job.id, page, pageSize, sigFilter, qFilter],
     queryFn: () => api.csv.preview(job.id, { page, pageSize, signature: sigFilter || undefined, q: qFilter || undefined }),
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
@@ -44,6 +53,8 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
       onClose={onClose}
       title={job.file_name}
       closeAriaLabel={t('common.close')}
+      size="xl"
+      stretchContent
     >
         <div className={s.langBar}>
           <label className={s.langLabel}>{t('csvImport.sourceLang')}
@@ -66,7 +77,7 @@ export const CsvPreviewModal = ({ job, onClose, onConfirm }: CsvPreviewModalProp
           <input type="text" placeholder={t('csvImport.searchPlaceholder')} value={qInput} onChange={(event) => setQInput(event.target.value)} className={s.searchInput} />
           <span className={s.filterBarCount}>{data ? t('common.records', { count: data.total.toLocaleString() }) : ''}</span>
         </div>
-        <div className={s.tableWrap}>
+        <div className={s.tableWrap} ref={tableWrapRef}>
           {isLoading ? <div className={s.tableEmpty}>{t('common.loading')}</div> : (
             <table className={s.table}>
               <thead><tr>

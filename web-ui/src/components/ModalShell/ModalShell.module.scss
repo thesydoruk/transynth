@@ -63,3 +63,20 @@
 .content {
   min-height: 0;
 }
+
+/** Wider variant — used by modals with wide data tables (import previews). */
+.containerXl {
+  width: min(96vw, 1100px);
+}
+
+/**
+ * Stretched content area — flex column container that lets inner children
+ * (e.g. a tableWrap with flex: 1) fill the remaining modal height.
+ */
+.contentStretch {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
