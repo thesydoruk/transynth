@@ -101,6 +101,7 @@ export const GameHubPage = () => {
     queryKey: ['games'],
     queryFn: api.games.list,
     staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   /** Imported mods filtered by this game. */

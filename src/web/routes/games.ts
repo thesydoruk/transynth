@@ -48,6 +48,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.resolve(__dirname, '../../../data/cache/games');
 const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
 
+/** Browser cache TTL for game covers (7 days). */
+const COVER_CACHE_SECONDS = 60 * 60 * 24 * 7;
+/** Browser cache TTL for games catalogue JSON (1 hour). */
+const GAMES_CACHE_SECONDS = 60 * 60;
+
 /** NexusMods 4:3 tile art base URL. */
 const NM_TILE_BASE = 'https://staticdelivery.nexusmods.com/Images/games/4_3/tile_';
 
@@ -463,6 +468,12 @@ export const SUPPORTED_GAMES: GameInfo[] = [
   },
 ];
 
+/** Stable ETag for the static games catalogue payload. */
+const GAMES_ETAG = `"${crypto.createHash('sha1').update(JSON.stringify(SUPPORTED_GAMES)).digest('hex')}"`;
+
+/** Builds a weak ETag from file size and mtime. */
+const buildWeakEtag = (size: number, mtimeMs: number): string => `W/"${size}-${Math.trunc(mtimeMs)}"`;
+
 /**
  * Lazily-initialised singleton NexusMods client.
  *
@@ -490,7 +501,14 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
    * Returns the full SUPPORTED_GAMES catalogue as JSON.
    * No database queries — pure static data.
    */
-  app.get('/api/games', async (_req, reply) => {
+  app.get('/api/games', async (req, reply) => {
+    const ifNoneMatch = req.headers['if-none-match'];
+    if (ifNoneMatch === GAMES_ETAG) {
+      return reply.code(304).send();
+    }
+
+    reply.header('Cache-Control', `public, max-age=${GAMES_CACHE_SECONDS}`);
+    reply.header('ETag', GAMES_ETAG);
     return reply.send(SUPPORTED_GAMES);
   });
 
@@ -523,7 +541,16 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
 
     // Serve from disk cache if available
     if (fs.existsSync(cachePath)) {
+      const stat = fs.statSync(cachePath);
+      const etag = buildWeakEtag(stat.size, stat.mtimeMs);
+
+      if (req.headers['if-none-match'] === etag) {
+        return reply.code(304).send();
+      }
+
       const stream = fs.createReadStream(cachePath);
+      reply.header('Cache-Control', `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`);
+      reply.header('ETag', etag);
       reply.type('image/jpeg');
       return reply.send(stream);
     }
@@ -540,6 +567,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       }
 
       const buffer = Buffer.from(await res.arrayBuffer());
+      const etag = buildWeakEtag(buffer.length, Date.now());
 
       // Persist to cache asynchronously (don't await — serve immediately)
       fs.writeFile(cachePath, buffer, (err) => {
@@ -547,6 +575,8 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
         else log.info(`Cached game cover: ${cachePath}`);
       });
 
+      reply.header('Cache-Control', `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`);
+      reply.header('ETag', etag);
       reply.type('image/jpeg');
       return reply.send(buffer);
     } catch (err) {

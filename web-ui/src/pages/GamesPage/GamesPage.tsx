@@ -39,6 +39,7 @@ export const GamesPage = () => {
     queryKey: ['games'],
     queryFn: api.games.list,
     staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   if (isLoading) {
