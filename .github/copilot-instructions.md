@@ -26,6 +26,16 @@
 - Ask for confirmation only for destructive actions, broad refactors, dependency changes, schema changes, or ambiguous requirements.
 - Never run `git push` automatically. Push to remote only when the user explicitly asks for it in the current conversation.
 
+## Roadmap status notation
+
+- For roadmap/audit/progress markdown files in `test/` and `doc/`, use one unified status-symbol system.
+- Status legend is mandatory:
+  - `✅` implemented and working.
+  - `🔲` planned / not implemented.
+  - `❓` questionable value for web implementation.
+- Prefer these symbols over markdown checkboxes (`- [x]`, `- [ ]`) and over plain text labels like "DONE/PENDING".
+- Keep status notation consistent inside one file; do not mix symbol systems.
+
 ## Efficiency rules
 
 - Minimize tool calls and token usage when this does not reduce correctness.
