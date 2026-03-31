@@ -58,7 +58,32 @@ export const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]
 export const termWordBoundaryRe = (term: string): RegExp =>
   new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i');
 
-const buildQAIssues = (source: string, translation: string, game?: GameType | null): QAIssueInput[] => {
+/**
+ * Per-run QA check settings loaded from `project_settings` before each
+ * `refreshQAIssues` call.  Passed to `buildQAIssues` so the function stays pure.
+ */
+type QACheckSettings = {
+  /** When true (default), flag a QA warning if source and translation end with different sentence-ending punctuation. */
+  endPunctMatch: boolean;
+  /** Minimum word count required in a translation (1 = default — single word is fine). */
+  minWordCount: number;
+};
+
+/** Regex that matches the last sentence-ending punctuation of a string. */
+const END_PUNCT_RE = /[.!?…]$/;
+
+/**
+ * Extracts the last sentence-ending punctuation character from a string, or
+ * returns null when the string does not end with one.
+ */
+const lastEndPunct = (s: string): string | null => s.trimEnd().match(END_PUNCT_RE)?.[0] ?? null;
+
+const buildQAIssues = (
+  source: string,
+  translation: string,
+  game?: GameType | null,
+  settings?: Partial<QACheckSettings>,
+): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
 
@@ -110,6 +135,39 @@ const buildQAIssues = (source: string, translation: string, game?: GameType | nu
       severity: 'error',
       message: `Contains forbidden control characters: ${unique.join(', ')}`,
     });
+  }
+
+  // ── Project-settings-driven checks ─────────────────────────────────────
+  // These checks are only applied when the corresponding project setting is
+  // enabled (both default to enabled).
+
+  // End-punctuation match: source and translation must end with the same
+  // sentence-ending punctuation character (.  !  ?  …).
+  if (settings?.endPunctMatch !== false) {
+    const srcPunct = lastEndPunct(source);
+    const dstPunct = lastEndPunct(trimmed);
+    if (srcPunct !== null && dstPunct !== srcPunct) {
+      issues.push({
+        issueType: 'end_punct_mismatch',
+        severity: 'warning',
+        message: `Trailing punctuation mismatch: source ends with "${srcPunct}" but translation ends with "${dstPunct ?? '(none)'}".`,
+      });
+    }
+  }
+
+  // Minimum word count: translation must contain at least N words.
+  // Only evaluated when minWordCount > 1 (1 is the lowest meaningful
+  // threshold and is already covered by the empty_translation check).
+  const minWords = settings?.minWordCount ?? 1;
+  if (minWords > 1) {
+    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+    if (wordCount < minWords) {
+      issues.push({
+        issueType: 'min_word_count',
+        severity: 'warning',
+        message: `Translation has ${wordCount} word(s), minimum required is ${minWords}.`,
+      });
+    }
   }
 
   return issues;
@@ -164,7 +222,17 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
     return;
   }
 
-  const issues = buildQAIssues(row.source, row.translation, row.game as GameType | undefined);
+  // Load QA-relevant project settings in parallel with (or just before) rule fetch.
+  const { rows: settingRows } = await db.query<{ key: string; value: unknown }>(
+    `SELECT key, value FROM project_settings WHERE key IN ('qa.end_punct_match', 'qa.min_word_count')`,
+  );
+  const qaSettings: QACheckSettings = { endPunctMatch: true, minWordCount: 1 };
+  for (const s of settingRows) {
+    if (s.key === 'qa.end_punct_match') qaSettings.endPunctMatch = Boolean(s.value);
+    if (s.key === 'qa.min_word_count') qaSettings.minWordCount = Number(s.value);
+  }
+
+  const issues = buildQAIssues(row.source, row.translation, row.game as GameType | undefined, qaSettings);
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
   // FO76 shares the same record format as FO4, so QA rules configured for
@@ -347,6 +415,8 @@ export type StringsFilter = {
   src?: string;
   /** Per-column filter: translation text — case-insensitive substring match */
   transl?: string;
+  /** When true, strings with is_ignored = TRUE are excluded from results. */
+  hideIgnored?: boolean;
   page?: number;
   pageSize?: number;
   sort?: string;
@@ -430,6 +500,10 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
     idx++;
   }
 
+  if (f.hideIgnored) {
+    conditions.push(`s.is_ignored = FALSE`);
+  }
+
   const where = conditions.join(' AND ');
 
   // Append targetLang, srcLang, pageSize, offset as the final parameters
@@ -448,6 +522,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       r.path,
       r.edid,
       s.text_raw      AS source,
+      s.is_ignored,
       t.id            AS translation_id,
       t.text          AS translation,
       t.status,

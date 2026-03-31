@@ -30,11 +30,12 @@ import { DataTab } from './DataTab';
 import { GeneralTab } from './GeneralTab';
 import { LlmTab } from './LlmTab';
 import { UsersTab } from './UsersTab';
+import { WorkflowTab } from './WorkflowTab';
 import s from './SettingsPage.module.scss';
 
 /* ── Tab identifiers ─────────────────────────────────────────────────────── */
 
-type TabId = 'general' | 'llm' | 'qaRules' | 'tradAuto' | 'tmx' | 'activity' | 'data' | 'users';
+type TabId = 'general' | 'llm' | 'qaRules' | 'tradAuto' | 'tmx' | 'activity' | 'data' | 'users' | 'workflow';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -58,7 +59,8 @@ export const SettingsPage = () => {
     || value === 'tmx'
     || value === 'activity'
     || value === 'data'
-    || value === 'users';
+    || value === 'users'
+    || value === 'workflow';
 
   const tab = useMemo<TabId>(() => {
     if (!isTabId(tabFromUrl)) return 'general';
@@ -74,6 +76,7 @@ export const SettingsPage = () => {
   ];
 
   const workflowTabs: { id: TabId; label: string }[] = [
+    { id: 'workflow', label: t('settings.tabs.workflow') },
     { id: 'tradAuto', label: t('settings.tabs.tradAuto') },
     { id: 'tmx',      label: t('settings.tabs.tmx') },
     { id: 'data',     label: t('settings.tabs.data') },
@@ -132,6 +135,7 @@ export const SettingsPage = () => {
       {tab === 'general'  && <GeneralTab />}
       {tab === 'llm'      && <LlmTab />}
       {tab === 'qaRules'  && <QARulesPage />}
+      {tab === 'workflow' && <WorkflowTab />}
       {tab === 'tradAuto' && <TradAutoPage />}
       {tab === 'tmx'      && <TmxPage />}
       {tab === 'activity' && <ActivityPage />}

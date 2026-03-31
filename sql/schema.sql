@@ -334,3 +334,31 @@ CREATE TABLE IF NOT EXISTS llm_jobs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_llm_jobs_updated ON llm_jobs(updated_at DESC);
+
+-- ── Project-level workflow settings ─────────────────────────────────────────
+-- Stores persisted project-wide configuration as key→JSONB pairs.
+-- Frontend reads/writes these via GET /api/project-settings and
+-- PUT /api/project-settings/:key. Keys and defaults are defined in
+-- src/web/projectSettings.ts.
+CREATE TABLE IF NOT EXISTS project_settings (
+  key        TEXT PRIMARY KEY,
+  value      JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed default values — ON CONFLICT DO NOTHING is idempotent and safe on
+-- repeated schema runs (dbInit / dbReset).
+INSERT INTO project_settings(key, value) VALUES
+  ('workflow.auto_approve_on_save',    'false'),
+  ('workflow.propagate_to_identical',  'true'),
+  ('workflow.hide_ignored_by_default', 'false'),
+  ('qa.end_punct_match',               'true'),
+  ('qa.min_word_count',                '1'),
+  ('import.skip_tes4',                 'false')
+ON CONFLICT(key) DO NOTHING;
+
+-- ── String-level ignore flag ─────────────────────────────────────────────────
+-- Marks individual source strings as intentionally excluded from translation
+-- review. Ignored strings can be hidden in the editor via the
+-- workflow.hide_ignored_by_default project setting.
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS is_ignored BOOLEAN NOT NULL DEFAULT FALSE;

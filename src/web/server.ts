@@ -45,6 +45,7 @@ import { opsRoutes } from './routes/ops.js';
 import { tradAutoRoutes } from './routes/tradAuto.js';
 import { settingsRoutes } from './routes/settings.js';
 import { gamesRoutes } from './routes/games.js';
+import { projectSettingsRoutes } from './routes/projectSettings.js';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -111,6 +112,7 @@ await opsRoutes(app, db);
 await tradAutoRoutes(app, db);
 await settingsRoutes(app);
 await gamesRoutes(app, db);
+await projectSettingsRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

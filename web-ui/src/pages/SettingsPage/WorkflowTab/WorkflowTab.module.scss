@@ -1,0 +1,114 @@
+/* ── WorkflowTab — Project settings toggle list ─────────────────────────── */
+
+.center {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* ── Settings list ─────────────────────────────────────────────────────── */
+
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/** One row: label+description on the left, control on the right. */
+.settingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.settingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.settingLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* ── Toggle switch ─────────────────────────────────────────────────────── */
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+
+  input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.toggleTrack {
+  display: block;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--border);
+  transition: background 0.2s;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-bright);
+    transition: transform 0.2s;
+  }
+}
+
+.toggle input:checked + .toggleTrack {
+  background: var(--accent);
+
+  &::after {
+    transform: translateX(16px);
+  }
+}
+
+/* ── Number input ──────────────────────────────────────────────────────── */
+
+.numberInput {
+  width: 68px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 13px;
+  text-align: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+}

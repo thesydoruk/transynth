@@ -752,6 +752,7 @@
       "general": "General",
       "llm": "LLM / Auto-translate",
       "qaRules": "QA Rules",
+      "workflow": "Workflow",
       "tradAuto": "TradAuto",
       "tmx": "TMX",
       "activity": "Activity",
@@ -816,6 +817,23 @@
       "systemSection": "System",
       "multiUser": "Multi-user mode",
       "sessionLifetime": "Session lifetime"
+    },
+    "workflow": {
+      "sectionWorkflow": "Workflow",
+      "sectionQa": "QA Checks",
+      "sectionImport": "Import",
+      "autoApprove": "Auto-approve on save",
+      "autoApproveDesc": "When enabled, manually saved translations skip Draft status and go directly to Reviewed.",
+      "propagate": "Propagate to identical strings",
+      "propagateDesc": "When a string is saved, automatically propagate the translation to untranslated strings with identical source text.",
+      "hideIgnored": "Hide ignored strings by default",
+      "hideIgnoredDesc": "When enabled, strings marked as ignored are hidden in the editor by default.",
+      "endPunctMatch": "Check trailing punctuation",
+      "endPunctMatchDesc": "Flag a QA warning when the translation ends with different punctuation than the source (.  !  ?  …).",
+      "minWordCount": "Minimum word count",
+      "minWordCountDesc": "Minimum number of words required in a translation (0 = disabled, 1 = default).",
+      "skipTes4": "Skip TES4 records at import",
+      "skipTes4Desc": "Exclude TES4 header records during ESP/ESM file import."
     },
     "data": {
       "title": "Data Configuration",

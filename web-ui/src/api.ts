@@ -888,6 +888,7 @@ export const api = {
       field?: string;
       src?: string;
       transl?: string;
+      hideIgnored?: boolean;
       page?: number;
       pageSize?: number;
       sort?: string;
@@ -907,6 +908,7 @@ export const api = {
       if (params.field) qs.set('field', params.field);
       if (params.src) qs.set('src', params.src);
       if (params.transl) qs.set('transl', params.transl);
+      if (params.hideIgnored) qs.set('hideIgnored', '1');
       if (params.page) qs.set('page', String(params.page));
       if (params.pageSize) qs.set('pageSize', String(params.pageSize));
       if (params.sort) qs.set('sort', params.sort);
@@ -938,6 +940,13 @@ export const api = {
       req<TranslationHistoryEntry[]>(`/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`),
     qa: (stringId: number, targetLang = getTgtLang()) =>
       req<QAIssue[]>(`/api/strings/${stringId}/qa?targetLang=${encodeURIComponent(targetLang)}`),
+
+    /** Toggle the is_ignored flag on a source string. */
+    setIgnored: (stringId: number, ignore: boolean) =>
+      req<{ id: number; is_ignored: boolean }>(`/api/strings/${stringId}/ignore`, {
+        method: 'PATCH',
+        body: JSON.stringify({ ignore }),
+      }),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
      *  Returns final results array after stream closes. */
@@ -1532,6 +1541,18 @@ export const api = {
   settings: {
     /** Returns the current server configuration snapshot. */
     get: () => req<SettingsPayload>('/api/settings'),
+  },
+
+  /** Project-level workflow and QA settings stored in the database. */
+  projectSettings: {
+    /** Returns all project settings merged with built-in defaults. */
+    getAll: () => req<Record<string, unknown>>('/api/project-settings'),
+    /** Updates a single project setting by key. */
+    update: (key: string, value: boolean | number) =>
+      req<{ key: string; value: boolean | number }>(`/api/project-settings/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
   },
 
   /**
