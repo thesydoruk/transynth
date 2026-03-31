@@ -26,7 +26,7 @@ const ACTION_TYPES = [
   'export', 'create_user', 'update_user', 'change_password',
 ];
 
-export const ActivityPage = () => {
+export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialOffset = Number(searchParams.get('offset') ?? '0');
@@ -105,7 +105,7 @@ export const ActivityPage = () => {
   };
 
   return (
-    <div className={s.page}>
+    <div className={`${s.page} ${embedded ? s.pageEmbedded : ''}`}>
       <h2 className={s.title}>{t('activity.title')}</h2>
 
       {/* Filters */}

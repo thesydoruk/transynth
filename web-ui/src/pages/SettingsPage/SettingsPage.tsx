@@ -136,11 +136,11 @@ export const SettingsPage = () => {
         <div className={s.content}>
           {tab === 'general'  && <GeneralTab />}
           {tab === 'llm'      && <LlmTab />}
-          {tab === 'qaRules'  && <QARulesPage />}
+          {tab === 'qaRules'  && <QARulesPage embedded />}
           {tab === 'workflow' && <WorkflowTab />}
-          {tab === 'tradAuto' && <TradAutoPage />}
-          {tab === 'tmx'      && <TmxPage />}
-          {tab === 'activity' && <ActivityPage />}
+          {tab === 'tradAuto' && <TradAutoPage embedded />}
+          {tab === 'tmx'      && <TmxPage embedded />}
+          {tab === 'activity' && <ActivityPage embedded />}
           {tab === 'data'     && <DataTab />}
           {tab === 'users'    && <UsersTab />}
         </div>

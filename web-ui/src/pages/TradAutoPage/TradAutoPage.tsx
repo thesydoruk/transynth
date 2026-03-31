@@ -30,7 +30,7 @@ const EMPTY_FORM = {
  * test panel (dry-run against sample texts) and an apply panel (apply rules
  * to a mod's untranslated strings).
  */
-export const TradAutoPage = () => {
+export const TradAutoPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
@@ -215,7 +215,7 @@ export const TradAutoPage = () => {
 
   return (
     <>
-      <div className={s.page}>
+      <div className={`${s.page} ${embedded ? s.pageEmbedded : ''}`}>
       <h1 className={s.title}>{t('tradAuto.title')}</h1>
       <p className={s.description}>{t('tradAuto.description')}</p>
 

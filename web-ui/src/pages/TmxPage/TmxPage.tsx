@@ -14,7 +14,7 @@ import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { Button } from '../../components/Button';
 import s from './TmxPage.module.scss';
 
-export const TmxPage = () => {
+export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
 
@@ -49,7 +49,7 @@ export const TmxPage = () => {
   };
 
   return (
-    <div className={s.page}>
+    <div className={`${s.page} ${embedded ? s.pageEmbedded : ''}`}>
       <h1 className={s.title}>{t('tmx.title')}</h1>
       <p className={s.subtitle}>{t('tmx.subtitle')}</p>
 

@@ -26,7 +26,7 @@ const EMPTY_FORM = {
  * inline-edit, toggle active state, and delete rules. Each rule can be scoped
  * to a specific record GRUP (signature) and/or field (path).
  */
-export const QARulesPage = () => {
+export const QARulesPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
@@ -123,7 +123,7 @@ export const QARulesPage = () => {
 
   return (
     <>
-      <div className={s.page}>
+      <div className={`${s.page} ${embedded ? s.pageEmbedded : ''}`}>
       <h1 className={s.title}>{t('qaRules.title')}</h1>
       <p className={s.description}>{t('qaRules.description')}</p>
 
