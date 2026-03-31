@@ -311,6 +311,18 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(placeholderMasked, game as any);
       const maskedSourceText = protectedMasked;
 
+      // Skip strings that contain no translatable content after masking all
+      // placeholders and markup tokens (e.g. bare <font> / </font> lines from
+      // book texts — equivalent to the Ignored.txt list in ESP-ESM Translator).
+      const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
+      if (!translatableContent) {
+        await upsertTranslation(db, stringId, sourceText, 'auto', targetLang);
+        const r = { stringId, text: sourceText };
+        results.push(r);
+        send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
+        continue;
+      }
+
       try {
         // Check LLM translation cache first
         const cached = await cacheLookup(db, sourceText, srcLang, targetLang, CONFIG.translateModel);
