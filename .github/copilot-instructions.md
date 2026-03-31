@@ -25,6 +25,7 @@
 - For small, localized, low-risk changes, make the change directly and report what was done.
 - Ask for confirmation only for destructive actions, broad refactors, dependency changes, schema changes, or ambiguous requirements.
 - Never run `git push` automatically. Push to remote only when the user explicitly asks for it in the current conversation.
+- **NEVER stage or commit files that reside in directories listed in `.gitignore`.** Before any `git add`, check `.gitignore` and skip any path that matches an ignored pattern. Never use `git add -f` / `--force` to bypass `.gitignore` unless the user explicitly instructs it for that specific file in the current message.
 
 ## Roadmap status notation
 
