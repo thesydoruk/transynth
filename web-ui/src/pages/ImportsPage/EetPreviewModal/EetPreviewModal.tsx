@@ -59,13 +59,13 @@ export const EetPreviewModal = ({ job, onClose, onConfirm }: EetPreviewModalProp
         <div className={s.langBar}>
           <label className={s.langLabel}>{t('csvImport.sourceLang')}
             <select value={srcLang} onChange={(event) => setSrcLang(event.target.value)} className={s.select}>
-              {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)}
+              {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}
             </select>
           </label>
           <span className={s.langArrow}>→</span>
           <label className={s.langLabel}>{t('csvImport.targetLang')}
             <select value={tgtLang} onChange={(event) => setTgtLang(event.target.value)} className={s.select}>
-              {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)}
+              {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}
             </select>
           </label>
         </div>

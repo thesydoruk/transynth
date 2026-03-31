@@ -199,6 +199,7 @@ const resolveAvailableLocale = <T>(
     ['en', ['en', 'english']],
     ['ru', ['ru', 'russian']],
     ['uk', ['uk', 'ukrainian']],
+    ['cs', ['cs', 'czech']],
     ['de', ['de', 'german']],
     ['fr', ['fr', 'french']],
     ['es', ['es', 'spanish']],
@@ -1092,30 +1093,71 @@ const convertImportedStringsToTranslations = async (
       return;
     }
 
+    const localeLookup = new Map(locales.map((locale) => [locale, true]));
+    const resolvedSourceLocale = resolveAvailableLocale(localeLookup, srcLang)?.resolvedKey ?? srcLang;
+
+    const sourceResult = await db.query(
+      `SELECT s.id, s.record_id, s.text_raw
+       FROM strings s
+       WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
+       AND s.lang = $2`,
+      [modId, resolvedSourceLocale],
+    );
+
+    const sourceRows = sourceResult.rows as { id: number; record_id: number; text_raw: string }[];
+    const sourceByRecordId = new Map<number, { id: number; text_raw: string }>();
+    for (const row of sourceRows) {
+      sourceByRecordId.set(row.record_id, { id: row.id, text_raw: row.text_raw });
+    }
+
+    if (sourceByRecordId.size === 0) {
+      throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
+    }
+
     log.info(
-      `[ModImport] Converting ${locales.length} locale(s) (${locales.join(', ')}) to translations for mod ${modId}` +
+      `[ModImport] Converting ${locales.length} locale(s) (${locales.join(', ')}) to translations for mod ${modId}; ` +
+      `resolved src locale="${resolvedSourceLocale}"` +
       (isLocalized ? ' [localized]' : ' [non-localized]'),
     );
 
-    // For each locale, create translations
+    // For each locale, create translations anchored to source-locale strings.
     for (const locale of locales) {
-      // Query all strings in this locale for this mod
-      const stringsResult = await db.query(
-        `SELECT s.id, s.record_id, s.text_raw, s.text_norm
+      if (locale === resolvedSourceLocale) {
+        // Keep a self-translation for source locale so source text can be edited in target column too.
+        for (const source of sourceByRecordId.values()) {
+          await upsertTranslation(db, source.id, source.text_raw, 'reviewed', locale, 'import_self_translation');
+        }
+        log.info(`[ModImport] Created ${sourceByRecordId.size} self-translations for source locale ${locale}`);
+        continue;
+      }
+
+      const localeStringsResult = await db.query(
+        `SELECT s.record_id, s.text_raw
          FROM strings s
          WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
          AND s.lang = $2`,
         [modId, locale],
       );
 
-      const records = stringsResult.rows as { id: number; record_id: number; text_raw: string; text_norm: string }[];
+      const localeRows = localeStringsResult.rows as { record_id: number; text_raw: string }[];
+      let createdForLocale = 0;
+      let skippedWithoutSource = 0;
 
-      // Create translation for each string
-      for (const record of records) {
-        await upsertTranslation(db, record.id, record.text_raw, 'reviewed', locale, 'import_self_translation');
+      for (const localeRow of localeRows) {
+        const source = sourceByRecordId.get(localeRow.record_id);
+        if (!source) {
+          skippedWithoutSource++;
+          continue;
+        }
+
+        await upsertTranslation(db, source.id, localeRow.text_raw, 'reviewed', locale, 'import_self_translation');
+        createdForLocale++;
       }
 
-      log.info(`[ModImport] Created ${records.length} translations for locale ${locale}`);
+      log.info(
+        `[ModImport] Created ${createdForLocale} translations for locale ${locale}` +
+        (skippedWithoutSource > 0 ? `; skipped ${skippedWithoutSource} rows without source pair` : ''),
+      );
     }
 
     // After all translations created, delete non-source strings only for localized mods
@@ -1123,9 +1165,9 @@ const convertImportedStringsToTranslations = async (
     if (isLocalized && srcLang) {
       const deleteNonSrcResult = await db.query(
         `DELETE FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang != $2`,
-        [modId, srcLang],
+        [modId, resolvedSourceLocale],
       );
-      log.info(`[ModImport] Deleted ${deleteNonSrcResult.rowCount} non-source language strings`);
+      log.info(`[ModImport] Deleted ${deleteNonSrcResult.rowCount} non-source language strings (kept ${resolvedSourceLocale})`);
     }
   } catch (err) {
     log.error(

@@ -52,6 +52,38 @@ export const SUPPORTED_CONTENT_LANGUAGES = [
   'ko',
 ] as const;
 
+/** Strongly typed content language code. */
+export type SupportedContentLanguage = typeof SUPPORTED_CONTENT_LANGUAGES[number];
+
+/** Human-friendly labels for content language selectors. */
+export const CONTENT_LANGUAGE_LABELS: Record<SupportedContentLanguage, string> = {
+  en: 'English',
+  uk: 'Ukrainian',
+  ru: 'Russian',
+  de: 'German',
+  fr: 'French',
+  es: 'Spanish',
+  it: 'Italian',
+  pt: 'Portuguese',
+  pl: 'Polish',
+  cs: 'Czech',
+  ja: 'Japanese',
+  zh: 'Chinese',
+  ko: 'Korean',
+};
+
+export type ContentLanguageOption = {
+  code: SupportedContentLanguage;
+  label: string;
+};
+
+/** Build language options from the single supported-language source of truth. */
+export const getContentLanguageOptions = (): ContentLanguageOption[] =>
+  SUPPORTED_CONTENT_LANGUAGES.map((code) => ({
+    code,
+    label: `${CONTENT_LANGUAGE_LABELS[code]} (${code})`,
+  }));
+
 /* ── Runtime accessors ───────────────────────────────────────────────────── */
 
 /**

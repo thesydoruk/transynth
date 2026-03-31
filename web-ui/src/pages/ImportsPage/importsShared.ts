@@ -1,4 +1,5 @@
 import type { CsvImportJob, EetImportJob, ModImportJob } from '../../api';
+import { getContentLanguageOptions } from '../../langDefaults';
 
 /** Live SSE progress for a running import. */
 export type LiveProgress = { imported: number; total: number };
@@ -11,20 +12,7 @@ export type ModPreviewConfirmPayload = {
 };
 
 /** Language options shared by all import preview modals. */
-export const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'uk', label: 'Ukrainian' },
-  { code: 'ru', label: 'Russian' },
-  { code: 'de', label: 'German' },
-  { code: 'fr', label: 'French' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'it', label: 'Italian' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'pl', label: 'Polish' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'zh', label: 'Chinese' },
-  { code: 'ko', label: 'Korean' },
-];
+export const LANGUAGES = getContentLanguageOptions();
 
 /** Background color for a job status badge. */
 export const statusColorBase = (status: string): string => {

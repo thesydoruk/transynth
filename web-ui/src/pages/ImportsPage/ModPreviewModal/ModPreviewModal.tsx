@@ -111,11 +111,11 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
                 {data?.isLocalized && data?.locales.length > 0 ? (
                   data.locales.map((locale) => {
                     const langInfo = LANGUAGES.find(l => l.code === locale);
-                    const label = langInfo ? `${langInfo.label} (${locale})` : locale;
+                    const label = langInfo ? langInfo.label : locale;
                     return <option key={locale} value={locale}>{label}</option>;
                   })
                 ) : (
-                  LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)
+                  LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)
                 )}
               </select>
             </label>

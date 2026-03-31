@@ -50,6 +50,21 @@ CREATE TABLE IF NOT EXISTS strings (
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS text_norm_nopunct TEXT;
 
+-- ── Auth & collaboration tables ─────────────────────────────────────────────
+-- These tables always exist regardless of MULTI_USER setting.
+-- In single-user mode they simply hold the default admin row.
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'translator',  -- admin | translator | reviewer
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS translations (
   id SERIAL PRIMARY KEY,
   src_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
@@ -216,20 +231,7 @@ CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang,
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);
 
--- ── Auth & collaboration tables ─────────────────────────────────────────────
--- These tables always exist regardless of MULTI_USER setting.
--- In single-user mode they simply hold the default admin row.
-
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  display_name TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'translator',  -- admin | translator | reviewer
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- ── Sessions & activity log ─────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS sessions (
   id SERIAL PRIMARY KEY,
