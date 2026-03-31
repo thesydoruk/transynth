@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
-import { getTgtLang } from '../../langDefaults';
+import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { LoadingState } from '../../components/LoadingState';
 import { PaginationControls } from '../../components/PaginationControls';
@@ -15,15 +15,6 @@ import s from './CoherencePage.module.scss';
 
 /** Number of groups displayed per page. */
 const PAGE_SIZE = 30;
-
-/** Language options shown in the language selector. */
-const LANG_OPTIONS = [
-  { code: 'uk', label: 'Українська (uk)' },
-  { code: 'ru', label: 'Русский (ru)' },
-  { code: 'de', label: 'Deutsch (de)' },
-  { code: 'fr', label: 'Français (fr)' },
-  { code: 'pl', label: 'Polski (pl)' },
-];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -42,6 +33,7 @@ const LANG_OPTIONS = [
  */
 export const CoherencePage = () => {
   const { t } = useTranslation();
+  const languageOptions = getContentLanguageOptions();
   const qc = useQueryClient();
 
   // ── Local state ──────────────────────────────────────────────────────────
@@ -112,7 +104,7 @@ export const CoherencePage = () => {
           value={targetLang}
           onChange={(e) => { setTargetLang(e.target.value); setPage(0); }}
         >
-          {LANG_OPTIONS.map((l) => (
+          {languageOptions.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </select>

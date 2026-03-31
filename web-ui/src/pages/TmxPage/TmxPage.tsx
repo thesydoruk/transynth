@@ -10,12 +10,13 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
-import { getSrcLang, getTgtLang } from '../../langDefaults';
+import { getContentLanguageOptions, getSrcLang, getTgtLang } from '../../langDefaults';
 import { Button } from '../../components/Button';
 import s from './TmxPage.module.scss';
 
 export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
+  const languageOptions = getContentLanguageOptions();
   const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
 
   /* ── Export state ─────────────────────────────────────────────────────────── */
@@ -109,11 +110,9 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
               value={exportLang}
               onChange={(e) => setExportLang(e.target.value)}
             >
-              <option value="uk">Ukrainian (uk)</option>
-              <option value="ru">Russian (ru)</option>
-              <option value="de">German (de)</option>
-              <option value="fr">French (fr)</option>
-              <option value="es">Spanish (es)</option>
+              {languageOptions.map(({ code, label }) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
             </select>
           </div>
 

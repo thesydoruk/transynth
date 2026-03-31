@@ -3,20 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import { getTgtLang } from '../../langDefaults';
+import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { GroupCard } from './GroupCard';
 import s from './INNRPage.module.scss';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Language options for the target-language dropdown. */
-const LANG_OPTIONS = [
-  { code: 'uk', label: 'Українська (uk)' },
-  { code: 'ru', label: 'Русский (ru)' },
-  { code: 'de', label: 'Deutsch (de)' },
-  { code: 'fr', label: 'Français (fr)' },
-  { code: 'pl', label: 'Polski (pl)' },
-];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -38,6 +29,7 @@ const LANG_OPTIONS = [
  */
 export const INNRPage = () => {
   const { t } = useTranslation();
+  const languageOptions = getContentLanguageOptions();
   const { modId: modIdParam, gameId } = useParams<{ modId: string; gameId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -123,7 +115,7 @@ export const INNRPage = () => {
           value={targetLang}
           onChange={(e) => setTargetLang(e.target.value)}
         >
-          {LANG_OPTIONS.map((l) => (
+          {languageOptions.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </select>

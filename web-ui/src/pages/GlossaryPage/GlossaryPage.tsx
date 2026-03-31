@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../../api';
 import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
-import { getSrcLang, getTgtLang } from '../../langDefaults';
+import { getContentLanguageOptions, getSrcLang, getTgtLang } from '../../langDefaults';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
   const { t } = useTranslation();
+  const languageOptions = getContentLanguageOptions();
   const { multiUser, user } = useAuth();
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState(getSrcLang());
@@ -74,15 +75,17 @@ export const GlossaryPage = () => {
       <div className={s.toolbar}>
         <label className={s.filterLabel}>{t('glossary.sourceLang')}
           <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.selectIndent}>
-            <option value="en">EN</option>
-            <option value="uk">UK</option>
+            {languageOptions.map(({ code, label }) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
             <option value="">{t('common.all')}</option>
           </select>
         </label>
         <label className={s.filterLabel}>{t('glossary.targetLang')}
           <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.selectIndent}>
-            <option value="uk">UK</option>
-            <option value="en">EN</option>
+            {languageOptions.map(({ code, label }) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
             <option value="">{t('common.all')}</option>
           </select>
         </label>

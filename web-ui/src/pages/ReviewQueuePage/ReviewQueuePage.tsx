@@ -6,7 +6,7 @@ import { api, type Mod, type ReviewQueueRow } from '../../api';
 import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import { getCurrentGame } from '../../langDefaults';
-import { getTgtLang } from '../../langDefaults';
+import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ConfidenceBar } from './ConfidenceBar';
@@ -16,15 +16,6 @@ import s from './ReviewQueuePage.module.scss';
 
 /** Rows shown per page. */
 const PAGE_SIZE = 50;
-
-/** Language options for the language selector. */
-const LANG_OPTIONS = [
-  { code: 'uk', label: 'Українська (uk)' },
-  { code: 'ru', label: 'Русский (ru)' },
-  { code: 'de', label: 'Deutsch (de)' },
-  { code: 'fr', label: 'Français (fr)' },
-  { code: 'pl', label: 'Polski (pl)' },
-];
 
 /**
  * Statuses that can be filtered in the review queue.
@@ -64,6 +55,7 @@ const CONFIDENCE_OPTIONS: Array<{ label: string; value: number | null }> = [
  */
 export const ReviewQueuePage = () => {
   const { t } = useTranslation();
+  const languageOptions = getContentLanguageOptions();
   const { multiUser, user } = useAuth();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -170,7 +162,7 @@ export const ReviewQueuePage = () => {
           value={targetLang}
           onChange={(e) => { setTargetLang(e.target.value); setPage(1); }}
         >
-          {LANG_OPTIONS.map((l) => (
+          {languageOptions.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </select>
