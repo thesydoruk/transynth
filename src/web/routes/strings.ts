@@ -16,6 +16,7 @@ import { cacheLookup, cacheStore } from '../cacheService.js';
 import { chatWithFallback } from '../../llm/index.js';
 import { CONFIG } from '../../config.js';
 import { log } from '../../logger.js';
+import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders.js';
 import { reachableStatuses, isValidTranslationStatus } from '../statusMachine.js';
 import type { TranslationStatus } from '../statusMachine.js';
 
@@ -289,7 +290,11 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     for (let i = 0; i < stringIds.length; i++) {
       const stringId = stringIds[i];
       const { rows: strRows } = await db.query(
-        `SELECT text_raw FROM strings WHERE id = $1 AND lang = $2`,
+        `SELECT s.text_raw, m.game
+           FROM strings s
+           JOIN records r ON r.id = s.record_id
+           JOIN mods m ON m.id = r.mod_id
+          WHERE s.id = $1 AND s.lang = $2`,
         [stringId, srcLang],
       );
 
@@ -300,7 +305,11 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         continue;
       }
 
-      const sourceText = strRows[0].text_raw;
+      const sourceText = strRows[0].text_raw as string;
+      const game = (strRows[0].game as string | undefined) ?? resolvedModGame ?? undefined;
+      const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
+      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(placeholderMasked, game as any);
+      const maskedSourceText = protectedMasked;
 
       try {
         // Check LLM translation cache first
@@ -310,13 +319,17 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         if (cached) {
           translated = cached.translated;
         } else {
-          translated = await chatWithFallback({
+          const maskedTranslation = await chatWithFallback({
             model: CONFIG.translateModel,
             messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: sourceText },
+              {
+                role: 'system',
+                content: `${systemPrompt}\n\nKeep protected markers like ¤PH0¤ and ¤FK0¤ unchanged.`,
+              },
+              { role: 'user', content: maskedSourceText },
             ],
           });
+          translated = unmask(unmask(maskedTranslation, functionKeywordMap), placeholderMap);
 
           // Store in cache for future lookups
           await cacheStore(db, sourceText, srcLang, targetLang, CONFIG.translateModel, translated);

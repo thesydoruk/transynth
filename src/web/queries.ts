@@ -3,7 +3,9 @@ import { withTransaction } from '../db.js';
 import type pg from 'pg';
 import { log } from '../logger.js';
 import { CONFIG } from '../config.js';
+import type { GameType } from '../types.js';
 import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm.js';
+import { extractProtectedTokens } from '../utils/placeholders.js';
 import { assertTransition, isValidTranslationStatus } from './statusMachine.js';
 import type { TranslationStatus, StatusActor } from './statusMachine.js';
 
@@ -40,11 +42,6 @@ type QAIssueInput = {
   message: string;
 };
 
-const extractPlaceholders = (text: string): string[] => {
-  const matches = text.match(/%[A-Za-z0-9_]+%|%[ds]\b|\{[^}]+\}|\$\{[^}]+\}|<[^>]+>/g) ?? [];
-  return matches.sort();
-}
-
 /**
  * Escape special regex metacharacters in a string so it can be used
  * inside a `new RegExp(...)` as a literal match.
@@ -61,7 +58,7 @@ export const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]
 export const termWordBoundaryRe = (term: string): RegExp =>
   new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i');
 
-const buildQAIssues = (source: string, translation: string): QAIssueInput[] => {
+const buildQAIssues = (source: string, translation: string, game?: GameType | null): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
 
@@ -74,13 +71,13 @@ const buildQAIssues = (source: string, translation: string): QAIssueInput[] => {
     return issues;
   }
 
-  const srcPlaceholders = extractPlaceholders(source);
-  const dstPlaceholders = extractPlaceholders(translation);
-  if (srcPlaceholders.join('\u0000') !== dstPlaceholders.join('\u0000')) {
+  const srcProtectedTokens = extractProtectedTokens(source, game);
+  const dstProtectedTokens = extractProtectedTokens(translation, game);
+  if (srcProtectedTokens.join('\u0000') !== dstProtectedTokens.join('\u0000')) {
     issues.push({
       issueType: 'placeholder_mismatch',
       severity: 'error',
-      message: `Placeholder mismatch: source=[${srcPlaceholders.join(', ')}] target=[${dstPlaceholders.join(', ')}]`,
+      message: `Protected token mismatch: source=[${srcProtectedTokens.join(', ')}] target=[${dstProtectedTokens.join(', ')}]`,
     });
   }
 
@@ -167,7 +164,7 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
     return;
   }
 
-  const issues = buildQAIssues(row.source, row.translation);
+  const issues = buildQAIssues(row.source, row.translation, row.game as GameType | undefined);
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
   // FO76 shares the same record format as FO4, so QA rules configured for

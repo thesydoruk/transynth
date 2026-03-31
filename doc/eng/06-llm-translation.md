@@ -148,6 +148,10 @@ Game strings contain special tokens that must not be translated:
 The pipeline **masks** these tokens before sending to the LLM (replacing them
 with numbered markers `¤PH0¤`, `¤PH1¤`, …) and **unmasks** them in the response.
 
+For script-like strings, the pipeline also masks legacy `FunctionKeywords`
+tokens with markers like `¤FK0¤` so Papyrus function names and declaration
+keywords survive translation unchanged.
+
 This prevents the LLM from corrupting or translating placeholders.
 
 Token types that are masked:
@@ -170,12 +174,11 @@ Masked: "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
 Restored: "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
 ```
 
-The LLM is instructed in the system prompt to **keep `¤PH0¤` tokens unchanged**.
+The LLM is instructed in the system prompt to **keep `¤PH0¤` and `¤FK0¤` tokens unchanged**.
 After receiving the response, the pipeline restores each token positionally.
 
-Note: placeholder masking is applied in the CLI translator (`translateMod.ts`).
-The web UI batch translate sends raw text; glossary terms protect named
-concepts through glossary masking (`¤GL0¤`) instead.
+The web UI batch translate now applies the same protected-token masking before
+calling the LLM. Glossary injection still runs through the system prompt.
 
 ---
 

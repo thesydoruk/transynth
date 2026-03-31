@@ -158,9 +158,13 @@ Masked: "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
 Restored: "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
 ```
 
-У system prompt модель окремо інструктується **не змінювати `¤PH0¤`-подібні токени**.
+Для script-like рядків pipeline також маскує legacy `FunctionKeywords`
+токени маркерами на кшталт `¤FK0¤`, щоб назви Papyrus-функцій і службові
+ключові слова не перекладалися випадково.
 
-Практична примітка: placeholder masking у повному вигляді застосовується в CLI translator (`translateMod.ts`). Web UI batch translate у першу чергу спирається на glossary masking (`¤GL0¤`) для захисту ключових термінів.
+У system prompt модель окремо інструктується **не змінювати `¤PH0¤`- і `¤FK0¤`-подібні токени**.
+
+Практична примітка: web UI batch translate тепер теж застосовує protected-token masking перед викликом LLM. Глосарій, як і раніше, підставляється окремим блоком у system prompt.
 
 ---
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { maskPlaceholders, applyGlossaryMask, unmask } from '../placeholders.js';
+import { applyGlossaryMask, extractProtectedTokens, maskFunctionKeywords, maskPlaceholders, unmask } from '../placeholders.js';
 
 describe('maskPlaceholders', () => {
   it('masks printf-style placeholders', () => {
@@ -63,5 +63,39 @@ describe('applyGlossaryMask', () => {
     const original = 'Visit the Brotherhood of Steel at the Institute';
     const { masked, mapping } = applyGlossaryMask(original, ['Brotherhood of Steel', 'Institute']);
     expect(unmask(masked, mapping)).toBe(original);
+  });
+});
+
+describe('maskFunctionKeywords', () => {
+  it('masks code-like function keywords for the active game', () => {
+    const { masked, mapping } = maskFunctionKeywords('Debug.Notification(AddItem)', 'fo4');
+    expect(masked).toBe('¤FK0¤.¤FK1¤(¤FK2¤)');
+    expect(mapping['¤FK0¤']).toBe('Debug');
+    expect(mapping['¤FK1¤']).toBe('Notification');
+    expect(mapping['¤FK2¤']).toBe('AddItem');
+  });
+
+  it('does not mask ordinary prose that happens to contain legacy keywords', () => {
+    const { masked, mapping } = maskFunctionKeywords('Add the item to the map and read the book.', 'fo4');
+    expect(masked).toBe('Add the item to the map and read the book.');
+    expect(Object.keys(mapping)).toHaveLength(0);
+  });
+
+  it('masks declaration-style keyword lines without punctuation', () => {
+    const { masked, mapping } = maskFunctionKeywords('Actor Property PlayerRef Auto', 'sse');
+    expect(masked).toBe('¤FK0¤ ¤FK1¤ PlayerRef ¤FK2¤');
+    expect(mapping['¤FK0¤']).toBe('Actor');
+    expect(mapping['¤FK1¤']).toBe('Property');
+    expect(mapping['¤FK2¤']).toBe('Auto');
+  });
+});
+
+describe('extractProtectedTokens', () => {
+  it('includes both placeholders and function keywords for QA comparisons', () => {
+    expect(extractProtectedTokens('Debug.Notification(<Alias=Player>)', 'fo4')).toEqual([
+      '<Alias=Player>',
+      'Debug',
+      'Notification',
+    ]);
   });
 });
