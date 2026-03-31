@@ -7,8 +7,12 @@
 }
 
 .title {
-  color: var(--text-bright);
-  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 .description {
@@ -230,9 +234,10 @@
 }
 
 .panelTitle {
-  color: var(--text-bright);
-  margin-bottom: 4px;
   font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
 }
 
 .panelDesc {

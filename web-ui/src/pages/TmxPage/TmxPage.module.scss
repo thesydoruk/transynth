@@ -7,8 +7,12 @@
 }
 
 .title {
-  color: var(--text-bright);
-  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 .subtitle {
@@ -30,8 +34,9 @@
 }
 
 .workflowTitle {
-  color: var(--text-bright);
   font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
   margin-bottom: 6px;
 }
 
@@ -108,9 +113,9 @@
 }
 
 .sectionTitle {
-  color: var(--text);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--text);
   margin: 0 0 12px;
 }
 

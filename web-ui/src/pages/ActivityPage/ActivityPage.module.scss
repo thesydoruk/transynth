@@ -7,8 +7,12 @@
 }
 
 .title {
-  color: var(--text-bright);
-  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 /* ── Filters ───────────────────────────────────────────────────────────────── */
