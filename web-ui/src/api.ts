@@ -1015,6 +1015,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ term, translation, srcLang, tgtLang }),
       }),
+    update: (id: number, term: string, translation: string | null) =>
+      req<GlossaryEntry>(`/api/glossary/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ term, translation }),
+      }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/glossary/${id}`, { method: 'DELETE' }),
 
     /** Batch-enforce glossary terms as QA rules across translated strings. */

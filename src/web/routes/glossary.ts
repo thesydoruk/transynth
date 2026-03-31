@@ -72,6 +72,45 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send({ ok: true });
   });
 
+  // PUT /api/glossary/:id — update existing term pair
+  app.put<{ Params: { id: string }; Body: { term?: string; translation?: string | null } }>(
+    '/api/glossary/:id',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid id' });
+
+      const term = req.body?.term?.trim();
+      if (!term) return reply.code(400).send({ error: 'term is required' });
+      const translation = req.body?.translation?.trim() || null;
+
+      try {
+        const result = await db.query(
+          `UPDATE glossary
+           SET term = $2,
+               translation = $3,
+               source = CASE WHEN source = 'manual' THEN 'manual' ELSE source END
+           WHERE id = $1`,
+          [id, term, translation],
+        );
+
+        if ((result.rowCount ?? 0) === 0) return reply.code(404).send({ error: 'Not found' });
+      } catch (error) {
+        const dbError = error as { code?: string };
+        if (dbError.code === '23505') {
+          return reply.code(409).send({ error: 'A glossary entry with this term/language pair already exists' });
+        }
+        throw error;
+      }
+
+      const { rows } = await db.query(
+        `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary WHERE id = $1`,
+        [id],
+      );
+
+      return reply.send(rows[0]);
+    },
+  );
+
   /**
    * POST /api/glossary/enforce — batch-enforce glossary as a QA rule.
    *

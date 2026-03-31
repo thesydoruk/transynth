@@ -17,6 +17,9 @@ export const GlossaryPage = () => {
   const [q, setQ] = useState('');
   const [newTerm, setNewTerm] = useState('');
   const [newTranslation, setNewTranslation] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editTerm, setEditTerm] = useState('');
+  const [editTranslation, setEditTranslation] = useState('');
   const newTermRef = useRef<HTMLInputElement | null>(null);
 
   /* ── Enforce panel state ─────────────────────────────────────────────── */
@@ -55,6 +58,38 @@ export const GlossaryPage = () => {
     mutationFn: (id: number) => api.glossary.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['glossary'] }),
   });
+
+  const update = useMutation({
+    mutationFn: ({ id, term, translation }: { id: number; term: string; translation: string | null }) =>
+      api.glossary.update(id, term, translation),
+    onSuccess: () => {
+      setEditId(null);
+      setEditTerm('');
+      setEditTranslation('');
+      qc.invalidateQueries({ queryKey: ['glossary'] });
+    },
+  });
+
+  const startEdit = (entry: GlossaryEntry) => {
+    setEditId(entry.id);
+    setEditTerm(entry.term);
+    setEditTranslation(entry.translation ?? '');
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditTerm('');
+    setEditTranslation('');
+  };
+
+  const saveEdit = () => {
+    if (!editId || !editTerm.trim()) return;
+    update.mutate({
+      id: editId,
+      term: editTerm.trim(),
+      translation: editTranslation.trim() || null,
+    });
+  };
 
   const emptyHint = multiUser && user
     ? user.role === 'reviewer'
@@ -188,29 +223,75 @@ export const GlossaryPage = () => {
           <tbody>
             {data.map((entry: GlossaryEntry) => (
               <tr key={entry.id} className={s.tr}>
-                <td className={s.tdTerm}>{entry.term}</td>
+                <td className={s.tdTerm}>
+                  {editId === entry.id ? (
+                    <input
+                      className={s.inlineInput}
+                      value={editTerm}
+                      onChange={(e) => setEditTerm(e.target.value)}
+                    />
+                  ) : entry.term}
+                </td>
                 <td className={entry.translation ? s.tdTranslFilled : s.tdTranslEmpty}>
-                  {entry.translation ?? '—'}
+                  {editId === entry.id ? (
+                    <input
+                      className={s.inlineInput}
+                      value={editTranslation}
+                      onChange={(e) => setEditTranslation(e.target.value)}
+                      placeholder="—"
+                    />
+                  ) : (entry.translation ?? '—')}
                 </td>
                 <td className={s.tdLang}>
                   <span className={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
                 </td>
                 <td className={s.tdSource}>{entry.source}</td>
-                <td className={s.td}>
-                  <button
-                    onClick={() => remove.mutate(entry.id)}
-                    disabled={remove.isPending}
-                    className={s.btnDelete}
-                    title={t('glossary.deleteTerm')}
-                  >
-                    ✕
-                  </button>
+                <td className={`${s.td} ${s.rowActions}`}>
+                  {editId === entry.id ? (
+                    <>
+                      <button
+                        onClick={saveEdit}
+                        disabled={update.isPending || !editTerm.trim()}
+                        className={s.btnRow}
+                        title={t('glossary.saveTerm')}
+                      >
+                        {t('glossary.saveTerm')}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={update.isPending}
+                        className={s.btnRowGhost}
+                        title={t('glossary.cancelEdit')}
+                      >
+                        {t('glossary.cancelEdit')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => startEdit(entry)}
+                        className={s.btnRowGhost}
+                        title={t('glossary.editTerm')}
+                      >
+                        {t('glossary.editTerm')}
+                      </button>
+                      <button
+                        onClick={() => remove.mutate(entry.id)}
+                        disabled={remove.isPending}
+                        className={s.btnDelete}
+                        title={t('glossary.deleteTerm')}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      {update.isError && <div className={s.addError}>{t('common.error', { message: String(update.error) })}</div>}
     </div>
   );
 }

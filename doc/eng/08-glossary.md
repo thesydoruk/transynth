@@ -67,11 +67,13 @@ the unique constraint on the database prevents it.
 
 ## Editing and Removing Terms
 
-There is no inline edit for existing terms in the current UI.
-To correct a term:
+Existing terms can be edited inline in the glossary table.
 
-1. Delete the old entry with the **✕** button in the last column.
-2. Re-add it with the corrected values.
+To edit a term pair:
+
+1. Click **Edit** in the row.
+2. Update the source term and/or translation fields.
+3. Click **Save** (or **Cancel** to discard changes).
 
 To **remove** a term, click **✕** on its row. The deletion is immediate with
 no confirmation prompt. Removing a term does not affect any already-saved
