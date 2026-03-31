@@ -25,6 +25,7 @@ import { execFile } from 'node:child_process';
 import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
 import { upsertMod, upsertRecord, insertString, type Tx } from '../db.js';
+import { upsertTranslation } from './queries.js';
 import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
@@ -1053,6 +1054,90 @@ const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
 }
 
 /**
+ * Convert imported strings to translation records.
+ *
+ * After a mod is imported, creates translation records with status='reviewed' to make
+ * content immediately usable without requiring a separate "apply to" step.
+ *
+ * The function:
+ * 1. For strings in srcLang: creates self-translations (srcLang→srcLang) for correction capability
+ * 2. For strings in other locales (localized mods only): creates actual translations (locale→srcLang)
+ * 3. Deletes all non-srcLang string rows only for localized mods (isLocalized=true)
+ *
+ * Examples:
+ * - Non-localized mod (en): Creates en→en self-translations only, keeps strings
+ * - Localized mod (en + ru + de): Creates en→en + ru→en + de→en translations, deletes ru/de strings
+ *
+ * @param db - Database transaction
+ * @param modId - ID of the imported mod
+ * @param srcLang - Source language (usually 'en'); default='en'
+ * @param isLocalized - Whether this is a localized mod (if true, deletes non-srcLang strings)
+ */
+const convertImportedStringsToTranslations = async (
+  db: Tx,
+  modId: number,
+  srcLang = 'en',
+  isLocalized = false,
+): Promise<void> => {
+  try {
+    // Find all locales used in this mod
+    const localesResult = await db.query(
+      `SELECT DISTINCT lang FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang IS NOT NULL`,
+      [modId],
+    );
+
+    const locales = (localesResult.rows as { lang: string }[]).map(r => r.lang).filter(l => l);
+    if (locales.length === 0) {
+      log.info(`[ModImport] No strings found for mod ${modId}; skipping conversion`);
+      return;
+    }
+
+    log.info(
+      `[ModImport] Converting ${locales.length} locale(s) (${locales.join(', ')}) to translations for mod ${modId}` +
+      (isLocalized ? ' [localized]' : ' [non-localized]'),
+    );
+
+    // For each locale, create translations
+    for (const locale of locales) {
+      // Query all strings in this locale for this mod
+      const stringsResult = await db.query(
+        `SELECT s.id, s.record_id, s.text_raw, s.text_norm
+         FROM strings s
+         WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
+         AND s.lang = $2`,
+        [modId, locale],
+      );
+
+      const records = stringsResult.rows as { id: number; record_id: number; text_raw: string; text_norm: string }[];
+
+      // Create translation for each string
+      for (const record of records) {
+        await upsertTranslation(db, record.id, record.text_raw, 'reviewed', locale, 'import_self_translation');
+      }
+
+      log.info(`[ModImport] Created ${records.length} translations for locale ${locale}`);
+    }
+
+    // After all translations created, delete non-source strings only for localized mods
+    // For non-localized mods, keep the source strings alongside their self-translations
+    if (isLocalized && srcLang) {
+      const deleteNonSrcResult = await db.query(
+        `DELETE FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang != $2`,
+        [modId, srcLang],
+      );
+      log.info(`[ModImport] Deleted ${deleteNonSrcResult.rowCount} non-source language strings`);
+    }
+  } catch (err) {
+    log.error(
+      `[ModImport] Error converting ${
+        isLocalized ? 'localized' : 'non-localized'
+      } strings to translations: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    throw err;
+  }
+}
+
+/**
  * Execute a mod import job and ingest extracted strings into the database.
  *
  * The import is resumable based on `job.imported_records` and supports
@@ -1094,17 +1179,31 @@ export const runModImport = async (
     let imported = job.imported_records;
     let batchCount = 0;
     let inTx = false;
+    let importSingleLocaleMode = false;  // Track whether we imported a single selected locale vs. all
 
     if (esp.info.isLocalized) {
       const localesMap: Map<string, Map<number, string>> = loadLocalesForGame(espPath, game, []);
       if (localesMap.size === 0) throw new Error('No locales found in BA2 / strings files');
 
+      // When user selects a specific locale for single-language import (not all localizations),
+      // only import that locale. Otherwise, import all available locales.
+      const selectedLocale = job.src_lang !== 'en' && localesMap.has(job.src_lang) ? job.src_lang : null;
+      importSingleLocaleMode = selectedLocale != null;
+
       const work: { locale: string; rows: CsvRow[] }[] = [];
       for (const [locale, strMap] of localesMap) {
+        // If user selected a specific locale, only process that one
+        if (importSingleLocaleMode && locale !== selectedLocale) continue;
         work.push({ locale, rows: buildCsvRows(espRows, strMap) });
       }
       const totalAll = work.reduce((s, w) => s + w.rows.length, 0);
       await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [totalAll, job.id]);
+
+      if (importSingleLocaleMode) {
+        log.info(`[Mod Import #${job.id}] Single-locale mode: importing only "${selectedLocale}"`);
+      } else {
+        log.info(`[Mod Import #${job.id}] All-localizations mode: importing ${localesMap.size} locale(s)`);
+      }
 
       let globalIdx = 0;
 
@@ -1254,6 +1353,23 @@ export const runModImport = async (
     if (inTx) { await db.query('COMMIT'); inTx = false; }
 
     if (!state.cancel && !state.pause) {
+      // Convert imported strings to translation records (both localized and non-localized mods).
+      // For localized mods: only convert if we imported all localizations, not a single selected locale.
+      // For non-localized mods: always convert to create self-translations (srcLang→srcLang).
+      try {
+        if (job.is_localized && !importSingleLocaleMode) {
+          // Localized mod with all-localizations mode: convert all locales, delete non-srcLang strings
+          await convertImportedStringsToTranslations(db, importModId, job.src_lang, true);
+        } else if (!job.is_localized) {
+          // Non-localized mod: create self-translations for srcLang, keep strings
+          await convertImportedStringsToTranslations(db, importModId, job.src_lang, false);
+        }
+        // else: localized mod in single-locale mode — skip conversion (imported as regular source strings)
+      } catch (err) {
+        log.error(`[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`);
+        throw err;
+      }
+
       await markDone(db, job.id, imported);
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       log.info(`[Mod Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);

@@ -23,7 +23,7 @@ import { extractNumbers, transplantNumbers, segmentPhrases, normalizeForHash } f
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
-type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric' | 'punct_norm' | 'fuzzy' | 'phrase';
+type MatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric' | 'punct_norm' | 'fuzzy' | 'phrase' | 'reverse_tm';
 type Match = { text: string; method: MatchMethod; confidence: number };
 
 /**
@@ -192,6 +192,28 @@ const findBestMatch = async (
     }
   }
 
+  // 7. Reverse TM: look for confirmed translations in the opposite direction.
+  //    If found a string in targetLang with a translation pointing to srcLang,
+  //    use the targetLang string's raw text as our source text's translation.
+  //    This enables bidirectional use of confirmed pairs (especially useful for
+  //    localized imports where ru↔en pairs can be used in either direction).
+  {
+    const { rows } = await db.query(
+      `SELECT s_reverse.text_raw FROM strings s_reverse
+       JOIN translations t_reverse ON t_reverse.src_string_id = s_reverse.id
+       WHERE s_reverse.lang = $1 AND s_reverse.text_norm = $2 AND t_reverse.target_lang = $3
+       ${orderByStatus}`,
+      [targetLang, textNorm, srcLang],
+    );
+    if (rows[0]) {
+      const reverseTargetText = rows[0].text_raw;
+      /* If raw texts already match, this is a direct text_norm hit (should have been caught earlier). */
+      if (reverseTargetText !== textRaw) {
+        return { text: reverseTargetText, method: 'reverse_tm', confidence: 0.72 };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -235,7 +257,7 @@ export const applyTMToMod = async (
   log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
 
   let applied = 0;
-  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, numeric: 0, punct_norm: 0, fuzzy: 0, phrase: 0 };
+  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0, numeric: 0, punct_norm: 0, fuzzy: 0, phrase: 0, reverse_tm: 0 };
 
   await withTransaction(db as pg.Pool, async (client) => {
     for (const s of untranslated) {

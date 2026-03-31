@@ -676,6 +676,19 @@ export const ImportsPage = () => {
             refreshAll();
             setModPreviewId(null);
 
+            // For localized imports with "import all" checked, skip the apply-to-mod step
+            // and just run the normal import which will auto-convert all locales
+            if (payload.importAllLocalizations) {
+              if (modPreviewJob.status === 'completed') {
+                await api.modImport.restart(modPreviewJob.id);
+              }
+              const importOk = await doStart('mod', modPreviewJob.id);
+              if (!importOk) {
+                return;
+              }
+              return;
+            }
+
             if (payload.applyEnabled && payload.applyToModId != null) {
               await api.modImport.applyToMod(
                 modPreviewJob.id,

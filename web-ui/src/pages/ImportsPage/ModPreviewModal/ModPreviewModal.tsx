@@ -24,6 +24,7 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
   const [lang, setLang] = useState(job.src_lang);
   const [applyEnabled, setApplyEnabled] = useState(false);
   const [applyToModId, setApplyToModId] = useState<number | null>(null);
+  const [importAllLocalizations, setImportAllLocalizations] = useState(false);
   const [page, setPage] = useState(1);
   const [sigFilter, setSigFilter] = useState('');
   const [qFilter, setQFilter] = useState('');
@@ -84,23 +85,57 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
       stretchContent
     >
         <div className={parentS.langBar}>
-          <label className={parentS.langLabel}>{t('modImport.languageOfText')}
-            <select value={lang} onChange={(event) => setLang(event.target.value)} className={parentS.select}>
-              {LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)}
-            </select>
-          </label>
+          {/* Show "Import all localizations" checkbox for localized mods */}
+          {data?.isLocalized && (
+            <label className={`${parentS.langLabel} ${s.langCheckboxLabel}`}>
+              <input
+                type="checkbox"
+                className={s.langCheckboxInput}
+                checked={importAllLocalizations}
+                onChange={(event) => {
+                  setImportAllLocalizations(event.target.checked);
+                  if (event.target.checked) {
+                    setApplyEnabled(false); // Disable apply-to-existing when importing all localizations
+                  }
+                }}
+              />
+              {t('modImport.importAllLocalizations')}
+            </label>
+          )}
 
-          <label className={`${parentS.langLabel} ${s.langCheckboxLabel}`}>
-            <input
-              type="checkbox"
-              className={s.langCheckboxInput}
-              checked={applyEnabled}
-              onChange={(event) => setApplyEnabled(event.target.checked)}
-            />
-            {t('modImport.applyToExisting')}
-          </label>
+          {/* Show language selector only if NOT importing all localizations */}
+          {!importAllLocalizations && (
+            <label className={parentS.langLabel}>{t('modImport.languageOfText')}
+              <select value={lang} onChange={(event) => setLang(event.target.value)} className={parentS.select}>
+                {/* For localized mods, show only the detected locales (for single import mode) */}
+                {data?.isLocalized && data?.locales.length > 0 ? (
+                  data.locales.map((locale) => {
+                    const langInfo = LANGUAGES.find(l => l.code === locale);
+                    const label = langInfo ? `${langInfo.label} (${locale})` : locale;
+                    return <option key={locale} value={locale}>{label}</option>;
+                  })
+                ) : (
+                  LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label} ({language.code})</option>)
+                )}
+              </select>
+            </label>
+          )}
 
-          {applyEnabled && (
+          {/* Show "Apply to existing" checkbox only if NOT importing all localizations */}
+          {!importAllLocalizations && (
+            <label className={`${parentS.langLabel} ${s.langCheckboxLabel}`}>
+              <input
+                type="checkbox"
+                className={s.langCheckboxInput}
+                checked={applyEnabled}
+                onChange={(event) => setApplyEnabled(event.target.checked)}
+              />
+              {t('modImport.applyToExisting')}
+            </label>
+          )}
+
+          {/* Show base mod selector only if applying to existing AND NOT importing all localizations */}
+          {!importAllLocalizations && applyEnabled && (
             <>
               <label className={parentS.langLabel}>{t('modImport.baseMod')}
                 <select
@@ -165,12 +200,15 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
             variant="success"
             onClick={() => onConfirm({
               importLang: lang,
-              applyEnabled,
-              applyToModId: effectiveApplyToModId,
+              importAllLocalizations,
+              applyEnabled: !importAllLocalizations && applyEnabled,
+              applyToModId: !importAllLocalizations ? effectiveApplyToModId : null,
             })}
-            disabled={applyEnabled && effectiveApplyToModId == null}
+            disabled={!importAllLocalizations && applyEnabled && effectiveApplyToModId == null}
           >
-            {t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
+            {importAllLocalizations && data?.locales.length
+              ? t('modImport.importAllLocalizationsAs', { locales: data.locales.join(', '), count: job.total_records.toLocaleString() })
+              : t('modImport.importAs', { lang, count: job.total_records.toLocaleString() })}
           </Button>
         </div>
     </ModalShell>

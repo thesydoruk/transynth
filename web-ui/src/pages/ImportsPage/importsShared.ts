@@ -7,6 +7,7 @@ export type ModPreviewConfirmPayload = {
   importLang: string;
   applyEnabled: boolean;
   applyToModId: number | null;
+  importAllLocalizations?: boolean;
 };
 
 /** Language options shared by all import preview modals. */
