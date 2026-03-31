@@ -4,9 +4,172 @@
 
 .page {
   padding: 24px 32px;
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
 }
+
+/* ── Two-column layout ────────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 192px 1fr;
+  gap: 0 32px;
+  align-items: start;
+}
+
+/* ── Sidebar navigation ───────────────────────────────────────────────────── */
+
+.sidebar {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navGroupLabel {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+
+.navItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+}
+
+.navItemActive {
+  background: var(--bg-active);
+  color: var(--accent);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-active);
+    color: var(--accent);
+  }
+}
+
+.navItemAdmin {
+  color: var(--text-faint);
+
+  &:hover {
+    color: var(--text-dim);
+  }
+}
+
+/* ── Content pane ─────────────────────────────────────────────────────────── */
+
+.content {
+  min-width: 0; /* prevent grid blowout */
+  padding-top: 2px;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 36px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ── Field grid ───────────────────────────────────────────────────────────── */
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 10px 16px;
+  align-items: center;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.fieldNote {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* fieldValue moved to LlmTab/LlmTab.module.scss */
+/* readonlyNote moved to LlmTab/LlmTab.module.scss */
+/* badge styles moved to LlmTab/LlmTab.module.scss */
+/* select moved to GeneralTab/GeneralTab.module.scss */
+
+/* ── Link cards (QA / TradAuto / Users) ───────────────────────────────────── */
+
+.linkCards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.linkCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  min-width: 180px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+}
+
+.linkCardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.linkCardDesc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 
 .title {
   font-size: 22px;

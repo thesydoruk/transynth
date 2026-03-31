@@ -1,20 +1,22 @@
 /**
  * SettingsPage — Project Settings hub.
  *
- * Organises all configurable aspects of the tool into a tabbed layout:
+ * Two-column layout: sticky vertical sidebar on the left (navigation),
+ * scrollable content pane on the right (active section).
  *
- *   Tab 1 — General:    default source / target languages, UI language, theme.
- *   Tab 2 — LLM:        read-only display of the active LLM runtime config.
- *   Tab 3 — QA Rules:   forbidden characters, length limits, and custom checks.
- *   Tab 4 — TradAuto:   pattern-match rules for automatic translation.
- *   Tab 5 — TMX:        export / import translation memory in TMX format.
- *   Tab 6 — Activity:   paginated audit log of user actions.
- *   Tab 7 — Data:       link-cards to Glossary and other data pages.
- *   Tab 8 — Users:      user management (only visible in multi-user mode).
+ * Sections:
+ *   General      — default source / target languages, UI language, theme.
+ *   LLM          — read-only display of the active LLM runtime config.
+ *   QA Rules     — forbidden characters, length limits, and custom checks.
+ *   Workflow     — project-level workflow and QA toggles.
+ *   TradAuto     — pattern-match rules for automatic translation.
+ *   TMX          — export / import translation memory in TMX format.
+ *   Activity     — paginated audit log of user actions.
+ *   Data         — link-cards to Glossary and other data pages.
+ *   Users        — user management (only visible in multi-user mode).
  *
  * "General" preferences are stored in localStorage.
  * "LLM" settings come from ENV, displayed read-only.
- * Tabs 3–6 embed their respective standalone pages directly.
  */
 
 import { useMemo } from 'react';
@@ -111,36 +113,38 @@ export const SettingsPage = () => {
         description={t('settings.subtitle')}
       />
 
-      {/* ── Tab bar ──────────────────────────────────────────────────── */}
-      <div className={s.tabGroups}>
-        {tabGroups.map((group) => (
-          <section key={group.key} className={s.tabGroupSection} aria-label={group.label}>
-            <div className={s.tabGroupLabel}>{group.label}</div>
-            <div className={s.tabs}>
+      <div className={s.layout}>
+        {/* ── Sidebar ──────────────────────────────────────────────── */}
+        <nav className={s.sidebar} aria-label={t('settings.title')}>
+          {tabGroups.map((group) => (
+            <div key={group.key} className={s.navGroup}>
+              <div className={s.navGroupLabel}>{group.label}</div>
               {group.tabs.map(({ id, label }) => (
-              <button
-                key={id}
-                className={`${s.tab} ${group.adminOnly ? s.tabAdmin : ''} ${tab === id ? s.tabActive : ''}`}
-                onClick={() => handleTabSelect(id)}
-              >
-                {label}
-              </button>
+                <button
+                  key={id}
+                  className={`${s.navItem} ${group.adminOnly ? s.navItemAdmin : ''} ${tab === id ? s.navItemActive : ''}`}
+                  onClick={() => handleTabSelect(id)}
+                >
+                  {label}
+                </button>
               ))}
             </div>
-          </section>
-        ))}
-      </div>
+          ))}
+        </nav>
 
-      {/* ── Tab panels ───────────────────────────────────────────────── */}
-      {tab === 'general'  && <GeneralTab />}
-      {tab === 'llm'      && <LlmTab />}
-      {tab === 'qaRules'  && <QARulesPage />}
-      {tab === 'workflow' && <WorkflowTab />}
-      {tab === 'tradAuto' && <TradAutoPage />}
-      {tab === 'tmx'      && <TmxPage />}
-      {tab === 'activity' && <ActivityPage />}
-      {tab === 'data'     && <DataTab />}
-      {tab === 'users'    && <UsersTab />}
+        {/* ── Content pane ─────────────────────────────────────────── */}
+        <div className={s.content}>
+          {tab === 'general'  && <GeneralTab />}
+          {tab === 'llm'      && <LlmTab />}
+          {tab === 'qaRules'  && <QARulesPage />}
+          {tab === 'workflow' && <WorkflowTab />}
+          {tab === 'tradAuto' && <TradAutoPage />}
+          {tab === 'tmx'      && <TmxPage />}
+          {tab === 'activity' && <ActivityPage />}
+          {tab === 'data'     && <DataTab />}
+          {tab === 'users'    && <UsersTab />}
+        </div>
+      </div>
     </div>
   );
 };
