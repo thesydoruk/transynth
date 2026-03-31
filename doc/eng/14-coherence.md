@@ -34,7 +34,7 @@ Inconsistencies confuse players and signal a low-quality translation.
 
 Navigate to **Coherence** in the top navigation bar (route: `/coherence`).
 
-If no inconsistency groups are found, the page now provides direct actions instead of only passive text:
+If no inconsistency groups are found, the page provides direct actions instead of only passive text:
 
 - **Refresh check** — re-runs the coherence query
 - **Open Review Queue** — jumps into quality-review workflow immediately
@@ -63,11 +63,11 @@ Click the header to expand the group. Inside you will see one
 **variant card** per distinct translation, sorted by popularity
 (most-used variant first). Each variant card shows:
 
-| Item                    | Description                                                                                           |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Translation text**    | The actual translated string for this variant                                                         |
-| **Apply to All** button | Propagates this translation to every string in the group                                              |
-| String list             | Each string currently using this variant: mod name, EDID, record signature + path, and current status |
+| Item                    | Description                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| **Translation text**    | The actual translated string for this variant                                               |
+| **Apply to All** button | Propagates this translation to every string in the group                                    |
+| String list             | Each string using this variant: mod name, EDID, record signature + path, and current status |
 
 ---
 
@@ -81,7 +81,7 @@ Click the header to expand the group. Inside you will see one
 
 The **Apply to All** action calls `POST /api/coherence/resolve` with the
 chosen `translation` and the group's `text_norm` key. The server updates
-every string in that group that currently uses a _different_ translation —
+every string in that group that uses a _different_ translation —
 strings that already use the chosen variant are left untouched. The
 mutation is applied with the best-quality-available status for each
 updated string.

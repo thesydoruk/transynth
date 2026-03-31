@@ -35,7 +35,7 @@ from re-translating identical or near-identical text.
 
 The TM grows over time as you translate more mods.
 
-If the Glossary page is still empty, the UI now adds role-aware guidance instead of only passive placeholder text. Translators are prompted to seed repeated project terms first, reviewers are nudged to add disputed terminology before review, and admins get a reminder to establish the shared terminology baseline before large imports or LLM runs.
+If the Glossary page is still empty, the UI adds role-aware guidance instead of only passive placeholder text. Translators are prompted to seed repeated project terms first, reviewers are nudged to add disputed terminology before review, and admins get a reminder to establish the shared terminology baseline before large imports or LLM runs.
 
 ---
 
@@ -80,7 +80,7 @@ Normalisation collapses all whitespace runs to a single space, converts to
 lowercase, replaces all game-format placeholders with `¤PH¤`, and replaces
 every number with `¤NUM¤`.
 
-Example: the strings `"Hello,  World!"` and `"Hello, World!"` both normalise
+Example: the strings `"Hello, World!"` and `"Hello, World!"` both normalise
 to `"hello, world!"` and produce a match even though the original whitespace
 differs.
 

@@ -42,7 +42,7 @@ same terminology — vital for a cohesive, professional translation.
 
 Navigate to **Glossary** in the top navigation bar (route: `/glossary`).
 
-The page opens showing terms for the currently selected language pair
+The page opens showing terms for the selected language pair
 (default: EN → UK).
 
 ---

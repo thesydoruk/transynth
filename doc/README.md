@@ -7,7 +7,7 @@ Choose a documentation language:
 
 ---
 
-The Transynth documentation now lives in language-specific folders:
+The Transynth documentation lives in language-specific folders:
 
 - `doc/eng/` — English documentation
 - `doc/uk/` — Ukrainian documentation

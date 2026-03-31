@@ -81,7 +81,7 @@ with the fallback provider.
 Set the fallback via the `LLM_FALLBACK` environment variable:
 
 ```
-LLM_FALLBACK=openai   # or ollama, or none (default)
+LLM_FALLBACK=openai # or ollama, or none (default)
 ```
 
 Fallback is triggered only on **availability errors** — connection refused,
@@ -164,10 +164,10 @@ Token types that are masked:
 **Before/after example:**
 
 ```
-Original:   "<Alias=Player> received {0} caps from <Alias=NPC>."
-Masked:     "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
-→ LLM →    "¤PH0¤ отримав ¤PH1¤ кришок від ¤PH2¤."
-Restored:   "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
+Original: "<Alias=Player> received {0} caps from <Alias=NPC>."
+Masked: "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
+→ LLM → "¤PH0¤ отримав ¤PH1¤ кришок від ¤PH2¤."
+Restored: "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
 ```
 
 The LLM is instructed in the system prompt to **keep `¤PH0¤` tokens unchanged**.
@@ -209,7 +209,7 @@ npm run translate -- --in export.csv --out translated.csv --style style.md
 ```
 
 The style guide content is injected into the `style_guide` field of the LLM
-request (first 4 000 characters). The web UI batch translate does not currently
+request (first 4 000 characters). The web UI batch translate does not
 support a style guide — it uses only the glossary injection.
 
 **Example style guide for Fallout 4 Ukrainian:**
@@ -278,7 +278,7 @@ row manually:
 ```sql
 -- Clear cache for a specific string
 DELETE FROM translation_cache
-WHERE text_norm = translation_cache.text_norm  -- replace with the normalised text
+WHERE text_norm = translation_cache.text_norm -- replace with the normalised text
   AND src_lang = 'en' AND tgt_lang = 'uk' AND model = 'gpt-4.1-mini';
 
 -- Clear entire LLM cache (forces re-translation of everything)

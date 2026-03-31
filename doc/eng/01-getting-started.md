@@ -155,13 +155,13 @@ Use the URL that matches your runtime mode:
 On first successful launch, the application opens on the **Mods** page (`/`).
 This is the main landing page for browsing imported mods and opening the editor.
 
-The top app bar now also shows:
+The top app bar also shows:
 
 - a dedicated **Home** entry in the main navigation
 - the current **Game** workspace badge, persisted from the last game-scoped route you opened
 - the current **Content** language pair (`SRC → TGT`), mirroring the source/target language defaults from Settings
 
-When you open a game workspace (`/games/:gameId`), the **Game Hub** now serves as a workflow landing page with direct cards for:
+When you open a game workspace (`/games/:gameId`), the **Game Hub** serves as a workflow landing page with direct cards for:
 
 - **Import**
 - **Translate**
@@ -170,12 +170,12 @@ When you open a game workspace (`/games/:gameId`), the **Game Hub** now serves a
 
 plus a secondary **Discover** card for NexusMods browsing.
 
-The **Release** area now also includes an explicit two-step workflow panel:
+The **Release** area also includes an explicit two-step workflow panel:
 
 1. **Open Diff** to compare updated versions and carry over translations.
 2. **Open Imported Mods** to return to the mod editor and export STRINGS, BA2, or ZIP after review and QA are complete.
 
-In the game-scoped Nexus browser (`/games/:gameId/nexus`), empty search results now include direct actions to clear the search and jump back to the game hub.
+In the game-scoped Nexus browser (`/games/:gameId/nexus`), empty search results include direct actions to clear the search and jump back to the game hub.
 
 ---
 

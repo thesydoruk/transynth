@@ -74,7 +74,7 @@
 - Вбудовані keyboard handlers працюють з **активним рядком**, а не з усім multi-selection, якщо йдеться про approve/reject/copy/clear.
 - Bulk-операції для кількох selected rows доступні через toolbar і context menu, а не через окремі keyboard shortcuts.
 
-Також зараз немає documented shortcuts на кшталт `Ctrl+D` для Draft або окремого shortcut для відкриття Search & Replace.
+Також немає documented shortcuts на кшталт `Ctrl+D` для Draft або окремого shortcut для відкриття Search & Replace.
 
 ---
 

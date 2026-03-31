@@ -59,7 +59,7 @@ If the page is still empty, the current UI shows a deterministic empty-state car
 - **Choose files** — opens the upload picker immediately
 - **Browse NexusMods** — jumps to the game-scoped Nexus browser so you can discover a mod before importing
 
-There is currently **no dedicated drag-and-drop drop zone** in the web UI.
+There is **no dedicated drag-and-drop drop zone** in the web UI.
 Use the file picker instead.
 
 Language selection depends on import type:
@@ -85,7 +85,7 @@ What you will see in the current UI:
 
 - A status badge while the job is waiting, paused, failed, or completed.
 - A live percentage bar while the job is actively running.
-- Automatic refresh of the job list every few seconds, even when a job is not currently open in a modal.
+- Automatic refresh of the job list every few seconds, even when a job is not open in a modal.
 
 The current UI does **not** show a multi-step stage list such as "Reading ESP", "Matching TM", or "Extracting PEX".
 Instead, the progress display is record-count based.
@@ -337,7 +337,7 @@ Instead, BA2 content is discovered automatically in these cases:
 
 For normal browser-based use, the practical way to import BA2-backed content is to upload a complete archive that contains the plugin and its related assets together.
 
-How BA2 detection works today:
+How BA2 detection works:
 
 - For localized STRINGS data, the importer first looks for a BA2 named like the plugin stem or `PluginName - Main.ba2`.
 - For MCM and PEX extraction, the importer scans all BA2 files in the plugin directory.
@@ -352,7 +352,7 @@ Important limitation: if you upload an archive with multiple plugins, the curren
 
 ## Nexus Mod Relations on Mod Page
 
-On the Games route (`/games/:gameId`), leaving the search field empty now
+On the Games route (`/games/:gameId`), leaving the search field empty
 shows the paginated full mod list for that game.
 
 When you open a Nexus mod details page from Games (`/games/:gameId/mods/:modId`),
@@ -381,7 +381,7 @@ actions:
 EET files are projects from the legacy desktop tool.
 Importing an EET file migrates existing translations into the pipeline database.
 
-EET imports now live on the unified **Imports** page as jobs with the `EET` badge.
+EET imports live on the unified **Imports** page as jobs with the `EET` badge.
 
 Workflow:
 

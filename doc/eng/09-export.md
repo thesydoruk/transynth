@@ -147,7 +147,7 @@ ZIP on the fly and the browser downloads it automatically.
 ZIP file naming:
 
 ```
-{PluginStem}_{targetLang}.zip    (e.g., MyMod_uk.zip)
+{PluginStem}_{targetLang}.zip (e.g., MyMod_uk.zip)
 ```
 
 The ZIP is generated in **store mode** (no compression), because BA2 and

@@ -177,12 +177,12 @@ Results are paginated at **50 entries per page**. Each row shows:
 ### Using the Log for Accountability
 
 - **Track daily translator output** — filter by action type `translate` to see how many
-  strings each team member has worked on today.
+  strings each team member has worked on in the selected period.
 - **Resolve disputes** — look up `translate` or `approve` events for a specific time period
   to see who changed a string and when.
 - **Audit imports** — filter by `import` to see when each mod version was brought in and by whom.
 
-> Note: the log cannot currently be exported as CSV from the UI.
+> Note: the log cannot be exported as CSV from the UI.
 > For bulk reporting, query the `activity_log` table in PostgreSQL directly.
 
 ---

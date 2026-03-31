@@ -31,7 +31,7 @@ all mods:
 | **Strings**    | Total number of translatable strings imported                                       |
 | **Translated** | Strings that have any translation (any status except empty) — shown with percentage |
 | **Approved**   | Strings with status `human` or `reviewed` — shown with percentage                   |
-| **QA Issues**  | Count of currently active QA issues; red when > 0, green when 0                     |
+| **QA Issues**  | Count of active QA issues; red when > 0, green when 0                               |
 
 Below the cards, each mod has a row in the **per-mod table** (see below).
 A horizontal bar fills relative to translation completion. When a mod
@@ -98,10 +98,10 @@ an issue count:
 The bars are proportional to the total active issue count, making it
 easy to see which issue type dominates.
 
-In the per-mod table, the **QA** count is now clickable when it is
+In the per-mod table, the **QA** count is clickable when it is
 greater than `0`. Clicking it opens that mod in the editor with the
 **QA-only** filter enabled (`qaOnly=1`), so you can jump directly into
-rows that currently have active QA issues.
+rows that have active QA issues.
 
 ---
 
@@ -137,7 +137,7 @@ Five cards at the top:
 | ------------- | ------------------------------------------------------- |
 | **Uptime**    | How long the server has been running (e.g. `2d 5h 12m`) |
 | **Node.js**   | Runtime version (e.g. `v20.11.0`)                       |
-| **Heap used** | V8 heap memory currently in use                         |
+| **Heap used** | V8 heap memory in use                                   |
 | **RSS**       | Resident Set Size — total process memory                |
 | **Database**  | Green "Connected" when DB is reachable, red otherwise   |
 

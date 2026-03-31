@@ -3,7 +3,7 @@
 Welcome to the documentation for **Transynth (TSN)** — a web-based platform
 for translating game mods and maintaining the surrounding localization toolchain.
 
-This wiki now covers both **end-user workflows** and **technical project documentation**. Some
+This wiki covers both **end-user workflows** and **technical project documentation**. Some
 pages are aimed at translators and reviewers, while others describe architecture, runtime
 components, and development tooling.
 
@@ -42,13 +42,13 @@ The pipeline covers the complete localization workflow for a Bethesda mod:
 ```
 Import mod (ESP/BA2)
    ↓
-Automatic TM match   ←── Translation Memory (5-method waterfall)
+Automatic TM match ←── Translation Memory (5-method waterfall)
    ↓
-LLM batch translate  ←── OpenAI / Ollama
+LLM batch translate ←── OpenAI / Ollama
    ↓
 Human review in web editor
    ↓
-QA check             ←── 9 issue types + configurable rules
+QA check ←── 9 issue types + configurable rules
    ↓
 Export (STRINGS / patched ESP / BA2)
 ```

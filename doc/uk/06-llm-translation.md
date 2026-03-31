@@ -152,10 +152,10 @@ Pipeline **маскує** ці токени перед відправкою до
 Приклад:
 
 ```text
-Original:   "<Alias=Player> received {0} caps from <Alias=NPC>."
-Masked:     "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
-→ LLM →     "¤PH0¤ отримав ¤PH1¤ кришок від ¤PH2¤."
-Restored:   "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
+Original: "<Alias=Player> received {0} caps from <Alias=NPC>."
+Masked: "¤PH0¤ received ¤PH1¤ caps from ¤PH2¤."
+→ LLM → "¤PH0¤ отримав ¤PH1¤ кришок від ¤PH2¤."
+Restored: "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
 ```
 
 У system prompt модель окремо інструктується **не змінювати `¤PH0¤`-подібні токени**.
@@ -190,7 +190,7 @@ npm run translate -- --in export.csv --out translated.csv --style style.md
 ```
 
 У запиті вміст style guide потрапляє в поле `style_guide` (перші 4 000 символів).
-Web UI batch translate зараз такої опції не має і використовує лише glossary injection.
+Web UI batch translate такої опції не має і використовує лише glossary injection.
 
 Приклад style guide для української локалізації Fallout 4:
 

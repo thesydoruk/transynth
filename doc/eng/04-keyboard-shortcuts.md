@@ -74,7 +74,7 @@ Current limitation:
 - The built-in keyboard handlers operate on the **active row**, not on the whole multi-selection, for approve/reject/copy/clear.
 - Bulk operations for multiple selected rows are available through toolbar buttons and the context menu, not through separate keyboard shortcuts.
 
-There are currently no documented shortcuts such as `Ctrl+D` for Draft or a direct keyboard shortcut for opening Search & Replace.
+There are no documented shortcuts such as `Ctrl+D` for Draft or a direct keyboard shortcut for opening Search & Replace.
 
 ---
 

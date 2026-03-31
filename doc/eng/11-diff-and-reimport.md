@@ -53,7 +53,7 @@ If found, it compares the source text:
 
 Navigate to **Diff** in the top navigation bar (route: `/diff`).
 
-When the current filter yields no rows, the page now shows an action-first empty state with immediate next steps:
+When the current filter yields no rows, the page shows an action-first empty state with immediate next steps:
 
 - **Show all changes** — resets the filter to `all`
 - **Open current game hub** (or games catalogue if no game context is persisted)
@@ -65,7 +65,7 @@ The Diff page has two mod dropdowns:
 - **New Version** — the freshly imported (updated) mod.
 - **Old Version** — the previous version you translated.
 
-Both dropdowns list every mod currently in the database, so you can
+Both dropdowns list every mod in the database, so you can
 compare any two mods — they don't have to share the same name.
 
 If you navigate to the Diff page from the
@@ -148,7 +148,7 @@ editor pre-filtered to `status=draft`.
 
 ## Pre-release Checklist
 
-After a comparison has loaded, the Diff page now shows a **Pre-release checklist**.
+After a comparison has loaded, the Diff page shows a **Pre-release checklist**.
 It keeps the post-import workflow on one surface by summarising the current state of the new mod:
 
 - **Coverage** — translated strings versus total strings in the new version

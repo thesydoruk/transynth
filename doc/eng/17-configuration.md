@@ -33,7 +33,7 @@ The page is organised into interim taxonomy groups:
 | **Team operations** | **Activity**                                        |
 | **Admin only**      | **Users** _(multi-user mode only)_                  |
 
-This grouping is intentional: TradAuto and TMX still live inside Settings for now,
+This grouping is intentional: TradAuto and TMX still live inside Settings,
 but they are visually separated from configuration because they are workflow tools,
 not core runtime settings.
 
@@ -52,7 +52,7 @@ They have no server-side effect but pre-fill language selectors across all pages
 
 ### LLM tab
 
-All values are **read-only** in the UI — they reflect the currently active runtime
+All values are **read-only** in the UI — they reflect the active runtime
 configuration sourced from environment variables. To change them, edit `.env`
 and restart the server. The OpenAI API key is never sent to the browser; only
 whether it is configured is shown.
@@ -150,7 +150,7 @@ You do not need to set it manually when running the full stack with `docker comp
 | `OLLAMA_BASE_URL`        | `http://localhost:11434` | Ollama API endpoint                                               |
 | `OLLAMA_MODEL`           | _(required for Ollama)_  | Ollama model name, e.g. `gemma3:12b`, `llama3`, `mistral`         |
 
-> Note: temperature, max tokens, and retry count are not currently configurable via
+> Note: temperature, max tokens, and retry count are not configurable via
 > environment variables. The backend uses provider defaults.
 
 ---
