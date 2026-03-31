@@ -7,6 +7,7 @@ Get Transynth (TSN) running on your machine for the first time.
 ## Table of Contents
 
 - [Requirements](#requirements)
+- [Supported Games](#supported-games)
 - [Option A: Docker (recommended)](#option-a-docker-recommended)
 - [Option B: Local Node.js](#option-b-local-nodejs)
 - [First Launch: Creating the Database](#first-launch-creating-the-database)
@@ -23,6 +24,22 @@ Get Transynth (TSN) running on your machine for the first time.
 - **Package manager:** npm (the repository ships with `package.json` / `package-lock.json`; pnpm is not required).
 - **Database:** PostgreSQL 15+ for a local install. The Docker stack uses `postgres:17-alpine`.
 - **Operating systems:** Windows, macOS, and Linux are all suitable for the web application. Windows is the most practical host if you also work with Fallout modding tools outside this pipeline.
+
+## Supported Games
+
+Transynth supports the following Bethesda titles:
+
+- Fallout 4 (`fo4`)
+- Fallout 76 (`fo76`)
+- Fallout 3 (`fo3`)
+- Fallout: New Vegas (`fnv`)
+- Skyrim Special Edition (`sse`)
+- Skyrim Legendary Edition (`sle`)
+
+Archive/export behavior depends on the selected game profile:
+
+- FO4 / FO76: BA2 workflow
+- FO3 / FNV / SSE / SLE: BSA workflow
 
 ---
 

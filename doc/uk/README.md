@@ -52,6 +52,24 @@
 
 ---
 
+## Підтримувані ігри
+
+Transynth підтримує такі ігри Bethesda:
+
+- Fallout 4 (`fo4`)
+- Fallout 76 (`fo76`)
+- Fallout 3 (`fo3`)
+- Fallout: New Vegas (`fnv`)
+- Skyrim Special Edition (`sse`)
+- Skyrim Legendary Edition (`sle`)
+
+Поведінка архівів/експорту залежить від профілю гри:
+
+- FO4 / FO76: BA2-потік
+- FO3 / FNV / SSE / SLE: BSA-потік
+
+---
+
 ## З чого почати
 
 - **Новий користувач?** → Почніть зі сторінки [Початок роботи](01-getting-started.md).
