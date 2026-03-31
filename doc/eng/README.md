@@ -1,7 +1,7 @@
-# Fallout 4 Localization Pipeline — Project Wiki
+# Transynth (TSN) — Project Wiki
 
-Welcome to the documentation for the **Fallout 4 Localization Pipeline** — a web-based platform
-for translating Fallout 4 mods and maintaining the surrounding localization toolchain.
+Welcome to the documentation for **Transynth (TSN)** — a web-based platform
+for translating game mods and maintaining the surrounding localization toolchain.
 
 This wiki now covers both **end-user workflows** and **technical project documentation**. Some
 pages are aimed at translators and reviewers, while others describe architecture, runtime

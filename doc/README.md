@@ -1,4 +1,4 @@
-# Project Documentation
+# Transynth (TSN) Documentation
 
 Choose a documentation language:
 
@@ -7,7 +7,7 @@ Choose a documentation language:
 
 ---
 
-The project documentation now lives in language-specific folders:
+The Transynth documentation now lives in language-specific folders:
 
 - `doc/eng/` — English documentation
 - `doc/uk/` — Ukrainian documentation

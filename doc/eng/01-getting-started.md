@@ -1,6 +1,6 @@
 # 01 — Getting Started
 
-Get the Fallout 4 Localization Pipeline running on your machine for the first time.
+Get Transynth (TSN) running on your machine for the first time.
 
 ---
 

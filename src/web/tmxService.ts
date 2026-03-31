@@ -88,7 +88,7 @@ export const exportTmx = async (
   const lines: string[] = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<tmx version="1.4">',
-    `  <header creationtool="FO4 Localizer" creationtoolversion="1.0" datatype="plaintext" segtype="sentence" adminlang="${escapeXml(srcLang)}" srclang="${escapeXml(srcLang)}" />`,
+    `  <header creationtool="Transynth" creationtoolversion="1.0" datatype="plaintext" segtype="sentence" adminlang="${escapeXml(srcLang)}" srclang="${escapeXml(srcLang)}" />`,
     '  <body>',
   ];
 

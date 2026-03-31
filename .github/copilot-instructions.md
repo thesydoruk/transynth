@@ -1,4 +1,4 @@
-# Copilot Instructions — Fallout 4 Localization Project
+# Copilot Instructions — Transynth (TSN)
 
 ## Documentation language
 

@@ -1,7 +1,7 @@
-# Fallout 4 Localization Pipeline
+# Transynth (TSN)
 
-Node.js / TypeScript тулчейн для автоматичної локалізації модів Fallout 4.
-Node.js / TypeScript toolchain for automating Fallout 4 mod localization.
+Node.js / TypeScript тулчейн для автоматизації локалізації ігрових модів.
+Node.js / TypeScript toolchain for automating game mod localization.
 
 ## Documentation
 
