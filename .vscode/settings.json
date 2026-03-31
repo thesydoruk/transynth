@@ -25,7 +25,8 @@
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "[json]": {
-    "editor.defaultFormatter": "vscode.json-language-features"
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": false
   },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
