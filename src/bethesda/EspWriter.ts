@@ -1,5 +1,5 @@
 /**
- * espWriter.ts
+ * EspWriter.ts
  *
  * Two modes of operation:
  *
@@ -15,6 +15,7 @@
 
 import { inflateSync, deflateSync } from 'zlib';
 import { log } from '../logger';
+import type { EspPatch } from './types';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -53,14 +54,6 @@ export const patchStringsMap = (
 // ────────────────────────────────────────────────────────────────────────────
 // Non-localized ESP binary patcher
 // ────────────────────────────────────────────────────────────────────────────
-
-export interface EspPatch {
-  /** 8-char uppercase hex FormID, e.g. "0001A2B3" */
-  formId: string;
-  /** 4-char subrecord signature, e.g. "FULL" */
-  subrecord: string;
-  newText: string;
-}
 
 /** Internal: mapping of `FormID → (subrecordSig → newText)` used for fast lookup. */
 type PatchMap = Map<string, Map<string, string>>;

@@ -1,5 +1,5 @@
 /**
- * bsaWriter.ts
+ * BsaWriter.ts
  *
  * Writer for Bethesda Soft Archive (BSA) — version 104 (Skyrim LE) and
  * version 105 (Skyrim SE).  Creates a valid BSA archive from a list of
@@ -39,6 +39,7 @@
  */
 
 import { log } from '../logger';
+import type { BsaInputFile } from './types';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
@@ -59,15 +60,6 @@ const FOLDER_RECORD_SIZE: Record<number, number> = {
  * We always set both so that consumers can discover paths.
  */
 const ARCHIVE_FLAGS = 0x03;
-
-/* ── Public types ────────────────────────────────────────────────────────── */
-
-export interface BsaInputFile {
-  /** Archive-relative path, e.g. "Strings\\ModName_uk.STRINGS" */
-  name: string;
-  /** Raw file content */
-  data: Buffer;
-}
 
 /* ── Bethesda hash helpers ───────────────────────────────────────────────── */
 

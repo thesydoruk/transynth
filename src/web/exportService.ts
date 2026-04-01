@@ -22,9 +22,10 @@ import type { Tx } from '../db';
 import type { GameType } from '../types';
 import { Ba2Reader } from '../bethesda/Ba2Reader';
 import { BsaReader } from '../bethesda/BsaReader';
-import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer';
-import { writeBsa, type BsaInputFile } from '../bethesda/bsaWriter';
-import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter';
+import type { Ba2InputFile, BsaInputFile, EspPatch } from '../bethesda/types';
+import { writeBa2 } from '../bethesda/Ba2Writer';
+import { writeBsa } from '../bethesda/BsaWriter';
+import { patchEsp, patchStringsMap } from '../bethesda/EspWriter';
 import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/StringsFile';
 import { log } from '../logger';
 

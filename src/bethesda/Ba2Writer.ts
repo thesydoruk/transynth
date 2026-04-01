@@ -1,5 +1,5 @@
 /**
- * ba2Writer.ts
+ * Ba2Writer.ts
  *
  * Writer for Bethesda Archive 2 (BA2) — GNRL type, version 1.
  * Creates a valid BA2 archive from a list of named file buffers.
@@ -13,24 +13,12 @@
  */
 
 import { log } from '../logger';
+import type { Ba2InputFile } from './types';
 
 const MAGIC = 'BTDX';
 const TYPE_GNRL = 'GNRL';
 const HEADER_SIZE = 24;
 const ENTRY_SIZE = 36;
-
-/**
- * Input file descriptor used by {@link writeBa2}.
- *
- * Each entry becomes one file record in the BA2 name table and one contiguous
- * payload block in the data section.
- */
-export interface Ba2InputFile {
-  /** Archive-relative path, e.g. `"Strings\\mod_uk.STRINGS"`. */
-  name: string;
-  /** Raw file bytes to store in the archive (written uncompressed). */
-  data: Buffer;
-}
 
 /* ── CRC-32 (IEEE 802.3) lookup table ── */
 const crcTable = new Uint32Array(256);
