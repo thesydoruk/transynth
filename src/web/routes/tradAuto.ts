@@ -22,7 +22,6 @@ import {
   compileRule,
   loadActiveRules,
   applyRules,
-  type TradAutoRule,
   type MatchInput,
 } from '../tradAutoEngine';
 import { upsertTranslation } from '../queries';
@@ -49,12 +48,10 @@ export const tradAutoRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const conds: string[] = [];
     const params: unknown[] = [];
-    let idx = 1;
-
-    if (game) { conds.push(`game = $${idx++}`); params.push(game); }
-    if (srcLang) { conds.push(`src_lang = $${idx++}`); params.push(srcLang); }
-    if (tgtLang) { conds.push(`tgt_lang = $${idx++}`); params.push(tgtLang); }
-    if (isActive !== undefined) { conds.push(`is_active = $${idx++}`); params.push(isActive === 'true'); }
+    if (game) { conds.push(`game = $${params.length + 1}`); params.push(game); }
+    if (srcLang) { conds.push(`src_lang = $${params.length + 1}`); params.push(srcLang); }
+    if (tgtLang) { conds.push(`tgt_lang = $${params.length + 1}`); params.push(tgtLang); }
+    if (isActive !== undefined) { conds.push(`is_active = $${params.length + 1}`); params.push(isActive === 'true'); }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const { rows } = await db.query(

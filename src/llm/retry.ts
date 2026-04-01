@@ -5,10 +5,11 @@ import { log } from '../logger';
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 const RETRYABLE_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
-const isRetryable = (err: any): boolean => {
-  if (RETRYABLE_CODES.has(err?.code)) return true;
-  const status = err?.status ?? err?.response?.status;
-  return RETRYABLE_STATUSES.has(status);
+const isRetryable = (err: unknown): boolean => {
+  const e = err as { code?: string; status?: number; response?: { status?: number } };
+  if (e?.code && RETRYABLE_CODES.has(e.code)) return true;
+  const status = e?.status ?? e?.response?.status;
+  return RETRYABLE_STATUSES.has(status as number);
 }
 
 /**
@@ -20,11 +21,11 @@ export const withRetry = async <T>(fn: () => Promise<T>, maxAttempts = 3): Promi
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       return await fn();
-    } catch (err: any) {
+    } catch (err) {
       if (!isRetryable(err) || attempt === maxAttempts - 1) throw err;
       lastErr = err;
       const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
-      log.warn(`Retry ${attempt + 1}/${maxAttempts}: ${err?.message || err} — waiting ${Math.round(delay)}ms`);
+      log.warn(`Retry ${attempt + 1}/${maxAttempts}: ${(err as Error)?.message || err} — waiting ${Math.round(delay)}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
   }

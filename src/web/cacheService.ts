@@ -25,13 +25,13 @@ export interface CacheHit {
  * @param model   - LLM model identifier used for translation
  * @returns The cached translation text or null on cache miss
  */
-export async function cacheLookup(
+export const cacheLookup = async (
   db: Tx,
   raw: string,
   srcLang: string,
   tgtLang: string,
   model: string,
-): Promise<CacheHit | null> {
+): Promise<CacheHit | null> => {
   const norm = normalizeForHash(raw);
   const { rows } = await db.query<{ translated: string }>(
     `SELECT translated FROM translation_cache
@@ -40,7 +40,7 @@ export async function cacheLookup(
     [norm, srcLang, tgtLang, model],
   );
   return rows[0] ? { translated: rows[0].translated } : null;
-}
+};
 
 /**
  * Store an LLM translation result in the cache.
@@ -55,14 +55,14 @@ export async function cacheLookup(
  * @param model    - LLM model identifier
  * @param translated - The translated text to cache
  */
-export async function cacheStore(
+export const cacheStore = async (
   db: Tx,
   raw: string,
   srcLang: string,
   tgtLang: string,
   model: string,
   translated: string,
-): Promise<void> {
+): Promise<void> => {
   const norm = normalizeForHash(raw);
   await db.query(
     `INSERT INTO translation_cache (text_norm, src_lang, tgt_lang, model, translated)
@@ -70,4 +70,4 @@ export async function cacheStore(
      ON CONFLICT (text_norm, src_lang, tgt_lang, model) DO UPDATE SET translated = EXCLUDED.translated, created_at = NOW()`,
     [norm, srcLang, tgtLang, model, translated],
   );
-}
+};

@@ -1,7 +1,27 @@
-// Translation via LLM provider (Ollama or OpenAI)
+/**
+ * Batch translation via LLM.
+ *
+ * Sends a structured prompt to the chat-capable LLM provider and parses the
+ * JSON response. Placeholder tokens (¤PH\u2026¤, ¤GL\u2026¤, ¤FK\u2026¤) must
+ * already be applied by the caller before invoking this module.
+ */
 import { chatWithFallback } from './index';
 import { log } from '../logger';
 
+/**
+ * Translate an array of strings in a single LLM call.
+ *
+ * Constructs a structured JSON prompt including an optional style guide and
+ * glossary preview, sends it to the chat LLM, and returns the translated items
+ * in the same order as the input.
+ *
+ * @param items    - Source strings to translate (masked placeholders applied).
+ * @param model    - LLM model name (e.g. `gemma3:27b`, `gpt-4o`).
+ * @param styleMd  - Optional Markdown style guide, truncated to 4 000 characters.
+ * @param glossary - Optional list of glossary terms to include in the prompt.
+ * @returns Array of translated strings in input order.
+ * @throws If the model returns an unexpected JSON shape.
+ */
 export const translateBatch = async (
   items: string[],
   model: string,

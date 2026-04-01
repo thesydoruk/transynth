@@ -23,7 +23,7 @@ interface ActivityQuerystring {
 }
 
 /** Parses and validates the common filter params from a query string. */
-function parseFilters(q: ActivityQuerystring) {
+const parseFilters = (q: ActivityQuerystring) => {
   return {
     userId:     q.userId     ? parseInt(q.userId, 10)     : undefined,
     action:     q.action     || undefined,
@@ -35,7 +35,7 @@ function parseFilters(q: ActivityQuerystring) {
 }
 
 /** Escapes a CSV cell value (wraps in quotes if it contains comma, quote, or newline). */
-function csvCell(value: unknown): string {
+const csvCell = (value: unknown): string => {
   const str = value == null ? '' : String(value);
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;

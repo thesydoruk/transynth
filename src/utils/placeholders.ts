@@ -4,6 +4,18 @@ import { getFunctionKeywordsForGame } from '../resources/functionKeywords';
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤, ¤GL0¤, and ¤FK0¤ for easy post-replacement.
 
+/**
+ * Regular expression that matches the generic placeholder and tag patterns Transynth protects
+ * from modification during LLM translation.
+ *
+ * Covered patterns:
+ * - `%d`, `%s`, `%2$s`, etc. — printf-style format specifiers.
+ * - `{0}`, `{1}`, … — positional format tokens.
+ * - `{name}` — named format tokens.
+ * - `[text]` — bracketed tags (e.g. Bethesda subtitle markers).
+ * - `<tag>` — XML/HTML-like tags.
+ * - `$Identifier` — script-style variable references.
+ */
 export const PLACEHOLDER_RE = new RegExp([
   String.raw`%\d*\$?[sdif]`,
   String.raw`\{[0-9]+\}`,
@@ -17,6 +29,12 @@ const IDENTIFIER_RE = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
 const SCRIPT_PUNCTUATION_RE = /::|->|\.[A-Za-z_]|[()[\]=,;+\-/*]/;
 const DECLARATION_SIGNAL_RE = /\b(?:Auto|AutoReadOnly|Conditional|Event|EndEvent|EndFunction|Function|Hidden|Property|ScriptName|State)\b/;
 
+/**
+ * Result of a masking operation.
+ *
+ * @field masked   - Source text with protected tokens replaced by opaque keys.
+ * @field mapping  - Map from each opaque key back to its original token value.
+ */
 type MaskResult = {
   masked: string;
   mapping: Record<string, string>;
@@ -57,6 +75,15 @@ const findFunctionKeywordMatches = (text: string, game?: GameType | null): Keywo
   return isScriptLike ? externalKeywordMatches : [];
 };
 
+/**
+ * Replace all generic placeholder tokens in `text` with opaque mask keys.
+ *
+ * Mask keys have the form `¤PH0¤`, `¤PH1¤`, etc. The returned mapping allows
+ * {@link unmask} to restore the originals after translation.
+ *
+ * @param text - Source text that may contain placeholders matched by {@link PLACEHOLDER_RE}.
+ * @returns Masked text and the key-to-original mapping.
+ */
 export const maskPlaceholders = (text: string) => {
   const mapping: Record<string,string> = {};
   let i = 0;
@@ -113,6 +140,16 @@ export const extractProtectedTokens = (text: string, game?: GameType | null): st
   return [...placeholderMatches, ...keywordMatches].sort();
 };
 
+/**
+ * Replace exact glossary term occurrences in `text` with opaque mask keys.
+ *
+ * Mask keys have the form `¤GL0¤`, `¤GL1¤`, etc. Only the first occurrence of
+ * each term is masked per call. Use {@link unmask} to restore the originals.
+ *
+ * @param text     - Source text that may contain glossary terms.
+ * @param glossary - Ordered list of exact-match terms to protect.
+ * @returns Masked text and the key-to-original mapping.
+ */
 export const applyGlossaryMask = (text: string, glossary: string[]) => {
   const map: Record<string,string> = {};
   let out = text;
@@ -127,6 +164,16 @@ export const applyGlossaryMask = (text: string, glossary: string[]) => {
   return { masked: out, mapping: map };
 }
 
+/**
+ * Restore all masked tokens in a (translated) string using a key-to-original mapping.
+ *
+ * Keys are sorted longest-first to prevent partial substitution (e.g. `¤PH10¤`
+ * being partially matched before `¤PH1¤`).
+ *
+ * @param text    - Translated text containing opaque mask keys.
+ * @param mapping - Key-to-original mapping produced by a prior masking call.
+ * @returns Text with all mask keys replaced by their original tokens.
+ */
 export const unmask = (text: string, mapping: Record<string,string>) => {
   let out = text;
   // Sort keys by length (longest first) to prevent partial matches

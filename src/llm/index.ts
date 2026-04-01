@@ -7,6 +7,12 @@ import { log } from '../logger';
 
 let _instance: LLMProvider | undefined;
 
+/** Network or HTTP-level error shape for availability checks. */
+interface HttpLikeError {
+  code?: string;
+  status?: number;
+}
+
 export const getLLM = (): LLMProvider => {
   if (_instance) return _instance;
   _instance = CONFIG.llmProvider === 'openai'
@@ -23,8 +29,9 @@ const makeFallback = (): LLMProvider | null => {
 
 const AVAILABILITY_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
-const isAvailabilityError = (err: any): boolean => {
-  return AVAILABILITY_CODES.has(err?.code) || err?.status === 503;
+const isAvailabilityError = (err: unknown): boolean => {
+  const e = err as HttpLikeError;
+  return AVAILABILITY_CODES.has(e?.code ?? '') || e?.status === 503;
 }
 
 /** Chat with automatic fallback to secondary provider on availability errors. */
@@ -32,7 +39,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
   const primary = getLLM();
   try {
     return await primary.chat(opts);
-  } catch (err: any) {
+  } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
     log.warn(`Primary LLM (${primary.name}) unavailable, falling back to ${CONFIG.llmFallback}`);
@@ -45,7 +52,7 @@ export const embedWithFallback = async (texts: string[], model: string): Promise
   const primary = getLLM();
   try {
     return await primary.embed(texts, model);
-  } catch (err: any) {
+  } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
     log.warn(`Primary LLM (${primary.name}) unavailable for embeddings, falling back to ${CONFIG.llmFallback}`);

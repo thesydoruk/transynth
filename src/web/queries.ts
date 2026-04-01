@@ -126,6 +126,7 @@ const buildQAIssues = (
   }
 
   // Forbidden characters: control chars (except \n \r \t), null bytes
+  // eslint-disable-next-line no-control-regex
   const forbiddenRe = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
   const forbidden = translation.match(forbiddenRe);
   if (forbidden) {
@@ -988,7 +989,9 @@ export const getTMSuggestions = async (
   const results: TMSuggestionRow[] = [];
   const seenTexts = new Set<string>();
 
-  const addRows = (rows: any[], method: TMSuggestionRow['match_method'], sim: number) => {
+  /** DB result rows before match_method is injected by the caller. */
+  type TMQueryRow = Omit<TMSuggestionRow, 'match_method'>;
+  const addRows = (rows: TMQueryRow[], method: TMSuggestionRow['match_method'], sim: number) => {
     for (const r of rows) {
       if (seenTexts.has(r.text)) continue;
       seenTexts.add(r.text);

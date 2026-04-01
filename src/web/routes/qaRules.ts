@@ -25,19 +25,17 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const conditions: string[] = [];
       const params: unknown[] = [];
-      let idx = 1;
 
       if (game) {
-        conditions.push(`game = $${idx++}`);
+        conditions.push(`game = $${params.length + 1}`);
         params.push(game);
       }
       if (ruleType) {
-        conditions.push(`rule_type = $${idx++}`);
+        conditions.push(`rule_type = $${params.length + 1}`);
         params.push(ruleType);
       }
       if (isActive !== undefined) {
-        conditions.push(`is_active = $${idx}`);
-        idx++;
+        conditions.push(`is_active = $${params.length + 1}`);
         params.push(isActive === 'true');
       }
 

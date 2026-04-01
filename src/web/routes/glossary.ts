@@ -13,19 +13,17 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
     log.debug(`GET /api/glossary srcLang=${srcLang} tgtLang=${tgtLang} q=${q}`);
     const conditions: string[] = [];
     const params: unknown[] = [];
-    let idx = 1;
 
     if (srcLang) {
-      conditions.push(`src_lang = $${idx++}`);
+      conditions.push(`src_lang = $${params.length + 1}`);
       params.push(srcLang);
     }
     if (tgtLang) {
-      conditions.push(`tgt_lang = $${idx++}`);
+      conditions.push(`tgt_lang = $${params.length + 1}`);
       params.push(tgtLang);
     }
     if (q) {
-      conditions.push(`(term ILIKE $${idx} OR translation ILIKE $${idx})`);
-      idx++;
+      conditions.push(`(term ILIKE $${params.length + 1} OR translation ILIKE $${params.length + 1})`);
       params.push(`%${q}%`);
     }
 

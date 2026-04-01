@@ -11,6 +11,19 @@
  */
 export type GameType = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
 
+/**
+ * A single row from a Transynth CSV export or import file.
+ * Represents one translatable record extracted from an ESP/ESM form.
+ *
+ * @field FormID - Hex form identifier, e.g. `00012345`.
+ * @field Signature - Four-character record type, e.g. `DIAL`, `INFO`, `BOOK`.
+ * @field Path - Full subrecord path within the form.
+ * @field Source - Original (source-language) text value.
+ * @field LStringID - Localised-string numeric ID (present for localized plugins).
+ * @field EDID - Editor ID of the owning record.
+ * @field PathSimplified - Path with array indices stripped, used for anchor matching.
+ * @field Hash - SHA-1 of the normalised source text, used for deduplication.
+ */
 export type CsvRow = {
   FormID: string;
   Signature: string;
@@ -26,6 +39,15 @@ export type CsvRow = {
   SpeakerFormID?: string;
 };
 
+/**
+ * Composite key used to anchor a `CsvRow` during CSV diff-and-reimport.
+ * Fields are matched in priority order: hash (strongest) → edid+sig → sig+path.
+ *
+ * @field signature - Record type (e.g. `INFO`).
+ * @field pathSimplified - Array-index-free subrecord path.
+ * @field edid - Editor ID of the owning record.
+ * @field hash - SHA-1 of the normalised source text.
+ */
 export type AnchorKey = {
   signature: string;
   pathSimplified?: string;
@@ -33,6 +55,15 @@ export type AnchorKey = {
   hash?: string|null;
 };
 
+/**
+ * A matched pair produced by the alignment algorithm.
+ * Links one record from the left (old/source) array to one in the right (new/target) array.
+ *
+ * @field leftIndex  - Zero-based index into the left input array.
+ * @field rightIndex - Zero-based index into the right input array.
+ * @field method     - Algorithm that created this match.
+ * @field score      - Confidence in the range `0..1` (1 = identical anchor).
+ */
 export type AlignPair = {
   leftIndex: number;     // index in left array
   rightIndex: number;    // index in right array

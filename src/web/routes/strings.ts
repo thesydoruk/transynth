@@ -20,6 +20,7 @@ import { log } from '../../logger';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders';
 import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
 import type { TranslationStatus } from '../statusMachine';
+import type { GameType } from '../../types';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=
@@ -349,7 +350,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       const sourceText = strRows[0].text_raw as string;
       const game = (strRows[0].game as string | undefined) ?? resolvedModGame ?? undefined;
       const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
-      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(placeholderMasked, game as any);
+      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(placeholderMasked, game as GameType | undefined);
       const maskedSourceText = protectedMasked;
 
       // Skip strings that contain no translatable content after masking all

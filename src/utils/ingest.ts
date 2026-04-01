@@ -5,6 +5,22 @@ import { sha1Hex } from './hash';
 import type { CsvRow } from '../types';
 import { log } from '../logger';
 
+/**
+ * Persist an array of parsed CSV rows to the database for the given mod and language.
+ *
+ * For each row:
+ * 1. Upserts a `records` row keyed by signature + path + EDID + hash.
+ * 2. Inserts a `strings` row with the normalised source text and provenance metadata.
+ *
+ * Side effects: writes to `records` and `strings` tables via the provided transaction handle.
+ *
+ * @param db         - Active database transaction or connection.
+ * @param modId      - Database ID of the parent mod.
+ * @param rows       - Parsed CSV rows to persist.
+ * @param lang       - BCP-47 language tag for the source text (e.g. `en`, `uk`).
+ * @param sourceKind - Provenance label written to `strings.source` (e.g. `csv`, `ba2`).
+ * @returns Array of `{ recordId, stringId }` pairs in input row order.
+ */
 export const ingestCsvRows = async (
   db: Tx,
   modId: number,

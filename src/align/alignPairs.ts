@@ -1,3 +1,13 @@
+/**
+ * CSV alignment pipeline.
+ *
+ * Matches records from a left (old) CSV array to records in a right (new) CSV
+ * array using a cascade of strategies: hard anchors (hash, EDID, path), RapidFuzz
+ * fuzzy text scoring, and optional sentence-embedding similarity.
+ *
+ * Used by the diff-and-reimport workflow to correlate existing translations with
+ * newly extracted records when form IDs have changed or records were reordered.
+ */
 import { CsvRow, AlignPair } from '../types';
 import { fuzzyScore } from './fuzzy';
 import { embedMany, cosine } from '../llm/embed';
@@ -5,6 +15,25 @@ import { getEmbedModel } from '../config';
 import { log } from '../logger';
 
 // Heuristic alignment with anchors → fuzzy → embeddings
+/**
+ * Align two CSV record arrays and return matched index pairs.
+ *
+ * Strategies applied in order:
+ * 1. **Hash anchor** — SHA-1 of normalised text matches exactly.
+ * 2. **EDID+Signature anchor** — unique editor-ID + record-type combination.
+ * 3. **Path anchor** — signature + array-stripped subrecord path (unique match only).
+ * 4. **RapidFuzz ratio** — soft text similarity ≥ `fuzzyMin` for unmatched residuals.
+ * 5. **Embedding cosine similarity** — sentence vector comparison when `useEmbeddings` is enabled.
+ *
+ * @param left  - Records from the left (source / old) array.
+ * @param right - Records from the right (target / new) array.
+ * @param opts  - Tuning options.
+ * @param opts.fuzzyMin       - Minimum fuzzy ratio to accept a match (default `85`).
+ * @param opts.fuzzyStrong    - Ratio above which a fuzzy match is taken immediately (default `90`).
+ * @param opts.useEmbeddings  - Whether to run an embedding pass for residual unmatched records.
+ * @param opts.embedModel     - Model name passed to {@link embedMany}.
+ * @returns Array of matched pairs sorted by left index.
+ */
 export const alignPairs = async (
   left: CsvRow[], right: CsvRow[],
   opts: { fuzzyMin?: number; fuzzyStrong?: number; useEmbeddings?: boolean; embedModel?: string }

@@ -132,30 +132,29 @@ export const getActivityCount = async (
 ): Promise<number> => {
   const conditions: string[] = [];
   const params: unknown[] = [];
-  let idx = 1;
 
   if (userId !== undefined) {
-    conditions.push(`user_id = $${idx++}`);
+    conditions.push(`user_id = $${params.length + 1}`);
     params.push(userId);
   }
   if (action !== undefined) {
-    conditions.push(`action = $${idx++}`);
+    conditions.push(`action = $${params.length + 1}`);
     params.push(action);
   }
   if (entityType !== undefined) {
-    conditions.push(`entity_type = $${idx++}`);
+    conditions.push(`entity_type = $${params.length + 1}`);
     params.push(entityType);
   }
   if (entityId !== undefined) {
-    conditions.push(`entity_id = $${idx++}`);
+    conditions.push(`entity_id = $${params.length + 1}`);
     params.push(entityId);
   }
   if (dateFrom !== undefined) {
-    conditions.push(`created_at >= $${idx++}`);
+    conditions.push(`created_at >= $${params.length + 1}`);
     params.push(dateFrom);
   }
   if (dateTo !== undefined) {
-    conditions.push(`created_at < ($${idx++}::date + INTERVAL '1 day')`);
+    conditions.push(`created_at < ($${params.length + 1}::date + INTERVAL '1 day')`);
     params.push(dateTo);
   }
 
