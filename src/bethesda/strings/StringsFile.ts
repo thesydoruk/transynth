@@ -14,7 +14,7 @@
  * (the null terminator is still present, included in the length).
  */
 
-import { log } from '../logger';
+import { log } from '../../logger';
 
 /**
  * Supported Bethesda string table formats.

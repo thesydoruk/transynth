@@ -16,7 +16,7 @@
  * str = len:u32 + utf8 bytes (no null terminator in length)
  */
 
-import { log } from '../logger';
+import { log } from '../../logger';
 
 /**
  * Header information parsed from an EET file.

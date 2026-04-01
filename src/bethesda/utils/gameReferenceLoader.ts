@@ -1,10 +1,10 @@
-import fo3NpcRaw from '../resources/game-reference/fo3-npc.json' with { type: 'json' };
-import fo4NpcRaw from '../resources/game-reference/fo4-npc.json' with { type: 'json' };
-import fnvNpcRaw from '../resources/game-reference/fnv-npc.json' with { type: 'json' };
-import oblivionNpcRaw from '../resources/game-reference/oblivion-npc.json' with { type: 'json' };
-import skyrimNpcRaw from '../resources/game-reference/skyrim-npc.json' with { type: 'json' };
-import sseNpcRaw from '../resources/game-reference/sse-npc.json' with { type: 'json' };
-import type { GameType } from '../types';
+import fo3NpcRaw from '../../resources/game-reference/fo3-npc.json' with { type: 'json' };
+import fo4NpcRaw from '../../resources/game-reference/fo4-npc.json' with { type: 'json' };
+import fnvNpcRaw from '../../resources/game-reference/fnv-npc.json' with { type: 'json' };
+import oblivionNpcRaw from '../../resources/game-reference/oblivion-npc.json' with { type: 'json' };
+import skyrimNpcRaw from '../../resources/game-reference/skyrim-npc.json' with { type: 'json' };
+import sseNpcRaw from '../../resources/game-reference/sse-npc.json' with { type: 'json' };
+import type { GameType } from '../../types';
 
 /**
  * A single entry in a game-reference JSON file.

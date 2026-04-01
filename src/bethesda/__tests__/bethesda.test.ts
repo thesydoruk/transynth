@@ -7,10 +7,9 @@ import {
   writeStringsBuffer,
   stringsTypeFromPath,
   type StringsType,
-} from '../StringsFile';
-import { Ba2Reader } from '../Ba2Reader';
+} from '../strings';
+import { Ba2Reader, writeBa2 } from '../ba2';
 import type { Ba2InputFile } from '../types';
-import { writeBa2 } from '../Ba2Writer';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,

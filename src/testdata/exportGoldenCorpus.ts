@@ -1,4 +1,4 @@
-import type { StringsType } from '../bethesda/StringsFile';
+import type { StringsType } from '../bethesda/strings';
 
 /**
  * Canonical localized strings file used by the export regression suite.

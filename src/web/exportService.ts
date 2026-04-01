@@ -20,13 +20,11 @@ import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
 import type { Tx } from '../db';
 import type { GameType } from '../types';
-import { Ba2Reader } from '../bethesda/Ba2Reader';
-import { BsaReader } from '../bethesda/BsaReader';
+import { Ba2Reader, writeBa2 } from '../bethesda/ba2';
+import { BsaReader, writeBsa } from '../bethesda/bsa';
 import type { Ba2InputFile, BsaInputFile, EspPatch } from '../bethesda/types';
-import { writeBa2 } from '../bethesda/Ba2Writer';
-import { writeBsa } from '../bethesda/BsaWriter';
-import { patchEsp, patchStringsMap } from '../bethesda/EspWriter';
-import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/StringsFile';
+import { patchEsp, patchStringsMap } from '../bethesda/esp';
+import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/strings';
 import { log } from '../logger';
 
 /**

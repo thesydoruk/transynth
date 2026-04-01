@@ -34,9 +34,9 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
-import { isTranslatableSubrecord } from '../knownStrings';
-import type { GameType } from '../../types';
-import { log } from '../../logger';
+import { isTranslatableSubrecord } from '../../utils/knownStrings';
+import type { GameType } from '../../../types';
+import { log } from '../../../logger';
 import { EspExplorer } from './EspExplorer';
 import { EspSceneExtractor } from './EspSceneExtractor';
 import type {

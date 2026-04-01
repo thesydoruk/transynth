@@ -12,8 +12,8 @@
  *   Name table: for each file uint16(length) + UTF-8 string
  */
 
-import { log } from '../logger';
-import type { Ba2InputFile } from './types';
+import { log } from '../../logger';
+import type { Ba2InputFile } from '../types';
 
 const MAGIC = 'BTDX';
 const TYPE_GNRL = 'GNRL';

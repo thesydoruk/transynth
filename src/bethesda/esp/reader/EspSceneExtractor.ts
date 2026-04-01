@@ -1,5 +1,5 @@
 import { inflateSync } from 'zlib';
-import { log } from '../../logger';
+import { log } from '../../../logger';
 import type { SceneAction, SceneRecord } from './types/index';
 
 const RECORD_HEADER_SIZE = 24;

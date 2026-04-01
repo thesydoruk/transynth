@@ -38,8 +38,8 @@
  *     Raw file bytes, concatenated in folder-walk order.
  */
 
-import { log } from '../logger';
-import type { BsaInputFile } from './types';
+import { log } from '../../logger';
+import type { BsaInputFile } from '../types';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 

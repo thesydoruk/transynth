@@ -14,8 +14,8 @@
  */
 
 import { inflateSync, deflateSync } from 'zlib';
-import { log } from '../logger';
-import type { EspPatch } from './types';
+import { log } from '../../logger';
+import type { EspPatch } from '../types';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
