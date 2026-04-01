@@ -1,6 +1,6 @@
 # 02 — Importing Mods
 
-Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Skyrim SE, or Skyrim LE mod into the tool so its strings are ready to translate.
+Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Oblivion, Morrowind, Skyrim SE, or Skyrim LE mod into the tool so its strings are ready to translate.
 
 ---
 
@@ -26,7 +26,7 @@ Learn how to bring a Fallout 4, Fallout 76, Fallout 3, Fallout: New Vegas, Skyri
 
 | File                     | Description                                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, SSE, SLE)                 |
+| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, OB, MW, SSE, SLE)         |
 | `.zip` / `.7z` / `.rar`  | Mod archive containing a plugin and, optionally, matching `.ba2` / `.bsa` files or loose assets              |
 | `.eet`                   | Legacy project file — imports existing translations                                                          |
 | `.csv`                   | RFC 4180-style comma-separated translation table                                                             |

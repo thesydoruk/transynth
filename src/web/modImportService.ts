@@ -59,7 +59,7 @@ export interface ModImportJob {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;    // 0 | 1
-  game: GameType;          // fo4 | sse
+  game: GameType;
   esp_path: string | null;
   created_at: string;
   updated_at: string;

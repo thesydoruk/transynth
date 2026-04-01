@@ -10,6 +10,8 @@ import fo4ConfigJson from './subrecords/fo4.json' with { type: 'json' };
 import fo76ConfigJson from './subrecords/fo76.json' with { type: 'json' };
 import fo3ConfigJson from './subrecords/fo3.json' with { type: 'json' };
 import fnvConfigJson from './subrecords/fnv.json' with { type: 'json' };
+import obConfigJson from './subrecords/ob.json' with { type: 'json' };
+import mwConfigJson from './subrecords/mw.json' with { type: 'json' };
 import sseConfigJson from './subrecords/sse.json' with { type: 'json' };
 import sleConfigJson from './subrecords/sle.json' with { type: 'json' };
 
@@ -30,6 +32,8 @@ const GAME_SUBRECORDS_CONFIG_BY_GAME: Record<GameType, GameSubrecordsConfig> = {
   fo76: fo76ConfigJson as GameSubrecordsConfig,
   fo3: fo3ConfigJson as GameSubrecordsConfig,
   fnv: fnvConfigJson as GameSubrecordsConfig,
+  ob: obConfigJson as GameSubrecordsConfig,
+  mw: mwConfigJson as GameSubrecordsConfig,
   sse: sseConfigJson as GameSubrecordsConfig,
   sle: sleConfigJson as GameSubrecordsConfig,
 };
@@ -86,6 +90,8 @@ const TRANSLATABLE_SUBRECORDS_BY_GAME: Record<GameType, Record<string, Set<strin
   fo76: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.fo76),
   fo3: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.fo3),
   fnv: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.fnv),
+  ob: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.ob),
+  mw: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.mw),
   sse: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.sse),
   sle: toTranslatableSubrecordsMap(GAME_SUBRECORDS_CONFIG_BY_GAME.sle),
 };
@@ -123,6 +129,8 @@ export const IGNORED_RECORDS_BY_GAME: Record<GameType, ReadonlySet<string>> = {
   fo76: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.fo76),
   fo3: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.fo3),
   fnv: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.fnv),
+  ob: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.ob),
+  mw: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.mw),
   sse: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.sse),
   sle: toIgnoredRecordsSet(GAME_SUBRECORDS_CONFIG_BY_GAME.sle),
 };

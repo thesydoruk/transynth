@@ -10,6 +10,8 @@ const FUNCTION_KEYWORDS_BY_GAME: Record<GameType, readonly string[]> = {
   fo4: fo4Keywords,
   fo76: fo4Keywords,
   fnv: fnvKeywords,
+  ob: fo3Keywords,
+  mw: fo3Keywords,
   sse: sseKeywords,
   sle: sleKeywords,
 };

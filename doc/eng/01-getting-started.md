@@ -33,13 +33,15 @@ Transynth supports the following Bethesda titles:
 - Fallout 76 (`fo76`)
 - Fallout 3 (`fo3`)
 - Fallout: New Vegas (`fnv`)
+- The Elder Scrolls IV: Oblivion (`ob`)
+- The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
 - Skyrim Legendary Edition (`sle`)
 
 Archive/export behavior depends on the selected game profile:
 
 - FO4 / FO76: BA2 workflow
-- FO3 / FNV / SSE / SLE: BSA workflow
+- FO3 / FNV / OB / MW / SSE / SLE: BSA workflow
 
 ---
 

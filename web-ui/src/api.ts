@@ -104,7 +104,7 @@ export type Mod = {
 
 /** A single entry from GET /api/games — matches GameInfo in src/web/routes/games.ts */
 export type GameInfo = {
-  /** Internal game identifier: fo4 | fo76 | fo3 | fnv | sse | sle */
+  /** Internal game identifier: fo4 | fo76 | fo3 | fnv | ob | mw | sse | sle */
   id: string;
   /** Human-readable title, e.g. "Fallout 4" */
   name: string;
@@ -763,7 +763,7 @@ export type ModImportJob = {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;
-  game: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle';
+  game: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
   esp_path: string | null;
   created_at: string;
   updated_at: string;
@@ -1183,7 +1183,7 @@ export const api = {
 
     upload: async (
       file: File,
-      options?: { game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string },
+      options?: { game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string },
       onUploadProgress?: (event: UploadProgressEvent) => void,
       onExtractingStart?: () => void,
     ): Promise<ModImportJob> => {

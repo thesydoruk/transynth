@@ -53,7 +53,7 @@ type UnifiedJob =
   | { kind: 'csv'; job: CsvImportJob }
   | { kind: 'mod'; job: ModImportJob };
 
-type SupportedGameId = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'sse' | 'sle';
+type SupportedGameId = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
 type PendingModUpload = {
   id: string;
   fileName: string;
@@ -75,7 +75,7 @@ const kindFromExt = (name: string): 'eet' | 'csv' | 'mod' | null => {
 
 /** Narrows a route gameId string to the API-supported game union. */
 const isSupportedGameId = (value: string): value is SupportedGameId =>
-  ['fo4', 'fo76', 'fo3', 'fnv', 'sse', 'sle'].includes(value);
+  ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'].includes(value);
 
 /** Downloads a base64 payload produced by exportStrings/exportEsp/exportBa2 APIs. */
 const downloadBase64File = (fileName: string, contentBase64: string) => {
