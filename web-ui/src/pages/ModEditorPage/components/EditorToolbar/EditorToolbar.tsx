@@ -33,6 +33,8 @@ export interface EditorToolbarProps {
   availLangs: string[];
   status: string;
   qaOnly: boolean;
+  /** Active view mode — 'strings' shows the grid, 'dialogs' shows the tree. */
+  pageMode: 'strings' | 'dialogs';
   stats: ModStats | undefined;
   selectedCount: number;
   translateProgress: { done: number; total: number } | null;
@@ -58,6 +60,7 @@ export interface EditorToolbarProps {
   onBulkReview: (status: 'reviewed' | 'rejected') => void;
   onNextUntranslated: () => void;
   onNextQaIssue: () => void;
+  onPageModeChange: (mode: 'strings' | 'dialogs') => void;
 }
 
 /**
@@ -74,6 +77,7 @@ export const EditorToolbar = ({
   availLangs,
   status,
   qaOnly,
+  pageMode,
   stats,
   selectedCount,
   translateProgress,
@@ -98,6 +102,7 @@ export const EditorToolbar = ({
   onBulkReview,
   onNextUntranslated,
   onNextQaIssue,
+  onPageModeChange,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
 
@@ -165,6 +170,18 @@ export const EditorToolbar = ({
         </Button>
       )}
       <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>?</Button>
+
+      <div className={styles.sep} />
+
+      {/* Mode toggle */}
+      <Button
+        onClick={() => onPageModeChange(pageMode === 'dialogs' ? 'strings' : 'dialogs')}
+        variant={pageMode === 'dialogs' ? 'primary' : 'secondary'}
+        size="sm"
+        title={t('dialogs.modeButtonTitle')}
+      >
+        {t('dialogs.modeButton')}
+      </Button>
 
       {selectedCount > 0 && (
         <>

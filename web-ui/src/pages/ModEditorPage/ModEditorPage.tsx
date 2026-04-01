@@ -9,6 +9,7 @@ import { BookEditorModal } from '../../components/BookEditorModal';
 import { PaginationControls } from '../../components/PaginationControls';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { EditorToolbar } from './components/EditorToolbar';
+import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
 import { StringGrid, type SortCol, type SortDir, type ColumnFilters } from './components/StringGrid';
 import { DetailPanel, type BottomTab } from './components/DetailPanel';
@@ -82,6 +83,9 @@ export const ModEditorPage = () => {
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [pageSize, setPageSize] = useState(100);
+
+  // ── Page mode: strings grid or dialogs tree ──
+  const [pageMode, setPageMode] = useState<'strings' | 'dialogs'>('strings');
 
   // Persist the active filter intent per mod so it is restored on the next visit
   useEffect(() => {
@@ -408,6 +412,8 @@ export const ModEditorPage = () => {
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
         onNextUntranslated={handleNextUntranslated}
         onNextQaIssue={handleNextQaIssue}
+        pageMode={pageMode}
+        onPageModeChange={setPageMode}
       />
 
       {/* Post-LLM-run action banner — shown after a successful batch translate */}
@@ -428,6 +434,9 @@ export const ModEditorPage = () => {
       )}
 
       {/* ── 3-column body ── */}
+      {pageMode === 'dialogs' ? (
+        <DialogsMode modId={modId} srcLang={srcLang} targetLang={targetLang} />
+      ) : (
       <div className={styles.body}>
         <SignaturePanel
           sigCounts={sigCounts}
@@ -506,6 +515,8 @@ export const ModEditorPage = () => {
           )}
         </div>
       </div>
+
+      )}
 
       {/* Modals */}
       {showSearchReplace && (

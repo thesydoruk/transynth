@@ -217,6 +217,24 @@
     "translateDone": "{{count}} string(s) auto-translated. Review the results before approving.",
     "openReviewQueue": "Open Review Queue →"
   },
+  "dialogs": {
+    "modeButton": "Dialogs",
+    "modeButtonTitle": "Switch to dialog tree view",
+    "topicsHeader": "Topics",
+    "loadingTopics": "Loading topics…",
+    "noTopics": "No dialog topics found",
+    "noDialogData": "This mod has no dialog data. Re-import the mod to build the dialog graph.",
+    "selectTopic": "Select a topic from the list to view its dialog tree.",
+    "loadingTree": "Loading dialog tree…",
+    "noNodes": "No dialog nodes in this topic.",
+    "infoFormIdTitle": "INFO record FormID",
+    "qaIssueCount": "{{count}} QA issue(s)",
+    "noSourceString": "(no string record)",
+    "noTranslation": "— not translated —",
+    "noStringId": "No string record attached to this node",
+    "clickToEdit": "Click to edit translation",
+    "editHint": "Ctrl+Enter to save · Esc to cancel"
+  },
   "ctx": {
     "approve": "Approve",
     "reject": "Reject",
