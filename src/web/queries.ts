@@ -599,6 +599,139 @@ export const listSignatures = async (db: Tx, modId: number, srcLang = CONFIG.def
   return rows;
 }
 
+export type DialogTopicRow = {
+  topic_id: number;
+  topic_formid_hex: string;
+  topic_edid: string | null;
+  node_count: number;
+};
+
+export type DialogTreeNodeRow = {
+  node_id: number;
+  info_formid_hex: string;
+  previous_info_formid_hex: string | null;
+  speaker_formid_hex: string | null;
+  speaker_name: string | null;
+  string_id: number | null;
+  source: string | null;
+  context: string | null;
+  translation_id: number | null;
+  translation: string | null;
+  status: string | null;
+  confidence: number | null;
+  provenance: string | null;
+  model: string | null;
+  updated_at: string | null;
+  qa_issue_count: number;
+};
+
+export type DialogTreeEdgeRow = {
+  edge_id: number;
+  from_info_formid_hex: string;
+  to_info_formid_hex: string;
+  edge_kind: string;
+  confidence: string;
+};
+
+/**
+ * List dialog topics available for a mod.
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id.
+ */
+export const listDialogTopics = async (db: Tx, modId: number): Promise<DialogTopicRow[]> => {
+  const { rows } = await db.query(
+    `SELECT
+       dt.id AS topic_id,
+       dt.formid_hex AS topic_formid_hex,
+       dt.edid AS topic_edid,
+       COUNT(dn.id)::int AS node_count
+     FROM dialog_topics dt
+     LEFT JOIN dialog_nodes dn ON dn.topic_id = dt.id
+     WHERE dt.mod_id = $1
+     GROUP BY dt.id, dt.formid_hex, dt.edid
+     ORDER BY node_count DESC, dt.formid_hex ASC`,
+    [modId],
+  );
+  return rows as DialogTopicRow[];
+}
+
+/**
+ * Load a full dialog tree payload (nodes + edges) for a topic id.
+ *
+ * @param db - Database handle.
+ * @param topicId - Dialog topic id.
+ * @param srcLang - Source language for node text.
+ * @param targetLang - Target language for best-translation join.
+ */
+export const getDialogTree = async (
+  db: Tx,
+  topicId: number,
+  srcLang = CONFIG.defaultSrcLang,
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<{ nodes: DialogTreeNodeRow[]; edges: DialogTreeEdgeRow[] }> => {
+  const { rows: nodeRows } = await db.query(
+    `SELECT
+       dn.id AS node_id,
+       dn.info_formid_hex,
+       dn.previous_info_formid_hex,
+       dn.speaker_formid_hex,
+       dn.speaker_name,
+       s.id AS string_id,
+       s.text_raw AS source,
+       s.context,
+       t.id AS translation_id,
+       t.text AS translation,
+       t.status,
+       t.confidence,
+       t.provenance,
+       t.model,
+       t.updated_at,
+       COALESCE(q.issue_count, 0) AS qa_issue_count
+     FROM dialog_nodes dn
+     LEFT JOIN strings s
+       ON s.id = dn.response_string_id
+      AND s.lang = $2
+     LEFT JOIN translations t
+       ON t.src_string_id = s.id
+      AND t.target_lang = $3
+      AND t.id = (
+        SELECT id FROM translations
+        WHERE src_string_id = s.id AND target_lang = $3
+        ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence,0) DESC, created_at DESC
+        LIMIT 1
+      )
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*)::int AS issue_count
+       FROM qa_issues qi
+       WHERE qi.src_string_id = s.id
+         AND qi.target_lang = $3
+         AND qi.is_active = TRUE
+     ) q ON TRUE
+     WHERE dn.topic_id = $1
+     ORDER BY dn.id ASC`,
+    [topicId, srcLang, targetLang],
+  );
+
+  const { rows: edgeRows } = await db.query(
+    `SELECT
+       de.id AS edge_id,
+       de.from_info_formid_hex,
+       de.to_info_formid_hex,
+       de.edge_kind,
+       de.confidence
+     FROM dialog_edges de
+     WHERE de.topic_id = $1
+     ORDER BY de.id ASC`,
+    [topicId],
+  );
+
+  return {
+    nodes: nodeRows as DialogTreeNodeRow[],
+    edges: edgeRows as DialogTreeEdgeRow[],
+  };
+}
+
 export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
   // Source langs from strings table + target langs from translations table
   const { rows } = await db.query(

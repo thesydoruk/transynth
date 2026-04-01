@@ -21,6 +21,9 @@ export type CsvRow = {
   EDID?: string;
   PathSimplified?: string;
   Hash?: string;
+  DialogTopicFormID?: string;
+  PreviousInfoFormID?: string;
+  SpeakerFormID?: string;
 };
 
 export type AnchorKey = {

@@ -106,6 +106,103 @@ export const insertString = async (
   return rows[0].id;
 }
 
+/**
+ * Upsert a dialog topic (DIAL record) for a specific mod and return its id.
+ *
+ * @param db - Database handle.
+ * @param modId - Parent mod id.
+ * @param formidHex - DIAL FormID as 8-char uppercase hex.
+ * @param edid - Optional editor id for topic labeling.
+ */
+export const upsertDialogTopic = async (
+  db: Tx,
+  modId: number,
+  formidHex: string,
+  edid?: string | null,
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_topics(mod_id, formid_hex, edid)
+     VALUES ($1, $2, $3)
+     ON CONFLICT(mod_id, formid_hex) DO UPDATE
+       SET edid = COALESCE(EXCLUDED.edid, dialog_topics.edid)
+     RETURNING id`,
+    [modId, formidHex, edid ?? null],
+  );
+  return rows[0].id;
+}
+
+/**
+ * Upsert a dialog node (INFO record) under a topic.
+ *
+ * @param db - Database handle.
+ * @param topicId - Parent dialog topic id.
+ * @param infoFormidHex - INFO FormID as 8-char uppercase hex.
+ * @param responseStringId - Source string id associated with this INFO node.
+ * @param speakerFormidHex - Optional speaker NPC FormID.
+ * @param speakerName - Optional resolved speaker display name.
+ * @param previousInfoFormidHex - Optional previous INFO link (PNAM).
+ */
+export const upsertDialogNode = async (
+  db: Tx,
+  topicId: number,
+  infoFormidHex: string,
+  responseStringId: number,
+  speakerFormidHex?: string | null,
+  speakerName?: string | null,
+  previousInfoFormidHex?: string | null,
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_nodes(
+       topic_id, info_formid_hex, response_string_id, speaker_formid_hex, speaker_name, previous_info_formid_hex
+     ) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT(topic_id, info_formid_hex) DO UPDATE SET
+       response_string_id = COALESCE(dialog_nodes.response_string_id, EXCLUDED.response_string_id),
+       speaker_formid_hex = COALESCE(EXCLUDED.speaker_formid_hex, dialog_nodes.speaker_formid_hex),
+       speaker_name = COALESCE(EXCLUDED.speaker_name, dialog_nodes.speaker_name),
+       previous_info_formid_hex = COALESCE(EXCLUDED.previous_info_formid_hex, dialog_nodes.previous_info_formid_hex),
+       updated_at = NOW()
+     RETURNING id`,
+    [
+      topicId,
+      infoFormidHex,
+      responseStringId,
+      speakerFormidHex ?? null,
+      speakerName ?? null,
+      previousInfoFormidHex ?? null,
+    ],
+  );
+  return rows[0].id;
+}
+
+/**
+ * Upsert a directed edge between two dialog INFO nodes.
+ *
+ * @param db - Database handle.
+ * @param topicId - Parent topic id.
+ * @param fromInfoFormidHex - Source INFO FormID.
+ * @param toInfoFormidHex - Target INFO FormID.
+ * @param edgeKind - Edge semantics (default: 'previous').
+ * @param confidence - Link confidence marker (default: 'exact').
+ */
+export const upsertDialogEdge = async (
+  db: Tx,
+  topicId: number,
+  fromInfoFormidHex: string,
+  toInfoFormidHex: string,
+  edgeKind = 'previous',
+  confidence = 'exact',
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_edges(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind, confidence)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind) DO UPDATE
+       SET confidence = EXCLUDED.confidence
+     RETURNING id`,
+    [topicId, fromInfoFormidHex, toInfoFormidHex, edgeKind, confidence],
+  );
+  return rows[0].id;
+}
+
 export const addTranslation = async (
   db: Tx, srcStringId: number, targetLang: string, text: string,
   status: string, confidence: number | null, provenance: string, model?: string,

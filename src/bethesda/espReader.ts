@@ -174,6 +174,14 @@ export interface EspStringRow {
    * Populated from the ANAM subrecord. Undefined for all other record types.
    */
   speakerFormId?: string;
+  /**
+   * Parent DIAL FormID for INFO rows when extracted from a topic-children GRUP.
+   */
+  dialogTopicFormId?: string;
+  /**
+   * Previous INFO FormID from PNAM subrecord when present.
+   */
+  previousInfoFormId?: string;
 }
 
 /**
@@ -283,7 +291,7 @@ export class EspReader {
     const tes4DataSize = buf.readUInt32LE(4);
     const pos = RECORD_HEADER_SIZE + tes4DataSize;
 
-    this.walkRange(pos, buf.length, rows, '');
+    this.walkRange(pos, buf.length, rows, undefined);
     log.debug(`ESP: extracted ${rows.length} translatable strings`);
     return rows;
   }
@@ -297,9 +305,15 @@ export class EspReader {
    * @param start - Inclusive byte offset to begin scanning.
    * @param end - Exclusive byte offset to stop scanning.
    * @param rows - Accumulator for extracted translatable string rows.
-   * @param _groupLabel - Currently unused (reserved for future debugging output).
+   * @param currentDialogTopicFormId - Parent DIAL FormID when traversing a
+   * topic-children group (GRUP type 7).
    */
-  private walkRange(start: number, end: number, rows: EspStringRow[], _groupLabel: string): void {
+  private walkRange(
+    start: number,
+    end: number,
+    rows: EspStringRow[],
+    currentDialogTopicFormId?: string,
+  ): void {
     const buf = this.buf;
     let pos = start;
 
@@ -309,8 +323,13 @@ export class EspReader {
       if (sig === 'GRUP') {
         const groupSize = buf.readUInt32LE(pos + 4);
         const groupEnd = pos + groupSize;
+        const groupLabelRaw = buf.readUInt32LE(pos + 8);
+        const groupType = buf.readInt32LE(pos + 12);
+        const nextDialogTopicFormId = groupType === 7
+          ? groupLabelRaw.toString(16).toUpperCase().padStart(8, '0')
+          : currentDialogTopicFormId;
         // Recurse into group contents
-        this.walkRange(pos + GRUP_HEADER_SIZE, Math.min(groupEnd, end), rows, sig);
+        this.walkRange(pos + GRUP_HEADER_SIZE, Math.min(groupEnd, end), rows, nextDialogTopicFormId);
         pos = groupEnd;
       } else {
         const dataSize = buf.readUInt32LE(pos + 4);
@@ -319,7 +338,7 @@ export class EspReader {
         const formIdHex = formIdRaw.toString(16).toUpperCase().padStart(8, '0');
         const recordEnd = pos + RECORD_HEADER_SIZE + dataSize;
 
-        this.parseRecord(pos, formIdHex, sig, flags, rows);
+        this.parseRecord(pos, formIdHex, sig, flags, rows, currentDialogTopicFormId);
         pos = recordEnd;
       }
     }
@@ -340,6 +359,7 @@ export class EspReader {
    * @param recSig - 4-char record signature (type), e.g. `"ARMO"`.
    * @param flags - Raw record flags from the record header.
    * @param rows - Accumulator for extracted translatable string rows.
+   * @param dialogTopicFormId - Parent DIAL FormID for INFO records (if known).
    */
   private parseRecord(
     recOffset: number,
@@ -347,6 +367,7 @@ export class EspReader {
     recSig: string,
     flags: number,
     rows: EspStringRow[],
+    dialogTopicFormId?: string,
   ): void {
     const buf = this.buf;
     const dataSize = buf.readUInt32LE(recOffset + 4);
@@ -375,6 +396,7 @@ export class EspReader {
     let edid = '';
     const subRows: Array<{ path: string; text: string }> = [];
     let speakerFormId: string | undefined;
+    let previousInfoFormId: string | undefined;
 
     let pos = 0;
     while (pos + SUBRECORD_HEADER_SIZE <= recordData.length) {
@@ -390,6 +412,11 @@ export class EspReader {
         const rawId = recordData.readUInt32LE(dataStart);
         if (rawId !== 0) {
           speakerFormId = rawId.toString(16).toUpperCase().padStart(8, '0');
+        }
+      } else if (recSig === 'INFO' && subSig === 'PNAM' && subSize === 4) {
+        const rawPrevId = recordData.readUInt32LE(dataStart);
+        if (rawPrevId !== 0) {
+          previousInfoFormId = rawPrevId.toString(16).toUpperCase().padStart(8, '0');
         }
       } else if (isTranslatableSubrecord(recSig, subSig, this.game)) {
         if (this.info.isLocalized && subSize === 4) {
@@ -421,6 +448,8 @@ export class EspReader {
         text,
         isLstringId: this.info.isLocalized,
         speakerFormId,
+        dialogTopicFormId,
+        previousInfoFormId,
       });
     }
   }

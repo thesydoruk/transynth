@@ -24,7 +24,15 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
-import { upsertMod, upsertRecord, insertString, type Tx } from '../db.js';
+import {
+  upsertMod,
+  upsertRecord,
+  insertString,
+  upsertDialogTopic,
+  upsertDialogNode,
+  upsertDialogEdge,
+  type Tx,
+} from '../db.js';
 import { upsertTranslation } from './queries.js';
 import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
@@ -733,6 +741,9 @@ const buildCsvRows = (
       Path: `${row.signature}\\${row.path}`,
       LStringID: row.isLstringId ? parseInt(row.text, 10) : undefined,
       Source: text,
+      DialogTopicFormID: row.dialogTopicFormId,
+      PreviousInfoFormID: row.previousInfoFormId,
+      SpeakerFormID: row.speakerFormId,
     });
   }
   return rows;
@@ -1263,6 +1274,13 @@ export const runModImport = async (
     }
     const esp = new EspReader(espPath, game);
     const espRows = esp.extractStrings();
+    const dialogEdidByFormId = new Map<string, string>();
+    for (const row of espRows) {
+      if (row.signature === 'DIAL' && row.edid) {
+        dialogEdidByFormId.set(row.formId, row.edid);
+      }
+    }
+    const dialogTopicIdCache = new Map<string, number>();
 
     // Build speaker lookup: INFO record FormID → NPC speaker FormID (from ANAM subrecord)
     const speakerMap = buildSpeakerFormIdMap(espRows);
@@ -1273,6 +1291,40 @@ export const runModImport = async (
     let batchCount = 0;
     let inTx = false;
     let importSingleLocaleMode = false;  // Track whether we imported a single selected locale vs. all
+
+    const upsertDialogGraphForRow = async (
+      row: CsvRow,
+      sourceStringId: number,
+      speakerName: string | null,
+    ): Promise<void> => {
+      if (row.Signature !== 'INFO' || !row.FormID || !row.DialogTopicFormID) return;
+
+      let topicId = dialogTopicIdCache.get(row.DialogTopicFormID);
+      if (!topicId) {
+        topicId = await upsertDialogTopic(
+          db,
+          importModId,
+          row.DialogTopicFormID,
+          dialogEdidByFormId.get(row.DialogTopicFormID) ?? null,
+        );
+        dialogTopicIdCache.set(row.DialogTopicFormID, topicId);
+      }
+
+      const speakerFormId = row.SpeakerFormID ?? speakerMap.get(row.FormID) ?? null;
+      await upsertDialogNode(
+        db,
+        topicId,
+        row.FormID,
+        sourceStringId,
+        speakerFormId,
+        speakerName,
+        row.PreviousInfoFormID ?? null,
+      );
+
+      if (row.PreviousInfoFormID) {
+        await upsertDialogEdge(db, topicId, row.PreviousInfoFormID, row.FormID, 'previous', 'exact');
+      }
+    };
 
     if (esp.info.isLocalized) {
       const localesMap: Map<string, Map<number, string>> = loadLocalesForGame(espPath, game, []);
@@ -1327,9 +1379,20 @@ export const runModImport = async (
           const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
           const hashNorm = sha1Hex(normalizeForHash(r.Source));
           const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-          const speakerFidLoc = speakerMap.get(r.FormID ?? '');
+          const speakerFidLoc = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
           const contextLoc = speakerFidLoc ? (npcNameFromMod.get(speakerFidLoc) ?? npcRefMap.get(speakerFidLoc) ?? null) : null;
-          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source), contextLoc);
+          const sourceStringId = await insertString(
+            db,
+            recordId,
+            locale,
+            r.Source,
+            normalizeForHash(r.Source),
+            'mod-import',
+            undefined,
+            normalizeNoPunct(r.Source),
+            contextLoc,
+          );
+          await upsertDialogGraphForRow(r, sourceStringId, contextLoc);
 
           imported++;
           batchCount++;
@@ -1371,9 +1434,20 @@ export const runModImport = async (
         const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
         const hashNorm = sha1Hex(normalizeForHash(r.Source));
         const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-        const speakerFid = speakerMap.get(r.FormID ?? '');
+        const speakerFid = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
         const context = speakerFid ? (npcNameFromMod.get(speakerFid) ?? npcRefMap.get(speakerFid) ?? null) : null;
-        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source), context);
+        const sourceStringId = await insertString(
+          db,
+          recordId,
+          job.src_lang,
+          r.Source,
+          normalizeForHash(r.Source),
+          'mod-import',
+          undefined,
+          normalizeNoPunct(r.Source),
+          context,
+        );
+        await upsertDialogGraphForRow(r, sourceStringId, context);
 
         imported++;
         batchCount++;

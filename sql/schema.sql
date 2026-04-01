@@ -51,6 +51,41 @@ ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS text_norm_nopunct TEXT;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS context TEXT;
 
+-- ── Dialogue graph tables (DIAL/INFO tree mode) ────────────────────────────
+
+CREATE TABLE IF NOT EXISTS dialog_topics (
+  id SERIAL PRIMARY KEY,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  formid_hex TEXT NOT NULL,
+  edid TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(mod_id, formid_hex)
+);
+
+CREATE TABLE IF NOT EXISTS dialog_nodes (
+  id SERIAL PRIMARY KEY,
+  topic_id INTEGER NOT NULL REFERENCES dialog_topics(id) ON DELETE CASCADE,
+  info_formid_hex TEXT NOT NULL,
+  response_string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
+  speaker_formid_hex TEXT,
+  speaker_name TEXT,
+  previous_info_formid_hex TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(topic_id, info_formid_hex)
+);
+
+CREATE TABLE IF NOT EXISTS dialog_edges (
+  id SERIAL PRIMARY KEY,
+  topic_id INTEGER NOT NULL REFERENCES dialog_topics(id) ON DELETE CASCADE,
+  from_info_formid_hex TEXT NOT NULL,
+  to_info_formid_hex TEXT NOT NULL,
+  edge_kind TEXT NOT NULL DEFAULT 'previous',
+  confidence TEXT NOT NULL DEFAULT 'exact',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind)
+);
+
 -- ── Auth & collaboration tables ─────────────────────────────────────────────
 -- These tables always exist regardless of MULTI_USER setting.
 -- In single-user mode they simply hold the default admin row.
@@ -231,6 +266,10 @@ CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);
+CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);
+CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id, from_info_formid_hex);
 
 -- ── Sessions & activity log ─────────────────────────────────────────────────
 
