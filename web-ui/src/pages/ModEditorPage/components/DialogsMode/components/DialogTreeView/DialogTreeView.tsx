@@ -75,23 +75,56 @@ export const DialogTreeView = ({ nodes, edges, targetLang, queryKey, isLoading }
     return <div className={styles.info}>{t('dialogs.noNodes')}</div>;
   }
 
-  /** Recursive renderer.  `visited` prevents infinite loops in cyclic graphs. */
-  const renderNode = (infoId: string, visited: Set<string>, depth: number): React.ReactNode => {
-    if (visited.has(infoId)) return null; // cycle guard
-    const node = nodeMap.get(infoId);
-    if (!node) return null;
+  /**
+   * Walks a linear chain of nodes (each with exactly one child) and renders
+   * them as a flat sequence of cards.  When a branching point is reached
+   * (0 or 2+ children), the chain stops and each branch is rendered
+   * recursively inside a `.children` wrapper that adds indentation.
+   *
+   * `visited` prevents infinite loops when cycles exist in the graph.
+   */
+  const renderChain = (startId: string, visited: Set<string>): React.ReactNode => {
+    const chainNodes: DialogTreeNode[] = [];
+    let currentId: string | null = startId;
+    const localVisited = new Set(visited);
 
-    const nextVisited = new Set(visited);
-    nextVisited.add(infoId);
+    // Walk the linear chain
+    while (currentId) {
+      if (localVisited.has(currentId)) break; // cycle guard
+      const node = nodeMap.get(currentId);
+      if (!node) break;
 
-    const childIds = childrenMap.get(infoId) ?? [];
+      localVisited.add(currentId);
+      chainNodes.push(node);
+
+      const childIds: string[] = childrenMap.get(currentId) ?? [];
+      if (childIds.length === 1 && !localVisited.has(childIds[0])) {
+        currentId = childIds[0]; // linear continuation
+      } else {
+        currentId = null; // leaf, branch, or cycle — stop
+      }
+    }
+
+    if (chainNodes.length === 0) return null;
+
+    // Children of the last node determine whether the chain branches
+    const lastNode = chainNodes[chainNodes.length - 1];
+    const branchChildIds = (childrenMap.get(lastNode.info_formid_hex) ?? [])
+      .filter((cid) => !localVisited.has(cid));
 
     return (
-      <div key={infoId} className={styles.branch} style={{ '--depth': depth } as React.CSSProperties}>
-        <DialogNodeCard node={node} targetLang={targetLang} queryKey={queryKey} />
-        {childIds.length > 0 && (
+      <div key={startId} className={styles.branch}>
+        {chainNodes.map((node) => (
+          <DialogNodeCard
+            key={node.info_formid_hex}
+            node={node}
+            targetLang={targetLang}
+            queryKey={queryKey}
+          />
+        ))}
+        {branchChildIds.length > 0 && (
           <div className={styles.children}>
-            {childIds.map((cid) => renderNode(cid, nextVisited, depth + 1))}
+            {branchChildIds.map((cid) => renderChain(cid, localVisited))}
           </div>
         )}
       </div>
@@ -100,7 +133,7 @@ export const DialogTreeView = ({ nodes, edges, targetLang, queryKey, isLoading }
 
   return (
     <div className={styles.tree}>
-      {rootIds.map((id) => renderNode(id, new Set(), 0))}
+      {rootIds.map((id) => renderChain(id, new Set()))}
     </div>
   );
 };

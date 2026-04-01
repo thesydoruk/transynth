@@ -9,17 +9,15 @@
   flex: 1;
 }
 
-/* One branch = a node card + its subtree */
+/* One branch = a linear chain of node cards + optional subtree */
 .branch {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  /* Each depth level adds left padding + a connector line */
-  padding-left: calc(var(--depth, 0) * 28px);
+  gap: 8px;
   position: relative;
 }
 
-/* Vertical connector line from parent to first child */
+/* Vertical connector line from last chain card to its children */
 .children {
   display: flex;
   flex-direction: column;
@@ -30,7 +28,7 @@
   margin-left: 22px;
 }
 
-/* Horizontal tick connecting the vertical line to a child card */
+/* Horizontal tick connecting the vertical line to a child branch */
 .children > .branch::before {
   content: '';
   position: absolute;
@@ -41,14 +39,14 @@
   background: var(--border-light);
 }
 
-/* Spacing between sibling branches */
-.branch + .branch {
+/* Spacing between sibling branches inside a ​.children container */
+.children > .branch + .branch {
   margin-top: 8px;
 }
 
-/* Spacing between a parent card and its children container */
+/* Spacing between a parent chain and its children container */
 .branch > .children {
-  margin-top: 8px;
+  margin-top: 0;
   margin-bottom: 8px;
 }
 
