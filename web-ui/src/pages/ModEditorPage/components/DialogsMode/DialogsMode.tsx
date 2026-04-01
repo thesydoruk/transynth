@@ -39,18 +39,20 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
     staleTime: 60_000,
   });
 
+  const topics = topicsQuery.data ?? [];
+  const effectiveTopicId = selectedTopicId ?? topics[0]?.topic_id ?? null;
+
   // ── Tree for selected topic ──────────────────────────────────────────────
 
-  const treeQueryKey = ['dialog-tree', selectedTopicId, srcLang, targetLang] as const;
+  const treeQueryKey = ['dialog-tree', effectiveTopicId, srcLang, targetLang] as const;
 
   const treeQuery = useQuery({
     queryKey: treeQueryKey,
-    queryFn: () => api.dialogs.tree(selectedTopicId!, srcLang, targetLang),
-    enabled: selectedTopicId !== null,
+    queryFn: () => api.dialogs.tree(effectiveTopicId!, srcLang, targetLang),
+    enabled: effectiveTopicId !== null,
     staleTime: 30_000,
   });
 
-  const topics = topicsQuery.data ?? [];
   const nodes = treeQuery.data?.nodes ?? [];
   const edges = treeQuery.data?.edges ?? [];
 
@@ -58,13 +60,13 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
     <div className={styles.root}>
       <TopicSidebar
         topics={topics}
-        activeTopicId={selectedTopicId}
+        activeTopicId={effectiveTopicId}
         isLoading={topicsQuery.isLoading}
         onSelect={setSelectedTopicId}
       />
 
       <main className={styles.main}>
-        {selectedTopicId === null ? (
+        {effectiveTopicId === null ? (
           <div className={styles.placeholder}>
             {topics.length === 0 && !topicsQuery.isLoading
               ? t('dialogs.noDialogData')
