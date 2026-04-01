@@ -1,3 +1,13 @@
+/**
+ * Vanilla NPC reference data loader.
+ *
+ * Loads pre-extracted NPC FormID → display-name maps from JSON files in
+ * `src/resources/game-reference/`. These maps are used as a fallback during
+ * mod import to resolve NPC names that the mod itself does not redefine
+ * (i.e. vanilla NPCs referenced via FormID but not re-declared in the mod).
+ *
+ * Data source: GameDico project NPC exports.
+ */
 import fo3NpcRaw from '../../resources/game-reference/fo3-npc.json' with { type: 'json' };
 import fo4NpcRaw from '../../resources/game-reference/fo4-npc.json' with { type: 'json' };
 import fnvNpcRaw from '../../resources/game-reference/fnv-npc.json' with { type: 'json' };

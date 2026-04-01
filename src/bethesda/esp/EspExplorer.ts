@@ -1,3 +1,15 @@
+/**
+ * ESP/ESM plugin explorer for the web-UI record browser.
+ *
+ * Provides read-only traversal and paginated access to records within an
+ * ESP/ESM plugin buffer. Unlike {@link EspReader}, which focuses on
+ * translatable string extraction, EspExplorer supports interactive
+ * exploration: listing top-level GRUPs, paginating records with optional
+ * signature/query filters, and decoding subrecord previews.
+ *
+ * All parsing is best-effort — unknown or corrupted records are silently
+ * skipped rather than throwing.
+ */
 import { inflateSync } from 'zlib';
 import type { EspGrupInfo, EspRecordsPage, EspRecordView, EspSubrecordView } from '../types';
 

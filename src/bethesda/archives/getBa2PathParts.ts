@@ -1,6 +1,17 @@
+/**
+ * BA2 path-splitting utility.
+ *
+ * Bethesda BA2 archives hash directory, stem, and extension separately.
+ * This helper normalizes and splits an archive-relative path for that purpose.
+ */
+
+/** Decomposed BA2 path: directory, filename stem, and extension. */
 export interface Ba2PathParts {
+  /** Lowercased directory portion (backslash-separated), e.g. `"strings"`. */
   dir: string;
+  /** Lowercased filename without extension, e.g. `"mymod_uk"`. */
   stem: string;
+  /** Lowercased extension without dot, e.g. `"strings"`. */
   ext: string;
 }
 

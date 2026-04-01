@@ -1,3 +1,30 @@
+/**
+ * BA2 (GNRL, version 1) archive writer.
+ *
+ * Binary layout:
+ *
+ *   Header (24 bytes):
+ *     magic           : char[4]  = 'BTDX'
+ *     version         : uint32   = 1
+ *     type            : char[4]  = 'GNRL'
+ *     fileCount       : uint32
+ *     nameTableOffset : uint64   (absolute offset to the name table)
+ *
+ *   File entries (36 bytes each):
+ *     nameHash   : uint32   CRC-32 of the lowercased stem (filename without extension)
+ *     ext        : char[4]  extension bytes, zero-padded
+ *     dirHash    : uint32   CRC-32 of the lowercased directory path
+ *     flags      : uint32   (0 for uncompressed GNRL)
+ *     offset     : uint64   absolute offset to raw file data
+ *     packedSize : uint32   compressed size (0 = not compressed)
+ *     realSize   : uint32   uncompressed data length
+ *     align      : uint32   (0)
+ *
+ *   Raw file data (concatenated in entry order)
+ *
+ *   Name table:
+ *     For each file: uint16 nameLength + UTF-8 name bytes (no null terminator).
+ */
 import { log } from '../../logger';
 import type { ArchiveInputFile } from '../types';
 import {
@@ -36,21 +63,25 @@ export const writeBa2 = (files: ArchiveInputFile[]): Buffer => {
   header.writeUInt32LE(fileCount, 12);
   header.writeBigUInt64LE(BigInt(nameTableOffset), 16);
 
+  // Build per-file entry table (36 bytes each).
   const entries = Buffer.alloc(fileCount * BA2_ENTRY_SIZE);
   for (let i = 0; i < fileCount; i++) {
     const base = i * BA2_ENTRY_SIZE;
     const { dir, stem, ext } = getBa2PathParts(files[i].name);
 
+    // nameHash: CRC-32 of the lowercased filename stem
     entries.writeUInt32LE(crc32(Buffer.from(stem)), base);
+    // ext: first 4 bytes of the extension, zero-padded
     const extBuf = Buffer.alloc(4);
     Buffer.from(ext.substring(0, 4)).copy(extBuf);
     extBuf.copy(entries, base + 4);
+    // dirHash: CRC-32 of the lowercased directory path
     entries.writeUInt32LE(crc32(Buffer.from(dir)), base + 8);
-    entries.writeUInt32LE(0, base + 12);
-    entries.writeBigUInt64LE(BigInt(offsets[i]), base + 16);
-    entries.writeUInt32LE(0, base + 24);
-    entries.writeUInt32LE(files[i].data.length, base + 28);
-    entries.writeUInt32LE(0, base + 32);
+    entries.writeUInt32LE(0, base + 12);               // flags (0 = uncompressed)
+    entries.writeBigUInt64LE(BigInt(offsets[i]), base + 16); // absolute data offset
+    entries.writeUInt32LE(0, base + 24);               // packedSize (0 = not compressed)
+    entries.writeUInt32LE(files[i].data.length, base + 28); // realSize
+    entries.writeUInt32LE(0, base + 32);               // alignment padding
   }
 
   const nameParts: Buffer[] = [];

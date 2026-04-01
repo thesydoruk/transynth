@@ -1,3 +1,14 @@
+/**
+ * Known translatable subrecords configuration for all supported Bethesda games.
+ *
+ * Each game ships a JSON config file (e.g. `fo4.json`, `sse.json`) that declares
+ * which record types should be read and which subrecords within them contain
+ * translatable strings. This module loads all configs at startup, pre-computes
+ * lookup tables, and exposes predicate helpers used by the ESP reader to decide
+ * whether a given record/subrecord pair should be extracted for translation.
+ *
+ * JSON files live alongside this module in `src/bethesda/subrecords/`.
+ */
 import type { GameType } from '../../types';
 import fo4ConfigJson from './fo4.json' with { type: 'json' };
 import fo76ConfigJson from './fo76.json' with { type: 'json' };
@@ -8,8 +19,10 @@ import mwConfigJson from './mw.json' with { type: 'json' };
 import sseConfigJson from './sse.json' with { type: 'json' };
 import sleConfigJson from './sle.json' with { type: 'json' };
 
+/** Map from subrecord signature to enabled/disabled toggle. */
 type SubrecordToggleMap = Record<string, boolean>;
 
+/** Per-record read flag and its subrecord toggles. */
 interface RecordToggleConfig {
   read: boolean;
   subrecords: SubrecordToggleMap;
@@ -21,6 +34,7 @@ export interface GameSubrecordsConfig {
   records: Record<string, RecordToggleConfig>;
 }
 
+/** Raw parsed JSON configs indexed by game identifier. */
 export const GAME_SUBRECORDS_CONFIG_BY_GAME: Record<GameType, GameSubrecordsConfig> = {
   fo4: fo4ConfigJson as GameSubrecordsConfig,
   fo76: fo76ConfigJson as GameSubrecordsConfig,
@@ -32,6 +46,12 @@ export const GAME_SUBRECORDS_CONFIG_BY_GAME: Record<GameType, GameSubrecordsConf
   sle: sleConfigJson as GameSubrecordsConfig,
 };
 
+/**
+ * Pre-computed per-game map of record signature → Set of translatable subrecord signatures.
+ *
+ * For each game, only subrecords marked `true` in the JSON config are included.
+ * Used as the primary lookup table by {@link isTranslatableSubrecord}.
+ */
 export const TRANSLATABLE_SUBRECORDS_BY_GAME: Record<GameType, Record<string, Set<string>>> = Object.fromEntries(
   (Object.keys(GAME_SUBRECORDS_CONFIG_BY_GAME) as GameType[]).map((game) => {
     const config = GAME_SUBRECORDS_CONFIG_BY_GAME[game];
@@ -49,6 +69,11 @@ export const TRANSLATABLE_SUBRECORDS_BY_GAME: Record<GameType, Record<string, Se
   }),
 ) as Record<GameType, Record<string, Set<string>>>;
 
+/**
+ * Pre-computed per-game set of record signatures that should be skipped entirely.
+ *
+ * A record is ignored when its `read` flag is `false` in the game's JSON config.
+ */
 export const IGNORED_RECORDS_BY_GAME: Record<GameType, ReadonlySet<string>> = Object.fromEntries(
   (Object.keys(GAME_SUBRECORDS_CONFIG_BY_GAME) as GameType[]).map((game) => {
     const config = GAME_SUBRECORDS_CONFIG_BY_GAME[game];
@@ -61,10 +86,15 @@ export const IGNORED_RECORDS_BY_GAME: Record<GameType, ReadonlySet<string>> = Ob
   }),
 ) as Record<GameType, ReadonlySet<string>>;
 
+/** Shorthand: translatable subrecords for Fallout 4. */
 export const FO4_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo4;
+/** Shorthand: translatable subrecords for Fallout 76. */
 export const FO76_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo76;
+/** Shorthand: translatable subrecords for Skyrim SE. */
 export const SSE_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.sse;
+/** Shorthand: translatable subrecords for Fallout 3. */
 export const FO3_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo3;
+/** Shorthand: translatable subrecords for Fallout NV. */
 export const FNV_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fnv;
 
 /**

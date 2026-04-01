@@ -1,3 +1,26 @@
+/**
+ * SCEN (Scene) record extractor for ESP/ESM plugins.
+ *
+ * Bethesda's SCEN records define scripted conversation sequences with multiple
+ * phases and dialog actions. Each scene contains zero or more *actions*, where
+ * actions of interest are dialog lines tied to a DIAL topic via a FormID.
+ *
+ * SCEN record subrecord layout (fields relevant to dialog extraction):
+ *
+ *   EDID : Editor ID (string, null-terminated)
+ *   PNAM : Parent quest FormID (uint32, outside of action blocks)
+ *
+ *   Action blocks are delimited by ANAM subrecords:
+ *     ANAM (size=2) : Start of action block, uint16 action type
+ *       ALID (4)   : Actor alias ID (int32)
+ *       DATA (4)   : Dialog topic FormID (uint32, primary)
+ *       HTID (4)   : Headtracking topic FormID (uint32, fallback if DATA is 0)
+ *       SNAM (4)   : Start phase index (uint32)
+ *       ENAM (4)   : End phase index (uint32)
+ *     ANAM (size=0) : End of action block
+ *
+ * Actions are sorted by `startPhase` to reconstruct playback order.
+ */
 import { inflateSync } from 'zlib';
 import { log } from '../../logger';
 import type { SceneAction, SceneRecord } from '../types';
@@ -87,12 +110,18 @@ export class EspSceneExtractor {
 
       if (subSig === 'EDID') {
         edid = recordData.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
+
+      // PNAM outside an action block is the parent quest FormID
       } else if (subSig === 'PNAM' && subSize === 4 && !inAction) {
         const raw = recordData.readUInt32LE(ds);
         if (raw !== 0) questFormId = raw.toString(16).toUpperCase().padStart(8, '0');
+
+      // ANAM with size=2 starts a new action block
       } else if (subSig === 'ANAM' && subSize === 2) {
         current = { actionType: recordData.readUInt16LE(ds), aliasId: null, topicFormId: null, startPhase: 0, endPhase: 0 };
         inAction = true;
+
+      // ANAM with size=0 terminates the current action block
       } else if (subSig === 'ANAM' && subSize === 0 && inAction) {
         if (current?.topicFormId) {
           actions.push({
@@ -105,6 +134,8 @@ export class EspSceneExtractor {
         }
         current = null;
         inAction = false;
+
+      // Inside an action block: collect actor alias, topic FormID, and phase range
       } else if (inAction && current) {
         if (subSig === 'ALID' && subSize === 4) {
           current.aliasId = recordData.readInt32LE(ds);
@@ -124,6 +155,7 @@ export class EspSceneExtractor {
       pos += SUBRECORD_HEADER_SIZE + subSize;
     }
 
+    // Sort actions by start phase to reflect in-game playback order
     actions.sort((a, b) => a.startPhase - b.startPhase);
     return { formId, edid, questFormId, actions };
   }

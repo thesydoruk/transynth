@@ -1,5 +1,12 @@
+/**
+ * CRC-32 (IEEE 802.3) checksum for BA2 archive entry hashing.
+ *
+ * Used by the BA2 writer to compute `nameHash` and `dirHash` fields in
+ * file entry records. The table is pre-built once at module load time.
+ */
 import { buildCrc32Table } from './buildCrc32Table';
 
+/** Pre-built 256-entry lookup table, initialized once at module load. */
 const CRC32_TABLE = buildCrc32Table();
 
 /**
