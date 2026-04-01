@@ -57,7 +57,7 @@
 
 - TypeScript, ESM (`"type": "module"` in package.json).
 - Strict mode enabled.
-- **File length limit (mandatory):** every `.ts` and `.tsx` file must be at most 400 lines. If a file approaches or exceeds this limit, split it into smaller modules/components/hooks/utils.
+- **File length limit (mandatory):** every `.ts` and `.tsx` file must be at most 400 lines of code. Comment-only lines (single-line or block comments) are excluded from this count. If a file approaches or exceeds this limit, split it into smaller modules/components/hooks/utils.
 - Prefer `import` over `require()`.
 - Use `src/logger.ts` (`log.info/warn/error`) instead of `console.log`.
 - Put truly shared, cross-feature utilities in `src/utils/` instead of duplicating code across CLI files.
@@ -113,6 +113,8 @@
 - **Type index rule (mandatory):** creation of a `types/` folder always requires creating/updating its `index.ts` barrel export in the same change.
 - **One exported type per file (mandatory):** each file in `types/` should export exactly one primary `type` or `interface` (small tightly-coupled helper aliases are allowed only when separation would add noise).
 - **Type naming (mandatory):** exported interfaces and type aliases must use PascalCase; filename should match the primary exported type/interface name.
+- **File naming for symbols (mandatory):** files whose primary export is a class, interface, or type must use PascalCase filename and start with an uppercase letter (for example `EspReader.ts`, `DialogNode.ts`, `TranslationStatus.ts`).
+- **Utility filename exception (mandatory):** utility function files in `utils/` remain function-oriented and may use camelCase naming (for example `normalizeFormId.ts`).
 - **Status modeling (mandatory):** prefer string-literal unions over enums for statuses/state flags unless runtime enum behavior is explicitly required.
 - **State unions (mandatory):** use discriminated unions for complex UI/data loading states.
 - **No duplicate shapes (mandatory):** if the same structural type appears in 2+ places, extract it to a shared type and reuse it.

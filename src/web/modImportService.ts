@@ -40,7 +40,7 @@ import { upsertTranslation } from './queries.js';
 import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
-import { EspReader, type EspStringRow } from '../bethesda/espReader.js';
+import { EspReader, type EspStringRow } from '../bethesda/EspReader/index.js';
 import { Ba2Reader } from '../bethesda/ba2Reader.js';
 import { BsaReader } from '../bethesda/bsaReader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
