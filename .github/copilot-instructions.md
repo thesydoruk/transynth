@@ -57,12 +57,15 @@
 
 - TypeScript, ESM (`"type": "module"` in package.json).
 - Strict mode enabled.
+- **File length limit (mandatory):** every `.ts` and `.tsx` file must be at most 400 lines. If a file approaches or exceeds this limit, split it into smaller modules/components/hooks/utils.
 - Prefer `import` over `require()`.
 - Use `src/logger.ts` (`log.info/warn/error`) instead of `console.log`.
 - Put truly shared, cross-feature utilities in `src/utils/` instead of duplicating code across CLI files.
+- **Utility placement (mandatory):** always place utilities inside a `utils/` subfolder near the usage site; use top-level `src/utils/` only for truly global shared utilities.
 - **Utility structure (mandatory):** place feature-local utilities in a local `utils/` subfolder near the feature/page; use `src/utils/` only when the utility is genuinely shared across modules.
 - **One function per file (mandatory):** each utility file must define exactly one function (or one exported constant function).
 - **Utility barrels (mandatory):** every `utils/` folder must include `index.ts` that re-exports all utility functions from that folder.
+- **Utility index rule (mandatory):** creation of a `utils/` folder always requires creating/updating its `index.ts` barrel export in the same change.
 - **Component structure (mandatory):** for non-trivial pages/features in `web-ui/src/`, place UI parts in a local `components/` folder next to the page entry file (same level as local `hooks/` and `utils/` when they exist).
 - **One component per folder (mandatory):** each component must live in its own subfolder inside `components/` (for example `components/EditorToolbar/`).
 - **Component file layout (mandatory):** each component folder must contain the component implementation file, its SCSS Module, and an `index.ts` barrel export.
@@ -101,6 +104,19 @@
   - **Don't:** keep duplicated helper logic across components; extract and reuse via `hooks/` or `utils/`.
 - **Styling:** Use SCSS Modules (`*.module.scss`) for component styles in `web-ui/`. No inline styles or global CSS unless unavoidable.
 - **Theme colors only:** All colors in `web-ui/` styles must come from theme tokens defined in `web-ui/src/index.scss` (e.g. `var(--...)`). Do not use raw color literals (`#...`, `rgb(...)`, `rgba(...)`, `hsl(...)`, `color-mix(...)`) directly in component/module styles.
+
+## Types and interfaces
+
+- **Type separation (mandatory):** keep API/transport DTO types separate from domain and UI-view types; do not mix them in one file without explicit mapping.
+- **Type placement (mandatory):** place feature-local interfaces/types in a local `types/` folder near usage; use top-level `src/types/` only for truly global shared contracts.
+- **Type barrels (mandatory):** every `types/` folder must include `index.ts` that re-exports all types/interfaces from that folder.
+- **Type index rule (mandatory):** creation of a `types/` folder always requires creating/updating its `index.ts` barrel export in the same change.
+- **One exported type per file (mandatory):** each file in `types/` should export exactly one primary `type` or `interface` (small tightly-coupled helper aliases are allowed only when separation would add noise).
+- **Type naming (mandatory):** exported interfaces and type aliases must use PascalCase; filename should match the primary exported type/interface name.
+- **Status modeling (mandatory):** prefer string-literal unions over enums for statuses/state flags unless runtime enum behavior is explicitly required.
+- **State unions (mandatory):** use discriminated unions for complex UI/data loading states.
+- **No duplicate shapes (mandatory):** if the same structural type appears in 2+ places, extract it to a shared type and reuse it.
+- **Type documentation (mandatory):** every exported non-trivial type/interface must include concise JSDoc explaining purpose and key fields.
 
 ## User-facing wiki (`doc/`)
 
