@@ -32,6 +32,8 @@ import {
   upsertDialogTopic,
   upsertDialogNode,
   upsertDialogEdge,
+  upsertDialogScene,
+  upsertDialogScenePhase,
   type Tx,
 } from '../db.js';
 import { upsertTranslation } from './queries.js';
@@ -722,6 +724,79 @@ const buildSpeakerFormIdMap = (espRows: EspStringRow[]): Map<string, string> => 
   return map;
 };
 
+/**
+ * Clean a voice directory name into a human-readable speaker label.
+ *
+ * Typical folder names follow `<ModPrefix>_<Name>Voice` or `NPC[FM]<Name>`.
+ * The function strips known prefixes/suffixes and inserts spaces at
+ * CamelCase boundaries.
+ */
+const cleanVoiceFolderName = (name: string): string => {
+  let cleaned = name.replace(/Voice$/i, '');
+  // Strip NPC gender prefix (NPCFPiper → Piper)
+  cleaned = cleaned.replace(/^NPC[FM]/i, '');
+  // If underscore remains, take the part after the last one (e.g. DP_Stella → Stella)
+  if (cleaned.includes('_')) {
+    cleaned = cleaned.substring(cleaned.lastIndexOf('_') + 1);
+  }
+  // Insert spaces before CamelCase boundaries (TinaDeLuca → Tina De Luca)
+  cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
+  // Insert spaces before digit runs (Male01 → Male 01)
+  cleaned = cleaned.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+  if (/^Player Voice (Female|Male) \d+$/i.test(cleaned.trim())) {
+    return 'Player';
+  }
+  return cleaned || name;
+};
+
+/**
+ * Build a speaker-name lookup from voice file directories.
+ *
+ * FO4 voice files live at `Sound/Voice/<Plugin>/<SpeakerFolder>/<FormID>_<N>.fuz`.
+ * Most quest-based INFO records lack an ANAM subrecord (speaker is determined
+ * by quest aliases), so voice file paths are the most reliable fallback for
+ * identifying the speaker.
+ *
+ * The returned map keys are the **lower 6 hex digits** of the INFO FormID
+ * (stripping the 2-char load-order prefix) because CK exports voice files
+ * with a hard-coded `00` prefix regardless of the plugin's actual load index.
+ *
+ * @param espPath - Absolute path to the plugin file.
+ * @returns Map from lower-6-hex FormID → cleaned speaker display name.
+ */
+const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
+  const map = new Map<string, string>();
+  const modDir = path.dirname(espPath);
+  const pluginName = path.basename(espPath);
+  const voiceRoot = path.join(modDir, 'Sound', 'Voice', pluginName);
+
+  if (!fs.existsSync(voiceRoot)) return map;
+
+  let dirs: fs.Dirent[];
+  try { dirs = fs.readdirSync(voiceRoot, { withFileTypes: true }); } catch { return map; }
+
+  for (const dir of dirs) {
+    if (!dir.isDirectory()) continue;
+    const speakerName = cleanVoiceFolderName(dir.name);
+
+    let files: string[];
+    try { files = fs.readdirSync(path.join(voiceRoot, dir.name)); } catch { continue; }
+
+    for (const file of files) {
+      const match = file.match(/^([0-9A-Fa-f]{8})_\d+\.(fuz|wav|xwm)$/i);
+      if (!match) continue;
+      // Strip the 2-char load-order prefix → lower 6 hex digits as key
+      const lower6 = match[1].substring(2).toUpperCase();
+      if (!map.has(lower6)) {
+        map.set(lower6, speakerName);
+      }
+    }
+  }
+
+  log.debug(`Voice speaker map: ${map.size} entries from ${voiceRoot}`);
+  return map;
+};
+
 const buildCsvRows = (
   espRows: EspStringRow[],
   stringsMap: Map<number, string> | null,
@@ -1297,6 +1372,8 @@ export const runModImport = async (
 
     // Build speaker lookup: INFO record FormID → NPC speaker FormID (from ANAM subrecord)
     const speakerMap = buildSpeakerFormIdMap(espRows);
+    // Voice-file fallback: lower-6-hex INFO FormID → speaker display name
+    const voiceSpeakerMap = buildVoiceSpeakerMap(espPath);
     // Fallback NPC names for vanilla game NPCs not declared in this mod
     const npcRefMap = loadNpcReferenceMap(game);
 
@@ -1324,13 +1401,15 @@ export const runModImport = async (
       }
 
       const speakerFormId = row.SpeakerFormID ?? speakerMap.get(row.FormID) ?? null;
+      // Fall back to voice-file directory name when ANAM-based name is unavailable
+      const effectiveSpeakerName = speakerName ?? voiceSpeakerMap.get(row.FormID.substring(2)) ?? null;
       await upsertDialogNode(
         db,
         topicId,
         row.FormID,
         sourceStringId,
         speakerFormId,
-        speakerName,
+        effectiveSpeakerName,
         row.PreviousInfoFormID ?? null,
       );
 
@@ -1557,6 +1636,30 @@ export const runModImport = async (
       } catch (err) {
         log.error(`[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`);
         throw err;
+      }
+
+      // ── Scene import: link DIAL topics into SCEN-based conversation sequences ─
+      try {
+        const sceneRecords = esp.extractScenes();
+        if (sceneRecords.length > 0) {
+          await db.query('BEGIN');
+          let scenesImported = 0;
+          for (const scen of sceneRecords) {
+            const sceneId = await upsertDialogScene(db, importModId, scen.formId, scen.edid || null, scen.questFormId);
+            for (const action of scen.actions) {
+              // Only link if the topic was actually imported
+              const topicId = dialogTopicIdCache.get(action.topicFormId);
+              if (!topicId) continue;
+              await upsertDialogScenePhase(db, sceneId, action.startPhase, action.aliasId, topicId);
+            }
+            scenesImported++;
+          }
+          await db.query('COMMIT');
+          log.info(`[Mod Import #${job.id}] Imported ${scenesImported} scene(s) with dialog phases`);
+        }
+      } catch (err) {
+        log.warn(`[Mod Import #${job.id}] Scene import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+        try { await db.query('ROLLBACK'); } catch { /* ignore */ }
       }
 
       await markDone(db, job.id, imported);

@@ -16,6 +16,16 @@ export interface DialogNodeCardProps {
 }
 
 /**
+ * Deterministic HSL color derived from a string identifier.
+ * Used to assign a consistent left-border tint per speaker.
+ */
+const speakerHue = (id: string): number => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return ((h % 360) + 360) % 360;
+};
+
+/**
  * A card representing one INFO record inside a DIAL topic tree.
  *
  * Displays the speaker name, source text, current translation, and
@@ -47,8 +57,13 @@ export const DialogNodeCard = ({ node, targetLang, queryKey }: DialogNodeCardPro
     if (e.key === 'Escape') { setDraft(node.translation ?? ''); setEditing(false); }
   }, [handleSave, node.translation]);
 
+  const hue = node.speaker_formid_hex ? speakerHue(node.speaker_formid_hex) : null;
+  const cardStyle = hue !== null
+    ? { '--speaker-hue': hue } as React.CSSProperties
+    : undefined;
+
   return (
-    <article className={styles.card}>
+    <article className={`${styles.card} ${hue !== null ? styles.hasSpeaker : ''}`} style={cardStyle}>
       <header className={styles.cardHead}>
         {node.speaker_name && (
           <span className={styles.speaker} title={node.speaker_formid_hex ?? undefined}>

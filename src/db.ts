@@ -203,6 +203,53 @@ export const upsertDialogEdge = async (
   return rows[0].id;
 }
 
+/**
+ * Insert or update a dialog scene record.
+ *
+ * @returns The `dialog_scenes.id` of the upserted row.
+ */
+export const upsertDialogScene = async (
+  db: Tx,
+  modId: number,
+  formidHex: string,
+  edid: string | null,
+  questFormidHex: string | null,
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_scenes(mod_id, formid_hex, edid, quest_formid_hex)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT(mod_id, formid_hex) DO UPDATE SET
+       edid = COALESCE(EXCLUDED.edid, dialog_scenes.edid),
+       quest_formid_hex = COALESCE(EXCLUDED.quest_formid_hex, dialog_scenes.quest_formid_hex)
+     RETURNING id`,
+    [modId, formidHex, edid, questFormidHex],
+  );
+  return rows[0].id;
+};
+
+/**
+ * Insert a scene phase linking a scene to a dialog topic at a given order.
+ *
+ * @returns The `dialog_scene_phases.id` of the upserted row.
+ */
+export const upsertDialogScenePhase = async (
+  db: Tx,
+  sceneId: number,
+  phaseOrder: number,
+  aliasId: number,
+  topicId: number,
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_scene_phases(scene_id, phase_order, alias_id, topic_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT(scene_id, phase_order, topic_id) DO UPDATE SET
+       alias_id = EXCLUDED.alias_id
+     RETURNING id`,
+    [sceneId, phaseOrder, aliasId, topicId],
+  );
+  return rows[0].id;
+};
+
 export const addTranslation = async (
   db: Tx, srcStringId: number, targetLang: string, text: string,
   status: string, confidence: number | null, provenance: string, model?: string,

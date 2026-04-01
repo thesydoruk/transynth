@@ -86,6 +86,28 @@ CREATE TABLE IF NOT EXISTS dialog_edges (
   UNIQUE(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind)
 );
 
+-- ── Scene tables (SCEN-based multi-topic dialog sequences) ──────────────────
+
+CREATE TABLE IF NOT EXISTS dialog_scenes (
+  id SERIAL PRIMARY KEY,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  formid_hex TEXT NOT NULL,
+  edid TEXT,
+  quest_formid_hex TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(mod_id, formid_hex)
+);
+
+CREATE TABLE IF NOT EXISTS dialog_scene_phases (
+  id SERIAL PRIMARY KEY,
+  scene_id INTEGER NOT NULL REFERENCES dialog_scenes(id) ON DELETE CASCADE,
+  phase_order INTEGER NOT NULL,
+  alias_id INTEGER NOT NULL DEFAULT 0,
+  topic_id INTEGER NOT NULL REFERENCES dialog_topics(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(scene_id, phase_order, topic_id)
+);
+
 -- ── Auth & collaboration tables ─────────────────────────────────────────────
 -- These tables always exist regardless of MULTI_USER setting.
 -- In single-user mode they simply hold the default admin row.
@@ -270,6 +292,9 @@ CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);
 CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id, from_info_formid_hex);
+CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);
+CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_topic ON dialog_scene_phases(topic_id);
 
 -- ── Sessions & activity log ─────────────────────────────────────────────────
 

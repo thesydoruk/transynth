@@ -1,0 +1,159 @@
+/* ── SceneConversationView — SCSS Module ────────────────────────────────── */
+
+.conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.lineWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sceneMarker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  align-self: flex-start;
+  padding: 4px 10px;
+}
+
+/* ── Line card (one speaker turn) ───────────────────────────────────────── */
+
+.lineCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid hsl(var(--speaker-hue, 0), 55%, 55%);
+  border-radius: 6px;
+  padding: 10px 14px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Header row: speaker + formid + badges ──────────────────────────────── */
+
+.lineHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.speaker {
+  font-size: 12px;
+  font-weight: 700;
+  color: hsl(var(--speaker-hue, 0), 55%, 55%);
+  background: var(--bg-raised);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.formid {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-dim);
+}
+
+.qaBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bg-surface);
+  background: var(--status-rejected, #d9534f);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-left: auto;
+}
+
+/* ── Source text ─────────────────────────────────────────────────────────── */
+
+.source {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.noString {
+  color: var(--text-dim);
+}
+
+/* ── Translation (display / edit) ────────────────────────────────────────── */
+
+.translation {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 3px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+
+  &:hover,
+  &:focus {
+    background: var(--bg-hover);
+    border-color: var(--border-input);
+    outline: none;
+  }
+}
+
+.translation.empty {
+  color: var(--text-dim);
+  font-style: italic;
+  min-height: 28px;
+}
+
+/* ── Inline edit area ────────────────────────────────────────────────────── */
+
+.editArea {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+}
+
+.editHint {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ── Info placeholder (loading / empty) ──────────────────────────────────── */
+
+.info {
+  padding: 24px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

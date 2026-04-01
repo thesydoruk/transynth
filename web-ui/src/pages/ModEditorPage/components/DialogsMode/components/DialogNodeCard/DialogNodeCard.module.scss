@@ -11,6 +11,12 @@
   position: relative;
 }
 
+/* Colored left accent when a speaker is known */
+.hasSpeaker {
+  border-left: 3px solid hsl(var(--speaker-hue, 0), 55%, 55%);
+  padding-left: 12px;
+}
+
 /* ── Header row: speaker + formid + badges ─────────────────────────────── */
 
 .cardHead {
@@ -23,7 +29,7 @@
 .speaker {
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent);
+  color: hsl(var(--speaker-hue, 0), 55%, 55%);
   background: var(--bg-raised);
   border-radius: 3px;
   padding: 1px 6px;

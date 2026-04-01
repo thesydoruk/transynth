@@ -277,6 +277,42 @@ export type DialogTreeResult = {
   edges: DialogTreeEdge[];
 };
 
+export type DialogScene = {
+  scene_id: number;
+  scene_formid_hex: string;
+  scene_edid: string | null;
+  quest_formid_hex: string | null;
+  phase_count: number;
+};
+
+export type DialogConversation = {
+  conversation_key: string;
+  quest_formid_hex: string | null;
+  sample_scene_edid: string | null;
+  sample_scene_formid_hex: string;
+  scene_count: number;
+  phase_count: number;
+};
+
+export type SceneDialogLine = {
+  scene_id: number;
+  scene_formid_hex: string;
+  scene_edid: string | null;
+  phase_order: number;
+  alias_id: number;
+  topic_formid_hex: string;
+  topic_edid: string | null;
+  node_id: number | null;
+  info_formid_hex: string | null;
+  speaker_name: string | null;
+  string_id: number | null;
+  source: string | null;
+  translation_id: number | null;
+  translation: string | null;
+  status: string | null;
+  qa_issue_count: number;
+};
+
 export type Stats = {
   total: number;
   translated: number;
@@ -1048,6 +1084,16 @@ export const api = {
     tree: (topicId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<DialogTreeResult>(
         `/api/dialogs/tree?topicId=${topicId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
+    scenes: (modId: number) => req<DialogScene[]>(`/api/dialogs/scenes?modId=${modId}`),
+    conversations: (modId: number) => req<DialogConversation[]>(`/api/dialogs/conversations?modId=${modId}`),
+    sceneDialog: (sceneId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+      req<SceneDialogLine[]>(
+        `/api/dialogs/scene?sceneId=${sceneId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
+    conversationDialog: (modId: number, key: string, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+      req<SceneDialogLine[]>(
+        `/api/dialogs/conversation?modId=${modId}&key=${encodeURIComponent(key)}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       ),
   },
 

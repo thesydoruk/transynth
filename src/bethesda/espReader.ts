@@ -199,6 +199,39 @@ export interface EspPluginInfo {
 }
 
 /**
+ * One dialog action extracted from a SCEN record.
+ *
+ * Represents a single "say dialog" step within a scene, linking a quest alias
+ * (actor) to a DIAL topic (the spoken lines) at a specific phase position.
+ */
+export interface SceneAction {
+  /** Action type (0 = dialogue, 6 = player dialogue). */
+  actionType: number;
+  /** Quest alias index of the speaking actor (-2 = player). */
+  aliasId: number;
+  /** DIAL topic FormID (8-char hex) referenced by this action. */
+  topicFormId: string;
+  /** Scene phase ordinal — determines dialog ordering within the scene. */
+  startPhase: number;
+  /** Last phase this action spans. */
+  endPhase: number;
+}
+
+/**
+ * Parsed SCEN record containing an ordered sequence of dialog actions.
+ */
+export interface SceneRecord {
+  /** FormID of the SCEN record (8-char hex). */
+  formId: string;
+  /** Editor ID (EDID) of the scene. */
+  edid: string;
+  /** Quest FormID that owns this scene (from QNAM, 8-char hex, may be null). */
+  questFormId: string | null;
+  /** Ordered dialog actions extracted from the scene phases. */
+  actions: SceneAction[];
+}
+
+/**
  * Native reader for Bethesda ESP/ESM/ESL plugin files.
  *
  * The reader supports two primary use cases:
@@ -294,6 +327,140 @@ export class EspReader {
     this.walkRange(pos, buf.length, rows, undefined);
     log.debug(`ESP: extracted ${rows.length} translatable strings`);
     return rows;
+  }
+
+  /**
+   * Extract all SCEN records that contain dialog actions.
+   *
+   * Walks the entire plugin file, collecting scene records where at least one
+   * action references a DIAL topic (via the DATA subrecord inside an action
+   * block).  Actions are ordered by their start phase, so the resulting array
+   * reflects the in-game dialog sequence.
+   *
+   * @returns Array of {@link SceneRecord} values (only scenes with dialog).
+   */
+  extractScenes(): SceneRecord[] {
+    const buf = this.buf;
+    const tes4DataSize = buf.readUInt32LE(4);
+    const scenes: SceneRecord[] = [];
+
+    const walkScenes = (start: number, end: number): void => {
+      let p = start;
+      while (p + RECORD_HEADER_SIZE <= end) {
+        const sig = buf.toString('ascii', p, p + 4);
+        if (sig === 'GRUP') {
+          const gsz = buf.readUInt32LE(p + 4);
+          walkScenes(p + GRUP_HEADER_SIZE, Math.min(p + gsz, end));
+          p += gsz;
+        } else {
+          const dataSize = buf.readUInt32LE(p + 4);
+          if (sig === 'SCEN') {
+            const scene = this.parseSceneRecord(p);
+            if (scene && scene.actions.length > 0) scenes.push(scene);
+          }
+          p += RECORD_HEADER_SIZE + dataSize;
+        }
+      }
+    };
+
+    walkScenes(RECORD_HEADER_SIZE + tes4DataSize, buf.length);
+    log.debug(`ESP: extracted ${scenes.length} scene(s) with dialog`);
+    return scenes;
+  }
+
+  /**
+   * Parse a single SCEN record into a {@link SceneRecord}.
+   *
+   * The SCEN subrecord layout uses ANAM (2 bytes) to start an action block
+   * and ANAM (0 bytes) to end it.  Inside the block:
+   * - ALID = actor alias index
+   * - DATA (4 bytes) = DIAL topic FormID for dialogue actions
+   * - HTID (4 bytes) = heading topic (fallback if DATA absent)
+   * - SNAM = start phase index
+   * - ENAM = end phase index
+   *
+   * Only actions that reference a non-zero topic FormID are retained.
+   */
+  private parseSceneRecord(recOffset: number): SceneRecord | null {
+    const buf = this.buf;
+    const dataSize = buf.readUInt32LE(recOffset + 4);
+    const flags = buf.readUInt32LE(recOffset + 8);
+    const formIdRaw = buf.readUInt32LE(recOffset + 12);
+    const formId = formIdRaw.toString(16).toUpperCase().padStart(8, '0');
+
+    let recordData: Buffer;
+    if (flags & FLAG_COMPRESSED) {
+      const compDataStart = recOffset + RECORD_HEADER_SIZE;
+      const compData = buf.subarray(compDataStart + 4, recOffset + RECORD_HEADER_SIZE + dataSize);
+      try { recordData = inflateSync(compData); }
+      catch { return null; }
+    } else {
+      recordData = buf.subarray(
+        recOffset + RECORD_HEADER_SIZE,
+        recOffset + RECORD_HEADER_SIZE + dataSize,
+      );
+    }
+
+    let edid = '';
+    let questFormId: string | null = null;
+    const actions: SceneAction[] = [];
+    let inAction = false;
+    let current: {
+      actionType: number; aliasId: number | null;
+      topicFormId: string | null; startPhase: number; endPhase: number;
+    } | null = null;
+
+    let pos = 0;
+    while (pos + SUBRECORD_HEADER_SIZE <= recordData.length) {
+      const subSig = recordData.toString('ascii', pos, pos + 4);
+      const subSize = recordData.readUInt16LE(pos + 4);
+      const ds = pos + SUBRECORD_HEADER_SIZE;
+
+      if (subSig === 'EDID') {
+        edid = recordData.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
+      } else if (subSig === 'PNAM' && subSize === 4 && !inAction) {
+        const raw = recordData.readUInt32LE(ds);
+        if (raw !== 0) questFormId = raw.toString(16).toUpperCase().padStart(8, '0');
+      } else if (subSig === 'ANAM' && subSize === 2) {
+        // Action start
+        const actionType = recordData.readUInt16LE(ds);
+        current = { actionType, aliasId: null, topicFormId: null, startPhase: 0, endPhase: 0 };
+        inAction = true;
+      } else if (subSig === 'ANAM' && subSize === 0 && inAction) {
+        // Action end
+        if (current?.topicFormId) {
+          actions.push({
+            actionType: current.actionType,
+            aliasId: current.aliasId ?? 0,
+            topicFormId: current.topicFormId,
+            startPhase: current.startPhase,
+            endPhase: current.endPhase,
+          });
+        }
+        current = null;
+        inAction = false;
+      } else if (inAction && current) {
+        if (subSig === 'ALID' && subSize === 4) {
+          current.aliasId = recordData.readInt32LE(ds);
+        } else if (subSig === 'DATA' && subSize === 4) {
+          const raw = recordData.readUInt32LE(ds);
+          if (raw !== 0) current.topicFormId = raw.toString(16).toUpperCase().padStart(8, '0');
+        } else if (subSig === 'HTID' && subSize === 4 && !current.topicFormId) {
+          const raw = recordData.readUInt32LE(ds);
+          if (raw !== 0) current.topicFormId = raw.toString(16).toUpperCase().padStart(8, '0');
+        } else if (subSig === 'SNAM' && subSize === 4) {
+          current.startPhase = recordData.readUInt32LE(ds);
+        } else if (subSig === 'ENAM' && subSize === 4) {
+          current.endPhase = recordData.readUInt32LE(ds);
+        }
+      }
+
+      pos += SUBRECORD_HEADER_SIZE + subSize;
+    }
+
+    // Sort by start phase for correct dialog ordering
+    actions.sort((a, b) => a.startPhase - b.startPhase);
+    return { formId, edid, questFormId, actions };
   }
 
   /**

@@ -93,7 +93,7 @@ export const TopicSidebar = ({ topics, activeTopicId, isLoading, onSelect }: Top
         <input
           className={styles.filterInput}
           value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
+          onChange={(e) => { setFilterText(e.target.value); setHighlightedIndex(0); }}
           onKeyDown={handleKeyDown}
           placeholder={t('dialogs.topicsFilterPlaceholder')}
           aria-label={t('dialogs.topicsFilterPlaceholder')}

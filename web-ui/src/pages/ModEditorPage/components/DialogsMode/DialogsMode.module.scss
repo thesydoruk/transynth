@@ -2,6 +2,48 @@
 
 .root {
   display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Tab bar ────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-card);
+}
+
+.tab {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.activeTab {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Content area (sidebar + main) ──────────────────────────────────────── */
+
+.content {
+  display: flex;
   flex: 1;
   overflow: hidden;
 }
