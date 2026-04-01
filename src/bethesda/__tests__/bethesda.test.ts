@@ -7,8 +7,8 @@ import {
   writeStringsBuffer,
   stringsTypeFromPath,
   type StringsType,
-} from '../stringsFile.js';
-import { Ba2Reader } from '../ba2Reader.js';
+} from '../StringsFile.js';
+import { Ba2Reader } from '../Ba2Reader.js';
 import { writeBa2, type Ba2InputFile } from '../ba2Writer.js';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,

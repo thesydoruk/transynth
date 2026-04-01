@@ -17,7 +17,7 @@
  * transaction statements are executed on the same connection.
  */
 import pg from 'pg';
-import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/eetReader.js';
+import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/EetReader.js';
 import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
 import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';

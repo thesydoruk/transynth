@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../db.js';
-import { Ba2Reader } from '../../bethesda/ba2Reader.js';
-import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/stringsFile.js';
+import { Ba2Reader } from '../../bethesda/Ba2Reader.js';
+import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/StringsFile.js';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,

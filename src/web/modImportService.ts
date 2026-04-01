@@ -41,11 +41,11 @@ import { sha1Hex } from '../utils/hash.js';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
 import { log } from '../logger.js';
 import { EspReader, type EspStringRow } from '../bethesda/EspReader/index.js';
-import { Ba2Reader } from '../bethesda/ba2Reader.js';
-import { BsaReader } from '../bethesda/bsaReader.js';
-import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
-import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
-import { parsePexBuffer } from '../bethesda/pexReader.js';
+import { Ba2Reader } from '../bethesda/Ba2Reader.js';
+import { BsaReader } from '../bethesda/BsaReader.js';
+import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/StringsFile.js';
+import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/McmReader.js';
+import { parsePexBuffer } from '../bethesda/PexReader.js';
 import { loadNpcReferenceMap } from '../bethesda/gameReferenceLoader.js';
 import type { CsvRow, GameType } from '../types.js';
 

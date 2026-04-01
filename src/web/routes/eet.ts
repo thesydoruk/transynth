@@ -21,7 +21,7 @@ import {
   requestPause,
   updateJobLanguages,
 } from '../eetImportService.js';
-import { parseEetHeader, iterEetRecords } from '../../bethesda/eetReader.js';
+import { parseEetHeader, iterEetRecords } from '../../bethesda/EetReader.js';
 
 const EET_UPLOAD_DIR = path.resolve(process.env.EET_UPLOAD_DIR ?? './uploads/eet');
 
