@@ -93,6 +93,11 @@ export const DetailPanel = ({
         {/* Source text */}
         <div className={styles.textPanel}>
           <div className={styles.panelLabel}>{t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}</div>
+          {activeRow.context && (
+            <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
+              {t('modEditor.speakerContextLabel')}{activeRow.context}
+            </div>
+          )}
           <textarea readOnly value={activeRow.source} className={styles.sourceArea} rows={4} />
           <div className={styles.charCount}>{t('modEditor.charCount', { count: activeRow.source.length })}</div>
         </div>

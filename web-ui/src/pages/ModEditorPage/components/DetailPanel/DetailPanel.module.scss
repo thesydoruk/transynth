@@ -32,6 +32,19 @@
   letter-spacing: 0.05em;
 }
 
+.speakerContext {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sourceArea {
   background: var(--bg-surface);
   color: var(--text);

@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS strings (
 
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS text_norm_nopunct TEXT;
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS context TEXT;
 
 -- ── Auth & collaboration tables ─────────────────────────────────────────────
 -- These tables always exist regardless of MULTI_USER setting.

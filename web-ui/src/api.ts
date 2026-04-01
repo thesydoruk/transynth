@@ -219,6 +219,8 @@ export type StringRow = {
   path: string;
   edid: string | null;
   source: string;
+  /** Speaker NPC name for dialog strings (INFO records). Populated at import time from ANAM. */
+  context: string | null;
   translation_id: number | null;
   translation: string | null;
   status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' | null;

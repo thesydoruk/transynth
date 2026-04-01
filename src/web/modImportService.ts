@@ -35,6 +35,7 @@ import { BsaReader } from '../bethesda/bsaReader.js';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/stringsFile.js';
 import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
 import { parsePexBuffer } from '../bethesda/pexReader.js';
+import { loadNpcReferenceMap } from '../bethesda/gameReferenceLoader.js';
 import type { CsvRow, GameType } from '../types.js';
 
 const BATCH_SIZE = 1000;
@@ -665,6 +666,51 @@ const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> =>
   return merged;
 };
 
+/**
+ * Build a FormID → NPC display-name map from extracted ESP rows.
+ *
+ * Looks at all NPC_ FULL subrecord rows. For non-localized plugins the text
+ * field is already the display name. For localized plugins the text field is
+ * an lstring ID that is resolved via the supplied stringsMap.
+ *
+ * @param espRows - Rows returned by EspReader.extractStrings().
+ * @param strMap  - Optional lstring ID → text map (source locale), used for localized plugins.
+ */
+const buildNpcNameMap = (
+  espRows: EspStringRow[],
+  strMap?: Map<number, string> | null,
+): Map<string, string> => {
+  const map = new Map<string, string>();
+  for (const row of espRows) {
+    if (row.signature !== 'NPC_' || row.path !== 'FULL') continue;
+    if (row.isLstringId) {
+      if (!strMap) continue;
+      const id = parseInt(row.text, 10);
+      const name = strMap.get(id);
+      if (name) map.set(row.formId, name);
+    } else {
+      map.set(row.formId, row.text);
+    }
+  }
+  return map;
+};
+
+/**
+ * Build a map from INFO record FormID → speaker NPC FormID.
+ *
+ * Iterates espRows and collects the speakerFormId value that EspReader
+ * populates from the ANAM subrecord of each INFO record.
+ *
+ * @param espRows - Rows returned by EspReader.extractStrings().
+ */
+const buildSpeakerFormIdMap = (espRows: EspStringRow[]): Map<string, string> => {
+  const map = new Map<string, string>();
+  for (const row of espRows) {
+    if (row.speakerFormId) map.set(row.formId, row.speakerFormId);
+  }
+  return map;
+};
+
 const buildCsvRows = (
   espRows: EspStringRow[],
   stringsMap: Map<number, string> | null,
@@ -1218,6 +1264,11 @@ export const runModImport = async (
     const esp = new EspReader(espPath, game);
     const espRows = esp.extractStrings();
 
+    // Build speaker lookup: INFO record FormID → NPC speaker FormID (from ANAM subrecord)
+    const speakerMap = buildSpeakerFormIdMap(espRows);
+    // Fallback NPC names for vanilla game NPCs not declared in this mod
+    const npcRefMap = loadNpcReferenceMap(game);
+
     let imported = job.imported_records;
     let batchCount = 0;
     let inTx = false;
@@ -1226,6 +1277,10 @@ export const runModImport = async (
     if (esp.info.isLocalized) {
       const localesMap: Map<string, Map<number, string>> = loadLocalesForGame(espPath, game, []);
       if (localesMap.size === 0) throw new Error('No locales found in BA2 / strings files');
+
+      // Resolve NPC names using the source (English) locale for import-time speaker context
+      const srcLocaleMap = localesMap.get('english') ?? localesMap.get('en') ?? [...localesMap.values()][0];
+      const npcNameFromMod = buildNpcNameMap(espRows, srcLocaleMap);
 
       // When user selects a specific locale for single-language import (not all localizations),
       // only import that locale. Otherwise, import all available locales.
@@ -1272,7 +1327,9 @@ export const runModImport = async (
           const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
           const hashNorm = sha1Hex(normalizeForHash(r.Source));
           const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
+          const speakerFidLoc = speakerMap.get(r.FormID ?? '');
+          const contextLoc = speakerFidLoc ? (npcNameFromMod.get(speakerFidLoc) ?? npcRefMap.get(speakerFidLoc) ?? null) : null;
+          await insertString(db, recordId, locale, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source), contextLoc);
 
           imported++;
           batchCount++;
@@ -1289,6 +1346,7 @@ export const runModImport = async (
       }
     } else {
       // ── Non-localized plugin: import with single selected language ─────
+      const npcNameFromMod = buildNpcNameMap(espRows, null);
       const csvRows = buildCsvRows(espRows, null);
 
       for (let i = 0; i < csvRows.length; i++) {
@@ -1313,7 +1371,9 @@ export const runModImport = async (
         const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
         const hashNorm = sha1Hex(normalizeForHash(r.Source));
         const recordId = await upsertRecord(db, importModId, r.Signature, r.Path, pathSimplified, r.EDID ?? null, hashNorm, r.FormID || null);
-        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source));
+        const speakerFid = speakerMap.get(r.FormID ?? '');
+        const context = speakerFid ? (npcNameFromMod.get(speakerFid) ?? npcRefMap.get(speakerFid) ?? null) : null;
+        await insertString(db, recordId, job.src_lang, r.Source, normalizeForHash(r.Source), 'mod-import', undefined, normalizeNoPunct(r.Source), context);
 
         imported++;
         batchCount++;

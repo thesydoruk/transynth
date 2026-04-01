@@ -522,6 +522,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       r.path,
       r.edid,
       s.text_raw      AS source,
+      s.context,
       s.is_ignored,
       t.id            AS translation_id,
       t.text          AS translation,

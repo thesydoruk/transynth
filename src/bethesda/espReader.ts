@@ -169,6 +169,11 @@ export interface EspStringRow {
   text: string;
   /** true if this plugin is localized (text is an lstring ID, not real text) */
   isLstringId: boolean;
+  /**
+   * FormID of the actor who speaks this dialog response (INFO records only).
+   * Populated from the ANAM subrecord. Undefined for all other record types.
+   */
+  speakerFormId?: string;
 }
 
 /**
@@ -369,6 +374,7 @@ export class EspReader {
 
     let edid = '';
     const subRows: Array<{ path: string; text: string }> = [];
+    let speakerFormId: string | undefined;
 
     let pos = 0;
     while (pos + SUBRECORD_HEADER_SIZE <= recordData.length) {
@@ -379,6 +385,12 @@ export class EspReader {
 
       if (subSig === 'EDID') {
         edid = recordData.toString('utf8', dataStart, dataEnd).replace(/\0/g, '');
+      } else if (recSig === 'INFO' && subSig === 'ANAM' && subSize === 4) {
+        // Actor speaker FormID for dialog INFO records (little-endian uint32)
+        const rawId = recordData.readUInt32LE(dataStart);
+        if (rawId !== 0) {
+          speakerFormId = rawId.toString(16).toUpperCase().padStart(8, '0');
+        }
       } else if (isTranslatableSubrecord(recSig, subSig, this.game)) {
         if (this.info.isLocalized && subSize === 4) {
           // LString ID
@@ -408,6 +420,7 @@ export class EspReader {
         path,
         text,
         isLstringId: this.info.isLocalized,
+        speakerFormId,
       });
     }
   }
