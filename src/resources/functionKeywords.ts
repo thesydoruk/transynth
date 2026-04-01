@@ -1,4 +1,4 @@
-import type { GameType } from '../types.js';
+import type { GameType } from '../types';
 import fo3Keywords from './function-keywords/fo3.json' with { type: 'json' };
 import fo4Keywords from './function-keywords/fo4.json' with { type: 'json' };
 import fnvKeywords from './function-keywords/fnv.json' with { type: 'json' };

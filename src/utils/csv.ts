@@ -2,7 +2,7 @@
 // Handles quoted fields and escaped double quotes ("").
 
 import fs from 'fs';
-import type { CsvRow } from '../types.js';
+import type { CsvRow } from '../types';
 
 /**
  * Parse a single CSV line into an array of field values (RFC 4180).

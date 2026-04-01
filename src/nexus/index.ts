@@ -8,7 +8,7 @@
  * ### Typical usage (backend route / CLI)
  *
  * ```typescript
- * import { createNexusClient, NexusModsNotFoundError } from '../nexus/index.js';
+ * import { createNexusClient, NexusModsNotFoundError } from '../nexus/index';
  *
  * const nexus = createNexusClient();
  *
@@ -22,14 +22,14 @@
  * ```
  */
 
-import { CONFIG } from '../config.js';
-import { NexusModsClient } from './client.js';
-import type { NexusModsClientOptions } from './types.js';
+import { CONFIG } from '../config';
+import { NexusModsClient } from './client';
+import type { NexusModsClientOptions } from './types';
 
 // Re-export everything so callers can import from one place
-export * from './types.js';
-export * from './errors.js';
-export * from './graphql.js';
+export * from './types';
+export * from './errors';
+export * from './graphql';
 export { NexusModsClient };
 
 /**

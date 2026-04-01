@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { applyGlossaryMask, extractProtectedTokens, maskFunctionKeywords, maskPlaceholders, unmask } from '../placeholders.js';
+import { applyGlossaryMask, extractProtectedTokens, maskFunctionKeywords, maskPlaceholders, unmask } from '../placeholders';
 
 describe('maskPlaceholders', () => {
   it('masks printf-style placeholders', () => {

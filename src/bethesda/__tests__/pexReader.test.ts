@@ -2,7 +2,7 @@
  * Unit tests for compiled Papyrus script (.pex) parser.
  */
 import { describe, it, expect } from '@jest/globals';
-import { parsePexBuffer, isLikelyUserText } from '../PexReader.js';
+import { parsePexBuffer, isLikelyUserText } from '../PexReader';
 
 const writeWString = (buf: Buffer, offset: number, s: string): number => {
   const bytes = Buffer.from(s, 'utf8');

@@ -10,7 +10,7 @@
  * merge DB values on top automatically.
  */
 
-import type { Tx } from '../db.js';
+import type { Tx } from '../db';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
 

@@ -6,7 +6,7 @@
  * while still correctly matching standalone occurrences and multi-word terms.
  */
 import { describe, it, expect } from '@jest/globals';
-import { escapeRegExp, termWordBoundaryRe } from '../queries.js';
+import { escapeRegExp, termWordBoundaryRe } from '../queries';
 
 describe('escapeRegExp', () => {
   it('escapes regex metacharacters', () => {

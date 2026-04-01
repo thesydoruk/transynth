@@ -1,4 +1,4 @@
-import type { SceneAction } from './SceneAction.js';
+import type { SceneAction } from './SceneAction';
 
 /**
  * Parsed SCEN record containing an ordered sequence of dialog actions.

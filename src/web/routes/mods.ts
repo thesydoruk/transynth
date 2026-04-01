@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
+import type { Tx } from '../../db';
 import {
   listMods,
   getMod,
@@ -10,12 +10,12 @@ import {
   listModLangs,
   bulkUpdateTranslationStatus,
   listPreviousVersions,
-} from '../queries.js';
-import { applyTMToMod } from '../tm.js';
-import { log } from '../../logger.js';
-import { CONFIG } from '../../config.js';
-import { exportArchive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService.js';
-import type { GameType } from '../../types.js';
+} from '../queries';
+import { applyTMToMod } from '../tm';
+import { log } from '../../logger';
+import { CONFIG } from '../../config';
+import { exportArchive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService';
+import type { GameType } from '../../types';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods — list all mods with aggregate stats.

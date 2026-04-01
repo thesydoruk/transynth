@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
-import { getCoherenceGroups, resolveAllCoherenceGroups, resolveCoherenceGroup } from '../queries.js';
-import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
+import { getCoherenceGroups, resolveAllCoherenceGroups, resolveCoherenceGroup } from '../queries';
+import { CONFIG } from '../../config';
 
 /**
  * Coherence-checking routes.

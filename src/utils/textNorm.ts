@@ -1,5 +1,5 @@
 // Simple normalization for hashing/alignment: lowercasing, stripping tags/placeholders/numbers and collapsing whitespace.
-import { PLACEHOLDER_RE } from './placeholders.js';
+import { PLACEHOLDER_RE } from './placeholders';
 
 export const normalizeForHash = (s: string): string => {
   let t = s || '';

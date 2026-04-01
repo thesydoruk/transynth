@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseCsvLine, csvRow } from '../csv.js';
+import { parseCsvLine, csvRow } from '../csv';
 
 describe('parseCsvLine', () => {
   it('parses simple unquoted fields', () => {

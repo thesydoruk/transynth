@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { withTransaction } from '../../db.js';
+import type { Tx } from '../../db';
+import { withTransaction } from '../../db';
 import type pg from 'pg';
-import { log } from '../../logger.js';
-import { enforceGlossary } from '../queries.js';
-import { CONFIG } from '../../config.js';
+import { log } from '../../logger';
+import { enforceGlossary } from '../queries';
+import { CONFIG } from '../../config';
 
 export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/glossary?srcLang=&tgtLang=&q=

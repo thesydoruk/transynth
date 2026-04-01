@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { commonPrefix, commonSuffix, discoverPatterns } from '../tradAutoLearn.js';
+import { commonPrefix, commonSuffix, discoverPatterns } from '../tradAutoLearn';
 
 describe('commonPrefix', () => {
   it('returns common prefix trimmed to word boundary', () => {

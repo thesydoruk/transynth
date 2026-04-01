@@ -45,8 +45,8 @@
  * the existing `POST /api/tradauto` endpoint.
  */
 
-import type { Tx } from '../db.js';
-import { log } from '../logger.js';
+import type { Tx } from '../db';
+import { log } from '../logger';
 
 /* ── Public types ─────────────────────────────────────────────────────────── */
 

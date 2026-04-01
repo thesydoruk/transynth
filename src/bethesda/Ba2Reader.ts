@@ -32,7 +32,7 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 const MAGIC = 'BTDX';
 const TYPE_GNRL = 'GNRL';

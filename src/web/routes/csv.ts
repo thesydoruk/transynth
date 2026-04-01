@@ -7,8 +7,8 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
 import {
   ensureCsvImportSchema,
   listCsvImportJobs,
@@ -21,7 +21,7 @@ import {
   requestCsvPause,
   updateCsvJobLanguages,
   iterCsvRecords,
-} from '../csvImportService.js';
+} from '../csvImportService';
 
 const CSV_UPLOAD_DIR = path.resolve(process.env.CSV_UPLOAD_DIR ?? './uploads/csv');
 

@@ -13,7 +13,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { CONFIG } from '../../config.js';
+import { CONFIG } from '../../config';
 
 /* ── Response type ──────────────────────────────────────────────────────── */
 

@@ -10,10 +10,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import { CONFIG } from '../../config.js';
-import { authenticateUser, createSession, deleteSession } from '../authService.js';
-import { SESSION_COOKIE } from '../authMiddleware.js';
-import { logActivity } from '../activityService.js';
+import { CONFIG } from '../../config';
+import { authenticateUser, createSession, deleteSession } from '../authService';
+import { SESSION_COOKIE } from '../authMiddleware';
+import { logActivity } from '../activityService';
 
 /**
  * Registers auth-related routes on the Fastify instance.

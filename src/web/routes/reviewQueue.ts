@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
-import { listReviewQueue } from '../queries.js';
-import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
+import { listReviewQueue } from '../queries';
+import { CONFIG } from '../../config';
 
 /** Comma-separated statuses that are valid for the review queue filter. */
 const VALID_STATUSES = new Set(['auto', 'draft', 'fuzzy', 'tm', 'human', 'reviewed', 'rejected']);

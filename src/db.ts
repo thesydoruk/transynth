@@ -1,7 +1,7 @@
 import pg from 'pg';
-import { CONFIG } from './config.js';
-import type { GameType } from './types.js';
-import { log } from './logger.js';
+import { CONFIG } from './config';
+import type { GameType } from './types';
+import { log } from './logger';
 
 const { Pool } = pg;
 

@@ -7,8 +7,8 @@
  * the cached translation is returned instantly without hitting the LLM.
  */
 
-import type { Tx } from '../db.js';
-import { normalizeForHash } from '../utils/textNorm.js';
+import type { Tx } from '../db';
+import { normalizeForHash } from '../utils/textNorm';
 
 /** Result of a cache lookup — null when miss */
 export interface CacheHit {

@@ -1,6 +1,6 @@
 // Exponential backoff retry for transient LLM errors (429, 500, 503, network).
 
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 const RETRYABLE_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);

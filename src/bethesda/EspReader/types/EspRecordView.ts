@@ -1,4 +1,4 @@
-import type { EspSubrecordView } from './EspSubrecordView.js';
+import type { EspSubrecordView } from './EspSubrecordView';
 
 /**
  * A single ESP record rendered for display in the explorer.

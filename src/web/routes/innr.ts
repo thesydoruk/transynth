@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { listInnrGroups } from '../queries.js';
-import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db';
+import { listInnrGroups } from '../queries';
+import { CONFIG } from '../../config';
 
 /**
  * INNR editor routes.

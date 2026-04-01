@@ -5,7 +5,7 @@
  * JSON files under src/bethesda/subrecords are the single source of truth.
  */
 
-import type { GameType } from '../types.js';
+import type { GameType } from '../types';
 import fo4ConfigJson from './subrecords/fo4.json' with { type: 'json' };
 import fo76ConfigJson from './subrecords/fo76.json' with { type: 'json' };
 import fo3ConfigJson from './subrecords/fo3.json' with { type: 'json' };

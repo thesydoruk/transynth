@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { log } from './logger.js';
+import { log } from './logger';
 
 export type LLMProviderName = 'ollama' | 'openai';
 

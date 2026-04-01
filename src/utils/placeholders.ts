@@ -1,5 +1,5 @@
-import type { GameType } from '../types.js';
-import { getFunctionKeywordsForGame } from '../resources/functionKeywords.js';
+import type { GameType } from '../types';
+import { getFunctionKeywordsForGame } from '../resources/functionKeywords';
 
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤, ¤GL0¤, and ¤FK0¤ for easy post-replacement.

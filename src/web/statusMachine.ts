@@ -52,7 +52,7 @@
  *        └──────────────────────────────────────►
  */
 
-import type { UserRole } from './authService.js';
+import type { UserRole } from './authService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

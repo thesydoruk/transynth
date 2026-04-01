@@ -38,7 +38,7 @@
  *     Raw file bytes, concatenated in folder-walk order.
  */
 
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 

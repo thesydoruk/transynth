@@ -1,4 +1,4 @@
-export { EspReader } from './EspReader.js';
+export { EspReader } from './EspReader';
 export type {
   EspGrupInfo,
   EspPluginInfo,
@@ -8,4 +8,4 @@ export type {
   EspSubrecordView,
   SceneAction,
   SceneRecord,
-} from './types/index.js';
+} from './types/index';

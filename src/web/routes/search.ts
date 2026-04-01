@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { searchReplaceTranslations } from '../queries.js';
-import { log } from '../../logger.js';
-import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db';
+import { searchReplaceTranslations } from '../queries';
+import { log } from '../../logger';
+import { CONFIG } from '../../config';
 
 export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:id/search-replace

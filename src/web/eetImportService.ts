@@ -17,11 +17,11 @@
  * transaction statements are executed on the same connection.
  */
 import pg from 'pg';
-import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/EetReader.js';
-import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
-import { sha1Hex } from '../utils/hash.js';
-import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
-import { log } from '../logger.js';
+import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/EetReader';
+import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db';
+import { sha1Hex } from '../utils/hash';
+import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
+import { log } from '../logger';
 
 const BATCH_SIZE = 1000;
 

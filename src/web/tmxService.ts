@@ -9,13 +9,13 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
-import type { Tx } from '../db.js';
-import { withTransaction } from '../db.js';
+import type { Tx } from '../db';
+import { withTransaction } from '../db';
 import type pg from 'pg';
-import { log } from '../logger.js';
-import { normalizeForHash } from '../utils/textNorm.js';
-import { upsertTranslation } from './queries.js';
-import { CONFIG } from '../config.js';
+import { log } from '../logger';
+import { normalizeForHash } from '../utils/textNorm';
+import { upsertTranslation } from './queries';
+import { CONFIG } from '../config';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 

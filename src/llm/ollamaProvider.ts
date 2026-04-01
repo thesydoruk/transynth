@@ -1,9 +1,9 @@
 // Ollama backend — uses OpenAI-compatible API at /v1
 import OpenAI from 'openai';
-import type { LLMProvider, ChatOptions } from './provider.js';
-import { CONFIG } from '../config.js';
-import { withRetry } from './retry.js';
-import { log } from '../logger.js';
+import type { LLMProvider, ChatOptions } from './provider';
+import { CONFIG } from '../config';
+import { withRetry } from './retry';
+import { log } from '../logger';
 
 export class OllamaProvider implements LLMProvider {
   readonly name = 'ollama';

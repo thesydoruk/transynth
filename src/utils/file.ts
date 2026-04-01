@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 export const ensureDir = (p: string) => {
   if (!fs.existsSync(p)) {

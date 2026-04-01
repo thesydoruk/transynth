@@ -18,15 +18,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
-import type { Tx } from '../db.js';
-import type { GameType } from '../types.js';
-import { Ba2Reader } from '../bethesda/Ba2Reader.js';
-import { BsaReader } from '../bethesda/BsaReader.js';
-import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer.js';
-import { writeBsa, type BsaInputFile } from '../bethesda/bsaWriter.js';
-import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter.js';
-import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/StringsFile.js';
-import { log } from '../logger.js';
+import type { Tx } from '../db';
+import type { GameType } from '../types';
+import { Ba2Reader } from '../bethesda/Ba2Reader';
+import { BsaReader } from '../bethesda/BsaReader';
+import { writeBa2, type Ba2InputFile } from '../bethesda/ba2Writer';
+import { writeBsa, type BsaInputFile } from '../bethesda/bsaWriter';
+import { patchEsp, patchStringsMap, type EspPatch } from '../bethesda/espWriter';
+import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/StringsFile';
+import { log } from '../logger';
 
 /**
  * Parsed source strings table loaded from the original mod distribution.

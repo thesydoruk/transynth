@@ -12,7 +12,7 @@
  *   Name table: for each file uint16(length) + UTF-8 string
  */
 
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 const MAGIC = 'BTDX';
 const TYPE_GNRL = 'GNRL';

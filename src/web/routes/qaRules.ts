@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
 
 /**
  * QA rules CRUD routes.

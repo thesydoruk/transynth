@@ -8,9 +8,9 @@
 
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import { log } from '../../logger.js';
-import { exportTmx, importTmx } from '../tmxService.js';
-import { CONFIG } from '../../config.js';
+import { log } from '../../logger';
+import { exportTmx, importTmx } from '../tmxService';
+import { CONFIG } from '../../config';
 
 /**
  * Register TMX import/export routes on the Fastify app.

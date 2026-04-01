@@ -14,7 +14,7 @@
  */
 
 import { inflateSync, deflateSync } from 'zlib';
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;

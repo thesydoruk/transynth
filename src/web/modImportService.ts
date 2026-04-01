@@ -35,19 +35,19 @@ import {
   upsertDialogScene,
   upsertDialogScenePhase,
   type Tx,
-} from '../db.js';
-import { upsertTranslation } from './queries.js';
-import { sha1Hex } from '../utils/hash.js';
-import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
-import { log } from '../logger.js';
-import { EspReader, type EspStringRow } from '../bethesda/EspReader/index.js';
-import { Ba2Reader } from '../bethesda/Ba2Reader.js';
-import { BsaReader } from '../bethesda/BsaReader.js';
-import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/StringsFile.js';
-import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/McmReader.js';
-import { parsePexBuffer } from '../bethesda/PexReader.js';
-import { loadNpcReferenceMap } from '../bethesda/gameReferenceLoader.js';
-import type { CsvRow, GameType } from '../types.js';
+} from '../db';
+import { upsertTranslation } from './queries';
+import { sha1Hex } from '../utils/hash';
+import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
+import { log } from '../logger';
+import { EspReader, type EspStringRow } from '../bethesda/EspReader/index';
+import { Ba2Reader } from '../bethesda/Ba2Reader';
+import { BsaReader } from '../bethesda/BsaReader';
+import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/StringsFile';
+import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/McmReader';
+import { parsePexBuffer } from '../bethesda/PexReader';
+import { loadNpcReferenceMap } from '../bethesda/gameReferenceLoader';
+import type { CsvRow, GameType } from '../types';
 
 const { Pool } = pg;
 

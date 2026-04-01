@@ -17,8 +17,8 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type pg from 'pg';
-import { CONFIG } from '../config.js';
-import { validateSession, getDefaultUser, type UserRow } from './authService.js';
+import { CONFIG } from '../config';
+import { validateSession, getDefaultUser, type UserRow } from './authService';
 
 /** Name of the HTTP-only cookie that carries the session token. */
 export const SESSION_COOKIE = 'fo4_session';

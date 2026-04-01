@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
+import type { Tx } from '../../db';
 import {
   listStrings,
   listSignatures,
@@ -10,16 +10,16 @@ import {
   getTMSuggestions,
   getTranslationHistory,
   getQAIssues,
-} from '../queries.js';
-import { propagateTranslation } from '../tm.js';
-import { getAllProjectSettings } from '../projectSettings.js';
-import { cacheLookup, cacheStore } from '../cacheService.js';
-import { chatWithFallback } from '../../llm/index.js';
-import { CONFIG } from '../../config.js';
-import { log } from '../../logger.js';
-import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders.js';
-import { reachableStatuses, isValidTranslationStatus } from '../statusMachine.js';
-import type { TranslationStatus } from '../statusMachine.js';
+} from '../queries';
+import { propagateTranslation } from '../tm';
+import { getAllProjectSettings } from '../projectSettings';
+import { cacheLookup, cacheStore } from '../cacheService';
+import { chatWithFallback } from '../../llm/index';
+import { CONFIG } from '../../config';
+import { log } from '../../logger';
+import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders';
+import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
+import type { TranslationStatus } from '../statusMachine';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=

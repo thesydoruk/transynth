@@ -13,13 +13,13 @@
  * The TM logic intentionally prefers high-quality translations first (reviewed
  * > human > tm > fuzzy > auto > draft) and records provenance for auditability.
  */
-import type { Tx } from '../db.js';
-import { withTransaction } from '../db.js';
+import type { Tx } from '../db';
+import { withTransaction } from '../db';
 import type pg from 'pg';
-import { log } from '../logger.js';
-import { CONFIG } from '../config.js';
-import { upsertTranslation } from './queries.js';
-import { extractNumbers, transplantNumbers, segmentPhrases, normalizeForHash } from '../utils/textNorm.js';
+import { log } from '../logger';
+import { CONFIG } from '../config';
+import { upsertTranslation } from './queries';
+import { extractNumbers, transplantNumbers, segmentPhrases, normalizeForHash } from '../utils/textNorm';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 

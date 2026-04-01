@@ -1,8 +1,8 @@
-import { CsvRow, AlignPair } from '../types.js';
-import { fuzzyScore } from './fuzzy.js';
-import { embedMany, cosine } from '../llm/embed.js';
-import { getEmbedModel } from '../config.js';
-import { log } from '../logger.js';
+import { CsvRow, AlignPair } from '../types';
+import { fuzzyScore } from './fuzzy';
+import { embedMany, cosine } from '../llm/embed';
+import { getEmbedModel } from '../config';
+import { log } from '../logger';
 
 // Heuristic alignment with anchors → fuzzy → embeddings
 export const alignPairs = async (

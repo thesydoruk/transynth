@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 import fs from 'node:fs';
 import path from 'node:path';
-import { openDb, runSchema, closeDb } from '../src/db.js';
-import { log } from '../src/logger.js';
+import { openDb, runSchema, closeDb } from '../src/db';
+import { log } from '../src/logger';
 
 /**
  * Parse CLI arguments and return whether destructive reset is confirmed.

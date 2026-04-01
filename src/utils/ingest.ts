@@ -1,9 +1,9 @@
 // Shared helper: ingest CSV rows into the DB for a given mod + locale.
-import { upsertRecord, insertString, type Tx } from '../db.js';
-import { normalizeForHash, normalizeNoPunct } from './textNorm.js';
-import { sha1Hex } from './hash.js';
-import type { CsvRow } from '../types.js';
-import { log } from '../logger.js';
+import { upsertRecord, insertString, type Tx } from '../db';
+import { normalizeForHash, normalizeNoPunct } from './textNorm';
+import { sha1Hex } from './hash';
+import type { CsvRow } from '../types';
+import { log } from '../logger';
 
 export const ingestCsvRows = async (
   db: Tx,

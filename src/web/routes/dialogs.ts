@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { CONFIG } from '../../config.js';
+import type { Tx } from '../../db';
+import { CONFIG } from '../../config';
 import {
   listDialogTopics,
   getDialogTree,
@@ -8,7 +8,7 @@ import {
   getSceneDialog,
   listDialogConversations,
   getConversationDialog,
-} from '../queries.js';
+} from '../queries';
 
 /**
  * Dialog tree routes used by the dedicated "Dialogs mode" UI.

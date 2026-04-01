@@ -7,8 +7,8 @@ import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
 import {
   ensureImportSchema,
   listImportJobs,
@@ -20,8 +20,8 @@ import {
   requestCancel,
   requestPause,
   updateJobLanguages,
-} from '../eetImportService.js';
-import { parseEetHeader, iterEetRecords } from '../../bethesda/EetReader.js';
+} from '../eetImportService';
+import { parseEetHeader, iterEetRecords } from '../../bethesda/EetReader';
 
 const EET_UPLOAD_DIR = path.resolve(process.env.EET_UPLOAD_DIR ?? './uploads/eet');
 

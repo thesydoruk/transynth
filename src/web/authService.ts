@@ -11,8 +11,8 @@
 
 import crypto from 'crypto';
 import type pg from 'pg';
-import { CONFIG } from '../config.js';
-import { log } from '../logger.js';
+import { CONFIG } from '../config';
+import { log } from '../logger';
 
 /** Roles supported by the system, ordered by privilege level. */
 export type UserRole = 'admin' | 'reviewer' | 'translator';

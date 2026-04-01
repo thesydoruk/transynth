@@ -31,8 +31,8 @@
  * {@link loadActiveRules}, {@link compileRule}, and {@link applyRules} directly.
  */
 
-import type { Tx } from '../db.js';
-import { log } from '../logger.js';
+import type { Tx } from '../db';
+import { log } from '../logger';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 

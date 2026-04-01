@@ -55,7 +55,7 @@ import { inflateSync } from 'zlib';
 // We import it dynamically at the module level; the package provides a CommonJS
 // default export with a `decompress(src, dest)` function.
 import lz4 from 'lz4js';
-import { log } from '../logger.js';
+import { log } from '../logger';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

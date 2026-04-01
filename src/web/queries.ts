@@ -1,17 +1,17 @@
-import type { Tx } from '../db.js';
-import { withTransaction } from '../db.js';
+import type { Tx } from '../db';
+import { withTransaction } from '../db';
 import type pg from 'pg';
-import { log } from '../logger.js';
-import { CONFIG } from '../config.js';
-import type { GameType } from '../types.js';
-import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm.js';
-import { extractProtectedTokens } from '../utils/placeholders.js';
-import { assertTransition, isValidTranslationStatus } from './statusMachine.js';
-import type { TranslationStatus, StatusActor } from './statusMachine.js';
+import { log } from '../logger';
+import { CONFIG } from '../config';
+import type { GameType } from '../types';
+import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm';
+import { extractProtectedTokens } from '../utils/placeholders';
+import { assertTransition, isValidTranslationStatus } from './statusMachine';
+import type { TranslationStatus, StatusActor } from './statusMachine';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
-export type { TranslationStatus } from './statusMachine.js';
+export type { TranslationStatus } from './statusMachine';
 
 const BEST_TRANSLATION_ORDER = `CASE status
   WHEN 'draft' THEN 1

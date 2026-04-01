@@ -15,11 +15,11 @@
  * - progress is tracked as `imported_records`,
  * - and pause/cancel requests are honoured between record writes.
  */
-import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db.js';
-import { sha1Hex } from '../utils/hash.js';
-import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm.js';
-import { parseCsvLine } from '../utils/csv.js';
-import { log } from '../logger.js';
+import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db';
+import { sha1Hex } from '../utils/hash';
+import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
+import { parseCsvLine } from '../utils/csv';
+import { log } from '../logger';
 
 const BATCH_SIZE = 1000;
 

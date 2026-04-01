@@ -5,7 +5,7 @@
  * so we test through applyTMToMod() with a stubbed DB.
  */
 import { beforeAll, describe, it, expect, jest } from '@jest/globals';
-import type { Tx } from '../../db.js';
+import type { Tx } from '../../db';
 
 type QueryCb = (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
 const makeTxStub = (cb: QueryCb): Tx => {

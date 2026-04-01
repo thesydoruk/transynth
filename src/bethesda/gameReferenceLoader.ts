@@ -4,7 +4,7 @@ import fnvNpcRaw from '../resources/game-reference/fnv-npc.json' with { type: 'j
 import oblivionNpcRaw from '../resources/game-reference/oblivion-npc.json' with { type: 'json' };
 import skyrimNpcRaw from '../resources/game-reference/skyrim-npc.json' with { type: 'json' };
 import sseNpcRaw from '../resources/game-reference/sse-npc.json' with { type: 'json' };
-import type { GameType } from '../types.js';
+import type { GameType } from '../types';
 
 /**
  * A single entry in a game-reference JSON file.

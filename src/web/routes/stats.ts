@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
-import { CONFIG } from '../../config.js';
-import { getModStats, getModStatsByGrup } from '../queries.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
+import { CONFIG } from '../../config';
+import { getModStats, getModStatsByGrup } from '../queries';
 
 export const statsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/stats?modId=&srcLang=&targetLang=  — translation progress breakdown for one mod

@@ -34,18 +34,18 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
-import { isTranslatableSubrecord } from '../knownStrings.js';
-import type { GameType } from '../../types.js';
-import { log } from '../../logger.js';
-import { EspExplorer } from './EspExplorer.js';
-import { EspSceneExtractor } from './EspSceneExtractor.js';
+import { isTranslatableSubrecord } from '../knownStrings';
+import type { GameType } from '../../types';
+import { log } from '../../logger';
+import { EspExplorer } from './EspExplorer';
+import { EspSceneExtractor } from './EspSceneExtractor';
 import type {
   EspGrupInfo,
   EspPluginInfo,
   EspRecordsPage,
   EspStringRow,
   SceneRecord,
-} from './types/index.js';
+} from './types/index';
 
 export type {
   EspGrupInfo,
@@ -56,7 +56,7 @@ export type {
   EspSubrecordView,
   SceneAction,
   SceneRecord,
-} from './types/index.js';
+} from './types/index';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;

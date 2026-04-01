@@ -13,9 +13,9 @@
 
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import { CONFIG } from '../../config.js';
-import { listUsers, createUser, updateUser, changePassword, type UserRole } from '../authService.js';
-import { logActivity } from '../activityService.js';
+import { CONFIG } from '../../config';
+import { listUsers, createUser, updateUser, changePassword, type UserRole } from '../authService';
+import { logActivity } from '../activityService';
 
 /** Valid roles for validation. */
 const VALID_ROLES: UserRole[] = ['admin', 'translator', 'reviewer'];

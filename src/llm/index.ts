@@ -1,9 +1,9 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
-import type { LLMProvider, ChatOptions } from './provider.js';
-import { CONFIG } from '../config.js';
-import { OllamaProvider } from './ollamaProvider.js';
-import { OpenAIProvider } from './openaiProvider.js';
-import { log } from '../logger.js';
+import type { LLMProvider, ChatOptions } from './provider';
+import { CONFIG } from '../config';
+import { OllamaProvider } from './ollamaProvider';
+import { OpenAIProvider } from './openaiProvider';
+import { log } from '../logger';
 
 let _instance: LLMProvider | undefined;
 
@@ -53,4 +53,4 @@ export const embedWithFallback = async (texts: string[], model: string): Promise
   }
 }
 
-export type { LLMProvider, ChatMessage, ChatOptions } from './provider.js';
+export type { LLMProvider, ChatMessage, ChatOptions } from './provider';

@@ -7,9 +7,9 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import type { GameType } from '../../types.js';
-import { log } from '../../logger.js';
+import type { Tx } from '../../db';
+import type { GameType } from '../../types';
+import { log } from '../../logger';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -27,9 +27,9 @@ import {
   extractModImportApplyRows,
   isArchive,
   isPlugin,
-} from '../modImportService.js';
-import { CONFIG } from '../../config.js';
-import { applyImportedRowsAsTranslations } from '../queries.js';
+} from '../modImportService';
+import { CONFIG } from '../../config';
+import { applyImportedRowsAsTranslations } from '../queries';
 
 const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
 

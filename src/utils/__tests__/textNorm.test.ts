@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { normalizeForHash, normalizeNoPunct, segmentPhrases, extractNumbers, transplantNumbers } from '../textNorm.js';
+import { normalizeForHash, normalizeNoPunct, segmentPhrases, extractNumbers, transplantNumbers } from '../textNorm';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {

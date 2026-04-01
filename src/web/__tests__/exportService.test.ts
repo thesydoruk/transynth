@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
-import type { Tx } from '../../db.js';
-import { Ba2Reader } from '../../bethesda/Ba2Reader.js';
-import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/StringsFile.js';
+import type { Tx } from '../../db';
+import { Ba2Reader } from '../../bethesda/Ba2Reader';
+import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/StringsFile';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
-} from '../../testdata/exportGoldenCorpus.js';
-import { exportBa2Archive, exportLocalizedStringsFiles } from '../exportService.js';
+} from '../../testdata/exportGoldenCorpus';
+import { exportBa2Archive, exportLocalizedStringsFiles } from '../exportService';
 
 const makeOverlayDb = (rows: Array<{ lstring_id: number; export_text: string }>): Tx => {
   return {

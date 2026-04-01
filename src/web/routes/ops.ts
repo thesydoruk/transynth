@@ -10,7 +10,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
+import type { Tx } from '../../db';
 
 /* ── Response types ──────────────────────────────────────────────────────── */
 

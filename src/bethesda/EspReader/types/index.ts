@@ -1,8 +1,8 @@
-export type { EspGrupInfo } from './EspGrupInfo.js';
-export type { EspSubrecordView } from './EspSubrecordView.js';
-export type { EspRecordView } from './EspRecordView.js';
-export type { EspRecordsPage } from './EspRecordsPage.js';
-export type { EspStringRow } from './EspStringRow.js';
-export type { EspPluginInfo } from './EspPluginInfo.js';
-export type { SceneAction } from './SceneAction.js';
-export type { SceneRecord } from './SceneRecord.js';
+export type { EspGrupInfo } from './EspGrupInfo';
+export type { EspSubrecordView } from './EspSubrecordView';
+export type { EspRecordView } from './EspRecordView';
+export type { EspRecordsPage } from './EspRecordsPage';
+export type { EspStringRow } from './EspStringRow';
+export type { EspPluginInfo } from './EspPluginInfo';
+export type { SceneAction } from './SceneAction';
+export type { SceneRecord } from './SceneRecord';

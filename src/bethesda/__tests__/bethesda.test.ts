@@ -7,13 +7,13 @@ import {
   writeStringsBuffer,
   stringsTypeFromPath,
   type StringsType,
-} from '../StringsFile.js';
-import { Ba2Reader } from '../Ba2Reader.js';
-import { writeBa2, type Ba2InputFile } from '../ba2Writer.js';
+} from '../StringsFile';
+import { Ba2Reader } from '../Ba2Reader';
+import { writeBa2, type Ba2InputFile } from '../ba2Writer';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
-} from '../../testdata/exportGoldenCorpus.js';
+} from '../../testdata/exportGoldenCorpus';
 
 describe('stringsTypeFromPath', () => {
   it('detects STRINGS', () => {

@@ -16,18 +16,18 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
-import { log } from '../../logger.js';
+import type { Tx } from '../../db';
+import { log } from '../../logger';
 import {
   compileRule,
   loadActiveRules,
   applyRules,
   type TradAutoRule,
   type MatchInput,
-} from '../tradAutoEngine.js';
-import { upsertTranslation } from '../queries.js';
-import { CONFIG } from '../../config.js';
-import { discoverPatterns, type DiscoverOptions } from '../tradAutoLearn.js';
+} from '../tradAutoEngine';
+import { upsertTranslation } from '../queries';
+import { CONFIG } from '../../config';
+import { discoverPatterns, type DiscoverOptions } from '../tradAutoLearn';
 
 /* ── Route registration ──────────────────────────────────────────────────── */
 

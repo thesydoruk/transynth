@@ -39,12 +39,12 @@ import {
   TranslationCandidate,
   TranslationLanguage,
   TranslationSearchResult,
-} from './types.js';
+} from './types';
 import {
   NexusModsError,
   NexusModsGraphQLError,
   NexusModsNotFoundError,
-} from './errors.js';
+} from './errors';
 import {
   GET_GAME_BY_ID_QUERY,
   GET_MOD_BY_ID_QUERY,
@@ -52,7 +52,7 @@ import {
   GET_MODS_REQUIRING_THIS_MOD_QUERY,
   SEARCH_MODS_BY_NAME_QUERY,
   SEARCH_TRANSLATION_CANDIDATES_QUERY,
-} from './graphql.js';
+} from './graphql';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal types — kept private to avoid leaking unstable API shapes
@@ -97,7 +97,7 @@ interface ModRequirementConnection {
  *
  * ### Usage
  * ```typescript
- * import { createNexusClient } from './nexus/index.js';
+ * import { createNexusClient } from './nexus/index';
  *
  * const nexus = createNexusClient(); // reads NEXUS_API_KEY from env
  *

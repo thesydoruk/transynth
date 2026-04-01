@@ -10,14 +10,14 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { Tx } from '../../db.js';
+import type { Tx } from '../../db';
 import {
   getAllProjectSettings,
   setProjectSetting,
   SETTING_DEFAULTS,
-} from '../projectSettings.js';
-import type { ProjectSettingKey, ProjectSettings } from '../projectSettings.js';
-import { log } from '../../logger.js';
+} from '../projectSettings';
+import type { ProjectSettingKey, ProjectSettings } from '../projectSettings';
+import { log } from '../../logger';
 
 export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/project-settings — returns all settings merged with built-in defaults

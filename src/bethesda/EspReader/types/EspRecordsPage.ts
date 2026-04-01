@@ -1,4 +1,4 @@
-import type { EspRecordView } from './EspRecordView.js';
+import type { EspRecordView } from './EspRecordView';
 
 /**
  * Paginated result returned by EspReader.getRecordsPage().

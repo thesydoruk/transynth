@@ -1,6 +1,6 @@
 // Translation via LLM provider (Ollama or OpenAI)
-import { chatWithFallback } from './index.js';
-import { log } from '../logger.js';
+import { chatWithFallback } from './index';
+import { log } from '../logger';
 
 export const translateBatch = async (
   items: string[],

@@ -27,17 +27,17 @@ import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
-import { log } from '../../logger.js';
-import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../../nexus/index.js';
-import { CONFIG } from '../../config.js';
-import type { Tx } from '../../db.js';
-import type { GameType } from '../../types.js';
+import { log } from '../../logger';
+import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../../nexus/index';
+import { CONFIG } from '../../config';
+import type { Tx } from '../../db';
+import type { GameType } from '../../types';
 import {
   isArchive,
   isPlugin,
   registerArchiveFile,
   registerPluginFile,
-} from '../modImportService.js';
+} from '../modImportService';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
