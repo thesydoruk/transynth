@@ -24,6 +24,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
+import pg from 'pg';
 import {
   upsertMod,
   upsertRecord,
@@ -45,6 +46,8 @@ import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcmReader.js';
 import { parsePexBuffer } from '../bethesda/pexReader.js';
 import { loadNpcReferenceMap } from '../bethesda/gameReferenceLoader.js';
 import type { CsvRow, GameType } from '../types.js';
+
+const { Pool } = pg;
 
 const BATCH_SIZE = 1000;
 
@@ -1261,6 +1264,16 @@ export const runModImport = async (
   const state: ActiveImport = { cancel: false, pause: false };
   activeImports.set(job.id, state);
   const startTime = Date.now();
+  let releaseClient: (() => void) | null = null;
+
+  // Keep the whole import on one client session.
+  // Using Pool directly can spread BEGIN/COMMIT and writes across connections,
+  // which breaks FK-dependent writes in the dialog graph import path.
+  if (db instanceof Pool) {
+    const client = await db.connect() as pg.PoolClient;
+    db = client as Tx;
+    releaseClient = () => client.release();
+  }
 
   log.info(`[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records}`);
 
@@ -1558,6 +1571,7 @@ export const runModImport = async (
     throw err;
   } finally {
     activeImports.delete(job.id);
+    releaseClient?.();
   }
 
   return (await getModImportJob(db, job.id))!;
