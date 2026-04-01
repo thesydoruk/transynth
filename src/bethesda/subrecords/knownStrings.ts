@@ -1,12 +1,12 @@
-import type { GameType } from '../../../types';
-import fo4ConfigJson from '../../subrecords/fo4.json' with { type: 'json' };
-import fo76ConfigJson from '../../subrecords/fo76.json' with { type: 'json' };
-import fo3ConfigJson from '../../subrecords/fo3.json' with { type: 'json' };
-import fnvConfigJson from '../../subrecords/fnv.json' with { type: 'json' };
-import obConfigJson from '../../subrecords/ob.json' with { type: 'json' };
-import mwConfigJson from '../../subrecords/mw.json' with { type: 'json' };
-import sseConfigJson from '../../subrecords/sse.json' with { type: 'json' };
-import sleConfigJson from '../../subrecords/sle.json' with { type: 'json' };
+import type { GameType } from '../../types';
+import fo4ConfigJson from './fo4.json' with { type: 'json' };
+import fo76ConfigJson from './fo76.json' with { type: 'json' };
+import fo3ConfigJson from './fo3.json' with { type: 'json' };
+import fnvConfigJson from './fnv.json' with { type: 'json' };
+import obConfigJson from './ob.json' with { type: 'json' };
+import mwConfigJson from './mw.json' with { type: 'json' };
+import sseConfigJson from './sse.json' with { type: 'json' };
+import sleConfigJson from './sle.json' with { type: 'json' };
 
 type SubrecordToggleMap = Record<string, boolean>;
 
@@ -15,6 +15,7 @@ interface RecordToggleConfig {
   subrecords: SubrecordToggleMap;
 }
 
+/** Full subrecord configuration for a single game. */
 export interface GameSubrecordsConfig {
   game: GameType;
   records: Record<string, RecordToggleConfig>;
@@ -71,3 +72,39 @@ export const FNV_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fnv;
  * @deprecated Use `getTranslatableSubrecords(game)` instead.
  */
 export const TRANSLATABLE_SUBRECORDS = FO4_TRANSLATABLE_SUBRECORDS;
+
+/**
+ * Return the translatable-subrecords map for the given game.
+ */
+export const getTranslatableSubrecords = (game: GameType): Record<string, Set<string>> => {
+  return TRANSLATABLE_SUBRECORDS_BY_GAME[game];
+};
+
+/**
+ * Returns true when the record is explicitly treated as ignored for the game.
+ */
+export const isIgnoredRecord = (recSig: string, game: GameType): boolean => {
+  return IGNORED_RECORDS_BY_GAME[game]?.has(recSig) ?? false;
+};
+
+/**
+ * Returns true if this subrecord/record combination is translatable for the given game.
+ */
+export const isTranslatableSubrecord = (
+  recSig: string,
+  subSig: string,
+  game: GameType,
+): boolean => getTranslatableSubrecords(game)[recSig]?.has(subSig) ?? false;
+
+/**
+ * Load one game's subrecord configuration from JSON.
+ */
+export const loadGameSubrecordsConfig = (game: GameType): GameSubrecordsConfig => {
+  const parsed = GAME_SUBRECORDS_CONFIG_BY_GAME[game];
+
+  if (parsed.game !== game) {
+    throw new Error(`Subrecord config mismatch: expected ${game}, got ${parsed.game}`);
+  }
+
+  return parsed;
+};

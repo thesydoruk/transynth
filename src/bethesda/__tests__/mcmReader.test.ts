@@ -2,7 +2,7 @@
  * Unit tests for MCM translation file parser.
  */
 import { describe, it, expect } from '@jest/globals';
-import { parseMcmBuffer, mcmLocaleFromPath } from '../mcm';
+import { parseMcmBuffer, mcmLocaleFromPath } from '../parsers';
 
 describe('parseMcmBuffer — UTF-8 plain', () => {
   it('parses a basic key-value pair', () => {

@@ -34,9 +34,9 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
-import { isTranslatableSubrecord } from '../../utils/knownStrings';
-import type { GameType } from '../../../types';
-import { log } from '../../../logger';
+import { isTranslatableSubrecord } from '../subrecords';
+import type { GameType } from '../../types';
+import { log } from '../../logger';
 import { EspExplorer } from './EspExplorer';
 import { EspSceneExtractor } from './EspSceneExtractor';
 import type {
@@ -45,7 +45,7 @@ import type {
   EspRecordsPage,
   EspStringRow,
   SceneRecord,
-} from './types/index';
+} from '../types';
 
 export type {
   EspGrupInfo,
@@ -56,7 +56,7 @@ export type {
   EspSubrecordView,
   SceneAction,
   SceneRecord,
-} from './types/index';
+} from '../types';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;

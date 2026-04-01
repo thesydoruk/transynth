@@ -1,5 +1,5 @@
 import { inflateSync } from 'zlib';
-import type { EspGrupInfo, EspRecordsPage, EspRecordView, EspSubrecordView } from './types/index';
+import type { EspGrupInfo, EspRecordsPage, EspRecordView, EspSubrecordView } from '../types';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;

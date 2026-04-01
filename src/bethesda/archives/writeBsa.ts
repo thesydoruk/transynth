@@ -39,7 +39,7 @@
  */
 
 import { log } from '../../logger';
-import type { BsaInputFile } from '../types';
+import type { ArchiveInputFile } from '../types';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
@@ -216,7 +216,7 @@ const splitPath = (fullPath: string): { folder: string; baseName: string; stem: 
  *                  v105 uses 24-byte records with uint32 padding + uint64 offset.
  * @returns A Buffer containing the complete BSA archive.
  */
-export const writeBsa = (files: BsaInputFile[], version: number = 105): Buffer => {
+export const writeBsa = (files: ArchiveInputFile[], version: number = 105): Buffer => {
   if (files.length === 0) {
     throw new Error('BSA writer: cannot create an empty archive');
   }

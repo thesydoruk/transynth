@@ -1,6 +1,2 @@
-export {
-  parseStringsBuffer,
-  writeStringsBuffer,
-  stringsTypeFromPath,
-} from './StringsFile';
-export type { StringsType, StringsEntry } from './StringsFile';
+export { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer } from './stringsBuffer';
+export type { StringsEntry, StringsType } from '../types';

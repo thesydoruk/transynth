@@ -15,21 +15,7 @@
  */
 
 import { log } from '../../logger';
-
-/**
- * Supported Bethesda string table formats.
- *
- * - `"STRINGS"`   — generic text (item names, descriptions, UI labels).
- * - `"DLSTRINGS"` — dialogue text shown in conversation menus.
- * - `"ILSTRINGS"` — internal info strings (topics, notes, etc.).
- */
-export type StringsType = 'STRINGS' | 'DLSTRINGS' | 'ILSTRINGS';
-
-/** A single entry read from a strings file. */
-export interface StringsEntry {
-  id: number;
-  text: string;
-}
+import type { StringsEntry, StringsType } from '../types';
 
 /**
  * Detect the string table type from a file path.

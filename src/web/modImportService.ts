@@ -41,12 +41,10 @@ import { sha1Hex } from '../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
 import { log } from '../logger';
 import { EspReader, type EspStringRow } from '../bethesda/esp';
-import { Ba2Reader } from '../bethesda/ba2';
-import { BsaReader } from '../bethesda/bsa';
+import { Ba2Reader, BsaReader } from '../bethesda/archives';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
-import { parseMcmBuffer, mcmLocaleFromPath } from '../bethesda/mcm';
-import { parsePexBuffer } from '../bethesda/pex';
-import { loadNpcReferenceMap } from '../bethesda/utils';
+import { parseMcmBuffer, mcmLocaleFromPath, parsePexBuffer } from '../bethesda/parsers';
+import { loadNpcReferenceMap } from '../bethesda/subrecords';
 import type { CsvRow, GameType } from '../types';
 
 const { Pool } = pg;

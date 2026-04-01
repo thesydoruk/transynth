@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseEetHeader, iterEetRecords, parseEetFile } from '../eet';
+import { parseEetHeader, iterEetRecords, parseEetFile } from '../parsers';
 
 const SMALL_EET = path.resolve('test/DOOMThatGun_DE6A1ED8.eet');
 const LARGE_EET = path.resolve('test/BDD_Fallout4_EN-RU.eet');

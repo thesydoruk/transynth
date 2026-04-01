@@ -1,5 +1,4 @@
-export { patchEsp, patchStringsMap } from './EspWriter';
-export { EspReader } from './reader';
+export { EspReader } from './EspReader';
 export type {
   EspGrupInfo,
   EspPluginInfo,
@@ -9,4 +8,5 @@ export type {
   EspSubrecordView,
   SceneAction,
   SceneRecord,
-} from './reader';
+} from './EspReader';
+export { patchEsp, patchStringsMap } from './espPatcher';

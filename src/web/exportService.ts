@@ -20,9 +20,8 @@ import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
 import type { Tx } from '../db';
 import type { GameType } from '../types';
-import { Ba2Reader, writeBa2 } from '../bethesda/ba2';
-import { BsaReader, writeBsa } from '../bethesda/bsa';
-import type { Ba2InputFile, BsaInputFile, EspPatch } from '../bethesda/types';
+import { Ba2Reader, BsaReader, writeBa2, writeBsa } from '../bethesda/archives';
+import type { ArchiveInputFile, EspPatch } from '../bethesda/types';
 import { patchEsp, patchStringsMap } from '../bethesda/esp';
 import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/strings';
 import { log } from '../logger';
@@ -368,7 +367,7 @@ export const exportBa2Archive = async (
 ): Promise<ExportedStringsFile> => {
   const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
 
-  const ba2Files: Ba2InputFile[] = stringsFiles.map((f) => ({
+  const ba2Files: ArchiveInputFile[] = stringsFiles.map((f) => ({
     name: `Strings\\${f.fileName}`,
     data: Buffer.from(f.contentBase64, 'base64'),
   }));
@@ -410,7 +409,7 @@ export const exportBsaArchive = async (
 ): Promise<ExportedStringsFile> => {
   const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
 
-  const bsaFiles: BsaInputFile[] = stringsFiles.map((f) => ({
+  const bsaFiles: ArchiveInputFile[] = stringsFiles.map((f) => ({
     name: `Strings\\${f.fileName}`,
     data: Buffer.from(f.contentBase64, 'base64'),
   }));

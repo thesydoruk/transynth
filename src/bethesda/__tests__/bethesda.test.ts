@@ -8,8 +8,8 @@ import {
   stringsTypeFromPath,
   type StringsType,
 } from '../strings';
-import { Ba2Reader, writeBa2 } from '../ba2';
-import type { Ba2InputFile } from '../types';
+import { Ba2Reader, writeBa2 } from '../archives';
+import type { ArchiveInputFile } from '../types';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
@@ -148,7 +148,7 @@ describe('large map round-trip', () => {
 describe('BA2 writer', () => {
   it('produces a valid BTDX GNRL archive', () => {
     const content = Buffer.from('Hello BA2!');
-    const files: Ba2InputFile[] = [
+    const files: ArchiveInputFile[] = [
       { name: 'Strings\\Test_uk.STRINGS', data: content },
     ];
     const ba2 = writeBa2(files);
@@ -183,7 +183,7 @@ describe('BA2 writer', () => {
   });
 
   it('preserves the golden corpus file inventory and per-file payloads', () => {
-    const files: Ba2InputFile[] = LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles.map((file) => ({
+    const files: ArchiveInputFile[] = LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles.map((file) => ({
       name: `Strings\\${file.fileName}`,
       data: writeStringsBuffer(goldenFixtureToMap(file), file.type),
     }));

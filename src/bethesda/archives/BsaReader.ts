@@ -56,6 +56,7 @@ import { inflateSync } from 'zlib';
 // default export with a `decompress(src, dest)` function.
 import lz4 from 'lz4js';
 import { log } from '../../logger';
+import type { BsaFileEntry } from '../types';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,24 +85,6 @@ const FILE_FLAG_COMPRESS_TOGGLE = 0x40000000;
  * Bits 30 and 31 are flag bits and must be masked off before using as a size.
  */
 const FILE_SIZE_MASK = 0x3FFFFFFF;
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-/**
- * A single file entry within a BSA archive.
- * The interface is intentionally compatible with Ba2Reader's entry type so that
- * callers (modImportService.ts) can use the same extraction logic for both formats.
- */
-export interface BsaFileEntry {
-  /** Full lowercased path within the archive, e.g. "strings\modname_english.strings". */
-  name: string;
-  /** Absolute byte offset of the file data within the archive. */
-  dataOffset: number;
-  /** On-disk byte count of the file data (compressed size if isCompressed, raw size otherwise). */
-  dataSize: number;
-  /** True when the file data is zlib-compressed and must be decompressed before use. */
-  isCompressed: boolean;
-}
 
 // ── Reader ───────────────────────────────────────────────────────────────────
 
