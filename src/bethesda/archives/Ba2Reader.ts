@@ -34,11 +34,10 @@ import fs from 'fs';
 import { inflateSync } from 'zlib';
 import { log } from '../../logger';
 import type { Ba2FileEntry } from '../types';
+import { BA2_MAGIC, BA2_TYPE_GNRL, BA2_HEADER_SIZE, BA2_ENTRY_SIZE } from './ba2Constants';
 
-const MAGIC = 'BTDX';
-const TYPE_GNRL = 'GNRL';
-const HEADER_SIZE = 24;
-const ENTRY_SIZE = 36; // valid for both v1 and v8 GNRL format
+const HEADER_SIZE = BA2_HEADER_SIZE;
+const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
 
 /**
  * Reader for Bethesda BA2 (GNRL) archives used by Fallout 4 / 76.
@@ -89,10 +88,10 @@ export class Ba2Reader {
     if (buf.length < HEADER_SIZE) throw new Error('BA2: file too small');
 
     const magic = buf.toString('ascii', 0, 4);
-    if (magic !== MAGIC) throw new Error(`BA2: bad magic "${magic}"`);
+    if (magic !== BA2_MAGIC) throw new Error(`BA2: bad magic "${magic}"`);
 
     const archType = buf.toString('ascii', 8, 12).replace(/\0/g, '');
-    if (archType !== TYPE_GNRL) {
+    if (archType !== BA2_TYPE_GNRL) {
       throw new Error(`BA2: unsupported archive type "${archType}" (only GNRL supported)`);
     }
 
@@ -135,7 +134,7 @@ export class Ba2Reader {
    * @returns An array of archive-relative paths.
    */
   listFiles(): string[] {
-    return this.entries.map(e => e.name);
+    return this.entries.map((e) => e.name);
   }
 
   /**
@@ -149,7 +148,7 @@ export class Ba2Reader {
    */
   listByExt(ext: string): Ba2FileEntry[] {
     const extLower = ext.toLowerCase().replace(/^\./, '');
-    return this.entries.filter(e => e.name.toLowerCase().endsWith('.' + extLower));
+    return this.entries.filter((e) => e.name.toLowerCase().endsWith('.' + extLower));
   }
 
   /**

@@ -8,7 +8,7 @@ import {
   stringsTypeFromPath,
   type StringsType,
 } from '../strings';
-import { Ba2Reader, writeBa2 } from '../archives';
+import { Ba2Reader, writeBa2, isBa2GnrArchive, readBa2ArchiveType } from '../archives';
 import type { ArchiveInputFile } from '../types';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
@@ -110,7 +110,11 @@ describe('ILSTRINGS round-trip', () => {
 
 describe('writeStringsBuffer header', () => {
   it('writes correct count in header', () => {
-    const map = new Map<number, string>([[1, 'a'], [2, 'b'], [3, 'c']]);
+    const map = new Map<number, string>([
+      [1, 'a'],
+      [2, 'b'],
+      [3, 'c'],
+    ]);
     const buf = writeStringsBuffer(map, 'STRINGS');
     expect(buf.readUInt32LE(0)).toBe(3);
   });
@@ -145,12 +149,33 @@ describe('large map round-trip', () => {
   });
 });
 
+describe('readBa2ArchiveType', () => {
+  it('detects GNRL archives written by writeBa2', () => {
+    const ba2 = writeBa2([{ name: 'Strings\\Test_en.STRINGS', data: Buffer.from('x') }]);
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bethesda-ba2-type-'));
+    const archivePath = path.join(tempDir, 'test.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(archivePath, ba2);
+
+    expect(readBa2ArchiveType(archivePath)).toBe('GNRL');
+    expect(isBa2GnrArchive(archivePath)).toBe(true);
+  });
+
+  it('returns null for non-BA2 files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bethesda-ba2-type-'));
+    const filePath = path.join(tempDir, 'not.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(filePath, Buffer.from('not an archive'));
+
+    expect(readBa2ArchiveType(filePath)).toBeNull();
+    expect(isBa2GnrArchive(filePath)).toBe(false);
+  });
+});
+
 describe('BA2 writer', () => {
   it('produces a valid BTDX GNRL archive', () => {
     const content = Buffer.from('Hello BA2!');
-    const files: ArchiveInputFile[] = [
-      { name: 'Strings\\Test_uk.STRINGS', data: content },
-    ];
+    const files: ArchiveInputFile[] = [{ name: 'Strings\\Test_uk.STRINGS', data: content }];
     const ba2 = writeBa2(files);
 
     expect(ba2.toString('ascii', 0, 4)).toBe('BTDX');
@@ -168,7 +193,10 @@ describe('BA2 writer', () => {
   });
 
   it('round-trips STRINGS through BA2 write -> manual extract', () => {
-    const map = new Map<number, string>([[1, 'Vault Boy'], [2, 'Пустка']]);
+    const map = new Map<number, string>([
+      [1, 'Vault Boy'],
+      [2, 'Пустка'],
+    ]);
     const strBuf = writeStringsBuffer(map, 'STRINGS');
 
     const ba2 = writeBa2([{ name: 'Strings\\mod_uk.STRINGS', data: strBuf }]);

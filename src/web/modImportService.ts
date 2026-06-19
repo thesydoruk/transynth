@@ -41,7 +41,7 @@ import { sha1Hex } from '../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
 import { log } from '../logger';
 import { EspReader, type EspStringRow } from '../bethesda/esp';
-import { Ba2Reader, BsaReader } from '../bethesda/archives';
+import { Ba2Reader, BsaReader, isBa2GnrArchive } from '../bethesda/archives';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
 import { parseMcmBuffer, mcmLocaleFromPath, parsePexBuffer } from '../bethesda/parsers';
 import { loadNpcReferenceMap } from '../bethesda/subrecords';
@@ -613,6 +613,19 @@ const discoverBa2 = (modPath: string, ba2Candidates: string[]): string | null =>
   return null;
 };
 
+/** List GNRL-type BA2 archives in a mod directory (skips DX10 texture archives). */
+const listGnrBa2FilesInDir = (modDir: string): string[] => {
+  try {
+    return fs
+      .readdirSync(modDir)
+      .filter((f) => f.toLowerCase().endsWith('.ba2'))
+      .map((f) => path.join(modDir, f))
+      .filter(isBa2GnrArchive);
+  } catch {
+    return [];
+  }
+};
+
 const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
   const reader = new Ba2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
@@ -770,18 +783,8 @@ const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> =>
   const modDir = path.dirname(espPath);
   const merged = new Map<string, Map<string, string>>();
 
-  // Scan every BA2 in the mod directory for MCM translation txt files
-  let ba2Files: string[] = [];
-  try {
-    ba2Files = fs
-      .readdirSync(modDir)
-      .filter((f) => f.toLowerCase().endsWith('.ba2'))
-      .map((f) => path.join(modDir, f));
-  } catch {
-    // Directory unreadable — skip
-  }
-
-  for (const ba2Path of ba2Files) {
+  // Scan GNRL BA2 archives only — DX10 texture archives never contain MCM txt files
+  for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
     try {
       for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path)) {
         if (!merged.has(locale)) merged.set(locale, new Map());
@@ -1054,18 +1057,8 @@ const collectPexStrings = (espPath: string): Map<string, string[]> => {
   const modDir = path.dirname(espPath);
   const merged = new Map<string, string[]>();
 
-  // Scan every BA2 in the mod directory
-  let ba2Files: string[] = [];
-  try {
-    ba2Files = fs
-      .readdirSync(modDir)
-      .filter((f) => f.toLowerCase().endsWith('.ba2'))
-      .map((f) => path.join(modDir, f));
-  } catch {
-    // Directory unreadable — skip
-  }
-
-  for (const ba2Path of ba2Files) {
+  // Scan GNRL BA2 archives only — DX10 texture archives never contain PEX scripts
+  for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
     try {
       for (const [script, strings] of loadPexStringsFromBA2(ba2Path)) {
         if (!merged.has(script)) merged.set(script, strings);
