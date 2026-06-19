@@ -14,8 +14,8 @@ import {
 import { propagateTranslation } from '../tm';
 import { getAllProjectSettings } from '../projectSettings';
 import { cacheLookup, cacheStore } from '../cacheService';
-import { chatWithFallback } from '../../llm/index';
-import { CONFIG } from '../../config';
+import { getTranslateModel, CONFIG } from '../../config';
+import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../../llm/translate';
 import { log } from '../../logger';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders';
 import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
@@ -261,18 +261,13 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Max 100 strings per batch' });
     }
 
-    // Load glossary terms to inject into system prompt
-    const { rows: glossaryRows } = await db.query(
+    const model = getTranslateModel();
+
+    const { rows: glossaryRows } = await db.query<{ term: string; translation: string | null }>(
       `SELECT term, translation FROM glossary WHERE src_lang = $1 AND tgt_lang = $2 ORDER BY term LIMIT 80`,
       [srcLang, targetLang],
     );
-
-    const glossaryHint =
-      glossaryRows.length > 0
-        ? `\n\nKey terminology to preserve:\n${glossaryRows.map((g: { term: string; translation: string | null }) => g.translation ? `- ${g.term} → ${g.translation}` : `- ${g.term}`).join('\n')}`
-        : '';
-
-    const systemPrompt = `You are a professional Fallout 4 game localizer. Translate from ${srcLang} to ${targetLang}. Output only the translated text, nothing else.${glossaryHint}`;
+    const glossary: LlmGlossaryEntry[] = glossaryRows;
 
     // Resolve mod metadata for job tracking. Use bodyModId if provided, else
     // derive from the first string. Failures here are non-fatal — we still run.
@@ -327,95 +322,171 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     };
 
+    type StringRow = {
+      id: number;
+      text_raw: string;
+      context: string | null;
+      signature: string | null;
+      path: string | null;
+      edid: string | null;
+      formid_hex: string | null;
+      game: string;
+      mod_name: string;
+    };
+
+    const { rows: loadedRows } = await db.query<StringRow>(
+      `SELECT s.id, s.text_raw, s.context, r.signature, r.path, r.edid, r.formid_hex, m.game, m.name AS mod_name
+         FROM strings s
+         JOIN records r ON r.id = s.record_id
+         JOIN mods m ON m.id = r.mod_id
+        WHERE s.id = ANY($1::int[]) AND s.lang = $2`,
+      [stringIds, srcLang],
+    );
+    const rowById = new Map(loadedRows.map((row) => [row.id, row]));
+
+    type PreparedLlmItem = {
+      stringId: number;
+      sourceText: string;
+      placeholderMap: Record<string, string>;
+      functionKeywordMap: Record<string, string>;
+      game: string | null;
+      modName: string | null;
+      llmItem: LlmTranslateItem;
+    };
+
     const results: Array<{ stringId: number; text?: string; error?: string }> = [];
+    let doneCount = 0;
+    const llmBuffer: PreparedLlmItem[] = [];
 
-    for (let i = 0; i < stringIds.length; i++) {
-      const stringId = stringIds[i];
-      const { rows: strRows } = await db.query(
-        `SELECT s.text_raw, m.game
-           FROM strings s
-           JOIN records r ON r.id = s.record_id
-           JOIN mods m ON m.id = r.mod_id
-          WHERE s.id = $1 AND s.lang = $2`,
-        [stringId, srcLang],
-      );
+    const finishResult = async (stringId: number, text: string) => {
+      await upsertTranslation(db, stringId, text, 'auto', targetLang);
+      const r = { stringId, text };
+      results.push(r);
+      doneCount++;
+      send({ type: 'progress', done: doneCount, total: stringIds.length, result: r });
+    };
 
-      if (!strRows[0]) {
-        const r = { stringId, error: 'not found' };
-        results.push(r);
-        send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
+    const failResult = (stringId: number, error: string) => {
+      const r = { stringId, error };
+      results.push(r);
+      doneCount++;
+      send({ type: 'progress', done: doneCount, total: stringIds.length, result: r });
+    };
+
+    const flushLlmBuffer = async () => {
+      if (llmBuffer.length === 0) return;
+
+      const chunk = llmBuffer.splice(0, llmBuffer.length);
+      try {
+        const translations = await translateStrings({
+          items: chunk.map((entry) => entry.llmItem),
+          model,
+          srcLang,
+          targetLang,
+          game: resolvedModGame ?? chunk[0]?.game,
+          modName: resolvedModName ?? chunk[0]?.modName,
+          glossary,
+        });
+
+        const translationById = new Map(translations.map((row) => [row.id, row.translation]));
+
+        for (const entry of chunk) {
+          const maskedTranslation = translationById.get(entry.stringId);
+          if (maskedTranslation === undefined) {
+            failResult(entry.stringId, `LLM response missing translation for id=${entry.stringId}`);
+            continue;
+          }
+
+          const translated = unmask(
+            unmask(maskedTranslation, entry.functionKeywordMap),
+            entry.placeholderMap,
+          );
+          await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
+          await finishResult(entry.stringId, translated);
+        }
+      } catch (err) {
+        log.error({ err }, 'LLM translate failed for batch');
+        const message = err instanceof Error ? err.message : String(err);
+        for (const entry of chunk) {
+          failResult(entry.stringId, message);
+        }
+      }
+    };
+
+    for (const stringId of stringIds) {
+      const row = rowById.get(stringId);
+      if (!row) {
+        failResult(stringId, 'not found');
         continue;
       }
 
-      const sourceText = strRows[0].text_raw as string;
-      const game = (strRows[0].game as string | undefined) ?? resolvedModGame ?? undefined;
+      const sourceText = row.text_raw;
+      const game = row.game ?? resolvedModGame ?? undefined;
       const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
-      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(placeholderMasked, game as GameType | undefined);
+      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
+        placeholderMasked,
+        game as GameType | undefined,
+      );
       const maskedSourceText = protectedMasked;
 
-      // Skip strings that contain no translatable content after masking all
-      // placeholders and markup tokens (e.g. bare <font> / </font> lines from
-      // book texts — equivalent to the Ignored.txt list in ESP-ESM Translator).
       const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
       if (!translatableContent) {
-        await upsertTranslation(db, stringId, sourceText, 'auto', targetLang);
-        const r = { stringId, text: sourceText };
-        results.push(r);
-        send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
+        await finishResult(stringId, sourceText);
         continue;
       }
 
       try {
-        // Check LLM translation cache first
-        const cached = await cacheLookup(db, sourceText, srcLang, targetLang, CONFIG.translateModel);
-        let translated: string;
-
+        const cached = await cacheLookup(db, sourceText, srcLang, targetLang, model);
         if (cached) {
-          translated = cached.translated;
-        } else {
-          const maskedTranslation = await chatWithFallback({
-            model: CONFIG.translateModel,
-            messages: [
-              {
-                role: 'system',
-                content: `${systemPrompt}\n\nKeep protected markers like ¤PH0¤ and ¤FK0¤ unchanged.`,
-              },
-              { role: 'user', content: maskedSourceText },
-            ],
-          });
-          translated = unmask(unmask(maskedTranslation, functionKeywordMap), placeholderMap);
-
-          // Store in cache for future lookups
-          await cacheStore(db, sourceText, srcLang, targetLang, CONFIG.translateModel, translated);
+          await finishResult(stringId, cached.translated);
+          continue;
         }
-
-        await upsertTranslation(db, stringId, translated, 'auto', targetLang);
-        const r = { stringId, text: translated };
-        results.push(r);
-        send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
       } catch (err) {
-        log.error({ err, stringId }, 'LLM translate failed for string');
-        const r = { stringId, error: String(err) };
-        results.push(r);
-        send({ type: 'progress', done: i + 1, total: stringIds.length, result: r });
+        log.error({ err, stringId }, 'LLM cache lookup failed');
+        failResult(stringId, err instanceof Error ? err.message : String(err));
+        continue;
+      }
+
+      llmBuffer.push({
+        stringId,
+        sourceText,
+        placeholderMap,
+        functionKeywordMap,
+        game: row.game ?? resolvedModGame,
+        modName: row.mod_name ?? resolvedModName,
+        llmItem: {
+          id: stringId,
+          source: maskedSourceText,
+          signature: row.signature,
+          path: row.path,
+          form_id: row.formid_hex,
+          edid: row.edid,
+          context: row.context,
+        },
+      });
+
+      if (llmBuffer.length >= CONFIG.batchSize) {
+        await flushLlmBuffer();
       }
     }
+
+    await flushLlmBuffer();
 
     send({ type: 'done', results });
     reply.raw.end();
 
     // Finalize the persisted job row. Count only successfully translated strings.
     if (llmJobId !== null) {
-      const doneCount = results.filter((r) => r.text !== undefined).length;
+      const successCount = results.filter((r) => r.text !== undefined).length;
       const failed = results.some((r) => r.error !== undefined && r.text === undefined);
-      const finalStatus = failed && doneCount === 0 ? 'failed' : 'completed';
+      const finalStatus = failed && successCount === 0 ? 'failed' : 'completed';
       const firstError = results.find((r) => r.error)?.error ?? null;
       try {
         await db.query(
           `UPDATE llm_jobs
               SET status = $1, done_count = $2, error = $3, updated_at = NOW()
             WHERE id = $4`,
-          [finalStatus, doneCount, firstError, llmJobId],
+          [finalStatus, successCount, firstError, llmJobId],
         );
       } catch (updateErr) {
         log.warn({ updateErr, llmJobId }, 'llm_jobs: failed to finalize job row');

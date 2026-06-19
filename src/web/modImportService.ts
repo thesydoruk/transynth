@@ -478,6 +478,36 @@ export const discoverModFiles = (dir: string): { plugins: string[]; ba2s: string
   return { plugins, ba2s, bsas };
 }
 
+/** A mod artifact discovered in a directory listing (non-recursive). */
+export interface ModFileCandidate {
+  fileName: string;
+  filePath: string;
+  kind: 'plugin' | 'archive';
+}
+
+/**
+ * List supported mod files in a directory without descending into subfolders.
+ *
+ * This is intended for batch scans of flat mod install folders (e.g. a game's
+ * `Data` directory) where plugins and archives sit alongside BA2/BSA companions.
+ */
+export const listModFilesInDirectory = (dir: string): ModFileCandidate[] => {
+  const candidates: ModFileCandidate[] = [];
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const fileName = entry.name;
+    if (isPlugin(fileName)) {
+      candidates.push({ fileName, filePath: path.join(dir, fileName), kind: 'plugin' });
+    } else if (isArchive(fileName)) {
+      candidates.push({ fileName, filePath: path.join(dir, fileName), kind: 'archive' });
+    }
+  }
+
+  candidates.sort((a, b) => a.fileName.localeCompare(b.fileName, undefined, { sensitivity: 'base' }));
+  return candidates;
+}
+
 const discoverBa2 = (modPath: string, ba2Candidates: string[]): string | null => {
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
   for (const ba2 of ba2Candidates) {

@@ -8,6 +8,7 @@
     "dev": "concurrently -k -n db,api,ui -c blue,green,magenta \"docker compose up db\" \"wait-on tcp:5432 && tsx watch src/web/server.ts\" \"wait-on tcp:3000 && npm --prefix web-ui run dev\"",
     "db:init": "tsx scripts/dbInit.ts",
     "db:reset": "tsx scripts/dbReset.ts",
+    "scan:mods": "tsx scripts/scanMods.ts",
     "lint": "eslint src/ scripts/",
     "lint:fix": "eslint src/ scripts/ --fix",
     "format": "prettier --write .",
