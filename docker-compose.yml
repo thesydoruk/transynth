@@ -21,7 +21,7 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /app/data
-      DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
+      DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       MULTI_USER: ${MULTI_USER:-true}
@@ -64,7 +64,7 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /app/data
-      DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
+      DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
     volumes:
       - ./data:/app/data

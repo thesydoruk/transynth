@@ -82,11 +82,7 @@ VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
 # OPENAI_TRANSLATE_MODEL=gpt-4.1-mini
 # OPENAI_EMBED_MODEL=text-embedding-3-large
 
-POSTGRES_PORT=5433
 DATABASE_URL=postgresql://localizer:localizer@localhost:5433/localizer
-POSTGRES_USER=localizer
-POSTGRES_PASSWORD=localizer
-POSTGRES_DB=localizer
 
 BATCH_SIZE=30
 LOG_LEVEL=info
@@ -104,13 +100,9 @@ UPLOAD_MAX_FILE_SIZE_MB=1024
 
 ## Налаштування бази даних
 
-| Змінна              | За замовчуванням | Опис                                                                     |
-| ------------------- | ---------------- | ------------------------------------------------------------------------ |
-| `DATABASE_URL`      | _(збирається)_   | PostgreSQL connection string; має пріоритет над окремими змінними нижче  |
-| `POSTGRES_PORT`     | `5433`           | Порт на хості для сервісу `db` (уникає конфлікту з локальним PostgreSQL) |
-| `POSTGRES_USER`     | `localizer`      | Користувач БД                                                            |
-| `POSTGRES_PASSWORD` | `localizer`      | Пароль БД                                                                |
-| `POSTGRES_DB`       | `localizer`      | Ім’я бази                                                                |
+| Змінна         | За замовчуванням                                            | Опис                         |
+| -------------- | ----------------------------------------------------------- | ---------------------------- |
+| `DATABASE_URL` | `postgresql://localizer:localizer@localhost:5433/localizer` | PostgreSQL connection string |
 
 Формат рядка підключення:
 
@@ -124,7 +116,9 @@ postgresql://USERNAME:PASSWORD@HOST:PORT/DBNAME
 postgresql://localizer:localizer@localhost:5433/localizer
 ```
 
-Якщо ви використовуєте **Docker Compose**, `DATABASE_URL` підставляється автоматично через ім’я сервісу `db`, тож зазвичай його не потрібно прописувати вручну для повного docker-стека.
+Якщо ви використовуєте **Docker Compose**, сервіси `web` і `cli` всередині контейнерної мережі отримують
+`DATABASE_URL=postgresql://localizer:localizer@db:5432/localizer`.
+У `.env` на хості залишайте URL з `localhost:5433` для локальних скриптів (`npm run db:init`, `scan:mods` тощо).
 
 ---
 
@@ -240,7 +234,7 @@ docker compose exec db pg_dump -U localizer localizer > backup_$(date +%Y%m%d).s
 cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 ```
 
-Щоб підключатися до бази з хоста через pgAdmin або DBeaver, використовуйте `localhost:5433` (або значення `POSTGRES_PORT` з `.env`). Порт уже проброшений у `docker-compose.db.yml`.
+Щоб підключатися до бази з хоста через pgAdmin або DBeaver, використовуйте `localhost:5433` — порт уже проброшений у `docker-compose.db.yml`. Облікові дані беруться з `DATABASE_URL`.
 
 ---
 

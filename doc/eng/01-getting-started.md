@@ -55,10 +55,6 @@ This is the easiest way to get started.
 3. Copy `.env.example` to `.env` in the project root.
 4. Review the settings in `.env`.
    The default database settings already point to a local PostgreSQL instance created by Docker Compose:
-   - `POSTGRES_USER=localizer`
-   - `POSTGRES_PASSWORD=localizer`
-   - `POSTGRES_DB=localizer`
-   - `POSTGRES_PORT=5433`
    - `DATABASE_URL=postgresql://localizer:localizer@localhost:5433/localizer`
 5. If you use vLLM, keep `LLM_PROVIDER=vllm` and set `VLLM_MODEL` to the model served by your inference server.
 6. Start the database and web server:

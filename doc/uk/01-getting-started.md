@@ -55,10 +55,6 @@ Docker автоматично бере на себе Node.js, PostgreSQL і вс
 3. Скопіюйте `.env.example` у `.env` у корені проєкту.
 4. Перевірте параметри в `.env`.
    Типові параметри бази вже вказують на локальний PostgreSQL, створений Docker Compose:
-   - `POSTGRES_USER=localizer`
-   - `POSTGRES_PASSWORD=localizer`
-   - `POSTGRES_DB=localizer`
-   - `POSTGRES_PORT=5433`
    - `DATABASE_URL=postgresql://localizer:localizer@localhost:5433/localizer`
 5. Якщо ви використовуєте vLLM, залиште `LLM_PROVIDER=vllm` і вкажіть у `VLLM_MODEL` модель, яку віддає ваш inference-сервер.
 6. Запустіть базу даних і вебсервер:

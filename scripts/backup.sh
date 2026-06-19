@@ -17,13 +17,13 @@ BACKUP_DIR="${DATA_DIR:-./data}/backups"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_FILE="${BACKUP_DIR}/localizer_${TIMESTAMP}.sql.gz"
 
-# Load .env if present (for POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB)
+# Load .env if present
 if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
-DB_USER="${POSTGRES_USER:-localizer}"
-DB_NAME="${POSTGRES_DB:-localizer}"
+# shellcheck source=scripts/_db_from_url.sh
+source "$(dirname "$0")/_db_from_url.sh"
 
 mkdir -p "$BACKUP_DIR"
 

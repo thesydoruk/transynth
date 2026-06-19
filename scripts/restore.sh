@@ -18,8 +18,8 @@ if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
-DB_USER="${POSTGRES_USER:-localizer}"
-DB_NAME="${POSTGRES_DB:-localizer}"
+# shellcheck source=scripts/_db_from_url.sh
+source "$(dirname "$0")/_db_from_url.sh"
 
 # Parse arguments
 MODE="auto"

@@ -12,17 +12,15 @@ services:
       - .env
 
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-localizer}
-
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localizer}
-
-      POSTGRES_DB: ${POSTGRES_DB:-localizer}
+      POSTGRES_USER: localizer
+      POSTGRES_PASSWORD: localizer
+      POSTGRES_DB: localizer
 
     ports:
-      - '${POSTGRES_PORT:-5433}:5432'
+      - '5433:5432'
 
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-localizer}']
+      test: ['CMD-SHELL', 'pg_isready -U localizer']
 
       interval: 5s
 

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { resolveDatabaseUrl } from './databaseUrl';
 import { log } from './logger';
 
 export type LLMProviderName = 'vllm' | 'openai';
@@ -10,16 +11,6 @@ const parseUploadMaxFileSizeBytes = (mbValue: string | undefined): number => {
   const parsedMb = Number.parseInt(mbValue ?? '', 10);
   if (Number.isFinite(parsedMb) && parsedMb > 0) return parsedMb * 1024 * 1024;
   return DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES;
-};
-
-const buildDefaultDatabaseUrl = (): string => {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const user = process.env.POSTGRES_USER || 'localizer';
-  const password = process.env.POSTGRES_PASSWORD || 'localizer';
-  const host = process.env.POSTGRES_HOST || 'localhost';
-  const port = process.env.POSTGRES_PORT || '5433';
-  const db = process.env.POSTGRES_DB || 'localizer';
-  return `postgresql://${user}:${password}@${host}:${port}/${db}`;
 };
 
 export const CONFIG = {
@@ -38,7 +29,7 @@ export const CONFIG = {
   embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large',
 
   // Database
-  databaseUrl: buildDefaultDatabaseUrl(),
+  databaseUrl: resolveDatabaseUrl(),
 
   // Maximum multipart upload size in bytes (Fastify multipart fileSize limit).
   uploadMaxFileSizeBytes: parseUploadMaxFileSizeBytes(process.env.UPLOAD_MAX_FILE_SIZE_MB),
