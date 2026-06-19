@@ -1,13 +1,13 @@
 #!/usr/bin/env tsx
 /**
- * Batch-scan a flat mod directory and import every plugin/archive into the database.
+ * Batch-scan a mod directory tree and import every plugin/archive into the database.
  *
- * Only files directly in the given folder are considered — subdirectories are not walked.
+ * Walks the given folder recursively (skips `.transynth-extracted`, `.git`, `node_modules`).
  * Reuses the same registration and import pipeline as the web UI.
  *
  * Usage:
  *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
- *   npm run scan:mods -- --dir ./mods --game sse --src-lang en --tgt-lang uk
+ *   npm run scan:mods -- --dir ./mods --game sse --tgt-lang uk
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +20,7 @@ import type { GameType } from '../src/types';
 import { sha1Hex } from '../src/utils/hash';
 import {
   listModFilesInDirectory,
+  MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
   registerArchiveFile,
   registerPluginFile,
   restartModImportJob,
@@ -38,7 +39,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('dir', {
     type: 'string',
     demandOption: true,
-    describe: 'Directory containing mod plugins/archives (non-recursive scan)',
+    describe: 'Directory containing mod plugins/archives (recursive scan)',
   })
   .option('game', {
     type: 'string',
@@ -48,8 +49,9 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option('src-lang', {
     type: 'string',
-    default: CONFIG.defaultSrcLang,
-    describe: 'Source language code stored on import jobs',
+    default: MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
+    describe:
+      'Language tag for non-localized plugins and PEX strings (localized mods import all locales; English is the translation anchor)',
   })
   .option('tgt-lang', {
     type: 'string',
@@ -66,7 +68,7 @@ const argv = await yargs(hideBin(process.argv))
 
 const scanDir = path.resolve(argv.dir);
 const game = isGameType(argv.game) ? argv.game : 'fo4';
-const srcLang = argv['src-lang'];
+const srcLang = argv['src-lang'] || MOD_IMPORT_DEFAULT_SOURCE_LOCALE;
 const tgtLang = argv['tgt-lang'];
 const force = argv.force;
 
@@ -95,16 +97,23 @@ let imported = 0;
 let skipped = 0;
 let failed = 0;
 
-log.info(`Scanning ${candidates.length} mod file(s) in ${scanDir} (game=${game}, non-recursive)`);
+log.info(`Scanning ${candidates.length} mod file(s) under ${scanDir} (game=${game}, recursive)`);
 
 try {
   for (const candidate of candidates) {
-    const label = candidate.fileName;
+    const label = path.relative(scanDir, candidate.filePath) || candidate.fileName;
 
     try {
       let job;
       if (candidate.kind === 'plugin') {
-        job = await registerPluginFile(db, candidate.fileName, candidate.filePath, srcLang, tgtLang, game);
+        job = await registerPluginFile(
+          db,
+          candidate.fileName,
+          candidate.filePath,
+          srcLang,
+          tgtLang,
+          game,
+        );
       } else {
         const buf = fs.readFileSync(candidate.filePath);
         const fileHash = sha1Hex(buf);
@@ -121,7 +130,9 @@ try {
       }
 
       if (job.status === 'completed' && !force) {
-        log.info(`Skip "${label}" — already imported (job #${job.id}, mod_id=${job.mod_id ?? 'n/a'})`);
+        log.info(
+          `Skip "${label}" — already imported (job #${job.id}, mod_id=${job.mod_id ?? 'n/a'})`,
+        );
         skipped++;
         continue;
       }
@@ -139,17 +150,19 @@ try {
       });
 
       if (result.status === 'completed') {
-        log.info(`Done "${label}" — ${result.imported_records} records (mod_id=${result.mod_id ?? 'n/a'})`);
+        log.info(
+          `Done "${label}" — ${result.imported_records} records (mod_id=${result.mod_id ?? 'n/a'})`,
+        );
         imported++;
       } else {
-        log.warn(`Finished "${label}" with status=${result.status} (${result.imported_records} records)`);
+        log.warn(
+          `Finished "${label}" with status=${result.status} (${result.imported_records} records)`,
+        );
         failed++;
       }
     } catch (err) {
       failed++;
-      log.error(
-        `Failed "${label}": ${err instanceof Error ? err.message : String(err)}`,
-      );
+      log.error(`Failed "${label}": ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 } finally {

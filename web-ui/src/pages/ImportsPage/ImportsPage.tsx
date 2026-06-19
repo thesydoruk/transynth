@@ -13,12 +13,7 @@ import {
   subscribeNexusDownloadJobs,
   type NexusDownloadJob,
 } from '../../nexusDownloadQueue';
-import {
-  listAppJobs,
-  subscribeAppJobs,
-  upsertAppJob,
-  type AppJob,
-} from '../../appJobsQueue';
+import { listAppJobs, subscribeAppJobs, upsertAppJob, type AppJob } from '../../appJobsQueue';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -102,10 +97,26 @@ export const ImportsPage = () => {
   const qc = useQueryClient();
 
   /* ── Queries — fetch all three job lists in parallel ───────────────────── */
-  const { data: eetJobs } = useQuery({ queryKey: ['eet-imports'], queryFn: api.eet.list, refetchInterval: 3000 });
-  const { data: csvJobs } = useQuery({ queryKey: ['csv-imports'], queryFn: api.csv.list, refetchInterval: 3000 });
-  const { data: modJobs } = useQuery({ queryKey: ['mod-imports'], queryFn: api.modImport.list, refetchInterval: 3000 });
-  const { data: opsData } = useQuery({ queryKey: ['ops'], queryFn: api.ops.overview, refetchInterval: 5000 });
+  const { data: eetJobs } = useQuery({
+    queryKey: ['eet-imports'],
+    queryFn: api.eet.list,
+    refetchInterval: 3000,
+  });
+  const { data: csvJobs } = useQuery({
+    queryKey: ['csv-imports'],
+    queryFn: api.csv.list,
+    refetchInterval: 3000,
+  });
+  const { data: modJobs } = useQuery({
+    queryKey: ['mod-imports'],
+    queryFn: api.modImport.list,
+    refetchInterval: 3000,
+  });
+  const { data: opsData } = useQuery({
+    queryKey: ['ops'],
+    queryFn: api.ops.overview,
+    refetchInterval: 5000,
+  });
 
   /* ── Merge into a single sorted list (newest first) ───────────────────── */
   const allJobs: UnifiedJob[] = [
@@ -120,22 +131,28 @@ export const ImportsPage = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const hasExtracting = pendingModUploads.some((row) => row.phase === 'extracting' && row.percent < 95);
+    const hasExtracting = pendingModUploads.some(
+      (row) => row.phase === 'extracting' && row.percent < 95,
+    );
     if (!hasExtracting) return;
 
     const timer = window.setInterval(() => {
-      setPendingModUploads((prev) => prev.map((row) => {
-        if (row.phase !== 'extracting') return row;
-        if (row.percent >= 95) return row;
-        return { ...row, percent: Math.min(95, row.percent + 2) };
-      }));
+      setPendingModUploads((prev) =>
+        prev.map((row) => {
+          if (row.phase !== 'extracting') return row;
+          if (row.percent >= 95) return row;
+          return { ...row, percent: Math.min(95, row.percent + 2) };
+        }),
+      );
     }, 250);
 
     return () => window.clearInterval(timer);
   }, [pendingModUploads]);
 
   /* ── Nexus pre-import downloads (before backend job exists) ───────────── */
-  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
+  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() =>
+    listNexusDownloadJobs(),
+  );
   const [appJobs, setAppJobs] = useState<AppJob[]>(() => listAppJobs());
 
   useEffect(() => {
@@ -167,12 +184,19 @@ export const ImportsPage = () => {
 
   /* ── Reimport detection — shown after a mod import completes ──────────── */
   /** State for the reimport modal: newModId + list of previous versions */
-  const [reimport, setReimport] = useState<{ newModId: number; prevVersions: PreviousVersionRow[] } | null>(null);
+  const [reimport, setReimport] = useState<{
+    newModId: number;
+    prevVersions: PreviousVersionRow[];
+  } | null>(null);
   const [exportBusy, setExportBusy] = useState<string | null>(null);
   const [deleteModalJob, setDeleteModalJob] = useState<ModImportJob | null>(null);
   const [deletingModJobId, setDeletingModJobId] = useState<number | null>(null);
   /** EET or CSV job queued for confirmation before deletion. */
-  const [deleteSimpleJob, setDeleteSimpleJob] = useState<{ kind: 'eet' | 'csv'; name: string; id: number } | null>(null);
+  const [deleteSimpleJob, setDeleteSimpleJob] = useState<{
+    kind: 'eet' | 'csv';
+    name: string;
+    id: number;
+  } | null>(null);
 
   /** Invalidate all three import lists. */
   const refreshAll = useCallback(() => {
@@ -182,54 +206,76 @@ export const ImportsPage = () => {
   }, [qc]);
 
   /* ── Start import by kind ─────────────────────────────────────────────── */
-  const doStart = useCallback((kind: 'eet' | 'csv' | 'mod', jobId: number): Promise<boolean> => {
-    const key = `${kind}:${jobId}`;
-    const onProgress = (e: { imported: number; total: number }) => {
-      setLiveProgress(prev => ({ ...prev, [key]: { imported: e.imported, total: e.total } }));
-    };
-    const cleanup = () => {
-      setLiveProgress(prev => { const c = { ...prev }; delete c[key]; return c; });
-      delete abortRefs.current[key];
-      refreshAll();
-      // After a mod import finishes, check for previous versions of the same mod
-      if (kind === 'mod') {
-        // Re-fetch the job to get the assigned mod_id, then query previous versions
-        api.modImport.list().then((jobs) => {
-          const job = jobs.find((j) => j.id === jobId);
-          if (job?.mod_id != null) {
-            api.mods.previousVersions(job.mod_id).then((prev) => {
-              if (prev.length > 0) setReimport({ newModId: job.mod_id!, prevVersions: prev });
-            }).catch(() => {/* ignore */});
-          }
-        }).catch(() => {/* ignore */});
+  const doStart = useCallback(
+    (kind: 'eet' | 'csv' | 'mod', jobId: number): Promise<boolean> => {
+      const key = `${kind}:${jobId}`;
+      const onProgress = (e: { imported: number; total: number }) => {
+        setLiveProgress((prev) => ({ ...prev, [key]: { imported: e.imported, total: e.total } }));
+      };
+      const cleanup = () => {
+        setLiveProgress((prev) => {
+          const c = { ...prev };
+          delete c[key];
+          return c;
+        });
+        delete abortRefs.current[key];
+        refreshAll();
+        // After a mod import finishes, check for previous versions of the same mod
+        if (kind === 'mod') {
+          // Re-fetch the job to get the assigned mod_id, then query previous versions
+          api.modImport
+            .list()
+            .then((jobs) => {
+              const job = jobs.find((j) => j.id === jobId);
+              if (job?.mod_id != null) {
+                api.mods
+                  .previousVersions(job.mod_id)
+                  .then((prev) => {
+                    if (prev.length > 0) setReimport({ newModId: job.mod_id!, prevVersions: prev });
+                  })
+                  .catch(() => {
+                    /* ignore */
+                  });
+              }
+            })
+            .catch(() => {
+              /* ignore */
+            });
+        }
+      };
+
+      let promise: Promise<unknown>;
+      let abort: AbortController;
+
+      if (kind === 'eet') {
+        const r = api.eet.startImport(jobId, onProgress as (e: EetProgressEvent) => void);
+        promise = r.promise;
+        abort = r.abort;
+      } else if (kind === 'csv') {
+        const r = api.csv.startImport(jobId, onProgress as (e: CsvProgressEvent) => void);
+        promise = r.promise;
+        abort = r.abort;
+      } else {
+        const r = api.modImport.startImport(jobId, onProgress as (e: ModProgressEvent) => void);
+        promise = r.promise;
+        abort = r.abort;
       }
-    };
 
-    let promise: Promise<unknown>;
-    let abort: AbortController;
-
-    if (kind === 'eet') {
-      const r = api.eet.startImport(jobId, onProgress as (e: EetProgressEvent) => void);
-      promise = r.promise; abort = r.abort;
-    } else if (kind === 'csv') {
-      const r = api.csv.startImport(jobId, onProgress as (e: CsvProgressEvent) => void);
-      promise = r.promise; abort = r.abort;
-    } else {
-      const r = api.modImport.startImport(jobId, onProgress as (e: ModProgressEvent) => void);
-      promise = r.promise; abort = r.abort;
-    }
-
-    abortRefs.current[key] = abort;
-    const done = promise.then(() => {
-      cleanup();
-      return true;
-    }).catch(() => {
-      cleanup();
-      return false;
-    });
-    refreshAll();
-    return done;
-  }, [refreshAll]);
+      abortRefs.current[key] = abort;
+      const done = promise
+        .then(() => {
+          cleanup();
+          return true;
+        })
+        .catch(() => {
+          cleanup();
+          return false;
+        });
+      refreshAll();
+      return done;
+    },
+    [refreshAll],
+  );
 
   /* ── Upload handler — routes each file to the right API by extension ── */
   const handleUpload = async () => {
@@ -255,33 +301,47 @@ export const ImportsPage = () => {
         } else {
           const uploadOptions = isSupportedGameId(gameId) ? { game: gameId } : undefined;
           const uploadId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          setPendingModUploads((prev) => [...prev, {
-            id: uploadId,
-            fileName: f.name,
-            phase: 'uploading',
-            percent: 0,
-          }]);
+          setPendingModUploads((prev) => [
+            ...prev,
+            {
+              id: uploadId,
+              fileName: f.name,
+              phase: 'uploading',
+              percent: 0,
+            },
+          ]);
 
           const onUploadProgress = (event: UploadProgressEvent) => {
-            setPendingModUploads((prev) => prev.map((row) => {
-              if (row.id !== uploadId) return row;
-              if (row.phase !== 'uploading') return row;
-              return { ...row, percent: event.percent };
-            }));
+            setPendingModUploads((prev) =>
+              prev.map((row) => {
+                if (row.id !== uploadId) return row;
+                if (row.phase !== 'uploading') return row;
+                return { ...row, percent: event.percent };
+              }),
+            );
           };
 
           const onExtractingStart = () => {
-            setPendingModUploads((prev) => prev.map((row) => {
-              if (row.id !== uploadId) return row;
-              return { ...row, phase: 'extracting', percent: 5 };
-            }));
+            setPendingModUploads((prev) =>
+              prev.map((row) => {
+                if (row.id !== uploadId) return row;
+                return { ...row, phase: 'extracting', percent: 5 };
+              }),
+            );
           };
 
-          const job = await api.modImport.upload(f, uploadOptions, onUploadProgress, onExtractingStart);
-          setPendingModUploads((prev) => prev.map((row) => {
-            if (row.id !== uploadId) return row;
-            return { ...row, phase: 'extracting', percent: 100 };
-          }));
+          const job = await api.modImport.upload(
+            f,
+            uploadOptions,
+            onUploadProgress,
+            onExtractingStart,
+          );
+          setPendingModUploads((prev) =>
+            prev.map((row) => {
+              if (row.id !== uploadId) return row;
+              return { ...row, phase: 'extracting', percent: 100 };
+            }),
+          );
           if (job) {
             // Mod imports must be started manually after language is selected.
             refreshAll();
@@ -307,13 +367,12 @@ export const ImportsPage = () => {
     }
   };
 
-  const pendingCount = allJobs.filter(u => ['pending', 'paused', 'failed'].includes(u.job.status)).length;
+  const pendingCount = allJobs.filter((u) =>
+    ['pending', 'paused', 'failed'].includes(u.job.status),
+  ).length;
 
   const runModExport = useCallback(
-    async (
-      modJob: ModImportJob,
-      type: 'strings' | 'esp' | 'ba2' | 'zip',
-    ) => {
+    async (modJob: ModImportJob, type: 'strings' | 'esp' | 'ba2' | 'zip') => {
       if (!modJob.mod_id) return;
       const busyKey = `${modJob.id}:${type}`;
       const appJobId = `export-${modJob.id}-${type}-${Date.now()}`;
@@ -331,7 +390,11 @@ export const ImportsPage = () => {
       setExportBusy(busyKey);
       try {
         if (type === 'strings') {
-          const result = await api.mods.exportStrings(modJob.mod_id, modJob.src_lang, modJob.tgt_lang);
+          const result = await api.mods.exportStrings(
+            modJob.mod_id,
+            modJob.src_lang,
+            modJob.tgt_lang,
+          );
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
           upsertAppJob({
             id: appJobId,
@@ -402,40 +465,44 @@ export const ImportsPage = () => {
   );
 
   /* ── Resolve preview jobs from current data ───────────────────────────── */
-  const eetPreviewJob = eetPreviewId != null ? (eetJobs ?? []).find(j => j.id === eetPreviewId) : null;
-  const csvPreviewJob = csvPreviewId != null ? (csvJobs ?? []).find(j => j.id === csvPreviewId) : null;
-  const modPreviewJob = modPreviewId != null ? (modJobs ?? []).find(j => j.id === modPreviewId) : null;
+  const eetPreviewJob =
+    eetPreviewId != null ? (eetJobs ?? []).find((j) => j.id === eetPreviewId) : null;
+  const csvPreviewJob =
+    csvPreviewId != null ? (csvJobs ?? []).find((j) => j.id === csvPreviewId) : null;
+  const modPreviewJob =
+    modPreviewId != null ? (modJobs ?? []).find((j) => j.id === modPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
   const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
   /** Persisted LLM jobs from backend ops — shown for history visibility across reloads. */
   const backendLlmJobs: OpsLlmJob[] = opsData?.llmJobs ?? [];
-  const hasNoVisibleJobs = allJobs.length === 0
-    && visibleNexusDownloads.length === 0
-    && visibleAppJobs.length === 0
-    && backendLlmJobs.length === 0
-    && pendingModUploads.length === 0;
+  const hasNoVisibleJobs =
+    allJobs.length === 0 &&
+    visibleNexusDownloads.length === 0 &&
+    visibleAppJobs.length === 0 &&
+    backendLlmJobs.length === 0 &&
+    pendingModUploads.length === 0;
 
   /** Confirms MOD deletion from custom modal and then refreshes import lists. */
-  const confirmDeleteMod = useCallback(async (deleteData: ModImportDeleteDataMode) => {
-    if (!deleteModalJob) return;
-    setDeletingModJobId(deleteModalJob.id);
-    try {
-      await api.modImport.remove(deleteModalJob.id, deleteData);
-      setDeleteModalJob(null);
-      refreshAll();
-    } catch (err) {
-      window.alert(String(err));
-    } finally {
-      setDeletingModJobId(null);
-    }
-  }, [deleteModalJob, refreshAll]);
+  const confirmDeleteMod = useCallback(
+    async (deleteData: ModImportDeleteDataMode) => {
+      if (!deleteModalJob) return;
+      setDeletingModJobId(deleteModalJob.id);
+      try {
+        await api.modImport.remove(deleteModalJob.id, deleteData);
+        setDeleteModalJob(null);
+        refreshAll();
+      } catch (err) {
+        window.alert(String(err));
+      } finally {
+        setDeletingModJobId(null);
+      }
+    },
+    [deleteModalJob, refreshAll],
+  );
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title={t('imports.title')}
-        description={t('imports.pageDescription')}
-      />
+      <PageHeader title={t('imports.title')} description={t('imports.pageDescription')} />
 
       {/* Unified upload bar */}
       <div className={s.uploadBar}>
@@ -456,10 +523,7 @@ export const ImportsPage = () => {
           <h2 className={s.emptyTitle}>{t('imports.emptyTitle')}</h2>
           <p className={s.emptyText}>{t('imports.noFiles')}</p>
           <div className={s.emptyActions}>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className={s.btn}
-            >
+            <button onClick={() => fileRef.current?.click()} className={s.btn}>
               {t('imports.emptyUploadAction')}
             </button>
             <Link to={`/games/${gameId}/nexus`} className={s.emptyLinkBtn}>
@@ -476,8 +540,14 @@ export const ImportsPage = () => {
                 <div>
                   <span className={s.fileName}>{u.fileName}</span>
                   <span className={s.meta}>
-                    <span className={u.phase === 'uploading' ? s.phaseChipUploading : s.phaseChipExtracting}>
-                      {u.phase === 'uploading' ? t('common.uploading') : t('importStatus.extracting')}
+                    <span
+                      className={
+                        u.phase === 'uploading' ? s.phaseChipUploading : s.phaseChipExtracting
+                      }
+                    >
+                      {u.phase === 'uploading'
+                        ? t('common.uploading')
+                        : t('importStatus.extracting')}
                     </span>
                   </span>
                 </div>
@@ -486,13 +556,13 @@ export const ImportsPage = () => {
                 <div className={s.progressWrap}>
                   <div className={s.progressTrack}>
                     <div
-                      className={u.phase === 'uploading' ? s.progressFill : s.progressFillExtracting}
+                      className={
+                        u.phase === 'uploading' ? s.progressFill : s.progressFillExtracting
+                      }
                       style={{ width: `${u.percent}%` }}
                     />
                   </div>
-                  <span className={s.progressLabel}>
-                    {`${u.percent}%`}
-                  </span>
+                  <span className={s.progressLabel}>{`${u.percent}%`}</span>
                 </div>
               </div>
             </div>
@@ -502,12 +572,16 @@ export const ImportsPage = () => {
             <NexusDownloadRow key={d.id} job={d} />
           ))}
           {visibleAppJobs.map((job) => {
-            const pct = job.progress == null ? null : Math.max(0, Math.min(100, Math.round(job.progress)));
+            const pct =
+              job.progress == null ? null : Math.max(0, Math.min(100, Math.round(job.progress)));
             const kindBadge = job.kind === 'llm' ? 'LLM' : 'EXPORT';
             return (
               <div key={job.id} className={s.row}>
                 <div className={s.rowLeft}>
-                  <span className={s.typeBadge} style={{ background: job.kind === 'llm' ? '#1b6b2d' : '#1565c0' }}>
+                  <span
+                    className={s.typeBadge}
+                    style={{ background: job.kind === 'llm' ? '#1b6b2d' : '#1565c0' }}
+                  >
                     {kindBadge}
                   </span>
                   <div>
@@ -520,12 +594,21 @@ export const ImportsPage = () => {
                     <span className={s.progressLabel}>—</span>
                   ) : (
                     <div className={s.progressWrap}>
-                      <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
+                      <div className={s.progressTrack}>
+                        <div className={s.progressFill} style={{ width: `${pct}%` }} />
+                      </div>
                       <span className={s.progressLabel}>{pct}%</span>
                     </div>
                   )}
                   <div className={s.actions}>
-                    <span className={s.badge} style={{ background: statusColorBase(job.status === 'running' ? 'in_progress' : 'failed') }}>
+                    <span
+                      className={s.badge}
+                      style={{
+                        background: statusColorBase(
+                          job.status === 'running' ? 'in_progress' : 'failed',
+                        ),
+                      }}
+                    >
                       {t(`importStatus.${job.status}`, job.status)}
                     </span>
                   </div>
@@ -534,12 +617,17 @@ export const ImportsPage = () => {
             );
           })}
           {backendLlmJobs.map((job) => {
-            const label = job.mod_name ? `LLM batch · ${job.mod_name}` : `LLM batch · mod ${job.mod_id ?? '?'}`;
-            const pct = job.string_count > 0 ? Math.round((job.done_count / job.string_count) * 100) : null;
+            const label = job.mod_name
+              ? `LLM batch · ${job.mod_name}`
+              : `LLM batch · mod ${job.mod_id ?? '?'}`;
+            const pct =
+              job.string_count > 0 ? Math.round((job.done_count / job.string_count) * 100) : null;
             return (
               <div key={`llm-${job.id}`} className={s.row}>
                 <div className={s.rowLeft}>
-                  <span className={s.typeBadge} style={{ background: '#1b6b2d' }}>LLM</span>
+                  <span className={s.typeBadge} style={{ background: '#1b6b2d' }}>
+                    LLM
+                  </span>
                   <div>
                     <span className={s.fileName}>{label}</span>
                     <span className={s.meta}>{new Date(job.updated_at).toLocaleString()}</span>
@@ -550,12 +638,27 @@ export const ImportsPage = () => {
                     <span className={s.progressLabel}>—</span>
                   ) : (
                     <div className={s.progressWrap}>
-                      <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
-                      <span className={s.progressLabel}>{job.done_count}/{job.string_count} ({pct}%)</span>
+                      <div className={s.progressTrack}>
+                        <div className={s.progressFill} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className={s.progressLabel}>
+                        {job.done_count}/{job.string_count} ({pct}%)
+                      </span>
                     </div>
                   )}
                   <div className={s.actions}>
-                    <span className={s.badge} style={{ background: statusColorBase(job.status === 'running' ? 'in_progress' : job.status === 'completed' ? 'completed' : 'failed') }}>
+                    <span
+                      className={s.badge}
+                      style={{
+                        background: statusColorBase(
+                          job.status === 'running'
+                            ? 'in_progress'
+                            : job.status === 'completed'
+                              ? 'completed'
+                              : 'failed',
+                        ),
+                      }}
+                    >
                       {t(`importStatus.${job.status}`, job.status)}
                     </span>
                   </div>
@@ -563,43 +666,54 @@ export const ImportsPage = () => {
               </div>
             );
           })}
-          {allJobs.map(u => {
+          {allJobs.map((u) => {
             const key = `${u.kind}:${u.job.id}`;
             const live = liveProgress[key];
             const isRunning = u.job.running || !!live;
             const modJob = u.kind === 'mod' ? (u.job as ModImportJob) : null;
             const canExport = !!modJob?.mod_id && modJob.status === 'completed';
-            const isModBusy = !!modJob && exportBusy != null && exportBusy.startsWith(`${modJob.id}:`);
-            const exportActions = canExport ? [
-              {
-                key: 'strings' as const,
-                icon: '🧾',
-                title: t('modEditor.exportStringsTitle'),
-                onClick: () => { void runModExport(modJob!, 'strings'); },
-                disabled: isModBusy,
-              },
-              {
-                key: 'esp' as const,
-                icon: '🧩',
-                title: t('modEditor.exportEspTitle'),
-                onClick: () => { void runModExport(modJob!, 'esp'); },
-                disabled: isModBusy,
-              },
-              {
-                key: 'ba2' as const,
-                icon: '📦',
-                title: t('modEditor.exportBa2Title'),
-                onClick: () => { void runModExport(modJob!, 'ba2'); },
-                disabled: isModBusy,
-              },
-              {
-                key: 'zip' as const,
-                icon: '⬇',
-                title: t('modEditor.exportZipTitle'),
-                onClick: () => { void runModExport(modJob!, 'zip'); },
-                disabled: isModBusy,
-              },
-            ] : [];
+            const isModBusy =
+              !!modJob && exportBusy != null && exportBusy.startsWith(`${modJob.id}:`);
+            const exportActions = canExport
+              ? [
+                  {
+                    key: 'strings' as const,
+                    icon: '🧾',
+                    title: t('modEditor.exportStringsTitle'),
+                    onClick: () => {
+                      void runModExport(modJob!, 'strings');
+                    },
+                    disabled: isModBusy,
+                  },
+                  {
+                    key: 'esp' as const,
+                    icon: '🧩',
+                    title: t('modEditor.exportEspTitle'),
+                    onClick: () => {
+                      void runModExport(modJob!, 'esp');
+                    },
+                    disabled: isModBusy,
+                  },
+                  {
+                    key: 'ba2' as const,
+                    icon: '📦',
+                    title: t('modEditor.exportBa2Title'),
+                    onClick: () => {
+                      void runModExport(modJob!, 'ba2');
+                    },
+                    disabled: isModBusy,
+                  },
+                  {
+                    key: 'zip' as const,
+                    icon: '⬇',
+                    title: t('modEditor.exportZipTitle'),
+                    onClick: () => {
+                      void runModExport(modJob!, 'zip');
+                    },
+                    disabled: isModBusy,
+                  },
+                ]
+              : [];
 
             return (
               <UnifiedJobRow
@@ -670,8 +784,8 @@ export const ImportsPage = () => {
           onConfirm={async (payload) => {
             await api.modImport.updateLanguages(
               modPreviewJob.id,
-              payload.importLang,
-              payload.importLang,
+              payload.importAllLocalizations ? 'en' : payload.importLang,
+              modPreviewJob.tgt_lang,
             );
             refreshAll();
             setModPreviewId(null);
@@ -725,7 +839,9 @@ export const ImportsPage = () => {
           fileName={deleteModalJob.file_name}
           deleting={deletingModJobId === deleteModalJob.id}
           onClose={() => setDeleteModalJob(null)}
-          onConfirm={(deleteData) => { void confirmDeleteMod(deleteData); }}
+          onConfirm={(deleteData) => {
+            void confirmDeleteMod(deleteData);
+          }}
         />
       )}
 
@@ -746,4 +862,3 @@ export const ImportsPage = () => {
     </div>
   );
 };
-

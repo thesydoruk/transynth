@@ -30,6 +30,12 @@ export const CONFIG = {
 
   // Database
   databaseUrl: resolveDatabaseUrl(),
+  /** Max connections in the pg Pool (default 25). */
+  dbPoolMax: parseInt(process.env.DB_POOL_MAX || '25', 10),
+  /** Statement timeout in ms; 0 disables (default 0 — long imports). */
+  dbStatementTimeoutMs: parseInt(process.env.DB_STATEMENT_TIMEOUT_MS || '0', 10),
+  /** Idle-in-transaction timeout in ms; 0 disables (default 1 h). */
+  dbIdleInTransactionTimeoutMs: parseInt(process.env.DB_IDLE_IN_TX_TIMEOUT_MS || '3600000', 10),
 
   // Maximum multipart upload size in bytes (Fastify multipart fileSize limit).
   uploadMaxFileSizeBytes: parseUploadMaxFileSizeBytes(process.env.UPLOAD_MAX_FILE_SIZE_MB),

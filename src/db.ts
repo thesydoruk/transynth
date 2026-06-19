@@ -12,11 +12,20 @@ let _pool: pg.Pool | null = null;
 
 export const openDb = (): pg.Pool => {
   if (!_pool) {
-    _pool = new Pool({ connectionString: CONFIG.databaseUrl });
-    log.info('DB: connection pool created');
+    _pool = new Pool({
+      connectionString: CONFIG.databaseUrl,
+      max: CONFIG.dbPoolMax,
+      ...(CONFIG.dbStatementTimeoutMs > 0
+        ? { statement_timeout: CONFIG.dbStatementTimeoutMs }
+        : {}),
+      ...(CONFIG.dbIdleInTransactionTimeoutMs > 0
+        ? { idle_in_transaction_session_timeout: CONFIG.dbIdleInTransactionTimeoutMs }
+        : {}),
+    });
+    log.info(`DB: connection pool created (max=${CONFIG.dbPoolMax})`);
   }
   return _pool;
-}
+};
 
 export const closeDb = async (): Promise<void> => {
   if (_pool) {
@@ -24,17 +33,20 @@ export const closeDb = async (): Promise<void> => {
     _pool = null;
     log.info('DB: connection pool closed');
   }
-}
+};
 
 export const runSchema = async (db: Tx, schemaSql: string): Promise<void> => {
   await db.query(schemaSql);
-}
+};
 
 /**
  * Execute a function inside a transaction.
  * Acquires a client, runs BEGIN … COMMIT, releases on completion.
  */
-export const withTransaction = async <T>(pool: pg.Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> => {
+export const withTransaction = async <T>(
+  pool: pg.Pool,
+  fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -50,7 +62,7 @@ export const withTransaction = async <T>(pool: pg.Pool, fn: (client: pg.PoolClie
   } finally {
     client.release();
   }
-}
+};
 
 export const upsertMod = async (
   db: Tx,
@@ -67,11 +79,17 @@ export const upsertMod = async (
     [name, absPath, versionHash, game],
   );
   return rows[0].id;
-}
+};
 
 export const upsertRecord = async (
-  db: Tx, modId: number, signature: string, path: string, pathSimplified: string,
-  edid: string | null, hashNorm: string | null, formidHex: string | null,
+  db: Tx,
+  modId: number,
+  signature: string,
+  path: string,
+  pathSimplified: string,
+  edid: string | null,
+  hashNorm: string | null,
+  formidHex: string | null,
 ): Promise<number> => {
   const fid = formidHex ?? '';
   const { rows } = await db.query(
@@ -85,7 +103,7 @@ export const upsertRecord = async (
     [modId, signature, path, pathSimplified, edid, hashNorm, fid],
   );
   return rows[0].id;
-}
+};
 
 export const insertString = async (
   db: Tx,
@@ -101,10 +119,19 @@ export const insertString = async (
   const { rows } = await db.query(
     `INSERT INTO strings(record_id, lang, lstring_id, text_raw, text_norm, source_kind, text_norm_nopunct, context) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
-    [recordId, lang, lstringId ?? null, textRaw, textNorm, sourceKind, textNormNopunct ?? null, context ?? null],
+    [
+      recordId,
+      lang,
+      lstringId ?? null,
+      textRaw,
+      textNorm,
+      sourceKind,
+      textNormNopunct ?? null,
+      context ?? null,
+    ],
   );
   return rows[0].id;
-}
+};
 
 /**
  * Upsert a dialog topic (DIAL record) for a specific mod and return its id.
@@ -129,7 +156,7 @@ export const upsertDialogTopic = async (
     [modId, formidHex, edid ?? null],
   );
   return rows[0].id;
-}
+};
 
 /**
  * Upsert a dialog node (INFO record) under a topic.
@@ -172,7 +199,7 @@ export const upsertDialogNode = async (
     ],
   );
   return rows[0].id;
-}
+};
 
 /**
  * Upsert a directed edge between two dialog INFO nodes.
@@ -201,7 +228,7 @@ export const upsertDialogEdge = async (
     [topicId, fromInfoFormidHex, toInfoFormidHex, edgeKind, confidence],
   );
   return rows[0].id;
-}
+};
 
 /**
  * Insert or update a dialog scene record.
@@ -251,8 +278,14 @@ export const upsertDialogScenePhase = async (
 };
 
 export const addTranslation = async (
-  db: Tx, srcStringId: number, targetLang: string, text: string,
-  status: string, confidence: number | null, provenance: string, model?: string,
+  db: Tx,
+  srcStringId: number,
+  targetLang: string,
+  text: string,
+  status: string,
+  confidence: number | null,
+  provenance: string,
+  model?: string,
 ): Promise<number> => {
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, model)
@@ -268,10 +301,12 @@ export const addTranslation = async (
     [srcStringId, targetLang, text],
   );
   return existing[0]?.id ?? 0;
-}
+};
 
 export const bestTranslation = async (
-  db: Tx, srcStringId: number, targetLang: string,
+  db: Tx,
+  srcStringId: number,
+  targetLang: string,
 ): Promise<{ id: number; text: string; status: string } | undefined> => {
   const { rows } = await db.query(
     `SELECT id, text, status FROM translations
@@ -288,10 +323,13 @@ export const bestTranslation = async (
     [srcStringId, targetLang],
   );
   return rows[0];
-}
+};
 
 export const findStringId = async (
-  db: Tx, formidHex: string, path: string, lang: string,
+  db: Tx,
+  formidHex: string,
+  path: string,
+  lang: string,
 ): Promise<number | undefined> => {
   if (!formidHex) return undefined;
   const { rows } = await db.query(
@@ -301,4 +339,4 @@ export const findStringId = async (
     [formidHex, path, lang],
   );
   return rows[0]?.id;
-}
+};
