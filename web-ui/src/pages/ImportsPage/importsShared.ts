@@ -17,27 +17,38 @@ export const LANGUAGES = getContentLanguageOptions();
 /** Background color for a job status badge. */
 export const statusColorBase = (status: string): string => {
   switch (status) {
-    case 'pending': return '#555';
-    case 'extracting': return '#6a1b9a';
-    case 'in_progress': return '#1565c0';
-    case 'paused': return '#e65100';
-    case 'failed': return '#b71c1c';
-    case 'completed': return '#1b6b2d';
-    default: return '#555';
+    case 'pending':
+      return '#555';
+    case 'extracting':
+      return '#6a1b9a';
+    case 'in_progress':
+      return '#1565c0';
+    case 'paused':
+      return '#e65100';
+    case 'failed':
+      return '#b71c1c';
+    case 'completed':
+      return '#1b6b2d';
+    default:
+      return '#555';
   }
 };
 
 /** Color for the type badge in the unified list. */
 export const kindColor = (kind: 'eet' | 'csv' | 'mod'): string => {
   switch (kind) {
-    case 'eet': return '#6a1b9a';
-    case 'csv': return '#1565c0';
-    case 'mod': return '#e65100';
+    case 'eet':
+      return '#6a1b9a';
+    case 'csv':
+      return '#1565c0';
+    case 'mod':
+      return '#e65100';
   }
 };
 
 /** Translated status label for a job. */
-export const statusLabel = (status: string, t: (key: string) => string): string => t(`importStatus.${status}`) || status;
+export const statusLabel = (status: string, t: (key: string) => string): string =>
+  t(`importStatus.${status}`) || status;
 
 export interface UnifiedJobRowProps {
   kind: 'eet' | 'csv' | 'mod';
@@ -51,6 +62,7 @@ export interface UnifiedJobRowProps {
     disabled?: boolean;
     onClick: () => void;
   }>;
+  onChangeLocale?: () => void;
   onStart: () => void;
   onPause: () => void;
   onCancel: () => void;

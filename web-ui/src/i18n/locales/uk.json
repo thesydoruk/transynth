@@ -461,7 +461,15 @@
     "importAllLocalizationsAs": "Імпортувати всі {{locales}} як переклади ({{count}} рядків)",
     "applyToExisting": "Після імпорту застосувати текст до існуючого мода",
     "baseMod": "Базовий мод",
-    "noEligibleMods": "Немає доступних модів у цій грі"
+    "noEligibleMods": "Немає доступних модів у цій грі",
+    "changeLocaleAction": "Змінити локаль",
+    "changeLocaleTitle": "Зміна локалі імпорту",
+    "changeLocaleCurrent": "Поточна локаль: {{lang}}",
+    "changeLocaleNew": "Нова локаль",
+    "changeLocaleWarning": "Оновлюються лише мітки мови в базі даних. Текст рядків не змінюється — файли мода повторно не читаються.",
+    "changeLocaleAffected": "Буде перепозначено {{count}} source-рядків.",
+    "changeLocaleConfirm": "Застосувати зміну",
+    "changeLocaleMultipleStored": "У базі знайдено кілька мов ({{langs}}). Оновляться лише рядки, що відповідають поточній локалі імпорту."
   },
   "login": {
     "signInTitle": "Увійти для продовження",

@@ -870,6 +870,25 @@ export type ModImportJob = {
 
 export type ModImportDeleteDataMode = 'job' | 'rows' | 'mod';
 
+export type ModImportLocaleInfo = {
+  jobId: number;
+  modId: number | null;
+  currentSrcLang: string;
+  storedLangs: string[];
+  availableLocales: string[];
+  isLocalized: boolean;
+  stringCount: number;
+};
+
+export type ChangeModImportLocaleResult = {
+  modId: number;
+  jobId: number;
+  oldLang: string;
+  newLang: string;
+  stringsUpdated: number;
+  translationsUpdated: number;
+};
+
 export type ModProgressEvent = { type: 'progress'; imported: number; total: number; jobId: number };
 export type UploadProgressEvent = { loaded: number; total: number; percent: number };
 
@@ -1505,6 +1524,14 @@ export const api = {
       req<ModImportJob>(`/api/mod-import/${jobId}`, {
         method: 'PATCH',
         body: JSON.stringify({ srcLang, tgtLang }),
+      }),
+
+    localeInfo: (jobId: number) => req<ModImportLocaleInfo>(`/api/mod-import/${jobId}/locale-info`),
+
+    changeLocale: (jobId: number, srcLang: string) =>
+      req<ChangeModImportLocaleResult>(`/api/mod-import/${jobId}/locale`, {
+        method: 'PATCH',
+        body: JSON.stringify({ srcLang }),
       }),
 
     preview: (

@@ -25,8 +25,12 @@ import {
   restartModImportJob,
   previewModRecords,
   extractModImportApplyRows,
+  getModImportLocaleInfo,
+  changeModImportLocaleInDb,
   isArchive,
   isPlugin,
+  validateModImportLocaleSelection,
+  isImportAllLocalesRequest,
 } from '../modImportService';
 import { CONFIG } from '../../config';
 import { applyImportedRowsAsTranslations } from '../queries';
@@ -225,6 +229,48 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
         await updateModJobLanguages(db, jobId, srcLang, tgtLang);
       }
       return await getModImportJob(db, jobId);
+    },
+  );
+
+  // ── Locale metadata for completed imports ─────────────────────────────────
+  app.get<{ Params: { id: string } }>('/api/mod-import/:id/locale-info', async (req, reply) => {
+    const jobId = Number(req.params.id);
+    if (!Number.isInteger(jobId) || jobId < 1) {
+      return reply.status(400).send({ error: 'Invalid import job id' });
+    }
+
+    try {
+      return await getModImportLocaleInfo(db, jobId);
+    } catch (err: unknown) {
+      return reply.status(404).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ── Change import locale in database (no re-import) ─────────────────────────
+  app.patch<{ Params: { id: string }; Body: { srcLang: string } }>(
+    '/api/mod-import/:id/locale',
+    async (req, reply) => {
+      const jobId = Number(req.params.id);
+      if (!Number.isInteger(jobId) || jobId < 1) {
+        return reply.status(400).send({ error: 'Invalid import job id' });
+      }
+
+      const { srcLang } = req.body as { srcLang?: string };
+      if (!srcLang?.trim()) {
+        return reply.status(400).send({ error: 'srcLang is required' });
+      }
+
+      if (isModImportRunning(jobId)) {
+        return reply.status(409).send({ error: 'Cannot change locale while import is running' });
+      }
+
+      try {
+        return await changeModImportLocaleInDb(db, jobId, srcLang);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const status = message.includes('not found') ? 404 : 400;
+        return reply.status(status).send({ error: message });
+      }
     },
   );
 

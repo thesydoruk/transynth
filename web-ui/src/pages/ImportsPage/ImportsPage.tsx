@@ -34,6 +34,7 @@ import { CsvPreviewModal } from './CsvPreviewModal';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
+import { ChangeLocaleModal } from './ChangeLocaleModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
 import { ConfirmModal } from '../../components/ConfirmModal';
@@ -181,6 +182,7 @@ export const ImportsPage = () => {
   const [eetPreviewId, setEetPreviewId] = useState<number | null>(null);
   const [csvPreviewId, setCsvPreviewId] = useState<number | null>(null);
   const [modPreviewId, setModPreviewId] = useState<number | null>(null);
+  const [changeLocaleJob, setChangeLocaleJob] = useState<ModImportJob | null>(null);
 
   /* ── Reimport detection — shown after a mod import completes ──────────── */
   /** State for the reimport modal: newModId + list of previous versions */
@@ -723,6 +725,11 @@ export const ImportsPage = () => {
                 live={live}
                 isRunning={isRunning}
                 exportActions={exportActions}
+                onChangeLocale={
+                  modJob?.mod_id && modJob.status === 'completed'
+                    ? () => setChangeLocaleJob(modJob)
+                    : undefined
+                }
                 onStart={() => {
                   if (u.kind === 'eet') setEetPreviewId(u.job.id);
                   else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
@@ -857,6 +864,13 @@ export const ImportsPage = () => {
             p.then(refreshAll);
             setDeleteSimpleJob(null);
           }}
+        />
+      )}
+      {changeLocaleJob && (
+        <ChangeLocaleModal
+          job={changeLocaleJob}
+          gameId={gameId}
+          onClose={() => setChangeLocaleJob(null)}
         />
       )}
     </div>

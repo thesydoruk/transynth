@@ -460,7 +460,15 @@
     "importAllLocalizationsAs": "Import all {{locales}} as translations ({{count}} strings)",
     "applyToExisting": "Apply imported text to existing mod after import",
     "baseMod": "Base mod",
-    "noEligibleMods": "No eligible mods in this game"
+    "noEligibleMods": "No eligible mods in this game",
+    "changeLocaleAction": "Change locale",
+    "changeLocaleTitle": "Change import locale",
+    "changeLocaleCurrent": "Current locale: {{lang}}",
+    "changeLocaleNew": "New locale",
+    "changeLocaleWarning": "This updates language tags in the database only. The imported text stays the same — it is not re-read from mod files.",
+    "changeLocaleAffected": "{{count}} source strings will be relabeled.",
+    "changeLocaleConfirm": "Apply locale change",
+    "changeLocaleMultipleStored": "Multiple languages found in the database ({{langs}}). Only rows matching the current import locale will be updated."
   },
   "login": {
     "signInTitle": "Sign in to continue",

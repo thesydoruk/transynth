@@ -1,0 +1,1 @@
+export { ChangeLocaleModal } from './ChangeLocaleModal';
