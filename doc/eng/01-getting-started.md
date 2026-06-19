@@ -22,7 +22,7 @@ Get Transynth (TSN) running on your machine for the first time.
 - **Recommended path:** Docker Desktop with Docker Compose.
 - **Local runtime:** Node.js 20+ is the practical minimum; Node.js 24 matches the Docker image used by this project.
 - **Package manager:** npm (the repository ships with `package.json` / `package-lock.json`; pnpm is not required).
-- **Database:** PostgreSQL 15+ for a local install. The Docker stack uses `postgres:17-alpine`.
+- **Database:** PostgreSQL 15+ for a local install. The Docker stack uses `postgres:18-alpine`.
 - **Operating systems:** Windows, macOS, and Linux are all suitable for the web application. Windows is the most practical host if you also work with Fallout modding tools outside this pipeline.
 
 ## Supported Games

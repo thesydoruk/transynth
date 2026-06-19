@@ -1,11 +1,12 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
 
     restart: unless-stopped
 
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      # PG 18+ stores cluster data under /var/lib/postgresql/<major>/docker
+      - ./data/postgres:/var/lib/postgresql
 
     env_file:
       - .env
