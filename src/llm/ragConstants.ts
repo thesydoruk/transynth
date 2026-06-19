@@ -1,5 +1,5 @@
 /** Embedding dimensions stored in translation_examples (pgvector HNSW index). */
-export const RAG_EMBED_DIMENSIONS = 1536;
+export const RAG_EMBED_DIMENSIONS = 1024;
 
 /** Translation statuses eligible for the RAG index. */
 export const RAG_ELIGIBLE_STATUSES = ['reviewed', 'human'] as const;

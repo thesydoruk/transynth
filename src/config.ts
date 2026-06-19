@@ -21,7 +21,10 @@ export const CONFIG = {
   vllmBaseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
   vllmApiKey: process.env.VLLM_API_KEY || '',
   vllmModel: process.env.VLLM_MODEL || '',
-  vllmEmbedModel: process.env.VLLM_EMBED_MODEL || '',
+  /** Embeddings may run on a separate OpenAI-compatible server (defaults to VLLM_BASE_URL). */
+  vllmEmbedBaseUrl:
+    process.env.VLLM_EMBED_BASE_URL || process.env.VLLM_BASE_URL || 'http://localhost:8000',
+  vllmEmbedModel: process.env.VLLM_EMBED_MODEL || 'Snowflake/snowflake-arctic-embed-l-v2.0',
 
   // OpenAI
   openaiApiKey: process.env.OPENAI_API_KEY || '',

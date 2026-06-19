@@ -429,6 +429,25 @@ ON CONFLICT(key) DO NOTHING;
 -- ── Translation RAG index (pgvector) ────────────────────────────────────────
 -- Stores embeddings of reviewed/human translations for few-shot LLM context.
 -- Indexed rows are synced on translation save/status change (see ragService.ts).
+-- Drop legacy 1536-dim table when upgrading to Arctic Embed L v2.0 (1024-dim).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = 'translation_examples'
+      AND n.nspname = 'public'
+      AND a.attname = 'embedding'
+      AND NOT a.attisdropped
+      AND a.atttypmod = 1536
+  ) THEN
+    DROP INDEX IF EXISTS idx_translation_examples_hnsw;
+    DROP TABLE translation_examples;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS translation_examples (
   translation_id   INTEGER PRIMARY KEY REFERENCES translations(id) ON DELETE CASCADE,
   src_string_id    INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
@@ -440,7 +459,7 @@ CREATE TABLE IF NOT EXISTS translation_examples (
   path             TEXT,
   game             TEXT,
   embed_model      TEXT NOT NULL,
-  embedding        vector(1536) NOT NULL,
+  embedding        vector(1024) NOT NULL,
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );

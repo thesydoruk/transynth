@@ -33,7 +33,7 @@ export interface ChatOptions {
 }
 
 export interface EmbedOptions {
-  /** Matryoshka dimensions for OpenAI embedding-3 models (e.g. 1536). */
+  /** Matryoshka dimensions for embedding models that support truncation (e.g. 1024). */
   dimensions?: number;
 }
 
