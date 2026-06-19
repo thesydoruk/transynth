@@ -1,93 +1,73 @@
+# Production stack: PostgreSQL (docker-compose.db.yml) + web API/SPA.
+#
+#   docker compose up -d --build
+#   docker compose run --rm web npm run db:init
+#   docker compose --profile tools run --rm cli npm run translate -- …
+#
+# Put TLS/reverse proxy in front of WEB_PORT (default 3000). Set strong credentials in .env.
+
+include:
+  - docker-compose.db.yml
+
 services:
-  # PostgreSQL
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-localizer}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localizer}
-      POSTGRES_DB: ${POSTGRES_DB:-localizer}
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-localizer}"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  # One-shot CLI runner — pass command as: docker compose run --rm cli npm run translate -- <args>
-  cli:
-    build: .
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
-    depends_on:
-      db:
-        condition: service_healthy
-    network_mode: host   # reaches Ollama on the host at localhost:11434
-    entrypoint: ["node", "--import", "tsx/esm"]
-
-  # Interactive dev shell with live source mount
-  dev:
-    build: .
-    volumes:
-      - .:/app
-      - /app/node_modules       # keep container node_modules
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
-    depends_on:
-      db:
-        condition: service_healthy
-    network_mode: host
-    stdin_open: true
-    tty: true
-    entrypoint: ["bash"]
-
-  # Web UI server — serves Fastify API + built React SPA on port 3000
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
       PORT: "3000"
-      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      MULTI_USER: ${MULTI_USER:-true}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     volumes:
-      - ./logs:/app/logs            # persist logs
-      - ./uploads:/app/uploads      # persist uploads (eet, csv, mod)
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     extra_hosts:
-      - "host.docker.internal:host-gateway"  # reaches Ollama on the host
-    restart: unless-stopped
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-2g}
 
-  # Optional: run Ollama inside Docker (GPU passthrough — Linux only)
-  # Uncomment if you want Ollama containerized alongside the CLI.
-  #
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   volumes:
-  #     - ollama_models:/root/.ollama
-  #   ports:
-  #     - "11434:11434"
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: all
-  #             capabilities: [gpu]
-
-volumes:
-  pgdata:
-  # ollama_models:
+  # One-shot jobs (translate, scan:mods, …). Not started by `docker compose up`.
+  cli:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["node", "--import", "tsx/esm"]
