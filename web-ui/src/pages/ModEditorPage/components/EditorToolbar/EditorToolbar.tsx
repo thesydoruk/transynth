@@ -55,6 +55,7 @@ export interface EditorToolbarProps {
   onQaOnlyToggle: () => void;
   onTmApply: () => void;
   onSearchReplace: () => void;
+  onApplyTranslationFromMod: () => void;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onBulkReview: (status: 'reviewed' | 'rejected') => void;
@@ -97,6 +98,7 @@ export const EditorToolbar = ({
   onQaOnlyToggle,
   onTmApply,
   onSearchReplace,
+  onApplyTranslationFromMod,
   onShortcuts,
   onBatchTranslate,
   onBulkReview,
@@ -113,24 +115,53 @@ export const EditorToolbar = ({
       {/* Language selectors */}
       <label className={styles.langLabel}>
         {t('modEditor.source')}
-        <select value={srcLang} onChange={(e) => onSrcLangChange(e.target.value)} className={styles.langSelect}>
-          {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+        <select
+          value={srcLang}
+          onChange={(e) => onSrcLangChange(e.target.value)}
+          className={styles.langSelect}
+        >
+          {availLangs.map((l) => (
+            <option key={l} value={l}>
+              {l.toUpperCase()}
+            </option>
+          ))}
         </select>
       </label>
       <label className={styles.langLabel}>
         {t('modEditor.target')}
-        <select value={targetLang} onChange={(e) => onTargetLangChange(e.target.value)} className={styles.langSelect}>
-          {availLangs.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+        <select
+          value={targetLang}
+          onChange={(e) => onTargetLangChange(e.target.value)}
+          className={styles.langSelect}
+        >
+          {availLangs.map((l) => (
+            <option key={l} value={l}>
+              {l.toUpperCase()}
+            </option>
+          ))}
         </select>
       </label>
 
       <div className={styles.sep} />
 
       {/* Status filter */}
-      <select value={status} onChange={(e) => onStatusChange(e.target.value)} className={styles.filterSelect}>
-        {statusOpts.map((o) => <option key={o} value={o}>{o === 'all' ? t('modEditor.allStatuses') : o}</option>)}
+      <select
+        value={status}
+        onChange={(e) => onStatusChange(e.target.value)}
+        className={styles.filterSelect}
+      >
+        {statusOpts.map((o) => (
+          <option key={o} value={o}>
+            {o === 'all' ? t('modEditor.allStatuses') : o}
+          </option>
+        ))}
       </select>
-      <Button onClick={onQaOnlyToggle} variant={qaOnly ? 'primary' : 'secondary'} size="sm" title={t('modEditor.qaOnlyTitle')}>
+      <Button
+        onClick={onQaOnlyToggle}
+        variant={qaOnly ? 'primary' : 'secondary'}
+        size="sm"
+        title={t('modEditor.qaOnlyTitle')}
+      >
         {t('modEditor.qaOnly')}
       </Button>
       <Button
@@ -139,37 +170,79 @@ export const EditorToolbar = ({
         size="sm"
         title={t('modEditor.showDraftsTitle')}
       >
-        {stats?.draft ? t('modEditor.reviewModeCount', { count: stats.draft }) : t('modEditor.reviewMode')}
+        {stats?.draft
+          ? t('modEditor.reviewModeCount', { count: stats.draft })
+          : t('modEditor.reviewMode')}
       </Button>
 
       <div className={styles.sep} />
 
       {/* Actions */}
-      <Button onClick={onTmApply} disabled={tmApply.isPending} variant="secondary" size="sm" title={t('modEditor.autoFillTmTitle')}>
-        {tmApply.isPending ? t('modEditor.applyingTm') : tmApply.isSuccess ? t('modEditor.tmApplied', { count: tmApply.applied }) : t('modEditor.applyTm')}
+      <Button
+        onClick={onTmApply}
+        disabled={tmApply.isPending}
+        variant="secondary"
+        size="sm"
+        title={t('modEditor.autoFillTmTitle')}
+      >
+        {tmApply.isPending
+          ? t('modEditor.applyingTm')
+          : tmApply.isSuccess
+            ? t('modEditor.tmApplied', { count: tmApply.applied })
+            : t('modEditor.applyTm')}
       </Button>
-      <Button onClick={onSearchReplace} variant="secondary" size="sm">{t('modEditor.searchReplace')}</Button>
+      <Button onClick={onSearchReplace} variant="secondary" size="sm">
+        {t('modEditor.searchReplace')}
+      </Button>
+      <Button
+        onClick={onApplyTranslationFromMod}
+        variant="secondary"
+        size="sm"
+        title={t('modEditor.applyTranslationFromModTitle')}
+      >
+        {t('modEditor.applyTranslationFromMod')}
+      </Button>
       {hasInnrSignature && (
-        <Link to={`/games/${gameId}/mods/${modId}/innr`} className={styles.btnSec} title={t('modEditor.innrEditorTitle')}>
+        <Link
+          to={`/games/${gameId}/mods/${modId}/innr`}
+          className={styles.btnSec}
+          title={t('modEditor.innrEditorTitle')}
+        >
           {t('modEditor.innrEditor')}
         </Link>
       )}
       {hasBookSignature && (
-        <Link to={`/games/${gameId}/mods/${modId}?signature=BOOK`} className={styles.btnSec} title={t('modEditor.bookEditorTitle')}>
+        <Link
+          to={`/games/${gameId}/mods/${modId}?signature=BOOK`}
+          className={styles.btnSec}
+          title={t('modEditor.bookEditorTitle')}
+        >
           {t('modEditor.bookEditor')}
         </Link>
       )}
       {(untranslatedCount ?? 0) > 0 && (
-        <Button onClick={onNextUntranslated} variant="secondary" size="sm" title={t('modEditor.nextUntranslatedTitle')}>
+        <Button
+          onClick={onNextUntranslated}
+          variant="secondary"
+          size="sm"
+          title={t('modEditor.nextUntranslatedTitle')}
+        >
           {t('modEditor.nextUntranslated', { count: untranslatedCount })}
         </Button>
       )}
       {qaIssueRowCount > 0 && (
-        <Button onClick={onNextQaIssue} variant="secondary" size="sm" title={t('modEditor.nextQaIssueTitle')}>
+        <Button
+          onClick={onNextQaIssue}
+          variant="secondary"
+          size="sm"
+          title={t('modEditor.nextQaIssueTitle')}
+        >
           {t('modEditor.nextQaIssue', { count: qaIssueRowCount })}
         </Button>
       )}
-      <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>?</Button>
+      <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>
+        ?
+      </Button>
 
       <div className={styles.sep} />
 
@@ -185,10 +258,18 @@ export const EditorToolbar = ({
 
       {selectedCount > 0 && (
         <>
-          {translateProgress
-            ? <span className={styles.progressBadge}>{t('modEditor.translating', { done: translateProgress.done, total: translateProgress.total })}</span>
-            : <Button onClick={onBatchTranslate} variant="primary" size="sm">{t('modEditor.autoTranslate', { count: selectedCount })}</Button>
-          }
+          {translateProgress ? (
+            <span className={styles.progressBadge}>
+              {t('modEditor.translating', {
+                done: translateProgress.done,
+                total: translateProgress.total,
+              })}
+            </span>
+          ) : (
+            <Button onClick={onBatchTranslate} variant="primary" size="sm">
+              {t('modEditor.autoTranslate', { count: selectedCount })}
+            </Button>
+          )}
           <button
             onClick={() => onBulkReview('reviewed')}
             disabled={bulkReviewPending}

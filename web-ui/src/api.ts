@@ -984,11 +984,13 @@ export const api = {
       fromModId: number,
       importedLang: string,
       srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
     ) =>
       req<ApplyImportedResult>(
         `/api/mods/${targetModId}/apply-imported?fromModId=${fromModId}` +
           `&importedLang=${encodeURIComponent(importedLang)}` +
-          `&srcLang=${encodeURIComponent(srcLang)}`,
+          `&srcLang=${encodeURIComponent(srcLang)}` +
+          `&targetLang=${encodeURIComponent(targetLang)}`,
         { method: 'POST' },
       ),
     /** List older versions (same mod name, different file hash) for a given mod ID */
@@ -1507,31 +1509,11 @@ export const api = {
       }),
     restart: (jobId: number) =>
       req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
-    applyToMod: (
-      jobId: number,
-      targetModId: number,
-      importedLang: string,
-      srcLang = getSrcLang(),
-    ) =>
-      req<ApplyImportedResult>(
-        `/api/mod-import/${jobId}/apply-to-mod?targetModId=${targetModId}` +
-          `&importedLang=${encodeURIComponent(importedLang)}` +
-          `&srcLang=${encodeURIComponent(srcLang)}`,
-        { method: 'POST' },
-      ),
 
     updateLanguages: (jobId: number, srcLang: string, tgtLang: string) =>
       req<ModImportJob>(`/api/mod-import/${jobId}`, {
         method: 'PATCH',
         body: JSON.stringify({ srcLang, tgtLang }),
-      }),
-
-    localeInfo: (jobId: number) => req<ModImportLocaleInfo>(`/api/mod-import/${jobId}/locale-info`),
-
-    changeLocale: (jobId: number, srcLang: string) =>
-      req<ChangeModImportLocaleResult>(`/api/mod-import/${jobId}/locale`, {
-        method: 'PATCH',
-        body: JSON.stringify({ srcLang }),
       }),
 
     preview: (

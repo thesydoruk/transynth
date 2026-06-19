@@ -8,10 +8,16 @@ import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
 import { PaginationControls } from '../../components/PaginationControls';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
+import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
-import { StringGrid, type SortCol, type SortDir, type ColumnFilters } from './components/StringGrid';
+import {
+  StringGrid,
+  type SortCol,
+  type SortDir,
+  type ColumnFilters,
+} from './components/StringGrid';
 import { DetailPanel, type BottomTab } from './components/DetailPanel';
 import { ContextMenu } from './components/ContextMenu';
 import { ShortcutsOverlay } from './components/ShortcutsOverlay';
@@ -26,7 +32,17 @@ import {
 import styles from './ModEditorPage.module.scss';
 
 /** Available status-filter values for the toolbar dropdown. */
-const STATUS_OPTS = ['all', 'untranslated', 'draft', 'reviewed', 'rejected', 'fuzzy', 'auto', 'tm', 'human'];
+const STATUS_OPTS = [
+  'all',
+  'untranslated',
+  'draft',
+  'reviewed',
+  'rejected',
+  'fuzzy',
+  'auto',
+  'tm',
+  'human',
+];
 /** Valid page-size options for the editor string grid. */
 const PAGE_SIZE_OPTS = [25, 50, 100, 200] as const;
 
@@ -64,10 +80,15 @@ export const ModEditorPage = () => {
   // URL params take priority; localStorage provides the fallback when params are absent
   const initialStatus = searchParams.get('status');
   const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-  const safeInitialStatus = initialStatus && STATUS_OPTS.includes(initialStatus)
-    ? initialStatus
-    : (storedIntent?.status && STATUS_OPTS.includes(storedIntent.status) ? storedIntent.status : 'all');
-  const resolvedQaOnly = searchParams.has('qaOnly') ? initialQaOnly : (storedIntent?.qaOnly ?? false);
+  const safeInitialStatus =
+    initialStatus && STATUS_OPTS.includes(initialStatus)
+      ? initialStatus
+      : storedIntent?.status && STATUS_OPTS.includes(storedIntent.status)
+        ? storedIntent.status
+        : 'all';
+  const resolvedQaOnly = searchParams.has('qaOnly')
+    ? initialQaOnly
+    : (storedIntent?.qaOnly ?? false);
   const initialSignature = searchParams.get('signature') ?? storedIntent?.signature ?? '';
 
   // ── Filter / sort / pagination state ──
@@ -78,7 +99,12 @@ export const ModEditorPage = () => {
   const [signature, setSignature] = useState(initialSignature);
   const [page, setPage] = useState(1);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
-    grup: '', formid: '', edid: '', field: '', src: '', transl: '',
+    grup: '',
+    formid: '',
+    edid: '',
+    field: '',
+    src: '',
+    transl: '',
   });
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -108,13 +134,17 @@ export const ModEditorPage = () => {
   const translAreaRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Translate progress ──
-  const [translateProgress, setTranslateProgress] = useState<{ done: number; total: number } | null>(null);
+  const [translateProgress, setTranslateProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [translateError, setTranslateError] = useState<string | null>(null);
   const [translateDoneCount, setTranslateDoneCount] = useState<number | null>(null);
   const translateInFlight = useRef(false);
 
   // ── Modal / overlay visibility ──
   const [showSearchReplace, setShowSearchReplace] = useState(false);
+  const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -125,20 +155,52 @@ export const ModEditorPage = () => {
   useThemeObserver();
 
   const {
-    mod, strings, stats, sigs, suggestions, qaIssues, history,
-    isLoading, refetchStats, availLangs, sigCounts, totalPages, activeMaxLength,
+    mod,
+    strings,
+    stats,
+    sigs,
+    suggestions,
+    qaIssues,
+    history,
+    isLoading,
+    refetchStats,
+    availLangs,
+    sigCounts,
+    totalPages,
+    activeMaxLength,
   } = useEditorQueries({
-    modId, gameId, srcLang, targetLang, status, qaOnly, signature,
-    columnFilters, page, pageSize, sortCol, sortDir,
-    activeRow, activeTab,
+    modId,
+    gameId,
+    srcLang,
+    targetLang,
+    status,
+    qaOnly,
+    signature,
+    columnFilters,
+    page,
+    pageSize,
+    sortCol,
+    sortDir,
+    activeRow,
+    activeTab,
   });
 
   const {
-    saveMutation, approveMutation, rejectMutation, clearMutation,
-    tmApplyMut, bulkReviewMutation, saveIndicator,
+    saveMutation,
+    approveMutation,
+    rejectMutation,
+    clearMutation,
+    tmApplyMut,
+    bulkReviewMutation,
+    saveIndicator,
   } = useEditorMutations({
-    modId, srcLang, targetLang, refetchStats,
-    activeRowRef, setActiveRow, setSelected,
+    modId,
+    srcLang,
+    targetLang,
+    refetchStats,
+    activeRowRef,
+    setActiveRow,
+    setSelected,
   });
 
   const { flushAutosave, cancelAutosave } = useAutosave({
@@ -156,21 +218,28 @@ export const ModEditorPage = () => {
   }, []);
 
   /** Toggles sort direction for a column, or activates sorting on it. */
-  const handleSort = useCallback((col: SortCol) => {
-    if (sortCol === col) {
-      if (sortDir === 'asc') setSortDir('desc');
-      else { setSortCol(null); setSortDir('asc'); }
-    } else {
-      setSortCol(col);
-      setSortDir('asc');
-    }
-    setPage(1);
-  }, [sortCol, sortDir]);
+  const handleSort = useCallback(
+    (col: SortCol) => {
+      if (sortCol === col) {
+        if (sortDir === 'asc') setSortDir('desc');
+        else {
+          setSortCol(null);
+          setSortDir('asc');
+        }
+      } else {
+        setSortCol(col);
+        setSortDir('asc');
+      }
+      setPage(1);
+    },
+    [sortCol, sortDir],
+  );
 
   // ── Sync status / qaOnly to URL search params ──
   useEffect(() => {
     const currentStatus = searchParams.get('status') ?? 'all';
-    const currentQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
+    const currentQaOnly =
+      searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
     if (currentStatus === status && currentQaOnly === qaOnly) return;
     const next = new URLSearchParams(searchParams);
     if (status !== 'all') next.set('status', status);
@@ -182,12 +251,15 @@ export const ModEditorPage = () => {
 
   // ── Action helpers ──
 
-  const handleRowClick = useCallback((row: StringRow) => {
-    flushAutosave();
-    setActiveRow(row);
-    setDraftTranslation(row.translation ?? '');
-    setActiveTab('suggestions');
-  }, [flushAutosave]);
+  const handleRowClick = useCallback(
+    (row: StringRow) => {
+      flushAutosave();
+      setActiveRow(row);
+      setDraftTranslation(row.translation ?? '');
+      setActiveTab('suggestions');
+    },
+    [flushAutosave],
+  );
 
   const handleCopySource = () => {
     if (!activeRow) return;
@@ -197,7 +269,10 @@ export const ModEditorPage = () => {
   const handleSave = () => {
     cancelAutosave();
     if (!activeRow) return;
-    if (draftTranslation.trim() === '') { handleClear(activeRow); return; }
+    if (draftTranslation.trim() === '') {
+      handleClear(activeRow);
+      return;
+    }
     saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
   };
 
@@ -214,7 +289,13 @@ export const ModEditorPage = () => {
   const handleClear = (row: StringRow) => {
     clearMutation.mutate({ stringId: row.string_id });
     if (activeRow?.string_id === row.string_id) {
-      setActiveRow({ ...row, translation: null, translation_id: null, status: null, qa_issue_count: 0 });
+      setActiveRow({
+        ...row,
+        translation: null,
+        translation_id: null,
+        status: null,
+        qa_issue_count: 0,
+      });
       setDraftTranslation('');
     }
   };
@@ -255,18 +336,24 @@ export const ModEditorPage = () => {
     });
 
     try {
-      const results = await api.strings.batchTranslate([...selected], srcLang, targetLang, (e) => {
-        const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
-        upsertAppJob({
-          id: appJobId,
-          kind: 'llm',
-          label: appJobLabel,
-          status: 'running',
-          progress,
-          createdAt: startedAt,
-          updatedAt: Date.now(),
-        });
-      }, modId);
+      const results = await api.strings.batchTranslate(
+        [...selected],
+        srcLang,
+        targetLang,
+        (e) => {
+          const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
+          upsertAppJob({
+            id: appJobId,
+            kind: 'llm',
+            label: appJobLabel,
+            status: 'running',
+            progress,
+            createdAt: startedAt,
+            updatedAt: Date.now(),
+          });
+        },
+        modId,
+      );
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
       const doneCount = results.filter((r) => r.text !== undefined).length;
@@ -307,36 +394,45 @@ export const ModEditorPage = () => {
     setCtxMenu({ x: e.clientX, y: e.clientY, row });
   }, []);
 
-  const applyTextTransform = useCallback(async (row: StringRow, transform: (text: string) => string) => {
-    const targetRows = (selected.size > 1 && selected.has(row.string_id))
-      ? strings?.rows.filter((r) => selected.has(r.string_id) && r.translation) ?? []
-      : row.translation ? [row] : [];
-    for (const r of targetRows) {
-      const newText = transform(r.translation!);
-      if (newText !== r.translation) await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
-    }
-    qc.invalidateQueries({ queryKey: ['strings', modId] });
-    void refetchStats();
-  }, [selected, strings, targetLang, qc, modId, refetchStats]);
+  const applyTextTransform = useCallback(
+    async (row: StringRow, transform: (text: string) => string) => {
+      const targetRows =
+        selected.size > 1 && selected.has(row.string_id)
+          ? (strings?.rows.filter((r) => selected.has(r.string_id) && r.translation) ?? [])
+          : row.translation
+            ? [row]
+            : [];
+      for (const r of targetRows) {
+        const newText = transform(r.translation!);
+        if (newText !== r.translation)
+          await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
+      }
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    },
+    [selected, strings, targetLang, qc, modId, refetchStats],
+  );
 
-  const ctxCopySource = useCallback(async (row: StringRow) => {
-    const targetRows = (selected.size > 1 && selected.has(row.string_id))
-      ? strings?.rows.filter((r) => selected.has(r.string_id)) ?? []
-      : [row];
-    for (const r of targetRows) {
-      await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
-    }
-    qc.invalidateQueries({ queryKey: ['strings', modId] });
-    void refetchStats();
-  }, [selected, strings, targetLang, qc, modId, refetchStats]);
+  const ctxCopySource = useCallback(
+    async (row: StringRow) => {
+      const targetRows =
+        selected.size > 1 && selected.has(row.string_id)
+          ? (strings?.rows.filter((r) => selected.has(r.string_id)) ?? [])
+          : [row];
+      for (const r of targetRows) {
+        await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
+      }
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    },
+    [selected, strings, targetLang, qc, modId, refetchStats],
+  );
 
   /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
   const handleNextUntranslated = useCallback(() => {
     if (!strings?.rows.length) return;
     const rows = strings.rows;
-    const curIdx = activeRow
-      ? rows.findIndex((r) => r.string_id === activeRow.string_id)
-      : -1;
+    const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
     for (let i = 1; i <= rows.length; i++) {
       const idx = (curIdx + i) % rows.length;
       if (!rows[idx].translation) {
@@ -350,9 +446,7 @@ export const ModEditorPage = () => {
   const handleNextQaIssue = useCallback(() => {
     if (!strings?.rows.length) return;
     const rows = strings.rows;
-    const curIdx = activeRow
-      ? rows.findIndex((r) => r.string_id === activeRow.string_id)
-      : -1;
+    const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
     for (let i = 1; i <= rows.length; i++) {
       const idx = (curIdx + i) % rows.length;
       if (rows[idx].qa_issue_count > 0) {
@@ -366,12 +460,28 @@ export const ModEditorPage = () => {
 
   // ── Keyboard shortcuts ──
   useEditorKeyboard({
-    activeRow, selected, strings, ctxMenu, page,
-    pageSize, translAreaRef,
-    flushAutosave, handleSave, handleApprove, handleReject,
-    handleCopySource, handleClear, handleRowClick, handleNextQaIssue, toggleAll,
-    setActiveRow, setDraftTranslation, setSelected,
-    setCtxMenu, setPage, setShowShortcuts,
+    activeRow,
+    selected,
+    strings,
+    ctxMenu,
+    page,
+    pageSize,
+    translAreaRef,
+    flushAutosave,
+    handleSave,
+    handleApprove,
+    handleReject,
+    handleCopySource,
+    handleClear,
+    handleRowClick,
+    handleNextQaIssue,
+    toggleAll,
+    setActiveRow,
+    setDraftTranslation,
+    setSelected,
+    setCtxMenu,
+    setPage,
+    setShowShortcuts,
   });
 
   // ── Render ──
@@ -401,12 +511,25 @@ export const ModEditorPage = () => {
         qaIssueRowCount={qaIssueRowCount}
         untranslatedCount={stats?.untranslated}
         statusOpts={STATUS_OPTS}
-        onSrcLangChange={(l) => { setSrcLang(l); setPage(1); }}
-        onTargetLangChange={(l) => { setTargetLang(l); setPage(1); }}
-        onStatusChange={(s) => { setStatus(s); setPage(1); }}
-        onQaOnlyToggle={() => { setQaOnly((v) => !v); setPage(1); }}
+        onSrcLangChange={(l) => {
+          setSrcLang(l);
+          setPage(1);
+        }}
+        onTargetLangChange={(l) => {
+          setTargetLang(l);
+          setPage(1);
+        }}
+        onStatusChange={(s) => {
+          setStatus(s);
+          setPage(1);
+        }}
+        onQaOnlyToggle={() => {
+          setQaOnly((v) => !v);
+          setPage(1);
+        }}
         onTmApply={() => tmApplyMut.mutate()}
         onSearchReplace={() => setShowSearchReplace(true)}
+        onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
@@ -437,96 +560,133 @@ export const ModEditorPage = () => {
       {pageMode === 'dialogs' ? (
         <DialogsMode modId={modId} srcLang={srcLang} targetLang={targetLang} />
       ) : (
-      <div className={styles.body}>
-        <SignaturePanel
-          sigCounts={sigCounts}
-          activeSignature={signature}
-          totalFiltered={strings?.total}
-          onSelect={(sig) => { setSignature(sig); setPage(1); }}
-        />
-
-        <div className={styles.centerCol}>
-          <StringGrid
-            rows={strings?.rows ?? []}
-            total={strings?.total ?? 0}
-            isLoading={isLoading}
-            selected={selected}
-            activeRow={activeRow}
-            srcLang={srcLang}
-            targetLang={targetLang}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            columnFilters={columnFilters}
-            onRowClick={handleRowClick}
-            onToggleRow={toggleRow}
-            onToggleAll={toggleAll}
-            onSort={handleSort}
-            onColumnFilterChange={handleColumnFilterChange}
-            onContextMenu={handleContextMenu}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onClear={handleClear}
-            onCopySource={(row) => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}
+        <div className={styles.body}>
+          <SignaturePanel
+            sigCounts={sigCounts}
+            activeSignature={signature}
+            totalFiltered={strings?.total}
+            onSelect={(sig) => {
+              setSignature(sig);
+              setPage(1);
+            }}
           />
 
-          {/* Pagination */}
-          <div className={styles.pagination}>
-            <PaginationControls
-              info={<span className={styles.pageLabel}>{t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}</span>}
-              onPrev={() => setPage((p) => p - 1)}
-              onNext={() => setPage((p) => p + 1)}
-              prevDisabled={page <= 1}
-              nextDisabled={page >= totalPages}
-            />
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              className={styles.pageSizeSelect}
-              title={t('modEditor.pageSizeTitle')}
-            >
-              {PAGE_SIZE_OPTS.map((n) => (
-                <option key={n} value={n}>{n} {t('modEditor.perPage')}</option>
-              ))}
-            </select>
-          </div>
-
-          {activeRow && (
-            <DetailPanel
+          <div className={styles.centerCol}>
+            <StringGrid
+              rows={strings?.rows ?? []}
+              total={strings?.total ?? 0}
+              isLoading={isLoading}
+              selected={selected}
               activeRow={activeRow}
-              draftTranslation={draftTranslation}
               srcLang={srcLang}
               targetLang={targetLang}
-              activeTab={activeTab}
-              saveIndicator={saveIndicator}
-              savePending={saveMutation.isPending}
-              activeMaxLength={activeMaxLength}
-              suggestions={suggestions ?? []}
-              qaIssues={qaIssues ?? []}
-              history={history ?? []}
-              translAreaRef={translAreaRef}
-              onDraftChange={setDraftTranslation}
-              onSave={handleSave}
-              onCopySource={handleCopySource}
-              onApprove={() => handleApprove(activeRow)}
-              onReject={() => handleReject(activeRow)}
-              onTabChange={setActiveTab}
-              onOpenBookEditor={() => setShowBookEditor(true)}
+              sortCol={sortCol}
+              sortDir={sortDir}
+              columnFilters={columnFilters}
+              onRowClick={handleRowClick}
+              onToggleRow={toggleRow}
+              onToggleAll={toggleAll}
+              onSort={handleSort}
+              onColumnFilterChange={handleColumnFilterChange}
+              onContextMenu={handleContextMenu}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onClear={handleClear}
+              onCopySource={(row) => {
+                handleRowClick(row);
+                setTimeout(() => setDraftTranslation(row.source), 0);
+              }}
             />
-          )}
-        </div>
-      </div>
 
+            {/* Pagination */}
+            <div className={styles.pagination}>
+              <PaginationControls
+                info={
+                  <span className={styles.pageLabel}>
+                    {t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}
+                  </span>
+                }
+                onPrev={() => setPage((p) => p - 1)}
+                onNext={() => setPage((p) => p + 1)}
+                prevDisabled={page <= 1}
+                nextDisabled={page >= totalPages}
+              />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className={styles.pageSizeSelect}
+                title={t('modEditor.pageSizeTitle')}
+              >
+                {PAGE_SIZE_OPTS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} {t('modEditor.perPage')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {activeRow && (
+              <DetailPanel
+                activeRow={activeRow}
+                draftTranslation={draftTranslation}
+                srcLang={srcLang}
+                targetLang={targetLang}
+                activeTab={activeTab}
+                saveIndicator={saveIndicator}
+                savePending={saveMutation.isPending}
+                activeMaxLength={activeMaxLength}
+                suggestions={suggestions ?? []}
+                qaIssues={qaIssues ?? []}
+                history={history ?? []}
+                translAreaRef={translAreaRef}
+                onDraftChange={setDraftTranslation}
+                onSave={handleSave}
+                onCopySource={handleCopySource}
+                onApprove={() => handleApprove(activeRow)}
+                onReject={() => handleReject(activeRow)}
+                onTabChange={setActiveTab}
+                onOpenBookEditor={() => setShowBookEditor(true)}
+              />
+            )}
+          </div>
+        </div>
       )}
 
       {/* Modals */}
       {showSearchReplace && (
-        <SearchReplaceModal modId={modId} targetLang={targetLang} onClose={() => setShowSearchReplace(false)} onApplied={() => { qc.invalidateQueries({ queryKey: ['strings', modId] }); }} />
+        <SearchReplaceModal
+          modId={modId}
+          targetLang={targetLang}
+          onClose={() => setShowSearchReplace(false)}
+          onApplied={() => {
+            qc.invalidateQueries({ queryKey: ['strings', modId] });
+          }}
+        />
+      )}
+      {showApplyTranslationFromMod && gameId && (
+        <ApplyTranslationFromModModal
+          modId={modId}
+          gameId={gameId}
+          srcLang={srcLang}
+          targetLang={targetLang}
+          onClose={() => setShowApplyTranslationFromMod(false)}
+          onApplied={() => {
+            qc.invalidateQueries({ queryKey: ['strings', modId] });
+            refetchStats();
+          }}
+        />
       )}
       {showBookEditor && activeRow && (
         <BookEditorModal
           source={activeRow.source}
           translation={draftTranslation}
-          onSave={(markup) => { setDraftTranslation(markup); setShowBookEditor(false); }}
+          onSave={(markup) => {
+            setDraftTranslation(markup);
+            setShowBookEditor(false);
+          }}
           onClose={() => setShowBookEditor(false)}
         />
       )}
@@ -544,7 +704,10 @@ export const ModEditorPage = () => {
           onApprove={handleApprove}
           onReject={handleReject}
           onClear={handleClear}
-          onCopySource={(row) => { handleRowClick(row); setTimeout(() => setDraftTranslation(row.source), 0); }}
+          onCopySource={(row) => {
+            handleRowClick(row);
+            setTimeout(() => setDraftTranslation(row.source), 0);
+          }}
           onTextTransform={applyTextTransform}
           onBulkCopySource={ctxCopySource}
           onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
@@ -556,5 +719,3 @@ export const ModEditorPage = () => {
     </div>
   );
 };
-
-

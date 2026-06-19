@@ -12,7 +12,6 @@ export const UnifiedJobRow = ({
   live,
   isRunning,
   exportActions,
-  onChangeLocale,
   onStart,
   onPause,
   onCancel,
@@ -28,8 +27,7 @@ export const UnifiedJobRow = ({
     !isRunning && job.status !== 'in_progress' && (job.status !== 'completed' || kind === 'mod');
   const isMod = kind === 'mod';
   const modJob = isMod ? (job as ModImportJob) : null;
-  const hasExtraMenuItems =
-    isMod && ((exportActions?.length ?? 0) > 0 || (job.status === 'completed' && !!onChangeLocale));
+  const hasExtraMenuItems = isMod && (exportActions?.length ?? 0) > 0;
   const isFailed = job.status === 'failed';
   const lastError =
     isFailed && 'last_error' in job ? (job as { last_error: string | null }).last_error : null;
@@ -66,7 +64,7 @@ export const UnifiedJobRow = ({
           </span>
           <span className={parentS.meta}>
             {isMod
-              ? `${modJob?.src_lang ?? job.src_lang} · ${t('common.strings', { count: total })}`
+              ? t('common.strings', { count: total })
               : `${job.src_lang} → ${job.tgt_lang} · ${total.toLocaleString()} records`}
           </span>
           {lastError && (
@@ -137,18 +135,6 @@ export const UnifiedJobRow = ({
               </button>
               {menuOpen && (
                 <div className={s.menuList}>
-                  {job.status === 'completed' && onChangeLocale && (
-                    <button
-                      onClick={() => {
-                        onChangeLocale();
-                        setMenuOpen(false);
-                      }}
-                      className={s.menuItem}
-                    >
-                      <span className={s.menuIcon}>🌐</span>
-                      <span>{t('modImport.changeLocaleAction')}</span>
-                    </button>
-                  )}
                   {(exportActions ?? []).map((action) => (
                     <button
                       key={action.key}

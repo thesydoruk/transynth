@@ -4,14 +4,7 @@ import { getContentLanguageOptions } from '../../langDefaults';
 /** Live SSE progress for a running import. */
 export type LiveProgress = { imported: number; total: number };
 
-export type ModPreviewConfirmPayload = {
-  importLang: string;
-  applyEnabled: boolean;
-  applyToModId: number | null;
-  importAllLocalizations?: boolean;
-};
-
-/** Language options shared by all import preview modals. */
+/** Language options shared by EET/CSV import preview modals. */
 export const LANGUAGES = getContentLanguageOptions();
 
 /** Background color for a job status badge. */
@@ -62,7 +55,6 @@ export interface UnifiedJobRowProps {
     disabled?: boolean;
     onClick: () => void;
   }>;
-  onChangeLocale?: () => void;
   onStart: () => void;
   onPause: () => void;
   onCancel: () => void;

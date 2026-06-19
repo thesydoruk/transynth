@@ -20,7 +20,6 @@ export interface ModWorkspaceRowProps {
   clearingRows?: boolean;
   onOpen: () => void;
   onClearRows: () => void;
-  onChangeLocale?: () => void;
   onReimport?: () => void;
   onDeleteImport?: () => void;
 }
@@ -33,7 +32,6 @@ export const ModWorkspaceRow = ({
   clearingRows,
   onOpen,
   onClearRows,
-  onChangeLocale,
   onReimport,
   onDeleteImport,
 }: ModWorkspaceRowProps) => {
@@ -77,10 +75,7 @@ export const ModWorkspaceRow = ({
               <span className={rowS.locBadge}>{t('modImport.localized')}</span>
             ) : null}
           </span>
-          <span className={parentS.meta}>
-            {t('common.strings', { count: mod.string_count })}
-            {importJob ? ` · ${importJob.src_lang} → ${importJob.tgt_lang}` : ''}
-          </span>
+          <span className={parentS.meta}>{t('common.strings', { count: mod.string_count })}</span>
         </div>
       </div>
       <div className={parentS.rowRight} onClick={(e) => e.stopPropagation()}>
@@ -130,19 +125,6 @@ export const ModWorkspaceRow = ({
                   >
                     <span className={rowS.menuIcon}>▶</span>
                     <span>{t('imports.reimportTooltip')}</span>
-                  </button>
-                )}
-                {onChangeLocale && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChangeLocale();
-                      setMenuOpen(false);
-                    }}
-                    className={rowS.menuItem}
-                  >
-                    <span className={rowS.menuIcon}>🌐</span>
-                    <span>{t('modImport.changeLocaleAction')}</span>
                   </button>
                 )}
                 {exportActions.map((action) => (

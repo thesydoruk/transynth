@@ -37,7 +37,6 @@ import { CsvPreviewModal } from './CsvPreviewModal';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
-import { ChangeLocaleModal } from './ChangeLocaleModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
 import { statusColorBase, type LiveProgress } from './modsShared';
@@ -191,7 +190,6 @@ export const ModsPage = () => {
   const [eetPreviewId, setEetPreviewId] = useState<number | null>(null);
   const [csvPreviewId, setCsvPreviewId] = useState<number | null>(null);
   const [modPreviewId, setModPreviewId] = useState<number | null>(null);
-  const [changeLocaleJob, setChangeLocaleJob] = useState<ModImportJob | null>(null);
 
   const [reimport, setReimport] = useState<{
     newModId: number;
@@ -751,8 +749,8 @@ export const ModsPage = () => {
                 ? buildExportActions(
                     modJob.mod_id,
                     modJob.file_name,
-                    modJob.src_lang,
-                    modJob.tgt_lang,
+                    srcLang,
+                    targetLang,
                     String(modJob.id),
                   )
                 : [];
@@ -765,7 +763,6 @@ export const ModsPage = () => {
                 live={live}
                 isRunning={isRunning}
                 exportActions={exportActions}
-                onChangeLocale={orphanedCompletedMod ? () => setChangeLocaleJob(modJob) : undefined}
                 onStart={() => {
                   if (u.kind === 'eet') setEetPreviewId(u.job.id);
                   else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
@@ -794,13 +791,11 @@ export const ModsPage = () => {
 
           {sortedMods.map((mod) => {
             const importJob = importJobByModId.get(mod.id) ?? null;
-            const exportSrcLang = importJob?.src_lang ?? srcLang;
-            const exportTgtLang = importJob?.tgt_lang ?? targetLang;
             const exportActions = buildExportActions(
               mod.id,
               mod.name,
-              exportSrcLang,
-              exportTgtLang,
+              srcLang,
+              targetLang,
               `mod-${mod.id}`,
             );
 
@@ -813,7 +808,6 @@ export const ModsPage = () => {
                 clearingRows={clearingModId === mod.id}
                 onOpen={() => nav(`/games/${gameId}/mods/${mod.id}`)}
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
-                onChangeLocale={importJob ? () => setChangeLocaleJob(importJob) : undefined}
                 onReimport={importJob ? () => setModPreviewId(importJob.id) : undefined}
                 onDeleteImport={importJob ? () => setDeleteModalJob(importJob) : undefined}
               />
@@ -849,35 +843,11 @@ export const ModsPage = () => {
       {modPreviewJob && (
         <ModPreviewModal
           job={modPreviewJob}
-          gameId={gameId}
           onClose={() => setModPreviewId(null)}
-          onConfirm={async (payload) => {
-            await api.modImport.updateLanguages(
-              modPreviewJob.id,
-              payload.importAllLocalizations ? 'en' : payload.importLang,
-              modPreviewJob.tgt_lang,
-            );
+          onConfirm={async () => {
+            await api.modImport.updateLanguages(modPreviewJob.id, 'en', modPreviewJob.tgt_lang);
             refreshAll();
             setModPreviewId(null);
-
-            if (payload.importAllLocalizations) {
-              if (modPreviewJob.status === 'completed') {
-                await api.modImport.restart(modPreviewJob.id);
-              }
-              await doStart('mod', modPreviewJob.id);
-              return;
-            }
-
-            if (payload.applyEnabled && payload.applyToModId != null) {
-              await api.modImport.applyToMod(
-                modPreviewJob.id,
-                payload.applyToModId,
-                payload.importLang,
-              );
-              refreshAll();
-              return;
-            }
-
             if (modPreviewJob.status === 'completed') {
               await api.modImport.restart(modPreviewJob.id);
             }
@@ -930,14 +900,6 @@ export const ModsPage = () => {
           onConfirm={() => {
             void confirmClearRows();
           }}
-        />
-      )}
-
-      {changeLocaleJob && (
-        <ChangeLocaleModal
-          job={changeLocaleJob}
-          gameId={gameId}
-          onClose={() => setChangeLocaleJob(null)}
         />
       )}
 

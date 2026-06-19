@@ -24,16 +24,10 @@ import {
   updateModJobLanguages,
   restartModImportJob,
   previewModRecords,
-  extractModImportApplyRows,
-  getModImportLocaleInfo,
-  changeModImportLocaleInDb,
   isArchive,
   isPlugin,
-  validateModImportLocaleSelection,
-  isImportAllLocalesRequest,
 } from '../modImportService';
 import { CONFIG } from '../../config';
-import { applyImportedRowsAsTranslations } from '../queries';
 
 import { PATHS } from '../../paths';
 
@@ -231,141 +225,6 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       return await getModImportJob(db, jobId);
     },
   );
-
-  // ── Locale metadata for completed imports ─────────────────────────────────
-  app.get<{ Params: { id: string } }>('/api/mod-import/:id/locale-info', async (req, reply) => {
-    const jobId = Number(req.params.id);
-    if (!Number.isInteger(jobId) || jobId < 1) {
-      return reply.status(400).send({ error: 'Invalid import job id' });
-    }
-
-    try {
-      return await getModImportLocaleInfo(db, jobId);
-    } catch (err: unknown) {
-      return reply.status(404).send({ error: err instanceof Error ? err.message : String(err) });
-    }
-  });
-
-  // ── Change import locale in database (no re-import) ─────────────────────────
-  app.patch<{ Params: { id: string }; Body: { srcLang: string } }>(
-    '/api/mod-import/:id/locale',
-    async (req, reply) => {
-      const jobId = Number(req.params.id);
-      if (!Number.isInteger(jobId) || jobId < 1) {
-        return reply.status(400).send({ error: 'Invalid import job id' });
-      }
-
-      const { srcLang } = req.body as { srcLang?: string };
-      if (!srcLang?.trim()) {
-        return reply.status(400).send({ error: 'srcLang is required' });
-      }
-
-      if (isModImportRunning(jobId)) {
-        return reply.status(409).send({ error: 'Cannot change locale while import is running' });
-      }
-
-      try {
-        return await changeModImportLocaleInDb(db, jobId, srcLang);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        const status = message.includes('not found') ? 404 : 400;
-        return reply.status(status).send({ error: message });
-      }
-    },
-  );
-
-  // ── Apply import job directly to an existing mod without DB-ingesting the translation mod ──
-  app.post<{
-    Params: { id: string };
-    Querystring: { targetModId?: string; importedLang?: string; srcLang?: string };
-  }>('/api/mod-import/:id/apply-to-mod', async (req, reply) => {
-    const jobId = Number(req.params.id);
-    const targetModId = Number(req.query.targetModId);
-    const importedLang = (req.query.importedLang ?? '').trim();
-    const srcLang = (req.query.srcLang ?? CONFIG.defaultSrcLang).trim() || CONFIG.defaultSrcLang;
-
-    if (!Number.isInteger(jobId) || jobId < 1)
-      return reply.status(400).send({ error: 'Invalid import job id' });
-    if (!Number.isInteger(targetModId) || targetModId < 1)
-      return reply.status(400).send({ error: 'targetModId query param is required' });
-    if (!importedLang)
-      return reply.status(400).send({ error: 'importedLang query param is required' });
-    if (isModImportRunning(jobId))
-      return reply.status(409).send({ error: 'Cannot apply while import is running' });
-
-    const job = await getModImportJob(db, jobId);
-    if (!job) return reply.status(404).send({ error: 'Import job not found' });
-
-    try {
-      await db.query(
-        `UPDATE mod_imports
-              SET status = 'in_progress',
-                  imported_records = 0,
-                  updated_at = NOW()
-            WHERE id = $1`,
-        [jobId],
-      );
-
-      const importedRows = extractModImportApplyRows(job, importedLang);
-      if (importedRows.length === 0) {
-        return reply
-          .status(400)
-          .send({ error: `Import job has no translatable rows for lang "${importedLang}"` });
-      }
-
-      let lastProcessed = 0;
-      let lastTotal = 0;
-
-      const result = await applyImportedRowsAsTranslations(
-        db,
-        targetModId,
-        importedRows,
-        importedLang,
-        importedLang,
-        srcLang,
-        `import_job_${jobId}_${importedLang}`,
-        `Imported apply: targetMod=${targetModId}, importJob=${jobId}`,
-        async (processed, total) => {
-          lastProcessed = processed;
-          lastTotal = total;
-          await db.query(
-            `UPDATE mod_imports
-                  SET status = 'in_progress',
-                      total_records = $2,
-                      imported_records = $3,
-                      updated_at = NOW()
-                WHERE id = $1`,
-            [jobId, total, processed],
-          );
-        },
-      );
-
-      await db.query(
-        `UPDATE mod_imports
-              SET status = 'completed',
-                  total_records = $2,
-                  imported_records = $2,
-                  updated_at = NOW()
-            WHERE id = $1`,
-        [jobId, lastTotal || lastProcessed || importedRows.length],
-      );
-
-      log.info(
-        `Imported apply complete: targetMod=${targetModId}, importJob=${jobId}, uploaded file kept on disk, no temporary mod row created`,
-      );
-
-      return reply.send(result);
-    } catch (err: unknown) {
-      await db.query(
-        `UPDATE mod_imports
-              SET status = 'failed',
-                  updated_at = NOW()
-            WHERE id = $1`,
-        [jobId],
-      );
-      return reply.status(400).send({ error: err instanceof Error ? err.message : String(err) });
-    }
-  });
 
   // ── Restart completed/failed/paused job ──────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/restart', async (req, reply) => {

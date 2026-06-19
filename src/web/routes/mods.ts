@@ -14,7 +14,12 @@ import {
 import { applyTMToMod } from '../tm';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
-import { exportArchive, exportLocalizedStringsFiles, exportPatchedEsp, exportProjectZip } from '../exportService';
+import {
+  exportArchive,
+  exportLocalizedStringsFiles,
+  exportPatchedEsp,
+  exportProjectZip,
+} from '../exportService';
 import type { GameType } from '../../types';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -93,8 +98,10 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     async (req, reply) => {
       const newId = Number(req.params.id);
       const oldId = Number(req.query.compareModId);
-      if (!Number.isInteger(newId) || newId < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-      if (!Number.isInteger(oldId) || oldId < 1) return reply.code(400).send({ error: 'compareModId is required' });
+      if (!Number.isInteger(newId) || newId < 1)
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      if (!Number.isInteger(oldId) || oldId < 1)
+        return reply.code(400).send({ error: 'compareModId is required' });
 
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
       const result = await diffMods(db, newId, oldId, targetLang);
@@ -108,11 +115,15 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     async (req, reply) => {
       const newModId = Number(req.params.id);
       const oldModId = Number(req.query.fromModId);
-      if (!Number.isInteger(newModId) || newModId < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-      if (!Number.isInteger(oldModId) || oldModId < 1) return reply.code(400).send({ error: 'fromModId query param is required' });
+      if (!Number.isInteger(newModId) || newModId < 1)
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      if (!Number.isInteger(oldModId) || oldModId < 1)
+        return reply.code(400).send({ error: 'fromModId query param is required' });
 
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      log.info(`POST /api/mods/${newModId}/carry-over fromModId=${oldModId} targetLang=${targetLang}`);
+      log.info(
+        `POST /api/mods/${newModId}/carry-over fromModId=${oldModId} targetLang=${targetLang}`,
+      );
 
       try {
         const result = await carryOverTranslations(db, newModId, oldModId, targetLang);
@@ -127,48 +138,50 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
   // Apply raw strings from imported translation mod to a base mod as translations.
   app.post<{
     Params: { id: string };
-    Querystring: { fromModId?: string; importedLang?: string; srcLang?: string };
-  }>(
-    '/api/mods/:id/apply-imported',
-    async (req, reply) => {
-      const targetModId = Number(req.params.id);
-      const fromModId = Number(req.query.fromModId);
-      if (!Number.isInteger(targetModId) || targetModId < 1) {
-        return reply.code(400).send({ error: 'Invalid mod id' });
-      }
-      if (!Number.isInteger(fromModId) || fromModId < 1) {
-        return reply.code(400).send({ error: 'fromModId query param is required' });
-      }
+    Querystring: {
+      fromModId?: string;
+      importedLang?: string;
+      srcLang?: string;
+      targetLang?: string;
+    };
+  }>('/api/mods/:id/apply-imported', async (req, reply) => {
+    const targetModId = Number(req.params.id);
+    const fromModId = Number(req.query.fromModId);
+    if (!Number.isInteger(targetModId) || targetModId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+    if (!Number.isInteger(fromModId) || fromModId < 1) {
+      return reply.code(400).send({ error: 'fromModId query param is required' });
+    }
 
-      const importedLang = (req.query.importedLang ?? '').trim();
-      if (!importedLang) {
-        return reply.code(400).send({ error: 'importedLang query param is required' });
-      }
+    const importedLang = (req.query.importedLang ?? '').trim();
+    if (!importedLang) {
+      return reply.code(400).send({ error: 'importedLang query param is required' });
+    }
 
-      const targetLang = importedLang;
-      const srcLang = (req.query.srcLang ?? CONFIG.defaultSrcLang).trim() || CONFIG.defaultSrcLang;
+    const srcLang = (req.query.srcLang ?? CONFIG.defaultSrcLang).trim() || CONFIG.defaultSrcLang;
+    const targetLang = (req.query.targetLang ?? importedLang).trim() || importedLang;
 
-      log.info(
-        `POST /api/mods/${targetModId}/apply-imported fromModId=${fromModId} `
-        + `importedLang=${importedLang} targetLang=${targetLang} srcLang=${srcLang}`,
+    log.info(
+      `POST /api/mods/${targetModId}/apply-imported fromModId=${fromModId} ` +
+        `importedLang=${importedLang} targetLang=${targetLang} srcLang=${srcLang}`,
+    );
+
+    try {
+      const result = await applyImportedModStringsAsTranslations(
+        db,
+        targetModId,
+        fromModId,
+        importedLang,
+        targetLang,
+        srcLang,
       );
 
-      try {
-        const result = await applyImportedModStringsAsTranslations(
-          db,
-          targetModId,
-          fromModId,
-          importedLang,
-          targetLang,
-          srcLang,
-        );
-
-        return reply.send(result);
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
-    },
-  );
+      return reply.send(result);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
   // GET /api/mods/:id/export/strings?srcLang=&targetLang= — generate localized STRINGS files
   app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
@@ -182,11 +195,19 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+      if (!mod.abs_path)
+        return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
         const game = (mod.game ?? 'fo4') as GameType;
-        const files = await exportLocalizedStringsFiles(db, id, mod.abs_path, srcLang, targetLang, game);
+        const files = await exportLocalizedStringsFiles(
+          db,
+          id,
+          mod.abs_path,
+          srcLang,
+          targetLang,
+          game,
+        );
         return reply.send({ modId: id, srcLang, targetLang, files });
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
@@ -206,7 +227,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+      if (!mod.abs_path)
+        return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
         const file = await exportPatchedEsp(db, id, mod.abs_path, srcLang, targetLang);
@@ -229,7 +251,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+      if (!mod.abs_path)
+        return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
         const game = (mod.game ?? 'fo4') as GameType;
@@ -253,11 +276,19 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path) return reply.code(400).send({ error: 'Mod file path is not available for export' });
+      if (!mod.abs_path)
+        return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       try {
         const game = (mod.game ?? 'fo4') as GameType;
-        const { zipBuffer, zipFileName } = await exportProjectZip(db, id, mod.abs_path, srcLang, targetLang, game);
+        const { zipBuffer, zipFileName } = await exportProjectZip(
+          db,
+          id,
+          mod.abs_path,
+          srcLang,
+          targetLang,
+          game,
+        );
         return reply
           .header('Content-Type', 'application/zip')
           .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
@@ -277,13 +308,16 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
 
     const { stringIds, status, targetLang = CONFIG.defaultTgtLang } = req.body;
-    if (!Array.isArray(stringIds) || stringIds.length === 0) return reply.code(400).send({ error: 'stringIds is required' });
-    if (status !== 'reviewed' && status !== 'rejected') return reply.code(400).send({ error: 'status must be reviewed or rejected' });
+    if (!Array.isArray(stringIds) || stringIds.length === 0)
+      return reply.code(400).send({ error: 'stringIds is required' });
+    if (status !== 'reviewed' && status !== 'rejected')
+      return reply.code(400).send({ error: 'status must be reviewed or rejected' });
 
     const actor = req.user?.role ?? 'translator';
-    log.info(`PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length} actor=${actor}`);
+    log.info(
+      `PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length} actor=${actor}`,
+    );
     const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang, actor);
     return reply.send({ updated });
   });
-
-}
+};
