@@ -61,6 +61,8 @@ import {
 } from '../bethesda/parsers';
 import { loadNpcReferenceMap } from '../bethesda/subrecords';
 import type { CsvRow, GameType } from '../types';
+import { parseVortexModFolder, resolveVortexFolderFromPath } from '../utils/vortexFolder';
+import type { VortexFolderInfo } from '../utils/vortexFolder';
 
 const { Pool } = pg;
 
@@ -88,9 +90,28 @@ export interface ModImportJob {
   is_localized: number; // 0 | 1
   game: GameType;
   esp_path: string | null;
+  nexus_mod_id: number | null;
+  source_folder: string | null;
+  nexus_mod_name: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Optional Vortex/Nexus hints collected during folder scans. */
+export interface ModScanContext {
+  nexusModId?: number;
+  nexusModName?: string;
+  sourceFolder?: string;
+}
+
+export const modScanContextFromVortex = (vortex?: VortexFolderInfo): ModScanContext | undefined => {
+  if (!vortex) return undefined;
+  return {
+    nexusModId: vortex.nexusModId,
+    nexusModName: vortex.modName,
+    sourceFolder: vortex.folderName,
+  };
+};
 
 /**
  * Small preview row used by the UI to show a sample of extracted strings
@@ -130,9 +151,10 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 
-export const ensureModImportSchema = async (_db: Tx) => {
-  // No runtime schema patch is needed at the moment.
-  return;
+export const ensureModImportSchema = async (db: Tx) => {
+  await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER');
+  await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS source_folder TEXT');
+  await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_name TEXT');
 };
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
@@ -599,6 +621,8 @@ export interface ModFileCandidate {
   fileName: string;
   filePath: string;
   kind: 'plugin' | 'archive';
+  /** Vortex staging folder metadata when scanning a Vortex mod tree. */
+  vortex?: VortexFolderInfo;
 }
 
 /**
@@ -607,7 +631,11 @@ export interface ModFileCandidate {
  * Used by batch scans of mod install trees where plugins and archives may sit
  * in nested folders (e.g. per-mod subdirectories under a staging directory).
  */
-export const listModFilesInDirectory = (dir: string, recursive = true): ModFileCandidate[] => {
+export const listModFilesInDirectory = (
+  dir: string,
+  recursive = true,
+  scanRoot = dir,
+): ModFileCandidate[] => {
   const candidates: ModFileCandidate[] = [];
 
   const walk = (currentDir: string) => {
@@ -620,10 +648,11 @@ export const listModFilesInDirectory = (dir: string, recursive = true): ModFileC
       if (!entry.isFile()) continue;
 
       const fileName = entry.name;
+      const vortex = resolveVortexFolderFromPath(fullPath, scanRoot) ?? undefined;
       if (isPlugin(fileName)) {
-        candidates.push({ fileName, filePath: fullPath, kind: 'plugin' });
+        candidates.push({ fileName, filePath: fullPath, kind: 'plugin', vortex });
       } else if (isArchive(fileName)) {
-        candidates.push({ fileName, filePath: fullPath, kind: 'archive' });
+        candidates.push({ fileName, filePath: fullPath, kind: 'archive', vortex });
       }
     }
   };
@@ -1184,6 +1213,64 @@ const buildPexCsvRows = (pexMap: Map<string, string[]>): CsvRow[] => {
 };
 // ── Registration ────────────────────────────────────────────────────────────
 
+const patchModImportScanContext = async (
+  db: Tx,
+  fileHash: string,
+  scan?: ModScanContext,
+): Promise<void> => {
+  if (!scan?.nexusModId && !scan?.sourceFolder) return;
+  await db.query(
+    `UPDATE mod_imports SET
+       nexus_mod_id = COALESCE(nexus_mod_id, $1),
+       source_folder = COALESCE(source_folder, $2),
+       nexus_mod_name = COALESCE(nexus_mod_name, $3),
+       updated_at = NOW()
+     WHERE file_hash = $4`,
+    [scan.nexusModId ?? null, scan.sourceFolder ?? null, scan.nexusModName ?? null, fileHash],
+  );
+};
+
+const insertModImportJob = async (
+  db: Tx,
+  params: {
+    fileName: string;
+    fileHash: string;
+    totalRecords: number;
+    srcLang: string;
+    tgtLang: string;
+    isLocalized: number;
+    game: GameType;
+    espPath: string;
+    scan?: ModScanContext;
+  },
+): Promise<ModImportJob> => {
+  await db.query(
+    `INSERT INTO mod_imports(
+       file_name, file_hash, mod_id, total_records, status,
+       src_lang, tgt_lang, is_localized, game, esp_path,
+       nexus_mod_id, source_folder, nexus_mod_name
+     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [
+      params.fileName,
+      params.fileHash,
+      params.totalRecords,
+      params.srcLang,
+      params.tgtLang,
+      params.isLocalized,
+      params.game,
+      params.espPath,
+      params.scan?.nexusModId ?? null,
+      params.scan?.sourceFolder ?? null,
+      params.scan?.nexusModName ?? null,
+    ],
+  );
+
+  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
+    params.fileHash,
+  ]);
+  return rows[0] as ModImportJob;
+};
+
 /**
  * Register a plugin upload as a mod import job.
  *
@@ -1198,6 +1285,7 @@ export const registerPluginFile = async (
   srcLang: string,
   tgtLang: string,
   game: GameType = 'fo4',
+  scan?: ModScanContext,
 ): Promise<ModImportJob> => {
   const buf = fs.readFileSync(pluginPath);
   const fileHash = sha1Hex(buf);
@@ -1205,7 +1293,13 @@ export const registerPluginFile = async (
   const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
     fileHash,
   ]);
-  if (existing[0]) return existing[0] as ModImportJob;
+  if (existing[0]) {
+    await patchModImportScanContext(db, fileHash, scan);
+    const { rows: refreshed } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
+      fileHash,
+    ]);
+    return refreshed[0] as ModImportJob;
+  }
 
   const esp = new EspReader(pluginPath, game);
   const espRows = esp.extractStrings();
@@ -1213,14 +1307,17 @@ export const registerPluginFile = async (
 
   const totalRecords = espRows.length;
 
-  await db.query(
-    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
-     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
-    [fileName, fileHash, null, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
-  );
-
-  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
-  return rows[0] as ModImportJob;
+  return insertModImportJob(db, {
+    fileName,
+    fileHash,
+    totalRecords,
+    srcLang,
+    tgtLang,
+    isLocalized,
+    game,
+    espPath: pluginPath,
+    scan,
+  });
 };
 
 /**
@@ -1239,6 +1336,7 @@ export const registerArchiveFile = async (
   srcLang: string,
   tgtLang: string,
   game: GameType = 'fo4',
+  scan?: ModScanContext,
 ): Promise<ModImportJob> => {
   const buf = fs.readFileSync(archivePath);
   const fileHash = sha1Hex(buf);
@@ -1246,7 +1344,13 @@ export const registerArchiveFile = async (
   const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
     fileHash,
   ]);
-  if (existing[0]) return existing[0] as ModImportJob;
+  if (existing[0]) {
+    await patchModImportScanContext(db, fileHash, scan);
+    const { rows: refreshed } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
+      fileHash,
+    ]);
+    return refreshed[0] as ModImportJob;
+  }
 
   await extractArchive(archivePath, extractDir);
 
@@ -1261,14 +1365,17 @@ export const registerArchiveFile = async (
     const modDir = resolveModDirectoryFromPath(anchorPath);
     const totalRecords = countMcmTranslationRecords(modDir, anchorPath);
 
-    await db.query(
-      `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
-       VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
-      [fileName, fileHash, null, totalRecords, srcLang, tgtLang, 0, game, anchorPath],
-    );
-
-    const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
-    return rows[0] as ModImportJob;
+    return insertModImportJob(db, {
+      fileName,
+      fileHash,
+      totalRecords,
+      srcLang,
+      tgtLang,
+      isLocalized: 0,
+      game,
+      espPath: anchorPath,
+      scan,
+    });
   }
 
   const pluginPath = plugins[0];
@@ -1278,14 +1385,17 @@ export const registerArchiveFile = async (
 
   const totalRecords = espRows.length;
 
-  await db.query(
-    `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
-     VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
-    [fileName, fileHash, null, totalRecords, srcLang, tgtLang, isLocalized, game, pluginPath],
-  );
-
-  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
-  return rows[0] as ModImportJob;
+  return insertModImportJob(db, {
+    fileName,
+    fileHash,
+    totalRecords,
+    srcLang,
+    tgtLang,
+    isLocalized,
+    game,
+    espPath: pluginPath,
+    scan,
+  });
 };
 
 // ── Preview ─────────────────────────────────────────────────────────────────
@@ -1634,8 +1744,19 @@ export const runModImport = async (
     const game: GameType = (job.game as GameType) ?? 'fo4';
     let importModId = job.mod_id;
     if (importModId == null) {
-      const modName = deriveModNameFromFileName(job.file_name);
-      importModId = await upsertMod(db, modName, espPath, job.file_hash, game);
+      const modName =
+        job.nexus_mod_name?.trim() ||
+        (job.source_folder ? parseVortexModFolder(job.source_folder)?.modName : null) ||
+        deriveModNameFromFileName(job.file_name);
+      importModId = await upsertMod(db, modName, espPath, job.file_hash, game, {
+        nexusModId: job.nexus_mod_id ?? undefined,
+        nexusName: job.nexus_mod_name ?? undefined,
+      });
+      if (job.nexus_mod_id) {
+        log.info(
+          `[Mod Import #${job.id}] Nexus link: mod ${job.nexus_mod_id}${job.nexus_mod_name ? ` (${job.nexus_mod_name})` : ''}`,
+        );
+      }
       await db.query('UPDATE mod_imports SET mod_id = $1, updated_at = NOW() WHERE id = $2', [
         importModId,
         job.id,

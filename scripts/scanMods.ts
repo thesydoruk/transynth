@@ -27,6 +27,8 @@ import { sha1HexFile } from '../src/utils/hash';
 import {
   listModFilesInDirectory,
   MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
+  ensureModImportSchema,
+  modScanContextFromVortex,
   registerArchiveFile,
   registerPluginFile,
   restartModImportJob,
@@ -129,6 +131,7 @@ if (candidates.length === 0) {
 const extractRoot = PATHS.scanExtract;
 
 const db = openDb();
+await ensureModImportSchema(db);
 let imported = 0;
 let skipped = 0;
 let failed = 0;
@@ -141,6 +144,7 @@ try {
     const label = path.relative(scanDir, candidate.filePath) || candidate.fileName;
 
     try {
+      const scanMeta = modScanContextFromVortex(candidate.vortex);
       let job;
       if (candidate.kind === 'plugin') {
         job = await registerPluginFile(
@@ -150,6 +154,7 @@ try {
           srcLang,
           tgtLang,
           game,
+          scanMeta,
         );
       } else {
         const fileHash = await sha1HexFile(candidate.filePath);
@@ -163,6 +168,7 @@ try {
           srcLang,
           tgtLang,
           game,
+          scanMeta,
         );
       }
 
@@ -180,6 +186,11 @@ try {
       }
 
       log.info(`Importing "${label}" (job #${job.id}, ${job.total_records} ESP rows)...`);
+      if (scanMeta?.nexusModId) {
+        log.info(
+          `  Nexus: ${scanMeta.nexusModId} — ${scanMeta.nexusModName ?? scanMeta.sourceFolder}`,
+        );
+      }
       const result = await runModImport(db, job, (done, total) => {
         if (total > 0 && done % 5000 === 0) {
           log.info(`  "${label}": ${done}/${total}`);
