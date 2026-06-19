@@ -59,7 +59,7 @@ Docker автоматично бере на себе Node.js, PostgreSQL і вс
    - `POSTGRES_PASSWORD=localizer`
    - `POSTGRES_DB=localizer`
    - `DATABASE_URL=postgresql://localizer:localizer@localhost:5432/localizer`
-5. Якщо ви використовуєте Ollama, залиште `LLM_PROVIDER=ollama` і вкажіть у `OLLAMA_MODEL` модель, яка вже встановлена у вашому Ollama.
+5. Якщо ви використовуєте vLLM, залиште `LLM_PROVIDER=vllm` і вкажіть у `VLLM_MODEL` модель, яку віддає ваш inference-сервер.
 6. Запустіть базу даних і вебсервер:
 
 ```bash

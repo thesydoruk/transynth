@@ -9,7 +9,7 @@
 - [Огляд](#огляд)
 - [Підтримувані провайдери](#підтримувані-провайдери)
   - [OpenAI](#openai)
-  - [Ollama (локально)](#ollama-локально)
+  - [vLLM (локально)](#vllm-локально)
   - [Fallback chain](#fallback-chain)
 - [Налаштування провайдера](#налаштування-провайдера)
 - [Запуск пакетного перекладу](#запуск-пакетного-перекладу)
@@ -45,24 +45,41 @@ LLM-переклад найкраще запускати **після TM waterfa
 
 Рядки, уже знайдені в TM або в LLM-cache, не потребують нового запиту і не генерують додаткових витрат.
 
-### Ollama (локально)
+### vLLM (локально)
 
-[Ollama](https://ollama.com) дає змогу запускати LLM локально на своїй машині або сервері.
-API key і доступ до інтернету не потрібні, але потрібне відповідне залізо.
+[vLLM](https://docs.vllm.ai/) та інші OpenAI-compatible inference-сервери (TGI, LiteLLM proxy тощо)
+дають змогу запускати LLM локально на своїй машині або GPU-сервері.
 
-Рекомендовані моделі: `llama3`, `mistral`, `gemma2`.
+Провайдер vLLM підключається до `VLLM_BASE_URL` (типово `http://localhost:8000`) через
+стандартний OpenAI-compatible endpoint `/v1`. Будь-який сервер із `/v1/chat/completions`
+і `/v1/embeddings` працює без окремої адаптації.
 
-Провайдер Ollama підключається до `OLLAMA_BASE_URL` (типово `http://localhost:11434`) через OpenAI-compatible endpoint `/v1`, тому будь-яка модель, яку підтримує Ollama, працює без окремої адаптації.
+Приклад запуску vLLM:
+
+```bash
+vllm serve meta-llama/Meta-Llama-3-8B-Instruct --port 8000
+```
+
+У `.env`:
+
+```env
+LLM_PROVIDER=vllm
+VLLM_BASE_URL=http://localhost:8000
+VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+```
+
+Якщо сервер вимагає автентифікацію, задайте `VLLM_API_KEY`. Для окремої embedding-моделі
+використовуйте `VLLM_EMBED_MODEL`.
 
 Орієнтовні вимоги до апаратури:
 
-| Розмір моделі | Потрібно VRAM | Примітки                                    |
-| ------------- | ------------- | ------------------------------------------- |
-| 7B            | 6–8 GB        | `llama3`, `mistral:7b`, `gemma2:9b`         |
-| 13B           | 10–12 GB      | Краща якість перекладу                      |
-| 70B           | 40+ GB        | Якість близька до GPT-4, але повільно вдома |
+| Розмір моделі | Потрібно VRAM | Примітки                                      |
+| ------------- | ------------- | --------------------------------------------- |
+| 7B            | 6–8 GB        | Швидко на consumer GPU                        |
+| 13B           | 10–12 GB      | Краща якість перекладу                        |
+| 70B           | 40+ GB        | Якість близька до GPT-4, потрібен великий GPU |
 
-Інференс на CPU можливий, але приблизно у 10–50 разів повільніший за GPU.
+Інференс на CPU можливий, але значно повільніший за GPU.
 Для великих модів GPU-прорахунок практично обов’язковий.
 
 ### Fallback chain
@@ -75,7 +92,7 @@ Fallback задається змінною `LLM_FALLBACK`:
 LLM_FALLBACK=openai
 ```
 
-Дозволені значення: `openai`, `ollama`, `none`.
+Дозволені значення: `openai`, `vllm`, `none`.
 
 Fallback спрацьовує лише для **availability errors**:
 
@@ -95,16 +112,18 @@ Fallback спрацьовує лише для **availability errors**:
 
 Усі LLM-параметри задаються через `.env`:
 
-| Змінна                   | Значення за замовчуванням | Опис                                      |
-| ------------------------ | ------------------------- | ----------------------------------------- |
-| `LLM_PROVIDER`           | `ollama`                  | Основний провайдер: `openai` або `ollama` |
-| `LLM_FALLBACK`           | `none`                    | Fallback: `openai`, `ollama` або `none`   |
-| `OPENAI_API_KEY`         | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=openai`    |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`            | OpenAI-модель для перекладу               |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large`  | OpenAI-модель для embeddings              |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434`  | Адреса Ollama-сервера                     |
-| `OLLAMA_MODEL`           | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=ollama`    |
-| `BATCH_SIZE`             | `30`                      | Кількість рядків у LLM-batch для CLI      |
+| Змінна                   | Значення за замовчуванням | Опис                                                    |
+| ------------------------ | ------------------------- | ------------------------------------------------------- |
+| `LLM_PROVIDER`           | `vllm`                    | Основний провайдер: `openai` або `vllm`                 |
+| `LLM_FALLBACK`           | `none`                    | Fallback: `openai`, `vllm` або `none`                   |
+| `OPENAI_API_KEY`         | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=openai`                  |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`            | OpenAI-модель для перекладу                             |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large`  | OpenAI-модель для embeddings                            |
+| `VLLM_BASE_URL`          | `http://localhost:8000`   | Адреса vLLM / OpenAI-compatible сервера                 |
+| `VLLM_API_KEY`           | _(порожньо)_              | Опційний API key, якщо сервер вимагає auth              |
+| `VLLM_MODEL`             | _(порожньо)_              | Обов’язковий для `LLM_PROVIDER=vllm`                    |
+| `VLLM_EMBED_MODEL`       | _(порожньо)_              | Окрема embedding-модель (за замовчуванням `VLLM_MODEL`) |
+| `BATCH_SIZE`             | `30`                      | Кількість рядків у LLM-batch для CLI                    |
 
 Повний перелік дивіться на сторінці [Конфігурація](17-configuration.md).
 
@@ -283,7 +302,7 @@ TRUNCATE translation_cache;
 - Дуже довгі рядки, наприклад книги або термінальні нотатки, можуть перевищувати context window моделі.
 - LLM інколи переставляє, дублює або втрачає `¤PH0¤` tokens, попри інструкції.
 - Без глосарію модель нестабільно поводиться з proper nouns, назвами фракцій, іменами NPC та предметів.
-- Локальні 7B-моделі через Ollama дають помітно нижчу якість, ніж `gpt-4.1-mini`, особливо на складних діалогах.
+- Локальні 7B-моделі дають помітно нижчу якість, ніж `gpt-4.1-mini`, особливо на складних діалогах.
 - OpenAI може відповідати `429` на великих пакетах.
 - CLI translator виконує batch-роботу блоками і чекає завершення кожного batch без streaming output.
 

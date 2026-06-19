@@ -70,11 +70,13 @@ cp .env.example .env
 Там, де це можливо, уже є дефолтні значення; явно задавати потрібно лише обов’язкові параметри.
 
 ```env
-LLM_PROVIDER=ollama
+LLM_PROVIDER=vllm
 LLM_FALLBACK=none
 
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:12b
+VLLM_BASE_URL=http://localhost:8000
+VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+# VLLM_API_KEY=
+# VLLM_EMBED_MODEL=
 
 # OPENAI_API_KEY=sk-...
 # OPENAI_TRANSLATE_MODEL=gpt-4.1-mini
@@ -123,15 +125,17 @@ postgresql://localizer:localizer@localhost:5432/localizer
 
 ## Налаштування LLM-провайдера
 
-| Змінна                   | За замовчуванням         | Опис                                           |
-| ------------------------ | ------------------------ | ---------------------------------------------- |
-| `LLM_PROVIDER`           | `ollama`                 | Основний провайдер: `openai` або `ollama`      |
-| `LLM_FALLBACK`           | `none`                   | Fallback: `none`, `openai` або `ollama`        |
-| `OPENAI_API_KEY`         | _(для OpenAI)_           | Ваш OpenAI API key                             |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | Модель OpenAI для перекладу                    |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                   |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434` | API endpoint Ollama                            |
-| `OLLAMA_MODEL`           | _(для Ollama)_           | Назва локальної моделі, наприклад `gemma3:12b` |
+| Змінна                   | За замовчуванням         | Опис                                                   |
+| ------------------------ | ------------------------ | ------------------------------------------------------ |
+| `LLM_PROVIDER`           | `vllm`                   | Основний провайдер: `openai` або `vllm`                |
+| `LLM_FALLBACK`           | `none`                   | Fallback: `none`, `openai` або `vllm`                  |
+| `OPENAI_API_KEY`         | _(для OpenAI)_           | Ваш OpenAI API key                                     |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | Модель OpenAI для перекладу                            |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                           |
+| `VLLM_BASE_URL`          | `http://localhost:8000`  | API endpoint vLLM / OpenAI-compatible сервера          |
+| `VLLM_API_KEY`           | _(опційно)_              | API key, якщо сервер вимагає автентифікацію            |
+| `VLLM_MODEL`             | _(для vLLM)_             | Назва моделі на inference-сервері                      |
+| `VLLM_EMBED_MODEL`       | _(опційно)_              | Окрема embedding-модель; за замовчуванням `VLLM_MODEL` |
 
 Поточна реалізація не дає конфігурувати через `.env` температуру, max tokens чи retry-count — backend використовує вбудовані defaults.
 

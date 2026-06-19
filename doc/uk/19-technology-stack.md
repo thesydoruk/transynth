@@ -66,7 +66,7 @@ Localization Pipeline, і пояснює роль кожної частини в
 
 ## AI та сервіси перекладу
 
-- Ollama підтримується для локального LLM inference.
+- vLLM (або інший OpenAI-compatible сервер) підтримується для локального LLM inference.
 - OpenAI підтримується для хмарних workflow LLM-перекладу.
 - Абстракції провайдерів лежать у `src/llm/`.
 

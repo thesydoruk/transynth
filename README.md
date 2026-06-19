@@ -10,7 +10,7 @@ Node.js / TypeScript toolchain for automating game mod localization.
 ## Quick start
 
 ```bash
-cp .env.example .env        # Ollama за замовчуванням, або вкажіть OPENAI_API_KEY
+cp .env.example .env        # vLLM за замовчуванням, або вкажіть OPENAI_API_KEY
 npm install
 npm run db:init
 ```

@@ -164,7 +164,7 @@ Two cards:
 | **Auto-translated** | Total translations produced by an LLM provider |
 
 Below the cards, a **per-model breakdown** table shows how many
-strings each model has produced (e.g. `openai:gpt-4o`, `ollama:llama3`).
+strings each model has produced (e.g. `openai:gpt-4o`, `vllm:Meta-Llama-3-8B-Instruct`).
 
 ### Database
 

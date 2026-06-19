@@ -1,7 +1,7 @@
 /**
  * Unified LLM provider interface.
  *
- * Defines the shared contract implemented by {@link OllamaProvider} and
+ * Defines the shared contract implemented by {@link VllmProvider} and
  * {@link OpenAIProvider}. Consumers target this interface so that the concrete
  * backend can be swapped at runtime via `CONFIG.llmProvider`.
  */

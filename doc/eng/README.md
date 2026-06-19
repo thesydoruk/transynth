@@ -18,7 +18,7 @@ components, and development tooling.
 | 3   | [The Editor](03-editor.md)                     | Navigating the string grid, filters, inline editing, detail panel |
 | 4   | [Keyboard Shortcuts](04-keyboard-shortcuts.md) | Complete shortcut reference table                                 |
 | 5   | [Translation Memory](05-translation-memory.md) | TM waterfall, auto-apply, fuzzy and numeric matching              |
-| 6   | [LLM Translation](06-llm-translation.md)       | AI-assisted translation with OpenAI or Ollama                     |
+| 6   | [LLM Translation](06-llm-translation.md)       | AI-assisted translation with OpenAI or vLLM                       |
 | 7   | [Quality Assurance](07-qa.md)                  | QA issues, types, severity levels, configuring rules              |
 | 8   | [Glossary](08-glossary.md)                     | Managing terminology, injecting terms into LLM prompts            |
 | 9   | [Exporting](09-export.md)                      | Creating patched ESP, STRINGS files, BA2 archives, ZIP            |
@@ -44,7 +44,7 @@ Import mod (ESP/BA2)
    ↓
 Automatic TM match ←── Translation Memory (5-method waterfall)
    ↓
-LLM batch translate ←── OpenAI / Ollama
+LLM batch translate ←── OpenAI / vLLM
    ↓
 Human review in web editor
    ↓

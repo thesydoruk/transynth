@@ -32,7 +32,6 @@
 
   // ── Search / explorer exclusions ────────────────────────────
   "search.exclude": {
-    "legacy/": true,
     "logs/": true,
     "uploads/": true
   },

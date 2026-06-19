@@ -66,7 +66,7 @@ At a high level, the system supports these flows:
 
 ## AI and Translation Services
 
-- Ollama is supported for local LLM inference.
+- vLLM (or any OpenAI-compatible server) is supported for local LLM inference.
 - OpenAI is supported for hosted LLM translation workflows.
 - Provider abstractions live under `src/llm/`.
 

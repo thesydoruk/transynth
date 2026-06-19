@@ -147,7 +147,9 @@ export const parseLlmTranslateResponse = (
  *
  * @returns Translations in the same order as {@link LlmTranslateOptions.items}.
  */
-export const translateStrings = async (opts: LlmTranslateOptions): Promise<LlmTranslateResult[]> => {
+export const translateStrings = async (
+  opts: LlmTranslateOptions,
+): Promise<LlmTranslateResult[]> => {
   if (opts.items.length === 0) return [];
 
   const expectedIds = opts.items.map((item) => item.id);
@@ -173,38 +175,4 @@ export const translateStrings = async (opts: LlmTranslateOptions): Promise<LlmTr
   const results = parseLlmTranslateResponse(text, expectedIds);
   log.debug(`translateStrings: received ${results.length} translations`);
   return results;
-};
-
-/** @deprecated Use {@link translateStrings} instead. */
-export const translateBatch = async (
-  items: string[],
-  model: string,
-  styleMd: string | undefined,
-  glossary: string[] | undefined,
-): Promise<string[]> => {
-  const structuredItems: LlmTranslateItem[] = items.map((source, index) => ({
-    id: index,
-    source,
-    signature: null,
-    path: null,
-    form_id: null,
-    edid: null,
-    context: null,
-  }));
-
-  const glossaryEntries: LlmGlossaryEntry[] = (glossary ?? []).map((term) => ({
-    term,
-    translation: null,
-  }));
-
-  const results = await translateStrings({
-    items: structuredItems,
-    model,
-    srcLang: 'auto',
-    targetLang: 'target set by caller',
-    glossary: glossaryEntries,
-    styleGuide: styleMd,
-  });
-
-  return results.map((row) => row.translation);
 };

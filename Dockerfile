@@ -45,7 +45,7 @@ COPY bin/ ./bin/
 # Pre-built React SPA — served by Fastify static middleware
 COPY --from=ui-build /app/web-ui/dist ./web-ui/dist/
 
-ENV LLM_PROVIDER=ollama
+ENV LLM_PROVIDER=vllm
 ENV NODE_ENV=production
 
 EXPOSE 3000

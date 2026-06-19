@@ -72,15 +72,17 @@ All settings have defaults where possible; only required settings must be provid
 
 ```env
 # --- LLM Provider ---
-# ollama (default) | openai
-LLM_PROVIDER=ollama
+# vllm (default) | openai
+LLM_PROVIDER=vllm
 
-# Fallback provider if primary is unavailable (none | ollama | openai)
+# Fallback provider if primary is unavailable (none | vllm | openai)
 LLM_FALLBACK=none
 
-# --- Ollama ---
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:12b
+# --- vLLM / OpenAI-compatible local inference ---
+VLLM_BASE_URL=http://localhost:8000
+VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+# VLLM_API_KEY=
+# VLLM_EMBED_MODEL=
 
 # --- OpenAI (only if LLM_PROVIDER=openai) ---
 # OPENAI_API_KEY=sk-...
@@ -140,15 +142,17 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## LLM Provider Settings
 
-| Variable                 | Default                  | Description                                                       |
-| ------------------------ | ------------------------ | ----------------------------------------------------------------- |
-| `LLM_PROVIDER`           | `ollama`                 | Primary LLM provider: `openai` or `ollama`                        |
-| `LLM_FALLBACK`           | `none`                   | Fallback provider if primary fails: `none`, `openai`, or `ollama` |
-| `OPENAI_API_KEY`         | _(required for OpenAI)_  | Your OpenAI API key                                               |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model used for translation                                 |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model used for embeddings                                  |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434` | Ollama API endpoint                                               |
-| `OLLAMA_MODEL`           | _(required for Ollama)_  | Ollama model name, e.g. `gemma3:12b`, `llama3`, `mistral`         |
+| Variable                 | Default                  | Description                                                           |
+| ------------------------ | ------------------------ | --------------------------------------------------------------------- |
+| `LLM_PROVIDER`           | `vllm`                   | Primary LLM provider: `openai` or `vllm`                              |
+| `LLM_FALLBACK`           | `none`                   | Fallback provider if primary fails: `none`, `openai`, or `vllm`       |
+| `OPENAI_API_KEY`         | _(required for OpenAI)_  | Your OpenAI API key                                                   |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model used for translation                                     |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model used for embeddings                                      |
+| `VLLM_BASE_URL`          | `http://localhost:8000`  | vLLM / OpenAI-compatible API endpoint                                 |
+| `VLLM_API_KEY`           | _(optional)_             | API key when the inference server requires authentication             |
+| `VLLM_MODEL`             | _(required for vLLM)_    | Model name served by vLLM, e.g. `meta-llama/Meta-Llama-3-8B-Instruct` |
+| `VLLM_EMBED_MODEL`       | _(optional)_             | Separate embedding model; defaults to `VLLM_MODEL`                    |
 
 > Note: temperature, max tokens, and retry count are not configurable via
 > environment variables. The backend uses provider defaults.
@@ -291,7 +295,7 @@ using the credentials from your `.env` file.
    - `DATABASE_URL` — use a strong, unique password.
    - `MULTI_USER=true` and create named user accounts.
    - `SESSION_LIFETIME_HOURS` — keep at 72h or adjust to your security policy.
-   - `LLM_PROVIDER` + the appropriate API key or Ollama URL.
+   - `LLM_PROVIDER` + the appropriate API key or vLLM URL.
    - `LOG_LEVEL=warn` — reduce log verbosity in production.
 
 5. **Database backups:**

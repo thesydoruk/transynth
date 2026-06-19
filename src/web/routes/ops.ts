@@ -36,7 +36,7 @@ export interface ImportJobRow {
 
 /** Breakdown of auto-translated strings by LLM model name. */
 export interface ModelBreakdown {
-  /** Model identifier, e.g. "openai:gpt-4o" or "ollama:llama3". */
+  /** Model identifier, e.g. "openai:gpt-4o" or "vllm:Meta-Llama-3-8B-Instruct". */
   model: string;
   /** Number of translations produced by this model. */
   count: number;
@@ -172,21 +172,21 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       ),
 
       /* Recent LLM batch jobs (last 24 h, up to 30 rows) */
-      db.query(
-        `SELECT id, mod_id, mod_game, mod_name, string_count, done_count,
+      db
+        .query(
+          `SELECT id, mod_id, mod_game, mod_name, string_count, done_count,
                 status, error, started_at, updated_at
          FROM llm_jobs
          WHERE updated_at > NOW() - INTERVAL '24 hours'
          ORDER BY updated_at DESC LIMIT 30`,
-      ).catch(() => ({ rows: [] })),
+        )
+        .catch(() => ({ rows: [] })),
 
       /* LLM translation cache row count */
       db.query('SELECT COUNT(*)::int AS count FROM translation_cache'),
 
       /* Auto-translated string count (provenance = 'llm') */
-      db.query(
-        `SELECT COUNT(*)::int AS count FROM translations WHERE provenance = 'llm'`,
-      ),
+      db.query(`SELECT COUNT(*)::int AS count FROM translations WHERE provenance = 'llm'`),
 
       /* Per-model breakdown of auto-translated strings */
       db.query(
@@ -198,9 +198,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       ),
 
       /* Total database size */
-      db.query(
-        `SELECT pg_size_pretty(pg_database_size(current_database())) AS total_size`,
-      ),
+      db.query(`SELECT pg_size_pretty(pg_database_size(current_database())) AS total_size`),
 
       /* Per-table row estimates + disk size for the most relevant tables */
       db.query(
@@ -223,15 +221,18 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
     ]);
 
     /* ── 3. Merge import jobs into a single sorted list ────────────────── */
-    const tagKind = <K extends 'eet' | 'csv' | 'mod'>(rows: Record<string, unknown>[], kind: K): ImportJobRow[] =>
-      rows.map((r) => ({ ...r, kind }) as unknown as ImportJobRow);
+    const tagKind = <K extends 'eet' | 'csv' | 'mod'>(
+      rows: Record<string, unknown>[],
+      kind: K,
+    ): ImportJobRow[] => rows.map((r) => ({ ...r, kind }) as unknown as ImportJobRow);
 
     const importJobs = [
       ...tagKind(eetJobs.rows, 'eet'),
       ...tagKind(csvJobs.rows, 'csv'),
       ...tagKind(modJobs.rows, 'mod'),
-    ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-     .slice(0, 30);
+    ]
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 30);
 
     /* ── 4. Assemble response ──────────────────────────────────────────── */
     const dbTimeRow = dbTimeResult.rows[0] as { now: string } | undefined;

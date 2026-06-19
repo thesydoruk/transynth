@@ -15,7 +15,7 @@
 | 3   | [Редактор](03-editor.md)                           | Навігація по таблиці рядків, фільтри, редагування, панель деталей |
 | 4   | [Гарячі клавіші](04-keyboard-shortcuts.md)         | Повна таблиця комбінацій клавіш                                   |
 | 5   | [Пам’ять перекладів](05-translation-memory.md)     | TM-waterfall, auto-apply, fuzzy і numeric matching                |
-| 6   | [LLM-переклад](06-llm-translation.md)              | AI-переклад через OpenAI або Ollama                               |
+| 6   | [LLM-переклад](06-llm-translation.md)              | AI-переклад через OpenAI або vLLM                                 |
 | 7   | [Контроль якості](07-qa.md)                        | QA-проблеми, типи, рівні серйозності, налаштування правил         |
 | 8   | [Глосарій](08-glossary.md)                         | Керування термінами, підстановка термінів у LLM-промпти           |
 | 9   | [Експорт](09-export.md)                            | Створення patched ESP, STRINGS-файлів, BA2-архівів і ZIP          |
@@ -41,7 +41,7 @@
    ↓
 Автоматичний TM-match ←── Translation Memory (5-методний waterfall)
    ↓
-Пакетний LLM-переклад ←── OpenAI / Ollama
+Пакетний LLM-переклад ←── OpenAI / vLLM
    ↓
 Людське рев’ю у вебредакторі
    ↓

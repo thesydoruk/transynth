@@ -7,7 +7,7 @@ const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
   /* Only set Content-Type: application/json when the request carries a body.
      Fastify 5 rejects requests with Content-Type: application/json but no body
      (FST_ERR_CTP_EMPTY_JSON_BODY), which breaks DELETE / POST calls without a payload. */
-  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) };
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) ?? {}) };
   if (init?.body) {
     headers['Content-Type'] ??= 'application/json';
   }
@@ -21,7 +21,7 @@ const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
-}
+};
 
 /**
  * Fetches a binary file from the API and triggers a browser download.
@@ -51,7 +51,7 @@ const downloadBinary = async (path: string, fallbackName: string): Promise<void>
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-}
+};
 
 /** Authenticated user profile. */
 export type User = {
@@ -347,7 +347,15 @@ export type QAIssue = {
 
 export type Signature = { signature: string; count: number };
 
-export type GlossaryEntry = { id: number; term: string; translation: string | null; src_lang: string; tgt_lang: string; source: string; created_at: string };
+export type GlossaryEntry = {
+  id: number;
+  term: string;
+  translation: string | null;
+  src_lang: string;
+  tgt_lang: string;
+  source: string;
+  created_at: string;
+};
 
 /** Result of a batch glossary enforcement run. */
 export type GlossaryEnforceResult = { checked: number; violations: number };
@@ -538,14 +546,18 @@ export type OpsTableSize = { table_name: string; row_count: number; size: string
  * All values are safe to display — no secrets are included.
  */
 export type SettingsPayload = {
-  /** Active LLM provider: 'ollama' | 'openai'. */
+  /** Active LLM provider: 'vllm' | 'openai'. */
   llmProvider: string;
-  /** Fallback LLM provider when the primary fails: 'ollama' | 'openai' | 'none'. */
+  /** Fallback LLM provider when the primary fails: 'vllm' | 'openai' | 'none'. */
   llmFallback: string;
-  /** Ollama base URL. */
-  ollamaBaseUrl: string;
-  /** Ollama model used for translation/embedding. */
-  ollamaModel: string;
+  /** vLLM / OpenAI-compatible server base URL. */
+  vllmBaseUrl: string;
+  /** vLLM model used for translation. */
+  vllmModel: string;
+  /** vLLM model used for embeddings. */
+  vllmEmbedModel: string;
+  /** Whether a vLLM API key is configured. */
+  vllmApiKeyConfigured: boolean;
   /** OpenAI model name used for translation. */
   translateModel: string;
   /** OpenAI model name used for embeddings. */
@@ -636,7 +648,7 @@ export type TradAutoRule = {
 
 /** Result of testing rules against sample texts. */
 export type TradAutoTestResult = {
-  results: (({ ruleId: number; translated: string }) | null)[];
+  results: ({ ruleId: number; translated: string } | null)[];
 };
 
 /** Result of applying rules to a mod's untranslated strings. */
@@ -870,8 +882,16 @@ export type ModPreviewResult = {
   isLocalized: boolean;
 };
 
-export type ProgressEvent = { type: 'progress'; done: number; total: number; result: { stringId: number; text?: string; error?: string } };
-export type DoneEvent = { type: 'done'; results: Array<{ stringId: number; text?: string; error?: string }> };
+export type ProgressEvent = {
+  type: 'progress';
+  done: number;
+  total: number;
+  result: { stringId: number; text?: string; error?: string };
+};
+export type DoneEvent = {
+  type: 'done';
+  results: Array<{ stringId: number; text?: string; error?: string }>;
+};
 
 // ── Mods ──────────────────────────────────────────────────────────────────────
 
@@ -886,7 +906,6 @@ export type TMSuggestion = {
   similarity: number;
 };
 
-
 export const api = {
   mods: {
     list: (game?: string) => {
@@ -896,18 +915,30 @@ export const api = {
       return req<Mod[]>(`/api/mods${qs ? `?${qs}` : ''}`);
     },
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
-    clearRows: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
+    clearRows: (modId: number) =>
+      req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<TMApplyResult>(`/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`, { method: 'POST' }),
+      req<TMApplyResult>(
+        `/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`,
+        { method: 'POST' },
+      ),
     diff: (newModId: number, compareModId: number, targetLang = getTgtLang()) =>
-      req<DiffResult>(`/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`),
+      req<DiffResult>(
+        `/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`,
+      ),
     exportStrings: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(`/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+      req<ExportStringsResult>(
+        `/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
     exportEsp: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(`/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+      req<ExportStringsResult>(
+        `/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
     exportBa2: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(`/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`),
+      req<ExportStringsResult>(
+        `/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
     /** Downloads a complete project ZIP (BA2 + patched ESP) as a single file */
     exportProject: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       downloadBinary(
@@ -916,23 +947,32 @@ export const api = {
       ),
     /** Copy translations from an older mod version into a newer one */
     carryOver: (newModId: number, fromModId: number, targetLang = getTgtLang()) =>
-      req<CarryOverResult>(`/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`, { method: 'POST' }),
+      req<CarryOverResult>(
+        `/api/mods/${newModId}/carry-over?fromModId=${fromModId}&targetLang=${encodeURIComponent(targetLang)}`,
+        { method: 'POST' },
+      ),
     /** Apply imported raw strings (e.g. RU translation mod) to a base mod as translations */
     applyImported: (
       targetModId: number,
       fromModId: number,
       importedLang: string,
       srcLang = getSrcLang(),
-    ) => req<ApplyImportedResult>(
-      `/api/mods/${targetModId}/apply-imported?fromModId=${fromModId}`
-      + `&importedLang=${encodeURIComponent(importedLang)}`
-      + `&srcLang=${encodeURIComponent(srcLang)}`,
-      { method: 'POST' },
-    ),
+    ) =>
+      req<ApplyImportedResult>(
+        `/api/mods/${targetModId}/apply-imported?fromModId=${fromModId}` +
+          `&importedLang=${encodeURIComponent(importedLang)}` +
+          `&srcLang=${encodeURIComponent(srcLang)}`,
+        { method: 'POST' },
+      ),
     /** List older versions (same mod name, different file hash) for a given mod ID */
     previousVersions: (modId: number) =>
       req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),
-    bulkReview: (modId: number, stringIds: number[], status: 'reviewed' | 'rejected', targetLang = getTgtLang()) =>
+    bulkReview: (
+      modId: number,
+      stringIds: number[],
+      status: 'reviewed' | 'rejected',
+      targetLang = getTgtLang(),
+    ) =>
       req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
         method: 'PATCH',
         body: JSON.stringify({ stringIds, status, targetLang }),
@@ -943,7 +983,8 @@ export const api = {
     mod: (modId: number) => req<Stats>(`/api/stats?modId=${modId}`),
     global: () => req<Array<Mod & { stats: Stats }>>('/api/stats/global'),
     dashboard: () => req<DashboardData>('/api/stats/dashboard'),
-    grup: (modId: number, lang = getTgtLang()) => req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
+    grup: (modId: number, lang = getTgtLang()) =>
+      req<GrupStatRow[]>(`/api/stats/grup?modId=${modId}&lang=${lang}`),
   },
 
   ops: {
@@ -998,23 +1039,35 @@ export const api = {
       return req<Signature[]>(`/api/strings/signatures?${qs}`);
     },
     suggestions: (stringId: number, targetLang: string) =>
-      req<TMSuggestion[]>(`/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`),
-    saveTranslation: (stringId: number, text: string, status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft', targetLang = getTgtLang()) =>
+      req<TMSuggestion[]>(
+        `/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`,
+      ),
+    saveTranslation: (
+      stringId: number,
+      text: string,
+      status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft',
+      targetLang = getTgtLang(),
+    ) =>
       req<{ id: number; text: string; status: string }>(`/api/strings/${stringId}/translation`, {
         method: 'PATCH',
         body: JSON.stringify({ text, status, targetLang }),
       }),
     clearTranslation: (stringId: number, targetLang = getTgtLang()) =>
-      req<{ removed: number }>(`/api/strings/${stringId}/translation?targetLang=${encodeURIComponent(targetLang)}`, {
-        method: 'DELETE',
-      }),
+      req<{ removed: number }>(
+        `/api/strings/${stringId}/translation?targetLang=${encodeURIComponent(targetLang)}`,
+        {
+          method: 'DELETE',
+        },
+      ),
     updateStatus: (stringId: number, translationId: number, status: string) =>
       req<{ ok: boolean }>(`/api/strings/${stringId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ translationId, status }),
       }),
     history: (stringId: number, targetLang = getTgtLang()) =>
-      req<TranslationHistoryEntry[]>(`/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`),
+      req<TranslationHistoryEntry[]>(
+        `/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`,
+      ),
     qa: (stringId: number, targetLang = getTgtLang()) =>
       req<QAIssue[]>(`/api/strings/${stringId}/qa?targetLang=${encodeURIComponent(targetLang)}`),
 
@@ -1071,7 +1124,13 @@ export const api = {
   search: {
     replace: (
       modId: number,
-      body: { search: string; replace: string; isRegex?: boolean; targetLang?: string; dryRun?: boolean },
+      body: {
+        search: string;
+        replace: string;
+        isRegex?: boolean;
+        targetLang?: string;
+        dryRun?: boolean;
+      },
     ) =>
       req<{ matches: SearchReplaceMatch[]; applied: number }>(`/api/mods/${modId}/search-replace`, {
         method: 'POST',
@@ -1086,12 +1145,18 @@ export const api = {
         `/api/dialogs/tree?topicId=${topicId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       ),
     scenes: (modId: number) => req<DialogScene[]>(`/api/dialogs/scenes?modId=${modId}`),
-    conversations: (modId: number) => req<DialogConversation[]>(`/api/dialogs/conversations?modId=${modId}`),
+    conversations: (modId: number) =>
+      req<DialogConversation[]>(`/api/dialogs/conversations?modId=${modId}`),
     sceneDialog: (sceneId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<SceneDialogLine[]>(
         `/api/dialogs/scene?sceneId=${sceneId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       ),
-    conversationDialog: (modId: number, key: string, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+    conversationDialog: (
+      modId: number,
+      key: string,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+    ) =>
       req<SceneDialogLine[]>(
         `/api/dialogs/conversation?modId=${modId}&key=${encodeURIComponent(key)}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       ),
@@ -1105,7 +1170,12 @@ export const api = {
       if (params?.q) qs.set('q', params.q);
       return req<GlossaryEntry[]>(`/api/glossary?${qs}`);
     },
-    add: (term: string, translation: string | null, srcLang = getSrcLang(), tgtLang = getTgtLang()) =>
+    add: (
+      term: string,
+      translation: string | null,
+      srcLang = getSrcLang(),
+      tgtLang = getTgtLang(),
+    ) =>
       req<GlossaryEntry>('/api/glossary', {
         method: 'POST',
         body: JSON.stringify({ term, translation, srcLang, tgtLang }),
@@ -1131,7 +1201,11 @@ export const api = {
     upload: async (file: File): Promise<EetImportJob> => {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`${BASE}/api/eet/upload`, { method: 'POST', body: form, credentials: 'include' });
+      const res = await fetch(`${BASE}/api/eet/upload`, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -1146,7 +1220,10 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/eet/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
+        const res = await fetch(`${BASE}/api/eet/${jobId}/import`, {
+          signal: ctrl.signal,
+          credentials: 'include',
+        });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -1189,7 +1266,10 @@ export const api = {
         body: JSON.stringify({ srcLang, tgtLang }),
       }),
 
-    preview: (jobId: number, params?: { page?: number; pageSize?: number; signature?: string; q?: string }) => {
+    preview: (
+      jobId: number,
+      params?: { page?: number; pageSize?: number; signature?: string; q?: string },
+    ) => {
       const qs = new URLSearchParams();
       if (params?.page) qs.set('page', String(params.page));
       if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
@@ -1205,7 +1285,11 @@ export const api = {
     upload: async (file: File): Promise<CsvImportJob> => {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch(`${BASE}/api/csv/upload`, { method: 'POST', body: form, credentials: 'include' });
+      const res = await fetch(`${BASE}/api/csv/upload`, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -1220,7 +1304,10 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/csv/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
+        const res = await fetch(`${BASE}/api/csv/${jobId}/import`, {
+          signal: ctrl.signal,
+          credentials: 'include',
+        });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -1263,7 +1350,10 @@ export const api = {
         body: JSON.stringify({ srcLang, tgtLang }),
       }),
 
-    preview: (jobId: number, params?: { page?: number; pageSize?: number; signature?: string; q?: string }) => {
+    preview: (
+      jobId: number,
+      params?: { page?: number; pageSize?: number; signature?: string; q?: string },
+    ) => {
       const qs = new URLSearchParams();
       if (params?.page) qs.set('page', String(params.page));
       if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
@@ -1278,7 +1368,11 @@ export const api = {
 
     upload: async (
       file: File,
-      options?: { game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle'; srcLang?: string; tgtLang?: string },
+      options?: {
+        game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
+        srcLang?: string;
+        tgtLang?: string;
+      },
       onUploadProgress?: (event: UploadProgressEvent) => void,
       onExtractingStart?: () => void,
     ): Promise<ModImportJob> => {
@@ -1310,7 +1404,7 @@ export const api = {
         xhr.onload = () => {
           let body: unknown = {};
           try {
-            body = xhr.responseText ? JSON.parse(xhr.responseText) as unknown : {};
+            body = xhr.responseText ? (JSON.parse(xhr.responseText) as unknown) : {};
           } catch {
             body = {};
           }
@@ -1335,7 +1429,10 @@ export const api = {
       const ctrl = new AbortController();
 
       const promise = (async () => {
-        const res = await fetch(`${BASE}/api/mod-import/${jobId}/import`, { signal: ctrl.signal, credentials: 'include' });
+        const res = await fetch(`${BASE}/api/mod-import/${jobId}/import`, {
+          signal: ctrl.signal,
+          credentials: 'include',
+        });
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
@@ -1368,16 +1465,26 @@ export const api = {
       return { promise, abort: ctrl };
     },
 
-    pause: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/pause`, { method: 'POST' }),
-    cancel: (jobId: number) => req<{ ok: boolean }>(`/api/mod-import/${jobId}/cancel`, { method: 'POST' }),
+    pause: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/mod-import/${jobId}/pause`, { method: 'POST' }),
+    cancel: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/mod-import/${jobId}/cancel`, { method: 'POST' }),
     remove: (jobId: number, deleteData: ModImportDeleteDataMode = 'mod') =>
-      req<{ ok: boolean }>(`/api/mod-import/${jobId}?deleteData=${deleteData}`, { method: 'DELETE' }),
-    restart: (jobId: number) => req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
-    applyToMod: (jobId: number, targetModId: number, importedLang: string, srcLang = getSrcLang()) =>
+      req<{ ok: boolean }>(`/api/mod-import/${jobId}?deleteData=${deleteData}`, {
+        method: 'DELETE',
+      }),
+    restart: (jobId: number) =>
+      req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
+    applyToMod: (
+      jobId: number,
+      targetModId: number,
+      importedLang: string,
+      srcLang = getSrcLang(),
+    ) =>
       req<ApplyImportedResult>(
-        `/api/mod-import/${jobId}/apply-to-mod?targetModId=${targetModId}`
-        + `&importedLang=${encodeURIComponent(importedLang)}`
-        + `&srcLang=${encodeURIComponent(srcLang)}`,
+        `/api/mod-import/${jobId}/apply-to-mod?targetModId=${targetModId}` +
+          `&importedLang=${encodeURIComponent(importedLang)}` +
+          `&srcLang=${encodeURIComponent(srcLang)}`,
         { method: 'POST' },
       ),
 
@@ -1387,7 +1494,10 @@ export const api = {
         body: JSON.stringify({ srcLang, tgtLang }),
       }),
 
-    preview: (jobId: number, params?: { page?: number; pageSize?: number; signature?: string; q?: string }) => {
+    preview: (
+      jobId: number,
+      params?: { page?: number; pageSize?: number; signature?: string; q?: string },
+    ) => {
       const qs = new URLSearchParams();
       if (params?.page) qs.set('page', String(params.page));
       if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
@@ -1415,7 +1525,11 @@ export const api = {
       const form = new FormData();
       form.append('file', file);
       const qs = modId != null ? `?modId=${modId}` : '';
-      const res = await fetch(`${BASE}/api/tmx/import${qs}`, { method: 'POST', body: form, credentials: 'include' });
+      const res = await fetch(`${BASE}/api/tmx/import${qs}`, {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -1432,7 +1546,10 @@ export const api = {
     me: () => req<User>('/api/auth/me'),
     /** Logs in with username and password. Sets a session cookie on success. */
     login: (username: string, password: string) =>
-      req<User>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+      req<User>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      }),
     /** Logs out and clears the session cookie. */
     logout: () => req<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   },
@@ -1448,7 +1565,10 @@ export const api = {
       req<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     /** Changes a user's password */
     changePassword: (id: number, new_password: string) =>
-      req<{ ok: boolean }>(`/api/users/${id}/password`, { method: 'POST', body: JSON.stringify({ new_password }) }),
+      req<{ ok: boolean }>(`/api/users/${id}/password`, {
+        method: 'POST',
+        body: JSON.stringify({ new_password }),
+      }),
   },
 
   activity: {
@@ -1464,14 +1584,14 @@ export const api = {
       dateTo?: string;
     }) => {
       const qs = new URLSearchParams();
-      if (params?.limit)      qs.set('limit',      String(params.limit));
-      if (params?.offset)     qs.set('offset',     String(params.offset));
-      if (params?.userId)     qs.set('userId',     String(params.userId));
-      if (params?.action)     qs.set('action',     params.action);
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.offset) qs.set('offset', String(params.offset));
+      if (params?.userId) qs.set('userId', String(params.userId));
+      if (params?.action) qs.set('action', params.action);
       if (params?.entityType) qs.set('entityType', params.entityType);
-      if (params?.entityId)   qs.set('entityId',   String(params.entityId));
-      if (params?.dateFrom)   qs.set('dateFrom',   params.dateFrom);
-      if (params?.dateTo)     qs.set('dateTo',     params.dateTo);
+      if (params?.entityId) qs.set('entityId', String(params.entityId));
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) qs.set('dateTo', params.dateTo);
       return req<ActivityLogResponse>(`/api/activity?${qs}`);
     },
     /**
@@ -1486,11 +1606,11 @@ export const api = {
       dateTo?: string;
     }) => {
       const qs = new URLSearchParams();
-      if (params?.action)     qs.set('action',     params.action);
+      if (params?.action) qs.set('action', params.action);
       if (params?.entityType) qs.set('entityType', params.entityType);
-      if (params?.entityId)   qs.set('entityId',   String(params.entityId));
-      if (params?.dateFrom)   qs.set('dateFrom',   params.dateFrom);
-      if (params?.dateTo)     qs.set('dateTo',     params.dateTo);
+      if (params?.entityId) qs.set('entityId', String(params.entityId));
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) qs.set('dateTo', params.dateTo);
       const res = await fetch(`/api/activity/csv?${qs}`, { credentials: 'include' });
       if (!res.ok) throw new Error(`CSV export failed: ${res.status}`);
       const blob = await res.blob();
@@ -1547,7 +1667,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ dryRun, targetLang }),
       }),
-    learn: (opts?: { game?: string; srcLang?: string; tgtLang?: string; minOccurrences?: number; limit?: number }) =>
+    learn: (opts?: {
+      game?: string;
+      srcLang?: string;
+      tgtLang?: string;
+      minOccurrences?: number;
+      limit?: number;
+    }) =>
       req<TradAutoLearnResult>('/api/tradauto/learn', {
         method: 'POST',
         body: JSON.stringify(opts ?? {}),
@@ -1611,7 +1737,8 @@ export const api = {
       if (params?.targetLang) qs.set('targetLang', params.targetLang);
       if (params?.statuses?.length) qs.set('statuses', params.statuses.join(','));
       if (params?.modId !== undefined) qs.set('modId', String(params.modId));
-      if (params?.maxConfidence !== undefined) qs.set('maxConfidence', String(params.maxConfidence));
+      if (params?.maxConfidence !== undefined)
+        qs.set('maxConfidence', String(params.maxConfidence));
       if (params?.page !== undefined) qs.set('page', String(params.page));
       if (params?.pageSize !== undefined) qs.set('pageSize', String(params.pageSize));
       return req<ReviewQueueResult>(`/api/review-queue?${qs}`);
@@ -1649,10 +1776,13 @@ export const api = {
     getAll: () => req<Record<string, unknown>>('/api/project-settings'),
     /** Updates a single project setting by key. */
     update: (key: string, value: boolean | number) =>
-      req<{ key: string; value: boolean | number }>(`/api/project-settings/${encodeURIComponent(key)}`, {
-        method: 'PUT',
-        body: JSON.stringify({ value }),
-      }),
+      req<{ key: string; value: boolean | number }>(
+        `/api/project-settings/${encodeURIComponent(key)}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ value }),
+        },
+      ),
   },
 
   /**
@@ -1675,7 +1805,9 @@ export const api = {
      * @param offset  - Zero-based result offset for pagination
      */
     searchMods: (gameId: string, query: string, count = 20, offset = 0) =>
-      req<NexusModsPage>(`/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}&offset=${offset}`),
+      req<NexusModsPage>(
+        `/api/games/${encodeURIComponent(gameId)}/nexus/mods?q=${encodeURIComponent(query)}&count=${count}&offset=${offset}`,
+      ),
     /**
      * Loads one mod with full metadata and all attached files.
      *
@@ -1691,7 +1823,13 @@ export const api = {
         fallbackName,
       ),
     /** Downloads a Nexus file to the server and creates a mod import job. */
-    importModFile: (gameId: string, modId: number, fileId: number, srcLang = getSrcLang(), tgtLang = getTgtLang()) =>
+    importModFile: (
+      gameId: string,
+      modId: number,
+      fileId: number,
+      srcLang = getSrcLang(),
+      tgtLang = getTgtLang(),
+    ) =>
       req<ModImportJob>(
         `/api/games/${encodeURIComponent(gameId)}/nexus/mod/${modId}/file/${fileId}/import`,
         {
@@ -1722,7 +1860,9 @@ export const api = {
     findTranslations: (gameId: string, modId: number, language?: string, count = 50) => {
       const params = new URLSearchParams({ modId: String(modId), count: String(count) });
       if (language) params.set('language', language);
-      return req<NexusTranslationsResult>(`/api/games/${encodeURIComponent(gameId)}/nexus/translations?${params.toString()}`);
+      return req<NexusTranslationsResult>(
+        `/api/games/${encodeURIComponent(gameId)}/nexus/translations?${params.toString()}`,
+      );
     },
   },
 };

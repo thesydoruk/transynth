@@ -21,10 +21,10 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
-      PORT: "3000"
+      PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       MULTI_USER: ${MULTI_USER:-true}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
@@ -32,15 +32,15 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - '${WEB_PORT:-3000}:3000'
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 30s
@@ -64,10 +64,10 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
     depends_on:
       db:
         condition: service_healthy
     extra_hosts:
-      - "host.docker.internal:host-gateway"
-    entrypoint: ["node", "--import", "tsx/esm"]
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', '--import', 'tsx/esm']

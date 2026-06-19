@@ -59,7 +59,7 @@ This is the easiest way to get started.
    - `POSTGRES_PASSWORD=localizer`
    - `POSTGRES_DB=localizer`
    - `DATABASE_URL=postgresql://localizer:localizer@localhost:5432/localizer`
-5. If you use Ollama, keep `LLM_PROVIDER=ollama` and set `OLLAMA_MODEL` to a model that already exists in your Ollama installation.
+5. If you use vLLM, keep `LLM_PROVIDER=vllm` and set `VLLM_MODEL` to the model served by your inference server.
 6. Start the database and web server:
 
 ```bash

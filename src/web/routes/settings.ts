@@ -23,17 +23,21 @@ import { CONFIG } from '../../config';
  * All fields are safe to expose — no secrets are included.
  */
 export interface SettingsPayload {
-  /** Active LLM provider: 'ollama' | 'openai'. */
+  /** Active LLM provider: 'vllm' | 'openai'. */
   llmProvider: string;
-  /** Fallback LLM provider when the primary fails: 'ollama' | 'openai' | 'none'. */
+  /** Fallback LLM provider when the primary fails: 'vllm' | 'openai' | 'none'. */
   llmFallback: string;
-  /** Ollama base URL (included for display; no secret data). */
-  ollamaBaseUrl: string;
-  /** Ollama model used for translation/embedding. */
-  ollamaModel: string;
-  /** OpenAI model name used for translation (empty string when not using OpenAI). */
+  /** vLLM / OpenAI-compatible server base URL. */
+  vllmBaseUrl: string;
+  /** vLLM model used for translation. */
+  vllmModel: string;
+  /** vLLM model used for embeddings (falls back to vllmModel when empty). */
+  vllmEmbedModel: string;
+  /** Whether a vLLM API key is configured. */
+  vllmApiKeyConfigured: boolean;
+  /** OpenAI model name used for translation. */
   translateModel: string;
-  /** OpenAI model name used for embeddings (empty string when not using OpenAI). */
+  /** OpenAI model name used for embeddings. */
   embedModel: string;
   /** Whether the OpenAI API key is configured (true/false — key itself never sent). */
   openaiKeyConfigured: boolean;
@@ -65,60 +69,50 @@ export interface SettingsPayload {
   };
 }
 
-/**
- * Returns true when the selected provider has enough configuration to be used.
- *
- * This helper intentionally validates only static configuration prerequisites.
- * It does not perform network checks (for example, probing Ollama availability)
- * because the settings endpoint must remain fast and side-effect free.
- */
 const isProviderConfigured = (provider: string): boolean => {
   if (provider === 'openai') return Boolean(CONFIG.openaiApiKey);
-  if (provider === 'ollama') return Boolean(CONFIG.ollamaModel);
+  if (provider === 'vllm') return Boolean(CONFIG.vllmModel);
   return false;
-}
+};
 
-/**
- * Builds a deterministic readiness snapshot for LLM configuration.
- *
- * The result is consumed by the Settings UI to show whether translation is
- * currently possible and which config pieces are missing.
- */
 const buildLlmReadiness = (): SettingsPayload['llmReadiness'] => {
   const issues: string[] = [];
 
   const primaryProvider = isProviderConfigured(CONFIG.llmProvider);
   if (!primaryProvider) {
     if (CONFIG.llmProvider === 'openai') issues.push('primary_openai_key_missing');
-    if (CONFIG.llmProvider === 'ollama') issues.push('primary_ollama_model_missing');
+    if (CONFIG.llmProvider === 'vllm') issues.push('primary_vllm_model_missing');
   }
 
-  const fallbackProvider = CONFIG.llmFallback === 'none' || isProviderConfigured(CONFIG.llmFallback);
+  const fallbackProvider =
+    CONFIG.llmFallback === 'none' || isProviderConfigured(CONFIG.llmFallback);
   if (CONFIG.llmFallback !== 'none' && !fallbackProvider) {
     if (CONFIG.llmFallback === 'openai') issues.push('fallback_openai_key_missing');
-    if (CONFIG.llmFallback === 'ollama') issues.push('fallback_ollama_model_missing');
+    if (CONFIG.llmFallback === 'vllm') issues.push('fallback_vllm_model_missing');
   }
 
   if (CONFIG.llmFallback !== 'none' && CONFIG.llmFallback === CONFIG.llmProvider) {
     issues.push('fallback_same_as_primary');
   }
 
-  const translateModel = CONFIG.llmProvider === 'openai'
-    ? Boolean(CONFIG.translateModel)
-    : Boolean(CONFIG.ollamaModel);
+  const translateModel =
+    CONFIG.llmProvider === 'openai' ? Boolean(CONFIG.translateModel) : Boolean(CONFIG.vllmModel);
   if (!translateModel) {
-    issues.push(CONFIG.llmProvider === 'openai'
-      ? 'translate_model_missing_openai'
-      : 'translate_model_missing_ollama');
+    issues.push(
+      CONFIG.llmProvider === 'openai'
+        ? 'translate_model_missing_openai'
+        : 'translate_model_missing_vllm',
+    );
   }
 
-  const embedModel = CONFIG.llmProvider === 'openai'
-    ? Boolean(CONFIG.embedModel)
-    : Boolean(CONFIG.ollamaModel);
+  const embedModel =
+    CONFIG.llmProvider === 'openai'
+      ? Boolean(CONFIG.embedModel)
+      : Boolean(CONFIG.vllmEmbedModel || CONFIG.vllmModel);
   if (!embedModel) {
-    issues.push(CONFIG.llmProvider === 'openai'
-      ? 'embed_model_missing_openai'
-      : 'embed_model_missing_ollama');
+    issues.push(
+      CONFIG.llmProvider === 'openai' ? 'embed_model_missing_openai' : 'embed_model_missing_vllm',
+    );
   }
 
   const canTranslate = primaryProvider && translateModel;
@@ -139,7 +133,7 @@ const buildLlmReadiness = (): SettingsPayload['llmReadiness'] => {
     },
     issues,
   };
-}
+};
 
 /* ── Route registration ─────────────────────────────────────────────────── */
 
@@ -159,11 +153,12 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
     return {
       llmProvider: CONFIG.llmProvider,
       llmFallback: CONFIG.llmFallback,
-      ollamaBaseUrl: CONFIG.ollamaBaseUrl,
-      ollamaModel: CONFIG.ollamaModel,
+      vllmBaseUrl: CONFIG.vllmBaseUrl,
+      vllmModel: CONFIG.vllmModel,
+      vllmEmbedModel: CONFIG.vllmEmbedModel || CONFIG.vllmModel,
+      vllmApiKeyConfigured: Boolean(CONFIG.vllmApiKey),
       translateModel: CONFIG.translateModel,
       embedModel: CONFIG.embedModel,
-      // Never expose the actual key — only whether it's set
       openaiKeyConfigured: Boolean(CONFIG.openaiApiKey),
       batchSize: CONFIG.batchSize,
       multiUser: CONFIG.multiUser,

@@ -10,7 +10,7 @@ placeholder protection.
 - [Overview](#overview)
 - [Supported Providers](#supported-providers)
   - [OpenAI](#openai)
-  - [Ollama (local)](#ollama-local)
+  - [vLLM (local)](#vllm-local)
   - [Fallback Chain](#fallback-chain)
 - [Configuring the Provider](#configuring-the-provider)
 - [Running a Batch Translation](#running-a-batch-translation)
@@ -49,29 +49,42 @@ a mod with 5 000 untranslated strings of average 20 tokens each uses roughly
 typically a few US cents. Check [OpenAI pricing](https://openai.com/pricing) for
 current rates. Strings already in the TM or LLM cache are free.
 
-### Ollama (local)
+### vLLM (local)
 
-[Ollama](https://ollama.com) runs LLMs locally on your own machine or server.
-No API key or internet connection required. Free but requires hardware.
+[vLLM](https://docs.vllm.ai/) and other OpenAI-compatible inference servers (TGI, LiteLLM proxy, etc.)
+run LLMs locally on your own machine or GPU server.
 
-Recommended models: `llama3`, `mistral`, `gemma2`.
+The vLLM provider connects to `VLLM_BASE_URL` (default: `http://localhost:8000`)
+using the standard OpenAI-compatible `/v1` API. Any server that implements
+`/v1/chat/completions` and `/v1/embeddings` works without extra adapters.
 
-The Ollama provider connects to `OLLAMA_BASE_URL` (default: `http://localhost:11434`)
-using the OpenAI-compatible `/v1` API endpoint, so any model that Ollama
-supports works automatically.
+Example vLLM launch:
+
+```bash
+vllm serve meta-llama/Meta-Llama-3-8B-Instruct --port 8000
+```
+
+Set in `.env`:
+
+```env
+LLM_PROVIDER=vllm
+VLLM_BASE_URL=http://localhost:8000
+VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+```
+
+If your server requires authentication, set `VLLM_API_KEY`. For separate
+embedding models, set `VLLM_EMBED_MODEL`.
 
 Minimum hardware guidance:
 
-| Model size  | GPU VRAM needed | Notes                                         |
-| ----------- | --------------- | --------------------------------------------- |
-| 7 B params  | 6–8 GB VRAM     | `llama3`, `mistral:7b`, `gemma2:9b`           |
-| 13 B params | 10–12 GB VRAM   | Better translation quality                    |
-| 70 B params | 40+ GB VRAM     | Near GPT-4 quality; slow on consumer hardware |
+| Model size  | GPU VRAM needed | Notes                              |
+| ----------- | --------------- | ---------------------------------- |
+| 7 B params  | 6–8 GB VRAM     | Fast on consumer GPUs              |
+| 13 B params | 10–12 GB VRAM   | Better translation quality         |
+| 70 B params | 40+ GB VRAM     | Near GPT-4 quality; needs big GPUs |
 
-CPU inference is possible but roughly 10–50× slower than GPU.
-For large mods, GPU is strongly recommended.
-
-Browse available models at [ollama.com/library](https://ollama.com/library).
+CPU inference is possible but much slower than GPU. For large mods, GPU is
+strongly recommended.
 
 ### Fallback Chain
 
@@ -81,7 +94,7 @@ with the fallback provider.
 Set the fallback via the `LLM_FALLBACK` environment variable:
 
 ```
-LLM_FALLBACK=openai # or ollama, or none (default)
+LLM_FALLBACK=openai # or vllm, or none (default)
 ```
 
 Fallback is triggered only on **availability errors** — connection refused,
@@ -100,16 +113,18 @@ activate.
 
 All LLM settings are configured via `.env` variables:
 
-| Variable                 | Default                  | Description                                         |
-| ------------------------ | ------------------------ | --------------------------------------------------- |
-| `LLM_PROVIDER`           | `ollama`                 | Primary provider: `openai` or `ollama`              |
-| `LLM_FALLBACK`           | `none`                   | Fallback provider: `openai`, `ollama`, or `none`    |
-| `OPENAI_API_KEY`         | _(empty)_                | Required when `LLM_PROVIDER=openai`                 |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model for translation                        |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model for embeddings                         |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434` | Ollama server address                               |
-| `OLLAMA_MODEL`           | _(empty)_                | Required when `LLM_PROVIDER=ollama` (e.g. `llama3`) |
-| `BATCH_SIZE`             | `30`                     | Number of strings per LLM batch (CLI only)          |
+| Variable                 | Default                  | Description                                                  |
+| ------------------------ | ------------------------ | ------------------------------------------------------------ |
+| `LLM_PROVIDER`           | `vllm`                   | Primary provider: `openai` or `vllm`                         |
+| `LLM_FALLBACK`           | `none`                   | Fallback provider: `openai`, `vllm`, or `none`               |
+| `OPENAI_API_KEY`         | _(empty)_                | Required when `LLM_PROVIDER=openai`                          |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model for translation                                 |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model for embeddings                                  |
+| `VLLM_BASE_URL`          | `http://localhost:8000`  | vLLM / OpenAI-compatible server address                      |
+| `VLLM_API_KEY`           | _(empty)_                | Optional API key when the server requires auth               |
+| `VLLM_MODEL`             | _(empty)_                | Required when `LLM_PROVIDER=vllm`                            |
+| `VLLM_EMBED_MODEL`       | _(empty)_                | Optional separate embedding model (defaults to `VLLM_MODEL`) |
+| `BATCH_SIZE`             | `30`                     | Number of strings per LLM batch (CLI only)                   |
 
 See [Configuration](17-configuration.md) for the full reference.
 
@@ -304,7 +319,7 @@ There is no UI for cache management — use direct database access.
   to catch mismatched placeholders.
 - **Proper nouns:** without glossary entries, LLMs will guess faction names,
   character names, and item names inconsistently.
-- **Ollama quality:** local 7 B models produce significantly lower quality than
+- **Local model quality:** smaller local models (7–8 B) produce significantly lower quality than
   GPT-4.1-mini, especially for complex dialogue. Plan for more manual review.
 - **Rate limits:** OpenAI may return HTTP 429 on large batches. The retry
   mechanism handles transient bursts but sustained rate limits will stall
