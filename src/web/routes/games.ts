@@ -20,7 +20,7 @@
  *     See NexusModsClient.findPossibleTranslations for the scoring model.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -48,6 +48,14 @@ const GAMES_CACHE_SECONDS = 60 * 60;
 
 /** NexusMods 4:3 tile art base URL. */
 const NM_TILE_BASE = 'https://staticdelivery.nexusmods.com/Images/games/4_3/tile_';
+
+const NEXUS_KEY_MISSING = {
+  error: 'NEXUS_API_KEY is not configured on the server',
+  code: 'nexus_api_key_missing',
+} as const;
+
+/** Respond with 503 when the Nexus personal API key is absent. */
+const sendNexusKeyMissing = (reply: FastifyReply) => reply.code(503).send(NEXUS_KEY_MISSING);
 
 /**
  * A single Nexus file attachment returned by v1 files endpoint.
@@ -630,9 +638,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const { gameId } = req.params;
     const { q, count: rawCount, offset: rawOffset } = req.query;
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     // Validate game
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
@@ -675,9 +681,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
   }>('/api/games/:gameId/nexus/mod/:modId', async (req, reply) => {
     const { gameId, modId: rawModId } = req.params;
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
@@ -730,9 +734,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
   }>('/api/games/:gameId/nexus/mod/:modId/file/:fileId/download', async (req, reply) => {
     const { gameId, modId: rawModId, fileId: rawFileId } = req.params;
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
@@ -792,9 +794,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const { gameId, modId: rawModId, fileId: rawFileId } = req.params;
     const { srcLang = CONFIG.defaultSrcLang, tgtLang = CONFIG.defaultTgtLang } = req.body ?? {};
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
@@ -873,9 +873,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const { gameId, modId: rawModId } = req.params;
     const { count: rawCount } = req.query;
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
@@ -950,9 +948,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const { gameId } = req.params;
     const { modId: rawModId, language, count: rawCount } = req.query;
 
-    if (!CONFIG.nexusApiKey) {
-      return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
-    }
+    if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
     // Validate game
     const game = SUPPORTED_GAMES.find((g) => g.id === gameId);

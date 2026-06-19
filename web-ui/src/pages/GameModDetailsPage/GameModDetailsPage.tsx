@@ -13,12 +13,9 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import {
-  api,
-  type GameInfo,
-  type NexusModFile,
-  type NexusTranslationCandidate,
-} from '../../api';
+import { api, type GameInfo, type NexusModFile, type NexusTranslationCandidate } from '../../api';
+import { NexusApiKeyNotice } from '../../components/NexusApiKeyNotice/NexusApiKeyNotice';
+import { useNexusApiConfigured } from '../../hooks/useNexusApiConfigured';
 import {
   listNexusDownloadJobs,
   type NexusDownloadJob,
@@ -46,13 +43,21 @@ export const GameModDetailsPage = () => {
   // as pseudo-progress updates arrive for files belonging to this mod.
   const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(listNexusDownloadJobs);
   useEffect(() => {
-    const unsubscribe = subscribeNexusDownloadJobs(() => setNexusDownloads(listNexusDownloadJobs()));
+    const unsubscribe = subscribeNexusDownloadJobs(() =>
+      setNexusDownloads(listNexusDownloadJobs()),
+    );
     return () => {
       unsubscribe();
     };
   }, []);
 
   const numericModId = Number(modId);
+
+  const {
+    isLoading: isNexusConfigLoading,
+    isKnown: nexusConfigKnown,
+    isConfigured: nexusConfigured,
+  } = useNexusApiConfigured();
 
   const {
     data: games,
@@ -70,6 +75,13 @@ export const GameModDetailsPage = () => {
     [games, gameId],
   );
 
+  const nexusQueriesEnabled =
+    !!game &&
+    Number.isFinite(numericModId) &&
+    numericModId > 0 &&
+    nexusConfigKnown &&
+    nexusConfigured;
+
   const {
     data: details,
     isLoading: isDetailsLoading,
@@ -77,7 +89,7 @@ export const GameModDetailsPage = () => {
   } = useQuery({
     queryKey: ['nexus-mod-details', gameId, numericModId],
     queryFn: () => api.games.modDetails(gameId, numericModId),
-    enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
+    enabled: nexusQueriesEnabled,
   });
 
   const {
@@ -87,7 +99,7 @@ export const GameModDetailsPage = () => {
   } = useQuery({
     queryKey: ['nexus-translations', gameId, numericModId],
     queryFn: () => api.games.findTranslations(gameId, numericModId, undefined, 50),
-    enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
+    enabled: nexusQueriesEnabled,
   });
 
   const {
@@ -97,7 +109,7 @@ export const GameModDetailsPage = () => {
   } = useQuery({
     queryKey: ['nexus-mod-relations', gameId, numericModId],
     queryFn: () => api.games.modRelations(gameId, numericModId, 100),
-    enabled: !!game && Number.isFinite(numericModId) && numericModId > 0,
+    enabled: nexusQueriesEnabled,
   });
 
   // Index active download jobs by fileId, scoped to this specific mod only.
@@ -122,7 +134,12 @@ export const GameModDetailsPage = () => {
     setBusyActionKey(`download:${file.fileId}`);
 
     try {
-      await api.games.downloadModFile(gameId, numericModId, file.fileId, file.fileName ?? file.name);
+      await api.games.downloadModFile(
+        gameId,
+        numericModId,
+        file.fileId,
+        file.fileName ?? file.name,
+      );
     } catch (error) {
       setFileActionError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -195,12 +212,15 @@ export const GameModDetailsPage = () => {
   };
 
   if (isGamesLoading) return <div className={s.loading}>{t('common.loading')}</div>;
-  if (gamesError) return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
+  if (gamesError)
+    return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
 
   if (!game || !Number.isFinite(numericModId) || numericModId <= 0) {
     return (
       <div className={s.page}>
-        <Link to="/" className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to="/" className={s.backLink}>
+          {t('games.backToGames')}
+        </Link>
         <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
         <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
       </div>
@@ -210,15 +230,25 @@ export const GameModDetailsPage = () => {
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to={`/games/${gameId}/nexus`} className={s.backLink}>{t('games.backToMods')}</Link>
+        <Link to={`/games/${gameId}/nexus`} className={s.backLink}>
+          {t('games.backToMods')}
+        </Link>
         <h1 className={s.title}>{details?.mod.name ?? t('common.loading')}</h1>
         <p className={s.subtitle}>{t('games.modIdLabel', { modId: numericModId })}</p>
       </div>
 
-      {detailsError && <div className={s.error}>{t('common.error', { message: String(detailsError) })}</div>}
-      {isDetailsLoading && <div className={s.loading}>{t('common.loading')}</div>}
+      {isNexusConfigLoading && <div className={s.loading}>{t('common.loading')}</div>}
 
-      {details && (
+      {nexusConfigKnown && !nexusConfigured && <NexusApiKeyNotice />}
+
+      {nexusConfigured && detailsError && (
+        <div className={s.error}>{t('common.error', { message: String(detailsError) })}</div>
+      )}
+      {nexusConfigured && isDetailsLoading && (
+        <div className={s.loading}>{t('common.loading')}</div>
+      )}
+
+      {nexusConfigured && details && (
         <>
           <section className={s.section}>
             <h2 className={s.h2}>{t('games.modInfo')}</h2>
@@ -236,15 +266,21 @@ export const GameModDetailsPage = () => {
 
             <p className={s.summary}>{details.mod.summary || t('games.noSummary')}</p>
             <div className={s.metaGrid}>
-              <span className={s.chip}>{t('games.downloads', { count: details.mod.downloads.toLocaleString() })}</span>
-              <span className={s.chip}>{t('games.endorsements', { count: details.mod.endorsements.toLocaleString() })}</span>
+              <span className={s.chip}>
+                {t('games.downloads', { count: details.mod.downloads.toLocaleString() })}
+              </span>
+              <span className={s.chip}>
+                {t('games.endorsements', { count: details.mod.endorsements.toLocaleString() })}
+              </span>
               <span className={s.chip}>{details.mod.version}</span>
               <span className={s.chip}>{details.mod.category ?? '-'}</span>
             </div>
             {details.mod.description && (
               <div
                 className={s.description}
-                dangerouslySetInnerHTML={{ __html: renderNexusDescription(details.mod.description) }}
+                dangerouslySetInnerHTML={{
+                  __html: renderNexusDescription(details.mod.description),
+                }}
               />
             )}
           </section>
@@ -277,7 +313,9 @@ export const GameModDetailsPage = () => {
                             <td>
                               <div className={s.fileNameCell}>
                                 {f.name}
-                                {f.isPrimary && <span className={s.primaryBadge}>{t('games.primaryFile')}</span>}
+                                {f.isPrimary && (
+                                  <span className={s.primaryBadge}>{t('games.primaryFile')}</span>
+                                )}
                               </div>
                             </td>
                             <td>{f.categoryName ?? '-'}</td>
@@ -290,7 +328,10 @@ export const GameModDetailsPage = () => {
                                   type="button"
                                   className={s.fileActionButton}
                                   onClick={() => handleFileDownload(f)}
-                                  disabled={busyActionKey === `download:${f.fileId}` || busyActionKey === `import:${f.fileId}`}
+                                  disabled={
+                                    busyActionKey === `download:${f.fileId}` ||
+                                    busyActionKey === `import:${f.fileId}`
+                                  }
                                 >
                                   {busyActionKey === `download:${f.fileId}`
                                     ? t('games.fileDownloading')
@@ -301,8 +342,16 @@ export const GameModDetailsPage = () => {
                                   type="button"
                                   className={s.fileActionButton}
                                   onClick={() => handleFileImport(f)}
-                                  disabled={!isImportableNexusFile(f.fileName ?? f.name) || busyActionKey === `import:${f.fileId}` || busyActionKey === `download:${f.fileId}`}
-                                  title={!isImportableNexusFile(f.fileName ?? f.name) ? t('games.fileImportUnsupported') : undefined}
+                                  disabled={
+                                    !isImportableNexusFile(f.fileName ?? f.name) ||
+                                    busyActionKey === `import:${f.fileId}` ||
+                                    busyActionKey === `download:${f.fileId}`
+                                  }
+                                  title={
+                                    !isImportableNexusFile(f.fileName ?? f.name)
+                                      ? t('games.fileImportUnsupported')
+                                      : undefined
+                                  }
                                 >
                                   {busyActionKey === `import:${f.fileId}`
                                     ? t('games.fileImporting')
@@ -378,10 +427,13 @@ export const GameModDetailsPage = () => {
 
         {activeTab === 'possibleTranslations' && (
           <div role="tabpanel" className={s.tabPanel}>
-            {translationsError && <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>}
+            {translationsError && (
+              <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>
+            )}
             {isTranslationsLoading && <p className={s.loading}>{t('common.loading')}</p>}
-            {!isTranslationsLoading && translations && (
-              groupedTranslations.length === 0 ? (
+            {!isTranslationsLoading &&
+              translations &&
+              (groupedTranslations.length === 0 ? (
                 <p className={s.empty}>{t('games.noTranslations')}</p>
               ) : (
                 <div className={s.translationGroups}>
@@ -402,7 +454,9 @@ export const GameModDetailsPage = () => {
                           )}
                         </span>
                         <span>{t(group.labelKey)}</span>
-                        <span className={s.groupCount}>{t('games.groupCountLabel', { count: group.items.length })}</span>
+                        <span className={s.groupCount}>
+                          {t('games.groupCountLabel', { count: group.items.length })}
+                        </span>
                       </h3>
 
                       <ul className={s.translationList}>
@@ -417,8 +471,7 @@ export const GameModDetailsPage = () => {
                     </section>
                   ))}
                 </div>
-              )
-            )}
+              ))}
           </div>
         )}
 
@@ -499,15 +552,31 @@ type TranslationGroup = {
   topScore: number;
 };
 
-const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; countryCode: string; patterns: string[] }> = [
-  { key: 'ukrainian', countryCode: 'ua', patterns: ['ukrainian', 'ukraine', 'україн', 'укр', 'ua'] },
+const LANGUAGE_SPECS: Array<{
+  key: Exclude<TranslationLanguageKey, 'unknown'>;
+  countryCode: string;
+  patterns: string[];
+}> = [
+  {
+    key: 'ukrainian',
+    countryCode: 'ua',
+    patterns: ['ukrainian', 'ukraine', 'україн', 'укр', 'ua'],
+  },
   { key: 'russian', countryCode: 'ru', patterns: ['russian', 'рус', 'руськ', 'ru'] },
   { key: 'polish', countryCode: 'pl', patterns: ['polish', 'polski', 'polska', 'pl'] },
   { key: 'german', countryCode: 'de', patterns: ['german', 'deutsch', 'de'] },
   { key: 'french', countryCode: 'fr', patterns: ['french', 'francais', 'français', 'fr'] },
   { key: 'spanish', countryCode: 'es', patterns: ['spanish', 'espanol', 'español', 'es'] },
-  { key: 'portuguese', countryCode: 'pt', patterns: ['portuguese', 'portugues', 'português', 'pt'] },
-  { key: 'brazilianPortuguese', countryCode: 'br', patterns: ['brazilian portuguese', 'pt br', 'pt-br', 'brasil', 'brasileiro'] },
+  {
+    key: 'portuguese',
+    countryCode: 'pt',
+    patterns: ['portuguese', 'portugues', 'português', 'pt'],
+  },
+  {
+    key: 'brazilianPortuguese',
+    countryCode: 'br',
+    patterns: ['brazilian portuguese', 'pt br', 'pt-br', 'brasil', 'brasileiro'],
+  },
   { key: 'italian', countryCode: 'it', patterns: ['italian', 'italiano', 'it'] },
   { key: 'dutch', countryCode: 'nl', patterns: ['dutch', 'nederlands', 'nl'] },
   { key: 'swedish', countryCode: 'se', patterns: ['swedish', 'svenska', 'sv'] },
@@ -516,7 +585,11 @@ const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; c
   { key: 'finnish', countryCode: 'fi', patterns: ['finnish', 'suomi', 'fi'] },
   { key: 'czech', countryCode: 'cz', patterns: ['czech', 'cestina', 'čeština', 'cz'] },
   { key: 'slovak', countryCode: 'sk', patterns: ['slovak', 'slovencina', 'slovenčina', 'sk'] },
-  { key: 'slovenian', countryCode: 'si', patterns: ['slovenian', 'slovenscina', 'slovenščina', 'sl'] },
+  {
+    key: 'slovenian',
+    countryCode: 'si',
+    patterns: ['slovenian', 'slovenscina', 'slovenščina', 'sl'],
+  },
   { key: 'hungarian', countryCode: 'hu', patterns: ['hungarian', 'magyar', 'hu'] },
   { key: 'romanian', countryCode: 'ro', patterns: ['romanian', 'romana', 'română', 'ro'] },
   { key: 'croatian', countryCode: 'hr', patterns: ['croatian', 'hrvatski', 'hr'] },
@@ -528,7 +601,11 @@ const LANGUAGE_SPECS: Array<{ key: Exclude<TranslationLanguageKey, 'unknown'>; c
   { key: 'korean', countryCode: 'kr', patterns: ['korean', '한국어', 'kr'] },
   { key: 'chinese', countryCode: 'cn', patterns: ['chinese', '中文', 'zh', 'cn'] },
   { key: 'thai', countryCode: 'th', patterns: ['thai', 'ไทย', 'th'] },
-  { key: 'vietnamese', countryCode: 'vn', patterns: ['vietnamese', 'tieng viet', 'tiếng việt', 'vi'] },
+  {
+    key: 'vietnamese',
+    countryCode: 'vn',
+    patterns: ['vietnamese', 'tieng viet', 'tiếng việt', 'vi'],
+  },
   { key: 'indonesian', countryCode: 'id', patterns: ['indonesian', 'bahasa indonesia', 'id'] },
   { key: 'english', countryCode: 'gb', patterns: ['english', 'eng', 'en'] },
 ];
@@ -578,13 +655,19 @@ const groupTranslationsByLanguage = (items: NexusTranslationCandidate[]): Transl
 /**
  * Infers translation language from tags/name/summary.
  */
-const detectTranslationLanguage = (mod: NexusTranslationCandidate['mod']): TranslationLanguageKey => {
+const detectTranslationLanguage = (
+  mod: NexusTranslationCandidate['mod'],
+): TranslationLanguageKey => {
   const normalizedTags = mod.tags.map((tag) => normalizeForLanguageMatch(tag));
   const haystack = normalizeForLanguageMatch(`${mod.name} ${mod.summary} ${mod.category ?? ''}`);
 
   // Tags are usually the strongest language signal on Nexus.
   for (const spec of LANGUAGE_SPECS) {
-    if (normalizedTags.some((tag) => spec.patterns.some((pattern) => textMatchesLanguagePattern(tag, pattern)))) {
+    if (
+      normalizedTags.some((tag) =>
+        spec.patterns.some((pattern) => textMatchesLanguagePattern(tag, pattern)),
+      )
+    ) {
       return spec.key;
     }
   }
@@ -703,22 +786,22 @@ const renderNexusDescription = (raw: string): string => {
   html = replaceRepeatedly(html, /\[b\](.*?)\[\/b\]/gis, '<strong>$1</strong>');
   html = replaceRepeatedly(html, /\[i\](.*?)\[\/i\]/gis, '<em>$1</em>');
   html = replaceRepeatedly(html, /\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
-  html = replaceRepeatedly(html, /\[center\](.*?)\[\/center\]/gis, '<div class="bb-center">$1</div>');
+  html = replaceRepeatedly(
+    html,
+    /\[center\](.*?)\[\/center\]/gis,
+    '<div class="bb-center">$1</div>',
+  );
 
   // Font tags: keep user-visible text and apply only a restricted font-family.
   html = replaceRepeatedly(html, /\[font=(.*?)\](.*?)\[\/font\]/gis, (_m, font, text) => {
     const safeFont = sanitizeFontFamily(font);
-    return safeFont
-      ? `<span style="font-family:${safeFont}">${text}</span>`
-      : String(text);
+    return safeFont ? `<span style="font-family:${safeFont}">${text}</span>` : String(text);
   });
 
   // Color tags
   html = replaceRepeatedly(html, /\[color=(.*?)\](.*?)\[\/color\]/gis, (_m, color, text) => {
     const safeColor = sanitizeColor(color);
-    return safeColor
-      ? `<span style="color:${safeColor}">${text}</span>`
-      : String(text);
+    return safeColor ? `<span style="color:${safeColor}">${text}</span>` : String(text);
   });
 
   // URL tags
@@ -869,8 +952,19 @@ const sanitizeColor = (value: string): string | null => {
   }
 
   const allowed = new Set([
-    'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink',
-    'white', 'black', 'gray', 'grey', 'cyan', 'magenta',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'pink',
+    'white',
+    'black',
+    'gray',
+    'grey',
+    'cyan',
+    'magenta',
   ]);
 
   if (allowed.has(color)) {
@@ -900,4 +994,3 @@ const sanitizeFontFamily = (value: string): string | null => {
 
   return family;
 };
-

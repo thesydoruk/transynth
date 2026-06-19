@@ -16,6 +16,8 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GameInfo } from '../../api';
+import { NexusApiKeyNotice } from '../../components/NexusApiKeyNotice/NexusApiKeyNotice';
+import { useNexusApiConfigured } from '../../hooks/useNexusApiConfigured';
 import { ModTile } from './ModTile';
 import s from './GameModsPage.module.scss';
 
@@ -36,11 +38,17 @@ export const GameModsPage = () => {
 
   /**
    * Effective query used by React Query.
-  * We update this only on form submit to avoid firing a request on every key.
-  * An empty query means "browse all mods for this game".
+   * We update this only on form submit to avoid firing a request on every key.
+   * An empty query means "browse all mods for this game".
    */
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [page, setPage] = useState(1);
+
+  const {
+    isLoading: isNexusConfigLoading,
+    isKnown: nexusConfigKnown,
+    isConfigured: nexusConfigured,
+  } = useNexusApiConfigured();
 
   /** Load games catalogue (static) to resolve selected game details. */
   const {
@@ -61,8 +69,8 @@ export const GameModsPage = () => {
   );
 
   /**
-  * Query NexusMods after the game is known.
-  * Empty query = paginated browse mode over all mods in the selected game.
+   * Query NexusMods after the game is known.
+   * Empty query = paginated browse mode over all mods in the selected game.
    */
   const {
     data: modsPage,
@@ -71,7 +79,7 @@ export const GameModsPage = () => {
   } = useQuery({
     queryKey: ['nexus-mods', gameId, submittedQuery, page, pageSize],
     queryFn: () => api.games.searchMods(gameId, submittedQuery, pageSize, (page - 1) * pageSize),
-    enabled: !!game,
+    enabled: !!game && nexusConfigKnown && nexusConfigured,
   });
 
   const totalPages = modsPage ? Math.max(1, Math.ceil(modsPage.totalCount / pageSize)) : 1;
@@ -101,7 +109,9 @@ export const GameModsPage = () => {
   if (!game) {
     return (
       <div className={s.page}>
-        <Link to={`/games/${gameId}`} className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to={`/games/${gameId}`} className={s.backLink}>
+          {t('games.backToGames')}
+        </Link>
         <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
         <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
       </div>
@@ -111,102 +121,112 @@ export const GameModsPage = () => {
   return (
     <div className={s.page}>
       <div className={s.header}>
-        <Link to={`/games/${gameId}`} className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to={`/games/${gameId}`} className={s.backLink}>
+          {t('games.backToGames')}
+        </Link>
         <h1 className={s.title}>{t('games.modsTitle', { game: game.name })}</h1>
         <p className={s.subtitle}>{t('games.modsSubtitle')}</p>
       </div>
 
-      <form className={s.searchBar} onSubmit={onSubmit}>
-        <input
-          className={s.searchInput}
-          value={queryInput}
-          onChange={(e) => setQueryInput(e.target.value)}
-          placeholder={t('games.searchPlaceholder')}
-          aria-label={t('games.searchPlaceholder')}
-        />
-        <button className={s.searchButton} type="submit">
-          {t('games.searchAction')}
-        </button>
-      </form>
+      {isNexusConfigLoading && <p className={s.loading}>{t('common.loading')}</p>}
 
-      <p className={s.hint}>{t('games.searchHint')}</p>
+      {nexusConfigKnown && !nexusConfigured && <NexusApiKeyNotice />}
 
-      {modsError && (
-        <div className={s.error}>{t('common.error', { message: String(modsError) })}</div>
-      )}
-
-      {isModsLoading && <p className={s.loading}>{t('common.loading')}</p>}
-
-      {!isModsLoading && modsPage && (
+      {nexusConfigured && (
         <>
-          <p className={s.count}>
-            {submittedQuery.trim().length > 0
-              ? t('games.resultsCount', {
-                  count: modsPage.totalCount.toLocaleString(),
-                  query: submittedQuery,
-                })
-              : t('games.resultsCountAll', {
-                  count: modsPage.totalCount.toLocaleString(),
-                  game: game.name,
-                })}
-          </p>
+          <form className={s.searchBar} onSubmit={onSubmit}>
+            <input
+              className={s.searchInput}
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder={t('games.searchPlaceholder')}
+              aria-label={t('games.searchPlaceholder')}
+            />
+            <button className={s.searchButton} type="submit">
+              {t('games.searchAction')}
+            </button>
+          </form>
 
-          {modsPage.items.length === 0 ? (
-            <div className={s.emptyState}>
-              <p className={s.emptyText}>{t('games.noResults')}</p>
-              <div className={s.emptyActions}>
-                <button
-                  type="button"
-                  className={s.emptyBtn}
-                  onClick={() => {
-                    setQueryInput('');
-                    setSubmittedQuery('');
-                    setPage(1);
-                  }}
-                >
-                  {t('games.clearSearchAction')}
-                </button>
-                <Link to={`/games/${gameId}`} className={s.emptyLinkBtn}>
-                  {t('games.backToGameHubAction')}
-                </Link>
-              </div>
-            </div>
-          ) : (
+          <p className={s.hint}>{t('games.searchHint')}</p>
+
+          {modsError && (
+            <div className={s.error}>{t('common.error', { message: String(modsError) })}</div>
+          )}
+
+          {isModsLoading && <p className={s.loading}>{t('common.loading')}</p>}
+
+          {!isModsLoading && modsPage && (
             <>
-              <div className={s.grid}>
-                {modsPage.items.map((mod) => (
-                  <ModTile key={`${mod.game.domainName}-${mod.modId}`} game={game} mod={mod} />
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className={s.pagination}>
-                  <button
-                    type="button"
-                    className={s.paginationButton}
-                    disabled={!canGoPrev || isModsLoading}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    {t('common.prev')}
-                  </button>
-
-                  <span className={s.paginationInfo}>
-                    {t('common.pageWithTotal', {
-                      page,
-                      totalPages,
-                      total: modsPage.totalCount.toLocaleString(),
+              <p className={s.count}>
+                {submittedQuery.trim().length > 0
+                  ? t('games.resultsCount', {
+                      count: modsPage.totalCount.toLocaleString(),
+                      query: submittedQuery,
+                    })
+                  : t('games.resultsCountAll', {
+                      count: modsPage.totalCount.toLocaleString(),
+                      game: game.name,
                     })}
-                  </span>
+              </p>
 
-                  <button
-                    type="button"
-                    className={s.paginationButton}
-                    disabled={!canGoNext || isModsLoading}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    {t('common.next')}
-                  </button>
+              {modsPage.items.length === 0 ? (
+                <div className={s.emptyState}>
+                  <p className={s.emptyText}>{t('games.noResults')}</p>
+                  <div className={s.emptyActions}>
+                    <button
+                      type="button"
+                      className={s.emptyBtn}
+                      onClick={() => {
+                        setQueryInput('');
+                        setSubmittedQuery('');
+                        setPage(1);
+                      }}
+                    >
+                      {t('games.clearSearchAction')}
+                    </button>
+                    <Link to={`/games/${gameId}`} className={s.emptyLinkBtn}>
+                      {t('games.backToGameHubAction')}
+                    </Link>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className={s.grid}>
+                    {modsPage.items.map((mod) => (
+                      <ModTile key={`${mod.game.domainName}-${mod.modId}`} game={game} mod={mod} />
+                    ))}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className={s.pagination}>
+                      <button
+                        type="button"
+                        className={s.paginationButton}
+                        disabled={!canGoPrev || isModsLoading}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        {t('common.prev')}
+                      </button>
+
+                      <span className={s.paginationInfo}>
+                        {t('common.pageWithTotal', {
+                          page,
+                          totalPages,
+                          total: modsPage.totalCount.toLocaleString(),
+                        })}
+                      </span>
+
+                      <button
+                        type="button"
+                        className={s.paginationButton}
+                        disabled={!canGoNext || isModsLoading}
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        {t('common.next')}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -215,4 +235,3 @@ export const GameModsPage = () => {
     </div>
   );
 };
-

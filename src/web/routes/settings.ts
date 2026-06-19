@@ -39,8 +39,10 @@ export interface SettingsPayload {
   translateModel: string;
   /** OpenAI model name used for embeddings. */
   embedModel: string;
-  /** Whether the OpenAI API key is configured (true/false — key itself never sent). */
+  /** Whether the OpenAI API key is configured (key itself never sent). */
   openaiKeyConfigured: boolean;
+  /** Whether the Nexus Mods personal API key is configured. */
+  nexusApiKeyConfigured: boolean;
   /** Translation batch size for LLM auto-translate jobs. */
   batchSize: number;
   /** Whether multi-user authentication mode is active. */
@@ -160,6 +162,7 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       translateModel: CONFIG.translateModel,
       embedModel: CONFIG.embedModel,
       openaiKeyConfigured: Boolean(CONFIG.openaiApiKey),
+      nexusApiKeyConfigured: Boolean(CONFIG.nexusApiKey),
       batchSize: CONFIG.batchSize,
       multiUser: CONFIG.multiUser,
       sessionLifetimeHours: CONFIG.sessionLifetimeHours,

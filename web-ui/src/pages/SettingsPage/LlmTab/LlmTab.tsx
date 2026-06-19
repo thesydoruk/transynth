@@ -154,6 +154,17 @@ export const LlmTab = () => {
         </div>
       </div>
       <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.llm.nexusSection')}</h2>
+        <div className={parentS.fieldGrid}>
+          <span className={parentS.fieldLabel}>{t('settings.llm.nexusApiKey')}</span>
+          <span className={s.fieldValue}>
+            <span className={data.nexusApiKeyConfigured ? s.badgeOk : s.badgeWarn}>
+              {data.nexusApiKeyConfigured ? t('settings.llm.keySet') : t('settings.llm.keyNotSet')}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div className={parentS.section}>
         <h2 className={parentS.sectionTitle}>{t('settings.llm.systemSection')}</h2>
         <div className={parentS.fieldGrid}>
           <span className={parentS.fieldLabel}>{t('settings.llm.multiUser')}</span>

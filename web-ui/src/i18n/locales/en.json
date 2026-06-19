@@ -865,6 +865,8 @@
       "keyNotSet": "not set",
       "translateModel": "Translation model",
       "embedModel": "Embedding model",
+      "nexusSection": "Nexus Mods",
+      "nexusApiKey": "Personal API key",
       "systemSection": "System",
       "multiUser": "Multi-user mode",
       "sessionLifetime": "Session lifetime"
@@ -934,6 +936,12 @@
     "openOnNexus": "Open on NexusMods",
     "notFoundTitle": "Game not found",
     "notFoundSubtitle": "This game is not in the supported catalogue.",
+    "nexusApiKey": {
+      "title": "Nexus Mods integration is not configured",
+      "body": "The server does not have a Nexus Mods personal API key. Add one to the server environment to search mods, view details, and import files from Nexus.",
+      "envHint": "Set NEXUS_API_KEY in the server .env file, then restart the API server.",
+      "linkText": "Get a personal API key on Nexus Mods →"
+    },
     "backToMods": "← Back to mods",
     "modIdLabel": "Mod ID: {{modId}}",
     "modInfo": "Mod Information",

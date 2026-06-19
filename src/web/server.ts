@@ -140,6 +140,9 @@ const sessionCleanup = setInterval(async () => {
 }, SESSION_CLEANUP_INTERVAL);
 
 log.info(`Auth mode: ${CONFIG.multiUser ? 'multi-user' : 'single-user'}`);
+if (!CONFIG.nexusApiKey) {
+  log.warn('NEXUS_API_KEY is not set — Nexus Mods search and import are disabled');
+}
 
 try {
   await app.listen({ port: PORT, host: HOST });

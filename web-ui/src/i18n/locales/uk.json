@@ -866,6 +866,8 @@
       "keyNotSet": "не задано",
       "translateModel": "Модель перекладу",
       "embedModel": "Модель ембедингів",
+      "nexusSection": "Nexus Mods",
+      "nexusApiKey": "Персональний API-ключ",
       "systemSection": "Система",
       "multiUser": "Мультикористувацький режим",
       "sessionLifetime": "Тривалість сесії"
@@ -935,6 +937,12 @@
     "openOnNexus": "Відкрити на NexusMods",
     "notFoundTitle": "Гру не знайдено",
     "notFoundSubtitle": "Цієї гри немає у каталозі підтримуваних.",
+    "nexusApiKey": {
+      "title": "Інтеграцію з Nexus Mods не налаштовано",
+      "body": "На сервері відсутній персональний API-ключ Nexus Mods. Додайте його в середовище сервера, щоб шукати моди, переглядати деталі та імпортувати файли з Nexus.",
+      "envHint": "Встановіть NEXUS_API_KEY у файлі .env на сервері, потім перезапустіть API-сервер.",
+      "linkText": "Отримати персональний API-ключ на Nexus Mods →"
+    },
     "backToMods": "← Назад до модів",
     "modIdLabel": "ID мода: {{modId}}",
     "modInfo": "Інформація про мод",

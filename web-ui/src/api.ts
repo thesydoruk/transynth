@@ -564,6 +564,8 @@ export type SettingsPayload = {
   embedModel: string;
   /** Whether the OpenAI API key is configured (key itself is never sent). */
   openaiKeyConfigured: boolean;
+  /** Whether the Nexus Mods personal API key is configured. */
+  nexusApiKeyConfigured: boolean;
   /** Translation batch size for LLM auto-translate jobs. */
   batchSize: number;
   /** Whether multi-user authentication mode is active. */
