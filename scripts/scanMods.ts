@@ -7,7 +7,11 @@
  *
  * Usage:
  *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
- *   npm run scan:mods -- --dir ./mods --game sse --tgt-lang uk
+ *   npm run scan:mods -- --dir "\\nas\share\mods" --game fo4
+ *   npm run scan:mods -- --dir "Z:\Mods" --game fo4
+ *
+ * Network/mapped drives are read-only scan sources. Archives extract to local
+ * DATA_DIR/cache/scan-extract (override with SCAN_EXTRACT_DIR).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,8 +20,10 @@ import { hideBin } from 'yargs/helpers';
 import { CONFIG } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
+import { PATHS, ensureDataDirs } from '../src/paths';
 import type { GameType } from '../src/types';
-import { sha1Hex } from '../src/utils/hash';
+import { ensureDir, resolveDirectoryInput } from '../src/utils/file';
+import { sha1HexFile } from '../src/utils/hash';
 import {
   listModFilesInDirectory,
   MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
@@ -31,6 +37,25 @@ const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as 
 
 const isGameType = (value: string): value is GameType => {
   return (GAME_CHOICES as readonly string[]).includes(value);
+};
+
+/** True for Windows UNC paths (`\\server\share\...`). */
+const isUncPath = (p: string): boolean => process.platform === 'win32' && p.startsWith('\\\\');
+
+/**
+ * 7-Zip and unrar are unreliable with UNC sources — copy to local staging first.
+ * Returns the path to extract from (original or staged copy).
+ */
+const stageArchiveForExtract = async (archivePath: string, fileHash: string): Promise<string> => {
+  if (!isUncPath(archivePath)) return archivePath;
+
+  const staged = path.join(PATHS.scanExtract, 'staging', fileHash, path.basename(archivePath));
+  ensureDir(path.dirname(staged));
+  if (!fs.existsSync(staged)) {
+    log.info(`Staging archive from network share: ${path.basename(archivePath)}`);
+    await fs.promises.copyFile(archivePath, staged);
+  }
+  return staged;
 };
 
 const argv = await yargs(hideBin(process.argv))
@@ -66,19 +91,30 @@ const argv = await yargs(hideBin(process.argv))
   .help()
   .parse();
 
-const scanDir = path.resolve(argv.dir);
+ensureDataDirs();
+ensureDir(PATHS.scanExtract);
+
+const scanDir = resolveDirectoryInput(argv.dir);
 const game = isGameType(argv.game) ? argv.game : 'fo4';
 const srcLang = argv['src-lang'] || MOD_IMPORT_DEFAULT_SOURCE_LOCALE;
 const tgtLang = argv['tgt-lang'];
 const force = argv.force;
 
-if (!fs.existsSync(scanDir)) {
-  log.error(`Directory not found: ${scanDir}`);
+let scanStat: fs.Stats;
+try {
+  scanStat = fs.statSync(scanDir);
+} catch (err) {
+  const code =
+    err instanceof Error && 'code' in err ? String((err as NodeJS.ErrnoException).code) : '';
+  log.error(
+    `Cannot access directory "${scanDir}"${code ? ` (${code})` : ''}. ` +
+      'For network paths use a UNC path in quotes, e.g. --dir "\\\\server\\share\\mods" ' +
+      'or a mapped drive letter, e.g. --dir "Z:\\Mods".',
+  );
   process.exit(1);
 }
 
-const stat = fs.statSync(scanDir);
-if (!stat.isDirectory()) {
+if (!scanStat.isDirectory()) {
   log.error(`Not a directory: ${scanDir}`);
   process.exit(1);
 }
@@ -89,8 +125,8 @@ if (candidates.length === 0) {
   process.exit(0);
 }
 
-const extractRoot = path.join(scanDir, '.transynth-extracted');
-fs.mkdirSync(extractRoot, { recursive: true });
+/** Local cache for archive extraction — avoids writing temp files to network shares. */
+const extractRoot = PATHS.scanExtract;
 
 const db = openDb();
 let imported = 0;
@@ -98,6 +134,7 @@ let skipped = 0;
 let failed = 0;
 
 log.info(`Scanning ${candidates.length} mod file(s) under ${scanDir} (game=${game}, recursive)`);
+log.info(`Archive extract cache: ${extractRoot}`);
 
 try {
   for (const candidate of candidates) {
@@ -115,13 +152,13 @@ try {
           game,
         );
       } else {
-        const buf = fs.readFileSync(candidate.filePath);
-        const fileHash = sha1Hex(buf);
+        const fileHash = await sha1HexFile(candidate.filePath);
+        const archivePath = await stageArchiveForExtract(candidate.filePath, fileHash);
         const outDir = path.join(extractRoot, fileHash);
         job = await registerArchiveFile(
           db,
           candidate.fileName,
-          candidate.filePath,
+          archivePath,
           outDir,
           srcLang,
           tgtLang,

@@ -11,6 +11,10 @@ export const PATHS = {
   eetUploads: path.resolve(process.env.EET_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'eet')),
   csvUploads: path.resolve(process.env.CSV_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'csv')),
   gamesCache: path.resolve(process.env.GAMES_CACHE_DIR ?? path.join(dataDir, 'cache', 'games')),
+  /** Local extraction target for scan:mods archives (never on network shares). */
+  scanExtract: path.resolve(
+    process.env.SCAN_EXTRACT_DIR ?? path.join(dataDir, 'cache', 'scan-extract'),
+  ),
   backups: path.resolve(process.env.BACKUP_DIR ?? path.join(dataDir, 'backups')),
   postgres: path.resolve(process.env.POSTGRES_DATA_DIR ?? path.join(dataDir, 'postgres')),
 };
@@ -23,6 +27,7 @@ export const ensureDataDirs = (): void => {
     PATHS.eetUploads,
     PATHS.csvUploads,
     PATHS.gamesCache,
+    PATHS.scanExtract,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
