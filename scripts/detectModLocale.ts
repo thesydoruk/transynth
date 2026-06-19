@@ -11,6 +11,7 @@
  *   npm run detect:locale -- --all
  *   npm run detect:locale -- --all --sample 50 --json
  */
+import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { validateConfig } from '../src/config';

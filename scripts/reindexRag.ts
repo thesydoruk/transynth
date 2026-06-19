@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import '../src/loadEnv';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { reindexAllTranslationExamples } from '../src/llm/ragService';

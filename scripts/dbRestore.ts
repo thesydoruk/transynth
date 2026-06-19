@@ -8,6 +8,7 @@
  *   npm run db:restore -- --yes
  *   npm run db:restore -- --yes --file data/backups/my-backup.dump
  */
+import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { log } from '../src/logger';

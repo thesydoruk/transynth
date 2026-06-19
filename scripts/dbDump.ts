@@ -8,6 +8,7 @@
  *   npm run db:dump
  *   npm run db:dump -- --out data/backups/my-backup.dump
  */
+import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { DEFAULT_DUMP_FILENAME, dumpDatabase, resolveDumpPath } from './dbBackupShared';

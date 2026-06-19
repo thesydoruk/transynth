@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './loadEnv';
 import { resolveDatabaseUrl } from './databaseUrl';
 import { log } from './logger';
 

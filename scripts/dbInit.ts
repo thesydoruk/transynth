@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import '../src/loadEnv';
 import fs from 'fs';
 import path from 'path';
 import { openDb, runSchema, closeDb } from '../src/db';

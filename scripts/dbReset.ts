@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openDb, runSchema, closeDb } from '../src/db';
@@ -41,7 +42,9 @@ const resetDatabase = async (): Promise<void> => {
 };
 
 if (!isConfirmed()) {
-  log.error('Refusing to reset DB without explicit confirmation. Re-run with: npm run db:reset -- --yes');
+  log.error(
+    'Refusing to reset DB without explicit confirmation. Re-run with: npm run db:reset -- --yes',
+  );
   process.exit(1);
 }
 

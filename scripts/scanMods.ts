@@ -13,6 +13,7 @@
  * Network/mapped drives are read-only scan sources. Archives extract to local
  * DATA_DIR/cache/scan-extract (override with SCAN_EXTRACT_DIR).
  */
+import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';
 import yargs from 'yargs';

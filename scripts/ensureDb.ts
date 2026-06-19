@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import 'dotenv/config';
+import '../src/loadEnv';
 import pg from 'pg';
 import { parseDatabaseUrl, resolveDatabaseUrl } from '../src/databaseUrl';
 
