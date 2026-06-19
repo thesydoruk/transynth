@@ -12,6 +12,7 @@
     "db:restore": "tsx scripts/dbRestore.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
+    "scan:strings": "tsx scripts/scanStrings.ts",
     "detect:locale": "tsx scripts/detectModLocale.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

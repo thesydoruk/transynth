@@ -55,6 +55,7 @@ export const bulkInsertModImportRows = async (
     textNormNopunct: string | null;
     sourceKind: string;
     context: string | null;
+    lstringId: number | null;
   }> = [];
 
   for (const item of rows) {
@@ -81,6 +82,7 @@ export const bulkInsertModImportRows = async (
       textNormNopunct: normalizeNoPunct(r.Source),
       sourceKind: item.sourceKind ?? 'mod-import',
       context: item.context,
+      lstringId: r.LStringID ?? null,
     });
   }
 
@@ -140,17 +142,18 @@ export const bulkInsertModImportRows = async (
   const textNormNopunct = stringInputs.map((s) => s.textNormNopunct);
   const sourceKinds = stringInputs.map((s) => s.sourceKind);
   const contexts = stringInputs.map((s) => s.context);
+  const lstringIds = stringInputs.map((s) => s.lstringId);
 
   const { rows: stringRows } = await db.query<{ id: number }>(
     `INSERT INTO strings(
        record_id, lang, lstring_id, text_raw, text_norm, source_kind, text_norm_nopunct, context
      )
-     SELECT i.record_id, i.lang, NULL, i.text_raw, i.text_norm, i.source_kind, i.text_norm_nopunct, i.context
+     SELECT i.record_id, i.lang, i.lstring_id, i.text_raw, i.text_norm, i.source_kind, i.text_norm_nopunct, i.context
      FROM UNNEST(
-       $1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[]
-     ) AS i(record_id, lang, text_raw, text_norm, source_kind, text_norm_nopunct, context)
+       $1::int[], $2::text[], $3::int[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[]
+     ) AS i(record_id, lang, lstring_id, text_raw, text_norm, source_kind, text_norm_nopunct, context)
      RETURNING id`,
-    [recordIds, langs, textRaws, textNorms, sourceKinds, textNormNopunct, contexts],
+    [recordIds, langs, lstringIds, textRaws, textNorms, sourceKinds, textNormNopunct, contexts],
   );
 
   return rows.map((row, index) => ({
