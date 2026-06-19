@@ -56,6 +56,7 @@ import {
   hasMcmTranslationFiles,
   findFirstMcmTranslationFile,
   resolveModDirectoryFromPath,
+  loadMcmLocalesFromConfigJson,
   MCM_LOCALE_ALIASES,
 } from '../bethesda/parsers';
 import { loadNpcReferenceMap } from '../bethesda/subrecords';
@@ -843,6 +844,14 @@ const collectMcmLocalesForMod = (
   for (const [locale, mcmMap] of loadMcmLocalesFromLooseFiles(modDir, modPrefixes)) {
     if (!merged.has(locale)) merged.set(locale, new Map());
     for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
+  }
+
+  for (const [locale, mcmMap] of loadMcmLocalesFromConfigJson(modDir, modPrefixes)) {
+    if (!merged.has(locale)) merged.set(locale, new Map());
+    const bucket = merged.get(locale)!;
+    for (const [k, v] of mcmMap) {
+      if (!bucket.has(k)) bucket.set(k, v);
+    }
   }
 
   return merged;
