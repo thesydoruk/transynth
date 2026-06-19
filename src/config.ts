@@ -12,6 +12,16 @@ const parseUploadMaxFileSizeBytes = (mbValue: string | undefined): number => {
   return DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES;
 };
 
+const buildDefaultDatabaseUrl = (): string => {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const user = process.env.POSTGRES_USER || 'localizer';
+  const password = process.env.POSTGRES_PASSWORD || 'localizer';
+  const host = process.env.POSTGRES_HOST || 'localhost';
+  const port = process.env.POSTGRES_PORT || '5433';
+  const db = process.env.POSTGRES_DB || 'localizer';
+  return `postgresql://${user}:${password}@${host}:${port}/${db}`;
+};
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'vllm') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -28,8 +38,7 @@ export const CONFIG = {
   embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large',
 
   // Database
-  databaseUrl:
-    process.env.DATABASE_URL || 'postgresql://localizer:localizer@localhost:5432/localizer',
+  databaseUrl: buildDefaultDatabaseUrl(),
 
   // Maximum multipart upload size in bytes (Fastify multipart fileSize limit).
   uploadMaxFileSizeBytes: parseUploadMaxFileSizeBytes(process.env.UPLOAD_MAX_FILE_SIZE_MB),

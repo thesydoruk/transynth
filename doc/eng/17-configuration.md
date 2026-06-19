@@ -90,7 +90,8 @@ VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
 # OPENAI_EMBED_MODEL=text-embedding-3-large
 
 # --- Database ---
-DATABASE_URL=postgresql://localizer:localizer@localhost:5432/localizer
+POSTGRES_PORT=5433
+DATABASE_URL=postgresql://localizer:localizer@localhost:5433/localizer
 POSTGRES_USER=localizer
 POSTGRES_PASSWORD=localizer
 POSTGRES_DB=localizer
@@ -122,9 +123,13 @@ UPLOAD_MAX_FILE_SIZE_MB=1024
 
 ## Database Settings
 
-| Variable       | Default      | Description                                                                      |
-| -------------- | ------------ | -------------------------------------------------------------------------------- |
-| `DATABASE_URL` | _(required)_ | PostgreSQL connection string, e.g. `postgresql://user:pass@localhost:5432/f4loc` |
+| Variable            | Default     | Description                                                                    |
+| ------------------- | ----------- | ------------------------------------------------------------------------------ |
+| `DATABASE_URL`      | _(built)_   | PostgreSQL connection string; overrides the defaults below when set            |
+| `POSTGRES_PORT`     | `5433`      | Host port mapped to the `db` container (avoids conflict with local PostgreSQL) |
+| `POSTGRES_USER`     | `localizer` | Database user                                                                  |
+| `POSTGRES_PASSWORD` | `localizer` | Database password                                                              |
+| `POSTGRES_DB`       | `localizer` | Database name                                                                  |
 
 The connection string format is:
 
@@ -132,7 +137,7 @@ The connection string format is:
 postgresql://USERNAME:PASSWORD@HOST:PORT/DBNAME
 ```
 
-Example: `postgresql://localizer:localizer@localhost:5432/localizer`
+Example: `postgresql://localizer:localizer@localhost:5433/localizer`
 
 When using **Docker Compose**, `DATABASE_URL` is set automatically by `docker-compose.yml`
 using the `db` service name as the host: `postgresql://localizer:localizer@db:5432/localizer`.
@@ -259,16 +264,16 @@ cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 
 **Access the database from the host machine:**
 
-Add a port mapping to `docker-compose.yml` (or a local override file):
+The Docker stack maps PostgreSQL to `${POSTGRES_PORT:-5433}` on the host (see `docker-compose.db.yml`):
 
 ```yaml
 services:
   db:
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5433}:5432'
 ```
 
-Then connect with any PostgreSQL client (e.g. pgAdmin, DBeaver) to `localhost:5432`
+Then connect with any PostgreSQL client (e.g. pgAdmin, DBeaver) to `localhost:5433`
 using the credentials from your `.env` file.
 
 ---

@@ -58,7 +58,8 @@ This is the easiest way to get started.
    - `POSTGRES_USER=localizer`
    - `POSTGRES_PASSWORD=localizer`
    - `POSTGRES_DB=localizer`
-   - `DATABASE_URL=postgresql://localizer:localizer@localhost:5432/localizer`
+   - `POSTGRES_PORT=5433`
+   - `DATABASE_URL=postgresql://localizer:localizer@localhost:5433/localizer`
 5. If you use vLLM, keep `LLM_PROVIDER=vllm` and set `VLLM_MODEL` to the model served by your inference server.
 6. Start the database and web server:
 
