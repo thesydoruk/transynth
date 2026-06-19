@@ -1,0 +1,100 @@
+import { describe, it, expect } from '@jest/globals';
+import {
+  buildVerifySystemPrompt,
+  buildVerifyTranslateUserPayload,
+  parseLlmVerifyTranslateResponse,
+  VERIFY_TRANSLATE_SYSTEM_PROMPT,
+} from '../verifyTranslate';
+import { buildUkrainianVerifySystemPrompt } from '../prompts/uk';
+
+describe('buildVerifyTranslateUserPayload', () => {
+  it('builds JSON audit payload', () => {
+    const payload = buildVerifyTranslateUserPayload({
+      srcLang: 'en',
+      targetLang: 'uk',
+      game: 'fo4',
+      modName: 'TestMod.esp',
+      items: [
+        {
+          id: 7,
+          source: 'Hello',
+          translation: 'Привіт',
+          signature: 'WEAP',
+          path: 'WEAP\\FULL',
+          edid: 'MyGun',
+          context: null,
+        },
+      ],
+    });
+
+    expect(payload).toMatchObject({
+      task: 'translation_quality_audit',
+      source_language: 'en',
+      target_language: 'uk',
+      items: [{ id: 7, source: 'Hello', translation: 'Привіт' }],
+    });
+  });
+});
+
+describe('parseLlmVerifyTranslateResponse', () => {
+  const itemIds = [1, 2];
+
+  it('parses valid JSON response', () => {
+    const raw = JSON.stringify({
+      items: [
+        { id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.95, suggestion: null },
+        {
+          id: 2,
+          verdict: 'incorrect',
+          reason: 'Wrong meaning.',
+          confidence: 0.88,
+          suggestion: 'Fixed text.',
+        },
+      ],
+    });
+
+    const result = parseLlmVerifyTranslateResponse(raw, itemIds);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 1, verdict: 'ok', suggestion: null });
+    expect(result[1]).toMatchObject({
+      id: 2,
+      verdict: 'incorrect',
+      reason: 'Wrong meaning.',
+      suggestion: 'Fixed text.',
+    });
+  });
+
+  it('ignores suggestion for ok verdict', () => {
+    const raw = JSON.stringify({
+      items: [{ id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.95, suggestion: 'Ignored.' }],
+    });
+    expect(parseLlmVerifyTranslateResponse(raw, [1])[0]?.suggestion).toBeNull();
+  });
+
+  it('throws when an item id is missing', () => {
+    const raw = JSON.stringify({
+      items: [{ id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.9 }],
+    });
+    expect(() => parseLlmVerifyTranslateResponse(raw, itemIds)).toThrow(/missing item id=2/);
+  });
+
+  it('exports a non-empty default system prompt', () => {
+    expect(VERIFY_TRANSLATE_SYSTEM_PROMPT).toContain('suspicious');
+  });
+});
+
+describe('buildVerifySystemPrompt', () => {
+  it('uses Ukrainian prompt for uk target', () => {
+    const prompt = buildVerifySystemPrompt('en', 'uk', 'fo4');
+    expect(prompt).toContain('українською');
+    expect(prompt).not.toBe(VERIFY_TRANSLATE_SYSTEM_PROMPT);
+  });
+
+  it('uses default English prompt for non-Ukrainian targets', () => {
+    expect(buildVerifySystemPrompt('en', 'de')).toBe(VERIFY_TRANSLATE_SYSTEM_PROMPT);
+  });
+
+  it('Ukrainian verify prompt mentions rusisms', () => {
+    expect(buildUkrainianVerifySystemPrompt('en', 'fo4')).toContain('русизм');
+  });
+});

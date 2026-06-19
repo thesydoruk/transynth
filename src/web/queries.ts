@@ -1575,7 +1575,21 @@ export const applyImportedModStringsAsTranslations = async (
   importedLang: string,
   targetLang = importedLang,
   srcLang = CONFIG.defaultSrcLang,
-): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
+  opts?: {
+    onProgress?: (
+      processed: number,
+      total: number,
+      stats: { applied: number; skipped: number; unmatched: number; empty: number },
+    ) => void | Promise<void>;
+    shouldCancel?: () => boolean;
+  },
+): Promise<{
+  applied: number;
+  skipped: number;
+  unmatched: number;
+  empty: number;
+  cancelled?: boolean;
+}> => {
   const { rows: importedRows } = await db.query(
     `SELECT r.formid_hex,
             r.path,
@@ -1609,7 +1623,25 @@ export const applyImportedModStringsAsTranslations = async (
     srcLang,
     `imported_mod_${fromImportedModId}_${importedLang}`,
     `Imported apply: targetMod=${targetModId}, importedMod=${fromImportedModId}`,
+    opts?.onProgress,
+    opts?.shouldCancel,
   );
+};
+
+/** Count target mod source strings eligible for imported translation apply. */
+export const countApplyImportedTargetStrings = async (
+  db: Tx,
+  targetModId: number,
+  srcLang: string,
+): Promise<number> => {
+  const { rows } = await db.query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+      WHERE r.mod_id = $1 AND s.lang = $2`,
+    [targetModId, srcLang],
+  );
+  return Number.parseInt(rows[0]?.cnt ?? '0', 10);
 };
 
 /**
@@ -1636,8 +1668,19 @@ export const applyImportedRowsAsTranslations = async (
   srcLang = CONFIG.defaultSrcLang,
   provenance = `imported_rows_${importedLang}`,
   logLabel = `Imported apply: targetMod=${targetModId}`,
-  onProgress?: (processed: number, total: number) => void | Promise<void>,
-): Promise<{ applied: number; skipped: number; unmatched: number; empty: number }> => {
+  onProgress?: (
+    processed: number,
+    total: number,
+    stats: { applied: number; skipped: number; unmatched: number; empty: number },
+  ) => void | Promise<void>,
+  shouldCancel?: () => boolean,
+): Promise<{
+  applied: number;
+  skipped: number;
+  unmatched: number;
+  empty: number;
+  cancelled?: boolean;
+}> => {
   /**
    * Normalize record paths so equivalent notations compare reliably.
    * Example: "INFO\\FULL" and "info/full" become the same lookup key.
@@ -1859,67 +1902,70 @@ export const applyImportedRowsAsTranslations = async (
     return null;
   };
 
-  await withTransaction(db as pg.Pool, async (client) => {
-    for (const row of targetRows as Array<{
-      string_id: number;
-      formid_hex: string;
-      path: string;
-      path_simplified: string | null;
-      signature: string | null;
-      edid: string | null;
-      identity_rank: number;
-    }>) {
-      if (alreadyTranslated.has(row.string_id)) {
-        skipped += 1;
-        processed += 1;
-        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
-          await onProgress(processed, targetRows.length);
-        }
-        continue;
-      }
-
-      const candidate = resolveImportedCandidate(row);
-      if (candidate == null) {
-        unmatched += 1;
-        processed += 1;
-        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
-          await onProgress(processed, targetRows.length);
-        }
-        continue;
-      }
-
-      const text = candidate.text.trim();
-      if (!text) {
-        empty += 1;
-        processed += 1;
-        if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
-          await onProgress(processed, targetRows.length);
-        }
-        continue;
-      }
-
-      matchCounters[candidate.method] += 1;
-
-      await upsertTranslation(client, row.string_id, text, 'draft', targetLang, provenance);
-      applied += 1;
-      processed += 1;
-      if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
-        await onProgress(processed, targetRows.length);
-      }
+  const reportProgress = async () => {
+    if (
+      onProgress &&
+      (processed % 50 === 0 || processed === targetRows.length || shouldCancel?.())
+    ) {
+      await onProgress(processed, targetRows.length, { applied, skipped, unmatched, empty });
     }
-  });
+  };
 
-  if (onProgress && processed !== targetRows.length) {
-    await onProgress(targetRows.length, targetRows.length);
+  for (const row of targetRows as Array<{
+    string_id: number;
+    formid_hex: string;
+    path: string;
+    path_simplified: string | null;
+    signature: string | null;
+    edid: string | null;
+    identity_rank: number;
+  }>) {
+    if (shouldCancel?.()) break;
+
+    if (alreadyTranslated.has(row.string_id)) {
+      skipped += 1;
+      processed += 1;
+      await reportProgress();
+      continue;
+    }
+
+    const candidate = resolveImportedCandidate(row);
+    if (candidate == null) {
+      unmatched += 1;
+      processed += 1;
+      await reportProgress();
+      continue;
+    }
+
+    const text = candidate.text.trim();
+    if (!text) {
+      empty += 1;
+      processed += 1;
+      await reportProgress();
+      continue;
+    }
+
+    matchCounters[candidate.method] += 1;
+
+    await upsertTranslation(db, row.string_id, text, 'draft', targetLang, provenance);
+    applied += 1;
+    processed += 1;
+    await reportProgress();
+  }
+
+  const cancelled = shouldCancel?.() === true && processed < targetRows.length;
+
+  if (onProgress && processed !== targetRows.length && !cancelled) {
+    await onProgress(targetRows.length, targetRows.length, { applied, skipped, unmatched, empty });
   }
 
   log.info(
     `${logLabel}, srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, ` +
       `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}, ` +
-      `methods=${JSON.stringify(matchCounters)}`,
+      `methods=${JSON.stringify(matchCounters)}${cancelled ? ', cancelled=true' : ''}`,
   );
 
-  return { applied, skipped, unmatched, empty };
+  return { applied, skipped, unmatched, empty, ...(cancelled ? { cancelled: true } : {}) };
 };
 
 // ── Previous versions ─────────────────────────────────────────────────────────

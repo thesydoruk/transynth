@@ -730,6 +730,27 @@ export type ApplyImportedResult = {
   empty: number;
 };
 
+export type ApplyImportedStats = ApplyImportedResult;
+
+export type ApplyImportedJobSnapshot = {
+  jobId: number;
+  targetModId: number;
+  fromModId: number;
+  importedLang: string;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  stats: ApplyImportedStats;
+  error: string | null;
+};
+
+export type ApplyImportedStreamEvent =
+  | { type: 'started'; jobId: number; total: number }
+  | { type: 'progress'; done: number; total: number; stats: ApplyImportedStats }
+  | { type: 'done'; done: number; total: number; stats: ApplyImportedStats }
+  | { type: 'cancelled'; done: number; total: number; stats: ApplyImportedStats }
+  | { type: 'error'; error: string };
+
 /** Result of deleting all imported rows for a mod while keeping the mod entry. */
 export type ClearModRowsResult = {
   ok: boolean;
@@ -921,6 +942,65 @@ export type DoneEvent = {
   results: Array<{ stringId: number; text?: string; error?: string }>;
 };
 
+export type LlmVerifyVerdict = 'suspicious' | 'incorrect';
+
+export type LlmVerifyIssue = {
+  stringId: number;
+  source: string;
+  translation: string;
+  signature: string | null;
+  path: string | null;
+  edid: string | null;
+  verdict: LlmVerifyVerdict;
+  reason: string;
+  confidence: number;
+  suggestion: string | null;
+};
+
+export type LlmVerifyJobSnapshot = {
+  jobId: number;
+  modId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  issues: LlmVerifyIssue[];
+  error: string | null;
+};
+
+export type LlmVerifyStreamEvent =
+  | { type: 'started'; jobId: number; total: number }
+  | { type: 'progress'; done: number; total: number; issue?: LlmVerifyIssue }
+  | { type: 'done'; done: number; total: number; issues: LlmVerifyIssue[] }
+  | { type: 'cancelled'; done: number; total: number; issues: LlmVerifyIssue[] }
+  | { type: 'error'; error: string };
+
+export type LlmTranslateRow = {
+  stringId: number;
+  source: string;
+  translation: string | null;
+  signature: string | null;
+  path: string | null;
+  edid: string | null;
+  error: string | null;
+};
+
+export type LlmTranslateJobSnapshot = {
+  jobId: number;
+  modId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  rows: LlmTranslateRow[];
+  error: string | null;
+};
+
+export type LlmTranslateStreamEvent =
+  | { type: 'started'; jobId: number; total: number }
+  | { type: 'progress'; done: number; total: number; row?: LlmTranslateRow }
+  | { type: 'done'; done: number; total: number; rows: LlmTranslateRow[] }
+  | { type: 'cancelled'; done: number; total: number; rows: LlmTranslateRow[] }
+  | { type: 'error'; error: string };
+
 // ── Mods ──────────────────────────────────────────────────────────────────────
 
 export type TMSuggestion = {
@@ -993,6 +1073,103 @@ export const api = {
           `&targetLang=${encodeURIComponent(targetLang)}`,
         { method: 'POST' },
       ),
+
+    /** SSE-streaming apply-imported with progress. */
+    async applyImportedStream(
+      targetModId: number,
+      fromModId: number,
+      importedLang: string,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      onEvent?: (e: ApplyImportedStreamEvent) => void,
+      signal?: AbortSignal,
+    ): Promise<ApplyImportedJobSnapshot | null> {
+      const response = await fetch(`${BASE}/api/mods/${targetModId}/apply-imported/stream`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromModId, importedLang, srcLang, targetLang }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let snapshot: ApplyImportedJobSnapshot | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as ApplyImportedStreamEvent;
+            if (onEvent) onEvent(event);
+            if (event.type === 'started') {
+              snapshot = {
+                jobId: event.jobId,
+                targetModId,
+                fromModId,
+                importedLang,
+                status: 'running',
+                done: 0,
+                total: event.total,
+                stats: { applied: 0, skipped: 0, unmatched: 0, empty: 0 },
+                error: null,
+              };
+            }
+            if (event.type === 'progress' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                done: event.done,
+                total: event.total,
+                stats: event.stats,
+              };
+            }
+            if (event.type === 'done' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                stats: event.stats,
+              };
+            }
+            if (event.type === 'cancelled' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                stats: event.stats,
+              };
+            }
+            if (event.type === 'error') {
+              if (snapshot) {
+                snapshot = { ...snapshot, status: 'failed', error: event.error };
+              }
+              throw new Error(event.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+      return snapshot;
+    },
+
+    applyImportedStop: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/apply-imported/${jobId}/stop`, { method: 'POST' }),
+
+    applyImportedStatus: (jobId: number) =>
+      req<ApplyImportedJobSnapshot>(`/api/apply-imported/${jobId}`),
     /** List older versions (same mod name, different file hash) for a given mod ID */
     previousVersions: (modId: number) =>
       req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),
@@ -1886,5 +2063,192 @@ export const api = {
         `/api/games/${encodeURIComponent(gameId)}/nexus/translations?${params.toString()}`,
       );
     },
+  },
+
+  llmVerify: {
+    /** SSE-streaming LLM translation verification. Calls onEvent for each progress update. */
+    async start(
+      modId: number,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      onEvent?: (e: LlmVerifyStreamEvent) => void,
+      signal?: AbortSignal,
+    ): Promise<LlmVerifyJobSnapshot | null> {
+      const response = await fetch(`${BASE}/api/mods/${modId}/llm-verify`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srcLang, targetLang }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let snapshot: LlmVerifyJobSnapshot | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as LlmVerifyStreamEvent;
+            if (onEvent) onEvent(event);
+            if (event.type === 'started') {
+              snapshot = {
+                jobId: event.jobId,
+                modId,
+                status: 'running',
+                done: 0,
+                total: event.total,
+                issues: [],
+                error: null,
+              };
+            }
+            if (event.type === 'progress' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                done: event.done,
+                total: event.total,
+                issues: event.issue ? [...snapshot.issues, event.issue] : snapshot.issues,
+              };
+            }
+            if (event.type === 'done' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                issues: event.issues,
+              };
+            }
+            if (event.type === 'cancelled' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                issues: event.issues,
+              };
+            }
+            if (event.type === 'error') {
+              if (snapshot) {
+                snapshot = { ...snapshot, status: 'failed', error: event.error };
+              }
+              throw new Error(event.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+      return snapshot;
+    },
+
+    stop: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/llm-verify/${jobId}/stop`, { method: 'POST' }),
+
+    status: (jobId: number) => req<LlmVerifyJobSnapshot>(`/api/llm-verify/${jobId}`),
+  },
+
+  llmTranslate: {
+    async start(
+      modId: number,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      onEvent?: (e: LlmTranslateStreamEvent) => void,
+      signal?: AbortSignal,
+    ): Promise<LlmTranslateJobSnapshot | null> {
+      const response = await fetch(`${BASE}/api/mods/${modId}/llm-translate`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srcLang, targetLang }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let snapshot: LlmTranslateJobSnapshot | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as LlmTranslateStreamEvent;
+            if (onEvent) onEvent(event);
+            if (event.type === 'started') {
+              snapshot = {
+                jobId: event.jobId,
+                modId,
+                status: 'running',
+                done: 0,
+                total: event.total,
+                rows: [],
+                error: null,
+              };
+            }
+            if (event.type === 'progress' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                done: event.done,
+                total: event.total,
+                rows: event.row ? [...snapshot.rows, event.row] : snapshot.rows,
+              };
+            }
+            if (event.type === 'done' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                rows: event.rows,
+              };
+            }
+            if (event.type === 'cancelled' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                rows: event.rows,
+              };
+            }
+            if (event.type === 'error') {
+              if (snapshot) {
+                snapshot = { ...snapshot, status: 'failed', error: event.error };
+              }
+              throw new Error(event.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+      return snapshot;
+    },
+
+    stop: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/llm-translate/${jobId}/stop`, { method: 'POST' }),
+
+    status: (jobId: number) => req<LlmTranslateJobSnapshot>(`/api/llm-translate/${jobId}`),
   },
 };

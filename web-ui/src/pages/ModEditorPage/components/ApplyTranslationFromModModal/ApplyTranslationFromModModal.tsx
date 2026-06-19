@@ -1,19 +1,25 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type ApplyImportedResult, type Mod } from '../../../../api';
+import { api, type Mod } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
 import { modListQueryKey } from '../../../../langDefaults';
+import type { ApplyImportedState } from '../../hooks/useApplyImported';
 import s from './ApplyTranslationFromModModal.module.scss';
+import progressS from '../AiVerifyModal/AiVerifyModal.module.scss';
 
 interface ApplyTranslationFromModModalProps {
   modId: number;
   gameId: string;
   srcLang: string;
   targetLang: string;
+  job: ApplyImportedState & {
+    isRunning: boolean;
+    start: (fromModId: number, importedLang: string) => void;
+    stop: () => void;
+  };
   onClose: () => void;
-  onApplied: (result: ApplyImportedResult) => void;
 }
 
 /** Pick a source mod + locale and copy its strings into the current mod as translations. */
@@ -22,14 +28,16 @@ export const ApplyTranslationFromModModal = ({
   gameId,
   srcLang,
   targetLang,
+  job,
   onClose,
-  onApplied,
 }: ApplyTranslationFromModModalProps) => {
   const { t } = useTranslation();
   const [sourceModId, setSourceModId] = useState<number | null>(null);
   const [importedLang, setImportedLang] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ApplyImportedResult | null>(null);
+  const { isRunning, done, total, stats, error, status, start, stop } = job;
+  const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const isFinished = status === 'completed' || status === 'cancelled';
+  const showProgress = isRunning || isFinished || status === 'failed';
 
   const { data: gameMods = [], isLoading: modsLoading } = useQuery({
     queryKey: modListQueryKey(gameId),
@@ -55,7 +63,6 @@ export const ApplyTranslationFromModModal = ({
 
   const effectiveImportedLang = useMemo(() => {
     if (importedLang && localeOptions.includes(importedLang)) return importedLang;
-    // Prefer a non-source locale when the mod has localized strings; fall back to any stored lang.
     return (
       localeOptions.find((lang) => lang !== srcLang && lang !== targetLang) ??
       localeOptions.find((lang) => lang !== srcLang) ??
@@ -65,21 +72,7 @@ export const ApplyTranslationFromModModal = ({
     );
   }, [importedLang, localeOptions, srcLang, targetLang]);
 
-  const applyMut = useMutation({
-    mutationFn: () =>
-      api.mods.applyImported(
-        modId,
-        effectiveSourceModId!,
-        effectiveImportedLang,
-        srcLang,
-        targetLang,
-      ),
-    onSuccess: (data) => {
-      setResult(data);
-      onApplied(data);
-    },
-    onError: (err: Error) => setError(err.message),
-  });
+  const formDisabled = isRunning || isFinished;
 
   return (
     <ModalShell
@@ -94,12 +87,10 @@ export const ApplyTranslationFromModModal = ({
         <select
           className={s.select}
           value={effectiveSourceModId ?? ''}
-          disabled={modsLoading || sourceMods.length === 0}
+          disabled={modsLoading || sourceMods.length === 0 || formDisabled}
           onChange={(event) => {
             setSourceModId(Number(event.target.value));
             setImportedLang('');
-            setError(null);
-            setResult(null);
           }}
         >
           {sourceMods.length === 0 ? (
@@ -119,12 +110,8 @@ export const ApplyTranslationFromModModal = ({
         <select
           className={s.select}
           value={effectiveImportedLang}
-          disabled={langsLoading || localeOptions.length === 0}
-          onChange={(event) => {
-            setImportedLang(event.target.value);
-            setError(null);
-            setResult(null);
-          }}
+          disabled={langsLoading || localeOptions.length === 0 || formDisabled}
+          onChange={(event) => setImportedLang(event.target.value)}
         >
           {localeOptions.length === 0 ? (
             <option value="">{t('modEditor.applyTranslationNoLocales')}</option>
@@ -146,33 +133,51 @@ export const ApplyTranslationFromModModal = ({
         })}
       </p>
 
-      {error && <p className={s.error}>{error}</p>}
-      {result && (
-        <p className={s.result}>
-          {t('modEditor.applyTranslationResult', {
-            applied: result.applied,
-            skipped: result.skipped,
-            unmatched: result.unmatched,
-            empty: result.empty,
-          })}
-        </p>
+      {showProgress && (
+        <div className={progressS.controls}>
+          {isRunning ? (
+            <Button variant="danger" size="sm" onClick={() => void stop()}>
+              {t('modEditor.aiVerifyStop')}
+            </Button>
+          ) : null}
+          <div className={progressS.progressWrap}>
+            <div className={progressS.progressTrack}>
+              <div className={progressS.progressFill} style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className={progressS.progressLabel}>
+              {isRunning
+                ? t('modEditor.applyTranslationProgress', { done, total })
+                : status === 'completed'
+                  ? t('modEditor.applyTranslationResult', stats)
+                  : status === 'cancelled'
+                    ? t('modEditor.applyTranslationCancelled', { done, total, ...stats })
+                    : status === 'failed'
+                      ? t('modEditor.applyTranslationFailed')
+                      : t('modEditor.applyTranslationIdle')}
+            </span>
+          </div>
+        </div>
       )}
 
+      {error && <p className={s.error}>{error}</p>}
+      {isFinished && <p className={s.result}>{t('modEditor.applyTranslationResult', stats)}</p>}
+
       <div className={s.footer}>
-        <Button variant="secondary" onClick={onClose} disabled={applyMut.isPending}>
-          {result ? t('common.close') : t('common.cancel')}
+        <Button variant="secondary" onClick={onClose}>
+          {t('common.close')}
         </Button>
-        <Button
-          variant="success"
-          onClick={() => applyMut.mutate()}
-          disabled={
-            applyMut.isPending || effectiveSourceModId == null || !effectiveImportedLang || !!result
-          }
-        >
-          {applyMut.isPending
-            ? t('modEditor.applyTranslationApplying')
-            : t('modEditor.applyTranslationConfirm')}
-        </Button>
+        {!isRunning && !isFinished && (
+          <Button
+            variant="success"
+            onClick={() => {
+              if (effectiveSourceModId == null || !effectiveImportedLang) return;
+              void start(effectiveSourceModId, effectiveImportedLang);
+            }}
+            disabled={effectiveSourceModId == null || !effectiveImportedLang}
+          >
+            {t('modEditor.applyTranslationConfirm')}
+          </Button>
+        )}
       </div>
     </ModalShell>
   );

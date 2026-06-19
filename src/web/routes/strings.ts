@@ -13,19 +13,11 @@ import {
 } from '../queries';
 import { propagateTranslation } from '../tm';
 import { getAllProjectSettings } from '../projectSettings';
-import { cacheLookup, cacheStore } from '../cacheService';
-import { getTranslateModel, CONFIG } from '../../config';
-import {
-  translateStrings,
-  type LlmGlossaryEntry,
-  type LlmTranslateItem,
-} from '../../llm/translate';
-import { fetchReferenceExamplesBatch } from '../../llm/ragService';
+import { CONFIG } from '../../config';
+import { translateStringIdsBatch } from '../llmTranslateBatch';
 import { log } from '../../logger';
-import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders';
 import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
 import type { TranslationStatus } from '../statusMachine';
-import type { GameType } from '../../types';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=
@@ -288,20 +280,6 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Max 100 strings per batch' });
     }
 
-    const model = getTranslateModel();
-
-    const { rows: glossaryRows } = await db.query<{ term: string; translation: string | null }>(
-      `SELECT term, translation FROM glossary WHERE src_lang = $1 AND tgt_lang = $2 ORDER BY term LIMIT 80`,
-      [srcLang, targetLang],
-    );
-    const glossary: LlmGlossaryEntry[] = glossaryRows;
-    const projectSettings = await getAllProjectSettings(db);
-    const ragEnabled = projectSettings['llm.rag_enabled'];
-    const ragMaxExamples = Math.min(10, Math.max(1, projectSettings['llm.rag_max_examples']));
-    const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
-
-    // Resolve mod metadata for job tracking. Use bodyModId if provided, else
-    // derive from the first string. Failures here are non-fatal — we still run.
     let resolvedModId: number | null = bodyModId ?? null;
     let resolvedModGame: string | null = null;
     let resolvedModName: string | null = null;
@@ -325,7 +303,6 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     }
 
-    // Insert a running job row for persistence across page reloads.
     let llmJobId: number | null = null;
     try {
       const { rows: jobRows } = await db.query<{ id: number }>(
@@ -338,7 +315,6 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       log.warn({ insertErr }, 'llm_jobs: failed to insert job row');
     }
 
-    // Hijack reply and stream SSE
     reply.hijack();
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -353,194 +329,19 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     };
 
-    type StringRow = {
-      id: number;
-      text_raw: string;
-      text_norm: string | null;
-      text_norm_nopunct: string | null;
-      context: string | null;
-      signature: string | null;
-      path: string | null;
-      edid: string | null;
-      formid_hex: string | null;
-      game: string;
-      mod_name: string;
-    };
-
-    const { rows: loadedRows } = await db.query<StringRow>(
-      `SELECT s.id, s.text_raw, s.text_norm, s.text_norm_nopunct, s.context,
-              r.signature, r.path, r.edid, r.formid_hex, m.game, m.name AS mod_name
-         FROM strings s
-         JOIN records r ON r.id = s.record_id
-         JOIN mods m ON m.id = r.mod_id
-        WHERE s.id = ANY($1::int[]) AND s.lang = $2`,
-      [stringIds, srcLang],
-    );
-    const rowById = new Map(loadedRows.map((row) => [row.id, row]));
-
-    type PreparedLlmItem = {
-      stringId: number;
-      sourceText: string;
-      textNorm: string | null;
-      textNormNopunct: string | null;
-      placeholderMap: Record<string, string>;
-      functionKeywordMap: Record<string, string>;
-      game: string | null;
-      modName: string | null;
-      llmItem: LlmTranslateItem;
-    };
-
-    const results: Array<{ stringId: number; text?: string; error?: string }> = [];
-    let doneCount = 0;
-    const llmBuffer: PreparedLlmItem[] = [];
-
-    const finishResult = async (stringId: number, text: string) => {
-      await upsertTranslation(db, stringId, text, 'auto', targetLang);
-      const r = { stringId, text };
-      results.push(r);
-      doneCount++;
-      send({ type: 'progress', done: doneCount, total: stringIds.length, result: r });
-    };
-
-    const failResult = (stringId: number, error: string) => {
-      const r = { stringId, error };
-      results.push(r);
-      doneCount++;
-      send({ type: 'progress', done: doneCount, total: stringIds.length, result: r });
-    };
-
-    const flushLlmBuffer = async () => {
-      if (llmBuffer.length === 0) return;
-
-      const chunk = llmBuffer.splice(0, llmBuffer.length);
-      try {
-        let ragByStringId = new Map<number, LlmTranslateItem['reference_examples']>();
-        if (ragEnabled) {
-          try {
-            ragByStringId = await fetchReferenceExamplesBatch(
-              db,
-              chunk.map((entry) => ({
-                stringId: entry.stringId,
-                sourceText: entry.sourceText,
-                textNorm: entry.textNorm,
-                textNormNopunct: entry.textNormNopunct,
-                signature: entry.llmItem.signature,
-                path: entry.llmItem.path,
-                context: entry.llmItem.context,
-              })),
-              srcLang,
-              targetLang,
-              ragMaxExamples,
-              ragMinSimilarity,
-            );
-          } catch (ragErr) {
-            log.warn({ ragErr }, 'RAG reference fetch failed, continuing without examples');
-          }
-        }
-
-        const translations = await translateStrings({
-          items: chunk.map((entry) => ({
-            ...entry.llmItem,
-            reference_examples: ragByStringId.get(entry.stringId),
-          })),
-          model,
-          srcLang,
-          targetLang,
-          game: resolvedModGame ?? chunk[0]?.game,
-          modName: resolvedModName ?? chunk[0]?.modName,
-          glossary,
-        });
-
-        const translationById = new Map(translations.map((row) => [row.id, row.translation]));
-
-        for (const entry of chunk) {
-          const maskedTranslation = translationById.get(entry.stringId);
-          if (maskedTranslation === undefined) {
-            failResult(entry.stringId, `LLM response missing translation for id=${entry.stringId}`);
-            continue;
-          }
-
-          const translated = unmask(
-            unmask(maskedTranslation, entry.functionKeywordMap),
-            entry.placeholderMap,
-          );
-          await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
-          await finishResult(entry.stringId, translated);
-        }
-      } catch (err) {
-        log.error({ err }, 'LLM translate failed for batch');
-        const message = err instanceof Error ? err.message : String(err);
-        for (const entry of chunk) {
-          failResult(entry.stringId, message);
-        }
-      }
-    };
-
-    for (const stringId of stringIds) {
-      const row = rowById.get(stringId);
-      if (!row) {
-        failResult(stringId, 'not found');
-        continue;
-      }
-
-      const sourceText = row.text_raw;
-      const game = row.game ?? resolvedModGame ?? undefined;
-      const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
-      const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
-        placeholderMasked,
-        game as GameType | undefined,
-      );
-      const maskedSourceText = protectedMasked;
-
-      const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
-      if (!translatableContent) {
-        await finishResult(stringId, sourceText);
-        continue;
-      }
-
-      try {
-        const cached = await cacheLookup(db, sourceText, srcLang, targetLang, model);
-        if (cached) {
-          await finishResult(stringId, cached.translated);
-          continue;
-        }
-      } catch (err) {
-        log.error({ err, stringId }, 'LLM cache lookup failed');
-        failResult(stringId, err instanceof Error ? err.message : String(err));
-        continue;
-      }
-
-      llmBuffer.push({
-        stringId,
-        sourceText,
-        textNorm: row.text_norm,
-        textNormNopunct: row.text_norm_nopunct,
-        placeholderMap,
-        functionKeywordMap,
-        game: row.game ?? resolvedModGame,
-        modName: row.mod_name ?? resolvedModName,
-        llmItem: {
-          id: stringId,
-          source: maskedSourceText,
-          signature: row.signature,
-          path: row.path,
-          form_id: row.formid_hex,
-          edid: row.edid,
-          context: row.context,
-        },
-      });
-
-      if (llmBuffer.length >= CONFIG.batchSize) {
-        await flushLlmBuffer();
-      }
-    }
-
-    await flushLlmBuffer();
+    const results = await translateStringIdsBatch(db, stringIds, {
+      srcLang,
+      targetLang,
+      modGame: resolvedModGame,
+      modName: resolvedModName,
+      onProgress: (done, total, result) => {
+        send({ type: 'progress', done, total, result });
+      },
+    });
 
     send({ type: 'done', results });
     reply.raw.end();
 
-    // Finalize the persisted job row. Count only successfully translated strings.
     if (llmJobId !== null) {
       const successCount = results.filter((r) => r.text !== undefined).length;
       const failed = results.some((r) => r.error !== undefined && r.text === undefined);

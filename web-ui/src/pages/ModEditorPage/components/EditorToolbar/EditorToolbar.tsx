@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ProgressBar } from '../../../../components/StatusBadge';
 import { Button } from '../../../../components/Button';
+import { DropdownButton } from '../../../../components/DropdownButton';
 import styles from './EditorToolbar.module.scss';
 
 /** Shape returned by the stats API. */
@@ -56,6 +57,11 @@ export interface EditorToolbarProps {
   onTmApply: () => void;
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
+  applyImportedRunning?: boolean;
+  onAiVerify: () => void;
+  onAiTranslate: () => void;
+  aiVerifyRunning?: boolean;
+  aiTranslateRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onBulkReview: (status: 'reviewed' | 'rejected') => void;
@@ -99,6 +105,11 @@ export const EditorToolbar = ({
   onTmApply,
   onSearchReplace,
   onApplyTranslationFromMod,
+  applyImportedRunning = false,
+  onAiVerify,
+  onAiTranslate,
+  aiVerifyRunning = false,
+  aiTranslateRunning = false,
   onShortcuts,
   onBatchTranslate,
   onBulkReview,
@@ -194,14 +205,28 @@ export const EditorToolbar = ({
       <Button onClick={onSearchReplace} variant="secondary" size="sm">
         {t('modEditor.searchReplace')}
       </Button>
-      <Button
-        onClick={onApplyTranslationFromMod}
-        variant="secondary"
-        size="sm"
-        title={t('modEditor.applyTranslationFromModTitle')}
-      >
-        {t('modEditor.applyTranslationFromMod')}
-      </Button>
+      <DropdownButton
+        label={t('modEditor.translationMenu')}
+        title={t('modEditor.translationMenuTitle')}
+        items={[
+          {
+            label: applyImportedRunning
+              ? t('modEditor.applyTranslationFromModRunning')
+              : t('modEditor.applyTranslationFromMod'),
+            onClick: onApplyTranslationFromMod,
+          },
+          {
+            label: aiTranslateRunning
+              ? t('modEditor.aiTranslateRunning')
+              : t('modEditor.aiTranslate'),
+            onClick: onAiTranslate,
+          },
+          {
+            label: aiVerifyRunning ? t('modEditor.aiVerifyRunning') : t('modEditor.aiVerify'),
+            onClick: onAiVerify,
+          },
+        ]}
+      />
       {hasInnrSignature && (
         <Link
           to={`/games/${gameId}/mods/${modId}/innr`}

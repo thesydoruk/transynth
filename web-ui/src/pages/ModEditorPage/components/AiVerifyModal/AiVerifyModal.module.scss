@@ -1,0 +1,144 @@
+.intro {
+  margin: 0 0 14px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.progressWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.progressTrack {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.progressLabel {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.error {
+  margin: 0 0 12px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.tableWrap {
+  flex: 1;
+  min-height: 240px;
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th,
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: top;
+    text-align: left;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-weight: 600;
+    z-index: 1;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.textCell {
+  max-width: 220px;
+  word-break: break-word;
+}
+
+.reasonCell {
+  max-width: 260px;
+  color: var(--text-dim);
+}
+
+.suggestionCell {
+  max-width: 220px;
+  word-break: break-word;
+  color: var(--success, #6ecf8a);
+}
+
+.noSuggestion {
+  color: var(--text-dim);
+}
+
+.actionCell {
+  white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 24px !important;
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  }
+}
+
+.verdictBad {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.verdictWarn {
+  color: var(--warning, #c9a227);
+  font-weight: 600;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.appliedMark {
+  color: var(--success, #6ecf8a);
+  font-size: 12px;
+  font-weight: 600;
+}

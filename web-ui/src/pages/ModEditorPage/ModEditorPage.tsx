@@ -9,6 +9,8 @@ import { BookEditorModal } from '../../components/BookEditorModal';
 import { PaginationControls } from '../../components/PaginationControls';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
+import { AiVerifyModal } from './components/AiVerifyModal';
+import { AiTranslateModal } from './components/AiTranslateModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
@@ -28,6 +30,9 @@ import {
   useEditorMutations,
   useAutosave,
   useEditorKeyboard,
+  useAiVerify,
+  useAiTranslate,
+  useApplyImported,
 } from './hooks';
 import styles from './ModEditorPage.module.scss';
 
@@ -145,6 +150,8 @@ export const ModEditorPage = () => {
   // ── Modal / overlay visibility ──
   const [showSearchReplace, setShowSearchReplace] = useState(false);
   const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
+  const [showAiVerify, setShowAiVerify] = useState(false);
+  const [showAiTranslate, setShowAiTranslate] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -202,6 +209,34 @@ export const ModEditorPage = () => {
     setActiveRow,
     setSelected,
   });
+
+  const aiVerify = useAiVerify(modId, srcLang, targetLang);
+  const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
+  const applyImported = useApplyImported(modId, srcLang, targetLang);
+  const prevAiTranslateStatus = useRef(aiTranslate.status);
+  const prevApplyImportedStatus = useRef(applyImported.status);
+
+  useEffect(() => {
+    if (
+      prevAiTranslateStatus.current === 'running' &&
+      (aiTranslate.status === 'completed' || aiTranslate.status === 'cancelled')
+    ) {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    }
+    prevAiTranslateStatus.current = aiTranslate.status;
+  }, [aiTranslate.status, modId, qc, refetchStats]);
+
+  useEffect(() => {
+    if (
+      prevApplyImportedStatus.current === 'running' &&
+      (applyImported.status === 'completed' || applyImported.status === 'cancelled')
+    ) {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    }
+    prevApplyImportedStatus.current = applyImported.status;
+  }, [applyImported.status, modId, qc, refetchStats]);
 
   const { flushAutosave, cancelAutosave } = useAutosave({
     activeRow,
@@ -530,6 +565,11 @@ export const ModEditorPage = () => {
         onTmApply={() => tmApplyMut.mutate()}
         onSearchReplace={() => setShowSearchReplace(true)}
         onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
+        applyImportedRunning={applyImported.isRunning}
+        onAiVerify={() => setShowAiVerify(true)}
+        onAiTranslate={() => setShowAiTranslate(true)}
+        aiVerifyRunning={aiVerify.isRunning}
+        aiTranslateRunning={aiTranslate.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
         onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
@@ -672,10 +712,61 @@ export const ModEditorPage = () => {
           gameId={gameId}
           srcLang={srcLang}
           targetLang={targetLang}
+          job={applyImported}
           onClose={() => setShowApplyTranslationFromMod(false)}
-          onApplied={() => {
+        />
+      )}
+      {showAiTranslate && (
+        <AiTranslateModal
+          srcLang={srcLang}
+          targetLang={targetLang}
+          state={aiTranslate}
+          onClose={() => setShowAiTranslate(false)}
+          onRowClick={(stringId) => {
+            const row = strings?.rows.find((r) => r.string_id === stringId);
+            if (row) {
+              handleRowClick(row);
+              setShowAiTranslate(false);
+            }
+          }}
+        />
+      )}
+      {showAiVerify && (
+        <AiVerifyModal
+          srcLang={srcLang}
+          targetLang={targetLang}
+          state={aiVerify}
+          onClose={() => setShowAiVerify(false)}
+          onRowClick={(stringId) => {
+            const row = strings?.rows.find((r) => r.string_id === stringId);
+            if (row) {
+              handleRowClick(row);
+              setShowAiVerify(false);
+            }
+          }}
+          onApplySuggestion={async (issue) => {
+            if (!issue.suggestion) return;
+            await api.strings.saveTranslation(
+              issue.stringId,
+              issue.suggestion,
+              'draft',
+              targetLang,
+            );
             qc.invalidateQueries({ queryKey: ['strings', modId] });
-            refetchStats();
+            void refetchStats();
+          }}
+          onApplyAllSuggestions={async (batch) => {
+            for (const issue of batch) {
+              if (!issue.suggestion) continue;
+              await api.strings.saveTranslation(
+                issue.stringId,
+                issue.suggestion,
+                'draft',
+                targetLang,
+              );
+            }
+            qc.invalidateQueries({ queryKey: ['strings', modId] });
+            void refetchStats();
           }}
         />
       )}
