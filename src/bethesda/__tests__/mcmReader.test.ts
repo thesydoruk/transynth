@@ -96,6 +96,13 @@ describe('mcmLocaleFromPath', () => {
     expect(mcmLocaleFromPath('SomeMod_french.txt')).toBe('french');
   });
 
+  it('extracts short Fallout 4 MCM locale codes', () => {
+    expect(mcmLocaleFromPath('Dank_LEO_en.txt')).toBe('en');
+    expect(mcmLocaleFromPath('Dank_LEO_ptbr.txt')).toBe('ptbr');
+    expect(mcmLocaleFromPath('Dank_LEO_esmx.txt')).toBe('esmx');
+    expect(mcmLocaleFromPath('Dank_LEO_cn.txt')).toBe('cn');
+  });
+
   it('is case-insensitive for locale suffix', () => {
     expect(mcmLocaleFromPath('Mod_ENGLISH.txt')).toBe('english');
   });
