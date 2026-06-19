@@ -51,13 +51,19 @@ export const ApplyTranslationFromModModal = ({
     staleTime: 30_000,
   });
 
-  const localeOptions = useMemo(
-    () => sourceLangs.filter((lang) => lang !== srcLang),
-    [sourceLangs, srcLang],
-  );
+  const localeOptions = useMemo(() => [...sourceLangs].sort(), [sourceLangs]);
 
-  const effectiveImportedLang =
-    importedLang || localeOptions.find((lang) => lang !== srcLang) || localeOptions[0] || '';
+  const effectiveImportedLang = useMemo(() => {
+    if (importedLang && localeOptions.includes(importedLang)) return importedLang;
+    // Prefer a non-source locale when the mod has localized strings; fall back to any stored lang.
+    return (
+      localeOptions.find((lang) => lang !== srcLang && lang !== targetLang) ??
+      localeOptions.find((lang) => lang !== srcLang) ??
+      localeOptions.find((lang) => lang === targetLang) ??
+      localeOptions[0] ??
+      ''
+    );
+  }, [importedLang, localeOptions, srcLang, targetLang]);
 
   const applyMut = useMutation({
     mutationFn: () =>
