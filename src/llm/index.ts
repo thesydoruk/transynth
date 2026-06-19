@@ -1,5 +1,5 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
-import type { LLMProvider, ChatOptions } from './provider';
+import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
@@ -50,18 +50,22 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
 };
 
 /** Embed with automatic fallback to secondary provider on availability errors. */
-export const embedWithFallback = async (texts: string[], model: string): Promise<number[][]> => {
+export const embedWithFallback = async (
+  texts: string[],
+  model: string,
+  options?: EmbedOptions,
+): Promise<number[][]> => {
   const primary = getLLM();
   try {
-    return await primary.embed(texts, model);
+    return await primary.embed(texts, model, options);
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
     log.warn(
       `Primary LLM (${primary.name}) unavailable for embeddings, falling back to ${CONFIG.llmFallback}`,
     );
-    return fallback.embed(texts, model);
+    return fallback.embed(texts, model, options);
   }
 };
 
-export type { LLMProvider, ChatMessage, ChatOptions } from './provider';
+export type { LLMProvider, ChatMessage, ChatOptions, EmbedOptions } from './provider';

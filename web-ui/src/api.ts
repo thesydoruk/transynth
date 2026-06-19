@@ -623,6 +623,13 @@ export type OpsOverview = {
     autoTranslated: number;
     byModel: OpsModelBreakdown[];
   };
+  rag: {
+    pgvectorAvailable: boolean;
+    indexedCount: number;
+    eligibleCount: number;
+    embedModel: string;
+    embedDimensions: number;
+  };
   db: {
     totalSize: string;
     tables: OpsTableSize[];
@@ -991,6 +998,11 @@ export const api = {
 
   ops: {
     overview: () => req<OpsOverview>('/api/ops'),
+    reindexRag: () =>
+      req<{ indexed: number; skipped: number; failed: number; total: number }>(
+        '/api/ops/rag/reindex',
+        { method: 'POST' },
+      ),
   },
 
   strings: {

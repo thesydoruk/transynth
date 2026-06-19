@@ -4,7 +4,7 @@
  * Connects to `CONFIG.vllmBaseUrl` using the standard `/v1` REST API.
  */
 import OpenAI from 'openai';
-import type { LLMProvider, ChatOptions } from './provider';
+import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
 import { log } from '../logger';
@@ -43,7 +43,7 @@ export class VllmProvider implements LLMProvider {
     return resp.choices[0]?.message?.content ?? '';
   }
 
-  async embed(texts: string[], model: string): Promise<number[][]> {
+  async embed(texts: string[], model: string, _options?: EmbedOptions): Promise<number[][]> {
     log.debug(`vLLM embed: model=${model}, texts=${texts.length}`);
     const resp = await withRetry(() => this.client.embeddings.create({ model, input: texts }));
     return resp.data.map((v) => v.embedding);

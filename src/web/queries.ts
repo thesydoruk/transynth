@@ -13,6 +13,7 @@ import {
 import { extractProtectedTokens } from '../utils/placeholders';
 import { assertTransition, isValidTranslationStatus } from './statusMachine';
 import type { TranslationStatus, StatusActor } from './statusMachine';
+import { scheduleRagSync } from './ragHooks';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
@@ -1227,6 +1228,8 @@ export const upsertTranslation = async (
   });
   await refreshQAIssues(db, stringId, targetLang);
 
+  scheduleRagSync(db, translationId);
+
   return { id: translationId, text, status };
 };
 
@@ -1286,6 +1289,7 @@ export const updateTranslationStatus = async (
     note: 'status_change',
   });
   await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
+  scheduleRagSync(db, updated.id);
 };
 
 export const deleteTranslation = async (

@@ -11,6 +11,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
+import { getRagStats, reindexAllTranslationExamples } from '../../llm/ragService';
 
 /* ── Response types ──────────────────────────────────────────────────────── */
 
@@ -115,6 +116,14 @@ export interface OpsOverview {
     /** Per-table breakdown. */
     tables: TableSizeRow[];
   };
+  /** Translation RAG index statistics. */
+  rag: {
+    pgvectorAvailable: boolean;
+    indexedCount: number;
+    eligibleCount: number;
+    embedModel: string;
+    embedDimensions: number;
+  };
 }
 
 /* ── Route registration ──────────────────────────────────────────────────── */
@@ -146,6 +155,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       modelBreakdown,
       dbSize,
       tableSizes,
+      ragStats,
     ] = await Promise.all([
       /* DB connectivity + server time */
       db.query('SELECT NOW() AS now').catch(() => ({ rows: [] as { now: string }[] })),
@@ -214,10 +224,18 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
              'mods','records','strings','translations',
              'translation_revisions','qa_issues','glossary',
              'translation_cache','eet_imports','csv_imports',
-             'mod_imports','users','activity_log'
+             'mod_imports','users','activity_log','translation_examples'
            )
          ORDER BY c.reltuples DESC`,
       ),
+
+      getRagStats(db).catch(() => ({
+        pgvectorAvailable: false,
+        indexedCount: 0,
+        eligibleCount: 0,
+        embedModel: '',
+        embedDimensions: 0,
+      })),
     ]);
 
     /* ── 3. Merge import jobs into a single sorted list ────────────────── */
@@ -258,8 +276,19 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
         totalSize: (dbSize.rows[0] as { total_size: string })?.total_size ?? '?',
         tables: tableSizes.rows as unknown as TableSizeRow[],
       },
+      rag: ragStats,
     };
 
     return reply.send(overview);
+  });
+
+  app.post('/api/ops/rag/reindex', async (_req, reply) => {
+    try {
+      const result = await reindexAllTranslationExamples(db);
+      return reply.send(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.code(500).send({ error: message });
+    }
   });
 };

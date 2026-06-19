@@ -5,7 +5,7 @@
  * pipeline and the translation memory. Automatically falls back to the secondary
  * LLM provider when the primary is unavailable.
  */
-import { embedWithFallback } from './index';
+import { embedWithFallback, type EmbedOptions } from './index';
 import { log } from '../logger';
 
 /**
@@ -18,10 +18,14 @@ import { log } from '../logger';
  * @param model - Model name passed to the provider (e.g. `nomic-embed-text`).
  * @returns A 2-D array of floating-point vectors, one per input text.
  */
-export const embedMany = async (texts: string[], model: string): Promise<number[][]> => {
+export const embedMany = async (
+  texts: string[],
+  model: string,
+  options?: EmbedOptions,
+): Promise<number[][]> => {
   log.debug(`embedMany: ${texts.length} texts, model=${model}`);
-  return embedWithFallback(texts, model);
-}
+  return embedWithFallback(texts, model, options);
+};
 
 /**
  * Compute the cosine similarity between two embedding vectors.
@@ -33,11 +37,13 @@ export const embedMany = async (texts: string[], model: string): Promise<number[
  * @returns Cosine similarity score.
  */
 export const cosine = (a: number[], b: number[]): number => {
-  let dot = 0, na = 0, nb = 0;
+  let dot = 0,
+    na = 0,
+    nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     na += a[i] * a[i];
     nb += b[i] * b[i];
   }
   return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
-}
+};

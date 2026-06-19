@@ -52,15 +52,17 @@ describe('prompt examples', () => {
 describe('buildTranslateUserPayload', () => {
   it('builds structured JSON with metadata and glossary', () => {
     const payload = buildTranslateUserPayload({
-      items: [{
-        id: 42,
-        source: 'Hello ¤PH0¤',
-        signature: 'INFO',
-        path: 'INFO\\NAM1',
-        form_id: '00123456',
-        edid: 'MyLine',
-        context: 'Codsworth',
-      }],
+      items: [
+        {
+          id: 42,
+          source: 'Hello ¤PH0¤',
+          signature: 'INFO',
+          path: 'INFO\\NAM1',
+          form_id: '00123456',
+          edid: 'MyLine',
+          context: 'Codsworth',
+        },
+      ],
       srcLang: 'en',
       targetLang: 'uk',
       game: 'fo4',
@@ -76,15 +78,61 @@ describe('buildTranslateUserPayload', () => {
       mod_name: 'TestMod',
       style_guide: 'Use informal tone.',
       glossary: [{ term: 'Vault', translation: 'Сховище' }],
-      items: [{
-        id: 42,
-        source: 'Hello ¤PH0¤',
-        signature: 'INFO',
-        path: 'INFO\\NAM1',
-        form_id: '00123456',
-        edid: 'MyLine',
-        context: 'Codsworth',
-      }],
+      items: [
+        {
+          id: 42,
+          source: 'Hello ¤PH0¤',
+          signature: 'INFO',
+          path: 'INFO\\NAM1',
+          form_id: '00123456',
+          edid: 'MyLine',
+          context: 'Codsworth',
+        },
+      ],
+    });
+  });
+
+  it('includes reference_examples when provided on items', () => {
+    const payload = buildTranslateUserPayload({
+      items: [
+        {
+          id: 1,
+          source: 'Test',
+          signature: null,
+          path: null,
+          form_id: null,
+          edid: null,
+          context: null,
+          reference_examples: [
+            {
+              source: 'Src',
+              translation: 'Trg',
+              signature: 'INFO',
+              match_method: 'exact',
+              similarity: 1,
+            },
+          ],
+        },
+      ],
+      srcLang: 'en',
+      targetLang: 'uk',
+    });
+
+    expect(payload).toMatchObject({
+      items: [
+        {
+          id: 1,
+          reference_examples: [
+            {
+              source: 'Src',
+              translation: 'Trg',
+              signature: 'INFO',
+              match_method: 'exact',
+              similarity: 1,
+            },
+          ],
+        },
+      ],
     });
   });
 });

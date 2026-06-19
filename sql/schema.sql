@@ -1,6 +1,7 @@
 -- PostgreSQL schema for the Fallout 4 localizer
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS mods (
   id SERIAL PRIMARY KEY,
@@ -419,8 +420,36 @@ INSERT INTO project_settings(key, value) VALUES
   ('workflow.hide_ignored_by_default', 'false'),
   ('qa.end_punct_match',               'true'),
   ('qa.min_word_count',                '1'),
-  ('import.skip_tes4',                 'false')
+  ('import.skip_tes4',                 'false'),
+  ('llm.rag_enabled',                  'true'),
+  ('llm.rag_max_examples',             '5'),
+  ('llm.rag_min_similarity',           '0.5')
 ON CONFLICT(key) DO NOTHING;
+
+-- ── Translation RAG index (pgvector) ────────────────────────────────────────
+-- Stores embeddings of reviewed/human translations for few-shot LLM context.
+-- Indexed rows are synced on translation save/status change (see ragService.ts).
+CREATE TABLE IF NOT EXISTS translation_examples (
+  translation_id   INTEGER PRIMARY KEY REFERENCES translations(id) ON DELETE CASCADE,
+  src_string_id    INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
+  src_lang         TEXT NOT NULL,
+  target_lang      TEXT NOT NULL,
+  source_text      TEXT NOT NULL,
+  translation_text TEXT NOT NULL,
+  signature        TEXT,
+  path             TEXT,
+  game             TEXT,
+  embed_model      TEXT NOT NULL,
+  embedding        vector(1536) NOT NULL,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_translation_examples_langs
+  ON translation_examples(src_lang, target_lang);
+
+CREATE INDEX IF NOT EXISTS idx_translation_examples_hnsw
+  ON translation_examples USING hnsw (embedding vector_cosine_ops);
 
 -- ── String-level ignore flag ─────────────────────────────────────────────────
 -- Marks individual source strings as intentionally excluded from translation

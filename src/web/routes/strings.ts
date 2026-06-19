@@ -15,7 +15,12 @@ import { propagateTranslation } from '../tm';
 import { getAllProjectSettings } from '../projectSettings';
 import { cacheLookup, cacheStore } from '../cacheService';
 import { getTranslateModel, CONFIG } from '../../config';
-import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../../llm/translate';
+import {
+  translateStrings,
+  type LlmGlossaryEntry,
+  type LlmTranslateItem,
+} from '../../llm/translate';
+import { fetchReferenceExamplesBatch } from '../../llm/ragService';
 import { log } from '../../logger';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../../utils/placeholders';
 import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
@@ -76,13 +81,16 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // GET /api/strings/signatures?modId=&srcLang=
-  app.get<{ Querystring: { modId?: string; srcLang?: string } }>('/api/strings/signatures', async (req, reply) => {
-    const modId = Number(req.query.modId);
-    if (!Number.isInteger(modId) || modId < 1) {
-      return reply.code(400).send({ error: 'modId is required' });
-    }
-    return reply.send(await listSignatures(db, modId, req.query.srcLang));
-  });
+  app.get<{ Querystring: { modId?: string; srcLang?: string } }>(
+    '/api/strings/signatures',
+    async (req, reply) => {
+      const modId = Number(req.query.modId);
+      if (!Number.isInteger(modId) || modId < 1) {
+        return reply.code(400).send({ error: 'modId is required' });
+      }
+      return reply.send(await listSignatures(db, modId, req.query.srcLang));
+    },
+  );
 
   // GET /api/strings/status-transitions?from=
   //
@@ -94,18 +102,21 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   //   from  — current TranslationStatus value (required)
   //
   // Response: { from: string; actor: string; reachable: string[] }
-  app.get<{ Querystring: { from?: string } }>('/api/strings/status-transitions', async (req, reply) => {
-    const from = req.query.from ?? '';
-    if (!isValidTranslationStatus(from)) {
-      return reply.code(400).send({ error: `Invalid 'from' status: '${from}'` });
-    }
-    const actor = req.user?.role ?? 'translator';
-    return reply.send({
-      from,
-      actor,
-      reachable: reachableStatuses(from as TranslationStatus, actor),
-    });
-  });
+  app.get<{ Querystring: { from?: string } }>(
+    '/api/strings/status-transitions',
+    async (req, reply) => {
+      const from = req.query.from ?? '';
+      if (!isValidTranslationStatus(from)) {
+        return reply.code(400).send({ error: `Invalid 'from' status: '${from}'` });
+      }
+      const actor = req.user?.role ?? 'translator';
+      return reply.send({
+        from,
+        actor,
+        reachable: reachableStatuses(from as TranslationStatus, actor),
+      });
+    },
+  );
 
   // GET /api/strings/:stringId/suggestions?targetLang=
   app.get<{ Params: { stringId: string }; Querystring: { targetLang?: string } }>(
@@ -150,7 +161,11 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // PATCH /api/strings/:stringId/translation — save inline edit
   app.patch<{
     Params: { stringId: string };
-    Body: { text: string; status?: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm'; targetLang?: string };
+    Body: {
+      text: string;
+      status?: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm';
+      targetLang?: string;
+    };
   }>('/api/strings/:stringId/translation', async (req, reply) => {
     const stringId = Number(req.params.stringId);
     if (!Number.isInteger(stringId) || stringId < 1) {
@@ -173,11 +188,18 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     // draft save, promote the status directly to reviewed so the string skips
     // the review queue.
     const effectiveStatus: typeof status =
-      projectSettings['workflow.auto_approve_on_save'] && status === 'draft'
-        ? 'reviewed'
-        : status;
+      projectSettings['workflow.auto_approve_on_save'] && status === 'draft' ? 'reviewed' : status;
 
-    const result = await upsertTranslation(db, stringId, text, effectiveStatus, targetLang, undefined, undefined, req.user?.id ?? null);
+    const result = await upsertTranslation(
+      db,
+      stringId,
+      text,
+      effectiveStatus,
+      targetLang,
+      undefined,
+      undefined,
+      req.user?.id ?? null,
+    );
 
     // Propagate to all strings with the same normalised source text (unless disabled).
     if (projectSettings['workflow.propagate_to_identical']) {
@@ -253,7 +275,12 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
     Body: { stringIds: number[]; srcLang?: string; targetLang?: string; modId?: number };
   }>('/api/strings/translate', async (req, reply) => {
-    const { stringIds, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang, modId: bodyModId } = req.body ?? {};
+    const {
+      stringIds,
+      srcLang = CONFIG.defaultSrcLang,
+      targetLang = CONFIG.defaultTgtLang,
+      modId: bodyModId,
+    } = req.body ?? {};
     if (!Array.isArray(stringIds) || stringIds.length === 0) {
       return reply.code(400).send({ error: 'stringIds array is required' });
     }
@@ -268,6 +295,10 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       [srcLang, targetLang],
     );
     const glossary: LlmGlossaryEntry[] = glossaryRows;
+    const projectSettings = await getAllProjectSettings(db);
+    const ragEnabled = projectSettings['llm.rag_enabled'];
+    const ragMaxExamples = Math.min(10, Math.max(1, projectSettings['llm.rag_max_examples']));
+    const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
 
     // Resolve mod metadata for job tracking. Use bodyModId if provided, else
     // derive from the first string. Failures here are non-fatal — we still run.
@@ -325,6 +356,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     type StringRow = {
       id: number;
       text_raw: string;
+      text_norm: string | null;
+      text_norm_nopunct: string | null;
       context: string | null;
       signature: string | null;
       path: string | null;
@@ -335,7 +368,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     };
 
     const { rows: loadedRows } = await db.query<StringRow>(
-      `SELECT s.id, s.text_raw, s.context, r.signature, r.path, r.edid, r.formid_hex, m.game, m.name AS mod_name
+      `SELECT s.id, s.text_raw, s.text_norm, s.text_norm_nopunct, s.context,
+              r.signature, r.path, r.edid, r.formid_hex, m.game, m.name AS mod_name
          FROM strings s
          JOIN records r ON r.id = s.record_id
          JOIN mods m ON m.id = r.mod_id
@@ -347,6 +381,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     type PreparedLlmItem = {
       stringId: number;
       sourceText: string;
+      textNorm: string | null;
+      textNormNopunct: string | null;
       placeholderMap: Record<string, string>;
       functionKeywordMap: Record<string, string>;
       game: string | null;
@@ -378,8 +414,35 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const chunk = llmBuffer.splice(0, llmBuffer.length);
       try {
+        let ragByStringId = new Map<number, LlmTranslateItem['reference_examples']>();
+        if (ragEnabled) {
+          try {
+            ragByStringId = await fetchReferenceExamplesBatch(
+              db,
+              chunk.map((entry) => ({
+                stringId: entry.stringId,
+                sourceText: entry.sourceText,
+                textNorm: entry.textNorm,
+                textNormNopunct: entry.textNormNopunct,
+                signature: entry.llmItem.signature,
+                path: entry.llmItem.path,
+                context: entry.llmItem.context,
+              })),
+              srcLang,
+              targetLang,
+              ragMaxExamples,
+              ragMinSimilarity,
+            );
+          } catch (ragErr) {
+            log.warn({ ragErr }, 'RAG reference fetch failed, continuing without examples');
+          }
+        }
+
         const translations = await translateStrings({
-          items: chunk.map((entry) => entry.llmItem),
+          items: chunk.map((entry) => ({
+            ...entry.llmItem,
+            reference_examples: ragByStringId.get(entry.stringId),
+          })),
           model,
           srcLang,
           targetLang,
@@ -450,6 +513,8 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       llmBuffer.push({
         stringId,
         sourceText,
+        textNorm: row.text_norm,
+        textNormNopunct: row.text_norm_nopunct,
         placeholderMap,
         functionKeywordMap,
         game: row.game ?? resolvedModGame,
@@ -493,4 +558,4 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     }
   });
-}
+};

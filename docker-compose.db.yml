@@ -1,6 +1,7 @@
 services:
   db:
-    image: postgres:18-alpine
+    # pgvector is required for translation RAG (translation_examples embeddings).
+    image: pgvector/pgvector:pg17
 
     restart: unless-stopped
 

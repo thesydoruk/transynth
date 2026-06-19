@@ -16,6 +16,15 @@ export interface LlmGlossaryEntry {
   translation: string | null;
 }
 
+/** Retrieved few-shot example for LLM context (translation RAG). */
+export interface LlmReferenceExample {
+  source: string;
+  translation: string;
+  signature: string | null;
+  match_method: string;
+  similarity: number;
+}
+
 /** One string row sent to the LLM (source text must already be masked). */
 export interface LlmTranslateItem {
   id: number;
@@ -25,6 +34,7 @@ export interface LlmTranslateItem {
   form_id: string | null;
   edid: string | null;
   context: string | null;
+  reference_examples?: LlmReferenceExample[];
 }
 
 /** Options for {@link translateStrings}. */
@@ -86,6 +96,9 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
       form_id: item.form_id,
       edid: item.edid,
       context: item.context,
+      ...(item.reference_examples && item.reference_examples.length > 0
+        ? { reference_examples: item.reference_examples }
+        : {}),
     })),
   };
 };

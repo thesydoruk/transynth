@@ -5,7 +5,7 @@
  * API key is read from `CONFIG.openaiApiKey`.
  */
 import OpenAI from 'openai';
-import type { LLMProvider, ChatOptions } from './provider';
+import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
 import { log } from '../logger';
@@ -30,12 +30,14 @@ export class OpenAIProvider implements LLMProvider {
    */
   async chat(opts: ChatOptions): Promise<string> {
     log.debug(`OpenAI chat: model=${opts.model}, messages=${opts.messages.length}`);
-    const resp = await withRetry(() => this.client.chat.completions.create({
-      model: opts.model,
-      messages: opts.messages,
-      temperature: opts.temperature ?? 0,
-      ...(opts.responseFormat && { response_format: opts.responseFormat }),
-    }));
+    const resp = await withRetry(() =>
+      this.client.chat.completions.create({
+        model: opts.model,
+        messages: opts.messages,
+        temperature: opts.temperature ?? 0,
+        ...(opts.responseFormat && { response_format: opts.responseFormat }),
+      }),
+    );
     return resp.choices[0]?.message?.content ?? '';
   }
 
@@ -46,9 +48,17 @@ export class OpenAIProvider implements LLMProvider {
    * @param model - Model name (e.g. `text-embedding-3-small`).
    * @returns One float vector per input text.
    */
-  async embed(texts: string[], model: string): Promise<number[][]> {
+  async embed(texts: string[], model: string, options?: EmbedOptions): Promise<number[][]> {
     log.debug(`OpenAI embed: model=${model}, texts=${texts.length}`);
-    const resp = await withRetry(() => this.client.embeddings.create({ model, input: texts }));
-    return resp.data.map(v => v.embedding);
+    const resp = await withRetry(() =>
+      this.client.embeddings.create({
+        model,
+        input: texts,
+        ...(options?.dimensions && model.includes('embedding-3')
+          ? { dimensions: options.dimensions }
+          : {}),
+      }),
+    );
+    return resp.data.map((v) => v.embedding);
   }
 }

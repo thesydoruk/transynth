@@ -32,6 +32,11 @@ export interface ChatOptions {
   responseFormat?: { type: 'json_object' };
 }
 
+export interface EmbedOptions {
+  /** Matryoshka dimensions for OpenAI embedding-3 models (e.g. 1536). */
+  dimensions?: number;
+}
+
 /**
  * Minimal interface every LLM backend must satisfy.
  *
@@ -42,5 +47,5 @@ export interface LLMProvider {
   /** Send a chat prompt and return the model’s plain-text reply. */
   chat(opts: ChatOptions): Promise<string>;
   /** Embed an array of texts and return one vector per input. */
-  embed(texts: string[], model: string): Promise<number[][]>;
+  embed(texts: string[], model: string, options?: EmbedOptions): Promise<number[][]>;
 }

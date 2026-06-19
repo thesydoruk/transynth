@@ -20,6 +20,9 @@ type ProjectSettings = {
   'qa.end_punct_match': boolean;
   'qa.min_word_count': number;
   'import.skip_tes4': boolean;
+  'llm.rag_enabled': boolean;
+  'llm.rag_max_examples': number;
+  'llm.rag_min_similarity': number;
 };
 
 const DEFAULTS: ProjectSettings = {
@@ -29,6 +32,9 @@ const DEFAULTS: ProjectSettings = {
   'qa.end_punct_match': true,
   'qa.min_word_count': 1,
   'import.skip_tes4': false,
+  'llm.rag_enabled': true,
+  'llm.rag_max_examples': 5,
+  'llm.rag_min_similarity': 0.5,
 };
 
 /** WorkflowTab root component. */
@@ -57,6 +63,11 @@ export const WorkflowTab = () => {
   };
 
   const handleNumber = (key: keyof ProjectSettings, raw: string) => {
+    if (key === 'llm.rag_min_similarity') {
+      const n = parseFloat(raw);
+      if (!Number.isNaN(n) && n >= 0 && n <= 1) update({ key, value: n });
+      return;
+    }
     const n = parseInt(raw, 10);
     if (!Number.isNaN(n) && n >= 0) update({ key, value: n });
   };
@@ -156,6 +167,61 @@ export const WorkflowTab = () => {
               max={20}
               value={settings['qa.min_word_count']}
               onChange={(e) => handleNumber('qa.min_word_count', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── LLM / RAG section ─────────────────────────────────────────── */}
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.workflow.sectionLlm')}</h2>
+
+        <div className={s.settingsList}>
+          <div className={s.settingRow}>
+            <div className={s.settingInfo}>
+              <span className={s.settingLabel}>{t('settings.workflow.ragEnabled')}</span>
+              <span className={parentS.fieldNote}>{t('settings.workflow.ragEnabledDesc')}</span>
+            </div>
+            <label className={s.toggle}>
+              <input
+                type="checkbox"
+                checked={settings['llm.rag_enabled']}
+                onChange={() => handleToggle('llm.rag_enabled')}
+              />
+              <span className={s.toggleTrack} />
+            </label>
+          </div>
+
+          <div className={s.settingRow}>
+            <div className={s.settingInfo}>
+              <span className={s.settingLabel}>{t('settings.workflow.ragMaxExamples')}</span>
+              <span className={parentS.fieldNote}>{t('settings.workflow.ragMaxExamplesDesc')}</span>
+            </div>
+            <input
+              type="number"
+              className={s.numberInput}
+              min={1}
+              max={10}
+              value={settings['llm.rag_max_examples']}
+              onChange={(e) => handleNumber('llm.rag_max_examples', e.target.value)}
+            />
+          </div>
+
+          <div className={s.settingRow}>
+            <div className={s.settingInfo}>
+              <span className={s.settingLabel}>{t('settings.workflow.ragMinSimilarity')}</span>
+              <span className={parentS.fieldNote}>
+                {t('settings.workflow.ragMinSimilarityDesc')}
+              </span>
+            </div>
+            <input
+              type="number"
+              className={s.numberInput}
+              min={0}
+              max={1}
+              step={0.05}
+              value={settings['llm.rag_min_similarity']}
+              onChange={(e) => handleNumber('llm.rag_min_similarity', e.target.value)}
             />
           </div>
         </div>

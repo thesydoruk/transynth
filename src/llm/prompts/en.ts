@@ -27,6 +27,7 @@ export const buildEnglishTranslateSystemPrompt = (
     '- Translate only the "source" field; keep protected tokens like ¤PH0¤ and ¤FK0¤ unchanged.',
     '- Use signature, path, form_id, edid, and context to choose tone and terminology, but do not copy those fields into the translation.',
     '- Apply glossary mappings when provided.',
+    '- When an item includes "reference_examples", follow their terminology, tone, and phrasing for similar strings.',
     '- For dialogue (INFO/DIAL), match speaker context and in-game register.',
     '- For FULL/NAME fields, keep concise UI-friendly phrasing.',
     '',
