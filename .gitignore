@@ -3,9 +3,6 @@
 # Build output
 /dist/
 
-# Log files
-/logs/
-
 # Test assets
 /test/
 
@@ -17,8 +14,6 @@ ml_*/
 # Environment variables
 .env
 
-# Upload directories
-/uploads/
-
-# Runtime data (cache, logs, etc.)
-/data/
+# Runtime data (logs, uploads, cache, postgres, backups)
+/data/*
+!/data/.gitkeep

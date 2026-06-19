@@ -32,21 +32,14 @@ import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../..
 import { CONFIG } from '../../config';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
-import {
-  isArchive,
-  isPlugin,
-  registerArchiveFile,
-  registerPluginFile,
-} from '../modImportService';
+import { isArchive, isPlugin, registerArchiveFile, registerPluginFile } from '../modImportService';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Absolute path to the on-disk image cache directory.
- * Resolved relative to project root (`data/cache/games/`).
- */
-const CACHE_DIR = path.resolve(__dirname, '../../../data/cache/games');
-const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
+import { PATHS } from '../../paths';
+
+const CACHE_DIR = PATHS.gamesCache;
+const MOD_UPLOAD_DIR = PATHS.modUploads;
 
 /** Browser cache TTL for game covers (7 days). */
 const COVER_CACHE_SECONDS = 60 * 60 * 24 * 7;
@@ -164,10 +157,7 @@ const fetchNexusModInfo = async (
 /**
  * Maps REST v1 mod payload into the frontend-facing normalized shape.
  */
-const mapRestModToView = (
-  raw: Record<string, unknown>,
-  game: GameInfo,
-): NexusModView => {
+const mapRestModToView = (raw: Record<string, unknown>, game: GameInfo): NexusModView => {
   const n = (v: unknown): number => {
     if (typeof v === 'number' && Number.isFinite(v)) return v;
     if (typeof v === 'string' && v.trim()) {
@@ -200,7 +190,8 @@ const mapRestModToView = (
     updatedAt: s(raw.updated_time),
     downloads: n(raw.mod_downloads),
     endorsements: n(raw.endorsement_count),
-    adultContent: typeof raw.contains_adult_content === 'boolean' ? raw.contains_adult_content : null,
+    adultContent:
+      typeof raw.contains_adult_content === 'boolean' ? raw.contains_adult_content : null,
     pictureUrl: sn(raw.picture_url),
     thumbnailUrl: sn(raw.picture_url),
     gameId: game.nexusId,
@@ -256,7 +247,7 @@ const fetchNexusModFiles = async (
     throw new Error(`Nexus files API returned HTTP ${res.status}`);
   }
 
-  const json = await res.json() as { files?: unknown[] };
+  const json = (await res.json()) as { files?: unknown[] };
   const files = Array.isArray(json.files) ? json.files : [];
 
   return files.map((raw) => {
@@ -310,7 +301,7 @@ const fetchNexusFileDownloadUrl = async (
     throw new Error(`Nexus download-link API returned HTTP ${res.status}`);
   }
 
-  const json = await res.json() as NexusDownloadLinkRow[];
+  const json = (await res.json()) as NexusDownloadLinkRow[];
   const first = Array.isArray(json) ? json[0] : null;
   const link = first?.URI ?? first?.uri ?? null;
   if (!link) {
@@ -370,7 +361,11 @@ const downloadNexusFileToDisk = async (
     fs.renameSync(tempPath, finalPath);
     return finalPath;
   } catch (error) {
-    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {
+      /* ignore */
+    }
     throw error;
   }
 };
@@ -492,7 +487,8 @@ export const SUPPORTED_GAMES: GameInfo[] = [
 const GAMES_ETAG = `"${crypto.createHash('sha1').update(JSON.stringify(SUPPORTED_GAMES)).digest('hex')}"`;
 
 /** Builds a weak ETag from file size and mtime. */
-const buildWeakEtag = (size: number, mtimeMs: number): string => `W/"${size}-${Math.trunc(mtimeMs)}"`;
+const buildWeakEtag = (size: number, mtimeMs: number): string =>
+  `W/"${size}-${Math.trunc(mtimeMs)}"`;
 
 /**
  * Lazily-initialised singleton NexusMods client.
@@ -549,7 +545,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const { gameId } = req.params;
 
     // Validate: only known game IDs (prevents path traversal)
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) {
       return reply.code(404).send({ error: 'Unknown game' });
     }
@@ -569,7 +565,10 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       }
 
       const stream = fs.createReadStream(cachePath);
-      reply.header('Cache-Control', `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`);
+      reply.header(
+        'Cache-Control',
+        `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`,
+      );
       reply.header('ETag', etag);
       reply.type('image/jpeg');
       return reply.send(stream);
@@ -595,7 +594,10 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
         else log.info(`Cached game cover: ${cachePath}`);
       });
 
-      reply.header('Cache-Control', `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`);
+      reply.header(
+        'Cache-Control',
+        `public, max-age=${COVER_CACHE_SECONDS}, stale-while-revalidate=86400`,
+      );
       reply.header('ETag', etag);
       reply.type('image/jpeg');
       return reply.send(buffer);
@@ -608,15 +610,15 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
   /* ── NexusMods GraphQL endpoints ────────────────────────────────────── */
 
   /**
-  * GET /api/games/:gameId/nexus/mods[?q=<query>&count=<n>&offset=<n>]
+   * GET /api/games/:gameId/nexus/mods[?q=<query>&count=<n>&offset=<n>]
    *
    * Searches the NexusMods catalogue for mods belonging to the given game.
    * Results are ordered by last-updated date (newest first).
    *
    * Query parameters:
-  *   q      {string}  — optional, the search query (mod title / keywords)
+   *   q      {string}  — optional, the search query (mod title / keywords)
    *   count  {number}  — optional, page size, default 20, max 50
-  *   offset {number}  — optional, zero-based offset, default 0
+   *   offset {number}  — optional, zero-based offset, default 0
    *
    * Requires NEXUS_API_KEY to be set in the environment.  Returns 503 when
    * the key is absent or 502 when the upstream API is unreachable.
@@ -633,7 +635,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     // Validate game
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     // Clamp count to a reasonable range
@@ -677,7 +679,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
     }
 
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -690,10 +692,12 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       // for legacy mods that are visible on site yet not indexed by GraphQL.
       let mod: NexusModView;
       try {
-        mod = await getNexus().getModById(game.domainName, game.nexusId, modId) as NexusModView;
+        mod = (await getNexus().getModById(game.domainName, game.nexusId, modId)) as NexusModView;
       } catch (err) {
         if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
-          log.warn(`Nexus GraphQL mod lookup fallback to REST for ${gameId}/${modId}: ${err.message}`);
+          log.warn(
+            `Nexus GraphQL mod lookup fallback to REST for ${gameId}/${modId}: ${err.message}`,
+          );
           const rest = await fetchNexusModInfo(game.domainName, modId);
           mod = mapRestModToView(rest, game);
         } else {
@@ -730,7 +734,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
     }
 
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -752,7 +756,9 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       const downloadUrl = await fetchNexusFileDownloadUrl(game.domainName, modId, fileId);
       const upstream = await fetch(downloadUrl, { redirect: 'follow' });
       if (!upstream.ok || !upstream.body) {
-        return reply.code(502).send({ error: `Nexus file download failed: HTTP ${upstream.status}` });
+        return reply
+          .code(502)
+          .send({ error: `Nexus file download failed: HTTP ${upstream.status}` });
       }
 
       const fileName = path.basename(file.fileName ?? file.name);
@@ -790,7 +796,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
     }
 
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -818,17 +824,34 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
 
       let job;
       if (isPlugin(fileName)) {
-        job = await registerPluginFile(db, fileName, localPath, srcLang, tgtLang, game.id as GameType);
+        job = await registerPluginFile(
+          db,
+          fileName,
+          localPath,
+          srcLang,
+          tgtLang,
+          game.id as GameType,
+        );
       } else {
         const hash = crypto.randomBytes(8).toString('hex');
         const outDir = extractDir(hash);
-        job = await registerArchiveFile(db, fileName, localPath, outDir, srcLang, tgtLang, game.id as GameType);
+        job = await registerArchiveFile(
+          db,
+          fileName,
+          localPath,
+          outDir,
+          srcLang,
+          tgtLang,
+          game.id as GameType,
+        );
       }
 
       return reply.code(201).send({ ...job, running: false });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      log.warn(`Nexus file import registration failed for ${gameId}/${modId}/${fileId}: ${message}`);
+      log.warn(
+        `Nexus file import registration failed for ${gameId}/${modId}/${fileId}: ${message}`,
+      );
       return reply.code(502).send({ error: message });
     }
   });
@@ -854,7 +877,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(503).send({ error: 'NEXUS_API_KEY is not configured on the server' });
     }
 
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -932,7 +955,7 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     // Validate game
-    const game = SUPPORTED_GAMES.find(g => g.id === gameId);
+    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     // Validate modId
@@ -944,11 +967,16 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
     const count = Math.min(100, Math.max(1, parseInt(rawCount ?? '50', 10) || 50));
 
     try {
-      const result = await getNexus().findPossibleTranslations(game.domainName, game.nexusId, modId, {
-        language: language?.trim() || undefined,
-        count,
-        includeDescriptionSearch: true,
-      });
+      const result = await getNexus().findPossibleTranslations(
+        game.domainName,
+        game.nexusId,
+        modId,
+        {
+          language: language?.trim() || undefined,
+          count,
+          includeDescriptionSearch: true,
+        },
+      );
 
       return reply.send(result);
     } catch (err) {

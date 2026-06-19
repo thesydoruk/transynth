@@ -23,6 +23,7 @@ import path from 'path';
 import { openDb, closeDb } from '../db';
 import { log } from '../logger';
 import { CONFIG } from '../config';
+import { ensureDataDirs } from '../paths';
 import { ensureDefaultAdmin, cleanExpiredSessions } from './authService';
 import { registerAuthHook } from './authMiddleware';
 import { authRoutes } from './routes/auth';
@@ -55,6 +56,7 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 
 /** Fastify app instance; Fastify logging is disabled in favour of `src/logger.ts`. */
+ensureDataDirs();
 const app = Fastify({ logger: false });
 
 // CORS: in multi-user mode send cookies cross-origin (dev proxy scenario)
@@ -160,6 +162,6 @@ const shutdown = async () => {
   await closeDb();
   log.close();
   process.exit(0);
-}
+};
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

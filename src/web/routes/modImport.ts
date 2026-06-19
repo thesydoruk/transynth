@@ -31,27 +31,29 @@ import {
 import { CONFIG } from '../../config';
 import { applyImportedRowsAsTranslations } from '../queries';
 
-const MOD_UPLOAD_DIR = path.resolve(process.env.MOD_UPLOAD_DIR ?? './uploads/mod');
+import { PATHS } from '../../paths';
+
+const MOD_UPLOAD_DIR = PATHS.modUploads;
 
 const ensureUploadDir = () => {
   if (!fs.existsSync(MOD_UPLOAD_DIR)) fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
-}
+};
 
 const modFilePath = (fileName: string) => {
   const safe = path.basename(fileName);
   return path.join(MOD_UPLOAD_DIR, safe);
-}
+};
 
 /** Per-archive extraction directory. */
 const extractDir = (jobHash: string) => {
   return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
-}
+};
 
 /** Returns true when a path is inside the mod upload root directory. */
 const isInsideModUploadDir = (absPath: string): boolean => {
   const rel = path.relative(MOD_UPLOAD_DIR, absPath);
   return !rel.startsWith('..') && !path.isAbsolute(rel);
-}
+};
 
 /**
  * Resolves extraction root directory for a plugin path when it follows
@@ -62,9 +64,10 @@ const resolveExtractedRootDir = (pluginPath: string | null | undefined): string 
   const absPluginPath = path.resolve(pluginPath);
   if (!isInsideModUploadDir(absPluginPath)) return null;
 
-  let current = fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
-    ? absPluginPath
-    : path.dirname(absPluginPath);
+  let current =
+    fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
+      ? absPluginPath
+      : path.dirname(absPluginPath);
 
   while (isInsideModUploadDir(current)) {
     if (path.basename(current).startsWith('_extracted_')) return current;
@@ -74,7 +77,7 @@ const resolveExtractedRootDir = (pluginPath: string | null | undefined): string 
   }
 
   return null;
-}
+};
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
@@ -83,62 +86,75 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── List all mod import jobs ──────────────────────────────────────────────
   app.get('/api/mod-import', async () => {
     const jobs = await listModImportJobs(db);
-    return jobs.map(j => ({
+    return jobs.map((j) => ({
       ...j,
       running: isModImportRunning(j.id),
     }));
   });
 
   // ── Upload mod file (ESP/ESL or archive) ──────────────────────────────────
-  app.post<{ Querystring: { game?: string; srcLang?: string; tgtLang?: string } }>('/api/mod-import/upload', async (req, reply) => {
-    const data = await req.file();
-    if (!data) return reply.status(400).send({ error: 'No file uploaded' });
+  app.post<{ Querystring: { game?: string; srcLang?: string; tgtLang?: string } }>(
+    '/api/mod-import/upload',
+    async (req, reply) => {
+      const data = await req.file();
+      if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
-    const origName = data.filename;
-    const game: GameType = (
-      req.query.game === 'sse'
-      || req.query.game === 'sle'
-      || req.query.game === 'fo76'
-      || req.query.game === 'fo3'
-      || req.query.game === 'fnv'
-      || req.query.game === 'ob'
-      || req.query.game === 'mw'
-    ) ? req.query.game : 'fo4';
-    const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
-    const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
+      const origName = data.filename;
+      const game: GameType =
+        req.query.game === 'sse' ||
+        req.query.game === 'sle' ||
+        req.query.game === 'fo76' ||
+        req.query.game === 'fo3' ||
+        req.query.game === 'fnv' ||
+        req.query.game === 'ob' ||
+        req.query.game === 'mw'
+          ? req.query.game
+          : 'fo4';
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
 
-    if (!isPlugin(origName) && !isArchive(origName)) {
-      return reply.status(400).send({
-        error: 'Only .esp/.esm/.esl plugin files or .zip/.7z/.rar archives are accepted',
-      });
-    }
-
-    const tmpPath = path.join(MOD_UPLOAD_DIR, `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`);
-    ensureUploadDir();
-
-    try {
-      await pipeline(data.file, fs.createWriteStream(tmpPath));
-
-      const finalPath = modFilePath(origName);
-      fs.renameSync(tmpPath, finalPath);
-
-      let job;
-      if (isPlugin(origName)) {
-        job = await registerPluginFile(db, origName, finalPath, srcLang, tgtLang, game);
-      } else {
-        // Archive — extract then register
-        const hash = crypto.randomBytes(8).toString('hex');
-        const outDir = extractDir(hash);
-        job = await registerArchiveFile(db, origName, finalPath, outDir, srcLang, tgtLang, game);
+      if (!isPlugin(origName) && !isArchive(origName)) {
+        return reply.status(400).send({
+          error: 'Only .esp/.esm/.esl plugin files or .zip/.7z/.rar archives are accepted',
+        });
       }
 
-      return reply.status(201).send({ ...job, running: false });
-    } catch (err: unknown) {
-      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
-      log.error(`Mod upload failed: ${err instanceof Error ? err.message : err}`);
-      return reply.status(500).send({ error: err instanceof Error ? err.message : 'Upload failed' });
-    }
-  });
+      const tmpPath = path.join(
+        MOD_UPLOAD_DIR,
+        `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
+      );
+      ensureUploadDir();
+
+      try {
+        await pipeline(data.file, fs.createWriteStream(tmpPath));
+
+        const finalPath = modFilePath(origName);
+        fs.renameSync(tmpPath, finalPath);
+
+        let job;
+        if (isPlugin(origName)) {
+          job = await registerPluginFile(db, origName, finalPath, srcLang, tgtLang, game);
+        } else {
+          // Archive — extract then register
+          const hash = crypto.randomBytes(8).toString('hex');
+          const outDir = extractDir(hash);
+          job = await registerArchiveFile(db, origName, finalPath, outDir, srcLang, tgtLang, game);
+        }
+
+        return reply.status(201).send({ ...job, running: false });
+      } catch (err: unknown) {
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {
+          /* ignore */
+        }
+        log.error(`Mod upload failed: ${err instanceof Error ? err.message : err}`);
+        return reply
+          .status(500)
+          .send({ error: err instanceof Error ? err.message : 'Upload failed' });
+      }
+    },
+  );
 
   // ── Preview mod records (paginated + filterable) ──────────────────────────
   app.get<{
@@ -185,7 +201,9 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       };
     } catch (err: unknown) {
       log.error(`Mod preview failed: ${err instanceof Error ? err.message : err}`);
-      return reply.status(500).send({ error: err instanceof Error ? err.message : 'Preview failed' });
+      return reply
+        .status(500)
+        .send({ error: err instanceof Error ? err.message : 'Preview failed' });
     }
   });
 
@@ -196,7 +214,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       const jobId = Number(req.params.id);
       const job = await getModImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
+      if (isModImportRunning(jobId))
+        return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as {
         srcLang?: string;
@@ -213,105 +232,106 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
     Params: { id: string };
     Querystring: { targetModId?: string; importedLang?: string; srcLang?: string };
-  }>(
-    '/api/mod-import/:id/apply-to-mod',
-    async (req, reply) => {
-      const jobId = Number(req.params.id);
-      const targetModId = Number(req.query.targetModId);
-      const importedLang = (req.query.importedLang ?? '').trim();
-      const srcLang = (req.query.srcLang ?? CONFIG.defaultSrcLang).trim() || CONFIG.defaultSrcLang;
+  }>('/api/mod-import/:id/apply-to-mod', async (req, reply) => {
+    const jobId = Number(req.params.id);
+    const targetModId = Number(req.query.targetModId);
+    const importedLang = (req.query.importedLang ?? '').trim();
+    const srcLang = (req.query.srcLang ?? CONFIG.defaultSrcLang).trim() || CONFIG.defaultSrcLang;
 
-      if (!Number.isInteger(jobId) || jobId < 1) return reply.status(400).send({ error: 'Invalid import job id' });
-      if (!Number.isInteger(targetModId) || targetModId < 1) return reply.status(400).send({ error: 'targetModId query param is required' });
-      if (!importedLang) return reply.status(400).send({ error: 'importedLang query param is required' });
-      if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot apply while import is running' });
+    if (!Number.isInteger(jobId) || jobId < 1)
+      return reply.status(400).send({ error: 'Invalid import job id' });
+    if (!Number.isInteger(targetModId) || targetModId < 1)
+      return reply.status(400).send({ error: 'targetModId query param is required' });
+    if (!importedLang)
+      return reply.status(400).send({ error: 'importedLang query param is required' });
+    if (isModImportRunning(jobId))
+      return reply.status(409).send({ error: 'Cannot apply while import is running' });
 
-      const job = await getModImportJob(db, jobId);
-      if (!job) return reply.status(404).send({ error: 'Import job not found' });
+    const job = await getModImportJob(db, jobId);
+    if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
-      try {
-        await db.query(
-          `UPDATE mod_imports
+    try {
+      await db.query(
+        `UPDATE mod_imports
               SET status = 'in_progress',
                   imported_records = 0,
                   updated_at = NOW()
             WHERE id = $1`,
-          [jobId],
-        );
+        [jobId],
+      );
 
-        const importedRows = extractModImportApplyRows(job, importedLang);
-        if (importedRows.length === 0) {
-          return reply.status(400).send({ error: `Import job has no translatable rows for lang "${importedLang}"` });
-        }
+      const importedRows = extractModImportApplyRows(job, importedLang);
+      if (importedRows.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: `Import job has no translatable rows for lang "${importedLang}"` });
+      }
 
-        let lastProcessed = 0;
-        let lastTotal = 0;
+      let lastProcessed = 0;
+      let lastTotal = 0;
 
-        const result = await applyImportedRowsAsTranslations(
-          db,
-          targetModId,
-          importedRows,
-          importedLang,
-          importedLang,
-          srcLang,
-          `import_job_${jobId}_${importedLang}`,
-          `Imported apply: targetMod=${targetModId}, importJob=${jobId}`,
-          async (processed, total) => {
-            lastProcessed = processed;
-            lastTotal = total;
-            await db.query(
-              `UPDATE mod_imports
+      const result = await applyImportedRowsAsTranslations(
+        db,
+        targetModId,
+        importedRows,
+        importedLang,
+        importedLang,
+        srcLang,
+        `import_job_${jobId}_${importedLang}`,
+        `Imported apply: targetMod=${targetModId}, importJob=${jobId}`,
+        async (processed, total) => {
+          lastProcessed = processed;
+          lastTotal = total;
+          await db.query(
+            `UPDATE mod_imports
                   SET status = 'in_progress',
                       total_records = $2,
                       imported_records = $3,
                       updated_at = NOW()
                 WHERE id = $1`,
-              [jobId, total, processed],
-            );
-          },
-        );
+            [jobId, total, processed],
+          );
+        },
+      );
 
-        await db.query(
-          `UPDATE mod_imports
+      await db.query(
+        `UPDATE mod_imports
               SET status = 'completed',
                   total_records = $2,
                   imported_records = $2,
                   updated_at = NOW()
             WHERE id = $1`,
-          [jobId, lastTotal || lastProcessed || importedRows.length],
-        );
+        [jobId, lastTotal || lastProcessed || importedRows.length],
+      );
 
-        log.info(
-          `Imported apply complete: targetMod=${targetModId}, importJob=${jobId}, uploaded file kept on disk, no temporary mod row created`,
-        );
+      log.info(
+        `Imported apply complete: targetMod=${targetModId}, importJob=${jobId}, uploaded file kept on disk, no temporary mod row created`,
+      );
 
-        return reply.send(result);
-      } catch (err: unknown) {
-        await db.query(
-          `UPDATE mod_imports
+      return reply.send(result);
+    } catch (err: unknown) {
+      await db.query(
+        `UPDATE mod_imports
               SET status = 'failed',
                   updated_at = NOW()
             WHERE id = $1`,
-          [jobId],
-        );
-        return reply.status(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
-    },
-  );
+        [jobId],
+      );
+      return reply.status(400).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
   // ── Restart completed/failed/paused job ──────────────────────────────────
-  app.post<{ Params: { id: string } }>(
-    '/api/mod-import/:id/restart',
-    async (req, reply) => {
-      const jobId = Number(req.params.id);
-      const job = await getModImportJob(db, jobId);
-      if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot restart while running' });
+  app.post<{ Params: { id: string } }>('/api/mod-import/:id/restart', async (req, reply) => {
+    const jobId = Number(req.params.id);
+    const job = await getModImportJob(db, jobId);
+    if (!job) return reply.status(404).send({ error: 'Import job not found' });
+    if (isModImportRunning(jobId))
+      return reply.status(409).send({ error: 'Cannot restart while running' });
 
-      await restartModImportJob(db, jobId);
-      return await getModImportJob(db, jobId);
-    },
-  );
+    await restartModImportJob(db, jobId);
+    return await getModImportJob(db, jobId);
+  });
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/mod-import/:id/import', async (req, reply) => {
@@ -319,7 +339,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
-    if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
+    if (isModImportRunning(jobId))
+      return reply.status(409).send({ error: 'Import already running' });
 
     if (!job.esp_path || !fs.existsSync(job.esp_path)) {
       return reply.status(404).send({ error: 'Plugin file not found on disk' });
@@ -337,7 +358,11 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     });
 
     const send = (data: object) => {
-      try { reply.raw.write(`data: ${JSON.stringify(data)}\n\n`); } catch { /* client disconnected */ }
+      try {
+        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        /* client disconnected */
+      }
     };
 
     (async () => {
@@ -347,10 +372,16 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
         });
         send({ type: 'done', job: { ...result, running: false } });
       } catch (err: unknown) {
-        log.error(`[Mod SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`);
+        log.error(
+          `[Mod SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`,
+        );
         send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
       } finally {
-        try { reply.raw.end(); } catch { /* already closed */ }
+        try {
+          reply.raw.end();
+        } catch {
+          /* already closed */
+        }
       }
     })();
   });
@@ -383,7 +414,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isModImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
+    if (isModImportRunning(jobId))
+      return reply.status(409).send({ error: 'Cannot delete while running' });
 
     let modAbsPath: string | null = null;
     if (job.mod_id != null) {
@@ -401,7 +433,11 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     if (modAbsPath) filePaths.add(modAbsPath);
 
     for (const filePath of filePaths) {
-      try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
+      try {
+        fs.unlinkSync(filePath);
+      } catch {
+        /* file may not exist */
+      }
     }
 
     // Remove extracted archive folder when this import was unpacked.
@@ -412,7 +448,11 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     if (fromModAbs) extractedDirs.add(fromModAbs);
 
     for (const dirPath of extractedDirs) {
-      try { fs.rmSync(dirPath, { recursive: true, force: true }); } catch { /* ignore */ }
+      try {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
     }
 
     // Split delete modes:
@@ -431,4 +471,4 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
     return { ok: true };
   });
-}
+};

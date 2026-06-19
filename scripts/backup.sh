@@ -8,12 +8,12 @@
 #   ./scripts/backup.sh --docker          # force Docker Compose mode
 #   ./scripts/backup.sh --local           # force local pg_dump
 #
-# Output: ./data/backups/localizer_YYYYMMDD_HHMMSS.sql.gz
+# Output: ${DATA_DIR:-./data}/backups/localizer_YYYYMMDD_HHMMSS.sql.gz
 # ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-BACKUP_DIR="./data/backups"
+BACKUP_DIR="${DATA_DIR:-./data}/backups"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_FILE="${BACKUP_DIR}/localizer_${TIMESTAMP}.sql.gz"
 

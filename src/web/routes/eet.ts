@@ -23,17 +23,19 @@ import {
 } from '../eetImportService';
 import { parseEetHeader, iterEetRecords } from '../../bethesda/parsers';
 
-const EET_UPLOAD_DIR = path.resolve(process.env.EET_UPLOAD_DIR ?? './uploads/eet');
+import { PATHS } from '../../paths';
+
+const EET_UPLOAD_DIR = PATHS.eetUploads;
 
 const ensureUploadDir = () => {
   if (!fs.existsSync(EET_UPLOAD_DIR)) fs.mkdirSync(EET_UPLOAD_DIR, { recursive: true });
-}
+};
 
 const eetFilePath = (fileName: string) => {
   // Sanitize to prevent path traversal
   const safe = path.basename(fileName);
   return path.join(EET_UPLOAD_DIR, safe);
-}
+};
 
 export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureImportSchema(db);
@@ -42,7 +44,7 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── List all import jobs ──────────────────────────────────────────────────
   app.get('/api/eet', async () => {
     const jobs = await listImportJobs(db);
-    return jobs.map(j => ({
+    return jobs.map((j) => ({
       ...j,
       running: isImportRunning(j.id),
     }));
@@ -59,7 +61,10 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     // Save to temp, then rename to avoid partial uploads
-    const tmpPath = path.join(EET_UPLOAD_DIR, `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`);
+    const tmpPath = path.join(
+      EET_UPLOAD_DIR,
+      `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
+    );
     ensureUploadDir();
 
     try {
@@ -74,7 +79,11 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.status(201).send({ ...job, running: false });
     } catch (err: unknown) {
       // Clean up temp file on error
-      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        /* ignore */
+      }
       log.error(`EET upload failed: ${err instanceof Error ? err.message : err}`);
       return reply.status(500).send({ error: 'Upload failed' });
     }
@@ -90,7 +99,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
     const filePath = eetFilePath(job.file_name);
-    if (!fs.existsSync(filePath)) return reply.status(404).send({ error: 'EET file not found on disk' });
+    if (!fs.existsSync(filePath))
+      return reply.status(404).send({ error: 'EET file not found on disk' });
 
     const buf = fs.readFileSync(filePath);
     const header = parseEetHeader(buf);
@@ -102,7 +112,15 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
     // Collect distinct signatures + filtered records in a single pass
     const sigSet = new Set<string>();
-    const matched: Array<{ signature: string; formId: string; edid: string; field: string; source: string; target: string; status: number }> = [];
+    const matched: Array<{
+      signature: string;
+      formId: string;
+      edid: string;
+      field: string;
+      source: string;
+      target: string;
+      status: number;
+    }> = [];
 
     for (const r of iterEetRecords(buf, header.recordsOffset)) {
       sigSet.add(r.signature);
@@ -111,7 +129,15 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
         const hay = `${r.formId}\t${r.edid}\t${r.source}\t${r.target}`.toLowerCase();
         if (!hay.includes(qFilter)) continue;
       }
-      matched.push({ signature: r.signature, formId: r.formId, edid: r.edid, field: r.field, source: r.source, target: r.target, status: r.status });
+      matched.push({
+        signature: r.signature,
+        formId: r.formId,
+        edid: r.edid,
+        field: r.field,
+        source: r.source,
+        target: r.target,
+        status: r.status,
+      });
     }
 
     const total = matched.length;
@@ -134,7 +160,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
       const jobId = Number(req.params.id);
       const job = await getImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot update while running' });
+      if (isImportRunning(jobId))
+        return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
       if (srcLang && tgtLang) {
@@ -153,7 +180,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
 
     const filePath = eetFilePath(job.file_name);
-    if (!fs.existsSync(filePath)) return reply.status(404).send({ error: 'EET file not found on disk' });
+    if (!fs.existsSync(filePath))
+      return reply.status(404).send({ error: 'EET file not found on disk' });
 
     const buf = fs.readFileSync(filePath);
 
@@ -171,7 +199,11 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     });
 
     const send = (data: object) => {
-      try { reply.raw.write(`data: ${JSON.stringify(data)}\n\n`); } catch { /* client disconnected */ }
+      try {
+        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        /* client disconnected */
+      }
     };
 
     // Run import asynchronously — runImport is now async
@@ -182,10 +214,16 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
         });
         send({ type: 'done', job: { ...result, running: false } });
       } catch (err: unknown) {
-        log.error(`[EET SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`);
+        log.error(
+          `[EET SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`,
+        );
         send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
       } finally {
-        try { reply.raw.end(); } catch { /* already closed */ }
+        try {
+          reply.raw.end();
+        } catch {
+          /* already closed */
+        }
       }
     })();
   });
@@ -211,12 +249,17 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     const jobId = Number(req.params.id);
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Cannot delete while running' });
+    if (isImportRunning(jobId))
+      return reply.status(409).send({ error: 'Cannot delete while running' });
 
     const filePath = eetFilePath(job.file_name);
-    try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      /* file may not exist */
+    }
     await deleteImportJob(db, jobId);
 
     return { ok: true };
   });
-}
+};

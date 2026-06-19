@@ -32,8 +32,7 @@
 
   // ── Search / explorer exclusions ────────────────────────────
   "search.exclude": {
-    "logs/": true,
-    "uploads/": true
+    "data/": true
   },
   "files.exclude": {
     "_codemod*": true,

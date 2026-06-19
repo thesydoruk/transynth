@@ -3,5 +3,4 @@ node_modules
 package-lock.json
 web-ui/package-lock.json
 *.sqlite
-uploads
-logs
+data

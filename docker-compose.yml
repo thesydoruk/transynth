@@ -20,14 +20,14 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      DATA_DIR: /app/data
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
       PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       MULTI_USER: ${MULTI_USER:-true}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
     volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
+      - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy
@@ -63,8 +63,11 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      DATA_DIR: /app/data
       DATABASE_URL: postgresql://${POSTGRES_USER:-localizer}:${POSTGRES_PASSWORD:-localizer}@db:5432/${POSTGRES_DB:-localizer}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
+    volumes:
+      - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy

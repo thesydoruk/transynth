@@ -17,11 +17,8 @@ legacy/
 docs/
 .github/
 
-# Upload directories — mounted as volumes, not baked into image
-uploads/
-
-# Runtime data — logs (mounted as volumes)
-logs/
+# Runtime data — mounted as volume, not baked into image
+data/
 
 # Web UI node_modules excluded — only built dist is copied
 web-ui/node_modules/
