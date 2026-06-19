@@ -4,7 +4,12 @@ import type pg from 'pg';
 import { log } from '../logger';
 import { CONFIG } from '../config';
 import type { GameType } from '../types';
-import { normalizeForHash, segmentPhrases, extractNumbers, transplantNumbers } from '../utils/textNorm';
+import {
+  normalizeForHash,
+  segmentPhrases,
+  extractNumbers,
+  transplantNumbers,
+} from '../utils/textNorm';
 import { extractProtectedTokens } from '../utils/placeholders';
 import { assertTransition, isValidTranslationStatus } from './statusMachine';
 import type { TranslationStatus, StatusActor } from './statusMachine';
@@ -126,11 +131,12 @@ const buildQAIssues = (
   }
 
   // Forbidden characters: control chars (except \n \r \t), null bytes
-  // eslint-disable-next-line no-control-regex
   const forbiddenRe = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
   const forbidden = translation.match(forbiddenRe);
   if (forbidden) {
-    const unique = [...new Set(forbidden)].map((c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`);
+    const unique = [...new Set(forbidden)].map(
+      (c) => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`,
+    );
     issues.push({
       issueType: 'forbidden_chars',
       severity: 'error',
@@ -172,7 +178,7 @@ const buildQAIssues = (
   }
 
   return issues;
-}
+};
 
 const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<void> => {
   await db.query(
@@ -190,9 +196,14 @@ const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<
       input.note ?? null,
     ],
   );
-}
+};
 
-const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, srcLang = CONFIG.defaultSrcLang): Promise<void> => {
+const refreshQAIssues = async (
+  db: Tx,
+  stringId: number,
+  targetLang: string,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<void> => {
   // Fetch source text, best translation, and record context (signature + path + game) for rule matching
   const { rows } = await db.query(
     `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation,
@@ -212,12 +223,21 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
     [stringId, targetLang],
   );
 
-  const row = rows[0] as { source?: string; translation_id?: number | null; translation?: string | null; signature?: string | null; path?: string | null; game?: string } | undefined;
+  const row = rows[0] as
+    | {
+        source?: string;
+        translation_id?: number | null;
+        translation?: string | null;
+        signature?: string | null;
+        path?: string | null;
+        game?: string;
+      }
+    | undefined;
 
-  await db.query(
-    `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
-    [stringId, targetLang],
-  );
+  await db.query(`DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`, [
+    stringId,
+    targetLang,
+  ]);
 
   if (!row?.source || row.translation == null) {
     return;
@@ -233,7 +253,12 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
     if (s.key === 'qa.min_word_count') qaSettings.minWordCount = Number(s.value);
   }
 
-  const issues = buildQAIssues(row.source, row.translation, row.game as GameType | undefined, qaSettings);
+  const issues = buildQAIssues(
+    row.source,
+    row.translation,
+    row.game as GameType | undefined,
+    qaSettings,
+  );
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
   // FO76 shares the same record format as FO4, so QA rules configured for
@@ -246,7 +271,14 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
     [ruleGame],
   );
 
-  for (const rule of qaRules as Array<{ rule_type: string; value: string; severity: string; description: string | null; rule_sig: string | null; rule_path: string | null }>) {
+  for (const rule of qaRules as Array<{
+    rule_type: string;
+    value: string;
+    severity: string;
+    description: string | null;
+    rule_sig: string | null;
+    rule_path: string | null;
+  }>) {
     // Skip rule if its signature filter doesn't match this record
     if (rule.rule_sig && rule.rule_sig !== row.signature) continue;
     // Skip rule if its path filter doesn't match this record
@@ -262,7 +294,9 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
         const display = found.map((c) => {
           const cp = c.codePointAt(0)!;
           // Show printable chars as-is, non-printable as U+XXXX
-          return cp >= 0x20 && cp < 0x7F ? `"${c}"` : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+          return cp >= 0x20 && cp < 0x7f
+            ? `"${c}"`
+            : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
         });
         issues.push({
           issueType: 'forbidden_chars',
@@ -277,7 +311,9 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
         issues.push({
           issueType: 'max_length',
           severity: rule.severity as 'warning' | 'error',
-          message: rule.description ?? `Translation is ${row.translation.length} chars, exceeds max ${maxLen}.`,
+          message:
+            rule.description ??
+            `Translation is ${row.translation.length} chars, exceeds max ${maxLen}.`,
         });
       }
     }
@@ -294,7 +330,10 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
   );
   const tgtLower = row.translation.toLowerCase();
   for (const g of glossaryTerms as Array<{ term: string; translation: string }>) {
-    if (termWordBoundaryRe(g.term).test(row.source) && !tgtLower.includes(g.translation.toLowerCase())) {
+    if (
+      termWordBoundaryRe(g.term).test(row.source) &&
+      !tgtLower.includes(g.translation.toLowerCase())
+    ) {
       issues.push({
         issueType: 'glossary_violation',
         severity: 'warning',
@@ -334,10 +373,17 @@ const refreshQAIssues = async (db: Tx, stringId: number, targetLang: string, src
       `INSERT INTO qa_issues(
          src_string_id, translation_id, target_lang, issue_type, severity, message, is_active, updated_at
        ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())`,
-      [stringId, row.translation_id ?? null, targetLang, issue.issueType, issue.severity, issue.message],
+      [
+        stringId,
+        row.translation_id ?? null,
+        targetLang,
+        issue.issueType,
+        issue.severity,
+        issue.message,
+      ],
     );
   }
-}
+};
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
@@ -352,7 +398,7 @@ export const listMods = async (
   db: Tx,
   opts: { game?: string; srcLang?: string; targetLang?: string } = {},
 ) => {
-  const srcLang    = opts.srcLang    ?? CONFIG.defaultSrcLang;
+  const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
   const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
 
   /* Build an optional WHERE clause when a game filter is provided. */
@@ -386,12 +432,12 @@ export const listMods = async (
     params,
   );
   return rows;
-}
+};
 
 export const getMod = async (db: Tx, id: number) => {
   const { rows } = await db.query(`SELECT * FROM mods WHERE id = $1`, [id]);
   return rows[0];
-}
+};
 
 // ── Strings ───────────────────────────────────────────────────────────────────
 
@@ -464,7 +510,9 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   }
 
   if (f.query) {
-    conditions.push(`(s.text_raw LIKE $${idx} OR r.formid_hex LIKE $${idx} OR r.edid LIKE $${idx})`);
+    conditions.push(
+      `(s.text_raw LIKE $${idx} OR r.formid_hex LIKE $${idx} OR r.edid LIKE $${idx})`,
+    );
     values.push(`%${f.query}%`);
     idx++;
   }
@@ -585,7 +633,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   );
 
   return { rows, total: Number(countRows[0].total), page, pageSize };
-}
+};
 
 export const listSignatures = async (db: Tx, modId: number, srcLang = CONFIG.defaultSrcLang) => {
   const { rows } = await db.query(
@@ -598,7 +646,7 @@ export const listSignatures = async (db: Tx, modId: number, srcLang = CONFIG.def
     [modId, srcLang],
   );
   return rows;
-}
+};
 
 export type DialogTopicRow = {
   topic_id: number;
@@ -655,7 +703,7 @@ export const listDialogTopics = async (db: Tx, modId: number): Promise<DialogTop
     [modId],
   );
   return rows as DialogTopicRow[];
-}
+};
 
 /**
  * Load a full dialog tree payload (nodes + edges) for a topic id.
@@ -731,7 +779,7 @@ export const getDialogTree = async (
     nodes: nodeRows as DialogTreeNodeRow[],
     edges: edgeRows as DialogTreeEdgeRow[],
   };
-}
+};
 
 // ── Scene-based dialog queries ──────────────────────────────────────────────
 
@@ -780,7 +828,10 @@ export const listDialogScenes = async (db: Tx, modId: number): Promise<DialogSce
  * without a quest owner become single-scene conversations keyed by their
  * own FormID.
  */
-export const listDialogConversations = async (db: Tx, modId: number): Promise<DialogConversationRow[]> => {
+export const listDialogConversations = async (
+  db: Tx,
+  modId: number,
+): Promise<DialogConversationRow[]> => {
   const { rows } = await db.query(
     `SELECT
        COALESCE(ds.quest_formid_hex, ds.formid_hex) AS conversation_key,
@@ -958,7 +1009,7 @@ export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => 
     [modId],
   );
   return rows.map((r: { lang: string }) => r.lang);
-}
+};
 
 export type TMSuggestionRow = {
   id: number;
@@ -1077,10 +1128,9 @@ export const getTMSuggestions = async (
 
   // 4. Phrase segment matching — split long text into clauses and look up each
   if (results.length < limit) {
-    const { rows: srcTextRows } = await db.query(
-      `SELECT text_raw FROM strings WHERE id = $1`,
-      [stringId],
-    );
+    const { rows: srcTextRows } = await db.query(`SELECT text_raw FROM strings WHERE id = $1`, [
+      stringId,
+    ]);
     const rawText: string = srcTextRows[0]?.text_raw ?? '';
     const segments = segmentPhrases(rawText);
 
@@ -1116,7 +1166,12 @@ export const getTMSuggestions = async (
     segment: 0.4,
   };
   const statusWeight: Record<string, number> = {
-    reviewed: 6, human: 5, tm: 4, fuzzy: 3, auto: 2, draft: 1,
+    reviewed: 6,
+    human: 5,
+    tm: 4,
+    fuzzy: 3,
+    auto: 2,
+    draft: 1,
   };
   results.sort((a, b) => {
     const scoreA = (methodWeight[a.match_method] ?? 0.5) * a.similarity;
@@ -1126,7 +1181,7 @@ export const getTMSuggestions = async (
   });
 
   return results.slice(0, limit);
-}
+};
 
 // ── Translations ──────────────────────────────────────────────────────────────
 
@@ -1141,14 +1196,16 @@ export const upsertTranslation = async (
   /** ID of the user who saved this translation. Null for automated pipelines. */
   userId: number | null = null,
 ) => {
-  const effectiveProvenance = provenance ?? (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
-    ? 'human_edit'
-    : `${status}_generated`);
+  const effectiveProvenance =
+    provenance ??
+    (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
+      ? 'human_edit'
+      : `${status}_generated`);
 
-  await db.query(
-    `DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`,
-    [stringId, targetLang],
-  );
+  await db.query(`DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`, [
+    stringId,
+    targetLang,
+  ]);
 
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, user_id, updated_at)
@@ -1171,7 +1228,7 @@ export const upsertTranslation = async (
   await refreshQAIssues(db, stringId, targetLang);
 
   return { id: translationId, text, status };
-}
+};
 
 export const updateTranslationStatus = async (
   db: Tx,
@@ -1204,15 +1261,17 @@ export const updateTranslationStatus = async (
     [status, translationId],
   );
 
-  const updated = rows[0] as {
-    id: number;
-    src_string_id: number;
-    target_lang: string;
-    text: string;
-    status: TranslationStatus;
-    provenance: string | null;
-    model: string | null;
-  } | undefined;
+  const updated = rows[0] as
+    | {
+        id: number;
+        src_string_id: number;
+        target_lang: string;
+        text: string;
+        status: TranslationStatus;
+        provenance: string | null;
+        model: string | null;
+      }
+    | undefined;
 
   if (!updated) return;
 
@@ -1227,9 +1286,13 @@ export const updateTranslationStatus = async (
     note: 'status_change',
   });
   await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
-}
+};
 
-export const deleteTranslation = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
+export const deleteTranslation = async (
+  db: Tx,
+  stringId: number,
+  targetLang = CONFIG.defaultTgtLang,
+) => {
   const { rows } = await db.query(
     `DELETE FROM translations
      WHERE src_string_id = $1 AND target_lang = $2
@@ -1237,7 +1300,12 @@ export const deleteTranslation = async (db: Tx, stringId: number, targetLang = C
     [stringId, targetLang],
   );
 
-  for (const row of rows as Array<{ id: number; text: string; provenance: string | null; model: string | null }>) {
+  for (const row of rows as Array<{
+    id: number;
+    text: string;
+    provenance: string | null;
+    model: string | null;
+  }>) {
     await recordTranslationRevision(db, {
       stringId,
       translationId: row.id,
@@ -1250,19 +1318,19 @@ export const deleteTranslation = async (db: Tx, stringId: number, targetLang = C
     });
   }
 
-  await db.query(
-    `DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`,
-    [stringId, targetLang],
-  );
+  await db.query(`DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`, [
+    stringId,
+    targetLang,
+  ]);
 
   return { removed: rows.length };
-}
+};
 
 // Returns text_norm for a string ID (used by propagation)
 export const getStringTextNorm = async (db: Tx, stringId: number): Promise<string | null> => {
   const { rows } = await db.query(`SELECT text_norm FROM strings WHERE id = $1`, [stringId]);
   return rows[0]?.text_norm ?? null;
-}
+};
 
 // ── Mod diff ──────────────────────────────────────────────────────────────────
 
@@ -1283,7 +1351,12 @@ export const diffMods = async (
   oldModId: number,
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
-): Promise<{ added: DiffEntry[]; removed: DiffEntry[]; changed: DiffEntry[]; unchanged: number }> => {
+): Promise<{
+  added: DiffEntry[];
+  removed: DiffEntry[];
+  changed: DiffEntry[];
+  unchanged: number;
+}> => {
   type Row = {
     formid_hex: string;
     path: string;
@@ -1341,7 +1414,7 @@ export const diffMods = async (
   }
 
   return { added, removed, changed, unchanged };
-}
+};
 
 /**
  * Carries over translations from an older mod version to a newer one.
@@ -1395,7 +1468,13 @@ export const carryOverTranslations = async (
   );
 
   // Build lookup map: identity key → old translation data
-  type OldEntry = { text_norm: string; translation: string; status: string; provenance: string | null; model: string | null };
+  type OldEntry = {
+    text_norm: string;
+    translation: string;
+    status: string;
+    provenance: string | null;
+    model: string | null;
+  };
   const oldMap = new Map<string, OldEntry>();
   for (const r of oldStrings as Array<{ formid_hex: string; path: string } & OldEntry>) {
     oldMap.set(`${r.formid_hex}|${r.path}`, r);
@@ -1420,7 +1499,12 @@ export const carryOverTranslations = async (
   let needsReview = 0;
   let skipped = 0;
 
-  for (const row of newStrings as Array<{ string_id: number; formid_hex: string; path: string; text_norm: string }>) {
+  for (const row of newStrings as Array<{
+    string_id: number;
+    formid_hex: string;
+    path: string;
+    text_norm: string;
+  }>) {
     if (alreadyTranslated.has(row.string_id)) {
       skipped++;
       continue;
@@ -1452,9 +1536,11 @@ export const carryOverTranslations = async (
     }
   }
 
-  log.info(`Carry-over: ${carried} carried, ${needsReview} need review, ${skipped} skipped (already translated)`);
+  log.info(
+    `Carry-over: ${carried} carried, ${needsReview} need review, ${skipped} skipped (already translated)`,
+  );
   return { carried, needsReview, skipped };
-}
+};
 
 /**
  * Applies imported strings from one mod as translations for another mod.
@@ -1552,25 +1638,20 @@ export const applyImportedRowsAsTranslations = async (
    * Normalize record paths so equivalent notations compare reliably.
    * Example: "INFO\\FULL" and "info/full" become the same lookup key.
    */
-  const normalizePath = (value: string | null | undefined): string => (value ?? '')
-    .trim()
-    .replace(/\\+/g, '/')
-    .replace(/\/+/g, '/')
-    .toLowerCase();
+  const normalizePath = (value: string | null | undefined): string =>
+    (value ?? '').trim().replace(/\\+/g, '/').replace(/\/+/g, '/').toLowerCase();
 
   /**
    * Normalize FormID as uppercase stable identity text.
    */
-  const normalizeFormId = (value: string | null | undefined): string => (value ?? '')
-    .trim()
-    .toUpperCase();
+  const normalizeFormId = (value: string | null | undefined): string =>
+    (value ?? '').trim().toUpperCase();
 
   /**
    * Normalize EDID to case-insensitive match key.
    */
-  const normalizeEdid = (value: string | null | undefined): string => (value ?? '')
-    .trim()
-    .toLowerCase();
+  const normalizeEdid = (value: string | null | undefined): string =>
+    (value ?? '').trim().toLowerCase();
 
   /**
    * Keep only unambiguous candidates in a key map.
@@ -1719,7 +1800,11 @@ export const applyImportedRowsAsTranslations = async (
     const edid = normalizeEdid(row.edid);
     const identityKey = `${formId}|${pathRaw}`;
 
-    const directChecks: Array<{ method: keyof typeof matchCounters; key: string; map: Map<string, string | null> }> = [
+    const directChecks: Array<{
+      method: keyof typeof matchCounters;
+      key: string;
+      map: Map<string, string | null>;
+    }> = [
       { method: 'identity', key: identityKey, map: byIdentity },
       {
         method: 'formid_signature_path',
@@ -1811,14 +1896,7 @@ export const applyImportedRowsAsTranslations = async (
 
       matchCounters[candidate.method] += 1;
 
-      await upsertTranslation(
-        client,
-        row.string_id,
-        text,
-        'draft',
-        targetLang,
-        provenance,
-      );
+      await upsertTranslation(client, row.string_id, text, 'draft', targetLang, provenance);
       applied += 1;
       processed += 1;
       if (onProgress && (processed % 200 === 0 || processed === targetRows.length)) {
@@ -1832,9 +1910,9 @@ export const applyImportedRowsAsTranslations = async (
   }
 
   log.info(
-    `${logLabel}, srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, `
-    + `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}, `
-    + `methods=${JSON.stringify(matchCounters)}`,
+    `${logLabel}, srcLang=${srcLang}, importedLang=${importedLang}, targetLang=${targetLang}, ` +
+      `applied=${applied}, skipped=${skipped}, unmatched=${unmatched}, empty=${empty}, ` +
+      `methods=${JSON.stringify(matchCounters)}`,
   );
 
   return { applied, skipped, unmatched, empty };
@@ -1956,22 +2034,24 @@ export const searchReplaceTranslations = async (
     log.info(`search-replace: applying ${matches.length} changes`);
     await withTransaction(db as pg.Pool, async (client) => {
       for (const m of matches) {
-        await client.query(
-          `UPDATE translations SET text = $1, updated_at = NOW() WHERE id = $2`,
-          [m.newText, m.translationId],
-        );
+        await client.query(`UPDATE translations SET text = $1, updated_at = NOW() WHERE id = $2`, [
+          m.newText,
+          m.translationId,
+        ]);
         const { rows: updatedRows } = await client.query(
           `SELECT src_string_id, target_lang, status, provenance, model
            FROM translations WHERE id = $1`,
           [m.translationId],
         );
-        const updated = updatedRows[0] as {
-          src_string_id: number;
-          target_lang: string;
-          status: TranslationStatus;
-          provenance: string | null;
-          model: string | null;
-        } | undefined;
+        const updated = updatedRows[0] as
+          | {
+              src_string_id: number;
+              target_lang: string;
+              status: TranslationStatus;
+              provenance: string | null;
+              model: string | null;
+            }
+          | undefined;
         if (!updated) continue;
         await recordTranslationRevision(client, {
           stringId: updated.src_string_id,
@@ -1989,11 +2069,16 @@ export const searchReplaceTranslations = async (
   }
 
   return { matches, applied: dryRun ? 0 : matches.length };
-}
+};
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export const getModStats = async (db: Tx, modId: number, srcLang = CONFIG.defaultSrcLang, targetLang = CONFIG.defaultTgtLang) => {
+export const getModStats = async (
+  db: Tx,
+  modId: number,
+  srcLang = CONFIG.defaultSrcLang,
+  targetLang = CONFIG.defaultTgtLang,
+) => {
   const { rows } = await db.query(
     `SELECT
       COUNT(DISTINCT s.id)          AS total,
@@ -2012,7 +2097,7 @@ export const getModStats = async (db: Tx, modId: number, srcLang = CONFIG.defaul
     [modId, targetLang, srcLang],
   );
   return rows[0];
-}
+};
 
 /**
  * Returns translation progress broken down by record signature (GRUP type) for the
@@ -2028,15 +2113,17 @@ export const getModStatsByGrup = async (
   modId: number,
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
-): Promise<Array<{
-  signature: string;
-  total: number;
-  translated: number;
-  approved: number;
-  draft: number;
-  tm: number;
-  auto: number;
-}>> => {
+): Promise<
+  Array<{
+    signature: string;
+    total: number;
+    translated: number;
+    approved: number;
+    draft: number;
+    tm: number;
+    auto: number;
+  }>
+> => {
   const { rows } = await db.query(
     `SELECT
        r.signature,
@@ -2057,7 +2144,11 @@ export const getModStatsByGrup = async (
   return rows;
 };
 
-export const getTranslationHistory = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
+export const getTranslationHistory = async (
+  db: Tx,
+  stringId: number,
+  targetLang = CONFIG.defaultTgtLang,
+) => {
   const { rows } = await db.query(
     `SELECT id, translation_id, text, status, provenance, model, note, created_at
      FROM translation_revisions
@@ -2067,7 +2158,7 @@ export const getTranslationHistory = async (db: Tx, stringId: number, targetLang
     [stringId, targetLang],
   );
   return rows;
-}
+};
 
 export const getQAIssues = async (db: Tx, stringId: number, targetLang = CONFIG.defaultTgtLang) => {
   const { rows } = await db.query(
@@ -2078,7 +2169,7 @@ export const getQAIssues = async (db: Tx, stringId: number, targetLang = CONFIG.
     [stringId, targetLang],
   );
   return rows;
-}
+};
 
 // ── Batch glossary enforcement ───────────────────────────────────────────────
 
@@ -2165,7 +2256,12 @@ export const enforceGlossary = async (
   let violations = 0;
   const insertValues: unknown[][] = [];
 
-  for (const row of strings as Array<{ string_id: number; source: string; translation_id: number; translation: string }>) {
+  for (const row of strings as Array<{
+    string_id: number;
+    source: string;
+    translation_id: number;
+    translation: string;
+  }>) {
     const tgtLower = row.translation.toLowerCase();
     for (const c of checks) {
       if (c.srcRe.test(row.source) && !tgtLower.includes(c.tgtNeedle)) {
@@ -2190,7 +2286,7 @@ export const enforceGlossary = async (
   }
 
   return { checked: strings.length, violations };
-}
+};
 
 // ── Review queue ──────────────────────────────────────────────────────────────
 
@@ -2259,11 +2355,7 @@ export const listReviewQueue = async (
     return { rows: [], total: 0, page: effectivePage, pageSize: effectivePageSize };
   }
 
-  const conditions: string[] = [
-    't.target_lang = $1',
-    `s.lang = $${3}`,
-    't.status = ANY($2)',
-  ];
+  const conditions: string[] = ['t.target_lang = $1', `s.lang = $${3}`, 't.status = ANY($2)'];
   const values: unknown[] = [targetLang, statuses, srcLang];
   let idx = 4;
 
@@ -2504,7 +2596,10 @@ export const getCoherenceGroups = async (
   // ── Step 4: assemble groups in JS ────────────────────────────────────────
   // Build an index from norm → {source_text, variant_count} using normRows
   const normMeta = new Map(
-    normRows.map((r) => [r.text_norm, { source_text: r.source_text, variant_count: Number(r.variant_count) }]),
+    normRows.map((r) => [
+      r.text_norm,
+      { source_text: r.source_text, variant_count: Number(r.variant_count) },
+    ]),
   );
 
   // Group entry rows by text_norm, preserving the pagination order
@@ -2669,7 +2764,12 @@ export const resolveAllCoherenceGroups = async (
 
   let totalUpdated = 0;
   for (const winner of winners) {
-    const result = await resolveCoherenceGroup(db, winner.text_norm, targetLang, winner.translation);
+    const result = await resolveCoherenceGroup(
+      db,
+      winner.text_norm,
+      targetLang,
+      winner.translation,
+    );
     totalUpdated += result.updated;
   }
   log.info(
@@ -2706,14 +2806,18 @@ export const bulkUpdateTranslationStatus = async (
       [modId, targetLang, ...stringIds],
     );
 
-    for (const row of rows as Array<{ translation_id: number; string_id: number; target_lang: string }>) {
+    for (const row of rows as Array<{
+      translation_id: number;
+      string_id: number;
+      target_lang: string;
+    }>) {
       await updateTranslationStatus(client, row.translation_id, newStatus, actor);
       updated++;
     }
   });
 
   return updated;
-}
+};
 
 // ── INNR editor ───────────────────────────────────────────────────────────────
 

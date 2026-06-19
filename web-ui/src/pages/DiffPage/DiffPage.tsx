@@ -40,8 +40,12 @@ export const DiffPage = () => {
   const currentGameId = getCurrentGame();
   const selectedNewModId = Number(newModId);
   const selectedNewMod = mods?.find((m) => m.id === selectedNewModId);
-  const editorBaseTo = selectedNewMod ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}` : null;
-  const activityTo = selectedNewMod ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}` : null;
+  const editorBaseTo = selectedNewMod
+    ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}`
+    : null;
+  const activityTo = selectedNewMod
+    ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}`
+    : null;
 
   const { data: modStats } = useQuery({
     queryKey: ['stats', selectedNewModId],
@@ -84,8 +88,7 @@ export const DiffPage = () => {
     if (searchParams.get('newModId') && searchParams.get('oldModId')) {
       refetch();
     }
-  // Run once on mount only
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Run once on mount only
   }, []);
 
   /** Carry over translations from old version to new version */
@@ -111,15 +114,17 @@ export const DiffPage = () => {
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t('diff.title')}</h1>
-      <p className={s.subtitle}>
-        {t('diff.subtitle')}
-      </p>
+      <p className={s.subtitle}>{t('diff.subtitle')}</p>
 
       {/* Controls */}
       <div className={s.toolbar}>
         <div className={s.fieldCol}>
           <label className={s.label}>{t('diff.newVersion')}</label>
-          <select value={newModId} onChange={(e) => setNewModId(e.target.value)} className={s.select}>
+          <select
+            value={newModId}
+            onChange={(e) => setNewModId(e.target.value)}
+            className={s.select}
+          >
             <option value="">{t('diff.selectMod')}</option>
             {mods?.map((m) => (
               <option key={m.id} value={m.id}>
@@ -130,7 +135,11 @@ export const DiffPage = () => {
         </div>
         <div className={s.fieldCol}>
           <label className={s.label}>{t('diff.oldVersion')}</label>
-          <select value={oldModId} onChange={(e) => setOldModId(e.target.value)} className={s.select}>
+          <select
+            value={oldModId}
+            onChange={(e) => setOldModId(e.target.value)}
+            className={s.select}
+          >
             <option value="">{t('diff.selectMod')}</option>
             {mods?.map((m) => (
               <option key={m.id} value={m.id}>
@@ -166,8 +175,15 @@ export const DiffPage = () => {
               <span
                 key={type as string}
                 className={s.chip}
-                style={{ borderColor: color as string, color: color as string, cursor: type !== 'unchanged' ? 'pointer' : 'default' }}
-                onClick={() => type !== 'unchanged' && setFilter(filter === type ? 'all' : (type as typeof filter))}
+                style={{
+                  borderColor: color as string,
+                  color: color as string,
+                  cursor: type !== 'unchanged' ? 'pointer' : 'default',
+                }}
+                onClick={() =>
+                  type !== 'unchanged' &&
+                  setFilter(filter === type ? 'all' : (type as typeof filter))
+                }
               >
                 {t(CHANGE_LABELS[type as string] ?? `diff.${type as string}`)}: {count as number}
               </span>
@@ -186,20 +202,26 @@ export const DiffPage = () => {
             {carryOver.data && (
               <span className={s.carryInfo}>
                 {t('diff.carried')}: <b className={s.carryGreen}>{carryOver.data.carried}</b>
-                {' · '}{t('diff.needsReview')}: <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
-                {' · '}{t('diff.skipped')}: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
+                {' · '}
+                {t('diff.needsReview')}:{' '}
+                <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
+                {' · '}
+                {t('diff.skipped')}: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
               </span>
             )}
             {/* After carry-over, offer a direct link to the new mod's editor filtered to drafts */}
-            {carryOver.isSuccess && carryOver.data && carryOver.data.needsReview > 0 && newModId && (
-              <Link
-                to={`/games/${mods?.find(m => m.id === Number(newModId))?.game ?? 'fo4'}/mods/${newModId}?status=draft`}
-                className={s.btnOpenEditor}
-                title={t('diff.openInEditorTitle')}
-              >
-                {t('diff.openInEditor', { count: carryOver.data.needsReview })}
-              </Link>
-            )}
+            {carryOver.isSuccess &&
+              carryOver.data &&
+              carryOver.data.needsReview > 0 &&
+              newModId && (
+                <Link
+                  to={`/games/${mods?.find((m) => m.id === Number(newModId))?.game ?? 'fo4'}/mods/${newModId}?status=draft`}
+                  className={s.btnOpenEditor}
+                  title={t('diff.openInEditorTitle')}
+                >
+                  {t('diff.openInEditor', { count: carryOver.data.needsReview })}
+                </Link>
+              )}
             {carryOver.isError && (
               <span className={s.carryError}>
                 {t('common.error', { message: String(carryOver.error) })}
@@ -245,13 +267,18 @@ export const DiffPage = () => {
           {allEntries.length === 0 ? (
             <div className={s.emptyState}>
               <p className={s.emptyText}>
-                {t('diff.noDifferences', { filter: filter === 'all' ? t('diff.filterAll') : filter })}
+                {t('diff.noDifferences', {
+                  filter: filter === 'all' ? t('diff.filterAll') : filter,
+                })}
               </p>
               <div className={s.emptyActions}>
                 <button className={s.emptyBtn} onClick={() => setFilter('all')}>
                   {t('diff.showAllAction')}
                 </button>
-                <Link className={s.emptyLinkBtn} to={currentGameId ? `/games/${currentGameId}` : '/games'}>
+                <Link
+                  className={s.emptyLinkBtn}
+                  to={currentGameId ? `/games/${currentGameId}` : '/games'}
+                >
                   {currentGameId ? t('diff.openCurrentGameAction') : t('diff.openGamesAction')}
                 </Link>
               </div>
@@ -274,13 +301,9 @@ export const DiffPage = () => {
                     <td className={`${s.tdChange} ${CHANGE_CLASS[entry.changeType] ?? ''}`}>
                       {entry.changeType}
                     </td>
-                    <td className={s.tdFormId}>
-                      {entry.formid_hex}
-                    </td>
+                    <td className={s.tdFormId}>{entry.formid_hex}</td>
                     <td className={s.tdSig}>{entry.signature}</td>
-                    <td className={s.tdText}>
-                      {entry.source}
-                    </td>
+                    <td className={s.tdText}>{entry.source}</td>
                     <td className={s.tdTransl}>
                       {entry.translation ?? <span className={s.noTransl}>—</span>}
                     </td>
@@ -296,6 +319,4 @@ export const DiffPage = () => {
       )}
     </div>
   );
-}
-
-
+};

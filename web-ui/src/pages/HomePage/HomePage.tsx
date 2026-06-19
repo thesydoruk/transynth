@@ -3,18 +3,14 @@
  *
  * Combines translation progress and operational health into one top-level page.
  * The page itself now only orchestrates data fetching and delegates each visual
- * block to a dedicated local component file to keep lint-compliant boundaries.
+ * block to a dedicated local component file.
  */
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import {
-  listAppJobs,
-  subscribeAppJobs,
-  type AppJob,
-} from '../../appJobsQueue';
+import { listAppJobs, subscribeAppJobs, type AppJob } from '../../appJobsQueue';
 import {
   listNexusDownloadJobs,
   subscribeNexusDownloadJobs,
@@ -34,7 +30,9 @@ import s from './HomePage.module.scss';
 export const HomePage = () => {
   const { t } = useTranslation();
   const [appJobs, setAppJobs] = useState<AppJob[]>(() => listAppJobs());
-  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() => listNexusDownloadJobs());
+  const [nexusDownloads, setNexusDownloads] = useState<NexusDownloadJob[]>(() =>
+    listNexusDownloadJobs(),
+  );
 
   const { data: dash, isLoading: dashLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -85,9 +83,15 @@ export const HomePage = () => {
 
       {ops && <SystemStrip data={ops} />}
       {dash && <ModProgressSection data={dash} />}
-      {ops && <RecentImports jobs={ops.importJobs} nexusDownloads={nexusDownloads} appJobs={appJobs} llmJobs={ops.llmJobs ?? []} />}
+      {ops && (
+        <RecentImports
+          jobs={ops.importJobs}
+          nexusDownloads={nexusDownloads}
+          appJobs={appJobs}
+          llmJobs={ops.llmJobs ?? []}
+        />
+      )}
       {ops && <TechDetailsSection data={ops} />}
     </div>
   );
 };
-
