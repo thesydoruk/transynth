@@ -49,8 +49,13 @@ import {
   parsePexBuffer,
   resolveMcmLocaleKey,
   resolveMcmModPrefix,
-  findMcmTranslationDirs,
+  resolveMcmTranslationPrefixes,
+  listMcmTranslationDirs,
+  isMcmTranslationArchivePath,
   mcmTranslationMatchesMod,
+  hasMcmTranslationFiles,
+  findFirstMcmTranslationFile,
+  resolveModDirectoryFromPath,
   MCM_LOCALE_ALIASES,
 } from '../bethesda/parsers';
 import { loadNpcReferenceMap } from '../bethesda/subrecords';
@@ -323,45 +328,64 @@ export const extractModImportApplyRows = (
   job: ModImportJob,
   importedLang: string,
 ): ModImportApplyRow[] => {
-  const espPath = job.esp_path;
-  if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found on disk');
+  const anchorPath = job.esp_path;
+  if (!anchorPath || !fs.existsSync(anchorPath)) {
+    throw new Error('Import file not found on disk');
+  }
 
-  const game: GameType = (job.game as GameType) ?? 'fo4';
-  const esp = new EspReader(espPath, game);
-  const espRows = esp.extractStrings();
+  const modDir = resolveModDirectoryFromPath(anchorPath);
   const collected: CsvRow[] = [];
 
-  if (esp.info.isLocalized) {
-    const localesMap = loadLocalesForGame(
-      espPath,
-      game,
-      discoverArchiveCandidatesForPlugin(espPath),
-    );
-    const resolved = resolveAvailableLocale(localesMap, importedLang);
-    if (!resolved) {
-      const available = [...localesMap.keys()].sort().join(', ');
-      throw new Error(
-        available
-          ? `Localized import does not contain locale "${importedLang}". Available locales: ${available}`
-          : 'Localized import does not contain any STRINGS locales',
+  if (isPluginPath(anchorPath)) {
+    const game: GameType = (job.game as GameType) ?? 'fo4';
+    const esp = new EspReader(anchorPath, game);
+    const espRows = esp.extractStrings();
+
+    if (esp.info.isLocalized) {
+      const localesMap = loadLocalesForGame(
+        anchorPath,
+        game,
+        discoverArchiveCandidatesForPlugin(anchorPath),
       );
+      const resolved = resolveAvailableLocale(localesMap, importedLang);
+      if (!resolved) {
+        const available = [...localesMap.keys()].sort().join(', ');
+        throw new Error(
+          available
+            ? `Localized import does not contain locale "${importedLang}". Available locales: ${available}`
+            : 'Localized import does not contain any STRINGS locales',
+        );
+      }
+      collected.push(...buildCsvRows(espRows, resolved.value));
+    } else {
+      collected.push(...buildCsvRows(espRows, null));
     }
-    collected.push(...buildCsvRows(espRows, resolved.value));
-  } else {
-    collected.push(...buildCsvRows(espRows, null));
+
+    const pexMap = collectPexStrings(anchorPath);
+    if (pexMap.size > 0) {
+      collected.push(...buildPexCsvRows(pexMap));
+    }
   }
 
-  const mcmLocales = collectMcmLocales(espPath);
+  const mcmLocales = collectMcmLocalesForMod(modDir, anchorPath);
   const resolvedMcm =
     resolveMcmLocaleKey(mcmLocales, importedLang) ??
-    resolveMcmLocaleKey(mcmLocales, MOD_IMPORT_DEFAULT_SOURCE_LOCALE);
+    (isPluginPath(anchorPath)
+      ? resolveMcmLocaleKey(mcmLocales, MOD_IMPORT_DEFAULT_SOURCE_LOCALE)
+      : null);
   if (resolvedMcm) {
     collected.push(...buildMcmCsvRows(resolvedMcm.value));
+  } else if (!isPluginPath(anchorPath)) {
+    const available = [...mcmLocales.keys()].sort().join(', ');
+    throw new Error(
+      available
+        ? `MCM translation patch does not contain locale "${importedLang}". Available locales: ${available}`
+        : 'MCM translation patch does not contain any translation files',
+    );
   }
 
-  const pexMap = collectPexStrings(espPath);
-  if (pexMap.size > 0) {
-    collected.push(...buildPexCsvRows(pexMap));
+  if (collected.length === 0) {
+    throw new Error(`Import job has no translatable rows for lang "${importedLang}"`);
   }
 
   return toApplyRows(collected);
@@ -384,6 +408,16 @@ export const isArchive = (fileName: string): boolean => {
  */
 export const isPlugin = (fileName: string): boolean => {
   return PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
+};
+
+/** True when the path points to an ESP/ESM/ESL file (not a directory). */
+const isPluginPath = (filePath: string): boolean => {
+  try {
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) return false;
+  } catch {
+    // Fall through to extension check.
+  }
+  return isPlugin(path.basename(filePath));
 };
 
 /**
@@ -716,28 +750,23 @@ const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, str
 };
 
 /**
- * Load all MCM translation files from a BA2 archive for one mod prefix.
+ * Load all MCM translation files from a BA2 archive for one mod prefix list.
  *
  * @param ba2Path - Absolute path to the BA2 archive
- * @param modPrefix - MCM modName prefix, e.g. `Dank_LEO`
+ * @param modPrefixes - MCM file stems / modName prefixes to match
  */
 const loadMcmLocalesFromBA2 = (
   ba2Path: string,
-  modPrefix: string,
+  modPrefixes: string[],
 ): Map<string, Map<string, string>> => {
   const reader = new Ba2Reader(ba2Path);
   const locales = new Map<string, Map<string, string>>();
 
-  const txtEntries = reader
-    .listByExt('txt')
-    .filter(
-      (e) =>
-        e.name.toLowerCase().includes('interface') && e.name.toLowerCase().includes('translations'),
-    );
+  const txtEntries = reader.listByExt('txt').filter((e) => isMcmTranslationArchivePath(e.name));
 
   for (const entry of txtEntries) {
     const baseName = path.basename(entry.name);
-    if (!mcmTranslationMatchesMod(baseName, modPrefix)) continue;
+    if (!mcmTranslationMatchesMod(baseName, modPrefixes)) continue;
 
     const locale = mcmLocaleFromPath(entry.name);
     if (!locale) continue;
@@ -762,13 +791,13 @@ const loadMcmLocalesFromBA2 = (
  */
 const loadMcmLocalesFromLooseFiles = (
   modDir: string,
-  modPrefix: string,
+  modPrefixes: string[],
 ): Map<string, Map<string, string>> => {
   const locales = new Map<string, Map<string, string>>();
 
-  for (const dir of findMcmTranslationDirs(modDir)) {
+  for (const dir of listMcmTranslationDirs(modDir)) {
     for (const file of fs.readdirSync(dir)) {
-      if (!mcmTranslationMatchesMod(file, modPrefix)) continue;
+      if (!mcmTranslationMatchesMod(file, modPrefixes)) continue;
 
       const locale = mcmLocaleFromPath(file);
       if (!locale) continue;
@@ -787,19 +816,20 @@ const loadMcmLocalesFromLooseFiles = (
 };
 
 /**
- * Collect all MCM locales for a plugin by scanning GNRL BA2 archives and loose
- * `Interface/Translations` files that match the mod's MCM prefix.
- *
- * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
+ * Collect all MCM locales for a mod folder by scanning GNRL BA2 archives and loose
+ * translation txt files that match the mod's MCM prefix.
  */
-const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> => {
-  const modDir = path.dirname(espPath);
-  const modPrefix = resolveMcmModPrefix(modDir, espPath);
+const collectMcmLocalesForMod = (
+  modDir: string,
+  anchorPath: string,
+): Map<string, Map<string, string>> => {
+  const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
+  const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
   const merged = new Map<string, Map<string, string>>();
 
   for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
     try {
-      for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path, modPrefix)) {
+      for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path, modPrefixes)) {
         if (!merged.has(locale)) merged.set(locale, new Map());
         for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
       }
@@ -810,12 +840,30 @@ const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> =>
     }
   }
 
-  for (const [locale, mcmMap] of loadMcmLocalesFromLooseFiles(modDir, modPrefix)) {
+  for (const [locale, mcmMap] of loadMcmLocalesFromLooseFiles(modDir, modPrefixes)) {
     if (!merged.has(locale)) merged.set(locale, new Map());
     for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
   }
 
   return merged;
+};
+
+/**
+ * Collect all MCM locales for a plugin by scanning GNRL BA2 archives and loose
+ * `Interface/Translations` files that match the mod's MCM prefix.
+ *
+ * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
+ */
+const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> => {
+  const modDir = resolveModDirectoryFromPath(espPath);
+  return collectMcmLocalesForMod(modDir, espPath);
+};
+
+const countMcmTranslationRecords = (modDir: string, anchorPath: string): number => {
+  const locales = collectMcmLocalesForMod(modDir, anchorPath);
+  let max = 0;
+  for (const mcmMap of locales.values()) max = Math.max(max, mcmMap.size);
+  return max;
 };
 
 /**
@@ -1196,7 +1244,22 @@ export const registerArchiveFile = async (
   const { plugins } = discoverModFiles(extractDir);
 
   if (plugins.length === 0) {
-    throw new Error('No ESP/ESM/ESL plugin found in archive');
+    if (!hasMcmTranslationFiles(extractDir)) {
+      throw new Error('No ESP/ESM/ESL plugin or MCM translation files found in archive');
+    }
+
+    const anchorPath = findFirstMcmTranslationFile(extractDir)!;
+    const modDir = resolveModDirectoryFromPath(anchorPath);
+    const totalRecords = countMcmTranslationRecords(modDir, anchorPath);
+
+    await db.query(
+      `INSERT INTO mod_imports(file_name, file_hash, mod_id, total_records, status, src_lang, tgt_lang, is_localized, game, esp_path)
+       VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9)`,
+      [fileName, fileHash, null, totalRecords, srcLang, tgtLang, 0, game, anchorPath],
+    );
+
+    const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [fileHash]);
+    return rows[0] as ModImportJob;
   }
 
   const pluginPath = plugins[0];
@@ -1236,16 +1299,48 @@ export const previewModRecords = (
   locales: string[];
   isLocalized: boolean;
 } => {
-  const espPath = job.esp_path;
-  if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found on disk');
+  const anchorPath = job.esp_path;
+  if (!anchorPath || !fs.existsSync(anchorPath)) throw new Error('Import file not found on disk');
+
+  if (!isPluginPath(anchorPath)) {
+    const modDir = resolveModDirectoryFromPath(anchorPath);
+    const mcmLocales = collectMcmLocalesForMod(modDir, anchorPath);
+    const resolved =
+      resolveMcmLocaleKey(mcmLocales, MOD_IMPORT_DEFAULT_SOURCE_LOCALE) ??
+      (mcmLocales.size > 0
+        ? {
+            resolvedKey: [...mcmLocales.keys()][0]!,
+            value: mcmLocales.get([...mcmLocales.keys()][0]!)!,
+          }
+        : null);
+
+    const mcmMap = resolved?.value ?? new Map<string, string>();
+    const rows: ModPreviewRow[] = [...mcmMap.entries()].slice(0, 200).map(([key, text]) => ({
+      formId: '',
+      signature: 'MCM',
+      edid: '',
+      path: `MCM\\${key}`,
+      source: text,
+    }));
+
+    return {
+      rows,
+      locales: [...mcmLocales.keys()],
+      isLocalized: false,
+    };
+  }
 
   const game: GameType = (job.game as GameType) ?? 'fo4';
-  const esp = new EspReader(espPath, game);
+  const esp = new EspReader(anchorPath, game);
   const espRows = esp.extractStrings();
 
   let localesMap = new Map<string, Map<number, string>>();
   if (esp.info.isLocalized) {
-    localesMap = loadLocalesForGame(espPath, game, discoverArchiveCandidatesForPlugin(espPath));
+    localesMap = loadLocalesForGame(
+      anchorPath,
+      game,
+      discoverArchiveCandidatesForPlugin(anchorPath),
+    );
   }
 
   const previewLocale =
