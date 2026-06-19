@@ -27,8 +27,6 @@ import { path7za } from '7zip-bin';
 import pg from 'pg';
 import {
   upsertMod,
-  upsertRecord,
-  insertString,
   upsertDialogTopic,
   upsertDialogNode,
   upsertDialogEdge,
@@ -36,12 +34,10 @@ import {
   upsertDialogScenePhase,
   type Tx,
 } from '../db';
-import { upsertTranslation } from './queries';
 import { sha1Hex } from '../utils/hash';
-import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
 import { log } from '../logger';
 import { EspReader, type EspStringRow } from '../bethesda/esp';
-import { Ba2Reader, BsaReader, isBa2GnrArchive } from '../bethesda/archives';
+import { BsaReader, isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../bethesda/archives';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
 import {
   parseMcmBuffer,
@@ -63,6 +59,11 @@ import { loadNpcReferenceMap } from '../bethesda/subrecords';
 import type { CsvRow, GameType } from '../types';
 import { parseVortexModFolder, resolveVortexFolderFromPath } from '../utils/vortexFolder';
 import type { VortexFolderInfo } from '../utils/vortexFolder';
+import {
+  bulkInsertModImportRows,
+  bulkUpsertImportTranslations,
+  type ModImportBulkRow,
+} from './modImportBulk';
 
 const { Pool } = pg;
 
@@ -696,7 +697,7 @@ const listGnrBa2FilesInDir = (modDir: string): string[] => {
 };
 
 const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
-  const reader = new Ba2Reader(ba2Path);
+  const reader = getBa2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
 
   const stringsEntries = [
@@ -789,7 +790,7 @@ const loadMcmLocalesFromBA2 = (
   ba2Path: string,
   modPrefixes: string[],
 ): Map<string, Map<string, string>> => {
-  const reader = new Ba2Reader(ba2Path);
+  const reader = getBa2Reader(ba2Path);
   const locales = new Map<string, Map<string, string>>();
 
   const txtEntries = reader.listByExt('txt').filter((e) => isMcmTranslationArchivePath(e.name));
@@ -1089,7 +1090,7 @@ const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
  * @param ba2Path - Absolute path to the BA2 archive
  */
 const loadPexStringsFromBA2 = (ba2Path: string): Map<string, string[]> => {
-  const reader = new Ba2Reader(ba2Path);
+  const reader = getBa2Reader(ba2Path);
   const result = new Map<string, string[]>();
 
   for (const entry of reader.listByExt('pex')) {
@@ -1624,20 +1625,17 @@ const convertImportedStringsToTranslations = async (
     // For each locale, create translations anchored to source-locale strings.
     for (const locale of locales) {
       if (locale === resolvedSourceLocale) {
-        // Keep a self-translation for source locale so source text can be edited in target column too.
-        for (const source of sourceByRecordId.values()) {
-          await upsertTranslation(
-            db,
-            source.id,
-            source.text_raw,
-            'reviewed',
-            locale,
-            'import_self_translation',
-          );
-        }
-        log.info(
-          `[ModImport] Created ${sourceByRecordId.size} self-translations for source locale ${locale}`,
+        const items = [...sourceByRecordId.values()].map((source) => ({
+          srcStringId: source.id,
+          text: source.text_raw,
+        }));
+        const created = await bulkUpsertImportTranslations(
+          db,
+          items,
+          locale,
+          'import_self_translation',
         );
+        log.info(`[ModImport] Created ${created} self-translations for source locale ${locale}`);
         continue;
       }
 
@@ -1650,7 +1648,7 @@ const convertImportedStringsToTranslations = async (
       );
 
       const localeRows = localeStringsResult.rows as { record_id: number; text_raw: string }[];
-      let createdForLocale = 0;
+      const items: { srcStringId: number; text: string }[] = [];
       let skippedWithoutSource = 0;
 
       for (const localeRow of localeRows) {
@@ -1659,17 +1657,15 @@ const convertImportedStringsToTranslations = async (
           skippedWithoutSource++;
           continue;
         }
-
-        await upsertTranslation(
-          db,
-          source.id,
-          localeRow.text_raw,
-          'reviewed',
-          locale,
-          'import_self_translation',
-        );
-        createdForLocale++;
+        items.push({ srcStringId: source.id, text: localeRow.text_raw });
       }
+
+      const createdForLocale = await bulkUpsertImportTranslations(
+        db,
+        items,
+        locale,
+        'import_self_translation',
+      );
 
       log.info(
         `[ModImport] Created ${createdForLocale} translations for locale ${locale}` +
@@ -1843,6 +1839,55 @@ export const runModImport = async (
       }
     };
 
+    const pendingRows: ModImportBulkRow[] = [];
+
+    const flushPendingImportBatch = async (progressTotal: number): Promise<void> => {
+      if (pendingRows.length === 0) return;
+      const batch = pendingRows.splice(0, pendingRows.length);
+      const results = await bulkInsertModImportRows(db, importModId, batch);
+      for (const res of results) {
+        await upsertDialogGraphForRow(res.row.csvRow, res.stringId, res.row.context);
+      }
+      imported += results.length;
+      batchCount = 0;
+      await updateProgress(db, job.id, imported);
+      await db.query('COMMIT');
+      inTx = false;
+      if (progressTotal > 0) {
+        const pct = ((imported / progressTotal) * 100).toFixed(1);
+        log.info(`[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`);
+        onProgress?.(imported, progressTotal);
+      }
+    };
+
+    const discardOpenImportBatch = async (): Promise<void> => {
+      pendingRows.length = 0;
+      batchCount = 0;
+      if (inTx) {
+        await db.query('ROLLBACK');
+        inTx = false;
+      }
+    };
+
+    const enqueueImportRow = async (
+      r: CsvRow,
+      locale: string,
+      context: string | null,
+      progressTotal: number,
+      sourceKind?: string,
+    ): Promise<void> => {
+      if (!inTx) {
+        await db.query('BEGIN');
+        inTx = true;
+        batchCount = 0;
+      }
+      pendingRows.push({ csvRow: r, locale, context, sourceKind });
+      batchCount++;
+      if (batchCount >= BATCH_SIZE) {
+        await flushPendingImportBatch(progressTotal);
+      }
+    };
+
     if (esp.info.isLocalized && localesMap.size > 0) {
       // Resolve NPC names using the English locale when available
       const srcLocaleMap = resolveEnglishLocaleMap(localesMap);
@@ -1874,72 +1919,26 @@ export const runModImport = async (
           if (globalIdx++ < job.imported_records) continue;
 
           if (state.cancel) {
-            if (inTx) {
-              await db.query('COMMIT');
-              inTx = false;
-            }
+            await discardOpenImportBatch();
             await markFailed(db, job.id, imported);
             log.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
             break outer;
           }
           if (state.pause) {
-            if (inTx) {
-              await db.query('COMMIT');
-              inTx = false;
-            }
+            await discardOpenImportBatch();
             await markPaused(db, job.id, imported);
             log.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
             break outer;
           }
 
-          if (!inTx) {
-            await db.query('BEGIN');
-            inTx = true;
-            batchCount = 0;
-          }
-
-          const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
-          const hashNorm = sha1Hex(normalizeForHash(r.Source));
-          const recordId = await upsertRecord(
-            db,
-            importModId,
-            r.Signature,
-            r.Path,
-            pathSimplified,
-            r.EDID ?? null,
-            hashNorm,
-            r.FormID || null,
-          );
           const speakerFidLoc = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
           const contextLoc = speakerFidLoc
             ? (npcNameFromMod.get(speakerFidLoc) ?? npcRefMap.get(speakerFidLoc) ?? null)
             : null;
-          const sourceStringId = await insertString(
-            db,
-            recordId,
-            locale,
-            r.Source,
-            normalizeForHash(r.Source),
-            'mod-import',
-            undefined,
-            normalizeNoPunct(r.Source),
-            contextLoc,
-          );
-          await upsertDialogGraphForRow(r, sourceStringId, contextLoc);
-
-          imported++;
-          batchCount++;
-
-          if (batchCount >= BATCH_SIZE) {
-            await updateProgress(db, job.id, imported);
-            await db.query('COMMIT');
-            inTx = false;
-            const pct = ((imported / totalAll) * 100).toFixed(1);
-            log.info(`[Mod Import #${job.id}] Progress: ${imported}/${totalAll} (${pct}%)`);
-            onProgress?.(imported, totalAll);
-          }
+          await enqueueImportRow(r, locale, contextLoc, totalAll);
         }
       }
+      await flushPendingImportBatch(totalAll);
     } else {
       // Non-localized plugin, or localized plugin without external STRINGS files.
       const npcNameFromMod = buildNpcNameMap(espRows, null);
@@ -1949,72 +1948,26 @@ export const runModImport = async (
         if (i < job.imported_records) continue;
 
         if (state.cancel) {
-          if (inTx) {
-            await db.query('COMMIT');
-            inTx = false;
-          }
+          await discardOpenImportBatch();
           await markFailed(db, job.id, imported);
           log.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
           break;
         }
         if (state.pause) {
-          if (inTx) {
-            await db.query('COMMIT');
-            inTx = false;
-          }
+          await discardOpenImportBatch();
           await markPaused(db, job.id, imported);
           log.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
           break;
         }
 
-        if (!inTx) {
-          await db.query('BEGIN');
-          inTx = true;
-          batchCount = 0;
-        }
-
         const r = csvRows[i];
-        const pathSimplified = r.Path.replace(/\[\d+\]/g, '');
-        const hashNorm = sha1Hex(normalizeForHash(r.Source));
-        const recordId = await upsertRecord(
-          db,
-          importModId,
-          r.Signature,
-          r.Path,
-          pathSimplified,
-          r.EDID ?? null,
-          hashNorm,
-          r.FormID || null,
-        );
         const speakerFid = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
         const context = speakerFid
           ? (npcNameFromMod.get(speakerFid) ?? npcRefMap.get(speakerFid) ?? null)
           : null;
-        const sourceStringId = await insertString(
-          db,
-          recordId,
-          pluginStringLang,
-          r.Source,
-          normalizeForHash(r.Source),
-          'mod-import',
-          undefined,
-          normalizeNoPunct(r.Source),
-          context,
-        );
-        await upsertDialogGraphForRow(r, sourceStringId, context);
-
-        imported++;
-        batchCount++;
-
-        if (batchCount >= BATCH_SIZE) {
-          await updateProgress(db, job.id, imported);
-          await db.query('COMMIT');
-          inTx = false;
-          const pct = ((imported / csvRows.length) * 100).toFixed(1);
-          log.info(`[Mod Import #${job.id}] Progress: ${imported}/${csvRows.length} (${pct}%)`);
-          onProgress?.(imported, csvRows.length);
-        }
+        await enqueueImportRow(r, pluginStringLang, context, csvRows.length);
       }
+      await flushPendingImportBatch(csvRows.length);
     }
 
     // ── MCM strings: ingest Interface\Translations\{modName}_*.txt ──
@@ -2035,59 +1988,42 @@ export const runModImport = async (
 
         const mcmRows = buildMcmCsvRows(sourceMcmMap);
         const sourceStringIdByKey = new Map<string, number>();
+        const mcmBulkRows: ModImportBulkRow[] = mcmRows.map((r) => ({
+          csvRow: r,
+          locale: pluginStringLang,
+          context: null,
+          sourceKind: 'mcm',
+        }));
 
-        if (!inTx) {
-          await db.query('BEGIN');
-          inTx = true;
-          batchCount = 0;
-        }
-
-        for (const r of mcmRows) {
-          const mcmKey = r.Path.replace(/^MCM\\/, '');
-          const hashNorm = sha1Hex(normalizeForHash(r.Source));
-          const recordId = await upsertRecord(
-            db,
-            importModId,
-            r.Signature,
-            r.Path,
-            r.PathSimplified ?? r.Path,
-            null,
-            hashNorm,
-            '',
-          );
-          const sourceStringId = await insertString(
-            db,
-            recordId,
-            pluginStringLang,
-            r.Source,
-            normalizeForHash(r.Source),
-            'mcm',
-            undefined,
-            normalizeNoPunct(r.Source),
-          );
-          sourceStringIdByKey.set(mcmKey, sourceStringId);
-          imported++;
-          batchCount++;
-          if (batchCount >= BATCH_SIZE) {
-            await updateProgress(db, job.id, imported);
-            await db.query('COMMIT');
-            inTx = false;
-            batchCount = 0;
-            onProgress?.(imported, imported);
+        for (let i = 0; i < mcmBulkRows.length; i += BATCH_SIZE) {
+          if (!inTx) {
+            await db.query('BEGIN');
+            inTx = true;
           }
+          const slice = mcmBulkRows.slice(i, i + BATCH_SIZE);
+          const results = await bulkInsertModImportRows(db, importModId, slice);
+          for (const res of results) {
+            const mcmKey = res.row.csvRow.Path.replace(/^MCM\\/, '');
+            sourceStringIdByKey.set(mcmKey, res.stringId);
+          }
+          imported += results.length;
+          await updateProgress(db, job.id, imported);
+          await db.query('COMMIT');
+          inTx = false;
+          onProgress?.(imported, imported);
         }
 
         for (const [locale, mcmMap] of mcmLocales) {
           if (locale === mcmSourceLocale) continue;
           if (importSingleLocaleMode && locale !== selectedLocale) continue;
 
-          let localeCount = 0;
+          const items: { srcStringId: number; text: string }[] = [];
           for (const [key, text] of mcmMap) {
             const sourceStringId = sourceStringIdByKey.get(key);
             if (!sourceStringId) continue;
-            await upsertTranslation(db, sourceStringId, text, 'reviewed', locale, 'mcm');
-            localeCount++;
+            items.push({ srcStringId: sourceStringId, text });
           }
+          const localeCount = await bulkUpsertImportTranslations(db, items, locale, 'mcm');
           if (localeCount > 0) {
             log.info(`[Mod Import #${job.id}] MCM locale "${locale}": ${localeCount} translations`);
           }
@@ -2115,43 +2051,10 @@ export const runModImport = async (
           `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`,
         );
         if (pexRows.length > 0) {
-          if (!inTx) {
-            await db.query('BEGIN');
-            inTx = true;
-            batchCount = 0;
-          }
           for (const r of pexRows) {
-            const hashNorm = sha1Hex(normalizeForHash(r.Source));
-            const recordId = await upsertRecord(
-              db,
-              importModId,
-              r.Signature,
-              r.Path,
-              r.PathSimplified ?? r.Path,
-              null,
-              hashNorm,
-              '',
-            );
-            await insertString(
-              db,
-              recordId,
-              pluginStringLang,
-              r.Source,
-              normalizeForHash(r.Source),
-              'pex',
-              undefined,
-              normalizeNoPunct(r.Source),
-            );
-            imported++;
-            batchCount++;
-            if (batchCount >= BATCH_SIZE) {
-              await updateProgress(db, job.id, imported);
-              await db.query('COMMIT');
-              inTx = false;
-              batchCount = 0;
-              onProgress?.(imported, imported);
-            }
+            await enqueueImportRow(r, pluginStringLang, null, pexRows.length, 'pex');
           }
+          await flushPendingImportBatch(pexRows.length);
         }
       } else {
         log.debug(`[Mod Import #${job.id}] No PEX scripts with translatable strings found`);
@@ -2235,6 +2138,7 @@ export const runModImport = async (
     await markFailed(db, job.id, job.imported_records);
     throw err;
   } finally {
+    clearBa2Cache();
     activeImports.delete(job.id);
     releaseClient?.();
   }

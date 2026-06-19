@@ -8,7 +8,7 @@
  * Usage:
  *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
  *   npm run scan:mods -- --dir "\\nas\share\mods" --game fo4
- *   npm run scan:mods -- --dir "Z:\Mods" --game fo4
+ *   npm run scan:mods -- --dir "Z:\Mods" --game fo4 --parallel 3
  *
  * Network/mapped drives are read-only scan sources. Archives extract to local
  * DATA_DIR/cache/scan-extract (override with SCAN_EXTRACT_DIR).
@@ -90,8 +90,15 @@ const argv = await yargs(hideBin(process.argv))
     default: false,
     describe: 'Re-import mods whose jobs are already completed',
   })
+  .option('parallel', {
+    type: 'number',
+    default: 2,
+    describe: 'Import this many mods concurrently (1–8)',
+  })
   .help()
   .parse();
+
+const clampParallel = (value: number): number => Math.max(1, Math.min(8, value));
 
 ensureDataDirs();
 ensureDir(PATHS.scanExtract);
@@ -101,6 +108,7 @@ const game = isGameType(argv.game) ? argv.game : 'fo4';
 const srcLang = argv['src-lang'] || MOD_IMPORT_DEFAULT_SOURCE_LOCALE;
 const tgtLang = argv['tgt-lang'];
 const force = argv.force;
+const parallel = clampParallel(argv.parallel);
 
 let scanStat: fs.Stats;
 try {
@@ -132,90 +140,108 @@ const extractRoot = PATHS.scanExtract;
 
 const db = openDb();
 await ensureModImportSchema(db);
-let imported = 0;
-let skipped = 0;
-let failed = 0;
 
 log.info(`Scanning ${candidates.length} mod file(s) under ${scanDir} (game=${game}, recursive)`);
 log.info(`Archive extract cache: ${extractRoot}`);
+log.info(`Parallel import workers: ${parallel}`);
+
+type ScanOutcome = 'imported' | 'skipped' | 'failed';
+
+const processCandidate = async (candidate: (typeof candidates)[number]): Promise<ScanOutcome> => {
+  const label = path.relative(scanDir, candidate.filePath) || candidate.fileName;
+
+  try {
+    const scanMeta = modScanContextFromVortex(candidate.vortex);
+    let job;
+    if (candidate.kind === 'plugin') {
+      job = await registerPluginFile(
+        db,
+        candidate.fileName,
+        candidate.filePath,
+        srcLang,
+        tgtLang,
+        game,
+        scanMeta,
+      );
+    } else {
+      const fileHash = await sha1HexFile(candidate.filePath);
+      const archivePath = await stageArchiveForExtract(candidate.filePath, fileHash);
+      const outDir = path.join(extractRoot, fileHash);
+      job = await registerArchiveFile(
+        db,
+        candidate.fileName,
+        archivePath,
+        outDir,
+        srcLang,
+        tgtLang,
+        game,
+        scanMeta,
+      );
+    }
+
+    if (job.status === 'completed' && !force) {
+      log.info(
+        `Skip "${label}" — already imported (job #${job.id}, mod_id=${job.mod_id ?? 'n/a'})`,
+      );
+      return 'skipped';
+    }
+
+    if (job.status === 'completed' && force) {
+      await restartModImportJob(db, job.id);
+      job = { ...job, status: 'pending', imported_records: 0 };
+    }
+
+    log.info(`Importing "${label}" (job #${job.id}, ${job.total_records} ESP rows)...`);
+    if (scanMeta?.nexusModId) {
+      log.info(
+        `  Nexus: ${scanMeta.nexusModId} — ${scanMeta.nexusModName ?? scanMeta.sourceFolder}`,
+      );
+    }
+    const result = await runModImport(db, job, (done, total) => {
+      if (total > 0 && done % 5000 === 0) {
+        log.info(`  "${label}": ${done}/${total}`);
+      }
+    });
+
+    if (result.status === 'completed') {
+      log.info(
+        `Done "${label}" — ${result.imported_records} records (mod_id=${result.mod_id ?? 'n/a'})`,
+      );
+      return 'imported';
+    }
+
+    log.warn(
+      `Finished "${label}" with status=${result.status} (${result.imported_records} records)`,
+    );
+    return 'failed';
+  } catch (err) {
+    log.error(`Failed "${label}": ${err instanceof Error ? err.message : String(err)}`);
+    return 'failed';
+  }
+};
 
 try {
-  for (const candidate of candidates) {
-    const label = path.relative(scanDir, candidate.filePath) || candidate.fileName;
+  let nextIdx = 0;
+  let imported = 0;
+  let skipped = 0;
+  let failed = 0;
 
-    try {
-      const scanMeta = modScanContextFromVortex(candidate.vortex);
-      let job;
-      if (candidate.kind === 'plugin') {
-        job = await registerPluginFile(
-          db,
-          candidate.fileName,
-          candidate.filePath,
-          srcLang,
-          tgtLang,
-          game,
-          scanMeta,
-        );
-      } else {
-        const fileHash = await sha1HexFile(candidate.filePath);
-        const archivePath = await stageArchiveForExtract(candidate.filePath, fileHash);
-        const outDir = path.join(extractRoot, fileHash);
-        job = await registerArchiveFile(
-          db,
-          candidate.fileName,
-          archivePath,
-          outDir,
-          srcLang,
-          tgtLang,
-          game,
-          scanMeta,
-        );
-      }
-
-      if (job.status === 'completed' && !force) {
-        log.info(
-          `Skip "${label}" — already imported (job #${job.id}, mod_id=${job.mod_id ?? 'n/a'})`,
-        );
-        skipped++;
-        continue;
-      }
-
-      if (job.status === 'completed' && force) {
-        await restartModImportJob(db, job.id);
-        job = { ...job, status: 'pending', imported_records: 0 };
-      }
-
-      log.info(`Importing "${label}" (job #${job.id}, ${job.total_records} ESP rows)...`);
-      if (scanMeta?.nexusModId) {
-        log.info(
-          `  Nexus: ${scanMeta.nexusModId} — ${scanMeta.nexusModName ?? scanMeta.sourceFolder}`,
-        );
-      }
-      const result = await runModImport(db, job, (done, total) => {
-        if (total > 0 && done % 5000 === 0) {
-          log.info(`  "${label}": ${done}/${total}`);
-        }
-      });
-
-      if (result.status === 'completed') {
-        log.info(
-          `Done "${label}" — ${result.imported_records} records (mod_id=${result.mod_id ?? 'n/a'})`,
-        );
-        imported++;
-      } else {
-        log.warn(
-          `Finished "${label}" with status=${result.status} (${result.imported_records} records)`,
-        );
-        failed++;
-      }
-    } catch (err) {
-      failed++;
-      log.error(`Failed "${label}": ${err instanceof Error ? err.message : String(err)}`);
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const index = nextIdx;
+      if (index >= candidates.length) break;
+      nextIdx = index + 1;
+      const outcome = await processCandidate(candidates[index]!);
+      if (outcome === 'imported') imported++;
+      else if (outcome === 'skipped') skipped++;
+      else failed++;
     }
-  }
+  };
+
+  await Promise.all(Array.from({ length: parallel }, () => worker()));
+
+  log.info(`Scan complete: imported=${imported}, skipped=${skipped}, failed=${failed}`);
+  process.exit(failed > 0 ? 1 : 0);
 } finally {
   await closeDb();
 }
-
-log.info(`Scan complete: imported=${imported}, skipped=${skipped}, failed=${failed}`);
-process.exit(failed > 0 ? 1 : 0);

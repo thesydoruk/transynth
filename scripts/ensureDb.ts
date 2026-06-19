@@ -11,7 +11,7 @@ export const ensureDatabase = async (): Promise<void> => {
     user,
     password,
     host,
-    port,
+    port: parseInt(port, 10),
     database: 'postgres',
   });
 
