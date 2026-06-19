@@ -10,6 +10,9 @@ import { PATHS, ensureDataDirs } from '../src/paths';
 /** Default dump file name under {@link PATHS.backups}. */
 export const DEFAULT_DUMP_FILENAME = 'localizer.dump';
 
+/** Postgres client image for `docker run` when pg_dump/pg_restore are not on PATH. */
+const PG_CLIENT_DOCKER_IMAGE = process.env.PG_CLIENT_DOCKER_IMAGE || 'postgres:17';
+
 /** Resolve dump file path (absolute). Uses `data/backups/localizer.dump` when omitted. */
 export const resolveDumpPath = (fileArg?: string): string => {
   ensureDataDirs();
@@ -60,19 +63,9 @@ const commandExists = async (command: string): Promise<boolean> => {
   });
 };
 
-const DOCKER_DB_USER = process.env.POSTGRES_USER || 'localizer';
-const DOCKER_DB_NAME = process.env.POSTGRES_DB || 'localizer';
-
-/** True when DATABASE_URL targets the Docker-published Postgres port on localhost. */
-const isDockerMappedLocalDb = (): boolean => {
-  const { host, port } = parseDatabaseUrl(resolveDatabaseUrl());
-  const h = host.toLowerCase();
-  return (h === 'localhost' || h === '127.0.0.1') && port === '5433';
-};
-
 const missingPgClientError = (tool: 'pg_dump' | 'pg_restore'): Error =>
   new Error(
-    `${tool} not found on PATH. Install PostgreSQL client tools, or point DATABASE_URL at local Docker Postgres (localhost:5433) while the db container is running.`,
+    `${tool} not found on PATH and Docker is unavailable. Install PostgreSQL client tools or Docker.`,
   );
 
 const pgEnv = (): NodeJS.ProcessEnv => {
@@ -90,21 +83,23 @@ const dumpViaLocalPgDump = async (outFile: string): Promise<void> => {
   );
 };
 
-const dumpViaDocker = async (outFile: string): Promise<void> => {
+const dumpViaDockerRun = async (outFile: string): Promise<void> => {
+  const dbUrl = resolveDatabaseUrl();
+  const { password } = parseDatabaseUrl(dbUrl);
+
   await new Promise<void>((resolve, reject) => {
     const outStream = fs.createWriteStream(outFile);
     const child = spawn(
       'docker',
       [
-        'compose',
-        'exec',
-        '-T',
-        'db',
+        'run',
+        '--rm',
+        '-e',
+        `PGPASSWORD=${password}`,
+        PG_CLIENT_DOCKER_IMAGE,
         'pg_dump',
-        '-U',
-        DOCKER_DB_USER,
-        '-d',
-        DOCKER_DB_NAME,
+        '--dbname',
+        dbUrl,
         '-Fc',
         '--no-owner',
         '--no-acl',
@@ -119,7 +114,7 @@ const dumpViaDocker = async (outFile: string): Promise<void> => {
     child.stdout?.pipe(outStream);
     child.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`docker compose pg_dump exited with code ${code ?? 'unknown'}`));
+        reject(new Error(`docker run pg_dump exited with code ${code ?? 'unknown'}`));
         return;
       }
       outStream.end(() => resolve());
@@ -137,9 +132,9 @@ export const dumpDatabase = async (outFile: string): Promise<void> => {
 
   if (await commandExists('pg_dump')) {
     await dumpViaLocalPgDump(outFile);
-  } else if (isDockerMappedLocalDb()) {
-    log.info('pg_dump not found locally; using docker compose exec db pg_dump');
-    await dumpViaDocker(outFile);
+  } else if (await commandExists('docker')) {
+    log.info(`pg_dump not found on PATH; using docker run ${PG_CLIENT_DOCKER_IMAGE}`);
+    await dumpViaDockerRun(outFile);
   } else {
     throw missingPgClientError('pg_dump');
   }
@@ -158,45 +153,34 @@ const restoreViaLocalPgRestore = async (inFile: string): Promise<void> => {
   );
 };
 
-const restoreViaDocker = async (inFile: string): Promise<void> => {
-  await new Promise<void>((resolve, reject) => {
-    const inStream = fs.createReadStream(inFile);
-    const child = spawn(
-      'docker',
-      [
-        'compose',
-        'exec',
-        '-T',
-        'db',
-        'pg_restore',
-        '-U',
-        DOCKER_DB_USER,
-        '-d',
-        DOCKER_DB_NAME,
-        '--clean',
-        '--if-exists',
-        '--no-owner',
-        '--no-acl',
-      ],
-      { stdio: ['pipe', 'inherit', 'inherit'] },
-    );
+const restoreViaDockerRun = async (inFile: string): Promise<void> => {
+  const dbUrl = resolveDatabaseUrl();
+  const { password } = parseDatabaseUrl(dbUrl);
+  const absInFile = path.resolve(inFile);
+  const mountTarget = '/dump';
 
-    child.on('error', reject);
-    inStream.on('error', reject);
-    if (!child.stdin) {
-      reject(new Error('docker compose pg_restore stdin unavailable'));
-      return;
-    }
-
-    inStream.pipe(child.stdin);
-    child.on('close', (code) => {
-      if (code !== 0 && code !== 1) {
-        reject(new Error(`docker compose pg_restore exited with code ${code ?? 'unknown'}`));
-        return;
-      }
-      resolve();
-    });
-  });
+  await spawnAsync(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '-v',
+      `${absInFile}:${mountTarget}:ro`,
+      '-e',
+      `PGPASSWORD=${password}`,
+      PG_CLIENT_DOCKER_IMAGE,
+      'pg_restore',
+      '--dbname',
+      dbUrl,
+      '--clean',
+      '--if-exists',
+      '--no-owner',
+      '--no-acl',
+      mountTarget,
+    ],
+    process.env,
+    'inherit',
+  );
 };
 
 /** Terminate other sessions so pg_restore --clean can drop objects. */
@@ -239,9 +223,9 @@ export const restoreDatabase = async (inFile: string): Promise<void> => {
   try {
     if (await commandExists('pg_restore')) {
       await restoreViaLocalPgRestore(inFile);
-    } else if (isDockerMappedLocalDb()) {
-      log.info('pg_restore not found locally; using docker compose exec db pg_restore');
-      await restoreViaDocker(inFile);
+    } else if (await commandExists('docker')) {
+      log.info(`pg_restore not found on PATH; using docker run ${PG_CLIENT_DOCKER_IMAGE}`);
+      await restoreViaDockerRun(inFile);
     } else {
       throw missingPgClientError('pg_restore');
     }

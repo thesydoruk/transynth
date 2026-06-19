@@ -4,6 +4,9 @@
  *
  * Default input: data/backups/localizer.dump
  *
+ * Uses pg_restore against DATABASE_URL (remote Postgres). Falls back to
+ * `docker run postgres:17 pg_restore` when client tools are not on PATH.
+ *
  * Usage:
  *   npm run db:restore -- --yes
  *   npm run db:restore -- --yes --file data/backups/my-backup.dump
