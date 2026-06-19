@@ -18,6 +18,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GameInfo, type Mod } from '../../api';
 import { ProgressBar } from '../../components/StatusBadge';
+import { useContentLangs } from '../../hooks/useContentLangs';
+import { modListQueryKey } from '../../langDefaults';
+import { modProgress } from '../../utils/modProgress';
 import s from './GameHubPage.module.scss';
 
 /**
@@ -45,23 +48,17 @@ const computeStats = (mods: Mod[]): GameStats => {
   let reviewMods = 0;
   let releaseReadyMods = 0;
 
-  for (const m of mods) {
-    // API aggregate counters may arrive as strings from SQL COUNT(*), so
-    // coerce explicitly to numbers to prevent string concatenation.
-    totalStrings += Number(m.string_count) || 0;
-    translatedStrings += Number(m.translated_count) || 0;
-    approvedStrings += Number(m.approved_count) || 0;
-    fuzzyStrings += Number(m.fuzzy_count) || 0;
+  for (const mod of mods) {
+    const { stats } = modProgress(mod);
+    totalStrings += stats.total;
+    translatedStrings += stats.translated;
+    approvedStrings += stats.approved;
+    fuzzyStrings += stats.fuzzy;
 
-    const stringCount = Number(m.string_count) || 0;
-    const translatedCount = Number(m.translated_count) || 0;
-    const approvedCount = Number(m.approved_count) || 0;
-    const fuzzyCount = Number(m.fuzzy_count) || 0;
-
-    if (fuzzyCount > 0 || translatedCount > approvedCount) {
+    if (stats.fuzzy > 0 || stats.translated > stats.approved) {
       reviewMods += 1;
     }
-    if (stringCount > 0 && approvedCount >= stringCount) {
+    if (stats.total > 0 && stats.approved >= stats.total) {
       releaseReadyMods += 1;
     }
   }
@@ -83,21 +80,27 @@ const computeStats = (mods: Mod[]): GameStats => {
 export const GameHubPage = () => {
   const { t, i18n } = useTranslation();
   const { gameId = '' } = useParams<{ gameId: string }>();
+  const { srcLang, targetLang } = useContentLangs();
 
   /** Locale-aware compact formatter (thousands/millions/etc.) for counters. */
   const compactCountFmt = useMemo(
-    () => new Intl.NumberFormat(i18n.language || 'uk-UA', {
-      notation: 'compact',
-      compactDisplay: 'short',
-      maximumFractionDigits: 1,
-    }),
+    () =>
+      new Intl.NumberFormat(i18n.language || 'uk-UA', {
+        notation: 'compact',
+        compactDisplay: 'short',
+        maximumFractionDigits: 1,
+      }),
     [i18n.language],
   );
 
   /* ── Queries ──────────────────────────────────────────────────────────── */
 
   /** Games catalogue (static, cached indefinitely). */
-  const { data: games, isLoading: isGamesLoading, error: gamesError } = useQuery({
+  const {
+    data: games,
+    isLoading: isGamesLoading,
+    error: gamesError,
+  } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
     staleTime: Infinity,
@@ -106,8 +109,8 @@ export const GameHubPage = () => {
 
   /** Imported mods filtered by this game. */
   const { data: mods, isLoading: isModsLoading } = useQuery({
-    queryKey: ['mods', gameId],
-    queryFn: () => api.mods.list(gameId),
+    queryKey: modListQueryKey(gameId, srcLang, targetLang),
+    queryFn: () => api.mods.list(gameId, srcLang, targetLang),
     enabled: !!gameId,
   });
 
@@ -118,20 +121,20 @@ export const GameHubPage = () => {
   );
 
   /** Aggregate stats over all imported mods in this game. */
-  const stats: GameStats | null = useMemo(
-    () => (mods ? computeStats(mods) : null),
-    [mods],
-  );
+  const stats: GameStats | null = useMemo(() => (mods ? computeStats(mods) : null), [mods]);
 
   /* ── Loading / error states ───────────────────────────────────────────── */
 
   if (isGamesLoading) return <div className={s.loading}>{t('common.loading')}</div>;
-  if (gamesError) return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
+  if (gamesError)
+    return <div className={s.error}>{t('common.error', { message: String(gamesError) })}</div>;
 
   if (!game) {
     return (
       <div className={s.page}>
-        <Link to="/" className={s.backLink}>{t('games.backToGames')}</Link>
+        <Link to="/" className={s.backLink}>
+          {t('games.backToGames')}
+        </Link>
         <h1 className={s.title}>{t('games.notFoundTitle')}</h1>
         <p className={s.subtitle}>{t('games.notFoundSubtitle')}</p>
       </div>
@@ -143,15 +146,12 @@ export const GameHubPage = () => {
   return (
     <div className={s.page}>
       {/* Header with back link, cover thumbnail, game name */}
-      <Link to="/" className={s.backLink}>{t('games.backToGames')}</Link>
+      <Link to="/" className={s.backLink}>
+        {t('games.backToGames')}
+      </Link>
 
       <div className={s.header}>
-        <img
-          src={api.games.coverUrl(game.id)}
-          alt={game.name}
-          className={s.cover}
-          loading="lazy"
-        />
+        <img src={api.games.coverUrl(game.id)} alt={game.name} className={s.cover} loading="lazy" />
         <div className={s.headerInfo}>
           <h1 className={s.title}>{game.name}</h1>
           <p className={s.meta}>
@@ -180,7 +180,8 @@ export const GameHubPage = () => {
             <span className={s.statValue}>
               {stats.totalStrings > 0
                 ? Math.round((stats.approvedStrings / stats.totalStrings) * 100)
-                : 0}%
+                : 0}
+              %
             </span>
             <span className={s.statLabel}>{t('gameHub.approved')}</span>
           </div>
@@ -196,8 +197,12 @@ export const GameHubPage = () => {
               <p className={s.releasePanelDesc}>{t('gameHub.releasePanelDesc')}</p>
             </div>
             <div className={s.releaseSummary}>
-              <span className={s.releaseSummaryItem}>{t('gameHub.releaseMeta', { count: stats.releaseReadyMods })}</span>
-              <span className={s.releaseSummaryItem}>{t('gameHub.reviewMeta', { count: stats.reviewMods })}</span>
+              <span className={s.releaseSummaryItem}>
+                {t('gameHub.releaseMeta', { count: stats.releaseReadyMods })}
+              </span>
+              <span className={s.releaseSummaryItem}>
+                {t('gameHub.reviewMeta', { count: stats.reviewMods })}
+              </span>
             </div>
           </div>
 
@@ -208,7 +213,9 @@ export const GameHubPage = () => {
                 <h3 className={s.releaseStepTitle}>{t('gameHub.releaseStepDiffTitle')}</h3>
                 <p className={s.releaseStepText}>{t('gameHub.releaseStepDiffDesc')}</p>
               </div>
-              <Link to="/diff" className={s.releaseActionPrimary}>{t('gameHub.releaseStepDiffAction')}</Link>
+              <Link to="/diff" className={s.releaseActionPrimary}>
+                {t('gameHub.releaseStepDiffAction')}
+              </Link>
             </div>
 
             <div className={s.releaseStep}>
@@ -217,7 +224,9 @@ export const GameHubPage = () => {
                 <h3 className={s.releaseStepTitle}>{t('gameHub.releaseStepExportTitle')}</h3>
                 <p className={s.releaseStepText}>{t('gameHub.releaseStepExportDesc')}</p>
               </div>
-              <Link to={`/games/${gameId}/mods`} className={s.releaseActionSecondary}>{t('gameHub.releaseStepExportAction')}</Link>
+              <Link to={`/games/${gameId}/mods`} className={s.releaseActionSecondary}>
+                {t('gameHub.releaseStepExportAction')}
+              </Link>
             </div>
           </div>
         </section>
@@ -240,10 +249,13 @@ export const GameHubPage = () => {
           <span className={s.navKicker}>{t('gameHub.workflowTranslate')}</span>
           <h2 className={s.navTitle}>{t('gameHub.modsLink')}</h2>
           <p className={s.navDesc}>{t('gameHub.modsDesc')}</p>
-          {isModsLoading
-            ? <span className={s.navMeta}>{t('common.loading')}</span>
-            : <span className={s.navMeta}>{t('gameHub.modCount', { count: stats?.modCount ?? 0 })}</span>
-          }
+          {isModsLoading ? (
+            <span className={s.navMeta}>{t('common.loading')}</span>
+          ) : (
+            <span className={s.navMeta}>
+              {t('gameHub.modCount', { count: stats?.modCount ?? 0 })}
+            </span>
+          )}
         </Link>
 
         <Link to="/review-queue" className={s.navCard}>
@@ -290,9 +302,7 @@ export const GameHubPage = () => {
             </thead>
             <tbody>
               {mods.slice(0, 10).map((mod) => {
-                const pct = mod.string_count > 0
-                  ? Math.round((mod.translated_count / mod.string_count) * 100)
-                  : 0;
+                const { stats } = modProgress(mod);
                 return (
                   <tr key={mod.id}>
                     <td>
@@ -300,22 +310,9 @@ export const GameHubPage = () => {
                         {mod.name}
                       </Link>
                     </td>
-                    <td className={s.countCell}>{compactCountFmt.format(mod.string_count)}</td>
+                    <td className={s.countCell}>{compactCountFmt.format(stats.total)}</td>
                     <td>
-                      <ProgressBar
-                        stats={{
-                          total: mod.string_count,
-                          translated: mod.translated_count,
-                          approved: mod.approved_count,
-                          draft: 0,
-                          rejected: 0,
-                          tm: 0,
-                          fuzzy: mod.fuzzy_count,
-                          auto_translated: mod.translated_count - mod.approved_count - mod.fuzzy_count,
-                          untranslated: mod.string_count - mod.translated_count,
-                          percent: pct,
-                        }}
-                      />
+                      <ProgressBar stats={stats} />
                     </td>
                   </tr>
                 );
@@ -332,4 +329,3 @@ export const GameHubPage = () => {
     </div>
   );
 };
-

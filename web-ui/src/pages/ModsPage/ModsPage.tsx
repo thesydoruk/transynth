@@ -7,6 +7,9 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { ProgressBar, StatusBadge } from '../../components/StatusBadge';
 import { Toast, useToast } from '../../components/Toast';
 import { Button } from '../../components/Button';
+import { useContentLangs } from '../../hooks/useContentLangs';
+import { modListQueryKey } from '../../langDefaults';
+import { modProgress } from '../../utils/modProgress';
 import s from './ModsPage.module.scss';
 
 /**
@@ -22,9 +25,10 @@ export const ModsPage = () => {
   const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
   const [clearingModId, setClearingModId] = useState<number | null>(null);
   const { toast, showToast, clearToast } = useToast();
+  const { srcLang, targetLang } = useContentLangs();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['mods', gameId],
-    queryFn: () => api.mods.list(gameId),
+    queryKey: modListQueryKey(gameId, srcLang, targetLang),
+    queryFn: () => api.mods.list(gameId, srcLang, targetLang),
   });
 
   const confirmClearRows = async () => {
@@ -32,7 +36,7 @@ export const ModsPage = () => {
     setClearingModId(pendingClear.id);
     try {
       const result = await api.mods.clearRows(pendingClear.id);
-      await qc.invalidateQueries({ queryKey: ['mods', gameId] });
+      await qc.invalidateQueries({ queryKey: modListQueryKey(gameId, srcLang, targetLang) });
       showToast(t('mods.clearRowsSuccess', { count: result.deletedRecords }), 'success');
       setPendingClear(null);
     } catch (err) {
@@ -43,14 +47,17 @@ export const ModsPage = () => {
   };
 
   if (isLoading) return <div className={s.center}>{t('mods.loadingMods')}</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
+  if (error)
+    return (
+      <div className={`${s.center} ${s.error}`}>
+        {t('common.error', { message: String(error) })}
+      </div>
+    );
   if (!data?.length)
     return (
       <div className={s.center}>
         <h2>{t('mods.noModsFound')}</h2>
-        <p className={s.hintText}>
-          {t('mods.noModsHint')}
-        </p>
+        <p className={s.hintText}>{t('mods.noModsHint')}</p>
       </div>
     );
 
@@ -73,14 +80,7 @@ export const ModsPage = () => {
         </thead>
         <tbody>
           {data.map((mod) => {
-            const approvedPct =
-              mod.string_count > 0 ? Math.round((mod.approved_count / mod.string_count) * 100) : 0;
-            const fuzzyPct =
-              mod.string_count > 0 ? Math.round((mod.fuzzy_count / mod.string_count) * 100) : 0;
-            const translatedPct =
-              mod.string_count > 0
-                ? Math.round((mod.translated_count / mod.string_count) * 100)
-                : 0;
+            const { stats, approvedPct, fuzzyPct } = modProgress(mod);
 
             return (
               <tr
@@ -93,20 +93,7 @@ export const ModsPage = () => {
                 </td>
                 <td className={`${s.td} ${s.tdRight}`}>{mod.string_count}</td>
                 <td className={`${s.td} ${s.tdProgress}`}>
-                  <ProgressBar
-                    stats={{
-                      total: mod.string_count,
-                      translated: mod.translated_count,
-                      approved: mod.approved_count,
-                      draft: 0,
-                      rejected: 0,
-                      tm: 0,
-                      fuzzy: mod.fuzzy_count,
-                      auto_translated: mod.translated_count - mod.approved_count - mod.fuzzy_count,
-                      untranslated: mod.string_count - mod.translated_count,
-                      percent: translatedPct,
-                    }}
-                  />
+                  <ProgressBar stats={stats} />
                 </td>
                 <td className={s.td}>
                   <StatusBadge status={approvedPct === 100 ? 'human' : null} small />
@@ -142,17 +129,13 @@ export const ModsPage = () => {
           confirmLabel={t('mods.clearRows')}
           pending={clearingModId === pendingClear.id}
           onClose={() => setPendingClear(null)}
-          onConfirm={() => { void confirmClearRows(); }}
+          onConfirm={() => {
+            void confirmClearRows();
+          }}
         />
       )}
 
-      <Toast
-        message={toast?.message ?? null}
-        type={toast?.type}
-        onDismiss={clearToast}
-      />
+      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </div>
   );
-}
-
-
+};

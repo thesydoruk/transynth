@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api, type ActivityEntry, type Mod } from '../../api';
+import { modListQueryKey } from '../../langDefaults';
 import { PaginationControls } from '../../components/PaginationControls';
 import s from './ActivityPage.module.scss';
 
@@ -22,8 +23,16 @@ const PAGE_SIZE = 50;
 
 /** Known action types for the filter dropdown. */
 const ACTION_TYPES = [
-  '', 'login', 'logout', 'translate', 'import', 'approve',
-  'export', 'create_user', 'update_user', 'change_password',
+  '',
+  'login',
+  'logout',
+  'translate',
+  'import',
+  'approve',
+  'export',
+  'create_user',
+  'update_user',
+  'change_password',
 ];
 
 export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
@@ -32,9 +41,13 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
   const initialOffset = Number(searchParams.get('offset') ?? '0');
   const initialEntityType = searchParams.get('entityType');
   const initialEntityId = Number(searchParams.get('entityId') ?? '');
-  const [offset, setOffset] = useState(Number.isFinite(initialOffset) && initialOffset >= 0 ? initialOffset : 0);
+  const [offset, setOffset] = useState(
+    Number.isFinite(initialOffset) && initialOffset >= 0 ? initialOffset : 0,
+  );
   const [actionFilter, setActionFilter] = useState(searchParams.get('action') ?? '');
-  const [modFilter, setModFilter] = useState<number | ''>(initialEntityType === 'mod' && Number.isFinite(initialEntityId) ? initialEntityId : '');
+  const [modFilter, setModFilter] = useState<number | ''>(
+    initialEntityType === 'mod' && Number.isFinite(initialEntityId) ? initialEntityId : '',
+  );
   const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') ?? '');
   const [dateTo, setDateTo] = useState(searchParams.get('dateTo') ?? '');
   const [csvPending, setCsvPending] = useState(false);
@@ -55,7 +68,7 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
   });
 
   const { data: mods } = useQuery<Mod[]>({
-    queryKey: ['mods'],
+    queryKey: modListQueryKey(),
     queryFn: () => api.mods.list(),
   });
 
@@ -112,21 +125,31 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
       <div className={s.filters}>
         <select
           value={actionFilter}
-          onChange={e => { setActionFilter(e.target.value); handleFilterChange(); }}
+          onChange={(e) => {
+            setActionFilter(e.target.value);
+            handleFilterChange();
+          }}
         >
           <option value="">{t('activity.allActions')}</option>
-          {ACTION_TYPES.filter(Boolean).map(a => (
-            <option key={a} value={a}>{a}</option>
+          {ACTION_TYPES.filter(Boolean).map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
           ))}
         </select>
 
         <select
           value={modFilter}
-          onChange={e => { setModFilter(e.target.value === '' ? '' : Number(e.target.value)); handleFilterChange(); }}
+          onChange={(e) => {
+            setModFilter(e.target.value === '' ? '' : Number(e.target.value));
+            handleFilterChange();
+          }}
         >
           <option value="">{t('activity.allMods')}</option>
           {(mods ?? []).map((m: Mod) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
           ))}
         </select>
 
@@ -136,7 +159,10 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
             type="date"
             value={dateFrom}
             max={dateTo || undefined}
-            onChange={e => { setDateFrom(e.target.value); handleFilterChange(); }}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              handleFilterChange();
+            }}
           />
         </div>
 
@@ -146,7 +172,10 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
             type="date"
             value={dateTo}
             min={dateFrom || undefined}
-            onChange={e => { setDateTo(e.target.value); handleFilterChange(); }}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              handleFilterChange();
+            }}
           />
         </div>
 
@@ -179,15 +208,15 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
               <tr key={e.id}>
                 <td>{new Date(e.created_at).toLocaleString()}</td>
                 <td>{e.display_name ?? e.username ?? '—'}</td>
-                <td><span className={s.actionBadge}>{e.action}</span></td>
+                <td>
+                  <span className={s.actionBadge}>{e.action}</span>
+                </td>
                 <td>
                   {e.entity_type && e.entity_id != null
                     ? `${e.entity_type} #${e.entity_id}`
-                    : e.entity_type ?? '—'}
+                    : (e.entity_type ?? '—')}
                 </td>
-                <td className={s.details}>
-                  {e.details ? JSON.stringify(e.details) : '—'}
-                </td>
+                <td className={s.details}>{e.details ? JSON.stringify(e.details) : '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -198,7 +227,11 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
       {totalPages > 1 && (
         <div className={s.pagination}>
           <PaginationControls
-            info={<>{t('common.page', { page, totalPages })} ({t('activity.entries', { total })})</>}
+            info={
+              <>
+                {t('common.page', { page, totalPages })} ({t('activity.entries', { total })})
+              </>
+            }
             onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
             onNext={() => setOffset((o) => o + PAGE_SIZE)}
             prevDisabled={offset === 0}
@@ -208,6 +241,4 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
       )}
     </div>
   );
-
 };
-

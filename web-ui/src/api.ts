@@ -917,11 +917,10 @@ export type TMSuggestion = {
 
 export const api = {
   mods: {
-    list: (game?: string) => {
-      const params = new URLSearchParams();
+    list: (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
+      const params = new URLSearchParams({ srcLang, targetLang });
       if (game) params.set('game', game);
-      const qs = params.toString();
-      return req<Mod[]>(`/api/mods${qs ? `?${qs}` : ''}`);
+      return req<Mod[]>(`/api/mods?${params}`);
     },
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
     clearRows: (modId: number) =>

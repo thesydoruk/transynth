@@ -53,7 +53,7 @@ export const SUPPORTED_CONTENT_LANGUAGES = [
 ] as const;
 
 /** Strongly typed content language code. */
-export type SupportedContentLanguage = typeof SUPPORTED_CONTENT_LANGUAGES[number];
+export type SupportedContentLanguage = (typeof SUPPORTED_CONTENT_LANGUAGES)[number];
 
 /** Human-friendly labels for content language selectors. */
 export const CONTENT_LANGUAGE_LABELS: Record<SupportedContentLanguage, string> = {
@@ -92,20 +92,21 @@ export const getContentLanguageOptions = (): ContentLanguageOption[] =>
  * Reads from `localStorage` on every call so it always reflects the latest
  * value even if the user changes it in the Settings page without a reload.
  */
-export const getSrcLang = (): string =>
-  localStorage.getItem(LS_SRC_LANG) ?? DEFAULT_SRC_LANG;
+export const getSrcLang = (): string => localStorage.getItem(LS_SRC_LANG) ?? DEFAULT_SRC_LANG;
 
 /**
  * Return the user-preferred target language (or the compile-time default).
  */
-export const getTgtLang = (): string =>
-  localStorage.getItem(LS_TGT_LANG) ?? DEFAULT_TGT_LANG;
+export const getTgtLang = (): string => localStorage.getItem(LS_TGT_LANG) ?? DEFAULT_TGT_LANG;
 
 /** Return the last persisted game context from the shell, if any. */
-export const getCurrentGame = (): string | null =>
-  localStorage.getItem(LS_CURRENT_GAME);
+export const getCurrentGame = (): string | null => localStorage.getItem(LS_CURRENT_GAME);
 
 /** Persist the current shell game context for cross-page navigation continuity. */
 export const setCurrentGame = (gameId: string): void => {
   localStorage.setItem(LS_CURRENT_GAME, gameId);
 };
+
+/** React Query key for mod-list fetches scoped by game and content-language pair. */
+export const modListQueryKey = (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+  ['mods', game ?? null, srcLang, targetLang] as const;

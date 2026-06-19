@@ -5,8 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ReviewQueueRow } from '../../api';
 import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
-import { getCurrentGame } from '../../langDefaults';
-import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
+import {
+  getCurrentGame,
+  getContentLanguageOptions,
+  getTgtLang,
+  modListQueryKey,
+} from '../../langDefaults';
 import { PaginationControls } from '../../components/PaginationControls';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ConfidenceBar } from './ConfidenceBar';
@@ -37,7 +41,7 @@ const CONFIDENCE_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: '< 0.95', value: 0.95 },
   { label: '< 0.85', value: 0.85 },
   { label: '< 0.75', value: 0.75 },
-  { label: '< 0.60', value: 0.60 },
+  { label: '< 0.60', value: 0.6 },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -98,7 +102,7 @@ export const ReviewQueuePage = () => {
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: mods } = useQuery({
-    queryKey: ['mods'],
+    queryKey: modListQueryKey(),
     queryFn: () => api.mods.list(),
   });
 
@@ -120,13 +124,14 @@ export const ReviewQueuePage = () => {
 
   const totalRows = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-  const emptyHint = multiUser && user
-    ? user.role === 'reviewer'
-      ? t('reviewQueue.emptyReviewerHint')
-      : user.role === 'admin'
-        ? t('reviewQueue.emptyAdminHint')
-        : t('reviewQueue.emptyTranslatorHint')
-    : t('reviewQueue.emptyTranslatorHint');
+  const emptyHint =
+    multiUser && user
+      ? user.role === 'reviewer'
+        ? t('reviewQueue.emptyReviewerHint')
+        : user.role === 'admin'
+          ? t('reviewQueue.emptyAdminHint')
+          : t('reviewQueue.emptyTranslatorHint')
+      : t('reviewQueue.emptyTranslatorHint');
 
   // ── Approve / Reject mutations ────────────────────────────────────────────
   /**
@@ -160,10 +165,15 @@ export const ReviewQueuePage = () => {
         <select
           className={s.select}
           value={targetLang}
-          onChange={(e) => { setTargetLang(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setTargetLang(e.target.value);
+            setPage(1);
+          }}
         >
           {languageOptions.map((l) => (
-            <option key={l.code} value={l.code}>{l.label}</option>
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
           ))}
         </select>
 
@@ -187,11 +197,16 @@ export const ReviewQueuePage = () => {
         <select
           className={s.select}
           value={selectedModId ?? ''}
-          onChange={(e) => { setSelectedModId(e.target.value ? Number(e.target.value) : null); setPage(1); }}
+          onChange={(e) => {
+            setSelectedModId(e.target.value ? Number(e.target.value) : null);
+            setPage(1);
+          }}
         >
           <option value="">{t('reviewQueue.allMods')}</option>
           {(mods ?? []).map((m: Mod) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
           ))}
         </select>
 
@@ -200,17 +215,22 @@ export const ReviewQueuePage = () => {
         <select
           className={s.select}
           value={maxConfidence ?? ''}
-          onChange={(e) => { setMaxConfidence(e.target.value ? Number(e.target.value) : null); setPage(1); }}
+          onChange={(e) => {
+            setMaxConfidence(e.target.value ? Number(e.target.value) : null);
+            setPage(1);
+          }}
         >
           {CONFIDENCE_OPTIONS.map((o) => (
-            <option key={o.label} value={o.value ?? ''}>{t(`reviewQueue.confOpt_${o.label.replace(/[^a-z0-9]/gi, '_')}`, { defaultValue: o.label })}</option>
+            <option key={o.label} value={o.value ?? ''}>
+              {t(`reviewQueue.confOpt_${o.label.replace(/[^a-z0-9]/gi, '_')}`, {
+                defaultValue: o.label,
+              })}
+            </option>
           ))}
         </select>
 
         {!isLoading && (
-          <span className={s.totalBadge}>
-            {t('reviewQueue.total', { count: totalRows })}
-          </span>
+          <span className={s.totalBadge}>{t('reviewQueue.total', { count: totalRows })}</span>
         )}
       </div>
 
@@ -225,10 +245,17 @@ export const ReviewQueuePage = () => {
           {statuses.length > 0 && <p className={s.emptyHint}>{emptyHint}</p>}
           <div className={s.emptyActions}>
             <button className={s.emptyBtn} onClick={resetFilters}>
-              {statuses.length === 0 ? t('reviewQueue.enableStatusesAction') : t('reviewQueue.resetFiltersAction')}
+              {statuses.length === 0
+                ? t('reviewQueue.enableStatusesAction')
+                : t('reviewQueue.resetFiltersAction')}
             </button>
-            <Link className={s.emptyLinkBtn} to={currentGameId ? `/games/${currentGameId}` : '/games'}>
-              {currentGameId ? t('reviewQueue.openCurrentGameAction') : t('reviewQueue.openGamesAction')}
+            <Link
+              className={s.emptyLinkBtn}
+              to={currentGameId ? `/games/${currentGameId}` : '/games'}
+            >
+              {currentGameId
+                ? t('reviewQueue.openCurrentGameAction')
+                : t('reviewQueue.openGamesAction')}
             </Link>
             {multiUser && user?.role === 'admin' && statuses.length > 0 && (
               <Link className={s.emptyLinkBtn} to="/settings?tab=activity">
@@ -266,14 +293,16 @@ export const ReviewQueuePage = () => {
                   <td className={s.td}>
                     <span className={s.grup}>{row.signature}</span>
                   </td>
+                  <td className={s.td}>{row.edid && <span className={s.edid}>{row.edid}</span>}</td>
                   <td className={s.td}>
-                    {row.edid && <span className={s.edid}>{row.edid}</span>}
+                    <span className={s.sourceText} title={row.source}>
+                      {row.source}
+                    </span>
                   </td>
                   <td className={s.td}>
-                    <span className={s.sourceText} title={row.source}>{row.source}</span>
-                  </td>
-                  <td className={s.td}>
-                    <span className={s.translText} title={row.translation}>{row.translation}</span>
+                    <span className={s.translText} title={row.translation}>
+                      {row.translation}
+                    </span>
                   </td>
                   <td className={s.td}>
                     <StatusBadge status={row.status} small />
@@ -330,7 +359,11 @@ export const ReviewQueuePage = () => {
       {totalPages > 1 && (
         <div className={s.pagination}>
           <PaginationControls
-            info={<span className={s.pageInfo}>{t('reviewQueue.page', { current: page, total: totalPages })}</span>}
+            info={
+              <span className={s.pageInfo}>
+                {t('reviewQueue.page', { current: page, total: totalPages })}
+              </span>
+            }
             onPrev={() => setPage((p) => Math.max(1, p - 1))}
             onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
             prevDisabled={page <= 1}
@@ -343,4 +376,3 @@ export const ReviewQueuePage = () => {
     </div>
   );
 };
-

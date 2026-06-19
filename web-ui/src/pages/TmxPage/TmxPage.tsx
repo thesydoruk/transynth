@@ -10,14 +10,19 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
-import { getContentLanguageOptions, getSrcLang, getTgtLang } from '../../langDefaults';
+import {
+  getContentLanguageOptions,
+  getSrcLang,
+  getTgtLang,
+  modListQueryKey,
+} from '../../langDefaults';
 import { Button } from '../../components/Button';
 import s from './TmxPage.module.scss';
 
 export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
   const languageOptions = getContentLanguageOptions();
-  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
+  const { data: mods } = useQuery({ queryKey: modListQueryKey(), queryFn: () => api.mods.list() });
 
   /* ── Export state ─────────────────────────────────────────────────────────── */
   const [exportModId, setExportModId] = useState('');
@@ -98,7 +103,9 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
             >
               <option value="">{t('tmx.allMods')}</option>
               {mods?.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
@@ -111,7 +118,9 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
               onChange={(e) => setExportLang(e.target.value)}
             >
               {languageOptions.map(({ code, label }) => (
-                <option key={code} value={code}>{label}</option>
+                <option key={code} value={code}>
+                  {label}
+                </option>
               ))}
             </select>
           </div>
@@ -125,11 +134,11 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
           </Button>
         </div>
 
-        {exportMutation.isSuccess && (
-          <div className={s.result}>{t('tmx.exportSuccess')}</div>
-        )}
+        {exportMutation.isSuccess && <div className={s.result}>{t('tmx.exportSuccess')}</div>}
         {exportMutation.isError && (
-          <div className={s.error}>{t('common.error', { message: String(exportMutation.error) })}</div>
+          <div className={s.error}>
+            {t('common.error', { message: String(exportMutation.error) })}
+          </div>
         )}
       </section>
 
@@ -148,26 +157,19 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
             >
               <option value="">{t('tmx.allModsGlobal')}</option>
               {mods?.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
 
           <div className={s.field}>
             <label className={s.label}>{t('tmx.tmxFile')}</label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".tmx,.xml"
-              className={s.fileInput}
-            />
+            <input ref={fileRef} type="file" accept=".tmx,.xml" className={s.fileInput} />
           </div>
 
-          <Button
-            variant="success"
-            onClick={handleImport}
-            disabled={importMutation.isPending}
-          >
+          <Button variant="success" onClick={handleImport} disabled={importMutation.isPending}>
             {importMutation.isPending ? t('tmx.importingBtn') : t('tmx.importBtn')}
           </Button>
         </div>
@@ -175,15 +177,18 @@ export const TmxPage = ({ embedded = false }: { embedded?: boolean }) => {
         {importMutation.data && (
           <div className={s.result}>
             {t('tmx.parsed')}: <b>{importMutation.data.parsed}</b>
-            {' · '}{t('tmx.imported')}: <b>{importMutation.data.imported}</b>
-            {' · '}{t('tmx.importSkipped')}: <b>{importMutation.data.skipped}</b>
+            {' · '}
+            {t('tmx.imported')}: <b>{importMutation.data.imported}</b>
+            {' · '}
+            {t('tmx.importSkipped')}: <b>{importMutation.data.skipped}</b>
           </div>
         )}
         {importMutation.isError && (
-          <div className={s.error}>{t('common.error', { message: String(importMutation.error) })}</div>
+          <div className={s.error}>
+            {t('common.error', { message: String(importMutation.error) })}
+          </div>
         )}
       </section>
     </div>
   );
 };
-

@@ -4,7 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../../api';
 import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
-import { getContentLanguageOptions, getSrcLang, getTgtLang } from '../../langDefaults';
+import {
+  getContentLanguageOptions,
+  getSrcLang,
+  getTgtLang,
+  modListQueryKey,
+} from '../../langDefaults';
 import s from './GlossaryPage.module.scss';
 
 export const GlossaryPage = () => {
@@ -26,7 +31,7 @@ export const GlossaryPage = () => {
   const [enforceModId, setEnforceModId] = useState<number | ''>('');
 
   const { data: mods } = useQuery({
-    queryKey: ['mods'],
+    queryKey: modListQueryKey(),
     queryFn: () => api.mods.list(),
   });
 
@@ -42,11 +47,17 @@ export const GlossaryPage = () => {
   });
   const { data, isLoading } = useQuery({
     queryKey: ['glossary', srcLang, tgtLang, q],
-    queryFn: () => api.glossary.list({ srcLang: srcLang || undefined, tgtLang: tgtLang || undefined, q: q || undefined }),
+    queryFn: () =>
+      api.glossary.list({
+        srcLang: srcLang || undefined,
+        tgtLang: tgtLang || undefined,
+        q: q || undefined,
+      }),
   });
 
   const add = useMutation({
-    mutationFn: () => api.glossary.add(newTerm.trim(), newTranslation.trim() || null, srcLang, tgtLang),
+    mutationFn: () =>
+      api.glossary.add(newTerm.trim(), newTranslation.trim() || null, srcLang, tgtLang),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['glossary'] });
       setNewTerm('');
@@ -60,8 +71,15 @@ export const GlossaryPage = () => {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, term, translation }: { id: number; term: string; translation: string | null }) =>
-      api.glossary.update(id, term, translation),
+    mutationFn: ({
+      id,
+      term,
+      translation,
+    }: {
+      id: number;
+      term: string;
+      translation: string | null;
+    }) => api.glossary.update(id, term, translation),
     onSuccess: () => {
       setEditId(null);
       setEditTerm('');
@@ -91,35 +109,47 @@ export const GlossaryPage = () => {
     });
   };
 
-  const emptyHint = multiUser && user
-    ? user.role === 'reviewer'
-      ? t('glossary.emptyReviewerHint')
-      : user.role === 'admin'
-        ? t('glossary.emptyAdminHint')
-        : t('glossary.emptyTranslatorHint')
-    : t('glossary.emptyTranslatorHint');
+  const emptyHint =
+    multiUser && user
+      ? user.role === 'reviewer'
+        ? t('glossary.emptyReviewerHint')
+        : user.role === 'admin'
+          ? t('glossary.emptyAdminHint')
+          : t('glossary.emptyTranslatorHint')
+      : t('glossary.emptyTranslatorHint');
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title={t('glossary.title')}
-        description={t('glossary.description')}
-      />
+      <PageHeader title={t('glossary.title')} description={t('glossary.description')} />
 
       {/* Controls */}
       <div className={s.toolbar}>
-        <label className={s.filterLabel}>{t('glossary.sourceLang')}
-          <select value={srcLang} onChange={(e) => setSrcLang(e.target.value)} className={s.selectIndent}>
+        <label className={s.filterLabel}>
+          {t('glossary.sourceLang')}
+          <select
+            value={srcLang}
+            onChange={(e) => setSrcLang(e.target.value)}
+            className={s.selectIndent}
+          >
             {languageOptions.map(({ code, label }) => (
-              <option key={code} value={code}>{label}</option>
+              <option key={code} value={code}>
+                {label}
+              </option>
             ))}
             <option value="">{t('common.all')}</option>
           </select>
         </label>
-        <label className={s.filterLabel}>{t('glossary.targetLang')}
-          <select value={tgtLang} onChange={(e) => setTgtLang(e.target.value)} className={s.selectIndent}>
+        <label className={s.filterLabel}>
+          {t('glossary.targetLang')}
+          <select
+            value={tgtLang}
+            onChange={(e) => setTgtLang(e.target.value)}
+            className={s.selectIndent}
+          >
             {languageOptions.map(({ code, label }) => (
-              <option key={code} value={code}>{label}</option>
+              <option key={code} value={code}>
+                {label}
+              </option>
             ))}
             <option value="">{t('common.all')}</option>
           </select>
@@ -169,7 +199,9 @@ export const GlossaryPage = () => {
         >
           <option value="">{t('glossary.allMods')}</option>
           {mods?.map((m: Mod) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
           ))}
         </select>
         <button
@@ -196,15 +228,9 @@ export const GlossaryPage = () => {
       ) : !data?.length ? (
         <div className={s.emptyState}>
           <p className={s.emptyLead}>{t('glossary.noTerms')}</p>
-          <p className={s.emptyHint}>
-            {emptyHint}
-          </p>
+          <p className={s.emptyHint}>{emptyHint}</p>
           <div className={s.emptyActions}>
-            <button
-              type="button"
-              className={s.btnAdd}
-              onClick={() => newTermRef.current?.focus()}
-            >
+            <button type="button" className={s.btnAdd} onClick={() => newTermRef.current?.focus()}>
               {t('glossary.focusAddAction')}
             </button>
           </div>
@@ -230,7 +256,9 @@ export const GlossaryPage = () => {
                       value={editTerm}
                       onChange={(e) => setEditTerm(e.target.value)}
                     />
-                  ) : entry.term}
+                  ) : (
+                    entry.term
+                  )}
                 </td>
                 <td className={entry.translation ? s.tdTranslFilled : s.tdTranslEmpty}>
                   {editId === entry.id ? (
@@ -240,10 +268,14 @@ export const GlossaryPage = () => {
                       onChange={(e) => setEditTranslation(e.target.value)}
                       placeholder="—"
                     />
-                  ) : (entry.translation ?? '—')}
+                  ) : (
+                    (entry.translation ?? '—')
+                  )}
                 </td>
                 <td className={s.tdLang}>
-                  <span className={s.langBadge}>{entry.src_lang}→{entry.tgt_lang}</span>
+                  <span className={s.langBadge}>
+                    {entry.src_lang}→{entry.tgt_lang}
+                  </span>
                 </td>
                 <td className={s.tdSource}>{entry.source}</td>
                 <td className={`${s.td} ${s.rowActions}`}>
@@ -291,8 +323,9 @@ export const GlossaryPage = () => {
           </tbody>
         </table>
       )}
-      {update.isError && <div className={s.addError}>{t('common.error', { message: String(update.error) })}</div>}
+      {update.isError && (
+        <div className={s.addError}>{t('common.error', { message: String(update.error) })}</div>
+      )}
     </div>
   );
-}
-
+};

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../../api';
-import { getCurrentGame } from '../../langDefaults';
+import { getCurrentGame, modListQueryKey } from '../../langDefaults';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ReleaseChecklist } from './components';
 import s from './DiffPage.module.scss';
@@ -30,7 +30,7 @@ const CHANGE_CLASS: Record<string, string> = {
 
 export const DiffPage = () => {
   const { t } = useTranslation();
-  const { data: mods } = useQuery({ queryKey: ['mods'], queryFn: () => api.mods.list() });
+  const { data: mods } = useQuery({ queryKey: modListQueryKey(), queryFn: () => api.mods.list() });
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 

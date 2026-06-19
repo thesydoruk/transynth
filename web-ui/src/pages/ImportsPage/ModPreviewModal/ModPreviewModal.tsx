@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type Mod, type ModImportJob, type ModPreviewRow } from '../../../api';
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
+import { modListQueryKey } from '../../../langDefaults';
 import { LANGUAGES, type ModPreviewConfirmPayload } from '../importsShared';
 import { useAutoPageSize } from '../hooks';
 import parentS from '../ImportPage.module.scss';
@@ -64,7 +65,7 @@ export const ModPreviewModal = ({ job, gameId, onClose, onConfirm }: ModPreviewM
   }, [data?.isLocalized]);
 
   const { data: gameMods = [] } = useQuery({
-    queryKey: ['mods', gameId],
+    queryKey: modListQueryKey(gameId),
     queryFn: () => api.mods.list(gameId),
     staleTime: 30_000,
   });
