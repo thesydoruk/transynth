@@ -1,4 +1,4 @@
-import { buildEmbeddingInput } from '../ragService';
+import { buildEmbeddingInput, isStaleTranslationRagSyncError } from '../ragService';
 import { RAG_EXAMPLE_MAX_CHARS } from '../ragConstants';
 
 describe('buildEmbeddingInput', () => {
@@ -17,6 +17,13 @@ describe('buildEmbeddingInput', () => {
 
   it('omits null metadata fields', () => {
     expect(buildEmbeddingInput({ sourceText: 'Only source' })).toBe('source: Only source');
+  });
+});
+
+describe('isStaleTranslationRagSyncError', () => {
+  it('detects missing translation FK violations', () => {
+    expect(isStaleTranslationRagSyncError({ code: '23503' })).toBe(true);
+    expect(isStaleTranslationRagSyncError(new Error('other'))).toBe(false);
   });
 });
 

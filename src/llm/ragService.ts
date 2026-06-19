@@ -292,6 +292,13 @@ const rankCandidates = (candidates: RagCandidate[]): RagCandidate[] => {
   });
 };
 
+/** True when a concurrent delete/replace removed the translation before index upsert. */
+export const isStaleTranslationRagSyncError = (err: unknown): boolean =>
+  typeof err === 'object' &&
+  err !== null &&
+  'code' in err &&
+  (err as { code: string }).code === '23503';
+
 const loadTranslationRow = async (
   db: Tx,
   translationId: number,
@@ -338,38 +345,53 @@ export const syncTranslationExample = async (db: Tx, translationId: number): Pro
   const model = getEmbedModel();
   const literal = vectorLiteral(embedding);
 
-  await db.query(
-    `INSERT INTO translation_examples(
-       translation_id, src_string_id, src_lang, target_lang,
-       source_text, translation_text, signature, path, game,
-       embed_model, embedding, updated_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, NOW())
-     ON CONFLICT (translation_id) DO UPDATE SET
-       src_string_id = EXCLUDED.src_string_id,
-       src_lang = EXCLUDED.src_lang,
-       target_lang = EXCLUDED.target_lang,
-       source_text = EXCLUDED.source_text,
-       translation_text = EXCLUDED.translation_text,
-       signature = EXCLUDED.signature,
-       path = EXCLUDED.path,
-       game = EXCLUDED.game,
-       embed_model = EXCLUDED.embed_model,
-       embedding = EXCLUDED.embedding,
-       updated_at = NOW()`,
-    [
-      translationId,
-      row.src_string_id,
-      row.src_lang,
-      row.target_lang,
-      row.source_text,
-      row.translation_text,
-      row.signature,
-      row.path,
-      row.game,
-      model,
-      literal,
-    ],
-  );
+  // Embedding is slow; bulk upserts (e.g. mod import) may delete/replace this row meanwhile.
+  const current = await loadTranslationRow(db, translationId);
+  if (!current || !RAG_ELIGIBLE_STATUSES.includes(current.status as 'reviewed' | 'human')) {
+    await db.query(`DELETE FROM translation_examples WHERE translation_id = $1`, [translationId]);
+    return;
+  }
+
+  try {
+    await db.query(
+      `INSERT INTO translation_examples(
+         translation_id, src_string_id, src_lang, target_lang,
+         source_text, translation_text, signature, path, game,
+         embed_model, embedding, updated_at
+       )
+       SELECT t.id, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, NOW()
+       FROM translations t
+       WHERE t.id = $1 AND t.status IN ('reviewed', 'human')
+       ON CONFLICT (translation_id) DO UPDATE SET
+         src_string_id = EXCLUDED.src_string_id,
+         src_lang = EXCLUDED.src_lang,
+         target_lang = EXCLUDED.target_lang,
+         source_text = EXCLUDED.source_text,
+         translation_text = EXCLUDED.translation_text,
+         signature = EXCLUDED.signature,
+         path = EXCLUDED.path,
+         game = EXCLUDED.game,
+         embed_model = EXCLUDED.embed_model,
+         embedding = EXCLUDED.embedding,
+         updated_at = NOW()`,
+      [
+        translationId,
+        current.src_string_id,
+        current.src_lang,
+        current.target_lang,
+        current.source_text,
+        current.translation_text,
+        current.signature,
+        current.path,
+        current.game,
+        model,
+        literal,
+      ],
+    );
+  } catch (err) {
+    if (isStaleTranslationRagSyncError(err)) return;
+    throw err;
+  }
 };
 
 export type FindReferenceExamplesOpts = {
