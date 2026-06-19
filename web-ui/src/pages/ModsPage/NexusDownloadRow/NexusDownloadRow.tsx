@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { NexusDownloadJob } from '../../../nexusDownloadQueue';
-import { kindColor, statusColorBase } from '../importsShared';
-import s from '../ImportPage.module.scss';
+import { kindColor, statusColorBase } from '../modsShared';
+import s from '../ModsPage.module.scss';
 
 interface NexusDownloadRowProps {
   job: NexusDownloadJob;
@@ -15,10 +15,14 @@ export const NexusDownloadRow = ({ job }: NexusDownloadRowProps) => {
   return (
     <div className={s.row}>
       <div className={s.rowLeft}>
-        <span className={s.typeBadge} style={{ background: kindColor('mod') }}>MOD</span>
+        <span className={s.typeBadge} style={{ background: kindColor('mod') }}>
+          MOD
+        </span>
         <div>
           <span className={s.fileName}>{job.fileName}</span>
-          <span className={s.meta}>{job.gameId.toUpperCase()} · Nexus #{job.modId} · file #{job.fileId}</span>
+          <span className={s.meta}>
+            {job.gameId.toUpperCase()} · Nexus #{job.modId} · file #{job.fileId}
+          </span>
         </div>
       </div>
       <div className={s.rowRight}>
@@ -28,7 +32,9 @@ export const NexusDownloadRow = ({ job }: NexusDownloadRowProps) => {
           </span>
         ) : (
           <div className={s.progressWrap}>
-            <div className={s.progressTrack}><div className={s.progressFill} style={{ width: `${pct}%` }} /></div>
+            <div className={s.progressTrack}>
+              <div className={s.progressFill} style={{ width: `${pct}%` }} />
+            </div>
             <span className={s.progressLabel}>{pct}%</span>
           </div>
         )}

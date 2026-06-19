@@ -155,6 +155,6 @@
  * module via cross-module composition and overrides the background colour.
  */
 .badgeCompleted {
-  composes: badge from '../ImportPage.module.scss';
+  composes: badge from '../ModsPage.module.scss';
   background: var(--success-dark);
 }

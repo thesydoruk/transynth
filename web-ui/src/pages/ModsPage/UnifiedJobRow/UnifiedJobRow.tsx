@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModImportJob } from '../../../api';
-import { kindColor, statusColorBase, statusLabel, type UnifiedJobRowProps } from '../importsShared';
-import parentS from '../ImportPage.module.scss';
+import { kindColor, statusColorBase, statusLabel, type UnifiedJobRowProps } from '../modsShared';
+import parentS from '../ModsPage.module.scss';
 import s from './UnifiedJobRow.module.scss';
 
 /** Single row in the unified import list, with a colored type badge. */

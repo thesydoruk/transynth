@@ -1,0 +1,33 @@
+.row {
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--border-heavy);
+  }
+}
+
+.main {
+  min-width: 0;
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.pctRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.pctApproved {
+  color: var(--text);
+}
+
+.pctFuzzy {
+  color: var(--text-dim);
+}

@@ -234,26 +234,17 @@ export const GameHubPage = () => {
 
       {/* Workflow cards */}
       <div className={s.navGrid}>
-        <Link to={`/games/${gameId}/imports`} className={s.navCard}>
-          <span className={s.navKicker}>{t('gameHub.workflowImport')}</span>
-          <h2 className={s.navTitle}>{t('gameHub.importsLink')}</h2>
-          <p className={s.navDesc}>{t('gameHub.importsDesc')}</p>
-          <span className={s.navMeta}>
-            {stats?.modCount
-              ? t('gameHub.importsMeta', { count: stats.modCount })
-              : t('gameHub.importsMetaEmpty')}
-          </span>
-        </Link>
-
         <Link to={`/games/${gameId}/mods`} className={s.navCard}>
-          <span className={s.navKicker}>{t('gameHub.workflowTranslate')}</span>
-          <h2 className={s.navTitle}>{t('gameHub.modsLink')}</h2>
-          <p className={s.navDesc}>{t('gameHub.modsDesc')}</p>
+          <span className={s.navKicker}>{t('gameHub.workflowMods')}</span>
+          <h2 className={s.navTitle}>{t('gameHub.modsWorkspaceLink')}</h2>
+          <p className={s.navDesc}>{t('gameHub.modsWorkspaceDesc')}</p>
           {isModsLoading ? (
             <span className={s.navMeta}>{t('common.loading')}</span>
           ) : (
             <span className={s.navMeta}>
-              {t('gameHub.modCount', { count: stats?.modCount ?? 0 })}
+              {stats?.modCount
+                ? t('gameHub.modCount', { count: stats.modCount })
+                : t('gameHub.importsMetaEmpty')}
             </span>
           )}
         </Link>

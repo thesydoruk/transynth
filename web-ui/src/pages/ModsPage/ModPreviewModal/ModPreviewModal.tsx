@@ -5,9 +5,9 @@ import { api, type Mod, type ModImportJob, type ModPreviewRow } from '../../../a
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { modListQueryKey } from '../../../langDefaults';
-import { LANGUAGES, type ModPreviewConfirmPayload } from '../importsShared';
+import { LANGUAGES, type ModPreviewConfirmPayload } from '../modsShared';
 import { useAutoPageSize } from '../hooks';
-import parentS from '../ImportPage.module.scss';
+import parentS from '../ModsPage.module.scss';
 import s from './ModPreviewModal.module.scss';
 
 interface ModPreviewModalProps {

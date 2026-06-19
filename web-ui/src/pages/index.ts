@@ -8,7 +8,6 @@ export { GameModsPage } from './GameModsPage';
 export { GamesPage } from './GamesPage';
 export { GlossaryPage } from './GlossaryPage';
 export { HomePage } from './HomePage';
-export { ImportsPage } from './ImportsPage';
 export { INNRPage } from './INNRPage';
 export { LoginPage } from './LoginPage';
 export { ModEditorPage } from './ModEditorPage';

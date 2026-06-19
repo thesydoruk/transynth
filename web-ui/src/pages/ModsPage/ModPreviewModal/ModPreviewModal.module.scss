@@ -10,7 +10,7 @@
  * Composes shared .modalHeader layout via CSS Modules cross-file composition.
  */
 .modalHeaderTop {
-  composes: modalHeader from '../ImportPage.module.scss';
+  composes: modalHeader from '../ModsPage.module.scss';
   align-items: flex-start;
 }
 
@@ -27,7 +27,7 @@
  * Composes base .th styles via cross-file CSS Modules composition.
  */
 .thSourceWide {
-  composes: th from '../ImportPage.module.scss';
+  composes: th from '../ModsPage.module.scss';
   min-width: 280px;
 }
 

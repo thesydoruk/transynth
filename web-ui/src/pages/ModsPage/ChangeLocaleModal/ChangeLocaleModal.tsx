@@ -5,8 +5,8 @@ import { api, type ModImportJob } from '../../../api';
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
 import { modListQueryKey } from '../../../langDefaults';
-import { LANGUAGES } from '../importsShared';
-import parentS from '../ImportPage.module.scss';
+import { LANGUAGES } from '../modsShared';
+import parentS from '../ModsPage.module.scss';
 import s from './ChangeLocaleModal.module.scss';
 
 interface ChangeLocaleModalProps {
