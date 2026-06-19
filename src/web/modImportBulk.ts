@@ -19,10 +19,23 @@ export type ModImportBulkResult = {
   row: ModImportBulkRow;
 };
 
+/** Natural key for `records` upsert (matches ON CONFLICT target). */
+export const modImportRecordKey = (signature: string, path: string, formId: string): string =>
+  `${signature}\0${path}\0${formId}`;
+
 const chunk = <T>(items: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
+};
+
+type UniqueRecord = {
+  signature: string;
+  path: string;
+  pathSimplified: string;
+  edid: string | null;
+  hashNorm: string;
+  formId: string;
 };
 
 /** Upsert records and insert strings for one import batch. */
@@ -33,38 +46,52 @@ export const bulkInsertModImportRows = async (
 ): Promise<ModImportBulkResult[]> => {
   if (rows.length === 0) return [];
 
-  const modIds: number[] = [];
-  const signatures: string[] = [];
-  const paths: string[] = [];
-  const pathSimplified: string[] = [];
-  const edids: (string | null)[] = [];
-  const hashNorms: string[] = [];
-  const formIds: string[] = [];
-  const langs: string[] = [];
-  const textRaws: string[] = [];
-  const textNorms: string[] = [];
-  const textNormNopunct: (string | null)[] = [];
-  const sourceKinds: string[] = [];
-  const contexts: (string | null)[] = [];
+  const uniqueRecords = new Map<string, UniqueRecord>();
+  const stringInputs: Array<{
+    recordKey: string;
+    locale: string;
+    textRaw: string;
+    textNorm: string;
+    textNormNopunct: string | null;
+    sourceKind: string;
+    context: string | null;
+  }> = [];
 
   for (const item of rows) {
     const r = item.csvRow;
     const pathS = r.PathSimplified ?? r.Path.replace(/\[\d+\]/g, '');
+    const formId = r.FormID || '';
     const textNorm = normalizeForHash(r.Source);
-    modIds.push(modId);
-    signatures.push(r.Signature);
-    paths.push(r.Path);
-    pathSimplified.push(pathS);
-    edids.push(r.EDID ?? null);
-    hashNorms.push(sha1Hex(textNorm));
-    formIds.push(r.FormID || '');
-    langs.push(item.locale);
-    textRaws.push(r.Source);
-    textNorms.push(textNorm);
-    textNormNopunct.push(normalizeNoPunct(r.Source));
-    sourceKinds.push(item.sourceKind ?? 'mod-import');
-    contexts.push(item.context);
+    const recordKey = modImportRecordKey(r.Signature, r.Path, formId);
+
+    uniqueRecords.set(recordKey, {
+      signature: r.Signature,
+      path: r.Path,
+      pathSimplified: pathS,
+      edid: r.EDID ?? null,
+      hashNorm: sha1Hex(textNorm),
+      formId,
+    });
+
+    stringInputs.push({
+      recordKey,
+      locale: item.locale,
+      textRaw: r.Source,
+      textNorm,
+      textNormNopunct: normalizeNoPunct(r.Source),
+      sourceKind: item.sourceKind ?? 'mod-import',
+      context: item.context,
+    });
   }
+
+  const uniqueList = [...uniqueRecords.values()];
+  const uModIds = uniqueList.map(() => modId);
+  const uSignatures = uniqueList.map((r) => r.signature);
+  const uPaths = uniqueList.map((r) => r.path);
+  const uPathSimplified = uniqueList.map((r) => r.pathSimplified);
+  const uEdids = uniqueList.map((r) => r.edid);
+  const uHashNorms = uniqueList.map((r) => r.hashNorm);
+  const uFormIds = uniqueList.map((r) => r.formId);
 
   await db.query(
     `INSERT INTO records(mod_id, signature, path, path_simplified, edid, hash_norm, formid_hex)
@@ -75,24 +102,44 @@ export const bulkInsertModImportRows = async (
        path_simplified = EXCLUDED.path_simplified,
        edid = COALESCE(EXCLUDED.edid, records.edid),
        hash_norm = EXCLUDED.hash_norm`,
-    [modIds, signatures, paths, pathSimplified, edids, hashNorms, formIds],
+    [uModIds, uSignatures, uPaths, uPathSimplified, uEdids, uHashNorms, uFormIds],
   );
 
-  const { rows: recordRows } = await db.query<{ id: number; ord: number }>(
-    `SELECT r.id, i.ord::int AS ord
-     FROM UNNEST(
-       $1::int[], $2::text[], $3::text[], $4::text[]
-     ) WITH ORDINALITY AS i(mod_id, signature, path, formid_hex, ord)
+  const { rows: recordRows } = await db.query<{
+    id: number;
+    signature: string;
+    path: string;
+    formid_hex: string;
+  }>(
+    `SELECT r.id, r.signature, r.path, r.formid_hex
+     FROM UNNEST($1::text[], $2::text[], $3::text[]) AS i(signature, path, formid_hex)
      JOIN records r
-       ON r.mod_id = i.mod_id
+       ON r.mod_id = $4
       AND r.signature = i.signature
       AND r.path = i.path
-      AND r.formid_hex = i.formid_hex
-     ORDER BY i.ord`,
-    [modIds, signatures, paths, formIds],
+      AND r.formid_hex = i.formid_hex`,
+    [uSignatures, uPaths, uFormIds, modId],
   );
 
-  const recordIds = recordRows.map((r) => r.id);
+  const recordIdByKey = new Map<string, number>();
+  for (const row of recordRows) {
+    recordIdByKey.set(modImportRecordKey(row.signature, row.path, row.formid_hex), row.id);
+  }
+
+  const recordIds = stringInputs.map((s) => {
+    const id = recordIdByKey.get(s.recordKey);
+    if (id == null) {
+      throw new Error(`Record id not found after bulk upsert for key ${s.recordKey}`);
+    }
+    return id;
+  });
+
+  const langs = stringInputs.map((s) => s.locale);
+  const textRaws = stringInputs.map((s) => s.textRaw);
+  const textNorms = stringInputs.map((s) => s.textNorm);
+  const textNormNopunct = stringInputs.map((s) => s.textNormNopunct);
+  const sourceKinds = stringInputs.map((s) => s.sourceKind);
+  const contexts = stringInputs.map((s) => s.context);
 
   const { rows: stringRows } = await db.query<{ id: number }>(
     `INSERT INTO strings(
@@ -118,6 +165,13 @@ export type BulkTranslationRow = {
   text: string;
 };
 
+/** Deduplicate by src_string_id (last text wins) before bulk insert. */
+export const dedupeBulkTranslationRows = (items: BulkTranslationRow[]): BulkTranslationRow[] => {
+  const byId = new Map<number, string>();
+  for (const item of items) byId.set(item.srcStringId, item.text);
+  return [...byId.entries()].map(([srcStringId, text]) => ({ srcStringId, text }));
+};
+
 /** Fast translation upsert for import pipelines (no RAG, revision, or QA). */
 export const bulkUpsertImportTranslations = async (
   db: Tx,
@@ -126,8 +180,9 @@ export const bulkUpsertImportTranslations = async (
   provenance: string,
   batchSize = 1000,
 ): Promise<number> => {
+  const deduped = dedupeBulkTranslationRows(items);
   let total = 0;
-  for (const part of chunk(items, batchSize)) {
+  for (const part of chunk(deduped, batchSize)) {
     if (part.length === 0) continue;
     const stringIds = part.map((p) => p.srcStringId);
     const texts = part.map((p) => p.text);

@@ -666,17 +666,32 @@ export const listModFilesInDirectory = (
   return candidates;
 };
 
-const discoverBa2 = (modPath: string, ba2Candidates: string[]): string | null => {
+/**
+ * Locate the BA2 archive that holds STRINGS/DLSTRINGS/ILSTRINGS for a plugin.
+ *
+ * FO4/FO76 vanilla base game packs strings in `{Plugin} - Interface.ba2`, not
+ * `{Plugin} - Main.ba2`. DLC and most mods use `{Plugin} - Main.ba2` instead.
+ */
+const discoverBa2 = (
+  modPath: string,
+  ba2Candidates: string[],
+  game: GameType = 'fo4',
+): string | null => {
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
-  for (const ba2 of ba2Candidates) {
-    const ba2Base = path.basename(ba2, '.ba2').toLowerCase();
-    if (ba2Base === `${stem} - main` || ba2Base === stem) return ba2;
+  const baseStem = path.basename(modPath, path.extname(modPath));
+  const suffixes =
+    game === 'fo4' || game === 'fo76' ? [' - main', ' - interface', ''] : [' - main', ''];
+
+  for (const suffix of suffixes) {
+    const target = suffix ? `${stem}${suffix}` : stem;
+    for (const ba2 of ba2Candidates) {
+      if (path.basename(ba2, '.ba2').toLowerCase() === target) return ba2;
+    }
   }
+
   const dir = path.dirname(modPath);
-  for (const candidate of [
-    `${path.basename(modPath, path.extname(modPath))} - Main.ba2`,
-    `${path.basename(modPath, path.extname(modPath))}.ba2`,
-  ]) {
+  for (const suffix of suffixes) {
+    const candidate = suffix ? `${baseStem}${suffix}.ba2` : `${baseStem}.ba2`;
     const p = path.join(dir, candidate);
     if (fs.existsSync(p)) return p;
   }
@@ -726,7 +741,8 @@ const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> =
 
 /**
  * Load strings locales for a given game, trying all archive types and loose files.
- * For FO4: looks for a BA2 archive first, then loose Strings\ files.
+ * For FO4: loose Strings\ first, then `{Plugin} - Main.ba2`, `{Plugin} - Interface.ba2`
+ * (vanilla base game uses Interface), then other stem-prefixed GNRL archives.
  * For SSE: looks for a BSA archive first, then loose Strings\ files.
  *
  * @param espPath      - Absolute path to the plugin.
@@ -745,11 +761,40 @@ const loadLocalesForGame = (
     if (bsaPath) return loadLocalesFromBSA(bsaPath);
     return loadLocalesFromLooseFiles(espPath);
   }
-  // fo4 (default)
+  // fo4 / fo76: prefer loose Strings\ (mods), then companion BA2 archives.
   const ba2Cands = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.ba2'));
-  const ba2Path = discoverBa2(espPath, ba2Cands);
-  if (ba2Path) return loadLocalesFromBA2(ba2Path);
-  return loadLocalesFromLooseFiles(espPath);
+  const loose = loadLocalesFromLooseFiles(espPath);
+  if (loose.size > 0) return loose;
+
+  const tryLoadFromBa2 = (ba2Path: string): Map<string, Map<number, string>> | null => {
+    try {
+      const locales = loadLocalesFromBA2(ba2Path);
+      return locales.size > 0 ? locales : null;
+    } catch (err) {
+      log.warn(
+        `STRINGS: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
+      );
+      return null;
+    }
+  };
+
+  const primaryBa2 = discoverBa2(espPath, ba2Cands, game);
+  if (primaryBa2) {
+    const fromPrimary = tryLoadFromBa2(primaryBa2);
+    if (fromPrimary) return fromPrimary;
+  }
+
+  const stem = path.basename(espPath, path.extname(espPath)).toLowerCase();
+  for (const ba2 of ba2Cands) {
+    if (ba2 === primaryBa2) continue;
+    const base = path.basename(ba2, '.ba2').toLowerCase();
+    if (!base.startsWith(stem)) continue;
+    if (!isBa2GnrArchive(ba2)) continue;
+    const fromBa2 = tryLoadFromBa2(ba2);
+    if (fromBa2) return fromBa2;
+  }
+
+  return loose;
 };
 
 /**
@@ -1844,19 +1889,33 @@ export const runModImport = async (
     const flushPendingImportBatch = async (progressTotal: number): Promise<void> => {
       if (pendingRows.length === 0) return;
       const batch = pendingRows.splice(0, pendingRows.length);
-      const results = await bulkInsertModImportRows(db, importModId, batch);
-      for (const res of results) {
-        await upsertDialogGraphForRow(res.row.csvRow, res.stringId, res.row.context);
-      }
-      imported += results.length;
-      batchCount = 0;
-      await updateProgress(db, job.id, imported);
-      await db.query('COMMIT');
-      inTx = false;
-      if (progressTotal > 0) {
-        const pct = ((imported / progressTotal) * 100).toFixed(1);
-        log.info(`[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`);
-        onProgress?.(imported, progressTotal);
+      try {
+        const results = await bulkInsertModImportRows(db, importModId, batch);
+        for (const res of results) {
+          await upsertDialogGraphForRow(res.row.csvRow, res.stringId, res.row.context);
+        }
+        imported += results.length;
+        batchCount = 0;
+        await updateProgress(db, job.id, imported);
+        await db.query('COMMIT');
+        inTx = false;
+        if (progressTotal > 0) {
+          const pct = ((imported / progressTotal) * 100).toFixed(1);
+          log.info(`[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`);
+          onProgress?.(imported, progressTotal);
+        }
+      } catch (err) {
+        pendingRows.length = 0;
+        batchCount = 0;
+        if (inTx) {
+          try {
+            await db.query('ROLLBACK');
+          } catch {
+            /* ignore */
+          }
+          inTx = false;
+        }
+        throw err;
       }
     };
 
@@ -1943,6 +2002,13 @@ export const runModImport = async (
       // Non-localized plugin, or localized plugin without external STRINGS files.
       const npcNameFromMod = buildNpcNameMap(espRows, null);
       const csvRows = buildCsvRows(espRows, null);
+
+      if (csvRows.length === 0 && espRows.some((row) => row.isLstringId)) {
+        log.warn(
+          `[Mod Import #${job.id}] Localized plugin "${job.file_name}" has ${espRows.length} string refs but none resolved to text. ` +
+            'Ensure STRINGS files exist under Strings\\ or in a companion BA2 (vanilla FO4 base game: "Fallout4 - Interface.ba2").',
+        );
+      }
 
       for (let i = 0; i < csvRows.length; i++) {
         if (i < job.imported_records) continue;

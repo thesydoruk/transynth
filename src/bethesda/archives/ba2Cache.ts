@@ -16,5 +16,8 @@ export const getBa2Reader = (ba2Path: string): Ba2Reader => {
 
 /** Drop all cached readers (call after each mod import to free memory). */
 export const clearBa2Cache = (): void => {
+  for (const reader of cache.values()) {
+    reader.close();
+  }
   cache.clear();
 };

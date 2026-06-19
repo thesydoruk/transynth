@@ -28,6 +28,9 @@
  * File data:
  *   If packedSize == 0: raw bytes of length unpackedSize
  *   If packedSize > 0: zlib-deflate compressed bytes (use inflateRaw / inflate)
+ *
+ * Large archives (>2 GiB) are indexed via a file descriptor; only requested
+ * entry payloads are read into memory.
  */
 
 import fs from 'fs';
@@ -39,12 +42,23 @@ import { BA2_MAGIC, BA2_TYPE_GNRL, BA2_HEADER_SIZE, BA2_ENTRY_SIZE } from './ba2
 const HEADER_SIZE = BA2_HEADER_SIZE;
 const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
 
+const readAt = (fd: number, offset: number, length: number): Buffer => {
+  const buf = Buffer.alloc(length);
+  let read = 0;
+  while (read < length) {
+    const n = fs.readSync(fd, buf, read, length - read, offset + read);
+    if (n <= 0) throw new Error(`BA2: unexpected EOF at offset ${offset + read}`);
+    read += n;
+  }
+  return buf;
+};
+
 /**
  * Reader for Bethesda BA2 (GNRL) archives used by Fallout 4 / 76.
  *
- * The reader loads the entire archive into memory and exposes a small API for
- * listing contained files and extracting individual entries, automatically
- * handling (optional) zlib compression.
+ * The reader parses the archive index from disk and reads individual entries
+ * on demand, so multi-gigabyte archives (e.g. vanilla `Fallout4 - Voices.ba2`)
+ * can be opened without hitting Node's ~2 GiB Buffer limit.
  *
  * Typical usage:
  *
@@ -54,10 +68,12 @@ const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
  *   const buf = ba2.extractEntry(entry);
  *   // ... pass buf to parseStringsBuffer()
  * }
+ * ba2.close();
  * ```
  */
 export class Ba2Reader {
-  private buf: Buffer;
+  private fd = -1;
+  private fileSize = 0;
   private entries: Ba2FileEntry[];
   private nameIndex: Map<string, Ba2FileEntry>;
 
@@ -69,11 +85,18 @@ export class Ba2Reader {
    */
   constructor(filePath: string) {
     log.debug(`BA2: opening ${filePath}`);
-    this.buf = fs.readFileSync(filePath);
+    const stat = fs.statSync(filePath);
+    this.fileSize = stat.size;
+    this.fd = fs.openSync(filePath, 'r');
     this.entries = [];
     this.nameIndex = new Map();
-    this.parse();
-    log.info(`BA2: loaded ${this.entries.length} files from ${filePath}`);
+    try {
+      this.parse();
+      log.info(`BA2: loaded ${this.entries.length} files from ${filePath}`);
+    } catch (err) {
+      this.close();
+      throw err;
+    }
   }
 
   /**
@@ -84,37 +107,50 @@ export class Ba2Reader {
    * described in the module header comment.
    */
   private parse(): void {
-    const buf = this.buf;
-    if (buf.length < HEADER_SIZE) throw new Error('BA2: file too small');
+    if (this.fileSize < HEADER_SIZE) throw new Error('BA2: file too small');
 
-    const magic = buf.toString('ascii', 0, 4);
+    const header = readAt(this.fd, 0, HEADER_SIZE);
+
+    const magic = header.toString('ascii', 0, 4);
     if (magic !== BA2_MAGIC) throw new Error(`BA2: bad magic "${magic}"`);
 
-    const archType = buf.toString('ascii', 8, 12).replace(/\0/g, '');
+    const archType = header.toString('ascii', 8, 12).replace(/\0/g, '');
     if (archType !== BA2_TYPE_GNRL) {
       throw new Error(`BA2: unsupported archive type "${archType}" (only GNRL supported)`);
     }
 
-    const fileCount = buf.readUInt32LE(12);
-    const nameTableOffset = Number(buf.readBigUInt64LE(16));
+    const fileCount = header.readUInt32LE(12);
+    const nameTableOffset = Number(header.readBigUInt64LE(16));
 
-    // Read name table
+    if (nameTableOffset < HEADER_SIZE || nameTableOffset >= this.fileSize) {
+      throw new Error('BA2: invalid name table offset');
+    }
+
+    const entriesBuf = readAt(this.fd, HEADER_SIZE, fileCount * ENTRY_SIZE);
+    const nameTableSize = this.fileSize - nameTableOffset;
+    const nameTableBuf = readAt(this.fd, nameTableOffset, nameTableSize);
+
     const names: string[] = [];
-    let ntPos = nameTableOffset;
+    let ntPos = 0;
     for (let i = 0; i < fileCount; i++) {
-      const len = buf.readUInt16LE(ntPos);
+      if (ntPos + 2 > nameTableBuf.length) {
+        throw new Error('BA2: truncated name table');
+      }
+      const len = nameTableBuf.readUInt16LE(ntPos);
       ntPos += 2;
-      names.push(buf.toString('utf8', ntPos, ntPos + len));
+      if (ntPos + len > nameTableBuf.length) {
+        throw new Error('BA2: truncated name table entry');
+      }
+      names.push(nameTableBuf.toString('utf8', ntPos, ntPos + len));
       ntPos += len;
     }
 
-    // Read file entries
     for (let i = 0; i < fileCount; i++) {
-      const base = HEADER_SIZE + i * ENTRY_SIZE;
-      const ext = buf.toString('ascii', base + 4, base + 8).replace(/\0/g, '');
-      const offset = Number(buf.readBigUInt64LE(base + 16));
-      const packedSize = buf.readUInt32LE(base + 24);
-      const unpackedSize = buf.readUInt32LE(base + 28);
+      const base = i * ENTRY_SIZE;
+      const ext = entriesBuf.toString('ascii', base + 4, base + 8).replace(/\0/g, '');
+      const offset = Number(entriesBuf.readBigUInt64LE(base + 16));
+      const packedSize = entriesBuf.readUInt32LE(base + 24);
+      const unpackedSize = entriesBuf.readUInt32LE(base + 28);
 
       const entry: Ba2FileEntry = {
         name: names[i] ?? '',
@@ -180,13 +216,22 @@ export class Ba2Reader {
    */
   extractEntry(entry: Ba2FileEntry): Buffer {
     const { offset, packedSize, unpackedSize } = entry;
-    const raw = this.buf.subarray(offset, offset + (packedSize || unpackedSize));
+    const rawLength = packedSize || unpackedSize;
+    const raw = readAt(this.fd, offset, rawLength);
 
     if (packedSize > 0 && packedSize !== unpackedSize) {
       log.trace(`BA2: decompressing ${entry.name} (${packedSize} → ${unpackedSize} bytes)`);
       return inflateSync(raw);
     }
-    return Buffer.from(raw); // copy to own buffer
+    return raw;
+  }
+
+  /** Release the underlying file descriptor. Safe to call more than once. */
+  close(): void {
+    if (this.fd >= 0) {
+      fs.closeSync(this.fd);
+      this.fd = -1;
+    }
   }
 
   /**
