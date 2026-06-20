@@ -9,7 +9,6 @@ export const RAG_EXAMPLE_MAX_CHARS = 500;
 
 /** Default project-setting values (mirrors schema seed + projectSettings.ts). */
 export const RAG_DEFAULTS = {
-  enabled: true,
   maxExamples: 5,
   minSimilarity: 0.5,
 } as const;

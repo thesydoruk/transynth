@@ -12,8 +12,8 @@ const INPUT_EXAMPLE = `{
     {
       "id": 101,
       "source": "I need ¤PH0¤ caps for this rifle.",
-      "signature": "INFO",
-      "path": "INFO\\\\NAM1",
+      "grup": "INFO",
+      "field": "NAM1",
       "form_id": "01001234",
       "edid": "Vendor_BarterLine01",
       "context": "Travis"
@@ -21,8 +21,8 @@ const INPUT_EXAMPLE = `{
     {
       "id": 102,
       "source": "Brotherhood Combat Armor",
-      "signature": "ARMO",
-      "path": "ARMO\\\\FULL",
+      "grup": "ARMO",
+      "field": "FULL",
       "form_id": "01005678",
       "edid": "Armor_BOS_Combat",
       "context": null
@@ -81,7 +81,9 @@ export const buildUkrainianPromptExamples = (): string => {
   ].join('\n');
 };
 
-const sampleTranslationsForTarget = (targetLang: string): {
+const sampleTranslationsForTarget = (
+  targetLang: string,
+): {
   glossaryBos: string;
   line101: string;
   line102: string;
@@ -101,9 +103,9 @@ const sampleTranslationsForTarget = (targetLang: string): {
       };
     case 'fr':
       return {
-        glossaryBos: 'Confrérie de l\'Acier',
+        glossaryBos: "Confrérie de l'Acier",
         line101: 'Il me faut ¤PH0¤ caps pour ce fusil.',
-        line102: 'Armure de combat de la Confrérie de l\'Acier',
+        line102: "Armure de combat de la Confrérie de l'Acier",
       };
     case 'es':
       return {

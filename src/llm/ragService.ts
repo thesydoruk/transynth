@@ -17,12 +17,15 @@ import {
   RAG_DEFAULTS,
 } from './ragConstants';
 import { extractNumbers, transplantNumbers, normalizeForHash } from '../utils/textNorm';
+import { parseRecordLocation } from '../utils/recordLocation';
 
 /** One retrieved example passed to the LLM. */
 export type RagReferenceExample = {
   source: string;
   translation: string;
-  signature: string | null;
+  grup: string | null;
+  edid: string | null;
+  field: string | null;
   match_method: 'exact' | 'numeric' | 'punct_norm' | 'fuzzy' | 'embedding';
   similarity: number;
 };
@@ -35,8 +38,15 @@ export type RagStats = {
   embedDimensions: number;
 };
 
-type RagCandidate = RagReferenceExample & {
+type RagCandidate = {
   key: string;
+  source: string;
+  translation: string;
+  signature: string | null;
+  path: string | null;
+  edid: string | null;
+  match_method: RagReferenceExample['match_method'];
+  similarity: number;
 };
 
 type TranslationRow = {
@@ -69,6 +79,15 @@ export const isPgvectorAvailable = async (db: Tx): Promise<boolean> => {
     pgvectorCached = false;
   }
   return pgvectorCached;
+};
+
+/** Throws when pgvector is missing — LLM auto-translation requires RAG vector search. */
+export const requirePgvectorForRag = async (db: Tx): Promise<void> => {
+  if (!(await isPgvectorAvailable(db))) {
+    throw new Error(
+      'pgvector extension is not available — LLM translation requires RAG with vector search',
+    );
+  }
 };
 
 const truncate = (text: string, max = RAG_EXAMPLE_MAX_CHARS): string =>
@@ -105,13 +124,18 @@ const embedTextsForRag = async (texts: string[]): Promise<number[][]> => {
 
 const candidateKey = (source: string, translation: string): string => `${source}\0${translation}`;
 
-const toPublicExample = (row: RagCandidate): RagReferenceExample => ({
-  source: truncate(row.source),
-  translation: truncate(row.translation),
-  signature: row.signature,
-  match_method: row.match_method,
-  similarity: row.similarity,
-});
+const toPublicExample = (row: RagCandidate): RagReferenceExample => {
+  const { grup, field } = parseRecordLocation(row.signature, row.path);
+  return {
+    source: truncate(row.source),
+    translation: truncate(row.translation),
+    grup,
+    edid: row.edid,
+    field,
+    match_method: row.match_method,
+    similarity: row.similarity,
+  };
+};
 
 const RAG_STATUS_FILTER = `t.status IN ('reviewed', 'human')`;
 
@@ -132,6 +156,8 @@ const fetchTmCandidates = async (
       text: string;
       source_text: string;
       signature: string | null;
+      path: string | null;
+      edid: string | null;
     }>,
     method: RagReferenceExample['match_method'],
     similarity: number,
@@ -145,6 +171,8 @@ const fetchTmCandidates = async (
         source: row.source_text,
         translation: row.text,
         signature: row.signature,
+        path: row.path,
+        edid: row.edid,
         match_method: method,
         similarity,
       });
@@ -156,9 +184,11 @@ const fetchTmCandidates = async (
     text: string;
     source_text: string;
     signature: string | null;
+    path: string | null;
+    edid: string | null;
   }>(
     `SELECT DISTINCT ON (t.text)
-        t.text, s.text_raw AS source_text, r.signature
+        t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
      FROM strings s
      JOIN records r ON r.id = s.record_id
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
@@ -191,9 +221,11 @@ const fetchTmCandidates = async (
       text: string;
       source_text: string;
       signature: string | null;
+      path: string | null;
+      edid: string | null;
     }>(
       `SELECT DISTINCT ON (t.text)
-          t.text, s.text_raw AS source_text, r.signature
+          t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
        FROM strings s
        JOIN records r ON r.id = s.record_id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
@@ -212,10 +244,12 @@ const fetchTmCandidates = async (
       text: string;
       source_text: string;
       signature: string | null;
+      path: string | null;
+      edid: string | null;
       sim: number;
     }>(
       `SELECT DISTINCT ON (t.text)
-          t.text, s.text_raw AS source_text, r.signature,
+          t.text, s.text_raw AS source_text, r.signature, r.path, r.edid,
           similarity(s.text_norm, $1)::double precision AS sim
        FROM strings s
        JOIN records r ON r.id = s.record_id
@@ -229,7 +263,15 @@ const fetchTmCandidates = async (
     );
     for (const row of fuzzyRows) {
       add(
-        [{ text: row.text, source_text: row.source_text, signature: row.signature }],
+        [
+          {
+            text: row.text,
+            source_text: row.source_text,
+            signature: row.signature,
+            path: row.path,
+            edid: row.edid,
+          },
+        ],
         'fuzzy',
         row.sim,
       );
@@ -253,11 +295,15 @@ const fetchEmbeddingCandidates = async (
     source_text: string;
     translation_text: string;
     signature: string | null;
+    path: string | null;
+    edid: string | null;
     similarity: number;
   }>(
-    `SELECT te.source_text, te.translation_text, te.signature,
+    `SELECT te.source_text, te.translation_text, te.signature, te.path, r.edid,
             (1 - (te.embedding <=> $1::vector))::double precision AS similarity
      FROM translation_examples te
+     JOIN strings s ON s.id = te.src_string_id
+     JOIN records r ON r.id = s.record_id
      WHERE te.src_lang = $2 AND te.target_lang = $3
        AND te.src_string_id <> $4
        AND (1 - (te.embedding <=> $1::vector)) >= $5
@@ -271,6 +317,8 @@ const fetchEmbeddingCandidates = async (
     source: row.source_text,
     translation: row.translation_text,
     signature: row.signature,
+    path: row.path,
+    edid: row.edid,
     match_method: 'embedding' as const,
     similarity: row.similarity,
   }));
@@ -415,6 +463,8 @@ export const findReferenceExamples = async (
   db: Tx,
   opts: FindReferenceExamplesOpts,
 ): Promise<RagReferenceExample[]> => {
+  await requirePgvectorForRag(db);
+
   const maxExamples = opts.maxExamples ?? RAG_DEFAULTS.maxExamples;
   const minSimilarity = opts.minSimilarity ?? RAG_DEFAULTS.minSimilarity;
   const textNorm = opts.textNorm ?? normalizeForHash(opts.sourceText);
@@ -433,29 +483,25 @@ export const findReferenceExamples = async (
   const merged = new Map<string, RagCandidate>();
   for (const c of tmCandidates) merged.set(c.key, c);
 
-  if (merged.size < maxExamples && (await isPgvectorAvailable(db))) {
-    try {
-      const embedInput = buildEmbeddingInput({
-        sourceText: opts.sourceText,
-        signature: opts.signature,
-        path: opts.path,
-        context: opts.context,
-      });
-      const [queryVec] = await embedTextsForRag([embedInput]);
-      const embedCandidates = await fetchEmbeddingCandidates(
-        db,
-        queryVec,
-        opts.srcLang,
-        opts.targetLang,
-        opts.stringId,
-        maxExamples * 2,
-        minSimilarity,
-      );
-      for (const c of embedCandidates) {
-        if (!merged.has(c.key)) merged.set(c.key, c);
-      }
-    } catch (err) {
-      log.warn({ err, stringId: opts.stringId }, 'RAG embedding retrieval failed, using TM only');
+  if (merged.size < maxExamples) {
+    const embedInput = buildEmbeddingInput({
+      sourceText: opts.sourceText,
+      signature: opts.signature,
+      path: opts.path,
+      context: opts.context,
+    });
+    const [queryVec] = await embedTextsForRag([embedInput]);
+    const embedCandidates = await fetchEmbeddingCandidates(
+      db,
+      queryVec,
+      opts.srcLang,
+      opts.targetLang,
+      opts.stringId,
+      maxExamples * 2,
+      minSimilarity,
+    );
+    for (const c of embedCandidates) {
+      if (!merged.has(c.key)) merged.set(c.key, c);
     }
   }
 

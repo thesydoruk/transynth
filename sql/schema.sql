@@ -446,7 +446,6 @@ INSERT INTO project_settings(key, value) VALUES
   ('qa.end_punct_match',               'true'),
   ('qa.min_word_count',                '1'),
   ('import.skip_tes4',                 'false'),
-  ('llm.rag_enabled',                  'true'),
   ('llm.rag_max_examples',             '5'),
   ('llm.rag_min_similarity',           '0.5')
 ON CONFLICT(key) DO NOTHING;

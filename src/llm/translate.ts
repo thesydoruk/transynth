@@ -20,7 +20,9 @@ export interface LlmGlossaryEntry {
 export interface LlmReferenceExample {
   source: string;
   translation: string;
-  signature: string | null;
+  grup: string | null;
+  edid: string | null;
+  field: string | null;
   match_method: string;
   similarity: number;
 }
@@ -29,10 +31,10 @@ export interface LlmReferenceExample {
 export interface LlmTranslateItem {
   id: number;
   source: string;
-  signature: string | null;
-  path: string | null;
-  form_id: string | null;
+  grup: string | null;
   edid: string | null;
+  field: string | null;
+  form_id: string | null;
   context: string | null;
   reference_examples?: LlmReferenceExample[];
 }
@@ -91,10 +93,10 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
     items: opts.items.map((item) => ({
       id: item.id,
       source: item.source,
-      signature: item.signature,
-      path: item.path,
-      form_id: item.form_id,
+      grup: item.grup,
       edid: item.edid,
+      field: item.field,
+      form_id: item.form_id,
       context: item.context,
       ...(item.reference_examples && item.reference_examples.length > 0
         ? { reference_examples: item.reference_examples }

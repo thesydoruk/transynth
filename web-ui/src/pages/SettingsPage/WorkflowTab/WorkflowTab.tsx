@@ -20,7 +20,6 @@ type ProjectSettings = {
   'qa.end_punct_match': boolean;
   'qa.min_word_count': number;
   'import.skip_tes4': boolean;
-  'llm.rag_enabled': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
 };
@@ -32,7 +31,6 @@ const DEFAULTS: ProjectSettings = {
   'qa.end_punct_match': true,
   'qa.min_word_count': 1,
   'import.skip_tes4': false,
-  'llm.rag_enabled': true,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
 };
@@ -177,21 +175,6 @@ export const WorkflowTab = () => {
         <h2 className={parentS.sectionTitle}>{t('settings.workflow.sectionLlm')}</h2>
 
         <div className={s.settingsList}>
-          <div className={s.settingRow}>
-            <div className={s.settingInfo}>
-              <span className={s.settingLabel}>{t('settings.workflow.ragEnabled')}</span>
-              <span className={parentS.fieldNote}>{t('settings.workflow.ragEnabledDesc')}</span>
-            </div>
-            <label className={s.toggle}>
-              <input
-                type="checkbox"
-                checked={settings['llm.rag_enabled']}
-                onChange={() => handleToggle('llm.rag_enabled')}
-              />
-              <span className={s.toggleTrack} />
-            </label>
-          </div>
-
           <div className={s.settingRow}>
             <div className={s.settingInfo}>
               <span className={s.settingLabel}>{t('settings.workflow.ragMaxExamples')}</span>

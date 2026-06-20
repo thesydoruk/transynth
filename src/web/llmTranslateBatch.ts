@@ -4,12 +4,13 @@
 import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../llm/translate';
-import { fetchReferenceExamplesBatch } from '../llm/ragService';
+import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookup, cacheStore } from './cacheService';
 import { upsertTranslation } from './queries';
 import { log } from '../logger';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
+import { parseRecordLocation } from '../utils/recordLocation';
 import type { GameType } from '../types';
 
 export type TranslateBatchResult = { stringId: number; text?: string; error?: string };
@@ -42,6 +43,8 @@ type PreparedLlmItem = {
   sourceText: string;
   textNorm: string | null;
   textNormNopunct: string | null;
+  grup: string | null;
+  recordPath: string | null;
   placeholderMap: Record<string, string>;
   functionKeywordMap: Record<string, string>;
   game: string | null;
@@ -49,13 +52,15 @@ type PreparedLlmItem = {
   llmItem: LlmTranslateItem;
 };
 
-/** Translate a batch of source string IDs via LLM (with cache, RAG, glossary). */
+/** Translate a batch of source string IDs via LLM (RAG, cache, glossary). */
 export const translateStringIdsBatch = async (
   db: Tx,
   stringIds: number[],
   opts: TranslateBatchOptions,
 ): Promise<TranslateBatchResult[]> => {
   if (stringIds.length === 0) return [];
+
+  await requirePgvectorForRag(db);
 
   const { srcLang, targetLang, modGame, modName, shouldCancel, onProgress } = opts;
   const model = getTranslateModel();
@@ -66,7 +71,6 @@ export const translateStringIdsBatch = async (
   );
   const glossary: LlmGlossaryEntry[] = glossaryRows;
   const projectSettings = await getAllProjectSettings(db);
-  const ragEnabled = projectSettings['llm.rag_enabled'];
   const ragMaxExamples = Math.min(10, Math.max(1, projectSettings['llm.rag_max_examples']));
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
 
@@ -105,29 +109,22 @@ export const translateStringIdsBatch = async (
 
     const chunk = llmBuffer.splice(0, llmBuffer.length);
     try {
-      let ragByStringId = new Map<number, LlmTranslateItem['reference_examples']>();
-      if (ragEnabled) {
-        try {
-          ragByStringId = await fetchReferenceExamplesBatch(
-            db,
-            chunk.map((entry) => ({
-              stringId: entry.stringId,
-              sourceText: entry.sourceText,
-              textNorm: entry.textNorm,
-              textNormNopunct: entry.textNormNopunct,
-              signature: entry.llmItem.signature,
-              path: entry.llmItem.path,
-              context: entry.llmItem.context,
-            })),
-            srcLang,
-            targetLang,
-            ragMaxExamples,
-            ragMinSimilarity,
-          );
-        } catch (ragErr) {
-          log.warn({ ragErr }, 'RAG reference fetch failed, continuing without examples');
-        }
-      }
+      const ragByStringId = await fetchReferenceExamplesBatch(
+        db,
+        chunk.map((entry) => ({
+          stringId: entry.stringId,
+          sourceText: entry.sourceText,
+          textNorm: entry.textNorm,
+          textNormNopunct: entry.textNormNopunct,
+          signature: entry.grup,
+          path: entry.recordPath,
+          context: entry.llmItem.context,
+        })),
+        srcLang,
+        targetLang,
+        ragMaxExamples,
+        ragMinSimilarity,
+      );
 
       if (shouldCancel?.()) return;
 
@@ -211,19 +208,24 @@ export const translateStringIdsBatch = async (
       sourceText,
       textNorm: row.text_norm,
       textNormNopunct: row.text_norm_nopunct,
+      grup: parseRecordLocation(row.signature, row.path).grup,
+      recordPath: row.path,
       placeholderMap,
       functionKeywordMap,
       game: row.game ?? modGame,
       modName: row.mod_name ?? modName,
-      llmItem: {
-        id: stringId,
-        source: maskedSourceText,
-        signature: row.signature,
-        path: row.path,
-        form_id: row.formid_hex,
-        edid: row.edid,
-        context: row.context,
-      },
+      llmItem: (() => {
+        const { grup, field } = parseRecordLocation(row.signature, row.path);
+        return {
+          id: stringId,
+          source: maskedSourceText,
+          grup,
+          edid: row.edid,
+          field,
+          form_id: row.formid_hex,
+          context: row.context,
+        };
+      })(),
     });
 
     if (llmBuffer.length >= CONFIG.batchSize) {

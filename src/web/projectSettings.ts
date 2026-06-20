@@ -32,9 +32,7 @@ export type ProjectSettingKey =
   | 'qa.min_word_count'
   /** When true, TES4 header records are excluded during ESP/ESM file import. */
   | 'import.skip_tes4'
-  /** When true, LLM translation retrieves similar reviewed translations as few-shot context. */
-  | 'llm.rag_enabled'
-  /** Max reference examples per string sent to the LLM (1–10). */
+  /** Max reference examples per string sent to the LLM (1–10). RAG is always required. */
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
   | 'llm.rag_min_similarity';
@@ -47,7 +45,6 @@ export type ProjectSettings = {
   'qa.end_punct_match': boolean;
   'qa.min_word_count': number;
   'import.skip_tes4': boolean;
-  'llm.rag_enabled': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
 };
@@ -65,7 +62,6 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'qa.end_punct_match': true,
   'qa.min_word_count': 1,
   'import.skip_tes4': false,
-  'llm.rag_enabled': true,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
 };
