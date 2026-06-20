@@ -14,6 +14,7 @@ import { extractProtectedTokens } from '../utils/placeholders';
 import { assertTransition, isValidTranslationStatus } from './statusMachine';
 import type { TranslationStatus, StatusActor } from './statusMachine';
 import { scheduleRagSync } from './ragHooks';
+import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImportBulk';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
@@ -1628,6 +1629,9 @@ export const applyImportedModStringsAsTranslations = async (
   );
 };
 
+/** DB write and progress report interval (rows) for apply-imported translation copy. */
+export const APPLY_IMPORTED_BATCH_SIZE = 500;
+
 /** Count target mod source strings eligible for imported translation apply. */
 export const countApplyImportedTargetStrings = async (
   db: Tx,
@@ -1811,12 +1815,13 @@ export const applyImportedRowsAsTranslations = async (
     }
   }
 
-  // Step 4: Upsert translations by identity match inside one transaction.
+  // Step 4: Upsert translations by identity match in batches.
   let applied = 0;
   let skipped = 0;
   let unmatched = 0;
   let empty = 0;
   let processed = 0;
+  let pendingApplies: BulkTranslationRow[] = [];
   const matchCounters: Record<string, number> = {
     identity: 0,
     identity_ranked: 0,
@@ -1902,10 +1907,26 @@ export const applyImportedRowsAsTranslations = async (
     return null;
   };
 
+  const flushPendingApplies = async (): Promise<void> => {
+    if (pendingApplies.length === 0) return;
+    const flushed = await bulkUpsertImportTranslations(
+      db,
+      pendingApplies,
+      targetLang,
+      provenance,
+      APPLY_IMPORTED_BATCH_SIZE,
+      'draft',
+    );
+    applied += flushed;
+    pendingApplies = [];
+  };
+
   const reportProgress = async () => {
     if (
       onProgress &&
-      (processed % 50 === 0 || processed === targetRows.length || shouldCancel?.())
+      (processed % APPLY_IMPORTED_BATCH_SIZE === 0 ||
+        processed === targetRows.length ||
+        shouldCancel?.())
     ) {
       await onProgress(processed, targetRows.length, { applied, skipped, unmatched, empty });
     }
@@ -1920,7 +1941,10 @@ export const applyImportedRowsAsTranslations = async (
     edid: string | null;
     identity_rank: number;
   }>) {
-    if (shouldCancel?.()) break;
+    if (shouldCancel?.()) {
+      await flushPendingApplies();
+      break;
+    }
 
     if (alreadyTranslated.has(row.string_id)) {
       skipped += 1;
@@ -1947,11 +1971,15 @@ export const applyImportedRowsAsTranslations = async (
 
     matchCounters[candidate.method] += 1;
 
-    await upsertTranslation(db, row.string_id, text, 'draft', targetLang, provenance);
-    applied += 1;
+    pendingApplies.push({ srcStringId: row.string_id, text });
+    if (pendingApplies.length >= APPLY_IMPORTED_BATCH_SIZE) {
+      await flushPendingApplies();
+    }
     processed += 1;
     await reportProgress();
   }
+
+  await flushPendingApplies();
 
   const cancelled = shouldCancel?.() === true && processed < targetRows.length;
 

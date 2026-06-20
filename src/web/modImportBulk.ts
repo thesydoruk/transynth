@@ -182,6 +182,7 @@ export const bulkUpsertImportTranslations = async (
   targetLang: string,
   provenance: string,
   batchSize = 1000,
+  status = 'reviewed',
 ): Promise<number> => {
   const deduped = dedupeBulkTranslationRows(items);
   let total = 0;
@@ -197,9 +198,9 @@ export const bulkUpsertImportTranslations = async (
       `INSERT INTO translations(
          src_string_id, target_lang, text, status, confidence, provenance, user_id, updated_at
        )
-       SELECT s, $3, t, 'reviewed', 1.0, $4, NULL, NOW()
+       SELECT s, $3, t, $5, 1.0, $4, NULL, NOW()
        FROM UNNEST($1::int[], $2::text[]) AS u(s, t)`,
-      [stringIds, texts, targetLang, provenance],
+      [stringIds, texts, targetLang, provenance, status],
     );
     total += part.length;
   }
