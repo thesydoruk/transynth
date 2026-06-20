@@ -292,6 +292,28 @@ CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);
+
+-- Mod editor string grid: join path (records.mod_id + strings.lang)
+CREATE INDEX IF NOT EXISTS idx_strings_record_lang ON strings(record_id, lang);
+
+-- Mod editor sort (B-tree; mod_id is always filtered in listStrings)
+CREATE INDEX IF NOT EXISTS idx_records_mod_signature_path ON records(mod_id, signature, path);
+CREATE INDEX IF NOT EXISTS idx_records_mod_formid ON records(mod_id, formid_hex);
+CREATE INDEX IF NOT EXISTS idx_records_mod_edid ON records(mod_id, edid);
+CREATE INDEX IF NOT EXISTS idx_records_mod_path ON records(mod_id, path);
+DROP INDEX IF EXISTS idx_records_mod_signature;
+-- confidence is numeric; full text columns exceed btree row-size limits for sort indexes
+CREATE INDEX IF NOT EXISTS idx_translations_lang_confidence ON translations(target_lang, confidence);
+
+-- Mod editor column filters (ILIKE substring search via pg_trgm)
+CREATE INDEX IF NOT EXISTS idx_records_trgm_signature ON records USING GIN (signature gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_records_trgm_formid ON records USING GIN (formid_hex gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_records_trgm_edid ON records USING GIN (edid gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_records_trgm_path ON records USING GIN (path gin_trgm_ops);
+-- Source / original text (strings.text_raw) and translation text (translations.text)
+CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_raw ON strings USING GIN (text_raw gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_translations_trgm_text ON translations USING GIN (text gin_trgm_ops);
+
 CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);
