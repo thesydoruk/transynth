@@ -5,7 +5,6 @@
  */
 import { MCM_LOCALE_ALIASES } from '../bethesda/parsers/mcmDiscovery';
 import { chatWithFallback } from './index';
-import { log } from '../logger';
 import type { GameType } from '../types';
 
 /** Bethesda / project locale codes the LLM may return. */
@@ -203,16 +202,23 @@ export const detectLocaleWithLlm = async (
   }
 
   const expectedSampleIds = opts.samples.map((s) => s.id);
-  log.debug(
-    `detectLocaleWithLlm: mod=${opts.modName ?? '?'}, samples=${opts.samples.length}, expected=${opts.expectedLang}`,
-  );
-
   const allowedLanguages = opts.allowedLanguages ?? LOCALE_DETECT_ALLOWED_LANGS;
   const payload = buildLocaleDetectUserPayload({ ...opts, allowedLanguages });
   const text = await chatWithFallback({
     model: opts.model,
     temperature: 0,
     responseFormat: { type: 'json_object' },
+    logMeta: {
+      operation: 'locale_detect',
+      context: {
+        sampleIds: expectedSampleIds,
+        sampleCount: expectedSampleIds.length,
+        expectedLang: opts.expectedLang,
+        storedLang: opts.storedLang,
+        modName: opts.modName ?? null,
+        fileName: opts.fileName ?? null,
+      },
+    },
     messages: [
       { role: 'system', content: LOCALE_DETECT_SYSTEM_PROMPT },
       { role: 'user', content: JSON.stringify(payload) },

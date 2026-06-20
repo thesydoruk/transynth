@@ -9,7 +9,7 @@
 import type { Tx } from '../db';
 import { getEmbedModel } from '../config';
 import { embedMany } from './embed';
-import { log } from '../logger';
+import { logRag } from '../logging/loggers';
 import {
   RAG_EMBED_DIMENSIONS,
   RAG_ELIGIBLE_STATUSES,
@@ -84,10 +84,12 @@ export const isPgvectorAvailable = async (db: Tx): Promise<boolean> => {
 /** Throws when pgvector is missing — LLM auto-translation requires RAG vector search. */
 export const requirePgvectorForRag = async (db: Tx): Promise<void> => {
   if (!(await isPgvectorAvailable(db))) {
+    logRag.error('pgvector extension is not available — LLM translation requires RAG');
     throw new Error(
       'pgvector extension is not available — LLM translation requires RAG with vector search',
     );
   }
+  logRag.debug('pgvector available');
 };
 
 const truncate = (text: string, max = RAG_EXAMPLE_MAX_CHARS): string =>
@@ -118,7 +120,13 @@ const vectorLiteral = (vec: number[]): string => `[${vec.join(',')}]`;
 
 const embedTextsForRag = async (texts: string[]): Promise<number[][]> => {
   const model = getEmbedModel();
-  const vectors = await embedMany(texts, model, { dimensions: RAG_EMBED_DIMENSIONS });
+  const vectors = await embedMany(texts, model, {
+    dimensions: RAG_EMBED_DIMENSIONS,
+    logMeta: {
+      operation: 'rag_embed',
+      context: { textCount: texts.length },
+    },
+  });
   return vectors.map(normalizeEmbedding);
 };
 
@@ -379,7 +387,7 @@ export const syncTranslationExample = async (db: Tx, translationId: number): Pro
   }
 
   if (!(await isPgvectorAvailable(db))) {
-    log.warn('RAG sync skipped: pgvector extension is not available');
+    logRag.warn('RAG sync skipped: pgvector extension is not available', { translationId });
     return;
   }
 
@@ -470,6 +478,14 @@ export const findReferenceExamples = async (
   const textNorm = opts.textNorm ?? normalizeForHash(opts.sourceText);
   const textNormNopunct = opts.textNormNopunct ?? null;
 
+  logRag.debug('findReferenceExamples start', {
+    stringId: opts.stringId,
+    maxExamples,
+    minSimilarity,
+    srcLang: opts.srcLang,
+    targetLang: opts.targetLang,
+  });
+
   const tmCandidates = await fetchTmCandidates(
     db,
     opts.stringId,
@@ -505,9 +521,19 @@ export const findReferenceExamples = async (
     }
   }
 
-  return rankCandidates([...merged.values()])
+  const examples = rankCandidates([...merged.values()])
     .slice(0, maxExamples)
     .map(toPublicExample);
+
+  logRag.debug('findReferenceExamples done', {
+    stringId: opts.stringId,
+    tmCount: tmCandidates.length,
+    mergedCount: merged.size,
+    returned: examples.length,
+    methods: examples.map((e) => e.match_method),
+  });
+
+  return examples;
 };
 
 export type FetchReferenceExamplesBatchItem = {
@@ -531,6 +557,15 @@ export const fetchReferenceExamplesBatch = async (
   maxExamples: number,
   minSimilarity: number,
 ): Promise<Map<number, RagReferenceExample[]>> => {
+  logRag.debug('fetchReferenceExamplesBatch start', {
+    itemCount: items.length,
+    stringIds: items.map((i) => i.stringId),
+    maxExamples,
+    minSimilarity,
+    srcLang,
+    targetLang,
+  });
+
   const out = new Map<number, RagReferenceExample[]>();
   await Promise.all(
     items.map(async (item) => {
@@ -544,6 +579,12 @@ export const fetchReferenceExamplesBatch = async (
       out.set(item.stringId, examples);
     }),
   );
+
+  logRag.debug('fetchReferenceExamplesBatch done', {
+    itemCount: items.length,
+    withExamples: [...out.values()].filter((rows) => rows.length > 0).length,
+  });
+
   return out;
 };
 
@@ -579,7 +620,7 @@ export const reindexAllTranslationExamples = async (
       await syncTranslationExample(db, id);
       indexed++;
     } catch (err) {
-      log.error({ err, translationId: id }, 'RAG reindex failed for translation');
+      logRag.error('RAG reindex failed for translation', { err, translationId: id });
       failed++;
     }
     if (onProgress) onProgress(i + 1, total);

@@ -21,7 +21,7 @@ import multipart from '@fastify/multipart';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { openDb, closeDb } from '../db';
-import { log } from '../logger';
+import { log, closeLogStreams } from '../logger';
 import { CONFIG } from '../config';
 import { ensureDataDirs } from '../paths';
 import { ensureDefaultAdmin, cleanExpiredSessions } from './authService';
@@ -167,7 +167,7 @@ const shutdown = async () => {
   clearInterval(sessionCleanup);
   await app.close();
   await closeDb();
-  log.close();
+  closeLogStreams();
   process.exit(0);
 };
 process.on('SIGINT', shutdown);

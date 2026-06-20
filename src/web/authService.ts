@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import type pg from 'pg';
 import { CONFIG } from '../config';
-import { log } from '../logger';
+import { logAuth } from '../logging/loggers';
 
 /** Roles supported by the system, ordered by privilege level. */
 export type UserRole = 'admin' | 'reviewer' | 'translator';
@@ -80,11 +80,12 @@ export const verifyPassword = (password: string, storedHash: string): Promise<bo
 export const createSession = async (db: pg.Pool, userId: number): Promise<string> => {
   const token = crypto.randomBytes(64).toString('hex');
   const expiresAt = new Date(Date.now() + CONFIG.sessionLifetimeHours * 3600_000);
-  await db.query(
-    'INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
-    [userId, token, expiresAt.toISOString()],
-  );
-  log.info(`Session created for user ${userId}`);
+  await db.query('INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, $3)', [
+    userId,
+    token,
+    expiresAt.toISOString(),
+  ]);
+  logAuth.info(`Session created for user ${userId}`);
   return token;
 };
 
@@ -163,11 +164,11 @@ export const ensureDefaultAdmin = async (db: pg.Pool): Promise<void> => {
        VALUES (1, 'admin', 'Administrator', $1, 'admin')`,
       [hash],
     );
-    log.info('Default admin user created');
+    logAuth.info('Default admin user created');
   } else if (rows[0].password_hash === '__PLACEHOLDER__') {
     const hash = await hashPassword('admin');
     await db.query('UPDATE users SET password_hash = $1 WHERE id = 1', [hash]);
-    log.info('Default admin password hash initialized');
+    logAuth.info('Default admin password hash initialized');
   }
 };
 
@@ -176,7 +177,9 @@ export const ensureDefaultAdmin = async (db: pg.Pool): Promise<void> => {
  * Returns the user row on success, undefined on failure.
  */
 export const authenticateUser = async (
-  db: pg.Pool, username: string, password: string,
+  db: pg.Pool,
+  username: string,
+  password: string,
 ): Promise<UserRow | undefined> => {
   const { rows } = await db.query(
     'SELECT id, username, display_name, role, is_active, created_at, updated_at, password_hash FROM users WHERE username = $1',
@@ -215,7 +218,11 @@ export const listUsers = async (db: pg.Pool): Promise<UserRow[]> => {
  * @returns The newly created user row.
  */
 export const createUser = async (
-  db: pg.Pool, username: string, displayName: string, password: string, role: UserRole,
+  db: pg.Pool,
+  username: string,
+  displayName: string,
+  password: string,
+  role: UserRole,
 ): Promise<UserRow> => {
   const hash = await hashPassword(password);
   const { rows } = await db.query<UserRow>(
@@ -224,7 +231,7 @@ export const createUser = async (
      RETURNING id, username, display_name, role, is_active, created_at, updated_at`,
     [username, displayName, hash, role],
   );
-  log.info(`User created: ${username} (role: ${role})`);
+  logAuth.info(`User created: ${username} (role: ${role})`);
   return rows[0];
 };
 
@@ -233,15 +240,25 @@ export const createUser = async (
  * Does NOT change the password — use changePassword() for that.
  */
 export const updateUser = async (
-  db: pg.Pool, userId: number,
+  db: pg.Pool,
+  userId: number,
   updates: { display_name?: string; role?: UserRole; is_active?: boolean },
 ): Promise<UserRow | undefined> => {
   const sets: string[] = [];
   const vals: unknown[] = [];
   let idx = 1;
-  if (updates.display_name !== undefined) { sets.push(`display_name = $${idx++}`); vals.push(updates.display_name); }
-  if (updates.role !== undefined) { sets.push(`role = $${idx++}`); vals.push(updates.role); }
-  if (updates.is_active !== undefined) { sets.push(`is_active = $${idx++}`); vals.push(updates.is_active); }
+  if (updates.display_name !== undefined) {
+    sets.push(`display_name = $${idx++}`);
+    vals.push(updates.display_name);
+  }
+  if (updates.role !== undefined) {
+    sets.push(`role = $${idx++}`);
+    vals.push(updates.role);
+  }
+  if (updates.is_active !== undefined) {
+    sets.push(`is_active = $${idx++}`);
+    vals.push(updates.is_active);
+  }
   if (sets.length === 0) return undefined;
   sets.push(`updated_at = NOW()`);
   vals.push(userId);
@@ -258,11 +275,16 @@ export const updateUser = async (
  * All existing sessions for this user are invalidated.
  */
 export const changePassword = async (
-  db: pg.Pool, userId: number, newPassword: string,
+  db: pg.Pool,
+  userId: number,
+  newPassword: string,
 ): Promise<void> => {
   const hash = await hashPassword(newPassword);
-  await db.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [hash, userId]);
+  await db.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [
+    hash,
+    userId,
+  ]);
   // Invalidate all sessions for this user
   await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
-  log.info(`Password changed for user ${userId}, all sessions invalidated`);
+  logAuth.info(`Password changed for user ${userId}, all sessions invalidated`);
 };

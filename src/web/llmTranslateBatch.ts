@@ -8,7 +8,7 @@ import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragSe
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookup, cacheStore } from './cacheService';
 import { upsertTranslation } from './queries';
-import { log } from '../logger';
+import { logTranslate } from '../logging/loggers';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { parseRecordLocation } from '../utils/recordLocation';
 import type { GameType } from '../types';
@@ -60,9 +60,18 @@ export const translateStringIdsBatch = async (
 ): Promise<TranslateBatchResult[]> => {
   if (stringIds.length === 0) return [];
 
+  const { srcLang, targetLang, modGame, modName, shouldCancel, onProgress } = opts;
+
+  logTranslate.info('batch start', {
+    stringCount: stringIds.length,
+    srcLang,
+    targetLang,
+    modGame: modGame ?? null,
+    modName: modName ?? null,
+  });
+
   await requirePgvectorForRag(db);
 
-  const { srcLang, targetLang, modGame, modName, shouldCancel, onProgress } = opts;
   const model = getTranslateModel();
 
   const { rows: glossaryRows } = await db.query<{ term: string; translation: string | null }>(
@@ -108,6 +117,10 @@ export const translateStringIdsBatch = async (
     if (llmBuffer.length === 0 || shouldCancel?.()) return;
 
     const chunk = llmBuffer.splice(0, llmBuffer.length);
+    logTranslate.debug('LLM chunk flush', {
+      chunkSize: chunk.length,
+      stringIds: chunk.map((e) => e.stringId),
+    });
     try {
       const ragByStringId = await fetchReferenceExamplesBatch(
         db,
@@ -159,7 +172,10 @@ export const translateStringIdsBatch = async (
         await finishResult(entry.stringId, translated);
       }
     } catch (err) {
-      log.error({ err }, 'LLM translate failed for batch');
+      logTranslate.error('LLM translate failed for batch', {
+        err,
+        stringIds: chunk.map((e) => e.stringId),
+      });
       const message = err instanceof Error ? err.message : String(err);
       for (const entry of chunk) {
         failResult(entry.stringId, message);
@@ -194,11 +210,13 @@ export const translateStringIdsBatch = async (
     try {
       const cached = await cacheLookup(db, sourceText, srcLang, targetLang, model);
       if (cached) {
+        logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
         await finishResult(stringId, cached.translated);
         continue;
       }
+      logTranslate.trace('cache miss', { stringId, srcLang, targetLang, model });
     } catch (err) {
-      log.error({ err, stringId }, 'LLM cache lookup failed');
+      logTranslate.error('cache lookup failed', { err, stringId });
       failResult(stringId, err instanceof Error ? err.message : String(err));
       continue;
     }
@@ -234,5 +252,10 @@ export const translateStringIdsBatch = async (
   }
 
   await flushLlmBuffer();
+
+  const ok = results.filter((r) => r.text).length;
+  const failed = results.filter((r) => r.error).length;
+  logTranslate.info('batch done', { total: stringIds.length, ok, failed });
+
   return results;
 };

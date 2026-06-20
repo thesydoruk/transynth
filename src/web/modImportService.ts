@@ -35,7 +35,7 @@ import {
   type Tx,
 } from '../db';
 import { sha1Hex } from '../utils/hash';
-import { log } from '../logger';
+import { logImport } from '../logging/loggers';
 import { EspReader, type EspStringRow } from '../bethesda/esp';
 import { BsaReader, isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../bethesda/archives';
 import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
@@ -976,7 +976,7 @@ const loadLocalesForGame = (
       const locales = loadLocalesFromBA2(ba2Path);
       return locales.size > 0 ? locales : null;
     } catch (err) {
-      log.warn(
+      logImport.warn(
         `STRINGS: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
       );
       return null;
@@ -1115,7 +1115,7 @@ const collectMcmLocalesForMod = (
         for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
       }
     } catch (err) {
-      log.warn(
+      logImport.warn(
         `MCM: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
       );
     }
@@ -1277,7 +1277,7 @@ const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
     }
   }
 
-  log.debug(`Voice speaker map: ${map.size} entries from ${voiceRoot}`);
+  logImport.debug(`Voice speaker map: ${map.size} entries from ${voiceRoot}`);
   return map;
 };
 
@@ -1352,7 +1352,7 @@ const loadPexStringsFromBA2 = (ba2Path: string): Map<string, string[]> => {
       const scriptName = info.sourceFile.replace(/\.psc$/i, '') || entry.name;
       result.set(scriptName, strings);
     } catch (err) {
-      log.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
+      logImport.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -1386,7 +1386,9 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => 
       const scriptName = info.sourceFile.replace(/\.psc$/i, '') || file.replace(/\.pex$/i, '');
       result.set(scriptName, strings);
     } catch (err) {
-      log.debug(`PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`);
+      logImport.debug(
+        `PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`,
+      );
     }
   }
 
@@ -1414,7 +1416,7 @@ const collectPexStrings = (espPath: string): Map<string, string[]> => {
         // If already present, BA2 entry wins only if loose files not yet merged
       }
     } catch (err) {
-      log.warn(
+      logImport.warn(
         `PEX: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
       );
     }
@@ -1838,7 +1840,7 @@ const convertImportedStringsToTranslations = async (
 
     const locales = (localesResult.rows as { lang: string }[]).map((r) => r.lang).filter((l) => l);
     if (locales.length === 0) {
-      log.info(`[ModImport] No strings found for mod ${modId}; skipping conversion`);
+      logImport.info(`[ModImport] No strings found for mod ${modId}; skipping conversion`);
       return;
     }
 
@@ -1866,7 +1868,7 @@ const convertImportedStringsToTranslations = async (
       throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
     }
 
-    log.info(
+    logImport.info(
       `[ModImport] Converting ${locales.length} locale(s) (${locales.join(', ')}) to translations for mod ${modId}; ` +
         `resolved src locale="${resolvedSourceLocale}"` +
         (isLocalized ? ' [localized]' : ' [non-localized]'),
@@ -1885,7 +1887,9 @@ const convertImportedStringsToTranslations = async (
           locale,
           'import_self_translation',
         );
-        log.info(`[ModImport] Created ${created} self-translations for source locale ${locale}`);
+        logImport.info(
+          `[ModImport] Created ${created} self-translations for source locale ${locale}`,
+        );
         continue;
       }
 
@@ -1917,7 +1921,7 @@ const convertImportedStringsToTranslations = async (
         'import_self_translation',
       );
 
-      log.info(
+      logImport.info(
         `[ModImport] Created ${createdForLocale} translations for locale ${locale}` +
           (skippedWithoutSource > 0
             ? `; skipped ${skippedWithoutSource} rows without source pair`
@@ -1932,12 +1936,12 @@ const convertImportedStringsToTranslations = async (
         `DELETE FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang != $2`,
         [modId, resolvedSourceLocale],
       );
-      log.info(
+      logImport.info(
         `[ModImport] Deleted ${deleteNonSrcResult.rowCount} non-source language strings (kept ${resolvedSourceLocale})`,
       );
     }
   } catch (err) {
-    log.error(
+    logImport.error(
       `[ModImport] Error converting ${
         isLocalized ? 'localized' : 'non-localized'
       } strings to translations: ${err instanceof Error ? err.message : String(err)}`,
@@ -1982,7 +1986,7 @@ export const runModImport = async (
     releaseClient = () => client.release();
   }
 
-  log.info(
+  logImport.info(
     `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records}`,
   );
 
@@ -1999,7 +2003,7 @@ export const runModImport = async (
         nexusName: job.nexus_mod_name ?? undefined,
       });
       if (job.nexus_mod_id) {
-        log.info(
+        logImport.info(
           `[Mod Import #${job.id}] Nexus link: mod ${job.nexus_mod_id}${job.nexus_mod_name ? ` (${job.nexus_mod_name})` : ''}`,
         );
       }
@@ -2040,7 +2044,7 @@ export const runModImport = async (
       : new Map();
 
     if (esp.info.isLocalized && localesMap.size === 0) {
-      log.warn(
+      logImport.warn(
         `[Mod Import #${job.id}] Localized plugin without STRINGS files; importing inline strings as "${pluginStringLang}"`,
       );
     }
@@ -2106,7 +2110,9 @@ export const runModImport = async (
         inTx = false;
         if (progressTotal > 0) {
           const pct = ((imported / progressTotal) * 100).toFixed(1);
-          log.info(`[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`);
+          logImport.info(
+            `[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`,
+          );
           onProgress?.(imported, progressTotal);
         }
       } catch (err) {
@@ -2169,9 +2175,11 @@ export const runModImport = async (
       await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [totalAll, job.id]);
 
       if (importSingleLocaleMode) {
-        log.info(`[Mod Import #${job.id}] Single-locale mode: importing only "${selectedLocale}"`);
+        logImport.info(
+          `[Mod Import #${job.id}] Single-locale mode: importing only "${selectedLocale}"`,
+        );
       } else {
-        log.info(
+        logImport.info(
           `[Mod Import #${job.id}] All-localizations mode: importing ${work.length} locale(s): ${work.map((w) => w.locale).join(', ')}`,
         );
       }
@@ -2185,13 +2193,13 @@ export const runModImport = async (
           if (state.cancel) {
             await discardOpenImportBatch();
             await markFailed(db, job.id, imported);
-            log.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
+            logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
             break outer;
           }
           if (state.pause) {
             await discardOpenImportBatch();
             await markPaused(db, job.id, imported);
-            log.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
+            logImport.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
             break outer;
           }
 
@@ -2209,7 +2217,7 @@ export const runModImport = async (
       const csvRows = buildCsvRows(espRows, null);
 
       if (csvRows.length === 0 && espRows.some((row) => row.isLstringId)) {
-        log.warn(
+        logImport.warn(
           `[Mod Import #${job.id}] Localized plugin "${job.file_name}" has ${espRows.length} string refs but none resolved to text. ` +
             'Ensure STRINGS files exist under Strings\\ or in a companion BA2 (vanilla FO4 base game: "Fallout4 - Interface.ba2").',
         );
@@ -2221,13 +2229,13 @@ export const runModImport = async (
         if (state.cancel) {
           await discardOpenImportBatch();
           await markFailed(db, job.id, imported);
-          log.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
           break;
         }
         if (state.pause) {
           await discardOpenImportBatch();
           await markPaused(db, job.id, imported);
-          log.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
+          logImport.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
           break;
         }
 
@@ -2253,7 +2261,7 @@ export const runModImport = async (
 
       if (resolvedMcmSource) {
         const { resolvedKey: mcmSourceLocale, value: sourceMcmMap } = resolvedMcmSource;
-        log.info(
+        logImport.info(
           `[Mod Import #${job.id}] MCM: ${mcmLocales.size} locale file(s); using "${mcmSourceLocale}" text stored as lang="${pluginStringLang}"`,
         );
 
@@ -2296,17 +2304,19 @@ export const runModImport = async (
           }
           const localeCount = await bulkUpsertImportTranslations(db, items, locale, 'mcm');
           if (localeCount > 0) {
-            log.info(`[Mod Import #${job.id}] MCM locale "${locale}": ${localeCount} translations`);
+            logImport.info(
+              `[Mod Import #${job.id}] MCM locale "${locale}": ${localeCount} translations`,
+            );
           }
         }
 
-        log.info(
+        logImport.info(
           `[Mod Import #${job.id}] MCM source locale "${mcmSourceLocale}": ${mcmRows.length} strings`,
         );
       } else if (mcmLocales.size > 0) {
-        log.warn(`[Mod Import #${job.id}] MCM files found but no usable source locale`);
+        logImport.warn(`[Mod Import #${job.id}] MCM files found but no usable source locale`);
       } else {
-        log.debug(`[Mod Import #${job.id}] No MCM translation files found`);
+        logImport.debug(`[Mod Import #${job.id}] No MCM translation files found`);
       }
     }
 
@@ -2318,7 +2328,7 @@ export const runModImport = async (
       const pexMap = collectPexStrings(espPath);
       if (pexMap.size > 0) {
         const pexRows = buildPexCsvRows(pexMap);
-        log.info(
+        logImport.info(
           `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`,
         );
         if (pexRows.length > 0) {
@@ -2328,7 +2338,7 @@ export const runModImport = async (
           await flushPendingImportBatch(pexRows.length);
         }
       } else {
-        log.debug(`[Mod Import #${job.id}] No PEX scripts with translatable strings found`);
+        logImport.debug(`[Mod Import #${job.id}] No PEX scripts with translatable strings found`);
       }
     }
 
@@ -2354,7 +2364,7 @@ export const runModImport = async (
         }
         // else: localized mod in single-locale mode — skip conversion (imported as regular source strings)
       } catch (err) {
-        log.error(
+        logImport.error(
           `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,
         );
         throw err;
@@ -2383,12 +2393,12 @@ export const runModImport = async (
             scenesImported++;
           }
           await db.query('COMMIT');
-          log.info(
+          logImport.info(
             `[Mod Import #${job.id}] Imported ${scenesImported} scene(s) with dialog phases`,
           );
         }
       } catch (err) {
-        log.warn(
+        logImport.warn(
           `[Mod Import #${job.id}] Scene import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
         );
         try {
@@ -2400,12 +2410,12 @@ export const runModImport = async (
 
       await markDone(db, job.id, imported);
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      log.info(`[Mod Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+      logImport.info(`[Mod Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    log.error(`[Mod Import #${job.id}] Failed: ${errMsg}`);
+    logImport.error(`[Mod Import #${job.id}] Failed: ${errMsg}`);
     await markFailed(db, job.id, job.imported_records);
     throw err;
   } finally {

@@ -9,6 +9,7 @@
 
 import type { Tx } from '../db';
 import { normalizeForHash } from '../utils/textNorm';
+import { logCache } from '../logging/loggers';
 
 /** Result of a cache lookup — null when miss */
 export interface CacheHit {
@@ -39,7 +40,13 @@ export const cacheLookup = async (
      LIMIT 1`,
     [norm, srcLang, tgtLang, model],
   );
-  return rows[0] ? { translated: rows[0].translated } : null;
+  const hit = rows[0] ? { translated: rows[0].translated } : null;
+  if (hit) {
+    logCache.trace('lookup hit', { srcLang, tgtLang, model, textLen: raw.length });
+  } else {
+    logCache.trace('lookup miss', { srcLang, tgtLang, model, textLen: raw.length });
+  }
+  return hit;
 };
 
 /**
@@ -70,4 +77,11 @@ export const cacheStore = async (
      ON CONFLICT (text_norm, src_lang, tgt_lang, model) DO UPDATE SET translated = EXCLUDED.translated, created_at = NOW()`,
     [norm, srcLang, tgtLang, model, translated],
   );
+  logCache.debug('store', {
+    srcLang,
+    tgtLang,
+    model,
+    textLen: raw.length,
+    translationLen: translated.length,
+  });
 };

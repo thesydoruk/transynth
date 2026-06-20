@@ -5,7 +5,7 @@
  */
 import type { Tx } from '../db';
 import { translateStringIdsBatch } from './llmTranslateBatch';
-import { log } from '../logger';
+import { logTranslate } from '../logging/loggers';
 
 /** String IDs fetched from the database per pagination step. */
 export const LLM_TRANSLATE_DB_CHUNK_SIZE = 100;
@@ -171,6 +171,15 @@ export const runLlmTranslateJob = async (
   };
   activeJobs.set(jobId, job);
 
+  logTranslate.info('job started', {
+    jobId,
+    modId: opts.modId,
+    total,
+    srcLang: opts.srcLang,
+    targetLang: opts.targetLang,
+    modName: opts.modName ?? null,
+  });
+
   onEvent({ type: 'started', jobId, total });
 
   let dbOffset = 0;
@@ -216,7 +225,7 @@ export const runLlmTranslateJob = async (
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        log.error({ err, jobId, modId: opts.modId }, 'LLM translate chunk failed');
+        logTranslate.error('job chunk failed', { err, jobId, modId: opts.modId });
         job.status = 'failed';
         job.error = message;
         onEvent({ type: 'error', error: message });
@@ -226,6 +235,7 @@ export const runLlmTranslateJob = async (
 
     if (job.cancel) {
       job.status = 'cancelled';
+      logTranslate.info('job cancelled', { jobId, done: job.done, total: job.total });
       onEvent({
         type: 'cancelled',
         done: job.done,
@@ -234,6 +244,7 @@ export const runLlmTranslateJob = async (
       });
     } else {
       job.status = 'completed';
+      logTranslate.info('job completed', { jobId, done: job.done, total: job.total });
       onEvent({
         type: 'done',
         done: job.done,
@@ -245,6 +256,7 @@ export const runLlmTranslateJob = async (
     const message = err instanceof Error ? err.message : String(err);
     job.status = 'failed';
     job.error = message;
+    logTranslate.error('job failed', { jobId, error: message, err });
     onEvent({ type: 'error', error: message });
   }
 

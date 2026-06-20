@@ -8,7 +8,6 @@ import OpenAI from 'openai';
 import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
-import { log } from '../logger';
 
 /**
  * LLM provider that delegates all inference to the OpenAI API.
@@ -19,7 +18,6 @@ export class OpenAIProvider implements LLMProvider {
 
   constructor() {
     this.client = new OpenAI({ apiKey: CONFIG.openaiApiKey });
-    log.debug('OpenAI provider initialised');
   }
 
   /**
@@ -29,7 +27,6 @@ export class OpenAIProvider implements LLMProvider {
    * @returns The model's plain-text reply.
    */
   async chat(opts: ChatOptions): Promise<string> {
-    log.debug(`OpenAI chat: model=${opts.model}, messages=${opts.messages.length}`);
     const resp = await withRetry(() =>
       this.client.chat.completions.create({
         model: opts.model,
@@ -49,7 +46,6 @@ export class OpenAIProvider implements LLMProvider {
    * @returns One float vector per input text.
    */
   async embed(texts: string[], model: string, options?: EmbedOptions): Promise<number[][]> {
-    log.debug(`OpenAI embed: model=${model}, texts=${texts.length}`);
     const resp = await withRetry(() =>
       this.client.embeddings.create({
         model,

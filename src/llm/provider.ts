@@ -24,12 +24,17 @@ export interface ChatMessage {
  * @field messages       - Ordered conversation turns.
  * @field temperature    - Sampling temperature (default `0` for deterministic output).
  * @field responseFormat - When `{ type: 'json_object' }`, instructs the model to return valid JSON.
+ * @field logMeta        - Optional label for structured debug logs (operation name, context).
  */
 export interface ChatOptions {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   responseFormat?: { type: 'json_object' };
+  logMeta?: {
+    operation: string;
+    context?: Record<string, unknown>;
+  };
 }
 
 export interface EmbedOptions {

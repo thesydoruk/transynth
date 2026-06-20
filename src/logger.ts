@@ -17,91 +17,156 @@ const resolveLevel = (): LogLevel => {
 const currentLevel = resolveLevel();
 const levelNum = LEVELS[currentLevel];
 
-const enabled = (lvl: LogLevel): boolean => {
-  return LEVELS[lvl] <= levelNum;
-};
+const enabled = (lvl: LogLevel): boolean => LEVELS[lvl] <= levelNum;
 
 // ── File transport ───────────────────────────────────────────────────────────
 const logDir = PATHS.logs;
 
-const ensureLogDir = (): void => {
-  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+/** Subsystems that also get a dedicated daily log file under logs/<name>/. */
+const SUBSYSTEMS_WITH_OWN_FILE = new Set([
+  'llm',
+  'rag',
+  'translate',
+  'verify',
+  'locale',
+  'import',
+  'cache',
+  'embed',
+  'auth',
+  'api',
+]);
+
+const ensureLogDir = (dir: string): void => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
-let _logStream: fs.WriteStream | null = null;
-let _streamDate = '';
+type StreamKey = string;
 
-const getStream = (): fs.WriteStream => {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  if (_logStream && _streamDate === today) return _logStream;
-  if (_logStream) _logStream.end();
-  ensureLogDir();
-  const filePath = path.join(logDir, `${today}.log`);
-  _logStream = fs.createWriteStream(filePath, { flags: 'a' });
-  _streamDate = today;
-  return _logStream;
+const streamCache = new Map<StreamKey, fs.WriteStream>();
+const streamDates = new Map<StreamKey, string>();
+
+const streamKey = (subsystem: string | undefined, date: string): StreamKey =>
+  subsystem ? `${subsystem}:${date}` : `main:${date}`;
+
+const getStream = (subsystem?: string): fs.WriteStream => {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = streamKey(subsystem, today);
+  const prevDate = streamDates.get(key);
+
+  if (streamCache.has(key) && prevDate === today) {
+    return streamCache.get(key)!;
+  }
+
+  const existing = streamCache.get(key);
+  if (existing) existing.end();
+
+  const dir =
+    subsystem && SUBSYSTEMS_WITH_OWN_FILE.has(subsystem) ? path.join(logDir, subsystem) : logDir;
+  ensureLogDir(dir);
+
+  const filePath = path.join(dir, `${today}.log`);
+  const stream = fs.createWriteStream(filePath, { flags: 'a' });
+  streamCache.set(key, stream);
+  streamDates.set(key, today);
+  return stream;
 };
 
 // ── Formatting ───────────────────────────────────────────────────────────────
-const ts = (): string => {
-  return new Date().toISOString();
+const ts = (): string => new Date().toISOString();
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Error);
+
+const serializeValue = (v: unknown): string => {
+  if (v instanceof Error) return `${v.message}\n${v.stack ?? ''}`;
+  if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+  return String(v);
 };
 
-const fmt = (level: LogLevel, args: unknown[]): string => {
-  const parts = args.map((a) =>
-    a instanceof Error
-      ? `${a.message}\n${a.stack ?? ''}`
-      : typeof a === 'object' && a !== null
-        ? JSON.stringify(a)
-        : String(a),
-  );
-  return `${ts()} [${level.toUpperCase().padEnd(5)}] ${parts.join(' ')}`;
+/** Supports `logger.info('msg')`, `logger.info({a:1}, 'msg')`, and `logger.info('msg', {a:1})`. */
+const formatArgs = (args: unknown[]): string => {
+  if (args.length === 0) return '';
+
+  if (args.length >= 2 && typeof args[1] === 'string' && isPlainObject(args[0])) {
+    return `${args[1]} ${serializeValue(args[0])}`;
+  }
+
+  if (args.length >= 2 && typeof args[0] === 'string' && isPlainObject(args[1])) {
+    return `${args[0]} ${serializeValue(args[1])}`;
+  }
+
+  return args.map(serializeValue).join(' ');
+};
+
+const fmt = (level: LogLevel, subsystem: string | undefined, args: unknown[]): string => {
+  const tag = subsystem ? `[${subsystem.toUpperCase()}] ` : '';
+  return `${ts()} [${level.toUpperCase().padEnd(5)}] ${tag}${formatArgs(args)}`;
 };
 
 // ── Console output (with colour) ────────────────────────────────────────────
 const COLOUR: Record<LogLevel, string> = {
-  error: '\x1b[31m', // red
-  warn: '\x1b[33m', // yellow
-  info: '\x1b[36m', // cyan
-  debug: '\x1b[90m', // grey
-  trace: '\x1b[90m', // grey
+  error: '\x1b[31m',
+  warn: '\x1b[33m',
+  info: '\x1b[36m',
+  debug: '\x1b[90m',
+  trace: '\x1b[90m',
 };
 const RESET = '\x1b[0m';
 
-const emit = (level: LogLevel, args: unknown[]): void => {
-  if (!enabled(level)) return;
-  const line = fmt(level, args);
-
-  // Console
-  if (level === 'error') console.error(`${COLOUR[level]}${line}${RESET}`);
-  else if (level === 'warn') console.warn(`${COLOUR[level]}${line}${RESET}`);
-  else console.log(`${COLOUR[level]}${line}${RESET}`);
-
-  // File (always, regardless of isTTY)
+const writeLine = (level: LogLevel, subsystem: string | undefined, line: string): void => {
   try {
     getStream().write(line + '\n');
+    if (subsystem && SUBSYSTEMS_WITH_OWN_FILE.has(subsystem)) {
+      getStream(subsystem).write(line + '\n');
+    }
   } catch {
     /* swallow file errors */
   }
 };
 
-// ── Public API ───────────────────────────────────────────────────────────────
-export const log = {
-  error: (...a: unknown[]) => emit('error', a),
-  warn: (...a: unknown[]) => emit('warn', a),
-  info: (...a: unknown[]) => emit('info', a),
-  debug: (...a: unknown[]) => emit('debug', a),
-  trace: (...a: unknown[]) => emit('trace', a),
+const emit = (level: LogLevel, subsystem: string | undefined, args: unknown[]): void => {
+  if (!enabled(level)) return;
+  const line = fmt(level, subsystem, args);
 
-  /** Check if a specific level is enabled (useful for expensive formatting). */
+  if (level === 'error') console.error(`${COLOUR[level]}${line}${RESET}`);
+  else if (level === 'warn') console.warn(`${COLOUR[level]}${line}${RESET}`);
+  else console.log(`${COLOUR[level]}${line}${RESET}`);
+
+  writeLine(level, subsystem, line);
+};
+
+export interface Logger {
+  error: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  info: (...args: unknown[]) => void;
+  debug: (...args: unknown[]) => void;
+  trace: (...args: unknown[]) => void;
+  isDebug: () => boolean;
+  isTrace: () => boolean;
+  /** @deprecated Use {@link closeLogStreams} */
+  close?: () => void;
+}
+
+const makeLogger = (subsystem?: string): Logger => ({
+  error: (...args: unknown[]) => emit('error', subsystem, args),
+  warn: (...args: unknown[]) => emit('warn', subsystem, args),
+  info: (...args: unknown[]) => emit('info', subsystem, args),
+  debug: (...args: unknown[]) => emit('debug', subsystem, args),
+  trace: (...args: unknown[]) => emit('trace', subsystem, args),
   isDebug: () => enabled('debug'),
   isTrace: () => enabled('trace'),
+});
 
-  /** Flush and close the file stream (call on shutdown). */
-  close: () => {
-    if (_logStream) {
-      _logStream.end();
-      _logStream = null;
-    }
-  },
+/** Create a subsystem-scoped logger (also writes to logs/<subsystem>/). */
+export const createLogger = (subsystem: string): Logger => makeLogger(subsystem);
+
+/** Flush and close all file streams (call on shutdown). */
+export const closeLogStreams = (): void => {
+  for (const stream of streamCache.values()) stream.end();
+  streamCache.clear();
+  streamDates.clear();
 };
+
+/** Root logger — prefer {@link createLogger} or `src/logging/loggers.ts` in new code. */
+export const log: Logger = makeLogger('app');
+log.close = closeLogStreams;

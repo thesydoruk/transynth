@@ -19,10 +19,21 @@ describe('buildVerifyTranslateUserPayload', () => {
           id: 7,
           source: 'Hello',
           translation: 'Привіт',
-          signature: 'WEAP',
-          path: 'WEAP\\FULL',
+          grup: 'WEAP',
+          field: 'FULL',
           edid: 'MyGun',
           context: null,
+          reference_examples: [
+            {
+              source: 'Goodbye',
+              translation: 'Бувай',
+              grup: 'INFO',
+              edid: 'Line01',
+              field: 'NAM1',
+              match_method: 'exact',
+              similarity: 1,
+            },
+          ],
         },
       ],
     });
@@ -31,7 +42,16 @@ describe('buildVerifyTranslateUserPayload', () => {
       task: 'translation_quality_audit',
       source_language: 'en',
       target_language: 'uk',
-      items: [{ id: 7, source: 'Hello', translation: 'Привіт' }],
+      items: [
+        {
+          id: 7,
+          source: 'Hello',
+          translation: 'Привіт',
+          grup: 'WEAP',
+          field: 'FULL',
+          reference_examples: [{ source: 'Goodbye', translation: 'Бувай' }],
+        },
+      ],
     });
   });
 });
@@ -94,7 +114,7 @@ describe('buildVerifySystemPrompt', () => {
     expect(buildVerifySystemPrompt('en', 'de')).toBe(VERIFY_TRANSLATE_SYSTEM_PROMPT);
   });
 
-  it('Ukrainian verify prompt mentions rusisms', () => {
-    expect(buildUkrainianVerifySystemPrompt('en', 'fo4')).toContain('русизм');
+  it('Ukrainian verify prompt mentions reference examples', () => {
+    expect(buildUkrainianVerifySystemPrompt('en', 'fo4')).toContain('reference_examples');
   });
 });

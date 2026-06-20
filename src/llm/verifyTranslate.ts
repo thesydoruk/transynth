@@ -5,8 +5,7 @@
  */
 import { chatWithFallback } from './index';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
-import { isUkrainianTargetLang } from './translate';
-import { log } from '../logger';
+import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
@@ -16,10 +15,11 @@ export interface LlmVerifyItem {
   id: number;
   source: string;
   translation: string;
-  signature: string | null;
-  path: string | null;
+  grup: string | null;
   edid: string | null;
+  field: string | null;
   context: string | null;
+  reference_examples?: LlmReferenceExample[];
 }
 
 /** Per-item audit result returned by the LLM. */
@@ -57,6 +57,8 @@ Rules:
 - confidence is 0.0–1.0.
 - For verdict "ok", set suggestion to null.
 - For verdict "suspicious" or "incorrect", provide suggestion with an improved translation that fixes the issue while preserving all placeholders and markup.
+- When an item includes "reference_examples", treat them as confirmed reference translations: check terminology, tone, and phrasing against them (especially when grup, field, and edid match).
+- Record metadata: "grup" = record type (INFO, ARMO, …), "field" = subrecord (NAM1, FULL, …), "edid" = Editor ID — use these to judge whether tone and terminology fit the string's role.
 
 Respond with this JSON shape:
 {
@@ -90,10 +92,13 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
     id: item.id,
     source: item.source,
     translation: item.translation,
-    signature: item.signature,
-    path: item.path,
+    grup: item.grup,
     edid: item.edid,
+    field: item.field,
     context: item.context,
+    ...(item.reference_examples && item.reference_examples.length > 0
+      ? { reference_examples: item.reference_examples }
+      : {}),
   })),
 });
 
@@ -183,15 +188,22 @@ export const verifyTranslationsWithLlm = async (
   if (opts.items.length === 0) return [];
 
   const expectedIds = opts.items.map((item) => item.id);
-  log.debug(
-    `verifyTranslationsWithLlm: mod=${opts.modName ?? '?'}, items=${opts.items.length}, ${opts.srcLang}->${opts.targetLang}`,
-  );
-
   const payload = buildVerifyTranslateUserPayload(opts);
   const text = await chatWithFallback({
     model: opts.model,
     temperature: 0,
     responseFormat: { type: 'json_object' },
+    logMeta: {
+      operation: 'verify_translate',
+      context: {
+        itemIds: expectedIds,
+        itemCount: expectedIds.length,
+        srcLang: opts.srcLang,
+        targetLang: opts.targetLang,
+        modName: opts.modName ?? null,
+        ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
+      },
+    },
     messages: [
       {
         role: 'system',

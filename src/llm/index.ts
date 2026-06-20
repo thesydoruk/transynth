@@ -3,7 +3,13 @@ import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
-import { log } from '../logger';
+import {
+  logLlmRequest,
+  logLlmResponse,
+  logEmbedRequest,
+  logEmbedResponse,
+} from '../logging/llmExchange';
+import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
 
@@ -20,7 +26,7 @@ const createProvider = (name: LLMProviderName): LLMProvider => {
 export const getLLM = (): LLMProvider => {
   if (_instance) return _instance;
   _instance = createProvider(CONFIG.llmProvider);
-  log.info(`LLM provider: ${_instance.name}`);
+  logLlm.info(`provider initialized: ${_instance.name}`);
   return _instance;
 };
 
@@ -36,35 +42,122 @@ const isAvailabilityError = (err: unknown): boolean => {
   return AVAILABILITY_CODES.has(e?.code ?? '') || e?.status === 503;
 };
 
+const chatOperation = (opts: ChatOptions): string => opts.logMeta?.operation ?? 'chat';
+
 /** Chat with automatic fallback to secondary provider on availability errors. */
 export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
+  const operation = chatOperation(opts);
+  const context = opts.logMeta?.context;
+  logLlmRequest(logLlm, {
+    operation,
+    model: opts.model,
+    messages: opts.messages,
+    context,
+  });
+
+  const started = Date.now();
   const primary = getLLM();
+
+  const runChat = async (provider: LLMProvider): Promise<string> => {
+    try {
+      const response = await provider.chat(opts);
+      logLlmResponse(logLlm, {
+        operation,
+        model: opts.model,
+        response,
+        durationMs: Date.now() - started,
+        provider: provider.name,
+        context,
+      });
+      return response;
+    } catch (err) {
+      logLlm.error(`${operation} failed`, {
+        model: opts.model,
+        provider: provider.name,
+        durationMs: Date.now() - started,
+        err: err instanceof Error ? err.message : String(err),
+        ...context,
+      });
+      throw err;
+    }
+  };
+
   try {
-    return await primary.chat(opts);
+    return await runChat(primary);
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
-    log.warn(`Primary LLM (${primary.name}) unavailable, falling back to ${CONFIG.llmFallback}`);
-    return fallback.chat(opts);
+    logLlm.warn(`${operation} primary unavailable, using fallback`, {
+      primary: primary.name,
+      fallback: CONFIG.llmFallback,
+      ...context,
+    });
+    return runChat(fallback);
   }
+};
+
+export type EmbedCallOptions = EmbedOptions & {
+  logMeta?: {
+    operation: string;
+    context?: Record<string, unknown>;
+  };
 };
 
 /** Embed with automatic fallback to secondary provider on availability errors. */
 export const embedWithFallback = async (
   texts: string[],
   model: string,
-  options?: EmbedOptions,
+  options?: EmbedCallOptions,
 ): Promise<number[][]> => {
+  const operation = options?.logMeta?.operation ?? 'embed';
+  const context = options?.logMeta?.context;
+  logEmbedRequest(logEmbed, {
+    operation,
+    model,
+    textCount: texts.length,
+    dimensions: options?.dimensions,
+    context,
+  });
+
+  const started = Date.now();
   const primary = getLLM();
+
+  const runEmbed = async (provider: LLMProvider): Promise<number[][]> => {
+    try {
+      const vectors = await provider.embed(texts, model, options);
+      logEmbedResponse(logEmbed, {
+        operation,
+        model,
+        vectorCount: vectors.length,
+        durationMs: Date.now() - started,
+        provider: provider.name,
+        context,
+      });
+      return vectors;
+    } catch (err) {
+      logEmbed.error(`${operation} failed`, {
+        model,
+        provider: provider.name,
+        durationMs: Date.now() - started,
+        textCount: texts.length,
+        err: err instanceof Error ? err.message : String(err),
+        ...context,
+      });
+      throw err;
+    }
+  };
+
   try {
-    return await primary.embed(texts, model, options);
+    return await runEmbed(primary);
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
-    log.warn(
-      `Primary LLM (${primary.name}) unavailable for embeddings, falling back to ${CONFIG.llmFallback}`,
-    );
-    return fallback.embed(texts, model, options);
+    logEmbed.warn(`${operation} primary unavailable, using fallback`, {
+      primary: primary.name,
+      fallback: CONFIG.llmFallback,
+      ...context,
+    });
+    return runEmbed(fallback);
   }
 };
 

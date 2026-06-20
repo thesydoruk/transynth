@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
-import { log } from '../logger';
+import { logLlm } from '../logging/loggers';
 
 const normalizeBaseUrl = (url: string): string => {
   const trimmed = url.replace(/\/+$/, '');
@@ -28,11 +28,10 @@ export class VllmProvider implements LLMProvider {
     const apiKey = CONFIG.vllmApiKey || 'EMPTY';
     this.chatClient = new OpenAI({ baseURL: chatBaseURL, apiKey });
     this.embedClient = new OpenAI({ baseURL: embedBaseURL, apiKey });
-    log.debug(`vLLM provider: chat=${chatBaseURL}, embed=${embedBaseURL}`);
+    logLlm.debug('vLLM provider initialized', { chatBaseURL, embedBaseURL });
   }
 
   async chat(opts: ChatOptions): Promise<string> {
-    log.debug(`vLLM chat: model=${opts.model}, messages=${opts.messages.length}`);
     const resp = await withRetry(() =>
       this.chatClient.chat.completions.create({
         model: opts.model,
@@ -45,7 +44,6 @@ export class VllmProvider implements LLMProvider {
   }
 
   async embed(texts: string[], model: string, _options?: EmbedOptions): Promise<number[][]> {
-    log.debug(`vLLM embed: model=${model}, texts=${texts.length}`);
     const resp = await withRetry(() => this.embedClient.embeddings.create({ model, input: texts }));
     return resp.data.map((v) => v.embedding);
   }

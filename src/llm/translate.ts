@@ -7,7 +7,6 @@
 import { chatWithFallback } from './index';
 import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
-import { log } from '../logger';
 import type { GameType } from '../types';
 
 /** Glossary entry included in the translation payload. */
@@ -168,17 +167,30 @@ export const translateStrings = async (
   if (opts.items.length === 0) return [];
 
   const expectedIds = opts.items.map((item) => item.id);
-  log.debug(`translateStrings: ${opts.items.length} items, model=${opts.model}`);
-
+  const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game);
   const payload = buildTranslateUserPayload(opts);
+
   const text = await chatWithFallback({
     model: opts.model,
     temperature: 0,
     responseFormat: { type: 'json_object' },
+    logMeta: {
+      operation: 'translate',
+      context: {
+        itemIds: expectedIds,
+        itemCount: expectedIds.length,
+        srcLang: opts.srcLang,
+        targetLang: opts.targetLang,
+        game: opts.game ?? null,
+        modName: opts.modName ?? null,
+        glossaryCount: opts.glossary?.length ?? 0,
+        ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
+      },
+    },
     messages: [
       {
         role: 'system',
-        content: buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game),
+        content: systemPrompt,
       },
       {
         role: 'user',
@@ -187,7 +199,5 @@ export const translateStrings = async (
     ],
   });
 
-  const results = parseLlmTranslateResponse(text, expectedIds);
-  log.debug(`translateStrings: received ${results.length} translations`);
-  return results;
+  return parseLlmTranslateResponse(text, expectedIds);
 };
