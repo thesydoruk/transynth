@@ -86,6 +86,13 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
             issues: event.issues,
           }));
         }
+        if (event.type === 'error') {
+          setState((prev) => ({
+            ...prev,
+            status: 'failed',
+            error: event.error,
+          }));
+        }
       });
       if (snapshot) applySnapshot(snapshot);
     } catch (err) {

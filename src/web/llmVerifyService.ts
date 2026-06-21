@@ -10,6 +10,7 @@ import {
   type LlmVerifyItem,
   type LlmVerifyVerdict,
 } from '../llm/verifyTranslate';
+import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -199,7 +200,7 @@ export const runLlmVerifyJob = async (
   await requirePgvectorForRag(db);
 
   const projectSettings = await getAllProjectSettings(db);
-  const ragMaxExamples = Math.min(10, Math.max(1, projectSettings['llm.rag_max_examples']));
+  const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
 
   const model = getTranslateModel();
@@ -293,7 +294,12 @@ export const runLlmVerifyJob = async (
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          logVerify.error('job chunk failed', { err, jobId, modId: opts.modId });
+          logVerify.error('job chunk failed', {
+            jobId,
+            modId: opts.modId,
+            error: message,
+            stack: err instanceof Error ? err.stack : undefined,
+          });
           for (const row of llmChunk) {
             job.done++;
             onEvent({ type: 'progress', done: job.done, total: job.total });
@@ -334,7 +340,11 @@ export const runLlmVerifyJob = async (
     const message = err instanceof Error ? err.message : String(err);
     job.status = 'failed';
     job.error = message;
-    logVerify.error('job failed', { jobId, error: message, err });
+    logVerify.error('job failed', {
+      jobId,
+      error: message,
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     onEvent({ type: 'error', error: message });
   }
 

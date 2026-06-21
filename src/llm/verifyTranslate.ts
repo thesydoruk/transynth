@@ -4,6 +4,7 @@
  * Request and response payloads are JSON-only.
  */
 import { chatWithFallback } from './index';
+import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
@@ -43,32 +44,8 @@ export interface LlmVerifyOptions {
 
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
 
-export const VERIFY_TRANSLATE_SYSTEM_PROMPT = `You verify video game mod localization translations against their source strings.
-
-Rules:
-- You receive a JSON object and must respond with JSON only (no markdown, no prose outside JSON).
-- source_language and target_language describe the language pair.
-- Strings may contain game placeholders like ¤PH0¤, %1, {0}, HTML tags, or FormIDs — they must be preserved in the translation.
-- For each item, set verdict to one of: "ok", "suspicious", "incorrect".
-  - "ok": translation is accurate, natural, and appropriate for the context.
-  - "suspicious": possible error, awkward phrasing, meaning drift, untranslated fragments, or minor issue worth human review.
-  - "incorrect": clear error — wrong meaning, wrong language, copy of source when translation expected, broken placeholders, or nonsense.
-- Include a short reason for every item (even ok).
-- confidence is 0.0–1.0.
-- For verdict "ok", set suggestion to null.
-- For verdict "suspicious" or "incorrect", provide suggestion with an improved translation that fixes the issue while preserving all placeholders and markup.
-- When an item includes "reference_examples", treat them as confirmed reference translations: check terminology, tone, and phrasing against them (especially when grup, field, and edid match).
-- Record metadata: "grup" = record type (INFO, ARMO, …), "field" = subrecord (NAM1, FULL, …), "edid" = Editor ID — use these to judge whether tone and terminology fit the string's role.
-
-Respond with this JSON shape:
-{
-  "items": [
-    { "id": 1, "verdict": "ok", "reason": "Accurate translation.", "confidence": 0.95, "suggestion": null },
-    { "id": 2, "verdict": "incorrect", "reason": "Wrong meaning.", "confidence": 0.9, "suggestion": "Corrected text here." }
-  ]
-}
-
-Include one entry in "items" for every input id.`;
+/** @deprecated Use {@link buildEnglishVerifySystemPrompt} or {@link buildVerifySystemPrompt}. */
+export const VERIFY_TRANSLATE_SYSTEM_PROMPT = buildEnglishVerifySystemPrompt('en', 'de');
 
 /** Pick the verify system prompt for the target language. */
 export const buildVerifySystemPrompt = (
@@ -79,7 +56,7 @@ export const buildVerifySystemPrompt = (
   if (isUkrainianTargetLang(targetLang)) {
     return buildUkrainianVerifySystemPrompt(srcLang, game);
   }
-  return VERIFY_TRANSLATE_SYSTEM_PROMPT;
+  return buildEnglishVerifySystemPrompt(srcLang, targetLang, game);
 };
 
 export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'model'>): object => ({

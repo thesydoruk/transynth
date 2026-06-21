@@ -38,14 +38,20 @@ describe('prompt examples', () => {
     const examples = buildUkrainianPromptExamples();
     expect(examples).toContain('"id": 101');
     expect(examples).toContain('¤PH0¤ кришок');
-    expect(buildUkrainianTranslateSystemPrompt('en', 'fo4')).toContain('Приклад вхідних даних');
+    const prompt = buildUkrainianTranslateSystemPrompt('en', 'fo4');
+    expect(prompt).toContain('Приклад вхідних даних');
+    expect(prompt).toContain('reference_examples');
+    expect(prompt).toContain('ТЕХНІЧНІ ВИМОГИ');
   });
 
   it('includes target-language examples in the English prompt', () => {
     const examples = buildEnglishPromptExamples('de');
     expect(examples).toContain('"target_language": "de"');
     expect(examples).toContain('Kronkorken');
-    expect(buildEnglishTranslateSystemPrompt('en', 'de', 'fo4')).toContain('Example input');
+    const prompt = buildEnglishTranslateSystemPrompt('en', 'de', 'fo4');
+    expect(prompt).toContain('Example input');
+    expect(prompt).toContain('reference_examples');
+    expect(prompt).toContain('TECHNICAL REQUIREMENTS');
   });
 });
 

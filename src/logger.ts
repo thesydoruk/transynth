@@ -77,9 +77,16 @@ const ts = (): string => new Date().toISOString();
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Error);
 
+const jsonReplacer = (_key: string, val: unknown): unknown => {
+  if (val instanceof Error) {
+    return { message: val.message, stack: val.stack };
+  }
+  return val;
+};
+
 const serializeValue = (v: unknown): string => {
   if (v instanceof Error) return `${v.message}\n${v.stack ?? ''}`;
-  if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+  if (typeof v === 'object' && v !== null) return JSON.stringify(v, jsonReplacer);
   return String(v);
 };
 

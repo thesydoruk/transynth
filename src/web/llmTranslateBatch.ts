@@ -4,6 +4,7 @@
 import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../llm/translate';
+import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookup, cacheStore } from './cacheService';
@@ -80,7 +81,7 @@ export const translateStringIdsBatch = async (
   );
   const glossary: LlmGlossaryEntry[] = glossaryRows;
   const projectSettings = await getAllProjectSettings(db);
-  const ragMaxExamples = Math.min(10, Math.max(1, projectSettings['llm.rag_max_examples']));
+  const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
 
   const { rows: loadedRows } = await db.query<StringRow>(
@@ -172,11 +173,12 @@ export const translateStringIdsBatch = async (
         await finishResult(entry.stringId, translated);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       logTranslate.error('LLM translate failed for batch', {
-        err,
+        error: message,
+        stack: err instanceof Error ? err.stack : undefined,
         stringIds: chunk.map((e) => e.stringId),
       });
-      const message = err instanceof Error ? err.message : String(err);
       for (const entry of chunk) {
         failResult(entry.stringId, message);
       }

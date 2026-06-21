@@ -1,5 +1,5 @@
 import { buildEmbeddingInput, isStaleTranslationRagSyncError } from '../ragService';
-import { RAG_EXAMPLE_MAX_CHARS } from '../ragConstants';
+import { clampRagMaxExamples, RAG_EXAMPLE_MAX_CHARS, RAG_MAX_EXAMPLES } from '../ragConstants';
 
 describe('buildEmbeddingInput', () => {
   it('includes signature, path, context, and source text', () => {
@@ -24,6 +24,16 @@ describe('isStaleTranslationRagSyncError', () => {
   it('detects missing translation FK violations', () => {
     expect(isStaleTranslationRagSyncError({ code: '23503' })).toBe(true);
     expect(isStaleTranslationRagSyncError(new Error('other'))).toBe(false);
+  });
+});
+
+describe('clampRagMaxExamples', () => {
+  it('clamps to 1…RAG_MAX_EXAMPLES', () => {
+    expect(clampRagMaxExamples()).toBe(5);
+    expect(clampRagMaxExamples(10)).toBe(10);
+    expect(clampRagMaxExamples(15)).toBe(RAG_MAX_EXAMPLES);
+    expect(clampRagMaxExamples(0)).toBe(1);
+    expect(clampRagMaxExamples(-3)).toBe(1);
   });
 });
 

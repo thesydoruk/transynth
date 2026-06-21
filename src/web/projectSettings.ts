@@ -11,6 +11,7 @@
  */
 
 import type { Tx } from '../db';
+import { clampRagMaxExamples } from '../llm/ragConstants';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
 
@@ -32,7 +33,7 @@ export type ProjectSettingKey =
   | 'qa.min_word_count'
   /** When true, TES4 header records are excluded during ESP/ESM file import. */
   | 'import.skip_tes4'
-  /** Max reference examples per string sent to the LLM (1–10). RAG is always required. */
+  /** Max reference examples per string sent to the LLM (1–{@link RAG_MAX_EXAMPLES}). RAG is always required. */
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
   | 'llm.rag_min_similarity';
@@ -85,6 +86,7 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
       (result as Record<string, unknown>)[row.key] = row.value;
     }
   }
+  result['llm.rag_max_examples'] = clampRagMaxExamples(result['llm.rag_max_examples']);
   return result;
 };
 

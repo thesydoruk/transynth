@@ -5,6 +5,7 @@ import {
   parseLlmVerifyTranslateResponse,
   VERIFY_TRANSLATE_SYSTEM_PROMPT,
 } from '../verifyTranslate';
+import { buildEnglishVerifySystemPrompt } from '../prompts/en';
 import { buildUkrainianVerifySystemPrompt } from '../prompts/uk';
 
 describe('buildVerifyTranslateUserPayload', () => {
@@ -111,7 +112,13 @@ describe('buildVerifySystemPrompt', () => {
   });
 
   it('uses default English prompt for non-Ukrainian targets', () => {
-    expect(buildVerifySystemPrompt('en', 'de')).toBe(VERIFY_TRANSLATE_SYSTEM_PROMPT);
+    expect(buildVerifySystemPrompt('en', 'de', 'fo4')).toBe(
+      buildEnglishVerifySystemPrompt('en', 'de', 'fo4'),
+    );
+  });
+
+  it('English verify prompt mentions reference examples', () => {
+    expect(buildEnglishVerifySystemPrompt('en', 'de', 'fo4')).toContain('reference_examples');
   });
 
   it('Ukrainian verify prompt mentions reference examples', () => {

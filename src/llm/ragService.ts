@@ -15,6 +15,7 @@ import {
   RAG_ELIGIBLE_STATUSES,
   RAG_EXAMPLE_MAX_CHARS,
   RAG_DEFAULTS,
+  clampRagMaxExamples,
 } from './ragConstants';
 import { extractNumbers, transplantNumbers, normalizeForHash } from '../utils/textNorm';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -473,7 +474,7 @@ export const findReferenceExamples = async (
 ): Promise<RagReferenceExample[]> => {
   await requirePgvectorForRag(db);
 
-  const maxExamples = opts.maxExamples ?? RAG_DEFAULTS.maxExamples;
+  const maxExamples = clampRagMaxExamples(opts.maxExamples);
   const minSimilarity = opts.minSimilarity ?? RAG_DEFAULTS.minSimilarity;
   const textNorm = opts.textNorm ?? normalizeForHash(opts.sourceText);
   const textNormNopunct = opts.textNormNopunct ?? null;
@@ -547,7 +548,10 @@ export type FetchReferenceExamplesBatchItem = {
 };
 
 /**
- * Fetch reference examples for a batch of strings (parallel per item).
+ * Fetch reference examples for a batch of strings.
+ *
+ * TM lookups run per item; embedding queries are batched into a single API call
+ * to avoid flooding the embed server when BATCH_SIZE is large.
  */
 export const fetchReferenceExamplesBatch = async (
   db: Tx,
@@ -557,31 +561,104 @@ export const fetchReferenceExamplesBatch = async (
   maxExamples: number,
   minSimilarity: number,
 ): Promise<Map<number, RagReferenceExample[]>> => {
+  await requirePgvectorForRag(db);
+
+  const cappedMaxExamples = clampRagMaxExamples(maxExamples);
+
   logRag.debug('fetchReferenceExamplesBatch start', {
     itemCount: items.length,
     stringIds: items.map((i) => i.stringId),
-    maxExamples,
+    maxExamples: cappedMaxExamples,
     minSimilarity,
     srcLang,
     targetLang,
   });
 
   const out = new Map<number, RagReferenceExample[]>();
+  if (items.length === 0) return out;
+
+  type PendingEmbed = {
+    stringId: number;
+    merged: Map<string, RagCandidate>;
+    embedInput: string;
+  };
+
+  const pendingEmbed: PendingEmbed[] = [];
+
   await Promise.all(
     items.map(async (item) => {
-      const examples = await findReferenceExamples(db, {
-        ...item,
-        srcLang,
+      const textNorm = item.textNorm ?? normalizeForHash(item.sourceText);
+      const tmCandidates = await fetchTmCandidates(
+        db,
+        item.stringId,
+        item.sourceText,
+        textNorm,
+        item.textNormNopunct ?? null,
         targetLang,
-        maxExamples,
-        minSimilarity,
-      });
-      out.set(item.stringId, examples);
+        cappedMaxExamples * 2,
+      );
+
+      const merged = new Map<string, RagCandidate>();
+      for (const c of tmCandidates) merged.set(c.key, c);
+
+      if (merged.size < cappedMaxExamples) {
+        pendingEmbed.push({
+          stringId: item.stringId,
+          merged,
+          embedInput: buildEmbeddingInput({
+            sourceText: item.sourceText,
+            signature: item.signature,
+            path: item.path,
+            context: item.context,
+          }),
+        });
+        return;
+      }
+
+      out.set(
+        item.stringId,
+        rankCandidates([...merged.values()])
+          .slice(0, cappedMaxExamples)
+          .map(toPublicExample),
+      );
     }),
   );
 
+  if (pendingEmbed.length > 0) {
+    logRag.info('batch embedding retrieval', {
+      itemCount: pendingEmbed.length,
+      totalItems: items.length,
+    });
+
+    const vectors = await embedTextsForRag(pendingEmbed.map((row) => row.embedInput));
+
+    await Promise.all(
+      pendingEmbed.map(async (row, index) => {
+        const embedCandidates = await fetchEmbeddingCandidates(
+          db,
+          vectors[index],
+          srcLang,
+          targetLang,
+          row.stringId,
+          cappedMaxExamples * 2,
+          minSimilarity,
+        );
+        for (const c of embedCandidates) {
+          if (!row.merged.has(c.key)) row.merged.set(c.key, c);
+        }
+        out.set(
+          row.stringId,
+          rankCandidates([...row.merged.values()])
+            .slice(0, cappedMaxExamples)
+            .map(toPublicExample),
+        );
+      }),
+    );
+  }
+
   logRag.debug('fetchReferenceExamplesBatch done', {
     itemCount: items.length,
+    embedQueries: pendingEmbed.length,
     withExamples: [...out.values()].filter((rows) => rows.length > 0).length,
   });
 
