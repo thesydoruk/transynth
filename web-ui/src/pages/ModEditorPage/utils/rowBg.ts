@@ -1,8 +1,6 @@
 /**
  * Returns the CSS background value for a row with the given translation
  * status.
- *
- * Mapping follows the EET4 status semantics used by the editor grid.
  */
 export const rowBg = (status: string | null): string => {
   if (status === '__active') return 'var(--bg-row-hover)';

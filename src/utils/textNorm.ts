@@ -8,7 +8,7 @@ export const normalizeForHash = (s: string): string => {
   t = t.replace(/\s+/g, ' ');
   t = t.trim().toLowerCase();
   return t;
-}
+};
 
 /**
  * Extra-aggressive normalization: strip all punctuation on top of normalizeForHash.
@@ -19,30 +19,7 @@ export const normalizeNoPunct = (s: string): string => {
   t = t.replace(/[^\w¤ ]/g, '');
   t = t.replace(/\s+/g, ' ').trim();
   return t;
-}
-
-/**
- * Split a source string into translatable phrase segments.
- *
- * Uses sentence-ending punctuation (. ! ? ; \n) and colons as delimiters.
- * Only returns segments with at least 3 non-whitespace characters — shorter
- * fragments are too noisy for TM lookup. Each returned segment is trimmed
- * but NOT normalised (caller should normalise if needed).
- *
- * @param text  Raw source text to segment
- * @returns     Array of phrase segments (minimum 2 segments required; if text
- *              cannot be split, returns empty array)
- */
-export const segmentPhrases = (text: string): string[] => {
-  /* Split on sentence-ending punctuation, semicolons, colons, and newlines */
-  const parts = text.split(/(?<=[.!?;:\n])\s*/);
-  const segments = parts
-    .map((p) => p.trim())
-    .filter((p) => p.replace(/\s/g, '').length >= 3);
-
-  /* Only useful if the text actually splits into multiple parts */
-  return segments.length >= 2 ? segments : [];
-}
+};
 
 // ── Numeric-invariant matching utilities ───────────────────────────────────────
 
@@ -56,8 +33,7 @@ const NUMBER_RE = /\d+(?:\.\d+)?/g;
  * @param text  Raw text to scan
  * @returns     Ordered array of number strings, e.g. ["25", "3.14"]
  */
-export const extractNumbers = (text: string): string[] =>
-  text.match(NUMBER_RE) ?? [];
+export const extractNumbers = (text: string): string[] => text.match(NUMBER_RE) ?? [];
 
 /**
  * Transplant numbers from a new source into an existing translation.

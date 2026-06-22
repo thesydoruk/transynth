@@ -248,7 +248,7 @@ record identifiers may shift:
 
 If matching is done only by `FormID + path`, many valid translations are missed.
 
-### EET4-style cascade used in the project
+### Matching cascade used in the project
 
 The current implementation uses a strict-to-loose fallback sequence.
 The first successful unique match is applied.
@@ -257,8 +257,8 @@ The first successful unique match is applied.
 2. `identity_ranked`: when the same `FormID + path` key appears multiple times
    (as is normal for Bethesda dialogue INFO records under one topic), rows are matched
    **positionally**: the nth imported record aligns with the nth target record within
-   the same key bucket. This mirrors the internal INDEX field that EET4 uses to
-   distinguish duplicate-key records.
+   the same key bucket. This uses an internal index to distinguish
+   duplicate-key records.
 3. `formid_signature_path`: `FormID + signature + path_simplified`
 4. `edid_signature_path`: `EDID + signature + path_simplified`
 5. `edid_path`: `EDID + path`

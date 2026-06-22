@@ -775,7 +775,7 @@
     },
     "general": {
       "languagesTitle": "Default Languages",
-      "languagesDesc": "Pre-fills language selectors across all pages (Imports, Editor, TMX, Coherence). Stored locally in your browser.",
+      "languagesDesc": "Pre-fills language selectors across all pages (Imports, Editor, Coherence). Stored locally in your browser.",
       "srcLang": "Source language",
       "tgtLang": "Target language",
       "interfaceTitle": "Interface",

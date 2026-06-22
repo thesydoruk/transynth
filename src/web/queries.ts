@@ -1628,7 +1628,7 @@ export const applyImportedRowsAsTranslations = async (
     throw new Error(`Target mod has no source strings for lang "${srcLang}"`);
   }
 
-  // Build lookup maps for an EET4-style cascade: strict identity first,
+  // Build lookup maps for a strict-to-loose cascade: strict identity first,
   // then progressively looser keys (EDID and fallback identity variants).
   const byIdentity = new Map<string, string | null>();
   const byFormIdSignaturePath = new Map<string, string | null>();
@@ -1712,7 +1712,7 @@ export const applyImportedRowsAsTranslations = async (
 
   /**
    * Resolve a translation candidate for a target row using a strict-to-loose
-   * matching cascade inspired by EET4 behavior.
+   * matching cascade.
    */
   const resolveImportedCandidate = (row: {
     formid_hex: string;
@@ -1771,7 +1771,7 @@ export const applyImportedRowsAsTranslations = async (
       }
     }
 
-    // EET4-like fallback for duplicate keys: when identity is ambiguous,
+    // Fallback for duplicate keys: when identity is ambiguous,
     // align by row rank within the same FormID+path bucket.
     const bucket = identityBuckets.get(identityKey);
     if (bucket && row.identity_rank > 0 && row.identity_rank <= bucket.length) {

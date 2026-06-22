@@ -28,8 +28,8 @@ export interface ConfirmModalProps {
  * ```tsx
  * {pendingDelete != null && (
  *   <ConfirmModal
- *     title={t('tradAuto.deleteTitle')}
- *     message={t('tradAuto.deleteMessage')}
+ *     title={t('common.deleteTitle')}
+ *     message={t('common.deleteMessage')}
  *     pending={removeMut.isPending}
  *     onConfirm={() => removeMut.mutate(pendingDelete)}
  *     onClose={() => setPendingDelete(null)}
@@ -57,7 +57,9 @@ export const ConfirmModal = ({
       title={<span id="confirm-modal-title">{title}</span>}
       closeAriaLabel={t('common.close')}
     >
-      <p id="confirm-modal-body" className={s.body}>{message}</p>
+      <p id="confirm-modal-body" className={s.body}>
+        {message}
+      </p>
 
       <div className={s.footer}>
         <Button variant="secondary" onClick={onClose} disabled={pending}>
