@@ -42,10 +42,7 @@ CREATE TABLE IF NOT EXISTS strings (
   text_norm TEXT,
   text_norm_nopunct TEXT,
   source_kind TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  tsv TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('simple', COALESCE(text_raw, '') || ' ' || COALESCE(text_norm, ''))
-  ) STORED
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
@@ -276,7 +273,6 @@ CREATE INDEX IF NOT EXISTS idx_records_hash_norm ON records USING HASH(hash_norm
 CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
 CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);
-CREATE INDEX IF NOT EXISTS idx_strings_tsv ON strings USING GIN(tsv);
 CREATE INDEX IF NOT EXISTS idx_strings_text_norm ON strings USING HASH(text_norm);
 CREATE INDEX IF NOT EXISTS idx_strings_text_norm_nopunct ON strings USING HASH(text_norm_nopunct);
 CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_norm gin_trgm_ops);
@@ -466,3 +462,12 @@ ALTER TABLE strings ADD COLUMN IF NOT EXISTS is_ignored BOOLEAN NOT NULL DEFAULT
 -- databases converge with the current schema. Idempotent and safe to re-run.
 DROP TABLE IF EXISTS tradauto_rules;
 DROP TABLE IF EXISTS alignments;
+
+-- ── Drop unused full-text search column ──────────────────────────────────────
+-- The editor grid searches source/translation text via pg_trgm + ILIKE, never
+-- full-text search. The generated `strings.tsv` column and its GIN index only
+-- added per-insert CPU cost, write amplification, and storage during large-mod
+-- imports. Remove them so existing databases converge. Dropping the column
+-- cascades to the dependent index. Idempotent and safe to re-run.
+DROP INDEX IF EXISTS idx_strings_tsv;
+ALTER TABLE strings DROP COLUMN IF EXISTS tsv;

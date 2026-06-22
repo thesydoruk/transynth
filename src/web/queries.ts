@@ -552,13 +552,24 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
 
   const where = conditions.join(' AND ');
 
-  // Append targetLang, srcLang, pageSize, offset as the final parameters
+  /* QA-issue existence predicate, parameterised on the target-lang index. */
+  const qaExists = (langIdx: number) =>
+    `EXISTS (SELECT 1 FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $${langIdx} AND qi.is_active = TRUE)`;
+
+  /* ── Page query ───────────────────────────────────────────────────────────
+   * The translations join is always needed (translation columns are shown).
+   * The QA issue-count LATERAL is intentionally kept out of WHERE / ORDER BY
+   * so the planner can defer it to only the rows that survive LIMIT. When the
+   * caller wants QA-only rows we filter with EXISTS (index-backed) instead of
+   * forcing the per-row COUNT across the whole mod. */
   const targetLangIdx = idx;
   const srcLangIdx = idx + 1;
   const limitIdx = idx + 2;
   const offsetIdx = idx + 3;
-  const qaOnlyIdx = idx + 4;
-  const allValues = [...values, targetLang, srcLang, pageSize, offset, Boolean(f.qaOnly)];
+  const allValues = [...values, targetLang, srcLang, pageSize, offset];
+
+  const orderBy = `${SORT_COLUMNS[f.sort ?? ''] ? `${SORT_COLUMNS[f.sort!]} ${f.order === 'desc' ? 'DESC' : 'ASC'} NULLS LAST,` : ''} r.signature, r.path`;
 
   const { rows } = await db.query(
     `SELECT
@@ -594,40 +605,56 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        FROM qa_issues qi
        WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE
      ) q ON TRUE
-     WHERE s.lang = $${srcLangIdx} AND ${where}
-       AND ($${qaOnlyIdx}::boolean = FALSE OR COALESCE(q.issue_count, 0) > 0)
-     ORDER BY ${SORT_COLUMNS[f.sort ?? ''] ? `${SORT_COLUMNS[f.sort!]} ${f.order === 'desc' ? 'DESC' : 'ASC'} NULLS LAST,` : ''} r.signature, r.path
+     WHERE s.lang = $${srcLangIdx} AND ${where}${f.qaOnly ? ` AND ${qaExists(targetLangIdx)}` : ''}
+     ORDER BY ${orderBy}
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     allValues,
   );
 
-  const countTargetLangIdx = idx;
-  const countSrcLangIdx = idx + 1;
-  const countQaOnlyIdx = idx + 2;
-  const countValues = [...values, targetLang, srcLang, Boolean(f.qaOnly)];
+  /* ── Count query ──────────────────────────────────────────────────────────
+   * Only join translations when a translation-dependent filter is active
+   * (status / translation-text). Otherwise the expensive per-row
+   * best-translation subquery is skipped entirely and the total is a plain
+   * strings⋈records count — a large win on big mods, where this runs on
+   * every page load. */
+  const needsTxJoin = (f.status != null && f.status !== 'all') || !!f.transl;
+  let countSql: string;
+  let countValues: unknown[];
 
-  const { rows: countRows } = await db.query(
-    `SELECT COUNT(*) AS total
-     FROM strings s
-     JOIN records r ON s.record_id = r.id
-     LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
-          AND t.id = (
-            SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $${countTargetLangIdx}
-            ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
-            LIMIT 1
-          )
-     WHERE s.lang = $${countSrcLangIdx} AND ${where}
-       AND ($${countQaOnlyIdx}::boolean = FALSE OR EXISTS (
-         SELECT 1
-         FROM qa_issues qi
-         WHERE qi.src_string_id = s.id
-           AND qi.target_lang = $${countTargetLangIdx}
-           AND qi.is_active = TRUE
-       ))`,
-    countValues,
-  );
+  if (needsTxJoin) {
+    const cTgt = idx;
+    const cSrc = idx + 1;
+    countValues = [...values, targetLang, srcLang];
+    countSql = `SELECT COUNT(*) AS total
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $${cTgt}
+            AND t.id = (
+              SELECT id FROM translations
+              WHERE src_string_id = s.id AND target_lang = $${cTgt}
+              ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
+              LIMIT 1
+            )
+       WHERE s.lang = $${cSrc} AND ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}`;
+  } else if (f.qaOnly) {
+    const cTgt = idx;
+    const cSrc = idx + 1;
+    countValues = [...values, targetLang, srcLang];
+    countSql = `SELECT COUNT(*) AS total
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       WHERE s.lang = $${cSrc} AND ${where} AND ${qaExists(cTgt)}`;
+  } else {
+    const cSrc = idx;
+    countValues = [...values, srcLang];
+    countSql = `SELECT COUNT(*) AS total
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       WHERE s.lang = $${cSrc} AND ${where}`;
+  }
+
+  const { rows: countRows } = await db.query(countSql, countValues);
 
   return { rows, total: Number(countRows[0].total), page, pageSize };
 };
