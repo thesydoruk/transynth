@@ -1,6 +1,6 @@
 import { useMemo, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StringRow, TMSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
+import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
@@ -27,8 +27,8 @@ export interface DetailPanelProps {
   /** Maximum character length rule (if any) for the active row. */
   activeMaxLength: number | null;
 
-  /** TM / glossary suggestions for the active row. */
-  suggestions: TMSuggestion[];
+  /** RAG reference examples for the active row. */
+  suggestions: RagSuggestion[];
   /** QA issues for the active row. */
   qaIssues: QAIssue[];
   /** Edit history for the active row. */
@@ -77,9 +77,11 @@ export const DetailPanel = ({
   const { t } = useTranslation();
   const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
 
-  const maxLengthRemaining = activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
+  const maxLengthRemaining =
+    activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
   const maxLengthExceeded = maxLengthRemaining != null && maxLengthRemaining < 0;
-  const maxLengthNear = maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
+  const maxLengthNear =
+    maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
   const syncOverlayScroll = (e: UIEvent<HTMLTextAreaElement>) => {
     const overlay = e.currentTarget.previousElementSibling;
     if (!(overlay instanceof HTMLDivElement)) return;
@@ -92,14 +94,19 @@ export const DetailPanel = ({
       <div className={styles.detailPanels}>
         {/* Source text */}
         <div className={styles.textPanel}>
-          <div className={styles.panelLabel}>{t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}</div>
+          <div className={styles.panelLabel}>
+            {t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
+          </div>
           {activeRow.context && (
             <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
-              {t('modEditor.speakerContextLabel')}{activeRow.context}
+              {t('modEditor.speakerContextLabel')}
+              {activeRow.context}
             </div>
           )}
           <textarea readOnly value={activeRow.source} className={styles.sourceArea} rows={4} />
-          <div className={styles.charCount}>{t('modEditor.charCount', { count: activeRow.source.length })}</div>
+          <div className={styles.charCount}>
+            {t('modEditor.charCount', { count: activeRow.source.length })}
+          </div>
         </div>
 
         {/* Translation text */}
@@ -121,7 +128,9 @@ export const DetailPanel = ({
             <div className={styles.translAreaOverlay} aria-hidden="true">
               <div className={styles.translAreaOverlayContent}>
                 {draftTranslation.length === 0 ? (
-                  <span className={styles.translPlaceholder}>{t('modEditor.enterTranslation')}</span>
+                  <span className={styles.translPlaceholder}>
+                    {t('modEditor.enterTranslation')}
+                  </span>
                 ) : (
                   placeholderParts.map((part, index) => (
                     <span
@@ -141,13 +150,17 @@ export const DetailPanel = ({
               className={styles.translArea}
               rows={4}
               onScroll={syncOverlayScroll}
-              onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave();
+              }}
               placeholder={t('modEditor.enterTranslation')}
             />
           </div>
           <div className={styles.detailBtnBar}>
             <div className={styles.charInfo}>
-              <div className={styles.charCount}>{t('modEditor.charCount', { count: draftTranslation.length })}</div>
+              <div className={styles.charCount}>
+                {t('modEditor.charCount', { count: draftTranslation.length })}
+              </div>
               {activeMaxLength != null && (
                 <div
                   className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
@@ -161,17 +174,29 @@ export const DetailPanel = ({
               )}
             </div>
             <div className={styles.detailSaveRow}>
-              <Button variant="secondary" size="sm" onClick={onCopySource} title={t('modEditor.copySourceToTranslation')}>{t('modEditor.copySrc')}</Button>
-              {activeRow.translation && activeRow.translation_id && activeRow.status !== 'reviewed' && activeRow.status !== 'human' && (
-                <Button variant="secondary" size="sm" onClick={onApprove}>
-                  {t('modEditor.review')}
-                </Button>
-              )}
-              {activeRow.translation && activeRow.translation_id && activeRow.status !== 'rejected' && (
-                <Button variant="danger" size="sm" onClick={onReject}>
-                  {t('modEditor.reject')}
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onCopySource}
+                title={t('modEditor.copySourceToTranslation')}
+              >
+                {t('modEditor.copySrc')}
+              </Button>
+              {activeRow.translation &&
+                activeRow.translation_id &&
+                activeRow.status !== 'reviewed' &&
+                activeRow.status !== 'human' && (
+                  <Button variant="secondary" size="sm" onClick={onApprove}>
+                    {t('modEditor.review')}
+                  </Button>
+                )}
+              {activeRow.translation &&
+                activeRow.translation_id &&
+                activeRow.status !== 'rejected' && (
+                  <Button variant="danger" size="sm" onClick={onReject}>
+                    {t('modEditor.reject')}
+                  </Button>
+                )}
               <Button
                 variant="primary"
                 size="sm"
@@ -179,7 +204,11 @@ export const DetailPanel = ({
                 disabled={savePending}
                 title="Ctrl+Enter"
               >
-                {savePending ? t('modEditor.saving') : saveIndicator === 'saved' ? t('modEditor.saved') : t('common.save')}
+                {savePending
+                  ? t('modEditor.saving')
+                  : saveIndicator === 'saved'
+                    ? t('modEditor.saved')
+                    : t('common.save')}
               </Button>
             </div>
           </div>
@@ -189,21 +218,28 @@ export const DetailPanel = ({
       {/* Bottom tabs */}
       <div className={styles.tabs}>
         {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
-          <button key={tab} className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`} onClick={() => onTabChange(tab)}>
-            {tab === 'suggestions' ? t('modEditor.tabSuggestions') : tab === 'qa' ? t('modEditor.tabQa') : t('modEditor.tabHistory')}
+          <button
+            key={tab}
+            className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
+            onClick={() => onTabChange(tab)}
+          >
+            {tab === 'suggestions'
+              ? t('modEditor.tabSuggestions')
+              : tab === 'qa'
+                ? t('modEditor.tabQa')
+                : t('modEditor.tabHistory')}
           </button>
         ))}
       </div>
       <div className={styles.tabContent}>
         {activeTab === 'suggestions' && (
-          <SuggestionsPanel suggestions={suggestions ?? []} onApply={(text) => onDraftChange(text)} />
+          <SuggestionsPanel
+            suggestions={suggestions ?? []}
+            onApply={(text) => onDraftChange(text)}
+          />
         )}
-        {activeTab === 'qa' && (
-          <QAPanel issues={qaIssues ?? []} />
-        )}
-        {activeTab === 'history' && (
-          <HistoryPanel items={history ?? []} />
-        )}
+        {activeTab === 'qa' && <QAPanel issues={qaIssues ?? []} />}
+        {activeTab === 'history' && <HistoryPanel items={history ?? []} />}
       </div>
     </div>
   );

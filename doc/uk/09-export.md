@@ -200,4 +200,4 @@ reviewed > human > draft > tm > fuzzy > auto > rejected
 
 ---
 
-← [Глосарій](08-glossary.md) | [Головна](README.md) | **Далі: [Обмін TMX →](10-tmx.md)**
+← [Глосарій](08-glossary.md) | [Головна](README.md) | **Далі: [Diff і повторний імпорт →](11-diff-and-reimport.md)**

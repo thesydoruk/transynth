@@ -106,7 +106,7 @@ editor and search for the string by EDID or source text.
 - **After LLM batch translation.** The LLM may produce slightly different
   phrasing for identical source strings when they appear in different
   contexts. Coherence will surface all such cases.
-- **After importing a TMX from another translator.** Their wording may
+- **After importing translations from another translator.** Their wording may
   differ from your established style. Resolve conflicts before merging.
 - **After a carry-over from a mod update.** Source text changes can
   invalidate previously coherent translations.

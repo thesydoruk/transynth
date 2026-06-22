@@ -182,7 +182,7 @@ Terms you will see in previews and editor tables:
 
 After import, you can fill untranslated strings from the Translation Memory.
 
-See [Translation Memory](05-translation-memory.md) for how the 5-method waterfall works.
+See [Translation Memory](05-translation-memory.md) for how exact/anchor TM matching works.
 
 The current web UI does **not** apply TM automatically as part of the import worker.
 Instead, open the imported mod in the editor and use **Apply TM** there.

@@ -207,4 +207,4 @@ Carried: 820 · Needs review: 43 · Skipped: 12
 
 ---
 
-← [Обмін TMX](10-tmx.md) | [Головна](README.md) | **Далі: [Спеціальні редактори →](12-special-editors.md)**
+← [Експорт](09-export.md) | [Головна](README.md) | **Далі: [Спеціальні редактори →](12-special-editors.md)**

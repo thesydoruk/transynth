@@ -16,6 +16,4 @@ export { OpsPage } from './OpsPage';
 export { QARulesPage } from './QARulesPage';
 export { ReviewQueuePage } from './ReviewQueuePage';
 export { SettingsPage } from './SettingsPage';
-export { TmxPage } from './TmxPage';
-export { TradAutoPage } from './TradAutoPage';
 export { UsersPage } from './UsersPage';

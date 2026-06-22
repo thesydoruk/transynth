@@ -15,7 +15,7 @@ The editor is the main workspace for reviewing, correcting, and completing trans
 - [Selecting and Editing Rows](#selecting-and-editing-rows)
 - [The Detail Panel](#the-detail-panel)
   - [Source and Translation Text Areas](#source-and-translation-text-areas)
-  - [TM Suggestions Tab](#tm-suggestions-tab)
+  - [RAG Examples Tab](#rag-examples-tab)
   - [QA Issues Tab](#qa-issues-tab)
   - [Revision History Tab](#revision-history-tab)
 - [Status Badges](#status-badges)
@@ -189,26 +189,28 @@ When a matching `max_length` QA rule exists for the current GRUP/field, the pane
 Placeholder-like tokens are highlighted inline inside the translation textarea so you can visually preserve formatting markers while editing.
 QA still remains the source of truth for placeholder mismatch validation.
 
-### TM Suggestions Tab
+### RAG Examples Tab
 
-The Suggestions tab shows up to **10** Translation Memory suggestions.
+The RAG Examples tab shows up to **10** reference translations, retrieved via
+the same RAG hybrid search that feeds the LLM (only `reviewed`/`human`
+translations are eligible).
 
-Each suggestion row includes:
+Each row includes:
 
-- the translation's current status badge
+- a match badge showing the match quality as a percentage
 - a match method badge
-- the suggestion text
-- a similarity percentage
+- the reference translation (hover to see its source text)
 - an **Apply** button
 
 Current match methods in the UI are:
 
 - `exact`
+- `numeric`
 - `punct_norm`
 - `fuzzy`
-- `segment`
+- `semantic` (pgvector embedding)
 
-Clicking **Apply** copies that suggestion into the draft translation field.
+Clicking **Apply** copies that reference translation into the draft translation field.
 It does not save immediately; the normal autosave/manual-save logic still applies.
 
 See [Translation Memory](05-translation-memory.md) for the broader TM workflow.

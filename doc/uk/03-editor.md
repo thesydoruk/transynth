@@ -15,7 +15,7 @@
 - [Вибір і редагування рядків](#вибір-і-редагування-рядків)
 - [Панель деталей](#панель-деталей)
   - [Текстові поля source і translation](#текстові-поля-source-і-translation)
-  - [Вкладка TM Suggestions](#вкладка-tm-suggestions)
+  - [Вкладка RAG-приклади](#вкладка-rag-приклади)
   - [Вкладка QA Issues](#вкладка-qa-issues)
   - [Вкладка Revision History](#вкладка-revision-history)
 - [Бейджі статусів](#бейджі-статусів)
@@ -189,26 +189,28 @@ Status dropdown підтримує:
 Placeholder-подібні токени підсвічуються безпосередньо всередині translation textarea, щоб форматні маркери було легше зберігати під час редагування.
 QA, залишається джерелом істини для перевірки `placeholder_mismatch`.
 
-### Вкладка TM Suggestions
+### Вкладка RAG-приклади
 
-Вкладка Suggestions показує до **10** Translation Memory suggestion.
+Вкладка RAG-приклади показує до **10** референсних перекладів, отриманих тим
+самим гібридним RAG-пошуком, що живить LLM (прийнятні лише переклади
+`reviewed`/`human`).
 
-Кожен suggestion row містить:
+Кожен рядок містить:
 
-- status badge
+- бейдж збігу з якістю у відсотках
 - badge методу match
-- текст suggestion
-- відсоток similarity
+- референсний переклад (наведіть, щоб побачити джерело)
 - кнопку **Apply**
 
 Поточні match methods у UI:
 
 - `exact`
+- `numeric`
 - `punct_norm`
 - `fuzzy`
-- `segment`
+- `semantic` (вектор pgvector)
 
-Натискання **Apply** копіює suggestion у draft translation field.
+Натискання **Apply** копіює референсний переклад у draft translation field.
 Автоматичного збереження немає; далі працює стандартна логіка autosave/manual save.
 
 Про загальний TM workflow дивіться [Пам’ять перекладів](05-translation-memory.md).

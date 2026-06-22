@@ -9,8 +9,6 @@
  *   LLM          — read-only display of the active LLM runtime config.
  *   QA Rules     — forbidden characters, length limits, and custom checks.
  *   Workflow     — project-level workflow and QA toggles.
- *   TradAuto     — pattern-match rules for automatic translation.
- *   TMX          — export / import translation memory in TMX format.
  *   Activity     — paginated audit log of user actions.
  *   Data         — link-cards to Glossary and other data pages.
  *   Users        — user management (only visible in multi-user mode).
@@ -25,8 +23,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import { QARulesPage } from '../QARulesPage';
-import { TradAutoPage } from '../TradAutoPage';
-import { TmxPage } from '../TmxPage';
 import { ActivityPage } from '../ActivityPage';
 import { DataTab } from './DataTab';
 import { GeneralTab } from './GeneralTab';
@@ -37,7 +33,7 @@ import s from './SettingsPage.module.scss';
 
 /* ── Tab identifiers ─────────────────────────────────────────────────────── */
 
-type TabId = 'general' | 'llm' | 'qaRules' | 'tradAuto' | 'tmx' | 'activity' | 'data' | 'users' | 'workflow';
+type TabId = 'general' | 'llm' | 'qaRules' | 'activity' | 'data' | 'users' | 'workflow';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -54,15 +50,14 @@ export const SettingsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabFromUrl = searchParams.get('tab');
-  const isTabId = (value: string | null): value is TabId => value === 'general'
-    || value === 'llm'
-    || value === 'qaRules'
-    || value === 'tradAuto'
-    || value === 'tmx'
-    || value === 'activity'
-    || value === 'data'
-    || value === 'users'
-    || value === 'workflow';
+  const isTabId = (value: string | null): value is TabId =>
+    value === 'general' ||
+    value === 'llm' ||
+    value === 'qaRules' ||
+    value === 'activity' ||
+    value === 'data' ||
+    value === 'users' ||
+    value === 'workflow';
 
   const tab = useMemo<TabId>(() => {
     if (!isTabId(tabFromUrl)) return 'general';
@@ -72,16 +67,14 @@ export const SettingsPage = () => {
 
   /** Translator workflow tabs — visible to every user. */
   const configurationTabs: { id: TabId; label: string }[] = [
-    { id: 'general',  label: t('settings.tabs.general') },
-    { id: 'llm',      label: t('settings.tabs.llm') },
-    { id: 'qaRules',  label: t('settings.tabs.qaRules') },
+    { id: 'general', label: t('settings.tabs.general') },
+    { id: 'llm', label: t('settings.tabs.llm') },
+    { id: 'qaRules', label: t('settings.tabs.qaRules') },
   ];
 
   const workflowTabs: { id: TabId; label: string }[] = [
     { id: 'workflow', label: t('settings.tabs.workflow') },
-    { id: 'tradAuto', label: t('settings.tabs.tradAuto') },
-    { id: 'tmx',      label: t('settings.tabs.tmx') },
-    { id: 'data',     label: t('settings.tabs.data') },
+    { id: 'data', label: t('settings.tabs.data') },
   ];
 
   const teamTabs: { id: TabId; label: string }[] = [
@@ -89,11 +82,15 @@ export const SettingsPage = () => {
   ];
 
   /** Admin-only tabs — only available when multiUser mode is active AND the current user is an admin. */
-  const adminTabs: { id: TabId; label: string }[] = multiUser && isAdmin
-    ? [{ id: 'users', label: t('settings.tabs.users') }]
-    : [];
+  const adminTabs: { id: TabId; label: string }[] =
+    multiUser && isAdmin ? [{ id: 'users', label: t('settings.tabs.users') }] : [];
 
-  const tabGroups: Array<{ key: string; label: string; tabs: { id: TabId; label: string }[]; adminOnly?: boolean }> = [
+  const tabGroups: Array<{
+    key: string;
+    label: string;
+    tabs: { id: TabId; label: string }[];
+    adminOnly?: boolean;
+  }> = [
     { key: 'configuration', label: t('settings.groups.configuration'), tabs: configurationTabs },
     { key: 'workflow', label: t('settings.groups.workflow'), tabs: workflowTabs },
     { key: 'team', label: t('settings.groups.team'), tabs: teamTabs },
@@ -108,10 +105,7 @@ export const SettingsPage = () => {
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title={t('settings.title')}
-        description={t('settings.subtitle')}
-      />
+      <PageHeader title={t('settings.title')} description={t('settings.subtitle')} />
 
       <div className={s.layout}>
         {/* ── Sidebar ──────────────────────────────────────────────── */}
@@ -134,18 +128,15 @@ export const SettingsPage = () => {
 
         {/* ── Content pane ─────────────────────────────────────────── */}
         <div className={s.content}>
-          {tab === 'general'  && <GeneralTab />}
-          {tab === 'llm'      && <LlmTab />}
-          {tab === 'qaRules'  && <QARulesPage embedded />}
+          {tab === 'general' && <GeneralTab />}
+          {tab === 'llm' && <LlmTab />}
+          {tab === 'qaRules' && <QARulesPage embedded />}
           {tab === 'workflow' && <WorkflowTab />}
-          {tab === 'tradAuto' && <TradAutoPage embedded />}
-          {tab === 'tmx'      && <TmxPage embedded />}
           {tab === 'activity' && <ActivityPage embedded />}
-          {tab === 'data'     && <DataTab />}
-          {tab === 'users'    && <UsersTab />}
+          {tab === 'data' && <DataTab />}
+          {tab === 'users' && <UsersTab />}
         </div>
       </div>
     </div>
   );
 };
-

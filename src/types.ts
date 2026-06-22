@@ -51,22 +51,6 @@ export type CsvRow = {
 export type AnchorKey = {
   signature: string;
   pathSimplified?: string;
-  edid?: string|null;
-  hash?: string|null;
-};
-
-/**
- * A matched pair produced by the alignment algorithm.
- * Links one record from the left (old/source) array to one in the right (new/target) array.
- *
- * @field leftIndex  - Zero-based index into the left input array.
- * @field rightIndex - Zero-based index into the right input array.
- * @field method     - Algorithm that created this match.
- * @field score      - Confidence in the range `0..1` (1 = identical anchor).
- */
-export type AlignPair = {
-  leftIndex: number;     // index in left array
-  rightIndex: number;    // index in right array
-  method: 'edid'|'hash'|'path'|'rapidfuzz'|'embedding'|'arbiter';
-  score: number;
+  edid?: string | null;
+  hash?: string | null;
 };

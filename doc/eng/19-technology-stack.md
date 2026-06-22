@@ -123,4 +123,4 @@ Key shared components:
 
 ---
 
-← [TradAuto Rules](18-tradauto.md) | [Home](README.md)
+← [Configuration](17-configuration.md) | [Home](README.md)

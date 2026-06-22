@@ -29,19 +29,18 @@ The page is organised into interim taxonomy groups:
 | Group               | Tabs / Surfaces                                     |
 | ------------------- | --------------------------------------------------- |
 | **Configuration**   | **General**, **LLM / Auto-translate**, **QA Rules** |
-| **Workflow tools**  | **TradAuto**, **TMX**, **Data**                     |
+| **Workflow tools**  | **Data**                                            |
 | **Team operations** | **Activity**                                        |
 | **Admin only**      | **Users** _(multi-user mode only)_                  |
 
-This grouping is intentional: TradAuto and TMX still live inside Settings,
-but they are visually separated from configuration because they are workflow tools,
-not core runtime settings.
+This grouping is intentional: workflow tools are visually separated from
+configuration because they are not core runtime settings.
 
 ### General tab
 
 Settings in the **General** tab are stored in your browser’s `localStorage`.
 They have no server-side effect but pre-fill language selectors across all pages
-(Imports, Editor, TMX, Coherence …).
+(Imports, Editor, Coherence …).
 
 | Setting                 | localStorage key | Default |
 | ----------------------- | ---------------- | ------- |
@@ -309,4 +308,4 @@ using the credentials from your `DATABASE_URL`.
 
 ---
 
-← [Team & Users](16-team-and-users.md) | [Home](README.md) | [TradAuto](18-tradauto.md) →
+← [Team & Users](16-team-and-users.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →

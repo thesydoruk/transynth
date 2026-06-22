@@ -636,54 +636,6 @@ export type OpsOverview = {
   };
 };
 
-/* ── TradAuto (pattern-match translation rules) ───────────────────────── */
-
-/** A single TradAuto rule row from the DB. */
-export type TradAutoRule = {
-  id: number;
-  game: string;
-  priority: number;
-  pattern: string;
-  replacement: string;
-  signature: string | null;
-  path: string | null;
-  src_lang: string;
-  tgt_lang: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-/** Result of testing rules against sample texts. */
-export type TradAutoTestResult = {
-  results: ({ ruleId: number; translated: string } | null)[];
-};
-
-/** Result of applying rules to a mod's untranslated strings. */
-export type TradAutoApplyResult = {
-  matched: number;
-  saved: number;
-  total: number;
-  dryRun?: boolean;
-  message?: string;
-};
-
-/** A discovered rule candidate from TM pattern learning. */
-export type TradAutoCandidate = {
-  pattern: string;
-  replacement: string;
-  signature: string | null;
-  path: string | null;
-  occurrences: number;
-  examples: Array<{ source: string; target: string }>;
-};
-
-/** Result of the rule-learning discovery endpoint. */
-export type TradAutoLearnResult = {
-  candidates: TradAutoCandidate[];
-};
-
 export type ExportedStringsFile = {
   fileName: string;
   size: number;
@@ -768,22 +720,6 @@ export type PreviousVersionRow = {
   created_at: string;
   total_strings: number;
   translated_strings: number;
-};
-
-/** Statistics for the translation memory for a given language pair. */
-export type TmxStats = {
-  totalStrings: number;
-  translatedStrings: number;
-  /** Coverage percentage in the range 0–100 with one decimal place (e.g. 82.7). */
-  coverage: number;
-  byStatus: { human: number; tm: number; fuzzy: number; auto: number; draft: number };
-};
-
-/** Result of importing a TMX file into the translation memory */
-export type TmxImportResult = {
-  parsed: number;
-  imported: number;
-  skipped: number;
 };
 
 export type SearchReplaceMatch = {
@@ -1003,14 +939,14 @@ export type LlmTranslateStreamEvent =
 
 // ── Mods ──────────────────────────────────────────────────────────────────────
 
-export type TMSuggestion = {
-  id: number;
-  text: string;
-  status: string;
-  confidence: number | null;
-  provenance: string | null;
-  source_text: string;
-  match_method: 'exact' | 'numeric' | 'punct_norm' | 'fuzzy' | 'segment';
+/** One RAG reference example shown in the editor's "RAG examples" panel. */
+export type RagSuggestion = {
+  source: string;
+  translation: string;
+  grup: string | null;
+  edid: string | null;
+  field: string | null;
+  match_method: 'exact' | 'numeric' | 'punct_norm' | 'fuzzy' | 'embedding';
   similarity: number;
 };
 
@@ -1250,7 +1186,7 @@ export const api = {
       return req<Signature[]>(`/api/strings/signatures?${qs}`);
     },
     suggestions: (stringId: number, targetLang: string) =>
-      req<TMSuggestion[]>(
+      req<RagSuggestion[]>(
         `/api/strings/${stringId}/suggestions?targetLang=${encodeURIComponent(targetLang)}`,
       ),
     saveTranslation: (
@@ -1706,37 +1642,6 @@ export const api = {
     },
   },
 
-  /** TMX (Translation Memory eXchange) import/export */
-  tmx: {
-    /** Download TMX export as a file. modId is optional — omit for global export. */
-    exportFile: (srcLang = getSrcLang(), targetLang = getTgtLang(), modId?: number) => {
-      const qs = new URLSearchParams({ srcLang, targetLang });
-      if (modId != null) qs.set('modId', String(modId));
-      return downloadBinary(`/api/tmx/export?${qs}`, `tm_${targetLang}.tmx`);
-    },
-    /** Returns TM statistics (total strings, translated, coverage %) for the given language pair. */
-    stats: (srcLang = getSrcLang(), targetLang = getTgtLang()) => {
-      const qs = new URLSearchParams({ srcLang, targetLang });
-      return req<TmxStats>(`/api/tmx/stats?${qs}`);
-    },
-    /** Upload a TMX file for import. modId is optional — omit for global match. */
-    importFile: async (file: File, modId?: number): Promise<TmxImportResult> => {
-      const form = new FormData();
-      form.append('file', file);
-      const qs = modId != null ? `?modId=${modId}` : '';
-      const res = await fetch(`${BASE}/api/tmx/import${qs}`, {
-        method: 'POST',
-        body: form,
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<TmxImportResult>;
-    },
-  },
-
   /** Auth, users, and activity log */
   auth: {
     /** Returns whether multi-user mode is enabled */
@@ -1839,44 +1744,6 @@ export const api = {
     update: (id: number, data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>>) =>
       req<QARule>(`/api/qa-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => req<{ ok: boolean }>(`/api/qa-rules/${id}`, { method: 'DELETE' }),
-  },
-
-  /** TradAuto — pattern-match automatic translation rules. */
-  tradAuto: {
-    list: (params?: { game?: string; srcLang?: string; tgtLang?: string }) => {
-      const qs = new URLSearchParams();
-      if (params?.game) qs.set('game', params.game);
-      if (params?.srcLang) qs.set('srcLang', params.srcLang);
-      if (params?.tgtLang) qs.set('tgtLang', params.tgtLang);
-      return req<TradAutoRule[]>(`/api/tradauto?${qs}`);
-    },
-    get: (id: number) => req<TradAutoRule>(`/api/tradauto/${id}`),
-    create: (data: Omit<TradAutoRule, 'id' | 'created_at' | 'updated_at'>) =>
-      req<TradAutoRule>('/api/tradauto', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Omit<TradAutoRule, 'id' | 'created_at' | 'updated_at'>>) =>
-      req<TradAutoRule>(`/api/tradauto/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    remove: (id: number) => req<{ ok: boolean }>(`/api/tradauto/${id}`, { method: 'DELETE' }),
-    test: (texts: string[], game?: string, srcLang?: string, tgtLang?: string) =>
-      req<TradAutoTestResult>('/api/tradauto/test', {
-        method: 'POST',
-        body: JSON.stringify({ texts, game, srcLang, tgtLang }),
-      }),
-    apply: (modId: number, dryRun = false, targetLang = getTgtLang()) =>
-      req<TradAutoApplyResult>(`/api/tradauto/apply/${modId}`, {
-        method: 'POST',
-        body: JSON.stringify({ dryRun, targetLang }),
-      }),
-    learn: (opts?: {
-      game?: string;
-      srcLang?: string;
-      tgtLang?: string;
-      minOccurrences?: number;
-      limit?: number;
-    }) =>
-      req<TradAutoLearnResult>('/api/tradauto/learn', {
-        method: 'POST',
-        body: JSON.stringify(opts ?? {}),
-      }),
   },
 
   /**

@@ -123,4 +123,4 @@ Localization Pipeline, і пояснює роль кожної частини в
 
 ---
 
-← [Правила TradAuto](18-tradauto.md) | [Головна](README.md)
+← [Конфігурація](17-configuration.md) | [Головна](README.md)

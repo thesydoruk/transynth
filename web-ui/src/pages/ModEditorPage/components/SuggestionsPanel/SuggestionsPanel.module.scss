@@ -31,12 +31,6 @@
   white-space: pre-wrap;
 }
 
-/** Similarity percentage label. */
-.suggSim {
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
 /** "Apply" button that inserts the suggestion into the translation area. */
 .suggestionApplyBtn {
   background: var(--primary);

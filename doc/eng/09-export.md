@@ -256,4 +256,4 @@ in-game validation on real mods.
 
 ---
 
-← [Glossary](08-glossary.md) | [Home](README.md) | **Next: [TMX Exchange →](10-tmx.md)**
+← [Glossary](08-glossary.md) | [Home](README.md) | **Next: [Diff & Re-import →](11-diff-and-reimport.md)**

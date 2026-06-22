@@ -7,7 +7,7 @@ import {
   updateTranslationStatus,
   deleteTranslation,
   getStringTextNorm,
-  getTMSuggestions,
+  getRagSuggestions,
   getTranslationHistory,
   getQAIssues,
 } from '../queries';
@@ -119,7 +119,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         return reply.code(400).send({ error: 'Invalid string id' });
       }
       const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      const suggestions = await getTMSuggestions(db, stringId, targetLang);
+      const suggestions = await getRagSuggestions(db, stringId, targetLang);
       return reply.send(suggestions);
     },
   );

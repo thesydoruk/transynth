@@ -250,4 +250,4 @@ After carrying over translations:
 
 ---
 
-← [TMX Exchange](10-tmx.md) | [Home](README.md) | **Next: [Special Editors →](12-special-editors.md)**
+← [Exporting](09-export.md) | [Home](README.md) | **Next: [Special Editors →](12-special-editors.md)**

@@ -26,8 +26,6 @@ type NavLinkDescriptor = {
  * Removed from nav (now live inside Settings tabs or the home Overview page):
  *   /dashboard, /ops    — merged into / (HomePage)
  *   /qa-rules           — Settings → QA Rules tab
- *   /tradauto           — Settings → TradAuto tab
- *   /tmx                — Settings → TMX tab
  *   /activity           — Settings → Activity tab
  */
 const NAV_LINKS: NavLinkDescriptor[] = [

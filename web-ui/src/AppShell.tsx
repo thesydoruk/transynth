@@ -18,8 +18,6 @@ import {
   QARulesPage,
   ReviewQueuePage,
   SettingsPage,
-  TmxPage,
-  TradAutoPage,
   UsersPage,
 } from './pages';
 import { AppNav } from './AppNav';
@@ -57,14 +55,12 @@ export const AppShell = () => {
           <Route path="/games/:gameId/imports" element={<LegacyImportsRedirect />} />
           <Route path="/glossary" element={<GlossaryPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/tmx" element={<TmxPage />} />
           <Route path="/diff" element={<DiffPage />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
           <Route path="/ops" element={<OpsPage />} />
-          <Route path="/tradauto" element={<TradAutoPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

@@ -189,15 +189,6 @@ CREATE TABLE IF NOT EXISTS qa_rules (
 );
 CREATE INDEX IF NOT EXISTS idx_qa_rules_game_type ON qa_rules(game, rule_type) WHERE is_active = TRUE;
 
-CREATE TABLE IF NOT EXISTS alignments (
-  id SERIAL PRIMARY KEY,
-  en_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
-  uk_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
-  method TEXT NOT NULL,
-  score DOUBLE PRECISION,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS glossary (
   id SERIAL PRIMARY KEY,
   term TEXT NOT NULL,
@@ -369,37 +360,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);
 
--- ── TradAuto — pattern-match translation rules ──────────────────────────
--- Port of TradAuto rule engine. Rules contain source/target patterns
--- with %VAR1%, %VAR2%, … placeholders that capture/substitute substrings.
--- Rules are scoped by game, GRUP signature, and field path, with a numeric
--- priority (lower = higher precedence). First matching rule wins per string.
-
-CREATE TABLE IF NOT EXISTS tradauto_rules (
-  id SERIAL PRIMARY KEY,
-  game TEXT NOT NULL DEFAULT 'fo4',
-  /** Numeric priority — lower values are checked first. */
-  priority INTEGER NOT NULL DEFAULT 100,
-  /** Source pattern with %VARn% placeholders, e.g. "Iron %VAR1% Sword". */
-  pattern TEXT NOT NULL,
-  /** Target pattern with the same placeholders, e.g. "Залізний %VAR1% Меч". */
-  replacement TEXT NOT NULL,
-  /** Record-type filter: NULL = any GRUP. */
-  signature TEXT,
-  /** Field-path filter: NULL = any field. */
-  path TEXT,
-  src_lang TEXT NOT NULL DEFAULT 'en',
-  tgt_lang TEXT NOT NULL DEFAULT 'uk',
-  description TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_tradauto_rules_active
-  ON tradauto_rules(game, src_lang, tgt_lang, priority)
-  WHERE is_active = TRUE;
-
 -- ── LLM batch translate jobs ─────────────────────────────────────────────────
 -- Tracks lifecycle of each batch-translate operation so job history survives
 -- page reloads. One row per batch: inserted when the request starts, updated
@@ -499,3 +459,10 @@ CREATE INDEX IF NOT EXISTS idx_translation_examples_hnsw
 -- review. Ignored strings can be hidden in the editor via the
 -- workflow.hide_ignored_by_default project setting.
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS is_ignored BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- ── Deprecated subsystem cleanup ─────────────────────────────────────────────
+-- The TradAuto pattern-rule engine and the CSV `alignments` table were legacy
+-- ports superseded by the LLM + RAG + glossary pipeline. Drop them so existing
+-- databases converge with the current schema. Idempotent and safe to re-run.
+DROP TABLE IF EXISTS tradauto_rules;
+DROP TABLE IF EXISTS alignments;

@@ -1,1 +1,0 @@
-export { TradAutoPage } from './TradAutoPage';

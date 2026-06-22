@@ -4,12 +4,7 @@ import type pg from 'pg';
 import { log } from '../logger';
 import { CONFIG } from '../config';
 import type { GameType } from '../types';
-import {
-  normalizeForHash,
-  segmentPhrases,
-  extractNumbers,
-  transplantNumbers,
-} from '../utils/textNorm';
+import { findReferenceExamples, type RagReferenceExample } from '../llm/ragService';
 import { extractProtectedTokens } from '../utils/placeholders';
 import { assertTransition, isValidTranslationStatus } from './statusMachine';
 import type { TranslationStatus, StatusActor } from './statusMachine';
@@ -1013,176 +1008,58 @@ export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => 
   return rows.map((r: { lang: string }) => r.lang);
 };
 
-export type TMSuggestionRow = {
-  id: number;
-  text: string;
-  status: string;
-  confidence: number | null;
-  provenance: string | null;
-  source_text: string;
-  match_method: 'exact' | 'numeric' | 'punct_norm' | 'fuzzy' | 'segment';
-  similarity: number;
-};
-
-export const getTMSuggestions = async (
+/**
+ * Editor "RAG examples" panel: retrieve reference translations for a source
+ * string using the same RAG hybrid retrieval (TM-style + vector similarity)
+ * that powers LLM auto-translation. This replaces the legacy standalone TM
+ * suggestion query so the panel and the LLM share one source of truth.
+ *
+ * Only `reviewed`/`human` translations are eligible (the RAG index). Returns
+ * an empty list when RAG is unavailable (e.g. pgvector missing) so the panel
+ * degrades gracefully instead of erroring.
+ */
+export const getRagSuggestions = async (
   db: Tx,
   stringId: number,
   targetLang: string,
   limit = 10,
-): Promise<TMSuggestionRow[]> => {
-  const { rows: srcRows } = await db.query(
-    `SELECT text_raw, text_norm, text_norm_nopunct FROM strings WHERE id = $1`,
+): Promise<RagReferenceExample[]> => {
+  const { rows } = await db.query<{
+    text_raw: string;
+    text_norm: string | null;
+    text_norm_nopunct: string | null;
+    lang: string;
+    context: string | null;
+    signature: string | null;
+    path: string | null;
+  }>(
+    `SELECT s.text_raw, s.text_norm, s.text_norm_nopunct, s.lang, s.context,
+            r.signature, r.path
+     FROM strings s
+     JOIN records r ON r.id = s.record_id
+     WHERE s.id = $1`,
     [stringId],
   );
-  if (!srcRows[0]?.text_norm) return [];
+  const row = rows[0];
+  if (!row?.text_raw) return [];
 
-  const textRaw: string = srcRows[0].text_raw;
-  const textNorm: string = srcRows[0].text_norm;
-  const textNormNopunct: string | null = srcRows[0].text_norm_nopunct;
-  const results: TMSuggestionRow[] = [];
-  const seenTexts = new Set<string>();
-
-  /** DB result rows before match_method is injected by the caller. */
-  type TMQueryRow = Omit<TMSuggestionRow, 'match_method'>;
-  const addRows = (rows: TMQueryRow[], method: TMSuggestionRow['match_method'], sim: number) => {
-    for (const r of rows) {
-      if (seenTexts.has(r.text)) continue;
-      seenTexts.add(r.text);
-      results.push({ ...r, match_method: method, similarity: r.similarity ?? sim });
-    }
-  };
-
-  // 1. Exact text_norm match — split into true exact vs numeric transplant
-  const { rows: normRows } = await db.query(
-    `SELECT DISTINCT ON (t.text)
-        t.id, t.text, t.status, t.confidence, t.provenance,
-        s.text_raw AS source_text, 1.0::double precision AS similarity
-     FROM strings s
-     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-     WHERE s.text_norm = $1
-       AND s.id <> $3
-     ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
-       COALESCE(t.confidence, 0) DESC
-     LIMIT $4`,
-    [textNorm, targetLang, stringId, limit],
-  );
-  /* Separate true exact matches (identical raw text) from numeric matches. */
-  const exactRows: typeof normRows = [];
-  const numericRows: typeof normRows = [];
-  for (const r of normRows) {
-    if (r.source_text === textRaw) {
-      exactRows.push(r);
-    } else {
-      /* Try transplanting numbers from the new source into the translation. */
-      const oldNums = extractNumbers(r.source_text);
-      const newNums = extractNumbers(textRaw);
-      const transplanted = transplantNumbers(r.text, oldNums, newNums);
-      if (transplanted !== null) {
-        numericRows.push({ ...r, text: transplanted, similarity: 0.95 });
-      } else {
-        /* Transplant failed — still show as exact match with original text. */
-        exactRows.push(r);
-      }
-    }
-  }
-  addRows(exactRows, 'exact', 1.0);
-  addRows(numericRows, 'numeric', 0.95);
-
-  // 2. Punctuation-normalized match (if text_norm_nopunct available and we need more)
-  if (textNormNopunct && results.length < limit) {
-    const { rows: punctRows } = await db.query(
-      `SELECT DISTINCT ON (t.text)
-          t.id, t.text, t.status, t.confidence, t.provenance,
-          s.text_raw AS source_text, 0.9::double precision AS similarity
-       FROM strings s
-       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-       WHERE s.text_norm_nopunct = $1
-         AND s.text_norm <> $5
-         AND s.id <> $3
-       ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
-         COALESCE(t.confidence, 0) DESC
-       LIMIT $4`,
-      [textNormNopunct, targetLang, stringId, limit - results.length, textNorm],
-    );
-    addRows(punctRows, 'punct_norm', 0.9);
-  }
-
-  // 3. Fuzzy trigram match (pg_trgm) — only if we still need more
-  if (results.length < limit && textNorm.length >= 4) {
-    const { rows: fuzzyRows } = await db.query(
-      `SELECT DISTINCT ON (t.text)
-          t.id, t.text, t.status, t.confidence, t.provenance,
-          s.text_raw AS source_text,
-          similarity(s.text_norm, $1)::double precision AS similarity
-       FROM strings s
-       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-       WHERE s.text_norm % $1
-         AND s.text_norm <> $1
-         AND s.id <> $3
-       ORDER BY t.text, similarity(s.text_norm, $1) DESC,
-         ${BEST_TRANSLATION_ORDER},
-         COALESCE(t.confidence, 0) DESC
-       LIMIT $4`,
-      [textNorm, targetLang, stringId, limit - results.length],
-    );
-    addRows(fuzzyRows, 'fuzzy', 0);
-  }
-
-  // 4. Phrase segment matching — split long text into clauses and look up each
-  if (results.length < limit) {
-    const { rows: srcTextRows } = await db.query(`SELECT text_raw FROM strings WHERE id = $1`, [
+  try {
+    return await findReferenceExamples(db, {
       stringId,
-    ]);
-    const rawText: string = srcTextRows[0]?.text_raw ?? '';
-    const segments = segmentPhrases(rawText);
-
-    for (const seg of segments) {
-      if (results.length >= limit) break;
-      const segNorm = normalizeForHash(seg);
-      if (!segNorm || segNorm.length < 3) continue;
-
-      const { rows: segRows } = await db.query(
-        `SELECT DISTINCT ON (t.text)
-            t.id, t.text, t.status, t.confidence, t.provenance,
-            s.text_raw AS source_text,
-            0.5::double precision AS similarity
-         FROM strings s
-         JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-         WHERE s.text_norm = $1 AND s.id <> $3
-         ORDER BY t.text, ${BEST_TRANSLATION_ORDER},
-           COALESCE(t.confidence, 0) DESC
-         LIMIT 2`,
-        [segNorm, targetLang, stringId],
-      );
-      addRows(segRows, 'segment', 0.5);
-    }
+      sourceText: row.text_raw,
+      textNorm: row.text_norm,
+      textNormNopunct: row.text_norm_nopunct,
+      signature: row.signature,
+      path: row.path,
+      context: row.context,
+      srcLang: row.lang,
+      targetLang,
+      maxExamples: limit,
+    });
+  } catch (err) {
+    log.warn(`RAG suggestions unavailable for string ${stringId}: ${(err as Error).message}`);
+    return [];
   }
-
-  /* ── Final ranking ─────────────────────────────────────────────────────── */
-  /* Sort by composite score: method weight × similarity, then by status.   */
-  const methodWeight: Record<string, number> = {
-    exact: 1.0,
-    numeric: 0.92,
-    punct_norm: 0.85,
-    fuzzy: 0.7,
-    segment: 0.4,
-  };
-  const statusWeight: Record<string, number> = {
-    reviewed: 6,
-    human: 5,
-    tm: 4,
-    fuzzy: 3,
-    auto: 2,
-    draft: 1,
-  };
-  results.sort((a, b) => {
-    const scoreA = (methodWeight[a.match_method] ?? 0.5) * a.similarity;
-    const scoreB = (methodWeight[b.match_method] ?? 0.5) * b.similarity;
-    if (scoreB !== scoreA) return scoreB - scoreA;
-    return (statusWeight[b.status] ?? 0) - (statusWeight[a.status] ?? 0);
-  });
-
-  return results.slice(0, limit);
 };
 
 // ── Translations ──────────────────────────────────────────────────────────────

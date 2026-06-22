@@ -8,19 +8,14 @@ automatically, reducing repetitive effort and improving consistency.
 ## Table of Contents
 
 - [What is the Translation Memory?](#what-is-the-translation-memory)
-- [The 6-Method Waterfall](#the-6-method-waterfall)
+- [Auto-Apply Match Methods](#auto-apply-match-methods)
   - [1. Anchor Match](#1-anchor-match)
   - [2. EDID Match](#2-edid-match)
   - [3. Text-Norm Match](#3-text-norm-match)
-  - [4. Punct-Norm Match](#4-punct-norm-match)
-  - [5. Fuzzy Match](#5-fuzzy-match)
-  - [6. Phrase Segmentation Match](#6-phrase-segmentation-match)
-- [Numeric-Invariant Matching](#numeric-invariant-matching)
 - [Auto-Apply on Import](#auto-apply-on-import)
 - [Manually Applying TM Suggestions](#manually-applying-tm-suggestions)
-- [TM Suggestions Tab in the Detail Panel](#tm-suggestions-tab-in-the-detail-panel)
+- [RAG Examples Tab in the Detail Panel](#rag-examples-tab-in-the-detail-panel)
 - [How Translations Enter the TM](#how-translations-enter-the-tm)
-- [Sharing the TM: TMX Export/Import](#sharing-the-tm-tmx-exportimport)
 
 ---
 
@@ -39,10 +34,19 @@ If the Glossary page is still empty, the UI adds role-aware guidance instead of 
 
 ---
 
-## The 6-Method Waterfall
+## Auto-Apply Match Methods
 
-Matching is attempted in order from most precise to most fuzzy.
-The first method that finds a match wins; subsequent methods are skipped.
+Auto-apply reuses an existing translation only when the source text is an
+**exact or anchor match**. Methods are attempted from most precise to least;
+the first match wins.
+
+> **Why only exact matches?** Approximate heuristics (trigram fuzzy,
+> punctuation-stripped, numeric transplant, phrase segmentation, reverse TM)
+> were retired from auto-apply. The LLM + RAG pipeline produces higher-quality
+> results for non-identical strings, so TM auto-apply is now limited to free,
+> instant, lossless reuse of identical text. For non-identical strings, see the
+> [RAG Examples tab](#rag-examples-tab-in-the-detail-panel), which surfaces
+> reference translations via the same retrieval that feeds the LLM.
 
 ### 1. Anchor Match
 
@@ -58,7 +62,7 @@ Anchor matches occur when:
 
 The backend query joins on `records.formid_hex + records.path`, excluding the
 current mod, then picks the translation with the highest-priority status
-(`reviewed` > `human` > `tm` > `fuzzy` > `auto` > `draft`).
+(`reviewed` > `human` > `tm` > `auto` > `draft`).
 
 ### 2. EDID Match
 
@@ -85,115 +89,17 @@ to `"hello, world!"` and produce a match even though the original whitespace
 differs.
 
 Because numbers are replaced during normalisation, two strings whose only
-difference is numeric values — such as `"Deal 10 damage"` and `"Deal 15 damage"`
-— also share the same `text_norm`. When this happens the pipeline attempts to
-transplant the new numbers into the existing translation automatically
-(see [Numeric-Invariant Matching](#numeric-invariant-matching) below).
-
-### 4. Punct-Norm Match
-
-Match on source text with **all punctuation stripped** (confidence: 0.65).
-Built on top of text-norm: first normalise (step 3), then remove every
-non-word, non-placeholder, non-space character.
-
-Example: `"Ready?"` normalises to `"ready?"`, then punctuation-strips to
-`"ready"`. A string `"Ready"` normalises and strips identically. The pipeline
-finds the match and reuses the existing translation.
-
-The match is only considered when the `text_norm` column differs — identical
-`text_norm` values are already caught by step 3.
-
-### 5. Fuzzy Match
-
-Match using **trigram similarity** (PostgreSQL `pg_trgm`).
-Strings that are very similar but not identical can still get a partial match.
-The similarity score is shown in the TM Suggestions tab.
-
-The minimum threshold is controlled by PostgreSQL's `pg_trgm.similarity_threshold`,
-which defaults to **0.3** (30%). The `%` operator used in the query only
-returns rows above this threshold. Only strings of at least **4 characters**
-are eligible for fuzzy matching.
-
-Fuzzy candidates are ranked by **similarity score descending**, then by
-translation status priority (`reviewed` > `human` > `tm` > `fuzzy` > `auto` > `draft`).
-The single best candidate is applied during auto-import.
-
-### 6. Phrase Segmentation Match
-
-If no previous method matched, the source text is split into **sentence-level
-segments** using punctuation delimiters (`.`, `!`, `?`, `;`, `:`, newline).
-Each segment is normalised and looked up as an exact `text_norm` match.
-
-**All-or-nothing rule ("DicoBy_Phrase"):** a phrase segmentation match
-is only produced when **every** segment has a translation in the TM. If any
-single segment fails to find a match, the entire phrase match is aborted and
-no translation is produced for this string.
-
-When all segments are found, their translations are concatenated with spaces
-and returned as a single composite translation (confidence: **0.55**, status:
-`fuzzy`, provenance: `tm_auto_phrase`).
-
-**When it helps:**
-
-- Long dialogue lines that combine two or more sentences, each of which
-  already exists in the TM from a different record or mod.
-- Strings where minor rewording at the sentence boundary changed the full
-  `text_norm` but individual clauses still match exactly.
-
-**Constraints:**
-
-- The text must split into at least **2** segments (single-sentence text is not eligible).
-- Segments shorter than 3 characters after normalisation are passed through as-is.
-- Phrase segmentation runs **after** fuzzy matching — it is the last resort
-  before giving up on a string entirely.
-
----
-
-## Numeric-Invariant Matching
-
-Numbers in source strings (amounts, levels, percentages) can vary between
-mod versions (e.g. `"Deal 10 damage"` → `"Deal 15 damage"`).
-
-The pipeline matches such strings by treating numbers as wildcards during
-normalisation (replaced with `¤NUM¤`), then, when the raw texts differ,
-transplanting the numbers from the new source into the existing translation.
-
-**How it works (step by step):**
-
-1. Both strings normalise to the same `text_norm` (numbers are `¤NUM¤`).
-2. A text_norm match is found in the TM.
-3. The raw texts are compared — they differ, meaning only the numbers changed.
-4. `extractNumbers()` collects the ordered list of numbers from both raw strings.
-5. `transplantNumbers()` replaces each old number in the matched translation with
-   the corresponding new number, positionally.
-6. A two-pass placeholder replacement prevents substring collisions
-   (e.g. `"100"` → `"150"` without accidentally touching `"5"` inside `"150"`).
-7. The transplanted translation is returned with confidence **0.70** and method `numeric`.
-
-**Worked example:**
-
-|                       | Text                                        |
-| --------------------- | ------------------------------------------- |
-| Old source            | `"Deal 10 damage and restore 5 health"`     |
-| New source            | `"Deal 15 damage and restore 8 health"`     |
-| Old translation       | `"Завдає 10 шкоди та відновлює 5 здоров'я"` |
-| Extracted old numbers | `["10", "5"]`                               |
-| Extracted new numbers | `["15", "8"]`                               |
-| **Result**            | `"Завдає 15 шкоди та відновлює 8 здоров'я"` |
-
-**Fallback:** if the number counts differ between old and new source,
-transplantation is impossible. The original matched translation is returned
-as a plain text_norm match (confidence 0.75) instead.
-
-During auto-apply, numeric matches are assigned status **`fuzzy`** rather than `tm`,
-because the translation was modified automatically.
+difference is numeric values share the same `text_norm` and therefore match.
+Auto-apply reuses the existing translation verbatim; it does **not** transplant
+the changed numbers (that approximate behaviour now lives only in the
+RAG Examples tab).
 
 ---
 
 ## Auto-Apply on Import
 
-When you import a mod, the pipeline automatically runs the TM waterfall
-for every string and fills any matched translations.
+When you import a mod, the pipeline automatically runs the exact/anchor match
+methods for every string and fills any matched translations.
 
 Strings filled this way receive the status **TM**.
 You can review and approve them in the editor.
@@ -202,12 +108,12 @@ You can review and approve them in the editor.
 
 ## Manually Applying TM Suggestions
 
-If a string has no auto-filled translation, you can still apply a TM
-suggestion from the Detail Panel:
+If a string has no auto-filled translation, you can still reuse a reference
+translation from the Detail Panel:
 
 1. Select the string in the grid.
-2. Click the **TM Suggestions** tab in the Detail Panel.
-3. Click **Apply** next to a suggestion to copy it into the translation field.
+2. Click the **RAG Examples** tab in the Detail Panel.
+3. Click **Apply** next to an example to copy it into the translation field.
 4. Edit if needed, then save with **Ctrl+S**.
 
 You can also trigger re-matching for the entire mod (or a filtered set of strings)
@@ -215,39 +121,33 @@ using the batch **Apply TM** action.
 
 ---
 
-## TM Suggestions Tab in the Detail Panel
+## RAG Examples Tab in the Detail Panel
 
-The TM Suggestions tab shows up to **10** candidates for the current string.
-Candidates come from a dedicated query that runs all six match methods
-(exact, numeric, punct_norm, fuzzy, and phrase-segment) and deduplicates
-results by translated text.
+The **RAG Examples** tab shows up to **10** reference translations for the
+current string. It is powered by the **same RAG hybrid retrieval that feeds the
+LLM** (`findReferenceExamples`): TM-style matches (exact, numeric, punct_norm,
+fuzzy) plus pgvector semantic similarity (`embedding`). There is no longer a
+separate suggestion query — the panel and the LLM share one source of truth.
 
-Results are sorted by a combined score: `method_weight × similarity`, then
-by translation status priority.
+Only `reviewed` / `human` translations are eligible (the RAG index). Results
+are ranked by a combined score (`method_weight × similarity`). If RAG is
+unavailable (e.g. pgvector is not installed), the panel simply shows no
+examples instead of erroring.
 
-| Column       | Description                                                  |
-| ------------ | ------------------------------------------------------------ |
-| Status badge | The status of the source translation (e.g. `reviewed`, `tm`) |
-| Method label | `Exact`, `Numeric`, `Punct`, `Phrase`, or `Fuzzy`            |
-| Translation  | The suggested translation text                               |
-| Score        | Similarity score displayed as a percentage (0–100%)          |
-| Apply button | Copies the suggestion text into the translation field        |
+| Column       | Description                                                 |
+| ------------ | ----------------------------------------------------------- |
+| Match badge  | The match quality as a percentage (0–100%)                  |
+| Method label | `exact`, `numeric`, `punct`, `semantic`, or `fuzzy`         |
+| Translation  | The reference translation (hover to see its source text)    |
+| Apply button | Copies the reference translation into the translation field |
 
 **Apply button behaviour:**
 
-Clicking **Apply** copies the suggestion text directly into the translation
-textarea in the Detail Panel. It does **not** save automatically — the field
-status remains unchanged until you save with **Ctrl+S** or **Ctrl+Enter**.
-At that point the status you have selected in the Detail Panel is saved
+Clicking **Apply** copies the reference translation directly into the
+translation textarea. It does **not** save automatically — the field status
+remains unchanged until you save with **Ctrl+S** or **Ctrl+Enter**. At that
+point the status you have selected in the Detail Panel is saved
 (default: `Draft` if no status was set).
-
-**Phrase-segment method:** if the full string has no match but can be split
-into sentence-delimited clauses (`.`, `!`, `?`, `;`, `:`, newline), each
-clause is looked up independently. In the interactive Suggestions tab, matched
-clause translations are shown as separate suggestions with similarity **50%**
-and the label `Phrase`. In the batch auto-apply, phrase matching follows the
-all-or-nothing rule: all segments must match, and the result is concatenated
-into a single composite translation (confidence **55%**, status `fuzzy`).
 
 ---
 
@@ -256,7 +156,7 @@ into a single composite translation (confidence **55%**, status `fuzzy`).
 Every time you save a translation (any status: Draft, Reviewed, Human, TM,
 Fuzzy, or Auto), it is added to the TM automatically.
 
-Imported translations — from EET files, CSV, or TMX — also populate the TM.
+Imported translations — from EET files or CSV — also populate the TM.
 
 **Deduplication policy:**
 
@@ -270,19 +170,8 @@ translation can automatically propagate to all other strings with the same
 normalized source text that do not yet have a `draft`, `reviewed`, or `human`
 translation. This propagation assigns status **`tm`** to the filled strings.
 
-**TMX and CSV imports** use the same `upsertTranslation` path, so they
-respect the same one-per-string rule and also trigger propagation.
-
----
-
-## Sharing the TM: TMX Export/Import
-
-You can export the full TM (or a per-mod subset) as a TMX 1.4b file
-compatible with Trados, memoQ, OmegaT, and other CAT tools.
-
-You can also import a TMX file produced by another tool to populate the TM.
-
-See [TMX Exchange](10-tmx.md) for details.
+**CSV imports** use the same `upsertTranslation` path, so they respect the
+same one-per-string rule and also trigger propagation.
 
 ---
 
