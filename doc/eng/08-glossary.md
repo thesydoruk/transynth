@@ -8,6 +8,7 @@ into LLM prompts to ensure consistent terminology across all mods.
 ## Table of Contents
 
 - [What is the Glossary?](#what-is-the-glossary)
+- [Built-in Fallout 4 Glossary (Seed)](#built-in-fallout-4-glossary-seed)
 - [Opening the Glossary Page](#opening-the-glossary-page)
 - [Adding Terms](#adding-terms)
 - [Editing and Removing Terms](#editing-and-removing-terms)
@@ -26,15 +27,41 @@ its preferred **target translation**.
 
 Example:
 
-| Source term          | Translation    |
-| -------------------- | -------------- |
-| Synth                | Синт           |
-| Brotherhood of Steel | Братство Сталі |
-| Vault                | Сховище        |
-| Pip-Boy              | Пін-Бой        |
+| Source term          | Translation      |
+| -------------------- | ---------------- |
+| Synth                | Синт             |
+| Brotherhood of Steel | Братерство сталі |
+| Vault                | Сховище          |
+| Pip-Boy              | Піп-бой          |
 
 Using the glossary ensures that every translator and every LLM call uses the
 same terminology — vital for a cohesive, professional translation.
+
+---
+
+## Built-in Fallout 4 Glossary (Seed)
+
+The project ships with a **ready-made glossary** of canonical Fallout 4
+terminology (`EN → UK`): factions, locations, companions, creatures, robots,
+chems, weapons/armor, and S.P.E.C.I.A.L. attributes. The pairs were curated
+from the confirmed base-game translations (`Fallout4.esm`) by frequency.
+
+- **Source of truth:** `src/resources/glossary/fo4-uk.ts` — a curated, typed
+  list of pairs kept in git, so the terminology does not live in the database
+  alone and can never be lost.
+- **Seeding the database:** run
+
+  ```bash
+  npm run db:seed:glossary
+  ```
+
+  The script is **idempotent** — re-running only refreshes the seeded rows
+  (`source = 'seed:fo4-base'`) and **never overwrites** terms added manually
+  through the UI (`source = 'manual'`).
+
+To extend the built-in glossary, add pairs to `fo4-uk.ts` and re-run the seed
+command (recommended for terms that should live in the repo), or add one-off
+terms through the **Glossary** page in the UI.
 
 ---
 
@@ -115,31 +142,44 @@ and `targetLang` parameters (default `en`→`uk`).
 
 ## LLM Injection
 
-When a batch LLM translation is triggered, the pipeline:
+When a batch LLM translation is triggered, for each chunk of strings the
+pipeline:
 
-1. Fetches up to **80 glossary terms** (web UI route) for the relevant
-   language pair, ordered alphabetically.
-2. Inserts them as a reference block in the LLM system prompt:
+1. Loads the **entire** glossary for the relevant language pair.
+2. Selects only the **relevant** terms — those whose source term actually
+   occurs in the chunk's source strings (word-boundary `\b` match). This means
+   a large glossary (hundreds of terms) is **not** truncated alphabetically;
+   the prompt receives exactly what the current strings need.
+3. Passes the selected pairs in the `glossary` field of the JSON request to the
+   model (capped at 100 relevant terms per chunk to bound context size).
 
+Example request payload (excerpt):
+
+```json
+{
+  "target_language": "uk",
+  "glossary": [
+    { "term": "Brotherhood of Steel", "translation": "Братерство сталі" },
+    { "term": "Power Armor", "translation": "Силова броня" }
+  ],
+  "items": [
+    /* … strings to translate … */
+  ]
+}
 ```
-You are a professional Fallout 4 game localizer. Translate from en to uk.
-Output only the translated text, nothing else.
 
-Key terminology to preserve:
-- Brotherhood of Steel → Братство Сталі
-- Institute → Інститут
-- synth → синт
-- Vault → Сховище
-```
+The system prompt tells the model that the `glossary` field is **authoritative**
+and takes priority over default conventions. Terms with an empty `translation`
+column are **not** included — only pairs with a defined translation are injected.
 
-3. The LLM is instructed to preserve glossary entries when translating.
+> **Developer note.** Previously the first 80 terms _alphabetically_ were sent
+> with every batch regardless of relevance, so relevant terms past the cutoff
+> could be dropped. Injection is now filtered by chunk content (see
+> `relevantGlossary` in `src/web/llmTranslateBatch.ts`).
 
-Terms are sorted alphabetically (no priority ranking). All active terms for
-the selected language pair are included up to the 80-term limit — if you
-have more than 80 terms, the first 80 alphabetically are used.
-
-Terms that have no translation (empty `translation` column) are **not**
-included in the hint — only pairs with a defined translation are injected.
+Beyond the glossary, key canonical conventions (e.g. `...Rifle/Gun → ...карабін`,
+`caps → кришки`, `Vault → Сховище`) are baked directly into the Ukrainian system
+prompt as a fallback for terms not present in the glossary.
 
 The LLM may still deviate from glossary entries, especially for short or
 ambiguous terms. Always review **Auto** strings for glossary compliance.
@@ -209,8 +249,9 @@ Response:
   confuse the model.
 - **Review LLM output for glossary compliance.** After a translation run,
   filter by status `auto` and look for `glossary_violation` QA warnings.
-- **Export regularly as a backup.** The glossary is stored in the database
-  only; export a CSV of the glossary table if you want an external backup.
+- **Keep shared terms in git.** Terms that should be shared across the team and
+  survive a database reset belong in `src/resources/glossary/fo4-uk.ts`; apply
+  them with `npm run db:seed:glossary`. Use the UI for one-off / local terms.
 
 ---
 

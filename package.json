@@ -10,6 +10,7 @@
     "db:reset": "tsx scripts/dbReset.ts",
     "db:dump": "tsx scripts/dbDump.ts",
     "db:restore": "tsx scripts/dbRestore.ts",
+    "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",

@@ -75,8 +75,8 @@ export const buildUkrainianPromptExamples = (): string => {
     '',
     'Приклад відповіді:',
     fill(OUTPUT_EXAMPLE, {
-      line101: 'Мені потрібно ¤PH0¤ кришок за цю гвинтівку.',
-      line102: 'Бойова броня Братства Сталі',
+      line101: 'Мені потрібно ¤PH0¤ кришок за цей карабін.',
+      line102: 'Бойова броня Братерства сталі',
     }),
   ].join('\n');
 };
@@ -124,9 +124,9 @@ const sampleTranslationsForTarget = (
     case 'ukr':
     case 'ukrainian':
       return {
-        glossaryBos: 'Братство Сталі',
-        line101: 'Мені потрібно ¤PH0¤ кришок за цю гвинтівку.',
-        line102: 'Бойова броня Братства Сталі',
+        glossaryBos: 'Братерство сталі',
+        line101: 'Мені потрібно ¤PH0¤ кришок за цей карабін.',
+        line102: 'Бойова броня Братерства сталі',
       };
     default:
       return {

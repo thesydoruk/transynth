@@ -8,7 +8,7 @@ import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookup, cacheStore } from './cacheService';
-import { upsertTranslation } from './queries';
+import { upsertTranslation, termWordBoundaryRe } from './queries';
 import { logTranslate } from '../logging/loggers';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -75,11 +75,35 @@ export const translateStringIdsBatch = async (
 
   const model = getTranslateModel();
 
+  // Load the full glossary once. Rather than blindly sending the first 80 terms
+  // (alphabetically) with every batch — which both wastes context and silently
+  // drops relevant terms past the cutoff — we keep all entries here and filter
+  // them per chunk to only those whose English term actually appears in that
+  // chunk's source strings (see relevantGlossary below).
   const { rows: glossaryRows } = await db.query<{ term: string; translation: string | null }>(
-    `SELECT term, translation FROM glossary WHERE src_lang = $1 AND tgt_lang = $2 ORDER BY term LIMIT 80`,
+    `SELECT term, translation FROM glossary WHERE src_lang = $1 AND tgt_lang = $2 ORDER BY term LIMIT 2000`,
     [srcLang, targetLang],
   );
-  const glossary: LlmGlossaryEntry[] = glossaryRows;
+  const glossaryAll: Array<LlmGlossaryEntry & { re: RegExp }> = glossaryRows
+    .filter((g) => g.term.trim() !== '')
+    .map((g) => ({ ...g, re: termWordBoundaryRe(g.term) }));
+
+  /**
+   * Pick the glossary entries relevant to a chunk: a term is included only when
+   * it appears (on word boundaries) in at least one of the chunk's source texts.
+   * Capped at 100 entries to bound the prompt size for very large batches.
+   */
+  const relevantGlossary = (sourceTexts: string[]): LlmGlossaryEntry[] => {
+    if (glossaryAll.length === 0) return [];
+    const out: LlmGlossaryEntry[] = [];
+    for (const g of glossaryAll) {
+      if (sourceTexts.some((text) => g.re.test(text))) {
+        out.push({ term: g.term, translation: g.translation });
+        if (out.length >= 100) break;
+      }
+    }
+    return out;
+  };
   const projectSettings = await getAllProjectSettings(db);
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
@@ -152,7 +176,7 @@ export const translateStringIdsBatch = async (
         targetLang,
         game: modGame ?? chunk[0]?.game,
         modName: modName ?? chunk[0]?.modName,
-        glossary,
+        glossary: relevantGlossary(chunk.map((entry) => entry.sourceText)),
       });
 
       const translationById = new Map(translations.map((row) => [row.id, row.translation]));
