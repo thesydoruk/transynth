@@ -14,6 +14,7 @@ import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { parseRecordLocation } from '../utils/recordLocation';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { logVerify } from '../logging/loggers';
 
 /** Rows fetched from the database per pagination step. */
@@ -219,95 +220,121 @@ export const runLlmVerifyJob = async (
       if (dbChunk.length === 0) break;
       dbOffset += dbChunk.length;
 
-      for (let i = 0; i < dbChunk.length && !job.cancel; i += CONFIG.batchSize) {
-        const llmChunk = dbChunk.slice(i, i + CONFIG.batchSize);
-        const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
+      const llmChunks: VerifyStringRow[][] = [];
+      for (let i = 0; i < dbChunk.length; i += CONFIG.batchSize) {
+        llmChunks.push(dbChunk.slice(i, i + CONFIG.batchSize));
+      }
 
-        const ragByStringId = await fetchReferenceExamplesBatch(
-          db,
-          llmChunk.map((row) => {
-            const { grup } = parseRecordLocation(row.signature, row.path);
+      type VerifyChunkOutcome =
+        | {
+            ok: true;
+            results: Awaited<ReturnType<typeof verifyTranslationsWithLlm>>;
+            rowById: Map<number, VerifyStringRow>;
+          }
+        | { ok: false; error: string; llmChunk: VerifyStringRow[] };
+
+      const chunkOutcomes = await mapWithConcurrency(
+        llmChunks,
+        CONFIG.llmMaxParallel,
+        async (llmChunk): Promise<VerifyChunkOutcome> => {
+          if (job.cancel) {
+            return { ok: true, results: [], rowById: new Map() };
+          }
+
+          const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
+
+          const ragByStringId = await fetchReferenceExamplesBatch(
+            db,
+            llmChunk.map((row) => {
+              const { grup } = parseRecordLocation(row.signature, row.path);
+              return {
+                stringId: row.string_id,
+                sourceText: row.source,
+                textNorm: row.text_norm,
+                textNormNopunct: row.text_norm_nopunct,
+                signature: grup,
+                path: row.path,
+                context: row.context,
+              };
+            }),
+            opts.srcLang,
+            opts.targetLang,
+            ragMaxExamples,
+            ragMinSimilarity,
+          );
+
+          const items: LlmVerifyItem[] = llmChunk.map((row) => {
+            const { grup, field } = parseRecordLocation(row.signature, row.path);
             return {
-              stringId: row.string_id,
-              sourceText: row.source,
-              textNorm: row.text_norm,
-              textNormNopunct: row.text_norm_nopunct,
-              signature: grup,
-              path: row.path,
-              context: row.context,
-            };
-          }),
-          opts.srcLang,
-          opts.targetLang,
-          ragMaxExamples,
-          ragMinSimilarity,
-        );
-
-        const items: LlmVerifyItem[] = llmChunk.map((row) => {
-          const { grup, field } = parseRecordLocation(row.signature, row.path);
-          return {
-            id: row.string_id,
-            source: row.source,
-            translation: row.translation,
-            grup,
-            edid: row.edid,
-            field,
-            context: row.context,
-            reference_examples: ragByStringId.get(row.string_id),
-          };
-        });
-
-        try {
-          const results = await verifyTranslationsWithLlm({
-            items,
-            model,
-            srcLang: opts.srcLang,
-            targetLang: opts.targetLang,
-            game: opts.game,
-            modName: opts.modName,
-          });
-
-          for (const result of results) {
-            job.done++;
-            if (result.verdict === 'ok') {
-              onEvent({ type: 'progress', done: job.done, total: job.total });
-              continue;
-            }
-
-            const row = rowById.get(result.id);
-            if (!row) continue;
-
-            const issue: LlmVerifyIssue = {
-              stringId: result.id,
+              id: row.string_id,
               source: row.source,
               translation: row.translation,
-              signature: row.signature,
-              path: row.path,
+              grup,
               edid: row.edid,
-              verdict: result.verdict,
-              reason: result.reason,
-              confidence: result.confidence,
-              suggestion: result.suggestion,
+              field,
+              context: row.context,
+              reference_examples: ragByStringId.get(row.string_id),
             };
-            job.issues.push(issue);
-            onEvent({ type: 'progress', done: job.done, total: job.total, issue });
+          });
+
+          try {
+            const results = await verifyTranslationsWithLlm({
+              items,
+              model,
+              srcLang: opts.srcLang,
+              targetLang: opts.targetLang,
+              game: opts.game,
+              modName: opts.modName,
+            });
+            return { ok: true, results, rowById };
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return { ok: false, error: message, llmChunk };
           }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+        },
+      );
+
+      for (const outcome of chunkOutcomes) {
+        if (!outcome.ok) {
           logVerify.error('job chunk failed', {
             jobId,
             modId: opts.modId,
-            error: message,
-            stack: err instanceof Error ? err.stack : undefined,
+            error: outcome.error,
           });
-          for (const row of llmChunk) {
+          for (const row of outcome.llmChunk) {
             job.done++;
             onEvent({ type: 'progress', done: job.done, total: job.total });
           }
           job.status = 'failed';
-          job.error = message;
-          onEvent({ type: 'error', error: message });
+          job.error = outcome.error;
+          onEvent({ type: 'error', error: outcome.error });
           return toSnapshot(job);
+        }
+
+        for (const result of outcome.results) {
+          job.done++;
+          if (result.verdict === 'ok') {
+            onEvent({ type: 'progress', done: job.done, total: job.total });
+            continue;
+          }
+
+          const row = outcome.rowById.get(result.id);
+          if (!row) continue;
+
+          const issue: LlmVerifyIssue = {
+            stringId: result.id,
+            source: row.source,
+            translation: row.translation,
+            signature: row.signature,
+            path: row.path,
+            edid: row.edid,
+            verdict: result.verdict,
+            reason: result.reason,
+            confidence: result.confidence,
+            suggestion: result.suggestion,
+          };
+          job.issues.push(issue);
+          onEvent({ type: 'progress', done: job.done, total: job.total, issue });
         }
       }
     }

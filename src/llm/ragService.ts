@@ -7,8 +7,9 @@
  * 2. pgvector cosine similarity on sentence embeddings (semantic fallback)
  */
 import type { Tx } from '../db';
-import { getEmbedModel } from '../config';
+import { CONFIG, getEmbedModel } from '../config';
 import { embedMany } from './embed';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { logRag } from '../logging/loggers';
 import {
   RAG_EMBED_DIMENSIONS,
@@ -690,18 +691,19 @@ export const reindexAllTranslationExamples = async (
   const total = rows.length;
   let indexed = 0;
   let failed = 0;
+  let progressDone = 0;
 
-  for (let i = 0; i < rows.length; i++) {
-    const id = rows[i].id;
+  await mapWithConcurrency(rows, CONFIG.embedMaxParallel, async (row) => {
     try {
-      await syncTranslationExample(db, id);
+      await syncTranslationExample(db, row.id);
       indexed++;
     } catch (err) {
-      logRag.error('RAG reindex failed for translation', { err, translationId: id });
+      logRag.error('RAG reindex failed for translation', { err, translationId: row.id });
       failed++;
     }
-    if (onProgress) onProgress(i + 1, total);
-  }
+    progressDone++;
+    onProgress?.(progressDone, total);
+  });
 
   // Remove stale rows whose translation is no longer eligible
   const { rowCount } = await db.query(

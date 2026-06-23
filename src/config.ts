@@ -13,6 +13,12 @@ const parseUploadMaxFileSizeBytes = (mbValue: string | undefined): number => {
   return DEFAULT_UPLOAD_MAX_FILE_SIZE_BYTES;
 };
 
+const parseMaxParallel = (value: string | undefined, defaultValue: number, max = 32): number => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return defaultValue;
+  return Math.min(parsed, max);
+};
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'vllm') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -45,6 +51,11 @@ export const CONFIG = {
 
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
+
+  /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
+  llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
+  /** Max concurrent embedding HTTP requests (global semaphore). */
+  embedMaxParallel: parseMaxParallel(process.env.EMBED_MAX_PARALLEL, 4),
 
   // Nexus Mods personal API key (Bearer token).
   // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
@@ -90,7 +101,7 @@ export const getEmbedModel = (): string => {
 /** Fail-fast validation — call at CLI entry points. */
 export const validateConfig = (): void => {
   log.info(
-    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}`,
+    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}`,
   );
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {

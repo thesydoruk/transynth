@@ -45,6 +45,10 @@ export interface SettingsPayload {
   nexusApiKeyConfigured: boolean;
   /** Translation batch size for LLM auto-translate jobs. */
   batchSize: number;
+  /** Max concurrent LLM chat/translate HTTP requests. */
+  llmMaxParallel: number;
+  /** Max concurrent embedding HTTP requests. */
+  embedMaxParallel: number;
   /** Whether multi-user authentication mode is active. */
   multiUser: boolean;
   /** Session lifetime in hours (relevant when multiUser = true). */
@@ -164,6 +168,8 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       openaiKeyConfigured: Boolean(CONFIG.openaiApiKey),
       nexusApiKeyConfigured: Boolean(CONFIG.nexusApiKey),
       batchSize: CONFIG.batchSize,
+      llmMaxParallel: CONFIG.llmMaxParallel,
+      embedMaxParallel: CONFIG.embedMaxParallel,
       multiUser: CONFIG.multiUser,
       sessionLifetimeHours: CONFIG.sessionLifetimeHours,
       llmReadiness: buildLlmReadiness(),

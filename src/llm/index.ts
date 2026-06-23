@@ -1,6 +1,7 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
 import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
+import { Semaphore } from '../utils/concurrency';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
 import {
@@ -12,6 +13,9 @@ import {
 import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
+
+const llmSemaphore = new Semaphore(CONFIG.llmMaxParallel);
+const embedSemaphore = new Semaphore(CONFIG.embedMaxParallel);
 
 /** Network or HTTP-level error shape for availability checks. */
 interface HttpLikeError {
@@ -83,7 +87,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
   };
 
   try {
-    return await runChat(primary);
+    return await llmSemaphore.run(() => runChat(primary));
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
@@ -92,7 +96,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
       fallback: CONFIG.llmFallback,
       ...context,
     });
-    return runChat(fallback);
+    return llmSemaphore.run(() => runChat(fallback));
   }
 };
 
@@ -148,7 +152,7 @@ export const embedWithFallback = async (
   };
 
   try {
-    return await runEmbed(primary);
+    return await embedSemaphore.run(() => runEmbed(primary));
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
@@ -157,7 +161,7 @@ export const embedWithFallback = async (
       fallback: CONFIG.llmFallback,
       ...context,
     });
-    return runEmbed(fallback);
+    return embedSemaphore.run(() => runEmbed(fallback));
   }
 };
 

@@ -12,6 +12,7 @@ import { upsertTranslation, termWordBoundaryRe } from './queries';
 import { logTranslate } from '../logging/loggers';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { parseRecordLocation } from '../utils/recordLocation';
+import { mapWithConcurrency } from '../utils/concurrency';
 import type { GameType } from '../types';
 
 export type TranslateBatchResult = { stringId: number; text?: string; error?: string };
@@ -121,7 +122,16 @@ export const translateStringIdsBatch = async (
 
   const results: TranslateBatchResult[] = [];
   let doneCount = 0;
-  const llmBuffer: PreparedLlmItem[] = [];
+  const llmChunks: PreparedLlmItem[][] = [];
+  let llmBuffer: PreparedLlmItem[] = [];
+
+  const pushLlmItem = (item: PreparedLlmItem) => {
+    llmBuffer.push(item);
+    if (llmBuffer.length >= CONFIG.batchSize) {
+      llmChunks.push(llmBuffer);
+      llmBuffer = [];
+    }
+  };
 
   const finishResult = async (stringId: number, text: string) => {
     await upsertTranslation(db, stringId, text, 'auto', targetLang);
@@ -138,14 +148,14 @@ export const translateStringIdsBatch = async (
     onProgress?.(doneCount, stringIds.length, r);
   };
 
-  const flushLlmBuffer = async () => {
-    if (llmBuffer.length === 0 || shouldCancel?.()) return;
+  const processLlmChunk = async (chunk: PreparedLlmItem[]): Promise<TranslateBatchResult[]> => {
+    if (chunk.length === 0 || shouldCancel?.()) return [];
 
-    const chunk = llmBuffer.splice(0, llmBuffer.length);
     logTranslate.debug('LLM chunk flush', {
       chunkSize: chunk.length,
       stringIds: chunk.map((e) => e.stringId),
     });
+
     try {
       const ragByStringId = await fetchReferenceExamplesBatch(
         db,
@@ -164,7 +174,7 @@ export const translateStringIdsBatch = async (
         ragMinSimilarity,
       );
 
-      if (shouldCancel?.()) return;
+      if (shouldCancel?.()) return [];
 
       const translations = await translateStrings({
         items: chunk.map((entry) => ({
@@ -180,12 +190,16 @@ export const translateStringIdsBatch = async (
       });
 
       const translationById = new Map(translations.map((row) => [row.id, row.translation]));
+      const chunkResults: TranslateBatchResult[] = [];
 
       for (const entry of chunk) {
-        if (shouldCancel?.()) return;
+        if (shouldCancel?.()) break;
         const maskedTranslation = translationById.get(entry.stringId);
         if (maskedTranslation === undefined) {
-          failResult(entry.stringId, `LLM response missing translation for id=${entry.stringId}`);
+          chunkResults.push({
+            stringId: entry.stringId,
+            error: `LLM response missing translation for id=${entry.stringId}`,
+          });
           continue;
         }
 
@@ -194,8 +208,11 @@ export const translateStringIdsBatch = async (
           entry.placeholderMap,
         );
         await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
-        await finishResult(entry.stringId, translated);
+        await upsertTranslation(db, entry.stringId, translated, 'auto', targetLang);
+        chunkResults.push({ stringId: entry.stringId, text: translated });
       }
+
+      return chunkResults;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logTranslate.error('LLM translate failed for batch', {
@@ -203,9 +220,7 @@ export const translateStringIdsBatch = async (
         stack: err instanceof Error ? err.stack : undefined,
         stringIds: chunk.map((e) => e.stringId),
       });
-      for (const entry of chunk) {
-        failResult(entry.stringId, message);
-      }
+      return chunk.map((entry) => ({ stringId: entry.stringId, error: message }));
     }
   };
 
@@ -247,7 +262,7 @@ export const translateStringIdsBatch = async (
       continue;
     }
 
-    llmBuffer.push({
+    pushLlmItem({
       stringId,
       sourceText,
       textNorm: row.text_norm,
@@ -271,13 +286,30 @@ export const translateStringIdsBatch = async (
         };
       })(),
     });
-
-    if (llmBuffer.length >= CONFIG.batchSize) {
-      await flushLlmBuffer();
-    }
   }
 
-  await flushLlmBuffer();
+  if (llmBuffer.length > 0) {
+    llmChunks.push(llmBuffer);
+  }
+
+  if (llmChunks.length > 0 && !shouldCancel?.()) {
+    logTranslate.debug('LLM parallel chunks', {
+      chunkCount: llmChunks.length,
+      llmMaxParallel: CONFIG.llmMaxParallel,
+    });
+
+    const chunkResults = await mapWithConcurrency(llmChunks, CONFIG.llmMaxParallel, (chunk) =>
+      processLlmChunk(chunk),
+    );
+
+    for (const chunkResult of chunkResults) {
+      for (const r of chunkResult) {
+        results.push(r);
+        doneCount++;
+        onProgress?.(doneCount, stringIds.length, r);
+      }
+    }
+  }
 
   const ok = results.filter((r) => r.text).length;
   const failed = results.filter((r) => r.error).length;
