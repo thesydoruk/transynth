@@ -74,7 +74,7 @@ export interface EditorToolbarProps {
  * Horizontal toolbar at the top of the mod editor page.
  *
  * Contains language selectors, status / QA filters, action buttons
- * (TM apply, search-replace, INNR editor, auto-translate), bulk-review
+ * (search-replace, translation menu, INNR editor, auto-translate), bulk-review
  * buttons, and a progress bar summarising translation coverage.
  */
 export const EditorToolbar = ({
@@ -189,19 +189,6 @@ export const EditorToolbar = ({
       <div className={styles.sep} />
 
       {/* Actions */}
-      <Button
-        onClick={onTmApply}
-        disabled={tmApply.isPending}
-        variant="secondary"
-        size="sm"
-        title={t('modEditor.autoFillTmTitle')}
-      >
-        {tmApply.isPending
-          ? t('modEditor.applyingTm')
-          : tmApply.isSuccess
-            ? t('modEditor.tmApplied', { count: tmApply.applied })
-            : t('modEditor.applyTm')}
-      </Button>
       <Button onClick={onSearchReplace} variant="secondary" size="sm">
         {t('modEditor.searchReplace')}
       </Button>
@@ -209,6 +196,15 @@ export const EditorToolbar = ({
         label={t('modEditor.translationMenu')}
         title={t('modEditor.translationMenuTitle')}
         items={[
+          {
+            label: tmApply.isPending
+              ? t('modEditor.applyingTm')
+              : tmApply.isSuccess
+                ? t('modEditor.tmApplied', { count: tmApply.applied })
+                : t('modEditor.applyTm'),
+            onClick: onTmApply,
+            disabled: tmApply.isPending,
+          },
           {
             label: applyImportedRunning
               ? t('modEditor.applyTranslationFromModRunning')

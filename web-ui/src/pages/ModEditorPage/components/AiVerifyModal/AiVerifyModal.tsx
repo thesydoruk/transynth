@@ -42,9 +42,14 @@ export const AiVerifyModal = ({
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
   const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  const pendingIssues = useMemo(
-    () => issues.filter((issue) => issue.suggestion && !appliedIds.has(issue.stringId)),
+  const visibleIssues = useMemo(
+    () => issues.filter((issue) => !appliedIds.has(issue.stringId)),
     [issues, appliedIds],
+  );
+
+  const pendingIssues = useMemo(
+    () => visibleIssues.filter((issue) => issue.suggestion),
+    [visibleIssues],
   );
 
   const markApplied = (stringId: number) => {
@@ -149,14 +154,14 @@ export const AiVerifyModal = ({
             </tr>
           </thead>
           <tbody>
-            {issues.length === 0 ? (
+            {visibleIssues.length === 0 ? (
               <tr>
                 <td colSpan={onApplySuggestion ? 8 : 7} className={s.empty}>
                   {isRunning ? t('modEditor.aiVerifyScanning') : t('modEditor.aiVerifyNoIssues')}
                 </td>
               </tr>
             ) : (
-              issues.map((issue: LlmVerifyIssue) => (
+              visibleIssues.map((issue: LlmVerifyIssue) => (
                 <tr
                   key={issue.stringId}
                   className={onRowClick ? s.clickable : undefined}
@@ -177,9 +182,7 @@ export const AiVerifyModal = ({
                   <td className={s.reasonCell}>{issue.reason}</td>
                   {onApplySuggestion && (
                     <td className={s.actionCell}>
-                      {appliedIds.has(issue.stringId) ? (
-                        <span className={s.appliedMark}>{t('modEditor.aiVerifyApplied')}</span>
-                      ) : issue.suggestion ? (
+                      {issue.suggestion ? (
                         <Button
                           variant="secondary"
                           size="sm"
