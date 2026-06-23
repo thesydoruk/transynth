@@ -876,15 +876,16 @@ export type LlmVerifyJobSnapshot = {
   status: 'running' | 'completed' | 'cancelled' | 'failed';
   done: number;
   total: number;
+  approved: number;
   issues: LlmVerifyIssue[];
   error: string | null;
 };
 
 export type LlmVerifyStreamEvent =
   | { type: 'started'; jobId: number; total: number }
-  | { type: 'progress'; done: number; total: number; issue?: LlmVerifyIssue }
-  | { type: 'done'; done: number; total: number; issues: LlmVerifyIssue[] }
-  | { type: 'cancelled'; done: number; total: number; issues: LlmVerifyIssue[] }
+  | { type: 'progress'; done: number; total: number; approved: number; issue?: LlmVerifyIssue }
+  | { type: 'done'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
+  | { type: 'cancelled'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
   | { type: 'error'; error: string };
 
 export type LlmSkipDetectCandidate = {
@@ -1904,13 +1905,14 @@ export const api = {
       srcLang = getSrcLang(),
       targetLang = getTgtLang(),
       onEvent?: (e: LlmVerifyStreamEvent) => void,
+      autoApproveVerified = false,
       signal?: AbortSignal,
     ): Promise<LlmVerifyJobSnapshot | null> {
       const response = await fetch(`${BASE}/api/mods/${modId}/llm-verify`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, targetLang }),
+        body: JSON.stringify({ srcLang, targetLang, autoApproveVerified }),
         signal,
       });
       if (!response.ok || !response.body) {
@@ -1941,6 +1943,7 @@ export const api = {
                 status: 'running',
                 done: 0,
                 total: event.total,
+                approved: 0,
                 issues: [],
                 error: null,
               };
@@ -1950,6 +1953,7 @@ export const api = {
                 ...snapshot,
                 done: event.done,
                 total: event.total,
+                approved: event.approved,
                 issues: event.issue ? [...snapshot.issues, event.issue] : snapshot.issues,
               };
             }
@@ -1959,6 +1963,7 @@ export const api = {
                 status: 'completed',
                 done: event.done,
                 total: event.total,
+                approved: event.approved,
                 issues: event.issues,
               };
             }
@@ -1968,6 +1973,7 @@ export const api = {
                 status: 'cancelled',
                 done: event.done,
                 total: event.total,
+                approved: event.approved,
                 issues: event.issues,
               };
             }

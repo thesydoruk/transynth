@@ -11,7 +11,7 @@ interface AiVerifyModalProps {
   targetLang: string;
   state: AiVerifyState & {
     isRunning: boolean;
-    start: () => void;
+    start: (autoApproveVerified?: boolean) => void;
     stop: () => void;
   };
   onClose: () => void;
@@ -36,9 +36,10 @@ export const AiVerifyModal = ({
   onApplyAllSuggestions,
 }: AiVerifyModalProps) => {
   const { t } = useTranslation();
-  const { isRunning, done, total, issues, error, status, start, stop } = state;
+  const { isRunning, done, total, approved, issues, error, status, start, stop } = state;
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [applyingAll, setApplyingAll] = useState(false);
+  const [autoApprove, setAutoApprove] = useState(false);
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
   const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -110,14 +111,25 @@ export const AiVerifyModal = ({
             {t('modEditor.aiVerifyStop')}
           </Button>
         ) : (
-          <Button
-            variant="success"
-            size="sm"
-            onClick={() => void start()}
-            disabled={status === 'running'}
-          >
-            {status === 'idle' ? t('modEditor.aiVerifyStart') : t('modEditor.aiVerifyRestart')}
-          </Button>
+          <>
+            <label className={s.autoApproveToggle}>
+              <input
+                type="checkbox"
+                checked={autoApprove}
+                onChange={(e) => setAutoApprove(e.target.checked)}
+                disabled={status === 'running'}
+              />
+              {t('modEditor.aiVerifyAutoApprove')}
+            </label>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => void start(autoApprove)}
+              disabled={status === 'running'}
+            >
+              {status === 'idle' ? t('modEditor.aiVerifyStart') : t('modEditor.aiVerifyRestart')}
+            </Button>
+          </>
         )}
         <div className={s.progressWrap}>
           <div className={s.progressTrack}>
@@ -127,9 +139,11 @@ export const AiVerifyModal = ({
             {isRunning
               ? t('modEditor.aiVerifyProgress', { done, total })
               : status === 'completed'
-                ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length })
+                ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length }) +
+                  (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
                 : status === 'cancelled'
-                  ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length })
+                  ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length }) +
+                    (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
                   : status === 'failed'
                     ? t('modEditor.aiVerifyFailed')
                     : t('modEditor.aiVerifyIdle')}

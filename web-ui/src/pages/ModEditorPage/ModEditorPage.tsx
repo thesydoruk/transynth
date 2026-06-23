@@ -266,6 +266,7 @@ export const ModEditorPage = () => {
   const prevAiTranslateStatus = useRef(aiTranslate.status);
   const prevApplyImportedStatus = useRef(applyImported.status);
   const prevSkipDetectStatus = useRef(skipDetect.status);
+  const prevAiVerifyStatus = useRef(aiVerify.status);
 
   useEffect(() => {
     if (
@@ -277,6 +278,20 @@ export const ModEditorPage = () => {
     }
     prevAiTranslateStatus.current = aiTranslate.status;
   }, [aiTranslate.status, modId, qc, refetchStats]);
+
+  // Auto-approve during verification promotes passing rows to 'reviewed' on the
+  // server, so refresh the grid and stats once a verify run finishes.
+  useEffect(() => {
+    if (
+      prevAiVerifyStatus.current === 'running' &&
+      (aiVerify.status === 'completed' || aiVerify.status === 'cancelled') &&
+      aiVerify.approved > 0
+    ) {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    }
+    prevAiVerifyStatus.current = aiVerify.status;
+  }, [aiVerify.status, aiVerify.approved, modId, qc, refetchStats]);
 
   useEffect(() => {
     if (
@@ -877,11 +892,14 @@ export const ModEditorPage = () => {
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}
-          onApplyAll={async (batch) => {
-            await api.strings.markSkip(
-              batch.map((c) => c.stringId),
-              targetLang,
-            );
+          onApplyAll={async (batch, onProgress) => {
+            const ids = batch.map((c) => c.stringId);
+            const CHUNK_SIZE = 100;
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+              const chunk = ids.slice(i, i + CHUNK_SIZE);
+              await api.strings.markSkip(chunk, targetLang);
+              onProgress?.(Math.min(i + chunk.length, ids.length), ids.length);
+            }
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}

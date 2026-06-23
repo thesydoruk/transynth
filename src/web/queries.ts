@@ -1160,19 +1160,19 @@ export const deleteTranslation = async (
   stringId: number,
   targetLang = CONFIG.defaultTgtLang,
 ) => {
-  const { rows } = await db.query(
-    `DELETE FROM translations
-     WHERE src_string_id = $1 AND target_lang = $2
-     RETURNING id, text, provenance, model`,
-    [stringId, targetLang],
-  );
-
-  for (const row of rows as Array<{
+  const { rows } = await db.query<{
     id: number;
     text: string;
     provenance: string | null;
     model: string | null;
-  }>) {
+  }>(
+    `SELECT id, text, provenance, model
+       FROM translations
+      WHERE src_string_id = $1 AND target_lang = $2`,
+    [stringId, targetLang],
+  );
+
+  for (const row of rows) {
     await recordTranslationRevision(db, {
       stringId,
       translationId: row.id,
@@ -1185,6 +1185,13 @@ export const deleteTranslation = async (
     });
   }
 
+  if (rows.length > 0) {
+    await db.query(`DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`, [
+      stringId,
+      targetLang,
+    ]);
+  }
+
   await db.query(`DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`, [
     stringId,
     targetLang,
@@ -1193,36 +1200,102 @@ export const deleteTranslation = async (
   return { removed: rows.length };
 };
 
-/** Mark source string(s) as non-translatable — sets is_ignored and status skip. */
+/** Remove every translation row (all target languages) for one source string. */
+export const deleteAllTranslationsForString = async (db: Tx, stringId: number): Promise<number> => {
+  const { rows } = await db.query<{
+    id: number;
+    target_lang: string;
+    text: string;
+    provenance: string | null;
+    model: string | null;
+  }>(
+    `SELECT id, target_lang, text, provenance, model
+       FROM translations
+      WHERE src_string_id = $1`,
+    [stringId],
+  );
+
+  for (const row of rows) {
+    await recordTranslationRevision(db, {
+      stringId,
+      translationId: row.id,
+      targetLang: row.target_lang,
+      text: row.text,
+      status: 'deleted',
+      provenance: row.provenance,
+      model: row.model,
+      note: 'clear',
+    });
+  }
+
+  if (rows.length > 0) {
+    await db.query(`DELETE FROM translations WHERE src_string_id = $1`, [stringId]);
+  }
+
+  await db.query(`DELETE FROM qa_issues WHERE src_string_id = $1`, [stringId]);
+
+  return rows.length;
+};
+
+/**
+ * Mark source string(s) as non-translatable.
+ *
+ * The `is_ignored` flag is the single source of truth for the "skip" status
+ * (listStrings derives `status = 'skip'` from it, stats count it as skipped,
+ * and the status filter maps `skip` → `is_ignored = TRUE`). A non-translatable
+ * string must not carry any translation rows, so all existing translations
+ * (every target language) are deleted here. Export still emits the source text
+ * via `COALESCE(t.text, s.text_raw)` once translations are gone.
+ *
+ * @param targetLang - Kept for API compatibility; all languages are cleared.
+ */
 export const markStringsAsSkip = async (
   db: Tx,
   stringIds: number[],
   targetLang = CONFIG.defaultTgtLang,
-  userId: number | null = null,
 ): Promise<number> => {
+  void targetLang;
   if (stringIds.length === 0) return 0;
 
-  const { rows } = await db.query<{ id: number; text_raw: string }>(
+  const { rows } = await db.query<{ id: number }>(
     `UPDATE strings SET is_ignored = TRUE
       WHERE id = ANY($1::int[])
-      RETURNING id, text_raw`,
+      RETURNING id`,
     [stringIds],
   );
 
   for (const row of rows) {
-    await upsertTranslation(
-      db,
-      row.id,
-      row.text_raw,
-      'skip',
-      targetLang,
-      'skip_marked',
-      undefined,
-      userId,
-    );
+    await deleteAllTranslationsForString(db, row.id);
   }
 
   return rows.length;
+};
+
+/**
+ * Promote machine/draft translations of the given source strings to 'reviewed'
+ * for a target language. Used by the verification auto-approve flow: a string
+ * that passed LLM verification with no issues is confirmed automatically.
+ *
+ * Manually-decided statuses ('human', 'reviewed', 'rejected', 'skip') are left
+ * untouched so auto-approve never overrides a human decision.
+ *
+ * @returns Number of translation rows promoted to 'reviewed'.
+ */
+export const approveVerifiedTranslations = async (
+  db: Tx,
+  stringIds: number[],
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<number> => {
+  if (stringIds.length === 0) return 0;
+  const { rowCount } = await db.query(
+    `UPDATE translations
+        SET status = 'reviewed', updated_at = NOW()
+      WHERE target_lang = $2
+        AND src_string_id = ANY($1::int[])
+        AND status IN ('draft', 'tm', 'fuzzy', 'auto')`,
+    [stringIds, targetLang],
+  );
+  return rowCount ?? 0;
 };
 
 // Returns text_norm for a string ID (used by propagation)

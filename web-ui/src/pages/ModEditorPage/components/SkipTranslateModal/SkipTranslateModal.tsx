@@ -16,7 +16,10 @@ interface SkipTranslateModalProps {
   onClose: () => void;
   onRowClick?: (stringId: number) => void;
   onApply?: (candidate: LlmSkipDetectCandidate) => void | Promise<void>;
-  onApplyAll?: (candidates: LlmSkipDetectCandidate[]) => void | Promise<void>;
+  onApplyAll?: (
+    candidates: LlmSkipDetectCandidate[],
+    onProgress?: (done: number, total: number) => void,
+  ) => void | Promise<void>;
 }
 
 const methodLabelKey = {
@@ -39,6 +42,9 @@ export const SkipTranslateModal = ({
   const [useLlm, setUseLlm] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [applyingAll, setApplyingAll] = useState(false);
+  const [applyAllProgress, setApplyAllProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
   const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -60,23 +66,27 @@ export const SkipTranslateModal = ({
 
   const handleApplyAll = async () => {
     if (visibleCandidates.length === 0) return;
+    const batch = visibleCandidates;
     setApplyingAll(true);
+    setApplyAllProgress({ done: 0, total: batch.length });
     try {
       if (onApplyAll) {
-        await onApplyAll(visibleCandidates);
+        await onApplyAll(batch, (done, total) => setApplyAllProgress({ done, total }));
         setAppliedIds((prev) => {
           const next = new Set(prev);
-          for (const c of visibleCandidates) next.add(c.stringId);
+          for (const c of batch) next.add(c.stringId);
           return next;
         });
       } else if (onApply) {
-        for (const candidate of visibleCandidates) {
-          await onApply(candidate);
-          setAppliedIds((prev) => new Set(prev).add(candidate.stringId));
+        for (let i = 0; i < batch.length; i++) {
+          await onApply(batch[i]);
+          setAppliedIds((prev) => new Set(prev).add(batch[i].stringId));
+          setApplyAllProgress({ done: i + 1, total: batch.length });
         }
       }
     } finally {
       setApplyingAll(false);
+      setApplyAllProgress(null);
     }
   };
 
@@ -199,7 +209,12 @@ export const SkipTranslateModal = ({
             onClick={() => void handleApplyAll()}
           >
             {applyingAll
-              ? t('modEditor.skipDetectApplyingAll')
+              ? applyAllProgress
+                ? t('modEditor.skipDetectApplyingAllProgress', {
+                    done: applyAllProgress.done,
+                    total: applyAllProgress.total,
+                  })
+                : t('modEditor.skipDetectApplyingAll')
               : t('modEditor.skipDetectApplyAll', { count: visibleCandidates.length })}
           </Button>
         )}

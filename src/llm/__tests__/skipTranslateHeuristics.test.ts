@@ -12,15 +12,69 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('¤PH0¤')?.reason).toMatch(/placeholder/i);
   });
 
-  it('flags numeric-only strings', () => {
-    expect(detectSkipHeuristic('+15%')?.reason).toMatch(/Numeric/i);
+  it('flags numeric/symbol-only strings', () => {
+    expect(detectSkipHeuristic('+15%')?.reason).toMatch(/no translatable letters/i);
+    expect(detectSkipHeuristic('10/22/2077')?.reason).toMatch(/no translatable letters/i);
+    expect(detectSkipHeuristic('->')?.reason).toMatch(/no translatable letters/i);
+    expect(detectSkipHeuristic('=====')?.reason).toMatch(/no translatable letters/i);
   });
 
-  it('flags source matching edid', () => {
+  it('flags markup-only strings (alias/token/img/font tags)', () => {
+    expect(detectSkipHeuristic('<Alias.CurrentName=Location384>')?.reason).toMatch(/markup/i);
+    expect(detectSkipHeuristic('<Token.Name=SettlementName>')?.reason).toMatch(/markup/i);
+    expect(
+      detectSkipHeuristic("<img src='img://Textures/SS2/Icons/x.dds' height='16' width='16'>")
+        ?.reason,
+    ).toMatch(/markup/i);
+    expect(detectSkipHeuristic('<Alias=QuestVerb> <Alias=myLocation>')?.reason).toMatch(/markup/i);
+  });
+
+  it('flags markup wrapping only a number as no-letters', () => {
+    expect(detectSkipHeuristic("<font face='$MAIN_Font' size='35'>82</font>")?.reason).toMatch(
+      /no translatable letters/i,
+    );
+  });
+
+  it('flags code-like source matching edid', () => {
     expect(detectSkipHeuristic('MyRecord01', { edid: 'MyRecord01' })?.reason).toMatch(/editor ID/i);
+    expect(detectSkipHeuristic('CA_Event_PickLock', { edid: 'CA_Event_PickLock' })?.reason).toMatch(
+      /editor ID/i,
+    );
+    expect(detectSkipHeuristic('BoSPSGreetings', { edid: 'BoSPSGreetings' })?.reason).toMatch(
+      /editor ID/i,
+    );
+  });
+
+  it('keeps plain names/words even when they equal the edid', () => {
+    // Editor named the record after the visible name — still translatable.
+    expect(detectSkipHeuristic('Minigun', { edid: 'Minigun' })).toBeNull();
+    expect(detectSkipHeuristic('Patrick', { edid: 'Patrick', signature: 'NPC_' })).toBeNull();
+    expect(detectSkipHeuristic('Caretaker', { edid: 'Caretaker', signature: 'NPC_' })).toBeNull();
+  });
+
+  it('flags short uppercase stat abbreviations', () => {
+    expect(detectSkipHeuristic('AGI', { signature: 'AVIF' })?.reason).toMatch(/identifier|code/i);
+  });
+
+  it('keeps short NPC names/designations (name-bearing record)', () => {
+    expect(detectSkipHeuristic('AJ', { signature: 'NPC_' })).toBeNull();
+    expect(detectSkipHeuristic('TV', { signature: 'NPC_' })).toBeNull();
   });
 
   it('returns null for normal dialogue', () => {
     expect(detectSkipHeuristic('Hello, wanderer.')).toBeNull();
+  });
+
+  it('keeps prose that merely contains markup', () => {
+    expect(detectSkipHeuristic('Help defend <Alias=myLocation>')).toBeNull();
+  });
+
+  it('keeps bracketed stage directions (player-facing tone tags)', () => {
+    expect(detectSkipHeuristic('[Sarcasm]')).toBeNull();
+    expect(detectSkipHeuristic('[Whispering]')).toBeNull();
+  });
+
+  it('keeps prose wrapped in angle brackets', () => {
+    expect(detectSkipHeuristic('<User "Bergman" signed in>')).toBeNull();
   });
 });

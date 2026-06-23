@@ -273,7 +273,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid stringIds' });
     }
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
-    const marked = await markStringsAsSkip(db, stringIds, targetLang, req.user?.id ?? null);
+    const marked = await markStringsAsSkip(db, stringIds, targetLang);
     return reply.send({ ok: true, marked });
   });
 

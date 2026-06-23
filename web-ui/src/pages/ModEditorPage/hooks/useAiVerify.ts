@@ -6,6 +6,7 @@ export type AiVerifyState = {
   jobId: number | null;
   done: number;
   total: number;
+  approved: number;
   issues: LlmVerifyIssue[];
   error: string | null;
 };
@@ -15,6 +16,7 @@ const initialState: AiVerifyState = {
   jobId: null,
   done: 0,
   total: 0,
+  approved: 0,
   issues: [],
   error: null,
 };
@@ -33,83 +35,98 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
       jobId: snapshot.jobId,
       done: snapshot.done,
       total: snapshot.total,
+      approved: snapshot.approved,
       issues: snapshot.issues,
       error: snapshot.error,
     });
   }, []);
 
-  const start = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    jobIdRef.current = null;
-    setState((prev) => ({
-      ...prev,
-      status: 'running',
-      jobId: null,
-      done: 0,
-      total: 0,
-      issues: [],
-      error: null,
-    }));
-
-    try {
-      const snapshot = await api.llmVerify.start(modId, srcLang, targetLang, (event) => {
-        if (event.type === 'started') {
-          jobIdRef.current = event.jobId;
-          setState((prev) => ({
-            ...prev,
-            status: 'running',
-            jobId: event.jobId,
-            total: event.total,
-            done: 0,
-            issues: [],
-          }));
-        }
-        if (event.type === 'progress') {
-          setState((prev) => ({
-            ...prev,
-            done: event.done,
-            total: event.total,
-            issues: event.issue ? [...prev.issues, event.issue] : prev.issues,
-          }));
-        }
-        if (event.type === 'done') {
-          setState((prev) => ({
-            ...prev,
-            status: 'completed',
-            done: event.done,
-            total: event.total,
-            issues: event.issues,
-          }));
-        }
-        if (event.type === 'cancelled') {
-          setState((prev) => ({
-            ...prev,
-            status: 'cancelled',
-            done: event.done,
-            total: event.total,
-            issues: event.issues,
-          }));
-        }
-        if (event.type === 'error') {
-          setState((prev) => ({
-            ...prev,
-            status: 'failed',
-            error: event.error,
-          }));
-        }
-      });
-      if (snapshot) applySnapshot(snapshot);
-    } catch (err) {
+  const start = useCallback(
+    async (autoApproveVerified = false) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      jobIdRef.current = null;
       setState((prev) => ({
         ...prev,
-        status: 'failed',
-        error: err instanceof Error ? err.message : String(err),
+        status: 'running',
+        jobId: null,
+        done: 0,
+        total: 0,
+        approved: 0,
+        issues: [],
+        error: null,
       }));
-    } finally {
-      inFlight.current = false;
-    }
-  }, [applySnapshot, modId, srcLang, targetLang]);
+
+      try {
+        const snapshot = await api.llmVerify.start(
+          modId,
+          srcLang,
+          targetLang,
+          (event) => {
+            if (event.type === 'started') {
+              jobIdRef.current = event.jobId;
+              setState((prev) => ({
+                ...prev,
+                status: 'running',
+                jobId: event.jobId,
+                total: event.total,
+                done: 0,
+                approved: 0,
+                issues: [],
+              }));
+            }
+            if (event.type === 'progress') {
+              setState((prev) => ({
+                ...prev,
+                done: event.done,
+                total: event.total,
+                approved: event.approved,
+                issues: event.issue ? [...prev.issues, event.issue] : prev.issues,
+              }));
+            }
+            if (event.type === 'done') {
+              setState((prev) => ({
+                ...prev,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                approved: event.approved,
+                issues: event.issues,
+              }));
+            }
+            if (event.type === 'cancelled') {
+              setState((prev) => ({
+                ...prev,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                approved: event.approved,
+                issues: event.issues,
+              }));
+            }
+            if (event.type === 'error') {
+              setState((prev) => ({
+                ...prev,
+                status: 'failed',
+                error: event.error,
+              }));
+            }
+          },
+          autoApproveVerified,
+        );
+        if (snapshot) applySnapshot(snapshot);
+      } catch (err) {
+        setState((prev) => ({
+          ...prev,
+          status: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      } finally {
+        inFlight.current = false;
+      }
+    },
+    [applySnapshot, modId, srcLang, targetLang],
+  );
 
   const stop = useCallback(async () => {
     try {
