@@ -238,6 +238,27 @@ export type StringsResult = {
   pageSize: number;
 };
 
+/**
+ * Filter criteria shared by the string-grid list query, the "matching IDs"
+ * lookup and the bulk-review-by-filter mutation. Mirrors the server-side
+ * `StringsFilter` minus pagination/sort fields.
+ */
+export type StringFilterParams = {
+  srcLang?: string;
+  targetLang?: string;
+  status?: string;
+  qaOnly?: boolean;
+  signature?: string;
+  q?: string;
+  grup?: string;
+  formid?: string;
+  edid?: string;
+  field?: string;
+  src?: string;
+  transl?: string;
+  hideIgnored?: boolean;
+};
+
 export type DialogTopic = {
   topic_id: number;
   topic_formid_hex: string;
@@ -1119,6 +1140,21 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ stringIds, status, targetLang }),
       }),
+    /**
+     * "Select all matching" bulk review: the server resolves the full filtered
+     * set and applies `status`, skipping any `excludeIds` the user de-selected.
+     */
+    bulkReviewByFilter: (
+      modId: number,
+      filter: StringFilterParams,
+      status: 'reviewed' | 'rejected',
+      excludeIds: number[] = [],
+      targetLang = getTgtLang(),
+    ) =>
+      req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
+        method: 'PATCH',
+        body: JSON.stringify({ filter, status, excludeIds, targetLang }),
+      }),
   },
 
   stats: {
@@ -1179,6 +1215,25 @@ export const api = {
       if (params.sort) qs.set('sort', params.sort);
       if (params.order) qs.set('order', params.order);
       return req<StringsResult>(`/api/strings?${qs}`);
+    },
+    /** Resolve every string ID matching a filter ("select all matching"). */
+    matchingIds: (params: { modId: number } & StringFilterParams) => {
+      const qs = new URLSearchParams();
+      qs.set('modId', String(params.modId));
+      if (params.srcLang) qs.set('srcLang', params.srcLang);
+      if (params.targetLang) qs.set('targetLang', params.targetLang);
+      if (params.status) qs.set('status', params.status);
+      if (params.qaOnly) qs.set('qaOnly', '1');
+      if (params.signature) qs.set('signature', params.signature);
+      if (params.q) qs.set('q', params.q);
+      if (params.grup) qs.set('grup', params.grup);
+      if (params.formid) qs.set('formid', params.formid);
+      if (params.edid) qs.set('edid', params.edid);
+      if (params.field) qs.set('field', params.field);
+      if (params.src) qs.set('src', params.src);
+      if (params.transl) qs.set('transl', params.transl);
+      if (params.hideIgnored) qs.set('hideIgnored', '1');
+      return req<{ ids: number[] }>(`/api/strings/ids?${qs}`);
     },
     signatures: (modId: number, srcLang?: string) => {
       const qs = new URLSearchParams({ modId: String(modId) });

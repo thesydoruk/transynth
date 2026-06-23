@@ -23,21 +23,90 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
     >
       <table className={styles.table}>
         <tbody>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>{t('modEditor.shortcutSave')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutApprove')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td>{t('modEditor.shortcutReject')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>{t('modEditor.shortcutCopySource')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd></td><td>{t('modEditor.shortcutClear')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>{t('modEditor.shortcutToggleDetail')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>↑</kbd> <kbd>↓</kbd></td><td>{t('modEditor.shortcutNavRows')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>N</kbd></td><td>{t('modEditor.shortcutNextUntranslated')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Q</kbd></td><td>{t('modEditor.shortcutNextQaIssue')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Enter</kbd></td><td>{t('modEditor.shortcutFocusTextarea')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Space</kbd></td><td>{t('modEditor.shortcutToggleSelect')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>{t('modEditor.shortcutSelectAll')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>PgDn</kbd> <kbd>PgUp</kbd></td><td>{t('modEditor.shortcutPageNav')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>Esc</kbd></td><td>{t('modEditor.shortcutEscape')}</td></tr>
-          <tr><td className={styles.kbdCell}><kbd>?</kbd></td><td>{t('modEditor.shortcuts')}</td></tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>S</kbd>
+            </td>
+            <td>{t('modEditor.shortcutSave')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>
+            </td>
+            <td>{t('modEditor.shortcutApprove')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>
+            </td>
+            <td>{t('modEditor.shortcutReject')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>
+            </td>
+            <td>{t('modEditor.shortcutCopySource')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>
+            </td>
+            <td>{t('modEditor.shortcutClear')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>
+            </td>
+            <td>{t('modEditor.shortcutToggleDetail')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>↑</kbd> <kbd>↓</kbd>
+            </td>
+            <td>{t('modEditor.shortcutNavRows')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>N</kbd>
+            </td>
+            <td>{t('modEditor.shortcutNextUntranslated')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Q</kbd>
+            </td>
+            <td>{t('modEditor.shortcutNextQaIssue')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Enter</kbd>
+            </td>
+            <td>{t('modEditor.shortcutFocusTextarea')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Space</kbd>
+            </td>
+            <td>{t('modEditor.shortcutToggleSelect')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Ctrl</kbd>+<kbd>A</kbd>
+            </td>
+            <td>{t('modEditor.shortcutSelectAll')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>Esc</kbd>
+            </td>
+            <td>{t('modEditor.shortcutEscape')}</td>
+          </tr>
+          <tr>
+            <td className={styles.kbdCell}>
+              <kbd>?</kbd>
+            </td>
+            <td>{t('modEditor.shortcuts')}</td>
+          </tr>
         </tbody>
       </table>
     </ModalShell>

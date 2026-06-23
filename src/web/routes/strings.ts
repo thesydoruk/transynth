@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import {
   listStrings,
+  listMatchingStringIds,
   listSignatures,
   upsertTranslation,
   updateTranslationStatus,
@@ -70,6 +71,52 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     });
 
     return reply.send(result);
+  });
+
+  // GET /api/strings/ids?modId=&...filters — all string IDs matching a filter.
+  //
+  // Powers the editor's "select all matching" feature for client-side bulk
+  // actions (e.g. batch translate) that still need an explicit ID list.
+  app.get<{
+    Querystring: {
+      modId?: string;
+      srcLang?: string;
+      targetLang?: string;
+      status?: string;
+      qaOnly?: string;
+      signature?: string;
+      q?: string;
+      grup?: string;
+      formid?: string;
+      edid?: string;
+      field?: string;
+      src?: string;
+      transl?: string;
+      hideIgnored?: string;
+    };
+  }>('/api/strings/ids', async (req, reply) => {
+    const modId = Number(req.query.modId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'modId is required' });
+    }
+
+    const ids = await listMatchingStringIds(db, {
+      modId,
+      srcLang: req.query.srcLang,
+      targetLang: req.query.targetLang,
+      status: req.query.status,
+      qaOnly: req.query.qaOnly === '1' || req.query.qaOnly === 'true',
+      query: req.query.q,
+      signature: req.query.signature,
+      grup: req.query.grup,
+      formid: req.query.formid,
+      edid: req.query.edid,
+      field: req.query.field,
+      src: req.query.src,
+      transl: req.query.transl,
+      hideIgnored: req.query.hideIgnored === '1' || req.query.hideIgnored === 'true',
+    });
+    return reply.send({ ids });
   });
 
   // GET /api/strings/signatures?modId=&srcLang=

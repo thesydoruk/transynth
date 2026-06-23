@@ -9,7 +9,7 @@ The editor is the main workspace for reviewing, correcting, and completing trans
 - [Opening the Editor](#opening-the-editor)
 - [The String Grid](#the-string-grid)
   - [Columns](#columns)
-  - [Pagination](#pagination)
+  - [Infinite scroll](#infinite-scroll)
   - [Sorting](#sorting)
 - [Filter Row](#filter-row)
 - [Selecting and Editing Rows](#selecting-and-editing-rows)
@@ -39,13 +39,14 @@ That uploads a newer plugin or archive and redirects you into the diff workflow 
 ## The String Grid
 
 The grid lists all translatable strings in the mod — one row per string.
-By default, 100 rows are shown per page.
+The grid is fully virtualised and loads more rows automatically as you scroll,
+so there is no page-by-page navigation (see [Infinite scroll](#infinite-scroll)).
 
 ### Columns
 
 | Column          | Description                                                                      |
 | --------------- | -------------------------------------------------------------------------------- |
-| **Select**      | Checkbox for bulk operations on the current page                                 |
+| **Select**      | Per-row checkbox; the header checkbox selects every row matching the filter      |
 | **GRUP**        | Record type signature (e.g. `DIAL`, `BOOK`, `NPC_`, `QUST`)                      |
 | **FormID**      | Unique hexadecimal record identifier                                             |
 | **EDID**        | Editor ID — the author's internal name for the record                            |
@@ -54,22 +55,15 @@ By default, 100 rows are shown per page.
 | **Translation** | Current best translation, plus a small QA count hint when issues exist           |
 | **Actions**     | Quick actions: approve, reject, clear, copy source, and the current status badge |
 
-### Pagination
+### Infinite scroll
 
-Pagination is fixed to **100 rows per page** in the current implementation.
+The grid loads strings in chunks of **100 rows** and appends the next chunk
+automatically as you scroll toward the end of the loaded list — there is no
+manual pagination. A footer below the rows shows the current progress in the
+format `Loaded X of N`.
 
-At the bottom of the grid you get:
-
-- **Previous** button
-- **Next** button
-- a page label in the format `Page X / Y (N rows)`
-
-There is **no page size selector** in the UI.
-
-Keyboard shortcuts:
-
-- **PgDn** moves to the next page
-- **PgUp** moves to the previous page
+Because the list is virtualised, only the visible rows are rendered, so the grid
+stays responsive even for mods with tens of thousands of strings.
 
 ### Sorting
 
@@ -141,7 +135,9 @@ Clicking a signature there filters the grid to that exact record type.
 - **Click** a row to select it and open the Detail Panel.
 - **Click** the row checkbox to add or remove that row from the bulk selection.
 - **Space** toggles selection for the active row.
-- **Ctrl+A** selects or deselects all rows on the current page.
+- **Ctrl+A**, or the **header checkbox**, selects (or clears) **every row matching
+  the current filter** — not just the rows loaded on screen. Individual rows can
+  then be unchecked to exclude them from the selection.
 
 Important correction: the current editor does **not** support inline editing directly inside the grid cell.
 Editing happens in the Detail Panel.
@@ -341,7 +337,7 @@ How selection works:
 
 - use row checkboxes
 - use **Space** on the active row
-- use **Ctrl+A** to select or deselect all rows on the current page
+- use **Ctrl+A** or the **header checkbox** to select / clear all rows matching the filter
 
 The current UI does **not** implement Shift+Click range selection.
 
@@ -353,7 +349,15 @@ Available batch actions:
 - **Copy source → translation** for all selected rows from the context menu
 
 Batch actions appear in the toolbar when at least one row is selected.
-Additional bulk actions appear in the context menu when multiple selected rows include the row you right-clicked.
+The context menu applies its actions to the **whole selection** when you
+right-click a selected row; right-clicking an unselected row acts on that row only.
+
+**Select all matching:** the header checkbox selects every row matching the
+current filter (potentially the whole mod), not just the rows scrolled into view.
+**Approve / Reject** in this mode are resolved entirely on the server by filter,
+so they scale to any number of rows. The per-row text actions (clear, copy
+source, text transforms) apply to the currently loaded selected rows.
+Auto-translate is still limited to **100 strings per batch**.
 
 Current limitation: there is no dedicated **copy best TM suggestion to all selected rows** action in the editor.
 
@@ -385,7 +389,7 @@ Scope in the current implementation:
 - **current mod only**
 - **current target language only**
 
-There is **no scope selector** for current filter, current page, or all mods.
+There is **no scope selector** for current filter or all mods.
 
 ---
 

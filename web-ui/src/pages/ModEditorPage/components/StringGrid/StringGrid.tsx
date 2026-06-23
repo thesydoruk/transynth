@@ -28,7 +28,18 @@ export interface StringGridProps {
   rows: StringRow[];
   total: number;
   isLoading: boolean;
-  selected: Set<number>;
+  /** Returns whether a given string ID is currently selected. */
+  isRowSelected: (id: number) => boolean;
+  /** Header checkbox fully-checked state (every matching row selected). */
+  allSelected: boolean;
+  /** Header checkbox indeterminate state (partial selection). */
+  someSelected: boolean;
+  /** Whether more pages remain to be fetched for infinite scroll. */
+  hasMore: boolean;
+  /** Whether the next page is currently being fetched. */
+  isFetchingMore: boolean;
+  /** Requests the next page (called as the user nears the end of the list). */
+  onLoadMore: () => void;
   activeRow: StringRow | null;
   srcLang: string;
   targetLang: string;
@@ -57,8 +68,14 @@ export interface StringGridProps {
  */
 export const StringGrid = ({
   rows,
+  total,
   isLoading,
-  selected,
+  isRowSelected,
+  allSelected,
+  someSelected,
+  hasMore,
+  isFetchingMore,
+  onLoadMore,
   activeRow,
   srcLang,
   targetLang,
@@ -151,6 +168,18 @@ export const StringGrid = ({
     overscan: 10,
   });
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
+  /* Infinite scroll: load the next page as the last rendered row approaches
+   * the end of the currently-loaded set. */
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (hasMore && !isFetchingMore && last.index >= rows.length - 1 - 8) {
+      onLoadMore();
+    }
+  }, [virtualItems, rows.length, hasMore, isFetchingMore, onLoadMore]);
+
   /* Scroll the active row into view whenever it changes (keyboard navigation). */
   const activeIndex = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
   useEffect(() => {
@@ -158,6 +187,12 @@ export const StringGrid = ({
       rowVirtualizer.scrollToIndex(activeIndex, { align: 'auto' });
     }
   }, [activeIndex]);
+
+  /* Reflect the partial-selection state on the header checkbox. */
+  const headerCheckRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (headerCheckRef.current) headerCheckRef.current.indeterminate = someSelected;
+  }, [someSelected]);
 
   return (
     <div className={styles.tableWrap} ref={scrollRef}>
@@ -169,9 +204,11 @@ export const StringGrid = ({
           <div className={styles.gridHeader}>
             <div className={`${styles.th} ${styles.colCheck}`}>
               <input
+                ref={headerCheckRef}
                 type="checkbox"
-                checked={!!rows.length && selected.size === rows.length}
+                checked={allSelected}
                 onChange={onToggleAll}
+                title={t('modEditor.selectAllMatching')}
               />
             </div>
             {renderSortableHeader('grup', t('modEditor.grup'))}
@@ -248,7 +285,7 @@ export const StringGrid = ({
 
           {/* Virtualised rows */}
           <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
-            {rowVirtualizer.getVirtualItems().map((vItem) => {
+            {virtualItems.map((vItem) => {
               const row = rows[vItem.index];
               const isActive = activeRow?.string_id === row.string_id;
               const displayStatus = isActive ? '__active' : row.status;
@@ -273,7 +310,7 @@ export const StringGrid = ({
                   >
                     <input
                       type="checkbox"
-                      checked={selected.has(row.string_id)}
+                      checked={isRowSelected(row.string_id)}
                       onChange={() => {}}
                     />
                   </div>
@@ -353,6 +390,13 @@ export const StringGrid = ({
                 </div>
               );
             })}
+          </div>
+
+          {/* Infinite-scroll footer: loaded count + loading indicator */}
+          <div className={styles.loadMoreRow}>
+            {isFetchingMore
+              ? t('common.loading')
+              : t('modEditor.loadedCount', { loaded: rows.length, total })}
           </div>
         </>
       )}

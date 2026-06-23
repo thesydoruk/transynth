@@ -14,16 +14,12 @@ export interface EditorKeyboardConfig {
 
   /** Row currently being edited in the detail panel. */
   activeRow: StringRow | null;
-  /** Set of selected string IDs. */
-  selected: Set<number>;
-  /** Current page of string rows. */
+  /** Whether any rows are currently selected (either selection mode). */
+  hasSelection: boolean;
+  /** Accumulated string rows currently loaded in the grid. */
   strings: { rows: StringRow[]; total: number } | undefined;
   /** Context-menu state (truthy = open). */
   ctxMenu: { x: number; y: number; row: StringRow } | null;
-  /** Current page number (1-based). */
-  page: number;
-  /** Number of rows per page. */
-  pageSize: number;
   /** Ref to the translation textarea (for Enter-to-focus). */
   translAreaRef: React.RefObject<HTMLTextAreaElement | null>;
 
@@ -38,6 +34,8 @@ export interface EditorKeyboardConfig {
   handleRowClick: (row: StringRow) => void;
   handleNextQaIssue: () => void;
   toggleAll: () => void;
+  /** Clears the current selection (both selection modes). */
+  clearSelection: () => void;
 
   /* ── State setters ── */
 
@@ -45,7 +43,6 @@ export interface EditorKeyboardConfig {
   setDraftTranslation: React.Dispatch<React.SetStateAction<string>>;
   setSelected: React.Dispatch<React.SetStateAction<Set<number>>>;
   setCtxMenu: React.Dispatch<React.SetStateAction<{ x: number; y: number; row: StringRow } | null>>;
-  setPage: React.Dispatch<React.SetStateAction<number>>;
   setShowShortcuts: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -75,8 +72,7 @@ export interface EditorKeyboardConfig {
  * | `q`                  | Jump to next QA issue                 |
  * | `Enter`              | Focus translation textarea            |
  * | `Space`              | Toggle selection on active row        |
- * | `Ctrl+A`             | Select / deselect all                 |
- * | `PageDown / PageUp`  | Pagination                            |
+ * | `Ctrl+A`             | Select / deselect all matching        |
  *
  * @param config - The full snapshot of state and handlers.
  */
@@ -97,13 +93,16 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
       /* ── Escape ── */
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (c.ctxMenu) { c.setCtxMenu(null); return; }
+        if (c.ctxMenu) {
+          c.setCtxMenu(null);
+          return;
+        }
         if (c.activeRow) {
           c.flushAutosave();
           c.setActiveRow(null);
           c.setDraftTranslation('');
-        } else if (c.selected.size > 0) {
-          c.setSelected(new Set());
+        } else if (c.hasSelection) {
+          c.clearSelection();
         }
         return;
       }
@@ -183,8 +182,12 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
           : -1;
         const nextIdx =
           e.key === 'ArrowDown'
-            ? (curIdx < rows.length - 1 ? curIdx + 1 : 0)
-            : (curIdx > 0 ? curIdx - 1 : rows.length - 1);
+            ? curIdx < rows.length - 1
+              ? curIdx + 1
+              : 0
+            : curIdx > 0
+              ? curIdx - 1
+              : rows.length - 1;
         c.handleRowClick(rows[nextIdx]);
         return;
       }
@@ -233,23 +236,10 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
         return;
       }
 
-      /* ── Ctrl+A — select / deselect all ── */
+      /* ── Ctrl+A — select / deselect all matching ── */
       if (e.key === 'a' && e.ctrlKey && !e.shiftKey && !e.altKey && c.strings?.rows.length) {
         e.preventDefault();
         c.toggleAll();
-        return;
-      }
-
-      /* ── PageDown / PageUp — pagination ── */
-      if (e.key === 'PageDown' && c.strings) {
-        e.preventDefault();
-        const totalPages = Math.ceil(c.strings.total / c.pageSize);
-        if (c.page < totalPages) c.setPage(c.page + 1);
-        return;
-      }
-      if (e.key === 'PageUp' && c.strings) {
-        e.preventDefault();
-        if (c.page > 1) c.setPage(c.page - 1);
         return;
       }
     };

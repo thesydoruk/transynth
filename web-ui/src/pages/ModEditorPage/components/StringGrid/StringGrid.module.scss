@@ -13,6 +13,14 @@
   color: var(--text-dim);
 }
 
+/* Infinite-scroll footer: "Loaded X of N" / loading indicator. */
+.loadMoreRow {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* ── Header ── */
 
 .gridHeader {

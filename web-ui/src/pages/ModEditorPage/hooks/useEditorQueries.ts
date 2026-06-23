@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api, type StringRow } from '../../../api';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { api, type StringRow, type StringsResult } from '../../../api';
 import { SUPPORTED_CONTENT_LANGUAGES } from '../../../langDefaults';
 import type { SortCol, SortDir, ColumnFilters } from '../components/StringGrid';
 import type { BottomTab } from '../components/DetailPanel';
@@ -25,9 +25,7 @@ export interface UseEditorQueriesParams {
   signature: string;
   /** Per-column text filters for the string grid. */
   columnFilters: ColumnFilters;
-  /** Current page number (1-based). */
-  page: number;
-  /** Number of rows per page. */
+  /** Number of rows fetched per infinite-scroll page. */
   pageSize: number;
   /** Column the grid is currently sorted by (`null` = none). */
   sortCol: SortCol | null;
@@ -41,25 +39,49 @@ export interface UseEditorQueriesParams {
 
 /**
  * Consolidates every `useQuery` call needed by the mod-editor page into a
- * single hook.  Callers provide filter / pagination / sort state; the hook
- * returns all query data plus derived convenience values (available languages,
- * signature counts, total pages, active max-length rule).
+ * single hook.  Callers provide filter / sort state; the hook returns all query
+ * data plus derived convenience values (available languages, signature counts,
+ * active max-length rule) and the infinite-scroll controls.
  *
- * @param params - Filter, pagination, sort and selection state.
+ * @param params - Filter, sort and selection state.
  * @returns Query results and derived values.
  */
 export function useEditorQueries(params: UseEditorQueriesParams) {
   const {
-    modId, gameId, srcLang, targetLang, status, qaOnly, signature,
-    columnFilters, page, pageSize, sortCol, sortDir, activeRow, activeTab,
+    modId,
+    gameId,
+    srcLang,
+    targetLang,
+    status,
+    qaOnly,
+    signature,
+    columnFilters,
+    pageSize,
+    sortCol,
+    sortDir,
+    activeRow,
+    activeTab,
   } = params;
 
   /* ── Query keys ── */
+  // Page is intentionally absent: it is the infinite-query page param, not a
+  // cache-key dimension (all pages live under one accumulating query entry).
   const stringsKey = [
-    'strings', modId, srcLang, targetLang, status, qaOnly, signature,
-    columnFilters.grup, columnFilters.formid, columnFilters.edid,
-    columnFilters.field, columnFilters.src, columnFilters.transl,
-    page, sortCol, sortDir,
+    'strings',
+    modId,
+    srcLang,
+    targetLang,
+    status,
+    qaOnly,
+    signature,
+    columnFilters.grup,
+    columnFilters.formid,
+    columnFilters.edid,
+    columnFilters.field,
+    columnFilters.src,
+    columnFilters.transl,
+    sortCol,
+    sortDir,
   ];
 
   /* ── Primary queries ── */
@@ -99,10 +121,22 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     queryFn: () => api.stats.mod(modId),
   });
 
-  /** Paginated string rows matching the current filters. */
-  const { data: strings, isLoading } = useQuery({
+  /**
+   * String rows matching the current filters, fetched page-by-page and
+   * accumulated for virtualised infinite scroll. The grid renders the flattened
+   * {@link strings} object below; {@link fetchNextPage} loads the next chunk
+   * when the user nears the end of the list.
+   */
+  const {
+    data: stringsPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: stringsKey,
-    queryFn: () =>
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
       api.strings.list({
         modId,
         srcLang,
@@ -116,13 +150,24 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
         field: columnFilters.field || undefined,
         src: columnFilters.src || undefined,
         transl: columnFilters.transl || undefined,
-        page,
+        page: pageParam,
         pageSize,
         sort: sortCol ?? undefined,
         order: sortCol ? sortDir : undefined,
       }),
+    getNextPageParam: (lastPage: StringsResult) =>
+      lastPage.page * lastPage.pageSize < lastPage.total ? lastPage.page + 1 : undefined,
     placeholderData: (prev) => prev,
   });
+
+  /** Flattened rows + total across all loaded pages (grid-friendly shape). */
+  const strings = useMemo(() => {
+    if (!stringsPages) return undefined;
+    return {
+      rows: stringsPages.pages.flatMap((p) => p.rows),
+      total: stringsPages.pages[0]?.total ?? 0,
+    };
+  }, [stringsPages]);
 
   /* ── Active-row detail queries ── */
 
@@ -148,9 +193,6 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
   });
 
   /* ── Derived values ── */
-
-  /** Total number of pages based on the current query total. */
-  const totalPages = strings ? Math.ceil(strings.total / pageSize) : 1;
 
   /** Signature-count list, defaulting to an empty array. */
   const sigCounts = sigs ?? [];
@@ -184,9 +226,22 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
   }, [activeRow, maxLengthRules]);
 
   return {
-    mod, strings, stats, sigs, langs,
-    suggestions, qaIssues, history,
-    maxLengthRules, isLoading, refetchStats,
-    availLangs, sigCounts, totalPages, activeMaxLength,
+    mod,
+    strings,
+    stats,
+    sigs,
+    langs,
+    suggestions,
+    qaIssues,
+    history,
+    maxLengthRules,
+    isLoading,
+    refetchStats,
+    availLangs,
+    sigCounts,
+    activeMaxLength,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

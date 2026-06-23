@@ -2,11 +2,10 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type StringRow } from '../../api';
+import { api, type StringRow, type StringFilterParams } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
-import { PaginationControls } from '../../components/PaginationControls';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
 import { AiVerifyModal } from './components/AiVerifyModal';
@@ -48,13 +47,13 @@ const STATUS_OPTS = [
   'tm',
   'human',
 ];
-/** Valid page-size options for the editor string grid. */
-const PAGE_SIZE_OPTS = [25, 50, 100, 200] as const;
+/** Rows fetched per infinite-scroll page (the grid accumulates pages). */
+const FETCH_PAGE_SIZE = 100;
 
 /**
  * Top-level page component for the mod-editor view.
  *
- * Orchestrates filter / sort / pagination state, delegates data-fetching to
+ * Orchestrates filter / sort / selection state, delegates data-fetching to
  * {@link useEditorQueries}, persistence to {@link useEditorMutations},
  * autosave to {@link useAutosave}, and keyboard handling to
  * {@link useEditorKeyboard}.  Rendering is delegated to the individual
@@ -96,13 +95,12 @@ export const ModEditorPage = () => {
     : (storedIntent?.qaOnly ?? false);
   const initialSignature = searchParams.get('signature') ?? storedIntent?.signature ?? '';
 
-  // ── Filter / sort / pagination state ──
+  // ── Filter / sort state ──
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [status, setStatus] = useState(safeInitialStatus);
   const [qaOnly, setQaOnly] = useState(resolvedQaOnly);
   const [signature, setSignature] = useState(initialSignature);
-  const [page, setPage] = useState(1);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
     grup: '',
     formid: '',
@@ -113,7 +111,6 @@ export const ModEditorPage = () => {
   });
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [pageSize, setPageSize] = useState(100);
 
   // ── Page mode: strings grid or dialogs tree ──
   const [pageMode, setPageMode] = useState<'strings' | 'dialogs'>('strings');
@@ -128,6 +125,14 @@ export const ModEditorPage = () => {
   }, [status, qaOnly, signature, storageKey]);
 
   // ── Selection ──
+  //
+  // Two modes:
+  //   • explicit ("some")  — `selected` holds the explicitly included IDs.
+  //   • "all matching"     — `selectAllMatching` is true and `selected` instead
+  //                          holds the IDs the user explicitly DE-selected.
+  // This lets the header checkbox select every row matching the current filter
+  // (potentially thousands) without ever materialising that ID list client-side.
+  const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   // ── Active row (detail panel) ──
@@ -173,8 +178,10 @@ export const ModEditorPage = () => {
     refetchStats,
     availLangs,
     sigCounts,
-    totalPages,
     activeMaxLength,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useEditorQueries({
     modId,
     gameId,
@@ -184,13 +191,57 @@ export const ModEditorPage = () => {
     qaOnly,
     signature,
     columnFilters,
-    page,
-    pageSize,
+    pageSize: FETCH_PAGE_SIZE,
     sortCol,
     sortDir,
     activeRow,
     activeTab,
   });
+
+  // ── Derived selection state ──
+  const total = strings?.total ?? 0;
+  /** True when `id` is currently selected, honouring the active selection mode. */
+  const isRowSelected = useCallback(
+    (id: number) => (selectAllMatching ? !selected.has(id) : selected.has(id)),
+    [selectAllMatching, selected],
+  );
+  /** Number of selected rows (across the whole filtered set in "all" mode). */
+  const selectedCount = selectAllMatching ? Math.max(0, total - selected.size) : selected.size;
+  const hasSelection = selectedCount > 0;
+  /** Header checkbox is fully checked only when every matching row is selected. */
+  const allSelected = selectAllMatching && selected.size === 0 && total > 0;
+  /** Header checkbox shows the indeterminate state for a partial selection. */
+  const someSelected = hasSelection && !allSelected;
+
+  /** Clears the selection and exits "all matching" mode. */
+  const clearSelection = useCallback(() => {
+    setSelectAllMatching(false);
+    setSelected(new Set());
+  }, []);
+
+  /** Builds the server filter payload mirroring the current grid query. */
+  const buildFilter = useCallback(
+    (): StringFilterParams => ({
+      srcLang,
+      targetLang,
+      status: status === 'all' ? undefined : status,
+      qaOnly: qaOnly || undefined,
+      signature: signature || undefined,
+      grup: columnFilters.grup || undefined,
+      formid: columnFilters.formid || undefined,
+      edid: columnFilters.edid || undefined,
+      field: columnFilters.field || undefined,
+      src: columnFilters.src || undefined,
+      transl: columnFilters.transl || undefined,
+    }),
+    [srcLang, targetLang, status, qaOnly, signature, columnFilters],
+  );
+
+  /** Loaded rows that are currently selected (bounded by what's in memory). */
+  const selectedLoadedRows = useCallback(
+    () => (strings?.rows ?? []).filter((r) => isRowSelected(r.string_id)),
+    [strings, isRowSelected],
+  );
 
   const {
     saveMutation,
@@ -199,6 +250,7 @@ export const ModEditorPage = () => {
     clearMutation,
     tmApplyMut,
     bulkReviewMutation,
+    bulkReviewByFilterMutation,
     saveIndicator,
   } = useEditorMutations({
     modId,
@@ -207,8 +259,34 @@ export const ModEditorPage = () => {
     refetchStats,
     activeRowRef,
     setActiveRow,
-    setSelected,
+    clearSelection,
   });
+
+  const bulkReviewPending = bulkReviewMutation.isPending || bulkReviewByFilterMutation.isPending;
+
+  /** Approve / reject the whole selection (explicit IDs or by filter). */
+  const handleBulkReview = useCallback(
+    (reviewStatus: 'reviewed' | 'rejected') => {
+      if (!hasSelection) return;
+      if (selectAllMatching) {
+        bulkReviewByFilterMutation.mutate({
+          filter: buildFilter(),
+          status: reviewStatus,
+          excludeIds: [...selected],
+        });
+      } else {
+        bulkReviewMutation.mutate({ ids: [...selected], status: reviewStatus });
+      }
+    },
+    [
+      hasSelection,
+      selectAllMatching,
+      selected,
+      buildFilter,
+      bulkReviewByFilterMutation,
+      bulkReviewMutation,
+    ],
+  );
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
@@ -247,10 +325,13 @@ export const ModEditorPage = () => {
 
   // ── Column-filter / sort handlers ──
 
-  const handleColumnFilterChange = useCallback((col: keyof ColumnFilters, value: string) => {
-    setColumnFilters((prev) => ({ ...prev, [col]: value }));
-    setPage(1);
-  }, []);
+  const handleColumnFilterChange = useCallback(
+    (col: keyof ColumnFilters, value: string) => {
+      setColumnFilters((prev) => ({ ...prev, [col]: value }));
+      clearSelection();
+    },
+    [clearSelection],
+  );
 
   /** Toggles sort direction for a column, or activates sorting on it. */
   const handleSort = useCallback(
@@ -265,9 +346,9 @@ export const ModEditorPage = () => {
         setSortCol(col);
         setSortDir('asc');
       }
-      setPage(1);
+      clearSelection();
     },
-    [sortCol, sortDir],
+    [sortCol, sortDir, clearSelection],
   );
 
   // ── Sync status / qaOnly to URL search params ──
@@ -345,18 +426,43 @@ export const ModEditorPage = () => {
     });
   }, []);
 
-  const toggleAll = () => {
-    if (!strings) return;
-    if (selected.size === strings.rows.length) setSelected(new Set());
-    else setSelected(new Set(strings.rows.map((r) => r.string_id)));
-  };
+  /**
+   * Header checkbox: select every row matching the current filter, or clear
+   * the selection when everything is already selected.
+   */
+  const toggleAll = useCallback(() => {
+    if (allSelected) {
+      clearSelection();
+    } else {
+      setSelectAllMatching(true);
+      setSelected(new Set());
+    }
+  }, [allSelected, clearSelection]);
 
   const handleBatchTranslate = async () => {
     if (translateInFlight.current) return;
+
+    // Resolve the target ID list. In "all matching" mode we fetch the full
+    // filtered set from the server (minus de-selections) so the action covers
+    // rows that have not been scrolled into memory yet.
+    let ids: number[];
+    try {
+      if (selectAllMatching) {
+        const { ids: all } = await api.strings.matchingIds({ modId, ...buildFilter() });
+        ids = selected.size ? all.filter((id) => !selected.has(id)) : all;
+      } else {
+        ids = [...selected];
+      }
+    } catch (err) {
+      setTranslateError(String(err));
+      return;
+    }
+    if (ids.length === 0) return;
+
     translateInFlight.current = true;
     setTranslateError(null);
     setTranslateDoneCount(null);
-    setTranslateProgress({ done: 0, total: selected.size });
+    setTranslateProgress({ done: 0, total: ids.length });
     const appJobId = `llm-${modId}-${Date.now()}`;
     const startedAt = Date.now();
     const appJobLabel = `LLM batch translate · mod ${modId}`;
@@ -372,7 +478,7 @@ export const ModEditorPage = () => {
 
     try {
       const results = await api.strings.batchTranslate(
-        [...selected],
+        ids,
         srcLang,
         targetLang,
         (e) => {
@@ -393,7 +499,7 @@ export const ModEditorPage = () => {
       void refetchStats();
       const doneCount = results.filter((r) => r.text !== undefined).length;
       setTranslateDoneCount(doneCount);
-      setSelected(new Set());
+      clearSelection();
       upsertAppJob({
         id: appJobId,
         kind: 'llm',
@@ -429,14 +535,23 @@ export const ModEditorPage = () => {
     setCtxMenu({ x: e.clientX, y: e.clientY, row });
   }, []);
 
+  /** True when a context-menu action should target the whole selection. */
+  const ctxActsOnSelection = useCallback(
+    (row: StringRow) => hasSelection && isRowSelected(row.string_id),
+    [hasSelection, isRowSelected],
+  );
+
+  // Per-row text operations (transform / copy-source / clear) act on the loaded
+  // selected rows when invoked on a selection, otherwise on the clicked row.
+  // They are intentionally bounded to in-memory rows; "approve / reject all" is
+  // the only action that scales to the full filtered set (handled server-side).
   const applyTextTransform = useCallback(
     async (row: StringRow, transform: (text: string) => string) => {
-      const targetRows =
-        selected.size > 1 && selected.has(row.string_id)
-          ? (strings?.rows.filter((r) => selected.has(r.string_id) && r.translation) ?? [])
-          : row.translation
-            ? [row]
-            : [];
+      const targetRows = ctxActsOnSelection(row)
+        ? selectedLoadedRows().filter((r) => r.translation)
+        : row.translation
+          ? [row]
+          : [];
       for (const r of targetRows) {
         const newText = transform(r.translation!);
         if (newText !== r.translation)
@@ -445,22 +560,44 @@ export const ModEditorPage = () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
-    [selected, strings, targetLang, qc, modId, refetchStats],
+    [ctxActsOnSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
   );
 
   const ctxCopySource = useCallback(
     async (row: StringRow) => {
-      const targetRows =
-        selected.size > 1 && selected.has(row.string_id)
-          ? (strings?.rows.filter((r) => selected.has(r.string_id)) ?? [])
-          : [row];
+      const targetRows = ctxActsOnSelection(row) ? selectedLoadedRows() : [row];
       for (const r of targetRows) {
         await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
       }
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
-    [selected, strings, targetLang, qc, modId, refetchStats],
+    [ctxActsOnSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
+  );
+
+  /** Context-menu clear: whole selection (loaded rows) or just the clicked row. */
+  const ctxClear = useCallback(
+    (row: StringRow) => {
+      if (ctxActsOnSelection(row)) {
+        for (const r of selectedLoadedRows()) clearMutation.mutate({ stringId: r.string_id });
+      } else {
+        handleClear(row);
+      }
+    },
+    // handleClear is a stable-enough page handler; intentionally omitted.
+    [ctxActsOnSelection, selectedLoadedRows, clearMutation], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  /** Context-menu approve/reject: whole selection or just the clicked row. */
+  const ctxApprove = useCallback(
+    (row: StringRow) =>
+      ctxActsOnSelection(row) ? handleBulkReview('reviewed') : handleApprove(row),
+    [ctxActsOnSelection, handleBulkReview], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const ctxReject = useCallback(
+    (row: StringRow) =>
+      ctxActsOnSelection(row) ? handleBulkReview('rejected') : handleReject(row),
+    [ctxActsOnSelection, handleBulkReview], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
@@ -496,11 +633,9 @@ export const ModEditorPage = () => {
   // ── Keyboard shortcuts ──
   useEditorKeyboard({
     activeRow,
-    selected,
+    hasSelection,
     strings,
     ctxMenu,
-    page,
-    pageSize,
     translAreaRef,
     flushAutosave,
     handleSave,
@@ -511,11 +646,11 @@ export const ModEditorPage = () => {
     handleRowClick,
     handleNextQaIssue,
     toggleAll,
+    clearSelection,
     setActiveRow,
     setDraftTranslation,
     setSelected,
     setCtxMenu,
-    setPage,
     setShowShortcuts,
   });
 
@@ -530,7 +665,7 @@ export const ModEditorPage = () => {
         status={status}
         qaOnly={qaOnly}
         stats={stats}
-        selectedCount={selected.size}
+        selectedCount={selectedCount}
         translateProgress={translateProgress}
         translateError={translateError}
         tmApply={{
@@ -538,7 +673,7 @@ export const ModEditorPage = () => {
           isSuccess: tmApplyMut.isSuccess,
           applied: (tmApplyMut.data as { applied: number } | undefined)?.applied ?? 0,
         }}
-        bulkReviewPending={bulkReviewMutation.isPending}
+        bulkReviewPending={bulkReviewPending}
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
@@ -548,19 +683,19 @@ export const ModEditorPage = () => {
         statusOpts={STATUS_OPTS}
         onSrcLangChange={(l) => {
           setSrcLang(l);
-          setPage(1);
+          clearSelection();
         }}
         onTargetLangChange={(l) => {
           setTargetLang(l);
-          setPage(1);
+          clearSelection();
         }}
         onStatusChange={(s) => {
           setStatus(s);
-          setPage(1);
+          clearSelection();
         }}
         onQaOnlyToggle={() => {
           setQaOnly((v) => !v);
-          setPage(1);
+          clearSelection();
         }}
         onTmApply={() => tmApplyMut.mutate()}
         onSearchReplace={() => setShowSearchReplace(true)}
@@ -572,7 +707,7 @@ export const ModEditorPage = () => {
         aiTranslateRunning={aiTranslate.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
-        onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
+        onBulkReview={handleBulkReview}
         onNextUntranslated={handleNextUntranslated}
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
@@ -607,16 +742,21 @@ export const ModEditorPage = () => {
             totalFiltered={strings?.total}
             onSelect={(sig) => {
               setSignature(sig);
-              setPage(1);
+              clearSelection();
             }}
           />
 
           <div className={styles.centerCol}>
             <StringGrid
               rows={strings?.rows ?? []}
-              total={strings?.total ?? 0}
+              total={total}
               isLoading={isLoading}
-              selected={selected}
+              isRowSelected={isRowSelected}
+              allSelected={allSelected}
+              someSelected={someSelected}
+              hasMore={!!hasNextPage}
+              isFetchingMore={isFetchingNextPage}
+              onLoadMore={() => fetchNextPage()}
               activeRow={activeRow}
               srcLang={srcLang}
               targetLang={targetLang}
@@ -637,36 +777,6 @@ export const ModEditorPage = () => {
                 setTimeout(() => setDraftTranslation(row.source), 0);
               }}
             />
-
-            {/* Pagination */}
-            <div className={styles.pagination}>
-              <PaginationControls
-                info={
-                  <span className={styles.pageLabel}>
-                    {t('modEditor.pageInfo', { page, totalPages, total: strings?.total ?? 0 })}
-                  </span>
-                }
-                onPrev={() => setPage((p) => p - 1)}
-                onNext={() => setPage((p) => p + 1)}
-                prevDisabled={page <= 1}
-                nextDisabled={page >= totalPages}
-              />
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className={styles.pageSizeSelect}
-                title={t('modEditor.pageSizeTitle')}
-              >
-                {PAGE_SIZE_OPTS.map((n) => (
-                  <option key={n} value={n}>
-                    {n} {t('modEditor.perPage')}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             {activeRow && (
               <DetailPanel
@@ -787,26 +897,24 @@ export const ModEditorPage = () => {
       {ctxMenu && (
         <ContextMenu
           anchor={ctxMenu}
-          selected={selected}
-          rows={strings?.rows ?? []}
-          targetLang={targetLang}
-          bulkReviewPending={bulkReviewMutation.isPending}
+          selectedCount={selectedCount}
+          actsOnSelection={ctxActsOnSelection(ctxMenu.row)}
+          bulkReviewPending={bulkReviewPending}
           onClose={() => setCtxMenu(null)}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onClear={handleClear}
+          onApprove={ctxApprove}
+          onReject={ctxReject}
+          onClear={ctxClear}
           onCopySource={(row) => {
             handleRowClick(row);
             setTimeout(() => setDraftTranslation(row.source), 0);
           }}
           onTextTransform={applyTextTransform}
           onBulkCopySource={ctxCopySource}
-          onBulkReview={(s) => bulkReviewMutation.mutate({ ids: [...selected], status: s })}
           onBatchTranslate={handleBatchTranslate}
         />
       )}
 
-      <EditorStatusBar selectedCount={selected.size} activeRow={activeRow} stats={stats} />
+      <EditorStatusBar selectedCount={selectedCount} activeRow={activeRow} stats={stats} />
     </div>
   );
 };

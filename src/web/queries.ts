@@ -479,16 +479,27 @@ const SORT_COLUMNS: Record<string, string> = {
   confidence: 't.confidence',
 };
 
-export const listStrings = async (db: Tx, f: StringsFilter) => {
-  const page = Math.max(1, f.page ?? 1);
-  const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 50));
-  const offset = (page - 1) * pageSize;
-  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
-  const targetLang = f.targetLang ?? CONFIG.defaultTgtLang;
-
+/**
+ * Builds the shared WHERE-clause fragments used by {@link listStrings},
+ * {@link listMatchingStringIds} and the bulk-by-filter mutation.
+ *
+ * Param `$1` is always reserved for `modId` (already pushed into `values`),
+ * so callers should start their own positional params at the returned `idx`.
+ * The fragments reference the standard aliases `r` (records), `s` (strings)
+ * and `t` (best translation, LEFT JOINed by the caller).
+ *
+ * @param f         The string filter.
+ * @param startIdx  First positional-parameter index to assign (normally `2`).
+ * @returns         `conditions` (joined with AND by the caller), the matching
+ *                  `values`, and the next free param `idx`.
+ */
+const buildStringFilterConditions = (
+  f: StringsFilter,
+  startIdx = 2,
+): { conditions: string[]; values: unknown[]; idx: number } => {
   const conditions: string[] = ['r.mod_id = $1'];
   const values: unknown[] = [f.modId];
-  let idx = 2;
+  let idx = startIdx;
 
   if (f.status && f.status !== 'all') {
     if (f.status === 'untranslated') {
@@ -550,6 +561,17 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
     conditions.push(`s.is_ignored = FALSE`);
   }
 
+  return { conditions, values, idx };
+};
+
+export const listStrings = async (db: Tx, f: StringsFilter) => {
+  const page = Math.max(1, f.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 50));
+  const offset = (page - 1) * pageSize;
+  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
+  const targetLang = f.targetLang ?? CONFIG.defaultTgtLang;
+
+  const { conditions, values, idx } = buildStringFilterConditions(f);
   const where = conditions.join(' AND ');
 
   /* QA-issue existence predicate, parameterised on the target-lang index. */
@@ -2799,6 +2821,84 @@ export const bulkUpdateTranslationStatus = async (
   });
 
   return updated;
+};
+
+/**
+ * Returns the IDs of every source string matching the given filter, applying
+ * exactly the same predicates as {@link listStrings} (status, signature,
+ * per-column filters, QA-only) — but without pagination.
+ *
+ * Used by the editor's "select all matching" feature so bulk actions can target
+ * the full filtered set without shipping a huge ID list back and forth.
+ *
+ * @param db  Database handle.
+ * @param f   The same filter object used for the grid query.
+ * @returns   Array of matching `string_id` values (may be large).
+ */
+export const listMatchingStringIds = async (db: Tx, f: StringsFilter): Promise<number[]> => {
+  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
+  const targetLang = f.targetLang ?? CONFIG.defaultTgtLang;
+
+  const { conditions, values, idx } = buildStringFilterConditions(f);
+  const where = conditions.join(' AND ');
+
+  const targetLangIdx = idx;
+  const srcLangIdx = idx + 1;
+  const allValues = [...values, targetLang, srcLang];
+
+  const qaExists = `EXISTS (SELECT 1 FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE)`;
+
+  const { rows } = await db.query(
+    `SELECT s.id AS string_id
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     LEFT JOIN translations t
+       ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+          AND t.id = (
+            SELECT id FROM translations
+            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
+            ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
+            LIMIT 1
+          )
+     WHERE s.lang = $${srcLangIdx} AND ${where}${f.qaOnly ? ` AND ${qaExists}` : ''}`,
+    allValues,
+  );
+
+  return (rows as Array<{ string_id: number }>).map((r) => r.string_id);
+};
+
+/**
+ * Bulk approve/reject every translation matching a filter ("select all
+ * matching" mode), optionally excluding a small set of de-selected string IDs.
+ *
+ * Resolves the matching string IDs via {@link listMatchingStringIds} and then
+ * delegates to {@link bulkUpdateTranslationStatus}, so the state machine,
+ * revision audit trail, QA refresh and RAG sync all behave identically to the
+ * explicit-ID bulk path.
+ *
+ * @param db          Database handle.
+ * @param modId       Mod id.
+ * @param filter      The grid filter describing the target set.
+ * @param newStatus   `'reviewed'` or `'rejected'`.
+ * @param targetLang  Target language code.
+ * @param actor       Actor performing the action (role-aware).
+ * @param excludeIds  String IDs the user de-selected; skipped from the update.
+ * @returns           Number of translations whose status changed.
+ */
+export const bulkUpdateTranslationStatusByFilter = async (
+  db: Tx,
+  modId: number,
+  filter: StringsFilter,
+  newStatus: 'reviewed' | 'rejected',
+  targetLang = CONFIG.defaultTgtLang,
+  actor: StatusActor = 'system',
+  excludeIds: number[] = [],
+): Promise<number> => {
+  const ids = await listMatchingStringIds(db, { ...filter, modId, targetLang });
+  const excluded = new Set(excludeIds);
+  const targetIds = excluded.size ? ids.filter((id) => !excluded.has(id)) : ids;
+  return bulkUpdateTranslationStatus(db, modId, targetIds, newStatus, targetLang, actor);
 };
 
 // ── INNR editor ───────────────────────────────────────────────────────────────
