@@ -581,6 +581,10 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
 
   /* ── Page query ───────────────────────────────────────────────────────────
    * The translations join is always needed (translation columns are shown).
+   * A (src_string_id, target_lang) unique index guarantees at most one
+   * translation per pair, so this is a plain index join — no per-row
+   * "best translation" subquery. With a specific status filter the planner
+   * can drive the join from idx_translations_by_lang (target_lang, status).
    * The QA issue-count LATERAL is intentionally kept out of WHERE / ORDER BY
    * so the planner can defer it to only the rows that survive LIMIT. When the
    * caller wants QA-only rows we filter with EXISTS (index-backed) instead of
@@ -615,13 +619,6 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
-          AND t.id = (
-            SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
-            ORDER BY ${BEST_TRANSLATION_ORDER},
-              COALESCE(confidence,0) DESC, created_at DESC
-            LIMIT 1
-          )
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi
@@ -635,10 +632,9 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
 
   /* ── Count query ──────────────────────────────────────────────────────────
    * Only join translations when a translation-dependent filter is active
-   * (status / translation-text). Otherwise the expensive per-row
-   * best-translation subquery is skipped entirely and the total is a plain
-   * strings⋈records count — a large win on big mods, where this runs on
-   * every page load. */
+   * (status / translation-text). Otherwise the join is skipped entirely and
+   * the total is a plain strings⋈records count — a large win on big mods,
+   * where this runs on every page load. */
   const needsTxJoin = (f.status != null && f.status !== 'all') || !!f.transl;
   let countSql: string;
   let countValues: unknown[];
@@ -652,12 +648,6 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        JOIN records r ON s.record_id = r.id
        LEFT JOIN translations t
          ON t.src_string_id = s.id AND t.target_lang = $${cTgt}
-            AND t.id = (
-              SELECT id FROM translations
-              WHERE src_string_id = s.id AND target_lang = $${cTgt}
-              ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
-              LIMIT 1
-            )
        WHERE s.lang = $${cSrc} AND ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}`;
   } else if (f.qaOnly) {
     const cTgt = idx;
@@ -2855,12 +2845,6 @@ export const listMatchingStringIds = async (db: Tx, f: StringsFilter): Promise<n
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
-          AND t.id = (
-            SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $${targetLangIdx}
-            ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, created_at DESC
-            LIMIT 1
-          )
      WHERE s.lang = $${srcLangIdx} AND ${where}${f.qaOnly ? ` AND ${qaExists}` : ''}`,
     allValues,
   );

@@ -136,10 +136,14 @@ CREATE TABLE IF NOT EXISTS translations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Use md5(text) in the unique index to avoid btree row size limit
--- on long translation texts (game dialogue, descriptions, etc.)
-CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_text_key
-  ON translations(src_string_id, target_lang, md5(text));
+-- Exactly one translation per (source string, target language). The editor
+-- save path is DELETE+INSERT and imports upsert on this key, so a pair never
+-- holds more than one row. This lets the grid join translations directly
+-- instead of picking a "best" row per source string.
+--
+-- The unique index itself is created by the migration at the END of this file,
+-- because existing databases must first de-duplicate any legacy rows before
+-- the (src_string_id, target_lang) uniqueness can be enforced.
 
 CREATE TABLE IF NOT EXISTS translation_revisions (
   id SERIAL PRIMARY KEY,
@@ -471,3 +475,43 @@ DROP TABLE IF EXISTS alignments;
 -- cascades to the dependent index. Idempotent and safe to re-run.
 DROP INDEX IF EXISTS idx_strings_tsv;
 ALTER TABLE strings DROP COLUMN IF EXISTS tsv;
+
+-- ── Enforce one translation per (source string, target language) ─────────────
+-- The multi-row "best translation" model was legacy: the editor save path does
+-- DELETE+INSERT, so a (string, lang) pair never legitimately holds more than
+-- one translation. Keeping the old md5(text)-based uniqueness forced every grid
+-- query (and especially the status filter) to pick a "best" row per source
+-- string via a correlated subquery, which scanned the whole mod before LIMIT.
+--
+-- Collapse any historical duplicates — keeping the highest-priority status,
+-- then confidence, then the most recent — and replace the md5(text) unique
+-- index with a plain (src_string_id, target_lang) one. The grid can then join
+-- translations directly, and ON CONFLICT(src_string_id, target_lang) upserts
+-- become possible. Idempotent: after the first run no duplicates remain.
+DELETE FROM translations dup
+USING (
+  SELECT id,
+         ROW_NUMBER() OVER (
+           PARTITION BY src_string_id, target_lang
+           ORDER BY
+             CASE status
+               WHEN 'draft' THEN 1
+               WHEN 'reviewed' THEN 2
+               WHEN 'human' THEN 3
+               WHEN 'tm' THEN 4
+               WHEN 'fuzzy' THEN 5
+               WHEN 'auto' THEN 6
+               WHEN 'rejected' THEN 7
+               ELSE 8
+             END,
+             COALESCE(confidence, 0) DESC,
+             created_at DESC
+         ) AS rn
+  FROM translations
+) ranked
+WHERE dup.id = ranked.id AND ranked.rn > 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
+  ON translations(src_string_id, target_lang);
+
+DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;

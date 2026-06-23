@@ -293,20 +293,23 @@ export const addTranslation = async (
   provenance: string,
   model?: string,
 ): Promise<number> => {
+  // One translation per (src_string_id, target_lang): upsert in place so a
+  // re-import or duplicate row updates the existing translation instead of
+  // creating a second one (the legacy multi-row model has been removed).
   const { rows } = await db.query(
     `INSERT INTO translations(src_string_id, target_lang, text, status, confidence, provenance, model)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT(src_string_id, target_lang, md5(text)) DO NOTHING
+     ON CONFLICT(src_string_id, target_lang) DO UPDATE SET
+       text = EXCLUDED.text,
+       status = EXCLUDED.status,
+       confidence = EXCLUDED.confidence,
+       provenance = EXCLUDED.provenance,
+       model = EXCLUDED.model,
+       updated_at = NOW()
      RETURNING id`,
     [srcStringId, targetLang, text, status, confidence, provenance, model ?? null],
   );
-  if (rows.length > 0) return rows[0].id;
-  // ON CONFLICT DO NOTHING — fetch existing
-  const { rows: existing } = await db.query(
-    `SELECT id FROM translations WHERE src_string_id = $1 AND target_lang = $2 AND md5(text) = md5($3)`,
-    [srcStringId, targetLang, text],
-  );
-  return existing[0]?.id ?? 0;
+  return rows[0].id;
 };
 
 export const bestTranslation = async (
