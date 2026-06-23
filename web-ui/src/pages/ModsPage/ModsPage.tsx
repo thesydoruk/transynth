@@ -359,7 +359,7 @@ export const ModsPage = () => {
       exportSrcLang: string,
       exportTgtLang: string,
       labelName: string,
-      type: 'strings' | 'esp' | 'ba2' | 'zip',
+      type: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip',
       busyKey: string,
     ) => {
       const appJobId = `export-${modId}-${type}-${Date.now()}`;
@@ -381,6 +381,9 @@ export const ModsPage = () => {
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
         } else if (type === 'esp') {
           const result = await api.mods.exportEsp(modId, exportSrcLang, exportTgtLang);
+          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+        } else if (type === 'pex') {
+          const result = await api.mods.exportPex(modId, exportSrcLang, exportTgtLang);
           for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
         } else if (type === 'ba2') {
           const result = await api.mods.exportBa2(modId, exportSrcLang, exportTgtLang);
@@ -454,6 +457,22 @@ export const ModsPage = () => {
               labelName,
               'esp',
               `${busyPrefix}:esp`,
+            );
+          },
+          disabled: isBusy,
+        },
+        {
+          key: 'pex' as const,
+          icon: '📜',
+          title: t('modEditor.exportPexTitle'),
+          onClick: () => {
+            void runModExport(
+              modId,
+              exportSrcLang,
+              exportTgtLang,
+              labelName,
+              'pex',
+              `${busyPrefix}:pex`,
             );
           },
           disabled: isBusy,

@@ -23,5 +23,13 @@ export {
   resolveMcmTranslationPrefixes,
   resolveModDirectoryFromPath,
 } from './mcmDiscovery';
-export { isLikelyUserText, parsePexBuffer } from './pexParser';
+export { collectModPexSources } from './pexSources';
+export type { PexSourceFile } from './pexSources';
+export {
+  isLikelyUserText,
+  parsePexBuffer,
+  patchPexBuffer,
+  pexScriptKeyFromInfo,
+  writeWString,
+} from './pexParser';
 export type { PexInfo, PexResult } from './pexParser';

@@ -999,6 +999,10 @@ export const api = {
       req<ExportStringsResult>(
         `/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       ),
+    exportPex: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+      req<ExportStringsResult>(
+        `/api/mods/${modId}/export/pex?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+      ),
     exportBa2: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<ExportStringsResult>(
         `/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,

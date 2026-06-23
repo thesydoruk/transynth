@@ -6,6 +6,7 @@
  * This module converts translations stored in PostgreSQL into distributable
  * outputs that players can install:
  * - raw `.STRINGS` / `.DLSTRINGS` / `.ILSTRINGS` files,
+ * - patched `.pex` Papyrus scripts,
  * - a patched ESP/ESM plugin for non-localized mods (inline text),
  * - and archives (BA2 for Fallout 4/76, BSA for Skyrim/FO3/FNV) or ZIP bundles.
  *
@@ -23,7 +24,13 @@ import type { GameType } from '../types';
 import { Ba2Reader, BsaReader, writeBa2, writeBsa } from '../bethesda/archives';
 import type { ArchiveInputFile, EspPatch } from '../bethesda/types';
 import { patchEsp, patchStringsMap } from '../bethesda/esp';
-import { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer, type StringsType } from '../bethesda/strings';
+import { patchPexBuffer, collectModPexSources } from '../bethesda/parsers';
+import {
+  parseStringsBuffer,
+  stringsTypeFromPath,
+  writeStringsBuffer,
+  type StringsType,
+} from '../bethesda/strings';
 import { log } from '../logger';
 
 /**
@@ -72,7 +79,7 @@ const parseStringsFileName = (
     locale: match[2].toLowerCase(),
     type: stringsTypeFromPath(fileName),
   };
-}
+};
 
 /**
  * Keep strings file export order deterministic regardless of filesystem or
@@ -89,11 +96,13 @@ const sortSourceStringsFiles = (files: SourceStringsFile[]): SourceStringsFile[]
   };
 
   return [...files].sort((left, right) => {
-    const stemCompare = left.nameStem.localeCompare(right.nameStem, undefined, { sensitivity: 'base' });
+    const stemCompare = left.nameStem.localeCompare(right.nameStem, undefined, {
+      sensitivity: 'base',
+    });
     if (stemCompare !== 0) return stemCompare;
     return typeOrder[left.type] - typeOrder[right.type];
   });
-}
+};
 
 /**
  * Discover a BA2 archive (Fallout 4/76) next to the plugin file.
@@ -113,7 +122,7 @@ const findBa2 = (modPath: string): string | null => {
     if (fs.existsSync(full)) return full;
   }
   return null;
-}
+};
 
 /**
  * Discover a BSA archive (Skyrim SE) next to the mod plugin file.
@@ -127,7 +136,7 @@ const findBsa = (modPath: string): string | null => {
     if (fs.existsSync(full)) return full;
   }
   return null;
-}
+};
 
 /**
  * Load source STRINGS files from a BSA archive (Skyrim SE/LE).
@@ -152,7 +161,7 @@ const loadSourceStringsFromBSA = (bsaPath: string, srcLang: string): SourceStrin
   }
 
   return sortSourceStringsFiles(files);
-}
+};
 
 /**
  * Load source STRINGS tables from a BA2 archive for the requested locale.
@@ -181,7 +190,7 @@ const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStrin
   }
 
   return sortSourceStringsFiles(files);
-}
+};
 
 /**
  * Load source STRINGS tables from loose files next to the plugin.
@@ -211,7 +220,7 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
   }
 
   return sortSourceStringsFiles(files);
-}
+};
 
 /**
  * Load all source strings tables for a given mod and locale.
@@ -225,7 +234,11 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
  * @param game - Target game type (controls which archive types to probe first).
  * @returns Stable-sorted list of parsed source strings tables.
  */
-const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType = 'fo4'): SourceStringsFile[] => {
+const loadSourceStringsFiles = (
+  modPath: string,
+  srcLang: string,
+  game: GameType = 'fo4',
+): SourceStringsFile[] => {
   if (game === 'sse' || game === 'sle') {
     // Skyrim: try BSA first, then BA2 (some SSE mods use BA2), then loose files
     const bsaPath = findBsa(modPath);
@@ -240,7 +253,7 @@ const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType
     if (ba2Files.length > 0) return ba2Files;
   }
   return loadSourceStringsFromLooseFiles(modPath, srcLang);
-}
+};
 
 /**
  * Build an overlay map of `lstring_id → export_text` for a mod and language pair.
@@ -256,7 +269,12 @@ const loadSourceStringsFiles = (modPath: string, srcLang: string, game: GameType
  * @param targetLang - Desired target language code.
  * @returns Map keyed by `lstring_id` containing the chosen export text.
  */
-const getTranslationOverlay = async (db: Tx, modId: number, srcLang: string, targetLang: string): Promise<Map<number, string>> => {
+const getTranslationOverlay = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+  targetLang: string,
+): Promise<Map<number, string>> => {
   const { rows } = await db.query(
     `SELECT DISTINCT ON (s.lstring_id)
         s.lstring_id,
@@ -291,7 +309,7 @@ const getTranslationOverlay = async (db: Tx, modId: number, srcLang: string, tar
     overlay.set(row.lstring_id, row.export_text);
   }
   return overlay;
-}
+};
 
 /**
  * Export translated strings tables for a localized mod (external STRINGS).
@@ -337,7 +355,7 @@ export const exportLocalizedStringsFiles = async (
       contentBase64: buf.toString('base64'),
     };
   });
-}
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // BA2 archive export — pack localized STRINGS into a BA2
@@ -365,12 +383,37 @@ export const exportBa2Archive = async (
   targetLang: string,
   game: GameType = 'fo4',
 ): Promise<ExportedStringsFile> => {
-  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
+  const ba2Files: ArchiveInputFile[] = [];
 
-  const ba2Files: ArchiveInputFile[] = stringsFiles.map((f) => ({
-    name: `Strings\\${f.fileName}`,
-    data: Buffer.from(f.contentBase64, 'base64'),
-  }));
+  try {
+    const stringsFiles = await exportLocalizedStringsFiles(
+      db,
+      modId,
+      modPath,
+      srcLang,
+      targetLang,
+      game,
+    );
+    ba2Files.push(
+      ...stringsFiles.map((f) => ({
+        name: `Strings\\${f.fileName}`,
+        data: Buffer.from(f.contentBase64, 'base64'),
+      })),
+    );
+  } catch {
+    log.info(`BA2 export: no localized STRINGS for mod ${modId}, skipping strings tables`);
+  }
+
+  try {
+    const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
+    ba2Files.push(...pexFilesToArchiveInputs(pexFiles));
+  } catch {
+    log.info(`BA2 export: no patched PEX scripts for mod ${modId}, skipping scripts`);
+  }
+
+  if (ba2Files.length === 0) {
+    throw new Error(`No exportable STRINGS or PEX content for mod ${modId}`);
+  }
 
   const ba2Buf = writeBa2(ba2Files);
   const stem = path.basename(modPath, path.extname(modPath));
@@ -381,7 +424,7 @@ export const exportBa2Archive = async (
     size: ba2Buf.length,
     contentBase64: ba2Buf.toString('base64'),
   };
-}
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // BSA archive export — pack localized STRINGS into a BSA (Skyrim SE / SLE)
@@ -407,12 +450,37 @@ export const exportBsaArchive = async (
   targetLang: string,
   game: GameType = 'sse',
 ): Promise<ExportedStringsFile> => {
-  const stringsFiles = await exportLocalizedStringsFiles(db, modId, modPath, srcLang, targetLang, game);
+  const bsaFiles: ArchiveInputFile[] = [];
 
-  const bsaFiles: ArchiveInputFile[] = stringsFiles.map((f) => ({
-    name: `Strings\\${f.fileName}`,
-    data: Buffer.from(f.contentBase64, 'base64'),
-  }));
+  try {
+    const stringsFiles = await exportLocalizedStringsFiles(
+      db,
+      modId,
+      modPath,
+      srcLang,
+      targetLang,
+      game,
+    );
+    bsaFiles.push(
+      ...stringsFiles.map((f) => ({
+        name: `Strings\\${f.fileName}`,
+        data: Buffer.from(f.contentBase64, 'base64'),
+      })),
+    );
+  } catch {
+    log.info(`BSA export: no localized STRINGS for mod ${modId}, skipping strings tables`);
+  }
+
+  try {
+    const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
+    bsaFiles.push(...pexFilesToArchiveInputs(pexFiles));
+  } catch {
+    log.info(`BSA export: no patched PEX scripts for mod ${modId}, skipping scripts`);
+  }
+
+  if (bsaFiles.length === 0) {
+    throw new Error(`No exportable STRINGS or PEX content for mod ${modId}`);
+  }
 
   // FO3, FNV, and SLE (Skyrim LE) use BSA v104; SSE (Skyrim SE) uses BSA v105
   const bsaVersion = game === 'sse' ? 105 : 104;
@@ -425,7 +493,7 @@ export const exportBsaArchive = async (
     size: bsaBuf.length,
     contentBase64: bsaBuf.toString('base64'),
   };
-}
+};
 
 /**
  * Game-aware archive dispatcher: exports a BA2 for Fallout 4/76 or a BSA for
@@ -444,7 +512,7 @@ export const exportArchive = async (
     return exportBsaArchive(db, modId, modPath, srcLang, targetLang, game);
   }
   return exportBa2Archive(db, modId, modPath, srcLang, targetLang, game);
-}
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Non-localized ESP patch export
@@ -495,7 +563,122 @@ const getEspPatches = async (
     });
   }
   return patches;
-}
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// PEX (compiled Papyrus script) patch export
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Per-script overlay: source literal → export text. */
+type PexScriptOverlays = Map<string, Map<string, string>>;
+
+/**
+ * Load translation overlays for all PEX rows of a mod.
+ *
+ * Keys are lowercased script names (`PEX\\{script}` path suffix).
+ */
+const getPexTranslationOverlays = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+  targetLang: string,
+): Promise<PexScriptOverlays> => {
+  const { rows } = await db.query(
+    `SELECT r.path, s.text_raw AS source_text,
+            COALESCE(t.text, s.text_raw) AS export_text
+     FROM strings s
+     JOIN records r ON r.id = s.record_id
+     LEFT JOIN translations t
+       ON t.src_string_id = s.id AND t.target_lang = $3
+       AND t.id = (
+         SELECT id FROM translations
+         WHERE src_string_id = s.id AND target_lang = $3
+         ORDER BY CASE status
+           WHEN 'draft' THEN 1
+           WHEN 'reviewed' THEN 2
+           WHEN 'human' THEN 3
+           WHEN 'tm' THEN 4
+           WHEN 'fuzzy' THEN 5
+           WHEN 'auto' THEN 6
+           WHEN 'rejected' THEN 7
+           ELSE 8 END,
+           COALESCE(confidence, 0) DESC,
+           updated_at DESC
+         LIMIT 1
+       )
+     WHERE r.mod_id = $1 AND r.signature = 'PEX' AND s.lang = $2`,
+    [modId, srcLang, targetLang],
+  );
+
+  const overlays: PexScriptOverlays = new Map();
+  for (const row of rows as Array<{ path: string; source_text: string; export_text: string }>) {
+    const match = row.path.match(/^PEX\\(.+)$/i);
+    if (!match) continue;
+    const scriptKey = match[1]!.toLowerCase();
+    if (!overlays.has(scriptKey)) overlays.set(scriptKey, new Map());
+    overlays.get(scriptKey)!.set(row.source_text, row.export_text);
+  }
+  return overlays;
+};
+
+/**
+ * Export patched `.pex` files with translated string literals.
+ *
+ * Each returned file uses an archive-relative path such as `Scripts\\Foo.pex`.
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id whose PEX translations should be exported.
+ * @param modPath - Absolute path to the imported plugin (used to locate sources).
+ * @param srcLang - Source language code.
+ * @param targetLang - Target language code.
+ */
+export const exportPatchedPexFiles = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+): Promise<ExportedStringsFile[]> => {
+  const overlays = await getPexTranslationOverlays(db, modId, srcLang, targetLang);
+  if (overlays.size === 0) {
+    throw new Error(`No PEX strings found for mod ${modId} and locale ${srcLang}`);
+  }
+
+  const sources = collectModPexSources(modPath);
+  if (sources.size === 0) {
+    throw new Error(`No .pex source files found next to ${modPath}`);
+  }
+
+  const exported: ExportedStringsFile[] = [];
+  for (const [scriptKey, source] of sources) {
+    const overlay = overlays.get(scriptKey);
+    if (!overlay || overlay.size === 0) continue;
+
+    const patched = patchPexBuffer(source.data, overlay);
+    const fileName = source.archivePath.replace(/\\/g, '/').split('/').pop() ?? `${scriptKey}.pex`;
+    exported.push({
+      fileName: source.archivePath.includes('\\') ? source.archivePath : `Scripts\\${fileName}`,
+      size: patched.length,
+      contentBase64: patched.toString('base64'),
+    });
+  }
+
+  if (exported.length === 0) {
+    throw new Error(`No matching .pex sources for PEX translations on mod ${modId}`);
+  }
+
+  exported.sort((left, right) =>
+    left.fileName.localeCompare(right.fileName, undefined, { sensitivity: 'base' }),
+  );
+  log.info(`PEX export: ${exported.length} script(s) for mod ${modId}`);
+  return exported;
+};
+
+const pexFilesToArchiveInputs = (files: ExportedStringsFile[]): ArchiveInputFile[] =>
+  files.map((f) => ({
+    name: f.fileName.replace(/\//g, '\\'),
+    data: Buffer.from(f.contentBase64, 'base64'),
+  }));
 
 export const exportPatchedEsp = async (
   db: Tx,
@@ -523,7 +706,7 @@ export const exportPatchedEsp = async (
     size: patchedBuf.length,
     contentBase64: patchedBuf.toString('base64'),
   };
-}
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Project export — ZIP bundle with BA2 + patched ESP (everything in one file)
@@ -534,7 +717,7 @@ export const exportPatchedEsp = async (
  *
  * The ZIP contains:
  * - A BA2 archive with all localized STRINGS/DLSTRINGS/ILSTRINGS files
- *   (if the mod has any localized strings with lstring_id).
+ *   and patched PEX scripts (if available).
  * - A patched ESP/ESM/ESL plugin file with non-localized string translations
  *   (if the mod has any non-localized embedded strings).
  *
@@ -586,11 +769,27 @@ export const exportProjectZip = async (
     log.info(`Project export: no non-localized patches for mod ${modId}, skipping ESP`);
   }
 
-  if (files.length === 0) {
-    throw new Error('No exportable content found — neither localized STRINGS nor non-localized ESP patches available.');
+  // 3. Include loose patched PEX scripts when sources exist on disk
+  try {
+    const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
+    for (const pex of pexFiles) {
+      files.push({
+        name: pex.fileName.replace(/\\/g, '/'),
+        data: Buffer.from(pex.contentBase64, 'base64'),
+      });
+    }
+    log.info(`Project export: included ${pexFiles.length} patched PEX script(s)`);
+  } catch {
+    log.info(`Project export: no patched PEX scripts for mod ${modId}, skipping Scripts`);
   }
 
-  // 3. Pack everything into a ZIP archive using archiver (store mode — no compression,
+  if (files.length === 0) {
+    throw new Error(
+      'No exportable content found — no localized STRINGS, PEX scripts, or non-localized ESP patches available.',
+    );
+  }
+
+  // 4. Pack everything into a ZIP archive using archiver (store mode — no compression,
   //    because BA2 and ESP files are already binary and don't compress well)
   const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -612,4 +811,4 @@ export const exportProjectZip = async (
 
   log.info(`Project export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
   return { zipBuffer, zipFileName };
-}
+};

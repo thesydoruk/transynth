@@ -27,6 +27,7 @@ import {
   exportArchive,
   exportLocalizedStringsFiles,
   exportPatchedEsp,
+  exportPatchedPexFiles,
   exportProjectZip,
 } from '../exportService';
 import type { GameType } from '../../types';
@@ -369,7 +370,31 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     },
   );
 
-  // GET /api/mods/:id/export/project?srcLang=&targetLang= — full project ZIP (BA2 + ESP)
+  // GET /api/mods/:id/export/pex?srcLang=&targetLang= — patch compiled Papyrus scripts
+  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
+    '/api/mods/:id/export/pex',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
+      if (!mod.abs_path)
+        return reply.code(400).send({ error: 'Mod file path is not available for export' });
+
+      try {
+        const files = await exportPatchedPexFiles(db, id, mod.abs_path, srcLang, targetLang);
+        return reply.send({ modId: id, srcLang, targetLang, files });
+      } catch (err) {
+        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
+  // GET /api/mods/:id/export/project?srcLang=&targetLang= — full project ZIP (BA2 + ESP + PEX)
   app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
     '/api/mods/:id/export/project',
     async (req, reply) => {

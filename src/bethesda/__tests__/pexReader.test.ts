@@ -2,7 +2,7 @@
  * Unit tests for compiled Papyrus script (.pex) parser.
  */
 import { describe, it, expect } from '@jest/globals';
-import { parsePexBuffer, isLikelyUserText } from '../parsers';
+import { parsePexBuffer, isLikelyUserText, patchPexBuffer } from '../parsers';
 
 const writeWString = (buf: Buffer, offset: number, s: string): number => {
   const bytes = Buffer.from(s, 'utf8');
@@ -27,17 +27,22 @@ const buildPex = (strings: string[], opts?: { sourceFile?: string; gameId?: numb
   const buf = Buffer.alloc(totalSize, 0);
   let pos = 0;
 
-  buf.writeUInt32BE(0xfa57c0de, pos); pos += 4;
-  buf.writeUInt8(3, pos); pos += 1;
-  buf.writeUInt8(2, pos); pos += 1;
-  buf.writeUInt16BE(gameId, pos); pos += 2;
+  buf.writeUInt32BE(0xfa57c0de, pos);
+  pos += 4;
+  buf.writeUInt8(3, pos);
+  pos += 1;
+  buf.writeUInt8(2, pos);
+  pos += 1;
+  buf.writeUInt16BE(gameId, pos);
+  pos += 2;
   pos += 8;
 
   pos = writeWString(buf, pos, sourceFile);
   pos = writeWString(buf, pos, 'testuser');
   pos = writeWString(buf, pos, 'testmachine');
 
-  buf.writeUInt16BE(strings.length, pos); pos += 2;
+  buf.writeUInt16BE(strings.length, pos);
+  pos += 2;
   for (const s of strings) {
     pos = writeWString(buf, pos, s);
   }
@@ -180,5 +185,39 @@ describe('isLikelyUserText', () => {
 
   it('returns true for Cyrillic text with spaces', () => {
     expect(isLikelyUserText('Гравець знайдений')).toBe(true);
+  });
+});
+
+describe('patchPexBuffer', () => {
+  it('replaces mapped string-table entries and preserves tail bytes', () => {
+    const tailMarker = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+    const strings = ['ActorValue', 'Hello world', 'GetActorValue'];
+    const source = Buffer.concat([
+      buildPex(strings, { sourceFile: 'DialogScript.psc' }),
+      tailMarker,
+    ]);
+    const overlay = new Map([['Hello world', 'Привіт, світ']]);
+
+    const patched = patchPexBuffer(source, overlay);
+    const parsed = parsePexBuffer(patched);
+
+    expect(parsed.info.sourceFile).toBe('DialogScript.psc');
+    expect(parsed.strings).toContain('Привіт, світ');
+    expect(parsed.strings).not.toContain('Hello world');
+    expect(patched.subarray(patched.length - tailMarker.length).equals(tailMarker)).toBe(true);
+  });
+
+  it('returns the original buffer when overlay is empty', () => {
+    const source = buildPex(['Hello world']);
+    expect(patchPexBuffer(source, new Map())).toBe(source);
+  });
+
+  it('falls back to source text for unmapped user-visible strings', () => {
+    const strings = ['First message', 'Second message'];
+    const source = buildPex(strings, { sourceFile: 'QuestScript.psc' });
+    const overlay = new Map([['First message', 'Перше повідомлення']]);
+
+    const parsed = parsePexBuffer(patchPexBuffer(source, overlay));
+    expect(parsed.strings).toEqual(['Перше повідомлення', 'Second message']);
   });
 });

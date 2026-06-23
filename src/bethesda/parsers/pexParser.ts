@@ -74,7 +74,7 @@ export interface PexResult {
  * @param offset - Byte offset of the uint16 length field
  * @throws Error if the buffer is too short
  */
-const readWString = (buf: Buffer, offset: number): { value: string; nextOffset: number } => {
+export const readWString = (buf: Buffer, offset: number): { value: string; nextOffset: number } => {
   if (offset + 2 > buf.length) {
     throw new Error(`PEX: out of bounds reading wstring length at offset ${offset}`);
   }
@@ -145,7 +145,9 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
 
   const magic = buf.readUInt32BE(0);
   if (magic !== PEX_MAGIC) {
-    throw new Error(`PEX: invalid magic 0x${magic.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`);
+    throw new Error(
+      `PEX: invalid magic 0x${magic.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`,
+    );
   }
 
   // ── Fixed-size header fields ─────────────────────────────────────────────
@@ -195,4 +197,82 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
     },
     strings,
   };
+};
+
+/** Serialize a PEX wstring (uint16 BE length prefix + UTF-8 body). */
+export const writeWString = (value: string): Buffer => {
+  const body = Buffer.from(value, 'utf8');
+  const buf = Buffer.alloc(2 + body.length);
+  buf.writeUInt16BE(body.length, 0);
+  body.copy(buf, 2);
+  return buf;
+};
+
+/**
+ * Resolve the script key used during import (`PEX\\{scriptKey}` record paths).
+ *
+ * @param info - Header metadata from {@link parsePexBuffer}.
+ */
+export const pexScriptKeyFromInfo = (info: PexInfo): string =>
+  info.sourceFile.replace(/\.psc$/i, '') || '';
+
+/**
+ * Replace string-table entries in a compiled Papyrus script with translated text.
+ *
+ * Only entries present in `overlay` are rewritten; identifiers and unmapped
+ * literals are preserved verbatim. Bytecode after the string table is copied
+ * unchanged, so string indices remain valid.
+ *
+ * @param input - Original `.pex` file contents.
+ * @param overlay - `source text → export text` replacements for this script.
+ * @returns Patched `.pex` buffer (identical to input when overlay is empty).
+ */
+export const patchPexBuffer = (input: Buffer, overlay: Map<string, string>): Buffer => {
+  if (overlay.size === 0) return input;
+
+  if (input.length < 16) {
+    throw new Error(`PEX: file too small (${input.length} bytes)`);
+  }
+
+  const magic = input.readUInt32BE(0);
+  if (magic !== PEX_MAGIC) {
+    throw new Error(
+      `PEX: invalid magic 0x${magic.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`,
+    );
+  }
+
+  let offset = 16;
+  const { nextOffset: o1 } = readWString(input, offset);
+  offset = o1;
+  const { nextOffset: o2 } = readWString(input, offset);
+  offset = o2;
+  const { nextOffset: o3 } = readWString(input, offset);
+  offset = o3;
+
+  const countOffset = offset;
+  if (offset + 2 > input.length) {
+    throw new Error('PEX: out of bounds reading string table count');
+  }
+
+  const count = input.readUInt16BE(offset);
+  offset += 2;
+
+  const strings: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const { value, nextOffset } = readWString(input, offset);
+    offset = nextOffset;
+    strings.push(overlay.has(value) ? overlay.get(value)! : value);
+  }
+
+  const prefix = input.subarray(0, countOffset);
+  const tail = input.subarray(offset);
+
+  const countBuf = Buffer.alloc(2);
+  countBuf.writeUInt16BE(strings.length, 0);
+  const tableParts: Buffer[] = [countBuf];
+  for (const value of strings) {
+    tableParts.push(writeWString(value));
+  }
+
+  return Buffer.concat([prefix, ...tableParts, tail]);
 };
