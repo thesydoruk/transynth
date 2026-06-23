@@ -1,9 +1,8 @@
 /**
- * ActivityPage — displays a paginated, filterable audit log of user actions.
+ * ActivityPage — displays a paginated, filterable audit log of actions.
  *
- * Shows all recorded activity (login, import, translate, approve, etc.)
- * with timestamps, user attribution, and affected entities.
- * Available in both single-user and multi-user modes.
+ * Shows all recorded activity (import, translate, approve, etc.)
+ * with timestamps, attribution, and affected entities.
  *
  * Filters: action type, entity (mod), date range.
  * CSV export downloads the full filtered result (up to 10 000 rows).
@@ -22,18 +21,7 @@ import s from './ActivityPage.module.scss';
 const PAGE_SIZE = 50;
 
 /** Known action types for the filter dropdown. */
-const ACTION_TYPES = [
-  '',
-  'login',
-  'logout',
-  'translate',
-  'import',
-  'approve',
-  'export',
-  'create_user',
-  'update_user',
-  'change_password',
-];
+const ACTION_TYPES = ['', 'translate', 'import', 'approve', 'export'];
 
 export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { t } = useTranslation();
@@ -207,7 +195,7 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
             {entries.map((e: ActivityEntry) => (
               <tr key={e.id}>
                 <td>{new Date(e.created_at).toLocaleString()}</td>
-                <td>{e.display_name ?? e.username ?? '—'}</td>
+                <td>{e.display_name ?? '—'}</td>
                 <td>
                   <span className={s.actionBadge}>{e.action}</span>
                 </td>

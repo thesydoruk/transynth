@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
 import { UI_LANGUAGES } from './i18n';
-import { useAuth } from './components/AuthContext';
 import { useTheme } from './components/ThemeContext';
 import { getCurrentGame, setCurrentGame } from './langDefaults';
 import { useContentLangs } from './hooks/useContentLangs';
@@ -14,36 +13,18 @@ type NavLinkDescriptor = {
   to: string;
   labelKey: string;
   exact: boolean;
-  /** When true, hides the link unless `multiUser` mode is enabled. */
-  multiUserOnly?: boolean;
-  /** When true, hides the link unless the current user has the 'admin' role. */
-  adminOnly?: boolean;
 };
 
-/**
- * Navigation link descriptors — label keys reference the nav.* i18n namespace.
- *
- * Removed from nav (now live inside Settings tabs or the home Overview page):
- *   /dashboard, /ops    — merged into / (HomePage)
- *   /qa-rules           — Settings → QA Rules tab
- *   /activity           — Settings → Activity tab
- */
 const NAV_LINKS: NavLinkDescriptor[] = [
   { to: '/', labelKey: 'nav.home', exact: true },
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
   { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
-  { to: '/users', labelKey: 'nav.users', exact: false, multiUserOnly: true, adminOnly: true },
 ];
 
-/**
- * Navigation bar — renders links, user info, and language switcher.
- * In multi-user mode, shows the current user's name and a logout button.
- */
 export const AppNav = () => {
   const loc = useLocation();
-  const { user, multiUser, logout } = useAuth();
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { srcLang, targetLang } = useContentLangs();
@@ -63,24 +44,6 @@ export const AppNav = () => {
   });
 
   const currentGame = games?.find((game) => game.id === currentGameId) ?? null;
-  const roleShortcut =
-    multiUser && user
-      ? user.role === 'reviewer'
-        ? {
-            to: '/review-queue',
-            label: t('nav.focus'),
-            value: t('nav.reviewQueue'),
-            title: t('nav.reviewerWorkspaceLink'),
-          }
-        : user.role === 'admin'
-          ? {
-              to: '/settings?tab=users',
-              label: t('nav.admin'),
-              value: t('nav.users'),
-              title: t('nav.adminWorkspaceLink'),
-            }
-          : null
-      : null;
 
   useEffect(() => {
     if (routeGameId) setCurrentGame(routeGameId);
@@ -91,9 +54,7 @@ export const AppNav = () => {
       <Link to="/" className={nav.brand}>
         {t('nav.brand')}
       </Link>
-      {NAV_LINKS.filter(
-        (link) => (!link.multiUserOnly || multiUser) && (!link.adminOnly || user?.role === 'admin'),
-      ).map(({ to, labelKey, exact }) => {
+      {NAV_LINKS.map(({ to, labelKey, exact }) => {
         const active = exact ? loc.pathname === to : loc.pathname.startsWith(to);
         return (
           <Link key={to} to={to} className={active ? nav.activeLink : nav.link}>
@@ -103,12 +64,6 @@ export const AppNav = () => {
       })}
 
       <div className={nav.contextStrip}>
-        {roleShortcut && (
-          <Link to={roleShortcut.to} className={nav.contextBadge} title={roleShortcut.title}>
-            <span className={nav.contextLabel}>{roleShortcut.label}</span>
-            <span className={nav.contextValue}>{roleShortcut.value}</span>
-          </Link>
-        )}
         <Link
           to={currentGame ? `/games/${currentGame.id}` : '/games'}
           className={nav.contextBadge}
@@ -157,20 +112,6 @@ export const AppNav = () => {
           </option>
         ))}
       </select>
-
-      {user && (
-        <span className={nav.userInfo}>
-          {user.display_name}
-          {multiUser && user.role !== 'translator' && (
-            <span className={nav.roleBadge}>{user.role}</span>
-          )}
-        </span>
-      )}
-      {multiUser && user && (
-        <button onClick={logout} className={nav.logoutBtn}>
-          {t('nav.logout')}
-        </button>
-      )}
     </nav>
   );
 };

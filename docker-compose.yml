@@ -24,7 +24,6 @@ services:
       DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
-      MULTI_USER: ${MULTI_USER:-true}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
     volumes:
       - ./data:/app/data

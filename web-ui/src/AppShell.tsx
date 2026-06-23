@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { useAuth } from './components/AuthContext';
 import {
   ActivityPage,
   CoherencePage,
@@ -11,14 +10,12 @@ import {
   GamesPage,
   GlossaryPage,
   INNRPage,
-  LoginPage,
   ModEditorPage,
   ModsPage,
   OpsPage,
   QARulesPage,
   ReviewQueuePage,
   SettingsPage,
-  UsersPage,
 } from './pages';
 import { AppNav } from './AppNav';
 import nav from './App.module.scss';
@@ -29,16 +26,8 @@ const LegacyImportsRedirect = () => {
   return <Navigate to={`/games/${gameId}/mods`} replace />;
 };
 
-/**
- * Main authenticated app shell — renders navigation and routes.
- * In multi-user mode, shows the login page until the user is authenticated.
- */
+/** Main app shell — renders navigation and routes. */
 export const AppShell = () => {
-  const { loading, multiUser, user } = useAuth();
-
-  if (loading) return null;
-  if (multiUser && !user) return <LoginPage />;
-
   return (
     <>
       <AppNav />
@@ -61,7 +50,6 @@ export const AppShell = () => {
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/review-queue" element={<ReviewQueuePage />} />
           <Route path="/ops" element={<OpsPage />} />
-          <Route path="/users" element={<UsersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>

@@ -7,7 +7,6 @@
  * - configure cross-origin behaviour for local development,
  * - serve the built React SPA (when `web-ui/dist` is present),
  * - initialise the database connection,
- * - set up authentication (single-user vs multi-user modes),
  * - register all REST API routes under `/api/*`,
  * - and handle graceful shutdown.
  *
@@ -24,10 +23,8 @@ import { openDb, closeDb } from '../db';
 import { log, closeLogStreams } from '../logger';
 import { CONFIG } from '../config';
 import { ensureDataDirs } from '../paths';
-import { ensureDefaultAdmin, cleanExpiredSessions } from './authService';
+import { ensureDefaultUser } from './authService';
 import { registerAuthHook } from './authMiddleware';
-import { authRoutes } from './routes/auth';
-import { usersRoutes } from './routes/users';
 import { activityRoutes } from './routes/activity';
 import { modsRoutes } from './routes/mods';
 import { stringsRoutes } from './routes/strings';
@@ -59,10 +56,9 @@ const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 ensureDataDirs();
 const app = Fastify({ logger: false });
 
-// CORS: in multi-user mode send cookies cross-origin (dev proxy scenario)
 await app.register(cors, {
   origin: true,
-  credentials: CONFIG.multiUser,
+  credentials: false,
 });
 await app.register(multipart, { limits: { fileSize: CONFIG.uploadMaxFileSizeBytes } });
 
@@ -85,16 +81,8 @@ try {
 
 const db = openDb();
 
-// Ensure the default admin user exists (required for both modes)
-await ensureDefaultAdmin(db);
-
-// Register auth middleware — populates req.user on every request.
-// In single-user mode this injects the default admin with zero auth overhead.
+await ensureDefaultUser(db);
 await registerAuthHook(app, db);
-
-// Auth, user management, and activity log routes
-await authRoutes(app, db);
-await usersRoutes(app, db);
 await activityRoutes(app, db);
 
 // Domain routes
@@ -128,18 +116,6 @@ app.get('/api/health', async () => {
   }
 });
 
-// Periodically clean expired sessions (every 6 hours)
-const SESSION_CLEANUP_INTERVAL = 6 * 3600_000;
-const sessionCleanup = setInterval(async () => {
-  try {
-    const removed = await cleanExpiredSessions(db);
-    if (removed > 0) log.info(`Cleaned ${removed} expired sessions`);
-  } catch (err) {
-    log.warn('Session cleanup failed', err);
-  }
-}, SESSION_CLEANUP_INTERVAL);
-
-log.info(`Auth mode: ${CONFIG.multiUser ? 'multi-user' : 'single-user'}`);
 if (!CONFIG.nexusApiKey) {
   log.warn('NEXUS_API_KEY is not set — Nexus Mods search and import are disabled');
 }
@@ -160,7 +136,6 @@ try {
  */
 const shutdown = async () => {
   log.info('Shutting down...');
-  clearInterval(sessionCleanup);
   await app.close();
   await closeDb();
   closeLogStreams();

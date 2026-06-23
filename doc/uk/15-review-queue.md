@@ -36,12 +36,7 @@ Review Queue — це сфокусований список рядків, для
 - **Restore review statuses**, якщо всі status chips були вимкнені
 - **Reset filters**, якщо черга спорожніла через поточну комбінацію фільтрів
 - **Open current game hub** або каталог ігор, якщо game context ще не збережено
-
-У multi-user mode порожній стан також став role-aware:
-
-- **Translators** отримують підказку повернутися в хаб поточної гри й продовжити наступний translation-pass.
-- **Reviewers** бачать, що reviewer-backlog очищено, і можуть одразу перейти до наступного проходу по модах.
-- **Admins** додатково отримують shortcut до журналу активності для handoff та audit-перевірок.
+- **Open Activity log** (коли фільтри активні) для handoff та audit-перевірок
 
 ---
 
@@ -115,4 +110,4 @@ Review Queue підтримує кілька фільтрів:
 
 ---
 
-← [Перевірка узгодженості](14-coherence.md) | [Головна](README.md) | **Далі: [Команда та користувачі →](16-team-and-users.md)**
+← [Перевірка узгодженості](14-coherence.md) | [Головна](README.md) | **Далі: [Конфігурація →](17-configuration.md)**

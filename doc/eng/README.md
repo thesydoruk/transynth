@@ -13,7 +13,7 @@ components, and development tooling.
 
 | #   | Page                                           | What you'll learn                                                 |
 | --- | ---------------------------------------------- | ----------------------------------------------------------------- |
-| 1   | [Getting Started](01-getting-started.md)       | Installation, Docker, first launch, login                         |
+| 1   | [Getting Started](01-getting-started.md)       | Installation, Docker, first launch                                |
 | 2   | [Importing Mods](02-importing-mods.md)         | How to upload ESP/ESM/ESL files and BA2 archives                  |
 | 3   | [The Editor](03-editor.md)                     | Navigating the string grid, filters, inline editing, detail panel |
 | 4   | [Keyboard Shortcuts](04-keyboard-shortcuts.md) | Complete shortcut reference table                                 |
@@ -27,7 +27,6 @@ components, and development tooling.
 | 13  | [Dashboard](13-dashboard.md)                   | Translation progress statistics and charts                        |
 | 14  | [Coherence Checker](14-coherence.md)           | Finding and fixing inconsistent translations                      |
 | 15  | [Review Queue](15-review-queue.md)             | Reviewing low-confidence or auto-translated strings               |
-| 16  | [Team & Users](16-team-and-users.md)           | Multi-user mode, roles, permissions, activity log                 |
 | 17  | [Configuration](17-configuration.md)           | Environment variables, Docker setup, provider settings            |
 | 19  | [Technology Stack](19-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker         |
 
@@ -78,5 +77,4 @@ Archive/export behavior depends on the selected game profile:
 - **New user?** → Start with [Getting Started](01-getting-started.md).
 - **Just want to translate?** → Read [Importing Mods](02-importing-mods.md) then [The Editor](03-editor.md).
 - **Setting up AI?** → See [LLM Translation](06-llm-translation.md).
-- **Working in a team?** → See [Team & Users](16-team-and-users.md).
 - **Need development context?** → Read [Technology Stack](19-technology-stack.md).

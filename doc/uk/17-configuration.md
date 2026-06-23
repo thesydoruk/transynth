@@ -12,7 +12,6 @@
 - [Налаштування бази даних](#налаштування-бази-даних)
 - [Налаштування-llm-провайдера](#налаштування-llm-провайдера)
 - [Налаштування сервера](#налаштування-сервера)
-- [Multi-user і auth](#multi-user-і-auth)
 - [Feature flags](#feature-flags)
 - [Docker-конфігурація](#docker-конфігурація)
 - [Поради для production deployment](#поради-для-production-deployment)
@@ -26,12 +25,11 @@
 
 Сторінка згрупована за проміжною taxonomy-моделлю:
 
-| Група                        | Вкладки / surfaces                                    |
-| ---------------------------- | ----------------------------------------------------- |
-| **Конфігурація**             | **Загальні**, **LLM / Авто-переклад**, **Правила QA** |
-| **Workflow tools**           | **Дані**                                              |
-| **Team operations**          | **Активність**                                        |
-| **Лише для адміністраторів** | **Користувачі** _(лише в multi-user mode)_            |
+| Група               | Вкладки / surfaces                                    |
+| ------------------- | ----------------------------------------------------- |
+| **Конфігурація**    | **Загальні**, **LLM / Авто-переклад**, **Правила QA** |
+| **Workflow tools**  | **Дані**                                              |
+| **Team operations** | **Активність**                                        |
 
 Таке групування навмисне: workflow-інструменти візуально відокремлені від
 конфігурації, бо це не базові runtime-налаштування.
@@ -90,8 +88,6 @@ LOG_LEVEL=info
 UPLOAD_MAX_FILE_SIZE_MB=1024
 
 # LOG_DIR=./logs/
-# MULTI_USER=true
-# SESSION_LIFETIME_HOURS=72
 # DEBUG=1
 ```
 
@@ -152,25 +148,10 @@ postgresql://localizer:localizer@localhost:5433/localizer
 
 ---
 
-## Multi-user і auth
-
-| Змінна                   | За замовчуванням | Опис                     |
-| ------------------------ | ---------------- | ------------------------ |
-| `MULTI_USER`             | `false`          | Увімкнути логін і RBAC   |
-| `SESSION_LIFETIME_HOURS` | `72`             | Скільки годин живе сесія |
-
-Сесії зберігаються як токени в базі даних.
-JWT-secret у поточній архітектурі не використовується, `SESSION_SECRET` тут не потрібен.
-Cookie завжди HTTP-only і `SameSite=Strict`.
-
----
-
 ## Feature flags
 
 У поточній версії окремих feature flags немає.
 Майже все ввімкнено завжди.
-
-Єдиний реальний toggle — це **`MULTI_USER=true`**, який активує authentication і role-based access control.
 
 ---
 
@@ -242,7 +223,7 @@ cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 1. Створіть production override-файл для Docker Compose з жорстко зафіксованими версіями образів.
 2. Зберіть frontend окремо через `web-ui` build і віддавайте його через nginx або Caddy.
 3. Ставте reverse proxy перед backend-сервером на порту `3000` і завершуйте TLS на proxy-рівні.
-4. У production обов’язково задайте сильний `DATABASE_URL`, увімкніть `MULTI_USER=true` і створіть іменовані акаунти.
+4. У production обов’язково задайте сильний `DATABASE_URL`.
 5. Налаштуйте регулярний `pg_dump` для резервного копіювання.
 6. Не запускайте `docker compose down -v` у production, якщо не хочете стерти всі дані перекладів.
 
@@ -255,4 +236,4 @@ cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 
 ---
 
-← [Команда та користувачі](16-team-and-users.md) | [Головна](README.md) | [Технологічний стек](19-technology-stack.md) →
+← [Черга рев’ю](15-review-queue.md) | [Головна](README.md) | [Технологічний стек](19-technology-stack.md) →

@@ -19,7 +19,6 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import { useAuth } from '../../components/AuthContext';
 import { GameTile, SkeletonGameTile } from './GameTile';
 import s from './GamesPage.module.scss';
 
@@ -33,7 +32,6 @@ import s from './GamesPage.module.scss';
  */
 export const GamesPage = () => {
   const { t } = useTranslation();
-  const { multiUser, user } = useAuth();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['games'],
@@ -63,13 +61,7 @@ export const GamesPage = () => {
     );
   }
 
-  const emptyHint = multiUser && user
-    ? user.role === 'reviewer'
-      ? t('games.emptyReviewerHint')
-      : user.role === 'admin'
-        ? t('games.emptyAdminHint')
-        : t('games.emptyTranslatorHint')
-    : t('games.emptyTranslatorHint');
+  const emptyHint = t('games.emptyTranslatorHint');
 
   return (
     <div className={s.page}>
@@ -83,11 +75,9 @@ export const GamesPage = () => {
             <Link className={s.emptyLinkBtn} to="/">
               {t('games.openHomeAction')}
             </Link>
-            {multiUser && user?.role === 'admin' && (
-              <Link className={s.emptyLinkBtn} to="/settings">
-                {t('games.openSettingsAction')}
-              </Link>
-            )}
+            <Link className={s.emptyLinkBtn} to="/settings">
+              {t('games.openSettingsAction')}
+            </Link>
           </div>
         </div>
       ) : (
@@ -102,4 +92,3 @@ export const GamesPage = () => {
     </div>
   );
 };
-

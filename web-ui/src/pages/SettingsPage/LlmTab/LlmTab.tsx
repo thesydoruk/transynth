@@ -164,19 +164,6 @@ export const LlmTab = () => {
           </span>
         </div>
       </div>
-      <div className={parentS.section}>
-        <h2 className={parentS.sectionTitle}>{t('settings.llm.systemSection')}</h2>
-        <div className={parentS.fieldGrid}>
-          <span className={parentS.fieldLabel}>{t('settings.llm.multiUser')}</span>
-          <span className={s.fieldValue}>
-            <span className={data.multiUser ? s.badgeOk : s.badgeWarn}>
-              {data.multiUser ? t('common.enabled') : t('common.disabled')}
-            </span>
-          </span>
-          <span className={parentS.fieldLabel}>{t('settings.llm.sessionLifetime')}</span>
-          <span className={s.fieldValue}>{data.sessionLifetimeHours}h</span>
-        </div>
-      </div>
     </>
   );
 };

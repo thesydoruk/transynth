@@ -33,26 +33,20 @@
     "dashboard": "Dashboard",
     "diff": "Diff",
     "activity": "Activity",
-    "users": "Users",
     "qaRules": "QA Rules",
     "coherence": "Consistency",
     "reviewQueue": "Review Queue",
-    "logout": "Logout",
     "themeDark": "Switch to dark theme",
     "themeLight": "Switch to light theme",
     "ops": "Health",
     "settings": "Settings",
     "games": "Games",
-    "focus": "Focus",
-    "admin": "Admin",
     "currentGame": "Game",
     "contentLang": "Content",
     "noGameSelected": "Select game",
     "pickGame": "Open the games catalog",
     "currentGameLink": "Open {{game}} workspace",
-    "contentLanguageLink": "Open content language settings",
-    "reviewerWorkspaceLink": "Open the review queue",
-    "adminWorkspaceLink": "Open the users admin workspace"
+    "contentLanguageLink": "Open content language settings"
   },
   "status": {
     "reviewed": "Reviewed",
@@ -423,8 +417,6 @@
     "noTerms": "No glossary terms yet.",
     "emptyHint": "Add source → translation term pairs above to enforce terminology consistency.",
     "emptyTranslatorHint": "Start with the repeated project terms your translators will touch first, then run glossary enforcement once the first batch lands.",
-    "emptyReviewerHint": "Seed disputed or mandatory terms before review starts so QA can flag terminology drift consistently across mods.",
-    "emptyAdminHint": "Seed the shared team glossary before large imports or LLM runs so translators and reviewers work from the same terminology baseline.",
     "focusAddAction": "Add first term pair",
     "sourceTerm": "Source Term",
     "translationCol": "Translation",
@@ -509,29 +501,6 @@
     "importAllHint": "All available strings and localizations from the mod files will be imported.",
     "importAllAction": "Import all ({{count}} strings)",
     "path": "Path"
-  },
-  "login": {
-    "signInTitle": "Sign in to continue",
-    "username": "Username",
-    "password": "Password",
-    "signIn": "Sign in",
-    "signingIn": "Signing in…",
-    "loginFailed": "Login failed"
-  },
-  "users": {
-    "title": "Users",
-    "disabledMessage": "User management is disabled in single-user mode.",
-    "enableHint": "Set MULTI_USER=true in .env to enable.",
-    "createUser": "Create User",
-    "displayName": "Display Name",
-    "role": "Role",
-    "statusCol": "Status",
-    "created": "Created",
-    "actionsCol": "Actions",
-    "creating": "Creating…",
-    "translator": "Translator",
-    "reviewer": "Reviewer",
-    "admin": "Admin"
   },
   "activity": {
     "title": "Activity Log",
@@ -630,8 +599,6 @@
     "loading": "Loading…",
     "empty": "Nothing to review.",
     "emptyTranslatorHint": "No review backlog matches these filters. Return to the current game hub to keep translating, or widen the filters if you expected more rows.",
-    "emptyReviewerHint": "Reviewer backlog is clear for the current filters. Open the current game hub for the next mod pass, or widen the filters to pick up older drafts and fuzzy matches.",
-    "emptyAdminHint": "No review backlog matches these filters. Open the activity log for a team handoff check, or return to the current game hub to inspect recent imports and releases.",
     "noStatuses": "Select at least one status.",
     "enableStatusesAction": "Restore review statuses",
     "resetFiltersAction": "Reset filters",
@@ -762,8 +729,7 @@
     "groups": {
       "configuration": "Configuration",
       "workflow": "Workflow tools",
-      "team": "Team operations",
-      "admin": "Admin only"
+      "team": "Team operations"
     },
     "tabs": {
       "general": "General",
@@ -771,8 +737,7 @@
       "qaRules": "QA Rules",
       "workflow": "Workflow",
       "activity": "Activity",
-      "data": "Data",
-      "users": "Users"
+      "data": "Data"
     },
     "general": {
       "languagesTitle": "Default Languages",
@@ -833,9 +798,7 @@
       "embedModel": "Embedding model",
       "nexusSection": "Nexus Mods",
       "nexusApiKey": "Personal API key",
-      "systemSection": "System",
-      "multiUser": "Multi-user mode",
-      "sessionLifetime": "Session lifetime"
+      "systemSection": "System"
     },
     "workflow": {
       "sectionWorkflow": "Workflow",
@@ -870,12 +833,6 @@
       "glossaryDesc": "Approved term pairs that enforce consistent vocabulary.",
       "ruleCount": "{{count}} rules",
       "termCount": "{{count}} terms"
-    },
-    "users": {
-      "title": "User Management",
-      "manage": "Manage Users",
-      "manageDesc": "Create, edit, and deactivate user accounts. Set roles: admin, reviewer, translator.",
-      "userCount": "{{count}} users"
     }
   },
   "games": {
@@ -883,8 +840,6 @@
     "subtitle": "Games supported by the localization pipeline",
     "emptyTitle": "No supported games available",
     "emptyTranslatorHint": "The supported-games catalog is empty right now. Return Home and verify the server is ready, or ask an administrator to check the environment before starting a new translation workspace.",
-    "emptyReviewerHint": "There is no active game catalog to review against yet. Return Home for overall project status, or ask an administrator to verify the environment before review work begins.",
-    "emptyAdminHint": "The supported-games catalog is empty. Return Home for service status, then check Settings and backend configuration before onboarding translators or reviewers.",
     "openHomeAction": "Open Home",
     "openSettingsAction": "Open Settings",
     "localizedPlugin": "External strings",

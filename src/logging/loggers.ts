@@ -32,8 +32,5 @@ export const logCache = createLogger('cache');
 /** Embedding helpers (RAG, alignment). */
 export const logEmbed = createLogger('embed');
 
-/** Authentication and sessions. */
-export const logAuth = createLogger('auth');
-
 /** HTTP API routes (optional use). */
 export const logApi = createLogger('api');

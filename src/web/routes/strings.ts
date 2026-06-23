@@ -148,7 +148,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!isValidTranslationStatus(from)) {
         return reply.code(400).send({ error: `Invalid 'from' status: '${from}'` });
       }
-      const actor = req.user?.role ?? 'translator';
+      const actor = 'admin' as const;
       return reply.send({
         from,
         actor,
@@ -300,7 +300,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     // Derive the actor from the authenticated user's role so the state machine
     // can enforce permission constraints (e.g. only reviewer/admin may approve).
-    const actor = req.user?.role ?? 'translator';
+    const actor = 'admin' as const;
     try {
       await updateTranslationStatus(db, translationId, status, actor);
     } catch (err) {

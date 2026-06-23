@@ -1,6 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './components/AuthContext';
 import { AppShell } from './AppShell';
 
 const qc = new QueryClient({
@@ -10,13 +9,9 @@ const qc = new QueryClient({
 export const App = () => {
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
-      </AuthProvider>
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
-
-

@@ -2305,7 +2305,7 @@ export type ReviewQueueRow = {
   confidence: number | null;
   model: string | null;
   qa_issue_count: number;
-  /** Display name (or username) of the last human who saved this translation. Null for automated strings. */
+  /** Display name of the last human who saved this translation. Null for automated strings. */
   translator_name: string | null;
 };
 
@@ -2387,7 +2387,7 @@ export const listReviewQueue = async (
       t.confidence,
       t.model,
       COALESCE(q.issue_count, 0) AS qa_issue_count,
-      COALESCE(u.display_name, u.username) AS translator_name
+      u.display_name AS translator_name
      FROM translations t
      JOIN strings  s ON s.id = t.src_string_id
      JOIN records  r ON r.id = s.record_id

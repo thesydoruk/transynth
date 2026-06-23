@@ -453,7 +453,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (status !== 'reviewed' && status !== 'rejected')
       return reply.code(400).send({ error: 'status must be reviewed or rejected' });
 
-    const actor = req.user?.role ?? 'translator';
+    const actor = 'admin' as const;
 
     if (filter) {
       log.info(

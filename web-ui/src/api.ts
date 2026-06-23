@@ -53,22 +53,10 @@ const downloadBinary = async (path: string, fallbackName: string): Promise<void>
   URL.revokeObjectURL(url);
 };
 
-/** Authenticated user profile. */
-export type User = {
-  id: number;
-  username: string;
-  display_name: string;
-  role: 'admin' | 'translator' | 'reviewer';
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
 /** A single activity log entry returned by /api/activity. */
 export type ActivityEntry = {
   id: number;
   user_id: number | null;
-  username: string | null;
   display_name: string | null;
   action: string;
   entity_type: string | null;
@@ -593,10 +581,6 @@ export type SettingsPayload = {
   llmMaxParallel: number;
   /** Max concurrent embedding HTTP requests. */
   embedMaxParallel: number;
-  /** Whether multi-user authentication mode is active. */
-  multiUser: boolean;
-  /** Session lifetime in hours. */
-  sessionLifetimeHours: number;
   /** Computed readiness snapshot used by the Settings LLM tab. */
   llmReadiness: {
     /** Overall readiness level for badges and alerts. */
@@ -1703,39 +1687,6 @@ export const api = {
       if (params?.q) qs.set('q', params.q);
       return req<ModPreviewResult>(`/api/mod-import/${jobId}/preview?${qs}`);
     },
-  },
-
-  /** Auth, users, and activity log */
-  auth: {
-    /** Returns whether multi-user mode is enabled */
-    mode: () => req<{ multiUser: boolean }>('/api/auth/mode'),
-    /** Returns the current authenticated user (or default admin in single-user mode) */
-    me: () => req<User>('/api/auth/me'),
-    /** Logs in with username and password. Sets a session cookie on success. */
-    login: (username: string, password: string) =>
-      req<User>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-      }),
-    /** Logs out and clears the session cookie. */
-    logout: () => req<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
-  },
-
-  users: {
-    /** Lists all users */
-    list: () => req<User[]>('/api/users'),
-    /** Creates a new user (admin only) */
-    create: (data: { username: string; display_name: string; password: string; role: string }) =>
-      req<User>('/api/users', { method: 'POST', body: JSON.stringify(data) }),
-    /** Updates a user's profile (admin only) */
-    update: (id: number, data: { display_name?: string; role?: string; is_active?: boolean }) =>
-      req<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    /** Changes a user's password */
-    changePassword: (id: number, new_password: string) =>
-      req<{ ok: boolean }>(`/api/users/${id}/password`, {
-        method: 'POST',
-        body: JSON.stringify({ new_password }),
-      }),
   },
 
   activity: {

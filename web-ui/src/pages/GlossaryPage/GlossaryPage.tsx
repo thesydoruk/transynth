@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type GlossaryEntry, type Mod } from '../../api';
-import { useAuth } from '../../components/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
 import {
   getContentLanguageOptions,
@@ -15,7 +14,6 @@ import s from './GlossaryPage.module.scss';
 export const GlossaryPage = () => {
   const { t } = useTranslation();
   const languageOptions = getContentLanguageOptions();
-  const { multiUser, user } = useAuth();
   const qc = useQueryClient();
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [tgtLang, setTgtLang] = useState(getTgtLang());
@@ -109,14 +107,7 @@ export const GlossaryPage = () => {
     });
   };
 
-  const emptyHint =
-    multiUser && user
-      ? user.role === 'reviewer'
-        ? t('glossary.emptyReviewerHint')
-        : user.role === 'admin'
-          ? t('glossary.emptyAdminHint')
-          : t('glossary.emptyTranslatorHint')
-      : t('glossary.emptyTranslatorHint');
+  const emptyHint = t('glossary.emptyTranslatorHint');
 
   return (
     <div className={s.page}>

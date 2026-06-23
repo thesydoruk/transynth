@@ -106,19 +106,13 @@ CREATE TABLE IF NOT EXISTS dialog_scene_phases (
   UNIQUE(scene_id, phase_order, topic_id)
 );
 
--- ── Auth & collaboration tables ─────────────────────────────────────────────
--- These tables always exist regardless of MULTI_USER setting.
--- In single-user mode they simply hold the default admin row.
+-- ── Activity attribution ──────────────────────────────────────────────────────
+-- Single built-in user row for activity log and translation attribution.
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'translator',  -- admin | translator | reviewer
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS translations (
@@ -313,15 +307,7 @@ CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_topic ON dialog_scene_phases(topic_id);
 
--- ── Sessions & activity log ─────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS sessions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token TEXT NOT NULL UNIQUE,
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- ── Activity log ────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS activity_log (
   id SERIAL PRIMARY KEY,
@@ -333,10 +319,8 @@ CREATE TABLE IF NOT EXISTS activity_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Default admin user (password: "admin" — change on first login in multi-user mode).
--- The password hash is generated at runtime by dbInit.ts; this INSERT is a no-op placeholder.
-INSERT INTO users (id, username, display_name, password_hash, role)
-VALUES (1, 'admin', 'Administrator', '__PLACEHOLDER__', 'admin')
+INSERT INTO users (id, display_name)
+VALUES (1, 'Default')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── LLM translation cache ────────────────────────────────────────────────────
@@ -355,8 +339,6 @@ CREATE TABLE IF NOT EXISTS translation_cache (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_translation_cache_lookup
   ON translation_cache(text_norm, src_lang, tgt_lang, model);
 
-CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions USING HASH(token);
-CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);
 
@@ -515,3 +497,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
   ON translations(src_string_id, target_lang);
 
 DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;
+
+-- Remove legacy multi-user auth schema (sessions, password columns).
+DROP TABLE IF EXISTS sessions;
+DROP INDEX IF EXISTS idx_sessions_token;
+DROP INDEX IF EXISTS idx_sessions_expiry;
+ALTER TABLE users DROP COLUMN IF EXISTS username;
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
+ALTER TABLE users DROP COLUMN IF EXISTS role;
+ALTER TABLE users DROP COLUMN IF EXISTS is_active;
+ALTER TABLE users DROP COLUMN IF EXISTS updated_at;

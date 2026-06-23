@@ -12,7 +12,6 @@ Get Transynth (TSN) running on your machine for the first time.
 - [Option B: Local Node.js](#option-b-local-nodejs)
 - [First Launch: Creating the Database](#first-launch-creating-the-database)
 - [Opening the Web UI](#opening-the-web-ui)
-- [Login and Multi-user Mode](#login-and-multi-user-mode)
 - [Next Steps](#next-steps)
 
 ---
@@ -192,48 +191,6 @@ The **Release** area also includes an explicit two-step workflow panel:
 2. **Open Imported Mods** to return to the mod editor and export STRINGS, BA2, or ZIP after review and QA are complete.
 
 In the game-scoped Nexus browser (`/games/:gameId/nexus`), empty search results include direct actions to clear the search and jump back to the game hub.
-
----
-
-## Login and Multi-user Mode
-
-The tool can run in **single-user mode** (no login required, default) or
-**multi-user mode** (accounts, roles, audit trail).
-
-By default, the application runs in **single-user mode**:
-
-- No login screen is shown.
-- The backend injects the default admin identity automatically.
-- User management is disabled.
-
-To enable **multi-user mode**, add this to `.env` and restart the backend:
-
-```bash
-MULTI_USER=true
-```
-
-What changes when multi-user mode is enabled:
-
-- The login page appears before the rest of the app.
-- Sessions are stored in the database and authenticated with an HTTP-only cookie.
-- Role-based access control becomes active.
-- The **Users** page becomes available so admins can create accounts, disable users, and manage passwords.
-
-In multi-user mode, the app shell also exposes a small role-aware shortcut badge next to the current Game and Content badges:
-
-- **Reviewers** get a direct shortcut to **Review Queue**.
-- **Admins** get a direct shortcut to **Users**.
-- **Translators** keep the main shell focused on the translation surfaces without extra admin links.
-
-Default bootstrap account:
-
-- **Username:** `admin`
-- **Password:** `admin`
-
-Change this password immediately after the first multi-user login.
-The application supports password changes for user accounts in multi-user mode, and admins can manage other users from the Users section.
-
-For roles, permissions, and team workflow details, see [Team & Users](16-team-and-users.md).
 
 ---
 

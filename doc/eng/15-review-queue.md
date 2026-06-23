@@ -37,12 +37,7 @@ If the queue is empty, the page provides immediate next actions instead of showi
 - **Restore review statuses** when all status chips were disabled
 - **Reset filters** when the queue is empty because of the current filter combination
 - **Open current game hub** (or the games catalogue if no game context is stored)
-
-The empty state is also role-aware in multi-user mode:
-
-- **Translators** are told to return to the current game hub and continue the next translation pass.
-- **Reviewers** are told that the reviewer backlog is clear and can jump straight into the next mod pass.
-- **Admins** get an additional shortcut to the Activity log for handoff and audit checks.
+- **Open Activity log** (when filters are active) for handoff and audit checks
 
 ---
 
@@ -126,4 +121,4 @@ Use the **Editor Filter** when working deeply on a specific mod.
 
 ---
 
-← [Coherence Checker](14-coherence.md) | [Home](README.md) | **Next: [Team & Users →](16-team-and-users.md)**
+← [Coherence Checker](14-coherence.md) | [Home](README.md) | **Next: [Configuration →](17-configuration.md)**

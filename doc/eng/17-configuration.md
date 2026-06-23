@@ -12,7 +12,6 @@ A subset of active settings can also be viewed at runtime in the **Settings page
 - [Database Settings](#database-settings)
 - [LLM Provider Settings](#llm-provider-settings)
 - [Server Settings](#server-settings)
-- [Multi-user and Auth Settings](#multi-user-and-auth-settings)
 - [Feature Flags](#feature-flags)
 - [Docker Configuration](#docker-configuration)
 - [Production Deployment Tips](#production-deployment-tips)
@@ -31,7 +30,6 @@ The page is organised into interim taxonomy groups:
 | **Configuration**   | **General**, **LLM / Auto-translate**, **QA Rules** |
 | **Workflow tools**  | **Data**                                            |
 | **Team operations** | **Activity**                                        |
-| **Admin only**      | **Users** _(multi-user mode only)_                  |
 
 This grouping is intentional: workflow tools are visually separated from
 configuration because they are not core runtime settings.
@@ -106,10 +104,6 @@ UPLOAD_MAX_FILE_SIZE_MB=1024
 # Directory for log files (default: ./logs/)
 # LOG_DIR=./logs/
 
-# --- Multi-user mode ---
-# MULTI_USER=true
-# SESSION_LIFETIME_HOURS=72
-
 # --- Debug ---
 # DEBUG=1
 ```
@@ -171,26 +165,10 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ---
 
-## Multi-user and Auth Settings
-
-| Variable                 | Default | Description                                               |
-| ------------------------ | ------- | --------------------------------------------------------- |
-| `MULTI_USER`             | `false` | Set to `true` to enable login and RBAC                    |
-| `SESSION_LIFETIME_HOURS` | `72`    | Session lifetime in hours; sessions expire after this TTL |
-
-> Note: sessions are stored as tokens in the database. There is no JWT signing secret —
-> `SESSION_SECRET` is not used. No additional cookie-domain or secure-flag variables exist;
-> the session cookie is always HTTP-only and SameSite=Strict.
-
----
-
 ## Feature Flags
 
 There are no feature flags in the current version.
 All features are enabled by default and cannot be selectively disabled via environment variables.
-
-The only optional toggle is **`MULTI_USER=true`** (described above), which activates
-authentication and role-based access control.
 
 ---
 
@@ -290,8 +268,6 @@ using the credentials from your `DATABASE_URL`.
 
 4. **Environment variables to set in production:**
    - `DATABASE_URL` — use a strong, unique password.
-   - `MULTI_USER=true` and create named user accounts.
-   - `SESSION_LIFETIME_HOURS` — keep at 72h or adjust to your security policy.
    - `LLM_PROVIDER` + the appropriate API key or vLLM URL.
    - `LOG_LEVEL=warn` — reduce log verbosity in production.
 
@@ -308,4 +284,4 @@ using the credentials from your `DATABASE_URL`.
 
 ---
 
-← [Team & Users](16-team-and-users.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →
+← [Review Queue](15-review-queue.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →

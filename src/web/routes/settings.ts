@@ -49,10 +49,6 @@ export interface SettingsPayload {
   llmMaxParallel: number;
   /** Max concurrent embedding HTTP requests. */
   embedMaxParallel: number;
-  /** Whether multi-user authentication mode is active. */
-  multiUser: boolean;
-  /** Session lifetime in hours (relevant when multiUser = true). */
-  sessionLifetimeHours: number;
   /** Computed readiness snapshot for the currently configured LLM stack. */
   llmReadiness: {
     /** Overall readiness level used by UI badges. */
@@ -170,8 +166,6 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       batchSize: CONFIG.batchSize,
       llmMaxParallel: CONFIG.llmMaxParallel,
       embedMaxParallel: CONFIG.embedMaxParallel,
-      multiUser: CONFIG.multiUser,
-      sessionLifetimeHours: CONFIG.sessionLifetimeHours,
       llmReadiness: buildLlmReadiness(),
     };
   });

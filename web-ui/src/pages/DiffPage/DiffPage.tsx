@@ -245,7 +245,7 @@ export const DiffPage = () => {
                 id: entry.id,
                 action: entry.action,
                 createdAt: entry.created_at,
-                actor: entry.display_name ?? entry.username,
+                actor: entry.display_name,
               }))}
             />
           )}

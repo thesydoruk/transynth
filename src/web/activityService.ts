@@ -1,9 +1,7 @@
 /**
- * Activity log service — records user actions for auditability.
+ * Activity log service — records actions for auditability.
  *
- * Works in both single-user and multi-user modes.
- * In single-user mode, all activity is attributed to the default admin user (id=1).
- *
+ * All activity is attributed to the built-in default user (id=1).
  * The log is append-only and never modified or deleted (audit trail).
  */
 
@@ -13,7 +11,6 @@ import type pg from 'pg';
 export interface ActivityEntry {
   id: number;
   user_id: number | null;
-  username: string | null;
   display_name: string | null;
   action: string;
   entity_type: string | null;
@@ -27,7 +24,7 @@ export interface ActivityEntry {
  *
  * @param db       - Database pool or client.
  * @param userId   - The user who performed the action (null if unknown).
- * @param action   - Short action verb: login, logout, translate, import, approve, export, etc.
+ * @param action   - Short action verb: translate, import, approve, export, etc.
  * @param entityType - The type of entity affected (mod, string, translation, glossary, user).
  * @param entityId - The primary key of the affected entity.
  * @param details  - Optional JSON object with additional context.
@@ -43,7 +40,13 @@ export const logActivity = async (
   await db.query(
     `INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
      VALUES ($1, $2, $3, $4, $5)`,
-    [userId, action, entityType ?? null, entityId ?? null, details ? JSON.stringify(details) : null],
+    [
+      userId,
+      action,
+      entityType ?? null,
+      entityId ?? null,
+      details ? JSON.stringify(details) : null,
+    ],
   );
 };
 
@@ -106,7 +109,7 @@ export const getActivityLog = async (
   params.push(limit, offset);
 
   const { rows } = await db.query<ActivityEntry>(
-    `SELECT a.id, a.user_id, u.username, u.display_name,
+    `SELECT a.id, a.user_id, u.display_name,
             a.action, a.entity_type, a.entity_id, a.details, a.created_at
      FROM activity_log a
      LEFT JOIN users u ON a.user_id = u.id
