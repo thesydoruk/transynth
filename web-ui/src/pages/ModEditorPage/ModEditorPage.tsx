@@ -10,6 +10,7 @@ import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
 import { AiVerifyModal } from './components/AiVerifyModal';
 import { AiTranslateModal } from './components/AiTranslateModal';
+import { SkipTranslateModal } from './components/SkipTranslateModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
@@ -31,6 +32,7 @@ import {
   useEditorKeyboard,
   useAiVerify,
   useAiTranslate,
+  useSkipDetect,
   useApplyImported,
 } from './hooks';
 import styles from './ModEditorPage.module.scss';
@@ -46,6 +48,9 @@ const STATUS_OPTS = [
   'auto',
   'tm',
   'human',
+  'reviewed',
+  'rejected',
+  'skip',
 ];
 /** Rows fetched per infinite-scroll page (the grid accumulates pages). */
 const FETCH_PAGE_SIZE = 100;
@@ -158,6 +163,7 @@ export const ModEditorPage = () => {
   const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
   const [showAiVerify, setShowAiVerify] = useState(false);
   const [showAiTranslate, setShowAiTranslate] = useState(false);
+  const [showSkipDetect, setShowSkipDetect] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -255,9 +261,11 @@ export const ModEditorPage = () => {
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
+  const skipDetect = useSkipDetect(modId, srcLang, targetLang);
   const applyImported = useApplyImported(modId, srcLang, targetLang);
   const prevAiTranslateStatus = useRef(aiTranslate.status);
   const prevApplyImportedStatus = useRef(applyImported.status);
+  const prevSkipDetectStatus = useRef(skipDetect.status);
 
   useEffect(() => {
     if (
@@ -280,6 +288,17 @@ export const ModEditorPage = () => {
     }
     prevApplyImportedStatus.current = applyImported.status;
   }, [applyImported.status, modId, qc, refetchStats]);
+
+  useEffect(() => {
+    if (
+      prevSkipDetectStatus.current === 'running' &&
+      (skipDetect.status === 'completed' || skipDetect.status === 'cancelled')
+    ) {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    }
+    prevSkipDetectStatus.current = skipDetect.status;
+  }, [skipDetect.status, modId, qc, refetchStats]);
 
   const { flushAutosave, cancelAutosave } = useAutosave({
     activeRow,
@@ -659,8 +678,10 @@ export const ModEditorPage = () => {
         applyImportedRunning={applyImported.isRunning}
         onAiVerify={() => setShowAiVerify(true)}
         onAiTranslate={() => setShowAiTranslate(true)}
+        onSkipDetect={() => setShowSkipDetect(true)}
         aiVerifyRunning={aiVerify.isRunning}
         aiTranslateRunning={aiTranslate.isRunning}
+        skipDetectRunning={skipDetect.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
         onNextUntranslated={handleNextUntranslated}
@@ -818,7 +839,7 @@ export const ModEditorPage = () => {
             await api.strings.saveTranslation(
               issue.stringId,
               issue.suggestion,
-              'draft',
+              'reviewed',
               targetLang,
             );
             qc.invalidateQueries({ queryKey: ['strings', modId] });
@@ -830,10 +851,37 @@ export const ModEditorPage = () => {
               await api.strings.saveTranslation(
                 issue.stringId,
                 issue.suggestion,
-                'draft',
+                'reviewed',
                 targetLang,
               );
             }
+            qc.invalidateQueries({ queryKey: ['strings', modId] });
+            void refetchStats();
+          }}
+        />
+      )}
+      {showSkipDetect && (
+        <SkipTranslateModal
+          srcLang={srcLang}
+          state={skipDetect}
+          onClose={() => setShowSkipDetect(false)}
+          onRowClick={(stringId) => {
+            const row = strings?.rows.find((r) => r.string_id === stringId);
+            if (row) {
+              handleRowOpen(row);
+              setShowSkipDetect(false);
+            }
+          }}
+          onApply={async (candidate) => {
+            await api.strings.markSkip([candidate.stringId], targetLang);
+            qc.invalidateQueries({ queryKey: ['strings', modId] });
+            void refetchStats();
+          }}
+          onApplyAll={async (batch) => {
+            await api.strings.markSkip(
+              batch.map((c) => c.stringId),
+              targetLang,
+            );
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}

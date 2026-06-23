@@ -12,5 +12,6 @@ export const rowBg = (status: string | null): string => {
   if (status === 'tm') return 'var(--status-row-tm)';
   if (status === 'auto') return 'var(--status-row-auto)';
   if (status === 'fuzzy') return 'var(--status-row-fuzzy)';
+  if (status === 'skip') return 'var(--status-row-skip)';
   return 'transparent';
 };

@@ -209,9 +209,10 @@ export type StringRow = {
   source: string;
   /** Speaker NPC name for dialog strings (INFO records). Populated at import time from ANAM. */
   context: string | null;
+  is_ignored?: boolean;
   translation_id: number | null;
   translation: string | null;
-  status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' | null;
+  status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' | 'skip' | null;
   confidence: number | null;
   provenance: string | null;
   model: string | null;
@@ -330,6 +331,7 @@ export type Stats = {
   tm: number;
   fuzzy: number;
   auto_translated: number;
+  skipped: number;
   untranslated: number;
   percent: number;
 };
@@ -885,6 +887,34 @@ export type LlmVerifyStreamEvent =
   | { type: 'cancelled'; done: number; total: number; issues: LlmVerifyIssue[] }
   | { type: 'error'; error: string };
 
+export type LlmSkipDetectCandidate = {
+  stringId: number;
+  source: string;
+  signature: string | null;
+  path: string | null;
+  edid: string | null;
+  reason: string;
+  confidence: number;
+  method: 'heuristic' | 'llm' | 'both';
+};
+
+export type LlmSkipDetectJobSnapshot = {
+  jobId: number;
+  modId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  candidates: LlmSkipDetectCandidate[];
+  error: string | null;
+};
+
+export type LlmSkipDetectStreamEvent =
+  | { type: 'started'; jobId: number; total: number; useLlm: boolean }
+  | { type: 'progress'; done: number; total: number; candidate?: LlmSkipDetectCandidate }
+  | { type: 'done'; done: number; total: number; candidates: LlmSkipDetectCandidate[] }
+  | { type: 'cancelled'; done: number; total: number; candidates: LlmSkipDetectCandidate[] }
+  | { type: 'error'; error: string };
+
 export type LlmTranslateRow = {
   stringId: number;
   source: string;
@@ -1180,7 +1210,15 @@ export const api = {
     saveTranslation: (
       stringId: number,
       text: string,
-      status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' = 'draft',
+      status:
+        | 'draft'
+        | 'reviewed'
+        | 'rejected'
+        | 'human'
+        | 'fuzzy'
+        | 'auto'
+        | 'tm'
+        | 'skip' = 'draft',
       targetLang = getTgtLang(),
     ) =>
       req<{ id: number; text: string; status: string }>(`/api/strings/${stringId}/translation`, {
@@ -1206,6 +1244,12 @@ export const api = {
       req<{ id: number; is_ignored: boolean }>(`/api/strings/${stringId}/ignore`, {
         method: 'PATCH',
         body: JSON.stringify({ ignore }),
+      }),
+
+    markSkip: (stringIds: number[], targetLang = getTgtLang()) =>
+      req<{ ok: boolean; marked: number }>(`/api/strings/mark-skip`, {
+        method: 'POST',
+        body: JSON.stringify({ stringIds, targetLang }),
       }),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
@@ -1944,7 +1988,109 @@ export const api = {
     stop: (jobId: number) =>
       req<{ ok: boolean }>(`/api/llm-verify/${jobId}/stop`, { method: 'POST' }),
 
+    stopMod: (modId: number) =>
+      req<{ ok: boolean }>(`/api/mods/${modId}/llm-verify/stop`, { method: 'POST' }),
+
     status: (jobId: number) => req<LlmVerifyJobSnapshot>(`/api/llm-verify/${jobId}`),
+  },
+
+  llmSkipDetect: {
+    async start(
+      modId: number,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      useLlm = false,
+      onEvent?: (e: LlmSkipDetectStreamEvent) => void,
+      signal?: AbortSignal,
+    ): Promise<LlmSkipDetectJobSnapshot | null> {
+      const response = await fetch(`${BASE}/api/mods/${modId}/llm-skip-detect`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srcLang, targetLang, useLlm }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let snapshot: LlmSkipDetectJobSnapshot | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as LlmSkipDetectStreamEvent;
+            if (onEvent) onEvent(event);
+            if (event.type === 'started') {
+              snapshot = {
+                jobId: event.jobId,
+                modId,
+                status: 'running',
+                done: 0,
+                total: event.total,
+                candidates: [],
+                error: null,
+              };
+            }
+            if (event.type === 'progress' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                done: event.done,
+                total: event.total,
+                candidates: event.candidate
+                  ? [...snapshot.candidates, event.candidate]
+                  : snapshot.candidates,
+              };
+            }
+            if (event.type === 'done' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                candidates: event.candidates,
+              };
+            }
+            if (event.type === 'cancelled' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                candidates: event.candidates,
+              };
+            }
+            if (event.type === 'error') {
+              if (snapshot) {
+                snapshot = { ...snapshot, status: 'failed', error: event.error };
+              }
+              throw new Error(event.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+      return snapshot;
+    },
+
+    stop: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/llm-skip-detect/${jobId}/stop`, { method: 'POST' }),
+
+    stopMod: (modId: number) =>
+      req<{ ok: boolean }>(`/api/mods/${modId}/llm-skip-detect/stop`, { method: 'POST' }),
+
+    status: (jobId: number) => req<LlmSkipDetectJobSnapshot>(`/api/llm-skip-detect/${jobId}`),
   },
 
   llmTranslate: {

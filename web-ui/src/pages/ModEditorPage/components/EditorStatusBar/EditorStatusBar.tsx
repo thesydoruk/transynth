@@ -10,6 +10,7 @@ export interface ModStats {
   tm: number;
   fuzzy: number;
   auto_translated: number;
+  skipped: number;
   untranslated: number;
   total: number;
 }
@@ -41,7 +42,11 @@ export const EditorStatusBar = ({ selectedCount, activeRow, stats }: EditorStatu
       )}
       {stats && (
         <span className={styles.stats}>
-          {t('status.approved')}: {stats.approved} · {t('status.draft')}: {stats.draft} · {t('status.rejected')}: {stats.rejected} · {t('status.tm')}: {stats.tm} · {t('status.fuzzy')}: {stats.fuzzy} · {t('status.auto')}: {stats.auto_translated} · {t('status.untranslated')}: {stats.untranslated} · {t('status.total')}: {stats.total}
+          {t('status.approved')}: {stats.approved} · {t('status.draft')}: {stats.draft} ·{' '}
+          {t('status.rejected')}: {stats.rejected} · {t('status.tm')}: {stats.tm} ·{' '}
+          {t('status.fuzzy')}: {stats.fuzzy} · {t('status.auto')}: {stats.auto_translated} ·{' '}
+          {t('status.skip')}: {stats.skipped ?? 0} · {t('status.untranslated')}:{' '}
+          {stats.untranslated} · {t('status.total')}: {stats.total}
         </span>
       )}
     </div>

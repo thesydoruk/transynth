@@ -104,13 +104,19 @@ const parseSuggestion = (value: unknown, verdict: LlmVerifyVerdict): string | nu
   return trimmed || null;
 };
 
-/**
- * Parse and validate the LLM JSON translation audit response.
- */
-export const parseLlmVerifyTranslateResponse = (
-  raw: string,
-  expectedItemIds: number[],
-): LlmVerifyItemResult[] => {
+/** Accept integer ids returned as JSON numbers or numeric strings. */
+export const parseVerifyItemId = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isInteger(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!/^\d+$/.test(trimmed)) return null;
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const parseVerifyItemsFromRaw = (raw: string): Map<number, LlmVerifyItemResult> => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(stripJsonFence(raw));
@@ -132,10 +138,11 @@ export const parseLlmVerifyTranslateResponse = (
   for (const entry of rawItems) {
     if (!entry || typeof entry !== 'object') continue;
     const row = entry as Record<string, unknown>;
-    if (typeof row.id !== 'number' || !Number.isInteger(row.id)) continue;
+    const id = parseVerifyItemId(row.id);
+    if (id == null) continue;
     const verdict = parseVerdict(row.verdict);
-    byId.set(row.id, {
-      id: row.id,
+    byId.set(id, {
+      id,
       verdict,
       reason:
         typeof row.reason === 'string' && row.reason.trim()
@@ -145,6 +152,51 @@ export const parseLlmVerifyTranslateResponse = (
       suggestion: parseSuggestion(row.suggestion, verdict),
     });
   }
+
+  return byId;
+};
+
+const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
+
+const callVerifyTranslateLlm = async (
+  opts: LlmVerifyOptions,
+  items: LlmVerifyItem[],
+): Promise<string> => {
+  const expectedIds = items.map((item) => item.id);
+  const payload = buildVerifyTranslateUserPayload({ ...opts, items });
+  return chatWithFallback({
+    model: opts.model,
+    temperature: 0,
+    responseFormat: { type: 'json_object' },
+    logMeta: {
+      operation: 'verify_translate',
+      context: {
+        itemIds: expectedIds,
+        itemCount: expectedIds.length,
+        srcLang: opts.srcLang,
+        targetLang: opts.targetLang,
+        modName: opts.modName ?? null,
+        ragExampleCounts: items.map((item) => item.reference_examples?.length ?? 0),
+      },
+    },
+    messages: [
+      {
+        role: 'system',
+        content: buildVerifySystemPrompt(opts.srcLang, opts.targetLang, opts.game),
+      },
+      { role: 'user', content: JSON.stringify(payload) },
+    ],
+  });
+};
+
+/**
+ * Parse and validate the LLM JSON translation audit response.
+ */
+export const parseLlmVerifyTranslateResponse = (
+  raw: string,
+  expectedItemIds: number[],
+): LlmVerifyItemResult[] => {
+  const byId = parseVerifyItemsFromRaw(raw);
 
   const items: LlmVerifyItemResult[] = [];
   for (const id of expectedItemIds) {
@@ -164,31 +216,36 @@ export const verifyTranslationsWithLlm = async (
 ): Promise<LlmVerifyItemResult[]> => {
   if (opts.items.length === 0) return [];
 
-  const expectedIds = opts.items.map((item) => item.id);
-  const payload = buildVerifyTranslateUserPayload(opts);
-  const text = await chatWithFallback({
-    model: opts.model,
-    temperature: 0,
-    responseFormat: { type: 'json_object' },
-    logMeta: {
-      operation: 'verify_translate',
-      context: {
-        itemIds: expectedIds,
-        itemCount: expectedIds.length,
-        srcLang: opts.srcLang,
-        targetLang: opts.targetLang,
-        modName: opts.modName ?? null,
-        ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
-      },
-    },
-    messages: [
-      {
-        role: 'system',
-        content: buildVerifySystemPrompt(opts.srcLang, opts.targetLang, opts.game),
-      },
-      { role: 'user', content: JSON.stringify(payload) },
-    ],
-  });
+  const results = new Map<number, LlmVerifyItemResult>();
+  let pending = opts.items;
 
-  return parseLlmVerifyTranslateResponse(text, expectedIds);
+  for (
+    let attempt = 0;
+    attempt < VERIFY_MISSING_ITEM_MAX_ATTEMPTS && pending.length > 0;
+    attempt++
+  ) {
+    const raw = await callVerifyTranslateLlm(opts, pending);
+    const parsed = parseVerifyItemsFromRaw(raw);
+
+    const missing: LlmVerifyItem[] = [];
+    for (const item of pending) {
+      const row = parsed.get(item.id);
+      if (row) results.set(item.id, row);
+      else missing.push(item);
+    }
+
+    if (missing.length === 0) break;
+    if (attempt === VERIFY_MISSING_ITEM_MAX_ATTEMPTS - 1) {
+      throw new Error(`LLM verify response missing item id=${missing[0].id}`);
+    }
+    pending = missing;
+  }
+
+  return opts.items.map((item) => {
+    const row = results.get(item.id);
+    if (!row) {
+      throw new Error(`LLM verify response missing item id=${item.id}`);
+    }
+    return row;
+  });
 };

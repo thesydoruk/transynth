@@ -6,6 +6,7 @@
  *   (new string) → tm / fuzzy / auto / human (system)
  *               → draft (manual save in editor)
  *               → reviewed (auto-approve on save, or legacy data)
+ *               → skip (marked as non-translatable; excluded from translation pipelines)
  *
  * `rejected` and `deleted` remain valid stored values for existing data.
  */
@@ -19,6 +20,7 @@ export type TranslationStatus =
   | 'human'
   | 'reviewed'
   | 'rejected'
+  | 'skip'
   | 'deleted';
 
 /** Set of all valid `TranslationStatus` string literals. */
@@ -30,6 +32,7 @@ export const VALID_TRANSLATION_STATUSES = new Set<TranslationStatus>([
   'human',
   'reviewed',
   'rejected',
+  'skip',
   'deleted',
 ]);
 

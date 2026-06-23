@@ -12,5 +12,6 @@ export const STATUS_COLORS: Record<string, string> = {
   tm: 'var(--status-tm)', // blue   — translation memory
   fuzzy: 'var(--status-fuzzy)', // cyan   — fuzzy match
   auto: 'var(--status-auto)', // orange — AI/LLM translation
+  skip: 'var(--status-skip)', // muted — not translatable
   untranslated: 'var(--status-untranslated)',
 };

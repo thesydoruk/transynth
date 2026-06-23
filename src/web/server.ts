@@ -44,6 +44,7 @@ import { gamesRoutes } from './routes/games';
 import { projectSettingsRoutes } from './routes/projectSettings';
 import { llmVerifyRoutes } from './routes/llmVerify';
 import { llmTranslateRoutes } from './routes/llmTranslate';
+import { llmSkipDetectRoutes } from './routes/llmSkipDetect';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -103,6 +104,7 @@ await gamesRoutes(app, db);
 await projectSettingsRoutes(app, db);
 await llmVerifyRoutes(app, db);
 await llmTranslateRoutes(app, db);
+await llmSkipDetectRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

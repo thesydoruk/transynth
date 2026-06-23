@@ -1,0 +1,14 @@
+@import '../AiVerifyModal/AiVerifyModal.module.scss';
+
+.llmToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+
+  input {
+    margin: 0;
+  }
+}

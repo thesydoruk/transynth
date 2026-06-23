@@ -83,6 +83,12 @@ export const requestLlmVerifyStop = (jobId: number): boolean => {
   return true;
 };
 
+export const requestLlmVerifyStopByModId = (modId: number): boolean => {
+  const jobId = findRunningLlmVerifyJob(modId);
+  if (jobId == null) return false;
+  return requestLlmVerifyStop(jobId);
+};
+
 const countVerifiableStrings = async (
   db: Tx,
   modId: number,
@@ -96,6 +102,7 @@ const countVerifiableStrings = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
       WHERE r.mod_id = $1
         AND s.lang = $2
+        AND s.is_ignored = FALSE
         AND length(trim(t.text)) > 0`,
     [modId, srcLang, targetLang],
   );
@@ -137,6 +144,7 @@ const loadVerifyChunk = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
       WHERE r.mod_id = $1
         AND s.lang = $2
+        AND s.is_ignored = FALSE
         AND length(trim(t.text)) > 0
       ORDER BY s.id
       LIMIT $4 OFFSET $5`,
@@ -228,17 +236,25 @@ export const runLlmVerifyJob = async (
       type VerifyChunkOutcome =
         | {
             ok: true;
+            kind: 'results';
             results: Awaited<ReturnType<typeof verifyTranslationsWithLlm>>;
             rowById: Map<number, VerifyStringRow>;
           }
+        | { ok: true; kind: 'skipped'; skipped: number }
         | { ok: false; error: string; llmChunk: VerifyStringRow[] };
+
+      const skipChunk = (size: number): VerifyChunkOutcome => ({
+        ok: true,
+        kind: 'skipped',
+        skipped: size,
+      });
 
       const chunkOutcomes = await mapWithConcurrency(
         llmChunks,
         CONFIG.llmMaxParallel,
         async (llmChunk): Promise<VerifyChunkOutcome> => {
           if (job.cancel) {
-            return { ok: true, results: [], rowById: new Map() };
+            return skipChunk(llmChunk.length);
           }
 
           const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
@@ -263,6 +279,10 @@ export const runLlmVerifyJob = async (
             ragMinSimilarity,
           );
 
+          if (job.cancel) {
+            return skipChunk(llmChunk.length);
+          }
+
           const items: LlmVerifyItem[] = llmChunk.map((row) => {
             const { grup, field } = parseRecordLocation(row.signature, row.path);
             return {
@@ -286,7 +306,7 @@ export const runLlmVerifyJob = async (
               game: opts.game,
               modName: opts.modName,
             });
-            return { ok: true, results, rowById };
+            return { ok: true, kind: 'results', results, rowById };
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             return { ok: false, error: message, llmChunk };
@@ -295,6 +315,14 @@ export const runLlmVerifyJob = async (
       );
 
       for (const outcome of chunkOutcomes) {
+        if (outcome.ok && outcome.kind === 'skipped') {
+          for (let i = 0; i < outcome.skipped; i++) {
+            job.done++;
+            onEvent({ type: 'progress', done: job.done, total: job.total });
+          }
+          continue;
+        }
+
         if (!outcome.ok) {
           logVerify.error('job chunk failed', {
             jobId,

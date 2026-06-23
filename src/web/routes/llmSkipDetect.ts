@@ -3,20 +3,19 @@ import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import {
-  findRunningLlmVerifyJob,
-  getLlmVerifyJob,
-  requestLlmVerifyStop,
-  requestLlmVerifyStopByModId,
-  runLlmVerifyJob,
-  scheduleLlmVerifyJobCleanup,
-} from '../llmVerifyService';
+  findRunningLlmSkipDetectJob,
+  getLlmSkipDetectJob,
+  requestLlmSkipDetectStop,
+  requestLlmSkipDetectStopByModId,
+  runLlmSkipDetectJob,
+  scheduleLlmSkipDetectJobCleanup,
+} from '../llmSkipDetectService';
 
-export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
-  // POST /api/mods/:modId/llm-verify — start verification (SSE progress stream)
+export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
     Params: { modId: string };
-    Body: { srcLang?: string; targetLang?: string };
-  }>('/api/mods/:modId/llm-verify', async (req, reply) => {
+    Body: { srcLang?: string; targetLang?: string; useLlm?: boolean };
+  }>('/api/mods/:modId/llm-skip-detect', async (req, reply) => {
     const modId = Number(req.params.modId);
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid modId' });
@@ -24,10 +23,11 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
+    const useLlm = req.body?.useLlm === true;
 
-    const runningJobId = findRunningLlmVerifyJob(modId);
+    const runningJobId = findRunningLlmSkipDetectJob(modId);
     if (runningJobId != null) {
-      return reply.code(409).send({ error: `Verification already running (job #${runningJobId})` });
+      return reply.code(409).send({ error: `Skip-detect already running (job #${runningJobId})` });
     }
 
     const { rows: modRows } = await db.query<{ name: string; game: string }>(
@@ -52,7 +52,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
           reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
         }
       } catch {
-        /* client disconnected — job continues */
+        /* client disconnected */
       }
     };
 
@@ -60,7 +60,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
 
     void (async () => {
       try {
-        const snapshot = await runLlmVerifyJob(
+        const snapshot = await runLlmSkipDetectJob(
           db,
           {
             modId,
@@ -68,17 +68,18 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
             targetLang,
             modName: mod.name,
             game: mod.game,
+            useLlm,
           },
           send,
         );
         finishedJobId = snapshot.jobId;
       } catch (err: unknown) {
         log.error(
-          `[LLM Verify mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
+          `[LLM Skip-detect mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
         );
         send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
       } finally {
-        if (finishedJobId != null) scheduleLlmVerifyJobCleanup(finishedJobId);
+        if (finishedJobId != null) scheduleLlmSkipDetectJobCleanup(finishedJobId);
         try {
           reply.raw.end();
         } catch {
@@ -88,41 +89,41 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     })();
   });
 
-  // POST /api/llm-verify/:jobId/stop — request cancellation
-  app.post<{ Params: { jobId: string } }>('/api/llm-verify/:jobId/stop', async (req, reply) => {
-    const jobId = Number(req.params.jobId);
-    if (!Number.isInteger(jobId) || jobId < 1) {
-      return reply.code(400).send({ error: 'Invalid jobId' });
-    }
-    if (!requestLlmVerifyStop(jobId)) {
-      return reply.code(404).send({ error: 'Running verification job not found' });
-    }
-    return reply.send({ ok: true });
-  });
-
-  // POST /api/mods/:modId/llm-verify/stop — cancel by mod (when jobId not yet known client-side)
-  app.post<{ Params: { modId: string } }>(
-    '/api/mods/:modId/llm-verify/stop',
+  app.post<{ Params: { jobId: string } }>(
+    '/api/llm-skip-detect/:jobId/stop',
     async (req, reply) => {
-      const modId = Number(req.params.modId);
-      if (!Number.isInteger(modId) || modId < 1) {
-        return reply.code(400).send({ error: 'Invalid modId' });
+      const jobId = Number(req.params.jobId);
+      if (!Number.isInteger(jobId) || jobId < 1) {
+        return reply.code(400).send({ error: 'Invalid jobId' });
       }
-      if (!requestLlmVerifyStopByModId(modId)) {
-        return reply.code(404).send({ error: 'Running verification job not found' });
+      if (!requestLlmSkipDetectStop(jobId)) {
+        return reply.code(404).send({ error: 'Running skip-detect job not found' });
       }
       return reply.send({ ok: true });
     },
   );
 
-  // GET /api/llm-verify/:jobId — current in-memory job snapshot (for reopening modal)
-  app.get<{ Params: { jobId: string } }>('/api/llm-verify/:jobId', async (req, reply) => {
+  app.post<{ Params: { modId: string } }>(
+    '/api/mods/:modId/llm-skip-detect/stop',
+    async (req, reply) => {
+      const modId = Number(req.params.modId);
+      if (!Number.isInteger(modId) || modId < 1) {
+        return reply.code(400).send({ error: 'Invalid modId' });
+      }
+      if (!requestLlmSkipDetectStopByModId(modId)) {
+        return reply.code(404).send({ error: 'Running skip-detect job not found' });
+      }
+      return reply.send({ ok: true });
+    },
+  );
+
+  app.get<{ Params: { jobId: string } }>('/api/llm-skip-detect/:jobId', async (req, reply) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getLlmVerifyJob(jobId);
-    if (!job) return reply.code(404).send({ error: 'Verification job not found' });
+    const job = getLlmSkipDetectJob(jobId);
+    if (!job) return reply.code(404).send({ error: 'Skip-detect job not found' });
     return reply.send(job);
   });
 };

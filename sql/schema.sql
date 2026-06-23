@@ -487,6 +487,7 @@ USING (
            PARTITION BY src_string_id, target_lang
            ORDER BY
              CASE status
+               WHEN 'skip' THEN 0
                WHEN 'draft' THEN 1
                WHEN 'reviewed' THEN 2
                WHEN 'human' THEN 3

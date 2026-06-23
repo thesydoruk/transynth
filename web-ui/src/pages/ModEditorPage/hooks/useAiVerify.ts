@@ -23,8 +23,11 @@ const initialState: AiVerifyState = {
 export const useAiVerify = (modId: number, srcLang: string, targetLang: string) => {
   const [state, setState] = useState<AiVerifyState>(initialState);
   const inFlight = useRef(false);
+  /** Updated synchronously on SSE `started` so Stop works before the next render. */
+  const jobIdRef = useRef<number | null>(null);
 
   const applySnapshot = useCallback((snapshot: LlmVerifyJobSnapshot) => {
+    jobIdRef.current = snapshot.jobId;
     setState({
       status: snapshot.status === 'running' ? 'running' : snapshot.status,
       jobId: snapshot.jobId,
@@ -38,6 +41,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
   const start = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    jobIdRef.current = null;
     setState((prev) => ({
       ...prev,
       status: 'running',
@@ -51,6 +55,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
     try {
       const snapshot = await api.llmVerify.start(modId, srcLang, targetLang, (event) => {
         if (event.type === 'started') {
+          jobIdRef.current = event.jobId;
           setState((prev) => ({
             ...prev,
             status: 'running',
@@ -107,19 +112,24 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
   }, [applySnapshot, modId, srcLang, targetLang]);
 
   const stop = useCallback(async () => {
-    if (!state.jobId) return;
     try {
-      await api.llmVerify.stop(state.jobId);
+      const jobId = jobIdRef.current;
+      if (jobId != null) {
+        await api.llmVerify.stop(jobId);
+      } else {
+        await api.llmVerify.stopMod(modId);
+      }
     } catch (err) {
       setState((prev) => ({
         ...prev,
         error: err instanceof Error ? err.message : String(err),
       }));
     }
-  }, [state.jobId]);
+  }, [modId]);
 
   const reset = useCallback(() => {
     if (state.status === 'running') return;
+    jobIdRef.current = null;
     setState(initialState);
   }, [state.status]);
 

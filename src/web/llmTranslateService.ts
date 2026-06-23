@@ -82,6 +82,7 @@ const countUntranslatedStrings = async (
        JOIN records r ON r.id = s.record_id
       WHERE r.mod_id = $1
         AND s.lang = $2
+        AND s.is_ignored = FALSE
         AND NOT EXISTS (
           SELECT 1 FROM translations t
            WHERE t.src_string_id = s.id AND t.target_lang = $3
@@ -117,6 +118,7 @@ const loadUntranslatedChunk = async (
        JOIN records r ON r.id = s.record_id
       WHERE r.mod_id = $1
         AND s.lang = $2
+        AND s.is_ignored = FALSE
         AND NOT EXISTS (
           SELECT 1 FROM translations t
            WHERE t.src_string_id = s.id AND t.target_lang = $3

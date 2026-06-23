@@ -129,6 +129,7 @@ export const applyTMToMod = async (
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE r.mod_id = $1 AND s.lang = $3
+       AND s.is_ignored = FALSE
        AND NOT EXISTS (
          SELECT 1 FROM translations t
          WHERE t.src_string_id = s.id AND t.target_lang = $2
@@ -203,6 +204,7 @@ export const propagateTranslation = async (
   const { rows: candidates } = await db.query(
     `SELECT s.id FROM strings s
      WHERE s.text_norm = $1 AND s.lang = $4 AND s.id != $2
+       AND s.is_ignored = FALSE
        AND NOT EXISTS (
          SELECT 1 FROM translations t
          WHERE t.src_string_id = s.id AND t.target_lang = $3 AND t.status IN ('draft', 'reviewed', 'human')

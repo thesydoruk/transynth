@@ -13,6 +13,7 @@ export interface ModStats {
   tm: number;
   fuzzy: number;
   auto_translated: number;
+  skipped: number;
   untranslated: number;
   translated: number;
   total: number;
@@ -59,8 +60,10 @@ export interface EditorToolbarProps {
   applyImportedRunning?: boolean;
   onAiVerify: () => void;
   onAiTranslate: () => void;
+  onSkipDetect: () => void;
   aiVerifyRunning?: boolean;
   aiTranslateRunning?: boolean;
+  skipDetectRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onNextUntranslated: () => void;
@@ -101,8 +104,10 @@ export const EditorToolbar = ({
   applyImportedRunning = false,
   onAiVerify,
   onAiTranslate,
+  onSkipDetect,
   aiVerifyRunning = false,
   aiTranslateRunning = false,
+  skipDetectRunning = false,
   onShortcuts,
   onBatchTranslate,
   onNextUntranslated,
@@ -153,7 +158,7 @@ export const EditorToolbar = ({
       >
         {statusOpts.map((o) => (
           <option key={o} value={o}>
-            {o === 'all' ? t('modEditor.allStatuses') : o}
+            {o === 'all' ? t('modEditor.allStatuses') : t(`status.${o}`, { defaultValue: o })}
           </option>
         ))}
       </select>
@@ -209,6 +214,10 @@ export const EditorToolbar = ({
           {
             label: aiVerifyRunning ? t('modEditor.aiVerifyRunning') : t('modEditor.aiVerify'),
             onClick: onAiVerify,
+          },
+          {
+            label: skipDetectRunning ? t('modEditor.skipDetectRunning') : t('modEditor.skipDetect'),
+            onClick: onSkipDetect,
           },
         ]}
       />

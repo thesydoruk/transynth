@@ -10,6 +10,7 @@ import {
   getRagSuggestions,
   getTranslationHistory,
   getQAIssues,
+  markStringsAsSkip,
 } from '../queries';
 import { propagateTranslation } from '../tm';
 import { getAllProjectSettings } from '../projectSettings';
@@ -173,7 +174,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { stringId: string };
     Body: {
       text: string;
-      status?: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm';
+      status?: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm' | 'skip';
       targetLang?: string;
     };
   }>('/api/strings/:stringId/translation', async (req, reply) => {
@@ -258,6 +259,22 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     if (rows.length === 0) return reply.code(404).send({ error: 'String not found' });
     return reply.send(rows[0]);
+  });
+
+  // POST /api/strings/mark-skip — mark strings as non-translatable (status skip)
+  app.post<{
+    Body: { stringIds: number[]; targetLang?: string };
+  }>('/api/strings/mark-skip', async (req, reply) => {
+    const stringIds = req.body?.stringIds;
+    if (!Array.isArray(stringIds) || stringIds.length === 0) {
+      return reply.code(400).send({ error: 'stringIds array is required' });
+    }
+    if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
+      return reply.code(400).send({ error: 'Invalid stringIds' });
+    }
+    const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
+    const marked = await markStringsAsSkip(db, stringIds, targetLang, req.user?.id ?? null);
+    return reply.send({ ok: true, marked });
   });
 
   // POST /api/strings/translate — batch LLM translate with SSE progress stream

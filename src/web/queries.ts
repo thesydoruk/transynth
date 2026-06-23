@@ -15,6 +15,7 @@ import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImpo
 export type { TranslationStatus } from './statusMachine';
 
 const BEST_TRANSLATION_ORDER = `CASE status
+  WHEN 'skip' THEN 0
   WHEN 'draft' THEN 1
   WHEN 'reviewed' THEN 2
   WHEN 'human' THEN 3
@@ -503,6 +504,9 @@ const buildStringFilterConditions = (
   if (f.status && f.status !== 'all') {
     if (f.status === 'untranslated') {
       conditions.push('t.id IS NULL');
+      conditions.push('s.is_ignored = FALSE');
+    } else if (f.status === 'skip') {
+      conditions.push('s.is_ignored = TRUE');
     } else {
       conditions.push(`t.status = $${idx}`);
       values.push(f.status);
@@ -608,7 +612,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       s.is_ignored,
       t.id            AS translation_id,
       t.text          AS translation,
-      t.status,
+      CASE WHEN s.is_ignored THEN 'skip' ELSE t.status END AS status,
       t.confidence,
       t.provenance,
       t.model,
@@ -1115,9 +1119,11 @@ export const upsertTranslation = async (
 ) => {
   const effectiveProvenance =
     provenance ??
-    (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
-      ? 'human_edit'
-      : `${status}_generated`);
+    (status === 'skip'
+      ? 'skip_marked'
+      : status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
+        ? 'human_edit'
+        : `${status}_generated`);
 
   await db.query(`DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`, [
     stringId,
@@ -1185,6 +1191,38 @@ export const deleteTranslation = async (
   ]);
 
   return { removed: rows.length };
+};
+
+/** Mark source string(s) as non-translatable — sets is_ignored and status skip. */
+export const markStringsAsSkip = async (
+  db: Tx,
+  stringIds: number[],
+  targetLang = CONFIG.defaultTgtLang,
+  userId: number | null = null,
+): Promise<number> => {
+  if (stringIds.length === 0) return 0;
+
+  const { rows } = await db.query<{ id: number; text_raw: string }>(
+    `UPDATE strings SET is_ignored = TRUE
+      WHERE id = ANY($1::int[])
+      RETURNING id, text_raw`,
+    [stringIds],
+  );
+
+  for (const row of rows) {
+    await upsertTranslation(
+      db,
+      row.id,
+      row.text_raw,
+      'skip',
+      targetLang,
+      'skip_marked',
+      undefined,
+      userId,
+    );
+  }
+
+  return rows.length;
 };
 
 // Returns text_norm for a string ID (used by propagation)
@@ -2023,7 +2061,8 @@ export const getModStats = async (
       COUNT(DISTINCT CASE WHEN t.status='tm'     THEN t.id END) AS tm,
       COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy,
       COUNT(DISTINCT CASE WHEN t.status='auto'   THEN t.id END) AS auto_translated,
-      COUNT(DISTINCT CASE WHEN t.id IS NULL       THEN s.id END) AS untranslated
+      COUNT(DISTINCT CASE WHEN s.is_ignored THEN s.id END) AS skipped,
+      COUNT(DISTINCT CASE WHEN t.id IS NULL AND NOT s.is_ignored THEN s.id END) AS untranslated
      FROM strings s
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2

@@ -99,6 +99,26 @@ describe('parseLlmVerifyTranslateResponse', () => {
     expect(() => parseLlmVerifyTranslateResponse(raw, itemIds)).toThrow(/missing item id=2/);
   });
 
+  it('accepts string item ids from the LLM', () => {
+    const raw = JSON.stringify({
+      items: [
+        { id: '1', verdict: 'ok', reason: 'Good.', confidence: 0.9, suggestion: null },
+        {
+          id: '2',
+          verdict: 'incorrect',
+          reason: 'Wrong meaning.',
+          confidence: 0.88,
+          suggestion: 'Fixed text.',
+        },
+      ],
+    });
+
+    const result = parseLlmVerifyTranslateResponse(raw, itemIds);
+    expect(result).toHaveLength(2);
+    expect(result[0]?.id).toBe(1);
+    expect(result[1]?.id).toBe(2);
+  });
+
   it('exports a non-empty default system prompt', () => {
     expect(VERIFY_TRANSLATE_SYSTEM_PROMPT).toContain('suspicious');
   });

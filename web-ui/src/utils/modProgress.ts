@@ -20,6 +20,7 @@ export const modProgress = (mod: ModCounts) => {
     tm: 0,
     fuzzy,
     auto_translated: translated - approved - fuzzy,
+    skipped: 0,
     untranslated: total - translated,
     percent: pct(translated, total),
   };
