@@ -1825,6 +1825,42 @@ const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
  * @param srcLang - Source language (usually 'en'); default='en'
  * @param isLocalized - Whether this is a localized mod (if true, deletes non-srcLang strings)
  */
+/** Minimal `strings` row shape used when aligning locales to source strings. */
+export interface ImportStringRow {
+  id: number;
+  record_id: number;
+  lstring_id: number | null;
+  text_raw: string;
+}
+
+/**
+ * Compute a stable per-record alignment key for each string so that records
+ * holding multiple strings are paired correctly across locales.
+ *
+ * - lstring-backed strings use their lstring id (identical across locales).
+ * - inline strings (no lstring id) use a positional ordinal within the record;
+ *   inline rows are ingested in the same order for every locale, so the Nth
+ *   inline string of a record always refers to the same logical field.
+ *
+ * Input rows MUST be ordered by `(record_id, id)`.
+ */
+export const alignmentKeyedStrings = (
+  rows: ImportStringRow[],
+): { key: string; row: ImportStringRow }[] => {
+  const inlineOrdinalByRecord = new Map<number, number>();
+  return rows.map((row) => {
+    let key: string;
+    if (row.lstring_id != null) {
+      key = `${row.record_id}:L${row.lstring_id}`;
+    } else {
+      const ordinal = inlineOrdinalByRecord.get(row.record_id) ?? 0;
+      inlineOrdinalByRecord.set(row.record_id, ordinal + 1);
+      key = `${row.record_id}:P${ordinal}`;
+    }
+    return { key, row };
+  });
+};
+
 const convertImportedStringsToTranslations = async (
   db: Tx,
   modId: number,
@@ -1851,21 +1887,28 @@ const convertImportedStringsToTranslations = async (
       locales.sort()[0];
 
     const sourceResult = await db.query(
-      `SELECT s.id, s.record_id, s.text_raw
+      `SELECT s.id, s.record_id, s.lstring_id, s.text_raw
        FROM strings s
        WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
-       AND s.lang = $2`,
+       AND s.lang = $2
+       ORDER BY s.record_id, s.id`,
       [modId, resolvedSourceLocale],
     );
 
-    const sourceRows = sourceResult.rows as { id: number; record_id: number; text_raw: string }[];
-    const sourceByRecordId = new Map<number, { id: number; text_raw: string }>();
-    for (const row of sourceRows) {
-      sourceByRecordId.set(row.record_id, { id: row.id, text_raw: row.text_raw });
+    const sourceRows = sourceResult.rows as ImportStringRow[];
+    if (sourceRows.length === 0) {
+      throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
     }
 
-    if (sourceByRecordId.size === 0) {
-      throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
+    // A single record can hold MANY translatable strings (e.g. inline RACE/TTGP
+    // tint-preset names, GMST lists). Keying only by record_id would collapse
+    // them to one entry and silently drop translations for the rest. We align
+    // each string by a stable per-record key: the lstring id when present (it is
+    // identical across locales), or a positional ordinal among inline strings
+    // (rows are ingested in the same espRow order for every locale).
+    const sourceByKey = new Map<string, ImportStringRow>();
+    for (const { key, row } of alignmentKeyedStrings(sourceRows)) {
+      sourceByKey.set(key, row);
     }
 
     logImport.info(
@@ -1877,7 +1920,7 @@ const convertImportedStringsToTranslations = async (
     // For each locale, create translations anchored to source-locale strings.
     for (const locale of locales) {
       if (locale === resolvedSourceLocale) {
-        const items = [...sourceByRecordId.values()].map((source) => ({
+        const items = sourceRows.map((source) => ({
           srcStringId: source.id,
           text: source.text_raw,
         }));
@@ -1894,24 +1937,25 @@ const convertImportedStringsToTranslations = async (
       }
 
       const localeStringsResult = await db.query(
-        `SELECT s.record_id, s.text_raw
+        `SELECT s.id, s.record_id, s.lstring_id, s.text_raw
          FROM strings s
          WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
-         AND s.lang = $2`,
+         AND s.lang = $2
+         ORDER BY s.record_id, s.id`,
         [modId, locale],
       );
 
-      const localeRows = localeStringsResult.rows as { record_id: number; text_raw: string }[];
+      const localeRows = localeStringsResult.rows as ImportStringRow[];
       const items: { srcStringId: number; text: string }[] = [];
       let skippedWithoutSource = 0;
 
-      for (const localeRow of localeRows) {
-        const source = sourceByRecordId.get(localeRow.record_id);
+      for (const { key, row } of alignmentKeyedStrings(localeRows)) {
+        const source = sourceByKey.get(key);
         if (!source) {
           skippedWithoutSource++;
           continue;
         }
-        items.push({ srcStringId: source.id, text: localeRow.text_raw });
+        items.push({ srcStringId: source.id, text: row.text_raw });
       }
 
       const createdForLocale = await bulkUpsertImportTranslations(
