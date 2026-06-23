@@ -47,7 +47,12 @@ export interface StringGridProps {
   sortDir: SortDir;
   columnFilters: ColumnFilters;
 
-  onRowClick: (row: StringRow) => void;
+  /** Single click — highlight row without opening the detail panel. */
+  onRowSelect: (row: StringRow) => void;
+  /** Double click — open the detail panel for editing. */
+  onRowOpen: (row: StringRow) => void;
+  /** Row highlighted in the grid (may differ from activeRow when the panel is closed). */
+  focusedRow: StringRow | null;
   onToggleRow: (row: StringRow, e: React.MouseEvent) => void;
   onToggleAll: () => void;
   onSort: (col: SortCol) => void;
@@ -82,7 +87,9 @@ export const StringGrid = ({
   sortCol,
   sortDir,
   columnFilters,
-  onRowClick,
+  onRowSelect,
+  onRowOpen,
+  focusedRow,
   onToggleRow,
   onToggleAll,
   onSort,
@@ -181,7 +188,10 @@ export const StringGrid = ({
   }, [virtualItems, rows.length, hasMore, isFetchingMore, onLoadMore]);
 
   /* Scroll the active row into view whenever it changes (keyboard navigation). */
-  const activeIndex = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+  const highlightedRow = activeRow ?? focusedRow;
+  const activeIndex = highlightedRow
+    ? rows.findIndex((r) => r.string_id === highlightedRow.string_id)
+    : -1;
   useEffect(() => {
     if (activeIndex >= 0) {
       rowVirtualizer.scrollToIndex(activeIndex, { align: 'auto' });
@@ -287,7 +297,7 @@ export const StringGrid = ({
           <div className={styles.virtualScroll} style={{ height: rowVirtualizer.getTotalSize() }}>
             {virtualItems.map((vItem) => {
               const row = rows[vItem.index];
-              const isActive = activeRow?.string_id === row.string_id;
+              const isActive = highlightedRow?.string_id === row.string_id;
               const displayStatus = isActive ? '__active' : row.status;
 
               return (
@@ -301,7 +311,8 @@ export const StringGrid = ({
                     background: rowBg(displayStatus),
                     color: rowTextColor(displayStatus),
                   }}
-                  onClick={() => onRowClick(row)}
+                  onClick={() => onRowSelect(row)}
+                  onDoubleClick={() => onRowOpen(row)}
                   onContextMenu={(e) => onContextMenu(e, row)}
                 >
                   <div

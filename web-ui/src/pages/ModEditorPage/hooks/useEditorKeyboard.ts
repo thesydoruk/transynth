@@ -14,6 +14,8 @@ export interface EditorKeyboardConfig {
 
   /** Row currently being edited in the detail panel. */
   activeRow: StringRow | null;
+  /** Row highlighted in the grid when the detail panel is closed. */
+  focusedRow: StringRow | null;
   /** Whether any rows are currently selected (either selection mode). */
   hasSelection: boolean;
   /** Accumulated string rows currently loaded in the grid. */
@@ -31,7 +33,9 @@ export interface EditorKeyboardConfig {
   handleReject: (row: StringRow) => void;
   handleCopySource: () => void;
   handleClear: (row: StringRow) => void;
-  handleRowClick: (row: StringRow) => void;
+  handleRowOpen: (row: StringRow) => void;
+  /** Move grid focus without opening the detail panel (single click / arrow keys). */
+  handleRowSelect: (row: StringRow) => void;
   handleNextQaIssue: () => void;
   toggleAll: () => void;
   /** Clears the current selection (both selection modes). */
@@ -158,7 +162,7 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
           c.setActiveRow(null);
           c.setDraftTranslation('');
         } else if (c.strings?.rows.length) {
-          c.handleRowClick(c.strings.rows[0]);
+          c.handleRowOpen(c.focusedRow ?? c.strings.rows[0]);
         }
         return;
       }
@@ -173,13 +177,12 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
       /* Below this line: only when focus is NOT in a text input. */
       if (isInput) return;
 
-      /* ── Arrow Up / Down — navigate rows ── */
+      /* ── Arrow Up / Down — navigate rows without opening the detail panel ── */
       if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && c.strings?.rows.length) {
         e.preventDefault();
         const rows = c.strings.rows;
-        const curIdx = c.activeRow
-          ? rows.findIndex((r) => r.string_id === c.activeRow!.string_id)
-          : -1;
+        const current = c.activeRow ?? c.focusedRow;
+        const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
         const nextIdx =
           e.key === 'ArrowDown'
             ? curIdx < rows.length - 1
@@ -188,7 +191,7 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
             : curIdx > 0
               ? curIdx - 1
               : rows.length - 1;
-        c.handleRowClick(rows[nextIdx]);
+        c.handleRowSelect(rows[nextIdx]);
         return;
       }
 
@@ -196,13 +199,12 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
       if (e.key === 'n' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.strings?.rows.length) {
         e.preventDefault();
         const rows = c.strings.rows;
-        const curIdx = c.activeRow
-          ? rows.findIndex((r) => r.string_id === c.activeRow!.string_id)
-          : -1;
+        const current = c.activeRow ?? c.focusedRow;
+        const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
         for (let i = 1; i <= rows.length; i++) {
           const idx = (curIdx + i) % rows.length;
           if (!rows[idx].translation) {
-            c.handleRowClick(rows[idx]);
+            c.handleRowOpen(rows[idx]);
             break;
           }
         }
@@ -216,17 +218,24 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
         return;
       }
 
-      /* ── Enter — focus translation textarea ── */
-      if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.activeRow) {
-        e.preventDefault();
-        c.translAreaRef.current?.focus();
+      /* ── Enter — open panel or focus translation textarea ── */
+      if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (c.activeRow) {
+          e.preventDefault();
+          c.translAreaRef.current?.focus();
+        } else if (c.focusedRow) {
+          e.preventDefault();
+          c.handleRowOpen(c.focusedRow);
+        }
         return;
       }
 
-      /* ── Space — toggle selection on active row ── */
-      if (e.key === ' ' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.activeRow) {
+      /* ── Space — toggle selection on focused / active row ── */
+      if (e.key === ' ' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const row = c.activeRow ?? c.focusedRow;
+        if (!row) return;
         e.preventDefault();
-        const rowId = c.activeRow.string_id;
+        const rowId = row.string_id;
         c.setSelected((prev) => {
           const next = new Set(prev);
           if (next.has(rowId)) next.delete(rowId);

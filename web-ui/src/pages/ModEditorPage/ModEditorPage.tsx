@@ -137,6 +137,7 @@ export const ModEditorPage = () => {
 
   // ── Active row (detail panel) ──
   const [activeRow, setActiveRow] = useState<StringRow | null>(null);
+  const [focusedRow, setFocusedRow] = useState<StringRow | null>(null);
   const [draftTranslation, setDraftTranslation] = useState('');
   const [activeTab, setActiveTab] = useState<BottomTab>('suggestions');
   const activeRowRef = useRef(activeRow);
@@ -367,10 +368,24 @@ export const ModEditorPage = () => {
 
   // ── Action helpers ──
 
-  const handleRowClick = useCallback(
+  const handleRowSelect = useCallback(
+    (row: StringRow) => {
+      setFocusedRow(row);
+      if (!activeRow) return;
+      if (activeRow.string_id === row.string_id) return;
+      flushAutosave();
+      setActiveRow(row);
+      setDraftTranslation(row.translation ?? '');
+      setActiveTab('suggestions');
+    },
+    [activeRow, flushAutosave],
+  );
+
+  const handleRowOpen = useCallback(
     (row: StringRow) => {
       flushAutosave();
       setActiveRow(row);
+      setFocusedRow(row);
       setDraftTranslation(row.translation ?? '');
       setActiveTab('suggestions');
     },
@@ -604,35 +619,38 @@ export const ModEditorPage = () => {
   const handleNextUntranslated = useCallback(() => {
     if (!strings?.rows.length) return;
     const rows = strings.rows;
-    const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+    const current = activeRow ?? focusedRow;
+    const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
     for (let i = 1; i <= rows.length; i++) {
       const idx = (curIdx + i) % rows.length;
       if (!rows[idx].translation) {
-        handleRowClick(rows[idx]);
+        handleRowOpen(rows[idx]);
         break;
       }
     }
-  }, [strings, activeRow, handleRowClick]);
+  }, [strings, activeRow, focusedRow, handleRowOpen]);
 
   /** Programmatic "next QA issue" navigation — mirrors the `q` key shortcut. */
   const handleNextQaIssue = useCallback(() => {
     if (!strings?.rows.length) return;
     const rows = strings.rows;
-    const curIdx = activeRow ? rows.findIndex((r) => r.string_id === activeRow.string_id) : -1;
+    const current = activeRow ?? focusedRow;
+    const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
     for (let i = 1; i <= rows.length; i++) {
       const idx = (curIdx + i) % rows.length;
       if (rows[idx].qa_issue_count > 0) {
-        handleRowClick(rows[idx]);
+        handleRowOpen(rows[idx]);
         break;
       }
     }
-  }, [strings, activeRow, handleRowClick]);
+  }, [strings, activeRow, focusedRow, handleRowOpen]);
 
   const qaIssueRowCount = strings?.rows.filter((row) => row.qa_issue_count > 0).length ?? 0;
 
   // ── Keyboard shortcuts ──
   useEditorKeyboard({
     activeRow,
+    focusedRow,
     hasSelection,
     strings,
     ctxMenu,
@@ -643,7 +661,8 @@ export const ModEditorPage = () => {
     handleReject,
     handleCopySource,
     handleClear,
-    handleRowClick,
+    handleRowOpen,
+    handleRowSelect,
     handleNextQaIssue,
     toggleAll,
     clearSelection,
@@ -758,12 +777,14 @@ export const ModEditorPage = () => {
               isFetchingMore={isFetchingNextPage}
               onLoadMore={() => fetchNextPage()}
               activeRow={activeRow}
+              focusedRow={focusedRow}
               srcLang={srcLang}
               targetLang={targetLang}
               sortCol={sortCol}
               sortDir={sortDir}
               columnFilters={columnFilters}
-              onRowClick={handleRowClick}
+              onRowSelect={handleRowSelect}
+              onRowOpen={handleRowOpen}
               onToggleRow={toggleRow}
               onToggleAll={toggleAll}
               onSort={handleSort}
@@ -773,7 +794,7 @@ export const ModEditorPage = () => {
               onReject={handleReject}
               onClear={handleClear}
               onCopySource={(row) => {
-                handleRowClick(row);
+                handleRowOpen(row);
                 setTimeout(() => setDraftTranslation(row.source), 0);
               }}
             />
@@ -835,7 +856,7 @@ export const ModEditorPage = () => {
           onRowClick={(stringId) => {
             const row = strings?.rows.find((r) => r.string_id === stringId);
             if (row) {
-              handleRowClick(row);
+              handleRowOpen(row);
               setShowAiTranslate(false);
             }
           }}
@@ -850,7 +871,7 @@ export const ModEditorPage = () => {
           onRowClick={(stringId) => {
             const row = strings?.rows.find((r) => r.string_id === stringId);
             if (row) {
-              handleRowClick(row);
+              handleRowOpen(row);
               setShowAiVerify(false);
             }
           }}
@@ -905,7 +926,7 @@ export const ModEditorPage = () => {
           onReject={ctxReject}
           onClear={ctxClear}
           onCopySource={(row) => {
-            handleRowClick(row);
+            handleRowOpen(row);
             setTimeout(() => setDraftTranslation(row.source), 0);
           }}
           onTextTransform={applyTextTransform}
@@ -914,7 +935,11 @@ export const ModEditorPage = () => {
         />
       )}
 
-      <EditorStatusBar selectedCount={selectedCount} activeRow={activeRow} stats={stats} />
+      <EditorStatusBar
+        selectedCount={selectedCount}
+        activeRow={focusedRow ?? activeRow}
+        stats={stats}
+      />
     </div>
   );
 };
