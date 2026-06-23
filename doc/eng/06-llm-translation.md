@@ -270,8 +270,8 @@ Before publishing your translation, review these strings in the editor:
 2. Check each translation for errors, placeholder integrity, and game tone.
 3. Set status to **Approved** when satisfied.
 
-For large batches, use the [Review Queue](15-review-queue.md) to prioritise
-low-confidence translations first.
+For large batches, filter the editor by **Status = Auto** or use the **Drafts only**
+toolbar filter to work through results in the mod editor.
 
 ---
 

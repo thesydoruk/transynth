@@ -50,29 +50,23 @@
 
 ---
 
-## Комбінації статусів
+## Комбінації редагування
 
 | Комбінація     | Дія                                            |
 | -------------- | ---------------------------------------------- |
-| `Ctrl+Shift+A` | Погодити активний рядок                        |
-| `Ctrl+Shift+R` | Відхилити активний рядок                       |
 | `Ctrl+Shift+C` | Скопіювати source text у translation field     |
 | `Ctrl+Shift+X` | Очистити поточний переклад                     |
 | `Space`        | Перемкнути selection для активного рядка       |
 | `Ctrl+A`       | Вибрати або зняти вибір з усіх рядків сторінки |
 
-Важливі поправки:
+Важливі нотатки:
 
-- `Ctrl+Shift+R` відхиляє активний переклад; він **не** скидає рядок у порожній стан.
 - `Ctrl+Shift+C` копіює source text; він **не** застосовує TM suggestion.
 - `Ctrl+Shift+X` очищує translation; він **не** запускає LLM translation.
 - `Ctrl+Shift+E` перемикає Detail Panel; він **не** відкриває ESP Explorer.
-- `Space` перемикає selection рядка; він **не** перемикає approval state.
+- `Space` перемикає selection рядка.
 
-Поточне обмеження:
-
-- Вбудовані keyboard handlers працюють з **активним рядком**, а не з усім multi-selection, якщо йдеться про approve/reject/copy/clear.
-- Bulk-операції для кількох selected rows доступні через toolbar і context menu, а не через окремі keyboard shortcuts.
+Bulk-операції для кількох selected rows доступні через toolbar і context menu, а не через окремі keyboard shortcuts.
 
 Також немає documented shortcuts на кшталт `Ctrl+D` для Draft або окремого shortcut для відкриття Search & Replace.
 
@@ -87,7 +81,7 @@
 Уточнення для поточної реалізації:
 
 - Global keyboard handlers ігнорують більшість shortcuts, поки ви друкуєте в `input`, `select` або `textarea`, крім явно дозволених дій на кшталт `Escape`, `Ctrl+S` і `Ctrl+Shift+...`.
-- Multi-row batch actions передусім винесені в toolbar і context menu. Shortcuts на кшталт `Ctrl+Shift+A` усе одно працюють з активним рядком.
+- Multi-row batch actions передусім винесені в toolbar і context menu.
 - Якщо browser або його extensions перехоплюють shortcut на кшталт `Ctrl+S`, використайте чистий browser profile або вимкніть конфліктні extensions для застосунку.
 
 Примітка для modal-вікон:

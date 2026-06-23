@@ -4,7 +4,7 @@ Welcome to the documentation for **Transynth (TSN)** — a web-based platform
 for translating game mods and maintaining the surrounding localization toolchain.
 
 This wiki covers both **end-user workflows** and **technical project documentation**. Some
-pages are aimed at translators and reviewers, while others describe architecture, runtime
+pages are aimed at translators, while others describe architecture, runtime
 components, and development tooling.
 
 ---
@@ -26,7 +26,6 @@ components, and development tooling.
 | 12  | [Special Editors](12-special-editors.md)       | INNR editor, Book/HTML editor, BA2 browser, ESP explorer          |
 | 13  | [Dashboard](13-dashboard.md)                   | Translation progress statistics and charts                        |
 | 14  | [Coherence Checker](14-coherence.md)           | Finding and fixing inconsistent translations                      |
-| 15  | [Review Queue](15-review-queue.md)             | Reviewing low-confidence or auto-translated strings               |
 | 17  | [Configuration](17-configuration.md)           | Environment variables, Docker setup, provider settings            |
 | 19  | [Technology Stack](19-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker         |
 

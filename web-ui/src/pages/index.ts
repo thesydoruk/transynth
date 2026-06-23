@@ -13,5 +13,4 @@ export { ModEditorPage } from './ModEditorPage';
 export { ModsPage } from './ModsPage';
 export { OpsPage } from './OpsPage';
 export { QARulesPage } from './QARulesPage';
-export { ReviewQueuePage } from './ReviewQueuePage';
 export { SettingsPage } from './SettingsPage';

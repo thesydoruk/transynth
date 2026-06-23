@@ -41,7 +41,6 @@ export interface EditorToolbarProps {
   translateProgress: { done: number; total: number } | null;
   translateError: string | null;
   tmApply: TmApplyState;
-  bulkReviewPending: boolean;
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
@@ -64,7 +63,6 @@ export interface EditorToolbarProps {
   aiTranslateRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
-  onBulkReview: (status: 'reviewed' | 'rejected') => void;
   onNextUntranslated: () => void;
   onNextQaIssue: () => void;
   onPageModeChange: (mode: 'strings' | 'dialogs') => void;
@@ -72,10 +70,6 @@ export interface EditorToolbarProps {
 
 /**
  * Horizontal toolbar at the top of the mod editor page.
- *
- * Contains language selectors, status / QA filters, action buttons
- * (search-replace, translation menu, INNR editor, auto-translate), bulk-review
- * buttons, and a progress bar summarising translation coverage.
  */
 export const EditorToolbar = ({
   modName,
@@ -90,7 +84,6 @@ export const EditorToolbar = ({
   translateProgress,
   translateError,
   tmApply,
-  bulkReviewPending,
   gameId,
   modId,
   hasInnrSignature,
@@ -112,7 +105,6 @@ export const EditorToolbar = ({
   aiTranslateRunning = false,
   onShortcuts,
   onBatchTranslate,
-  onBulkReview,
   onNextUntranslated,
   onNextQaIssue,
   onPageModeChange,
@@ -123,7 +115,6 @@ export const EditorToolbar = ({
     <div className={styles.toolbar}>
       <span className={styles.modName}>{modName ?? '…'}</span>
 
-      {/* Language selectors */}
       <label className={styles.langLabel}>
         {t('modEditor.source')}
         <select
@@ -155,7 +146,6 @@ export const EditorToolbar = ({
 
       <div className={styles.sep} />
 
-      {/* Status filter */}
       <select
         value={status}
         onChange={(e) => onStatusChange(e.target.value)}
@@ -182,13 +172,12 @@ export const EditorToolbar = ({
         title={t('modEditor.showDraftsTitle')}
       >
         {stats?.draft
-          ? t('modEditor.reviewModeCount', { count: stats.draft })
-          : t('modEditor.reviewMode')}
+          ? t('modEditor.draftsFilterCount', { count: stats.draft })
+          : t('modEditor.draftsFilter')}
       </Button>
 
       <div className={styles.sep} />
 
-      {/* Actions */}
       <Button onClick={onSearchReplace} variant="secondary" size="sm">
         {t('modEditor.searchReplace')}
       </Button>
@@ -267,7 +256,6 @@ export const EditorToolbar = ({
 
       <div className={styles.sep} />
 
-      {/* Mode toggle */}
       <Button
         onClick={() => onPageModeChange(pageMode === 'dialogs' ? 'strings' : 'dialogs')}
         variant={pageMode === 'dialogs' ? 'primary' : 'secondary'}
@@ -291,28 +279,10 @@ export const EditorToolbar = ({
               {t('modEditor.autoTranslate', { count: selectedCount })}
             </Button>
           )}
-          <button
-            onClick={() => onBulkReview('reviewed')}
-            disabled={bulkReviewPending}
-            className={styles.btnApprove}
-            title={t('modEditor.confirm')}
-          >
-            {bulkReviewPending ? '…' : t('modEditor.approveCount', { count: selectedCount })}
-          </button>
-          <Button
-            onClick={() => onBulkReview('rejected')}
-            disabled={bulkReviewPending}
-            variant="danger"
-            size="sm"
-            title={t('modEditor.reject')}
-          >
-            {bulkReviewPending ? '…' : t('modEditor.rejectCount', { count: selectedCount })}
-          </Button>
         </>
       )}
       {translateError && <span className={styles.errorBadge}>{translateError}</span>}
 
-      {/* Progress bar */}
       {stats && (
         <div className={styles.progressSection}>
           <ProgressBar stats={stats} />

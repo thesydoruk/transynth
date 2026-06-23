@@ -37,7 +37,7 @@ Navigate to **Coherence** in the top navigation bar (route: `/coherence`).
 If no inconsistency groups are found, the page provides direct actions instead of only passive text:
 
 - **Refresh check** — re-runs the coherence query
-- **Open Review Queue** — jumps into quality-review workflow immediately
+- **Refresh check** — re-runs the consistency scan
 
 ---
 
@@ -116,4 +116,4 @@ editor and search for the string by EDID or source text.
 
 ---
 
-← [Dashboard](13-dashboard.md) | [Home](README.md) | **Next: [Review Queue →](15-review-queue.md)**
+← [Dashboard](13-dashboard.md) | [Home](README.md) | **Next: [Configuration →](17-configuration.md)**

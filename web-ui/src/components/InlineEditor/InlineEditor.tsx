@@ -12,7 +12,7 @@ type Props = {
   queryKey: unknown[];
 };
 
-export const InlineEditor = ({ stringId, translationId, text, status, queryKey }: Props) => {
+export const InlineEditor = ({ stringId, text, queryKey }: Props) => {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text ?? '');
@@ -34,14 +34,6 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
     },
   });
 
-  const approve = useMutation({
-    mutationFn: () =>
-      translationId
-        ? api.strings.updateStatus(stringId, translationId, 'reviewed')
-        : Promise.reject(new Error('no translation')),
-    onSuccess: () => qc.invalidateQueries({ queryKey }),
-  });
-
   if (editing) {
     return (
       <div className={s.editContainer}>
@@ -57,20 +49,14 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
           }}
         />
         <div className={s.btnRow}>
-          <button
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-            className={s.btnSave}
-          >
+          <button onClick={() => save.mutate()} disabled={save.isPending} className={s.btnSave}>
             {t('common.save')}
           </button>
           <button onClick={() => setEditing(false)} className={s.btnCancel}>
             {t('common.cancel')}
           </button>
         </div>
-        {save.isError && (
-          <span className={s.saveError}>{save.error?.message}</span>
-        )}
+        {save.isError && <span className={s.saveError}>{save.error?.message}</span>}
       </div>
     );
   }
@@ -84,20 +70,8 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
       }}
       title={t('editor.clickToEdit')}
     >
-      <span className={text ? s.text : s.textEmpty}>
-        {text ?? t('editor.emptyClickToAdd')}
-      </span>
+      <span className={text ? s.text : s.textEmpty}>{text ?? t('editor.emptyClickToAdd')}</span>
       <div className={s.actions} onClick={(e) => e.stopPropagation()}>
-        {text && status !== 'reviewed' && status !== 'human' && translationId && (
-          <button
-            onClick={() => approve.mutate()}
-            disabled={approve.isPending}
-            className={s.btnApprove}
-            title={t('editor.markAsApproved')}
-          >
-            ✓
-          </button>
-        )}
         <button
           onClick={() => {
             setDraft(text ?? '');
@@ -111,4 +85,4 @@ export const InlineEditor = ({ stringId, translationId, text, status, queryKey }
       </div>
     </div>
   );
-}
+};

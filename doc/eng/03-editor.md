@@ -172,7 +172,7 @@ The panel also shows:
 - a character counter for the current translation draft
 - a max-length indicator when an active `max_length` QA rule matches the current row
 - inline placeholder highlighting for formatting tokens such as `%s`, `{0}`, `{Name}`, `$var`, `[TAG]`, and HTML-like tags
-- quick buttons for **Copy src**, **Review**, **Reject**, and **Save**
+- quick buttons for **Copy src** and **Save**
 
 If the record is a `BOOK` or the source contains HTML-like markup, the panel shows a **Book / HTML editor** button.
 That opens a split-pane modal with raw markup on one side and a live preview on the other.
@@ -268,45 +268,20 @@ Every string has a status that describes its translation state:
 How statuses change:
 
 - Saving a typed translation creates or updates a **Draft** translation.
-- **Review / Approve** actions mark it as `reviewed`.
-- **Reject** marks it as `rejected`.
+- With **Auto-approve on save** enabled in Settings, saves go directly to `reviewed`.
 - **Apply TM** creates `tm` or `fuzzy` statuses depending on match type.
 - Batch auto-translate creates `auto` translations.
 - Clearing removes the translation and returns the row to `untranslated`.
 
-### Status State Machine
+Valid status values are defined in `src/web/statusMachine.ts`. Automated pipelines
+(TM, LLM, import) write system statuses; manual edits in the editor save as `draft`
+unless auto-approve is enabled.
 
-Every status change is validated by a formal state machine (`src/web/statusMachine.ts`).
-Not every actor can move a translation to any status — the rules are as follows:
+Where you work on translations:
 
-| From (current)                                      | To (new)   | Who can do this                |
-| --------------------------------------------------- | ---------- | ------------------------------ |
-| _(none / any)_                                      | `draft`    | translator, reviewer, admin    |
-| _(any)_                                             | `tm`       | system only (TM engine)        |
-| _(any)_                                             | `fuzzy`    | system only (TM engine)        |
-| _(any)_                                             | `auto`     | system only (LLM batch)        |
-| _(any)_                                             | `human`    | system only (EET / CSV import) |
-| `draft`, `tm`, `fuzzy`, `auto`, `human`             | `reviewed` | reviewer, admin                |
-| `draft`, `tm`, `fuzzy`, `auto`, `human`, `reviewed` | `rejected` | reviewer, admin                |
-
-Key rules:
-
-- **Translators cannot approve** their own work — they can only save drafts.
-- **Reviewers can approve or reject** any non-deleted translation.
-- **Rejected strings** can be re-opened by saving a new text (→ `draft`) and then re-approved.
-- **System actor** (automated pipelines) bypasses all restrictions so imports and TM auto-apply always work.
-
-The frontend endpoint `GET /api/strings/status-transitions?from=<status>` returns the list of
-statuses reachable from the current one for the logged-in user, which the editor uses to
-enable or disable the Approve / Reject buttons accordingly.
-
-Where you can change status:
-
-- quick action buttons in the grid
-- buttons in the detail panel
-- context menu
-- keyboard shortcuts such as `Ctrl+Shift+A` and `Ctrl+Shift+R`
-- bulk approve/reject actions for selected rows
+- the mod editor grid and detail panel
+- inline editors on other pages
+- batch auto-translate for selected rows
 
 Badge colors in the current UI:
 
@@ -344,8 +319,6 @@ The current UI does **not** implement Shift+Click range selection.
 Available batch actions:
 
 - **Auto-translate N**: sends the selected rows to the LLM batch translation endpoint
-- **Approve N**: marks selected translations as reviewed
-- **Reject N**: marks selected translations as rejected
 - **Copy source → translation** for all selected rows from the context menu
 
 Batch actions appear in the toolbar when at least one row is selected.
@@ -354,10 +327,10 @@ right-click a selected row; right-clicking an unselected row acts on that row on
 
 **Select all matching:** the header checkbox selects every row matching the
 current filter (potentially the whole mod), not just the rows scrolled into view.
-**Approve / Reject** in this mode are resolved entirely on the server by filter,
-so they scale to any number of rows. The per-row text actions (clear, copy
-source, text transforms) apply to the currently loaded selected rows.
-Auto-translate is still limited to **100 strings per batch**.
+Auto-translate resolves the full filtered set on the server when "select all matching"
+is active, but each LLM request is still limited to **100 strings per batch**.
+The per-row text actions (clear, copy source, text transforms) apply to the
+currently loaded selected rows.
 
 Current limitation: there is no dedicated **copy best TM suggestion to all selected rows** action in the editor.
 
@@ -399,8 +372,6 @@ Right-click any row to open the context menu.
 
 The current context menu includes these actions, depending on the row state:
 
-- **Approve**: mark the row as reviewed
-- **Reject**: mark the row as rejected
 - **Clear translation**: delete the current translation
 - **Copy source → translation**: copy the source text into the translation field
 
@@ -413,8 +384,6 @@ If the row already has a translation, the menu also shows text utilities:
 
 If multiple rows are selected and the right-clicked row is part of that selection, the menu also shows bulk actions:
 
-- **Approve N rows**
-- **Reject N rows**
 - **Auto-translate N rows**
 - **Copy source → translation (N)**
 

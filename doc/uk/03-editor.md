@@ -171,7 +171,7 @@ Status dropdown підтримує:
 - лічильник символів для поточного translation draft
 - індикатор max-length, якщо для поточного рядка спрацьовує активне QA-правило `max_length`
 - inline-підсвітку placeholders і форматних токенів на кшталт `%s`, `{0}`, `{Name}`, `$var`, `[TAG]` та HTML-подібних тегів
-- швидкі кнопки **Copy src**, **Review**, **Reject** і **Save**
+- швидкі кнопки **Copy src** і **Save**
 
 Якщо запис має тип `BOOK` або source містить HTML-подібну markup, панель показує кнопку **Book / HTML editor**.
 Вона відкриває split-pane modal із raw markup з одного боку і live preview з іншого.
@@ -267,45 +267,20 @@ QA, залишається джерелом істини для перевірк
 Як статуси змінюються:
 
 - Збереження вручну введеного перекладу створює або оновлює **Draft**.
-- Дії **Review / Approve** ставлять статус `reviewed`.
-- **Reject** ставить `rejected`.
+- З увімкненим **Auto-approve on save** у Settings збереження одразу ставить `reviewed`.
 - **Apply TM** створює `tm` або `fuzzy` залежно від типу збігу.
 - Batch auto-translate створює `auto`.
 - Clear видаляє translation і повертає рядок у `untranslated`.
 
-### Машина станів статусів
+Допустимі значення статусів описані в `src/web/statusMachine.ts`. Автоматичні
+pipeline-и (TM, LLM, import) пишуть system-статуси; ручні правки в редакторі
+зберігаються як `draft`, якщо auto-approve вимкнено.
 
-Кожна зміна статусу перевіряється формальною машиною станів (`src/web/statusMachine.ts`).
-Не кожен актор може перевести переклад у будь-який статус — правила такі:
+Де працювати з перекладами:
 
-| З (поточний)                                        | В (новий)  | Хто може                       |
-| --------------------------------------------------- | ---------- | ------------------------------ |
-| _(немає / будь-який)_                               | `draft`    | translator, reviewer, admin    |
-| _(будь-який)_                                       | `tm`       | лише system (TM engine)        |
-| _(будь-який)_                                       | `fuzzy`    | лише system (TM engine)        |
-| _(будь-який)_                                       | `auto`     | лише system (LLM batch)        |
-| _(будь-який)_                                       | `human`    | лише system (EET / CSV import) |
-| `draft`, `tm`, `fuzzy`, `auto`, `human`             | `reviewed` | reviewer, admin                |
-| `draft`, `tm`, `fuzzy`, `auto`, `human`, `reviewed` | `rejected` | reviewer, admin                |
-
-Ключові правила:
-
-- **Перекладач не може затвердити** власну роботу — він може лише зберігати draft.
-- **Reviewer може approve або reject** будь-який не-deleted переклад.
-- **Відхилені рядки** можна повернути в роботу: збережіть новий текст (→ `draft`) і потім знову схваліть.
-- **System-актор** (автоматичні pipeline-и) не обмежений жодними правилами.
-
-UI-ендпоінт `GET /api/strings/status-transitions?from=<status>` повертає список
-досяжних статусів для поточного користувача — редактор використовує його, щоб
-вмикати або вимикати кнопки Approve / Reject.
-
-Де можна змінити статус:
-
-- quick action buttons у grid
-- кнопки в detail panel
-- context menu
-- гарячі клавіші на кшталт `Ctrl+Shift+A` і `Ctrl+Shift+R`
-- bulk approve/reject actions для selected rows
+- grid і detail panel редактора мода
+- inline-редактори на інших сторінках
+- batch auto-translate для вибраних рядків
 
 Кольори бейджів у поточному UI:
 
@@ -343,8 +318,6 @@ UI-ендпоінт `GET /api/strings/status-transitions?from=<status>` пове
 Доступні batch actions:
 
 - **Auto-translate N**: надсилає selected rows у LLM batch translation endpoint
-- **Approve N**: позначає selected translations як reviewed
-- **Reject N**: позначає selected translations як rejected
 - **Copy source → translation** для всіх selected rows через context menu
 
 Batch actions з’являються в toolbar, коли вибрано хоча б один рядок.
@@ -352,11 +325,10 @@ Context menu застосовує свої дії до **всього вибор
 по вибраному рядку; right-click по невибраному рядку діє лише на цей рядок.
 
 **Вибрати всі за фільтром:** checkbox у хедері вибирає всі рядки, що відповідають
-поточному фільтру (потенційно весь мод), а не лише видимі рядки. **Approve / Reject**
-у цьому режимі повністю виконуються на сервері за фільтром, тож масштабуються на
-будь-яку кількість рядків. Дії над текстом окремих рядків (clear, copy source,
-text transforms) застосовуються до завантажених вибраних рядків. Auto-translate
-все ще обмежено **100 рядками за пакет**.
+поточному фільтру (потенційно весь мод), а не лише видимі рядки. Auto-translate
+у режимі «вибрати всі за фільтром» збирає ID на сервері, але кожен LLM-запит
+все ще обмежено **100 рядками за пакет**. Дії над текстом окремих рядків (clear,
+copy source, text transforms) застосовуються до завантажених вибраних рядків.
 
 Поточне обмеження: у редакторі немає окремої bulk-дії **скопіювати найкращу TM suggestion у всі selected rows**.
 
@@ -398,8 +370,6 @@ Scope у поточній реалізації:
 
 Поточне context menu включає такі дії, залежно від стану рядка:
 
-- **Approve**: позначити рядок як reviewed
-- **Reject**: позначити рядок як rejected
 - **Clear translation**: видалити поточний переклад
 - **Copy source → translation**: скопіювати source text у translation field
 
@@ -412,8 +382,6 @@ Scope у поточній реалізації:
 
 Якщо вибрано кілька рядків і рядок, по якому зроблено right-click, входить до selection, меню також показує bulk actions:
 
-- **Approve N rows**
-- **Reject N rows**
 - **Auto-translate N rows**
 - **Copy source → translation (N)**
 

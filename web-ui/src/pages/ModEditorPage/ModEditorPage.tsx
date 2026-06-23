@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow, type StringFilterParams } from '../../api';
@@ -244,50 +244,14 @@ export const ModEditorPage = () => {
     [strings, isRowSelected],
   );
 
-  const {
-    saveMutation,
-    approveMutation,
-    rejectMutation,
-    clearMutation,
-    tmApplyMut,
-    bulkReviewMutation,
-    bulkReviewByFilterMutation,
-    saveIndicator,
-  } = useEditorMutations({
+  const { saveMutation, clearMutation, tmApplyMut, saveIndicator } = useEditorMutations({
     modId,
     srcLang,
     targetLang,
     refetchStats,
     activeRowRef,
     setActiveRow,
-    clearSelection,
   });
-
-  const bulkReviewPending = bulkReviewMutation.isPending || bulkReviewByFilterMutation.isPending;
-
-  /** Approve / reject the whole selection (explicit IDs or by filter). */
-  const handleBulkReview = useCallback(
-    (reviewStatus: 'reviewed' | 'rejected') => {
-      if (!hasSelection) return;
-      if (selectAllMatching) {
-        bulkReviewByFilterMutation.mutate({
-          filter: buildFilter(),
-          status: reviewStatus,
-          excludeIds: [...selected],
-        });
-      } else {
-        bulkReviewMutation.mutate({ ids: [...selected], status: reviewStatus });
-      }
-    },
-    [
-      hasSelection,
-      selectAllMatching,
-      selected,
-      buildFilter,
-      bulkReviewByFilterMutation,
-      bulkReviewMutation,
-    ],
-  );
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
@@ -405,16 +369,6 @@ export const ModEditorPage = () => {
       return;
     }
     saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
-  };
-
-  const handleApprove = (row: StringRow) => {
-    if (!row.translation_id) return;
-    approveMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
-  };
-
-  const handleReject = (row: StringRow) => {
-    if (!row.translation_id) return;
-    rejectMutation.mutate({ stringId: row.string_id, translationId: row.translation_id });
   };
 
   const handleClear = (row: StringRow) => {
@@ -556,10 +510,8 @@ export const ModEditorPage = () => {
     [hasSelection, isRowSelected],
   );
 
-  // Per-row text operations (transform / copy-source / clear) act on the loaded
-  // selected rows when invoked on a selection, otherwise on the clicked row.
-  // They are intentionally bounded to in-memory rows; "approve / reject all" is
-  // the only action that scales to the full filtered set (handled server-side).
+  // Per-row text operations act on the loaded selected rows when invoked on a
+  // selection, otherwise on the clicked row.
   const applyTextTransform = useCallback(
     async (row: StringRow, transform: (text: string) => string) => {
       const targetRows = ctxActsOnSelection(row)
@@ -601,18 +553,6 @@ export const ModEditorPage = () => {
     },
     // handleClear is a stable-enough page handler; intentionally omitted.
     [ctxActsOnSelection, selectedLoadedRows, clearMutation], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  /** Context-menu approve/reject: whole selection or just the clicked row. */
-  const ctxApprove = useCallback(
-    (row: StringRow) =>
-      ctxActsOnSelection(row) ? handleBulkReview('reviewed') : handleApprove(row),
-    [ctxActsOnSelection, handleBulkReview], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-  const ctxReject = useCallback(
-    (row: StringRow) =>
-      ctxActsOnSelection(row) ? handleBulkReview('rejected') : handleReject(row),
-    [ctxActsOnSelection, handleBulkReview], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
@@ -657,8 +597,6 @@ export const ModEditorPage = () => {
     translAreaRef,
     flushAutosave,
     handleSave,
-    handleApprove,
-    handleReject,
     handleCopySource,
     handleClear,
     handleRowOpen,
@@ -692,7 +630,6 @@ export const ModEditorPage = () => {
           isSuccess: tmApplyMut.isSuccess,
           applied: (tmApplyMut.data as { applied: number } | undefined)?.applied ?? 0,
         }}
-        bulkReviewPending={bulkReviewPending}
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
@@ -726,7 +663,6 @@ export const ModEditorPage = () => {
         aiTranslateRunning={aiTranslate.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
-        onBulkReview={handleBulkReview}
         onNextUntranslated={handleNextUntranslated}
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
@@ -737,9 +673,15 @@ export const ModEditorPage = () => {
       {translateDoneCount !== null && (
         <div className={styles.translateBanner}>
           <span>{t('modEditor.translateDone', { count: translateDoneCount })}</span>
-          <Link to={`/review-queue?modId=${modId}`} className={styles.translateBannerLink}>
-            {t('modEditor.openReviewQueue')}
-          </Link>
+          <button
+            className={styles.translateBannerLink}
+            onClick={() => {
+              setStatus('draft');
+              setTranslateDoneCount(null);
+            }}
+          >
+            {t('modEditor.showDraftsAction')}
+          </button>
           <button
             className={styles.translateBannerDismiss}
             onClick={() => setTranslateDoneCount(null)}
@@ -790,8 +732,6 @@ export const ModEditorPage = () => {
               onSort={handleSort}
               onColumnFilterChange={handleColumnFilterChange}
               onContextMenu={handleContextMenu}
-              onApprove={handleApprove}
-              onReject={handleReject}
               onClear={handleClear}
               onCopySource={(row) => {
                 handleRowOpen(row);
@@ -816,8 +756,6 @@ export const ModEditorPage = () => {
                 onDraftChange={setDraftTranslation}
                 onSave={handleSave}
                 onCopySource={handleCopySource}
-                onApprove={() => handleApprove(activeRow)}
-                onReject={() => handleReject(activeRow)}
                 onTabChange={setActiveTab}
                 onOpenBookEditor={() => setShowBookEditor(true)}
               />
@@ -920,10 +858,7 @@ export const ModEditorPage = () => {
           anchor={ctxMenu}
           selectedCount={selectedCount}
           actsOnSelection={ctxActsOnSelection(ctxMenu.row)}
-          bulkReviewPending={bulkReviewPending}
           onClose={() => setCtxMenu(null)}
-          onApprove={ctxApprove}
-          onReject={ctxReject}
           onClear={ctxClear}
           onCopySource={(row) => {
             handleRowOpen(row);

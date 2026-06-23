@@ -32,7 +32,6 @@ interface GameStats {
   translatedStrings: number;
   approvedStrings: number;
   fuzzyStrings: number;
-  reviewMods: number;
   releaseReadyMods: number;
   overallPct: number;
 }
@@ -45,7 +44,6 @@ const computeStats = (mods: Mod[]): GameStats => {
   let translatedStrings = 0;
   let approvedStrings = 0;
   let fuzzyStrings = 0;
-  let reviewMods = 0;
   let releaseReadyMods = 0;
 
   for (const mod of mods) {
@@ -55,9 +53,6 @@ const computeStats = (mods: Mod[]): GameStats => {
     approvedStrings += stats.approved;
     fuzzyStrings += stats.fuzzy;
 
-    if (stats.fuzzy > 0 || stats.translated > stats.approved) {
-      reviewMods += 1;
-    }
     if (stats.total > 0 && stats.approved >= stats.total) {
       releaseReadyMods += 1;
     }
@@ -71,7 +66,6 @@ const computeStats = (mods: Mod[]): GameStats => {
     translatedStrings,
     approvedStrings,
     fuzzyStrings,
-    reviewMods,
     releaseReadyMods,
     overallPct,
   };
@@ -200,9 +194,6 @@ export const GameHubPage = () => {
               <span className={s.releaseSummaryItem}>
                 {t('gameHub.releaseMeta', { count: stats.releaseReadyMods })}
               </span>
-              <span className={s.releaseSummaryItem}>
-                {t('gameHub.reviewMeta', { count: stats.reviewMods })}
-              </span>
             </div>
           </div>
 
@@ -247,17 +238,6 @@ export const GameHubPage = () => {
                 : t('gameHub.importsMetaEmpty')}
             </span>
           )}
-        </Link>
-
-        <Link to="/review-queue" className={s.navCard}>
-          <span className={s.navKicker}>{t('gameHub.workflowQuality')}</span>
-          <h2 className={s.navTitle}>{t('gameHub.reviewLink')}</h2>
-          <p className={s.navDesc}>{t('gameHub.reviewDesc')}</p>
-          <span className={s.navMeta}>
-            {stats?.reviewMods
-              ? t('gameHub.reviewMeta', { count: stats.reviewMods })
-              : t('gameHub.reviewMetaEmpty')}
-          </span>
         </Link>
 
         <Link to="/diff" className={s.navCard}>

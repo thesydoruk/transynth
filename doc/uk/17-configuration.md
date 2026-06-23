@@ -236,4 +236,4 @@ cat backup_20250101.sql | docker compose exec -T db psql -U localizer localizer
 
 ---
 
-← [Черга рев’ю](15-review-queue.md) | [Головна](README.md) | [Технологічний стек](19-technology-stack.md) →
+← [Перевірка узгодженості](14-coherence.md) | [Головна](README.md) | [Технологічний стек](19-technology-stack.md) →

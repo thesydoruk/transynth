@@ -227,9 +227,8 @@ export type StringsResult = {
 };
 
 /**
- * Filter criteria shared by the string-grid list query, the "matching IDs"
- * lookup and the bulk-review-by-filter mutation. Mirrors the server-side
- * `StringsFilter` minus pagination/sort fields.
+ * Filter criteria shared by the string-grid list query and the "matching IDs"
+ * lookup. Mirrors the server-side `StringsFilter` minus pagination/sort fields.
  */
 export type StringFilterParams = {
   srcLang?: string;
@@ -425,39 +424,6 @@ export type CoherenceResult = {
   groups: CoherenceGroup[];
   /** Total number of inconsistency groups (before pagination). */
   total: number;
-};
-
-/**
- * One row from the review queue — a string that has been automatically
- * translated (or is a draft/fuzzy match) and needs human verification.
- */
-export type ReviewQueueRow = {
-  string_id: number;
-  mod_id: number;
-  mod_name: string;
-  mod_game: string;
-  formid_hex: string;
-  signature: string;
-  path: string;
-  edid: string | null;
-  source: string;
-  translation_id: number;
-  translation: string;
-  status: string;
-  /** Confidence in [0, 1] — null means unknown.  Lower = higher review priority. */
-  confidence: number | null;
-  model: string | null;
-  qa_issue_count: number;
-  /** Display name (or username) of the last human who saved this translation. Null for automated strings. */
-  translator_name: string | null;
-};
-
-/** Paginated result from GET /api/review-queue. */
-export type ReviewQueueResult = {
-  rows: ReviewQueueRow[];
-  total: number;
-  page: number;
-  pageSize: number;
 };
 
 /**
@@ -1122,31 +1088,6 @@ export const api = {
     /** List older versions (same mod name, different file hash) for a given mod ID */
     previousVersions: (modId: number) =>
       req<PreviousVersionRow[]>(`/api/mods/${modId}/previous-versions`),
-    bulkReview: (
-      modId: number,
-      stringIds: number[],
-      status: 'reviewed' | 'rejected',
-      targetLang = getTgtLang(),
-    ) =>
-      req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
-        method: 'PATCH',
-        body: JSON.stringify({ stringIds, status, targetLang }),
-      }),
-    /**
-     * "Select all matching" bulk review: the server resolves the full filtered
-     * set and applies `status`, skipping any `excludeIds` the user de-selected.
-     */
-    bulkReviewByFilter: (
-      modId: number,
-      filter: StringFilterParams,
-      status: 'reviewed' | 'rejected',
-      excludeIds: number[] = [],
-      targetLang = getTgtLang(),
-    ) =>
-      req<{ updated: number }>(`/api/mods/${modId}/bulk-review`, {
-        method: 'PATCH',
-        body: JSON.stringify({ filter, status, excludeIds, targetLang }),
-      }),
   },
 
   stats: {
@@ -1253,11 +1194,6 @@ export const api = {
           method: 'DELETE',
         },
       ),
-    updateStatus: (stringId: number, translationId: number, status: string) =>
-      req<{ ok: boolean }>(`/api/strings/${stringId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ translationId, status }),
-      }),
     history: (stringId: number, targetLang = getTgtLang()) =>
       req<TranslationHistoryEntry[]>(
         `/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`,
@@ -1794,35 +1730,6 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ targetLang }),
       }),
-  },
-
-  /**
-   * Review queue — cross-mod list of translations that need human review,
-   * sorted by confidence ascending (least certain first).
-   */
-  reviewQueue: {
-    /**
-     * Returns a paginated list of strings awaiting review.
-     * Defaults: statuses = [auto, fuzzy, tm, draft], all mods, no confidence ceiling.
-     */
-    list: (params?: {
-      targetLang?: string;
-      statuses?: string[];
-      modId?: number;
-      maxConfidence?: number;
-      page?: number;
-      pageSize?: number;
-    }) => {
-      const qs = new URLSearchParams();
-      if (params?.targetLang) qs.set('targetLang', params.targetLang);
-      if (params?.statuses?.length) qs.set('statuses', params.statuses.join(','));
-      if (params?.modId !== undefined) qs.set('modId', String(params.modId));
-      if (params?.maxConfidence !== undefined)
-        qs.set('maxConfidence', String(params.maxConfidence));
-      if (params?.page !== undefined) qs.set('page', String(params.page));
-      if (params?.pageSize !== undefined) qs.set('pageSize', String(params.pageSize));
-      return req<ReviewQueueResult>(`/api/review-queue?${qs}`);
-    },
   },
 
   /**

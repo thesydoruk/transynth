@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction, type RefObject } from 'react';
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { api, type StringRow, type StringsResult, type StringFilterParams } from '../../../api';
+import { api, type StringRow, type StringsResult } from '../../../api';
 
 /**
  * Parameters accepted by {@link useEditorMutations}.
@@ -8,10 +8,10 @@ import { api, type StringRow, type StringsResult, type StringFilterParams } from
 export interface UseEditorMutationsParams {
   /** Numeric mod identifier. */
   modId: number;
+  /** Target language code for all save operations. */
+  targetLang: string;
   /** Source language code (used by TM-apply). */
   srcLang: string;
-  /** Target language code for all save / review operations. */
-  targetLang: string;
   /** Callback to re-fetch the stats query after a mutation succeeds. */
   refetchStats: () => void;
   /**
@@ -22,19 +22,10 @@ export interface UseEditorMutationsParams {
   activeRowRef: RefObject<StringRow | null>;
   /** State setter for the active (detail-panel) row. */
   setActiveRow: Dispatch<SetStateAction<StringRow | null>>;
-  /** Clears the current selection (both explicit and "all matching" modes). */
-  clearSelection: () => void;
 }
 
 /**
- * Encapsulates the six `useMutation` calls used by the mod-editor page and
- * the `saveIndicator` state that tracks the visual "saving → saved" cycle.
- *
- * Each mutation's `onSuccess` callback invalidates the relevant query caches
- * and updates the active-row state when appropriate.
- *
- * @param params - IDs, language codes, refs and setters needed by the mutations.
- * @returns Mutation objects and the save-indicator state.
+ * Encapsulates the mod-editor mutations and the save-indicator state.
  */
 export function useEditorMutations({
   modId,
@@ -43,7 +34,6 @@ export function useEditorMutations({
   refetchStats,
   activeRowRef,
   setActiveRow,
-  clearSelection,
 }: UseEditorMutationsParams) {
   const qc = useQueryClient();
 
@@ -61,13 +51,10 @@ export function useEditorMutations({
     void refetchStats();
   };
 
-  /* ── Save translation ── */
   const saveMutation = useMutation({
     mutationFn: ({ stringId, text }: { stringId: number; text: string }) =>
       api.strings.saveTranslation(stringId, text, 'draft', targetLang),
     onMutate: ({ stringId, text }) => {
-      /* Optimistic update: patch the cached rows immediately. The strings
-       * query is an infinite query, so the cache holds accumulated pages. */
       qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
         if (!old) return old;
         return {
@@ -102,29 +89,6 @@ export function useEditorMutations({
     },
   });
 
-  /* ── Approve (review) ── */
-  const approveMutation = useMutation({
-    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
-      api.strings.updateStatus(stringId, translationId, 'reviewed'),
-    onSuccess: () => {
-      invalidateAll();
-      const row = activeRowRef.current;
-      if (row) setActiveRow({ ...row, status: 'reviewed' });
-    },
-  });
-
-  /* ── Reject ── */
-  const rejectMutation = useMutation({
-    mutationFn: ({ stringId, translationId }: { stringId: number; translationId: number }) =>
-      api.strings.updateStatus(stringId, translationId, 'rejected'),
-    onSuccess: () => {
-      invalidateAll();
-      const row = activeRowRef.current;
-      if (row) setActiveRow({ ...row, status: 'rejected' });
-    },
-  });
-
-  /* ── Clear translation ── */
   const clearMutation = useMutation({
     mutationFn: ({ stringId }: { stringId: number }) =>
       api.strings.clearTranslation(stringId, targetLang),
@@ -135,7 +99,6 @@ export function useEditorMutations({
     },
   });
 
-  /* ── TM auto-apply ── */
   const tmApplyMut = useMutation({
     mutationFn: () => api.mods.tmApply(modId, srcLang, targetLang),
     onSuccess: () => {
@@ -144,41 +107,10 @@ export function useEditorMutations({
     },
   });
 
-  /* ── Bulk review (approve / reject explicitly selected rows) ── */
-  const bulkReviewMutation = useMutation({
-    mutationFn: ({ ids, status }: { ids: number[]; status: 'reviewed' | 'rejected' }) =>
-      api.mods.bulkReview(modId, ids, status, targetLang),
-    onSuccess: () => {
-      invalidateAll();
-      clearSelection();
-    },
-  });
-
-  /* ── Bulk review by filter ("select all matching" mode) ── */
-  const bulkReviewByFilterMutation = useMutation({
-    mutationFn: ({
-      filter,
-      status,
-      excludeIds,
-    }: {
-      filter: StringFilterParams;
-      status: 'reviewed' | 'rejected';
-      excludeIds: number[];
-    }) => api.mods.bulkReviewByFilter(modId, filter, status, excludeIds, targetLang),
-    onSuccess: () => {
-      invalidateAll();
-      clearSelection();
-    },
-  });
-
   return {
     saveMutation,
-    approveMutation,
-    rejectMutation,
     clearMutation,
     tmApplyMut,
-    bulkReviewMutation,
-    bulkReviewByFilterMutation,
     saveIndicator,
   };
 }

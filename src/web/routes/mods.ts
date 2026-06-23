@@ -8,11 +8,8 @@ import {
   carryOverTranslations,
   applyImportedModStringsAsTranslations,
   listModLangs,
-  bulkUpdateTranslationStatus,
-  bulkUpdateTranslationStatusByFilter,
   listPreviousVersions,
 } from '../queries';
-import type { StringsFilter } from '../queries';
 import { applyTMToMod } from '../tm';
 import {
   findRunningApplyImportedJob,
@@ -428,56 +425,4 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     },
   );
-
-  // PATCH /api/mods/:id/bulk-review — batch approve/reject strings.
-  //
-  // Two mutually-exclusive modes:
-  //   • explicit  — `stringIds: number[]` lists the exact rows to update.
-  //   • by-filter — `filter` describes the current grid query ("select all
-  //                 matching"); the server resolves the full target set and
-  //                 applies the change, honouring `excludeIds` de-selections.
-  app.patch<{
-    Params: { id: string };
-    Body: {
-      stringIds?: number[];
-      status: 'reviewed' | 'rejected';
-      targetLang?: string;
-      filter?: Omit<StringsFilter, 'modId' | 'page' | 'pageSize'>;
-      excludeIds?: number[];
-    };
-  }>('/api/mods/:id/bulk-review', async (req, reply) => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-
-    const { stringIds, status, targetLang = CONFIG.defaultTgtLang, filter, excludeIds } = req.body;
-    if (status !== 'reviewed' && status !== 'rejected')
-      return reply.code(400).send({ error: 'status must be reviewed or rejected' });
-
-    const actor = 'admin' as const;
-
-    if (filter) {
-      log.info(
-        `PATCH /api/mods/${id}/bulk-review status=${status} mode=filter exclude=${excludeIds?.length ?? 0} actor=${actor}`,
-      );
-      const updated = await bulkUpdateTranslationStatusByFilter(
-        db,
-        id,
-        { ...filter, modId: id, targetLang },
-        status,
-        targetLang,
-        actor,
-        excludeIds ?? [],
-      );
-      return reply.send({ updated });
-    }
-
-    if (!Array.isArray(stringIds) || stringIds.length === 0)
-      return reply.code(400).send({ error: 'stringIds or filter is required' });
-
-    log.info(
-      `PATCH /api/mods/${id}/bulk-review status=${status} count=${stringIds.length} actor=${actor}`,
-    );
-    const updated = await bulkUpdateTranslationStatus(db, id, stringIds, status, targetLang, actor);
-    return reply.send({ updated });
-  });
 };

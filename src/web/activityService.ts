@@ -24,7 +24,7 @@ export interface ActivityEntry {
  *
  * @param db       - Database pool or client.
  * @param userId   - The user who performed the action (null if unknown).
- * @param action   - Short action verb: translate, import, approve, export, etc.
+ * @param action   - Short action verb: translate, import, export, etc.
  * @param entityType - The type of entity affected (mod, string, translation, glossary, user).
  * @param entityId - The primary key of the affected entity.
  * @param details  - Optional JSON object with additional context.

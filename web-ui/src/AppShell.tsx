@@ -14,7 +14,6 @@ import {
   ModsPage,
   OpsPage,
   QARulesPage,
-  ReviewQueuePage,
   SettingsPage,
 } from './pages';
 import { AppNav } from './AppNav';
@@ -48,7 +47,6 @@ export const AppShell = () => {
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/qa-rules" element={<QARulesPage />} />
           <Route path="/coherence" element={<CoherencePage />} />
-          <Route path="/review-queue" element={<ReviewQueuePage />} />
           <Route path="/ops" element={<OpsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

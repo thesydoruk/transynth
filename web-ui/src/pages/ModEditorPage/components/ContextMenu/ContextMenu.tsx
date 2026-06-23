@@ -14,12 +14,8 @@ export interface ContextMenuProps {
    * is part of an active selection); otherwise they target the clicked row.
    */
   actsOnSelection: boolean;
-  /** Whether the bulk-review mutation is pending. */
-  bulkReviewPending: boolean;
 
   onClose: () => void;
-  onApprove: (row: StringRow) => void;
-  onReject: (row: StringRow) => void;
   onClear: (row: StringRow) => void;
   onCopySource: (row: StringRow) => void;
   onTextTransform: (row: StringRow, transform: (text: string) => string) => void;
@@ -29,20 +25,12 @@ export interface ContextMenuProps {
 
 /**
  * Fixed-position dropdown that appears on right-click over a grid row.
- *
- * When the clicked row is part of an active selection ({@link actsOnSelection}),
- * every action targets the whole selection and labels show the selected count.
- * Otherwise the actions operate on the single clicked row, with text transforms
- * (upper / lower / capitalise / trim) available for translated rows.
  */
 export const ContextMenu = ({
   anchor,
   selectedCount,
   actsOnSelection,
-  bulkReviewPending,
   onClose,
-  onApprove,
-  onReject,
   onClear,
   onCopySource,
   onTextTransform,
@@ -54,10 +42,8 @@ export const ContextMenu = ({
 
   const row = anchor.row;
   const hasTrans = !!row.translation;
-  const hasTransId = !!row.translation_id;
   const bulkCount = selectedCount;
 
-  /* Reposition the menu if it would overflow the viewport. */
   useEffect(() => {
     const el = menuRef.current;
     if (!el) return;
@@ -71,7 +57,6 @@ export const ContextMenu = ({
     el.style.opacity = '1';
   }, [anchor]);
 
-  /* Close when clicking anywhere outside the menu. */
   useEffect(() => {
     const handler = () => onClose();
     window.addEventListener('click', handler);
@@ -86,25 +71,7 @@ export const ContextMenu = ({
       onClick={onClose}
     >
       {actsOnSelection ? (
-        /* ── Selection actions (apply to every selected row) ── */
         <>
-          <button
-            className={styles.ctxItem}
-            onClick={() => onApprove(row)}
-            disabled={bulkReviewPending}
-          >
-            <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkApprove', { count: bulkCount })}</span>
-            <span className={styles.ctxKey}>F10</span>
-          </button>
-          <button
-            className={styles.ctxItem}
-            onClick={() => onReject(row)}
-            disabled={bulkReviewPending}
-          >
-            <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkReject', { count: bulkCount })}</span>
-          </button>
           <button className={styles.ctxItem} onClick={() => onClear(row)}>
             <span className={styles.ctxIcon}>⌫</span>
             <span className={styles.ctxLabel}>{t('ctx.bulkClear', { count: bulkCount })}</span>
@@ -141,22 +108,7 @@ export const ContextMenu = ({
           </button>
         </>
       ) : (
-        /* ── Single-row actions ── */
         <>
-          {hasTrans && hasTransId && row.status !== 'reviewed' && row.status !== 'human' && (
-            <button className={styles.ctxItem} onClick={() => onApprove(row)}>
-              <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>✔</span>
-              <span className={styles.ctxLabel}>{t('ctx.approve')}</span>
-              <span className={styles.ctxKey}>Ctrl+Shift+A</span>
-            </button>
-          )}
-          {hasTrans && hasTransId && row.status !== 'rejected' && (
-            <button className={styles.ctxItem} onClick={() => onReject(row)}>
-              <span className={`${styles.ctxIcon} ${styles.ctxIconRed}`}>✖</span>
-              <span className={styles.ctxLabel}>{t('ctx.reject')}</span>
-              <span className={styles.ctxKey}>Ctrl+Shift+R</span>
-            </button>
-          )}
           <button className={styles.ctxItem} onClick={() => onClear(row)}>
             <span className={styles.ctxIcon}>⌫</span>
             <span className={styles.ctxLabel}>{t('ctx.clear')}</span>

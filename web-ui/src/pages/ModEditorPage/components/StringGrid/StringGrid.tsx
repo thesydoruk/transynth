@@ -58,8 +58,6 @@ export interface StringGridProps {
   onSort: (col: SortCol) => void;
   onColumnFilterChange: (col: keyof ColumnFilters, value: string) => void;
   onContextMenu: (e: React.MouseEvent, row: StringRow) => void;
-  onApprove: (row: StringRow) => void;
-  onReject: (row: StringRow) => void;
   onClear: (row: StringRow) => void;
   onCopySource: (row: StringRow) => void;
 }
@@ -95,8 +93,6 @@ export const StringGrid = ({
   onSort,
   onColumnFilterChange,
   onContextMenu,
-  onApprove,
-  onReject,
   onClear,
   onCopySource,
 }: StringGridProps) => {
@@ -360,27 +356,6 @@ export const StringGrid = ({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className={styles.actionBtnRow}>
-                      {row.translation &&
-                        row.status !== 'reviewed' &&
-                        row.status !== 'human' &&
-                        row.translation_id && (
-                          <button
-                            className={styles.actionBtnBlue}
-                            title={t('modEditor.confirm')}
-                            onClick={() => onApprove(row)}
-                          >
-                            V
-                          </button>
-                        )}
-                      {row.translation && row.status !== 'rejected' && row.translation_id && (
-                        <button
-                          className={styles.actionBtnRed}
-                          title={t('modEditor.reject')}
-                          onClick={() => onReject(row)}
-                        >
-                          R
-                        </button>
-                      )}
                       <button
                         className={styles.actionBtnRed}
                         title={t('modEditor.clearTranslation')}

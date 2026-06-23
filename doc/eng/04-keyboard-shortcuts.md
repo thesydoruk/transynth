@@ -50,29 +50,23 @@ Navigation details:
 
 ---
 
-## Status Shortcuts
+## Editing Shortcuts
 
 | Shortcut       | Action                                          |
 | -------------- | ----------------------------------------------- |
-| `Ctrl+Shift+A` | Approve the active row                          |
-| `Ctrl+Shift+R` | Reject the active row                           |
 | `Ctrl+Shift+C` | Copy the source text into the translation field |
 | `Ctrl+Shift+X` | Clear the current translation                   |
 | `Space`        | Toggle selection for the active row             |
 | `Ctrl+A`       | Select or deselect all rows on the current page |
 
-Important corrections:
+Important notes:
 
-- `Ctrl+Shift+R` rejects the active translation; it does **not** reset the row to empty.
 - `Ctrl+Shift+C` copies source text; it does **not** apply a TM suggestion.
 - `Ctrl+Shift+X` clears the translation; it does **not** trigger LLM translation.
 - `Ctrl+Shift+E` toggles the Detail Panel; it does **not** open ESP Explorer.
-- `Space` toggles row selection; it does **not** toggle approval state.
+- `Space` toggles row selection.
 
-Current limitation:
-
-- The built-in keyboard handlers operate on the **active row**, not on the whole multi-selection, for approve/reject/copy/clear.
-- Bulk operations for multiple selected rows are available through toolbar buttons and the context menu, not through separate keyboard shortcuts.
+Bulk operations for multiple selected rows are available through toolbar buttons and the context menu, not through separate keyboard shortcuts.
 
 There are no documented shortcuts such as `Ctrl+D` for Draft or a direct keyboard shortcut for opening Search & Replace.
 
@@ -90,7 +84,7 @@ There are no documented shortcuts such as `Ctrl+D` for Draft or a direct keyboar
 Clarifications for the current implementation:
 
 - Global keyboard handlers ignore most shortcuts while you are typing in an `input`, `select`, or `textarea`, except for actions intentionally allowed there such as `Escape`, `Ctrl+S`, and the `Ctrl+Shift+...` actions.
-- Multi-row batch actions are primarily exposed in the toolbar and context menu. Keyboard shortcuts such as `Ctrl+Shift+A` still act on the active row.
+- Multi-row batch actions are primarily exposed in the toolbar and context menu.
 - If browser extensions or the browser itself intercept a shortcut like `Ctrl+S`, use a clean browser profile or disable conflicting extensions for the app.
 
 Modal-specific note:

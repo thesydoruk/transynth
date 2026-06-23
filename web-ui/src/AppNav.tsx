@@ -20,7 +20,6 @@ const NAV_LINKS: NavLinkDescriptor[] = [
   { to: '/glossary', labelKey: 'nav.glossary', exact: false },
   { to: '/diff', labelKey: 'nav.diff', exact: false },
   { to: '/coherence', labelKey: 'nav.coherence', exact: false },
-  { to: '/review-queue', labelKey: 'nav.reviewQueue', exact: false },
 ];
 
 export const AppNav = () => {

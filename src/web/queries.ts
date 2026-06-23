@@ -6,8 +6,7 @@ import { CONFIG } from '../config';
 import type { GameType } from '../types';
 import { findReferenceExamples, type RagReferenceExample } from '../llm/ragService';
 import { extractProtectedTokens } from '../utils/placeholders';
-import { assertTransition, isValidTranslationStatus } from './statusMachine';
-import type { TranslationStatus, StatusActor } from './statusMachine';
+import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from './ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImportBulk';
 
@@ -480,8 +479,8 @@ const SORT_COLUMNS: Record<string, string> = {
 };
 
 /**
- * Builds the shared WHERE-clause fragments used by {@link listStrings},
- * {@link listMatchingStringIds} and the bulk-by-filter mutation.
+ * Builds the shared WHERE-clause fragments used by {@link listStrings} and
+ * {@link listMatchingStringIds}.
  *
  * Param `$1` is always reserved for `modId` (already pushed into `values`),
  * so callers should start their own positional params at the returned `idx`.
@@ -1148,65 +1147,6 @@ export const upsertTranslation = async (
   scheduleRagSync(db, translationId);
 
   return { id: translationId, text, status };
-};
-
-export const updateTranslationStatus = async (
-  db: Tx,
-  translationId: number,
-  status: string,
-  /** Who is requesting the change. Defaults to 'system' for backward-compat with
-   *  internal callers (TM engine, import pipelines) that don't supply an actor. */
-  actor: StatusActor = 'system',
-) => {
-  // Validate the requested status value at the API boundary.
-  if (!isValidTranslationStatus(status)) {
-    throw Object.assign(new Error(`Invalid status value: '${status}'`), { statusCode: 400 });
-  }
-
-  // Fetch the current status so the state machine can enforce allowed transitions.
-  const { rows: current } = await db.query<{ status: TranslationStatus }>(
-    `SELECT status FROM translations WHERE id = $1`,
-    [translationId],
-  );
-  const currentStatus = current[0]?.status ?? null;
-
-  // Throws with statusCode 403 when the transition is illegal for this actor.
-  assertTransition(currentStatus, status, actor);
-
-  const { rows } = await db.query(
-    `UPDATE translations
-     SET status = $1, updated_at = NOW()
-     WHERE id = $2
-     RETURNING id, src_string_id, target_lang, text, status, provenance, model`,
-    [status, translationId],
-  );
-
-  const updated = rows[0] as
-    | {
-        id: number;
-        src_string_id: number;
-        target_lang: string;
-        text: string;
-        status: TranslationStatus;
-        provenance: string | null;
-        model: string | null;
-      }
-    | undefined;
-
-  if (!updated) return;
-
-  await recordTranslationRevision(db, {
-    stringId: updated.src_string_id,
-    translationId: updated.id,
-    targetLang: updated.target_lang,
-    text: updated.text,
-    status: updated.status,
-    provenance: updated.provenance,
-    model: updated.model,
-    note: 'status_change',
-  });
-  await refreshQAIssues(db, updated.src_string_id, updated.target_lang);
-  scheduleRagSync(db, updated.id);
 };
 
 export const deleteTranslation = async (
@@ -2282,147 +2222,6 @@ export const enforceGlossary = async (
   return { checked: strings.length, violations };
 };
 
-// ── Review queue ──────────────────────────────────────────────────────────────
-
-/**
- * One row returned by the review queue — a translated string that needs
- * human review, including its mod context and current confidence score.
- */
-export type ReviewQueueRow = {
-  string_id: number;
-  mod_id: number;
-  mod_name: string;
-  mod_game: string;
-  formid_hex: string;
-  signature: string;
-  path: string;
-  edid: string | null;
-  source: string;
-  translation_id: number;
-  translation: string;
-  status: string;
-  /** Confidence in the range [0, 1].  Lower = higher review priority. */
-  confidence: number | null;
-  model: string | null;
-  qa_issue_count: number;
-  /** Display name of the last human who saved this translation. Null for automated strings. */
-  translator_name: string | null;
-};
-
-/** Paginated result for the review queue. */
-export type ReviewQueueResult = {
-  rows: ReviewQueueRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
-
-/**
- * Returns a cross-mod paginated list of translations whose status indicates
- * they need human review (auto / fuzzy / tm / draft by default), sorted by
- * confidence ascending so the least-certain strings surface first.
- *
- * @param db             - Database connection or pool.
- * @param targetLang     - Language code to query (e.g. 'uk').
- * @param statuses       - Array of translation statuses to include.
- * @param modId          - Optional: limit results to a single mod.
- * @param maxConfidence  - Optional: exclude strings with confidence > this value.
- * @param page           - 1-based page number.
- * @param pageSize       - Max rows per page (clamped to 1–200).
- */
-export const listReviewQueue = async (
-  db: Tx,
-  targetLang: string,
-  statuses: string[],
-  modId: number | null,
-  maxConfidence: number | null,
-  page: number,
-  pageSize: number,
-  srcLang = CONFIG.defaultSrcLang,
-): Promise<ReviewQueueResult> => {
-  const effectivePage = Math.max(1, page);
-  const effectivePageSize = Math.min(200, Math.max(1, pageSize));
-  const offset = (effectivePage - 1) * effectivePageSize;
-
-  // Guard: if no statuses requested, return empty immediately
-  if (statuses.length === 0) {
-    return { rows: [], total: 0, page: effectivePage, pageSize: effectivePageSize };
-  }
-
-  const conditions: string[] = ['t.target_lang = $1', `s.lang = $${3}`, 't.status = ANY($2)'];
-  const values: unknown[] = [targetLang, statuses, srcLang];
-  let idx = 4;
-
-  if (modId !== null) {
-    conditions.push(`r.mod_id = $${idx}`);
-    values.push(modId);
-    idx++;
-  }
-  if (maxConfidence !== null) {
-    // Include strings whose confidence is NULL (uncertain) or below/equal the threshold
-    conditions.push(`(t.confidence IS NULL OR t.confidence <= $${idx})`);
-    values.push(maxConfidence);
-    idx++;
-  }
-
-  const where = conditions.join(' AND ');
-  const pageSizeIdx = idx;
-  const offsetIdx = idx + 1;
-  const allValues = [...values, effectivePageSize, offset];
-
-  const { rows } = await db.query<ReviewQueueRow>(
-    `SELECT
-      s.id              AS string_id,
-      m.id              AS mod_id,
-      m.name            AS mod_name,
-      m.game            AS mod_game,
-      r.formid_hex,
-      r.signature,
-      r.path,
-      r.edid,
-      s.text_raw        AS source,
-      t.id              AS translation_id,
-      t.text            AS translation,
-      t.status,
-      t.confidence,
-      t.model,
-      COALESCE(q.issue_count, 0) AS qa_issue_count,
-      u.display_name AS translator_name
-     FROM translations t
-     JOIN strings  s ON s.id = t.src_string_id
-     JOIN records  r ON r.id = s.record_id
-     JOIN mods     m ON m.id = r.mod_id
-     LEFT JOIN users u ON u.id = t.user_id
-     LEFT JOIN LATERAL (
-       SELECT COUNT(*)::int AS issue_count
-       FROM qa_issues qi
-       WHERE qi.src_string_id = s.id AND qi.target_lang = $1 AND qi.is_active = TRUE
-     ) q ON TRUE
-     WHERE ${where}
-     ORDER BY t.confidence ASC NULLS LAST, t.updated_at ASC
-     LIMIT $${pageSizeIdx} OFFSET $${offsetIdx}`,
-    allValues,
-  );
-
-  const { rows: countRows } = await db.query<{ total: string }>(
-    `SELECT COUNT(*) AS total
-     FROM translations t
-     JOIN strings s ON s.id = t.src_string_id
-     JOIN records r ON r.id = s.record_id
-     WHERE ${where}`,
-    values,
-  );
-
-  return {
-    rows,
-    total: Number(countRows[0]?.total ?? 0),
-    page: effectivePage,
-    pageSize: effectivePageSize,
-  };
-};
-
-// ── Bulk status update ────────────────────────────────────────────────────────
-
 // ── Coherence checking ────────────────────────────────────────────────────────
 
 /**
@@ -2772,47 +2571,6 @@ export const resolveAllCoherenceGroups = async (
   return { resolved: winners.length, updated: totalUpdated };
 };
 
-export const bulkUpdateTranslationStatus = async (
-  db: Tx,
-  modId: number,
-  stringIds: number[],
-  newStatus: 'reviewed' | 'rejected',
-  targetLang = CONFIG.defaultTgtLang,
-  /** Actor performing the bulk action.  Passed through to the state machine. */
-  actor: StatusActor = 'system',
-): Promise<number> => {
-  if (stringIds.length === 0) return 0;
-
-  let updated = 0;
-  await withTransaction(db as pg.Pool, async (client) => {
-    // Fetch the best translation for each requested stringId in one query
-    const placeholders = stringIds.map((_, i) => `$${i + 3}`).join(',');
-    const { rows } = await client.query(
-      `SELECT DISTINCT ON (t.src_string_id)
-              t.id AS translation_id, t.src_string_id AS string_id, t.target_lang
-       FROM translations t
-       JOIN strings s ON s.id = t.src_string_id
-       JOIN records r ON r.id = s.record_id
-       WHERE r.mod_id = $1
-         AND t.target_lang = $2
-         AND t.src_string_id IN (${placeholders})
-       ORDER BY t.src_string_id, ${BEST_TRANSLATION_ORDER}`,
-      [modId, targetLang, ...stringIds],
-    );
-
-    for (const row of rows as Array<{
-      translation_id: number;
-      string_id: number;
-      target_lang: string;
-    }>) {
-      await updateTranslationStatus(client, row.translation_id, newStatus, actor);
-      updated++;
-    }
-  });
-
-  return updated;
-};
-
 /**
  * Returns the IDs of every source string matching the given filter, applying
  * exactly the same predicates as {@link listStrings} (status, signature,
@@ -2820,10 +2578,6 @@ export const bulkUpdateTranslationStatus = async (
  *
  * Used by the editor's "select all matching" feature so bulk actions can target
  * the full filtered set without shipping a huge ID list back and forth.
- *
- * @param db  Database handle.
- * @param f   The same filter object used for the grid query.
- * @returns   Array of matching `string_id` values (may be large).
  */
 export const listMatchingStringIds = async (db: Tx, f: StringsFilter): Promise<number[]> => {
   const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
@@ -2850,39 +2604,6 @@ export const listMatchingStringIds = async (db: Tx, f: StringsFilter): Promise<n
   );
 
   return (rows as Array<{ string_id: number }>).map((r) => r.string_id);
-};
-
-/**
- * Bulk approve/reject every translation matching a filter ("select all
- * matching" mode), optionally excluding a small set of de-selected string IDs.
- *
- * Resolves the matching string IDs via {@link listMatchingStringIds} and then
- * delegates to {@link bulkUpdateTranslationStatus}, so the state machine,
- * revision audit trail, QA refresh and RAG sync all behave identically to the
- * explicit-ID bulk path.
- *
- * @param db          Database handle.
- * @param modId       Mod id.
- * @param filter      The grid filter describing the target set.
- * @param newStatus   `'reviewed'` or `'rejected'`.
- * @param targetLang  Target language code.
- * @param actor       Actor performing the action (role-aware).
- * @param excludeIds  String IDs the user de-selected; skipped from the update.
- * @returns           Number of translations whose status changed.
- */
-export const bulkUpdateTranslationStatusByFilter = async (
-  db: Tx,
-  modId: number,
-  filter: StringsFilter,
-  newStatus: 'reviewed' | 'rejected',
-  targetLang = CONFIG.defaultTgtLang,
-  actor: StatusActor = 'system',
-  excludeIds: number[] = [],
-): Promise<number> => {
-  const ids = await listMatchingStringIds(db, { ...filter, modId, targetLang });
-  const excluded = new Set(excludeIds);
-  const targetIds = excluded.size ? ids.filter((id) => !excluded.has(id)) : ids;
-  return bulkUpdateTranslationStatus(db, modId, targetIds, newStatus, targetLang, actor);
 };
 
 // ── INNR editor ───────────────────────────────────────────────────────────────

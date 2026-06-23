@@ -57,7 +57,7 @@ At a high level, the system supports these flows:
 
 ## Database
 
-- PostgreSQL stores project data, strings, metadata, QA state, review queues,
+- PostgreSQL stores project data, strings, metadata, and QA state,
   glossary records, and translation memory.
 - SQL schema files live under `sql/`.
 - Database initialization is handled through `scripts/dbInit.ts`.
@@ -95,12 +95,12 @@ Reusable React components live in `web-ui/src/components/`. Each component has i
 
 Key shared components:
 
-| Component      | Path                       | Purpose                                                                                                                                                                         |
-| -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PageHeader`   | `components/PageHeader/`   | Consistent page-level header: title, description, right-aligned actions slot, and optional meta strip. Applied to GlossaryPage, ReviewQueuePage, ImportsPage, and SettingsPage. |
-| `StatusBadge`  | `components/StatusBadge/`  | Semantic status pill used in string grids, coherence cards, and review queue rows.                                                                                              |
-| `OverflowMenu` | `components/OverflowMenu/` | Secondary actions collapsed into a `⋯` menu for dense row UIs.                                                                                                                  |
-| `ConfirmModal` | `components/ConfirmModal/` | Reusable danger confirmation overlay (replaces `window.confirm`).                                                                                                               |
+| Component      | Path                       | Purpose                                                                                                                                                        |
+| -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`   | `components/PageHeader/`   | Consistent page-level header: title, description, right-aligned actions slot, and optional meta strip. Applied to GlossaryPage, ImportsPage, and SettingsPage. |
+| `StatusBadge`  | `components/StatusBadge/`  | Semantic status pill used in string grids and coherence cards.                                                                                                 |
+| `OverflowMenu` | `components/OverflowMenu/` | Secondary actions collapsed into a `⋯` menu for dense row UIs.                                                                                                 |
+| `ConfirmModal` | `components/ConfirmModal/` | Reusable danger confirmation overlay (replaces `window.confirm`).                                                                                              |
 
 ---
 

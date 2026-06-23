@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
@@ -80,7 +79,10 @@ export const CoherencePage = () => {
     mutationFn: () => api.coherence.resolveAll(targetLang),
     onSuccess: (result) => {
       setShowResolveAllConfirm(false);
-      showToast(t('coherence.resolveAllSuccess', { groups: result.resolved, updated: result.updated }), 'success');
+      showToast(
+        t('coherence.resolveAllSuccess', { groups: result.resolved, updated: result.updated }),
+        'success',
+      );
       qc.invalidateQueries({ queryKey: ['coherence'] });
       qc.invalidateQueries({ queryKey: ['qa'] });
       qc.invalidateQueries({ queryKey: ['strings'] });
@@ -102,16 +104,19 @@ export const CoherencePage = () => {
         <select
           className={s.select}
           value={targetLang}
-          onChange={(e) => { setTargetLang(e.target.value); setPage(0); }}
+          onChange={(e) => {
+            setTargetLang(e.target.value);
+            setPage(0);
+          }}
         >
           {languageOptions.map((l) => (
-            <option key={l.code} value={l.code}>{l.label}</option>
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
           ))}
         </select>
         {!isLoading && (
-          <span className={s.totalBadge}>
-            {t('coherence.totalGroups', { count: totalGroups })}
-          </span>
+          <span className={s.totalBadge}>{t('coherence.totalGroups', { count: totalGroups })}</span>
         )}
         {!isLoading && totalGroups > 0 && (
           <button
@@ -131,30 +136,35 @@ export const CoherencePage = () => {
         <div className={s.emptyState}>
           <div className={s.emptyText}>{t('coherence.noIssues')}</div>
           <div className={s.emptyActions}>
-            <button className={s.emptyBtn} onClick={() => qc.invalidateQueries({ queryKey: ['coherence'] })}>
+            <button
+              className={s.emptyBtn}
+              onClick={() => qc.invalidateQueries({ queryKey: ['coherence'] })}
+            >
               {t('coherence.refreshAction')}
             </button>
-            <Link className={s.emptyLinkBtn} to="/review-queue">
-              {t('coherence.openReviewQueueAction')}
-            </Link>
           </div>
         </div>
       )}
 
-      {!isLoading && (data?.groups ?? []).map((group) => (
-        <GroupCard
-          key={group.text_norm}
-          group={group}
-          onResolve={handleResolve}
-          isResolving={resolveMut.isPending}
-        />
-      ))}
+      {!isLoading &&
+        (data?.groups ?? []).map((group) => (
+          <GroupCard
+            key={group.text_norm}
+            group={group}
+            onResolve={handleResolve}
+            isResolving={resolveMut.isPending}
+          />
+        ))}
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className={s.pagination}>
           <PaginationControls
-            info={<span className={s.pageInfo}>{t('coherence.page', { current: page + 1, total: totalPages })}</span>}
+            info={
+              <span className={s.pageInfo}>
+                {t('coherence.page', { current: page + 1, total: totalPages })}
+              </span>
+            }
             onPrev={() => setPage((p) => Math.max(0, p - 1))}
             onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             prevDisabled={page === 0}
@@ -182,4 +192,3 @@ export const CoherencePage = () => {
     </div>
   );
 };
-

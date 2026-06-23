@@ -5,7 +5,6 @@ import {
   listMatchingStringIds,
   listSignatures,
   upsertTranslation,
-  updateTranslationStatus,
   deleteTranslation,
   getStringTextNorm,
   getRagSuggestions,
@@ -17,8 +16,6 @@ import { getAllProjectSettings } from '../projectSettings';
 import { CONFIG } from '../../config';
 import { translateStringIdsBatch } from '../llmTranslateBatch';
 import { log } from '../../logger';
-import { reachableStatuses, isValidTranslationStatus } from '../statusMachine';
-import type { TranslationStatus } from '../statusMachine';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/strings?modId=&srcLang=&targetLang=&status=&signature=&q=&grup=&formid=&edid=&field=&page=&pageSize=
@@ -128,32 +125,6 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         return reply.code(400).send({ error: 'modId is required' });
       }
       return reply.send(await listSignatures(db, modId, req.query.srcLang));
-    },
-  );
-
-  // GET /api/strings/status-transitions?from=
-  //
-  // Returns the list of statuses that the currently authenticated user can
-  // transition to from a given current status.  The frontend uses this to
-  // enable/disable status-change actions in the editor toolbar and context menu.
-  //
-  // Query params:
-  //   from  — current TranslationStatus value (required)
-  //
-  // Response: { from: string; actor: string; reachable: string[] }
-  app.get<{ Querystring: { from?: string } }>(
-    '/api/strings/status-transitions',
-    async (req, reply) => {
-      const from = req.query.from ?? '';
-      if (!isValidTranslationStatus(from)) {
-        return reply.code(400).send({ error: `Invalid 'from' status: '${from}'` });
-      }
-      const actor = 'admin' as const;
-      return reply.send({
-        from,
-        actor,
-        reachable: reachableStatuses(from as TranslationStatus, actor),
-      });
     },
   );
 
@@ -287,27 +258,6 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     if (rows.length === 0) return reply.code(404).send({ error: 'String not found' });
     return reply.send(rows[0]);
-  });
-
-  // PATCH /api/strings/:stringId/status — change status only (approve / reject)
-  app.patch<{
-    Params: { stringId: string };
-    Body: { translationId: number; status: string };
-  }>('/api/strings/:stringId/status', async (req, reply) => {
-    const { translationId, status } = req.body ?? {};
-    if (!translationId || !status) {
-      return reply.code(400).send({ error: 'translationId and status are required' });
-    }
-    // Derive the actor from the authenticated user's role so the state machine
-    // can enforce permission constraints (e.g. only reviewer/admin may approve).
-    const actor = 'admin' as const;
-    try {
-      await updateTranslationStatus(db, translationId, status, actor);
-    } catch (err) {
-      const code = (err as { statusCode?: number }).statusCode ?? 500;
-      return reply.code(code).send({ error: err instanceof Error ? err.message : String(err) });
-    }
-    return reply.send({ ok: true });
   });
 
   // POST /api/strings/translate — batch LLM translate with SSE progress stream

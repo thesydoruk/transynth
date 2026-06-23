@@ -31,18 +31,6 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
           </tr>
           <tr>
             <td className={styles.kbdCell}>
-              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>
-            </td>
-            <td>{t('modEditor.shortcutApprove')}</td>
-          </tr>
-          <tr>
-            <td className={styles.kbdCell}>
-              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>
-            </td>
-            <td>{t('modEditor.shortcutReject')}</td>
-          </tr>
-          <tr>
-            <td className={styles.kbdCell}>
               <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>
             </td>
             <td>{t('modEditor.shortcutCopySource')}</td>

@@ -115,6 +115,16 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Remove legacy multi-user auth schema (sessions, password columns).
+DROP TABLE IF EXISTS sessions;
+DROP INDEX IF EXISTS idx_sessions_token;
+DROP INDEX IF EXISTS idx_sessions_expiry;
+ALTER TABLE users DROP COLUMN IF EXISTS username;
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
+ALTER TABLE users DROP COLUMN IF EXISTS role;
+ALTER TABLE users DROP COLUMN IF EXISTS is_active;
+ALTER TABLE users DROP COLUMN IF EXISTS updated_at;
+
 CREATE TABLE IF NOT EXISTS translations (
   id SERIAL PRIMARY KEY,
   src_string_id INTEGER NOT NULL REFERENCES strings(id) ON DELETE CASCADE,
@@ -497,13 +507,3 @@ CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
   ON translations(src_string_id, target_lang);
 
 DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;
-
--- Remove legacy multi-user auth schema (sessions, password columns).
-DROP TABLE IF EXISTS sessions;
-DROP INDEX IF EXISTS idx_sessions_token;
-DROP INDEX IF EXISTS idx_sessions_expiry;
-ALTER TABLE users DROP COLUMN IF EXISTS username;
-ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
-ALTER TABLE users DROP COLUMN IF EXISTS role;
-ALTER TABLE users DROP COLUMN IF EXISTS is_active;
-ALTER TABLE users DROP COLUMN IF EXISTS updated_at;

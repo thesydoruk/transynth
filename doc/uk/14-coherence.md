@@ -34,7 +34,7 @@
 Якщо груп невідповідностей не знайдено, сторінка показує прямі дії замість лише пасивного повідомлення:
 
 - **Refresh check** — повторно запускає coherence-query
-- **Open Review Queue** — одразу переводить у quality-review workflow
+- **Оновити перевірку** — повторно запускає scan узгодженості
 
 ---
 
@@ -97,4 +97,4 @@ Coherence checker виводить **source strings, для яких існує 
 
 ---
 
-← [Дашборд](13-dashboard.md) | [Головна](README.md) | **Далі: [Черга рев’ю →](15-review-queue.md)**
+← [Дашборд](13-dashboard.md) | [Головна](README.md) | **Далі: [Конфігурація →](17-configuration.md)**

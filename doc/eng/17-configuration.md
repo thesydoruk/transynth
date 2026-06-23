@@ -284,4 +284,4 @@ using the credentials from your `DATABASE_URL`.
 
 ---
 
-← [Review Queue](15-review-queue.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →
+← [Coherence Checker](14-coherence.md) | [Home](README.md) | [Technology Stack](19-technology-stack.md) →

@@ -40,8 +40,6 @@ export interface DetailPanelProps {
   onDraftChange: (text: string) => void;
   onSave: () => void;
   onCopySource: () => void;
-  onApprove: () => void;
-  onReject: () => void;
   onTabChange: (tab: BottomTab) => void;
   onOpenBookEditor: () => void;
 }
@@ -69,8 +67,6 @@ export const DetailPanel = ({
   onDraftChange,
   onSave,
   onCopySource,
-  onApprove,
-  onReject,
   onTabChange,
   onOpenBookEditor,
 }: DetailPanelProps) => {
@@ -182,21 +178,6 @@ export const DetailPanel = ({
               >
                 {t('modEditor.copySrc')}
               </Button>
-              {activeRow.translation &&
-                activeRow.translation_id &&
-                activeRow.status !== 'reviewed' &&
-                activeRow.status !== 'human' && (
-                  <Button variant="secondary" size="sm" onClick={onApprove}>
-                    {t('modEditor.review')}
-                  </Button>
-                )}
-              {activeRow.translation &&
-                activeRow.translation_id &&
-                activeRow.status !== 'rejected' && (
-                  <Button variant="danger" size="sm" onClick={onReject}>
-                    {t('modEditor.reject')}
-                  </Button>
-                )}
               <Button
                 variant="primary"
                 size="sm"
