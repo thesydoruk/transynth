@@ -1,0 +1,87 @@
+.container {
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  padding: 4px 7px;
+  font-size: 13px;
+  cursor: pointer;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.triggerActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.caret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 220px;
+  max-height: 360px;
+  overflow: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  padding: 4px 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.item:hover {
+  background: var(--bg-hover);
+}
+
+.item input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px 4px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 4px;
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.actionBtn:hover {
+  text-decoration: underline;
+}

@@ -467,6 +467,26 @@ export type StringsFilter = {
   order?: 'asc' | 'desc';
 };
 
+/** Parses a comma-separated status filter (`draft,reviewed`) into unique tokens. */
+export const parseStatusFilter = (status?: string): string[] => {
+  if (!status || status === 'all') return [];
+  return [
+    ...new Set(
+      status
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ];
+};
+
+const statusFilterNeedsTranslationJoin = (statuses: string[]): boolean => {
+  if (statuses.length === 0) return false;
+  const onlySkip = statuses.every((s) => s === 'skip');
+  const onlyUntranslated = statuses.length === 1 && statuses[0] === 'untranslated';
+  return !onlySkip && !onlyUntranslated;
+};
+
 /** Whitelist mapping from client-facing sort key to SQL column expression. */
 const SORT_COLUMNS: Record<string, string> = {
   grup: 'r.signature',
@@ -496,21 +516,42 @@ const SORT_COLUMNS: Record<string, string> = {
 const buildStringFilterConditions = (
   f: StringsFilter,
   startIdx = 2,
+  opts?: { targetLang?: string; forCount?: boolean },
 ): { conditions: string[]; values: unknown[]; idx: number } => {
   const conditions: string[] = ['r.mod_id = $1'];
   const values: unknown[] = [f.modId];
   let idx = startIdx;
 
   if (f.status && f.status !== 'all') {
-    if (f.status === 'untranslated') {
-      conditions.push('t.id IS NULL');
-      conditions.push('s.is_ignored = FALSE');
-    } else if (f.status === 'skip') {
-      conditions.push('s.is_ignored = TRUE');
-    } else {
-      conditions.push(`t.status = $${idx}`);
-      values.push(f.status);
-      idx++;
+    const statuses = parseStatusFilter(f.status);
+    if (statuses.length > 0) {
+      const parts: string[] = [];
+      let untranslatedLangIdx: number | null = null;
+
+      for (const st of statuses) {
+        if (st === 'untranslated') {
+          if (opts?.forCount && opts.targetLang) {
+            if (untranslatedLangIdx === null) {
+              untranslatedLangIdx = idx;
+              values.push(opts.targetLang);
+              idx++;
+            }
+            parts.push(
+              `(s.is_ignored = FALSE AND NOT EXISTS (SELECT 1 FROM translations t_miss WHERE t_miss.src_string_id = s.id AND t_miss.target_lang = $${untranslatedLangIdx}))`,
+            );
+          } else {
+            parts.push('(s.is_ignored = FALSE AND t.id IS NULL)');
+          }
+        } else if (st === 'skip') {
+          parts.push('(s.is_ignored = TRUE)');
+        } else {
+          parts.push(`(s.is_ignored = FALSE AND t.status = $${idx})`);
+          values.push(st);
+          idx++;
+        }
+      }
+
+      conditions.push(parts.length === 1 ? parts[0]! : `(${parts.join(' OR ')})`);
     }
   }
 
@@ -600,8 +641,21 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
 
   const orderBy = `${SORT_COLUMNS[f.sort ?? ''] ? `${SORT_COLUMNS[f.sort!]} ${f.order === 'desc' ? 'DESC' : 'ASC'} NULLS LAST,` : ''} r.signature, r.path`;
 
-  const { rows } = await db.query(
-    `SELECT
+  /* Paginate on narrow rows first (id + sort keys), then fetch text columns for
+   * the single page. Without this, some filters (skip / untranslated) tempt the
+   * planner into a strings-first seq scan that reads text_raw for the whole
+   * table before LIMIT — multi-second loads on large mods. */
+  const pageSql = `WITH page AS (
+       SELECT s.id AS string_id
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $${srcLangIdx}
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+       WHERE ${where}${f.qaOnly ? ` AND ${qaExists(targetLangIdx)}` : ''}
+       ORDER BY ${orderBy}
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}
+     )
+     SELECT
       s.id            AS string_id,
       r.formid_hex,
       r.signature,
@@ -618,7 +672,8 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       t.model,
       t.updated_at,
       COALESCE(q.issue_count, 0) AS qa_issue_count
-     FROM strings s
+     FROM page
+     JOIN strings s ON s.id = page.string_id
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
@@ -627,62 +682,179 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
        FROM qa_issues qi
        WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE
      ) q ON TRUE
-     WHERE s.lang = $${srcLangIdx} AND ${where}${f.qaOnly ? ` AND ${qaExists(targetLangIdx)}` : ''}
-     ORDER BY ${orderBy}
-     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-    allValues,
-  );
+     ORDER BY ${orderBy}`;
 
   /* ── Count query ──────────────────────────────────────────────────────────
-   * Only join translations when a translation-dependent filter is active
-   * (status / translation-text). Otherwise the join is skipped entirely and
-   * the total is a plain strings⋈records count — a large win on big mods,
-   * where this runs on every page load. */
-  const needsTxJoin = (f.status != null && f.status !== 'all') || !!f.transl;
-  let countSql: string;
-  let countValues: unknown[];
+   * Runs only on page 1 (subsequent infinite-scroll pages reuse the total).
+   * Join translations only when a translation-column filter requires it
+   * (status = draft/reviewed/… or translation-text ILIKE). Skip and
+   * untranslated use strings-side predicates (is_ignored / NOT EXISTS). */
+  const buildCountQuery = (): { sql: string; values: unknown[] } | null => {
+    if (page > 1) return null;
 
-  if (needsTxJoin) {
-    const cTgt = idx;
-    const cSrc = idx + 1;
-    countValues = [...values, targetLang, srcLang];
-    countSql = `SELECT COUNT(*) AS total
+    const statuses = parseStatusFilter(f.status);
+    const onlyUntranslated = statuses.length === 1 && statuses[0] === 'untranslated';
+    const needsTxJoin = !!f.transl || statusFilterNeedsTranslationJoin(statuses);
+
+    if (needsTxJoin) {
+      const cTgt = idx;
+      const cSrc = idx + 1;
+      return {
+        sql: `SELECT COUNT(*) AS total
        FROM strings s
        JOIN records r ON s.record_id = r.id
        LEFT JOIN translations t
          ON t.src_string_id = s.id AND t.target_lang = $${cTgt}
-       WHERE s.lang = $${cSrc} AND ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}`;
-  } else if (f.qaOnly) {
-    const cTgt = idx;
-    const cSrc = idx + 1;
-    countValues = [...values, targetLang, srcLang];
-    countSql = `SELECT COUNT(*) AS total
+       WHERE s.lang = $${cSrc} AND ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}`,
+        values: [...values, targetLang, srcLang],
+      };
+    }
+
+    if (onlyUntranslated) {
+      const {
+        conditions: countConditions,
+        values: countConds,
+        idx: countIdx,
+      } = buildStringFilterConditions(f, 2, { targetLang, forCount: true });
+      const countWhere = countConditions.join(' AND ');
+      const cSrc = countIdx;
+      const cTgt = 2; // targetLang already bound for NOT EXISTS — reuse for qaExists
+      return {
+        sql: `SELECT COUNT(*) AS total
        FROM strings s
        JOIN records r ON s.record_id = r.id
-       WHERE s.lang = $${cSrc} AND ${where} AND ${qaExists(cTgt)}`;
-  } else {
+       WHERE s.lang = $${cSrc} AND ${countWhere}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}`,
+        values: [...countConds, srcLang],
+      };
+    }
+
+    if (f.qaOnly) {
+      const cTgt = idx;
+      const cSrc = idx + 1;
+      return {
+        sql: `SELECT COUNT(*) AS total
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       WHERE s.lang = $${cSrc} AND ${where} AND ${qaExists(cTgt)}`,
+        values: [...values, targetLang, srcLang],
+      };
+    }
+
     const cSrc = idx;
-    countValues = [...values, srcLang];
-    countSql = `SELECT COUNT(*) AS total
+    return {
+      sql: `SELECT COUNT(*) AS total
        FROM strings s
        JOIN records r ON s.record_id = r.id
-       WHERE s.lang = $${cSrc} AND ${where}`;
-  }
+       WHERE s.lang = $${cSrc} AND ${where}`,
+      values: [...values, srcLang],
+    };
+  };
 
-  const { rows: countRows } = await db.query(countSql, countValues);
+  const countQuery = buildCountQuery();
+  const [pageResult, countResult] = await Promise.all([
+    db.query(pageSql, allValues),
+    countQuery ? db.query(countQuery.sql, countQuery.values) : Promise.resolve(null),
+  ]);
+  const rows = pageResult.rows;
+  const total = countResult ? Number(countResult.rows[0].total) : 0;
 
-  return { rows, total: Number(countRows[0].total), page, pageSize };
+  return { rows, total, page, pageSize };
 };
 
-export const listSignatures = async (db: Tx, modId: number, srcLang = CONFIG.defaultSrcLang) => {
+export const listSignatures = async (
+  db: Tx,
+  f: Omit<StringsFilter, 'page' | 'pageSize' | 'sort' | 'order' | 'signature'>,
+) => {
+  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
+  const targetLang = f.targetLang ?? CONFIG.defaultTgtLang;
+  const statuses = parseStatusFilter(f.status);
+
+  const hasExtraFilters =
+    statuses.length > 0 ||
+    f.qaOnly ||
+    !!f.query ||
+    !!f.grup ||
+    !!f.formid ||
+    !!f.edid ||
+    !!f.field ||
+    !!f.src ||
+    !!f.transl ||
+    f.hideIgnored;
+
+  if (!hasExtraFilters) {
+    const { rows } = await db.query(
+      `SELECT r.signature, COUNT(*)::int AS count
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $2
+       WHERE r.mod_id = $1
+       GROUP BY r.signature
+       ORDER BY count DESC`,
+      [f.modId, srcLang],
+    );
+    return rows;
+  }
+
+  const { conditions, values, idx } = buildStringFilterConditions(f);
+  const where = conditions.join(' AND ');
+  const qaExists = (langIdx: number) =>
+    `EXISTS (SELECT 1 FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $${langIdx} AND qi.is_active = TRUE)`;
+
+  const onlyUntranslated = statuses.length === 1 && statuses[0] === 'untranslated';
+  const needsTxJoin = !!f.transl || statusFilterNeedsTranslationJoin(statuses);
+
+  if (needsTxJoin) {
+    const targetLangIdx = idx;
+    const srcLangIdx = idx + 1;
+    const { rows } = await db.query(
+      `SELECT r.signature, COUNT(*)::int AS count
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $${srcLangIdx}
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+       WHERE ${where}${f.qaOnly ? ` AND ${qaExists(targetLangIdx)}` : ''}
+       GROUP BY r.signature
+       HAVING COUNT(*) > 0
+       ORDER BY count DESC`,
+      [...values, targetLang, srcLang],
+    );
+    return rows;
+  }
+
+  if (onlyUntranslated) {
+    const {
+      conditions: countConditions,
+      values: countConds,
+      idx: countIdx,
+    } = buildStringFilterConditions(f, 2, { targetLang, forCount: true });
+    const countWhere = countConditions.join(' AND ');
+    const cSrc = countIdx;
+    const cTgt = 2;
+    const { rows } = await db.query(
+      `SELECT r.signature, COUNT(*)::int AS count
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $${cSrc}
+       WHERE ${countWhere}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}
+       GROUP BY r.signature
+       HAVING COUNT(*) > 0
+       ORDER BY count DESC`,
+      [...countConds, srcLang],
+    );
+    return rows;
+  }
+
+  const cSrc = idx;
+  const cTgt = idx + 1;
+  const countValues = f.qaOnly ? [...values, srcLang, targetLang] : [...values, srcLang];
   const { rows } = await db.query(
-    `SELECT DISTINCT r.signature, COUNT(*) as count
+    `SELECT r.signature, COUNT(*)::int AS count
      FROM records r
-     JOIN strings s ON s.record_id = r.id AND s.lang = $2
-     WHERE r.mod_id = $1
+     JOIN strings s ON s.record_id = r.id AND s.lang = $${cSrc}
+     WHERE ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}
      GROUP BY r.signature
+     HAVING COUNT(*) > 0
      ORDER BY count DESC`,
-    [modId, srcLang],
+    countValues,
   );
   return rows;
 };

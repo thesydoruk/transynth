@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { ProgressBar } from '../../../../components/StatusBadge';
 import { Button } from '../../../../components/Button';
 import { DropdownButton } from '../../../../components/DropdownButton';
+import { StatusFilter } from '../StatusFilter';
+import { isDraftFilterActive, type StatusFilterValue } from '../../statusFilter';
 import styles from './EditorToolbar.module.scss';
 
 /** Shape returned by the stats API. */
@@ -33,7 +35,7 @@ export interface EditorToolbarProps {
   srcLang: string;
   targetLang: string;
   availLangs: string[];
-  status: string;
+  selectedStatuses: StatusFilterValue[];
   qaOnly: boolean;
   /** Active view mode — 'strings' shows the grid, 'dialogs' shows the tree. */
   pageMode: 'strings' | 'dialogs';
@@ -48,11 +50,10 @@ export interface EditorToolbarProps {
   hasBookSignature: boolean;
   qaIssueRowCount: number;
   untranslatedCount: number | undefined;
-  statusOpts: string[];
 
   onSrcLangChange: (lang: string) => void;
   onTargetLangChange: (lang: string) => void;
-  onStatusChange: (status: string) => void;
+  onSelectedStatusesChange: (statuses: StatusFilterValue[]) => void;
   onQaOnlyToggle: () => void;
   onTmApply: () => void;
   onSearchReplace: () => void;
@@ -79,7 +80,7 @@ export const EditorToolbar = ({
   srcLang,
   targetLang,
   availLangs,
-  status,
+  selectedStatuses,
   qaOnly,
   pageMode,
   stats,
@@ -93,10 +94,9 @@ export const EditorToolbar = ({
   hasBookSignature,
   qaIssueRowCount,
   untranslatedCount,
-  statusOpts,
   onSrcLangChange,
   onTargetLangChange,
-  onStatusChange,
+  onSelectedStatusesChange,
   onQaOnlyToggle,
   onTmApply,
   onSearchReplace,
@@ -151,17 +151,12 @@ export const EditorToolbar = ({
 
       <div className={styles.sep} />
 
-      <select
-        value={status}
-        onChange={(e) => onStatusChange(e.target.value)}
-        className={styles.filterSelect}
-      >
-        {statusOpts.map((o) => (
-          <option key={o} value={o}>
-            {o === 'all' ? t('modEditor.allStatuses') : t(`status.${o}`, { defaultValue: o })}
-          </option>
-        ))}
-      </select>
+      <StatusFilter
+        selected={selectedStatuses}
+        onChange={(next) => {
+          onSelectedStatusesChange(next);
+        }}
+      />
       <Button
         onClick={onQaOnlyToggle}
         variant={qaOnly ? 'primary' : 'secondary'}
@@ -171,8 +166,10 @@ export const EditorToolbar = ({
         {t('modEditor.qaOnly')}
       </Button>
       <Button
-        onClick={() => onStatusChange(status === 'draft' ? 'all' : 'draft')}
-        variant={status === 'draft' ? 'primary' : 'secondary'}
+        onClick={() =>
+          onSelectedStatusesChange(isDraftFilterActive(selectedStatuses) ? [] : ['draft'])
+        }
+        variant={isDraftFilterActive(selectedStatuses) ? 'primary' : 'secondary'}
         size="sm"
         title={t('modEditor.showDraftsTitle')}
       >

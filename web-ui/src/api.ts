@@ -1199,9 +1199,20 @@ export const api = {
       if (params.hideIgnored) qs.set('hideIgnored', '1');
       return req<{ ids: number[] }>(`/api/strings/ids?${qs}`);
     },
-    signatures: (modId: number, srcLang?: string) => {
+    signatures: (modId: number, filters: StringFilterParams = {}) => {
       const qs = new URLSearchParams({ modId: String(modId) });
-      if (srcLang) qs.set('srcLang', srcLang);
+      if (filters.srcLang) qs.set('srcLang', filters.srcLang);
+      if (filters.targetLang) qs.set('targetLang', filters.targetLang);
+      if (filters.status) qs.set('status', filters.status);
+      if (filters.qaOnly) qs.set('qaOnly', '1');
+      if (filters.q) qs.set('q', filters.q);
+      if (filters.grup) qs.set('grup', filters.grup);
+      if (filters.formid) qs.set('formid', filters.formid);
+      if (filters.edid) qs.set('edid', filters.edid);
+      if (filters.field) qs.set('field', filters.field);
+      if (filters.src) qs.set('src', filters.src);
+      if (filters.transl) qs.set('transl', filters.transl);
+      if (filters.hideIgnored) qs.set('hideIgnored', '1');
       return req<Signature[]>(`/api/strings/signatures?${qs}`);
     },
     suggestions: (stringId: number, targetLang: string) =>
@@ -1991,11 +2002,31 @@ export const api = {
       return snapshot;
     },
 
-    stop: (jobId: number) =>
-      req<{ ok: boolean }>(`/api/llm-verify/${jobId}/stop`, { method: 'POST' }),
+    async stop(jobId: number): Promise<{ ok: boolean }> {
+      const res = await fetch(`${BASE}/api/llm-verify/${jobId}/stop`, {
+        credentials: 'include',
+        method: 'POST',
+      });
+      if (res.status === 404) return { ok: true };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ ok: boolean }>;
+    },
 
-    stopMod: (modId: number) =>
-      req<{ ok: boolean }>(`/api/mods/${modId}/llm-verify/stop`, { method: 'POST' }),
+    async stopMod(modId: number): Promise<{ ok: boolean }> {
+      const res = await fetch(`${BASE}/api/mods/${modId}/llm-verify/stop`, {
+        credentials: 'include',
+        method: 'POST',
+      });
+      if (res.status === 404) return { ok: true };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<{ ok: boolean }>;
+    },
 
     status: (jobId: number) => req<LlmVerifyJobSnapshot>(`/api/llm-verify/${jobId}`),
   },

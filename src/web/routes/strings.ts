@@ -117,17 +117,46 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send({ ids });
   });
 
-  // GET /api/strings/signatures?modId=&srcLang=
-  app.get<{ Querystring: { modId?: string; srcLang?: string } }>(
-    '/api/strings/signatures',
-    async (req, reply) => {
-      const modId = Number(req.query.modId);
-      if (!Number.isInteger(modId) || modId < 1) {
-        return reply.code(400).send({ error: 'modId is required' });
-      }
-      return reply.send(await listSignatures(db, modId, req.query.srcLang));
-    },
-  );
+  // GET /api/strings/signatures?modId=&srcLang=&targetLang=&status=&…
+  app.get<{
+    Querystring: {
+      modId?: string;
+      srcLang?: string;
+      targetLang?: string;
+      status?: string;
+      qaOnly?: string;
+      q?: string;
+      grup?: string;
+      formid?: string;
+      edid?: string;
+      field?: string;
+      src?: string;
+      transl?: string;
+      hideIgnored?: string;
+    };
+  }>('/api/strings/signatures', async (req, reply) => {
+    const modId = Number(req.query.modId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'modId is required' });
+    }
+    return reply.send(
+      await listSignatures(db, {
+        modId,
+        srcLang: req.query.srcLang,
+        targetLang: req.query.targetLang,
+        status: req.query.status,
+        qaOnly: req.query.qaOnly === '1' || req.query.qaOnly === 'true',
+        query: req.query.q,
+        grup: req.query.grup,
+        formid: req.query.formid,
+        edid: req.query.edid,
+        field: req.query.field,
+        src: req.query.src,
+        transl: req.query.transl,
+        hideIgnored: req.query.hideIgnored === '1' || req.query.hideIgnored === 'true',
+      }),
+    );
+  });
 
   // GET /api/strings/:stringId/suggestions?targetLang=
   app.get<{ Params: { stringId: string }; Querystring: { targetLang?: string } }>(

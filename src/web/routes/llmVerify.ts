@@ -51,6 +51,8 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
       try {
         if (!reply.raw.writableEnded) {
           reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+          const raw = reply.raw as typeof reply.raw & { flush?: () => void };
+          raw.flush?.();
         }
       } catch {
         /* client disconnected — job continues */

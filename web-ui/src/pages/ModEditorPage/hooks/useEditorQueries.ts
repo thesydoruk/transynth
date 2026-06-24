@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { api, type StringRow, type StringsResult } from '../../../api';
+import { api, type StringRow, type StringsResult, type StringFilterParams } from '../../../api';
 import { SUPPORTED_CONTENT_LANGUAGES } from '../../../langDefaults';
+import { statusParamFromSelection, type StatusFilterValue } from '../statusFilter';
 import type { SortCol, SortDir, ColumnFilters } from '../components/StringGrid';
 import type { BottomTab } from '../components/DetailPanel';
 
@@ -17,8 +18,8 @@ export interface UseEditorQueriesParams {
   srcLang: string;
   /** Target language code for translations. */
   targetLang: string;
-  /** Active status filter value (`"all"` shows every row). */
-  status: string;
+  /** Active status filter tokens (empty = all statuses). */
+  selectedStatuses: StatusFilterValue[];
   /** When true, only rows with QA issues are shown. */
   qaOnly: boolean;
   /** Active record-signature filter (empty string = all). */
@@ -52,7 +53,7 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     gameId,
     srcLang,
     targetLang,
-    status,
+    selectedStatuses,
     qaOnly,
     signature,
     columnFilters,
@@ -63,6 +64,21 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     activeTab,
   } = params;
 
+  const statusParam = statusParamFromSelection(selectedStatuses);
+
+  const stringFilters: StringFilterParams = {
+    srcLang,
+    targetLang,
+    status: statusParam,
+    qaOnly: qaOnly || undefined,
+    grup: columnFilters.grup || undefined,
+    formid: columnFilters.formid || undefined,
+    edid: columnFilters.edid || undefined,
+    field: columnFilters.field || undefined,
+    src: columnFilters.src || undefined,
+    transl: columnFilters.transl || undefined,
+  };
+
   /* ── Query keys ── */
   // Page is intentionally absent: it is the infinite-query page param, not a
   // cache-key dimension (all pages live under one accumulating query entry).
@@ -71,7 +87,7 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     modId,
     srcLang,
     targetLang,
-    status,
+    statusParam ?? '',
     qaOnly,
     signature,
     columnFilters.grup,
@@ -109,10 +125,23 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     queryFn: () => api.mods.langs(modId),
   });
 
-  /** Record-signature counts for the sidebar. */
+  /** Record-signature counts for the sidebar (respect current status / QA filters). */
   const { data: sigs } = useQuery({
-    queryKey: ['sigs', modId, srcLang],
-    queryFn: () => api.strings.signatures(modId, srcLang),
+    queryKey: [
+      'sigs',
+      modId,
+      srcLang,
+      targetLang,
+      statusParam ?? '',
+      qaOnly,
+      columnFilters.grup,
+      columnFilters.formid,
+      columnFilters.edid,
+      columnFilters.field,
+      columnFilters.src,
+      columnFilters.transl,
+    ],
+    queryFn: () => api.strings.signatures(modId, stringFilters),
   });
 
   /** Aggregate translation statistics for the mod. */
@@ -139,24 +168,19 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     queryFn: ({ pageParam }) =>
       api.strings.list({
         modId,
-        srcLang,
-        targetLang,
-        status: status === 'all' ? undefined : status,
-        qaOnly: qaOnly || undefined,
+        ...stringFilters,
         signature: signature || undefined,
-        grup: columnFilters.grup || undefined,
-        formid: columnFilters.formid || undefined,
-        edid: columnFilters.edid || undefined,
-        field: columnFilters.field || undefined,
-        src: columnFilters.src || undefined,
-        transl: columnFilters.transl || undefined,
         page: pageParam,
         pageSize,
         sort: sortCol ?? undefined,
         order: sortCol ? sortDir : undefined,
       }),
-    getNextPageParam: (lastPage: StringsResult) =>
-      lastPage.page * lastPage.pageSize < lastPage.total ? lastPage.page + 1 : undefined,
+    getNextPageParam: (lastPage: StringsResult) => {
+      if (lastPage.total > 0) {
+        return lastPage.page * lastPage.pageSize < lastPage.total ? lastPage.page + 1 : undefined;
+      }
+      return lastPage.rows.length === lastPage.pageSize ? lastPage.page + 1 : undefined;
+    },
     placeholderData: (prev) => prev,
   });
 

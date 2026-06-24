@@ -451,6 +451,7 @@ CREATE INDEX IF NOT EXISTS idx_translation_examples_hnsw
 -- review. Ignored strings can be hidden in the editor via the
 -- workflow.hide_ignored_by_default project setting.
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS is_ignored BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_strings_is_ignored ON strings(record_id, lang) WHERE is_ignored = TRUE;
 
 -- ── Deprecated subsystem cleanup ─────────────────────────────────────────────
 -- The TradAuto pattern-rule engine and the CSV `alignments` table were legacy

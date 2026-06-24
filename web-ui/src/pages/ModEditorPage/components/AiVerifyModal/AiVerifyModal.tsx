@@ -11,6 +11,7 @@ interface AiVerifyModalProps {
   targetLang: string;
   state: AiVerifyState & {
     isRunning: boolean;
+    isStopping?: boolean;
     start: (autoApproveVerified?: boolean) => void;
     stop: () => void;
   };
@@ -36,7 +37,8 @@ export const AiVerifyModal = ({
   onApplyAllSuggestions,
 }: AiVerifyModalProps) => {
   const { t } = useTranslation();
-  const { isRunning, done, total, approved, issues, error, status, start, stop } = state;
+  const { isRunning, isStopping, done, total, approved, issues, error, status, start, stop } =
+    state;
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [applyingAll, setApplyingAll] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
@@ -107,8 +109,8 @@ export const AiVerifyModal = ({
 
       <div className={s.controls}>
         {isRunning ? (
-          <Button variant="danger" size="sm" onClick={() => void stop()}>
-            {t('modEditor.aiVerifyStop')}
+          <Button variant="danger" size="sm" disabled={isStopping} onClick={() => void stop()}>
+            {isStopping ? t('modEditor.aiVerifyStopping') : t('modEditor.aiVerifyStop')}
           </Button>
         ) : (
           <>
@@ -136,17 +138,19 @@ export const AiVerifyModal = ({
             <div className={s.progressFill} style={{ width: `${progressPct}%` }} />
           </div>
           <span className={s.progressLabel}>
-            {isRunning
-              ? t('modEditor.aiVerifyProgress', { done, total })
-              : status === 'completed'
-                ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length }) +
-                  (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
-                : status === 'cancelled'
-                  ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length }) +
+            {isStopping
+              ? t('modEditor.aiVerifyStopping')
+              : isRunning
+                ? t('modEditor.aiVerifyProgress', { done, total })
+                : status === 'completed'
+                  ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length }) +
                     (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
-                  : status === 'failed'
-                    ? t('modEditor.aiVerifyFailed')
-                    : t('modEditor.aiVerifyIdle')}
+                  : status === 'cancelled'
+                    ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length }) +
+                      (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
+                    : status === 'failed'
+                      ? t('modEditor.aiVerifyFailed')
+                      : t('modEditor.aiVerifyIdle')}
           </span>
         </div>
       </div>

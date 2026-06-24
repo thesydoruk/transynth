@@ -35,23 +35,14 @@ import {
   useSkipDetect,
   useApplyImported,
 } from './hooks';
+import {
+  parseStatusParam,
+  statusParamFromSelection,
+  isDraftFilterActive,
+  type StatusFilterValue,
+} from './statusFilter';
 import styles from './ModEditorPage.module.scss';
 
-/** Available status-filter values for the toolbar dropdown. */
-const STATUS_OPTS = [
-  'all',
-  'untranslated',
-  'draft',
-  'reviewed',
-  'rejected',
-  'fuzzy',
-  'auto',
-  'tm',
-  'human',
-  'reviewed',
-  'rejected',
-  'skip',
-];
 /** Rows fetched per infinite-scroll page (the grid accumulates pages). */
 const FETCH_PAGE_SIZE = 100;
 
@@ -77,6 +68,7 @@ export const ModEditorPage = () => {
   const storedIntent = (() => {
     try {
       return JSON.parse(localStorage.getItem(storageKey) ?? 'null') as {
+        statuses?: string[];
         status?: string;
         qaOnly?: boolean;
         signature?: string;
@@ -87,14 +79,19 @@ export const ModEditorPage = () => {
   })();
 
   // URL params take priority; localStorage provides the fallback when params are absent
-  const initialStatus = searchParams.get('status');
+  const initialStatusParam = searchParams.get('status');
   const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-  const safeInitialStatus =
-    initialStatus && STATUS_OPTS.includes(initialStatus)
-      ? initialStatus
-      : storedIntent?.status && STATUS_OPTS.includes(storedIntent.status)
-        ? storedIntent.status
-        : 'all';
+  const safeInitialStatuses = (() => {
+    const fromUrl = parseStatusParam(initialStatusParam);
+    if (fromUrl.length > 0) return fromUrl;
+    if (storedIntent?.statuses?.length) {
+      return parseStatusParam(storedIntent.statuses.join(','));
+    }
+    if (storedIntent?.status) {
+      return parseStatusParam(storedIntent.status);
+    }
+    return [];
+  })();
   const resolvedQaOnly = searchParams.has('qaOnly')
     ? initialQaOnly
     : (storedIntent?.qaOnly ?? false);
@@ -103,7 +100,8 @@ export const ModEditorPage = () => {
   // ── Filter / sort state ──
   const [srcLang, setSrcLang] = useState(getSrcLang());
   const [targetLang, setTargetLang] = useState(getTgtLang());
-  const [status, setStatus] = useState(safeInitialStatus);
+  const [selectedStatuses, setSelectedStatuses] =
+    useState<StatusFilterValue[]>(safeInitialStatuses);
   const [qaOnly, setQaOnly] = useState(resolvedQaOnly);
   const [signature, setSignature] = useState(initialSignature);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
@@ -123,11 +121,14 @@ export const ModEditorPage = () => {
   // Persist the active filter intent per mod so it is restored on the next visit
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ status, qaOnly, signature }));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ statuses: selectedStatuses, qaOnly, signature }),
+      );
     } catch {
       // Ignore quota / private-browsing errors
     }
-  }, [status, qaOnly, signature, storageKey]);
+  }, [selectedStatuses, qaOnly, signature, storageKey]);
 
   // ── Selection ──
   //
@@ -194,7 +195,7 @@ export const ModEditorPage = () => {
     gameId,
     srcLang,
     targetLang,
-    status,
+    selectedStatuses,
     qaOnly,
     signature,
     columnFilters,
@@ -231,7 +232,7 @@ export const ModEditorPage = () => {
     (): StringFilterParams => ({
       srcLang,
       targetLang,
-      status: status === 'all' ? undefined : status,
+      status: statusParamFromSelection(selectedStatuses),
       qaOnly: qaOnly || undefined,
       signature: signature || undefined,
       grup: columnFilters.grup || undefined,
@@ -241,7 +242,7 @@ export const ModEditorPage = () => {
       src: columnFilters.src || undefined,
       transl: columnFilters.transl || undefined,
     }),
-    [srcLang, targetLang, status, qaOnly, signature, columnFilters],
+    [srcLang, targetLang, selectedStatuses, qaOnly, signature, columnFilters],
   );
 
   /** Loaded rows that are currently selected (bounded by what's in memory). */
@@ -352,17 +353,26 @@ export const ModEditorPage = () => {
 
   // ── Sync status / qaOnly to URL search params ──
   useEffect(() => {
-    const currentStatus = searchParams.get('status') ?? 'all';
+    const currentStatus = searchParams.get('status') ?? '';
     const currentQaOnly =
       searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-    if (currentStatus === status && currentQaOnly === qaOnly) return;
+    const nextStatus = statusParamFromSelection(selectedStatuses) ?? '';
+    if (currentStatus === nextStatus && currentQaOnly === qaOnly) return;
     const next = new URLSearchParams(searchParams);
-    if (status !== 'all') next.set('status', status);
+    if (nextStatus) next.set('status', nextStatus);
     else next.delete('status');
     if (qaOnly) next.set('qaOnly', '1');
     else next.delete('qaOnly');
     setSearchParams(next, { replace: true });
-  }, [status, qaOnly, searchParams, setSearchParams]);
+  }, [selectedStatuses, qaOnly, searchParams, setSearchParams]);
+
+  /** Drop an active GRUP filter when it has no rows under the current status filter. */
+  useEffect(() => {
+    if (!signature || !sigCounts.length) return;
+    if (!sigCounts.some((row) => row.signature === signature && Number(row.count) > 0)) {
+      setSignature('');
+    }
+  }, [signature, sigCounts]);
 
   // ── Action helpers ──
 
@@ -653,7 +663,7 @@ export const ModEditorPage = () => {
         srcLang={srcLang}
         targetLang={targetLang}
         availLangs={availLangs}
-        status={status}
+        selectedStatuses={selectedStatuses}
         qaOnly={qaOnly}
         stats={stats}
         selectedCount={selectedCount}
@@ -670,7 +680,6 @@ export const ModEditorPage = () => {
         hasBookSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'BOOK')}
         qaIssueRowCount={qaIssueRowCount}
         untranslatedCount={stats?.untranslated}
-        statusOpts={STATUS_OPTS}
         onSrcLangChange={(l) => {
           setSrcLang(l);
           clearSelection();
@@ -679,8 +688,8 @@ export const ModEditorPage = () => {
           setTargetLang(l);
           clearSelection();
         }}
-        onStatusChange={(s) => {
-          setStatus(s);
+        onSelectedStatusesChange={(next) => {
+          setSelectedStatuses(next);
           clearSelection();
         }}
         onQaOnlyToggle={() => {
@@ -712,7 +721,7 @@ export const ModEditorPage = () => {
           <button
             className={styles.translateBannerLink}
             onClick={() => {
-              setStatus('draft');
+              setSelectedStatuses(['draft']);
               setTranslateDoneCount(null);
             }}
           >
@@ -737,6 +746,8 @@ export const ModEditorPage = () => {
             sigCounts={sigCounts}
             activeSignature={signature}
             totalFiltered={strings?.total}
+            statusFilterActive={selectedStatuses.length > 0}
+            modTotal={stats?.total}
             onSelect={(sig) => {
               setSignature(sig);
               clearSelection();

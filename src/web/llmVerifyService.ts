@@ -15,8 +15,13 @@ import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragSe
 import { getAllProjectSettings } from './projectSettings';
 import { approveVerifiedTranslations } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
-import { mapWithConcurrency } from '../utils/concurrency';
 import { logVerify } from '../logging/loggers';
+
+/** Rows sent to the LLM per request (smaller than translate batches for steadier progress). */
+export const LLM_VERIFY_LLM_BATCH_SIZE = Math.max(
+  1,
+  parseInt(process.env.LLM_VERIFY_BATCH_SIZE || '10', 10),
+);
 
 /** Rows fetched from the database per pagination step. */
 export const LLM_VERIFY_DB_CHUNK_SIZE = 100;
@@ -88,6 +93,7 @@ export const requestLlmVerifyStop = (jobId: number): boolean => {
   return true;
 };
 
+/** Idempotent stop — returns false only when no running job exists for this mod. */
 export const requestLlmVerifyStopByModId = (modId: number): boolean => {
   const jobId = findRunningLlmVerifyJob(modId);
   if (jobId == null) return false;
@@ -183,11 +189,6 @@ export const runLlmVerifyJob = async (
     throw new Error(`LLM verify already running for mod ${opts.modId} (job #${runningJobId})`);
   }
 
-  const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang);
-  if (total === 0) {
-    throw new Error('No translated strings to verify');
-  }
-
   const autoApproveVerified = opts.autoApproveVerified === true;
   const jobId = nextJobId++;
   const job: ActiveLlmVerifyJob = {
@@ -195,7 +196,7 @@ export const runLlmVerifyJob = async (
     modId: opts.modId,
     status: 'running',
     done: 0,
-    total,
+    total: 0,
     approved: 0,
     issues: [],
     error: null,
@@ -206,6 +207,29 @@ export const runLlmVerifyJob = async (
   };
   activeJobs.set(jobId, job);
 
+  // Register early so Stop works during the count / RAG setup phase.
+  onEvent({ type: 'started', jobId, total: 0 });
+
+  const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang);
+  if (total === 0) {
+    activeJobs.delete(jobId);
+    throw new Error('No translated strings to verify');
+  }
+  job.total = total;
+  onEvent({ type: 'progress', done: 0, total, approved: 0 });
+
+  if (job.cancel) {
+    job.status = 'cancelled';
+    onEvent({
+      type: 'cancelled',
+      done: 0,
+      total,
+      approved: 0,
+      issues: [],
+    });
+    return toSnapshot(job);
+  }
+
   logVerify.info('job started', {
     jobId,
     modId: opts.modId,
@@ -213,11 +237,22 @@ export const runLlmVerifyJob = async (
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
     autoApproveVerified,
+    llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
   });
 
-  onEvent({ type: 'started', jobId, total });
-
   await requirePgvectorForRag(db);
+
+  if (job.cancel) {
+    job.status = 'cancelled';
+    onEvent({
+      type: 'cancelled',
+      done: job.done,
+      total: job.total,
+      approved: job.approved,
+      issues: job.issues,
+    });
+    return toSnapshot(job);
+  }
 
   const projectSettings = await getAllProjectSettings(db);
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
@@ -239,121 +274,78 @@ export const runLlmVerifyJob = async (
       if (dbChunk.length === 0) break;
       dbOffset += dbChunk.length;
 
-      const llmChunks: VerifyStringRow[][] = [];
-      for (let i = 0; i < dbChunk.length; i += CONFIG.batchSize) {
-        llmChunks.push(dbChunk.slice(i, i + CONFIG.batchSize));
-      }
+      /** Process LLM batches sequentially — progress and Stop apply after each batch, not after a full DB page. */
+      for (let i = 0; i < dbChunk.length; i += LLM_VERIFY_LLM_BATCH_SIZE) {
+        if (job.cancel) break;
 
-      type VerifyChunkOutcome =
-        | {
-            ok: true;
-            kind: 'results';
-            results: Awaited<ReturnType<typeof verifyTranslationsWithLlm>>;
-            rowById: Map<number, VerifyStringRow>;
-          }
-        | { ok: true; kind: 'skipped'; skipped: number }
-        | { ok: false; error: string; llmChunk: VerifyStringRow[] };
+        const llmChunk = dbChunk.slice(i, i + LLM_VERIFY_LLM_BATCH_SIZE);
+        const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
 
-      const skipChunk = (size: number): VerifyChunkOutcome => ({
-        ok: true,
-        kind: 'skipped',
-        skipped: size,
-      });
-
-      const chunkOutcomes = await mapWithConcurrency(
-        llmChunks,
-        CONFIG.llmMaxParallel,
-        async (llmChunk): Promise<VerifyChunkOutcome> => {
-          if (job.cancel) {
-            return skipChunk(llmChunk.length);
-          }
-
-          const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
-
-          const ragByStringId = await fetchReferenceExamplesBatch(
-            db,
-            llmChunk.map((row) => {
-              const { grup } = parseRecordLocation(row.signature, row.path);
-              return {
-                stringId: row.string_id,
-                sourceText: row.source,
-                textNorm: row.text_norm,
-                textNormNopunct: row.text_norm_nopunct,
-                signature: grup,
-                path: row.path,
-                context: row.context,
-              };
-            }),
-            opts.srcLang,
-            opts.targetLang,
-            ragMaxExamples,
-            ragMinSimilarity,
-          );
-
-          if (job.cancel) {
-            return skipChunk(llmChunk.length);
-          }
-
-          const items: LlmVerifyItem[] = llmChunk.map((row) => {
-            const { grup, field } = parseRecordLocation(row.signature, row.path);
+        const ragByStringId = await fetchReferenceExamplesBatch(
+          db,
+          llmChunk.map((row) => {
+            const { grup } = parseRecordLocation(row.signature, row.path);
             return {
-              id: row.string_id,
-              source: row.source,
-              translation: row.translation,
-              grup,
-              edid: row.edid,
-              field,
+              stringId: row.string_id,
+              sourceText: row.source,
+              textNorm: row.text_norm,
+              textNormNopunct: row.text_norm_nopunct,
+              signature: grup,
+              path: row.path,
               context: row.context,
-              reference_examples: ragByStringId.get(row.string_id),
             };
+          }),
+          opts.srcLang,
+          opts.targetLang,
+          ragMaxExamples,
+          ragMinSimilarity,
+        );
+
+        if (job.cancel) break;
+
+        const items: LlmVerifyItem[] = llmChunk.map((row) => {
+          const { grup, field } = parseRecordLocation(row.signature, row.path);
+          return {
+            id: row.string_id,
+            source: row.source,
+            translation: row.translation,
+            grup,
+            edid: row.edid,
+            field,
+            context: row.context,
+            reference_examples: ragByStringId.get(row.string_id),
+          };
+        });
+
+        let results: Awaited<ReturnType<typeof verifyTranslationsWithLlm>>;
+        try {
+          results = await verifyTranslationsWithLlm({
+            items,
+            model,
+            srcLang: opts.srcLang,
+            targetLang: opts.targetLang,
+            game: opts.game,
+            modName: opts.modName,
           });
-
-          try {
-            const results = await verifyTranslationsWithLlm({
-              items,
-              model,
-              srcLang: opts.srcLang,
-              targetLang: opts.targetLang,
-              game: opts.game,
-              modName: opts.modName,
-            });
-            return { ok: true, kind: 'results', results, rowById };
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return { ok: false, error: message, llmChunk };
-          }
-        },
-      );
-
-      for (const outcome of chunkOutcomes) {
-        if (outcome.ok && outcome.kind === 'skipped') {
-          for (let i = 0; i < outcome.skipped; i++) {
-            job.done++;
-            onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
-          }
-          continue;
-        }
-
-        if (!outcome.ok) {
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
           logVerify.error('job chunk failed', {
             jobId,
             modId: opts.modId,
-            error: outcome.error,
+            error: message,
           });
-          for (const row of outcome.llmChunk) {
+          for (const row of llmChunk) {
             job.done++;
             onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
           }
           job.status = 'failed';
-          job.error = outcome.error;
-          onEvent({ type: 'error', error: outcome.error });
+          job.error = message;
+          onEvent({ type: 'error', error: message });
           return toSnapshot(job);
         }
 
-        // Collect strings that passed with no issues so this chunk's confirmations
-        // are written in a single bulk update (auto-approve flow).
         const okStringIds: number[] = [];
-        for (const result of outcome.results) {
+        for (const result of results) {
           job.done++;
           if (result.verdict === 'ok') {
             okStringIds.push(result.id);
@@ -361,7 +353,7 @@ export const runLlmVerifyJob = async (
             continue;
           }
 
-          const row = outcome.rowById.get(result.id);
+          const row = rowById.get(result.id);
           if (!row) continue;
 
           const issue: LlmVerifyIssue = {
@@ -400,6 +392,8 @@ export const runLlmVerifyJob = async (
           }
         }
       }
+
+      if (job.cancel) break;
     }
 
     if (job.cancel) {
