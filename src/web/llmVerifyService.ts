@@ -13,7 +13,7 @@ import {
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
-import { approveVerifiedTranslations } from './queries';
+import { approveVerifiedTranslations, PENDING_REVIEW_STATUS_SQL } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
 import { logVerify } from '../logging/loggers';
 
@@ -114,6 +114,7 @@ const countVerifiableStrings = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
+        AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
         AND length(trim(t.text)) > 0`,
     [modId, srcLang, targetLang],
   );
@@ -156,6 +157,7 @@ const loadVerifyChunk = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
+        AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
         AND length(trim(t.text)) > 0
       ORDER BY s.id
       LIMIT $4 OFFSET $5`,
@@ -213,7 +215,7 @@ export const runLlmVerifyJob = async (
   const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang);
   if (total === 0) {
     activeJobs.delete(jobId);
-    throw new Error('No translated strings to verify');
+    throw new Error('No strings pending review');
   }
   job.total = total;
   onEvent({ type: 'progress', done: 0, total, approved: 0 });

@@ -4,7 +4,7 @@ import { ProgressBar } from '../../../../components/StatusBadge';
 import { Button } from '../../../../components/Button';
 import { DropdownButton } from '../../../../components/DropdownButton';
 import { StatusFilter } from '../StatusFilter';
-import { isDraftFilterActive, type StatusFilterValue } from '../../statusFilter';
+import { type StatusFilterValue } from '../../statusFilter';
 import styles from './EditorToolbar.module.scss';
 
 /** Shape returned by the stats API. */
@@ -29,6 +29,13 @@ export interface TmApplyState {
   applied: number;
 }
 
+/** Shape of the clear-same-as-source mutation state passed from the parent. */
+export interface ClearSameAsSourceState {
+  isPending: boolean;
+  isSuccess: boolean;
+  cleared: number;
+}
+
 /** Props for the top toolbar strip of the mod editor. */
 export interface EditorToolbarProps {
   modName: string | undefined;
@@ -44,18 +51,19 @@ export interface EditorToolbarProps {
   translateProgress: { done: number; total: number } | null;
   translateError: string | null;
   tmApply: TmApplyState;
+  clearSameAsSource: ClearSameAsSourceState;
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
   hasBookSignature: boolean;
   qaIssueRowCount: number;
-  untranslatedCount: number | undefined;
 
   onSrcLangChange: (lang: string) => void;
   onTargetLangChange: (lang: string) => void;
   onSelectedStatusesChange: (statuses: StatusFilterValue[]) => void;
   onQaOnlyToggle: () => void;
   onTmApply: () => void;
+  onClearSameAsSource: () => void;
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
   applyImportedRunning?: boolean;
@@ -67,7 +75,6 @@ export interface EditorToolbarProps {
   skipDetectRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
-  onNextUntranslated: () => void;
   onNextQaIssue: () => void;
   onPageModeChange: (mode: 'strings' | 'dialogs') => void;
 }
@@ -88,17 +95,18 @@ export const EditorToolbar = ({
   translateProgress,
   translateError,
   tmApply,
+  clearSameAsSource,
   gameId,
   modId,
   hasInnrSignature,
   hasBookSignature,
   qaIssueRowCount,
-  untranslatedCount,
   onSrcLangChange,
   onTargetLangChange,
   onSelectedStatusesChange,
   onQaOnlyToggle,
   onTmApply,
+  onClearSameAsSource,
   onSearchReplace,
   onApplyTranslationFromMod,
   applyImportedRunning = false,
@@ -110,7 +118,6 @@ export const EditorToolbar = ({
   skipDetectRunning = false,
   onShortcuts,
   onBatchTranslate,
-  onNextUntranslated,
   onNextQaIssue,
   onPageModeChange,
 }: EditorToolbarProps) => {
@@ -165,18 +172,6 @@ export const EditorToolbar = ({
       >
         {t('modEditor.qaOnly')}
       </Button>
-      <Button
-        onClick={() =>
-          onSelectedStatusesChange(isDraftFilterActive(selectedStatuses) ? [] : ['draft'])
-        }
-        variant={isDraftFilterActive(selectedStatuses) ? 'primary' : 'secondary'}
-        size="sm"
-        title={t('modEditor.showDraftsTitle')}
-      >
-        {stats?.draft
-          ? t('modEditor.draftsFilterCount', { count: stats.draft })
-          : t('modEditor.draftsFilter')}
-      </Button>
 
       <div className={styles.sep} />
 
@@ -195,6 +190,15 @@ export const EditorToolbar = ({
                 : t('modEditor.applyTm'),
             onClick: onTmApply,
             disabled: tmApply.isPending,
+          },
+          {
+            label: clearSameAsSource.isPending
+              ? t('modEditor.clearSameAsSourceRunning')
+              : clearSameAsSource.isSuccess
+                ? t('modEditor.clearSameAsSourceDone', { count: clearSameAsSource.cleared })
+                : t('modEditor.clearSameAsSource'),
+            onClick: onClearSameAsSource,
+            disabled: clearSameAsSource.isPending,
           },
           {
             label: applyImportedRunning
@@ -235,16 +239,6 @@ export const EditorToolbar = ({
         >
           {t('modEditor.bookEditor')}
         </Link>
-      )}
-      {(untranslatedCount ?? 0) > 0 && (
-        <Button
-          onClick={onNextUntranslated}
-          variant="secondary"
-          size="sm"
-          title={t('modEditor.nextUntranslatedTitle')}
-        >
-          {t('modEditor.nextUntranslated', { count: untranslatedCount })}
-        </Button>
       )}
       {qaIssueRowCount > 0 && (
         <Button

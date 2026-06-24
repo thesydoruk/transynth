@@ -27,6 +27,11 @@ const BEST_TRANSLATION_ORDER = `CASE status
 
 const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
 
+/** Translation statuses still eligible for automated LLM review and QA validation. */
+export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
+
+const PENDING_REVIEW_STATUSES = new Set<TranslationStatus>(['draft', 'tm', 'fuzzy', 'auto']);
+
 type RevisionInput = {
   stringId: number;
   translationId: number | null;
@@ -203,7 +208,8 @@ const refreshQAIssues = async (
 ): Promise<void> => {
   // Fetch source text, best translation, and record context (signature + path + game) for rule matching
   const { rows } = await db.query(
-    `SELECT s.text_raw AS source, t.id AS translation_id, t.text AS translation,
+    `SELECT s.text_raw AS source, s.is_ignored, t.id AS translation_id, t.text AS translation,
+            t.status AS translation_status,
             r.signature, r.path, m.game
      FROM strings s
      JOIN records r ON r.id = s.record_id
@@ -223,8 +229,10 @@ const refreshQAIssues = async (
   const row = rows[0] as
     | {
         source?: string;
+        is_ignored?: boolean;
         translation_id?: number | null;
         translation?: string | null;
+        translation_status?: TranslationStatus | null;
         signature?: string | null;
         path?: string | null;
         game?: string;
@@ -237,6 +245,14 @@ const refreshQAIssues = async (
   ]);
 
   if (!row?.source || row.translation == null) {
+    return;
+  }
+
+  if (row.is_ignored) {
+    return;
+  }
+
+  if (row.translation_status && !PENDING_REVIEW_STATUSES.has(row.translation_status)) {
     return;
   }
 
@@ -1372,6 +1388,69 @@ export const deleteTranslation = async (
   return { removed: rows.length };
 };
 
+/**
+ * Remove target-language translations where trimmed text equals trimmed source.
+ * Used to clean up accidental copy-source / untranslated rows across a mod.
+ */
+export const clearSameAsSourceTranslations = async (
+  db: Tx,
+  modId: number,
+  srcLang = CONFIG.defaultSrcLang,
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<{ cleared: number }> => {
+  const { rows } = await db.query<{
+    string_id: number;
+    translation_id: number;
+    text: string;
+    provenance: string | null;
+    model: string | null;
+  }>(
+    `SELECT s.id AS string_id, t.id AS translation_id, t.text, t.provenance, t.model
+       FROM strings s
+       JOIN records r ON r.id = s.record_id
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
+      WHERE r.mod_id = $1
+        AND s.lang = $2
+        AND s.is_ignored = FALSE
+        AND trim(s.text_raw) = trim(t.text)
+        AND length(trim(s.text_raw)) > 0`,
+    [modId, srcLang, targetLang],
+  );
+
+  if (rows.length === 0) return { cleared: 0 };
+
+  const stringIds = rows.map((row) => row.string_id);
+
+  await withTransaction(db as pg.Pool, async (client) => {
+    for (const row of rows) {
+      await recordTranslationRevision(client, {
+        stringId: row.string_id,
+        translationId: row.translation_id,
+        targetLang,
+        text: row.text,
+        status: 'deleted',
+        provenance: row.provenance,
+        model: row.model,
+        note: 'clear_same_as_source',
+      });
+    }
+    await client.query(
+      `DELETE FROM translations
+        WHERE target_lang = $1
+          AND src_string_id = ANY($2::int[])`,
+      [targetLang, stringIds],
+    );
+    await client.query(
+      `DELETE FROM qa_issues
+        WHERE target_lang = $1
+          AND src_string_id = ANY($2::int[])`,
+      [targetLang, stringIds],
+    );
+  });
+
+  return { cleared: rows.length };
+};
+
 /** Remove every translation row (all target languages) for one source string. */
 export const deleteAllTranslationsForString = async (db: Tx, stringId: number): Promise<number> => {
   const { rows } = await db.query<{
@@ -2453,7 +2532,9 @@ export const enforceGlossary = async (
         ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
         LIMIT 1
       )
-    WHERE t.text IS NOT NULL AND t.text <> ''`;
+    WHERE t.text IS NOT NULL AND t.text <> ''
+      AND s.is_ignored = FALSE
+      AND t.status IN ${PENDING_REVIEW_STATUS_SQL}`;
 
   const params: unknown[] = [targetLang];
   if (opts.modId) {

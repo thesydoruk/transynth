@@ -35,12 +35,7 @@ import {
   useSkipDetect,
   useApplyImported,
 } from './hooks';
-import {
-  parseStatusParam,
-  statusParamFromSelection,
-  isDraftFilterActive,
-  type StatusFilterValue,
-} from './statusFilter';
+import { parseStatusParam, statusParamFromSelection, type StatusFilterValue } from './statusFilter';
 import styles from './ModEditorPage.module.scss';
 
 /** Rows fetched per infinite-scroll page (the grid accumulates pages). */
@@ -251,14 +246,15 @@ export const ModEditorPage = () => {
     [strings, isRowSelected],
   );
 
-  const { saveMutation, clearMutation, tmApplyMut, saveIndicator } = useEditorMutations({
-    modId,
-    srcLang,
-    targetLang,
-    refetchStats,
-    activeRowRef,
-    setActiveRow,
-  });
+  const { saveMutation, clearMutation, tmApplyMut, clearSameAsSourceMut, saveIndicator } =
+    useEditorMutations({
+      modId,
+      srcLang,
+      targetLang,
+      refetchStats,
+      activeRowRef,
+      setActiveRow,
+    });
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
@@ -599,21 +595,6 @@ export const ModEditorPage = () => {
     [ctxActsOnSelection, selectedLoadedRows, clearMutation], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  /** Programmatic "next untranslated" navigation — mirrors the `n` key shortcut. */
-  const handleNextUntranslated = useCallback(() => {
-    if (!strings?.rows.length) return;
-    const rows = strings.rows;
-    const current = activeRow ?? focusedRow;
-    const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
-    for (let i = 1; i <= rows.length; i++) {
-      const idx = (curIdx + i) % rows.length;
-      if (!rows[idx].translation) {
-        handleRowOpen(rows[idx]);
-        break;
-      }
-    }
-  }, [strings, activeRow, focusedRow, handleRowOpen]);
-
   /** Programmatic "next QA issue" navigation — mirrors the `q` key shortcut. */
   const handleNextQaIssue = useCallback(() => {
     if (!strings?.rows.length) return;
@@ -674,12 +655,16 @@ export const ModEditorPage = () => {
           isSuccess: tmApplyMut.isSuccess,
           applied: (tmApplyMut.data as { applied: number } | undefined)?.applied ?? 0,
         }}
+        clearSameAsSource={{
+          isPending: clearSameAsSourceMut.isPending,
+          isSuccess: clearSameAsSourceMut.isSuccess,
+          cleared: clearSameAsSourceMut.data?.cleared ?? 0,
+        }}
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
         hasBookSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'BOOK')}
         qaIssueRowCount={qaIssueRowCount}
-        untranslatedCount={stats?.untranslated}
         onSrcLangChange={(l) => {
           setSrcLang(l);
           clearSelection();
@@ -697,6 +682,7 @@ export const ModEditorPage = () => {
           clearSelection();
         }}
         onTmApply={() => tmApplyMut.mutate()}
+        onClearSameAsSource={() => clearSameAsSourceMut.mutate()}
         onSearchReplace={() => setShowSearchReplace(true)}
         onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
         applyImportedRunning={applyImported.isRunning}
@@ -708,7 +694,6 @@ export const ModEditorPage = () => {
         skipDetectRunning={skipDetect.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
-        onNextUntranslated={handleNextUntranslated}
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
         onPageModeChange={setPageMode}

@@ -9,6 +9,7 @@ import {
   applyImportedModStringsAsTranslations,
   listModLangs,
   listPreviousVersions,
+  clearSameAsSourceTranslations,
 } from '../queries';
 import { applyTMToMod } from '../tm';
 import {
@@ -98,6 +99,22 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.send(result);
     },
   );
+
+  // POST /api/mods/:id/clear-same-as-source — remove translations identical to source
+  app.post<{
+    Params: { id: string };
+    Querystring: { srcLang?: string; targetLang?: string };
+  }>('/api/mods/:id/clear-same-as-source', async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+
+    const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+    const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
+    log.info(`POST /api/mods/${id}/clear-same-as-source ${srcLang}->${targetLang}`);
+    const result = await clearSameAsSourceTranslations(db, id, srcLang, targetLang);
+    log.info(`Clear same-as-source: cleared=${result.cleared}`);
+    return reply.send(result);
+  });
 
   // GET /api/mods/:id/diff?compareModId= — compare two mod versions
   app.get<{ Params: { id: string }; Querystring: { compareModId?: string; targetLang?: string } }>(

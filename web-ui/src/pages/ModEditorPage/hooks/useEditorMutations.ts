@@ -107,10 +107,26 @@ export function useEditorMutations({
     },
   });
 
+  const clearSameAsSourceMut = useMutation({
+    mutationFn: () => api.mods.clearSameAsSource(modId, srcLang, targetLang),
+    onSuccess: () => {
+      invalidateAll();
+      const row = activeRowRef.current;
+      if (
+        row?.translation &&
+        row.source.trim() === row.translation.trim() &&
+        row.source.trim().length > 0
+      ) {
+        setActiveRow({ ...row, translation: null, translation_id: null, status: null });
+      }
+    },
+  });
+
   return {
     saveMutation,
     clearMutation,
     tmApplyMut,
+    clearSameAsSourceMut,
     saveIndicator,
   };
 }

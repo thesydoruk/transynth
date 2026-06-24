@@ -55,12 +55,6 @@ export const ShortcutsOverlay = ({ onClose }: ShortcutsOverlayProps) => {
           </tr>
           <tr>
             <td className={styles.kbdCell}>
-              <kbd>N</kbd>
-            </td>
-            <td>{t('modEditor.shortcutNextUntranslated')}</td>
-          </tr>
-          <tr>
-            <td className={styles.kbdCell}>
               <kbd>Q</kbd>
             </td>
             <td>{t('modEditor.shortcutNextQaIssue')}</td>

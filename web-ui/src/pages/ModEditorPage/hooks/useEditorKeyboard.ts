@@ -114,21 +114,6 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
         return;
       }
 
-      if (e.key === 'n' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.strings?.rows.length) {
-        e.preventDefault();
-        const rows = c.strings.rows;
-        const current = c.activeRow ?? c.focusedRow;
-        const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
-        for (let i = 1; i <= rows.length; i++) {
-          const idx = (curIdx + i) % rows.length;
-          if (!rows[idx].translation) {
-            c.handleRowOpen(rows[idx]);
-            break;
-          }
-        }
-        return;
-      }
-
       if (e.key === 'q' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.strings?.rows.length) {
         e.preventDefault();
         c.handleNextQaIssue();

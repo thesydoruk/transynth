@@ -386,6 +386,7 @@ export type QARule = {
 };
 
 export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
+export type ClearSameAsSourceResult = { cleared: number };
 
 /**
  * A single string entry within a coherence group — one source string whose
@@ -970,6 +971,11 @@ export const api = {
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<TMApplyResult>(
         `/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`,
+        { method: 'POST' },
+      ),
+    clearSameAsSource: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+      req<ClearSameAsSourceResult>(
+        `/api/mods/${modId}/clear-same-as-source?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
         { method: 'POST' },
       ),
     diff: (newModId: number, compareModId: number, targetLang = getTgtLang()) =>

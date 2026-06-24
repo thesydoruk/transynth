@@ -43,7 +43,3 @@ export const toggleStatusSelection = (
   else set.add(status);
   return STATUS_FILTER_OPTS.filter((s) => set.has(s));
 };
-
-/** True when the draft quick-filter should appear active. */
-export const isDraftFilterActive = (selected: readonly string[]): boolean =>
-  selected.length === 1 && selected[0] === 'draft';
