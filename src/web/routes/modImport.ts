@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
+import { deleteModData } from '../queries';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -331,48 +332,44 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       modAbsPath = rows[0]?.abs_path ?? null;
     }
 
-    // Remove all known plugin/archive files connected to the import.
+    // DB first — large mods were timing out when CASCADE ran after slow fs.rmSync.
+    if (job.mod_id != null && deleteData === 'rows') {
+      await deleteModData(db, job.mod_id, 'rows');
+    }
+    if (job.mod_id != null && deleteData === 'mod') {
+      await deleteModData(db, job.mod_id, 'mod');
+    }
+
+    await deleteModImportJob(db, jobId);
+
+    // File cleanup after DB commit; do not block the HTTP response on large archives.
     const filePaths = new Set<string>();
     filePaths.add(modFilePath(job.file_name));
     if (job.esp_path) filePaths.add(job.esp_path);
     if (modAbsPath) filePaths.add(modAbsPath);
 
-    for (const filePath of filePaths) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch {
-        /* file may not exist */
-      }
-    }
-
-    // Remove extracted archive folder when this import was unpacked.
     const extractedDirs = new Set<string>();
     const fromJobEsp = resolveExtractedRootDir(job.esp_path);
     const fromModAbs = resolveExtractedRootDir(modAbsPath);
     if (fromJobEsp) extractedDirs.add(fromJobEsp);
     if (fromModAbs) extractedDirs.add(fromModAbs);
 
-    for (const dirPath of extractedDirs) {
-      try {
-        fs.rmSync(dirPath, { recursive: true, force: true });
-      } catch {
-        /* ignore */
+    setImmediate(() => {
+      for (const filePath of filePaths) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch {
+          /* file may not exist */
+        }
       }
-    }
-
-    // Split delete modes:
-    // - job  : remove import job only
-    // - rows : remove imported records/strings/translations but keep mod row
-    // - mod  : remove mod row (records/strings cascade via FK)
-    if (job.mod_id != null && deleteData === 'rows') {
-      await db.query(`DELETE FROM records WHERE mod_id = $1`, [job.mod_id]);
-    }
-
-    if (job.mod_id != null && deleteData === 'mod') {
-      await db.query(`DELETE FROM mods WHERE id = $1`, [job.mod_id]);
-    }
-
-    await deleteModImportJob(db, jobId);
+      for (const dirPath of extractedDirs) {
+        try {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
+      }
+    });
 
     return { ok: true };
   });

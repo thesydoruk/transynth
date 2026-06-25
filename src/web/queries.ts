@@ -30,6 +30,9 @@ const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
 /** Translation statuses still eligible for automated LLM review and QA validation. */
 export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
 
+/** Translation statuses that LLM translate/verify must never overwrite or re-process. */
+export const LLM_PROTECTED_TRANSLATION_STATUS_SQL = `('reviewed', 'human', 'skip', 'rejected')`;
+
 const PENDING_REVIEW_STATUSES = new Set<TranslationStatus>(['draft', 'tm', 'fuzzy', 'auto']);
 
 type RevisionInput = {
@@ -450,6 +453,115 @@ export const listMods = async (
 export const getMod = async (db: Tx, id: number) => {
   const { rows } = await db.query(`SELECT * FROM mods WHERE id = $1`, [id]);
   return rows[0];
+};
+
+/**
+ * Remove imported data for a mod without relying on FK CASCADE.
+ *
+ * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
+ * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
+ * row-by-row. Explicit bulk DELETE/UPDATE statements use set-based plans instead.
+ *
+ * @param scope - `rows` keeps the mod row; `mod` also removes dialog graph + mod.
+ */
+export const deleteModData = async (
+  db: Tx,
+  modId: number,
+  scope: 'rows' | 'mod',
+): Promise<{ deletedRecords: number }> => {
+  const started = Date.now();
+
+  const result = await withTransaction(db as pg.Pool, async (client) => {
+    await client.query(
+      `UPDATE dialog_nodes dn
+          SET response_string_id = NULL
+         FROM strings s
+         JOIN records r ON s.record_id = r.id
+        WHERE dn.response_string_id = s.id
+          AND r.mod_id = $1`,
+      [modId],
+    );
+
+    await client.query(
+      `DELETE FROM translation_examples te
+        USING translations t
+        JOIN strings s ON t.src_string_id = s.id
+        JOIN records r ON s.record_id = r.id
+       WHERE te.translation_id = t.id
+         AND r.mod_id = $1`,
+      [modId],
+    );
+
+    await client.query(
+      `DELETE FROM qa_issues qi
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+       WHERE qi.src_string_id = s.id
+         AND r.mod_id = $1`,
+      [modId],
+    );
+
+    await client.query(
+      `DELETE FROM translation_revisions tr
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+       WHERE tr.src_string_id = s.id
+         AND r.mod_id = $1`,
+      [modId],
+    );
+
+    await client.query(
+      `DELETE FROM translations t
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+       WHERE t.src_string_id = s.id
+         AND r.mod_id = $1`,
+      [modId],
+    );
+
+    await client.query(
+      `DELETE FROM strings s
+        USING records r
+       WHERE s.record_id = r.id
+         AND r.mod_id = $1`,
+      [modId],
+    );
+
+    const { rowCount } = await client.query(`DELETE FROM records WHERE mod_id = $1`, [modId]);
+
+    if (scope === 'mod') {
+      await client.query(
+        `DELETE FROM dialog_scene_phases dsp
+          WHERE dsp.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = $1)
+             OR dsp.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = $1)`,
+        [modId],
+      );
+      await client.query(
+        `DELETE FROM dialog_edges de
+          USING dialog_topics dt
+         WHERE de.topic_id = dt.id
+           AND dt.mod_id = $1`,
+        [modId],
+      );
+      await client.query(
+        `DELETE FROM dialog_nodes dn
+          USING dialog_topics dt
+         WHERE dn.topic_id = dt.id
+           AND dt.mod_id = $1`,
+        [modId],
+      );
+      await client.query(`DELETE FROM dialog_scenes WHERE mod_id = $1`, [modId]);
+      await client.query(`DELETE FROM dialog_topics WHERE mod_id = $1`, [modId]);
+      await client.query(`DELETE FROM mods WHERE id = $1`, [modId]);
+    }
+
+    return { deletedRecords: rowCount ?? 0 };
+  });
+
+  log.info(
+    `deleteModData modId=${modId} scope=${scope} records=${result.deletedRecords} ms=${Date.now() - started}`,
+  );
+  return result;
 };
 
 // ── Strings ───────────────────────────────────────────────────────────────────
@@ -1343,6 +1455,29 @@ export const upsertTranslation = async (
   return { id: translationId, text, status };
 };
 
+/**
+ * Keep only string IDs that LLM batch translate may process: not marked skip
+ * (`is_ignored`) and without a confirmed / skip / rejected translation.
+ */
+export const filterStringIdsForLlmTranslate = async (
+  db: Tx,
+  stringIds: number[],
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<number[]> => {
+  if (stringIds.length === 0) return [];
+  const { rows } = await db.query<{ id: number }>(
+    `SELECT s.id
+       FROM strings s
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $2
+      WHERE s.id = ANY($1::int[])
+        AND s.is_ignored = FALSE
+        AND (t.id IS NULL OR t.status NOT IN ('reviewed', 'human', 'skip', 'rejected'))`,
+    [stringIds, targetLang],
+  );
+  return rows.map((r) => r.id);
+};
+
 export const deleteTranslation = async (
   db: Tx,
   stringId: number,
@@ -1386,6 +1521,100 @@ export const deleteTranslation = async (
   ]);
 
   return { removed: rows.length };
+};
+
+/** Archive revisions, drop translations, and drop QA rows — three statements, no per-row work. */
+const clearTranslationsInTransaction = async (
+  client: pg.PoolClient,
+  targetLang: string,
+  targetStringsSql: string,
+  values: unknown[],
+): Promise<number> => {
+  const { rowCount } = await client.query(
+    `INSERT INTO translation_revisions(
+       src_string_id, translation_id, target_lang, text, status, provenance, model, note
+     )
+     SELECT t.src_string_id, t.id, t.target_lang, t.text, 'deleted', t.provenance, t.model, 'clear'
+       FROM translations t
+      WHERE t.target_lang = $1
+        AND t.src_string_id IN (${targetStringsSql})`,
+    values,
+  );
+  await client.query(
+    `DELETE FROM translations t
+      WHERE t.target_lang = $1
+        AND t.src_string_id IN (${targetStringsSql})`,
+    values,
+  );
+  await client.query(
+    `DELETE FROM qa_issues qi
+      WHERE qi.target_lang = $1
+        AND qi.src_string_id IN (${targetStringsSql})`,
+    values,
+  );
+  return rowCount ?? 0;
+};
+
+/** Remove target-language translations for many source strings at once. */
+export const deleteTranslationsBatch = async (
+  db: Tx,
+  stringIds: number[],
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<{ removed: number }> => {
+  if (stringIds.length === 0) return { removed: 0 };
+
+  const removed = await withTransaction(db as pg.Pool, async (client) =>
+    clearTranslationsInTransaction(client, targetLang, 'SELECT unnest($2::int[])', [
+      targetLang,
+      stringIds,
+    ]),
+  );
+  return { removed };
+};
+
+/** Shift $1, $2, … placeholders in SQL fragments (used when prepending a bound param). */
+const bumpSqlParams = (sql: string, by = 1): string =>
+  sql.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + by}`);
+
+/**
+ * Remove target-language translations for every string matching an editor filter.
+ * Avoids fetching the full ID list to the client first.
+ */
+export const deleteTranslationsByFilter = async (
+  db: Tx,
+  f: StringsFilter,
+  excludeIds: number[] = [],
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<{ removed: number }> => {
+  const srcLang = f.srcLang ?? CONFIG.defaultSrcLang;
+  const { conditions, values, idx } = buildStringFilterConditions(f);
+  // clearTranslationsInTransaction binds targetLang as $1; filter params follow from $2.
+  const where = bumpSqlParams(conditions.join(' AND '));
+  const targetLangIdx = idx + 1;
+  const srcLangIdx = idx + 2;
+  const queryValues: unknown[] = [targetLang, ...values, targetLang, srcLang];
+
+  let excludeIdx: number | null = null;
+  if (excludeIds.length > 0) {
+    excludeIdx = srcLangIdx + 1;
+    queryValues.push(excludeIds);
+  }
+
+  const qaExists = `EXISTS (SELECT 1 FROM qa_issues qi
+       WHERE qi.src_string_id = s.id AND qi.target_lang = $${targetLangIdx} AND qi.is_active = TRUE)`;
+  const excludeClause = excludeIdx != null ? ` AND s.id <> ALL($${excludeIdx}::int[])` : '';
+
+  const targetStringsSql = `SELECT s.id
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+      WHERE s.lang = $${srcLangIdx} AND ${where}${f.qaOnly ? ` AND ${qaExists}` : ''}${excludeClause}`;
+
+  const removed = await withTransaction(db as pg.Pool, async (client) =>
+    clearTranslationsInTransaction(client, targetLang, targetStringsSql, queryValues),
+  );
+  return { removed };
 };
 
 /**
@@ -1860,7 +2089,7 @@ export const countApplyImportedTargetStrings = async (
     `SELECT COUNT(*)::text AS cnt
        FROM strings s
        JOIN records r ON s.record_id = r.id
-      WHERE r.mod_id = $1 AND s.lang = $2`,
+      WHERE r.mod_id = $1 AND s.lang = $2 AND s.is_ignored = FALSE`,
     [targetModId, srcLang],
   );
   return Number.parseInt(rows[0]?.cnt ?? '0', 10);
@@ -1961,7 +2190,7 @@ export const applyImportedRowsAsTranslations = async (
             )::int AS identity_rank
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
+     WHERE r.mod_id = $1 AND s.lang = $2 AND s.is_ignored = FALSE`,
     [targetModId, srcLang],
   );
 

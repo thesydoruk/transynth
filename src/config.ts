@@ -52,6 +52,12 @@ export const CONFIG = {
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
 
+  /** Max retry attempts for transient LLM HTTP errors and parse failures (default 5). */
+  llmMaxAttempts: (() => {
+    const parsed = Number.parseInt(process.env.LLM_MAX_ATTEMPTS ?? '', 10);
+    return Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 10) : 5;
+  })(),
+
   /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
   llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
   /** Max concurrent embedding HTTP requests (global semaphore). */

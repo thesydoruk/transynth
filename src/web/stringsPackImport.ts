@@ -16,6 +16,7 @@ import { log } from '../logger';
 import type { CsvRow, GameType } from '../types';
 import { sha1Hex, sha1HexFile } from '../utils/hash';
 import { bulkInsertModImportRows, type ModImportBulkRow } from './modImportBulk';
+import { deleteModData } from './queries';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const STRINGS_DIR_NAMES = new Set(['strings']);
@@ -443,7 +444,7 @@ export const importStringsPack = async (
   }
 
   if (existingModId != null && force) {
-    await db.query('DELETE FROM mods WHERE id = $1', [existingModId]);
+    await deleteModData(db, existingModId, 'mod');
   }
 
   const modId = await upsertMod(db, modName, absPath, contentHash, game);

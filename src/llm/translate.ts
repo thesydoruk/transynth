@@ -4,9 +4,13 @@
  * Both the request payload and the model response use JSON. Placeholder tokens
  * (¤PH…¤, ¤GL…¤, ¤FK…¤) must already be applied by the caller.
  */
+import { CONFIG } from '../config';
+import { log } from '../logger';
 import { chatWithFallback } from './index';
+import { parseLlmJson } from './jsonParse';
 import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
+import { isAbortError } from './retry';
 import type { GameType } from '../types';
 
 /** Glossary entry included in the translation payload. */
@@ -48,6 +52,8 @@ export interface LlmTranslateOptions {
   modName?: string | null;
   glossary?: LlmGlossaryEntry[];
   styleGuide?: string;
+  /** Aborts the in-flight LLM request when the owning job is stopped. */
+  signal?: AbortSignal;
 }
 
 /** Parsed translation for one input item. */
@@ -104,12 +110,6 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
   };
 };
 
-const stripMarkdownFence = (text: string): string => {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return match ? match[1].trim() : trimmed;
-};
-
 /**
  * Parse and validate the LLM JSON response.
  *
@@ -119,12 +119,7 @@ export const parseLlmTranslateResponse = (
   raw: string,
   expectedIds: number[],
 ): LlmTranslateResult[] => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripMarkdownFence(raw));
-  } catch {
-    throw new Error('LLM response is not valid JSON');
-  }
+  const parsed = parseLlmJson(raw);
 
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('LLM response must be a JSON object');
@@ -161,6 +156,9 @@ export const parseLlmTranslateResponse = (
  *
  * @returns Translations in the same order as {@link LlmTranslateOptions.items}.
  */
+const translateBackoffMs = (attempt: number): number =>
+  Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
+
 export const translateStrings = async (
   opts: LlmTranslateOptions,
 ): Promise<LlmTranslateResult[]> => {
@@ -169,35 +167,58 @@ export const translateStrings = async (
   const expectedIds = opts.items.map((item) => item.id);
   const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game);
   const payload = buildTranslateUserPayload(opts);
+  const maxAttempts = CONFIG.llmMaxAttempts;
 
-  const text = await chatWithFallback({
-    model: opts.model,
-    temperature: 0,
-    responseFormat: { type: 'json_object' },
-    logMeta: {
-      operation: 'translate',
-      context: {
-        itemIds: expectedIds,
-        itemCount: expectedIds.length,
-        srcLang: opts.srcLang,
-        targetLang: opts.targetLang,
-        game: opts.game ?? null,
-        modName: opts.modName ?? null,
-        glossaryCount: opts.glossary?.length ?? 0,
-        ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
-      },
-    },
-    messages: [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
-      {
-        role: 'user',
-        content: JSON.stringify(payload),
-      },
-    ],
-  });
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const text = await chatWithFallback({
+        model: opts.model,
+        temperature: 0,
+        responseFormat: { type: 'json_object' },
+        signal: opts.signal,
+        logMeta: {
+          operation: 'translate',
+          context: {
+            itemIds: expectedIds,
+            itemCount: expectedIds.length,
+            attempt: attempt + 1,
+            srcLang: opts.srcLang,
+            targetLang: opts.targetLang,
+            game: opts.game ?? null,
+            modName: opts.modName ?? null,
+            glossaryCount: opts.glossary?.length ?? 0,
+            ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
+          },
+        },
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify(payload),
+          },
+        ],
+      });
 
-  return parseLlmTranslateResponse(text, expectedIds);
+      if (!text.trim()) {
+        throw new Error('LLM returned empty response');
+      }
+
+      return parseLlmTranslateResponse(text, expectedIds);
+    } catch (err) {
+      if (isAbortError(err)) throw err;
+      lastErr = err;
+      if (attempt === maxAttempts - 1) break;
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(
+        `Translate LLM retry ${attempt + 1}/${maxAttempts}: ${message} — waiting ${Math.round(translateBackoffMs(attempt))}ms`,
+      );
+      await new Promise((r) => setTimeout(r, translateBackoffMs(attempt)));
+    }
+  }
+
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 };

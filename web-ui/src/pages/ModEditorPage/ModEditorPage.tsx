@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type StringRow, type StringFilterParams } from '../../api';
+import { api, type StringRow, type StringFilterParams, type StringsResult } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
@@ -246,6 +246,15 @@ export const ModEditorPage = () => {
     [strings, isRowSelected],
   );
 
+  /** Resolve every selected string ID, including rows not yet loaded in the grid. */
+  const resolveSelectedIds = useCallback(async (): Promise<number[]> => {
+    if (selectAllMatching) {
+      const { ids: all } = await api.strings.matchingIds({ modId, ...buildFilter() });
+      return selected.size ? all.filter((id) => !selected.has(id)) : all;
+    }
+    return [...selected];
+  }, [selectAllMatching, selected, modId, buildFilter]);
+
   const { saveMutation, clearMutation, tmApplyMut, clearSameAsSourceMut, saveIndicator } =
     useEditorMutations({
       modId,
@@ -456,12 +465,7 @@ export const ModEditorPage = () => {
     // rows that have not been scrolled into memory yet.
     let ids: number[];
     try {
-      if (selectAllMatching) {
-        const { ids: all } = await api.strings.matchingIds({ modId, ...buildFilter() });
-        ids = selected.size ? all.filter((id) => !selected.has(id)) : all;
-      } else {
-        ids = [...selected];
-      }
+      ids = await resolveSelectedIds();
     } catch (err) {
       setTranslateError(String(err));
       return;
@@ -582,17 +586,87 @@ export const ModEditorPage = () => {
     [ctxActsOnSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
   );
 
-  /** Context-menu clear: whole selection (loaded rows) or just the clicked row. */
+  /** Patch loaded grid rows after a bulk clear (instant UI, no refetch storm). */
+  const patchClearedInCache = useCallback(
+    (matchRow: (row: StringRow) => boolean) => {
+      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            rows: page.rows.map((r) =>
+              matchRow(r)
+                ? {
+                    ...r,
+                    translation: null,
+                    translation_id: null,
+                    status: null,
+                    qa_issue_count: 0,
+                  }
+                : r,
+            ),
+          })),
+        };
+      });
+    },
+    [qc, modId],
+  );
+
+  /** Context-menu clear: whole selection (all matching IDs) or just the clicked row. */
   const ctxClear = useCallback(
-    (row: StringRow) => {
+    async (row: StringRow) => {
       if (ctxActsOnSelection(row)) {
-        for (const r of selectedLoadedRows()) clearMutation.mutate({ stringId: r.string_id });
+        patchClearedInCache((r) => isRowSelected(r.string_id));
+        try {
+          if (selectAllMatching) {
+            await api.strings.batchClearTranslations({
+              modId,
+              filter: buildFilter(),
+              excludeIds: selected.size ? [...selected] : undefined,
+              targetLang,
+            });
+          } else {
+            await api.strings.batchClearTranslations({ stringIds: [...selected], targetLang });
+          }
+          void refetchStats();
+          const activeId = activeRowRef.current?.string_id;
+          if (activeId && isRowSelected(activeId)) {
+            setActiveRow((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    translation: null,
+                    translation_id: null,
+                    status: null,
+                    qa_issue_count: 0,
+                  }
+                : prev,
+            );
+            setDraftTranslation('');
+          }
+          clearSelection();
+        } catch {
+          qc.invalidateQueries({ queryKey: ['strings', modId] });
+        }
       } else {
         handleClear(row);
       }
     },
     // handleClear is a stable-enough page handler; intentionally omitted.
-    [ctxActsOnSelection, selectedLoadedRows, clearMutation], // eslint-disable-line react-hooks/exhaustive-deps
+    [
+      ctxActsOnSelection,
+      selectAllMatching,
+      modId,
+      buildFilter,
+      selected,
+      targetLang,
+      patchClearedInCache,
+      isRowSelected,
+      refetchStats,
+      clearSelection,
+      qc,
+    ], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /** Programmatic "next QA issue" navigation — mirrors the `q` key shortcut. */

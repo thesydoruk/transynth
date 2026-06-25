@@ -40,6 +40,8 @@ export interface LlmVerifyOptions {
   targetLang: string;
   game?: GameType | string | null;
   modName?: string | null;
+  /** Aborts the in-flight LLM request when the owning job is stopped. */
+  signal?: AbortSignal;
 }
 
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
@@ -168,6 +170,7 @@ const callVerifyTranslateLlm = async (
     model: opts.model,
     temperature: 0,
     responseFormat: { type: 'json_object' },
+    signal: opts.signal,
     logMeta: {
       operation: 'verify_translate',
       context: {

@@ -6,6 +6,8 @@ import {
   listSignatures,
   upsertTranslation,
   deleteTranslation,
+  deleteTranslationsBatch,
+  deleteTranslationsByFilter,
   getStringTextNorm,
   getRagSuggestions,
   getTranslationHistory,
@@ -288,6 +290,75 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     if (rows.length === 0) return reply.code(404).send({ error: 'String not found' });
     return reply.send(rows[0]);
+  });
+
+  // POST /api/strings/clear-translations — batch clear target-language translations
+  app.post<{
+    Body: {
+      stringIds?: number[];
+      modId?: number;
+      filter?: {
+        srcLang?: string;
+        targetLang?: string;
+        status?: string;
+        qaOnly?: boolean;
+        signature?: string;
+        q?: string;
+        grup?: string;
+        formid?: string;
+        edid?: string;
+        field?: string;
+        src?: string;
+        transl?: string;
+        hideIgnored?: boolean;
+      };
+      excludeIds?: number[];
+      targetLang?: string;
+    };
+  }>('/api/strings/clear-translations', async (req, reply) => {
+    const { stringIds, modId, filter, excludeIds, targetLang: bodyTargetLang } = req.body ?? {};
+    const targetLang = bodyTargetLang?.trim() || CONFIG.defaultTgtLang;
+
+    if (modId != null && filter) {
+      const id = Number(modId);
+      if (!Number.isInteger(id) || id < 1) {
+        return reply.code(400).send({ error: 'Invalid modId' });
+      }
+      const excluded = Array.isArray(excludeIds)
+        ? excludeIds.filter((x) => Number.isInteger(x) && x > 0)
+        : [];
+      return reply.send(
+        await deleteTranslationsByFilter(
+          db,
+          {
+            modId: id,
+            srcLang: filter.srcLang,
+            targetLang: filter.targetLang,
+            status: filter.status,
+            qaOnly: filter.qaOnly,
+            signature: filter.signature,
+            query: filter.q,
+            grup: filter.grup,
+            formid: filter.formid,
+            edid: filter.edid,
+            field: filter.field,
+            src: filter.src,
+            transl: filter.transl,
+            hideIgnored: filter.hideIgnored,
+          },
+          excluded,
+          targetLang,
+        ),
+      );
+    }
+
+    if (!Array.isArray(stringIds) || stringIds.length === 0) {
+      return reply.code(400).send({ error: 'stringIds array is required' });
+    }
+    if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
+      return reply.code(400).send({ error: 'Invalid stringIds' });
+    }
+    return reply.send(await deleteTranslationsBatch(db, stringIds, targetLang));
   });
 
   // POST /api/strings/mark-skip — mark strings as non-translatable (status skip)

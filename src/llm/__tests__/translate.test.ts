@@ -173,6 +173,6 @@ describe('parseLlmTranslateResponse', () => {
   });
 
   it('throws on invalid JSON', () => {
-    expect(() => parseLlmTranslateResponse('not json', [1])).toThrow('not valid JSON');
+    expect(() => parseLlmTranslateResponse('not json', [1])).toThrow(/not valid JSON/);
   });
 });

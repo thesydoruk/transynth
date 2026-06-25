@@ -78,6 +78,19 @@ export const buildUkrainianPromptExamples = (): string => {
       line101: 'Мені потрібно ¤PH0¤ кришок за цей карабін.',
       line102: 'Бойова броня Братерства сталі',
     }),
+    '',
+    'Додатковий приклад (частина силової броні, ARMO/FULL):',
+    'Вхід: {"id":103,"source":"T-51 Right Arm Armor","grup":"ARMO","field":"FULL","edid":"Armor_Power_T51_ArmRight"}',
+    'Вихід: {"id":103,"translation":"Права рука T-51"}',
+    '',
+    'Додатковий приклад (матеріали, FULL — без капсу):',
+    'Вхід: {"id":104,"source":"Bamboo Fiber","grup":"MISC","field":"FULL"} → {"id":104,"translation":"Бамбукове волокно"}',
+    'Вхід: {"id":105,"source":"Wood","grup":"MISC","field":"FULL"} → {"id":105,"translation":"Деревина"}',
+    '',
+    'Додатковий приклад (категорії UI — обидві частини українською):',
+    'Вхід: {"id":106,"source":"Ammo - Ballistic","grup":"MISC","field":"FULL"} → {"id":106,"translation":"Боєприпаси — балістичні"}',
+    'Вхід: {"id":107,"source":"Armor - Standard","grup":"MISC","field":"FULL"} → {"id":107,"translation":"Броня — стандартна"}',
+    'Вхід: {"id":108,"source":"Weapon Parts","grup":"MISC","field":"FULL"} → {"id":108,"translation":"Деталі зброї"}',
   ].join('\n');
 };
 

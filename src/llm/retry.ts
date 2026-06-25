@@ -1,5 +1,6 @@
 // Exponential backoff retry for transient LLM errors (429, 500, 503, network).
 
+import { CONFIG } from '../config';
 import { log } from '../logger';
 
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
@@ -10,24 +11,35 @@ const isRetryable = (err: unknown): boolean => {
   if (e?.code && RETRYABLE_CODES.has(e.code)) return true;
   const status = e?.status ?? e?.response?.status;
   return RETRYABLE_STATUSES.has(status as number);
-}
+};
+
+/** True for user-initiated aborts (job stopped) — never retry these. */
+export const isAbortError = (err: unknown): boolean => {
+  const e = err as { name?: string; code?: string };
+  return e?.name === 'AbortError' || e?.name === 'APIUserAbortError' || e?.code === 'ABORT_ERR';
+};
 
 /**
  * Retry `fn` up to `maxAttempts` times on transient errors.
  * Backoff: 1s, 2s, 4s, … (capped at 30s) + jitter.
  */
-export const withRetry = async <T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> => {
+export const withRetry = async <T>(
+  fn: () => Promise<T>,
+  maxAttempts = CONFIG.llmMaxAttempts,
+): Promise<T> => {
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      if (!isRetryable(err) || attempt === maxAttempts - 1) throw err;
+      if (isAbortError(err) || !isRetryable(err) || attempt === maxAttempts - 1) throw err;
       lastErr = err;
       const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
-      log.warn(`Retry ${attempt + 1}/${maxAttempts}: ${(err as Error)?.message || err} — waiting ${Math.round(delay)}ms`);
-      await new Promise(r => setTimeout(r, delay));
+      log.warn(
+        `Retry ${attempt + 1}/${maxAttempts}: ${(err as Error)?.message || err} — waiting ${Math.round(delay)}ms`,
+      );
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw lastErr;
-}
+};

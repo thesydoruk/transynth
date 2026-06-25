@@ -16,6 +16,7 @@
     "scan:strings": "tsx scripts/scanStrings.ts",
     "export:mods": "tsx scripts/exportMods.ts",
     "detect:locale": "tsx scripts/detectModLocale.ts",
+    "translate:auto": "tsx scripts/autoTranslate.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",

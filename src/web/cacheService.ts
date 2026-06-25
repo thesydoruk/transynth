@@ -50,6 +50,56 @@ export const cacheLookup = async (
 };
 
 /**
+ * Look up many cached translations in a single round trip.
+ *
+ * Replaces N sequential {@link cacheLookup} calls (one DB round trip each — very
+ * slow against a remote database) with one `text_norm = ANY(...)` query. The
+ * returned map is keyed by the *raw* source text so callers don't need to
+ * re-normalise; multiple raws that normalise to the same key all resolve.
+ *
+ * @returns Map of raw source text → cached translation (only hits are present).
+ */
+export const cacheLookupMany = async (
+  db: Tx,
+  raws: string[],
+  srcLang: string,
+  tgtLang: string,
+  model: string,
+): Promise<Map<string, string>> => {
+  const byRaw = new Map<string, string>();
+  if (raws.length === 0) return byRaw;
+
+  const normToRaws = new Map<string, string[]>();
+  for (const raw of raws) {
+    const norm = normalizeForHash(raw);
+    const existing = normToRaws.get(norm);
+    if (existing) existing.push(raw);
+    else normToRaws.set(norm, [raw]);
+  }
+
+  const { rows } = await db.query<{ text_norm: string; translated: string }>(
+    `SELECT text_norm, translated FROM translation_cache
+     WHERE src_lang = $2 AND tgt_lang = $3 AND model = $4
+       AND text_norm = ANY($1::text[])`,
+    [[...normToRaws.keys()], srcLang, tgtLang, model],
+  );
+
+  for (const row of rows) {
+    for (const raw of normToRaws.get(row.text_norm) ?? []) {
+      byRaw.set(raw, row.translated);
+    }
+  }
+  logCache.debug('lookupMany', {
+    srcLang,
+    tgtLang,
+    model,
+    requested: normToRaws.size,
+    hits: rows.length,
+  });
+  return byRaw;
+};
+
+/**
  * Store an LLM translation result in the cache.
  *
  * Uses INSERT … ON CONFLICT to avoid duplicates when concurrent requests

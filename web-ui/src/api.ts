@@ -1250,6 +1250,20 @@ export const api = {
           method: 'DELETE',
         },
       ),
+    batchClearTranslations: (
+      payload:
+        | { stringIds: number[]; targetLang?: string }
+        | {
+            modId: number;
+            filter: StringFilterParams;
+            excludeIds?: number[];
+            targetLang?: string;
+          },
+    ) =>
+      req<{ removed: number }>(`/api/strings/clear-translations`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
     history: (stringId: number, targetLang = getTgtLang()) =>
       req<TranslationHistoryEntry[]>(
         `/api/strings/${stringId}/history?targetLang=${encodeURIComponent(targetLang)}`,

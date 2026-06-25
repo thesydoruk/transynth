@@ -31,6 +31,8 @@ export interface ChatOptions {
   messages: ChatMessage[];
   temperature?: number;
   responseFormat?: { type: 'json_object' };
+  /** Aborts the in-flight HTTP request (e.g. when a translate/verify job is stopped). */
+  signal?: AbortSignal;
   logMeta?: {
     operation: string;
     context?: Record<string, unknown>;

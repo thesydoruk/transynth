@@ -4,11 +4,22 @@
  * Jobs are not persisted — they are lost on worker restart by design.
  */
 import type { Tx } from '../db';
+import { CONFIG } from '../config';
 import { translateStringIdsBatch } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
 
-/** String IDs fetched from the database per pagination step. */
-export const LLM_TRANSLATE_DB_CHUNK_SIZE = 100;
+/**
+ * String IDs fetched from the database per pagination step.
+ *
+ * Each page is handed to {@link translateStringIdsBatch}, which splits it into
+ * `CONFIG.batchSize` LLM chunks run in parallel. Size the page to hold at least
+ * one chunk per concurrent worker (chat + embed pipeline) so parallelism isn't
+ * starved and the per-page barrier is hit far less often.
+ */
+export const LLM_TRANSLATE_DB_CHUNK_SIZE = Math.max(
+  100,
+  CONFIG.batchSize * (CONFIG.llmMaxParallel + CONFIG.embedMaxParallel),
+);
 
 export type LlmTranslateRow = {
   stringId: number;
@@ -36,6 +47,8 @@ type ActiveLlmTranslateJob = LlmTranslateJobSnapshot & {
   cancel: boolean;
   srcLang: string;
   targetLang: string;
+  /** Aborts in-flight LLM requests the instant Stop is pressed. */
+  abort: AbortController;
 };
 
 const activeJobs = new Map<number, ActiveLlmTranslateJob>();
@@ -66,11 +79,14 @@ export const findRunningLlmTranslateJob = (modId: number): number | null => {
 export const requestLlmTranslateStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
+  // Order matters: flag cancel before aborting so the abort error surfaces as a
+  // cancellation (and isn't recorded as a per-string failure).
   job.cancel = true;
+  job.abort.abort();
   return true;
 };
 
-const countUntranslatedStrings = async (
+export const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -100,7 +116,7 @@ type UntranslatedMetaRow = {
   edid: string | null;
 };
 
-const loadUntranslatedChunk = async (
+export const loadUntranslatedChunk = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -170,6 +186,7 @@ export const runLlmTranslateJob = async (
     cancel: false,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
+    abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
 
@@ -209,6 +226,7 @@ export const runLlmTranslateJob = async (
           modGame: opts.game,
           modName: opts.modName,
           shouldCancel: () => job.cancel,
+          signal: job.abort.signal,
           onProgress: (doneInBatch, _batchTotal, result) => {
             job.done++;
             const meta = metaById.get(result.stringId);

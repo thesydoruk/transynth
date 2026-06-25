@@ -4,11 +4,12 @@
 import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../llm/translate';
+import { isAbortError } from '../llm/retry';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
-import { cacheLookup, cacheStore } from './cacheService';
-import { upsertTranslation, termWordBoundaryRe } from './queries';
+import { cacheLookupMany, cacheStore } from './cacheService';
+import { upsertTranslation, termWordBoundaryRe, filterStringIdsForLlmTranslate } from './queries';
 import { logTranslate } from '../logging/loggers';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -23,6 +24,8 @@ export type TranslateBatchOptions = {
   modGame?: string | null;
   modName?: string | null;
   shouldCancel?: () => boolean;
+  /** Aborts in-flight LLM requests when the owning job is stopped. */
+  signal?: AbortSignal;
   onProgress?: (done: number, total: number, result: TranslateBatchResult) => void;
 };
 
@@ -62,10 +65,13 @@ export const translateStringIdsBatch = async (
 ): Promise<TranslateBatchResult[]> => {
   if (stringIds.length === 0) return [];
 
-  const { srcLang, targetLang, modGame, modName, shouldCancel, onProgress } = opts;
+  const { srcLang, targetLang, modGame, modName, shouldCancel, signal, onProgress } = opts;
+  const eligibleIds = await filterStringIdsForLlmTranslate(db, stringIds, targetLang);
+  if (eligibleIds.length === 0) return [];
 
   logTranslate.info('batch start', {
-    stringCount: stringIds.length,
+    stringCount: eligibleIds.length,
+    skippedProtected: stringIds.length - eligibleIds.length,
     srcLang,
     targetLang,
     modGame: modGame ?? null,
@@ -116,15 +122,46 @@ export const translateStringIdsBatch = async (
        JOIN records r ON r.id = s.record_id
        JOIN mods m ON m.id = r.mod_id
       WHERE s.id = ANY($1::int[]) AND s.lang = $2`,
-    [stringIds, srcLang],
+    [eligibleIds, srcLang],
   );
   const rowById = new Map(loadedRows.map((row) => [row.id, row]));
 
   const results: TranslateBatchResult[] = [];
   let doneCount = 0;
+
+  /** Single source of truth for emitting a per-string result + live progress. */
+  const emitResult = (r: TranslateBatchResult) => {
+    results.push(r);
+    doneCount++;
+    onProgress?.(doneCount, eligibleIds.length, r);
+  };
+
+  // Concurrency model: RAG (embedding + TM DB lookups) and chat run in two distinct
+  // phases. If RAG were interleaved per-chunk before each chat, simultaneous RAG would
+  // saturate the DB pool / embed semaphore and chat requests would trickle out roughly
+  // one at a time. Gathering all RAG first, then firing chats together, keeps up to
+  // CONFIG.llmMaxParallel chat requests genuinely in flight at once.
+  const ragConcurrency = CONFIG.llmMaxParallel;
+  // Chat is globally capped by the llm semaphore; +1 worker covers the brief post-chat
+  // DB-write window so a chat slot doesn't idle while a worker persists results.
+  const chatConcurrency = CONFIG.llmMaxParallel + 1;
+  // Bound post-chat DB writes per chunk so a single batch can't monopolise the pool.
+  const dbWriteConcurrency = Math.max(2, Math.min(8, CONFIG.dbPoolMax));
+
+  // Batch the cache warm-up: one query instead of one round trip per string.
+  const cacheCandidates = eligibleIds
+    .map((id) => rowById.get(id)?.text_raw)
+    .filter((text): text is string => typeof text === 'string');
+  let cacheByRaw: Map<string, string>;
+  try {
+    cacheByRaw = await cacheLookupMany(db, cacheCandidates, srcLang, targetLang, model);
+  } catch (err) {
+    logTranslate.error('batch cache lookup failed', { err });
+    cacheByRaw = new Map();
+  }
+
   const llmChunks: PreparedLlmItem[][] = [];
   let llmBuffer: PreparedLlmItem[] = [];
-
   const pushLlmItem = (item: PreparedLlmItem) => {
     llmBuffer.push(item);
     if (llmBuffer.length >= CONFIG.batchSize) {
@@ -133,31 +170,16 @@ export const translateStringIdsBatch = async (
     }
   };
 
-  const finishResult = async (stringId: number, text: string) => {
-    await upsertTranslation(db, stringId, text, 'auto', targetLang);
-    const r = { stringId, text };
-    results.push(r);
-    doneCount++;
-    onProgress?.(doneCount, stringIds.length, r);
-  };
+  /** Strings resolved without the LLM (untranslatable or cache hit) — persisted in bulk. */
+  const immediateResults: Array<{ stringId: number; text: string }> = [];
 
-  const failResult = (stringId: number, error: string) => {
-    const r = { stringId, error };
-    results.push(r);
-    doneCount++;
-    onProgress?.(doneCount, stringIds.length, r);
-  };
+  type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
-  const processLlmChunk = async (chunk: PreparedLlmItem[]): Promise<TranslateBatchResult[]> => {
-    if (chunk.length === 0 || shouldCancel?.()) return [];
-
-    logTranslate.debug('LLM chunk flush', {
-      chunkSize: chunk.length,
-      stringIds: chunk.map((e) => e.stringId),
-    });
-
+  /** Phase 1 — gather RAG few-shot context for one chunk. Degrades to no examples on error. */
+  const fetchChunkRag = async (chunk: PreparedLlmItem[]): Promise<RagByStringId> => {
+    if (chunk.length === 0 || shouldCancel?.()) return new Map();
     try {
-      const ragByStringId = await fetchReferenceExamplesBatch(
+      return await fetchReferenceExamplesBatch(
         db,
         chunk.map((entry) => ({
           stringId: entry.stringId,
@@ -173,63 +195,124 @@ export const translateStringIdsBatch = async (
         ragMaxExamples,
         ragMinSimilarity,
       );
-
-      if (shouldCancel?.()) return [];
-
-      const translations = await translateStrings({
-        items: chunk.map((entry) => ({
-          ...entry.llmItem,
-          reference_examples: ragByStringId.get(entry.stringId),
-        })),
-        model,
-        srcLang,
-        targetLang,
-        game: modGame ?? chunk[0]?.game,
-        modName: modName ?? chunk[0]?.modName,
-        glossary: relevantGlossary(chunk.map((entry) => entry.sourceText)),
-      });
-
-      const translationById = new Map(translations.map((row) => [row.id, row.translation]));
-      const chunkResults: TranslateBatchResult[] = [];
-
-      for (const entry of chunk) {
-        if (shouldCancel?.()) break;
-        const maskedTranslation = translationById.get(entry.stringId);
-        if (maskedTranslation === undefined) {
-          chunkResults.push({
-            stringId: entry.stringId,
-            error: `LLM response missing translation for id=${entry.stringId}`,
-          });
-          continue;
-        }
-
-        const translated = unmask(
-          unmask(maskedTranslation, entry.functionKeywordMap),
-          entry.placeholderMap,
-        );
-        await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
-        await upsertTranslation(db, entry.stringId, translated, 'auto', targetLang);
-        chunkResults.push({ stringId: entry.stringId, text: translated });
-      }
-
-      return chunkResults;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      logTranslate.error('LLM translate failed for batch', {
-        error: message,
-        stack: err instanceof Error ? err.stack : undefined,
+      logTranslate.warn('RAG fetch failed for chunk; translating without examples', {
+        err: err instanceof Error ? err.message : String(err),
         stringIds: chunk.map((e) => e.stringId),
       });
-      return chunk.map((entry) => ({ stringId: entry.stringId, error: message }));
+      return new Map();
     }
   };
 
-  for (const stringId of stringIds) {
+  /** Phase 2 — translate one chunk (single LLM chat) and persist the results. */
+  const persistChunkResults = async (
+    chunk: PreparedLlmItem[],
+    ragByStringId: RagByStringId,
+    translations: Awaited<ReturnType<typeof translateStrings>>,
+  ): Promise<void> => {
+    const translationById = new Map(translations.map((row) => [row.id, row.translation]));
+
+    await mapWithConcurrency(chunk, dbWriteConcurrency, async (entry) => {
+      const maskedTranslation = translationById.get(entry.stringId);
+      if (maskedTranslation === undefined) {
+        emitResult({
+          stringId: entry.stringId,
+          error: `LLM response missing translation for id=${entry.stringId}`,
+        });
+        return;
+      }
+
+      const translated = unmask(
+        unmask(maskedTranslation, entry.functionKeywordMap),
+        entry.placeholderMap,
+      );
+      await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
+      await upsertTranslation(db, entry.stringId, translated, 'auto', targetLang);
+      emitResult({ stringId: entry.stringId, text: translated });
+    });
+  };
+
+  const translateChunkOnce = async (
+    chunk: PreparedLlmItem[],
+    ragByStringId: RagByStringId,
+  ): Promise<void> => {
+    const translations = await translateStrings({
+      items: chunk.map((entry) => ({
+        ...entry.llmItem,
+        reference_examples: ragByStringId.get(entry.stringId),
+      })),
+      model,
+      srcLang,
+      targetLang,
+      game: modGame ?? chunk[0]?.game,
+      modName: modName ?? chunk[0]?.modName,
+      glossary: relevantGlossary(chunk.map((entry) => entry.sourceText)),
+      signal,
+    });
+    await persistChunkResults(chunk, ragByStringId, translations);
+  };
+
+  const chunkBackoffMs = (attempt: number): number =>
+    Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
+
+  const runChunkWithRetry = async (
+    chunk: PreparedLlmItem[],
+    ragByStringId: RagByStringId,
+  ): Promise<void> => {
+    if (chunk.length === 0 || shouldCancel?.()) return;
+
+    logTranslate.debug('LLM chunk flush', {
+      chunkSize: chunk.length,
+      stringIds: chunk.map((e) => e.stringId),
+    });
+
+    const maxAttempts = CONFIG.llmMaxAttempts;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await translateChunkOnce(chunk, ragByStringId);
+        return;
+      } catch (err) {
+        if (shouldCancel?.() || isAbortError(err)) return;
+        const message = err instanceof Error ? err.message : String(err);
+        if (attempt < maxAttempts - 1) {
+          logTranslate.warn('LLM chunk retry', {
+            attempt: attempt + 1,
+            maxAttempts,
+            error: message,
+            chunkSize: chunk.length,
+            stringIds: chunk.map((e) => e.stringId),
+          });
+          await new Promise((r) => setTimeout(r, chunkBackoffMs(attempt)));
+          continue;
+        }
+
+        if (chunk.length > 1) {
+          logTranslate.warn('LLM chunk split after retries', {
+            chunkSize: chunk.length,
+            error: message,
+          });
+          const mid = Math.ceil(chunk.length / 2);
+          await runChunkWithRetry(chunk.slice(0, mid), ragByStringId);
+          await runChunkWithRetry(chunk.slice(mid), ragByStringId);
+          return;
+        }
+
+        logTranslate.error('LLM translate failed for batch', {
+          error: message,
+          stack: err instanceof Error ? err.stack : undefined,
+          stringIds: chunk.map((e) => e.stringId),
+        });
+        emitResult({ stringId: chunk[0]!.stringId, error: message });
+      }
+    }
+  };
+
+  for (const stringId of eligibleIds) {
     if (shouldCancel?.()) break;
 
     const row = rowById.get(stringId);
     if (!row) {
-      failResult(stringId, 'not found');
+      emitResult({ stringId, error: 'not found' });
       continue;
     }
 
@@ -244,23 +327,17 @@ export const translateStringIdsBatch = async (
 
     const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
     if (!translatableContent) {
-      await finishResult(stringId, sourceText);
+      immediateResults.push({ stringId, text: sourceText });
       continue;
     }
 
-    try {
-      const cached = await cacheLookup(db, sourceText, srcLang, targetLang, model);
-      if (cached) {
-        logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
-        await finishResult(stringId, cached.translated);
-        continue;
-      }
-      logTranslate.trace('cache miss', { stringId, srcLang, targetLang, model });
-    } catch (err) {
-      logTranslate.error('cache lookup failed', { err, stringId });
-      failResult(stringId, err instanceof Error ? err.message : String(err));
+    const cached = cacheByRaw.get(sourceText);
+    if (cached !== undefined) {
+      logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
+      immediateResults.push({ stringId, text: cached });
       continue;
     }
+    logTranslate.trace('cache miss', { stringId, srcLang, targetLang, model });
 
     pushLlmItem({
       stringId,
@@ -292,28 +369,38 @@ export const translateStringIdsBatch = async (
     llmChunks.push(llmBuffer);
   }
 
-  if (llmChunks.length > 0 && !shouldCancel?.()) {
-    logTranslate.debug('LLM parallel chunks', {
-      chunkCount: llmChunks.length,
-      llmMaxParallel: CONFIG.llmMaxParallel,
+  // Persist cache hits / untranslatable strings concurrently before/while the LLM runs.
+  if (immediateResults.length > 0) {
+    await mapWithConcurrency(immediateResults, dbWriteConcurrency, async (r) => {
+      await upsertTranslation(db, r.stringId, r.text, 'auto', targetLang);
     });
+    for (const r of immediateResults) emitResult(r);
+  }
 
-    const chunkResults = await mapWithConcurrency(llmChunks, CONFIG.llmMaxParallel, (chunk) =>
-      processLlmChunk(chunk),
+  if (llmChunks.length > 0 && !shouldCancel?.()) {
+    // Phase 1: gather RAG context for every chunk (embeds are globally semaphore-gated).
+    const ragByChunk = await mapWithConcurrency(llmChunks, ragConcurrency, (chunk) =>
+      fetchChunkRag(chunk),
     );
 
-    for (const chunkResult of chunkResults) {
-      for (const r of chunkResult) {
-        results.push(r);
-        doneCount++;
-        onProgress?.(doneCount, stringIds.length, r);
-      }
+    if (!shouldCancel?.()) {
+      // Phase 2: fire the chat requests in parallel — up to CONFIG.llmMaxParallel run
+      // concurrently (enforced by the chat semaphore inside chatWithFallback).
+      logTranslate.info('LLM parallel chat phase', {
+        chunkCount: llmChunks.length,
+        chatConcurrency,
+        llmMaxParallel: CONFIG.llmMaxParallel,
+      });
+
+      await mapWithConcurrency(llmChunks, chatConcurrency, (chunk, index) =>
+        runChunkWithRetry(chunk, ragByChunk[index]!),
+      );
     }
   }
 
   const ok = results.filter((r) => r.text).length;
   const failed = results.filter((r) => r.error).length;
-  logTranslate.info('batch done', { total: stringIds.length, ok, failed });
+  logTranslate.info('batch done', { total: eligibleIds.length, ok, failed });
 
   return results;
 };

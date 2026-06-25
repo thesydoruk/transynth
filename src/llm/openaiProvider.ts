@@ -28,12 +28,15 @@ export class OpenAIProvider implements LLMProvider {
    */
   async chat(opts: ChatOptions): Promise<string> {
     const resp = await withRetry(() =>
-      this.client.chat.completions.create({
-        model: opts.model,
-        messages: opts.messages,
-        temperature: opts.temperature ?? 0,
-        ...(opts.responseFormat && { response_format: opts.responseFormat }),
-      }),
+      this.client.chat.completions.create(
+        {
+          model: opts.model,
+          messages: opts.messages,
+          temperature: opts.temperature ?? 0,
+          ...(opts.responseFormat && { response_format: opts.responseFormat }),
+        },
+        opts.signal ? { signal: opts.signal } : undefined,
+      ),
     );
     return resp.choices[0]?.message?.content ?? '';
   }

@@ -2,6 +2,7 @@
 import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
 import { Semaphore } from '../utils/concurrency';
+import { isAbortError } from './retry';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
 import {
@@ -75,6 +76,10 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
       });
       return response;
     } catch (err) {
+      if (isAbortError(err)) {
+        logLlm.debug(`${operation} aborted`, { model: opts.model, provider: provider.name });
+        throw err;
+      }
       logLlm.error(`${operation} failed`, {
         model: opts.model,
         provider: provider.name,
@@ -90,7 +95,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
     return await llmSemaphore.run(() => runChat(primary));
   } catch (err) {
     const fallback = makeFallback();
-    if (!fallback || !isAvailabilityError(err)) throw err;
+    if (isAbortError(err) || !fallback || !isAvailabilityError(err)) throw err;
     logLlm.warn(`${operation} primary unavailable, using fallback`, {
       primary: primary.name,
       fallback: CONFIG.llmFallback,

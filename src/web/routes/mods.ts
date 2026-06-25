@@ -10,6 +10,7 @@ import {
   listModLangs,
   listPreviousVersions,
   clearSameAsSourceTranslations,
+  deleteModData,
 } from '../queries';
 import { applyTMToMod } from '../tm';
 import {
@@ -64,9 +65,9 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = await getMod(db, id);
     if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-    const result = await db.query('DELETE FROM records WHERE mod_id = $1', [id]);
-    log.info(`DELETE /api/mods/${id}/rows deletedRecords=${result.rowCount ?? 0}`);
-    return reply.send({ ok: true, deletedRecords: result.rowCount ?? 0 });
+    const result = await deleteModData(db, id, 'rows');
+    log.info(`DELETE /api/mods/${id}/rows deletedRecords=${result.deletedRecords}`);
+    return reply.send({ ok: true, deletedRecords: result.deletedRecords });
   });
 
   // GET /api/mods/:id/langs — list all languages available in this mod
