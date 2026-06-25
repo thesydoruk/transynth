@@ -2,7 +2,12 @@
 export const RAG_EMBED_DIMENSIONS = 1024;
 
 /** Translation statuses eligible for the RAG index. */
-export const RAG_ELIGIBLE_STATUSES = ['reviewed', 'human'] as const;
+export const RAG_ELIGIBLE_STATUSES = ['reviewed'] as const;
+
+export type RagEligibleStatus = (typeof RAG_ELIGIBLE_STATUSES)[number];
+
+/** SQL fragment: `'reviewed'` for use in `status IN (...)` clauses. */
+export const RAG_ELIGIBLE_STATUSES_SQL = RAG_ELIGIBLE_STATUSES.map((s) => `'${s}'`).join(', ');
 
 /** Max characters per example field sent to the LLM. */
 export const RAG_EXAMPLE_MAX_CHARS = 500;

@@ -4,7 +4,7 @@
  * Connects to `CONFIG.vllmBaseUrl` using the standard `/v1` REST API.
  */
 import OpenAI from 'openai';
-import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
+import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
 import { logLlm } from '../logging/loggers';
@@ -31,19 +31,30 @@ export class VllmProvider implements LLMProvider {
     logLlm.debug('vLLM provider initialized', { chatBaseURL, embedBaseURL });
   }
 
-  async chat(opts: ChatOptions): Promise<string> {
+  async chat(opts: ChatOptions): Promise<ChatResult> {
     const resp = await withRetry(() =>
       this.chatClient.chat.completions.create(
         {
           model: opts.model,
           messages: opts.messages,
           temperature: opts.temperature ?? 0,
+          max_tokens: CONFIG.llmMaxTokens,
           ...(opts.responseFormat && { response_format: opts.responseFormat }),
         },
         opts.signal ? { signal: opts.signal } : undefined,
       ),
     );
-    return resp.choices[0]?.message?.content ?? '';
+    const choice = resp.choices[0];
+    const usage = resp.usage;
+    return {
+      content: choice?.message?.content ?? '',
+      meta: {
+        finishReason: choice?.finish_reason ?? null,
+        promptTokens: usage?.prompt_tokens ?? null,
+        completionTokens: usage?.completion_tokens ?? null,
+        totalTokens: usage?.total_tokens ?? null,
+      },
+    };
   }
 
   async embed(texts: string[], model: string, _options?: EmbedOptions): Promise<number[][]> {

@@ -1,5 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
-import { detectSkipHeuristic, stripPlaceholdersForSkipCheck } from '../skipTranslateHeuristics';
+import {
+  detectSkipHeuristic,
+  partitionSkipAuditRows,
+  stripPlaceholdersForSkipCheck,
+} from '../skipTranslateHeuristics';
 
 describe('stripPlaceholdersForSkipCheck', () => {
   it('removes game placeholders', () => {
@@ -76,5 +80,39 @@ describe('detectSkipHeuristic', () => {
 
   it('keeps prose wrapped in angle brackets', () => {
     expect(detectSkipHeuristic('<User "Bergman" signed in>')).toBeNull();
+  });
+
+  it('flags MPS particle-system internal names', () => {
+    expect(detectSkipHeuristic('MPSSmokeDustGeneric')?.reason).toMatch(/particle/i);
+    expect(detectSkipHeuristic('MPSHeavyImpactSparks')?.reason).toMatch(/particle/i);
+  });
+
+  it('flags LightNode internal identifiers', () => {
+    expect(detectSkipHeuristic('LightNodePrydwenSearchlight')?.reason).toMatch(/LightNode/i);
+  });
+
+  it('flags file paths', () => {
+    expect(detectSkipHeuristic('Textures\\Effects\\Smoke.dds')?.reason).toMatch(/path/i);
+  });
+
+  it('keeps real place names on ACTI even when grup is ACTI', () => {
+    expect(
+      detectSkipHeuristic('Somerville Place', {
+        signature: 'ACTI',
+        path: 'ACTI\\FULL',
+        edid: 'SS2_PBP_SVSignL1',
+      }),
+    ).toBeNull();
+  });
+
+  it('partitionSkipAuditRows sends only non-heuristic rows to LLM', () => {
+    const { heuristicHits, llmCandidates } = partitionSkipAuditRows([
+      { id: 1, source: 'MPSSmokeDustGeneric', signature: 'ACTI', path: 'ACTI\\FULL' },
+      { id: 2, source: 'Somerville Place', signature: 'ACTI', path: 'ACTI\\FULL' },
+      { id: 3, source: '+15%' },
+    ]);
+    expect(heuristicHits.has(1)).toBe(true);
+    expect(heuristicHits.has(3)).toBe(true);
+    expect(llmCandidates.map((r) => r.id)).toEqual([2]);
   });
 });

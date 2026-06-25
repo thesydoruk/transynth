@@ -110,7 +110,7 @@ export const requestLlmVerifyStopByModId = (modId: number): boolean => {
   return requestLlmVerifyStop(jobId);
 };
 
-const countVerifiableStrings = async (
+export const countVerifiableStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -150,7 +150,7 @@ type VerifyStringRow = {
  * and silently skip rows. Fetching strictly `s.id > afterId` is stable under
  * concurrent status changes and avoids OFFSET scan cost on large mods.
  */
-const loadVerifyChunk = async (
+export const loadVerifyChunk = async (
   db: Tx,
   modId: number,
   srcLang: string,

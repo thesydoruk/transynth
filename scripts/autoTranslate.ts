@@ -2,14 +2,16 @@
 /**
  * Automatic mod localization: mark non-translatable strings, then LLM-translate the rest.
  *
- * Phase 1 — skip detection (heuristics by default; optional LLM audit) and apply marks.
+ * Phase 1 — skip detection (heuristics + LLM audit by default) and apply marks.
  * Phase 2 — batch LLM translation for strings without a target-language translation.
  *
  * Usage:
  *   npm run translate:auto -- --mod-id 45
  *   npm run translate:auto -- --mod-name "MyMod.esp"
  *   npm run translate:auto -- --all
- *   npm run translate:auto -- --mod-id 45 --use-llm --tgt-lang uk
+ *   npm run translate:auto -- --mod-id 45 --heuristic-only
+ *   npm run translate:auto -- --mod-id 45 --force
+ *   npm run translate:auto -- --mod-id 45 --tgt-lang uk
  *   npm run translate:auto -- --mod-id 45 --skip-only
  *   npm run translate:auto -- --mod-id 45 --translate-only
  */
@@ -27,7 +29,7 @@ import {
 } from '../src/web/llmSkipDetectService';
 import { LLM_TRANSLATE_DB_CHUNK_SIZE } from '../src/web/llmTranslateService';
 import { runCliModTranslate, type CliTranslateProgressEvent } from '../src/web/cliAutoTranslate';
-import { markStringsAsSkip, getModStats } from '../src/web/queries';
+import { getModStats } from '../src/web/queries';
 
 type ModStats = {
   total: number;
@@ -107,10 +109,15 @@ const argv = await yargs(hideBin(process.argv))
     default: CONFIG.defaultTgtLang,
     describe: 'Target translation language (default: TGT_LANG)',
   })
-  .option('use-llm', {
+  .option('heuristic-only', {
     type: 'boolean',
     default: false,
-    describe: 'Also run LLM skip detection (heuristics always run)',
+    describe: 'Skip detection with heuristics only (no LLM audit)',
+  })
+  .option('use-llm', {
+    type: 'boolean',
+    default: true,
+    describe: 'Run LLM skip detection after heuristics (default: true)',
   })
   .option('skip-only', {
     type: 'boolean',
@@ -121,6 +128,11 @@ const argv = await yargs(hideBin(process.argv))
     type: 'boolean',
     default: false,
     describe: 'Skip non-translatable detection; only translate missing rows',
+  })
+  .option('force', {
+    type: 'boolean',
+    default: false,
+    describe: 'Re-scan strings already marked as non-translatable (skip)',
   })
   .option('db-chunk', {
     type: 'number',
@@ -149,7 +161,8 @@ validateConfig();
 
 const tgtLang = argv['tgt-lang'].trim();
 const srcLangOverride = argv['src-lang']?.trim() || undefined;
-const useLlm = argv['use-llm'];
+const useLlm = argv['heuristic-only'] ? false : argv['use-llm'];
+const skipForce = argv['force'];
 const skipOnly = argv['skip-only'];
 const translateOnly = argv['translate-only'];
 const dbChunkSize =
@@ -239,17 +252,18 @@ const resolveModTargets = async (): Promise<ModTarget[]> => {
 };
 
 const logSkipProgress = (
-  ctx: { lastLogged: { done: number }; candidates: number },
+  ctx: { lastLogged: { done: number }; candidates: number; marked: number },
   event: LlmSkipDetectProgressEvent,
 ): void => {
   if (event.type === 'started') {
     log.info(
-      `Skip detect: scanning ${event.total} string(s) (heuristics${event.useLlm ? ' + LLM' : ''})`,
+      `Skip detect: scanning ${event.total} string(s) (heuristics${event.useLlm ? ' + LLM' : ''}${event.persist ? ', persist' : ''})`,
     );
     return;
   }
   if (event.type === 'progress') {
     if (event.candidate) ctx.candidates++;
+    if (event.marked) ctx.marked += event.marked;
     const step = event.total >= 500 ? 100 : event.total >= 100 ? 50 : 25;
     if (event.done === event.total || event.done - ctx.lastLogged.done >= step) {
       ctx.lastLogged.done = event.done;
@@ -261,13 +275,13 @@ const logSkipProgress = (
   }
   if (event.type === 'done') {
     log.info(
-      `Skip detect done: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), candidates=${event.candidates.length}`,
+      `Skip detect done: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), candidates=${event.candidates.length}, marked=${event.markedCount}`,
     );
     return;
   }
   if (event.type === 'cancelled') {
     log.warn(
-      `Skip detect cancelled: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), candidates=${event.candidates.length}`,
+      `Skip detect cancelled: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), candidates=${event.candidates.length}, marked=${event.markedCount}`,
     );
     return;
   }
@@ -315,7 +329,7 @@ const logTranslateProgress = (
 };
 
 const runSkipPhase = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped'> => {
-  const ctx = { lastLogged: { done: 0 }, candidates: 0 };
+  const ctx = { lastLogged: { done: 0 }, candidates: 0, marked: 0 };
   try {
     const snapshot = await runLlmSkipDetectJob(
       db,
@@ -326,6 +340,8 @@ const runSkipPhase = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipp
         modName: target.modName,
         game: target.game,
         useLlm,
+        persist: true,
+        force: skipForce,
       },
       (event) => logSkipProgress(ctx, event),
     );
@@ -338,17 +354,13 @@ const runSkipPhase = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipp
       return 'failed';
     }
 
-    if (snapshot.candidates.length === 0) {
+    if (snapshot.markedCount === 0 && snapshot.candidates.length === 0) {
       log.info(`No skip candidates for mod_id=${target.modId}`);
-      return 'ok';
+    } else {
+      log.info(
+        `Skip detect marked ${snapshot.markedCount} string(s) as non-translatable (mod_id=${target.modId})`,
+      );
     }
-
-    const marked = await markStringsAsSkip(
-      db,
-      snapshot.candidates.map((c) => c.stringId),
-      tgtLang,
-    );
-    log.info(`Marked ${marked} string(s) as non-translatable (mod_id=${target.modId})`);
     return 'ok';
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -442,7 +454,7 @@ try {
 
   log.info(
     `Auto-translate: ${targets.length} mod(s), skip=${!translateOnly}, translate=${!skipOnly}, ` +
-      `useLlm=${useLlm}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+      `useLlm=${useLlm}, skipForce=${skipForce}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;

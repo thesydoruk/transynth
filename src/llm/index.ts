@@ -1,5 +1,5 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
-import type { LLMProvider, ChatOptions, EmbedOptions } from './provider';
+import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
 import { Semaphore } from '../utils/concurrency';
 import { isAbortError } from './retry';
@@ -11,6 +11,7 @@ import {
   logEmbedRequest,
   logEmbedResponse,
 } from '../logging/llmExchange';
+import { repairLlmJsonContent } from './jsonParse';
 import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
@@ -50,31 +51,62 @@ const isAvailabilityError = (err: unknown): boolean => {
 const chatOperation = (opts: ChatOptions): string => opts.logMeta?.operation ?? 'chat';
 
 /** Chat with automatic fallback to secondary provider on availability errors. */
-export const chatWithFallback = async (opts: ChatOptions): Promise<string> => {
+export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> => {
   const operation = chatOperation(opts);
   const context = opts.logMeta?.context;
   logLlmRequest(logLlm, {
     operation,
     model: opts.model,
     messages: opts.messages,
+    responseFormat: opts.responseFormat?.type,
+    schemaName:
+      opts.responseFormat?.type === 'json_schema'
+        ? opts.responseFormat.json_schema.name
+        : undefined,
     context,
   });
 
   const started = Date.now();
   const primary = getLLM();
 
-  const runChat = async (provider: LLMProvider): Promise<string> => {
+  const runChat = async (provider: LLMProvider): Promise<ChatResult> => {
     try {
-      const response = await provider.chat(opts);
+      const result = await provider.chat(opts);
       logLlmResponse(logLlm, {
         operation,
         model: opts.model,
-        response,
+        response: result.content,
         durationMs: Date.now() - started,
         provider: provider.name,
+        finishReason: result.meta.finishReason,
+        promptTokens: result.meta.promptTokens,
+        completionTokens: result.meta.completionTokens,
+        totalTokens: result.meta.totalTokens,
         context,
       });
-      return response;
+      if (result.meta.finishReason === 'length') {
+        logLlm.warn(`${operation} response truncated (finish_reason=length)`, {
+          model: opts.model,
+          provider: provider.name,
+          responseChars: result.content.length,
+          completionTokens: result.meta.completionTokens,
+          maxTokens: CONFIG.llmMaxTokens,
+          ...context,
+        });
+      }
+      if (opts.responseFormat && result.content.trim()) {
+        const beforeChars = result.content.length;
+        const repaired = repairLlmJsonContent(result.content);
+        if (repaired.length !== beforeChars || repaired !== result.content) {
+          logLlm.debug(`${operation} response JSON repaired`, {
+            beforeChars,
+            afterChars: repaired.length,
+            ...context,
+          });
+        }
+        result.content = repaired;
+      }
+      return result;
     } catch (err) {
       if (isAbortError(err)) {
         logLlm.debug(`${operation} aborted`, { model: opts.model, provider: provider.name });
@@ -170,4 +202,11 @@ export const embedWithFallback = async (
   }
 };
 
-export type { LLMProvider, ChatMessage, ChatOptions, EmbedOptions } from './provider';
+export type {
+  LLMProvider,
+  ChatMessage,
+  ChatOptions,
+  ChatResult,
+  ChatCompletionMeta,
+  EmbedOptions,
+} from './provider';

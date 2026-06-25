@@ -1356,7 +1356,7 @@ export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => 
  * that powers LLM auto-translation. This replaces the legacy standalone TM
  * suggestion query so the panel and the LLM share one source of truth.
  *
- * Only `reviewed`/`human` translations are eligible (the RAG index). Returns
+ * Only `reviewed` translations are eligible (the RAG index). Returns
  * an empty list when RAG is unavailable (e.g. pgvector missing) so the panel
  * degrades gracefully instead of erroring.
  */

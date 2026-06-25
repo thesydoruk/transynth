@@ -1,7 +1,13 @@
 /**
  * LLM audit — flags source strings that should not be translated.
  */
+import { CONFIG } from '../config';
+import { log } from '../logger';
 import { chatWithFallback } from './index';
+import { parseLlmJson } from './jsonParse';
+import { buildSkipDetectResponseFormat } from './responseSchemas';
+import type { ChatCompletionMeta } from './provider';
+import { isAbortError } from './retry';
 import { isUkrainianTargetLang } from './translate';
 import type { GameType } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
@@ -14,6 +20,7 @@ export interface LlmSkipDetectItem {
   grup: string | null;
   edid: string | null;
   field: string | null;
+  path: string | null;
   context: string | null;
 }
 
@@ -47,14 +54,24 @@ const buildEnglishSkipDetectSystemPrompt = (
     'Your task: identify rows that must remain unchanged in the localized plugin (technical tokens, internal IDs, format markers, untranslatable codes, duplicate variable names, etc.).',
     '',
     '### TECHNICAL REQUIREMENTS:',
-    '- Input: JSON with metadata and an "items" array (id, source, grup, field, edid, context).',
+    '- Input: JSON with metadata and an "items" array (id, source, grup, field, path, edid, context).',
     '- Output: valid JSON ONLY. No markdown fences.',
     '- Return one object per input id.',
     '- Note: the declared source_language is not always accurate — some rows may already be partly localized. Judge by the actual content, not by the declared language.',
+    '- Use grup, field, path, edid, and context together — do not rely on the source string alone.',
     '',
     '### VERDICT:',
     '- "skip": do not translate — leave source as-is in the game files.',
     '- "keep": normal translatable player-facing text.',
+    '',
+    '### CONTEXT GUIDE (Creation Kit / ESP):',
+    '- grup = record type (ACTI, WEAP, INFO, GMST, …); field/path = which sub-field (FULL, DESC, NAM1, DATA, …).',
+    '- edid = editor ID of the record — often hints at purpose (AddonNode, Particle, FX_, Quest_, …).',
+    '- context = speaker / scene hint when present.',
+    '- Player-facing: INFO/DIAL (dialogue), BOOK, WEAP/ARMO FULL (items), quest stages, most UI strings.',
+    '- Usually internal (skip): ACTI/MSTT/EFSH FULL on effect nodes; GMST DATA debug keys; dense camelCase tokens with digits/underscores on non-UI records.',
+    '- Particle / VFX: MPS… names, AddonNode records, LightNode…, Impact… concatenated identifiers — engine references, not inventory labels.',
+    '- A sign or placard (ACTI FULL with a real place name like "Somerville Place") → keep even on ACTI.',
     '',
     '### SKIP WHEN (the row has no human-readable words once markup is removed):',
     '- Markup/variable only: e.g. "<Alias.CurrentName=Location384>", "<Token.Name=SettlementName>", "<img src=\'…\'>", "<font face=\'…\'>42</font>", "<Alias=QuestVerb> <Alias=myLocation>".',
@@ -62,6 +79,7 @@ const buildEnglishSkipDetectSystemPrompt = (
     '- FormID-like hex, hex/byte dumps, file or property paths, debug labels.',
     "- Editor IDs copied into text (source equals the row's edid).",
     '- Single-letter codes and short locale-independent stat abbreviations (e.g. "AGI", "AP", "CHR" in AVIF/SPECIAL contexts).',
+    '- Dense internal identifiers: one token, no spaces, camelCase with digits (e.g. "MPSSmokeDustGeneric", "MPSHeavyImpactSparks") on effect/node records — skip even if words look English.',
     '',
     '### KEEP WHEN (there is real wording to translate, even if wrapped):',
     '- Player-visible UI, dialogue, item names, descriptions, books, notes, quest text.',
@@ -86,14 +104,24 @@ const buildUkrainianSkipDetectSystemPrompt = (
     'Завдання: знайти рядки, які мають залишитися без перекладу (технічні токени, внутрішні ID, форматні маркери, коди, дублікати змінних тощо).',
     '',
     '### ТЕХНІЧНІ ВИМОГИ:',
-    '- Вхід: JSON з масивом "items" (id, source, grup, field, edid, context).',
+    '- Вхід: JSON з масивом "items" (id, source, grup, field, path, edid, context).',
     '- Вихід: лише валідний JSON, без markdown.',
     '- Для кожного id — один об’єкт у відповіді.',
     '- Увага: задана source_language не завжди точна — частина рядків може бути вже частково локалізована. Оцінюй за реальним вмістом, а не за заявленою мовою.',
+    '- Використовуй grup, field, path, edid і context разом — не суди лише за текстом source.',
     '',
     '### VERDICT:',
     '- "skip": не перекладати — залишити source як є.',
     '- "keep": звичайний текст для гравця, потребує перекладу.',
+    '',
+    '### КОНТЕКСТ (Creation Kit / ESP):',
+    '- grup — тип запису (ACTI, WEAP, INFO, GMST, …); field/path — підполе (FULL, DESC, NAM1, DATA, …).',
+    '- edid — editor ID запису; часто підказує призначення (AddonNode, Particle, FX_, Quest_, …).',
+    '- context — підказка про мовця / сцену, якщо є.',
+    '- Для гравця: INFO/DIAL (діалоги), BOOK, WEAP/ARMO FULL (предмети), квестові стадії, більшість UI.',
+    '- Зазвичай внутрішні (skip): ACTI/MSTT/EFSH FULL на effect/node; GMST DATA debug; dense camelCase з цифрами/підкресленнями на не-UI записах.',
+    '- Particle / VFX: MPS…, AddonNode, LightNode…, Impact… — посилання рушія, не назви в інвентарі.',
+    '- Табличка з назвою місця ("Somerville Place" на ACTI FULL) → keep, навіть якщо grup=ACTI.',
     '',
     '### SKIP КОЛИ (після прибирання розмітки не лишається читабельних слів):',
     '- Лише розмітка/змінні: напр. "<Alias.CurrentName=Location384>", "<Token.Name=SettlementName>", "<img src=\'…\'>", "<font face=\'…\'>42</font>", "<Alias=QuestVerb> <Alias=myLocation>".',
@@ -101,6 +129,7 @@ const buildUkrainianSkipDetectSystemPrompt = (
     '- FormID/hex-дампи, шляхи до файлів чи властивостей, debug-мітки.',
     '- EDID, скопійований у текст (source дорівнює edid рядка).',
     '- Однолітерні коди та короткі мовно-незалежні абревіатури статів (напр. "AGI", "AP", "CHR" у контексті AVIF/SPECIAL).',
+    '- Dense internal id: один токен без пробілів, camelCase з цифрами (напр. "MPSSmokeDustGeneric") на effect/node записах — skip, навіть якщо слова англійські.',
     '',
     '### KEEP КОЛИ (є реальні слова для перекладу, навіть якщо вони в обгортці):',
     '- UI, діалоги, назви предметів, описи, книги, нотатки, квестовий текст.',
@@ -137,15 +166,10 @@ export const buildSkipDetectUserPayload = (opts: Omit<LlmSkipDetectOptions, 'mod
     grup: item.grup,
     edid: item.edid,
     field: item.field,
+    path: item.path,
     context: item.context,
   })),
 });
-
-const stripJsonFence = (text: string): string => {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return match ? match[1].trim() : trimmed;
-};
 
 const clampConfidence = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
@@ -159,13 +183,22 @@ const parseVerdict = (value: unknown): LlmSkipDetectVerdict => {
   return 'keep';
 };
 
-const parseSkipItemsFromRaw = (raw: string): Map<number, LlmSkipDetectItemResult> => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripJsonFence(raw));
-  } catch {
-    throw new Error('LLM skip-detect response is not valid JSON');
-  }
+const parseSkipItemsFromRaw = (
+  raw: string,
+  expectedIds?: number[],
+  completionMeta?: ChatCompletionMeta,
+): Map<number, LlmSkipDetectItemResult> => {
+  const parsed = parseLlmJson(raw, {
+    operation: 'skip_detect',
+    ...(expectedIds
+      ? {
+          itemIds: expectedIds,
+          itemCount: expectedIds.length,
+          finishReason: completionMeta?.finishReason,
+          completionTokens: completionMeta?.completionTokens,
+        }
+      : {}),
+  });
 
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('LLM skip-detect response must be a JSON object');
@@ -200,23 +233,87 @@ const parseSkipItemsFromRaw = (raw: string): Map<number, LlmSkipDetectItemResult
   return byId;
 };
 
-const SKIP_DETECT_MAX_ATTEMPTS = 3;
+const skipDetectBackoffMs = (attempt: number): number =>
+  Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
+
+type SkipDetectBatchOutcome = {
+  skip: LlmSkipDetectItemResult[];
+  missing: LlmSkipDetectItem[];
+  abandoned: boolean;
+};
+
+/**
+ * Call LLM for one batch with retries/backoff. On persistent failure returns
+ * `abandoned: true` (items treated as keep). On partial parse returns `missing`.
+ */
+const auditSkipBatchWithRetry = async (
+  opts: LlmSkipDetectOptions,
+  items: LlmSkipDetectItem[],
+): Promise<SkipDetectBatchOutcome> => {
+  const maxAttempts = CONFIG.llmMaxAttempts;
+  let lastErr: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const raw = await callSkipDetectLlm(opts, items, attempt + 1);
+      if (!raw.content.trim()) {
+        throw new Error('LLM returned empty response');
+      }
+
+      const expectedIds = items.map((item) => item.id);
+      const parsed = parseSkipItemsFromRaw(raw.content, expectedIds, raw.meta);
+      const skip: LlmSkipDetectItemResult[] = [];
+      const missing: LlmSkipDetectItem[] = [];
+
+      for (const item of items) {
+        const row = parsed.get(item.id);
+        if (!row) {
+          missing.push(item);
+          continue;
+        }
+        if (row.verdict === 'skip') skip.push(row);
+      }
+
+      return { skip, missing, abandoned: false };
+    } catch (err) {
+      if (isAbortError(err)) throw err;
+      lastErr = err;
+      if (attempt === maxAttempts - 1) break;
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(
+        `Skip-detect LLM retry ${attempt + 1}/${maxAttempts}: ${message} — waiting ${Math.round(skipDetectBackoffMs(attempt))}ms`,
+      );
+      await new Promise((r) => setTimeout(r, skipDetectBackoffMs(attempt)));
+    }
+  }
+
+  const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  log.warn('Skip-detect LLM batch abandoned after retries; treating items as keep', {
+    error: message,
+    itemCount: items.length,
+    itemIds: items.map((item) => item.id),
+  });
+
+  return { skip: [], missing: items, abandoned: true };
+};
 
 const callSkipDetectLlm = async (
   opts: LlmSkipDetectOptions,
   items: LlmSkipDetectItem[],
-): Promise<string> => {
+  attempt = 1,
+) => {
   const expectedIds = items.map((item) => item.id);
   const payload = buildSkipDetectUserPayload({ ...opts, items });
   return chatWithFallback({
     model: opts.model,
     temperature: 0,
-    responseFormat: { type: 'json_object' },
+    responseFormat: buildSkipDetectResponseFormat(expectedIds.length),
     logMeta: {
       operation: 'skip_detect',
       context: {
         itemIds: expectedIds,
         itemCount: expectedIds.length,
+        attempt,
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
         modName: opts.modName ?? null,
@@ -240,25 +337,31 @@ export const detectSkipCandidatesWithLlm = async (
 
   const skipResults: LlmSkipDetectItemResult[] = [];
   let pending = opts.items;
+  let missingRounds = 0;
+  const maxMissingRounds = CONFIG.llmMaxAttempts;
 
-  for (let attempt = 0; attempt < SKIP_DETECT_MAX_ATTEMPTS && pending.length > 0; attempt++) {
-    const raw = await callSkipDetectLlm(opts, pending);
-    const parsed = parseSkipItemsFromRaw(raw);
+  while (pending.length > 0) {
+    const { skip, missing, abandoned } = await auditSkipBatchWithRetry(opts, pending);
+    skipResults.push(...skip);
 
-    const missing: LlmSkipDetectItem[] = [];
-    for (const item of pending) {
-      const row = parsed.get(item.id);
-      if (!row) {
-        missing.push(item);
-        continue;
-      }
-      if (row.verdict === 'skip') skipResults.push(row);
-    }
+    if (abandoned) break;
 
     if (missing.length === 0) break;
-    if (attempt === SKIP_DETECT_MAX_ATTEMPTS - 1) {
-      throw new Error(`LLM skip-detect response missing item id=${missing[0].id}`);
+
+    missingRounds++;
+    if (missingRounds >= maxMissingRounds) {
+      log.warn('Skip-detect unresolved after retries; treating as keep', {
+        count: missing.length,
+        itemIds: missing.map((item) => item.id),
+      });
+      break;
     }
+
+    log.warn('Skip-detect LLM response missing some ids; retrying subset', {
+      missingCount: missing.length,
+      missingIds: missing.map((item) => item.id),
+      round: missingRounds,
+    });
     pending = missing;
   }
 

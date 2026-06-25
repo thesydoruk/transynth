@@ -2,13 +2,13 @@
  * LLM Translation Cache Service.
  *
  * Provides lookup and store operations for the `translation_cache` table.
- * The cache key is `(text_norm, src_lang, tgt_lang, model)` — when the same
- * normalised source text is requested for the same language pair and model,
- * the cached translation is returned instantly without hitting the LLM.
+ * The cache key is `(text_norm_hash, src_lang, tgt_lang, model)` where
+ * `text_norm_hash` is SHA-256 of normalised source text. Full `text_norm` is
+ * stored for verification but not indexed (long keys exceed btree row limits).
  */
 
 import type { Tx } from '../db';
-import { normalizeForHash } from '../utils/textNorm';
+import { hashNormForCache, normalizeForHash } from '../utils/textNorm';
 import { logCache } from '../logging/loggers';
 
 /** Result of a cache lookup — null when miss */
@@ -34,11 +34,12 @@ export const cacheLookup = async (
   model: string,
 ): Promise<CacheHit | null> => {
   const norm = normalizeForHash(raw);
+  const normHash = hashNormForCache(norm);
   const { rows } = await db.query<{ translated: string }>(
     `SELECT translated FROM translation_cache
-     WHERE text_norm = $1 AND src_lang = $2 AND tgt_lang = $3 AND model = $4
+     WHERE text_norm_hash = $1 AND text_norm = $2 AND src_lang = $3 AND tgt_lang = $4 AND model = $5
      LIMIT 1`,
-    [norm, srcLang, tgtLang, model],
+    [normHash, norm, srcLang, tgtLang, model],
   );
   const hit = rows[0] ? { translated: rows[0].translated } : null;
   if (hit) {
@@ -77,11 +78,13 @@ export const cacheLookupMany = async (
     else normToRaws.set(norm, [raw]);
   }
 
+  const normHashes = [...normToRaws.keys()].map((norm) => hashNormForCache(norm));
+
   const { rows } = await db.query<{ text_norm: string; translated: string }>(
     `SELECT text_norm, translated FROM translation_cache
      WHERE src_lang = $2 AND tgt_lang = $3 AND model = $4
-       AND text_norm = ANY($1::text[])`,
-    [[...normToRaws.keys()], srcLang, tgtLang, model],
+       AND text_norm_hash = ANY($1::char(64)[])`,
+    [normHashes, srcLang, tgtLang, model],
   );
 
   for (const row of rows) {
@@ -121,11 +124,15 @@ export const cacheStore = async (
   translated: string,
 ): Promise<void> => {
   const norm = normalizeForHash(raw);
+  const normHash = hashNormForCache(norm);
   await db.query(
-    `INSERT INTO translation_cache (text_norm, src_lang, tgt_lang, model, translated)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (text_norm, src_lang, tgt_lang, model) DO UPDATE SET translated = EXCLUDED.translated, created_at = NOW()`,
-    [norm, srcLang, tgtLang, model, translated],
+    `INSERT INTO translation_cache (text_norm, text_norm_hash, src_lang, tgt_lang, model, translated)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (text_norm_hash, src_lang, tgt_lang, model) DO UPDATE SET
+       text_norm = EXCLUDED.text_norm,
+       translated = EXCLUDED.translated,
+       created_at = NOW()`,
+    [norm, normHash, srcLang, tgtLang, model, translated],
   );
   logCache.debug('store', {
     srcLang,

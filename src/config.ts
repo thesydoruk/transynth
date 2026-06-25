@@ -19,6 +19,18 @@ const parseMaxParallel = (value: string | undefined, defaultValue: number, max =
   return Math.min(parsed, max);
 };
 
+const parseLlmMaxTokens = (value: string | undefined): number => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 256) return 16_384;
+  return Math.min(parsed, 131_072);
+};
+
+const parsePositiveInt = (value: string | undefined, defaultValue: number, max: number): number => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return defaultValue;
+  return Math.min(parsed, max);
+};
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'vllm') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -52,11 +64,17 @@ export const CONFIG = {
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
 
+  /** Flush LLM batch when combined source text exceeds this (avoids output truncation). */
+  llmBatchMaxSourceChars: parsePositiveInt(process.env.LLM_BATCH_MAX_SOURCE_CHARS, 12_000, 100_000),
+
   /** Max retry attempts for transient LLM HTTP errors and parse failures (default 5). */
   llmMaxAttempts: (() => {
     const parsed = Number.parseInt(process.env.LLM_MAX_ATTEMPTS ?? '', 10);
     return Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 10) : 5;
   })(),
+
+  /** Max tokens in each chat completion response (default 16384). */
+  llmMaxTokens: parseLlmMaxTokens(process.env.LLM_MAX_TOKENS),
 
   /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
   llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
@@ -100,7 +118,7 @@ export const getEmbedModel = (): string => {
 /** Fail-fast validation — call at CLI entry points. */
 export const validateConfig = (): void => {
   log.info(
-    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}`,
+    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}, llmMaxTokens=${CONFIG.llmMaxTokens}`,
   );
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {

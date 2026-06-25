@@ -59,9 +59,80 @@ const LETTER_RE = /\p{L}/u;
 
 const KNOWN_LITERALS = new Set(['none', 'null', 'n/a', 'na', 'true', 'false']);
 
+/** Bethesda Magic Particle System internal effect names (not player-facing labels). */
+const MPS_PARTICLE_NAME_RE = /^MPS[A-Z][A-Za-z0-9]*$/;
+
+/** Workshop / scene-graph light node identifiers. */
+const LIGHT_NODE_NAME_RE = /^LightNode[A-Z][A-Za-z0-9]*$/;
+
+/** EDID substrings that usually label internal effect / node records, not display names. */
+const INTERNAL_EDID_MARKERS_RE =
+  /(?:AddonNode|Particle|FX_|Effect|MPS_|LightNode|ImpactNode|Node\d)/i;
+
+/** Record signatures where FULL is often an internal reference, not inventory UI. */
+const INTERNAL_FULL_SIGNATURES = new Set(['ACTI', 'MSTT', 'EFSH', 'EXPL', 'PMOD', 'HAZD']);
+
 export type SkipHeuristicHit = {
   reason: string;
   method: 'heuristic';
+};
+
+export type SkipHeuristicMeta = {
+  edid?: string | null;
+  path?: string | null;
+  signature?: string | null;
+};
+
+export type SkipAuditRow = {
+  id: number;
+  source: string;
+  edid?: string | null;
+  path?: string | null;
+  signature?: string | null;
+};
+
+const normalizePathField = (path: string | null | undefined): string | null => {
+  const trimmed = path?.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/\\+/);
+  return parts[parts.length - 1]?.toUpperCase() ?? null;
+};
+
+const isInternalFullField = (
+  signature: string | null,
+  path: string | null | undefined,
+): boolean => {
+  if (!signature || !INTERNAL_FULL_SIGNATURES.has(signature)) return false;
+  const field = normalizePathField(path);
+  return field === 'FULL' || field === 'DESC';
+};
+
+const isDenseInternalIdentifier = (token: string): boolean =>
+  !/\s/.test(token) &&
+  IDENTIFIER_RE.test(token) &&
+  isCodeLikeIdentifier(token) &&
+  token.length >= 10;
+
+/**
+ * Split rows into heuristic skip hits vs candidates that still need LLM audit.
+ */
+export const partitionSkipAuditRows = (
+  rows: SkipAuditRow[],
+): { heuristicHits: Map<number, SkipHeuristicHit>; llmCandidates: SkipAuditRow[] } => {
+  const heuristicHits = new Map<number, SkipHeuristicHit>();
+  const llmCandidates: SkipAuditRow[] = [];
+
+  for (const row of rows) {
+    const hit = detectSkipHeuristic(row.source, {
+      edid: row.edid,
+      path: row.path,
+      signature: row.signature,
+    });
+    if (hit) heuristicHits.set(row.id, hit);
+    else llmCandidates.push(row);
+  }
+
+  return { heuristicHits, llmCandidates };
 };
 
 /** Strip internal mask markers before analysing translatable content. */
@@ -78,11 +149,7 @@ const stripStructuredMarkup = (text: string): string =>
  */
 export const detectSkipHeuristic = (
   source: string,
-  meta?: {
-    edid?: string | null;
-    path?: string | null;
-    signature?: string | null;
-  },
+  meta?: SkipHeuristicMeta,
 ): SkipHeuristicHit | null => {
   const trimmed = source.trim();
   if (!trimmed) {
@@ -124,11 +191,43 @@ export const detectSkipHeuristic = (
     return { reason: 'FormID-like hex token.', method: 'heuristic' };
   }
 
+  if (/[/\\]/.test(masked) && !/\s/.test(masked)) {
+    return { reason: 'File or resource path (not player-facing text).', method: 'heuristic' };
+  }
+
+  if (MPS_PARTICLE_NAME_RE.test(masked)) {
+    return {
+      reason: 'Bethesda particle-system internal name (MPS…).',
+      method: 'heuristic',
+    };
+  }
+
+  if (LIGHT_NODE_NAME_RE.test(masked)) {
+    return {
+      reason: 'Internal light/scene node identifier (LightNode…).',
+      method: 'heuristic',
+    };
+  }
+
+  const signature = meta?.signature?.trim() ?? null;
+  const edid = meta?.edid?.trim() ?? '';
+  const internalFull = isInternalFullField(signature, meta?.path);
+
+  if (
+    internalFull &&
+    isDenseInternalIdentifier(masked) &&
+    (INTERNAL_EDID_MARKERS_RE.test(edid) || MPS_PARTICLE_NAME_RE.test(masked))
+  ) {
+    return {
+      reason: 'Dense internal identifier on an effect/node record (not a display name).',
+      method: 'heuristic',
+    };
+  }
+
   // Source duplicates the editor ID — but only treat it as an internal
   // reference when the text actually reads like an identifier. Otherwise a
   // legitimate name/label (e.g. an NPC called "Patrick" whose record edid is
   // also "Patrick", or a weapon "Minigun") would be wrongly skipped.
-  const edid = meta?.edid?.trim();
   if (edid && content.toLowerCase() === edid.toLowerCase() && isCodeLikeIdentifier(content)) {
     return { reason: 'Source duplicates editor ID (internal reference).', method: 'heuristic' };
   }
@@ -136,7 +235,6 @@ export const detectSkipHeuristic = (
   // Short uppercase code (e.g. stat abbreviations "AGI", "AP"). Skip this rule
   // for name-bearing records so short NPC names/designations ("AJ", "X6") stay
   // translatable.
-  const signature = meta?.signature?.trim() ?? null;
   if (
     masked.length <= 3 &&
     IDENTIFIER_RE.test(masked) &&

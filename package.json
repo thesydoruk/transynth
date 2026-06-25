@@ -17,6 +17,7 @@
     "export:mods": "tsx scripts/exportMods.ts",
     "detect:locale": "tsx scripts/detectModLocale.ts",
     "translate:auto": "tsx scripts/autoTranslate.ts",
+    "verify:auto": "tsx scripts/autoVerify.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
@@ -40,6 +41,7 @@
     "fast-glob": "^3.3.2",
     "fast-xml-parser": "^5.5.9",
     "fastify": "^5.8.4",
+    "jsonrepair": "^3.14.1",
     "lz4js": "^0.2.0",
     "node-7z": "^3.0.0",
     "openai": "^4.55.0",
@@ -49,11 +51,11 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.14.0",
     "@types/node-7z": "^2.1.11",
     "@types/pg": "^8.20.0",
     "@types/yargs": "^17.0.33",
-    "@types/jest": "^30.0.0",
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "jest": "^30.0.5",

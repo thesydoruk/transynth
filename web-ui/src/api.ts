@@ -907,14 +907,33 @@ export type LlmSkipDetectJobSnapshot = {
   done: number;
   total: number;
   candidates: LlmSkipDetectCandidate[];
+  markedCount?: number;
   error: string | null;
 };
 
 export type LlmSkipDetectStreamEvent =
-  | { type: 'started'; jobId: number; total: number; useLlm: boolean }
-  | { type: 'progress'; done: number; total: number; candidate?: LlmSkipDetectCandidate }
-  | { type: 'done'; done: number; total: number; candidates: LlmSkipDetectCandidate[] }
-  | { type: 'cancelled'; done: number; total: number; candidates: LlmSkipDetectCandidate[] }
+  | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist?: boolean }
+  | {
+      type: 'progress';
+      done: number;
+      total: number;
+      candidate?: LlmSkipDetectCandidate;
+      marked?: number;
+    }
+  | {
+      type: 'done';
+      done: number;
+      total: number;
+      candidates: LlmSkipDetectCandidate[];
+      markedCount?: number;
+    }
+  | {
+      type: 'cancelled';
+      done: number;
+      total: number;
+      candidates: LlmSkipDetectCandidate[];
+      markedCount?: number;
+    }
   | { type: 'error'; error: string };
 
 export type LlmTranslateRow = {

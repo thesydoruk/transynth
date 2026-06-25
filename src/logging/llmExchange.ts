@@ -27,6 +27,8 @@ export const logLlmRequest = (
     operation: string;
     model: string;
     messages: ChatMessage[];
+    responseFormat?: string;
+    schemaName?: string;
     context?: Record<string, unknown>;
   },
 ): void => {
@@ -36,6 +38,8 @@ export const logLlmRequest = (
     messages: stats.count,
     roles: stats.byRole,
     totalChars: stats.totalChars,
+    responseFormat: opts.responseFormat,
+    schemaName: opts.schemaName,
     ...opts.context,
   });
 
@@ -58,6 +62,10 @@ export const logLlmResponse = (
     response: string;
     durationMs: number;
     provider?: string;
+    finishReason?: string | null;
+    promptTokens?: number | null;
+    completionTokens?: number | null;
+    totalTokens?: number | null;
     context?: Record<string, unknown>;
   },
 ): void => {
@@ -66,6 +74,10 @@ export const logLlmResponse = (
     provider: opts.provider,
     durationMs: opts.durationMs,
     responseChars: opts.response.length,
+    finishReason: opts.finishReason,
+    promptTokens: opts.promptTokens,
+    completionTokens: opts.completionTokens,
+    totalTokens: opts.totalTokens,
     ...opts.context,
   });
 

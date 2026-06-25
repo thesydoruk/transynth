@@ -3,7 +3,12 @@
  */
 import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
-import { translateStrings, type LlmGlossaryEntry, type LlmTranslateItem } from '../llm/translate';
+import {
+  translateStrings,
+  isLlmResponseTruncatedError,
+  type LlmGlossaryEntry,
+  type LlmTranslateItem,
+} from '../llm/translate';
 import { isAbortError } from '../llm/retry';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
@@ -162,11 +167,23 @@ export const translateStringIdsBatch = async (
 
   const llmChunks: PreparedLlmItem[][] = [];
   let llmBuffer: PreparedLlmItem[] = [];
+  let llmBufferSourceChars = 0;
+
+  const flushLlmBuffer = () => {
+    if (llmBuffer.length === 0) return;
+    llmChunks.push(llmBuffer);
+    llmBuffer = [];
+    llmBufferSourceChars = 0;
+  };
+
   const pushLlmItem = (item: PreparedLlmItem) => {
     llmBuffer.push(item);
-    if (llmBuffer.length >= CONFIG.batchSize) {
-      llmChunks.push(llmBuffer);
-      llmBuffer = [];
+    llmBufferSourceChars += item.sourceText.length;
+    if (
+      llmBuffer.length >= CONFIG.batchSize ||
+      llmBufferSourceChars >= CONFIG.llmBatchMaxSourceChars
+    ) {
+      flushLlmBuffer();
     }
   };
 
@@ -255,6 +272,22 @@ export const translateStringIdsBatch = async (
   const chunkBackoffMs = (attempt: number): number =>
     Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
 
+  const splitChunk = async (
+    chunk: PreparedLlmItem[],
+    ragByStringId: RagByStringId,
+    reason: string,
+  ): Promise<void> => {
+    const mid = Math.ceil(chunk.length / 2);
+    logTranslate.warn('LLM chunk split', {
+      reason,
+      chunkSize: chunk.length,
+      firstHalf: chunk.slice(0, mid).map((e) => e.stringId),
+      secondHalf: chunk.slice(mid).map((e) => e.stringId),
+    });
+    await runChunkWithRetry(chunk.slice(0, mid), ragByStringId);
+    await runChunkWithRetry(chunk.slice(mid), ragByStringId);
+  };
+
   const runChunkWithRetry = async (
     chunk: PreparedLlmItem[],
     ragByStringId: RagByStringId,
@@ -263,6 +296,7 @@ export const translateStringIdsBatch = async (
 
     logTranslate.debug('LLM chunk flush', {
       chunkSize: chunk.length,
+      sourceChars: chunk.reduce((sum, e) => sum + e.sourceText.length, 0),
       stringIds: chunk.map((e) => e.stringId),
     });
 
@@ -273,6 +307,12 @@ export const translateStringIdsBatch = async (
         return;
       } catch (err) {
         if (shouldCancel?.() || isAbortError(err)) return;
+
+        if (isLlmResponseTruncatedError(err) && chunk.length > 1) {
+          await splitChunk(chunk, ragByStringId, err.message);
+          return;
+        }
+
         const message = err instanceof Error ? err.message : String(err);
         if (attempt < maxAttempts - 1) {
           logTranslate.warn('LLM chunk retry', {
@@ -287,13 +327,7 @@ export const translateStringIdsBatch = async (
         }
 
         if (chunk.length > 1) {
-          logTranslate.warn('LLM chunk split after retries', {
-            chunkSize: chunk.length,
-            error: message,
-          });
-          const mid = Math.ceil(chunk.length / 2);
-          await runChunkWithRetry(chunk.slice(0, mid), ragByStringId);
-          await runChunkWithRetry(chunk.slice(mid), ragByStringId);
+          await splitChunk(chunk, ragByStringId, message);
           return;
         }
 
@@ -366,7 +400,7 @@ export const translateStringIdsBatch = async (
   }
 
   if (llmBuffer.length > 0) {
-    llmChunks.push(llmBuffer);
+    flushLlmBuffer();
   }
 
   // Persist cache hits / untranslatable strings concurrently before/while the LLM runs.

@@ -2,6 +2,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS mods (
   id SERIAL PRIMARY KEY,
@@ -339,6 +340,7 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS translation_cache (
   id SERIAL PRIMARY KEY,
   text_norm TEXT NOT NULL,
+  text_norm_hash CHAR(64),
   src_lang TEXT NOT NULL,
   tgt_lang TEXT NOT NULL,
   model TEXT NOT NULL,
@@ -346,8 +348,16 @@ CREATE TABLE IF NOT EXISTS translation_cache (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_translation_cache_lookup
-  ON translation_cache(text_norm, src_lang, tgt_lang, model);
+-- Idempotent migration: hash-based lookup key (full text_norm exceeds btree index row limit)
+ALTER TABLE translation_cache ADD COLUMN IF NOT EXISTS text_norm_hash CHAR(64);
+UPDATE translation_cache
+   SET text_norm_hash = encode(digest(text_norm, 'sha256'), 'hex')
+ WHERE text_norm_hash IS NULL;
+ALTER TABLE translation_cache ALTER COLUMN text_norm_hash SET NOT NULL;
+
+DROP INDEX IF EXISTS idx_translation_cache_lookup;
+CREATE UNIQUE INDEX idx_translation_cache_lookup
+  ON translation_cache(text_norm_hash, src_lang, tgt_lang, model);
 
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);

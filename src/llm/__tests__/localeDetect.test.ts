@@ -70,6 +70,23 @@ describe('parseLlmLocaleDetectResponse', () => {
     expect(result.verdict).toBe('match');
   });
 
+  it('repairs stray trailing quote via jsonrepair', () => {
+    const inner = JSON.stringify({
+      overall_detected_language: 'en',
+      overall_confidence: 0.99,
+      verdict: 'match',
+      matches_expected: true,
+      is_mixed: false,
+      summary: 'English.',
+      samples: [
+        { id: 1, detected_language: 'en', confidence: 1 },
+        { id: 2, detected_language: 'en', confidence: 0.98 },
+      ],
+    });
+    const result = parseLlmLocaleDetectResponse(`${inner}"`, sampleIds, allowed);
+    expect(result.verdict).toBe('match');
+  });
+
   it('maps disallowed language codes to unknown', () => {
     const raw = JSON.stringify({
       overall_detected_language: 'russian',

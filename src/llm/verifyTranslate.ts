@@ -4,8 +4,11 @@
  * Request and response payloads are JSON-only.
  */
 import { chatWithFallback } from './index';
+import { parseLlmJson } from './jsonParse';
 import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
+import type { ChatCompletionMeta } from './provider';
+import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 
@@ -46,6 +49,8 @@ export interface LlmVerifyOptions {
 
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
 
+const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
+
 /** @deprecated Use {@link buildEnglishVerifySystemPrompt} or {@link buildVerifySystemPrompt}. */
 export const VERIFY_TRANSLATE_SYSTEM_PROMPT = buildEnglishVerifySystemPrompt('en', 'de');
 
@@ -81,12 +86,6 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
   })),
 });
 
-const stripJsonFence = (text: string): string => {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return match ? match[1].trim() : trimmed;
-};
-
 const clampConfidence = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
@@ -118,13 +117,22 @@ export const parseVerifyItemId = (value: unknown): number | null => {
   return null;
 };
 
-const parseVerifyItemsFromRaw = (raw: string): Map<number, LlmVerifyItemResult> => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripJsonFence(raw));
-  } catch {
-    throw new Error('LLM verify response is not valid JSON');
-  }
+const parseVerifyItemsFromRaw = (
+  raw: string,
+  expectedIds?: number[],
+  completionMeta?: ChatCompletionMeta,
+): Map<number, LlmVerifyItemResult> => {
+  const parsed = parseLlmJson(raw, {
+    operation: 'verify',
+    ...(expectedIds
+      ? {
+          itemIds: expectedIds,
+          itemCount: expectedIds.length,
+          finishReason: completionMeta?.finishReason,
+          completionTokens: completionMeta?.completionTokens,
+        }
+      : {}),
+  });
 
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('LLM verify response must be a JSON object');
@@ -158,18 +166,13 @@ const parseVerifyItemsFromRaw = (raw: string): Map<number, LlmVerifyItemResult> 
   return byId;
 };
 
-const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
-
-const callVerifyTranslateLlm = async (
-  opts: LlmVerifyOptions,
-  items: LlmVerifyItem[],
-): Promise<string> => {
+const callVerifyTranslateLlm = async (opts: LlmVerifyOptions, items: LlmVerifyItem[]) => {
   const expectedIds = items.map((item) => item.id);
   const payload = buildVerifyTranslateUserPayload({ ...opts, items });
   return chatWithFallback({
     model: opts.model,
     temperature: 0,
-    responseFormat: { type: 'json_object' },
+    responseFormat: buildVerifyResponseFormat(expectedIds.length),
     signal: opts.signal,
     logMeta: {
       operation: 'verify_translate',
@@ -198,8 +201,9 @@ const callVerifyTranslateLlm = async (
 export const parseLlmVerifyTranslateResponse = (
   raw: string,
   expectedItemIds: number[],
+  completionMeta?: ChatCompletionMeta,
 ): LlmVerifyItemResult[] => {
-  const byId = parseVerifyItemsFromRaw(raw);
+  const byId = parseVerifyItemsFromRaw(raw, expectedItemIds, completionMeta);
 
   const items: LlmVerifyItemResult[] = [];
   for (const id of expectedItemIds) {
@@ -227,8 +231,9 @@ export const verifyTranslationsWithLlm = async (
     attempt < VERIFY_MISSING_ITEM_MAX_ATTEMPTS && pending.length > 0;
     attempt++
   ) {
-    const raw = await callVerifyTranslateLlm(opts, pending);
-    const parsed = parseVerifyItemsFromRaw(raw);
+    const expectedIds = pending.map((item) => item.id);
+    const { content: raw, meta } = await callVerifyTranslateLlm(opts, pending);
+    const parsed = parseVerifyItemsFromRaw(raw, expectedIds, meta);
 
     const missing: LlmVerifyItem[] = [];
     for (const item of pending) {

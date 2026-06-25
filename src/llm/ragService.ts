@@ -1,5 +1,5 @@
 /**
- * Translation RAG — indexes reviewed/human translations and retrieves
+ * Translation RAG — indexes reviewed translations and retrieves
  * similar examples as few-shot context for LLM translation.
  *
  * Retrieval is hybrid:
@@ -14,9 +14,11 @@ import { logRag } from '../logging/loggers';
 import {
   RAG_EMBED_DIMENSIONS,
   RAG_ELIGIBLE_STATUSES,
+  RAG_ELIGIBLE_STATUSES_SQL,
   RAG_EXAMPLE_MAX_CHARS,
   RAG_DEFAULTS,
   clampRagMaxExamples,
+  type RagEligibleStatus,
 } from './ragConstants';
 import { extractNumbers, transplantNumbers, normalizeForHash } from '../utils/textNorm';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -147,7 +149,7 @@ const toPublicExample = (row: RagCandidate): RagReferenceExample => {
   };
 };
 
-const RAG_STATUS_FILTER = `t.status IN ('reviewed', 'human')`;
+const RAG_STATUS_FILTER = `t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})`;
 
 const fetchTmCandidates = async (
   db: Tx,
@@ -203,8 +205,7 @@ const fetchTmCandidates = async (
      JOIN records r ON r.id = s.record_id
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      WHERE s.text_norm = $1 AND s.id <> $3 AND ${RAG_STATUS_FILTER}
-     ORDER BY t.text,
-       CASE t.status WHEN 'reviewed' THEN 1 WHEN 'human' THEN 2 ELSE 3 END
+     ORDER BY t.text
      LIMIT $4`,
     [textNorm, targetLang, stringId, limit],
   );
@@ -241,8 +242,7 @@ const fetchTmCandidates = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
        WHERE s.text_norm_nopunct = $1 AND s.text_norm <> $5 AND s.id <> $3
          AND ${RAG_STATUS_FILTER}
-       ORDER BY t.text,
-         CASE t.status WHEN 'reviewed' THEN 1 WHEN 'human' THEN 2 ELSE 3 END
+       ORDER BY t.text
        LIMIT $4`,
       [textNormNopunct, targetLang, stringId, limit - results.length, textNorm],
     );
@@ -266,8 +266,7 @@ const fetchTmCandidates = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
        WHERE s.text_norm % $1 AND s.text_norm <> $1 AND s.id <> $3
          AND ${RAG_STATUS_FILTER}
-       ORDER BY t.text, similarity(s.text_norm, $1) DESC,
-         CASE t.status WHEN 'reviewed' THEN 1 WHEN 'human' THEN 2 ELSE 3 END
+       ORDER BY t.text, similarity(s.text_norm, $1) DESC
        LIMIT $4`,
       [textNorm, targetLang, stringId, limit - results.length],
     );
@@ -312,10 +311,12 @@ const fetchEmbeddingCandidates = async (
     `SELECT te.source_text, te.translation_text, te.signature, te.path, r.edid,
             (1 - (te.embedding <=> $1::vector))::double precision AS similarity
      FROM translation_examples te
+     JOIN translations t ON t.id = te.translation_id
      JOIN strings s ON s.id = te.src_string_id
      JOIN records r ON r.id = s.record_id
      WHERE te.src_lang = $2 AND te.target_lang = $3
        AND te.src_string_id <> $4
+       AND t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})
        AND (1 - (te.embedding <=> $1::vector)) >= $5
      ORDER BY te.embedding <=> $1::vector
      LIMIT $6`,
@@ -383,7 +384,7 @@ export const syncTranslationExample = async (db: Tx, translationId: number): Pro
   const row = await loadTranslationRow(db, translationId);
   if (!row) return;
 
-  if (!RAG_ELIGIBLE_STATUSES.includes(row.status as 'reviewed' | 'human')) {
+  if (!RAG_ELIGIBLE_STATUSES.includes(row.status as RagEligibleStatus)) {
     await db.query(`DELETE FROM translation_examples WHERE translation_id = $1`, [translationId]);
     return;
   }
@@ -405,7 +406,7 @@ export const syncTranslationExample = async (db: Tx, translationId: number): Pro
 
   // Embedding is slow; bulk upserts (e.g. mod import) may delete/replace this row meanwhile.
   const current = await loadTranslationRow(db, translationId);
-  if (!current || !RAG_ELIGIBLE_STATUSES.includes(current.status as 'reviewed' | 'human')) {
+  if (!current || !RAG_ELIGIBLE_STATUSES.includes(current.status as RagEligibleStatus)) {
     await db.query(`DELETE FROM translation_examples WHERE translation_id = $1`, [translationId]);
     return;
   }
@@ -419,7 +420,7 @@ export const syncTranslationExample = async (db: Tx, translationId: number): Pro
        )
        SELECT t.id, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::vector, NOW()
        FROM translations t
-       WHERE t.id = $1 AND t.status IN ('reviewed', 'human')
+       WHERE t.id = $1 AND t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})
        ON CONFLICT (translation_id) DO UPDATE SET
          src_string_id = EXCLUDED.src_string_id,
          src_lang = EXCLUDED.src_lang,
@@ -684,7 +685,7 @@ export const reindexAllTranslationExamples = async (
 
   const { rows } = await db.query<{ id: number }>(
     `SELECT t.id FROM translations t
-     WHERE t.status IN ('reviewed', 'human')
+     WHERE t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})
      ORDER BY t.id`,
   );
 
@@ -710,7 +711,7 @@ export const reindexAllTranslationExamples = async (
     `DELETE FROM translation_examples te
      WHERE NOT EXISTS (
        SELECT 1 FROM translations t
-       WHERE t.id = te.translation_id AND t.status IN ('reviewed', 'human')
+       WHERE t.id = te.translation_id AND t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})
      )`,
   );
   const removed = rowCount ?? 0;
@@ -725,7 +726,7 @@ export const getRagStats = async (db: Tx): Promise<RagStats> => {
     `SELECT COUNT(*)::int AS count FROM translation_examples`,
   );
   const { rows: eligibleRows } = await db.query<{ count: number }>(
-    `SELECT COUNT(*)::int AS count FROM translations WHERE status IN ('reviewed', 'human')`,
+    `SELECT COUNT(*)::int AS count FROM translations WHERE status IN (${RAG_ELIGIBLE_STATUSES_SQL})`,
   );
 
   return {

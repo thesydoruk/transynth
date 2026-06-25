@@ -5,6 +5,7 @@
  */
 import { MCM_LOCALE_ALIASES } from '../bethesda/parsers/mcmDiscovery';
 import { chatWithFallback } from './index';
+import { parseLlmJson } from './jsonParse';
 import type { GameType } from '../types';
 
 /** Bethesda / project locale codes the LLM may return. */
@@ -108,12 +109,6 @@ export const buildLocaleDetectUserPayload = (
   })),
 });
 
-const stripJsonFence = (text: string): string => {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return match ? match[1].trim() : trimmed;
-};
-
 const clampConfidence = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
@@ -135,12 +130,11 @@ export const parseLlmLocaleDetectResponse = (
   allowedLanguages: readonly string[] = LOCALE_DETECT_ALLOWED_LANGS,
 ): LlmLocaleDetectResult => {
   const allowed = new Set(allowedLanguages.map((lang) => lang.toLowerCase()));
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripJsonFence(raw));
-  } catch {
-    throw new Error('LLM locale detect response is not valid JSON');
-  }
+  const parsed = parseLlmJson(raw, {
+    operation: 'locale_detect',
+    sampleIds: expectedSampleIds,
+    sampleCount: expectedSampleIds.length,
+  });
 
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('LLM locale detect response must be a JSON object');
@@ -204,7 +198,7 @@ export const detectLocaleWithLlm = async (
   const expectedSampleIds = opts.samples.map((s) => s.id);
   const allowedLanguages = opts.allowedLanguages ?? LOCALE_DETECT_ALLOWED_LANGS;
   const payload = buildLocaleDetectUserPayload({ ...opts, allowedLanguages });
-  const text = await chatWithFallback({
+  const { content: text } = await chatWithFallback({
     model: opts.model,
     temperature: 0,
     responseFormat: { type: 'json_object' },

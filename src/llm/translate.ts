@@ -10,6 +10,8 @@ import { chatWithFallback } from './index';
 import { parseLlmJson } from './jsonParse';
 import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
+import type { ChatCompletionMeta } from './provider';
+import { buildTranslateResponseFormat } from './responseSchemas';
 import { isAbortError } from './retry';
 import type { GameType } from '../types';
 
@@ -118,8 +120,15 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
 export const parseLlmTranslateResponse = (
   raw: string,
   expectedIds: number[],
+  completionMeta?: ChatCompletionMeta,
 ): LlmTranslateResult[] => {
-  const parsed = parseLlmJson(raw);
+  const parsed = parseLlmJson(raw, {
+    operation: 'translate',
+    itemIds: expectedIds,
+    itemCount: expectedIds.length,
+    finishReason: completionMeta?.finishReason,
+    completionTokens: completionMeta?.completionTokens,
+  });
 
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('LLM response must be a JSON object');
@@ -159,6 +168,19 @@ export const parseLlmTranslateResponse = (
 const translateBackoffMs = (attempt: number): number =>
   Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
 
+/** Thrown when the model hits max_tokens before completing the JSON batch response. */
+export class LlmResponseTruncatedError extends Error {
+  readonly finishReason = 'length';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'LlmResponseTruncatedError';
+  }
+}
+
+export const isLlmResponseTruncatedError = (err: unknown): err is LlmResponseTruncatedError =>
+  err instanceof LlmResponseTruncatedError;
+
 export const translateStrings = async (
   opts: LlmTranslateOptions,
 ): Promise<LlmTranslateResult[]> => {
@@ -172,10 +194,10 @@ export const translateStrings = async (
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const text = await chatWithFallback({
+      const { content: text, meta } = await chatWithFallback({
         model: opts.model,
         temperature: 0,
-        responseFormat: { type: 'json_object' },
+        responseFormat: buildTranslateResponseFormat(expectedIds.length),
         signal: opts.signal,
         logMeta: {
           operation: 'translate',
@@ -207,9 +229,16 @@ export const translateStrings = async (
         throw new Error('LLM returned empty response');
       }
 
-      return parseLlmTranslateResponse(text, expectedIds);
+      if (meta.finishReason === 'length') {
+        throw new LlmResponseTruncatedError(
+          `LLM response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${CONFIG.llmMaxTokens})`,
+        );
+      }
+
+      return parseLlmTranslateResponse(text, expectedIds, meta);
     } catch (err) {
       if (isAbortError(err)) throw err;
+      if (isLlmResponseTruncatedError(err)) throw err;
       lastErr = err;
       if (attempt === maxAttempts - 1) break;
       const message = err instanceof Error ? err.message : String(err);
