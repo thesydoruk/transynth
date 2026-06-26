@@ -25,6 +25,13 @@ const parseLlmMaxTokens = (value: string | undefined): number => {
   return Math.min(parsed, 131_072);
 };
 
+/** Per HTTP request timeout for OpenAI SDK (default 600 s = 10 min, same as the SDK). */
+const parseLlmRequestTimeoutMs = (value: string | undefined): number => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 600_000;
+  return Math.min(parsed, 3_600) * 1000;
+};
+
 const parsePositiveInt = (value: string | undefined, defaultValue: number, max: number): number => {
   const parsed = Number.parseInt(value ?? '', 10);
   if (!Number.isFinite(parsed) || parsed < 1) return defaultValue;
@@ -67,6 +74,13 @@ export const CONFIG = {
   /** Flush LLM batch when combined source text exceeds this (avoids output truncation). */
   llmBatchMaxSourceChars: parsePositiveInt(process.env.LLM_BATCH_MAX_SOURCE_CHARS, 12_000, 100_000),
 
+  /** Solo LLM request when a single source row exceeds this length (default 500). */
+  llmBatchMaxSingleSourceChars: parsePositiveInt(
+    process.env.LLM_BATCH_MAX_SINGLE_SOURCE_CHARS,
+    500,
+    100_000,
+  ),
+
   /** Max retry attempts for transient LLM HTTP errors and parse failures (default 5). */
   llmMaxAttempts: (() => {
     const parsed = Number.parseInt(process.env.LLM_MAX_ATTEMPTS ?? '', 10);
@@ -75,6 +89,9 @@ export const CONFIG = {
 
   /** Max tokens in each chat completion response (default 16384). */
   llmMaxTokens: parseLlmMaxTokens(process.env.LLM_MAX_TOKENS),
+
+  /** OpenAI SDK HTTP timeout per request in ms (env: LLM_REQUEST_TIMEOUT_SEC). */
+  llmRequestTimeoutMs: parseLlmRequestTimeoutMs(process.env.LLM_REQUEST_TIMEOUT_SEC),
 
   /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
   llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
@@ -118,7 +135,7 @@ export const getEmbedModel = (): string => {
 /** Fail-fast validation — call at CLI entry points. */
 export const validateConfig = (): void => {
   log.info(
-    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}, llmMaxTokens=${CONFIG.llmMaxTokens}`,
+    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}, llmMaxTokens=${CONFIG.llmMaxTokens}, llmRequestTimeoutSec=${CONFIG.llmRequestTimeoutMs / 1000}`,
   );
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {

@@ -1,7 +1,6 @@
 /**
- * Lenient parsing of LLM JSON responses (markdown fences, trailing prose, jsonrepair).
+ * Parsing LLM JSON responses (markdown fences, string wrappers, extraction).
  */
-import { jsonrepair } from 'jsonrepair';
 import { logLlm } from '../logging/loggers';
 
 export const stripMarkdownFence = (text: string): string => {
@@ -20,9 +19,24 @@ export const extractJsonObject = (text: string): string => {
 };
 
 const extractJsonErrorPosition = (err: unknown): number | null => {
-  if (!(err instanceof SyntaxError)) return null;
-  const match = err.message.match(/position (\d+)/);
+  if (!(err instanceof Error)) return null;
+  const match = err.message.match(/(?:position|at position) (\d+)/i);
   return match ? Number(match[1]) : null;
+};
+
+/** Recursively unwrap JSON returned as a string literal (common with some vLLM models). */
+export const peelStringWrappers = (text: string, maxDepth = 4): string => {
+  let current = text.trim();
+  for (let i = 0; i < maxDepth; i++) {
+    try {
+      const parsed = JSON.parse(current);
+      if (typeof parsed !== 'string') return current;
+      current = parsed.trim();
+    } catch {
+      return current;
+    }
+  }
+  return current;
 };
 
 const formatSnippet = (text: string, position: number, radius = 120): string => {
@@ -52,45 +66,53 @@ export const logLlmJsonParseFailure = (
 
 const parseJsonText = (text: string): unknown => JSON.parse(text);
 
-/** Unwrap one level when the model returns JSON as a string literal. */
+/** Unwrap nested JSON string literals returned by some models. */
 const unwrapStringJson = (parsed: unknown): unknown => {
-  if (typeof parsed !== 'string') return parsed;
-  try {
-    return parseJsonText(parsed);
-  } catch {
-    return parseJsonText(jsonrepair(parsed));
+  let value = parsed;
+  for (let i = 0; i < 4; i++) {
+    if (typeof value !== 'string') return value;
+    value = parseJsonText(value);
   }
+  return value;
 };
 
-const repairAndParse = (text: string): unknown => unwrapStringJson(parseJsonText(jsonrepair(text)));
+const parseCandidate = (text: string): unknown => unwrapStringJson(parseJsonText(text));
 
-const parseCandidate = (text: string): unknown => {
-  try {
-    return unwrapStringJson(parseJsonText(text));
-  } catch (err) {
-    try {
-      return repairAndParse(text);
-    } catch (repairErr) {
-      throw repairErr ?? err;
-    }
-  }
+const pushCandidate = (seen: Set<string>, out: string[], candidate: string): void => {
+  const trimmed = candidate.trim();
+  if (!trimmed || seen.has(trimmed)) return;
+  seen.add(trimmed);
+  out.push(trimmed);
+};
+
+const looksLikeJsonText = (text: string): boolean => {
+  const t = text.trim();
+  return t.startsWith('{') || t.startsWith('[') || t.startsWith('"') || /^```(?:json)?/i.test(t);
 };
 
 const uniqueCandidates = (raw: string): string[] => {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const candidate of [extractJsonObject(raw), stripMarkdownFence(raw)]) {
-    const trimmed = candidate.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    out.push(trimmed);
+  const trimmed = raw.trim();
+  const peeled = peelStringWrappers(trimmed);
+  const extracted = (text: string) => extractJsonObject(stripMarkdownFence(text));
+
+  for (const candidate of [
+    ...(looksLikeJsonText(peeled) ? [peeled] : []),
+    ...(looksLikeJsonText(trimmed) ? [trimmed] : []),
+    extracted(peeled),
+    extracted(trimmed),
+    stripMarkdownFence(peeled),
+    stripMarkdownFence(trimmed),
+  ]) {
+    pushCandidate(seen, out, candidate);
   }
   return out;
 };
 
 /**
- * Parse JSON from an LLM response using extraction helpers and jsonrepair.
- * @returns Parsed value, or undefined when repair/parse fails (no logging).
+ * Parse JSON from an LLM response using extraction helpers.
+ * @returns Parsed value, or undefined when parse fails (no logging).
  */
 export const tryParseLlmJson = (raw: string): unknown | undefined => {
   for (const candidate of uniqueCandidates(raw)) {
@@ -103,15 +125,8 @@ export const tryParseLlmJson = (raw: string): unknown | undefined => {
   return undefined;
 };
 
-/** Repair LLM JSON text via jsonrepair; returns original text when repair fails. */
-export const repairLlmJsonContent = (raw: string): string => {
-  const parsed = tryParseLlmJson(raw);
-  if (parsed === undefined) return raw;
-  return typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-};
-
 /**
- * Parse JSON from an LLM response using extraction helpers and jsonrepair.
+ * Parse JSON from an LLM response using extraction helpers.
  *
  * @throws When no strategy yields valid JSON.
  */

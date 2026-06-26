@@ -26,9 +26,14 @@ export class VllmProvider implements LLMProvider {
     const chatBaseURL = normalizeBaseUrl(CONFIG.vllmBaseUrl);
     const embedBaseURL = normalizeBaseUrl(CONFIG.vllmEmbedBaseUrl);
     const apiKey = CONFIG.vllmApiKey || 'EMPTY';
-    this.chatClient = new OpenAI({ baseURL: chatBaseURL, apiKey });
-    this.embedClient = new OpenAI({ baseURL: embedBaseURL, apiKey });
-    logLlm.debug('vLLM provider initialized', { chatBaseURL, embedBaseURL });
+    const clientOpts = { apiKey, timeout: CONFIG.llmRequestTimeoutMs };
+    this.chatClient = new OpenAI({ ...clientOpts, baseURL: chatBaseURL });
+    this.embedClient = new OpenAI({ ...clientOpts, baseURL: embedBaseURL });
+    logLlm.debug('vLLM provider initialized', {
+      chatBaseURL,
+      embedBaseURL,
+      requestTimeoutSec: CONFIG.llmRequestTimeoutMs / 1000,
+    });
   }
 
   async chat(opts: ChatOptions): Promise<ChatResult> {

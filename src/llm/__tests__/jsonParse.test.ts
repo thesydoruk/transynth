@@ -1,8 +1,8 @@
 import {
   parseLlmJson,
+  peelStringWrappers,
   stripMarkdownFence,
   extractJsonObject,
-  repairLlmJsonContent,
 } from '../jsonParse';
 
 describe('jsonParse', () => {
@@ -18,12 +18,13 @@ describe('jsonParse', () => {
     expect(parsed).toEqual({ items: [{ id: 2, translation: 'OK' }] });
   });
 
-  it('fixes trailing commas', () => {
-    const parsed = parseLlmJson('{"items":[{"id":3,"translation":"A",},]}');
-    expect(parsed).toEqual({ items: [{ id: 3, translation: 'A' }] });
+  it('throws on trailing commas', () => {
+    expect(() => parseLlmJson('{"items":[{"id":3,"translation":"A",},]}')).toThrow(
+      /not valid JSON/,
+    );
   });
 
-  it('strips stray trailing quote after JSON object', () => {
+  it('extracts JSON object when a stray quote follows', () => {
     const parsed = parseLlmJson('{"items":[{"id":4,"translation":"OK"}]}"');
     expect(parsed).toEqual({ items: [{ id: 4, translation: 'OK' }] });
   });
@@ -38,18 +39,36 @@ describe('jsonParse', () => {
     expect(() => parseLlmJson('{{{', { operation: 'test' })).toThrow(/not valid JSON/);
   });
 
-  it('repairs truncated JSON via jsonrepair', () => {
-    const parsed = parseLlmJson('{"items":[{"id":1,"translation":"abc');
-    expect(parsed).toEqual({ items: [{ id: 1, translation: 'abc' }] });
-  });
-
-  it('repairLlmJsonContent normalizes broken JSON', () => {
-    const repaired = repairLlmJsonContent('{"items":[{"id":4,"translation":"OK"}]}"');
-    expect(JSON.parse(repaired)).toEqual({ items: [{ id: 4, translation: 'OK' }] });
+  it('throws on truncated JSON', () => {
+    expect(() => parseLlmJson('{"items":[{"id":1,"translation":"abc')).toThrow(/not valid JSON/);
   });
 
   it('stripMarkdownFence and extractJsonObject helpers', () => {
     expect(stripMarkdownFence('```json\n{"a":1}\n```')).toBe('{"a":1}');
     expect(extractJsonObject('noise {"b":2} noise')).toBe('{"b":2}');
+  });
+
+  it('peels nested JSON string wrappers', () => {
+    const inner = '{"items":[{"id":1,"translation":"OK"}]}';
+    expect(peelStringWrappers(JSON.stringify(JSON.stringify(inner)))).toBe(inner);
+  });
+
+  it('parses double-encoded translate JSON with echoed metadata on an item', () => {
+    const inner = JSON.stringify({
+      items: [
+        { id: 1, translation: 'A' },
+        {
+          id: 2,
+          translation: 'B',
+          grup: 'TERM',
+          edid: 'Foo',
+          field: 'BTXT',
+          form_id: '020A5056',
+          context: null,
+        },
+      ],
+    });
+    const parsed = parseLlmJson(JSON.stringify(inner));
+    expect(parsed).toEqual(JSON.parse(inner));
   });
 });

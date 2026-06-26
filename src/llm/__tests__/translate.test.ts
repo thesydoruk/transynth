@@ -175,4 +175,21 @@ describe('parseLlmTranslateResponse', () => {
   it('throws on invalid JSON', () => {
     expect(() => parseLlmTranslateResponse('{{{', [1])).toThrow(/not valid JSON/);
   });
+
+  it('accepts items with echoed input metadata when JSON is valid', () => {
+    const raw = JSON.stringify({
+      items: [
+        {
+          id: 9,
+          translation: 'Текст',
+          grup: 'TERM',
+          edid: 'X',
+          field: 'BTXT',
+          form_id: '1',
+          context: null,
+        },
+      ],
+    });
+    expect(parseLlmTranslateResponse(raw, [9])).toEqual([{ id: 9, translation: 'Текст' }]);
+  });
 });

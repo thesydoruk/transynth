@@ -19,6 +19,15 @@ export const isAbortError = (err: unknown): boolean => {
   return e?.name === 'AbortError' || e?.name === 'APIUserAbortError' || e?.code === 'ABORT_ERR';
 };
 
+/** True when the HTTP client or server aborted due to a request timeout. */
+export const isLlmTimeoutError = (err: unknown): boolean => {
+  const e = err as { name?: string; code?: string; message?: string };
+  if (e?.code === 'ETIMEDOUT' || e?.code === 'ESOCKETTIMEDOUT') return true;
+  if (e?.name === 'APIConnectionTimeoutError' || e?.name === 'TimeoutError') return true;
+  const msg = (e?.message ?? String(err)).toLowerCase();
+  return /\btimeout\b/.test(msg) || msg.includes('timed out');
+};
+
 /**
  * Retry `fn` up to `maxAttempts` times on transient errors.
  * Backoff: 1s, 2s, 4s, … (capped at 30s) + jitter.

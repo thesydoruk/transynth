@@ -70,7 +70,7 @@ describe('parseLlmLocaleDetectResponse', () => {
     expect(result.verdict).toBe('match');
   });
 
-  it('repairs stray trailing quote via jsonrepair', () => {
+  it('extracts JSON object when a stray quote follows', () => {
     const inner = JSON.stringify({
       overall_detected_language: 'en',
       overall_confidence: 0.99,

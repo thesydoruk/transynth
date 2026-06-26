@@ -11,7 +11,6 @@ import {
   logEmbedRequest,
   logEmbedResponse,
 } from '../logging/llmExchange';
-import { repairLlmJsonContent } from './jsonParse';
 import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
@@ -93,18 +92,6 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
           maxTokens: CONFIG.llmMaxTokens,
           ...context,
         });
-      }
-      if (opts.responseFormat && result.content.trim()) {
-        const beforeChars = result.content.length;
-        const repaired = repairLlmJsonContent(result.content);
-        if (repaired.length !== beforeChars || repaired !== result.content) {
-          logLlm.debug(`${operation} response JSON repaired`, {
-            beforeChars,
-            afterChars: repaired.length,
-            ...context,
-          });
-        }
-        result.content = repaired;
       }
       return result;
     } catch (err) {
