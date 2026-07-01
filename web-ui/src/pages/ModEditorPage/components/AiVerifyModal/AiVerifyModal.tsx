@@ -12,7 +12,7 @@ interface AiVerifyModalProps {
   state: AiVerifyState & {
     isRunning: boolean;
     isStopping?: boolean;
-    start: (autoApproveVerified?: boolean) => void;
+    start: (autoApproveVerified?: boolean, fixSuspicious?: boolean) => void;
     stop: () => void;
   };
   onClose: () => void;
@@ -37,11 +37,23 @@ export const AiVerifyModal = ({
   onApplyAllSuggestions,
 }: AiVerifyModalProps) => {
   const { t } = useTranslation();
-  const { isRunning, isStopping, done, total, approved, issues, error, status, start, stop } =
-    state;
+  const {
+    isRunning,
+    isStopping,
+    done,
+    total,
+    approved,
+    fixed,
+    issues,
+    error,
+    status,
+    start,
+    stop,
+  } = state;
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [applyingAll, setApplyingAll] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
+  const [fixSuspicious, setFixSuspicious] = useState(false);
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
   const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -123,10 +135,19 @@ export const AiVerifyModal = ({
               />
               {t('modEditor.aiVerifyAutoApprove')}
             </label>
+            <label className={s.autoApproveToggle}>
+              <input
+                type="checkbox"
+                checked={fixSuspicious}
+                onChange={(e) => setFixSuspicious(e.target.checked)}
+                disabled={status === 'running'}
+              />
+              {t('modEditor.aiVerifyFixSuspicious')}
+            </label>
             <Button
               variant="success"
               size="sm"
-              onClick={() => void start(autoApprove)}
+              onClick={() => void start(autoApprove, fixSuspicious)}
               disabled={status === 'running'}
             >
               {status === 'idle' ? t('modEditor.aiVerifyStart') : t('modEditor.aiVerifyRestart')}
@@ -144,10 +165,12 @@ export const AiVerifyModal = ({
                 ? t('modEditor.aiVerifyProgress', { done, total })
                 : status === 'completed'
                   ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length }) +
-                    (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
+                    (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '') +
+                    (fixed > 0 ? ` · ${t('modEditor.aiVerifyFixed', { fixed })}` : '')
                   : status === 'cancelled'
                     ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length }) +
-                      (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '')
+                      (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '') +
+                      (fixed > 0 ? ` · ${t('modEditor.aiVerifyFixed', { fixed })}` : '')
                     : status === 'failed'
                       ? t('modEditor.aiVerifyFailed')
                       : t('modEditor.aiVerifyIdle')}

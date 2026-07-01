@@ -30,6 +30,7 @@ export const ukrainianPlaceholderRules = (): string[] => [
   '### ПРИКЛАДИ ПЛЕЙСХОЛДЕРІВ:',
   '- Source: "Listen, ¤PH0¤, we need ¤PH1¤ caps." → "Слухай, ¤PH0¤, нам потрібно ¤PH1¤ кришок."',
   '- Source: "<Alias=Player> entered ¤PH0¤" → переклади слова, збережи ¤PH0¤; після розмаскування <Alias=Player> має лишитися незмінним.',
-  '- Source: "T-51 Right Arm Armor" (ARMO/FULL, без масок) → "Права рука T-51" (див. правила гри).',
+  '- Source: "T-51 Right Arm Armor" (ARMO/FULL, без масок) → "Права рука T-51" (лише якщо в source є Right/Left; див. правила гри).',
+  '- Source: "Hellfire Mk.II Arm Armor" → "Хелфайр броня для рук Mk.II" — НЕ "Права рука Hellfire Mk.II" (не вигадуй сторону, не лишай англійську).',
   '- ПОМИЛКА: пропустити ¤PH0¤, розбити "¤ PH0 ¤", замінити %s на %d або <Alias=Player> на <Гравець>.',
 ];

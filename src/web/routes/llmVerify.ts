@@ -15,7 +15,12 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/llm-verify — start verification (SSE progress stream)
   app.post<{
     Params: { modId: string };
-    Body: { srcLang?: string; targetLang?: string; autoApproveVerified?: boolean };
+    Body: {
+      srcLang?: string;
+      targetLang?: string;
+      autoApproveVerified?: boolean;
+      fixSuspicious?: boolean;
+    };
   }>('/api/mods/:modId/llm-verify', async (req, reply) => {
     const modId = Number(req.params.modId);
     if (!Number.isInteger(modId) || modId < 1) {
@@ -25,6 +30,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
     const autoApproveVerified = req.body?.autoApproveVerified === true;
+    const fixSuspicious = req.body?.fixSuspicious === true;
 
     const runningJobId = findRunningLlmVerifyJob(modId);
     if (runningJobId != null) {
@@ -72,6 +78,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
             modName: mod.name,
             game: mod.game,
             autoApproveVerified,
+            fixSuspicious,
           },
           send,
         );

@@ -878,15 +878,37 @@ export type LlmVerifyJobSnapshot = {
   done: number;
   total: number;
   approved: number;
+  fixed: number;
   issues: LlmVerifyIssue[];
   error: string | null;
 };
 
 export type LlmVerifyStreamEvent =
   | { type: 'started'; jobId: number; total: number }
-  | { type: 'progress'; done: number; total: number; approved: number; issue?: LlmVerifyIssue }
-  | { type: 'done'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
-  | { type: 'cancelled'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
+  | {
+      type: 'progress';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issue?: LlmVerifyIssue;
+    }
+  | {
+      type: 'done';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issues: LlmVerifyIssue[];
+    }
+  | {
+      type: 'cancelled';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issues: LlmVerifyIssue[];
+    }
   | { type: 'error'; error: string };
 
 export type LlmSkipDetectCandidate = {
@@ -1957,13 +1979,14 @@ export const api = {
       targetLang = getTgtLang(),
       onEvent?: (e: LlmVerifyStreamEvent) => void,
       autoApproveVerified = false,
+      fixSuspicious = false,
       signal?: AbortSignal,
     ): Promise<LlmVerifyJobSnapshot | null> {
       const response = await fetch(`${BASE}/api/mods/${modId}/llm-verify`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, targetLang, autoApproveVerified }),
+        body: JSON.stringify({ srcLang, targetLang, autoApproveVerified, fixSuspicious }),
         signal,
       });
       if (!response.ok || !response.body) {
@@ -1995,6 +2018,7 @@ export const api = {
                 done: 0,
                 total: event.total,
                 approved: 0,
+                fixed: 0,
                 issues: [],
                 error: null,
               };
@@ -2005,6 +2029,7 @@ export const api = {
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issue ? [...snapshot.issues, event.issue] : snapshot.issues,
               };
             }
@@ -2015,6 +2040,7 @@ export const api = {
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issues,
               };
             }
@@ -2025,6 +2051,7 @@ export const api = {
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issues,
               };
             }

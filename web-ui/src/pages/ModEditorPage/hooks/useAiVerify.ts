@@ -7,6 +7,7 @@ export type AiVerifyState = {
   done: number;
   total: number;
   approved: number;
+  fixed: number;
   issues: LlmVerifyIssue[];
   error: string | null;
 };
@@ -17,6 +18,7 @@ const initialState: AiVerifyState = {
   done: 0,
   total: 0,
   approved: 0,
+  fixed: 0,
   issues: [],
   error: null,
 };
@@ -42,13 +44,14 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
       done: snapshot.done,
       total: snapshot.total,
       approved: snapshot.approved,
+      fixed: snapshot.fixed,
       issues: snapshot.issues,
       error: snapshot.error,
     });
   }, []);
 
   const start = useCallback(
-    async (autoApproveVerified = false) => {
+    async (autoApproveVerified = false, fixSuspicious = false) => {
       if (inFlight.current) return;
       inFlight.current = true;
       streamAbortRef.current?.abort();
@@ -62,6 +65,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
         done: 0,
         total: 0,
         approved: 0,
+        fixed: 0,
         issues: [],
         error: null,
       }));
@@ -81,6 +85,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 total: event.total,
                 done: 0,
                 approved: 0,
+                fixed: 0,
                 issues: [],
               }));
             }
@@ -90,6 +95,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issue ? [...prev.issues, event.issue] : prev.issues,
               }));
             }
@@ -100,6 +106,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issues,
               }));
             }
@@ -110,6 +117,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 done: event.done,
                 total: event.total,
                 approved: event.approved,
+                fixed: event.fixed,
                 issues: event.issues,
               }));
             }
@@ -122,6 +130,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
             }
           },
           autoApproveVerified,
+          fixSuspicious,
           streamAbort.signal,
         );
         if (snapshot) applySnapshot(snapshot);

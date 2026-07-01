@@ -285,19 +285,18 @@ export const ModEditorPage = () => {
     prevAiTranslateStatus.current = aiTranslate.status;
   }, [aiTranslate.status, modId, qc, refetchStats]);
 
-  // Auto-approve during verification promotes passing rows to 'reviewed' on the
-  // server, so refresh the grid and stats once a verify run finishes.
+  // Auto-approve / auto-fix during verification update rows on the server — refresh when a run finishes.
   useEffect(() => {
     if (
       prevAiVerifyStatus.current === 'running' &&
       (aiVerify.status === 'completed' || aiVerify.status === 'cancelled') &&
-      aiVerify.approved > 0
+      (aiVerify.approved > 0 || aiVerify.fixed > 0)
     ) {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     }
     prevAiVerifyStatus.current = aiVerify.status;
-  }, [aiVerify.status, aiVerify.approved, modId, qc, refetchStats]);
+  }, [aiVerify.status, aiVerify.approved, aiVerify.fixed, modId, qc, refetchStats]);
 
   useEffect(() => {
     if (

@@ -15,6 +15,7 @@ import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragSe
 import { getAllProjectSettings } from './projectSettings';
 import {
   approveVerifiedTranslations,
+  upsertTranslation,
   PENDING_REVIEW_STATUS_SQL,
   LLM_PROTECTED_TRANSLATION_STATUS_SQL,
 } from './queries';
@@ -56,6 +57,8 @@ export type LlmVerifyJobSnapshot = {
   total: number;
   /** Strings auto-confirmed (promoted to 'reviewed') because they passed with no issues. */
   approved: number;
+  /** Strings auto-corrected from LLM suggestions (incorrect always; suspicious when enabled). */
+  fixed: number;
   issues: LlmVerifyIssue[];
   error: string | null;
 };
@@ -65,6 +68,8 @@ type ActiveLlmVerifyJob = LlmVerifyJobSnapshot & {
   srcLang: string;
   targetLang: string;
   autoApproveVerified: boolean;
+  /** Apply LLM suggestions for suspicious verdicts (incorrect rows are always auto-fixed). */
+  fixSuspicious: boolean;
   /** Aborts in-flight LLM requests the instant Stop is pressed. */
   abort: AbortController;
 };
@@ -79,6 +84,7 @@ const toSnapshot = (job: ActiveLlmVerifyJob): LlmVerifyJobSnapshot => ({
   done: job.done,
   total: job.total,
   approved: job.approved,
+  fixed: job.fixed,
   issues: job.issues,
   error: job.error,
 });
@@ -189,9 +195,30 @@ export const loadVerifyChunk = async (
 
 export type LlmVerifyProgressEvent =
   | { type: 'started'; jobId: number; total: number }
-  | { type: 'progress'; done: number; total: number; approved: number; issue?: LlmVerifyIssue }
-  | { type: 'done'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
-  | { type: 'cancelled'; done: number; total: number; approved: number; issues: LlmVerifyIssue[] }
+  | {
+      type: 'progress';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issue?: LlmVerifyIssue;
+    }
+  | {
+      type: 'done';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issues: LlmVerifyIssue[];
+    }
+  | {
+      type: 'cancelled';
+      done: number;
+      total: number;
+      approved: number;
+      fixed: number;
+      issues: LlmVerifyIssue[];
+    }
   | { type: 'error'; error: string };
 
 export const runLlmVerifyJob = async (
@@ -204,6 +231,8 @@ export const runLlmVerifyJob = async (
     game?: string | null;
     /** When true, strings passing with no issues are promoted to 'reviewed'. */
     autoApproveVerified?: boolean;
+    /** Apply LLM suggestions for suspicious verdicts (incorrect rows are always auto-fixed). */
+    fixSuspicious?: boolean;
   },
   onEvent: (event: LlmVerifyProgressEvent) => void,
 ): Promise<LlmVerifyJobSnapshot> => {
@@ -213,6 +242,7 @@ export const runLlmVerifyJob = async (
   }
 
   const autoApproveVerified = opts.autoApproveVerified === true;
+  const fixSuspicious = opts.fixSuspicious === true;
   const jobId = nextJobId++;
   const job: ActiveLlmVerifyJob = {
     jobId,
@@ -221,12 +251,14 @@ export const runLlmVerifyJob = async (
     done: 0,
     total: 0,
     approved: 0,
+    fixed: 0,
     issues: [],
     error: null,
     cancel: false,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
     autoApproveVerified,
+    fixSuspicious,
     abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
@@ -240,7 +272,7 @@ export const runLlmVerifyJob = async (
     throw new Error('No strings pending review');
   }
   job.total = total;
-  onEvent({ type: 'progress', done: 0, total, approved: 0 });
+  onEvent({ type: 'progress', done: 0, total, approved: 0, fixed: 0 });
 
   if (job.cancel) {
     job.status = 'cancelled';
@@ -249,6 +281,7 @@ export const runLlmVerifyJob = async (
       done: 0,
       total,
       approved: 0,
+      fixed: 0,
       issues: [],
     });
     return toSnapshot(job);
@@ -261,6 +294,7 @@ export const runLlmVerifyJob = async (
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
     autoApproveVerified,
+    fixSuspicious,
     llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
   });
 
@@ -273,6 +307,7 @@ export const runLlmVerifyJob = async (
       done: job.done,
       total: job.total,
       approved: job.approved,
+      fixed: job.fixed,
       issues: job.issues,
     });
     return toSnapshot(job);
@@ -286,6 +321,17 @@ export const runLlmVerifyJob = async (
 
   const ragConcurrency = llmRagConcurrency();
   const chatConcurrency = llmChatPipelineConcurrency();
+
+  const emitProgress = (issue?: LlmVerifyIssue): void => {
+    onEvent({
+      type: 'progress',
+      done: job.done,
+      total: job.total,
+      approved: job.approved,
+      fixed: job.fixed,
+      ...(issue ? { issue } : {}),
+    });
+  };
 
   type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
@@ -367,7 +413,7 @@ export const runLlmVerifyJob = async (
       });
       for (const _row of llmChunk) {
         job.done++;
-        onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
+        emitProgress();
       }
       return;
     }
@@ -377,7 +423,7 @@ export const runLlmVerifyJob = async (
       job.done++;
       if (result.verdict === 'ok') {
         okStringIds.push(result.id);
-        onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
+        emitProgress();
         continue;
       }
 
@@ -396,21 +442,35 @@ export const runLlmVerifyJob = async (
         confidence: result.confidence,
         suggestion: result.suggestion,
       };
+
+      const suggestion = result.suggestion;
+      const shouldApplySuggestion =
+        suggestion &&
+        (result.verdict === 'incorrect' || (result.verdict === 'suspicious' && job.fixSuspicious));
+
+      if (shouldApplySuggestion) {
+        try {
+          await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
+          job.fixed++;
+        } catch (err) {
+          logVerify.warn('auto-fix failed for verify row', {
+            jobId,
+            modId: opts.modId,
+            stringId: result.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       job.issues.push(issue);
-      onEvent({
-        type: 'progress',
-        done: job.done,
-        total: job.total,
-        approved: job.approved,
-        issue,
-      });
+      emitProgress(issue);
     }
 
     if (job.autoApproveVerified && okStringIds.length > 0) {
       try {
         const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
         job.approved += promoted;
-        onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
+        emitProgress();
       } catch (approveErr) {
         logVerify.warn('auto-approve failed for chunk', {
           jobId,
@@ -458,7 +518,7 @@ export const runLlmVerifyJob = async (
         });
         for (const _row of dbChunk) {
           job.done++;
-          onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
+          emitProgress();
         }
       }
     }
@@ -476,6 +536,7 @@ export const runLlmVerifyJob = async (
         done: job.done,
         total: job.total,
         approved: job.approved,
+        fixed: job.fixed,
         issues: job.issues,
       });
     } else {
@@ -485,6 +546,7 @@ export const runLlmVerifyJob = async (
         done: job.done,
         total: job.total,
         approved: job.approved,
+        fixed: job.fixed,
         issueCount: job.issues.length,
       });
       onEvent({
@@ -492,6 +554,7 @@ export const runLlmVerifyJob = async (
         done: job.done,
         total: job.total,
         approved: job.approved,
+        fixed: job.fixed,
         issues: job.issues,
       });
     }

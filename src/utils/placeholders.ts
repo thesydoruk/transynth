@@ -121,6 +121,19 @@ const overlapsRange = (
 /** Remove already-protected tokens before deciding whether text looks like Papyrus code. */
 const stripProtectedForScriptCheck = (text: string): string => text.replace(PLACEHOLDER_RE, ' ');
 
+/**
+ * Strip model/version tokens (X-02, T-51, Mk.II) so their hyphens/dots do not
+ * mark item names as script-like. UI inventory badges like [Mod] are already
+ * removed by {@link stripProtectedForScriptCheck}.
+ */
+const stripModelAndVersionTokensForScriptCheck = (text: string): string =>
+  text
+    .replace(/\b[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b/g, ' ')
+    .replace(/\b[A-Za-z]+(?:\.[A-Za-z0-9]+)+\b/g, ' ');
+
+const buildScriptProbe = (text: string): string =>
+  stripModelAndVersionTokensForScriptCheck(stripProtectedForScriptCheck(text));
+
 const findFunctionKeywordMatches = (text: string, game?: GameType | null): KeywordMatch[] => {
   const keywords = getFunctionKeywordsForGame(game);
   if (keywords.length === 0) return [];
@@ -140,7 +153,7 @@ const findFunctionKeywordMatches = (text: string, game?: GameType | null): Keywo
   );
   if (externalKeywordMatches.length === 0) return [];
 
-  const scriptProbe = stripProtectedForScriptCheck(text);
+  const scriptProbe = buildScriptProbe(text);
   const isScriptLike =
     SCRIPT_PUNCTUATION_RE.test(scriptProbe) ||
     DECLARATION_SIGNAL_RE.test(scriptProbe) ||

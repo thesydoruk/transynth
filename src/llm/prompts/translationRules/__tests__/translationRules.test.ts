@@ -68,6 +68,7 @@ describe('translationRules', () => {
   it('injects game-specific verify notes for Ukrainian Fallout 4', () => {
     const verifyPrompt = buildUkrainianVerifySystemPrompt('en', 'fo4');
     expect(verifyPrompt).toContain('силової броні');
+    expect(verifyPrompt).toContain('Hellfire Mk.II Arm Armor');
     const skyrimVerify = buildUkrainianVerifySystemPrompt('en', 'sse');
     expect(skyrimVerify).toContain('Лексика Fallout');
     expect(skyrimVerify).not.toContain('силової броні');

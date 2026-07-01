@@ -135,6 +135,12 @@ describe('maskFunctionKeywords', () => {
     expect(Object.keys(mapping)).toHaveLength(0);
   });
 
+  it('does not mask keywords in power-armor model names with hyphens', () => {
+    const { masked, mapping } = maskFunctionKeywords('X-02 Torso Armor', 'fo4');
+    expect(masked).toBe('X-02 Torso Armor');
+    expect(Object.keys(mapping)).toHaveLength(0);
+  });
+
   it('does not mask keywords in HTML-formatted prose', () => {
     const source =
       "<font face='$HandwrittenFont' size='20'>\r\n<p align='center'>\r\nIf you cannot stand the heat";
@@ -164,6 +170,11 @@ describe('extractProtectedTokens', () => {
   it('does not treat stage directions or dotted item names as protected tokens', () => {
     expect(extractProtectedTokens('[Sarcasm] Really?', 'fo4')).toEqual([]);
     expect(extractProtectedTokens('Hellfire Mk.VI Arm Armor', 'fo4')).toEqual([]);
+    expect(extractProtectedTokens('X-02 Torso Armor', 'fo4')).toEqual([]);
+  });
+
+  it('still protects UI inventory badge tags in item names', () => {
+    expect(extractProtectedTokens('[Mod] X-02 Torso Armor', 'fo4')).toEqual(['[Mod]']);
   });
 });
 
@@ -196,5 +207,18 @@ describe('validateTranslationPlaceholders', () => {
     const check = compareProtectedTokens('You have %d caps', 'You have %s caps', 'fo4');
     expect(check.ok).toBe(false);
     if (!check.ok) expect(check.message).toMatch(/Protected token mismatch/);
+  });
+
+  it('accepts power-armor item names without spurious Armor keyword drift', () => {
+    const cases: Array<[string, string]> = [
+      ['X-02 Torso Armor', 'Торс X-02'],
+      ['X-02 Right Arm Armor', 'Права рука X-02'],
+      ['X-02 Left Arm Armor', 'Ліва рука X-02'],
+      ['X-02 Helmet Armor', 'Шолом X-02'],
+    ];
+    for (const [source, translation] of cases) {
+      expect(compareProtectedTokens(source, translation, 'fo4').ok).toBe(true);
+      expect(extractProtectedTokens(source, 'fo4')).toEqual([]);
+    }
   });
 });
