@@ -176,4 +176,24 @@ describe('applyPlaceholderGuardToVerifyResult', () => {
     );
     expect(guarded.verdict).toBe('ok');
   });
+
+  it('does not flag BOOK journal prose with As/If or paragraph breaks', () => {
+    const bookItem = {
+      id: 2,
+      source:
+        "Try as we might, we can't bypass this lock.\r\nAs a result, officers returned.\r\nIf needed, more follow.",
+      translation:
+        'Спробувавши, ми не змогли обійти замок.\nЧерез це офіцери повернулися.\nЗа потреби підуть ще.',
+      grup: 'BOOK',
+      field: 'DESC',
+      edid: null,
+      context: null,
+    };
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      bookItem,
+      { id: 2, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('ok');
+  });
 });

@@ -1,5 +1,6 @@
 import type { GameType } from '../types';
 import { getFunctionKeywordsForGame } from '../resources/functionKeywords';
+import { isScriptCodeContext } from './recordLocation';
 
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤, ¤GL0¤, and ¤FK0¤ for easy post-replacement.
@@ -90,9 +91,46 @@ export const PLACEHOLDER_PATTERN_PARTS = [
 export const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');
 
 const IDENTIFIER_RE = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
-const SCRIPT_PUNCTUATION_RE = /::|->|[()[\]=,;+\-/*]/;
+/** Papyrus-only punctuation; commas and bare math chars appear in normal prose. */
+const SCRIPT_PUNCTUATION_RE = /::|->|[()[\]=;]/;
 const DECLARATION_SIGNAL_RE =
   /\b(?:Auto|AutoReadOnly|Conditional|Event|EndEvent|EndFunction|Function|Hidden|Property|ScriptName|State)\b/;
+
+export type ProtectedTokenCompareOptions = {
+  /** Include Papyrus FunctionKeywords (default true). Disable for player-facing text. */
+  includeFunctionKeywords?: boolean;
+  /** Include \\r\\n / \\n line-break tokens in the multiset compare (default true). */
+  includeLineBreaks?: boolean;
+};
+
+const LINE_BREAK_TOKENS = new Set(['\r\n', '\r', '\n']);
+
+/** Compare options for a record: strict for SCPT/SCTX, placeholders-only elsewhere. */
+export const protectedTokenCompareOptionsForContext = (
+  grup: string | null | undefined,
+  field: string | null | undefined,
+): ProtectedTokenCompareOptions =>
+  isScriptCodeContext(grup, field)
+    ? { includeFunctionKeywords: true, includeLineBreaks: true }
+    : { includeFunctionKeywords: false, includeLineBreaks: false };
+
+const filterCompareTokens = (
+  tokens: string[],
+  options?: ProtectedTokenCompareOptions,
+): string[] => {
+  let out = tokens;
+  if (options?.includeLineBreaks === false) {
+    out = out.filter((token) => !LINE_BREAK_TOKENS.has(token));
+  }
+  return out;
+};
+
+const formatTokenForMessage = (token: string): string => {
+  if (token === '\r\n') return '\\r\\n';
+  if (token === '\r') return '\\r';
+  if (token === '\n') return '\\n';
+  return token;
+};
 
 /**
  * Result of a masking operation.
@@ -221,10 +259,17 @@ export const maskFunctionKeywords = (text: string, game?: GameType | null): Mask
  * @param game - Active game identifier for the keyword corpus.
  * @returns Sorted token list for QA comparisons.
  */
-export const extractProtectedTokens = (text: string, game?: GameType | null): string[] => {
+export const extractProtectedTokens = (
+  text: string,
+  game?: GameType | null,
+  options?: ProtectedTokenCompareOptions,
+): string[] => {
   const placeholderMatches = text.match(PLACEHOLDER_RE) ?? [];
-  const keywordMatches = findFunctionKeywordMatches(text, game).map((match) => match.token);
-  return [...placeholderMatches, ...keywordMatches].sort();
+  const includeFunctionKeywords = options?.includeFunctionKeywords !== false;
+  const keywordMatches = includeFunctionKeywords
+    ? findFunctionKeywordMatches(text, game).map((match) => match.token)
+    : [];
+  return filterCompareTokens([...placeholderMatches, ...keywordMatches], options).sort();
 };
 
 /**
@@ -304,13 +349,14 @@ export const compareProtectedTokens = (
   source: string,
   translation: string,
   game?: GameType | null,
+  options?: ProtectedTokenCompareOptions,
 ): PlaceholderValidationResult => {
-  const srcProtectedTokens = extractProtectedTokens(source, game);
-  const dstProtectedTokens = extractProtectedTokens(translation, game);
+  const srcProtectedTokens = extractProtectedTokens(source, game, options);
+  const dstProtectedTokens = extractProtectedTokens(translation, game, options);
   if (srcProtectedTokens.join('\u0000') !== dstProtectedTokens.join('\u0000')) {
     return {
       ok: false,
-      message: `Protected token mismatch: source=[${srcProtectedTokens.join(', ')}] target=[${dstProtectedTokens.join(', ')}]`,
+      message: `Protected token mismatch: source=[${srcProtectedTokens.map(formatTokenForMessage).join(', ')}] target=[${dstProtectedTokens.map(formatTokenForMessage).join(', ')}]`,
     };
   }
   return { ok: true };

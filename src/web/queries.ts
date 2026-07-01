@@ -5,7 +5,11 @@ import { log } from '../logger';
 import { CONFIG } from '../config';
 import type { GameType } from '../types';
 import { findReferenceExamples, type RagReferenceExample } from '../llm/ragService';
-import { extractProtectedTokens } from '../utils/placeholders';
+import {
+  compareProtectedTokens,
+  protectedTokenCompareOptionsForContext,
+} from '../utils/placeholders';
+import { parseRecordLocation } from '../utils/recordLocation';
 import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from './ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImportBulk';
@@ -93,6 +97,7 @@ const buildQAIssues = (
   translation: string,
   game?: GameType | null,
   settings?: Partial<QACheckSettings>,
+  recordLocation?: { signature?: string | null; path?: string | null },
 ): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
@@ -106,13 +111,14 @@ const buildQAIssues = (
     return issues;
   }
 
-  const srcProtectedTokens = extractProtectedTokens(source, game);
-  const dstProtectedTokens = extractProtectedTokens(translation, game);
-  if (srcProtectedTokens.join('\u0000') !== dstProtectedTokens.join('\u0000')) {
+  const { grup, field } = parseRecordLocation(recordLocation?.signature, recordLocation?.path);
+  const tokenCompareOptions = protectedTokenCompareOptionsForContext(grup, field);
+  const tokenCheck = compareProtectedTokens(source, translation, game, tokenCompareOptions);
+  if (!tokenCheck.ok) {
     issues.push({
       issueType: 'placeholder_mismatch',
       severity: 'error',
-      message: `Protected token mismatch: source=[${srcProtectedTokens.join(', ')}] target=[${dstProtectedTokens.join(', ')}]`,
+      message: tokenCheck.message,
     });
   }
 
@@ -274,6 +280,7 @@ const refreshQAIssues = async (
     row.translation,
     row.game as GameType | undefined,
     qaSettings,
+    { signature: row.signature, path: row.path },
   );
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───

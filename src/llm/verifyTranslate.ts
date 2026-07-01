@@ -11,7 +11,10 @@ import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
-import { compareProtectedTokens } from '../utils/placeholders';
+import {
+  compareProtectedTokens,
+  protectedTokenCompareOptionsForContext,
+} from '../utils/placeholders';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
 
@@ -58,7 +61,12 @@ export const applyPlaceholderGuardToVerifyResult = (
   result: LlmVerifyItemResult,
   game?: GameType | string | null,
 ): LlmVerifyItemResult => {
-  const check = compareProtectedTokens(item.source, item.translation, game as GameType | undefined);
+  const check = compareProtectedTokens(
+    item.source,
+    item.translation,
+    game as GameType | undefined,
+    protectedTokenCompareOptionsForContext(item.grup, item.field),
+  );
   if (check.ok) return result;
 
   if (result.verdict === 'ok') {

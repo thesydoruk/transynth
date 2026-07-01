@@ -42,3 +42,13 @@ export const parseRecordLocation = (
     field,
   };
 };
+
+/** True for Papyrus script source fields where FunctionKeywords must be preserved. */
+export const isScriptCodeContext = (
+  grup: string | null | undefined,
+  field: string | null | undefined,
+): boolean => {
+  const g = (grup ?? '').trim().toUpperCase();
+  const f = (field ?? '').trim().toUpperCase();
+  return g === 'SCPT' || f === 'SCTX' || f === 'SCDA';
+};

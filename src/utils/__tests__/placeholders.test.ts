@@ -7,6 +7,7 @@ import {
   unmask,
   validateTranslationPlaceholders,
   compareProtectedTokens,
+  protectedTokenCompareOptionsForContext,
 } from '../placeholders';
 
 describe('maskPlaceholders', () => {
@@ -175,6 +176,24 @@ describe('extractProtectedTokens', () => {
 
   it('still protects UI inventory badge tags in item names', () => {
     expect(extractProtectedTokens('[Mod] X-02 Torso Armor', 'fo4')).toEqual(['[Mod]']);
+  });
+
+  it('ignores function keywords and line breaks in player-facing BOOK text', () => {
+    const source =
+      "Try as we might, we can't bypass this lock.\r\nAs a result, the lieutenant sent officers.\r\nIf needed, more follow.";
+    const translation =
+      'Спробувавши, ми не змогли обійти замок.\nЧерез це лейтенант відправив офіцерів.\nЗа потреби підуть ще.';
+    const options = protectedTokenCompareOptionsForContext('BOOK', 'DESC');
+    expect(extractProtectedTokens(source, 'fo4', options)).toEqual([]);
+    expect(extractProtectedTokens(translation, 'fo4', options)).toEqual([]);
+    expect(compareProtectedTokens(source, translation, 'fo4', options).ok).toBe(true);
+  });
+
+  it('still requires function keywords in script source fields', () => {
+    const source = 'If (akActor.IsDead())\r\n  Debug.Notification("done")';
+    const badTranslation = 'If (akActor.IsDead())\r\n  Debug.Message("done")';
+    const options = protectedTokenCompareOptionsForContext('SCPT', 'SCTX');
+    expect(compareProtectedTokens(source, badTranslation, 'fo4', options).ok).toBe(false);
   });
 });
 
