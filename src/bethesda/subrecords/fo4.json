@@ -6,7 +6,7 @@
     "ACTI": { "read": true, "subrecords": { "FULL": true, "ATTX": true, "RNAM": true } },
     "ALCH": { "read": true, "subrecords": { "FULL": true, "DESC": true, "DNAM": true } },
     "AMMO": { "read": true, "subrecords": { "FULL": true, "DESC": true, "ONAM": true } },
-    "ARMA": { "read": true, "subrecords": { "FULL": true } },
+    "ARMA": { "read": false, "subrecords": {} },
     "ARMO": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
     "AVIF": { "read": true, "subrecords": { "FULL": true, "DESC": true, "ANAM": true } },
     "BOOK": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
@@ -33,14 +33,17 @@
     "HDPT": { "read": true, "subrecords": { "FULL": true } },
     "INFO": { "read": true, "subrecords": { "NAM1": true, "RNAM": true } },
     "INGR": { "read": true, "subrecords": { "FULL": true, "YNAM": true } },
-    "INNR": { "read": true, "subrecords": { "WNAM": true } },
+    "INNR": { "read": false, "subrecords": {} },
     "KEYM": { "read": true, "subrecords": { "FULL": true } },
-    "KYWD": { "read": true, "subrecords": { "FULL": true } },
+    "KYWD": { "read": false, "subrecords": {} },
     "LCTN": { "read": true, "subrecords": { "FULL": true } },
     "LIGH": { "read": true, "subrecords": { "FULL": true } },
     "LSCR": { "read": true, "subrecords": { "DESC": true } },
-    "LVLI": { "read": true, "subrecords": { "ONAM": true } },
-    "MESG": { "read": true, "subrecords": { "FULL": true, "DESC": true, "ITXT": true, "NNAM": true } },
+    "LVLI": { "read": false, "subrecords": {} },
+    "MESG": {
+      "read": true,
+      "subrecords": { "FULL": true, "DESC": true, "ITXT": true, "NNAM": true }
+    },
     "MGEF": { "read": true, "subrecords": { "FULL": true, "DESC": true, "DNAM": true } },
     "MISC": { "read": true, "subrecords": { "FULL": true } },
     "MSTT": { "read": true, "subrecords": { "FULL": true } },
@@ -52,8 +55,11 @@
     "PGRE": { "read": false, "subrecords": {} },
     "PROJ": { "read": true, "subrecords": { "FULL": true } },
     "QUST": { "read": true, "subrecords": { "FULL": true, "CNAM": true, "NNAM": true } },
-    "RACE": { "read": true, "subrecords": { "FULL": true, "FMRN": true, "DESC": true, "TTGP": true, "MPPN": true } },
-    "REFR": { "read": true, "subrecords": { "FULL": true } },
+    "RACE": {
+      "read": true,
+      "subrecords": { "FULL": true, "FMRN": true, "DESC": true, "TTGP": true, "MPPN": true }
+    },
+    "REFR": { "read": false, "subrecords": {} },
     "REGN": { "read": true, "subrecords": { "RDMP": true } },
     "SCEN": { "read": false, "subrecords": {} },
     "SCOL": { "read": true, "subrecords": { "FULL": true } },
@@ -61,7 +67,18 @@
     "SPEL": { "read": true, "subrecords": { "FULL": true } },
     "STAT": { "read": true, "subrecords": { "FULL": true } },
     "TACT": { "read": true, "subrecords": { "FULL": true } },
-    "TERM": { "read": true, "subrecords": { "FULL": true, "BTXT": true, "ITXT": true, "RNAM": true, "UNAM": true, "WNAM": true, "NAM0": true } },
+    "TERM": {
+      "read": true,
+      "subrecords": {
+        "FULL": true,
+        "BTXT": true,
+        "ITXT": true,
+        "RNAM": true,
+        "UNAM": true,
+        "WNAM": true,
+        "NAM0": true
+      }
+    },
     "WATR": { "read": true, "subrecords": { "FULL": true } },
     "WEAP": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
     "WRLD": { "read": true, "subrecords": { "FULL": true } }

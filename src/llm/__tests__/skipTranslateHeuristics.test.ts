@@ -95,6 +95,24 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('Textures\\Effects\\Smoke.dds')?.reason).toMatch(/path/i);
   });
 
+  it('flags non-player-facing record types (REFR, KYWD, ARMA, …)', () => {
+    expect(detectSkipHeuristic('Some Label', { signature: 'REFR' })?.reason).toMatch(
+      /not player-facing/i,
+    );
+    expect(detectSkipHeuristic('KeywordFoo', { signature: 'KYWD' })?.reason).toMatch(
+      /not player-facing/i,
+    );
+    expect(detectSkipHeuristic('ArmorAddon', { signature: 'ARMA' })?.reason).toMatch(
+      /not player-facing/i,
+    );
+    expect(detectSkipHeuristic('InheritNode', { signature: 'INNR' })?.reason).toMatch(
+      /not player-facing/i,
+    );
+    expect(detectSkipHeuristic('ListOverride', { signature: 'LVLI' })?.reason).toMatch(
+      /not player-facing/i,
+    );
+  });
+
   it('keeps real place names on ACTI even when grup is ACTI', () => {
     expect(
       detectSkipHeuristic('Somerville Place', {

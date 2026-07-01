@@ -69,7 +69,7 @@ const buildEnglishSkipDetectSystemPrompt = (
     '- edid = editor ID of the record — often hints at purpose (AddonNode, Particle, FX_, Quest_, …).',
     '- context = speaker / scene hint when present.',
     '- Player-facing: INFO/DIAL (dialogue), BOOK, WEAP/ARMO FULL (items), quest stages, most UI strings.',
-    '- Usually internal (skip): ACTI/MSTT/EFSH FULL on effect nodes; GMST DATA debug keys; dense camelCase tokens with digits/underscores on non-UI records.',
+    '- Not player-facing (skip): REFR, KYWD, INNR, LVLI, ARMA record types; ACTI/MSTT/EFSH internal effect nodes; GMST DATA debug keys.',
     '- Particle / VFX: MPS… names, AddonNode records, LightNode…, Impact… concatenated identifiers — engine references, not inventory labels.',
     '- A sign or placard (ACTI FULL with a real place name like "Somerville Place") → keep even on ACTI.',
     '',

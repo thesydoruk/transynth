@@ -23,7 +23,10 @@
     "GMST": { "read": true, "subrecords": { "DATA": true } },
     "GRUP": { "read": false, "subrecords": {} },
     "HAIR": { "read": true, "subrecords": { "FULL": true } },
-    "INFO": { "read": true, "subrecords": { "FULL": true, "NAM1": true, "RNAM": true, "SCTX": true } },
+    "INFO": {
+      "read": true,
+      "subrecords": { "FULL": true, "NAM1": true, "RNAM": true, "SCTX": true }
+    },
     "INGR": { "read": true, "subrecords": { "FULL": true } },
     "KEYM": { "read": true, "subrecords": { "FULL": true } },
     "LIGH": { "read": true, "subrecords": { "FULL": true } },
@@ -31,13 +34,19 @@
     "MGEF": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
     "MISC": { "read": true, "subrecords": { "FULL": true } },
     "NPC_": { "read": true, "subrecords": { "FULL": true } },
-    "QUST": { "read": true, "subrecords": { "FULL": true, "NNAM": true, "CNAM": true, "SCTX": true } },
+    "QUST": {
+      "read": true,
+      "subrecords": { "FULL": true, "NNAM": true, "CNAM": true, "SCTX": true }
+    },
     "RACE": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
-    "REFR": { "read": true, "subrecords": { "FULL": true } },
+    "REFR": { "read": false, "subrecords": {} },
     "REGN": { "read": true, "subrecords": { "RDMP": true } },
     "SCPT": { "read": true, "subrecords": { "SCTX": true } },
     "SGST": { "read": true, "subrecords": { "FULL": true } },
-    "SKIL": { "read": true, "subrecords": { "DESC": true, "ANAM": true, "JNAM": true, "ENAM": true, "MNAM": true } },
+    "SKIL": {
+      "read": true,
+      "subrecords": { "DESC": true, "ANAM": true, "JNAM": true, "ENAM": true, "MNAM": true }
+    },
     "SLGM": { "read": true, "subrecords": { "FULL": true } },
     "SPEL": { "read": true, "subrecords": { "FULL": true } },
     "WATR": { "read": true, "subrecords": { "FULL": true } },

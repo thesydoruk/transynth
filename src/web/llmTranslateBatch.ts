@@ -14,7 +14,12 @@ import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookupMany, cacheStore } from './cacheService';
-import { upsertTranslation, termWordBoundaryRe, filterStringIdsForLlmTranslate } from './queries';
+import {
+  upsertTranslation,
+  termWordBoundaryRe,
+  filterStringIdsForLlmTranslate,
+  markStringsAsSkip,
+} from './queries';
 import { logTranslate } from '../logging/loggers';
 import { mapWithConcurrency } from '../utils/concurrency';
 import {
@@ -30,7 +35,13 @@ import { llmRagConcurrency, llmChatPipelineConcurrency } from '../llm/requestPoo
 import type { GameType } from '../types';
 import { buildLlmTranslateChunks } from './llmTranslateChunking';
 
-export type TranslateBatchResult = { stringId: number; text?: string; error?: string };
+export type TranslateBatchResult = {
+  stringId: number;
+  text?: string;
+  error?: string;
+  /** Row marked non-translatable during batch (heuristic). */
+  skipped?: boolean;
+};
 
 export type TranslateBatchOptions = {
   srcLang: string;
@@ -170,6 +181,7 @@ export const translateStringIdsBatch = async (
   }
 
   const llmPending: PreparedLlmItem[] = [];
+  const runtimeSkipIds: number[] = [];
 
   /** Strings resolved without the LLM (untranslatable or cache hit) — persisted in bulk. */
   const immediateResults: Array<{ stringId: number; text: string }> = [];
@@ -381,11 +393,11 @@ export const translateStringIdsBatch = async (
       signature: grup,
     });
     if (skipHit) {
-      logTranslate.debug('runtime skip heuristic — copying source verbatim', {
+      logTranslate.debug('runtime skip heuristic', {
         stringId,
         reason: skipHit.reason,
       });
-      immediateResults.push({ stringId, text: sourceText });
+      runtimeSkipIds.push(stringId);
       continue;
     }
 
@@ -443,6 +455,16 @@ export const translateStringIdsBatch = async (
     });
   }
 
+  if (runtimeSkipIds.length > 0) {
+    await markStringsAsSkip(db, runtimeSkipIds, targetLang);
+    for (const stringId of runtimeSkipIds) {
+      emitResult({ stringId, skipped: true });
+    }
+    logTranslate.info('runtime skip heuristic marked rows', {
+      count: runtimeSkipIds.length,
+    });
+  }
+
   const llmChunks = buildLlmTranslateChunks(llmPending, {
     batchSize: CONFIG.batchSize,
     maxSourceChars: CONFIG.llmBatchMaxSourceChars,
@@ -478,8 +500,9 @@ export const translateStringIdsBatch = async (
   }
 
   const ok = results.filter((r) => r.text).length;
+  const skipped = results.filter((r) => r.skipped).length;
   const failed = results.filter((r) => r.error).length;
-  logTranslate.info('batch done', { total: eligibleIds.length, ok, failed });
+  logTranslate.info('batch done', { total: eligibleIds.length, ok, skipped, failed });
 
   return results;
 };

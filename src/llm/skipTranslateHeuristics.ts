@@ -1,6 +1,7 @@
 /**
  * Heuristic detection of source strings that should not be translated.
  */
+import { isNonPlayerFacingRecord } from '../bethesda/subrecords/nonPlayerFacing';
 
 /** Internal mask markers injected by the translation pipeline (¤PH0¤, ¤GL1¤, ¤FK2¤). */
 const MARKER_RE = /¤(?:PH|GL|FK)\d+¤/g;
@@ -210,6 +211,14 @@ export const detectSkipHeuristic = (
   }
 
   const signature = meta?.signature?.trim() ?? null;
+
+  if (isNonPlayerFacingRecord(signature)) {
+    return {
+      reason: `Record type ${signature} is not player-facing (REFR/KYWD/INNR/LVLI/ARMA).`,
+      method: 'heuristic',
+    };
+  }
+
   const edid = meta?.edid?.trim() ?? '';
   const internalFull = isInternalFullField(signature, meta?.path);
 
