@@ -23,12 +23,9 @@
  * word boundaries.
  */
 
-export interface GlossaryEntry {
-  /** English source term (matched on word boundaries, case-insensitive). */
-  term: string;
-  /** Canonical Ukrainian translation (base form; inflect as grammar requires). */
-  translation: string;
-}
+import type { GlossaryEntry } from './types';
+
+export type { GlossaryEntry } from './types';
 
 export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   // ── Factions & organizations ──────────────────────────────────────────────
@@ -167,7 +164,9 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Fusion Cell', translation: 'Ядерна батарея' },
   { term: 'Pip-Boy', translation: 'Піп-бой' },
   { term: 'Vault', translation: 'Сховище' },
+  { term: 'caps', translation: 'кришки' },
   { term: 'Caps', translation: 'Кришки' },
+  { term: 'rads', translation: 'радіація' },
   { term: 'Holotape', translation: 'Голозапис' },
   { term: 'Settler', translation: 'Поселенець' },
   { term: 'Workshop', translation: 'Майстерня' },

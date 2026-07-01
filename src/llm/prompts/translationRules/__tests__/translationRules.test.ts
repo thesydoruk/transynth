@@ -12,7 +12,8 @@ describe('translationRules', () => {
     expect(fo4Rules).toContain('### PLACEHOLDER AND TAG PRESERVATION');
     expect(fo4Rules).toContain('### CAPITALIZATION:');
     expect(fo4Rules).toContain('### STYLE, TONE, AND ATMOSPHERE (Fallout 4):');
-    expect(fo4Rules).toContain('### TRANSLATION EXAMPLES (Fallout 4):');
+    expect(fo4Rules).toContain('### FALLOUT 4 CANONICAL TERMINOLOGY');
+    expect(fo4Rules).toContain('Stealth Boy');
     expect(fo4Rules).toContain('Institute');
   });
 
@@ -24,7 +25,8 @@ describe('translationRules', () => {
     const fo4 = buildUkrainianTranslationRules('fo4');
     const sse = buildUkrainianTranslationRules('sse');
     expect(fo4).toContain('Fallout 4');
-    expect(fo4).toContain('ПРИКЛАДИ ПЕРЕКЛАДУ');
+    expect(fo4).toContain('### КАНОНІЧНА ТЕРМІНОЛОГІЯ FALLOUT 4');
+    expect(fo4).toContain('Stealth Boy → Стелс-бой');
     expect(fo4).toContain('Інститут');
     expect(sse).toContain('Skyrim');
     expect(sse).toContain('ПРИКЛАДИ (Skyrim)');
