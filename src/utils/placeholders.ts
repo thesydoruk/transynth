@@ -255,3 +255,68 @@ export const unmask = (text: string, mapping: Record<string, string>) => {
   for (const k of keys) out = out.split(k).join(mapping[k]);
   return out;
 };
+
+/** Opaque mask keys produced by {@link maskPlaceholders}, {@link applyGlossaryMask}, {@link maskFunctionKeywords}. */
+export const MASK_KEY_RE = /¤(?:PH|GL|FK)\d+¤/g;
+
+export type PlaceholderValidationResult = { ok: true } | { ok: false; message: string };
+
+/** Ensure every expected mask key is present and no unknown keys remain. */
+export const validateMaskedTranslation = (
+  maskedTranslation: string,
+  mapping: Record<string, string>,
+): PlaceholderValidationResult => {
+  for (const key of Object.keys(mapping)) {
+    if (!maskedTranslation.includes(key)) {
+      return { ok: false, message: `Missing mask key ${key} in LLM output` };
+    }
+  }
+
+  const orphans = [...maskedTranslation.matchAll(new RegExp(MASK_KEY_RE.source, 'g'))]
+    .map((match) => match[0])
+    .filter((key) => !(key in mapping));
+
+  if (orphans.length > 0) {
+    return {
+      ok: false,
+      message: `Unknown or hallucinated mask keys: ${[...new Set(orphans)].join(', ')}`,
+    };
+  }
+
+  return { ok: true };
+};
+
+/** Compare protected token multisets between source and final translation text. */
+export const compareProtectedTokens = (
+  source: string,
+  translation: string,
+  game?: GameType | null,
+): PlaceholderValidationResult => {
+  const srcProtectedTokens = extractProtectedTokens(source, game);
+  const dstProtectedTokens = extractProtectedTokens(translation, game);
+  if (srcProtectedTokens.join('\u0000') !== dstProtectedTokens.join('\u0000')) {
+    return {
+      ok: false,
+      message: `Protected token mismatch: source=[${srcProtectedTokens.join(', ')}] target=[${dstProtectedTokens.join(', ')}]`,
+    };
+  }
+  return { ok: true };
+};
+
+/**
+ * Validate LLM output before unmasking and after — catches missing keys and token drift.
+ */
+export const validateTranslationPlaceholders = (
+  source: string,
+  maskedTranslation: string,
+  placeholderMap: Record<string, string>,
+  functionKeywordMap: Record<string, string>,
+  game?: GameType | null,
+): PlaceholderValidationResult => {
+  const combinedMap = { ...placeholderMap, ...functionKeywordMap };
+  const maskCheck = validateMaskedTranslation(maskedTranslation, combinedMap);
+  if (!maskCheck.ok) return maskCheck;
+
+  const translated = unmask(unmask(maskedTranslation, functionKeywordMap), placeholderMap);
+  return compareProtectedTokens(source, translated, game);
+};

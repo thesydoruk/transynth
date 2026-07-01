@@ -11,6 +11,7 @@ import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
+import { compareProtectedTokens } from '../utils/placeholders';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
 
@@ -50,6 +51,35 @@ export interface LlmVerifyOptions {
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
 
 const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
+
+/** Upgrade LLM verdict when deterministic placeholder check fails. */
+export const applyPlaceholderGuardToVerifyResult = (
+  item: LlmVerifyItem,
+  result: LlmVerifyItemResult,
+  game?: GameType | string | null,
+): LlmVerifyItemResult => {
+  const check = compareProtectedTokens(item.source, item.translation, game as GameType | undefined);
+  if (check.ok) return result;
+
+  if (result.verdict === 'ok') {
+    return {
+      id: result.id,
+      verdict: 'incorrect',
+      reason: check.message,
+      confidence: Math.max(result.confidence, 0.95),
+      suggestion: result.suggestion,
+    };
+  }
+
+  if (!result.reason.includes('Protected token mismatch')) {
+    return {
+      ...result,
+      reason: `${result.reason} ${check.message}`,
+    };
+  }
+
+  return result;
+};
 
 /** @deprecated Use {@link buildEnglishVerifySystemPrompt} or {@link buildVerifySystemPrompt}. */
 export const VERIFY_TRANSLATE_SYSTEM_PROMPT = buildEnglishVerifySystemPrompt('en', 'de');
@@ -254,6 +284,6 @@ export const verifyTranslationsWithLlm = async (
     if (!row) {
       throw new Error(`LLM verify response missing item id=${item.id}`);
     }
-    return row;
+    return applyPlaceholderGuardToVerifyResult(item, row, opts.game);
   });
 };

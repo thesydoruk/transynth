@@ -17,7 +17,14 @@ import { cacheLookupMany, cacheStore } from './cacheService';
 import { upsertTranslation, termWordBoundaryRe, filterStringIdsForLlmTranslate } from './queries';
 import { logTranslate } from '../logging/loggers';
 import { mapWithConcurrency } from '../utils/concurrency';
-import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
+import {
+  maskFunctionKeywords,
+  maskPlaceholders,
+  unmask,
+  validateTranslationPlaceholders,
+  compareProtectedTokens,
+} from '../utils/placeholders';
+import { detectSkipHeuristic } from '../llm/skipTranslateHeuristics';
 import { parseRecordLocation } from '../utils/recordLocation';
 import { llmRagConcurrency, llmChatPipelineConcurrency } from '../llm/requestPool';
 import type { GameType } from '../types';
@@ -216,6 +223,21 @@ export const translateStringIdsBatch = async (
         return;
       }
 
+      const placeholderCheck = validateTranslationPlaceholders(
+        entry.sourceText,
+        maskedTranslation,
+        entry.placeholderMap,
+        entry.functionKeywordMap,
+        (entry.game ?? modGame) as GameType | undefined,
+      );
+      if (!placeholderCheck.ok) {
+        emitResult({
+          stringId: entry.stringId,
+          error: placeholderCheck.message,
+        });
+        return;
+      }
+
       const translated = unmask(
         unmask(maskedTranslation, entry.functionKeywordMap),
         entry.placeholderMap,
@@ -351,6 +373,22 @@ export const translateStringIdsBatch = async (
 
     const sourceText = row.text_raw;
     const game = row.game ?? modGame ?? undefined;
+    const { grup, field } = parseRecordLocation(row.signature, row.path);
+
+    const skipHit = detectSkipHeuristic(sourceText, {
+      edid: row.edid,
+      path: row.path,
+      signature: grup,
+    });
+    if (skipHit) {
+      logTranslate.debug('runtime skip heuristic — copying source verbatim', {
+        stringId,
+        reason: skipHit.reason,
+      });
+      immediateResults.push({ stringId, text: sourceText });
+      continue;
+    }
+
     const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
     const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
       placeholderMasked,
@@ -366,9 +404,17 @@ export const translateStringIdsBatch = async (
 
     const cached = cacheByRaw.get(sourceText);
     if (cached !== undefined) {
-      logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
-      immediateResults.push({ stringId, text: cached });
-      continue;
+      const cacheCheck = compareProtectedTokens(sourceText, cached, game as GameType | undefined);
+      if (!cacheCheck.ok) {
+        logTranslate.warn('cache hit rejected — placeholder mismatch', {
+          stringId,
+          message: cacheCheck.message,
+        });
+      } else {
+        logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
+        immediateResults.push({ stringId, text: cached });
+        continue;
+      }
     }
     logTranslate.trace('cache miss', { stringId, srcLang, targetLang, model });
 
@@ -384,7 +430,6 @@ export const translateStringIdsBatch = async (
       game: row.game ?? modGame,
       modName: row.mod_name ?? modName,
       llmItem: (() => {
-        const { grup, field } = parseRecordLocation(row.signature, row.path);
         return {
           id: stringId,
           source: maskedSourceText,

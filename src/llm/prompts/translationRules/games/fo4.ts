@@ -16,7 +16,7 @@ const falloutUiCategoriesUk = [
 ];
 
 export const fo4Rules: GameRules = {
-  en: () => [
+  en: (targetLang) => [
     '### STYLE, TONE, AND ATMOSPHERE (Fallout 4):',
     '- Setting: post-war Commonwealth (Boston area), 2287. Tone is pragmatic, weary, sometimes darkly humorous; survivors speak like people who have lived through loss.',
     '- Dialogue (grup: INFO/DIAL): natural spoken English suited for voice acting; contractions and interruptions are fine.',
@@ -32,6 +32,16 @@ export const fo4Rules: GameRules = {
     '- Firearms: "...Rifle"/"...Gun" often map to carbine-style names in many locales; Pistol, Launcher as appropriate.',
     '- Power Armor parts (ARMO/FULL, e.g. "T-51 Right Arm Armor"): translate body part + keep model code; drop standalone "Armor" suffix per locale convention.',
     '- Locations: translate meaningful names (Goodneighbor, The Castle); transliterate established proper nouns consistently (Diamond City, Sanctuary).',
+    '',
+    '### TRANSLATION EXAMPLES (Fallout 4):',
+    '- Dialogue: "Listen, Nick. We\'ve got a problem." → natural spoken ' +
+      targetLang +
+      ', preserve speaker tone.',
+    '- UI: "Ammo - Ballistic" → both parts fully in ' +
+      targetLang +
+      '; "Wood" → natural capitalization, not ALL CAPS.',
+    '- Masked: "I need ¤PH0¤ caps." → translate words, keep ¤PH0¤ unchanged.',
+    '- ARMO/FULL: "T-51 Right Arm Armor" → body part + model per locale rules.',
   ],
   uk: () => [
     '### СТИЛЬ, ТОН ТА АТМОСФЕРА (Fallout 4):',
@@ -50,6 +60,13 @@ export const fo4Rules: GameRules = {
     '- Істоти: Deathclaw → Кіготь смерті; Super Mutant → Супермутант; Feral Ghoul → Дикий гуль; Mirelurk → Болотник; Radroach → Радтарган; Yao Guai → Яо-гай; Brahmin → Брамін.',
     '- Хімія/їжа: RadAway → Антирадин; Rad-X → Рад-Х; Jet → Гвинт; Psycho → Психо; Mentats → Ментати; Nuka-Cola → Ядер-Кола.',
     '- Локації: змістовні назви перекладай (Goodneighbor → Добросусідство, The Castle → Замок, Glowing Sea → Сяюче море); решту транслітеруй (Diamond City → Даймонд-сіті, Sanctuary Hills → Сенкчуарі-Гіллз).',
+    '',
+    '### ПРИКЛАДИ ПЕРЕКЛАДУ (Fallout 4):',
+    '- Діалог: "Listen, Nick. We\'ve got a problem." → "Слухай, Ніку. У нас проблема." (жива розмовна мова, кличний відмінок).',
+    '- UI: "Ammo - Ballistic" → "Боєприпаси — балістичні"; "Wood" → "Деревина" (не "ДЕРЕВ\'ЯНИЙ").',
+    '- З масками: "I need ¤PH0¤ caps." → "Мені потрібно ¤PH0¤ кришок." (ключ ¤PH0¤ не чіпати).',
+    '- ARMO/FULL: "Combat Armor" → "Бойова броня"; "T-51 Right Arm Armor" → "Права рука T-51".',
+    '- BOOK: "The Commonwealth is a dangerous place." → "Співдружність — небезпечне місце." (тон оповіді).',
   ],
   verifyEn: () => [
     '- Power Armor part names: leftover English "Armor" or wrong part order — "incorrect".',

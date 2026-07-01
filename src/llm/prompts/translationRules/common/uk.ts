@@ -1,5 +1,9 @@
+import { ukrainianPlaceholderRules } from './placeholders';
+
 /** Rules shared across all Bethesda games (Ukrainian prompt). */
 export const ukrainianCommonRules = (): string[] => [
+  ...ukrainianPlaceholderRules(),
+  '',
   '### РЕГІСТР ЗАГЛАВНИХ БУКВ:',
   '- Зберігай регістр оригінала: якщо source НЕ написаний КАПСОМ, переклад теж НЕ пиши капсом.',
   '- Title case або sentence case у source → нормальна капіталізація українською, НЕ капс для ефекту.',

@@ -26,6 +26,10 @@ export const obRules: GameRules = {
     '- Істоти: Dremora → дрімора; Clannfear → кланфір; Minotaur → мінотавр; Ogre → огр.',
     '- Міста: Anvil → Ейнвіл; Bravil → Бравіл; Bruma → Брума; Cheydinhal → Чейдінхол; Kvatch → Кватч; Leyawiin → Леявін; Skingrad → Скінград.',
     '- Школи магії Oblivion (Mysticism, Alteration…) — не плутай зі Skyrim-only термінами без контексту.',
+    '',
+    '### ПРИКЛАДИ (Oblivion):',
+    '- "Stop right there, criminal scum!" → театральна мова варти Імперського міста.',
+    '- "Summon Creature" (spell) → "Виклик істоти" (класичне фентезі, не сучасний сленг).',
   ],
   verifyUk: () => [
     '- Плутанина термінології Skyrim (напр. «Крик» замість заклинання) без контексту — "suspicious".',

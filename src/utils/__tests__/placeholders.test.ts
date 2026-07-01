@@ -5,6 +5,8 @@ import {
   maskFunctionKeywords,
   maskPlaceholders,
   unmask,
+  validateTranslationPlaceholders,
+  compareProtectedTokens,
 } from '../placeholders';
 
 describe('maskPlaceholders', () => {
@@ -162,5 +164,37 @@ describe('extractProtectedTokens', () => {
   it('does not treat stage directions or dotted item names as protected tokens', () => {
     expect(extractProtectedTokens('[Sarcasm] Really?', 'fo4')).toEqual([]);
     expect(extractProtectedTokens('Hellfire Mk.VI Arm Armor', 'fo4')).toEqual([]);
+  });
+});
+
+describe('validateTranslationPlaceholders', () => {
+  it('accepts valid masked output and round-trip', () => {
+    const source = 'Hello %s, you have %d caps';
+    const { masked, mapping } = maskPlaceholders(source);
+    const maskedTranslation = masked.replace('Hello', 'Привіт');
+    const result = validateTranslationPlaceholders(source, maskedTranslation, mapping, {}, 'fo4');
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects missing mask keys', () => {
+    const source = 'Need %s caps';
+    const { mapping } = maskPlaceholders(source);
+    const result = validateTranslationPlaceholders(source, 'Need caps', mapping, {}, 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/Missing mask key/);
+  });
+
+  it('rejects hallucinated mask keys', () => {
+    const source = 'Need %s caps';
+    const { masked, mapping } = maskPlaceholders(source);
+    const result = validateTranslationPlaceholders(source, `${masked} ¤PH99¤`, mapping, {}, 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/Unknown/);
+  });
+
+  it('rejects protected token drift after unmask', () => {
+    const check = compareProtectedTokens('You have %d caps', 'You have %s caps', 'fo4');
+    expect(check.ok).toBe(false);
+    if (!check.ok) expect(check.message).toMatch(/Protected token mismatch/);
   });
 });

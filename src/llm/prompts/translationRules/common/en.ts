@@ -1,5 +1,9 @@
+import { englishPlaceholderRules } from './placeholders';
+
 /** Rules shared across all Bethesda games (English prompt, any target language). */
 export const englishCommonRules = (targetLang: string): string[] => [
+  ...englishPlaceholderRules(),
+  '',
   '### CAPITALIZATION:',
   '- Preserve the source capitalization pattern. Do not use ALL CAPS in the translation unless the entire source string is ALL CAPS.',
   '- Title case or sentence case in the source → natural capitalization in the target language, not all-caps styling.',

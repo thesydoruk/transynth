@@ -31,6 +31,11 @@ const skyrimRulesBase: GameRules = {
     '- Даедра: Azura, Mehrunes Dagon тощо — усталені форми або транслітерація.',
     '- Локації: Whiterun → Вайтран; Solitude → Солітьюд; Windhelm → Віндхельм; Riften → Ріфтен; Markarth → Маркарт.',
     '- Жодної постапокаліптичної лексики Fallout (кришки, радіація, сховище).',
+    '',
+    '### ПРИКЛАДИ (Skyrim):',
+    '- "I used to be an adventurer like you…" → жива розмовна мова, природний ритм для озвучення.',
+    '- "Iron Sword" (WEAP/FULL) → "Залізний меч"; "Favor the bow" → звертання ярла, урочистий тон.',
+    '- "Fus Ro Dah" → не перекладай Крик; власні назви заклинань лишай.',
   ],
   verifyUk: () => [
     '- Лексика Fallout у фентезійному контексті — "incorrect".',

@@ -3,6 +3,7 @@ import {
   buildVerifySystemPrompt,
   buildVerifyTranslateUserPayload,
   parseLlmVerifyTranslateResponse,
+  applyPlaceholderGuardToVerifyResult,
   VERIFY_TRANSLATE_SYSTEM_PROMPT,
 } from '../verifyTranslate';
 import { buildEnglishVerifySystemPrompt } from '../prompts/en';
@@ -143,5 +144,36 @@ describe('buildVerifySystemPrompt', () => {
 
   it('Ukrainian verify prompt mentions reference examples', () => {
     expect(buildUkrainianVerifySystemPrompt('en', 'fo4')).toContain('reference_examples');
+  });
+});
+
+describe('applyPlaceholderGuardToVerifyResult', () => {
+  const item = {
+    id: 1,
+    source: 'You have %d caps',
+    translation: 'У тебе %s кришок',
+    grup: 'INFO',
+    field: 'NAM1',
+    edid: null,
+    context: null,
+  };
+
+  it('upgrades ok verdict to incorrect on token mismatch', () => {
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      item,
+      { id: 1, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('incorrect');
+    expect(guarded.reason).toContain('Protected token mismatch');
+  });
+
+  it('leaves ok verdict when tokens match', () => {
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      { ...item, translation: 'У тебе %d кришок' },
+      { id: 1, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('ok');
   });
 });

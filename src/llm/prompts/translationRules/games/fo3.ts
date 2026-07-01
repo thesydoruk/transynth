@@ -27,6 +27,10 @@ export const fo3Rules: GameRules = {
     '- Локації: Megaton → Мегатон; Tenpenny Tower → Вежа Тенпенні; Galaxy News Radio → Галактичне радіо новин; Jefferson Memorial → Меморіал Джефферсона.',
     '- Істоти: Deathclaw → Кіготь смерті; Super Mutant → Супермутант; Feral Ghoul → Дикий гуль; Mirelurk → Болотник.',
     '- Не використовуй терміни Fallout 4 (Синт, Інститут) або New Vegas (НКР, Легіон), якщо їх немає в source.',
+    '',
+    '### ПРИКЛАДИ (Fallout 3):',
+    '- "Welcome to Megaton." → "Ласкаво просимо до Мегатону."',
+    '- "Project Purity must succeed." → похмурий, сподіваючий тон основного сюжету.',
   ],
   verifyUk: () => [
     '- Терміни з інших частин серії Fallout без підстави в source — "suspicious" або "incorrect".',
