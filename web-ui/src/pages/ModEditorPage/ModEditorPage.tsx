@@ -921,12 +921,7 @@ export const ModEditorPage = () => {
           }}
           onApplySuggestion={async (issue) => {
             if (!issue.suggestion) return;
-            await api.strings.saveTranslation(
-              issue.stringId,
-              issue.suggestion,
-              'reviewed',
-              targetLang,
-            );
+            await api.strings.saveTranslation(issue.stringId, issue.suggestion, 'auto', targetLang);
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}
@@ -936,7 +931,7 @@ export const ModEditorPage = () => {
               await api.strings.saveTranslation(
                 issue.stringId,
                 issue.suggestion,
-                'reviewed',
+                'auto',
                 targetLang,
               );
             }

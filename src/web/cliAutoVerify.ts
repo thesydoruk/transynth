@@ -271,7 +271,7 @@ export const runCliModVerify = async (
 
       if (shouldApplySuggestion) {
         try {
-          await upsertTranslation(db, result.id, suggestion, 'reviewed', opts.targetLang);
+          await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
           fixed++;
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
