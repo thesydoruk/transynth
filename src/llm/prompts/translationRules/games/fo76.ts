@@ -1,0 +1,35 @@
+import type { GameRules } from '../types';
+
+export const fo76Rules: GameRules = {
+  en: () => [
+    '### STYLE, TONE, AND ATMOSPHERE (Fallout 76):',
+    '- Setting: Appalachia, West Virginia; timeline before/other branches of main series. Mix survival, exploration, and lighter multiplayer-friendly tone in UI.',
+    '- Dialogue: includes holotapes, robot vendors, and event text; some lines address "Residents" collectively.',
+    '- UI/items: C.A.M.P. building, workshops, seasons, and atomic-shop style labels — translate fully, keep game acronyms where established.',
+    '',
+    '### FALLOUT 76 TERMINOLOGY (when no glossary):',
+    '- Standard Fallout: caps, rads, stimpak, scorched plague lore.',
+    '- Factions/groups: Responders, Raiders, Free States, Brotherhood of Steel (Appalachian chapter), Enclave remnants.',
+    '- Creatures: Scorched, Scorchbeast, Grafton Monster, Mole Miner, Snallygaster — regional threats.',
+    '- Systems: C.A.M.P., Public Workshop, Vault raids — localize descriptive parts; keep C.A.M.P. if community standard.',
+    '- Workshop UI categories: same full-translation rules as Fallout 4 settlement crafting.',
+    '- Avoid FO4 Institute/Synth or FNV Legion unless present in source.',
+  ],
+  uk: () => [
+    '### СТИЛЬ, ТОН ТА АТМОСФЕРА (Fallout 76):',
+    '- Сетинг: Аппалачі, Західна Вірджинія. Акцент на дослідженні, виживанні; UI часто звертається до «Мешканців» колективно.',
+    '- Діалоги: голозаписи, роботи-торговці, тексти подій; тон трохи менш похмурий, ніж у одиночних частинах.',
+    '- UI/предмети: будівництво C.A.M.P., майстерні, сезонні події — перекладай повністю.',
+    '',
+    '### КАТЕГОРІЙНІ НАЗВИ UI (майстерня, крафт):',
+    '- Як у Fallout 4: обидві частини "[Категорія] — [підкатегорія]" українською.',
+    '',
+    '### КАНОНІЧНА ТЕРМІНОЛОГІЯ FALLOUT 76 (за відсутності "glossary"):',
+    '- caps → кришки; stimpak → стимулятор; стандартна лексика Fallout.',
+    '- Групи: Responders → Рятувальники; Free States → Вільні штати; Scorched → Опалені; Scorchbeast → Опалений зверь.',
+    '- Істоти: Grafton Monster → Графтонський монстр; Mole Miner → Кротовий шахтар; Snallygaster → Снеллігастер.',
+    '- C.A.M.P. — залишай абревіатуру або «Табір» за контекстом UI; Public Workshop → Публічна майстерня.',
+    '- Не змішуй з термінами FO4 (Інститут) чи FNV (Легіон) без підстави.',
+  ],
+  verifyUk: () => ['- Категорії майстерні з англійськими залишками — "incorrect".'],
+};
