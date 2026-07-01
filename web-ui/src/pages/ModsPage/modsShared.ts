@@ -49,12 +49,18 @@ export interface UnifiedJobRowProps {
   live?: LiveProgress;
   isRunning: boolean;
   exportActions?: Array<{
-    key: 'strings' | 'esp' | 'ba2' | 'zip';
+    key: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip';
     icon: string;
     title: string;
     disabled?: boolean;
     onClick: () => void;
   }>;
+  modDataMenu?: {
+    clearingRows?: boolean;
+    deletingAll?: boolean;
+    onClearRows: () => void;
+    onDeleteAll: () => void;
+  };
   onStart: () => void;
   onPause: () => void;
   onCancel: () => void;

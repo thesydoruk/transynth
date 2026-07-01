@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModImportJob } from '../../../api';
 import { kindColor, statusColorBase, statusLabel, type UnifiedJobRowProps } from '../modsShared';
+import { ModDataMenuItems } from '../ModDataMenuItems';
 import parentS from '../ModsPage.module.scss';
 import s from './UnifiedJobRow.module.scss';
 
@@ -12,6 +13,7 @@ export const UnifiedJobRow = ({
   live,
   isRunning,
   exportActions,
+  modDataMenu,
   onStart,
   onPause,
   onCancel,
@@ -27,7 +29,9 @@ export const UnifiedJobRow = ({
     !isRunning && job.status !== 'in_progress' && (job.status !== 'completed' || kind === 'mod');
   const isMod = kind === 'mod';
   const modJob = isMod ? (job as ModImportJob) : null;
-  const hasExtraMenuItems = isMod && (exportActions?.length ?? 0) > 0;
+  const hasExportActions = (exportActions?.length ?? 0) > 0;
+  const showOverflowMenu = !isRunning && (isMod || hasExportActions);
+  const showStandaloneDelete = !isRunning && !showOverflowMenu;
   const isFailed = job.status === 'failed';
   const lastError =
     isFailed && 'last_error' in job ? (job as { last_error: string | null }).last_error : null;
@@ -120,7 +124,7 @@ export const UnifiedJobRow = ({
               ⏹
             </button>
           )}
-          {!isRunning && hasExtraMenuItems && (
+          {!isRunning && showOverflowMenu && (
             <div className={s.menuWrap} ref={menuRef}>
               <button
                 onClick={(e) => {
@@ -149,21 +153,45 @@ export const UnifiedJobRow = ({
                       <span>{action.title}</span>
                     </button>
                   ))}
-                  <button
-                    onClick={() => {
-                      onDelete();
-                      setMenuOpen(false);
-                    }}
-                    className={`${s.menuItem} ${s.menuItemDanger}`}
-                  >
-                    <span className={s.menuIcon}>🗑</span>
-                    <span>{t('common.delete')}</span>
-                  </button>
+                  {modDataMenu && (
+                    <ModDataMenuItems
+                      clearingRows={modDataMenu.clearingRows}
+                      deletingAll={modDataMenu.deletingAll}
+                      onClearRows={modDataMenu.onClearRows}
+                      onDeleteAll={modDataMenu.onDeleteAll}
+                      onAfterAction={() => setMenuOpen(false)}
+                    />
+                  )}
+                  {isMod && (
+                    <button
+                      onClick={() => {
+                        onDelete();
+                        setMenuOpen(false);
+                      }}
+                      className={`${s.menuItem} ${s.menuItemDanger}`}
+                      disabled={modDataMenu?.clearingRows || modDataMenu?.deletingAll}
+                    >
+                      <span className={s.menuIcon}>🗑</span>
+                      <span>{t('mods.deleteImportJob')}</span>
+                    </button>
+                  )}
+                  {!isMod && (
+                    <button
+                      onClick={() => {
+                        onDelete();
+                        setMenuOpen(false);
+                      }}
+                      className={`${s.menuItem} ${s.menuItemDanger}`}
+                    >
+                      <span className={s.menuIcon}>🗑</span>
+                      <span>{t('common.delete')}</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )}
-          {!isRunning && !hasExtraMenuItems && (
+          {showStandaloneDelete && (
             <button onClick={onDelete} className={s.actionBtnDelete} title={t('common.delete')}>
               🗑
             </button>

@@ -417,11 +417,16 @@ export const listMods = async (
   const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
   const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
 
-  /* Build an optional WHERE clause when a game filter is provided. */
+  /* Optional game filter on the outer mods row set. */
   const whereClause = opts.game ? 'WHERE m.game = $3' : '';
   const params: unknown[] = [srcLang, targetLang];
   if (opts.game) params.push(opts.game);
 
+  /*
+   * Aggregate per mod in separate subqueries. A single GROUP BY over four
+   * LEFT JOINs makes PostgreSQL nest-loop every string row against all
+   * translations for the target lang (~215k × 7k = 1.5B row comparisons).
+   */
   const { rows } = await db.query(
     `SELECT
       m.id,
@@ -433,17 +438,34 @@ export const listMods = async (
       m.nexus_name,
       m.nexus_thumbnail,
       m.created_at,
-      COUNT(DISTINCT r.id)          AS record_count,
-      COUNT(DISTINCT s.id)          AS string_count,
-      COUNT(DISTINCT t.id)          AS translated_count,
-      COUNT(DISTINCT CASE WHEN t.status IN ${APPROVED_STATUS_SQL} THEN t.id END) AS approved_count,
-      COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy_count
+      COALESCE(rs.record_count, 0)::bigint          AS record_count,
+      COALESCE(ss.string_count, 0)::bigint         AS string_count,
+      COALESCE(ts.translated_count, 0)::bigint     AS translated_count,
+      COALESCE(ts.approved_count, 0)::bigint       AS approved_count,
+      COALESCE(ts.fuzzy_count, 0)::bigint          AS fuzzy_count
      FROM mods m
-     LEFT JOIN records r ON r.mod_id = m.id
-     LEFT JOIN strings s ON s.record_id = r.id AND s.lang = $1
-     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     LEFT JOIN (
+       SELECT mod_id, COUNT(*)::bigint AS record_count
+       FROM records
+       GROUP BY mod_id
+     ) rs ON rs.mod_id = m.id
+     LEFT JOIN (
+       SELECT r.mod_id, COUNT(s.id)::bigint AS string_count
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $1
+       GROUP BY r.mod_id
+     ) ss ON ss.mod_id = m.id
+     LEFT JOIN (
+       SELECT r.mod_id,
+         COUNT(t.id)::bigint AS translated_count,
+         COUNT(*) FILTER (WHERE t.status IN ${APPROVED_STATUS_SQL})::bigint AS approved_count,
+         COUNT(*) FILTER (WHERE t.status = 'fuzzy')::bigint AS fuzzy_count
+       FROM records r
+       JOIN strings s ON s.record_id = r.id AND s.lang = $1
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+       GROUP BY r.mod_id
+     ) ts ON ts.mod_id = m.id
      ${whereClause}
-     GROUP BY m.id
      ORDER BY m.created_at DESC`,
     params,
   );

@@ -5,21 +5,24 @@ import { ProgressBar, StatusBadge } from '../../../components/StatusBadge';
 import { modProgress } from '../../../utils/modProgress';
 import parentS from '../ModsPage.module.scss';
 import rowS from '../UnifiedJobRow/UnifiedJobRow.module.scss';
+import { ModDataMenuItems } from '../ModDataMenuItems';
 import s from './ModWorkspaceRow.module.scss';
 
 export interface ModWorkspaceRowProps {
   mod: Mod;
   importJob?: ModImportJob | null;
   exportActions: Array<{
-    key: 'strings' | 'esp' | 'ba2' | 'zip';
+    key: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip';
     icon: string;
     title: string;
     disabled?: boolean;
     onClick: () => void;
   }>;
   clearingRows?: boolean;
+  deletingAll?: boolean;
   onOpen: () => void;
   onClearRows: () => void;
+  onDeleteAll: () => void;
   onReimport?: () => void;
   onDeleteImport?: () => void;
 }
@@ -30,8 +33,10 @@ export const ModWorkspaceRow = ({
   importJob,
   exportActions,
   clearingRows,
+  deletingAll,
   onOpen,
   onClearRows,
+  onDeleteAll,
   onReimport,
   onDeleteImport,
 }: ModWorkspaceRowProps) => {
@@ -142,18 +147,13 @@ export const ModWorkspaceRow = ({
                     <span>{action.title}</span>
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClearRows();
-                    setMenuOpen(false);
-                  }}
-                  className={rowS.menuItem}
-                  disabled={clearingRows}
-                >
-                  <span className={rowS.menuIcon}>⌫</span>
-                  <span>{clearingRows ? t('mods.clearingRows') : t('mods.clearRows')}</span>
-                </button>
+                <ModDataMenuItems
+                  clearingRows={clearingRows}
+                  deletingAll={deletingAll}
+                  onClearRows={onClearRows}
+                  onDeleteAll={onDeleteAll}
+                  onAfterAction={() => setMenuOpen(false)}
+                />
                 {onDeleteImport && (
                   <button
                     type="button"
@@ -164,7 +164,7 @@ export const ModWorkspaceRow = ({
                     className={`${rowS.menuItem} ${rowS.menuItemDanger}`}
                   >
                     <span className={rowS.menuIcon}>🗑</span>
-                    <span>{t('common.delete')}</span>
+                    <span>{t('mods.deleteImportJob')}</span>
                   </button>
                 )}
               </div>

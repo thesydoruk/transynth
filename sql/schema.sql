@@ -276,6 +276,7 @@ ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_name TEXT;
 
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);
+CREATE INDEX IF NOT EXISTS idx_mods_game ON mods(game);
 CREATE INDEX IF NOT EXISTS idx_records_mod ON records(mod_id);
 CREATE INDEX IF NOT EXISTS idx_records_edid ON records(edid) WHERE edid IS NOT NULL AND edid <> '';
 CREATE INDEX IF NOT EXISTS idx_records_hash_norm ON records USING HASH(hash_norm) WHERE hash_norm IS NOT NULL;

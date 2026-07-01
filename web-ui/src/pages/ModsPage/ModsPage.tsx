@@ -204,7 +204,11 @@ export const ModsPage = () => {
     id: number;
   } | null>(null);
   const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
+  const [pendingDeleteAll, setPendingDeleteAll] = useState<{ id: number; name: string } | null>(
+    null,
+  );
   const [clearingModId, setClearingModId] = useState<number | null>(null);
+  const [deletingAllModId, setDeletingAllModId] = useState<number | null>(null);
 
   const refreshAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['eet-imports'] });
@@ -529,6 +533,27 @@ export const ModsPage = () => {
     }
   };
 
+  const confirmDeleteAll = async () => {
+    if (!pendingDeleteAll) return;
+    const { id, name } = pendingDeleteAll;
+    setDeletingAllModId(id);
+    try {
+      const importJob = importJobByModId.get(id);
+      if (importJob) {
+        await api.modImport.remove(importJob.id, 'mod');
+      } else {
+        await api.mods.remove(id);
+      }
+      await refreshAll();
+      showToast(t('mods.deleteAllSuccess', { name }), 'success');
+      setPendingDeleteAll(null);
+    } catch (err) {
+      showToast(t('common.error', { message: String(err) }), 'error');
+    } finally {
+      setDeletingAllModId(null);
+    }
+  };
+
   const confirmDeleteMod = useCallback(
     async (deleteData: ModImportDeleteDataMode) => {
       if (!deleteModalJob) return;
@@ -782,6 +807,18 @@ export const ModsPage = () => {
                 live={live}
                 isRunning={isRunning}
                 exportActions={exportActions}
+                modDataMenu={
+                  modJob?.mod_id != null
+                    ? {
+                        onClearRows: () =>
+                          setPendingClear({ id: modJob.mod_id!, name: modJob.file_name }),
+                        onDeleteAll: () =>
+                          setPendingDeleteAll({ id: modJob.mod_id!, name: modJob.file_name }),
+                        clearingRows: clearingModId === modJob.mod_id,
+                        deletingAll: deletingAllModId === modJob.mod_id,
+                      }
+                    : undefined
+                }
                 onStart={() => {
                   if (u.kind === 'eet') setEetPreviewId(u.job.id);
                   else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
@@ -825,8 +862,10 @@ export const ModsPage = () => {
                 importJob={importJob}
                 exportActions={exportActions}
                 clearingRows={clearingModId === mod.id}
+                deletingAll={deletingAllModId === mod.id}
                 onOpen={() => nav(`/games/${gameId}/mods/${mod.id}`)}
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
+                onDeleteAll={() => setPendingDeleteAll({ id: mod.id, name: mod.name })}
                 onReimport={importJob ? () => setModPreviewId(importJob.id) : undefined}
                 onDeleteImport={importJob ? () => setDeleteModalJob(importJob) : undefined}
               />
@@ -918,6 +957,19 @@ export const ModsPage = () => {
           onClose={() => setPendingClear(null)}
           onConfirm={() => {
             void confirmClearRows();
+          }}
+        />
+      )}
+
+      {pendingDeleteAll && (
+        <ConfirmModal
+          title={t('mods.deleteAllTitle')}
+          message={t('mods.deleteAllMessage', { name: pendingDeleteAll.name })}
+          confirmLabel={t('mods.deleteAll')}
+          pending={deletingAllModId === pendingDeleteAll.id}
+          onClose={() => setPendingDeleteAll(null)}
+          onConfirm={() => {
+            void confirmDeleteAll();
           }}
         />
       )}

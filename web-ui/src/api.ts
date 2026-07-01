@@ -986,6 +986,7 @@ export const api = {
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
+    remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<TMApplyResult>(

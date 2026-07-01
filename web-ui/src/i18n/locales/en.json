@@ -101,7 +101,13 @@
     "clearingRows": "Deleting…",
     "clearRowsTitle": "Delete imported rows",
     "clearRowsMessage": "Delete all imported rows for '{{name}}'? This will erase all translation progress for this mod and cannot be undone. The mod entry will be kept.",
-    "clearRowsSuccess": "Deleted {{count}} records."
+    "clearRowsSuccess": "Deleted {{count}} records.",
+    "deleteAll": "Delete all",
+    "deletingAll": "Deleting…",
+    "deleteAllTitle": "Delete mod completely",
+    "deleteAllMessage": "Delete '{{name}}' along with all imported rows and translations? This cannot be undone.",
+    "deleteAllSuccess": "Deleted mod '{{name}}'.",
+    "deleteImportJob": "Delete import job"
   },
   "modEditor": {
     "source": "Source:",
