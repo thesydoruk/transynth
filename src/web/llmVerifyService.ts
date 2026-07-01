@@ -20,6 +20,7 @@ import {
 } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
 import { mapWithConcurrency } from '../utils/concurrency';
+import { isAbortError } from '../llm/retry';
 import { logVerify } from '../logging/loggers';
 
 /** Rows sent to the LLM per request (smaller than translate batches for steadier progress). */
@@ -288,35 +289,44 @@ export const runLlmVerifyJob = async (
   // or DB writes (RAG → chat → approve run serially within a single batch worker).
   const batchConcurrency = CONFIG.llmMaxParallel + CONFIG.embedMaxParallel;
 
-  let firstError: string | null = null;
-
   /** Run one LLM verify batch end-to-end (RAG → verify → record results / auto-approve). */
   const processLlmBatch = async (llmChunk: VerifyStringRow[]): Promise<void> => {
-    if (job.cancel || firstError) return;
+    if (job.cancel) return;
 
     const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
 
-    const ragByStringId = await fetchReferenceExamplesBatch(
-      db,
-      llmChunk.map((row) => {
-        const { grup } = parseRecordLocation(row.signature, row.path);
-        return {
-          stringId: row.string_id,
-          sourceText: row.source,
-          textNorm: row.text_norm,
-          textNormNopunct: row.text_norm_nopunct,
-          signature: grup,
-          path: row.path,
-          context: row.context,
-        };
-      }),
-      opts.srcLang,
-      opts.targetLang,
-      ragMaxExamples,
-      ragMinSimilarity,
-    );
+    let ragByStringId: Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
+    try {
+      ragByStringId = await fetchReferenceExamplesBatch(
+        db,
+        llmChunk.map((row) => {
+          const { grup } = parseRecordLocation(row.signature, row.path);
+          return {
+            stringId: row.string_id,
+            sourceText: row.source,
+            textNorm: row.text_norm,
+            textNormNopunct: row.text_norm_nopunct,
+            signature: grup,
+            path: row.path,
+            context: row.context,
+          };
+        }),
+        opts.srcLang,
+        opts.targetLang,
+        ragMaxExamples,
+        ragMinSimilarity,
+      );
+    } catch (err) {
+      logVerify.warn('RAG fetch failed for verify chunk; continuing without examples', {
+        jobId,
+        modId: opts.modId,
+        err: err instanceof Error ? err.message : String(err),
+        stringIds: llmChunk.map((row) => row.string_id),
+      });
+      ragByStringId = new Map();
+    }
 
-    if (job.cancel || firstError) return;
+    if (job.cancel) return;
 
     const items: LlmVerifyItem[] = llmChunk.map((row) => {
       const { grup, field } = parseRecordLocation(row.signature, row.path);
@@ -344,17 +354,14 @@ export const runLlmVerifyJob = async (
         signal: job.abort.signal,
       });
     } catch (err) {
-      // A stopped job aborts the in-flight request: treat as cancellation, not failure.
-      if (job.cancel) return;
+      if (job.cancel || isAbortError(err)) return;
       const message = err instanceof Error ? err.message : String(err);
-      logVerify.error('job chunk failed', {
+      logVerify.error('job chunk failed; continuing with next chunk', {
         jobId,
         modId: opts.modId,
         error: message,
+        stringIds: llmChunk.map((row) => row.string_id),
       });
-      // Stop scheduling further batches; in-flight ones drain on their own.
-      if (!firstError) firstError = message;
-      job.cancel = true;
       for (const _row of llmChunk) {
         job.done++;
         onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
@@ -414,7 +421,7 @@ export const runLlmVerifyJob = async (
   let afterId = 0;
 
   try {
-    while (!job.cancel && !firstError) {
+    while (!job.cancel) {
       const dbChunk = await loadVerifyChunk(
         db,
         opts.modId,
@@ -431,16 +438,21 @@ export const runLlmVerifyJob = async (
         llmChunks.push(dbChunk.slice(i, i + LLM_VERIFY_LLM_BATCH_SIZE));
       }
 
-      // Batches within a page run concurrently; the LLM/embed semaphores cap the
-      // actual in-flight HTTP requests. Stop/error is honored before each batch.
-      await mapWithConcurrency(llmChunks, batchConcurrency, processLlmBatch);
-    }
-
-    if (firstError) {
-      job.status = 'failed';
-      job.error = firstError;
-      onEvent({ type: 'error', error: firstError });
-      return toSnapshot(job);
+      try {
+        await mapWithConcurrency(llmChunks, batchConcurrency, processLlmBatch);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logVerify.error('job db chunk failed; continuing with next chunk', {
+          jobId,
+          modId: opts.modId,
+          error: message,
+          stringIds: dbChunk.map((row) => row.string_id),
+        });
+        for (const _row of dbChunk) {
+          job.done++;
+          onEvent({ type: 'progress', done: job.done, total: job.total, approved: job.approved });
+        }
+      }
     }
 
     if (job.cancel) {

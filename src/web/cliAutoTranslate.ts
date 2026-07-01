@@ -59,37 +59,59 @@ export const runCliModTranslate = async (
 
   onEvent?.({ type: 'started', total, dbChunkSize });
 
-  let dbOffset = 0;
+  let afterStringId = 0;
   let globalDone = 0;
   let globalOk = 0;
   let globalErrors = 0;
   let dbPage = 0;
 
   try {
-    while (dbOffset < total) {
+    while (true) {
       const dbChunk = await loadUntranslatedChunk(
         db,
         opts.modId,
         opts.srcLang,
         opts.targetLang,
-        dbOffset,
+        afterStringId,
         dbChunkSize,
       );
       if (dbChunk.length === 0) break;
-      dbOffset += dbChunk.length;
+      afterStringId = dbChunk[dbChunk.length - 1]!.string_id;
       dbPage++;
 
       const stringIds = dbChunk.map((row) => row.string_id);
 
-      await translateStringIdsBatch(db, stringIds, {
-        srcLang: opts.srcLang,
-        targetLang: opts.targetLang,
-        modGame: opts.game,
-        modName: opts.modName,
-        onProgress: (_doneInBatch, _batchTotal, result) => {
+      try {
+        await translateStringIdsBatch(db, stringIds, {
+          srcLang: opts.srcLang,
+          targetLang: opts.targetLang,
+          modGame: opts.game,
+          modName: opts.modName,
+          onProgress: (_doneInBatch, _batchTotal, result) => {
+            globalDone++;
+            if (result.error) globalErrors++;
+            else if (result.text) globalOk++;
+            onEvent?.({
+              type: 'progress',
+              done: globalDone,
+              total,
+              ok: globalOk,
+              errors: globalErrors,
+              dbPage,
+              result,
+            });
+          },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logTranslate.error('cli translate chunk failed; continuing with next chunk', {
+          modId: opts.modId,
+          error: message,
+          stringIds,
+        });
+        for (const stringId of stringIds) {
           globalDone++;
-          if (result.error) globalErrors++;
-          else if (result.text) globalOk++;
+          globalErrors++;
           onEvent?.({
             type: 'progress',
             done: globalDone,
@@ -97,10 +119,10 @@ export const runCliModTranslate = async (
             ok: globalOk,
             errors: globalErrors,
             dbPage,
-            result,
+            result: { stringId, error: message },
           });
-        },
-      });
+        }
+      }
     }
 
     const summary = { done: globalDone, total, ok: globalOk, errors: globalErrors };

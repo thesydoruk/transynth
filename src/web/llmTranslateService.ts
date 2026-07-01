@@ -116,12 +116,13 @@ type UntranslatedMetaRow = {
   edid: string | null;
 };
 
+/** Load the next page of untranslated strings (cursor-based — safe while rows are translated away). */
 export const loadUntranslatedChunk = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-  offset: number,
+  afterStringId: number,
   limit: number,
 ): Promise<UntranslatedMetaRow[]> => {
   const { rows } = await db.query<UntranslatedMetaRow>(
@@ -135,13 +136,14 @@ export const loadUntranslatedChunk = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
+        AND s.id > $5
         AND NOT EXISTS (
           SELECT 1 FROM translations t
            WHERE t.src_string_id = s.id AND t.target_lang = $3
         )
       ORDER BY s.id
-      LIMIT $4 OFFSET $5`,
-    [modId, srcLang, targetLang, limit, offset],
+      LIMIT $4`,
+    [modId, srcLang, targetLang, limit, afterStringId],
   );
   return rows;
 };
@@ -201,20 +203,20 @@ export const runLlmTranslateJob = async (
 
   onEvent({ type: 'started', jobId, total });
 
-  let dbOffset = 0;
+  let afterStringId = 0;
 
   try {
-    while (dbOffset < total && !job.cancel) {
+    while (!job.cancel) {
       const dbChunk = await loadUntranslatedChunk(
         db,
         opts.modId,
         opts.srcLang,
         opts.targetLang,
-        dbOffset,
+        afterStringId,
         LLM_TRANSLATE_DB_CHUNK_SIZE,
       );
       if (dbChunk.length === 0) break;
-      dbOffset += dbChunk.length;
+      afterStringId = dbChunk[dbChunk.length - 1]!.string_id;
 
       const metaById = new Map(dbChunk.map((row) => [row.string_id, row]));
       const stringIds = dbChunk.map((row) => row.string_id);
@@ -245,11 +247,27 @@ export const runLlmTranslateJob = async (
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        logTranslate.error('job chunk failed', { err, jobId, modId: opts.modId });
-        job.status = 'failed';
-        job.error = message;
-        onEvent({ type: 'error', error: message });
-        return toSnapshot(job);
+        logTranslate.error('job chunk failed; continuing with next chunk', {
+          err,
+          jobId,
+          modId: opts.modId,
+          stringIds,
+        });
+        for (const stringId of stringIds) {
+          job.done++;
+          const meta = metaById.get(stringId);
+          const row: LlmTranslateRow = {
+            stringId,
+            source: meta?.source ?? '',
+            translation: null,
+            signature: meta?.signature ?? null,
+            path: meta?.path ?? null,
+            edid: meta?.edid ?? null,
+            error: message,
+          };
+          job.rows.push(row);
+          onEvent({ type: 'progress', done: job.done, total: job.total, row });
+        }
       }
     }
 

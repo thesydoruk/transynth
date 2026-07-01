@@ -1,12 +1,13 @@
 #!/usr/bin/env tsx
 /**
- * Automatic AI translation review: verify pending rows, auto-approve OK, apply suggestions.
+ * Automatic AI translation review: verify pending rows, auto-approve OK, auto-fix incorrect rows.
  *
  * Usage:
  *   npm run verify:auto -- --mod-id 45
  *   npm run verify:auto -- --mod-name "MyMod.esp"
  *   npm run verify:auto -- --all
  *   npm run verify:auto -- --mod-id 45 --dry-run
+ *   npm run verify:auto -- --mod-id 45 --fix-suspicious
  *   npm run verify:auto -- --mod-id 45 --tgt-lang uk
  */
 import '../src/loadEnv';
@@ -47,10 +48,17 @@ const formatPct = (done: number, total: number): string => {
 const formatIssueLocation = (issue: LlmVerifyIssue): string =>
   issue.edid ?? issue.path ?? issue.signature ?? '—';
 
-const logIssue = (issue: LlmVerifyIssue, dryRun: boolean): void => {
+const wouldApplySuggestion = (issue: LlmVerifyIssue, fixSuspicious: boolean): boolean => {
+  if (!issue.suggestion) return false;
+  if (issue.verdict === 'incorrect') return true;
+  return issue.verdict === 'suspicious' && fixSuspicious;
+};
+
+const logIssue = (issue: LlmVerifyIssue, dryRun: boolean, fixSuspicious: boolean): void => {
   const loc = formatIssueLocation(issue);
   const suggestion = issue.suggestion ? ` | suggestion: ${issue.suggestion}` : '';
-  const prefix = dryRun ? 'Would fix' : issue.suggestion ? 'Fixed' : 'Flagged';
+  const willFix = wouldApplySuggestion(issue, fixSuspicious);
+  const prefix = dryRun ? (willFix ? 'Would fix' : 'Would flag') : willFix ? 'Fixed' : 'Flagged';
   log.info(
     `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)}): ${issue.reason} | current: ${issue.translation}${suggestion}`,
   );
@@ -90,7 +98,13 @@ const argv = await yargs(hideBin(process.argv))
     type: 'boolean',
     default: false,
     describe:
-      'Do not promote passing rows to reviewed (still applies suggestions unless --dry-run)',
+      'Do not promote passing rows to reviewed (still auto-fixes incorrect rows unless --dry-run)',
+  })
+  .option('fix-suspicious', {
+    type: 'boolean',
+    default: false,
+    describe:
+      'Also apply LLM suggestions for suspicious rows (default: only incorrect rows are auto-fixed)',
   })
   .option('db-chunk', {
     type: 'number',
@@ -118,6 +132,7 @@ const tgtLang = argv['tgt-lang'].trim();
 const srcLangOverride = argv['src-lang']?.trim() || undefined;
 const dryRun = argv['dry-run'];
 const autoApproveVerified = !argv['no-auto-approve'];
+const fixSuspicious = argv['fix-suspicious'];
 const dbChunkSize =
   argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_VERIFY_DB_CHUNK_SIZE;
 
@@ -205,24 +220,32 @@ const resolveModTargets = async (): Promise<ModTarget[]> => {
 };
 
 const logVerifyProgress = (
-  ctx: { lastLogged: { done: number }; dryRun: boolean },
+  ctx: { lastLogged: { done: number }; dryRun: boolean; fixSuspicious: boolean; startedAt: number },
   event: CliVerifyProgressEvent,
 ): void => {
   if (event.type === 'started') {
     log.info(
-      `Verify: ${event.total} pending row(s), dryRun=${event.dryRun}, db-chunk=${dbChunkSize}`,
+      `Verify: ${event.total} pending row(s), dryRun=${event.dryRun}, db-chunk=${event.dbChunkSize}`,
     );
     return;
   }
   if (event.type === 'progress') {
-    if (event.issue) logIssue(event.issue, ctx.dryRun);
+    if (event.issue) logIssue(event.issue, ctx.dryRun, ctx.fixSuspicious);
+    if (event.chunkError) {
+      log.warn(
+        `Verify chunk error string_id=${event.chunkError.stringIds.join(',')}: ${event.chunkError.message}`,
+      );
+    }
     const step = event.total >= 500 ? 100 : event.total >= 100 ? 50 : 25;
     if (event.done === event.total || event.done - ctx.lastLogged.done >= step) {
       ctx.lastLogged.done = event.done;
+      const elapsedSec = Math.max(1, Math.round((Date.now() - ctx.startedAt) / 1000));
+      const rate = (event.done / elapsedSec).toFixed(1);
       log.info(
         `Verify: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), ` +
           `approved=${event.approved}, fixed=${event.fixed}, ` +
-          `suspicious=${event.suspicious}, incorrect=${event.incorrect}`,
+          `suspicious=${event.suspicious}, incorrect=${event.incorrect}, errors=${event.errors}, ` +
+          `page=${event.dbPage}, ~${rate}/s`,
       );
     }
     return;
@@ -231,7 +254,7 @@ const logVerifyProgress = (
     log.info(
       `Verify done: ${event.done}/${event.total} (${formatPct(event.done, event.total)}), ` +
         `approved=${event.approved}, fixed=${event.fixed}, ` +
-        `suspicious=${event.suspicious}, incorrect=${event.incorrect}`,
+        `suspicious=${event.suspicious}, incorrect=${event.incorrect}, errors=${event.errors}`,
     );
     return;
   }
@@ -245,9 +268,9 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
     `Processing mod_id=${target.modId} "${target.modName}" (src=${target.srcLang}, tgt=${tgtLang}, game=${target.game})`,
   );
 
-  const ctx = { lastLogged: { done: 0 }, dryRun };
+  const ctx = { lastLogged: { done: 0 }, dryRun, fixSuspicious, startedAt: Date.now() };
   try {
-    await runCliModVerify(
+    const summary = await runCliModVerify(
       db,
       {
         modId: target.modId,
@@ -257,10 +280,19 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
         game: target.game,
         dryRun,
         autoApproveVerified,
+        fixSuspicious,
         dbChunkSize,
       },
       (event) => logVerifyProgress(ctx, event),
     );
+
+    if (summary.errors > 0 && summary.approved === 0 && summary.fixed === 0) {
+      log.error(`Verify failed for mod_id=${target.modId}: all ${summary.errors} row(s) errored`);
+      return 'failed';
+    }
+    if (summary.errors > 0) {
+      log.warn(`Verify finished with ${summary.errors} error(s) (mod_id=${target.modId})`);
+    }
     return 'ok';
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -282,7 +314,7 @@ try {
 
   log.info(
     `Auto-verify: ${targets.length} mod(s), dryRun=${dryRun}, autoApprove=${!dryRun && autoApproveVerified}, ` +
-      `dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+      `fixSuspicious=${!dryRun && fixSuspicious}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;
