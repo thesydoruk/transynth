@@ -1,8 +1,8 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
 import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
-import { Semaphore } from '../utils/concurrency';
 import { isAbortError } from './retry';
+import { embedPool, llmChatPool } from './requestPool';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
 import {
@@ -14,9 +14,6 @@ import {
 import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
-
-const llmSemaphore = new Semaphore(CONFIG.llmMaxParallel);
-const embedSemaphore = new Semaphore(CONFIG.embedMaxParallel);
 
 /** Network or HTTP-level error shape for availability checks. */
 interface HttpLikeError {
@@ -111,7 +108,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
   };
 
   try {
-    return await llmSemaphore.run(() => runChat(primary));
+    return await llmChatPool.run(() => runChat(primary));
   } catch (err) {
     const fallback = makeFallback();
     if (isAbortError(err) || !fallback || !isAvailabilityError(err)) throw err;
@@ -120,7 +117,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
       fallback: CONFIG.llmFallback,
       ...context,
     });
-    return llmSemaphore.run(() => runChat(fallback));
+    return llmChatPool.run(() => runChat(fallback));
   }
 };
 
@@ -176,7 +173,7 @@ export const embedWithFallback = async (
   };
 
   try {
-    return await embedSemaphore.run(() => runEmbed(primary));
+    return await embedPool.run(() => runEmbed(primary));
   } catch (err) {
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
@@ -185,9 +182,17 @@ export const embedWithFallback = async (
       fallback: CONFIG.llmFallback,
       ...context,
     });
-    return embedSemaphore.run(() => runEmbed(fallback));
+    return embedPool.run(() => runEmbed(fallback));
   }
 };
+
+export {
+  embedPool,
+  llmChatPool,
+  llmRagConcurrency,
+  llmChatPipelineConcurrency,
+} from './requestPool';
+export type { RequestPoolStats } from './requestPool';
 
 export type {
   LLMProvider,

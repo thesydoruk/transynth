@@ -86,23 +86,31 @@ export const requestLlmTranslateStop = (jobId: number): boolean => {
   return true;
 };
 
+/** Statuses that must not be overwritten by LLM batch translate (even with --force). */
+const LLM_TRANSLATE_PROTECTED_STATUSES = ['reviewed', 'human', 'skip', 'rejected'] as const;
+
+const translatableStringsSql = (force: boolean): string =>
+  force
+    ? `(t.id IS NULL OR t.status NOT IN ('reviewed', 'human', 'skip', 'rejected'))`
+    : `t.id IS NULL`;
+
 export const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
+  force = false,
 ): Promise<number> => {
   const { rows } = await db.query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt
        FROM strings s
        JOIN records r ON r.id = s.record_id
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $3
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
-        AND NOT EXISTS (
-          SELECT 1 FROM translations t
-           WHERE t.src_string_id = s.id AND t.target_lang = $3
-        )`,
+        AND ${translatableStringsSql(force)}`,
     [modId, srcLang, targetLang],
   );
   return Number.parseInt(rows[0]?.cnt ?? '0', 10);
@@ -116,7 +124,10 @@ type UntranslatedMetaRow = {
   edid: string | null;
 };
 
-/** Load the next page of untranslated strings (cursor-based — safe while rows are translated away). */
+/**
+ * Load the next page of strings eligible for LLM translate.
+ * Cursor-based pagination (`afterStringId`) — safe for force re-translate too.
+ */
 export const loadUntranslatedChunk = async (
   db: Tx,
   modId: number,
@@ -124,6 +135,7 @@ export const loadUntranslatedChunk = async (
   targetLang: string,
   afterStringId: number,
   limit: number,
+  force = false,
 ): Promise<UntranslatedMetaRow[]> => {
   const { rows } = await db.query<UntranslatedMetaRow>(
     `SELECT s.id AS string_id,
@@ -133,14 +145,13 @@ export const loadUntranslatedChunk = async (
             r.edid
        FROM strings s
        JOIN records r ON r.id = s.record_id
+       LEFT JOIN translations t
+         ON t.src_string_id = s.id AND t.target_lang = $3
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
         AND s.id > $5
-        AND NOT EXISTS (
-          SELECT 1 FROM translations t
-           WHERE t.src_string_id = s.id AND t.target_lang = $3
-        )
+        AND ${translatableStringsSql(force)}
       ORDER BY s.id
       LIMIT $4`,
     [modId, srcLang, targetLang, limit, afterStringId],

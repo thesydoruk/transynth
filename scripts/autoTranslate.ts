@@ -11,6 +11,7 @@
  *   npm run translate:auto -- --all
  *   npm run translate:auto -- --mod-id 45 --heuristic-only
  *   npm run translate:auto -- --mod-id 45 --force
+ *   npm run translate:auto -- --mod-id 45 --translate-only --force
  *   npm run translate:auto -- --mod-id 45 --tgt-lang uk
  *   npm run translate:auto -- --mod-id 45 --skip-only
  *   npm run translate:auto -- --mod-id 45 --translate-only
@@ -132,7 +133,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('force', {
     type: 'boolean',
     default: false,
-    describe: 'Re-scan strings already marked as non-translatable (skip)',
+    describe: 'Re-scan skipped strings; re-translate existing auto/draft rows (not human/reviewed)',
   })
   .option('db-chunk', {
     type: 'number',
@@ -296,7 +297,11 @@ const logTranslateProgress = (
 ): void => {
   if (event.type === 'started') {
     ctx.startedAt = Date.now();
-    log.info(`Translate: ${event.total} untranslated string(s), db-chunk=${event.dbChunkSize}`);
+    log.info(
+      event.force
+        ? `Translate (force): ${event.total} auto/draft string(s) to re-translate, db-chunk=${event.dbChunkSize}`
+        : `Translate: ${event.total} untranslated string(s), db-chunk=${event.dbChunkSize}`,
+    );
     return;
   }
   if (event.type === 'progress') {
@@ -387,6 +392,7 @@ const runTranslatePhase = async (target: ModTarget): Promise<'ok' | 'failed' | '
         modName: target.modName,
         game: target.game,
         dbChunkSize,
+        force: skipForce,
       },
       (event) => logTranslateProgress(ctx, event),
     );
@@ -403,9 +409,14 @@ const runTranslatePhase = async (target: ModTarget): Promise<'ok' | 'failed' | '
     return 'ok';
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('No untranslated strings')) {
+    if (
+      message.includes('No untranslated strings') ||
+      message.includes('No translatable strings')
+    ) {
       log.info(
-        `Translate: nothing to do (mod_id=${target.modId}) — all strings already translated or skipped`,
+        skipForce
+          ? `Translate: nothing to do (mod_id=${target.modId}) — no auto/draft rows to re-translate`
+          : `Translate: nothing to do (mod_id=${target.modId}) — all strings already translated or skipped`,
       );
       return 'skipped';
     }

@@ -20,6 +20,7 @@ export class OpenAIProvider implements LLMProvider {
     this.client = new OpenAI({
       apiKey: CONFIG.openaiApiKey,
       timeout: CONFIG.llmRequestTimeoutMs,
+      maxRetries: 0,
     });
   }
 
@@ -36,7 +37,7 @@ export class OpenAIProvider implements LLMProvider {
           model: opts.model,
           messages: opts.messages,
           temperature: opts.temperature ?? 0,
-          max_tokens: CONFIG.llmMaxTokens,
+          max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
           ...(opts.responseFormat && { response_format: opts.responseFormat }),
         },
         opts.signal ? { signal: opts.signal } : undefined,

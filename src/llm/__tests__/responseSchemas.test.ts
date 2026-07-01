@@ -21,6 +21,15 @@ describe('responseSchemas', () => {
     expect(format.json_schema.strict).toBe(true);
   });
 
+  it('adds maxLength to translation when provided', () => {
+    const schema = buildTranslateResponseSchema(1, 200);
+    const items = (schema.properties as Record<string, unknown>).items as Record<string, unknown>;
+    const translation = (
+      (items.items as Record<string, unknown>).properties as Record<string, unknown>
+    ).translation as { maxLength: number };
+    expect(translation.maxLength).toBe(200);
+  });
+
   it('builds verify schema with verdict enum', () => {
     const schema = buildVerifyResponseSchema(2);
     const items = (schema.properties as Record<string, unknown>).items as Record<string, unknown>;

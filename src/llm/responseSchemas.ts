@@ -21,7 +21,10 @@ const boundedArray = (
   itemCount > 0 ? { minItems: itemCount, maxItems: itemCount } : {};
 
 /** JSON Schema for {@link translateStrings} batch responses. */
-export const buildTranslateResponseSchema = (itemCount: number): Record<string, unknown> => ({
+export const buildTranslateResponseSchema = (
+  itemCount: number,
+  maxTranslationLength?: number,
+): Record<string, unknown> => ({
   type: 'object',
   properties: {
     items: {
@@ -31,7 +34,10 @@ export const buildTranslateResponseSchema = (itemCount: number): Record<string, 
         type: 'object',
         properties: {
           id: { type: 'integer' },
-          translation: { type: 'string' },
+          translation: {
+            type: 'string',
+            ...(maxTranslationLength !== undefined ? { maxLength: maxTranslationLength } : {}),
+          },
         },
         required: ['id', 'translation'],
         additionalProperties: false,
@@ -67,12 +73,15 @@ export const buildVerifyResponseSchema = (itemCount: number): Record<string, unk
   additionalProperties: false,
 });
 
-export const buildTranslateResponseFormat = (itemCount: number): LlmJsonSchemaFormat => ({
+export const buildTranslateResponseFormat = (
+  itemCount: number,
+  maxTranslationLength?: number,
+): LlmJsonSchemaFormat => ({
   type: 'json_schema',
   json_schema: {
     name: 'translate_batch',
     strict: true,
-    schema: buildTranslateResponseSchema(itemCount),
+    schema: buildTranslateResponseSchema(itemCount, maxTranslationLength),
   },
 });
 

@@ -4,7 +4,7 @@
  * Jobs are not persisted — they are lost on worker restart by design.
  */
 import type { Tx } from '../db';
-import { CONFIG, getTranslateModel } from '../config';
+import { getTranslateModel } from '../config';
 import {
   verifyTranslationsWithLlm,
   type LlmVerifyItem,
@@ -21,6 +21,7 @@ import {
 import { parseRecordLocation } from '../utils/recordLocation';
 import { mapWithConcurrency } from '../utils/concurrency';
 import { isAbortError } from '../llm/retry';
+import { llmChatPipelineConcurrency, llmRagConcurrency } from '../llm/requestPool';
 import { logVerify } from '../logging/loggers';
 
 /** Rows sent to the LLM per request (smaller than translate batches for steadier progress). */
@@ -283,21 +284,15 @@ export const runLlmVerifyJob = async (
 
   const model = getTranslateModel();
 
-  // The LLM chat semaphore (CONFIG.llmMaxParallel) is the real concurrency cap on
-  // outgoing requests; we oversubscribe the batch pool by embedMaxParallel so the
-  // chat slots stay saturated even while some workers are blocked on RAG embedding
-  // or DB writes (RAG → chat → approve run serially within a single batch worker).
-  const batchConcurrency = CONFIG.llmMaxParallel + CONFIG.embedMaxParallel;
+  const ragConcurrency = llmRagConcurrency();
+  const chatConcurrency = llmChatPipelineConcurrency();
 
-  /** Run one LLM verify batch end-to-end (RAG → verify → record results / auto-approve). */
-  const processLlmBatch = async (llmChunk: VerifyStringRow[]): Promise<void> => {
-    if (job.cancel) return;
+  type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
-    const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
-
-    let ragByStringId: Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
+  const fetchChunkRag = async (llmChunk: VerifyStringRow[]): Promise<RagByStringId> => {
+    if (job.cancel || llmChunk.length === 0) return new Map();
     try {
-      ragByStringId = await fetchReferenceExamplesBatch(
+      return await fetchReferenceExamplesBatch(
         db,
         llmChunk.map((row) => {
           const { grup } = parseRecordLocation(row.signature, row.path);
@@ -323,10 +318,18 @@ export const runLlmVerifyJob = async (
         err: err instanceof Error ? err.message : String(err),
         stringIds: llmChunk.map((row) => row.string_id),
       });
-      ragByStringId = new Map();
+      return new Map();
     }
+  };
 
+  /** Phase 2 — verify one batch after RAG context is ready. */
+  const processLlmBatch = async (
+    llmChunk: VerifyStringRow[],
+    ragByStringId: RagByStringId,
+  ): Promise<void> => {
     if (job.cancel) return;
+
+    const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
 
     const items: LlmVerifyItem[] = llmChunk.map((row) => {
       const { grup, field } = parseRecordLocation(row.signature, row.path);
@@ -439,7 +442,12 @@ export const runLlmVerifyJob = async (
       }
 
       try {
-        await mapWithConcurrency(llmChunks, batchConcurrency, processLlmBatch);
+        const ragByChunk = await mapWithConcurrency(llmChunks, ragConcurrency, fetchChunkRag);
+        if (!job.cancel) {
+          await mapWithConcurrency(llmChunks, chatConcurrency, (chunk, index) =>
+            processLlmBatch(chunk, ragByChunk[index]!),
+          );
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logVerify.error('job db chunk failed; continuing with next chunk', {

@@ -1,6 +1,8 @@
 import {
   buildTranslateSystemPrompt,
   buildTranslateUserPayload,
+  estimateMaxTranslationChars,
+  estimateTranslateMaxTokens,
   isUkrainianTargetLang,
   parseLlmTranslateResponse,
 } from '../translate';
@@ -191,5 +193,21 @@ describe('parseLlmTranslateResponse', () => {
       ],
     });
     expect(parseLlmTranslateResponse(raw, [9])).toEqual([{ id: 9, translation: 'Текст' }]);
+  });
+});
+
+describe('translate completion budgets', () => {
+  const scream =
+    'AAaaaaaaahhhhhghhhhhhghhghhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh!';
+
+  it('caps max translation chars near source length', () => {
+    expect(estimateMaxTranslationChars(scream)).toBeLessThan(250);
+    expect(estimateMaxTranslationChars('Hello')).toBe(32);
+  });
+
+  it('keeps translate max tokens far below global llmMaxTokens for vocalizations', () => {
+    const budget = estimateTranslateMaxTokens([{ source: scream }]);
+    expect(budget).toBeLessThan(1024);
+    expect(budget).toBeGreaterThanOrEqual(256);
   });
 });

@@ -2,7 +2,7 @@
  * CLI-oriented mod translation verification — paginated DB reads, optional auto-fix.
  */
 import type { Tx } from '../db';
-import { CONFIG, getTranslateModel } from '../config';
+import { getTranslateModel } from '../config';
 import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
@@ -10,6 +10,7 @@ import { getAllProjectSettings } from './projectSettings';
 import { approveVerifiedTranslations, upsertTranslation } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
 import { mapWithConcurrency } from '../utils/concurrency';
+import { llmChatPipelineConcurrency, llmRagConcurrency } from '../llm/requestPool';
 import { logVerify } from '../logging/loggers';
 import {
   countVerifiableStrings,
@@ -104,7 +105,42 @@ export const runCliModVerify = async (
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
   const model = getTranslateModel();
-  const batchConcurrency = CONFIG.llmMaxParallel + CONFIG.embedMaxParallel;
+  const ragConcurrency = llmRagConcurrency();
+  const chatConcurrency = llmChatPipelineConcurrency();
+
+  type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
+
+  const fetchChunkRag = async (llmChunk: VerifyStringRow[]): Promise<RagByStringId> => {
+    if (llmChunk.length === 0) return new Map();
+    try {
+      return await fetchReferenceExamplesBatch(
+        db,
+        llmChunk.map((row) => {
+          const { grup } = parseRecordLocation(row.signature, row.path);
+          return {
+            stringId: row.string_id,
+            sourceText: row.source,
+            textNorm: row.text_norm,
+            textNormNopunct: row.text_norm_nopunct,
+            signature: grup,
+            path: row.path,
+            context: row.context,
+          };
+        }),
+        opts.srcLang,
+        opts.targetLang,
+        ragMaxExamples,
+        ragMinSimilarity,
+      );
+    } catch (err) {
+      logVerify.warn('RAG fetch failed for verify chunk; continuing without examples', {
+        modId: opts.modId,
+        err: err instanceof Error ? err.message : String(err),
+        stringIds: llmChunk.map((row) => row.string_id),
+      });
+      return new Map();
+    }
+  };
 
   let done = 0;
   let approved = 0;
@@ -139,49 +175,25 @@ export const runCliModVerify = async (
     }
   };
 
-  const processLlmBatch = async (llmChunk: VerifyStringRow[]): Promise<void> => {
+  const processLlmBatch = async (
+    llmChunk: VerifyStringRow[],
+    ragByStringId: RagByStringId,
+  ): Promise<void> => {
     if (llmChunk.length === 0) return;
 
     try {
-      await processLlmBatchInner(llmChunk);
+      await processLlmBatchInner(llmChunk, ragByStringId);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       emitChunkFailure(llmChunk, message);
     }
   };
 
-  const processLlmBatchInner = async (llmChunk: VerifyStringRow[]): Promise<void> => {
+  const processLlmBatchInner = async (
+    llmChunk: VerifyStringRow[],
+    ragByStringId: RagByStringId,
+  ): Promise<void> => {
     const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
-
-    let ragByStringId: Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
-    try {
-      ragByStringId = await fetchReferenceExamplesBatch(
-        db,
-        llmChunk.map((row) => {
-          const { grup } = parseRecordLocation(row.signature, row.path);
-          return {
-            stringId: row.string_id,
-            sourceText: row.source,
-            textNorm: row.text_norm,
-            textNormNopunct: row.text_norm_nopunct,
-            signature: grup,
-            path: row.path,
-            context: row.context,
-          };
-        }),
-        opts.srcLang,
-        opts.targetLang,
-        ragMaxExamples,
-        ragMinSimilarity,
-      );
-    } catch (err) {
-      logVerify.warn('RAG fetch failed for verify chunk; continuing without examples', {
-        modId: opts.modId,
-        err: err instanceof Error ? err.message : String(err),
-        stringIds: llmChunk.map((row) => row.string_id),
-      });
-      ragByStringId = new Map();
-    }
 
     const items: LlmVerifyItem[] = llmChunk.map((row) => {
       const { grup, field } = parseRecordLocation(row.signature, row.path);
@@ -334,7 +346,10 @@ export const runCliModVerify = async (
       }
 
       try {
-        await mapWithConcurrency(llmChunks, batchConcurrency, processLlmBatch);
+        const ragByChunk = await mapWithConcurrency(llmChunks, ragConcurrency, fetchChunkRag);
+        await mapWithConcurrency(llmChunks, chatConcurrency, (chunk, index) =>
+          processLlmBatch(chunk, ragByChunk[index]!),
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logVerify.error('cli verify db chunk failed; continuing with next chunk', {

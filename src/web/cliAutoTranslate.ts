@@ -11,7 +11,7 @@ import { translateStringIdsBatch, type TranslateBatchResult } from './llmTransla
 import { logTranslate } from '../logging/loggers';
 
 export type CliTranslateProgressEvent =
-  | { type: 'started'; total: number; dbChunkSize: number }
+  | { type: 'started'; total: number; dbChunkSize: number; force?: boolean }
   | {
       type: 'progress';
       done: number;
@@ -40,24 +40,38 @@ export const runCliModTranslate = async (
     modName?: string | null;
     game?: string | null;
     dbChunkSize?: number;
+    /** Re-translate existing auto/draft rows (never human/reviewed). */
+    force?: boolean;
   },
   onEvent?: (event: CliTranslateProgressEvent) => void,
 ): Promise<CliTranslateResult> => {
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_TRANSLATE_DB_CHUNK_SIZE);
-  const total = await countUntranslatedStrings(db, opts.modId, opts.srcLang, opts.targetLang);
+  const force = opts.force === true;
+  const total = await countUntranslatedStrings(
+    db,
+    opts.modId,
+    opts.srcLang,
+    opts.targetLang,
+    force,
+  );
   if (total === 0) {
-    throw new Error('No untranslated strings to translate');
+    throw new Error(
+      force
+        ? 'No translatable strings to translate (all skipped or human/reviewed)'
+        : 'No untranslated strings to translate',
+    );
   }
 
   logTranslate.info('cli translate started', {
     modId: opts.modId,
     total,
     dbChunkSize,
+    force,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
   });
 
-  onEvent?.({ type: 'started', total, dbChunkSize });
+  onEvent?.({ type: 'started', total, dbChunkSize, force });
 
   let afterStringId = 0;
   let globalDone = 0;
@@ -74,6 +88,7 @@ export const runCliModTranslate = async (
         opts.targetLang,
         afterStringId,
         dbChunkSize,
+        force,
       );
       if (dbChunk.length === 0) break;
       afterStringId = dbChunk[dbChunk.length - 1]!.string_id;

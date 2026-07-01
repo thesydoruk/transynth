@@ -9,6 +9,18 @@ export class Semaphore {
 
   constructor(private readonly max: number) {}
 
+  get activeCount(): number {
+    return this.active;
+  }
+
+  get queuedCount(): number {
+    return this.queue.length;
+  }
+
+  get maxConcurrency(): number {
+    return this.max;
+  }
+
   async run<T>(fn: () => Promise<T>): Promise<T> {
     await this.acquire();
     try {

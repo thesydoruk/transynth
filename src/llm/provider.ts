@@ -35,6 +35,8 @@ export interface ChatOptions {
   responseFormat?: LlmResponseFormat;
   /** Aborts the in-flight HTTP request (e.g. when a translate/verify job is stopped). */
   signal?: AbortSignal;
+  /** Override completion token budget (defaults to {@link CONFIG.llmMaxTokens}). */
+  maxTokens?: number;
   logMeta?: {
     operation: string;
     context?: Record<string, unknown>;

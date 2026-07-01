@@ -16,9 +16,10 @@ import { getAllProjectSettings } from './projectSettings';
 import { cacheLookupMany, cacheStore } from './cacheService';
 import { upsertTranslation, termWordBoundaryRe, filterStringIdsForLlmTranslate } from './queries';
 import { logTranslate } from '../logging/loggers';
+import { mapWithConcurrency } from '../utils/concurrency';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { parseRecordLocation } from '../utils/recordLocation';
-import { mapWithConcurrency } from '../utils/concurrency';
+import { llmRagConcurrency, llmChatPipelineConcurrency } from '../llm/requestPool';
 import type { GameType } from '../types';
 import { buildLlmTranslateChunks } from './llmTranslateChunking';
 
@@ -142,15 +143,10 @@ export const translateStringIdsBatch = async (
     onProgress?.(doneCount, eligibleIds.length, r);
   };
 
-  // Concurrency model: RAG (embedding + TM DB lookups) and chat run in two distinct
-  // phases. If RAG were interleaved per-chunk before each chat, simultaneous RAG would
-  // saturate the DB pool / embed semaphore and chat requests would trickle out roughly
-  // one at a time. Gathering all RAG first, then firing chats together, keeps up to
-  // CONFIG.llmMaxParallel chat requests genuinely in flight at once.
-  const ragConcurrency = CONFIG.llmMaxParallel;
-  // Chat is globally capped by the llm semaphore; +1 worker covers the brief post-chat
-  // DB-write window so a chat slot doesn't idle while a worker persists results.
-  const chatConcurrency = CONFIG.llmMaxParallel + 1;
+  // RAG and chat use separate global pools (embedPool / llmChatPool). Run them in two
+  // phases so embedding work never blocks chat slots and vice versa.
+  const ragConcurrency = llmRagConcurrency();
+  const chatConcurrency = llmChatPipelineConcurrency();
   // Bound post-chat DB writes per chunk so a single batch can't monopolise the pool.
   const dbWriteConcurrency = Math.max(2, Math.min(8, CONFIG.dbPoolMax));
 
@@ -423,8 +419,7 @@ export const translateStringIdsBatch = async (
     );
 
     if (!shouldCancel?.()) {
-      // Phase 2: fire the chat requests in parallel — up to CONFIG.llmMaxParallel run
-      // concurrently (enforced by the chat semaphore inside chatWithFallback).
+      // Phase 2: chat requests — capped by llmChatPool inside chatWithFallback.
       logTranslate.info('LLM parallel chat phase', {
         chunkCount: llmChunks.length,
         chatConcurrency,

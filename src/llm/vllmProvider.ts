@@ -26,7 +26,7 @@ export class VllmProvider implements LLMProvider {
     const chatBaseURL = normalizeBaseUrl(CONFIG.vllmBaseUrl);
     const embedBaseURL = normalizeBaseUrl(CONFIG.vllmEmbedBaseUrl);
     const apiKey = CONFIG.vllmApiKey || 'EMPTY';
-    const clientOpts = { apiKey, timeout: CONFIG.llmRequestTimeoutMs };
+    const clientOpts = { apiKey, timeout: CONFIG.llmRequestTimeoutMs, maxRetries: 0 };
     this.chatClient = new OpenAI({ ...clientOpts, baseURL: chatBaseURL });
     this.embedClient = new OpenAI({ ...clientOpts, baseURL: embedBaseURL });
     logLlm.debug('vLLM provider initialized', {
@@ -43,7 +43,7 @@ export class VllmProvider implements LLMProvider {
           model: opts.model,
           messages: opts.messages,
           temperature: opts.temperature ?? 0,
-          max_tokens: CONFIG.llmMaxTokens,
+          max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
           ...(opts.responseFormat && { response_format: opts.responseFormat }),
         },
         opts.signal ? { signal: opts.signal } : undefined,
