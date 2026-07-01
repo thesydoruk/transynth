@@ -4,30 +4,95 @@ import { getFunctionKeywordsForGame } from '../resources/functionKeywords';
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤, ¤GL0¤, and ¤FK0¤ for easy post-replacement.
 
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Inventory/UI bracket prefixes that must survive translation unchanged. */
+const UI_BRACKET_TAGS = [
+  'Other',
+  'Mod',
+  'SS2',
+  'NoteMisc',
+  'Note',
+  'Scrap',
+  'Valuable',
+  'NonHuman',
+  'SS2C2',
+  'SS',
+  'Underwear',
+  'HolotapeV',
+  'Key',
+  'FullOutfit',
+  'FullArmor',
+  'Vegetables',
+  'PerkMag',
+  'FO76',
+  'IR',
+  'Beer',
+  'Leaf',
+  'SS2C3',
+  'Click',
+  'CQ',
+  'Accept',
+  'Password',
+  'Activate',
+  'Nuka',
+  'Hat',
+  'pagebreak',
+  'SetCustom',
+  'Conversion',
+  'HolotapeT',
+  'Skilled',
+  'Gifted',
+  'Hi-Tech Farm',
+  'Requires Gifted Endurance',
+] as const;
+
+/**
+ * Regex building blocks for {@link PLACEHOLDER_RE}, ordered most-specific first.
+ * Keep in sync with the web UI highlighter (`getPlaceholderParts.ts`).
+ */
+export const PLACEHOLDER_PATTERN_PARTS = [
+  String.raw`\r\n`,
+  String.raw`\r`,
+  String.raw`\n`,
+  String.raw`<font color='#<Global=[^>]+>'>`,
+  String.raw`<font color='#<Global=[^>]+>`,
+  String.raw`<Token\.[^>]+>`,
+  String.raw`<Alias=[^>]+>`,
+  String.raw`<Global=[^>]+>`,
+  String.raw`<[^>]+>`,
+  String.raw`\[(?:${UI_BRACKET_TAGS.map(escapeRegex).join('|')})\]`,
+  String.raw`\[\*[A-Za-z]+\]`,
+  String.raw`\[<[^>]+>\]`,
+  String.raw`\[[A-Za-z][A-Za-z0-9]*:[0-9A-Fa-f]+\]`,
+  String.raw`%%`,
+  String.raw`%\d+\.\d+[sdif]`,
+  String.raw`%\.\d+[sdif]`,
+  String.raw`%\d*\$?[sdif]`,
+  String.raw`\{[0-9]+\}`,
+  String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
+  String.raw`\$[A-Za-z_][A-Za-z0-9_]*`,
+] as const;
+
 /**
  * Regular expression that matches the generic placeholder and tag patterns Transynth protects
  * from modification during LLM translation.
  *
  * Covered patterns:
- * - `%d`, `%s`, `%2$s`, etc. — printf-style format specifiers.
+ * - `\r\n`, `\r`, `\n` — line breaks.
+ * - `%d`, `%s`, `%2$s`, `%.0f`, `%%`, etc. — printf-style format specifiers.
  * - `{0}`, `{1}`, … — positional format tokens.
  * - `{name}` — named format tokens.
- * - `[text]` — bracketed tags (e.g. Bethesda subtitle markers).
- * - `<tag>` — XML/HTML-like tags.
+ * - UI bracket tags (`[Mod]`, `[*Class]`, form refs) — not stage directions like `[Sarcasm]`.
+ * - `<tag>` — XML/HTML-like and Bethesda alias/token/global tags.
  * - `$Identifier` — script-style variable references.
  */
-export const PLACEHOLDER_RE = new RegExp([
-  String.raw`%\d*\$?[sdif]`,
-  String.raw`\{[0-9]+\}`,
-  String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
-  String.raw`\[[^\]]+\]`,
-  String.raw`<[^>]+>`,
-  String.raw`\$[A-Za-z_][A-Za-z0-9_]*`
-].join('|'), 'g');
+export const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');
 
 const IDENTIFIER_RE = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
-const SCRIPT_PUNCTUATION_RE = /::|->|\.[A-Za-z_]|[()[\]=,;+\-/*]/;
-const DECLARATION_SIGNAL_RE = /\b(?:Auto|AutoReadOnly|Conditional|Event|EndEvent|EndFunction|Function|Hidden|Property|ScriptName|State)\b/;
+const SCRIPT_PUNCTUATION_RE = /::|->|[()[\]=,;+\-/*]/;
+const DECLARATION_SIGNAL_RE =
+  /\b(?:Auto|AutoReadOnly|Conditional|Event|EndEvent|EndFunction|Function|Hidden|Property|ScriptName|State)\b/;
 
 /**
  * Result of a masking operation.
@@ -47,8 +112,14 @@ type KeywordMatch = {
 
 const hasCodeLikeKeywordShape = (token: string): boolean => /[a-z][A-Z]|[A-Z]{2,}|\d/.test(token);
 
-const overlapsRange = (index: number, token: string, ranges: Array<{ start: number; end: number }>): boolean =>
-  ranges.some((range) => index < range.end && index + token.length > range.start);
+const overlapsRange = (
+  index: number,
+  token: string,
+  ranges: Array<{ start: number; end: number }>,
+): boolean => ranges.some((range) => index < range.end && index + token.length > range.start);
+
+/** Remove already-protected tokens before deciding whether text looks like Papyrus code. */
+const stripProtectedForScriptCheck = (text: string): string => text.replace(PLACEHOLDER_RE, ' ');
 
 const findFunctionKeywordMatches = (text: string, game?: GameType | null): KeywordMatch[] => {
   const keywords = getFunctionKeywordsForGame(game);
@@ -64,13 +135,16 @@ const findFunctionKeywordMatches = (text: string, game?: GameType | null): Keywo
     token: match[0],
   }));
   const keywordMatches = matches.filter((match) => keywordSet.has(match.token));
-  const externalKeywordMatches = keywordMatches.filter((match) => !overlapsRange(match.index, match.token, protectedRanges));
+  const externalKeywordMatches = keywordMatches.filter(
+    (match) => !overlapsRange(match.index, match.token, protectedRanges),
+  );
   if (externalKeywordMatches.length === 0) return [];
 
+  const scriptProbe = stripProtectedForScriptCheck(text);
   const isScriptLike =
-    SCRIPT_PUNCTUATION_RE.test(text)
-    || DECLARATION_SIGNAL_RE.test(text)
-    || externalKeywordMatches.some((match) => hasCodeLikeKeywordShape(match.token));
+    SCRIPT_PUNCTUATION_RE.test(scriptProbe) ||
+    DECLARATION_SIGNAL_RE.test(scriptProbe) ||
+    externalKeywordMatches.some((match) => hasCodeLikeKeywordShape(match.token));
 
   return isScriptLike ? externalKeywordMatches : [];
 };
@@ -85,16 +159,16 @@ const findFunctionKeywordMatches = (text: string, game?: GameType | null): Keywo
  * @returns Masked text and the key-to-original mapping.
  */
 export const maskPlaceholders = (text: string) => {
-  const mapping: Record<string,string> = {};
+  const mapping: Record<string, string> = {};
   let i = 0;
-  const masked = text.replace(PLACEHOLDER_RE, m => {
+  const masked = text.replace(PLACEHOLDER_RE, (m) => {
     const key = `¤PH${i}¤`;
     mapping[key] = m;
     i++;
     return key;
   });
   return { masked, mapping };
-}
+};
 
 /**
  * Mask script-safe FunctionKeywords tokens for code-like strings.
@@ -151,7 +225,7 @@ export const extractProtectedTokens = (text: string, game?: GameType | null): st
  * @returns Masked text and the key-to-original mapping.
  */
 export const applyGlossaryMask = (text: string, glossary: string[]) => {
-  const map: Record<string,string> = {};
+  const map: Record<string, string> = {};
   let out = text;
   glossary.forEach((term, i) => {
     if (!term) return;
@@ -162,7 +236,7 @@ export const applyGlossaryMask = (text: string, glossary: string[]) => {
     }
   });
   return { masked: out, mapping: map };
-}
+};
 
 /**
  * Restore all masked tokens in a (translated) string using a key-to-original mapping.
@@ -174,10 +248,10 @@ export const applyGlossaryMask = (text: string, glossary: string[]) => {
  * @param mapping - Key-to-original mapping produced by a prior masking call.
  * @returns Text with all mask keys replaced by their original tokens.
  */
-export const unmask = (text: string, mapping: Record<string,string>) => {
+export const unmask = (text: string, mapping: Record<string, string>) => {
   let out = text;
   // Sort keys by length (longest first) to prevent partial matches
   const keys = Object.keys(mapping).sort((a, b) => b.length - a.length);
   for (const k of keys) out = out.split(k).join(mapping[k]);
   return out;
-}
+};

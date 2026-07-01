@@ -3,17 +3,31 @@ export type PlaceholderPart = {
   isPlaceholder: boolean;
 };
 
-const PLACEHOLDER_RE = new RegExp(
-  [
-    String.raw`%\d*\$?[sdif]`,
-    String.raw`\{[0-9]+\}`,
-    String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
-    String.raw`\[[^\]]+\]`,
-    String.raw`<[^>]+>`,
-    String.raw`\$[A-Za-z_][A-Za-z0-9_]*`,
-  ].join('|'),
-  'g',
-);
+/** Keep in sync with `src/utils/placeholders.ts` (`PLACEHOLDER_PATTERN_PARTS`). */
+const PLACEHOLDER_PATTERN_PARTS = [
+  String.raw`\r\n`,
+  String.raw`\r`,
+  String.raw`\n`,
+  String.raw`<font color='#<Global=[^>]+>'>`,
+  String.raw`<font color='#<Global=[^>]+>`,
+  String.raw`<Token\.[^>]+>`,
+  String.raw`<Alias=[^>]+>`,
+  String.raw`<Global=[^>]+>`,
+  String.raw`<[^>]+>`,
+  String.raw`\[(?:Other|Mod|SS2|NoteMisc|Note|Scrap|Valuable|NonHuman|SS2C2|SS|Underwear|HolotapeV|Key|FullOutfit|FullArmor|Vegetables|PerkMag|FO76|IR|Beer|Leaf|SS2C3|Click|CQ|Accept|Password|Activate|Nuka|Hat|pagebreak|SetCustom|Conversion|HolotapeT|Skilled|Gifted|Hi-Tech Farm|Requires Gifted Endurance)\]`,
+  String.raw`\[\*[A-Za-z]+\]`,
+  String.raw`\[<[^>]+>\]`,
+  String.raw`\[[A-Za-z][A-Za-z0-9]*:[0-9A-Fa-f]+\]`,
+  String.raw`%%`,
+  String.raw`%\d+\.\d+[sdif]`,
+  String.raw`%\.\d+[sdif]`,
+  String.raw`%\d*\$?[sdif]`,
+  String.raw`\{[0-9]+\}`,
+  String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
+  String.raw`\$[A-Za-z_][A-Za-z0-9_]*`,
+] as const;
+
+const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');
 
 /**
  * Splits text into normal and placeholder segments for inline visual highlighting.
