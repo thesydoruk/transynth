@@ -3,7 +3,9 @@
  */
 import type { GameType } from '../types';
 import { compareProtectedTokens, type ProtectedTokenContext } from '../utils/placeholders';
+import type { LlmGlossaryEntry } from './translate';
 import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './verifyTranslate';
+import { findGlossaryViolation, resolveGlossaryFixSuggestion } from './glossaryVerify';
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
 
@@ -278,6 +280,7 @@ export const validateVerifySuggestion = (
 export const validateTranslationForVerify = (
   item: LlmVerifyItem,
   game?: GameType | string | null,
+  glossary?: LlmGlossaryEntry[],
 ): VerifySuggestionValidation => {
   const tokenCheck = compareProtectedTokens(
     item.source,
@@ -294,6 +297,17 @@ export const validateTranslationForVerify = (
 
   const quality = runQualityChecks(item, item.translation);
   if (quality) return quality;
+
+  if (glossary && glossary.length > 0) {
+    const violation = findGlossaryViolation(item.source, item.translation, glossary);
+    if (violation) {
+      return {
+        ok: false,
+        reason: 'invalid_term',
+        message: `Glossary: "${violation.term}" should be translated as "${violation.translation}".`,
+      };
+    }
+  }
 
   return { ok: true };
 };
@@ -324,6 +338,21 @@ export const resolveVerifyFixAction = (
   }
 
   return { kind: 'apply', suggestion };
+};
+
+/** Apply glossary-based correction when the current translation violates canonical terms. */
+export const resolveGlossaryCorrection = (
+  item: LlmVerifyItem,
+  glossary: LlmGlossaryEntry[],
+  game?: GameType | string | null,
+): VerifyFixAction => {
+  const txCheck = validateTranslationForVerify(item, game, glossary);
+  if (txCheck.ok) return { kind: 'none' };
+
+  const suggestion = resolveGlossaryFixSuggestion(item.source, item.translation, glossary);
+  if (!suggestion) return { kind: 'flag_only' };
+
+  return resolveVerifyFixAction(item, 'incorrect', suggestion, true, game);
 };
 
 export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction): string => {

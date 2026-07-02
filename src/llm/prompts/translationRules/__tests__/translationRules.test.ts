@@ -2,6 +2,7 @@ import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } fro
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
 import {
   buildEnglishTranslationRules,
+  buildEnglishVerifyTranslationRules,
   buildUkrainianTranslationRules,
   resolveGameType,
 } from '../index';
@@ -58,17 +59,19 @@ describe('translationRules', () => {
 
   it('is injected into translate and verify prompts with game', () => {
     const rules = buildEnglishTranslationRules('de', 'fo4');
+    const verifyRules = buildEnglishVerifyTranslationRules('de', 'fo4');
     const translatePrompt = buildEnglishTranslateSystemPrompt('en', 'de', 'fo4');
     const verifyPrompt = buildEnglishVerifySystemPrompt('en', 'de', 'fo4');
     expect(translatePrompt).toContain(rules);
-    expect(verifyPrompt).toContain(rules);
-    expect(verifyPrompt).toContain('Power Armor part names');
+    expect(verifyPrompt).toContain(verifyRules);
+    expect(verifyPrompt).toContain('VERIFY — item/mod names');
   });
 
   it('injects game-specific verify notes for Ukrainian Fallout 4', () => {
     const verifyPrompt = buildUkrainianVerifySystemPrompt('en', 'fo4');
     expect(verifyPrompt).toContain('силової броні');
     expect(verifyPrompt).toContain('Hellfire Mk.II Arm Armor');
+    expect(verifyPrompt).toContain('УЗГОДЖЕНІСТЬ ШАБЛОНІВ');
     const skyrimVerify = buildUkrainianVerifySystemPrompt('en', 'sse');
     expect(skyrimVerify).toContain('Лексика Fallout');
     expect(skyrimVerify).not.toContain('силової броні');

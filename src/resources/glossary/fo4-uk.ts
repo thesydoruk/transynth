@@ -27,7 +27,19 @@ import type { GlossaryEntry } from './types';
 
 export type { GlossaryEntry } from './types';
 
-export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
+import { FO4_RACE_UK_GLOSSARY } from './fo4-race-uk';
+
+const mergeGlossaries = (...lists: GlossaryEntry[][]): GlossaryEntry[] => {
+  const byTerm = new Map<string, GlossaryEntry>();
+  for (const list of lists) {
+    for (const entry of list) {
+      byTerm.set(entry.term.toLowerCase(), entry);
+    }
+  }
+  return [...byTerm.values()].sort((a, b) => a.term.localeCompare(b.term));
+};
+
+const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   // ── Factions & organizations ──────────────────────────────────────────────
   { term: 'Brotherhood of Steel', translation: 'Братерство сталі' },
   { term: 'Institute', translation: 'Інститут' },
@@ -172,6 +184,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Holotape', translation: 'Голозапис' },
   { term: 'Settler', translation: 'Поселенець' },
   { term: 'Workshop', translation: 'Майстерня' },
+  { term: 'Layer Handle', translation: 'Обробник шару' },
   { term: 'Provisioner', translation: 'Постачальник' },
   { term: 'Stealth Boy', translation: 'Стелс-бой' },
   { term: 'Hazmat Suit', translation: 'Захисний комплект' },
@@ -224,3 +237,9 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Maybe', translation: 'Може бути' },
   { term: 'Trade', translation: 'Обмін' },
 ];
+
+/** FO4 core + RACE face editor (FMRN/MPPN/TTGP); later lists override earlier on term clash. */
+export const FO4_UK_GLOSSARY: GlossaryEntry[] = mergeGlossaries(
+  FO4_BASE_UK_GLOSSARY,
+  FO4_RACE_UK_GLOSSARY,
+);

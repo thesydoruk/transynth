@@ -1,5 +1,7 @@
 import type { Tx } from '../db';
 import type { LlmGlossaryEntry } from '../llm/translate';
+import type { LlmVerifyItem } from '../llm/verifyTranslate';
+import { resolveGlossaryFixSuggestion as resolveGlossaryFixSuggestionCore } from '../llm/glossaryVerify';
 import { termWordBoundaryRe } from './queries';
 
 export type GlossaryEntryWithRe = LlmGlossaryEntry & { re: RegExp };
@@ -34,3 +36,10 @@ export const relevantGlossaryEntries = (
   }
   return out;
 };
+
+export { findGlossaryViolation } from '../llm/glossaryVerify';
+
+export const resolveGlossaryFixSuggestion = (
+  item: LlmVerifyItem,
+  glossary: LlmGlossaryEntry[],
+): string | null => resolveGlossaryFixSuggestionCore(item.source, item.translation, glossary);

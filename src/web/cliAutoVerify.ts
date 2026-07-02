@@ -5,6 +5,7 @@ import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
 import {
+  resolveGlossaryCorrection,
   resolveVerifyFixAction,
   validateTranslationForVerify,
 } from '../llm/verifySuggestionGuards';
@@ -216,6 +217,7 @@ export const runCliModVerify = async (
         reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
           grup,
           field,
+          source: row.source,
         }),
       };
     });
@@ -255,9 +257,11 @@ export const runCliModVerify = async (
             field: parseRecordLocation(row.signature, row.path).field,
             context: row.context,
           };
-          const txCheck = validateTranslationForVerify(itemForValidation, opts.game);
+          const itemGlossary = relevantGlossaryEntries(glossaryAll, [row.source]);
+          const txCheck = validateTranslationForVerify(itemForValidation, opts.game, itemGlossary);
           if (!txCheck.ok) {
             incorrect++;
+            const fixAction = resolveGlossaryCorrection(itemForValidation, itemGlossary, opts.game);
             const issue: LlmVerifyIssue = {
               stringId: result.id,
               source: row.source,
@@ -268,8 +272,31 @@ export const runCliModVerify = async (
               verdict: 'incorrect',
               reason: txCheck.message,
               confidence: Math.max(result.confidence, 0.95),
-              suggestion: null,
+              suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : null,
+              fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
             };
+
+            if (!dryRun && fixAction.kind === 'apply') {
+              try {
+                await upsertTranslation(
+                  db,
+                  result.id,
+                  fixAction.suggestion,
+                  'auto',
+                  opts.targetLang,
+                );
+                fixed++;
+              } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                logVerify.error('cli verify glossary fix failed; continuing', {
+                  modId: opts.modId,
+                  stringId: result.id,
+                  error: message,
+                });
+                errors++;
+              }
+            }
+
             onEvent?.({
               type: 'progress',
               done,
@@ -305,6 +332,7 @@ export const runCliModVerify = async (
       if (result.verdict === 'suspicious') suspicious++;
       else incorrect++;
 
+      const itemGlossary = relevantGlossaryEntries(glossaryAll, [row.source]);
       const itemForValidation: LlmVerifyItem = {
         id: row.string_id,
         source: row.source,
@@ -315,13 +343,19 @@ export const runCliModVerify = async (
         context: row.context,
       };
 
-      const fixAction = resolveVerifyFixAction(
+      let fixAction = resolveVerifyFixAction(
         itemForValidation,
         result.verdict,
         result.suggestion,
         fixSuspicious,
         opts.game,
       );
+      if (fixAction.kind !== 'apply') {
+        const glossaryFix = resolveGlossaryCorrection(itemForValidation, itemGlossary, opts.game);
+        if (glossaryFix.kind === 'apply') {
+          fixAction = glossaryFix;
+        }
+      }
 
       const issue: LlmVerifyIssue = {
         stringId: result.id,
@@ -333,7 +367,7 @@ export const runCliModVerify = async (
         verdict: result.verdict,
         reason: result.reason,
         confidence: result.confidence,
-        suggestion: result.suggestion,
+        suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : result.suggestion,
         fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
       };
 

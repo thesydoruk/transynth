@@ -8,7 +8,11 @@ import {
   formatCanonicalUkLines,
 } from '../canonical';
 import { GAME_RULES } from '../games';
-import { buildEnglishTranslationRules, buildUkrainianTranslationRules } from '../index';
+import {
+  buildEnglishTranslationRules,
+  buildEnglishVerifyTranslationRules,
+  buildUkrainianTranslationRules,
+} from '../index';
 import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } from '../../en';
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
 
@@ -61,6 +65,13 @@ describe('canonical terminology', () => {
     }
   });
 
+  it('FO4 glossary merges RACE face editor terms', () => {
+    const rules = buildUkrainianTranslationRules('fo4');
+    expect(rules).toContain('Nose Bridge → Переносиця');
+    expect(rules).toContain('Prominent 4 → Виразний 4');
+    expect(rules).toContain('Eyelids - Top → Верхня повіка');
+  });
+
   it('FO4 Ukrainian prompt includes Stealth Boy canonical pair', () => {
     const rules = buildUkrainianTranslationRules('fo4');
     expect(rules).toContain('Stealth Boy → Стелс-бой');
@@ -82,10 +93,12 @@ describe('canonical terminology', () => {
   it('every game injects canonical rules into English translate and verify prompts', () => {
     for (const game of ALL_GAMES) {
       const rules = buildEnglishTranslationRules('pl', game);
+      const verifyRules = buildEnglishVerifyTranslationRules('pl', game);
       const translate = buildEnglishTranslateSystemPrompt('en', 'pl', game);
       const verify = buildEnglishVerifySystemPrompt('en', 'pl', game);
       expect(translate).toContain(rules);
-      expect(verify).toContain(rules);
+      expect(verify).toContain(verifyRules);
+      expect(verify).toContain('TEMPLATE CONSISTENCY (VERIFY)');
     }
   });
 

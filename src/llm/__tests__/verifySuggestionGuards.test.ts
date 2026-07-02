@@ -33,7 +33,11 @@ describe('filterVerifyReferenceExamples', () => {
   ];
 
   it('prefers same grup and field', () => {
-    const filtered = filterVerifyReferenceExamples(examples, { grup: 'ARMO', field: 'FULL' });
+    const filtered = filterVerifyReferenceExamples(examples, {
+      grup: 'ARMO',
+      field: 'FULL',
+      source: 'A',
+    });
     expect(filtered).toHaveLength(1);
     expect(filtered?.[0]?.grup).toBe('ARMO');
   });
@@ -304,5 +308,22 @@ describe('validateTranslationForVerify', () => {
     const result = validateTranslationForVerify(item, 'fo4');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('invalid_term');
+  });
+
+  it('flags glossary violations when glossary entries are provided', () => {
+    const item: LlmVerifyItem = {
+      id: 12,
+      source: 'Layer Handle - 4',
+      translation: 'Ручка шару 4',
+      grup: 'ACTI',
+      field: 'FULL',
+      edid: 'WSPlus_LayerHandleMarker_04',
+      context: null,
+    };
+    const result = validateTranslationForVerify(item, 'fo4', [
+      { term: 'Layer Handle', translation: 'Обробник шару' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toContain('Layer Handle');
   });
 });
