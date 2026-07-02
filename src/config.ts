@@ -114,6 +114,15 @@ export const CONFIG = {
   /** Source string rows loaded from DB per translate:auto / web job page (default 100). */
   llmTranslateDbChunkSize: parsePositiveInt(process.env.LLM_TRANSLATE_DB_CHUNK_SIZE, 100, 10_000),
 
+  /** Records + strings written per mod-import DB transaction (default 5000). */
+  modImportBatchSize: parsePositiveInt(process.env.MOD_IMPORT_BATCH_SIZE, 5000, 20_000),
+
+  /** Log/SSE progress every N imported rows during mod import (default 10000). */
+  modImportProgressEvery: parsePositiveInt(process.env.MOD_IMPORT_PROGRESS_EVERY, 10_000, 100_000),
+
+  /** Parallel BA2/PEX/MCM file reads during mod import (default 4). */
+  modImportIoParallel: parseMaxParallel(process.env.MOD_IMPORT_IO_PARALLEL, 4, 16),
+
   // Nexus Mods personal API key (Bearer token).
   // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
   // Required for NexusMods GraphQL API v2 queries (mod search, translations).

@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next';
 import type { OpsImportJob, OpsLlmJob } from '../../../api';
 import type { AppJob } from '../../../appJobsQueue';
 import type { NexusDownloadJob } from '../../../nexusDownloadQueue';
-import { jobPct, jobStatusClass, kindLabel } from '../homeUtils';
+import { jobPct, jobStatusClass } from '../homeUtils';
+import { importKindBadgeLabel, importStatusKey } from '../../ModsPage/modsShared';
 import s from '../HomePage.module.scss';
 
 interface RecentImportsProps {
@@ -30,8 +31,16 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: Recent
 
   const rows: UnifiedJobRow[] = [
     ...jobs.map((job) => ({ kind: 'import' as const, updatedAt: job.updated_at, job })),
-    ...nexusDownloads.map((job) => ({ kind: 'nexus' as const, updatedAt: new Date(job.createdAt).toISOString(), job })),
-    ...visibleAppJobs.map((job) => ({ kind: 'app' as const, updatedAt: new Date(job.updatedAt).toISOString(), job })),
+    ...nexusDownloads.map((job) => ({
+      kind: 'nexus' as const,
+      updatedAt: new Date(job.createdAt).toISOString(),
+      job,
+    })),
+    ...visibleAppJobs.map((job) => ({
+      kind: 'app' as const,
+      updatedAt: new Date(job.updatedAt).toISOString(),
+      job,
+    })),
     ...llmJobs.map((job) => ({ kind: 'backend-llm' as const, updatedAt: job.updated_at, job })),
   ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
@@ -57,10 +66,19 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: Recent
               const job = row.job;
               return (
                 <tr key={`${job.kind}-${job.id}`} className={s.tr}>
-                  <td className={s.td}><span className={s.kindBadge}>{kindLabel(job.kind)}</span></td>
+                  <td className={s.td}>
+                    <span className={s.kindBadge}>{importKindBadgeLabel(job.kind, t)}</span>
+                  </td>
                   <td className={s.td}>{job.file_name}</td>
-                  <td className={s.td}><span className={jobStatusClass(job.status, s)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
-                  <td className={s.tdR}>{job.imported_records}/{job.total_records}<span className={s.pctDim}> ({jobPct(job)}%)</span></td>
+                  <td className={s.td}>
+                    <span className={jobStatusClass(job.status, s)}>
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
+                    </span>
+                  </td>
+                  <td className={s.tdR}>
+                    {job.imported_records}/{job.total_records}
+                    <span className={s.pctDim}> ({jobPct(job)}%)</span>
+                  </td>
                   <td className={s.tdErr}>{job.last_error ?? '—'}</td>
                   <td className={s.tdDim}>{new Date(job.updated_at).toLocaleString()}</td>
                 </tr>
@@ -71,10 +89,19 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: Recent
               const job = row.job;
               return (
                 <tr key={job.id} className={s.tr}>
-                  <td className={s.td}><span className={s.kindBadge}>NEXUS</span></td>
+                  <td className={s.td}>
+                    <span className={s.kindBadge}>NEXUS</span>
+                  </td>
                   <td className={s.td}>{job.fileName}</td>
-                  <td className={s.td}><span className={jobStatusClass(job.status, s)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
-                  <td className={s.tdR}>{Math.round(job.progress)}%<span className={s.pctDim}> ({t('common.loading')})</span></td>
+                  <td className={s.td}>
+                    <span className={jobStatusClass(job.status, s)}>
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
+                    </span>
+                  </td>
+                  <td className={s.tdR}>
+                    {Math.round(job.progress)}%
+                    <span className={s.pctDim}> ({t('common.loading')})</span>
+                  </td>
                   <td className={s.tdErr}>{job.error ?? '—'}</td>
                   <td className={s.tdDim}>{new Date(job.createdAt).toLocaleString()}</td>
                 </tr>
@@ -83,13 +110,20 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: Recent
 
             if (row.kind === 'app') {
               const job = row.job;
-              const kindLabelText = job.kind === 'llm' ? 'LLM' : 'EXPORT';
+              const kindLabelText =
+                job.kind === 'llm' ? t('imports.llmBadge') : t('imports.exportBadge');
               const progressText = job.progress == null ? '—' : `${Math.round(job.progress)}%`;
               return (
                 <tr key={job.id} className={s.tr}>
-                  <td className={s.td}><span className={s.kindBadge}>{kindLabelText}</span></td>
+                  <td className={s.td}>
+                    <span className={s.kindBadge}>{kindLabelText}</span>
+                  </td>
                   <td className={s.td}>{job.label}</td>
-                  <td className={s.td}><span className={jobStatusClass(job.status, s)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
+                  <td className={s.td}>
+                    <span className={jobStatusClass(job.status, s)}>
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
+                    </span>
+                  </td>
                   <td className={s.tdR}>{progressText}</td>
                   <td className={s.tdErr}>{job.error ?? '—'}</td>
                   <td className={s.tdDim}>{new Date(job.updatedAt).toLocaleString()}</td>
@@ -99,15 +133,24 @@ export const RecentImports = ({ jobs, nexusDownloads, appJobs, llmJobs }: Recent
 
             if (row.kind === 'backend-llm') {
               const job = row.job;
-              const label = job.mod_name ? `LLM batch · ${job.mod_name}` : `LLM batch · mod ${job.mod_id ?? '?'}`;
-              const progressText = job.string_count > 0
-                ? `${job.done_count}/${job.string_count} (${Math.round((job.done_count / job.string_count) * 100)}%)`
-                : '—';
+              const label = job.mod_name
+                ? t('imports.llmBatchName', { name: job.mod_name })
+                : t('imports.llmBatchMod', { id: job.mod_id ?? '?' });
+              const progressText =
+                job.string_count > 0
+                  ? `${job.done_count}/${job.string_count} (${Math.round((job.done_count / job.string_count) * 100)}%)`
+                  : '—';
               return (
                 <tr key={`llm-${job.id}`} className={s.tr}>
-                  <td className={s.td}><span className={s.kindBadge}>LLM</span></td>
+                  <td className={s.td}>
+                    <span className={s.kindBadge}>{t('imports.llmBadge')}</span>
+                  </td>
                   <td className={s.td}>{label}</td>
-                  <td className={s.td}><span className={jobStatusClass(job.status, s)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
+                  <td className={s.td}>
+                    <span className={jobStatusClass(job.status, s)}>
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
+                    </span>
+                  </td>
                   <td className={s.tdR}>{progressText}</td>
                   <td className={s.tdErr}>{job.error ?? '—'}</td>
                   <td className={s.tdDim}>{new Date(job.updated_at).toLocaleString()}</td>

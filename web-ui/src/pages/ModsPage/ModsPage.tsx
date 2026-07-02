@@ -39,7 +39,13 @@ import { EetPreviewModal } from './EetPreviewModal';
 import { ModPreviewModal } from './ModPreviewModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
-import { statusColorBase, type LiveProgress } from './modsShared';
+import {
+  statusColorBase,
+  type LiveProgress,
+  canStartImportJob,
+  isImportJobResume,
+  importStatusKey,
+} from './modsShared';
 import {
   ACCEPTED_UPLOAD_EXTENSIONS,
   downloadBase64File,
@@ -344,17 +350,42 @@ export const ModsPage = () => {
     }
   };
 
+  const isImportJobRunning = useCallback(
+    (kind: UnifiedJob['kind'], jobId: number, running?: boolean) => {
+      const key = `${kind}:${jobId}`;
+      return running === true || !!liveProgress[key];
+    },
+    [liveProgress],
+  );
+
+  const handleImportStart = useCallback(
+    (u: UnifiedJob) => {
+      const running = isImportJobRunning(u.kind, u.job.id, u.job.running);
+      if (isImportJobResume(u.job, running)) {
+        void doStart(u.kind, u.job.id);
+        return;
+      }
+      if (u.kind === 'eet') setEetPreviewId(u.job.id);
+      else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
+      else setModPreviewId(u.job.id);
+    },
+    [doStart, isImportJobRunning],
+  );
+
   const startAll = () => {
     for (const u of activeImportJobs) {
-      if (['pending', 'paused', 'failed'].includes(u.job.status)) {
-        if (u.kind === 'mod') continue;
-        doStart(u.kind, u.job.id);
+      if (u.kind === 'mod') continue;
+      if (!canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind)) {
+        continue;
       }
+      doStart(u.kind, u.job.id);
     }
   };
 
-  const pendingCount = activeImportJobs.filter((u) =>
-    ['pending', 'paused', 'failed'].includes(u.job.status),
+  const pendingCount = activeImportJobs.filter(
+    (u) =>
+      u.kind !== 'mod' &&
+      canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind),
   ).length;
 
   const runModExport = useCallback(
@@ -685,7 +716,7 @@ export const ModsPage = () => {
           {visibleAppJobs.map((job) => {
             const pct =
               job.progress == null ? null : Math.max(0, Math.min(100, Math.round(job.progress)));
-            const kindBadge = job.kind === 'llm' ? 'LLM' : 'EXPORT';
+            const kindBadge = job.kind === 'llm' ? t('imports.llmBadge') : t('imports.exportBadge');
             return (
               <div key={job.id} className={s.row}>
                 <div className={s.rowLeft}>
@@ -720,7 +751,7 @@ export const ModsPage = () => {
                         ),
                       }}
                     >
-                      {t(`importStatus.${job.status}`, job.status)}
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
                     </span>
                   </div>
                 </div>
@@ -730,15 +761,15 @@ export const ModsPage = () => {
 
           {visibleLlmJobs.map((job) => {
             const label = job.mod_name
-              ? `LLM batch · ${job.mod_name}`
-              : `LLM batch · mod ${job.mod_id ?? '?'}`;
+              ? t('imports.llmBatchName', { name: job.mod_name })
+              : t('imports.llmBatchMod', { id: job.mod_id ?? '?' });
             const pct =
               job.string_count > 0 ? Math.round((job.done_count / job.string_count) * 100) : null;
             return (
               <div key={`llm-${job.id}`} className={s.row}>
                 <div className={s.rowLeft}>
                   <span className={s.typeBadge} style={{ background: '#1b6b2d' }}>
-                    LLM
+                    {t('imports.llmBadge')}
                   </span>
                   <div>
                     <span className={s.fileName}>{label}</span>
@@ -771,7 +802,7 @@ export const ModsPage = () => {
                         ),
                       }}
                     >
-                      {t(`importStatus.${job.status}`, job.status)}
+                      {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
                     </span>
                   </div>
                 </div>
@@ -819,11 +850,7 @@ export const ModsPage = () => {
                       }
                     : undefined
                 }
-                onStart={() => {
-                  if (u.kind === 'eet') setEetPreviewId(u.job.id);
-                  else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
-                  else setModPreviewId(u.job.id);
-                }}
+                onStart={() => handleImportStart(u)}
                 onPause={() => {
                   if (u.kind === 'eet') api.eet.pause(u.job.id);
                   else if (u.kind === 'csv') api.csv.pause(u.job.id);

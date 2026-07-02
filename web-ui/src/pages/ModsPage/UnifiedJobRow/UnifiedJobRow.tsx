@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModImportJob } from '../../../api';
-import { kindColor, statusColorBase, statusLabel, type UnifiedJobRowProps } from '../modsShared';
+import {
+  kindColor,
+  statusColorBase,
+  statusLabel,
+  canStartImportJob,
+  importStartTooltip,
+  importStartButtonLabel,
+  importStatusI18nKey,
+  importKindBadgeLabel,
+  type UnifiedJobRowProps,
+} from '../modsShared';
 import { ModDataMenuItems } from '../ModDataMenuItems';
 import parentS from '../ModsPage.module.scss';
 import s from './UnifiedJobRow.module.scss';
@@ -25,21 +35,17 @@ export const UnifiedJobRow = ({
   const imported = live?.imported ?? job.imported_records;
   const total = live?.total ?? job.total_records;
   const pct = total > 0 ? Math.round((imported / total) * 100) : 0;
-  const canStart =
-    !isRunning && job.status !== 'in_progress' && (job.status !== 'completed' || kind === 'mod');
   const isMod = kind === 'mod';
   const modJob = isMod ? (job as ModImportJob) : null;
+  const canStart = canStartImportJob(job, isRunning, kind);
   const hasExportActions = (exportActions?.length ?? 0) > 0;
   const showOverflowMenu = !isRunning && (isMod || hasExportActions);
   const showStandaloneDelete = !isRunning && !showOverflowMenu;
   const isFailed = job.status === 'failed';
+  const startTooltip = importStartTooltip(job, isRunning, kind, t);
+  const startButtonLabel = importStartButtonLabel(job, isRunning, t);
   const lastError =
     isFailed && 'last_error' in job ? (job as { last_error: string | null }).last_error : null;
-  const startTooltip = isFailed
-    ? t('imports.retryLabel')
-    : isMod && job.status === 'completed'
-      ? t('imports.reimportTooltip')
-      : t('imports.startTooltip');
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -57,7 +63,7 @@ export const UnifiedJobRow = ({
     <div className={parentS.row}>
       <div className={parentS.rowLeft}>
         <span className={parentS.typeBadge} style={{ background: kindColor(kind) }}>
-          {kind.toUpperCase()}
+          {importKindBadgeLabel(kind, t)}
         </span>
         <div>
           <span className={parentS.fileName}>
@@ -69,7 +75,11 @@ export const UnifiedJobRow = ({
           <span className={parentS.meta}>
             {isMod
               ? t('common.strings', { count: total })
-              : `${job.src_lang} → ${job.tgt_lang} · ${total.toLocaleString()} records`}
+              : t('imports.langPairMeta', {
+                  src: job.src_lang,
+                  tgt: job.tgt_lang,
+                  count: total,
+                })}
           </span>
           {lastError && (
             <span className={s.errorText} title={lastError}>
@@ -81,7 +91,7 @@ export const UnifiedJobRow = ({
       <div className={parentS.rowRight}>
         {job.status === 'completed' ? (
           <span className={s.badgeCompleted}>{t('importStatus.completed')}</span>
-        ) : isRunning || job.status === 'in_progress' ? (
+        ) : isRunning ? (
           <div className={parentS.progressWrap}>
             <div className={parentS.progressTrack}>
               <div className={parentS.progressFill} style={{ width: `${pct}%` }} />
@@ -91,14 +101,14 @@ export const UnifiedJobRow = ({
         ) : (
           <span
             className={parentS.badge}
-            style={{ background: statusColorBase(job.status) }}
+            style={{ background: statusColorBase(importStatusI18nKey(job, isRunning)) }}
             title={
               job.status === 'failed' && 'last_error' in job && job.last_error
                 ? job.last_error
                 : undefined
             }
           >
-            {statusLabel(job.status, t)}
+            {statusLabel(job.status, t, job, isRunning)}
             {job.imported_records > 0 && ` (${pct}%)`}
           </span>
         )}
@@ -111,17 +121,27 @@ export const UnifiedJobRow = ({
               title={startTooltip}
               aria-label={startTooltip}
             >
-              {isFailed ? t('imports.retryLabel') : '▶'}
+              {startButtonLabel}
             </button>
           )}
           {isRunning && (
-            <button onClick={onPause} className={s.actionBtn} title="⏸">
-              ⏸
+            <button
+              onClick={onPause}
+              className={s.actionBtn}
+              title={t('imports.pauseImportLabel')}
+              aria-label={t('imports.pauseImportLabel')}
+            >
+              {t('imports.pauseBtn')}
             </button>
           )}
           {isRunning && (
-            <button onClick={onCancel} className={s.actionBtnCancel} title={t('common.cancel')}>
-              ⏹
+            <button
+              onClick={onCancel}
+              className={s.actionBtnCancel}
+              title={t('imports.cancelImportLabel')}
+              aria-label={t('imports.cancelImportLabel')}
+            >
+              {t('imports.cancelBtn')}
             </button>
           )}
           {!isRunning && showOverflowMenu && (

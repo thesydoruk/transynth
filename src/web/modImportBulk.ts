@@ -19,6 +19,131 @@ export type ModImportBulkResult = {
   row: ModImportBulkRow;
 };
 
+export type DialogGraphImportContext = {
+  dialogEdidByFormId: Map<string, string>;
+  speakerMap: Map<string, string>;
+  voiceSpeakerMap: Map<string, string>;
+  topicIdCache: Map<string, number>;
+};
+
+/** Bulk upsert DIAL/INFO dialog graph rows for one import batch (replaces per-row upserts). */
+export const bulkUpsertDialogGraphForImportBatch = async (
+  db: Tx,
+  modId: number,
+  results: ModImportBulkResult[],
+  ctx: DialogGraphImportContext,
+): Promise<void> => {
+  type InfoRow = {
+    topicFormId: string;
+    infoFormId: string;
+    stringId: number;
+    speakerFormId: string | null;
+    speakerName: string | null;
+    previousInfoFormId: string | null;
+  };
+
+  const infoRows: InfoRow[] = [];
+  for (const res of results) {
+    const row = res.row.csvRow;
+    if (row.Signature !== 'INFO' || !row.FormID || !row.DialogTopicFormID) continue;
+
+    const speakerFormId = row.SpeakerFormID ?? ctx.speakerMap.get(row.FormID) ?? null;
+    const speakerName = res.row.context ?? ctx.voiceSpeakerMap.get(row.FormID.substring(2)) ?? null;
+
+    infoRows.push({
+      topicFormId: row.DialogTopicFormID,
+      infoFormId: row.FormID,
+      stringId: res.stringId,
+      speakerFormId,
+      speakerName,
+      previousInfoFormId: row.PreviousInfoFormID ?? null,
+    });
+  }
+
+  if (infoRows.length === 0) return;
+
+  const missingTopicFormIds = [
+    ...new Set(infoRows.map((row) => row.topicFormId).filter((fid) => !ctx.topicIdCache.has(fid))),
+  ];
+
+  if (missingTopicFormIds.length > 0) {
+    const modIds = missingTopicFormIds.map(() => modId);
+    const edids = missingTopicFormIds.map((fid) => ctx.dialogEdidByFormId.get(fid) ?? null);
+    const { rows: topicRows } = await db.query<{ id: number; formid_hex: string }>(
+      `INSERT INTO dialog_topics(mod_id, formid_hex, edid)
+       SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[])
+       ON CONFLICT(mod_id, formid_hex) DO UPDATE SET
+         edid = COALESCE(EXCLUDED.edid, dialog_topics.edid)
+       RETURNING id, formid_hex`,
+      [modIds, missingTopicFormIds, edids],
+    );
+    for (const topic of topicRows) {
+      ctx.topicIdCache.set(topic.formid_hex, topic.id);
+    }
+  }
+
+  const topicIds: number[] = [];
+  const infoFormIds: string[] = [];
+  const stringIds: number[] = [];
+  const speakerFormIds: Array<string | null> = [];
+  const speakerNames: Array<string | null> = [];
+  const previousInfoFormIds: Array<string | null> = [];
+
+  for (const info of infoRows) {
+    const topicId = ctx.topicIdCache.get(info.topicFormId);
+    if (topicId == null) {
+      throw new Error(`Dialog topic id missing after upsert for ${info.topicFormId}`);
+    }
+    topicIds.push(topicId);
+    infoFormIds.push(info.infoFormId);
+    stringIds.push(info.stringId);
+    speakerFormIds.push(info.speakerFormId);
+    speakerNames.push(info.speakerName);
+    previousInfoFormIds.push(info.previousInfoFormId);
+  }
+
+  await db.query(
+    `INSERT INTO dialog_nodes(
+       topic_id, info_formid_hex, response_string_id, speaker_formid_hex, speaker_name, previous_info_formid_hex
+     )
+     SELECT * FROM UNNEST(
+       $1::int[], $2::text[], $3::int[], $4::text[], $5::text[], $6::text[]
+     )
+     ON CONFLICT(topic_id, info_formid_hex) DO UPDATE SET
+       response_string_id = COALESCE(dialog_nodes.response_string_id, EXCLUDED.response_string_id),
+       speaker_formid_hex = COALESCE(EXCLUDED.speaker_formid_hex, dialog_nodes.speaker_formid_hex),
+       speaker_name = COALESCE(EXCLUDED.speaker_name, dialog_nodes.speaker_name),
+       previous_info_formid_hex = COALESCE(EXCLUDED.previous_info_formid_hex, dialog_nodes.previous_info_formid_hex),
+       updated_at = NOW()`,
+    [topicIds, infoFormIds, stringIds, speakerFormIds, speakerNames, previousInfoFormIds],
+  );
+
+  const edgeTopicIds: number[] = [];
+  const fromInfoFormIds: string[] = [];
+  const toInfoFormIds: string[] = [];
+
+  for (let i = 0; i < infoRows.length; i++) {
+    const previous = infoRows[i]!.previousInfoFormId;
+    if (!previous) continue;
+    edgeTopicIds.push(topicIds[i]!);
+    fromInfoFormIds.push(previous);
+    toInfoFormIds.push(infoFormIds[i]!);
+  }
+
+  if (edgeTopicIds.length === 0) return;
+
+  const edgeKinds = edgeTopicIds.map(() => 'previous');
+  const confidences = edgeTopicIds.map(() => 'exact');
+
+  await db.query(
+    `INSERT INTO dialog_edges(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind, confidence)
+     SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[])
+     ON CONFLICT(topic_id, from_info_formid_hex, to_info_formid_hex, edge_kind) DO UPDATE SET
+       confidence = EXCLUDED.confidence`,
+    [edgeTopicIds, fromInfoFormIds, toInfoFormIds, edgeKinds, confidences],
+  );
+};
+
 /** Natural key for `records` upsert (matches ON CONFLICT target). */
 export const modImportRecordKey = (signature: string, path: string, formId: string): string =>
   `${signature}\0${path}\0${formId}`;

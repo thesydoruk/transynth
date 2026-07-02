@@ -25,16 +25,10 @@ import { execFile } from 'node:child_process';
 import Seven from 'node-7z';
 import { path7za } from '7zip-bin';
 import pg from 'pg';
-import {
-  upsertMod,
-  upsertDialogTopic,
-  upsertDialogNode,
-  upsertDialogEdge,
-  upsertDialogScene,
-  upsertDialogScenePhase,
-  type Tx,
-} from '../db';
+import { upsertMod, upsertDialogScene, upsertDialogScenePhase, type Tx } from '../db';
 import { sha1Hex } from '../utils/hash';
+import { mapWithConcurrency } from '../utils/concurrency';
+import { CONFIG } from '../config';
 import { logImport } from '../logging/loggers';
 import { EspReader, type EspStringRow } from '../bethesda/esp';
 import { BsaReader, isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../bethesda/archives';
@@ -62,12 +56,12 @@ import type { VortexFolderInfo } from '../utils/vortexFolder';
 import {
   bulkInsertModImportRows,
   bulkUpsertImportTranslations,
+  bulkUpsertDialogGraphForImportBatch,
   type ModImportBulkRow,
+  type DialogGraphImportContext,
 } from './modImportBulk';
 
 const { Pool } = pg;
-
-const BATCH_SIZE = 1000;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -590,7 +584,7 @@ export const extractModImportApplyRows = (
       collected.push(...buildCsvRows(espRows, null));
     }
 
-    const pexMap = collectPexStrings(anchorPath);
+    const pexMap = collectPexStringsSync(anchorPath);
     if (pexMap.size > 0) {
       collected.push(...buildPexCsvRows(pexMap));
     }
@@ -1137,6 +1131,54 @@ const collectMcmLocalesForMod = (
   return merged;
 };
 
+/** Parallel BA2 scan — used during long-running import only. */
+const collectMcmLocalesForModParallel = async (
+  modDir: string,
+  anchorPath: string,
+): Promise<Map<string, Map<string, string>>> => {
+  const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
+  const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
+  const merged = new Map<string, Map<string, string>>();
+
+  const ba2Paths = listGnrBa2FilesInDir(modDir);
+  const ba2LocaleMaps = await mapWithConcurrency(
+    ba2Paths,
+    CONFIG.modImportIoParallel,
+    async (ba2Path) => {
+      try {
+        return loadMcmLocalesFromBA2(ba2Path, modPrefixes);
+      } catch (err) {
+        logImport.warn(
+          `MCM: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
+        );
+        return new Map<string, Map<string, string>>();
+      }
+    },
+  );
+
+  for (const mcmLocales of ba2LocaleMaps) {
+    for (const [locale, mcmMap] of mcmLocales) {
+      if (!merged.has(locale)) merged.set(locale, new Map());
+      for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
+    }
+  }
+
+  for (const [locale, mcmMap] of loadMcmLocalesFromLooseFiles(modDir, modPrefixes)) {
+    if (!merged.has(locale)) merged.set(locale, new Map());
+    for (const [k, v] of mcmMap) merged.get(locale)!.set(k, v);
+  }
+
+  for (const [locale, mcmMap] of loadMcmLocalesFromConfigJson(modDir, modPrefixes)) {
+    if (!merged.has(locale)) merged.set(locale, new Map());
+    const bucket = merged.get(locale)!;
+    for (const [k, v] of mcmMap) {
+      if (!bucket.has(k)) bucket.set(k, v);
+    }
+  }
+
+  return merged;
+};
+
 /**
  * Collect all MCM locales for a plugin by scanning GNRL BA2 archives and loose
  * `Interface/Translations` files that match the mod's MCM prefix.
@@ -1404,16 +1446,14 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => 
  *
  * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
  */
-const collectPexStrings = (espPath: string): Map<string, string[]> => {
+const collectPexStringsSync = (espPath: string): Map<string, string[]> => {
   const modDir = path.dirname(espPath);
   const merged = new Map<string, string[]>();
 
-  // Scan GNRL BA2 archives only — DX10 texture archives never contain PEX scripts
   for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
     try {
       for (const [script, strings] of loadPexStringsFromBA2(ba2Path)) {
         if (!merged.has(script)) merged.set(script, strings);
-        // If already present, BA2 entry wins only if loose files not yet merged
       }
     } catch (err) {
       logImport.warn(
@@ -1422,7 +1462,39 @@ const collectPexStrings = (espPath: string): Map<string, string[]> => {
     }
   }
 
-  // Loose files override BA2 — applied after so they win on collision
+  for (const [script, strings] of loadPexStringsFromLooseFiles(modDir)) {
+    merged.set(script, strings);
+  }
+
+  return merged;
+};
+
+const collectPexStrings = async (espPath: string): Promise<Map<string, string[]>> => {
+  const modDir = path.dirname(espPath);
+  const merged = new Map<string, string[]>();
+
+  const ba2Paths = listGnrBa2FilesInDir(modDir);
+  const ba2Results = await mapWithConcurrency(
+    ba2Paths,
+    CONFIG.modImportIoParallel,
+    async (ba2Path) => {
+      try {
+        return loadPexStringsFromBA2(ba2Path);
+      } catch (err) {
+        logImport.warn(
+          `PEX: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
+        );
+        return new Map<string, string[]>();
+      }
+    },
+  );
+
+  for (const pexMap of ba2Results) {
+    for (const [script, strings] of pexMap) {
+      if (!merged.has(script)) merged.set(script, strings);
+    }
+  }
+
   for (const [script, strings] of loadPexStringsFromLooseFiles(modDir)) {
     merged.set(script, strings);
   }
@@ -2031,10 +2103,15 @@ export const runModImport = async (
   }
 
   logImport.info(
-    `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records}`,
+    `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records} ` +
+      `(dbBatch=${CONFIG.modImportBatchSize}, ioParallel=${CONFIG.modImportIoParallel})`,
   );
 
+  let imported = job.imported_records;
+
   try {
+    const importBatchSize = CONFIG.modImportBatchSize;
+    const progressEvery = CONFIG.modImportProgressEvery;
     const game: GameType = (job.game as GameType) ?? 'fo4';
     let importModId = job.mod_id;
     if (importModId == null) {
@@ -2073,7 +2150,6 @@ export const runModImport = async (
     // Fallback NPC names for vanilla game NPCs not declared in this mod
     const npcRefMap = loadNpcReferenceMap(game);
 
-    let imported = job.imported_records;
     let batchCount = 0;
     let inTx = false;
     let importSingleLocaleMode = false;
@@ -2093,48 +2169,11 @@ export const runModImport = async (
       );
     }
 
-    const upsertDialogGraphForRow = async (
-      row: CsvRow,
-      sourceStringId: number,
-      speakerName: string | null,
-    ): Promise<void> => {
-      if (row.Signature !== 'INFO' || !row.FormID || !row.DialogTopicFormID) return;
-
-      let topicId = dialogTopicIdCache.get(row.DialogTopicFormID);
-      if (!topicId) {
-        topicId = await upsertDialogTopic(
-          db,
-          importModId,
-          row.DialogTopicFormID,
-          dialogEdidByFormId.get(row.DialogTopicFormID) ?? null,
-        );
-        dialogTopicIdCache.set(row.DialogTopicFormID, topicId);
-      }
-
-      const speakerFormId = row.SpeakerFormID ?? speakerMap.get(row.FormID) ?? null;
-      // Fall back to voice-file directory name when ANAM-based name is unavailable
-      const effectiveSpeakerName =
-        speakerName ?? voiceSpeakerMap.get(row.FormID.substring(2)) ?? null;
-      await upsertDialogNode(
-        db,
-        topicId,
-        row.FormID,
-        sourceStringId,
-        speakerFormId,
-        effectiveSpeakerName,
-        row.PreviousInfoFormID ?? null,
-      );
-
-      if (row.PreviousInfoFormID) {
-        await upsertDialogEdge(
-          db,
-          topicId,
-          row.PreviousInfoFormID,
-          row.FormID,
-          'previous',
-          'exact',
-        );
-      }
+    const dialogGraphCtx: DialogGraphImportContext = {
+      dialogEdidByFormId,
+      speakerMap,
+      voiceSpeakerMap,
+      topicIdCache: dialogTopicIdCache,
     };
 
     const pendingRows: ModImportBulkRow[] = [];
@@ -2144,15 +2183,16 @@ export const runModImport = async (
       const batch = pendingRows.splice(0, pendingRows.length);
       try {
         const results = await bulkInsertModImportRows(db, importModId, batch);
-        for (const res of results) {
-          await upsertDialogGraphForRow(res.row.csvRow, res.stringId, res.row.context);
-        }
+        await bulkUpsertDialogGraphForImportBatch(db, importModId, results, dialogGraphCtx);
         imported += results.length;
         batchCount = 0;
         await updateProgress(db, job.id, imported);
         await db.query('COMMIT');
         inTx = false;
-        if (progressTotal > 0) {
+        if (
+          progressTotal > 0 &&
+          (imported >= progressTotal || imported % progressEvery < batch.length)
+        ) {
           const pct = ((imported / progressTotal) * 100).toFixed(1);
           logImport.info(
             `[Mod Import #${job.id}] Progress: ${imported}/${progressTotal} (${pct}%)`,
@@ -2197,7 +2237,7 @@ export const runModImport = async (
       }
       pendingRows.push({ csvRow: r, locale, context, sourceKind });
       batchCount++;
-      if (batchCount >= BATCH_SIZE) {
+      if (batchCount >= importBatchSize) {
         await flushPendingImportBatch(progressTotal);
       }
     };
@@ -2210,11 +2250,14 @@ export const runModImport = async (
       selectedLocale = resolveSingleImportLocale(localesMap, job.src_lang);
       importSingleLocaleMode = selectedLocale != null;
 
-      const work: { locale: string; rows: CsvRow[] }[] = [];
-      for (const [locale, strMap] of localesMap) {
-        if (importSingleLocaleMode && locale !== selectedLocale) continue;
-        work.push({ locale, rows: buildCsvRows(espRows, strMap) });
-      }
+      const localeEntries = [...localesMap.entries()].filter(
+        ([locale]) => !importSingleLocaleMode || locale === selectedLocale,
+      );
+      const work = await mapWithConcurrency(
+        localeEntries,
+        CONFIG.modImportIoParallel,
+        async ([locale, strMap]) => ({ locale, rows: buildCsvRows(espRows, strMap) }),
+      );
       const totalAll = work.reduce((s, w) => s + w.rows.length, 0);
       await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [totalAll, job.id]);
 
@@ -2298,7 +2341,8 @@ export const runModImport = async (
     // file but is stored under pluginStringLang so it appears alongside ESP rows
     // in the editor. Other locale files become pre-existing translations.
     if (!state.cancel && !state.pause) {
-      const mcmLocales = collectMcmLocales(espPath);
+      const mcmModDir = resolveModDirectoryFromPath(espPath);
+      const mcmLocales = await collectMcmLocalesForModParallel(mcmModDir, espPath);
       const resolvedMcmSource =
         resolveMcmLocaleKey(mcmLocales, MOD_IMPORT_DEFAULT_SOURCE_LOCALE) ??
         resolveMcmLocaleKey(mcmLocales, pluginStringLang);
@@ -2318,12 +2362,12 @@ export const runModImport = async (
           sourceKind: 'mcm',
         }));
 
-        for (let i = 0; i < mcmBulkRows.length; i += BATCH_SIZE) {
+        for (let i = 0; i < mcmBulkRows.length; i += importBatchSize) {
           if (!inTx) {
             await db.query('BEGIN');
             inTx = true;
           }
-          const slice = mcmBulkRows.slice(i, i + BATCH_SIZE);
+          const slice = mcmBulkRows.slice(i, i + importBatchSize);
           const results = await bulkInsertModImportRows(db, importModId, slice);
           for (const res of results) {
             const mcmKey = res.row.csvRow.Path.replace(/^MCM\\/, '');
@@ -2369,7 +2413,7 @@ export const runModImport = async (
     // Signature='PEX' and are stored against the source language of the mod.
     // Only runs if the import has not been cancelled or paused.
     if (!state.cancel && !state.pause) {
-      const pexMap = collectPexStrings(espPath);
+      const pexMap = await collectPexStrings(espPath);
       if (pexMap.size > 0) {
         const pexRows = buildPexCsvRows(pexMap);
         logImport.info(
@@ -2459,8 +2503,8 @@ export const runModImport = async (
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logImport.error(`[Mod Import #${job.id}] Failed: ${errMsg}`);
-    await markFailed(db, job.id, job.imported_records);
+    logImport.error(`[Mod Import #${job.id}] Failed at ${imported} records: ${errMsg}`);
+    await markFailed(db, job.id, imported);
     throw err;
   } finally {
     clearBa2Cache();

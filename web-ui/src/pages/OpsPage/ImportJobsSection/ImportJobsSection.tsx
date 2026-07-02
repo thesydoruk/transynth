@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { OpsImportJob } from '../../../api';
-import { jobPct, kindLabel, statusClass } from '../opsUtils';
+import { jobPct, statusClass } from '../opsUtils';
+import { importKindBadgeLabel, importStatusKey } from '../../ModsPage/modsShared';
 import parentS from '../OpsPage.module.scss';
 import s from './ImportJobsSection.module.scss';
 
@@ -32,10 +33,19 @@ export const ImportJobsSection = ({ jobs }: ImportJobsSectionProps) => {
           <tbody>
             {jobs.map((job) => (
               <tr key={`${job.kind}-${job.id}`} className={parentS.tr}>
-                <td className={s.td}><span className={s.kindBadge}>{kindLabel(job.kind)}</span></td>
+                <td className={s.td}>
+                  <span className={s.kindBadge}>{importKindBadgeLabel(job.kind, t)}</span>
+                </td>
                 <td className={s.td}>{job.file_name}</td>
-                <td className={s.td}><span className={statusClass(job.status)}>{t(`importStatus.${job.status}`, job.status)}</span></td>
-                <td className={parentS.tdR}>{job.imported_records}/{job.total_records}<span className={s.pctDim}> ({jobPct(job)}%)</span></td>
+                <td className={s.td}>
+                  <span className={statusClass(job.status)}>
+                    {t(`importStatus.${importStatusKey(job.status)}`, job.status)}
+                  </span>
+                </td>
+                <td className={parentS.tdR}>
+                  {job.imported_records}/{job.total_records}
+                  <span className={s.pctDim}> ({jobPct(job)}%)</span>
+                </td>
                 <td className={s.tdErr}>{job.last_error ?? '—'}</td>
                 <td className={s.tdDim}>{new Date(job.updated_at).toLocaleString()}</td>
               </tr>
