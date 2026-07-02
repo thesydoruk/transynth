@@ -2,9 +2,10 @@
  * Canonical Fallout 4 English → Ukrainian glossary.
  *
  * Curated from the confirmed (manually-saved) Ukrainian translations of the
- * base game (`Fallout4.esm`) stored in this project's database. Each pair was
- * picked as the most frequent / least ambiguous translation for that term
- * across NPC_/RACE/FACT/LCTN/ALCH/WEAP/ARMO records.
+ * base game (`Fallout4.esm`) and the BDD main patch (`BDD_Fallout4_UA_Main`, mod 2)
+ * stored in this project's database. Each pair was picked as the most frequent /
+ * least ambiguous translation for that term across NPC_/RACE/FACT/LCTN/ALCH/WEAP/ARMO
+ * records.
  *
  * This file is the single source of truth for the glossary; it is loaded by
  * `scripts/seedGlossary.ts` (run via `npm run db:seed:glossary`) which upserts
@@ -57,6 +58,8 @@ const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Triggermen', translation: 'Гангстери' },
   { term: 'The Pack', translation: 'Зграя' },
   { term: 'Vault-Tec', translation: 'Волт-Тек' },
+  { term: 'Enclave', translation: 'Анклав' },
+  { term: 'The Mechanist', translation: 'Механіст' },
 
   // ── Locations ─────────────────────────────────────────────────────────────
   { term: 'Commonwealth', translation: 'Співдружність' },
@@ -78,6 +81,20 @@ const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Cambridge', translation: 'Кембридж' },
   { term: 'Prydwen', translation: 'Придвен' },
   { term: 'Mass Fusion', translation: "Масс ф'южн" },
+  { term: 'Acadia', translation: 'Акадія' },
+  { term: 'The Fog', translation: 'Туман' },
+  { term: 'Freedom Trail', translation: 'Шлях Свободи' },
+  { term: 'Signal Interceptor', translation: 'Перехоплювач сигналу' },
+  { term: 'Radio Freedom', translation: 'Радіо Свобода' },
+  { term: 'Gwinnett Brewery', translation: 'Броварня «Гвіннетт»' },
+  { term: 'Gwinnett Brand', translation: 'Гвіннетт' },
+  { term: 'Wasteland Workshop', translation: 'Майстерня пустки' },
+  { term: 'The Institute', translation: 'Інститут' },
+  { term: 'The Brotherhood', translation: 'Братерство' },
+  { term: 'The Railroad', translation: 'Підземка' },
+  { term: 'The Commonwealth', translation: 'Співдружність' },
+  { term: 'Far Harbor Children of Atom', translation: 'Діти Атома з Фар-Гарбор' },
+  { term: 'Red Death', translation: 'Червона смерть' },
 
   // ── Companions & named characters ───────────────────────────────────────────
   { term: 'Codsworth', translation: 'Кодсворт' },
@@ -110,6 +127,20 @@ const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Myrna', translation: 'Мирна' },
   { term: 'Pickman', translation: 'Пікман' },
   { term: 'Trashcan Carla', translation: 'Карла Урна' },
+  { term: 'Old Longfellow', translation: 'Старий Лонгфелло' },
+  { term: 'Doctor Amari', translation: 'Доктор Амарі' },
+  { term: 'Doctor Li', translation: 'Докторка Лі' },
+  { term: 'Proctor Ingram', translation: 'Прокторка Інграм' },
+  { term: 'Paladin Brandis', translation: 'Паладин Брендіс' },
+  { term: 'Earl Sterling', translation: 'Ерл Стерлінг' },
+  { term: 'Captain Kells', translation: 'Капітан Келлс' },
+  { term: 'Silver Shroud', translation: 'Срібний Плащ' },
+  { term: 'The Silver Shroud', translation: 'Срібний Плащ' },
+  { term: 'High Confessor', translation: 'Верховний сповідник' },
+  { term: 'High Confessor Tektus', translation: 'Верховний сповідник Тект' },
+  { term: 'Sister Gwyneth', translation: 'Сестра Гвінет' },
+  { term: 'DiMA', translation: 'ДіМА' },
+  { term: 'Henry Cooke', translation: 'Генрі Кук' },
 
   // ── Creatures ───────────────────────────────────────────────────────────────
   { term: 'Deathclaw', translation: 'Кіготь смерті' },
@@ -117,6 +148,7 @@ const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Mirelurk Queen', translation: 'Королева болотників' },
   { term: 'Mirelurk King', translation: 'Король болотників' },
   { term: 'Super Mutant', translation: 'Супермутант' },
+  { term: 'Super Mutants', translation: 'Супермутанти' },
   { term: 'Feral Ghoul', translation: 'Дикий гуль' },
   { term: 'Ghoul', translation: 'Гуль' },
   { term: 'Glowing One', translation: 'Сяючий' },
@@ -192,6 +224,75 @@ const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Metal Armor', translation: 'Металева броня' },
   { term: 'Frag Grenade', translation: 'Осколкова граната' },
   { term: 'Molotov Cocktail', translation: 'Коктейль Молотова' },
+  { term: 'Courser Chip', translation: 'Чип мисливця' },
+  { term: 'Enclave Soldier', translation: 'Солдат Анклаву' },
+  { term: 'Utility Jumpsuit', translation: 'Утилітарний комбінезон' },
+  { term: 'Pack Captive', translation: 'Бранець Зграї' },
+  { term: 'Synth Refugee', translation: 'Синт-втікач' },
+
+  // ── Legendary affixes (weapon / armor prefixes) ─────────────────────────────
+  { term: "Assassin's", translation: 'Вбивчий' },
+  { term: "Exterminator's", translation: 'Винищувальний' },
+  { term: "Sentinel's", translation: 'Статичний' },
+  { term: "Ghoul Slayer's", translation: 'Гулевинищувальний' },
+  { term: "Mutant Slayer's", translation: 'Мутантовинищувальний' },
+  { term: "Poisoner's", translation: 'Отруйний' },
+  { term: "Troubleshooter's", translation: 'Механічний' },
+  { term: "Cavalier's", translation: 'Кавалериста' },
+  { term: "Hunter's", translation: 'Мисливський' },
+  { term: "Stalker's", translation: 'Розвідувальний' },
+  { term: "Berserker's", translation: 'Берсеркерський' },
+  { term: 'Lucky', translation: 'Фартовий' },
+  { term: 'VATS Enhanced', translation: 'VATS оптимізований' },
+  { term: 'Two Shot', translation: 'Двоствольний' },
+  { term: 'Never Ending', translation: 'Необмежений' },
+  { term: 'Plasma Infused', translation: 'Насичений плазмою' },
+  { term: 'Incendiary', translation: 'Запальний' },
+  { term: 'Explosive', translation: 'Вибуховий' },
+  { term: 'Wounding', translation: 'Кривавий' },
+  { term: 'Furious', translation: 'Шалений' },
+  { term: 'Instigating', translation: 'Провокуючий' },
+  { term: 'Bloodied', translation: 'Закривавлений' },
+  { term: 'Nocturnal', translation: 'Нічний' },
+  { term: 'Chameleon', translation: 'Хамелеон' },
+
+  // ── Armor mod names (OMOD slots) ────────────────────────────────────────────
+  { term: 'Deep Pocketed', translation: 'Глибокі кишені' },
+  { term: 'Pocketed', translation: 'Додаткові кишені' },
+  { term: 'Lead Lined', translation: 'Свинцева обшивка' },
+  { term: 'Dense', translation: 'Вибухозахист' },
+  { term: 'Ultra-Light Build', translation: 'Надлегкість' },
+  { term: 'BioCommMesh', translation: 'Біомережа' },
+  { term: 'Tesla Bracers', translation: 'Наручі Тесли' },
+  { term: 'Jet Pack', translation: 'Реактивний ранець' },
+  { term: 'Aerodynamic', translation: 'Аеродинаміка' },
+  { term: 'Braced', translation: 'Гартування' },
+  { term: 'Comfort Grip', translation: "Зручне руків'я" },
+  { term: 'Cushioned', translation: "М'яка підкладка" },
+  { term: 'Sleek', translation: 'Вирівнювання' },
+  { term: 'Strengthened', translation: 'Зміцнення' },
+  { term: 'Weighted', translation: 'Збалансований' },
+  { term: 'Shielded', translation: 'Екранований' },
+  { term: 'Recon', translation: 'Розвідувальний' },
+  { term: 'Spiked', translation: 'З шипами' },
+  { term: 'Padded', translation: 'Підбій' },
+  { term: 'Pneumatic', translation: 'Пневматика' },
+  { term: 'Hardened', translation: 'Зміцнена' },
+  { term: 'Targeting', translation: 'Прицільний' },
+  { term: 'Bladed', translation: 'Лезо' },
+  { term: 'Calibrated', translation: 'Калібрований' },
+  { term: 'Vented', translation: 'Отруйний' },
+  { term: 'Lighter Build', translation: 'Полегшення' },
+
+  // ── Faction ranks & Children of Atom ────────────────────────────────────────
+  { term: 'Minuteman', translation: 'Мінітмен' },
+  { term: 'Star Paladin', translation: 'Зоряний паладин' },
+  { term: 'Knight-Sergeant', translation: 'Лицар-сержант' },
+  { term: 'Knight-Captain', translation: 'Лицар-капітан' },
+  { term: 'Knight-Commander', translation: 'Лицар-командор' },
+  { term: 'Lancer-Knight', translation: 'Пілот-лицар' },
+  { term: 'Glory to Atom!', translation: 'Слава Атому!' },
+  { term: 'Atom watch over you', translation: 'Атом захистить вас' },
 
   // ── Weapons ─────────────────────────────────────────────────────────────────
   { term: 'Mini Nuke', translation: 'Ядерний мінізаряд' },

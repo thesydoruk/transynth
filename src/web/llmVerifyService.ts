@@ -11,11 +11,7 @@ import {
   type LlmVerifyVerdict,
 } from '../llm/verifyTranslate';
 import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
-import {
-  resolveGlossaryCorrection,
-  resolveVerifyFixAction,
-  validateTranslationForVerify,
-} from '../llm/verifySuggestionGuards';
+import { canApproveAppliedFix, resolveVerifyFixAction } from '../llm/verifySuggestionGuards';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
@@ -500,6 +496,7 @@ export const runLlmVerifyJob = async (
     );
 
     const okStringIds: number[] = [];
+    const validatedFixedIds: number[] = [];
     const logAction = (
       row: VerifyStringRow,
       action: LlmVerifyActionLogEntry['action'],
@@ -524,61 +521,6 @@ export const runLlmVerifyJob = async (
       const row = rowById.get(result.id);
 
       if (result.verdict === 'ok') {
-        if (row) {
-          const itemForValidation: LlmVerifyItem = {
-            id: row.string_id,
-            source: row.source,
-            translation: row.translation,
-            grup: parseRecordLocation(row.signature, row.path).grup,
-            edid: row.edid,
-            field: parseRecordLocation(row.signature, row.path).field,
-            context: row.context,
-          };
-          const itemGlossary = relevantGlossaryEntries(glossaryAll, [row.source]);
-          const txCheck = validateTranslationForVerify(itemForValidation, opts.game, itemGlossary);
-          if (!txCheck.ok) {
-            const fixAction = resolveGlossaryCorrection(itemForValidation, itemGlossary, opts.game);
-            const issue: LlmVerifyIssue = {
-              stringId: result.id,
-              source: row.source,
-              translation: row.translation,
-              signature: row.signature,
-              path: row.path,
-              edid: row.edid,
-              verdict: 'incorrect',
-              reason: txCheck.message,
-              confidence: Math.max(result.confidence, 0.95),
-              suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : null,
-              fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
-            };
-            job.issues.push(issue);
-            if (fixAction.kind === 'apply') {
-              try {
-                await upsertTranslation(
-                  db,
-                  result.id,
-                  fixAction.suggestion,
-                  'auto',
-                  opts.targetLang,
-                );
-                job.fixed++;
-                logAction(row, 'fixed', fixAction.suggestion);
-              } catch (err) {
-                logVerify.warn('auto-fix failed for glossary verify row', {
-                  jobId,
-                  modId: opts.modId,
-                  stringId: result.id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              }
-            } else if (job.autoApproveVerified) {
-              logAction(row, 'issue', txCheck.message);
-            } else {
-              emitProgress({ issue });
-            }
-            continue;
-          }
-        }
         okStringIds.push(result.id);
         emitProgress();
         continue;
@@ -586,7 +528,6 @@ export const runLlmVerifyJob = async (
 
       if (!row) continue;
 
-      const itemGlossary = relevantGlossaryEntries(glossaryAll, [row.source]);
       const itemForValidation: LlmVerifyItem = {
         id: row.string_id,
         source: row.source,
@@ -597,19 +538,13 @@ export const runLlmVerifyJob = async (
         context: row.context,
       };
 
-      let fixAction = resolveVerifyFixAction(
+      const fixAction = resolveVerifyFixAction(
         itemForValidation,
         result.verdict,
         result.suggestion,
         job.fixSuspicious,
         opts.game,
       );
-      if (fixAction.kind !== 'apply') {
-        const glossaryFix = resolveGlossaryCorrection(itemForValidation, itemGlossary, opts.game);
-        if (glossaryFix.kind === 'apply') {
-          fixAction = glossaryFix;
-        }
-      }
 
       const issue: LlmVerifyIssue = {
         stringId: result.id,
@@ -629,6 +564,9 @@ export const runLlmVerifyJob = async (
         try {
           await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
           job.fixed++;
+          if (canApproveAppliedFix(itemForValidation, fixAction.suggestion, opts.game)) {
+            validatedFixedIds.push(result.id);
+          }
           logAction(row, 'fixed', fixAction.suggestion);
         } catch (err) {
           logVerify.warn('auto-fix failed for verify row', {
@@ -655,11 +593,16 @@ export const runLlmVerifyJob = async (
       }
     }
 
-    if (job.autoApproveVerified && okStringIds.length > 0) {
+    if (job.autoApproveVerified && (okStringIds.length > 0 || validatedFixedIds.length > 0)) {
+      const toApprove = [...okStringIds, ...validatedFixedIds];
       try {
-        const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
+        const promoted = await approveVerifiedTranslations(db, toApprove, opts.targetLang);
         job.approved += promoted;
         for (const id of okStringIds) {
+          const row = rowById.get(id);
+          if (row) logAction(row, 'approved');
+        }
+        for (const id of validatedFixedIds) {
           const row = rowById.get(id);
           if (row) logAction(row, 'approved');
         }

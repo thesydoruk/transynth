@@ -3,7 +3,8 @@
  * Automatic AI translation review: verify pending rows, auto-approve OK, auto-fix incorrect rows.
  *
  * By default only draft/tm/fuzzy/auto translations are checked. Use `--force` to re-check
- * confirmed (reviewed/human) rows as well.
+ * confirmed (reviewed/human) rows as well. Rows with verdict ok are promoted to reviewed;
+ * auto-applied fixes are promoted only when suggestion passes token/noop guards.
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids
@@ -42,8 +43,7 @@ import { formatLogBlock } from '../src/logging/format';
 import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llmVerifyService';
 import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/cliAutoVerify';
 import type { LlmVerifyIssue } from '../src/web/llmVerifyService';
-import { formatVerifyIssuePrefix, resolveVerifyFixAction } from '../src/llm/verifySuggestionGuards';
-import { parseRecordLocation } from '../src/utils/recordLocation';
+import { formatVerifyIssuePrefix, type VerifyFixAction } from '../src/llm/verifySuggestionGuards';
 import {
   assertCliModSelector,
   formatPct,
@@ -69,22 +69,11 @@ const logIssue = (
   opts?: { separator?: boolean },
 ): void => {
   const loc = formatIssueLocation(issue);
-  const { grup, field } = parseRecordLocation(issue.signature, issue.path);
-  const fixAction = resolveVerifyFixAction(
-    {
-      id: issue.stringId,
-      source: issue.source,
-      translation: issue.translation,
-      grup,
-      edid: issue.edid,
-      field,
-      context: null,
-    },
-    issue.verdict,
-    issue.suggestion,
-    fixSuspicious,
-    game,
-  );
+  const fixAction: VerifyFixAction = issue.fixRejected
+    ? { kind: 'reject_fix', suggestion: issue.suggestion ?? '', message: issue.fixRejected }
+    : issue.suggestion
+      ? { kind: 'apply', suggestion: issue.suggestion }
+      : { kind: 'flag_only' };
   const prefix = formatVerifyIssuePrefix(dryRun, fixAction);
   const block = formatLogBlock(
     `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)})`,
@@ -92,7 +81,7 @@ const logIssue = (
       reason: issue.reason,
       was: issue.translation,
       ...(issue.suggestion ? { fix: issue.suggestion } : {}),
-      ...(fixAction.kind === 'reject_fix' ? { fixRejected: fixAction.message } : {}),
+      ...(issue.fixRejected ? { fixRejected: issue.fixRejected } : {}),
     },
   );
   log.info(opts?.separator ? `\n${block}` : block);

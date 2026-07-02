@@ -1,7 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   buildGlossaryFixSuggestion,
+  canonicalPresentInTranslation,
   findGlossaryViolation,
+  isExactOrDashGlossarySource,
   resolveGlossaryFixSuggestion,
 } from '../glossaryVerify';
 
@@ -32,5 +34,44 @@ describe('glossaryVerify', () => {
     expect(resolveGlossaryFixSuggestion('Layer Handle - 10', 'Ручка шару 10', glossary)).toBe(
       'Обробник шару — 10',
     );
+  });
+
+  it('accepts inflected canonical words in long text', () => {
+    expect(
+      findGlossaryViolation(
+        'Layer Handle copy method',
+        'Метод копіювання обробника шару',
+        glossary,
+      ),
+    ).toBeNull();
+  });
+
+  it('skips RACE/FMRN compound morph labels', () => {
+    const raceGlossary = [{ term: 'Blemishes', translation: 'Подразнення' }];
+    expect(
+      findGlossaryViolation('Blemishes Forehead 4', 'Висипи на лобі 4', raceGlossary, {
+        grup: 'RACE',
+        field: 'FMRN',
+      }),
+    ).toBeNull();
+    expect(
+      findGlossaryViolation('Blemishes', 'Висипи', raceGlossary, { grup: 'RACE', field: 'FMRN' }),
+    ).toEqual({ term: 'Blemishes', translation: 'Подразнення' });
+  });
+
+  it('skips Workshop Plus brand name', () => {
+    const wsGlossary = [{ term: 'Workshop', translation: 'Майстерня' }];
+    expect(
+      findGlossaryViolation('Workshop Plus: Tracking', 'Workshop Plus: Відстеження', wsGlossary),
+    ).toBeNull();
+  });
+
+  it('detects exact and dash glossary sources', () => {
+    expect(isExactOrDashGlossarySource('Layer Handle - 4', 'Layer Handle')).toBe(true);
+    expect(isExactOrDashGlossarySource('Full Diamond', 'Full')).toBe(false);
+  });
+
+  it('matches canonical stems in inflected translation', () => {
+    expect(canonicalPresentInTranslation('обробника шару', 'Обробник шару')).toBe(true);
   });
 });

@@ -29,6 +29,69 @@ const fo4DescriptiveDashUk = [
   '- "Generator - Large" → "Великий генератор"; "Bottle Message - Need a Hand" → "Лист у пляшці: потрібна допомога"; "VR Spawner - Alien" → "VR-генератор: інопланетянин".',
 ];
 
+const fo4LegendaryAffixesEn = [
+  '### LEGENDARY AFFIXES (WEAP/ARMO name prefixes):',
+  '- Compact modifier names from glossary — NOT expanded effect descriptions.',
+  '- Pattern: [affix] + [weapon/armor name]; one adjective stem, not "against …" phrasing.',
+  '- "Assassin\'s" → human-damage affix per glossary; not a full phrase like "assassin of humans".',
+  '- "Exterminator\'s" → bug/robot damage affix; not unrelated words like "insecticide".',
+  '- "Stalker\'s" → sneak-damage affix; not accuracy/sniper wording.',
+  '- "Lucky" → luck affix per glossary; do not transliterate as a proper name.',
+  '- "Never Ending" → short magazine-affix name; not a full sentence about reloading.',
+  '- "Incendiary" → fire damage; "Explosive" → explosive damage — not unrelated ammo types.',
+  '- Match adjective gender to the head noun (rifle, armor, gauntlets).',
+];
+
+const fo4LegendaryAffixesUk = [
+  '### ЛЕГЕНДАРНІ АФІКСИ (WEAP/ARMO, префікс у назві):',
+  '- Стисла назва модифікатора з glossary — НЕ розгорнутий опис ефекту в Pip-Boy.',
+  '- Шаблон: [афікс] + [зброя/броня]; один прикметниковий корінь, без «проти …» у префіксі.',
+  "- «Assassin's» → «Вбивчий …»; НЕ «Вбивці людей» чи «Вбивча» з іншим коренем.",
+  "- «Exterminator's» → «Винищувальний …»; НЕ «Інсектицидний» (калька з insects).",
+  "- «Stalker's» → «Розвідувальний …»; НЕ «Точний» (accuracy). «Sentinel's» → «Статичний …» (стоячи на місці).",
+  "- «Ghoul Slayer's» / «Mutant Slayer's» → «Гулевинищувальний» / «Мутантовинищувальний»; НЕ «Вбивці гулів».",
+  '- «Lucky» → «Фартовий»; НЕ «Лаккі». «VATS Enhanced» → «VATS оптимізований»; НЕ «З VATS».',
+  '- «Never Ending» → «Необмежений» / «Невичерпний»; НЕ речення про магазин.',
+  '- «Incendiary» → «Запальний»; НЕ «Бронебійний». «Explosive» → «Вибуховий»; НЕ «Вибухівка» (іменник).',
+  '- Узгоджуй рід/відмінок прикметника з іменником (карабін, броня, рукавиця).',
+];
+
+const fo4ArmorModNamesEn = [
+  '### ARMOR MOD SLOT NAMES (OMOD):',
+  '- Use compact canonical slot labels from glossary — noun phrases, not "Equipped with …" descriptions.',
+  '- "Deep Pocketed" → pocket upgrade name; not "With deep pockets".',
+  '- "Lead Lined" → lead lining slot; "Dense" → explosion-protection slot; "Ultra-Light Build" → ultralight build.',
+  '- "BioCommMesh" → mesh upgrade name; "Tesla Bracers" → bracer name, not a full sentence.',
+  '- "Jet Pack" on armor → reactive prefix; standalone item → jet pack name per glossary.',
+];
+
+const fo4ArmorModNamesUk = [
+  '### МОДИФІКАТОРИ БРОНІ (OMOD, назва слота):',
+  '- Стисла канонічна формула з glossary — іменник/назва слота, НЕ опис «Обладнана …» / «З …».',
+  '- «Deep Pocketed» → «Глибокі кишені»; НЕ «З глибокими кишенями». «Pocketed» → «Додаткові кишені».',
+  '- «Lead Lined» → «Свинцева обшивка»; «Dense» → «Вибухозахист»; «Ultra-Light Build» → «Надлегкість».',
+  '- «BioCommMesh» → «Біомережа»; «Tesla Bracers» → «Наручі Тесли».',
+  '- «Jet Pack» у назві броні → «Реактивна …»; окремий предмет → «Реактивний ранець».',
+];
+
+const fo4FactionAdjectiveEn = [
+  '### FACTION NOUN vs ADJECTIVE IN ITEM NAMES:',
+  '- "Institute" (faction) → proper noun; in item names use adjective form (Institute laser rifle).',
+  '- "Railroad" (faction) → faction name; adjective form for gear — not quoted faction name inside item label.',
+  '- "Minuteman" / "Gunner" → member or adjective forms for gear; singular Gunner ≠ plural Gunners faction.',
+  '- "The Institute" / "The Brotherhood" / "The Railroad" / "The Commonwealth" → full names per glossary.',
+];
+
+const fo4FactionAdjectiveUk = [
+  '### ФРАКЦІЇ: ІМЕННИК vs ПРИКМЕТНИК У НАЗВАХ ПРЕДМЕТІВ:',
+  '- «Institute» (фракція) → «Інститут»; у назві зброї/броні — «інститутський/інститутська» («Інститутська лазерна гвинтівка»).',
+  '- «Railroad» (фракція) → «Підземка»; прикметник — «підземна/підземний» («Підземна гвинтівка»), НЕ лапки «"Підземка"» всередині назви.',
+  '- «Minuteman» → «Мінітмен»; прикметник — «мінітменський/мінітменська».',
+  '- «Gunner» (одн., людина) → «стрілець»; прикметник — «стрілецька/стрілецький»; «Gunners» (мн.) → «Стрільці».',
+  '- «The Institute» / «The Brotherhood» / «The Railroad» / «The Commonwealth» — повні назви з «The» → див. glossary.',
+  '- «Glory to Atom!» → «Слава Атому!»; «Atom watch over you» → «Атом захистить вас.»',
+];
+
 const fo4NamingRulesEn = [
   '### FALLOUT 4 NAMING CONVENTIONS:',
   '- Economy/units: caps, rads, HP, AP, XP — keep or localize per community standard; do not convert numbers.',
@@ -43,7 +106,7 @@ const fo4NamingRulesEn = [
 
 const fo4NamingRulesUk = [
   '### ПРАВИЛА ІМЕНУВАННЯ (Fallout 4):',
-  '- Одиниці: lbs, HP, AP, XP, % — не конвертуй числа.',
+  '- Одиниці: lbs, HP, AP, XP, % — не конвертуй числа; «шкода» для damage (не «урон»).',
   '- Зброя: "...Rifle"/"...Gun" → "...карабін" (Combat Rifle → Бойовий карабін, Plasma Gun → Плазмовий карабін); Pistol → пістолет; Launcher → гранатомет.',
   '- Частини СИЛОВОЇ броні (ARMO/FULL, Right/Left у source): обидва формати OK — "[Права/Ліва] [рука/нога] [модель]" АБО "Броня [модель] для [правої/лівої] [руки/ноги]". Слово "Armor" не залишай. Приклади: "T-51 Right Arm Armor" → "Права рука T-51" або "Броня T-51 для правої руки".',
   '- Деталі PA для крафту (MISC, без Right/Left): "T-45d Arm Armor" → "Броня T-45d для руки"; "T-45d Helmet" → "Шолом T-45d"; "T-45d Torso Lining" → "Обшивка T-45d" — НЕ додавай "Права/Ліва", якщо їх немає в source.',
@@ -65,6 +128,12 @@ export const fo4Rules: GameRules = {
     '',
     ...fo4DescriptiveDashEn,
     '',
+    ...fo4LegendaryAffixesEn,
+    '',
+    ...fo4ArmorModNamesEn,
+    '',
+    ...fo4FactionAdjectiveEn,
+    '',
     ...fo4NamingRulesEn,
     ...formatCanonicalEnLines('FALLOUT 4', FO4_UK_GLOSSARY, targetLang),
     '### TRANSLATION EXAMPLES (Fallout 4):',
@@ -74,6 +143,8 @@ export const fo4Rules: GameRules = {
     '- UI: "Ammo - Ballistic" → both parts fully in ' +
       targetLang +
       '; "Wood" → natural capitalization, not ALL CAPS.',
+    '- Legendary: "Assassin\'s Combat Rifle" → compact affix + weapon per glossary; not a full phrase.',
+    '- OMOD: "Deep Pocketed" → slot name per glossary; not "With deep pockets".',
     '- Masked: "I need ¤PH0¤ caps." → translate words, keep ¤PH0¤ unchanged.',
     '- ARMO/FULL: "T-51 Right Arm Armor" → body part + model per locale rules; "Hellfire Mk.II Arm Armor" → transliterated set + arm-slot phrasing + Mk.II — never invent Right/Left.',
     '- MISC PA: "T-45d Arm Armor" → model + slot without side; "T-45d Helmet" → "T-45d Helmet" localized.',
@@ -82,6 +153,8 @@ export const fo4Rules: GameRules = {
   uk: () => [
     '### СТИЛЬ, ТОН ТА АТМОСФЕРА (Fallout 4):',
     '- Сетинг: постійна Співдружність (Бостон), 2287 р. Мова прагматична, зношена, подекуди з чорним гумором; без сучасного сленгу та канцеляриту.',
+    '- Канон BDD / Fallout 4 UA: «шкода» (не «урон»), «кришки», «Сховище», «Піп-бой»; назви предметів у Pip-Boy — стисло, без розгорнутих описів ефектів.',
+    '- Легендарні афікси та OMOD-слоти: стисла формула з glossary — не розширюй описом ефекту й не підбирай синонім (див. секції нижче).',
     '- Діалоги (grup: INFO/DIAL): жива розмовна мова для озвучення; інверсія, еліпсиси, вигуки.',
     '- UI/предмети (grup: FULL, DESC, CNAM): стисло; назви предметів звучать природно в інвентарі Піп-боя.',
     '- Книги/записи (grup: BOOK): тон автора — науковий, щоденниковий, пропаганда, довоєнна реклама.',
@@ -89,11 +162,20 @@ export const fo4Rules: GameRules = {
     '',
     ...fo4DescriptiveDashUk,
     '',
+    ...fo4LegendaryAffixesUk,
+    '',
+    ...fo4ArmorModNamesUk,
+    '',
+    ...fo4FactionAdjectiveUk,
+    '',
     ...fo4NamingRulesUk,
     ...formatCanonicalUkLines('FALLOUT 4', FO4_UK_GLOSSARY),
     '### ПРИКЛАДИ ПЕРЕКЛАДУ (Fallout 4):',
     '- Діалог: "Listen, Nick. We\'ve got a problem." → "Слухай, Ніку. У нас проблема." (жива розмовна мова, кличний відмінок).',
     '- UI: "Ammo - Ballistic" → "Боєприпаси — балістичні"; "Wood" → "Деревина" (не "ДЕРЕВ\'ЯНИЙ").',
+    '- Легендарний афікс: "Assassin\'s Combat Rifle" → "Вбивчий бойовий карабін"; "Lucky Laser Gun" → "Фартовий лазерний карабін".',
+    '- OMOD: "Deep Pocketed" → "Глибокі кишені"; "Lead Lined" → "Свинцева обшивка".',
+    '- Фракційна броня: "Institute Lab Coat" → "Інститутський лабораторний халат"; "Railroad Gauntlets" → "Підземні рукавиці".',
     '- З масками: "I need ¤PH0¤ caps." → "Мені потрібно ¤PH0¤ кришок." (ключ ¤PH0¤ не чіпати).',
     '- ARMO/FULL: "Combat Armor" → "Бойова броня"; "T-51 Right Arm Armor" → "Права рука T-51" або "Броня T-51 для правої руки"; "Hellfire Mk.II Arm Armor" → "Хелфайр броня для рук Mk.II" (без "Права/Ліва", якщо їх немає в source).',
     '- MISC PA: "T-45d Arm Armor" → "Броня T-45d для руки"; "T-45d Helmet" → "Шолом T-45d"; "T-45d Torso Lining" → "Обшивка T-45d".',
@@ -119,6 +201,9 @@ export const fo4Rules: GameRules = {
     '- Compact vs verbose morph names (e.g. "Низ вуха" vs "Нижня частина вуха") — both OK if meaning matches; do not flip between them.',
     '- Weapon/mod stat lines (OMOD/WEAP DESC): keep "шкода" for damage; do NOT replace with "урон" or "ушкодження" in verify.',
     '- Singular "Gunner" (one person) → "стрілець", NOT faction "Стрільці". Plural "Gunners" → "Стрільці".',
+    '- Legendary affixes: compact glossary form required — "Stalker\'s" not "Точний"; "Exterminator\'s" not "Інсектицидний"; "Lucky" not "Лаккі"; "Incendiary" not "Бронебійний".',
+    '- OMOD armor slots: "Deep Pocketed" → "Глибокі кишені" not "З глибокими кишенями"; "Tesla Bracers" → "Наручі Тесли" not a full sentence.',
+    '- Faction gear: "Railroad" adjective → "Підземна/Підземний", not quoted «"Підземка"» inside item name; "Institute" adjective → "Інститутська/Інститутський".',
     '- "Remnant" in object names → leftover/trace (залишок сигналу), NOT "залишки [faction]".',
     '- Mod name tokens (Beaton, JuryRigged): transliterate as proper names; do NOT read Beaton as "concrete/beton".',
     '- Do not infer display words from edid (Perk, PickUp); judge by source field only.',
@@ -146,6 +231,9 @@ export const fo4Rules: GameRules = {
     '- Стислий vs розлогий варіант назви частини тіла («Низ вуха» ↔ «Нижня частина вуха») — обидва OK за однакового змісту; не міняй туди-назад.',
     '- Характеристики зброї/модів (OMOD, WEAP DESC): «шкода» для damage — проектна норма; НЕ замінюй на «урон»/«ушкодження» під час verify. «Більша/менша/покращена шкода» — OK.',
     '- «Gunner» (одн., людина) → «стрілець»/«стрільця»; «Gunners» (фракція) → «Стрільці». Не плутай у цілях квестів («Піп-бой стрільця» ≠ «Піп-бой Стрільців»).',
+    "- Легендарні афікси: стисла форма з glossary — «Stalker's» ≠ «Точний»; «Exterminator's» ≠ «Інсектицидний»; «Lucky» ≠ «Лаккі»; «Incendiary» ≠ «Бронебійний»; «Never Ending» ≠ речення про магазин.",
+    '- OMOD-броня: «Deep Pocketed» → «Глибокі кишені», НЕ «З глибокими кишенями»; «Tesla Bracers» → «Наручі Тесли», НЕ «Обладнана наручами…».',
+    '- Фракційна броня/зброя: «Railroad» як прикметник → «Підземна/Підземний», НЕ лапки «"Підземка"»; «Institute» → «Інститутська/Інститутський».',
     "- «Remnant» у назвах об'єктів → залишок/слід (напр. «залишок сигналу»), НЕ «залишки стрільців».",
     "- Власні назви в mod-назвах (Beaton, JuryRigged): транслітеруй; Beaton — ім'я/термін, НЕ «бетон».",
     '- "Barrel" → «ствол» (НЕ «стівол», НЕ «стіл»).',

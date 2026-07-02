@@ -12,7 +12,7 @@ import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
-import { sanitizeVerifyResult, validateTranslationForVerify } from './verifySuggestionGuards';
+import { reconcileVerifyResult } from './verifySuggestionGuards';
 import type { LlmGlossaryEntry } from './translate';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
@@ -56,7 +56,7 @@ const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect
 
 const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
 
-/** Upgrade LLM verdict when deterministic placeholder check fails. */
+/** Upgrade LLM ok → incorrect only when protected tokens are broken in the translation. */
 export const applyPlaceholderGuardToVerifyResult = (
   item: LlmVerifyItem,
   result: LlmVerifyItemResult,
@@ -68,21 +68,7 @@ export const applyPlaceholderGuardToVerifyResult = (
     game as GameType | undefined,
     { grup: item.grup, field: item.field },
   );
-  if (check.ok) {
-    if (result.verdict === 'ok') {
-      const txCheck = validateTranslationForVerify(item, game);
-      if (!txCheck.ok) {
-        return {
-          id: result.id,
-          verdict: 'incorrect',
-          reason: txCheck.message,
-          confidence: Math.max(result.confidence, 0.95),
-          suggestion: result.suggestion,
-        };
-      }
-    }
-    return result;
-  }
+  if (check.ok) return result;
 
   if (result.verdict === 'ok') {
     return {
@@ -309,6 +295,6 @@ export const verifyTranslationsWithLlm = async (
       throw new Error(`LLM verify response missing item id=${item.id}`);
     }
     const guarded = applyPlaceholderGuardToVerifyResult(item, row, opts.game);
-    return sanitizeVerifyResult(item, guarded, opts.game);
+    return reconcileVerifyResult(item, guarded);
   });
 };
