@@ -689,7 +689,7 @@ export const bulkUpsertImportTranslations = async (
   items: BulkTranslationRow[],
   targetLang: string,
   provenance: string,
-  batchSize = 1000,
+  batchSize = CONFIG.modImportBatchSize,
   status = 'reviewed',
 ): Promise<number> =>
   bulkUpsertTranslationsCore(db, items, targetLang, provenance, status, batchSize, null);

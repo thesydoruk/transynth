@@ -24,7 +24,6 @@ const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const STRINGS_DIR_NAMES = new Set(['strings']);
 const SKIP_DIRS = new Set(['.transynth-extracted', '.git', 'node_modules']);
 const STRINGS_FILE_RE = /^(.+)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i;
-const BATCH_SIZE = 1000;
 
 export type StringsPackFile = {
   filePath: string;
@@ -477,10 +476,11 @@ export const importStringsPack = async (
     );
   }
 
+  const importBatchSize = CONFIG.modImportBatchSize;
   let imported = 0;
   await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
-    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-      const batch = pending.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < pending.length; i += importBatchSize) {
+      const batch = pending.slice(i, i + importBatchSize);
       const results = await bulkInsertModImportRows(db, modId, batch);
       imported += results.length;
       if (imported > 0 && imported % 5000 === 0) {

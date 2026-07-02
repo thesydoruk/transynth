@@ -15,13 +15,13 @@
  * - progress is tracked as `imported_records`,
  * - and pause/cancel requests are honoured between record writes.
  */
-import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../../db';
+import { upsertMod, type Tx } from '../../db';
 import { sha1Hex } from '../../utils/hash';
-import { normalizeForHash, normalizeNoPunct } from '../../utils/textNorm';
 import { parseCsvLine } from '../../utils/csv';
 import { log } from '../../logger';
-
-const BATCH_SIZE = 1000;
+import { CONFIG } from '../../config';
+import { bulkInsertRecordImportRows } from './recordImportBulk';
+import { withDeferredImportIndexes } from './modImportIndexes';
 
 /**
  * Import job row stored in the `csv_imports` table.
@@ -149,6 +149,52 @@ const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
 
 // ── CSV parsing ─────────────────────────────────────────────────────────────
 
+const parseCsvRecordFields = (
+  f: string[],
+  cols: {
+    iFormId: number;
+    iSig: number;
+    iEdid: number;
+    iPath: number;
+    iSource: number;
+    iTarget: number;
+    iStatus: number;
+  },
+): CsvRecord => {
+  const statusRaw = cols.iStatus >= 0 ? (f[cols.iStatus] ?? '') : '';
+  let statusByte = 0xff;
+  if (statusRaw === 'confirmed') statusByte = 0x63;
+  else if (statusRaw === 'untranslated') statusByte = 0xff;
+  else if (/^\d+$/.test(statusRaw)) statusByte = Number(statusRaw);
+
+  return {
+    formId: cols.iFormId >= 0 ? (f[cols.iFormId] ?? '') : '',
+    signature: cols.iSig >= 0 ? (f[cols.iSig] ?? '') : '',
+    edid: cols.iEdid >= 0 ? (f[cols.iEdid] ?? '') : '',
+    field: cols.iPath >= 0 ? (f[cols.iPath] ?? 'FULL') : 'FULL',
+    source: cols.iSource >= 0 ? (f[cols.iSource] ?? '') : '',
+    target: cols.iTarget >= 0 ? (f[cols.iTarget] ?? '') : '',
+    status: statusByte,
+  };
+};
+
+const parseCsvHeader = (headerLine: string) => {
+  const cols = parseCsvLine(headerLine);
+  const idx = (name: string) => cols.findIndex((c) => c.toLowerCase() === name.toLowerCase());
+  return {
+    cols,
+    fields: {
+      iFormId: idx('FormID'),
+      iSig: idx('Signature'),
+      iEdid: idx('EDID'),
+      iPath: idx('Path'),
+      iSource: idx('Source'),
+      iTarget: idx('Target'),
+      iStatus: idx('Status'),
+    },
+  };
+};
+
 /**
  * Parse CSV text into structured {@link CsvRecord} objects.
  *
@@ -163,35 +209,11 @@ export const parseCsvRecords = (text: string): CsvRecord[] => {
   if (lines.length === 0) return [];
 
   const headerLine = lines.shift()!;
-  const cols = parseCsvLine(headerLine);
-  const idx = (name: string) => cols.findIndex((c) => c.toLowerCase() === name.toLowerCase());
-
-  const iFormId = idx('FormID');
-  const iSig = idx('Signature');
-  const iEdid = idx('EDID');
-  const iPath = idx('Path');
-  const iSource = idx('Source');
-  const iTarget = idx('Target');
-  const iStatus = idx('Status');
+  const { fields } = parseCsvHeader(headerLine);
 
   const records: CsvRecord[] = [];
   for (const line of lines) {
-    const f = parseCsvLine(line);
-    const statusRaw = iStatus >= 0 ? (f[iStatus] ?? '') : '';
-    let statusByte = 0xff;
-    if (statusRaw === 'confirmed') statusByte = 0x63;
-    else if (statusRaw === 'untranslated') statusByte = 0xff;
-    else if (/^\d+$/.test(statusRaw)) statusByte = Number(statusRaw);
-
-    records.push({
-      formId: iFormId >= 0 ? (f[iFormId] ?? '') : '',
-      signature: iSig >= 0 ? (f[iSig] ?? '') : '',
-      edid: iEdid >= 0 ? (f[iEdid] ?? '') : '',
-      field: iPath >= 0 ? (f[iPath] ?? 'FULL') : 'FULL',
-      source: iSource >= 0 ? (f[iSource] ?? '') : '',
-      target: iTarget >= 0 ? (f[iTarget] ?? '') : '',
-      status: statusByte,
-    });
+    records.push(parseCsvRecordFields(parseCsvLine(line), fields));
   }
   return records;
 };
@@ -210,80 +232,12 @@ export function* iterCsvRecords(text: string): Generator<CsvRecord> {
   if (lines.length === 0) return;
 
   const headerLine = lines.shift()!;
-  const cols = parseCsvLine(headerLine);
-  const idx = (name: string) => cols.findIndex((c) => c.toLowerCase() === name.toLowerCase());
-
-  const iFormId = idx('FormID');
-  const iSig = idx('Signature');
-  const iEdid = idx('EDID');
-  const iPath = idx('Path');
-  const iSource = idx('Source');
-  const iTarget = idx('Target');
-  const iStatus = idx('Status');
+  const { fields } = parseCsvHeader(headerLine);
 
   for (const line of lines) {
-    const f = parseCsvLine(line);
-    const statusRaw = iStatus >= 0 ? (f[iStatus] ?? '') : '';
-    let statusByte = 0xff;
-    if (statusRaw === 'confirmed') statusByte = 0x63;
-    else if (statusRaw === 'untranslated') statusByte = 0xff;
-    else if (/^\d+$/.test(statusRaw)) statusByte = Number(statusRaw);
-
-    yield {
-      formId: iFormId >= 0 ? (f[iFormId] ?? '') : '',
-      signature: iSig >= 0 ? (f[iSig] ?? '') : '',
-      edid: iEdid >= 0 ? (f[iEdid] ?? '') : '',
-      field: iPath >= 0 ? (f[iPath] ?? 'FULL') : 'FULL',
-      source: iSource >= 0 ? (f[iSource] ?? '') : '',
-      target: iTarget >= 0 ? (f[iTarget] ?? '') : '',
-      status: statusByte,
-    };
+    yield parseCsvRecordFields(parseCsvLine(line), fields);
   }
 }
-
-const importRecord = async (
-  db: Tx,
-  modId: number,
-  rec: CsvRecord,
-  srcLang: string,
-  tgtLang: string,
-) => {
-  const recPath = rec.field || 'FULL';
-  const hashNorm = normalizeForHash(rec.source);
-  const recordId = await upsertRecord(
-    db,
-    modId,
-    rec.signature,
-    recPath,
-    recPath,
-    rec.edid || null,
-    hashNorm,
-    rec.formId || null,
-  );
-  const srcNorm = normalizeForHash(rec.source);
-  const srcStringId = await insertString(
-    db,
-    recordId,
-    srcLang,
-    rec.source,
-    srcNorm,
-    'csv',
-    undefined,
-    normalizeNoPunct(rec.source),
-  );
-  if (rec.target) {
-    const status = rec.status === 0x63 ? 'human' : 'auto';
-    await addTranslation(
-      db,
-      srcStringId,
-      tgtLang,
-      rec.target,
-      status,
-      rec.status === 0x63 ? 1.0 : 0.5,
-      'csv',
-    );
-  }
-};
 
 /**
  * Register an uploaded CSV file by creating (or reusing) an import job row.
@@ -339,10 +293,6 @@ export const requestCsvPause = (jobId: number) => {
 };
 
 /**
- * Run CSV import for a single job. Reads the file text, resumes from last offset.
- * Calls onProgress after each batch.
- */
-/**
  * Execute a CSV import job.
  *
  * The import resumes from `job.imported_records`. Progress is committed in
@@ -366,71 +316,99 @@ export const runCsvImport = async (
   const state: ActiveImport = { cancel: false, pause: false };
   activeImports.set(job.id, state);
 
-  const records = parseCsvRecords(text);
   const skipCount = job.imported_records;
+  const importBatchSize = CONFIG.modImportBatchSize;
+  let processed = 0;
   let imported = job.imported_records;
-  let batchCount = 0;
   let inTx = false;
+  const pending: CsvRecord[] = [];
   const startTime = Date.now();
 
   log.info(
-    `[CSV Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount}`,
+    `[CSV Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount} (batch=${importBatchSize}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
   );
 
-  try {
-    for (let i = 0; i < records.length; i++) {
-      if (i < skipCount) continue;
+  const flushPendingBatch = async () => {
+    if (pending.length === 0) return;
+    await bulkInsertRecordImportRows(db, job.mod_id!, pending, job.src_lang, job.tgt_lang, {
+      sourceKind: 'csv',
+      provenance: 'csv',
+    });
+    imported += pending.length;
+    pending.length = 0;
+  };
 
-      if (state.cancel) {
-        if (inTx) {
-          await db.query('COMMIT');
-          inTx = false;
-        }
-        await markFailed(db, job.id, imported);
-        log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
-        break;
-      }
-      if (state.pause) {
-        if (inTx) {
-          await db.query('COMMIT');
-          inTx = false;
-        }
-        await markPaused(db, job.id, imported);
-        log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
-        break;
-      }
-
-      if (!inTx) {
-        await db.query('BEGIN');
-        inTx = true;
-        batchCount = 0;
-      }
-
-      await importRecord(db, job.mod_id!, records[i], job.src_lang, job.tgt_lang);
-      imported++;
-      batchCount++;
-
-      if (batchCount >= BATCH_SIZE) {
-        await updateProgress(db, job.id, imported);
-        await db.query('COMMIT');
-        inTx = false;
-        const pct = ((imported / job.total_records) * 100).toFixed(1);
-        log.info(`[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
-        onProgress?.(imported, job.total_records);
-      }
-    }
-
+  const commitOpenTx = async () => {
     if (inTx) {
       await db.query('COMMIT');
       inTx = false;
     }
+  };
 
-    if (!state.cancel && !state.pause) {
-      await markDone(db, job.id, imported);
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
-      onProgress?.(imported, job.total_records);
-    }
+  try {
+    await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
+      for (const rec of iterCsvRecords(text)) {
+        processed++;
+        if (processed <= skipCount) continue;
+
+        if (state.cancel) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await db.query('BEGIN');
+              inTx = true;
+            }
+            await flushPendingBatch();
+          }
+          await commitOpenTx();
+          await markFailed(db, job.id, imported);
+          log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          break;
+        }
+        if (state.pause) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await db.query('BEGIN');
+              inTx = true;
+            }
+            await flushPendingBatch();
+          }
+          await commitOpenTx();
+          await markPaused(db, job.id, imported);
+          log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
+          break;
+        }
+
+        pending.push(rec);
+
+        if (pending.length >= importBatchSize) {
+          await db.query('BEGIN');
+          inTx = true;
+          await flushPendingBatch();
+          await updateProgress(db, job.id, imported);
+          await commitOpenTx();
+          const pct = ((imported / job.total_records) * 100).toFixed(1);
+          log.info(`[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
+          onProgress?.(imported, job.total_records);
+        }
+      }
+
+      if (!state.cancel && !state.pause && pending.length > 0) {
+        if (!inTx) {
+          await db.query('BEGIN');
+          inTx = true;
+        }
+        await flushPendingBatch();
+      }
+
+      await commitOpenTx();
+
+      if (!state.cancel && !state.pause) {
+        await markDone(db, job.id, imported);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+        onProgress?.(imported, job.total_records);
+      }
+    });
   } catch (err) {
     if (inTx) {
       try {
