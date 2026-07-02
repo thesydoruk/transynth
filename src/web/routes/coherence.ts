@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
-import { getCoherenceGroups, resolveAllCoherenceGroups, resolveCoherenceGroup } from '../queries';
+import {
+  getCoherenceGroups,
+  resolveAllCoherenceGroups,
+  resolveCoherenceGroup,
+} from '../data/queries';
 import { CONFIG } from '../../config';
 
 /**
@@ -62,7 +66,9 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'translation is required' });
     }
 
-    log.info(`POST /api/coherence/resolve targetLang=${targetLang} textNorm="${textNorm.slice(0, 60)}"`);
+    log.info(
+      `POST /api/coherence/resolve targetLang=${targetLang} textNorm="${textNorm.slice(0, 60)}"`,
+    );
 
     const result = await resolveCoherenceGroup(db, textNorm, targetLang, translation);
     return reply.send(result);
@@ -75,13 +81,10 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
   //
   // Body (JSON):
   //   targetLang — language code to resolve (default: CONFIG.defaultTgtLang)
-  app.post<{ Body: { targetLang?: string } }>(
-    '/api/coherence/resolve-all',
-    async (req, reply) => {
-      const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
-      log.info(`POST /api/coherence/resolve-all targetLang=${targetLang}`);
-      const result = await resolveAllCoherenceGroups(db, targetLang);
-      return reply.send(result);
-    },
-  );
+  app.post<{ Body: { targetLang?: string } }>('/api/coherence/resolve-all', async (req, reply) => {
+    const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
+    log.info(`POST /api/coherence/resolve-all targetLang=${targetLang}`);
+    const result = await resolveAllCoherenceGroups(db, targetLang);
+    return reply.send(result);
+  });
 };

@@ -20,7 +20,7 @@ import {
   requestCancel,
   requestPause,
   updateJobLanguages,
-} from '../eetImportService';
+} from '../import/eetImportService';
 import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 
 import { PATHS } from '../../paths';

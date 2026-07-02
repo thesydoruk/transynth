@@ -11,15 +11,15 @@ import {
   listPreviousVersions,
   clearSameAsSourceTranslations,
   deleteModData,
-} from '../queries';
-import { applyTMToMod } from '../tm';
+} from '../data/queries';
+import { applyTMToMod } from '../services/tm';
 import {
   findRunningApplyImportedJob,
   getApplyImportedJob,
   requestApplyImportedStop,
   runApplyImportedJob,
   scheduleApplyImportedJobCleanup,
-} from '../applyImportedJobService';
+} from '../import/applyImportedJobService';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 import {
@@ -28,9 +28,9 @@ import {
   exportPatchedEsp,
   exportPatchedPexFiles,
   exportProjectZip,
-} from '../exportService';
-import { getPexSourceSnippetForString } from '../pexDecompileService';
-import { deleteModsCompletely } from '../modDeleteService';
+} from '../export/exportService';
+import { getPexSourceSnippetForString } from '../export/pexDecompileService';
+import { deleteModsCompletely } from '../import/modDeleteService';
 import type { GameType } from '../../types';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {

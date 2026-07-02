@@ -40,9 +40,9 @@ import { CONFIG, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { formatLogBlock } from '../src/logging/format';
-import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llmVerifyService';
-import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/cliAutoVerify';
-import type { LlmVerifyIssue } from '../src/web/llmVerifyService';
+import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llm/llmVerifyService';
+import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/llm/cliAutoVerify';
+import type { LlmVerifyIssue } from '../src/web/llm/llmVerifyService';
 import { formatVerifyIssuePrefix, type VerifyFixAction } from '../src/llm/verifySuggestionGuards';
 import {
   assertCliModSelector,

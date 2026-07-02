@@ -15,8 +15,8 @@ import {
   getAllProjectSettings,
   setProjectSetting,
   SETTING_DEFAULTS,
-} from '../projectSettings';
-import type { ProjectSettingKey, ProjectSettings } from '../projectSettings';
+} from '../services/projectSettings';
+import type { ProjectSettingKey, ProjectSettings } from '../services/projectSettings';
 import { log } from '../../logger';
 
 export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {

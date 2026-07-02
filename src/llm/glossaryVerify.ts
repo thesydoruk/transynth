@@ -1,5 +1,5 @@
 import type { LlmGlossaryEntry } from './translate';
-import { glossaryTermMatchesSource } from '../web/queries';
+import { glossaryTermMatchesSource } from '../web/data/queries';
 
 export type GlossaryViolation = { term: string; translation: string };
 

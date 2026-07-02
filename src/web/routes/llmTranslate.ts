@@ -8,7 +8,7 @@ import {
   requestLlmTranslateStop,
   runLlmTranslateJob,
   scheduleLlmTranslateJobCleanup,
-} from '../llmTranslateService';
+} from '../llm/llmTranslateService';
 
 export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/llm-translate — start mod-wide translation (SSE progress stream)

@@ -48,10 +48,13 @@ import { log } from '../src/logger';
 import {
   LLM_TRANSLATE_DB_CHUNK_SIZE,
   type LlmTranslateOverwriteMode,
-} from '../src/web/llmTranslateService';
-import { runCliModTranslate, type CliTranslateProgressEvent } from '../src/web/cliAutoTranslate';
-import { getModStats } from '../src/web/queries';
-import { applyTMToMod } from '../src/web/tm';
+} from '../src/web/llm/llmTranslateService';
+import {
+  runCliModTranslate,
+  type CliTranslateProgressEvent,
+} from '../src/web/llm/cliAutoTranslate';
+import { getModStats } from '../src/web/data/queries';
+import { applyTMToMod } from '../src/web/services/tm';
 import {
   assertCliModSelector,
   formatPct,

@@ -8,7 +8,7 @@
 
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type pg from 'pg';
-import { getActivityLog, getActivityCount } from '../activityService';
+import { getActivityLog, getActivityCount } from '../services/activityService';
 
 /** Shared filter params extracted from a request query string. */
 interface ActivityQuerystring {

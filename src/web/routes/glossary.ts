@@ -3,61 +3,79 @@ import type { Tx } from '../../db';
 import { withTransaction } from '../../db';
 import type pg from 'pg';
 import { log } from '../../logger';
-import { enforceGlossary } from '../queries';
+import { enforceGlossary } from '../data/queries';
 import { CONFIG } from '../../config';
 
 export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/glossary?srcLang=&tgtLang=&q=
-  app.get<{ Querystring: { srcLang?: string; tgtLang?: string; q?: string } }>('/api/glossary', async (req, reply) => {
-    const { srcLang, tgtLang, q } = req.query;
-    log.debug(`GET /api/glossary srcLang=${srcLang} tgtLang=${tgtLang} q=${q}`);
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-
-    if (srcLang) {
-      conditions.push(`src_lang = $${params.length + 1}`);
-      params.push(srcLang);
-    }
-    if (tgtLang) {
-      conditions.push(`tgt_lang = $${params.length + 1}`);
-      params.push(tgtLang);
-    }
-    if (q) {
-      conditions.push(`(term ILIKE $${params.length + 1} OR translation ILIKE $${params.length + 1})`);
-      params.push(`%${q}%`);
-    }
-
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const { rows } = await db.query(
-      `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary ${where} ORDER BY term ASC LIMIT 500`,
-      params,
-    );
-    return reply.send(rows);
-  });
-
-  // POST /api/glossary — add or update a term pair
-  app.post<{ Body: { term: string; translation?: string; srcLang?: string; tgtLang?: string; source?: string } }>(
+  app.get<{ Querystring: { srcLang?: string; tgtLang?: string; q?: string } }>(
     '/api/glossary',
     async (req, reply) => {
-      const { term, translation, srcLang = CONFIG.defaultSrcLang, tgtLang = CONFIG.defaultTgtLang, source = 'manual' } = req.body ?? {};
-      if (!term) return reply.code(400).send({ error: 'term is required' });
-      log.info(`POST /api/glossary term="${term}" translation="${translation ?? ''}" ${srcLang}→${tgtLang}`);
+      const { srcLang, tgtLang, q } = req.query;
+      log.debug(`GET /api/glossary srcLang=${srcLang} tgtLang=${tgtLang} q=${q}`);
+      const conditions: string[] = [];
+      const params: unknown[] = [];
 
-      await db.query(
-        `INSERT INTO glossary(term, translation, src_lang, tgt_lang, source)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT(term, src_lang, tgt_lang) DO UPDATE SET translation = EXCLUDED.translation, source = EXCLUDED.source`,
-        [term.trim(), translation?.trim() || null, srcLang, tgtLang, source],
-      );
+      if (srcLang) {
+        conditions.push(`src_lang = $${params.length + 1}`);
+        params.push(srcLang);
+      }
+      if (tgtLang) {
+        conditions.push(`tgt_lang = $${params.length + 1}`);
+        params.push(tgtLang);
+      }
+      if (q) {
+        conditions.push(
+          `(term ILIKE $${params.length + 1} OR translation ILIKE $${params.length + 1})`,
+        );
+        params.push(`%${q}%`);
+      }
 
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
       const { rows } = await db.query(
-        `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary WHERE term = $1 AND src_lang = $2 AND tgt_lang = $3`,
-        [term.trim(), srcLang, tgtLang],
+        `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary ${where} ORDER BY term ASC LIMIT 500`,
+        params,
       );
-
-      return reply.code(201).send(rows[0]);
+      return reply.send(rows);
     },
   );
+
+  // POST /api/glossary — add or update a term pair
+  app.post<{
+    Body: {
+      term: string;
+      translation?: string;
+      srcLang?: string;
+      tgtLang?: string;
+      source?: string;
+    };
+  }>('/api/glossary', async (req, reply) => {
+    const {
+      term,
+      translation,
+      srcLang = CONFIG.defaultSrcLang,
+      tgtLang = CONFIG.defaultTgtLang,
+      source = 'manual',
+    } = req.body ?? {};
+    if (!term) return reply.code(400).send({ error: 'term is required' });
+    log.info(
+      `POST /api/glossary term="${term}" translation="${translation ?? ''}" ${srcLang}→${tgtLang}`,
+    );
+
+    await db.query(
+      `INSERT INTO glossary(term, translation, src_lang, tgt_lang, source)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT(term, src_lang, tgt_lang) DO UPDATE SET translation = EXCLUDED.translation, source = EXCLUDED.source`,
+      [term.trim(), translation?.trim() || null, srcLang, tgtLang, source],
+    );
+
+    const { rows } = await db.query(
+      `SELECT id, term, translation, src_lang, tgt_lang, source, created_at FROM glossary WHERE term = $1 AND src_lang = $2 AND tgt_lang = $3`,
+      [term.trim(), srcLang, tgtLang],
+    );
+
+    return reply.code(201).send(rows[0]);
+  });
 
   // DELETE /api/glossary/:id
   app.delete<{ Params: { id: string } }>('/api/glossary/:id', async (req, reply) => {
@@ -95,7 +113,9 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
       } catch (error) {
         const dbError = error as { code?: string };
         if (dbError.code === '23505') {
-          return reply.code(409).send({ error: 'A glossary entry with this term/language pair already exists' });
+          return reply
+            .code(409)
+            .send({ error: 'A glossary entry with this term/language pair already exists' });
         }
         throw error;
       }
@@ -143,4 +163,4 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.send(result);
     },
   );
-}
+};

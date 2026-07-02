@@ -50,7 +50,7 @@ import {
   exportModRelease,
   listModExportTargets,
   type ModReleaseExportOptions,
-} from '../src/web/exportService';
+} from '../src/web/export/exportService';
 
 const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
 

@@ -10,8 +10,8 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
-import { deleteModData } from '../queries';
-import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../modDeleteService';
+import { deleteModData } from '../data/queries';
+import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../import/modDeleteService';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -28,7 +28,7 @@ import {
   previewModRecords,
   isArchive,
   isPlugin,
-} from '../modImportService';
+} from '../import/modImportService';
 import { CONFIG } from '../../config';
 
 import { PATHS } from '../../paths';

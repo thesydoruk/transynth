@@ -8,7 +8,7 @@ import {
   getSceneDialog,
   listDialogConversations,
   getConversationDialog,
-} from '../queries';
+} from '../data/queries';
 
 /**
  * Dialog tree routes used by the dedicated "Dialogs mode" UI.

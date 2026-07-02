@@ -39,8 +39,8 @@ import {
   runLlmSkipDetectJob,
   scheduleLlmSkipDetectJobCleanup,
   type LlmSkipDetectProgressEvent,
-} from '../src/web/llmSkipDetectService';
-import { getModStats } from '../src/web/queries';
+} from '../src/web/llm/llmSkipDetectService';
+import { getModStats } from '../src/web/data/queries';
 import {
   assertCliModSelector,
   formatPct,

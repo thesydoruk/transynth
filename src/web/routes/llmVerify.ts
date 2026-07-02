@@ -9,7 +9,7 @@ import {
   requestLlmVerifyStopByModId,
   runLlmVerifyJob,
   scheduleLlmVerifyJobCleanup,
-} from '../llmVerifyService';
+} from '../llm/llmVerifyService';
 
 export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/llm-verify — start verification (SSE progress stream)

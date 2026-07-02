@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
-import { listInnrGroups } from '../queries';
+import { listInnrGroups } from '../data/queries';
 import { CONFIG } from '../../config';
 
 /**

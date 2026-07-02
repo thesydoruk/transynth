@@ -14,11 +14,11 @@ import {
   getQAIssues,
   markStringsAsSkip,
   unmarkStringsSkip,
-} from '../queries';
-import { propagateTranslation } from '../tm';
-import { getAllProjectSettings } from '../projectSettings';
+} from '../data/queries';
+import { propagateTranslation } from '../services/tm';
+import { getAllProjectSettings } from '../services/projectSettings';
 import { CONFIG } from '../../config';
-import { translateStringIdsBatch } from '../llmTranslateBatch';
+import { translateStringIdsBatch } from '../llm/llmTranslateBatch';
 import { log } from '../../logger';
 
 export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {

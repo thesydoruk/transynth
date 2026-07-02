@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
-import { searchReplaceTranslations } from '../queries';
+import { searchReplaceTranslations } from '../data/queries';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 
@@ -23,7 +23,13 @@ export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
 
-    const { search, replace, isRegex = false, targetLang = CONFIG.defaultTgtLang, dryRun = false } = req.body ?? {};
+    const {
+      search,
+      replace,
+      isRegex = false,
+      targetLang = CONFIG.defaultTgtLang,
+      dryRun = false,
+    } = req.body ?? {};
 
     if (typeof search !== 'string' || search.trim() === '') {
       return reply.code(400).send({ error: 'search is required' });
@@ -33,7 +39,9 @@ export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     try {
-      log.info(`POST /api/mods/${modId}/search-replace search="${search}" replace="${replace}" regex=${isRegex} dryRun=${dryRun}`);
+      log.info(
+        `POST /api/mods/${modId}/search-replace search="${search}" replace="${replace}" regex=${isRegex} dryRun=${dryRun}`,
+      );
       const result = await searchReplaceTranslations(
         db,
         modId,
@@ -50,4 +58,4 @@ export const searchRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: message });
     }
   });
-}
+};

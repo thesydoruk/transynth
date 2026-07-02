@@ -37,7 +37,7 @@ import {
   LOCALE_DETECT_DEFAULT_SAMPLES,
   LOCALE_DETECT_MAX_SAMPLES,
   type ModLocaleAuditReport,
-} from '../src/web/modLocaleDetect';
+} from '../src/web/import/modLocaleDetect';
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('detect:locale')

@@ -32,7 +32,12 @@ import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../..
 import { CONFIG } from '../../config';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
-import { isArchive, isPlugin, registerArchiveFile, registerPluginFile } from '../modImportService';
+import {
+  isArchive,
+  isPlugin,
+  registerArchiveFile,
+  registerPluginFile,
+} from '../import/modImportService';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
