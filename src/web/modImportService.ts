@@ -36,7 +36,9 @@ import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
 import {
   parseMcmBuffer,
   mcmLocaleFromPath,
+  formatPexStringContext,
   parsePexBuffer,
+  pexScriptKeyFromInfo,
   resolveMcmLocaleKey,
   resolveMcmModPrefix,
   resolveMcmTranslationPrefixes,
@@ -48,6 +50,7 @@ import {
   resolveModDirectoryFromPath,
   loadMcmLocalesFromConfigJson,
   MCM_LOCALE_ALIASES,
+  type PexStringUsage,
 } from '../bethesda/parsers';
 import { loadNpcReferenceMap } from '../bethesda/subrecords';
 import type { CsvRow, GameType } from '../types';
@@ -57,6 +60,9 @@ import {
   bulkInsertModImportRows,
   bulkUpsertImportTranslations,
   bulkUpsertDialogGraphForImportBatch,
+  pruneStaleModImportData,
+  trackModImportBulkResults,
+  type ModImportBulkResult,
   type ModImportBulkRow,
   type DialogGraphImportContext,
 } from './modImportBulk';
@@ -584,9 +590,9 @@ export const extractModImportApplyRows = (
       collected.push(...buildCsvRows(espRows, null));
     }
 
-    const pexMap = collectPexStringsSync(anchorPath);
+    const pexMap = collectPexStringsSync(anchorPath, (job.game as GameType) ?? 'fo4');
     if (pexMap.size > 0) {
-      collected.push(...buildPexCsvRows(pexMap));
+      collected.push(...buildPexCsvRows(pexMap).map((row) => row.csvRow));
     }
   }
 
@@ -910,6 +916,39 @@ const listGnrBa2FilesInDir = (modDir: string): string[] => {
   }
 };
 
+/**
+ * GNRL BA2 archives that belong to one plugin — not every archive in a shared `Data\`
+ * folder. Matches `{Stem} - Main.ba2`, `{Stem} - Interface.ba2`, and other stem-prefixed
+ * companions (same rules as STRINGS discovery).
+ */
+const listCompanionGnrlBa2ForPlugin = (
+  espPath: string,
+  game: GameType,
+  ba2Candidates: string[] = discoverArchiveCandidatesForPlugin(espPath),
+): string[] => {
+  const modDir = path.dirname(espPath);
+  const stem = path.basename(espPath, path.extname(espPath)).toLowerCase();
+  const ba2Cands = ba2Candidates.filter(
+    (f) => f.toLowerCase().endsWith('.ba2') && isBa2GnrArchive(f),
+  );
+  const matched = new Set<string>();
+
+  const primary = discoverBa2(espPath, ba2Cands, game);
+  if (primary) matched.add(primary);
+
+  for (const ba2 of ba2Cands) {
+    const base = path.basename(ba2, '.ba2').toLowerCase();
+    if (base.startsWith(stem)) matched.add(ba2);
+  }
+
+  for (const ba2 of listGnrBa2FilesInDir(modDir)) {
+    const base = path.basename(ba2, '.ba2').toLowerCase();
+    if (base.startsWith(stem)) matched.add(ba2);
+  }
+
+  return [...matched];
+};
+
 const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
   const reader = getBa2Reader(ba2Path);
   const locales = new Map<string, Map<number, string>>();
@@ -1097,12 +1136,13 @@ const loadMcmLocalesFromLooseFiles = (
 const collectMcmLocalesForMod = (
   modDir: string,
   anchorPath: string,
+  game: GameType = 'fo4',
 ): Map<string, Map<string, string>> => {
   const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
   const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
   const merged = new Map<string, Map<string, string>>();
 
-  for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath, game)) {
     try {
       for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path, modPrefixes)) {
         if (!merged.has(locale)) merged.set(locale, new Map());
@@ -1135,12 +1175,13 @@ const collectMcmLocalesForMod = (
 const collectMcmLocalesForModParallel = async (
   modDir: string,
   anchorPath: string,
+  game: GameType = 'fo4',
 ): Promise<Map<string, Map<string, string>>> => {
   const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
   const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
   const merged = new Map<string, Map<string, string>>();
 
-  const ba2Paths = listGnrBa2FilesInDir(modDir);
+  const ba2Paths = listCompanionGnrlBa2ForPlugin(anchorPath, game);
   const ba2LocaleMaps = await mapWithConcurrency(
     ba2Paths,
     CONFIG.modImportIoParallel,
@@ -1374,25 +1415,50 @@ const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
   }));
 // ── PEX (Papyrus compiled script) helpers ────────────────────────────────────
 
+type PexScriptStrings = {
+  sourceFile: string;
+  pexFile: string | null;
+  literals: Array<{
+    text: string;
+    literalIndex: number;
+    usages: PexStringUsage[];
+  }>;
+};
+
+type PexImportRow = {
+  csvRow: CsvRow;
+  context: string;
+};
+
+const pexBundleFromParse = (
+  parsed: ReturnType<typeof parsePexBuffer>,
+  pexFile: string | null,
+): PexScriptStrings => ({
+  sourceFile: parsed.info.sourceFile,
+  pexFile,
+  literals: parsed.userStrings.map((entry) => ({
+    text: entry.text,
+    literalIndex: entry.literalIndex,
+    usages: entry.usages,
+  })),
+});
+
 /**
  * Extract translatable strings from all .pex script files inside a BA2 archive.
- * Returns a Map of script name (stem without .psc extension) → string[]
- * so callers can attach a meaningful path to each record.
  *
  * @param ba2Path - Absolute path to the BA2 archive
  */
-const loadPexStringsFromBA2 = (ba2Path: string): Map<string, string[]> => {
+const loadPexStringsFromBA2 = (ba2Path: string): Map<string, PexScriptStrings> => {
   const reader = getBa2Reader(ba2Path);
-  const result = new Map<string, string[]>();
+  const result = new Map<string, PexScriptStrings>();
 
   for (const entry of reader.listByExt('pex')) {
     try {
       const buf = reader.extractEntry(entry);
-      const { info, strings } = parsePexBuffer(buf);
-      if (strings.length === 0) continue;
-      // Use the declared source file name (without extension) as the key
-      const scriptName = info.sourceFile.replace(/\.psc$/i, '') || entry.name;
-      result.set(scriptName, strings);
+      const parsed = parsePexBuffer(buf);
+      if (parsed.strings.length === 0) continue;
+      const scriptKey = pexScriptKeyFromInfo(parsed.info) || entry.name.replace(/\.pex$/i, '');
+      result.set(scriptKey, pexBundleFromParse(parsed, entry.name));
     } catch (err) {
       logImport.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
     }
@@ -1404,13 +1470,12 @@ const loadPexStringsFromBA2 = (ba2Path: string): Map<string, string[]> => {
 /**
  * Extract translatable strings from loose .pex files found under
  * `<modDir>/Scripts/` on disk.
- * Returns the same Map<scriptName, string[]> shape as {@link loadPexStringsFromBA2}.
  *
  * @param modDir - Directory containing the mod files (parent of the .esp)
  */
-const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => {
+const loadPexStringsFromLooseFiles = (modDir: string): Map<string, PexScriptStrings> => {
   const scriptsDir = path.join(modDir, 'Scripts');
-  const result = new Map<string, string[]>();
+  const result = new Map<string, PexScriptStrings>();
   if (!fs.existsSync(scriptsDir)) return result;
 
   let files: string[];
@@ -1423,10 +1488,10 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => 
   for (const file of files) {
     try {
       const buf = fs.readFileSync(path.join(scriptsDir, file));
-      const { info, strings } = parsePexBuffer(buf);
-      if (strings.length === 0) continue;
-      const scriptName = info.sourceFile.replace(/\.psc$/i, '') || file.replace(/\.pex$/i, '');
-      result.set(scriptName, strings);
+      const parsed = parsePexBuffer(buf);
+      if (parsed.strings.length === 0) continue;
+      const scriptKey = pexScriptKeyFromInfo(parsed.info) || file.replace(/\.pex$/i, '');
+      result.set(scriptKey, pexBundleFromParse(parsed, file));
     } catch (err) {
       logImport.debug(
         `PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`,
@@ -1438,22 +1503,25 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, string[]> => 
 };
 
 /**
- * Collect all PEX translatable strings for a plugin by scanning every BA2
- * in the plugin's directory and any loose `Scripts/*.pex` files.
+ * Collect all PEX translatable strings for a plugin by scanning companion BA2
+ * archives and any loose `Scripts/*.pex` files next to the plugin.
  *
  * Merges results so that a script appearing in both a BA2 and loose files
  * prefers the loose file (which may be a patched version).
  *
  * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
  */
-const collectPexStringsSync = (espPath: string): Map<string, string[]> => {
+const collectPexStringsSync = (
+  espPath: string,
+  game: GameType = 'fo4',
+): Map<string, PexScriptStrings> => {
   const modDir = path.dirname(espPath);
-  const merged = new Map<string, string[]>();
+  const merged = new Map<string, PexScriptStrings>();
 
-  for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(espPath, game)) {
     try {
-      for (const [script, strings] of loadPexStringsFromBA2(ba2Path)) {
-        if (!merged.has(script)) merged.set(script, strings);
+      for (const [script, bundle] of loadPexStringsFromBA2(ba2Path)) {
+        if (!merged.has(script)) merged.set(script, bundle);
       }
     } catch (err) {
       logImport.warn(
@@ -1462,18 +1530,21 @@ const collectPexStringsSync = (espPath: string): Map<string, string[]> => {
     }
   }
 
-  for (const [script, strings] of loadPexStringsFromLooseFiles(modDir)) {
-    merged.set(script, strings);
+  for (const [script, bundle] of loadPexStringsFromLooseFiles(modDir)) {
+    merged.set(script, bundle);
   }
 
   return merged;
 };
 
-const collectPexStrings = async (espPath: string): Promise<Map<string, string[]>> => {
+const collectPexStrings = async (
+  espPath: string,
+  game: GameType = 'fo4',
+): Promise<Map<string, PexScriptStrings>> => {
   const modDir = path.dirname(espPath);
-  const merged = new Map<string, string[]>();
+  const merged = new Map<string, PexScriptStrings>();
 
-  const ba2Paths = listGnrBa2FilesInDir(modDir);
+  const ba2Paths = listCompanionGnrlBa2ForPlugin(espPath, game);
   const ba2Results = await mapWithConcurrency(
     ba2Paths,
     CONFIG.modImportIoParallel,
@@ -1484,26 +1555,26 @@ const collectPexStrings = async (espPath: string): Promise<Map<string, string[]>
         logImport.warn(
           `PEX: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
         );
-        return new Map<string, string[]>();
+        return new Map<string, PexScriptStrings>();
       }
     },
   );
 
   for (const pexMap of ba2Results) {
-    for (const [script, strings] of pexMap) {
-      if (!merged.has(script)) merged.set(script, strings);
+    for (const [script, bundle] of pexMap) {
+      if (!merged.has(script)) merged.set(script, bundle);
     }
   }
 
-  for (const [script, strings] of loadPexStringsFromLooseFiles(modDir)) {
-    merged.set(script, strings);
+  for (const [script, bundle] of loadPexStringsFromLooseFiles(modDir)) {
+    merged.set(script, bundle);
   }
 
   return merged;
 };
 
 /**
- * Convert a Map of scriptName → string[] into CsvRow objects for DB ingestion.
+ * Convert collected PEX script literals into CsvRow objects for DB ingestion.
  *
  * Each unique string in a given script becomes one row:
  *   FormID    : ''              (PEX strings have no ESM FormID)
@@ -1511,26 +1582,29 @@ const collectPexStrings = async (espPath: string): Promise<Map<string, string[]>
  *   Path      : 'PEX\\<script>' (e.g. PEX\\CraftingScript)
  *   Source    : the string literal text
  *
+ * `context` stores the `.psc` source file and 1-based literal index for the UI.
+ *
  * Duplicate strings within the same script are deduplicated here to avoid
  * inserting the same text twice (the PEX string table may repeat entries
  * that are referenced from multiple call sites).
- *
- * @param pexMap - Map of script name → array of user-visible strings
  */
-const buildPexCsvRows = (pexMap: Map<string, string[]>): CsvRow[] => {
-  const rows: CsvRow[] = [];
-  for (const [scriptName, strings] of pexMap) {
-    const path = `PEX\\${scriptName}`;
+const buildPexCsvRows = (pexMap: Map<string, PexScriptStrings>): PexImportRow[] => {
+  const rows: PexImportRow[] = [];
+  for (const [scriptName, bundle] of pexMap) {
+    const recordPath = `PEX\\${scriptName}`;
     const seen = new Set<string>();
-    for (const text of strings) {
+    for (const { text, literalIndex, usages } of bundle.literals) {
       if (seen.has(text)) continue;
       seen.add(text);
       rows.push({
-        FormID: '',
-        Signature: 'PEX',
-        Path: path,
-        PathSimplified: path,
-        Source: text,
+        csvRow: {
+          FormID: '',
+          Signature: 'PEX',
+          Path: recordPath,
+          PathSimplified: recordPath,
+          Source: text,
+        },
+        context: formatPexStringContext(bundle.sourceFile, { literalIndex, usages }),
       });
     }
   }
@@ -2108,6 +2182,13 @@ export const runModImport = async (
   );
 
   let imported = job.imported_records;
+  const pruneStaleImportData = job.imported_records === 0;
+  const keptImportRecordKeys = new Set<string>();
+  const keptImportStringIds = new Set<number>();
+  const trackImportBatch = (results: ModImportBulkResult[]): void => {
+    if (!pruneStaleImportData) return;
+    trackModImportBulkResults(results, keptImportRecordKeys, keptImportStringIds);
+  };
 
   try {
     const importBatchSize = CONFIG.modImportBatchSize;
@@ -2183,6 +2264,7 @@ export const runModImport = async (
       const batch = pendingRows.splice(0, pendingRows.length);
       try {
         const results = await bulkInsertModImportRows(db, importModId, batch);
+        trackImportBatch(results);
         await bulkUpsertDialogGraphForImportBatch(db, importModId, results, dialogGraphCtx);
         imported += results.length;
         batchCount = 0;
@@ -2342,7 +2424,7 @@ export const runModImport = async (
     // in the editor. Other locale files become pre-existing translations.
     if (!state.cancel && !state.pause) {
       const mcmModDir = resolveModDirectoryFromPath(espPath);
-      const mcmLocales = await collectMcmLocalesForModParallel(mcmModDir, espPath);
+      const mcmLocales = await collectMcmLocalesForModParallel(mcmModDir, espPath, game);
       const resolvedMcmSource =
         resolveMcmLocaleKey(mcmLocales, MOD_IMPORT_DEFAULT_SOURCE_LOCALE) ??
         resolveMcmLocaleKey(mcmLocales, pluginStringLang);
@@ -2369,6 +2451,7 @@ export const runModImport = async (
           }
           const slice = mcmBulkRows.slice(i, i + importBatchSize);
           const results = await bulkInsertModImportRows(db, importModId, slice);
+          trackImportBatch(results);
           for (const res of results) {
             const mcmKey = res.row.csvRow.Path.replace(/^MCM\\/, '');
             sourceStringIdByKey.set(mcmKey, res.stringId);
@@ -2413,15 +2496,15 @@ export const runModImport = async (
     // Signature='PEX' and are stored against the source language of the mod.
     // Only runs if the import has not been cancelled or paused.
     if (!state.cancel && !state.pause) {
-      const pexMap = await collectPexStrings(espPath);
+      const pexMap = await collectPexStrings(espPath, game);
       if (pexMap.size > 0) {
         const pexRows = buildPexCsvRows(pexMap);
         logImport.info(
           `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`,
         );
         if (pexRows.length > 0) {
-          for (const r of pexRows) {
-            await enqueueImportRow(r, pluginStringLang, null, pexRows.length, 'pex');
+          for (const { csvRow: r, context } of pexRows) {
+            await enqueueImportRow(r, pluginStringLang, context, pexRows.length, 'pex');
           }
           await flushPendingImportBatch(pexRows.length);
         }
@@ -2436,6 +2519,27 @@ export const runModImport = async (
     }
 
     if (!state.cancel && !state.pause) {
+      if (pruneStaleImportData) {
+        try {
+          const pruned = await pruneStaleModImportData(
+            db,
+            importModId,
+            keptImportRecordKeys,
+            keptImportStringIds,
+          );
+          if (pruned.deletedStrings > 0 || pruned.deletedRecords > 0) {
+            logImport.info(
+              `[Mod Import #${job.id}] Pruned stale rows: ${pruned.deletedStrings} string(s), ${pruned.deletedRecords} record(s)`,
+            );
+          }
+        } catch (err) {
+          logImport.error(
+            `[Mod Import #${job.id}] Failed to prune stale import rows: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          throw err;
+        }
+      }
+
       // Convert imported strings to translation records (both localized and non-localized mods).
       // For localized mods: only convert if we imported all localizations, not a single selected locale.
       // For non-localized mods: always convert to create self-translations (srcLang→srcLang).

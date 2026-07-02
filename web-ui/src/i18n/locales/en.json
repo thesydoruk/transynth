@@ -232,6 +232,8 @@
     "selectAllMatching": "Select all matching rows",
     "speakerContextLabel": "Speaker: ",
     "speakerContextTitle": "NPC speaker resolved from the ANAM subrecord of this dialog record",
+    "pexScriptContextLabel": "Script: ",
+    "pexScriptContextTitle": "Papyrus source script, function, call site, and source line when debug info is present",
     "sourceTextLabel": "Source text ({{lang}})",
     "translationTextLabel": "Translation text ({{lang}})",
     "charCount": "Chars: {{count}}",

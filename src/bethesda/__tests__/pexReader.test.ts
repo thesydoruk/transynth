@@ -2,7 +2,12 @@
  * Unit tests for compiled Papyrus script (.pex) parser.
  */
 import { describe, it, expect } from '@jest/globals';
-import { parsePexBuffer, isLikelyUserText, patchPexBuffer } from '../parsers';
+import {
+  parsePexBuffer,
+  isLikelyUserText,
+  patchPexBuffer,
+  formatPexStringContext,
+} from '../parsers';
 
 const writeWString = (buf: Buffer, offset: number, s: string): number => {
   const bytes = Buffer.from(s, 'utf8');
@@ -251,5 +256,129 @@ describe('patchPexBuffer', () => {
     expect(patched.readUInt32LE(0)).toBe(0xfa57c0de);
     const parsed = parsePexBuffer(patched);
     expect(parsed.strings).toContain('Привіт, світ');
+  });
+});
+
+const appendLeU8 = (chunks: Buffer[], value: number): void => {
+  const b = Buffer.alloc(1);
+  b.writeUInt8(value, 0);
+  chunks.push(b);
+};
+
+const appendLeU16 = (chunks: Buffer[], value: number): void => {
+  const b = Buffer.alloc(2);
+  b.writeUInt16LE(value, 0);
+  chunks.push(b);
+};
+
+const appendLeU32 = (chunks: Buffer[], value: number): void => {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(value, 0);
+  chunks.push(b);
+};
+
+const appendVarString = (chunks: Buffer[], tableIndex: number): void => {
+  appendLeU8(chunks, 0x02);
+  appendLeU16(chunks, tableIndex);
+};
+
+const appendVarIdentifier = (chunks: Buffer[], tableIndex: number): void => {
+  appendLeU8(chunks, 0x01);
+  appendLeU16(chunks, tableIndex);
+};
+
+const buildPexWithAssignLiteral = (): Buffer => {
+  const strings = [
+    'WorkshopScript',
+    '',
+    '',
+    'auto',
+    'OnInit',
+    'None',
+    '',
+    'Built workshop ready!',
+    'messageVar',
+  ];
+  const header = buildPex(strings, { sourceFile: 'WorkshopScript.psc', gameId: 3, endian: 'le' });
+  const tail: Buffer[] = [];
+
+  appendLeU8(tail, 0); // no debug info
+  appendLeU16(tail, 0); // user flags
+
+  appendLeU16(tail, 1); // one object
+  appendLeU16(tail, 0); // object name
+  appendLeU32(tail, 0); // object size (ignored)
+  appendLeU16(tail, 1); // parent
+  appendLeU16(tail, 2); // doc
+  appendLeU8(tail, 0); // FO4 const flag
+  appendLeU32(tail, 0); // user flags
+  appendLeU16(tail, 3); // auto state
+  appendLeU16(tail, 0); // structs
+  appendLeU16(tail, 0); // variables
+  appendLeU16(tail, 0); // properties
+  appendLeU16(tail, 1); // states
+  appendLeU16(tail, 3); // state name
+  appendLeU16(tail, 1); // functions
+  appendLeU16(tail, 4); // function name
+  appendLeU16(tail, 5); // return type
+  appendLeU16(tail, 6); // doc
+  appendLeU32(tail, 0);
+  appendLeU8(tail, 0);
+  appendLeU16(tail, 0); // params
+  appendLeU16(tail, 0); // locals
+  appendLeU16(tail, 1); // one instruction
+  appendLeU8(tail, 0x0d); // assign
+  appendVarIdentifier(tail, 8);
+  appendVarString(tail, 7);
+
+  return Buffer.concat([header, ...tail]);
+};
+
+describe('parsePexBuffer — bytecode usage', () => {
+  it('maps translatable literals to owning functions', () => {
+    const result = parsePexBuffer(buildPexWithAssignLiteral());
+    expect(result.userStrings).toHaveLength(1);
+    expect(result.userStrings[0]).toMatchObject({
+      text: 'Built workshop ready!',
+      literalIndex: 1,
+      usages: [
+        expect.objectContaining({
+          objectName: 'WorkshopScript',
+          functionName: 'OnInit',
+          kind: 'function',
+          opcode: 'assign',
+        }),
+      ],
+    });
+  });
+});
+
+describe('formatPexStringContext', () => {
+  it('formats source file and literal index when usage is unknown', () => {
+    expect(formatPexStringContext('LayerScript.psc', { literalIndex: 3, usages: [] })).toBe(
+      'LayerScript.psc · #3',
+    );
+    expect(formatPexStringContext('LayerScript', { literalIndex: 1, usages: [] })).toBe(
+      'LayerScript.psc · #1',
+    );
+  });
+
+  it('includes function and call target when bytecode usage is known', () => {
+    expect(
+      formatPexStringContext('WorkshopScript.psc', {
+        literalIndex: 1,
+        usages: [
+          {
+            objectName: 'WorkshopScript',
+            stateName: 'auto',
+            functionName: 'OnInit',
+            kind: 'function',
+            opcode: 'callstatic',
+            usageHint: 'Debug.Trace',
+            lineNumber: 42,
+          },
+        ],
+      }),
+    ).toBe('WorkshopScript.psc · OnInit() · Debug.Trace · line 42');
   });
 });

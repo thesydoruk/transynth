@@ -6,8 +6,8 @@
  * Reuses the same registration and import pipeline as the web UI. Imports ESP rows,
  * STRINGS locales, MCM translations, and PEX script literals.
  *
- * Completed jobs are skipped unless `--force` is set. Deduplication is by file content
- * hash (same plugin bytes = same import job).
+ * Completed jobs are skipped unless `--force` is set. A full re-import from the
+ * beginning removes strings/records that are no longer present in the scan.
  *
  * Network/mapped drives are read-only scan sources. Archives extract to local
  * `DATA_DIR/cache/scan-extract` (override with `SCAN_EXTRACT_DIR`).

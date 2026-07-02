@@ -232,6 +232,8 @@
     "selectAllMatching": "Вибрати всі відповідні рядки",
     "speakerContextLabel": "Мовець: ",
     "speakerContextTitle": "NPC, що вимовляє цю репліку (з поля ANAM запису INFO)",
+    "pexScriptContextLabel": "Скрипт: ",
+    "pexScriptContextTitle": "Вихідний Papyrus-скрипт, функція, виклик і рядок у .psc (якщо є debug info)",
     "sourceTextLabel": "Текст оригіналу ({{lang}})",
     "translationTextLabel": "Текст перекладу ({{lang}})",
     "charCount": "Символів: {{count}}",

@@ -31,6 +31,15 @@ const listGnrBa2FilesInDir = (modDir: string): string[] => {
   }
 };
 
+const listCompanionGnrlBa2ForPlugin = (modPath: string): string[] => {
+  const modDir = path.dirname(modPath);
+  const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
+  return listGnrBa2FilesInDir(modDir).filter((ba2) => {
+    const base = path.basename(ba2, '.ba2').toLowerCase();
+    return base.startsWith(stem);
+  });
+};
+
 const listBsaFilesInDir = (modDir: string): string[] => {
   try {
     return fs
@@ -125,7 +134,7 @@ export const collectModPexSources = (modPath: string): Map<string, PexSourceFile
   const modDir = path.dirname(modPath);
   const merged = new Map<string, PexSourceFile>();
 
-  for (const ba2Path of listGnrBa2FilesInDir(modDir)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(modPath)) {
     for (const source of loadPexFromBa2(ba2Path)) {
       if (!merged.has(source.scriptKey)) merged.set(source.scriptKey, source);
     }

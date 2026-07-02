@@ -3,6 +3,7 @@
  */
 import type { CsvRow } from '../types';
 import type { Tx } from '../db';
+import { CONFIG } from '../config';
 import { sha1Hex } from '../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
 
@@ -26,6 +27,72 @@ export type DialogGraphImportContext = {
   topicIdCache: Map<string, number>;
 };
 
+export type DialogInfoImportRow = {
+  topicFormId: string;
+  infoFormId: string;
+  stringId: number;
+  speakerFormId: string | null;
+  speakerName: string | null;
+  previousInfoFormId: string | null;
+  locale: string;
+};
+
+const dialogInfoImportKey = (topicFormId: string, infoFormId: string): string =>
+  `${topicFormId}\0${infoFormId}`;
+
+const dialogEdgeImportKey = (
+  topicId: number,
+  fromInfoFormId: string,
+  toInfoFormId: string,
+  edgeKind: string,
+): string => `${topicId}\0${fromInfoFormId}\0${toInfoFormId}\0${edgeKind}`;
+
+const mergeDialogInfoImportRow = (
+  kept: DialogInfoImportRow,
+  next: DialogInfoImportRow,
+): DialogInfoImportRow => ({
+  ...kept,
+  speakerFormId: kept.speakerFormId ?? next.speakerFormId,
+  speakerName: kept.speakerName ?? next.speakerName,
+  previousInfoFormId: kept.previousInfoFormId ?? next.previousInfoFormId,
+});
+
+/**
+ * One import batch can contain the same INFO from multiple locales (batch spans locale
+ * boundaries). PostgreSQL rejects duplicate ON CONFLICT keys in a single INSERT.
+ */
+export const dedupeDialogInfoRowsForImport = (
+  rows: DialogInfoImportRow[],
+  preferredLocale = CONFIG.defaultSrcLang,
+): DialogInfoImportRow[] => {
+  const byKey = new Map<string, DialogInfoImportRow>();
+  const prefer = preferredLocale.trim().toLowerCase();
+
+  for (const row of rows) {
+    const key = dialogInfoImportKey(row.topicFormId, row.infoFormId);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+
+    const existingLocale = existing.locale.trim().toLowerCase();
+    const nextLocale = row.locale.trim().toLowerCase();
+    const existingIsPreferred = existingLocale === prefer;
+    const nextIsPreferred = nextLocale === prefer;
+
+    if (!existingIsPreferred && nextIsPreferred) {
+      byKey.set(key, mergeDialogInfoImportRow(row, existing));
+    } else if (existingIsPreferred && !nextIsPreferred) {
+      byKey.set(key, mergeDialogInfoImportRow(existing, row));
+    } else {
+      byKey.set(key, mergeDialogInfoImportRow(row, existing));
+    }
+  }
+
+  return [...byKey.values()];
+};
+
 /** Bulk upsert DIAL/INFO dialog graph rows for one import batch (replaces per-row upserts). */
 export const bulkUpsertDialogGraphForImportBatch = async (
   db: Tx,
@@ -33,16 +100,7 @@ export const bulkUpsertDialogGraphForImportBatch = async (
   results: ModImportBulkResult[],
   ctx: DialogGraphImportContext,
 ): Promise<void> => {
-  type InfoRow = {
-    topicFormId: string;
-    infoFormId: string;
-    stringId: number;
-    speakerFormId: string | null;
-    speakerName: string | null;
-    previousInfoFormId: string | null;
-  };
-
-  const infoRows: InfoRow[] = [];
+  const rawInfoRows: DialogInfoImportRow[] = [];
   for (const res of results) {
     const row = res.row.csvRow;
     if (row.Signature !== 'INFO' || !row.FormID || !row.DialogTopicFormID) continue;
@@ -50,15 +108,18 @@ export const bulkUpsertDialogGraphForImportBatch = async (
     const speakerFormId = row.SpeakerFormID ?? ctx.speakerMap.get(row.FormID) ?? null;
     const speakerName = res.row.context ?? ctx.voiceSpeakerMap.get(row.FormID.substring(2)) ?? null;
 
-    infoRows.push({
+    rawInfoRows.push({
       topicFormId: row.DialogTopicFormID,
       infoFormId: row.FormID,
       stringId: res.stringId,
       speakerFormId,
       speakerName,
       previousInfoFormId: row.PreviousInfoFormID ?? null,
+      locale: res.row.locale,
     });
   }
+
+  const infoRows = dedupeDialogInfoRowsForImport(rawInfoRows);
 
   if (infoRows.length === 0) return;
 
@@ -121,13 +182,19 @@ export const bulkUpsertDialogGraphForImportBatch = async (
   const edgeTopicIds: number[] = [];
   const fromInfoFormIds: string[] = [];
   const toInfoFormIds: string[] = [];
+  const seenEdges = new Set<string>();
 
   for (let i = 0; i < infoRows.length; i++) {
     const previous = infoRows[i]!.previousInfoFormId;
     if (!previous) continue;
-    edgeTopicIds.push(topicIds[i]!);
+    const topicId = topicIds[i]!;
+    const toInfo = infoFormIds[i]!;
+    const edgeKey = dialogEdgeImportKey(topicId, previous, toInfo, 'previous');
+    if (seenEdges.has(edgeKey)) continue;
+    seenEdges.add(edgeKey);
+    edgeTopicIds.push(topicId);
     fromInfoFormIds.push(previous);
-    toInfoFormIds.push(infoFormIds[i]!);
+    toInfoFormIds.push(toInfo);
   }
 
   if (edgeTopicIds.length === 0) return;
@@ -147,6 +214,169 @@ export const bulkUpsertDialogGraphForImportBatch = async (
 /** Natural key for `records` upsert (matches ON CONFLICT target). */
 export const modImportRecordKey = (signature: string, path: string, formId: string): string =>
   `${signature}\0${path}\0${formId}`;
+
+/** Inverse of {@link modImportRecordKey}. */
+export const parseModImportRecordKey = (
+  key: string,
+): { signature: string; path: string; formId: string } => {
+  const parts = key.split('\0');
+  if (parts.length < 3) {
+    throw new Error(`Invalid mod import record key: ${key}`);
+  }
+  const formId = parts.pop()!;
+  const path = parts.pop()!;
+  const signature = parts.join('\0');
+  return { signature, path, formId };
+};
+
+/** Accumulate record/string ids from one bulk insert batch for stale-row pruning. */
+export const trackModImportBulkResults = (
+  results: ModImportBulkResult[],
+  keptRecordKeys: Set<string>,
+  keptStringIds: Set<number>,
+): void => {
+  for (const res of results) {
+    const row = res.row.csvRow;
+    keptRecordKeys.add(modImportRecordKey(row.Signature, row.Path, row.FormID || ''));
+    keptStringIds.add(res.stringId);
+  }
+};
+
+export type PruneStaleModImportResult = {
+  deletedStrings: number;
+  deletedRecords: number;
+};
+
+const PRUNE_TEMP_BATCH = 5000;
+
+/**
+ * Remove strings/records for a mod that were not part of the latest full import.
+ * Keeps only rows whose ids/keys were collected while ingesting from offset 0.
+ */
+export const pruneStaleModImportData = async (
+  db: Tx,
+  modId: number,
+  keptRecordKeys: ReadonlySet<string>,
+  keptStringIds: ReadonlySet<number>,
+): Promise<PruneStaleModImportResult> => {
+  await db.query('BEGIN');
+  try {
+    await db.query(`CREATE TEMP TABLE _import_kept_strings (id int PRIMARY KEY) ON COMMIT DROP`);
+    await db.query(
+      `CREATE TEMP TABLE _import_kept_records (
+         signature text NOT NULL,
+         path text NOT NULL,
+         formid_hex text NOT NULL,
+         PRIMARY KEY (signature, path, formid_hex)
+       ) ON COMMIT DROP`,
+    );
+
+    for (const part of chunk([...keptStringIds], PRUNE_TEMP_BATCH)) {
+      await db.query(`INSERT INTO _import_kept_strings SELECT unnest($1::int[])`, [part]);
+    }
+
+    const recordRows = [...keptRecordKeys].map(parseModImportRecordKey);
+    for (const part of chunk(recordRows, PRUNE_TEMP_BATCH)) {
+      await db.query(
+        `INSERT INTO _import_kept_records(signature, path, formid_hex)
+         SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[])`,
+        [part.map((r) => r.signature), part.map((r) => r.path), part.map((r) => r.formId)],
+      );
+    }
+
+    await db.query(
+      `UPDATE dialog_nodes dn
+          SET response_string_id = NULL
+         FROM strings s
+         JOIN records r ON s.record_id = r.id
+         LEFT JOIN _import_kept_strings k ON k.id = s.id
+        WHERE dn.response_string_id = s.id
+          AND r.mod_id = $1
+          AND k.id IS NULL`,
+      [modId],
+    );
+
+    await db.query(
+      `DELETE FROM translation_examples te
+        USING translations t
+        JOIN strings s ON t.src_string_id = s.id
+        JOIN records r ON s.record_id = r.id
+        LEFT JOIN _import_kept_strings k ON k.id = s.id
+       WHERE te.translation_id = t.id
+         AND r.mod_id = $1
+         AND k.id IS NULL`,
+      [modId],
+    );
+
+    await db.query(
+      `DELETE FROM qa_issues qi
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+        LEFT JOIN _import_kept_strings k ON k.id = s.id
+       WHERE qi.src_string_id = s.id
+         AND r.mod_id = $1
+         AND k.id IS NULL`,
+      [modId],
+    );
+
+    await db.query(
+      `DELETE FROM translation_revisions tr
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+        LEFT JOIN _import_kept_strings k ON k.id = s.id
+       WHERE tr.src_string_id = s.id
+         AND r.mod_id = $1
+         AND k.id IS NULL`,
+      [modId],
+    );
+
+    await db.query(
+      `DELETE FROM translations t
+        USING strings s
+        JOIN records r ON s.record_id = r.id
+        LEFT JOIN _import_kept_strings k ON k.id = s.id
+       WHERE t.src_string_id = s.id
+         AND r.mod_id = $1
+         AND k.id IS NULL`,
+      [modId],
+    );
+
+    const { rowCount: deletedStrings } = await db.query(
+      `DELETE FROM strings s
+        USING records r
+        LEFT JOIN _import_kept_strings k ON k.id = s.id
+       WHERE s.record_id = r.id
+         AND r.mod_id = $1
+         AND k.id IS NULL`,
+      [modId],
+    );
+
+    const { rowCount: deletedRecords } = await db.query(
+      `DELETE FROM records r
+       WHERE r.mod_id = $1
+         AND (
+           NOT EXISTS (
+             SELECT 1
+               FROM _import_kept_records k
+              WHERE k.signature = r.signature
+                AND k.path = r.path
+                AND k.formid_hex = r.formid_hex
+           )
+           OR NOT EXISTS (SELECT 1 FROM strings s WHERE s.record_id = r.id)
+         )`,
+      [modId],
+    );
+
+    await db.query('COMMIT');
+    return {
+      deletedStrings: deletedStrings ?? 0,
+      deletedRecords: deletedRecords ?? 0,
+    };
+  } catch (err) {
+    await db.query('ROLLBACK');
+    throw err;
+  }
+};
 
 const chunk = <T>(items: T[], size: number): T[][] => {
   const out: T[][] = [];

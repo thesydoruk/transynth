@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
+import { resolvePexScriptContext } from '../DetailPanel/utils';
 import styles from './EditorStatusBar.module.scss';
 
 /** Mod-level statistics shown in the status bar. */
@@ -37,7 +38,9 @@ export const EditorStatusBar = ({ selectedCount, activeRow, stats }: EditorStatu
       <span>{t('modEditor.selectedRows', { count: selectedCount })}</span>
       {activeRow && (
         <span className={styles.detail}>
-          {activeRow.signature} · {activeRow.formid_hex} · {activeRow.edid ?? '—'}
+          {activeRow.signature === 'PEX'
+            ? `${activeRow.signature} · ${resolvePexScriptContext(activeRow) ?? activeRow.path?.split('\\').pop() ?? '—'}`
+            : `${activeRow.signature} · ${activeRow.formid_hex} · ${activeRow.edid ?? '—'}`}
         </span>
       )}
       {stats && (

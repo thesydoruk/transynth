@@ -5,7 +5,7 @@ import { Button } from '../../../../components/Button';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
-import { getPlaceholderParts } from './utils';
+import { getPlaceholderParts, resolvePexScriptContext } from './utils';
 import styles from './DetailPanel.module.scss';
 
 /** Bottom-panel tab identifiers. */
@@ -72,6 +72,7 @@ export const DetailPanel = ({
 }: DetailPanelProps) => {
   const { t } = useTranslation();
   const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
+  const pexScriptContext = useMemo(() => resolvePexScriptContext(activeRow), [activeRow]);
 
   const maxLengthRemaining =
     activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
@@ -93,7 +94,13 @@ export const DetailPanel = ({
           <div className={styles.panelLabel}>
             {t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
           </div>
-          {activeRow.context && (
+          {pexScriptContext && (
+            <div className={styles.speakerContext} title={t('modEditor.pexScriptContextTitle')}>
+              {t('modEditor.pexScriptContextLabel')}
+              {pexScriptContext}
+            </div>
+          )}
+          {activeRow.context && activeRow.signature !== 'PEX' && (
             <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
               {t('modEditor.speakerContextLabel')}
               {activeRow.context}

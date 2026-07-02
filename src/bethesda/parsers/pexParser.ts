@@ -40,12 +40,25 @@
  *   for user-visible text that might need localisation.
  */
 
+import type { PexEndian } from './pexBinary';
+import { readUInt16, readWString as readWStringRaw } from './pexBinary';
+import {
+  analyzePexStringUsages,
+  buildPexUserStringDetails,
+  readPexStringTable,
+  type PexStringUsage,
+  type PexUserStringDetail,
+} from './pexUsage';
+
 /** Magic number at offset 0 of every valid PEX file. */
 const PEX_MAGIC = 0xfa57c0de;
 
-type PexEndian = 'be' | 'le';
+export type { PexEndian } from './pexBinary';
+export type { PexStringUsage, PexUserStringDetail } from './pexUsage';
 
-const detectPexEndian = (buf: Buffer): PexEndian => {
+type PexEndianLocal = PexEndian;
+
+const detectPexEndian = (buf: Buffer): PexEndianLocal => {
   if (buf.length < 4) {
     throw new Error(`PEX: file too small (${buf.length} bytes)`);
   }
@@ -57,10 +70,10 @@ const detectPexEndian = (buf: Buffer): PexEndian => {
   );
 };
 
-const readUInt16 = (buf: Buffer, offset: number, endian: PexEndian): number =>
-  endian === 'le' ? buf.readUInt16LE(offset) : buf.readUInt16BE(offset);
+const readUInt16At = (buf: Buffer, offset: number, endian: PexEndianLocal): number =>
+  readUInt16(buf, offset, endian);
 
-const writeUInt16 = (buf: Buffer, value: number, offset: number, endian: PexEndian): void => {
+const writeUInt16 = (buf: Buffer, value: number, offset: number, endian: PexEndianLocal): void => {
   if (endian === 'le') buf.writeUInt16LE(value, offset);
   else buf.writeUInt16BE(value, offset);
 };
@@ -85,6 +98,8 @@ export interface PexResult {
    * {@link isLikelyUserText}.
    */
   strings: string[];
+  /** User-visible literals with bytecode usage sites (when analysis succeeds). */
+  userStrings: PexUserStringDetail[];
 }
 
 // ── Internal parser helpers ─────────────────────────────────────────────────
@@ -96,21 +111,16 @@ export interface PexResult {
 export const readWString = (
   buf: Buffer,
   offset: number,
-  endian: PexEndian = 'be',
+  endian: PexEndianLocal = 'be',
 ): { value: string; nextOffset: number } => {
   if (offset + 2 > buf.length) {
     throw new Error(`PEX: out of bounds reading wstring length at offset ${offset}`);
   }
-
-  const len = readUInt16(buf, offset, endian);
-  offset += 2;
-
-  if (offset + len > buf.length) {
-    throw new Error(`PEX: out of bounds reading wstring data at offset ${offset} (len=${len})`);
+  const { value, nextOffset } = readWStringRaw(buf, offset, endian);
+  if (nextOffset > buf.length) {
+    throw new Error(`PEX: out of bounds reading wstring data at offset ${offset}`);
   }
-
-  const value = buf.toString('utf8', offset, offset + len);
-  return { value, nextOffset: offset + len };
+  return { value, nextOffset };
 };
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -170,7 +180,7 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
   // ── Fixed-size header fields ─────────────────────────────────────────────
   const majorVersion = buf.readUInt8(4);
   const minorVersion = buf.readUInt8(5);
-  const gameId = readUInt16(buf, 6, endian);
+  const gameId = readUInt16At(buf, 6, endian);
   // compilationTime occupies bytes 8–15 — skip it
   let offset = 16;
 
@@ -189,20 +199,18 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
     throw new Error('PEX: out of bounds reading string table count');
   }
 
-  const count = readUInt16(buf, offset, endian);
-  offset += 2;
+  const { stringTable, nextOffset } = readPexStringTable(buf, offset, endian);
+  offset = nextOffset;
 
-  const strings: string[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const { value, nextOffset } = readWString(buf, offset, endian);
-    offset = nextOffset;
-
-    // Apply heuristic — skip identifiers, type names, and empty strings
-    if (isLikelyUserText(value)) {
-      strings.push(value);
-    }
+  let userStrings: PexUserStringDetail[] = [];
+  try {
+    const usagesByTableIndex = analyzePexStringUsages(buf, offset, endian, gameId, stringTable);
+    userStrings = buildPexUserStringDetails(stringTable, usagesByTableIndex);
+  } catch {
+    userStrings = buildPexUserStringDetails(stringTable, new Map());
   }
+
+  const strings = userStrings.map((entry) => entry.text);
 
   return {
     info: {
@@ -211,11 +219,12 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
       version: `${majorVersion}.${minorVersion}`,
     },
     strings,
+    userStrings,
   };
 };
 
 /** Serialize a PEX wstring. Defaults to big-endian for legacy fixtures. */
-export const writeWString = (value: string, endian: PexEndian = 'be'): Buffer => {
+export const writeWString = (value: string, endian: PexEndianLocal = 'be'): Buffer => {
   const body = Buffer.from(value, 'utf8');
   const buf = Buffer.alloc(2 + body.length);
   writeUInt16(buf, body.length, 0, endian);
@@ -230,6 +239,51 @@ export const writeWString = (value: string, endian: PexEndian = 'be'): Buffer =>
  */
 export const pexScriptKeyFromInfo = (info: PexInfo): string =>
   info.sourceFile.replace(/\.psc$/i, '') || '';
+
+/** Human-readable script context stored on `strings.context` for PEX rows. */
+export const formatPexStringContext = (
+  sourceFile: string,
+  detail: Pick<PexUserStringDetail, 'literalIndex' | 'usages'>,
+): string => {
+  const trimmed = sourceFile.trim();
+  const file = trimmed ? (/\.psc$/i.test(trimmed) ? trimmed : `${trimmed}.psc`) : 'unknown.psc';
+
+  const usages = detail.usages;
+  if (usages.length === 0) {
+    return `${file} · #${detail.literalIndex}`;
+  }
+
+  const primary = usages[0]!;
+  const fnLabel =
+    primary.kind === 'variable-default'
+      ? `var ${primary.functionName}`
+      : primary.kind === 'getter'
+        ? `property ${primary.functionName} (get)`
+        : primary.kind === 'setter'
+          ? `property ${primary.functionName} (set)`
+          : `${primary.functionName}()`;
+
+  let line = `${file} · ${fnLabel}`;
+  if (primary.usageHint) line += ` · ${primary.usageHint}`;
+  else if (primary.opcode !== 'default') line += ` · ${primary.opcode}`;
+  if (primary.lineNumber != null && primary.lineNumber > 0) {
+    line += ` · line ${primary.lineNumber}`;
+  }
+
+  const extraFunctions = [
+    ...new Set(
+      usages
+        .slice(1)
+        .map((usage) => usage.functionName)
+        .filter((name) => name && name !== primary.functionName),
+    ),
+  ];
+  if (extraFunctions.length > 0) {
+    line += ` · also ${extraFunctions.join(', ')}`;
+  }
+
+  return line;
+};
 
 /**
  * Replace string-table entries in a compiled Papyrus script with translated text.
@@ -264,7 +318,7 @@ export const patchPexBuffer = (input: Buffer, overlay: Map<string, string>): Buf
     throw new Error('PEX: out of bounds reading string table count');
   }
 
-  const count = readUInt16(input, offset, endian);
+  const count = readUInt16At(input, offset, endian);
   offset += 2;
 
   const strings: string[] = [];

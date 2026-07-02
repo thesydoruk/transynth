@@ -26,10 +26,11 @@ export {
 export { collectModPexSources } from './pexSources';
 export type { PexSourceFile } from './pexSources';
 export {
+  formatPexStringContext,
   isLikelyUserText,
   parsePexBuffer,
   patchPexBuffer,
   pexScriptKeyFromInfo,
   writeWString,
 } from './pexParser';
-export type { PexInfo, PexResult } from './pexParser';
+export type { PexInfo, PexResult, PexStringUsage, PexUserStringDetail } from './pexParser';
