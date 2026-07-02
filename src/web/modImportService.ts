@@ -31,9 +31,7 @@ import { mapWithConcurrency } from '../utils/concurrency';
 import { CONFIG } from '../config';
 import { logImport } from '../logging/loggers';
 import { EspReader, type EspStringRow } from '../formats/esp';
-import { BsaReader } from '../formats/bsa';
 import { isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../formats/ba2';
-import { parseStringsBuffer, stringsTypeFromPath } from '../formats/strings';
 import {
   parseMcmBuffer,
   mcmLocaleFromPath,
@@ -73,6 +71,14 @@ import {
   type ModImportBulkRow,
   type DialogGraphImportContext,
 } from './modImportBulk';
+import {
+  discoverLocaleSources,
+  localeSourcesByLocale,
+  loadLocaleStrings,
+  generateImportCsvRows,
+  estimateLocalizedImportTotal,
+  resolveEnglishLocaleSource,
+} from './modImportLocaleStream';
 import { ensureChampollionInstalled } from '../tools/installChampollion';
 import { decompilePexScriptMap, type DecompiledPexScript } from './pexDecompileService';
 
@@ -476,15 +482,19 @@ export const validateModImportLocaleSelection = (
   const esp = new EspReader(anchorPath, game);
   if (!esp.info.isLocalized) return;
 
-  const localesMap = loadLocalesForGame(
+  const localeSources = discoverLocaleSources(
     anchorPath,
     game,
     discoverArchiveCandidatesForPlugin(anchorPath),
   );
-  if (localesMap.size === 0 || importAllLocalizations) return;
+  if (localeSources.length === 0 || importAllLocalizations) return;
 
-  if (!resolveSingleImportLocale(localesMap, srcLang)) {
-    const available = [...localesMap.keys()].sort().join(', ');
+  const localeKeys = new Map(localeSources.map((s) => [s.locale, true]));
+  if (!resolveSingleImportLocale(localeKeys, srcLang)) {
+    const available = localeSources
+      .map((s) => s.locale)
+      .sort()
+      .join(', ');
     throw new Error(`Locale "${srcLang}" not found in mod files. Available locales: ${available}`);
   }
 };
@@ -527,15 +537,16 @@ const discoverArchiveCandidatesForPlugin = (espPath: string): string[] => {
  * Pick the best locale map for English NPC-name resolution during import.
  */
 const resolveEnglishLocaleMap = (
-  localesMap: Map<string, Map<number, string>>,
+  localeSources: ReturnType<typeof discoverLocaleSources>,
 ): Map<number, string> | undefined => {
-  return (
-    resolveAvailableLocale(localesMap, MOD_IMPORT_DEFAULT_SOURCE_LOCALE)?.value ??
-    localesMap.get('english') ??
-    localesMap.get('en') ??
-    [...localesMap.values()][0]
-  );
+  const source = resolveEnglishLocaleSource(localeSources);
+  return source ? loadLocaleStrings(source) : undefined;
 };
+
+const materializeImportCsvRows = (
+  espRows: EspStringRow[],
+  stringsMap: Map<number, string> | null,
+): CsvRow[] => [...generateImportCsvRows(espRows, stringsMap)];
 
 /**
  * Convert generic CSV-style rows into the canonical imported-row shape used by
@@ -580,23 +591,27 @@ export const extractModImportApplyRows = (
     const espRows = esp.extractStrings();
 
     if (esp.info.isLocalized) {
-      const localesMap = loadLocalesForGame(
+      const localeSources = discoverLocaleSources(
         anchorPath,
         game,
         discoverArchiveCandidatesForPlugin(anchorPath),
       );
-      const resolved = resolveAvailableLocale(localesMap, importedLang);
+      const byLocale = localeSourcesByLocale(localeSources);
+      const resolved = resolveAvailableLocale(byLocale, importedLang);
       if (!resolved) {
-        const available = [...localesMap.keys()].sort().join(', ');
+        const available = localeSources
+          .map((s) => s.locale)
+          .sort()
+          .join(', ');
         throw new Error(
           available
             ? `Localized import does not contain locale "${importedLang}". Available locales: ${available}`
             : 'Localized import does not contain any STRINGS locales',
         );
       }
-      collected.push(...buildCsvRows(espRows, resolved.value));
+      collected.push(...materializeImportCsvRows(espRows, loadLocaleStrings(resolved.value)));
     } else {
-      collected.push(...buildCsvRows(espRows, null));
+      collected.push(...materializeImportCsvRows(espRows, null));
     }
 
     const pexMap = collectPexStringsSync(anchorPath, (job.game as GameType) ?? 'fo4');
@@ -656,69 +671,6 @@ const isPluginPath = (filePath: string): boolean => {
     // Fall through to extension check.
   }
   return isPlugin(path.basename(filePath));
-};
-
-/**
- * Return the BSA archive paired with a Skyrim SE plugin, if one exists.
- * SSE archives use the naming convention `{Stem}.bsa` or `{Stem} - Strings.bsa`
- * (the Strings variant contains only STRINGS/DLSTRINGS/ILSTRINGS files).
- * We look for BSA files in the same directory as the plugin, preferring the
- * `{Stem} - Strings.bsa` variant because it is smaller and faster to load.
- *
- * @param modPath      - Absolute path to the .esp/.esm plugin.
- * @param bsaCandidates - Pre-discovered BSA paths to search first.
- */
-const discoverBsa = (modPath: string, bsaCandidates: string[]): string | null => {
-  const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
-  const variants = [
-    `${stem} - strings`,
-    `${stem} - textures`, // occasionally contains strings in Strings subfolder
-    stem,
-  ];
-  for (const bsa of bsaCandidates) {
-    const base = path.basename(bsa, '.bsa').toLowerCase();
-    if (variants.includes(base)) return bsa;
-  }
-  const dir = path.dirname(modPath);
-  for (const variant of variants) {
-    const p = path.join(dir, `${variant}.bsa`);
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-};
-
-/**
- * Load all STRINGS/DLSTRINGS/ILSTRINGS locales from a Skyrim SE BSA archive.
- * BSA archives store strings files under the `strings\\` folder path.
- *
- * @param bsaPath - Absolute path to the .bsa archive.
- */
-const loadLocalesFromBSA = (bsaPath: string): Map<string, Map<number, string>> => {
-  const reader = new BsaReader(bsaPath);
-  const locales = new Map<string, Map<number, string>>();
-
-  const stringsEntries = [
-    ...reader.listByExt('strings'),
-    ...reader.listByExt('dlstrings'),
-    ...reader.listByExt('ilstrings'),
-  ];
-
-  for (const entry of stringsEntries) {
-    const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? '';
-    const m = base.match(/_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
-    if (!m) continue;
-
-    const locale = m[1].toLowerCase();
-    const type = stringsTypeFromPath(entry.name);
-    const buf = reader.extractEntry(entry);
-    const map = parseStringsBuffer(buf, type);
-
-    if (!locales.has(locale)) locales.set(locale, new Map());
-    const localeMap = locales.get(locale)!;
-    for (const [id, text] of map) localeMap.set(id, text);
-  }
-
-  return locales;
 };
 
 /**
@@ -956,120 +908,6 @@ const listCompanionGnrlBa2ForPlugin = (
   }
 
   return [...matched];
-};
-
-const loadLocalesFromBA2 = (ba2Path: string): Map<string, Map<number, string>> => {
-  const reader = getBa2Reader(ba2Path);
-  const locales = new Map<string, Map<number, string>>();
-
-  const stringsEntries = [
-    ...reader.listByExt('strings'),
-    ...reader.listByExt('dlstrings'),
-    ...reader.listByExt('ilstrings'),
-  ];
-
-  for (const entry of stringsEntries) {
-    const base = entry.name.replace(/\\/g, '/').split('/').pop() ?? '';
-    const m = base.match(/_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
-    if (!m) continue;
-
-    const locale = m[1].toLowerCase();
-    const type = stringsTypeFromPath(entry.name);
-    const buf = reader.extractEntry(entry);
-    const map = parseStringsBuffer(buf, type);
-
-    if (!locales.has(locale)) locales.set(locale, new Map());
-    const localeMap = locales.get(locale)!;
-    for (const [id, text] of map) localeMap.set(id, text);
-  }
-
-  return locales;
-};
-
-/**
- * Load strings locales for a given game, trying all archive types and loose files.
- * For FO4: loose Strings\ first, then `{Plugin} - Main.ba2`, `{Plugin} - Interface.ba2`
- * (vanilla base game uses Interface), then other stem-prefixed GNRL archives.
- * For SSE: looks for a BSA archive first, then loose Strings\ files.
- *
- * @param espPath      - Absolute path to the plugin.
- * @param game         - Target game ('fo4' or 'sse').
- * @param ba2Candidates - Pre-discovered archive paths (any type).
- */
-const loadLocalesForGame = (
-  espPath: string,
-  game: GameType,
-  ba2Candidates: string[] = [],
-): Map<string, Map<number, string>> => {
-  if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
-    // Skyrim SE / LE / FO3 / FNV: prefer BSA archives, fall back to loose files
-    const bsaCandidates = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.bsa'));
-    const bsaPath = discoverBsa(espPath, bsaCandidates);
-    if (bsaPath) return loadLocalesFromBSA(bsaPath);
-    return loadLocalesFromLooseFiles(espPath);
-  }
-  // fo4 / fo76: prefer loose Strings\ (mods), then companion BA2 archives.
-  const ba2Cands = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.ba2'));
-  const loose = loadLocalesFromLooseFiles(espPath);
-  if (loose.size > 0) return loose;
-
-  const tryLoadFromBa2 = (ba2Path: string): Map<string, Map<number, string>> | null => {
-    try {
-      const locales = loadLocalesFromBA2(ba2Path);
-      return locales.size > 0 ? locales : null;
-    } catch (err) {
-      logImport.warn(
-        `STRINGS: could not read BA2 "${path.basename(ba2Path)}": ${err instanceof Error ? err.message : err}`,
-      );
-      return null;
-    }
-  };
-
-  const primaryBa2 = discoverBa2(espPath, ba2Cands, game);
-  if (primaryBa2) {
-    const fromPrimary = tryLoadFromBa2(primaryBa2);
-    if (fromPrimary) return fromPrimary;
-  }
-
-  const stem = path.basename(espPath, path.extname(espPath)).toLowerCase();
-  for (const ba2 of ba2Cands) {
-    if (ba2 === primaryBa2) continue;
-    const base = path.basename(ba2, '.ba2').toLowerCase();
-    if (!base.startsWith(stem)) continue;
-    if (!isBa2GnrArchive(ba2)) continue;
-    const fromBa2 = tryLoadFromBa2(ba2);
-    if (fromBa2) return fromBa2;
-  }
-
-  return loose;
-};
-
-/**
- * Load all STRINGS/DLSTRINGS/ILSTRINGS files from loose disk files.
- * Looks in <modDir>/Strings/ for files matching `{stem}_{locale}.{ext}`.
- *
- * @param modPath - Absolute path to the .esp/.esm plugin.
- */
-const loadLocalesFromLooseFiles = (modPath: string): Map<string, Map<number, string>> => {
-  const dir = path.join(path.dirname(modPath), 'Strings');
-  const locales = new Map<string, Map<number, string>>();
-  if (!fs.existsSync(dir)) return locales;
-
-  for (const file of fs.readdirSync(dir)) {
-    const m = file.match(/_([a-z]+)\.(strings|dlstrings|ilstrings)$/i);
-    if (!m) continue;
-
-    const locale = m[1].toLowerCase();
-    const type = stringsTypeFromPath(file);
-    const buf = fs.readFileSync(path.join(dir, file));
-    const map = parseStringsBuffer(buf, type);
-
-    if (!locales.has(locale)) locales.set(locale, new Map());
-    const localeMap = locales.get(locale)!;
-    for (const [id, text] of map) localeMap.set(id, text);
-  }
-
-  return locales;
 };
 
 /**
@@ -1371,36 +1209,6 @@ const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
 
   logImport.debug(`Voice speaker map: ${map.size} entries from ${voiceRoot}`);
   return map;
-};
-
-const buildCsvRows = (
-  espRows: EspStringRow[],
-  stringsMap: Map<number, string> | null,
-): CsvRow[] => {
-  const rows: CsvRow[] = [];
-  for (const row of espRows) {
-    let text: string;
-    if (row.isLstringId) {
-      if (!stringsMap) continue;
-      const id = parseInt(row.text, 10);
-      text = stringsMap.get(id) ?? '';
-      if (!text) continue;
-    } else {
-      text = row.text;
-    }
-    rows.push({
-      FormID: row.formId,
-      Signature: row.signature,
-      EDID: row.edid || undefined,
-      Path: `${row.signature}\\${row.path}`,
-      LStringID: row.isLstringId ? parseInt(row.text, 10) : undefined,
-      Source: text,
-      DialogTopicFormID: row.dialogTopicFormId,
-      PreviousInfoFormID: row.previousInfoFormId,
-      SpeakerFormID: row.speakerFormId,
-    });
-  }
-  return rows;
 };
 
 /**
@@ -1756,7 +1564,21 @@ export const registerPluginFile = async (
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
-  const totalRecords = espRows.length;
+  let totalRecords = espRows.length;
+  if (isLocalized) {
+    const localeSources = discoverLocaleSources(
+      pluginPath,
+      game,
+      discoverArchiveCandidatesForPlugin(pluginPath),
+    );
+    if (localeSources.length > 0) {
+      totalRecords = estimateLocalizedImportTotal(
+        espRows,
+        localeSources,
+        localeSources.map((s) => s.locale),
+      );
+    }
+  }
 
   return insertModImportJob(db, {
     fileName,
@@ -1834,7 +1656,21 @@ export const registerArchiveFile = async (
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
-  const totalRecords = espRows.length;
+  let totalRecords = espRows.length;
+  if (isLocalized) {
+    const localeSources = discoverLocaleSources(
+      pluginPath,
+      game,
+      discoverArchiveCandidatesForPlugin(pluginPath),
+    );
+    if (localeSources.length > 0) {
+      totalRecords = estimateLocalizedImportTotal(
+        espRows,
+        localeSources,
+        localeSources.map((s) => s.locale),
+      );
+    }
+  }
 
   return insertModImportJob(db, {
     fileName,
@@ -1904,23 +1740,23 @@ export const previewModRecords = (
   const esp = new EspReader(anchorPath, game);
   const espRows = esp.extractStrings();
 
-  let localesMap = new Map<string, Map<number, string>>();
-  if (esp.info.isLocalized) {
-    localesMap = loadLocalesForGame(
-      anchorPath,
-      game,
-      discoverArchiveCandidatesForPlugin(anchorPath),
-    );
-  }
+  const localeSources = discoverLocaleSources(
+    anchorPath,
+    game,
+    ba2Candidates.length > 0 ? ba2Candidates : discoverArchiveCandidatesForPlugin(anchorPath),
+  );
 
   const previewLocale =
-    resolveAvailableLocale(localesMap, MOD_IMPORT_DEFAULT_SOURCE_LOCALE)?.resolvedKey ??
-    [...localesMap.keys()][0] ??
+    resolveAvailableLocale(localeSourcesByLocale(localeSources), MOD_IMPORT_DEFAULT_SOURCE_LOCALE)
+      ?.resolvedKey ??
+    localeSources[0]?.locale ??
     null;
-  const stringsMap = previewLocale ? (localesMap.get(previewLocale) ?? null) : null;
-  const csvRows = buildCsvRows(espRows, stringsMap);
+  const stringsMap = previewLocale
+    ? loadLocaleStrings(localeSourcesByLocale(localeSources).get(previewLocale)!)
+    : null;
+  const csvRows = materializeImportCsvRows(espRows, stringsMap);
 
-  const rows: ModPreviewRow[] = csvRows.map((r) => ({
+  const rows: ModPreviewRow[] = csvRows.slice(0, 200).map((r) => ({
     formId: r.FormID,
     signature: r.Signature,
     edid: r.EDID ?? '',
@@ -1930,7 +1766,7 @@ export const previewModRecords = (
 
   return {
     rows,
-    locales: [...localesMap.keys()],
+    locales: localeSources.map((s) => s.locale),
     isLocalized: esp.info.isLocalized,
   };
 };
@@ -2292,15 +2128,40 @@ export const runModImport = async (
       isImportAllLocalesRequest(job.src_lang) ? MOD_IMPORT_DEFAULT_SOURCE_LOCALE : job.src_lang,
     );
 
-    const localesMap: Map<string, Map<number, string>> = esp.info.isLocalized
-      ? loadLocalesForGame(espPath, game, archiveCandidates)
-      : new Map();
+    const localeSources = esp.info.isLocalized
+      ? discoverLocaleSources(espPath, game, archiveCandidates)
+      : [];
 
-    if (esp.info.isLocalized && localesMap.size === 0) {
+    if (esp.info.isLocalized && localeSources.length === 0) {
       logImport.warn(
         `[Mod Import #${job.id}] Localized plugin without STRINGS files; importing inline strings as "${pluginStringLang}"`,
       );
     }
+
+    const localeCatalog = localeSourcesByLocale(localeSources);
+    selectedLocale =
+      localeSources.length > 0
+        ? resolveSingleImportLocale(
+            new Map([...localeCatalog.keys()].map((locale) => [locale, true])),
+            job.src_lang,
+          )
+        : null;
+    importSingleLocaleMode = selectedLocale != null;
+
+    const localesToImport = [...localeCatalog.keys()]
+      .filter((locale) => !importSingleLocaleMode || locale === selectedLocale)
+      .sort();
+
+    let progressTotal = job.total_records;
+    if (localesToImport.length > 0) {
+      progressTotal = estimateLocalizedImportTotal(espRows, localeSources, localesToImport);
+      await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [
+        progressTotal,
+        job.id,
+      ]);
+    }
+
+    const npcNameFromMod = buildNpcNameMap(espRows, resolveEnglishLocaleMap(localeSources) ?? null);
 
     const dialogGraphCtx: DialogGraphImportContext = {
       dialogEdidByFormId,
@@ -2311,7 +2172,7 @@ export const runModImport = async (
 
     const pendingRows: ModImportBulkRow[] = [];
 
-    const flushPendingImportBatch = async (progressTotal: number): Promise<void> => {
+    const flushPendingImportBatch = async (): Promise<void> => {
       if (pendingRows.length === 0) return;
       const batch = pendingRows.splice(0, pendingRows.length);
       try {
@@ -2357,117 +2218,102 @@ export const runModImport = async (
       }
     };
 
-    const enqueueImportRow = async (
-      r: CsvRow,
-      locale: string,
-      context: string | null,
-      progressTotal: number,
-      sourceKind?: string,
-    ): Promise<void> => {
+    const pushImportRow = async (row: ModImportBulkRow): Promise<void> => {
       if (!inTx) {
         await db.query('BEGIN');
         inTx = true;
-        batchCount = 0;
       }
-      pendingRows.push({ csvRow: r, locale, context, sourceKind });
-      batchCount++;
-      if (batchCount >= importBatchSize) {
-        await flushPendingImportBatch(progressTotal);
+      pendingRows.push(row);
+      if (pendingRows.length >= importBatchSize) {
+        await flushPendingImportBatch();
       }
     };
 
-    if (esp.info.isLocalized && localesMap.size > 0) {
-      // Resolve NPC names using the English locale when available
-      const srcLocaleMap = resolveEnglishLocaleMap(localesMap);
-      const npcNameFromMod = buildNpcNameMap(espRows, srcLocaleMap);
+    let skipRows = job.imported_records;
 
-      selectedLocale = resolveSingleImportLocale(localesMap, job.src_lang);
-      importSingleLocaleMode = selectedLocale != null;
-
-      const localeEntries = [...localesMap.entries()].filter(
-        ([locale]) => !importSingleLocaleMode || locale === selectedLocale,
-      );
-      const work = await mapWithConcurrency(
-        localeEntries,
-        CONFIG.modImportIoParallel,
-        async ([locale, strMap]) => ({ locale, rows: buildCsvRows(espRows, strMap) }),
-      );
-      const totalAll = work.reduce((s, w) => s + w.rows.length, 0);
-      await db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [totalAll, job.id]);
-
+    if (localesToImport.length > 0) {
       if (importSingleLocaleMode) {
         logImport.info(
           `[Mod Import #${job.id}] Single-locale mode: importing only "${selectedLocale}"`,
         );
       } else {
         logImport.info(
-          `[Mod Import #${job.id}] All-localizations mode: importing ${work.length} locale(s): ${work.map((w) => w.locale).join(', ')}`,
+          `[Mod Import #${job.id}] All-localizations mode: importing ${localesToImport.length} locale(s): ${localesToImport.join(', ')}`,
         );
       }
 
-      let globalIdx = 0;
-
-      outer: for (const { locale, rows } of work) {
-        for (const r of rows) {
-          if (globalIdx++ < job.imported_records) continue;
+      outer: for (const locale of localesToImport) {
+        const stringsMap = loadLocaleStrings(localeCatalog.get(locale)!);
+        for (const r of generateImportCsvRows(espRows, stringsMap)) {
+          if (skipRows > 0) {
+            skipRows--;
+            continue;
+          }
 
           if (state.cancel) {
             await discardOpenImportBatch();
             await markFailed(db, job.id, imported);
-            logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${totalAll}`);
+            logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${progressTotal}`);
             break outer;
           }
           if (state.pause) {
             await discardOpenImportBatch();
             await markPaused(db, job.id, imported);
-            logImport.info(`Mod Import #${job.id} paused at ${imported}/${totalAll}`);
+            logImport.info(`Mod Import #${job.id} paused at ${imported}/${progressTotal}`);
             break outer;
           }
 
-          const speakerFidLoc = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
-          const contextLoc = speakerFidLoc
-            ? (npcNameFromMod.get(speakerFidLoc) ?? npcRefMap.get(speakerFidLoc) ?? null)
+          const speakerFid = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
+          const contextLoc = speakerFid
+            ? (npcNameFromMod.get(speakerFid) ?? npcRefMap.get(speakerFid) ?? null)
             : null;
-          await enqueueImportRow(r, locale, contextLoc, totalAll);
+          await pushImportRow({ csvRow: r, locale, context: contextLoc, sourceKind: 'mod-import' });
         }
       }
-      await flushPendingImportBatch(totalAll);
+      await flushPendingImportBatch();
     } else {
-      // Non-localized plugin, or localized plugin without external STRINGS files.
-      const npcNameFromMod = buildNpcNameMap(espRows, null);
-      const csvRows = buildCsvRows(espRows, null);
-
-      if (csvRows.length === 0 && espRows.some((row) => row.isLstringId)) {
+      if (
+        esp.info.isLocalized &&
+        espRows.some((row) => row.isLstringId) &&
+        localeSources.length === 0
+      ) {
         logImport.warn(
           `[Mod Import #${job.id}] Localized plugin "${job.file_name}" has ${espRows.length} string refs but none resolved to text. ` +
             'Ensure STRINGS files exist under Strings\\ or in a companion BA2 (vanilla FO4 base game: "Fallout4 - Interface.ba2").',
         );
       }
 
-      for (let i = 0; i < csvRows.length; i++) {
-        if (i < job.imported_records) continue;
+      for (const r of generateImportCsvRows(espRows, null)) {
+        if (skipRows > 0) {
+          skipRows--;
+          continue;
+        }
 
         if (state.cancel) {
           await discardOpenImportBatch();
           await markFailed(db, job.id, imported);
-          logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          logImport.info(`Mod Import #${job.id} cancelled at ${imported}/${progressTotal}`);
           break;
         }
         if (state.pause) {
           await discardOpenImportBatch();
           await markPaused(db, job.id, imported);
-          logImport.info(`Mod Import #${job.id} paused at ${imported}/${job.total_records}`);
+          logImport.info(`Mod Import #${job.id} paused at ${imported}/${progressTotal}`);
           break;
         }
 
-        const r = csvRows[i];
         const speakerFid = r.SpeakerFormID ?? speakerMap.get(r.FormID ?? '');
         const context = speakerFid
           ? (npcNameFromMod.get(speakerFid) ?? npcRefMap.get(speakerFid) ?? null)
           : null;
-        await enqueueImportRow(r, pluginStringLang, context, csvRows.length);
+        await pushImportRow({
+          csvRow: r,
+          locale: pluginStringLang,
+          context,
+          sourceKind: 'mod-import',
+        });
       }
-      await flushPendingImportBatch(csvRows.length);
+      await flushPendingImportBatch();
     }
 
     // ── MCM strings: ingest Interface\Translations\{modName}_*.txt ──
@@ -2576,9 +2422,14 @@ export const runModImport = async (
         );
         if (pexRows.length > 0) {
           for (const { csvRow: r, context } of pexRows) {
-            await enqueueImportRow(r, pluginStringLang, context, pexRows.length, 'pex');
+            await pushImportRow({
+              csvRow: r,
+              locale: pluginStringLang,
+              context,
+              sourceKind: 'pex',
+            });
           }
-          await flushPendingImportBatch(pexRows.length);
+          await flushPendingImportBatch();
         }
       } else {
         logImport.debug(`[Mod Import #${job.id}] No PEX scripts with translatable strings found`);
@@ -2616,14 +2467,14 @@ export const runModImport = async (
       // For localized mods: only convert if we imported all localizations, not a single selected locale.
       // For non-localized mods: always convert to create self-translations (srcLang→srcLang).
       try {
-        if (job.is_localized && !importSingleLocaleMode && localesMap.size > 0) {
+        if (job.is_localized && !importSingleLocaleMode && localeSources.length > 0) {
           await convertImportedStringsToTranslations(
             db,
             importModId,
             MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
             true,
           );
-        } else if (!job.is_localized || localesMap.size === 0) {
+        } else if (!job.is_localized || localeSources.length === 0) {
           await convertImportedStringsToTranslations(db, importModId, pluginStringLang, false);
         }
         // else: localized mod in single-locale mode — skip conversion (imported as regular source strings)
