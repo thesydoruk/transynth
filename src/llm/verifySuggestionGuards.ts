@@ -3,7 +3,7 @@
  */
 import type { GameType } from '../types';
 import { compareProtectedTokens, type ProtectedTokenContext } from '../utils/placeholders';
-import type { LlmVerifyItem, LlmVerifyItemResult } from './verifyTranslate';
+import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './verifyTranslate';
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
 
@@ -101,11 +101,11 @@ const checkIntroducedLatin = (
 
 const checkWeaponBarrelTerms = (
   item: LlmVerifyItem,
-  suggestion: string,
+  text: string,
 ): VerifySuggestionValidation | null => {
   if (!isBarrelContext(item)) return null;
 
-  if (hasUkWord(suggestion, 'стівол')) {
+  if (hasUkWord(text, 'стівол')) {
     return {
       ok: false,
       reason: 'invalid_term',
@@ -113,7 +113,7 @@ const checkWeaponBarrelTerms = (
     };
   }
 
-  if (hasUkWord(suggestion, 'стіл') && !hasUkWord(item.source, 'стіл')) {
+  if (hasUkWord(text, 'стіл') && !hasUkWord(item.source, 'стіл')) {
     return {
       ok: false,
       reason: 'invalid_term',
@@ -195,10 +195,10 @@ const checkFmrnOververbose = (
 
 const checkAccusativeObject = (
   item: LlmVerifyItem,
-  suggestion: string,
+  text: string,
 ): VerifySuggestionValidation | null => {
-  if (!/можна забрати|забрати/i.test(suggestion)) return null;
-  if (/Тесла-гармат[^уаie]/i.test(suggestion) && !/Тесла-гармату/i.test(suggestion)) {
+  if (!/можна забрати|забрати/i.test(text)) return null;
+  if (/Тесла-гармат[^уаie]/i.test(text) && !/Тесла-гармату/i.test(text)) {
     return {
       ok: false,
       reason: 'invalid_term',
@@ -208,15 +208,42 @@ const checkAccusativeObject = (
   return null;
 };
 
-const runQualityChecks = (
-  item: LlmVerifyItem,
-  suggestion: string,
-): VerifySuggestionValidation | null =>
-  checkIntroducedLatin(item, suggestion) ??
-  checkWeaponBarrelTerms(item, suggestion) ??
-  checkDamageTermSwap(item, suggestion) ??
-  checkFmrnOververbose(item, suggestion) ??
-  checkAccusativeObject(item, suggestion);
+/** Short TERM/BTXT rows with unrelated long translations (typical TM edid mismatch). */
+const checkSemanticLengthMismatch = (item: LlmVerifyItem): VerifySuggestionValidation | null => {
+  if (item.grup !== 'TERM' && item.field !== 'BTXT') return null;
+
+  const srcLen = item.source.trim().length;
+  const trLen = item.translation.trim().length;
+  if (srcLen <= 0 || srcLen > 80) return null;
+
+  if (srcLen <= 20 && trLen > srcLen * 3 && trLen > srcLen + 15) {
+    return {
+      ok: false,
+      reason: 'invalid_term',
+      message:
+        'Translation is far longer than the short terminal source (possible TM/EDID mismatch).',
+    };
+  }
+
+  const maxLen = Math.max(srcLen * 4, srcLen + 120);
+  if (trLen > maxLen) {
+    return {
+      ok: false,
+      reason: 'invalid_term',
+      message:
+        'Translation is far longer than the short terminal source (possible TM/EDID mismatch).',
+    };
+  }
+
+  return null;
+};
+
+const runQualityChecks = (item: LlmVerifyItem, text: string): VerifySuggestionValidation | null =>
+  checkIntroducedLatin(item, text) ??
+  checkWeaponBarrelTerms(item, text) ??
+  checkDamageTermSwap(item, text) ??
+  checkFmrnOververbose(item, text) ??
+  checkAccusativeObject(item, text);
 
 export const validateVerifySuggestion = (
   item: LlmVerifyItem,
@@ -245,6 +272,71 @@ export const validateVerifySuggestion = (
   if (quality) return quality;
 
   return { ok: true };
+};
+
+/** Deterministic checks on the current translation (used before auto-approve). */
+export const validateTranslationForVerify = (
+  item: LlmVerifyItem,
+  game?: GameType | string | null,
+): VerifySuggestionValidation => {
+  const tokenCheck = compareProtectedTokens(
+    item.source,
+    item.translation,
+    game as GameType | undefined,
+    tokenContextFromItem(item),
+  );
+  if (!tokenCheck.ok) {
+    return { ok: false, reason: 'token_mismatch', message: tokenCheck.message };
+  }
+
+  const semantic = checkSemanticLengthMismatch(item);
+  if (semantic) return semantic;
+
+  const quality = runQualityChecks(item, item.translation);
+  if (quality) return quality;
+
+  return { ok: true };
+};
+
+export type VerifyFixAction =
+  | { kind: 'none' }
+  | { kind: 'flag_only' }
+  | { kind: 'apply'; suggestion: string }
+  | { kind: 'reject_fix'; suggestion: string; message: string };
+
+/** Decide whether an LLM suggestion should be auto-applied (after guard validation). */
+export const resolveVerifyFixAction = (
+  item: LlmVerifyItem,
+  verdict: LlmVerifyVerdict,
+  suggestion: string | null,
+  fixSuspicious: boolean,
+  game?: GameType | string | null,
+): VerifyFixAction => {
+  if (verdict === 'ok') return { kind: 'none' };
+
+  const wantsFix =
+    !!suggestion && (verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious));
+  if (!wantsFix) return { kind: 'flag_only' };
+
+  const check = validateVerifySuggestion(item, suggestion, game);
+  if (!check.ok) {
+    return { kind: 'reject_fix', suggestion, message: check.message };
+  }
+
+  return { kind: 'apply', suggestion };
+};
+
+export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction): string => {
+  switch (action.kind) {
+    case 'apply':
+      return dryRun ? 'Would fix' : 'Fixed';
+    case 'reject_fix':
+      return dryRun ? 'Would flag (fix rejected)' : 'Flagged (fix rejected)';
+    case 'flag_only':
+      return dryRun ? 'Would flag' : 'Flagged';
+    default:
+      return dryRun ? 'Would flag' : 'Flagged';
+  }
 };
 
 const appendRejectionNote = (reason: string, note: string): string =>
@@ -281,15 +373,28 @@ export const reconcileVerifyResult = (
 const shouldSoftenRejectedSuggestion = (
   validation: Extract<VerifySuggestionValidation, { ok: false }>,
   reconciled: LlmVerifyItemResult,
+  item: LlmVerifyItem,
   translationTokensOk: boolean,
-): boolean =>
-  translationTokensOk &&
-  (validation.reason === 'noop' ||
-    reconciled.verdict === 'suspicious' ||
+  game?: GameType | string | null,
+): boolean => {
+  if (!translationTokensOk) return false;
+  // Never dismiss a hard incorrect verdict just because the LLM fix was bad.
+  if (reconciled.verdict === 'incorrect') return false;
+  if (reconciled.verdict !== 'suspicious') return false;
+
+  // If the translation itself still fails deterministic checks, keep it flagged.
+  if (!validateTranslationForVerify(item, game).ok) return false;
+
+  // LLM proposed a bad rewrite for an otherwise acceptable translation.
+  return (
+    validation.reason === 'noop' ||
     validation.reason === 'introduced_latin' ||
     validation.reason === 'invalid_term' ||
     validation.reason === 'terminology_swap' ||
-    validation.reason === 'oververbose');
+    validation.reason === 'oververbose' ||
+    validation.reason === 'token_mismatch'
+  );
+};
 
 /**
  * Strip invalid LLM suggestions and soften verdicts when the only problem was a bad rewrite.
@@ -313,7 +418,7 @@ export const sanitizeVerifyResult = (
     tokenContextFromItem(item),
   ).ok;
 
-  if (shouldSoftenRejectedSuggestion(validation, reconciled, translationTokensOk)) {
+  if (shouldSoftenRejectedSuggestion(validation, reconciled, item, translationTokensOk, game)) {
     return {
       ...reconciled,
       verdict: 'ok',

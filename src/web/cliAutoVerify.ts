@@ -4,7 +4,10 @@
 import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
-import { validateVerifySuggestion } from '../llm/verifySuggestionGuards';
+import {
+  resolveVerifyFixAction,
+  validateTranslationForVerify,
+} from '../llm/verifySuggestionGuards';
 import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import {
@@ -239,7 +242,49 @@ export const runCliModVerify = async (
     const okStringIds: number[] = [];
     for (const result of results) {
       done++;
+      const row = rowById.get(result.id);
+
       if (result.verdict === 'ok') {
+        if (row) {
+          const itemForValidation: LlmVerifyItem = {
+            id: row.string_id,
+            source: row.source,
+            translation: row.translation,
+            grup: parseRecordLocation(row.signature, row.path).grup,
+            edid: row.edid,
+            field: parseRecordLocation(row.signature, row.path).field,
+            context: row.context,
+          };
+          const txCheck = validateTranslationForVerify(itemForValidation, opts.game);
+          if (!txCheck.ok) {
+            incorrect++;
+            const issue: LlmVerifyIssue = {
+              stringId: result.id,
+              source: row.source,
+              translation: row.translation,
+              signature: row.signature,
+              path: row.path,
+              edid: row.edid,
+              verdict: 'incorrect',
+              reason: txCheck.message,
+              confidence: Math.max(result.confidence, 0.95),
+              suggestion: null,
+            };
+            onEvent?.({
+              type: 'progress',
+              done,
+              total,
+              approved,
+              fixed,
+              suspicious,
+              incorrect,
+              errors,
+              dbPage,
+              issue,
+            });
+            continue;
+          }
+        }
         okStringIds.push(result.id);
         onEvent?.({
           type: 'progress',
@@ -255,11 +300,28 @@ export const runCliModVerify = async (
         continue;
       }
 
-      const row = rowById.get(result.id);
       if (!row) continue;
 
       if (result.verdict === 'suspicious') suspicious++;
       else incorrect++;
+
+      const itemForValidation: LlmVerifyItem = {
+        id: row.string_id,
+        source: row.source,
+        translation: row.translation,
+        grup: parseRecordLocation(row.signature, row.path).grup,
+        edid: row.edid,
+        field: parseRecordLocation(row.signature, row.path).field,
+        context: row.context,
+      };
+
+      const fixAction = resolveVerifyFixAction(
+        itemForValidation,
+        result.verdict,
+        result.suggestion,
+        fixSuspicious,
+        opts.game,
+      );
 
       const issue: LlmVerifyIssue = {
         stringId: result.id,
@@ -272,45 +334,28 @@ export const runCliModVerify = async (
         reason: result.reason,
         confidence: result.confidence,
         suggestion: result.suggestion,
+        fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
       };
 
-      const suggestion = result.suggestion;
-      const shouldApplySuggestion =
-        !dryRun &&
-        suggestion &&
-        (result.verdict === 'incorrect' || (result.verdict === 'suspicious' && fixSuspicious));
-
-      if (shouldApplySuggestion) {
-        const itemForValidation: LlmVerifyItem = {
-          id: row.string_id,
-          source: row.source,
-          translation: row.translation,
-          grup: issue.signature ? parseRecordLocation(row.signature, row.path).grup : null,
-          edid: row.edid,
-          field: parseRecordLocation(row.signature, row.path).field,
-          context: row.context,
-        };
-        const check = validateVerifySuggestion(itemForValidation, suggestion, opts.game);
-        if (!check.ok) {
-          logVerify.warn('cli verify fix skipped — suggestion failed validation', {
+      if (!dryRun && fixAction.kind === 'apply') {
+        try {
+          await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
+          fixed++;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          logVerify.error('cli verify fix failed; continuing', {
             modId: opts.modId,
             stringId: result.id,
-            reason: check.message,
+            error: message,
           });
-        } else {
-          try {
-            await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
-            fixed++;
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            logVerify.error('cli verify fix failed; continuing', {
-              modId: opts.modId,
-              stringId: result.id,
-              error: message,
-            });
-            errors++;
-          }
+          errors++;
         }
+      } else if (!dryRun && fixAction.kind === 'reject_fix') {
+        logVerify.warn('cli verify fix skipped — suggestion failed validation', {
+          modId: opts.modId,
+          stringId: result.id,
+          reason: fixAction.message,
+        });
       }
 
       onEvent?.({

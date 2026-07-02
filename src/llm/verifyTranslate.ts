@@ -12,7 +12,7 @@ import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
-import { sanitizeVerifyResult } from './verifySuggestionGuards';
+import { sanitizeVerifyResult, validateTranslationForVerify } from './verifySuggestionGuards';
 import type { LlmGlossaryEntry } from './translate';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
@@ -68,7 +68,21 @@ export const applyPlaceholderGuardToVerifyResult = (
     game as GameType | undefined,
     { grup: item.grup, field: item.field },
   );
-  if (check.ok) return result;
+  if (check.ok) {
+    if (result.verdict === 'ok') {
+      const txCheck = validateTranslationForVerify(item, game);
+      if (!txCheck.ok) {
+        return {
+          id: result.id,
+          verdict: 'incorrect',
+          reason: txCheck.message,
+          confidence: Math.max(result.confidence, 0.95),
+          suggestion: result.suggestion,
+        };
+      }
+    }
+    return result;
+  }
 
   if (result.verdict === 'ok') {
     return {

@@ -2,7 +2,9 @@ import { describe, it, expect } from '@jest/globals';
 import { filterVerifyReferenceExamples } from '../verifyReferenceExamples';
 import {
   reconcileVerifyResult,
+  resolveVerifyFixAction,
   sanitizeVerifyResult,
+  validateTranslationForVerify,
   validateVerifySuggestion,
 } from '../verifySuggestionGuards';
 import type { LlmVerifyItem } from '../verifyTranslate';
@@ -114,6 +116,43 @@ describe('validateVerifySuggestion', () => {
   });
 });
 
+describe('resolveVerifyFixAction', () => {
+  it('rejects token-breaking fixes for incorrect rows', () => {
+    const item: LlmVerifyItem = {
+      id: 6,
+      source: 'Scrap %s?',
+      translation: 'Розібрати?',
+      grup: 'GMST',
+      field: 'DATA',
+      edid: 'sWorkshopScrapItemPrompt',
+      context: null,
+    };
+    const action = resolveVerifyFixAction(item, 'incorrect', 'Розібрати?', false, 'fo4');
+    expect(action.kind).toBe('reject_fix');
+    if (action.kind === 'reject_fix') {
+      expect(action.message).toMatch(/token/i);
+    }
+  });
+
+  it('applies suspicious fixes only when fixSuspicious is enabled', () => {
+    const item: LlmVerifyItem = {
+      id: 7,
+      source: 'Scrap ?',
+      translation: 'Розібрати ?',
+      grup: 'GMST',
+      field: 'DATA',
+      edid: 'sWorkshopScrapPrompt',
+      context: null,
+    };
+    expect(resolveVerifyFixAction(item, 'suspicious', 'Розібрати?', false, 'fo4').kind).toBe(
+      'flag_only',
+    );
+    expect(resolveVerifyFixAction(item, 'suspicious', 'Розібрати?', true, 'fo4').kind).toBe(
+      'apply',
+    );
+  });
+});
+
 describe('reconcileVerifyResult', () => {
   it('downgrades suspicious when suggestion equals translation', () => {
     const item: LlmVerifyItem = {
@@ -184,7 +223,7 @@ describe('sanitizeVerifyResult', () => {
     expect(sanitized.suggestion).toBeNull();
   });
 
-  it('strips invalid barrel suggestion and keeps suspicious row approved', () => {
+  it('strips invalid barrel suggestion but keeps row flagged when translation is still wrong', () => {
     const item: LlmVerifyItem = {
       id: 2,
       source: 'Tesla Cannon Tesla Beaton Barrel',
@@ -205,8 +244,65 @@ describe('sanitizeVerifyResult', () => {
       },
       'fo4',
     );
-    expect(sanitized.verdict).toBe('ok');
+    expect(sanitized.verdict).toBe('suspicious');
     expect(sanitized.suggestion).toBeNull();
     expect(sanitized.reason).toContain('Suggestion rejected');
+  });
+
+  it('keeps incorrect verdict when suggestion is rejected', () => {
+    const item: LlmVerifyItem = {
+      id: 3,
+      source: 'Legendary Enemies Killed',
+      translation: 'Легендарних',
+      grup: 'GMST',
+      field: 'DATA',
+      edid: 'sMiscStatLegendaryEnemiesKilled',
+      context: null,
+    };
+    const sanitized = sanitizeVerifyResult(
+      item,
+      {
+        id: item.id,
+        verdict: 'incorrect',
+        reason: 'Lost meaning.',
+        confidence: 0.95,
+        suggestion: 'Легендарних',
+      },
+      'fo4',
+    );
+    expect(sanitized.verdict).toBe('incorrect');
+    expect(sanitized.suggestion).toBeNull();
+  });
+});
+
+describe('validateTranslationForVerify', () => {
+  it('flags short TERM source with unrelated long translation', () => {
+    const item: LlmVerifyItem = {
+      id: 10,
+      source: 'Closing...',
+      translation: '=== Центральна мережа Інституту ===',
+      grup: 'TERM',
+      field: 'BTXT',
+      edid: 'DN136_BioTerminalSub02',
+      context: null,
+    };
+    const result = validateTranslationForVerify(item, 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/TM\/EDID/i);
+  });
+
+  it('flags barrel typo in translation', () => {
+    const item: LlmVerifyItem = {
+      id: 11,
+      source: 'Tesla Cannon Tesla Beaton Barrel',
+      translation: 'Стівол Тесла-Бітон для гармати Тесли',
+      grup: 'OMOD',
+      field: 'FULL',
+      edid: 'mod_TesCan_Barrel_TeslaBeaton',
+      context: null,
+    };
+    const result = validateTranslationForVerify(item, 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('invalid_term');
   });
 });

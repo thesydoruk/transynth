@@ -11,7 +11,10 @@ import {
   type LlmVerifyVerdict,
 } from '../llm/verifyTranslate';
 import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
-import { validateVerifySuggestion } from '../llm/verifySuggestionGuards';
+import {
+  resolveVerifyFixAction,
+  validateTranslationForVerify,
+} from '../llm/verifySuggestionGuards';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
@@ -48,6 +51,8 @@ export type LlmVerifyIssue = {
   reason: string;
   confidence: number;
   suggestion: string | null;
+  /** Set when a fix was attempted but rejected by {@link validateVerifySuggestion}. */
+  fixRejected?: string | null;
 };
 
 /** One row in the auto-approve action log streamed during verification. */
@@ -514,14 +519,66 @@ export const runLlmVerifyJob = async (
 
     for (const result of results) {
       job.done++;
+      const row = rowById.get(result.id);
+
       if (result.verdict === 'ok') {
+        if (row) {
+          const itemForValidation: LlmVerifyItem = {
+            id: row.string_id,
+            source: row.source,
+            translation: row.translation,
+            grup: parseRecordLocation(row.signature, row.path).grup,
+            edid: row.edid,
+            field: parseRecordLocation(row.signature, row.path).field,
+            context: row.context,
+          };
+          const txCheck = validateTranslationForVerify(itemForValidation, opts.game);
+          if (!txCheck.ok) {
+            const issue: LlmVerifyIssue = {
+              stringId: result.id,
+              source: row.source,
+              translation: row.translation,
+              signature: row.signature,
+              path: row.path,
+              edid: row.edid,
+              verdict: 'incorrect',
+              reason: txCheck.message,
+              confidence: Math.max(result.confidence, 0.95),
+              suggestion: null,
+            };
+            job.issues.push(issue);
+            if (job.autoApproveVerified) {
+              logAction(row, 'issue', txCheck.message);
+            } else {
+              emitProgress({ issue });
+            }
+            continue;
+          }
+        }
         okStringIds.push(result.id);
         emitProgress();
         continue;
       }
 
-      const row = rowById.get(result.id);
       if (!row) continue;
+
+      const itemForValidation: LlmVerifyItem = {
+        id: row.string_id,
+        source: row.source,
+        translation: row.translation,
+        grup: parseRecordLocation(row.signature, row.path).grup,
+        edid: row.edid,
+        field: parseRecordLocation(row.signature, row.path).field,
+        context: row.context,
+      };
+
+      const fixAction = resolveVerifyFixAction(
+        itemForValidation,
+        result.verdict,
+        result.suggestion,
+        job.fixSuspicious,
+        opts.game,
+      );
 
       const issue: LlmVerifyIssue = {
         stringId: result.id,
@@ -534,45 +591,29 @@ export const runLlmVerifyJob = async (
         reason: result.reason,
         confidence: result.confidence,
         suggestion: result.suggestion,
+        fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
       };
 
-      const suggestion = result.suggestion;
-      const shouldApplySuggestion =
-        suggestion &&
-        (result.verdict === 'incorrect' || (result.verdict === 'suspicious' && job.fixSuspicious));
-
-      if (shouldApplySuggestion) {
-        const itemForValidation: LlmVerifyItem = {
-          id: row.string_id,
-          source: row.source,
-          translation: row.translation,
-          grup: parseRecordLocation(row.signature, row.path).grup,
-          edid: row.edid,
-          field: parseRecordLocation(row.signature, row.path).field,
-          context: row.context,
-        };
-        const check = validateVerifySuggestion(itemForValidation, suggestion, opts.game);
-        if (!check.ok) {
-          logVerify.warn('auto-fix skipped — suggestion failed validation', {
+      if (fixAction.kind === 'apply') {
+        try {
+          await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
+          job.fixed++;
+          logAction(row, 'fixed', fixAction.suggestion);
+        } catch (err) {
+          logVerify.warn('auto-fix failed for verify row', {
             jobId,
             modId: opts.modId,
             stringId: result.id,
-            reason: check.message,
+            error: err instanceof Error ? err.message : String(err),
           });
-        } else {
-          try {
-            await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
-            job.fixed++;
-            logAction(row, 'fixed', suggestion);
-          } catch (err) {
-            logVerify.warn('auto-fix failed for verify row', {
-              jobId,
-              modId: opts.modId,
-              stringId: result.id,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
         }
+      } else if (fixAction.kind === 'reject_fix') {
+        logVerify.warn('auto-fix skipped — suggestion failed validation', {
+          jobId,
+          modId: opts.modId,
+          stringId: result.id,
+          reason: fixAction.message,
+        });
       }
 
       job.issues.push(issue);

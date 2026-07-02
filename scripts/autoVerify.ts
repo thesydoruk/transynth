@@ -42,6 +42,8 @@ import { formatLogBlock } from '../src/logging/format';
 import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llmVerifyService';
 import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/cliAutoVerify';
 import type { LlmVerifyIssue } from '../src/web/llmVerifyService';
+import { formatVerifyIssuePrefix, resolveVerifyFixAction } from '../src/llm/verifySuggestionGuards';
+import { parseRecordLocation } from '../src/utils/recordLocation';
 import {
   assertCliModSelector,
   formatPct,
@@ -59,27 +61,38 @@ import {
 const formatIssueLocation = (issue: LlmVerifyIssue): string =>
   issue.edid ?? issue.path ?? issue.signature ?? '—';
 
-const wouldApplySuggestion = (issue: LlmVerifyIssue, fixSuspicious: boolean): boolean => {
-  if (!issue.suggestion) return false;
-  if (issue.verdict === 'incorrect') return true;
-  return issue.verdict === 'suspicious' && fixSuspicious;
-};
-
 const logIssue = (
   issue: LlmVerifyIssue,
   dryRun: boolean,
   fixSuspicious: boolean,
+  game: string | null | undefined,
   opts?: { separator?: boolean },
 ): void => {
   const loc = formatIssueLocation(issue);
-  const willFix = wouldApplySuggestion(issue, fixSuspicious);
-  const prefix = dryRun ? (willFix ? 'Would fix' : 'Would flag') : willFix ? 'Fixed' : 'Flagged';
+  const { grup, field } = parseRecordLocation(issue.signature, issue.path);
+  const fixAction = resolveVerifyFixAction(
+    {
+      id: issue.stringId,
+      source: issue.source,
+      translation: issue.translation,
+      grup,
+      edid: issue.edid,
+      field,
+      context: null,
+    },
+    issue.verdict,
+    issue.suggestion,
+    fixSuspicious,
+    game,
+  );
+  const prefix = formatVerifyIssuePrefix(dryRun, fixAction);
   const block = formatLogBlock(
     `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)})`,
     {
       reason: issue.reason,
       was: issue.translation,
       ...(issue.suggestion ? { fix: issue.suggestion } : {}),
+      ...(fixAction.kind === 'reject_fix' ? { fixRejected: fixAction.message } : {}),
     },
   );
   log.info(opts?.separator ? `\n${block}` : block);
@@ -172,6 +185,7 @@ const logVerifyProgress = (
     lastLogged: { done: number };
     dryRun: boolean;
     fixSuspicious: boolean;
+    game: string | null;
     startedAt: number;
     issueCount: number;
   },
@@ -186,7 +200,7 @@ const logVerifyProgress = (
   }
   if (event.type === 'progress') {
     if (event.issue) {
-      logIssue(event.issue, ctx.dryRun, ctx.fixSuspicious, {
+      logIssue(event.issue, ctx.dryRun, ctx.fixSuspicious, ctx.game, {
         separator: ctx.issueCount > 0,
       });
       ctx.issueCount++;
@@ -232,6 +246,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
     lastLogged: { done: 0 },
     dryRun,
     fixSuspicious,
+    game: target.game,
     startedAt: Date.now(),
     issueCount: 0,
   };
@@ -291,7 +306,7 @@ try {
 
   log.info(
     `Auto-verify: ${targets.length} mod(s), dryRun=${dryRun}, force=${force}, autoApprove=${!dryRun && autoApproveVerified}, ` +
-      `fixSuspicious=${!dryRun && fixSuspicious}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+      `fixSuspicious=${fixSuspicious}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;
