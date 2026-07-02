@@ -1,4 +1,4 @@
-import { ukrainianPlaceholderRules } from './placeholders';
+import { ukrainianPlaceholderRules, ukrainianVerifyPlaceholderRules } from './placeholders';
 
 /** Rules shared across all Bethesda games (Ukrainian prompt). */
 export const ukrainianCommonRules = (): string[] => [
@@ -27,4 +27,26 @@ export const ukrainianCommonRules = (): string[] => [
   '- Числові значення не конвертуй, якщо source цього не вимагає.',
   '- Метадані (grup, field, edid, form_id, context): орієнтир для ХТО говорить, КОМУ і ДЕ текст з’являється. Не копіюй метадані в переклад.',
   '- Омоніми: те саме англійське слово може мати різні відповідники залежно від grup/field.',
+];
+
+/** Shared verify/audit rules (raw text — no translate-time masking). */
+export const ukrainianVerifyCommonRules = (): string[] => [
+  ...ukrainianVerifyPlaceholderRules(),
+  '',
+  '### РЕГІСТР ЗАГЛАВНИХ БУКВ:',
+  '- Зберігай регістр оригінала: якщо source НЕ написаний КАПСОМ, переклад теж НЕ пиши капсом.',
+  '- Title case або sentence case у source → нормальна капіталізація українською, НЕ капс для ефекту.',
+  '- КАПС у перекладі лише тоді, коли ВЕСЬ source уже КАПСОМ (напр. "HP", "AP", короткі UI-абревіатури).',
+  '',
+  '### ЛІНГВІСТИЧНІ ПРАВИЛА ТА ЯКІСТЬ:',
+  '- Дотримуйся Стандартного сучасного українського правопису.',
+  '- Уникай русизмів, кальок з російської.',
+  '- Кличний відмінок: обов’язково в діалогах при звертаннях.',
+  '',
+  '### ТЕРМІНОЛОГІЯ ТА КОНТЕКСТ ESP/ESM (VERIFY):',
+  '- Glossary: поле "glossary" — авторитетне джерело термінів; застосовуй лише коли term з’являється в source.',
+  '- "Sentry Bot" у glossary — для діалогів/описів істоти; token "Sentry" у назвах предметів/edid — транслітеруй (Сентрі), НЕ замінюй на "робот-охоронець" у назві модифікації.',
+  '- reference_examples: використовуй ЛИШЕ для термінів (Fat Man→Товстун, Assaultron→Штурмотрон). НЕ копіюй порядок слів з іншого предмета, якщо grup/field/edid не збігаються.',
+  '- Числові значення не конвертуй, якщо source цього не вимагає.',
+  '- Метадані (grup, field, edid): контекст типу рядка; не копіюй edid у переклад.',
 ];

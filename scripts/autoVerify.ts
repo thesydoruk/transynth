@@ -16,6 +16,7 @@ import { hideBin } from 'yargs/helpers';
 import { CONFIG, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
+import { formatLogBlock } from '../src/logging/format';
 import type { GameType } from '../src/types';
 import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llmVerifyService';
 import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/cliAutoVerify';
@@ -54,14 +55,24 @@ const wouldApplySuggestion = (issue: LlmVerifyIssue, fixSuspicious: boolean): bo
   return issue.verdict === 'suspicious' && fixSuspicious;
 };
 
-const logIssue = (issue: LlmVerifyIssue, dryRun: boolean, fixSuspicious: boolean): void => {
+const logIssue = (
+  issue: LlmVerifyIssue,
+  dryRun: boolean,
+  fixSuspicious: boolean,
+  opts?: { separator?: boolean },
+): void => {
   const loc = formatIssueLocation(issue);
-  const suggestion = issue.suggestion ? ` | suggestion: ${issue.suggestion}` : '';
   const willFix = wouldApplySuggestion(issue, fixSuspicious);
   const prefix = dryRun ? (willFix ? 'Would fix' : 'Would flag') : willFix ? 'Fixed' : 'Flagged';
-  log.info(
-    `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)}): ${issue.reason} | current: ${issue.translation}${suggestion}`,
+  const block = formatLogBlock(
+    `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)})`,
+    {
+      reason: issue.reason,
+      was: issue.translation,
+      ...(issue.suggestion ? { fix: issue.suggestion } : {}),
+    },
   );
+  log.info(opts?.separator ? `\n${block}` : block);
 };
 
 const argv = await yargs(hideBin(process.argv))
@@ -220,7 +231,13 @@ const resolveModTargets = async (): Promise<ModTarget[]> => {
 };
 
 const logVerifyProgress = (
-  ctx: { lastLogged: { done: number }; dryRun: boolean; fixSuspicious: boolean; startedAt: number },
+  ctx: {
+    lastLogged: { done: number };
+    dryRun: boolean;
+    fixSuspicious: boolean;
+    startedAt: number;
+    issueCount: number;
+  },
   event: CliVerifyProgressEvent,
 ): void => {
   if (event.type === 'started') {
@@ -230,7 +247,12 @@ const logVerifyProgress = (
     return;
   }
   if (event.type === 'progress') {
-    if (event.issue) logIssue(event.issue, ctx.dryRun, ctx.fixSuspicious);
+    if (event.issue) {
+      logIssue(event.issue, ctx.dryRun, ctx.fixSuspicious, {
+        separator: ctx.issueCount > 0,
+      });
+      ctx.issueCount++;
+    }
     if (event.chunkError) {
       log.warn(
         `Verify chunk error string_id=${event.chunkError.stringIds.join(',')}: ${event.chunkError.message}`,
@@ -268,7 +290,13 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
     `Processing mod_id=${target.modId} "${target.modName}" (src=${target.srcLang}, tgt=${tgtLang}, game=${target.game})`,
   );
 
-  const ctx = { lastLogged: { done: 0 }, dryRun, fixSuspicious, startedAt: Date.now() };
+  const ctx = {
+    lastLogged: { done: 0 },
+    dryRun,
+    fixSuspicious,
+    startedAt: Date.now(),
+    issueCount: 0,
+  };
   try {
     const summary = await runCliModVerify(
       db,

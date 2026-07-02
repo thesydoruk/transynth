@@ -1,4 +1,4 @@
-import { englishPlaceholderRules } from './placeholders';
+import { englishPlaceholderRules, englishVerifyPlaceholderRules } from './placeholders';
 
 /** Rules shared across all Bethesda games (English prompt, any target language). */
 export const englishCommonRules = (targetLang: string): string[] => [
@@ -26,4 +26,22 @@ export const englishCommonRules = (targetLang: string): string[] => [
   '- Do not convert numeric values unless the source clearly expects localization.',
   '- Metadata (grup, field, edid, form_id, context): use these as the primary guide for WHO speaks, TO WHOM, and WHERE the text appears. Consider edid prefixes (e.g. MQ = main quest, Companion_ = companion line). Do not copy metadata into the translation.',
   '- Homonyms: the same English word may need different translations by grup/field (e.g. "Light" in ARMO/FULL vs WEAP/MOD).',
+];
+
+/** Shared verify/audit rules (raw text — no translate-time masking). */
+export const englishVerifyCommonRules = (targetLang: string): string[] => [
+  ...englishVerifyPlaceholderRules(),
+  '',
+  '### CAPITALIZATION:',
+  '- Preserve the source capitalization pattern unless the source is ALL CAPS.',
+  '',
+  '### LINGUISTIC QUALITY:',
+  '- Write fluent, idiomatic ' + targetLang + '.',
+  '- Avoid calques and awkward literal translations.',
+  '',
+  '### TERMINOLOGY AND ESP/ESM CONTEXT (VERIFY):',
+  '- Glossary: apply only when the term appears in source.',
+  '- Glossary "Sentry Bot" is for creature/dialogue references; model token "Sentry" in item names/edid — transliterate, do not expand to a creature name in item labels.',
+  '- reference_examples: use ONLY for terminology. Do NOT copy word order from a different item unless grup, field, and edid pattern match.',
+  '- Metadata (grup, field, edid): context only; do not copy edid into the translation.',
 ];

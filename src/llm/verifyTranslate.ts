@@ -11,10 +11,9 @@ import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
-import {
-  compareProtectedTokens,
-  protectedTokenCompareOptionsForContext,
-} from '../utils/placeholders';
+import { compareProtectedTokens } from '../utils/placeholders';
+import { sanitizeVerifyResult } from './verifySuggestionGuards';
+import type { LlmGlossaryEntry } from './translate';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
 
@@ -47,6 +46,8 @@ export interface LlmVerifyOptions {
   targetLang: string;
   game?: GameType | string | null;
   modName?: string | null;
+  /** Per-batch glossary terms (same filtering as translate). */
+  glossary?: LlmGlossaryEntry[];
   /** Aborts the in-flight LLM request when the owning job is stopped. */
   signal?: AbortSignal;
 }
@@ -61,12 +62,7 @@ export const applyPlaceholderGuardToVerifyResult = (
   result: LlmVerifyItemResult,
   game?: GameType | string | null,
 ): LlmVerifyItemResult => {
-  const check = compareProtectedTokens(
-    item.source,
-    item.translation,
-    game as GameType | undefined,
-    protectedTokenCompareOptionsForContext(item.grup, item.field),
-  );
+  const check = compareProtectedTokens(item.source, item.translation, game as GameType | undefined);
   if (check.ok) return result;
 
   if (result.verdict === 'ok') {
@@ -110,6 +106,7 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
   target_language: opts.targetLang.trim().toLowerCase(),
   game: opts.game ?? null,
   mod_name: opts.modName ?? null,
+  ...(opts.glossary && opts.glossary.length > 0 ? { glossary: opts.glossary } : {}),
   items: opts.items.map((item) => ({
     id: item.id,
     source: item.source,
@@ -292,6 +289,7 @@ export const verifyTranslationsWithLlm = async (
     if (!row) {
       throw new Error(`LLM verify response missing item id=${item.id}`);
     }
-    return applyPlaceholderGuardToVerifyResult(item, row, opts.game);
+    const guarded = applyPlaceholderGuardToVerifyResult(item, row, opts.game);
+    return sanitizeVerifyResult(item, guarded, opts.game);
   });
 };

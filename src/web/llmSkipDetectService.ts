@@ -5,12 +5,21 @@ import type { Tx } from '../db';
 import { CONFIG, getTranslateModel } from '../config';
 import { detectSkipCandidatesWithLlm, type LlmSkipDetectItem } from '../llm/skipTranslateDetect';
 import { partitionSkipAuditRows } from '../llm/skipTranslateHeuristics';
-import { markStringsAsSkip } from './queries';
+import { markStringsAsSkip, markStringsSkipDetectScanned } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
-import { mapWithConcurrency } from '../utils/concurrency';
+import { runPoolOverAsyncIterable } from '../utils/concurrency';
+import { runLlmChunkWithRecovery } from '../llm/chunkRecovery';
+import { withRequestDeadline } from '../llm/requestDeadline';
+import { llmChatPipelineConcurrency } from '../llm/requestPool';
 import { logVerify } from '../logging/loggers';
 
-export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = 200;
+export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = 500;
+
+/** Rows per LLM HTTP request — defaults to BATCH_SIZE (skip-detect has no RAG; batching is safe). */
+export const LLM_SKIP_DETECT_LLM_BATCH_SIZE = Math.max(
+  1,
+  parseInt(process.env.LLM_SKIP_DETECT_BATCH_SIZE || String(CONFIG.batchSize), 10),
+);
 
 export type LlmSkipDetectCandidate = {
   stringId: number;
@@ -44,6 +53,8 @@ type ActiveLlmSkipDetectJob = LlmSkipDetectJobSnapshot & {
   useLlm: boolean;
   persist: boolean;
   force: boolean;
+  /** Aborts in-flight LLM requests the instant Stop is pressed. */
+  abort: AbortController;
 };
 
 const activeJobs = new Map<number, ActiveLlmSkipDetectJob>();
@@ -76,6 +87,7 @@ export const requestLlmSkipDetectStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
+  job.abort.abort();
   return true;
 };
 
@@ -85,7 +97,8 @@ export const requestLlmSkipDetectStopByModId = (modId: number): boolean => {
   return requestLlmSkipDetectStop(jobId);
 };
 
-const scannableFilterSql = (force: boolean): string => (force ? '' : 'AND s.is_ignored = FALSE');
+const scannableFilterSql = (force: boolean): string =>
+  force ? '' : 'AND s.is_ignored = FALSE AND s.skip_detect_scanned_at IS NULL';
 
 const countScannableStrings = async (
   db: Tx,
@@ -142,6 +155,53 @@ const loadScanChunk = async (
   return rows;
 };
 
+export type SkipDetectWorkUnit = {
+  page: number;
+  chunk: ScanStringRow[];
+};
+
+/** Stream scan work units — workers pull rows as they free up (no DB-page barrier). */
+export async function* iterateSkipDetectWorkUnits(
+  db: Tx,
+  opts: {
+    modId: number;
+    srcLang: string;
+    force: boolean;
+    dbChunkSize?: number;
+  },
+): AsyncGenerator<SkipDetectWorkUnit> {
+  let afterId = 0;
+  let page = 0;
+  const dbChunkSize = opts.dbChunkSize ?? LLM_SKIP_DETECT_DB_CHUNK_SIZE;
+
+  let nextChunkPromise: Promise<ScanStringRow[]> = loadScanChunk(
+    db,
+    opts.modId,
+    opts.srcLang,
+    afterId,
+    dbChunkSize,
+    opts.force,
+  );
+
+  while (nextChunkPromise) {
+    const dbChunk = await nextChunkPromise;
+    if (dbChunk.length === 0) break;
+
+    const lastId = dbChunk[dbChunk.length - 1]!.string_id;
+    page++;
+    afterId = lastId;
+
+    nextChunkPromise =
+      dbChunk.length >= dbChunkSize
+        ? loadScanChunk(db, opts.modId, opts.srcLang, lastId, dbChunkSize, opts.force)
+        : Promise.resolve([]);
+
+    for (let i = 0; i < dbChunk.length; i += LLM_SKIP_DETECT_LLM_BATCH_SIZE) {
+      yield { page, chunk: dbChunk.slice(i, i + LLM_SKIP_DETECT_LLM_BATCH_SIZE) };
+    }
+  }
+}
+
 export type LlmSkipDetectProgressEvent =
   | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist: boolean }
   | {
@@ -176,9 +236,9 @@ export const runLlmSkipDetectJob = async (
     modName?: string | null;
     game?: string | null;
     useLlm?: boolean;
-    /** Write skip marks to the database after each DB chunk (default: false). */
+    /** Write skip marks to the database after each batch (default: false). */
     persist?: boolean;
-    /** Re-scan strings already marked skip (default: false). */
+    /** Re-scan all strings, including already marked skip or previously scanned (default: false). */
     force?: boolean;
   },
   onEvent: (event: LlmSkipDetectProgressEvent) => void,
@@ -212,6 +272,7 @@ export const runLlmSkipDetectJob = async (
     useLlm,
     persist,
     force,
+    abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
 
@@ -224,14 +285,15 @@ export const runLlmSkipDetectJob = async (
     force,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
+    llmBatchSize: LLM_SKIP_DETECT_LLM_BATCH_SIZE,
   });
 
   onEvent({ type: 'started', jobId, total, useLlm, persist });
 
   const model = getTranslateModel();
-  let afterId = 0;
+  const chatConcurrency = llmChatPipelineConcurrency();
 
-  const persistChunkCandidates = async (candidates: LlmSkipDetectCandidate[]): Promise<number> => {
+  const persistCandidates = async (candidates: LlmSkipDetectCandidate[]): Promise<number> => {
     if (!persist || candidates.length === 0) return 0;
     const marked = await markStringsAsSkip(
       db,
@@ -248,175 +310,163 @@ export const runLlmSkipDetectJob = async (
     return marked;
   };
 
-  try {
-    while (!job.cancel) {
-      const dbChunk = await loadScanChunk(
-        db,
-        opts.modId,
-        opts.srcLang,
-        afterId,
-        LLM_SKIP_DETECT_DB_CHUNK_SIZE,
-        force,
-      );
-      if (dbChunk.length === 0) break;
-      afterId = dbChunk[dbChunk.length - 1]!.string_id;
+  const finishRows = async (
+    rows: ScanStringRow[],
+    hits: Map<number, LlmSkipDetectCandidate>,
+  ): Promise<void> => {
+    if (rows.length === 0) return;
 
-      const llmChunks: ScanStringRow[][] = [];
-      for (let i = 0; i < dbChunk.length; i += CONFIG.batchSize) {
-        llmChunks.push(dbChunk.slice(i, i + CONFIG.batchSize));
+    const toPersist: LlmSkipDetectCandidate[] = [];
+    for (const row of rows) {
+      job.done++;
+      const candidate = hits.get(row.string_id);
+      if (candidate) {
+        job.candidates.push(candidate);
+        toPersist.push(candidate);
       }
+      onEvent({
+        type: 'progress',
+        done: job.done,
+        total: job.total,
+        ...(candidate ? { candidate } : {}),
+      });
+    }
 
-      type ChunkOutcome =
-        | { ok: true; hits: Map<number, LlmSkipDetectCandidate> }
-        | { ok: true; skipped: number }
-        | { ok: false; error: string; rowCount: number };
+    if (persist && toPersist.length > 0) {
+      await persistCandidates(toPersist);
+    }
+  };
 
-      const skipChunk = (size: number): ChunkOutcome => ({ ok: true, skipped: size });
+  const processScanChunk = async (chunk: ScanStringRow[]): Promise<void> => {
+    if (job.cancel || chunk.length === 0) return;
 
-      const chunkOutcomes = await mapWithConcurrency(
-        llmChunks,
-        CONFIG.llmMaxParallel,
-        async (chunk): Promise<ChunkOutcome> => {
-          if (job.cancel) return skipChunk(chunk.length);
+    const hits = new Map<number, LlmSkipDetectCandidate>();
 
-          const hits = new Map<number, LlmSkipDetectCandidate>();
+    const auditRows = chunk.map((row) => {
+      const { grup } = parseRecordLocation(row.signature, row.path);
+      return {
+        id: row.string_id,
+        source: row.source,
+        edid: row.edid,
+        path: row.path,
+        signature: grup,
+      };
+    });
 
-          const auditRows = chunk.map((row) => {
-            const { grup } = parseRecordLocation(row.signature, row.path);
-            return {
-              id: row.string_id,
-              source: row.source,
-              edid: row.edid,
-              path: row.path,
-              signature: grup,
-            };
-          });
+    const { heuristicHits, llmCandidates } = partitionSkipAuditRows(auditRows);
 
-          const { heuristicHits, llmCandidates } = partitionSkipAuditRows(auditRows);
+    for (const row of chunk) {
+      const heuristic = heuristicHits.get(row.string_id);
+      if (heuristic) {
+        hits.set(row.string_id, {
+          stringId: row.string_id,
+          source: row.source,
+          signature: row.signature,
+          path: row.path,
+          edid: row.edid,
+          reason: heuristic.reason,
+          confidence: 0.85,
+          method: 'heuristic',
+        });
+      }
+    }
 
-          for (const row of chunk) {
-            const heuristic = heuristicHits.get(row.string_id);
-            if (heuristic) {
-              hits.set(row.string_id, {
-                stringId: row.string_id,
-                source: row.source,
-                signature: row.signature,
-                path: row.path,
-                edid: row.edid,
-                reason: heuristic.reason,
-                confidence: 0.85,
-                method: 'heuristic',
-              });
-            }
-          }
+    const heuristicRows = chunk.filter((row) => heuristicHits.has(row.string_id));
+    const llmRows = chunk.filter((row) => !heuristicHits.has(row.string_id));
 
-          if (useLlm && !job.cancel && llmCandidates.length > 0) {
-            const llmCandidateIds = new Set(llmCandidates.map((r) => r.id));
-            const items: LlmSkipDetectItem[] = chunk
-              .filter((row) => llmCandidateIds.has(row.string_id))
-              .map((row) => {
-                const { grup, field } = parseRecordLocation(row.signature, row.path);
-                return {
-                  id: row.string_id,
-                  source: row.source,
-                  grup,
-                  edid: row.edid,
-                  field,
-                  path: row.path,
-                  context: row.context,
-                };
-              });
+    if (heuristicRows.length > 0 && !job.cancel) {
+      await finishRows(heuristicRows, hits);
+      await markStringsSkipDetectScanned(
+        db,
+        heuristicRows.map((row) => row.string_id),
+      );
+    }
 
-            try {
-              const llmHits = await detectSkipCandidatesWithLlm({
-                items,
+    if (useLlm && !job.cancel && llmCandidates.length > 0) {
+      const items: LlmSkipDetectItem[] = llmRows.map((row) => {
+        const { grup, field } = parseRecordLocation(row.signature, row.path);
+        return {
+          id: row.string_id,
+          source: row.source,
+          grup,
+          edid: row.edid,
+          field,
+          path: row.path,
+          context: row.context,
+        };
+      });
+
+      await runLlmChunkWithRecovery({
+        chunk: items,
+        shouldAbort: () => job.cancel,
+        runOnce: async (llmItems) => {
+          const llmHits = await withRequestDeadline(
+            CONFIG.llmVerifyRequestTimeoutMs,
+            job.abort.signal,
+            (signal) =>
+              detectSkipCandidatesWithLlm({
+                items: [...llmItems],
                 model,
                 srcLang: opts.srcLang,
                 targetLang: opts.targetLang,
                 game: opts.game,
                 modName: opts.modName,
-              });
+                signal,
+              }),
+          );
 
-              for (const llmHit of llmHits) {
-                const row = chunk.find((r) => r.string_id === llmHit.id);
-                if (!row) continue;
-                const existing = hits.get(llmHit.id);
-                hits.set(llmHit.id, {
-                  stringId: llmHit.id,
-                  source: row.source,
-                  signature: row.signature,
-                  path: row.path,
-                  edid: row.edid,
-                  reason: llmHit.reason,
-                  confidence: llmHit.confidence,
-                  method: existing ? 'both' : 'llm',
-                });
-              }
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err);
-              logVerify.warn('skip-detect LLM chunk skipped after error', {
-                jobId,
-                modId: opts.modId,
-                error: message,
-                stringIds: items.map((item) => item.id),
-              });
-            }
+          for (const llmHit of llmHits) {
+            const row = chunk.find((r) => r.string_id === llmHit.id);
+            if (!row) continue;
+            const existing = hits.get(llmHit.id);
+            hits.set(llmHit.id, {
+              stringId: llmHit.id,
+              source: row.source,
+              signature: row.signature,
+              path: row.path,
+              edid: row.edid,
+              reason: llmHit.reason,
+              confidence: llmHit.confidence,
+              method: existing ? 'both' : 'llm',
+            });
           }
-
-          return { ok: true, hits };
         },
-      );
-
-      const dbChunkCandidates: LlmSkipDetectCandidate[] = [];
-
-      for (let chunkIdx = 0; chunkIdx < chunkOutcomes.length; chunkIdx++) {
-        const outcome = chunkOutcomes[chunkIdx];
-        const chunk = llmChunks[chunkIdx] ?? [];
-
-        if (outcome.ok && 'skipped' in outcome) {
-          for (let i = 0; i < outcome.skipped; i++) {
-            job.done++;
-            onEvent({ type: 'progress', done: job.done, total: job.total });
-          }
-          continue;
-        }
-
-        if (!outcome.ok) {
-          logVerify.warn('skip-detect chunk failed unexpectedly', {
+        onFailure: (failed, message) => {
+          logVerify.warn('skip-detect LLM chunk skipped after error', {
             jobId,
             modId: opts.modId,
-            error: outcome.error,
+            error: message,
+            stringIds: failed.map((item) => item.id),
           });
-          for (let i = 0; i < outcome.rowCount; i++) {
-            job.done++;
-            onEvent({ type: 'progress', done: job.done, total: job.total });
-          }
-          continue;
-        }
-
-        for (const row of chunk) {
-          job.done++;
-          const candidate = outcome.hits.get(row.string_id);
-          if (candidate) {
-            job.candidates.push(candidate);
-            dbChunkCandidates.push(candidate);
-            onEvent({ type: 'progress', done: job.done, total: job.total, candidate });
-          } else {
-            onEvent({ type: 'progress', done: job.done, total: job.total });
-          }
-        }
-      }
-
-      const marked = await persistChunkCandidates(dbChunkCandidates);
-      if (marked > 0) {
-        onEvent({
-          type: 'progress',
-          done: job.done,
-          total: job.total,
-          marked,
-        });
-      }
+        },
+        log: logVerify,
+        operation: 'skip_detect',
+        itemIds: (c) => c.map((item) => item.id),
+      });
     }
+
+    if (llmRows.length > 0 && !job.cancel) {
+      await finishRows(llmRows, hits);
+      await markStringsSkipDetectScanned(
+        db,
+        llmRows.map((row) => row.string_id),
+      );
+    }
+  };
+
+  try {
+    await runPoolOverAsyncIterable(
+      iterateSkipDetectWorkUnits(db, {
+        modId: opts.modId,
+        srcLang: opts.srcLang,
+        force,
+      }),
+      chatConcurrency,
+      async ({ chunk }) => {
+        if (job.cancel) return;
+        await processScanChunk(chunk);
+      },
+    );
 
     if (job.cancel) {
       job.status = 'cancelled';

@@ -627,7 +627,7 @@ export const fetchReferenceExamplesBatch = async (
   );
 
   if (pendingEmbed.length > 0) {
-    logRag.info('batch embedding retrieval', {
+    logRag.debug('batch embedding retrieval', {
       itemCount: pendingEmbed.length,
       totalItems: items.length,
     });

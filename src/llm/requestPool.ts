@@ -2,8 +2,8 @@
  * Independent global pools for LLM chat and embedding HTTP requests.
  *
  * Each pool has its own concurrency limit (`LLM_MAX_PARALLEL`, `EMBED_MAX_PARALLEL`).
- * Bulk pipelines should run RAG (embed) and chat in separate phases so neither pool
- * blocks the other.
+ * Bulk pipelines should interleave RAG (embed) and chat per batch inside each worker
+ * so both servers stay fed instead of running embed-only then chat-only phases.
  */
 import { CONFIG } from '../config';
 import { Semaphore } from '../utils/concurrency';
@@ -41,7 +41,7 @@ export const embedPool = new RequestPool(new Semaphore(CONFIG.embedMaxParallel))
 export const llmRagConcurrency = (): number => CONFIG.embedMaxParallel;
 
 /**
- * Worker count for the chat phase.
- * +1 keeps chat slots saturated while a worker persists DB results.
+ * Worker count for pipelined RAG→chat batches (translate, verify).
+ * Aligned with the chat pool; +1 overlaps DB writes with the next chat slot.
  */
 export const llmChatPipelineConcurrency = (): number => CONFIG.llmMaxParallel + 1;

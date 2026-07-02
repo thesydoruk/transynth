@@ -5,11 +5,7 @@ import { log } from '../logger';
 import { CONFIG } from '../config';
 import type { GameType } from '../types';
 import { findReferenceExamples, type RagReferenceExample } from '../llm/ragService';
-import {
-  compareProtectedTokens,
-  protectedTokenCompareOptionsForContext,
-} from '../utils/placeholders';
-import { parseRecordLocation } from '../utils/recordLocation';
+import { compareProtectedTokens } from '../utils/placeholders';
 import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from './ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImportBulk';
@@ -97,7 +93,6 @@ const buildQAIssues = (
   translation: string,
   game?: GameType | null,
   settings?: Partial<QACheckSettings>,
-  recordLocation?: { signature?: string | null; path?: string | null },
 ): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
@@ -111,9 +106,7 @@ const buildQAIssues = (
     return issues;
   }
 
-  const { grup, field } = parseRecordLocation(recordLocation?.signature, recordLocation?.path);
-  const tokenCompareOptions = protectedTokenCompareOptionsForContext(grup, field);
-  const tokenCheck = compareProtectedTokens(source, translation, game, tokenCompareOptions);
+  const tokenCheck = compareProtectedTokens(source, translation, game);
   if (!tokenCheck.ok) {
     issues.push({
       issueType: 'placeholder_mismatch',
@@ -280,7 +273,6 @@ const refreshQAIssues = async (
     row.translation,
     row.game as GameType | undefined,
     qaSettings,
-    { signature: row.signature, path: row.path },
   );
 
   // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
@@ -1778,6 +1770,21 @@ export const markStringsAsSkip = async (
   }
 
   return rows.length;
+};
+
+/** Record that skip-detect has audited these source strings (keep or skip verdict). */
+export const markStringsSkipDetectScanned = async (
+  db: Tx,
+  stringIds: number[],
+): Promise<number> => {
+  if (stringIds.length === 0) return 0;
+  const { rowCount } = await db.query(
+    `UPDATE strings
+        SET skip_detect_scanned_at = NOW()
+      WHERE id = ANY($1::int[])`,
+    [stringIds],
+  );
+  return rowCount ?? 0;
 };
 
 /**

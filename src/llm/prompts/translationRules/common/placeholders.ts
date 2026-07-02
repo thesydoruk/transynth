@@ -18,6 +18,21 @@ export const englishPlaceholderRules = (): string[] => [
   '- WRONG: dropping ¤PH0¤, splitting it as "¤ PH0 ¤", or replacing %s with %d.',
 ];
 
+/** Placeholder rules for verify/audit (raw unmasked source and translation). */
+export const englishVerifyPlaceholderRules = (): string[] => [
+  '### PLACEHOLDER AND TAG PRESERVATION (CRITICAL):',
+  '- Verify receives RAW unmasked "source" and "translation" (%s, %d, <Alias=…>, [Mod], etc.).',
+  '- Every protected token in source must appear in translation and in any "suggestion" with identical syntax.',
+  '- WRONG: missing tokens, %s→%d swaps, altered <Alias=…> syntax, invented placeholders.',
+];
+
+export const ukrainianVerifyPlaceholderRules = (): string[] => [
+  '### ЗБЕРЕЖЕННЯ ПЛЕЙСХОЛДЕРІВ І ТЕГІВ (КРИТИЧНО):',
+  '- Verify отримує НЕЗАМАСКОВАНІ поля "source" та "translation" (%s, %d, <Alias=…>, [Mod] тощо).',
+  '- Усі захищені токени з source мають бути в translation і в "suggestion" без змін синтаксису.',
+  '- ПОМИЛКА: пропущені токени, заміна %s на %d, змінений синтаксис <Alias=…>, вигадані плейсхолдери.',
+];
+
 export const ukrainianPlaceholderRules = (): string[] => [
   '### ЗБЕРЕЖЕННЯ ПЛЕЙСХОЛДЕРІВ І ТЕГІВ (КРИТИЧНО):',
   '- У полі "source" ти отримуєш уже замаскований текст: ключі ¤PH0¤, ¤FK0¤ (та ¤GL0¤ за наявності glossary mask).',

@@ -464,6 +464,12 @@ CREATE INDEX IF NOT EXISTS idx_translation_examples_hnsw
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS is_ignored BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_strings_is_ignored ON strings(record_id, lang) WHERE is_ignored = TRUE;
 
+-- Skip-detect audit timestamp: set when a row is scanned (keep or skip). NULL = not yet scanned.
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS skip_detect_scanned_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_strings_skip_detect_pending
+  ON strings(record_id, lang)
+  WHERE skip_detect_scanned_at IS NULL AND is_ignored = FALSE;
+
 -- ── Deprecated subsystem cleanup ─────────────────────────────────────────────
 -- The TradAuto pattern-rule engine and the CSV `alignments` table were legacy
 -- ports superseded by the LLM + RAG + glossary pipeline. Drop them so existing

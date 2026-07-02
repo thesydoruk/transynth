@@ -2,22 +2,27 @@
  * CLI-oriented mod translation verification — paginated DB reads, optional auto-fix.
  */
 import type { Tx } from '../db';
-import { getTranslateModel } from '../config';
+import { CONFIG, getTranslateModel } from '../config';
+import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
+import { validateVerifySuggestion } from '../llm/verifySuggestionGuards';
 import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { approveVerifiedTranslations, upsertTranslation } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
-import { mapWithConcurrency } from '../utils/concurrency';
-import { llmChatPipelineConcurrency, llmRagConcurrency } from '../llm/requestPool';
+import { runPoolOverAsyncIterable } from '../utils/concurrency';
+import { runLlmChunkWithRecovery } from '../llm/chunkRecovery';
+import { withRequestDeadline } from '../llm/requestDeadline';
+import { llmChatPipelineConcurrency } from '../llm/requestPool';
 import { logVerify } from '../logging/loggers';
+import { loadGlossaryEntries, relevantGlossaryEntries } from './glossaryForLlm';
 import {
   countVerifiableStrings,
-  loadVerifyChunk,
+  iterateVerifyLlmChunks,
   LLM_VERIFY_DB_CHUNK_SIZE,
-  LLM_VERIFY_LLM_BATCH_SIZE,
   type LlmVerifyIssue,
+  type VerifyLlmWorkUnit,
 } from './llmVerifyService';
 
 export type CliVerifyProgressEvent =
@@ -57,7 +62,7 @@ export type CliVerifyResult = {
   errors: number;
 };
 
-type VerifyStringRow = Awaited<ReturnType<typeof loadVerifyChunk>>[number];
+type VerifyStringRow = VerifyLlmWorkUnit['chunk'][number];
 
 export const runCliModVerify = async (
   db: Tx,
@@ -101,11 +106,12 @@ export const runCliModVerify = async (
 
   await requirePgvectorForRag(db);
 
+  const glossaryAll = await loadGlossaryEntries(db, opts.srcLang, opts.targetLang);
+
   const projectSettings = await getAllProjectSettings(db);
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
   const model = getTranslateModel();
-  const ragConcurrency = llmRagConcurrency();
   const chatConcurrency = llmChatPipelineConcurrency();
 
   type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
@@ -148,7 +154,6 @@ export const runCliModVerify = async (
   let suspicious = 0;
   let incorrect = 0;
   let errors = 0;
-  let afterStringId = 0;
   let dbPage = 0;
 
   const emitChunkFailure = (llmChunk: VerifyStringRow[], message: string): void => {
@@ -175,20 +180,6 @@ export const runCliModVerify = async (
     }
   };
 
-  const processLlmBatch = async (
-    llmChunk: VerifyStringRow[],
-    ragByStringId: RagByStringId,
-  ): Promise<void> => {
-    if (llmChunk.length === 0) return;
-
-    try {
-      await processLlmBatchInner(llmChunk, ragByStringId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      emitChunkFailure(llmChunk, message);
-    }
-  };
-
   const processLlmBatchInner = async (
     llmChunk: VerifyStringRow[],
     ragByStringId: RagByStringId,
@@ -205,25 +196,31 @@ export const runCliModVerify = async (
         edid: row.edid,
         field,
         context: row.context,
-        reference_examples: ragByStringId.get(row.string_id),
+        reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
+          grup,
+          field,
+        }),
       };
     });
 
-    let results: Awaited<ReturnType<typeof verifyTranslationsWithLlm>>;
-    try {
-      results = await verifyTranslationsWithLlm({
-        items,
-        model,
-        srcLang: opts.srcLang,
-        targetLang: opts.targetLang,
-        game: opts.game,
-        modName: opts.modName,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      emitChunkFailure(llmChunk, message);
-      return;
-    }
+    const results = await withRequestDeadline(
+      CONFIG.llmVerifyRequestTimeoutMs,
+      undefined,
+      (signal) =>
+        verifyTranslationsWithLlm({
+          items,
+          model,
+          srcLang: opts.srcLang,
+          targetLang: opts.targetLang,
+          game: opts.game,
+          modName: opts.modName,
+          glossary: relevantGlossaryEntries(
+            glossaryAll,
+            llmChunk.map((row) => row.source),
+          ),
+          signal,
+        }),
+    );
 
     const okStringIds: number[] = [];
     for (const result of results) {
@@ -270,17 +267,35 @@ export const runCliModVerify = async (
         (result.verdict === 'incorrect' || (result.verdict === 'suspicious' && fixSuspicious));
 
       if (shouldApplySuggestion) {
-        try {
-          await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
-          fixed++;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          logVerify.error('cli verify fix failed; continuing', {
+        const itemForValidation: LlmVerifyItem = {
+          id: row.string_id,
+          source: row.source,
+          translation: row.translation,
+          grup: issue.signature ? parseRecordLocation(row.signature, row.path).grup : null,
+          edid: row.edid,
+          field: parseRecordLocation(row.signature, row.path).field,
+          context: row.context,
+        };
+        const check = validateVerifySuggestion(itemForValidation, suggestion, opts.game);
+        if (!check.ok) {
+          logVerify.warn('cli verify fix skipped — suggestion failed validation', {
             modId: opts.modId,
             stringId: result.id,
-            error: message,
+            reason: check.message,
           });
-          errors++;
+        } else {
+          try {
+            await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
+            fixed++;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            logVerify.error('cli verify fix failed; continuing', {
+              modId: opts.modId,
+              stringId: result.id,
+              error: message,
+            });
+            errors++;
+          }
         }
       }
 
@@ -326,55 +341,33 @@ export const runCliModVerify = async (
     }
   };
 
+  const processLlmChunk = async (llmChunk: VerifyStringRow[]): Promise<void> => {
+    if (llmChunk.length === 0) return;
+    const ragByStringId = await fetchChunkRag(llmChunk);
+    await runLlmChunkWithRecovery({
+      chunk: llmChunk,
+      runOnce: (chunk) => processLlmBatchInner([...chunk], ragByStringId),
+      onFailure: (failed, message) => emitChunkFailure([...failed], message),
+      log: logVerify,
+      operation: 'verify',
+      itemIds: (chunk) => chunk.map((row) => row.string_id),
+    });
+  };
+
   try {
-    while (true) {
-      const dbChunk = await loadVerifyChunk(
-        db,
-        opts.modId,
-        opts.srcLang,
-        opts.targetLang,
-        afterStringId,
+    await runPoolOverAsyncIterable(
+      iterateVerifyLlmChunks(db, {
+        modId: opts.modId,
+        srcLang: opts.srcLang,
+        targetLang: opts.targetLang,
         dbChunkSize,
-      );
-      if (dbChunk.length === 0) break;
-      afterStringId = dbChunk[dbChunk.length - 1]!.string_id;
-      dbPage++;
-
-      const llmChunks: VerifyStringRow[][] = [];
-      for (let i = 0; i < dbChunk.length; i += LLM_VERIFY_LLM_BATCH_SIZE) {
-        llmChunks.push(dbChunk.slice(i, i + LLM_VERIFY_LLM_BATCH_SIZE));
-      }
-
-      try {
-        const ragByChunk = await mapWithConcurrency(llmChunks, ragConcurrency, fetchChunkRag);
-        await mapWithConcurrency(llmChunks, chatConcurrency, (chunk, index) =>
-          processLlmBatch(chunk, ragByChunk[index]!),
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        logVerify.error('cli verify db chunk failed; continuing with next chunk', {
-          modId: opts.modId,
-          error: message,
-          stringIds: dbChunk.map((row) => row.string_id),
-        });
-        for (const row of dbChunk) {
-          done++;
-          errors++;
-          onEvent?.({
-            type: 'progress',
-            done,
-            total,
-            approved,
-            fixed,
-            suspicious,
-            incorrect,
-            errors,
-            dbPage,
-            chunkError: { stringIds: [row.string_id], message },
-          });
-        }
-      }
-    }
+      }),
+      chatConcurrency,
+      async ({ page, chunk }) => {
+        dbPage = page;
+        await processLlmChunk(chunk);
+      },
+    );
 
     const summary: CliVerifyResult = {
       done,

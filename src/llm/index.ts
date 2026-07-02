@@ -63,22 +63,23 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
   });
 
   const started = Date.now();
-  const primary = getLLM();
 
   const runChat = async (provider: LLMProvider): Promise<ChatResult> => {
+    const queueWaitMs = Date.now() - started;
+    const httpStarted = Date.now();
     try {
       const result = await provider.chat(opts);
       logLlmResponse(logLlm, {
         operation,
         model: opts.model,
         response: result.content,
-        durationMs: Date.now() - started,
+        durationMs: Date.now() - httpStarted,
         provider: provider.name,
         finishReason: result.meta.finishReason,
         promptTokens: result.meta.promptTokens,
         completionTokens: result.meta.completionTokens,
         totalTokens: result.meta.totalTokens,
-        context,
+        context: { ...context, queueWaitMs },
       });
       if (result.meta.finishReason === 'length') {
         logLlm.warn(`${operation} response truncated (finish_reason=length)`, {
@@ -99,13 +100,17 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
       logLlm.error(`${operation} failed`, {
         model: opts.model,
         provider: provider.name,
-        durationMs: Date.now() - started,
+        durationMs: Date.now() - httpStarted,
+        queueWaitMs,
+        pool: llmChatPool.stats,
         err: err instanceof Error ? err.message : String(err),
         ...context,
       });
       throw err;
     }
   };
+
+  const primary = getLLM();
 
   try {
     return await llmChatPool.run(() => runChat(primary));

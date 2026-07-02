@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { formatFlatObjectLines } from './logging/format';
 import { PATHS } from './paths';
 
 // ── Log levels ───────────────────────────────────────────────────────────────
@@ -95,11 +96,13 @@ const formatArgs = (args: unknown[]): string => {
   if (args.length === 0) return '';
 
   if (args.length >= 2 && typeof args[1] === 'string' && isPlainObject(args[0])) {
-    return `${args[1]} ${serializeValue(args[0])}`;
+    const kv = formatFlatObjectLines(args[0]);
+    return kv ? `${args[1]}\n${kv}` : `${args[1]} ${serializeValue(args[0])}`;
   }
 
   if (args.length >= 2 && typeof args[0] === 'string' && isPlainObject(args[1])) {
-    return `${args[0]} ${serializeValue(args[1])}`;
+    const kv = formatFlatObjectLines(args[1]);
+    return kv ? `${args[0]}\n${kv}` : `${args[0]} ${serializeValue(args[1])}`;
   }
 
   return args.map(serializeValue).join(' ');

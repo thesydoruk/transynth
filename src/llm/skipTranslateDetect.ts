@@ -38,6 +38,8 @@ export interface LlmSkipDetectOptions {
   targetLang: string;
   game?: GameType | string | null;
   modName?: string | null;
+  /** Aborts the in-flight LLM request when the owning job is stopped. */
+  signal?: AbortSignal;
 }
 
 const VALID_VERDICTS = new Set<LlmSkipDetectVerdict>(['skip', 'keep']);
@@ -308,6 +310,7 @@ const callSkipDetectLlm = async (
     model: opts.model,
     temperature: 0,
     responseFormat: buildSkipDetectResponseFormat(expectedIds.length),
+    signal: opts.signal,
     logMeta: {
       operation: 'skip_detect',
       context: {

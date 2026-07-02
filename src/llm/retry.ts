@@ -7,6 +7,7 @@ const RETRYABLE_STATUSES = new Set([429, 500, 502, 503]);
 const RETRYABLE_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
 const isRetryable = (err: unknown): boolean => {
+  if (isLlmTimeoutError(err)) return true;
   const e = err as { code?: string; status?: number; response?: { status?: number } };
   if (e?.code && RETRYABLE_CODES.has(e.code)) return true;
   const status = e?.status ?? e?.response?.status;

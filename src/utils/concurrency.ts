@@ -74,3 +74,27 @@ export const mapWithConcurrency = async <T, R>(
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
   return results;
 };
+
+/**
+ * Worker pool over an async iterable — workers pull the next item as soon as they
+ * are free. Unlike {@link mapWithConcurrency}, there is no batch barrier: one slow
+ * item never blocks unrelated items still in the stream.
+ */
+export const runPoolOverAsyncIterable = async <T>(
+  items: AsyncIterable<T>,
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> => {
+  const limit = Math.max(1, concurrency);
+  const iterator = items[Symbol.asyncIterator]();
+
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) return;
+      await fn(next.value);
+    }
+  };
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+};
