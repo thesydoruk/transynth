@@ -1,6 +1,7 @@
 /**
  * Locate translatable string literals inside decompiled Papyrus (.psc) text.
  */
+import { normalizePexScriptKey } from './pexParser';
 
 export type PexSourceLine = {
   lineNumber: number;
@@ -24,7 +25,8 @@ export const pexScriptKeyFromRecordPath = (recordPath: string): string | null =>
   const trimmed = recordPath.trim();
   if (!trimmed.toUpperCase().startsWith('PEX\\')) return null;
   const key = trimmed.slice(4).trim();
-  return key ? key.toLowerCase() : null;
+  if (!key) return null;
+  return normalizePexScriptKey(key).toLowerCase();
 };
 
 const CONTEXT_RADIUS = 4;

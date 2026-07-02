@@ -56,6 +56,8 @@ const PEX_MAGIC = 0xfa57c0de;
 export type { PexEndian } from './pexBinary';
 export type { PexStringUsage, PexUserStringDetail } from './pexUsage';
 
+import path from 'node:path';
+
 type PexEndianLocal = PexEndian;
 
 const detectPexEndian = (buf: Buffer): PexEndianLocal => {
@@ -233,20 +235,39 @@ export const writeWString = (value: string, endian: PexEndianLocal = 'be'): Buff
 };
 
 /**
+ * Script name from a PEX header `sourceFile` or any script key/path.
+ * Creation Kit sometimes stores an absolute dev path (e.g. `E:\BuildAgent\...\FooScript`).
+ */
+export const pexScriptKeyFromSourceFile = (sourceFile: string): string => {
+  const trimmed = sourceFile.trim();
+  if (!trimmed) return '';
+  const base = path.basename(trimmed.replace(/\\/g, '/'));
+  return base.replace(/\.psc$/i, '').replace(/\.pex$/i, '');
+};
+
+/** Normalize any script key (record suffix, header path, archive file name). */
+export const normalizePexScriptKey = (scriptKey: string): string => {
+  const fromSource = pexScriptKeyFromSourceFile(scriptKey);
+  if (fromSource) return fromSource;
+  const base = path.basename(scriptKey.replace(/\\/g, '/'));
+  return base.replace(/\.(pex|psc)$/i, '');
+};
+
+/**
  * Resolve the script key used during import (`PEX\\{scriptKey}` record paths).
  *
  * @param info - Header metadata from {@link parsePexBuffer}.
  */
 export const pexScriptKeyFromInfo = (info: PexInfo): string =>
-  info.sourceFile.replace(/\.psc$/i, '') || '';
+  pexScriptKeyFromSourceFile(info.sourceFile);
 
 /** Human-readable script context stored on `strings.context` for PEX rows. */
 export const formatPexStringContext = (
   sourceFile: string,
   detail: Pick<PexUserStringDetail, 'literalIndex' | 'usages'>,
 ): string => {
-  const trimmed = sourceFile.trim();
-  const file = trimmed ? (/\.psc$/i.test(trimmed) ? trimmed : `${trimmed}.psc`) : 'unknown.psc';
+  const stem = pexScriptKeyFromSourceFile(sourceFile);
+  const file = stem ? `${stem}.psc` : 'unknown.psc';
 
   const usages = detail.usages;
   if (usages.length === 0) {

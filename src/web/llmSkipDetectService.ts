@@ -345,6 +345,7 @@ export const runLlmSkipDetectJob = async (
         edid: row.edid,
         path: row.path,
         signature: grup,
+        context: row.context,
       };
     });
 

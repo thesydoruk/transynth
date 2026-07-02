@@ -14,6 +14,7 @@ import {
   readInstalledChampollionVersion,
 } from '../champollionPath';
 import { PATHS } from '../paths';
+import { log } from '../logger';
 
 const RELEASE_TAG = `v${CHAMPOLLION_VERSION}`;
 const DOWNLOAD_URL = `https://github.com/Orvid/Champollion/releases/download/${RELEASE_TAG}/Champollion.v${CHAMPOLLION_VERSION}.zip`;
@@ -132,4 +133,36 @@ export const installChampollion = async (opts?: {
   fs.writeFileSync(champollionVersionFilePath(), `${CHAMPOLLION_VERSION}\n`, 'utf8');
 
   return { exePath, version: CHAMPOLLION_VERSION, skipped: false };
+};
+
+let ensureInstallPromise: Promise<InstallChampollionResult> | null = null;
+
+/**
+ * Return a working Champollion executable path, installing the bundled release
+ * into `data/tools/champollion` when missing (default path only).
+ *
+ * When `CHAMPOLLION_PATH` is set, that path must already exist — no auto-download.
+ */
+export const ensureChampollionInstalled = async (): Promise<string> => {
+  const configured = process.env.CHAMPOLLION_PATH?.trim();
+  if (configured) {
+    if (fs.existsSync(configured)) return configured;
+    throw new Error(`CHAMPOLLION_PATH not found: ${configured}`);
+  }
+
+  const exePath = defaultChampollionExePath();
+  const installedVersion = readInstalledChampollionVersion();
+  if (isChampollionInstalled() && installedVersion === CHAMPOLLION_VERSION) {
+    return exePath;
+  }
+
+  if (!ensureInstallPromise) {
+    log.info(`Champollion not found — downloading v${CHAMPOLLION_VERSION}…`);
+    ensureInstallPromise = installChampollion().finally(() => {
+      ensureInstallPromise = null;
+    });
+  }
+
+  const result = await ensureInstallPromise;
+  return result.exePath;
 };

@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import type { Tx } from '../db';
-import { CONFIG } from '../config';
 import { PATHS } from '../paths';
+import { ensureChampollionInstalled } from '../tools/installChampollion';
 import { sha1Hex } from '../utils/hash';
 import { collectModPexSources } from '../bethesda/parsers';
 import {
@@ -14,8 +14,8 @@ import {
   pexScriptKeyFromRecordPath,
   type PexSourceLocateResult,
 } from '../bethesda/parsers/pexSourceLocate';
+import { normalizePexScriptKey, parsePexBuffer } from '../bethesda/parsers/pexParser';
 import { parsePexStoredContext } from '../bethesda/parsers/pexStoredContext';
-import { parsePexBuffer } from '../bethesda/parsers/pexParser';
 import { log } from '../logger';
 
 export type PexSourceSnippetResult =
@@ -110,22 +110,23 @@ const decompilePexToPsc = async (
   scriptKey: string,
   cacheBucket: number | string,
 ): Promise<{ pscPath: string; headerSourceFile: string }> => {
+  const fileStem = normalizePexScriptKey(scriptKey);
   const digest = sha1Hex(pexData);
   const cacheDir = path.join(PATHS.pexDecompile, String(cacheBucket), digest);
   fs.mkdirSync(cacheDir, { recursive: true });
 
   const parsed = parsePexBuffer(pexData);
   const headerSourceFile = parsed.info.sourceFile.trim();
-  const scriptLabel = path.basename(headerSourceFile || `${scriptKey}.psc`);
-  const cachedPsc = path.join(cacheDir, `${scriptKey}.psc`);
+  const scriptLabel = path.basename(headerSourceFile || `${fileStem}.psc`);
+  const cachedPsc = path.join(cacheDir, `${fileStem}.psc`);
 
   if (fs.existsSync(cachedPsc)) {
     return { pscPath: cachedPsc, headerSourceFile };
   }
 
-  const champollion = CONFIG.champollionPath.trim();
-  if (!champollion || !fs.existsSync(champollion)) {
-    throw new Error('Champollion not found (run: npm run tools:champollion)');
+  const champollion = await ensureChampollionInstalled();
+  if (!fs.existsSync(champollion)) {
+    throw new Error('Champollion not found after install');
   }
 
   const workDir = path.join(cacheDir, 'work');
@@ -135,14 +136,13 @@ const decompilePexToPsc = async (
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
 
-  const pexFileName = `${scriptKey}.pex`;
-  const pexPath = path.join(inDir, pexFileName);
+  const pexPath = path.join(inDir, `${fileStem}.pex`);
   fs.writeFileSync(pexPath, pexData);
 
   const recreateSubdirs = /[\\/]/.test(headerSourceFile);
   await runChampollion(champollion, pexPath, outDir, recreateSubdirs);
 
-  const produced = findPscFile(outDir, scriptKey, headerSourceFile);
+  const produced = findPscFile(outDir, fileStem, headerSourceFile);
   if (!produced) {
     throw new Error(`Champollion did not produce ${scriptLabel}`);
   }
@@ -239,12 +239,13 @@ export const getPexSourceSnippetForString = async (
     };
   }
 
-  if (!CONFIG.champollionPath.trim() || !fs.existsSync(CONFIG.champollionPath)) {
+  try {
+    await ensureChampollionInstalled();
+  } catch {
     return {
       ok: false,
       reason: 'decompiler_missing',
-      message:
-        'Champollion not found. Run: npm run tools:champollion (or set CHAMPOLLION_PATH in .env)',
+      message: 'Champollion not available. Check network access or set CHAMPOLLION_PATH in .env',
     };
   }
 

@@ -1,13 +1,42 @@
 import { describe, it, expect } from '@jest/globals';
+import { pexScriptKeyFromSourceFile, normalizePexScriptKey } from '../pexParser';
 import {
   findPexLiteralLineNumbers,
   locatePexLiteralInPsc,
   pexScriptKeyFromRecordPath,
 } from '../pexSourceLocate';
 
+describe('pexScriptKeyFromSourceFile', () => {
+  it('uses basename when header stores an absolute dev path', () => {
+    const source =
+      'E:\\BuildAgent\\work\\b34a7b76c86438c9\\scripts\\_workspace\\Art\\Raw\\CC\\OTMFO4001\\Source\\Scripts\\ccOTMFO4001\\ccOTMFO4001_QuestScript.psc';
+    expect(pexScriptKeyFromSourceFile(source)).toBe('ccOTMFO4001_QuestScript');
+  });
+
+  it('strips .psc from a simple file name', () => {
+    expect(pexScriptKeyFromSourceFile('WorkshopScript.psc')).toBe('WorkshopScript');
+  });
+});
+
+describe('normalizePexScriptKey', () => {
+  it('normalizes legacy record suffix paths', () => {
+    const key =
+      'E:\\BuildAgent\\work\\b34a7b76c86438c9\\scripts\\_workspace\\Art\\Raw\\CC\\OTMFO4001\\Source\\Scripts\\ccOTMFO4001\\ccOTMFO4001_QuestScript';
+    expect(normalizePexScriptKey(key)).toBe('ccOTMFO4001_QuestScript');
+  });
+});
+
 describe('pexScriptKeyFromRecordPath', () => {
   it('strips the PEX prefix', () => {
     expect(pexScriptKeyFromRecordPath('PEX\\DLC06E01Script')).toBe('dlc06e01script');
+  });
+
+  it('normalizes absolute dev paths from legacy imports', () => {
+    expect(
+      pexScriptKeyFromRecordPath(
+        'PEX\\E:\\BuildAgent\\work\\scripts\\ccOTMFO4001\\ccOTMFO4001_QuestScript',
+      ),
+    ).toBe('ccotmfo4001_questscript');
   });
 });
 

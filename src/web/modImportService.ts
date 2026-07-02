@@ -41,6 +41,8 @@ import {
   pexScriptKeyFromInfo,
   locatePexLiteralInPsc,
   serializePexStoredContext,
+  extractQuotedStringLiteralsFromPsc,
+  isPexLiteralTranslatable,
   resolveMcmLocaleKey,
   resolveMcmModPrefix,
   resolveMcmTranslationPrefixes,
@@ -68,7 +70,7 @@ import {
   type ModImportBulkRow,
   type DialogGraphImportContext,
 } from './modImportBulk';
-import { isChampollionInstalled } from '../champollionPath';
+import { ensureChampollionInstalled } from '../tools/installChampollion';
 import { decompilePexScriptMap, type DecompiledPexScript } from './pexDecompileService';
 
 const { Pool } = pg;
@@ -1601,12 +1603,34 @@ const buildPexCsvRows = (
   decompiled: Map<string, DecompiledPexScript>,
 ): PexImportRow[] => {
   const rows: PexImportRow[] = [];
+  let skipped = 0;
   for (const [scriptName, bundle] of pexMap) {
     const recordPath = `PEX\\${scriptName}`;
     const seen = new Set<string>();
     const pscBundle = decompiled.get(scriptName);
-    for (const { text, literalIndex, usages } of bundle.literals) {
+    const candidates = new Map<
+      string,
+      { text: string; literalIndex: number; usages: PexStringUsage[] }
+    >();
+
+    for (const entry of bundle.literals) {
+      candidates.set(entry.text, entry);
+    }
+
+    if (pscBundle) {
+      for (const text of extractQuotedStringLiteralsFromPsc(pscBundle.pscSource)) {
+        if (!candidates.has(text)) {
+          candidates.set(text, { text, literalIndex: 0, usages: [] });
+        }
+      }
+    }
+
+    for (const { text, literalIndex, usages } of candidates.values()) {
       if (seen.has(text)) continue;
+      if (!isPexLiteralTranslatable(text, usages, pscBundle?.pscSource)) {
+        skipped++;
+        continue;
+      }
       seen.add(text);
 
       let context = formatPexStringContext(bundle.sourceFile, { literalIndex, usages });
@@ -1629,6 +1653,9 @@ const buildPexCsvRows = (
         context,
       });
     }
+  }
+  if (skipped > 0) {
+    logImport.debug(`PEX filter: skipped ${skipped} non-translatable literal(s)`);
   }
   return rows;
 };
@@ -2521,7 +2548,8 @@ export const runModImport = async (
       const pexMap = await collectPexStrings(espPath, game);
       if (pexMap.size > 0) {
         let decompiled = new Map<string, DecompiledPexScript>();
-        if (isChampollionInstalled()) {
+        try {
+          await ensureChampollionInstalled();
           const scriptBuffers = new Map<string, Buffer>();
           for (const [scriptKey, bundle] of pexMap) {
             scriptBuffers.set(scriptKey, bundle.data);
@@ -2530,15 +2558,18 @@ export const runModImport = async (
           logImport.info(
             `[Mod Import #${job.id}] PEX decompile: ${decompiled.size}/${scriptBuffers.size} script(s)`,
           );
-        } else {
+        } catch (err) {
           logImport.warn(
-            `[Mod Import #${job.id}] Champollion not installed — PEX rows without source lines (npm run tools:champollion)`,
+            `[Mod Import #${job.id}] Champollion unavailable — PEX filter without PSC (${err instanceof Error ? err.message : String(err)})`,
           );
         }
 
+        const literalBefore = [...pexMap.values()].reduce((sum, b) => sum + b.literals.length, 0);
         const pexRows = buildPexCsvRows(pexMap, decompiled);
+        const skipped = literalBefore - pexRows.length;
         logImport.info(
-          `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`,
+          `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} translatable string(s)` +
+            (skipped > 0 ? ` (${skipped} filtered)` : ''),
         );
         if (pexRows.length > 0) {
           for (const { csvRow: r, context } of pexRows) {

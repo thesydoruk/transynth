@@ -2,6 +2,7 @@
  * Heuristic detection of source strings that should not be translated.
  */
 import { isNonPlayerFacingRecord } from '../bethesda/subrecords/nonPlayerFacing';
+import { detectPexSkipFromContext } from '../bethesda/parsers/pexTranslatableFilter';
 
 /** Internal mask markers injected by the translation pipeline (¤PH0¤, ¤GL1¤, ¤FK2¤). */
 const MARKER_RE = /¤(?:PH|GL|FK)\d+¤/g;
@@ -82,6 +83,7 @@ export type SkipHeuristicMeta = {
   edid?: string | null;
   path?: string | null;
   signature?: string | null;
+  context?: string | null;
 };
 
 export type SkipAuditRow = {
@@ -90,6 +92,7 @@ export type SkipAuditRow = {
   edid?: string | null;
   path?: string | null;
   signature?: string | null;
+  context?: string | null;
 };
 
 const normalizePathField = (path: string | null | undefined): string | null => {
@@ -128,6 +131,7 @@ export const partitionSkipAuditRows = (
       edid: row.edid,
       path: row.path,
       signature: row.signature,
+      context: row.context,
     });
     if (hit) heuristicHits.set(row.id, hit);
     else llmCandidates.push(row);
@@ -155,6 +159,14 @@ export const detectSkipHeuristic = (
   const trimmed = source.trim();
   if (!trimmed) {
     return { reason: 'Empty source text.', method: 'heuristic' };
+  }
+
+  const signature = meta?.signature?.trim() ?? null;
+  if (signature === 'PEX') {
+    const pexHit = detectPexSkipFromContext(trimmed, meta?.context);
+    if (pexHit) {
+      return { reason: pexHit.reason, method: 'heuristic' };
+    }
   }
 
   const content = stripPlaceholdersForSkipCheck(trimmed);
@@ -209,8 +221,6 @@ export const detectSkipHeuristic = (
       method: 'heuristic',
     };
   }
-
-  const signature = meta?.signature?.trim() ?? null;
 
   if (isNonPlayerFacingRecord(signature)) {
     return {

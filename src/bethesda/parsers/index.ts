@@ -31,6 +31,8 @@ export {
   parsePexBuffer,
   patchPexBuffer,
   pexScriptKeyFromInfo,
+  pexScriptKeyFromSourceFile,
+  normalizePexScriptKey,
   writeWString,
 } from './pexParser';
 export {
@@ -39,6 +41,15 @@ export {
   pexScriptKeyFromRecordPath,
 } from './pexSourceLocate';
 export type { PexSourceLine, PexSourceLocateResult } from './pexSourceLocate';
+export {
+  classifyPscQuotedLine,
+  findQuotedPscLinesForLiteral,
+  isPexLiteralTranslatable,
+  extractQuotedStringLiteralsFromPsc,
+  resolvePexTranslatability,
+  detectPexSkipFromContext,
+} from './pexTranslatableFilter';
+export type { PscQuotedLineClass, PexTranslatabilityVerdict } from './pexTranslatableFilter';
 export {
   formatPexStoredContextLabel,
   parsePexStoredContext,
