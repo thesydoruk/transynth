@@ -144,7 +144,7 @@ docker compose run --rm cli npm run db:init
 What this does:
 
 - Reads `sql/schema.sql` and applies it to the database from `DATABASE_URL`.
-- Creates the core tables and indexes for mods, records, source strings, translations, translation history, glossary terms, import jobs, QA issues, QA rules, sessions, users, activity log, and translation cache.
+- Creates the core tables and indexes for mods, records, source strings, translations, translation history, glossary terms, import jobs, QA issues, QA rules, sessions, users, and activity log.
 - Inserts the bootstrap `admin` user row if it does not already exist.
 
 What it does not do:

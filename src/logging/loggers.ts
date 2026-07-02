@@ -14,7 +14,7 @@ export const logLlm = createLogger('llm');
 /** Translation RAG index and retrieval. */
 export const logRag = createLogger('rag');
 
-/** Batch LLM translation pipeline (cache, RAG, upsert). */
+/** Batch LLM translation pipeline (RAG, upsert). */
 export const logTranslate = createLogger('translate');
 
 /** LLM translation quality verification jobs. */
@@ -25,9 +25,6 @@ export const logLocale = createLogger('locale');
 
 /** Mod import and conversion jobs. */
 export const logImport = createLogger('import');
-
-/** LLM translation cache hits/misses. */
-export const logCache = createLogger('cache');
 
 /** Embedding helpers (RAG, alignment). */
 export const logEmbed = createLogger('embed');

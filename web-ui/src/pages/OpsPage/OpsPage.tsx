@@ -4,7 +4,7 @@
  * Displays four sections:
  * 1. **System** — uptime, Node version, memory usage, DB connectivity.
  * 2. **Import Jobs** — recent EET / CSV / Mod imports with progress and errors.
- * 3. **LLM** — translation cache size, auto-translated counts, per-model breakdown.
+ * 3. **LLM** — auto-translated counts, per-model breakdown.
  * 4. **Database** — total DB size and per-table row counts / disk sizes.
  *
  * Data is fetched from a single `GET /api/ops` endpoint and auto-refreshes
@@ -35,7 +35,12 @@ export const OpsPage = () => {
   });
 
   if (isLoading) return <div className={s.center}>{t('ops.loading')}</div>;
-  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
+  if (error)
+    return (
+      <div className={`${s.center} ${s.error}`}>
+        {t('common.error', { message: String(error) })}
+      </div>
+    );
   if (!data) return null;
 
   return (
@@ -56,4 +61,3 @@ export const OpsPage = () => {
     </div>
   );
 };
-

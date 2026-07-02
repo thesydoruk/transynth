@@ -25,8 +25,10 @@ export const TechDetailsSection = ({ data }: TechDetailsSectionProps) => {
           <div>
             <h3 className={s.h3}>{t('ops.llm')}</h3>
             <div className={s.smCards}>
-              <SmCard label={t('ops.cacheEntries')} value={data.llm.cacheEntries.toLocaleString()} />
-              <SmCard label={t('ops.autoTranslated')} value={data.llm.autoTranslated.toLocaleString()} />
+              <SmCard
+                label={t('ops.autoTranslated')}
+                value={data.llm.autoTranslated.toLocaleString()}
+              />
             </div>
             {data.llm.byModel.length > 0 && (
               <table className={parentS.compactTable}>

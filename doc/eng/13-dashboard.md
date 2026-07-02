@@ -160,7 +160,6 @@ Two cards:
 
 | Card                | Meaning                                        |
 | ------------------- | ---------------------------------------------- |
-| **Cache entries**   | Rows in the LLM translation cache              |
 | **Auto-translated** | Total translations produced by an LLM provider |
 
 Below the cards, a **per-model breakdown** table shows how many

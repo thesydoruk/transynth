@@ -34,7 +34,6 @@ export const LlmSection = ({ data }: LlmSectionProps) => {
     <section className={s.section}>
       <h2 className={s.h2}>{t('ops.llm')}</h2>
       <div className={s.cards}>
-        <MiniCard label={t('ops.cacheEntries')} value={llm.cacheEntries.toLocaleString()} />
         <MiniCard label={t('ops.autoTranslated')} value={llm.autoTranslated.toLocaleString()} />
       </div>
       {llm.byModel.length > 0 && (

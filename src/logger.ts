@@ -31,7 +31,6 @@ const SUBSYSTEMS_WITH_OWN_FILE = new Set([
   'verify',
   'locale',
   'import',
-  'cache',
   'embed',
   'auth',
   'api',

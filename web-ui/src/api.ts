@@ -597,7 +597,6 @@ export type OpsOverview = {
   importJobs: OpsImportJob[];
   llmJobs: OpsLlmJob[];
   llm: {
-    cacheEntries: number;
     autoTranslated: number;
     byModel: OpsModelBreakdown[];
   };

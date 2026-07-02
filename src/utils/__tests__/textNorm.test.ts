@@ -1,11 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import {
-  normalizeForHash,
-  normalizeNoPunct,
-  extractNumbers,
-  transplantNumbers,
-  hashNormForCache,
-} from '../textNorm';
+import { normalizeForHash, normalizeNoPunct, extractNumbers, transplantNumbers } from '../textNorm';
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {
@@ -36,14 +30,6 @@ describe('normalizeForHash', () => {
     const a = normalizeForHash('  Hello %s, you found 5 items in {chest}  ');
     const b = normalizeForHash('hello %s, you found 5 items in {chest}');
     expect(a).toBe(b);
-  });
-});
-
-describe('hashNormForCache', () => {
-  it('returns 64-char hex SHA-256', () => {
-    const hash = hashNormForCache('hello world');
-    expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(hash).toBe(hashNormForCache('hello world'));
   });
 });
 

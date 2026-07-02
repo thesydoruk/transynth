@@ -2,7 +2,7 @@
  * ops.ts — Health / Operations dashboard API.
  *
  * Provides a single `GET /api/ops` endpoint that aggregates system health,
- * import-job status, LLM cache statistics, and database metrics into one
+ * import-job status, LLM statistics, and database metrics into one
  * payload consumed by the frontend OpsPage component.
  *
  * All queries are read-only and lightweight (COUNT, pg_total_relation_size).
@@ -102,8 +102,6 @@ export interface OpsOverview {
   llmJobs: LlmJobRow[];
   /** LLM / auto-translate statistics. */
   llm: {
-    /** Total rows in the translation cache. */
-    cacheEntries: number;
     /** Number of translations with provenance = 'llm'. */
     autoTranslated: number;
     /** Per-model breakdown of auto-translated strings. */
@@ -150,7 +148,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       csvJobs,
       modJobs,
       llmJobsResult,
-      cacheCount,
       autoCount,
       modelBreakdown,
       dbSize,
@@ -192,9 +189,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
         )
         .catch(() => ({ rows: [] })),
 
-      /* LLM translation cache row count */
-      db.query('SELECT COUNT(*)::int AS count FROM translation_cache'),
-
       /* Auto-translated string count (provenance = 'llm') */
       db.query(`SELECT COUNT(*)::int AS count FROM translations WHERE provenance = 'llm'`),
 
@@ -223,7 +217,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
            AND c.relname IN (
              'mods','records','strings','translations',
              'translation_revisions','qa_issues','glossary',
-             'translation_cache','eet_imports','csv_imports',
+             'eet_imports','csv_imports',
              'mod_imports','users','activity_log','translation_examples'
            )
          ORDER BY c.reltuples DESC`,
@@ -268,7 +262,6 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
       importJobs,
       llmJobs: llmJobsResult.rows as unknown as LlmJobRow[],
       llm: {
-        cacheEntries: (cacheCount.rows[0] as { count: number })?.count ?? 0,
         autoTranslated: (autoCount.rows[0] as { count: number })?.count ?? 0,
         byModel: modelBreakdown.rows as unknown as ModelBreakdown[],
       },

@@ -17,7 +17,6 @@ import {
   type RagRetrievalOptions,
 } from '../../llm/ragService';
 import { getAllProjectSettings } from '../services/projectSettings';
-import { cacheLookupMany, cacheStoreMany, type CacheStoreEntry } from '../data/cacheService';
 import { bulkUpsertAutoTranslations } from '../import/modImportBulk';
 import {
   termWordBoundaryRe,
@@ -33,7 +32,6 @@ import {
   maskPlaceholders,
   unmask,
   validateTranslationPlaceholders,
-  compareProtectedTokens,
 } from '../../utils/placeholders';
 import { detectSkipHeuristic } from '../../llm/skipTranslateHeuristics';
 import { parseRecordLocation } from '../../utils/recordLocation';
@@ -91,7 +89,7 @@ type PreparedLlmItem = {
   llmItem: LlmTranslateItem;
 };
 
-/** Translate a batch of source string IDs via LLM (RAG, cache, glossary). */
+/** Translate a batch of source string IDs via LLM (RAG, glossary). */
 export const translateStringIdsBatch = async (
   db: Tx,
   stringIds: number[],
@@ -193,9 +191,9 @@ export const translateStringIdsBatch = async (
   const persistPool = new Semaphore(persistConcurrency);
   const persistJobs: Promise<void>[] = [];
 
-  /** Bulk persist auto translations + cache, then refresh QA in the background. */
+  /** Bulk persist auto translations, then refresh QA in the background. */
   const persistAutoTranslationRows = async (
-    rows: Array<{ stringId: number; text: string; sourceText: string }>,
+    rows: Array<{ stringId: number; text: string }>,
   ): Promise<void> => {
     if (rows.length === 0) return;
     await bulkUpsertAutoTranslations(
@@ -204,15 +202,6 @@ export const translateStringIdsBatch = async (
       targetLang,
       model,
     );
-    const cacheEntries: CacheStoreEntry[] = rows.map((r) => ({
-      raw: r.sourceText,
-      translated: r.text,
-    }));
-    try {
-      await cacheStoreMany(db, cacheEntries, srcLang, targetLang, model);
-    } catch (err) {
-      logTranslate.warn('batch cache store failed', { err, count: rows.length });
-    }
     scheduleRefreshQAIssuesBatch(
       db,
       rows.map((r) => r.stringId),
@@ -221,23 +210,11 @@ export const translateStringIdsBatch = async (
     );
   };
 
-  // Batch the cache warm-up: one query instead of one round trip per string.
-  const cacheCandidates = eligibleIds
-    .map((id) => rowById.get(id)?.text_raw)
-    .filter((text): text is string => typeof text === 'string');
-  let cacheByRaw: Map<string, string>;
-  try {
-    cacheByRaw = await cacheLookupMany(db, cacheCandidates, srcLang, targetLang, model);
-  } catch (err) {
-    logTranslate.error('batch cache lookup failed', { err });
-    cacheByRaw = new Map();
-  }
-
   const llmPending: PreparedLlmItem[] = [];
   const runtimeSkipIds: number[] = [];
 
-  /** Strings resolved without the LLM (untranslatable or cache hit) — persisted in bulk. */
-  const immediateResults: Array<{ stringId: number; text: string; sourceText: string }> = [];
+  /** Strings resolved without the LLM (untranslatable) — persisted in bulk. */
+  const immediateResults: Array<{ stringId: number; text: string }> = [];
 
   type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
@@ -282,9 +259,7 @@ export const translateStringIdsBatch = async (
   };
 
   /** Queue DB persist — LLM workers return immediately after scheduling this. */
-  const scheduleChunkPersist = (
-    okRows: Array<{ stringId: number; text: string; sourceText: string }>,
-  ): void => {
+  const scheduleChunkPersist = (okRows: Array<{ stringId: number; text: string }>): void => {
     if (okRows.length === 0) return;
     persistJobs.push(
       persistPool.run(async () => {
@@ -299,9 +274,9 @@ export const translateStringIdsBatch = async (
   const collectValidatedRows = (
     chunk: PreparedLlmItem[],
     translations: Awaited<ReturnType<typeof translateStrings>>,
-  ): Array<{ stringId: number; text: string; sourceText: string }> => {
+  ): Array<{ stringId: number; text: string }> => {
     const translationById = new Map(translations.map((row) => [row.id, row.translation]));
-    const okRows: Array<{ stringId: number; text: string; sourceText: string }> = [];
+    const okRows: Array<{ stringId: number; text: string }> = [];
 
     for (const entry of chunk) {
       const maskedTranslation = translationById.get(entry.stringId);
@@ -333,7 +308,7 @@ export const translateStringIdsBatch = async (
         unmask(maskedTranslation, entry.functionKeywordMap),
         entry.placeholderMap,
       );
-      okRows.push({ stringId: entry.stringId, text: translated, sourceText: entry.sourceText });
+      okRows.push({ stringId: entry.stringId, text: translated });
     }
 
     return okRows;
@@ -396,28 +371,9 @@ export const translateStringIdsBatch = async (
 
     const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
     if (!translatableContent) {
-      immediateResults.push({ stringId, text: sourceText, sourceText });
+      immediateResults.push({ stringId, text: sourceText });
       continue;
     }
-
-    const cached = cacheByRaw.get(sourceText);
-    if (cached !== undefined) {
-      const cacheCheck = compareProtectedTokens(sourceText, cached, game as GameType | undefined, {
-        grup,
-        field,
-      });
-      if (!cacheCheck.ok) {
-        logTranslate.warn('cache hit rejected — placeholder mismatch', {
-          stringId,
-          message: cacheCheck.message,
-        });
-      } else {
-        logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
-        immediateResults.push({ stringId, text: cached, sourceText });
-        continue;
-      }
-    }
-    logTranslate.trace('cache miss', { stringId, srcLang, targetLang, model });
 
     llmPending.push({
       stringId,
@@ -461,7 +417,7 @@ export const translateStringIdsBatch = async (
     singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
   });
 
-  // Persist cache hits / untranslatable strings before/while the LLM runs.
+  // Persist placeholder-only strings before/while the LLM runs.
   if (immediateResults.length > 0) {
     await persistAutoTranslationRows(immediateResults);
     for (const r of immediateResults) emitResult(r);

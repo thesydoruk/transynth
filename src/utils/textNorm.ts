@@ -1,5 +1,4 @@
 // Simple normalization for hashing/alignment: lowercasing, stripping tags/placeholders/numbers and collapsing whitespace.
-import { createHash } from 'crypto';
 import { PLACEHOLDER_RE } from './placeholders';
 
 export const normalizeForHash = (s: string): string => {
@@ -10,10 +9,6 @@ export const normalizeForHash = (s: string): string => {
   t = t.trim().toLowerCase();
   return t;
 };
-
-/** SHA-256 hex digest of normalized cache key text (fits btree index row limits). */
-export const hashNormForCache = (norm: string): string =>
-  createHash('sha256').update(norm, 'utf8').digest('hex');
 
 /**
  * Extra-aggressive normalization: strip all punctuation on top of normalizeForHash.

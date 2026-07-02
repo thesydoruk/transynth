@@ -18,7 +18,6 @@ placeholder protection.
 - [Glossary Injection](#glossary-injection)
 - [Style Guide](#style-guide)
 - [Reviewing Auto-translated Strings](#reviewing-auto-translated-strings)
-- [LLM Translation Cache](#llm-translation-cache)
 - [Limitations and Best Practices](#limitations-and-best-practices)
 
 ---
@@ -47,7 +46,7 @@ Cost varies by model and mod size. Each string is translated individually;
 a mod with 5 000 untranslated strings of average 20 tokens each uses roughly
 100 000 input tokens + 100 000 output tokens. At `gpt-4.1-mini` prices this is
 typically a few US cents. Check [OpenAI pricing](https://openai.com/pricing) for
-current rates. Strings already in the TM or LLM cache are free.
+current rates. Strings already covered by TM do not incur LLM cost.
 
 ### vLLM (local)
 
@@ -142,8 +141,7 @@ See [Configuration](17-configuration.md) for the full reference.
    menu). A progress badge **Translating X/Y** replaces the button while running.
 5. The endpoint processes up to **100 strings** per batch. For larger selections,
    split into multiple runs.
-6. Each string is translated individually with SSE progress streaming. Cache hits
-   return instantly; uncached strings call the LLM.
+6. Each string is translated individually with SSE progress streaming.
 7. After completion, the grid refreshes automatically. Translated strings appear
    with status **Auto**.
 
@@ -272,38 +270,6 @@ Before publishing your translation, review these strings in the editor:
 
 For large batches, filter the editor by **Status = Auto** or use the **Drafts only**
 toolbar filter to work through results in the mod editor.
-
----
-
-## LLM Translation Cache
-
-Identical source strings are cached at the database level.
-If the same string appears in multiple mods, it is translated only once.
-
-The cache is stored in the `translation_cache` table with the following key:
-`(text_norm, src_lang, tgt_lang, model)`.
-
-The **cache key uses normalised text** (`text_norm`): whitespace is collapsed,
-case is lowercased, placeholders become `¤PH¤`, and numbers become `¤NUM¤`.
-This means strings that differ only in number values or whitespace can still
-hit the same cache entry.
-
-When a string is found in the cache, the stored translation is returned
-instantly without calling the LLM. If the same text is translated again
-with new content (and you want a fresh result), clear the relevant cache
-row manually:
-
-```sql
--- Clear cache for a specific string
-DELETE FROM translation_cache
-WHERE text_norm = translation_cache.text_norm -- replace with the normalised text
-  AND src_lang = 'en' AND tgt_lang = 'uk' AND model = 'gpt-4.1-mini';
-
--- Clear entire LLM cache (forces re-translation of everything)
-TRUNCATE translation_cache;
-```
-
-There is no UI for cache management — use direct database access.
 
 ---
 

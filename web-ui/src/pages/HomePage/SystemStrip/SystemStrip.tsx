@@ -17,9 +17,15 @@ export const SystemStrip = ({ data }: SystemStripProps) => {
     <section className={s.sysStrip}>
       <SmCard label={t('ops.uptime')} value={fmtUptime(system.uptimeSeconds)} />
       <SmCard label={t('ops.nodeVersion')} value={system.nodeVersion} />
-      <SmCard label={t('ops.memory')} value={`${fmtBytes(system.heapUsedBytes)} / ${fmtBytes(system.heapTotalBytes)}`} />
-      <SmCard label={t('ops.dbStatus')} value={system.dbConnected ? t('ops.dbOk') : t('ops.dbDown')} color={system.dbConnected ? '#4caf50' : '#e55'} />
-      {data.llm && <SmCard label={t('ops.cacheEntries')} value={data.llm.cacheEntries.toLocaleString()} />}
+      <SmCard
+        label={t('ops.memory')}
+        value={`${fmtBytes(system.heapUsedBytes)} / ${fmtBytes(system.heapTotalBytes)}`}
+      />
+      <SmCard
+        label={t('ops.dbStatus')}
+        value={system.dbConnected ? t('ops.dbOk') : t('ops.dbDown')}
+        color={system.dbConnected ? '#4caf50' : '#e55'}
+      />
     </section>
   );
 };
