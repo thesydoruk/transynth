@@ -289,10 +289,9 @@ export const pruneStaleModImportData = async (
           SET response_string_id = NULL
          FROM strings s
          JOIN records r ON s.record_id = r.id
-         LEFT JOIN _import_kept_strings k ON k.id = s.id
         WHERE dn.response_string_id = s.id
           AND r.mod_id = $1
-          AND k.id IS NULL`,
+          AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 
@@ -301,10 +300,9 @@ export const pruneStaleModImportData = async (
         USING translations t
         JOIN strings s ON t.src_string_id = s.id
         JOIN records r ON s.record_id = r.id
-        LEFT JOIN _import_kept_strings k ON k.id = s.id
        WHERE te.translation_id = t.id
          AND r.mod_id = $1
-         AND k.id IS NULL`,
+         AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 
@@ -312,10 +310,9 @@ export const pruneStaleModImportData = async (
       `DELETE FROM qa_issues qi
         USING strings s
         JOIN records r ON s.record_id = r.id
-        LEFT JOIN _import_kept_strings k ON k.id = s.id
        WHERE qi.src_string_id = s.id
          AND r.mod_id = $1
-         AND k.id IS NULL`,
+         AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 
@@ -323,10 +320,9 @@ export const pruneStaleModImportData = async (
       `DELETE FROM translation_revisions tr
         USING strings s
         JOIN records r ON s.record_id = r.id
-        LEFT JOIN _import_kept_strings k ON k.id = s.id
        WHERE tr.src_string_id = s.id
          AND r.mod_id = $1
-         AND k.id IS NULL`,
+         AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 
@@ -334,20 +330,18 @@ export const pruneStaleModImportData = async (
       `DELETE FROM translations t
         USING strings s
         JOIN records r ON s.record_id = r.id
-        LEFT JOIN _import_kept_strings k ON k.id = s.id
        WHERE t.src_string_id = s.id
          AND r.mod_id = $1
-         AND k.id IS NULL`,
+         AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 
     const { rowCount: deletedStrings } = await db.query(
       `DELETE FROM strings s
         USING records r
-        LEFT JOIN _import_kept_strings k ON k.id = s.id
        WHERE s.record_id = r.id
          AND r.mod_id = $1
-         AND k.id IS NULL`,
+         AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
       [modId],
     );
 

@@ -109,7 +109,15 @@
     "deleteAllTitle": "Видалити мод повністю",
     "deleteAllMessage": "Видалити мод «{{name}}» разом із усіма імпортованими рядками та перекладами? Цю дію неможливо відкотити.",
     "deleteAllSuccess": "Мод «{{name}}» видалено.",
-    "deleteImportJob": "Видалити імпорт"
+    "deleteImportJob": "Видалити імпорт",
+    "selectAll": "Обрати всі",
+    "selectMod": "Обрати {{name}}",
+    "selectedCount": "Обрано: {{count}}",
+    "clearSelection": "Скасувати вибір",
+    "batchActions": "Дії",
+    "deleteAllBatchTitle": "Видалити моди повністю",
+    "deleteAllBatchMessage": "Видалити {{count}} модів разом із усіма імпортованими рядками та перекладами? Цю дію неможливо відкотити.",
+    "deleteAllBatchSuccess": "Видалено {{count}} модів."
   },
   "modEditor": {
     "source": "Джерело:",
@@ -234,6 +242,10 @@
     "speakerContextTitle": "NPC, що вимовляє цю репліку (з поля ANAM запису INFO)",
     "pexScriptContextLabel": "Скрипт: ",
     "pexScriptContextTitle": "Вихідний Papyrus-скрипт, функція, виклик і рядок у .psc (якщо є debug info)",
+    "pexSourceTitle": "Код скрипта",
+    "pexSourceLoading": "Декомпіляція скрипта…",
+    "pexSourceUnavailable": "Код Papyrus недоступний",
+    "pexSourceError": "Не вдалося завантажити код Papyrus",
     "sourceTextLabel": "Текст оригіналу ({{lang}})",
     "translationTextLabel": "Текст перекладу ({{lang}})",
     "charCount": "Символів: {{count}}",

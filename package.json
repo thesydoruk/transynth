@@ -19,6 +19,7 @@
     "skip:detect": "tsx scripts/skipDetect.ts",
     "translate:auto": "tsx scripts/autoTranslate.ts",
     "verify:auto": "tsx scripts/autoVerify.ts",
+    "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",

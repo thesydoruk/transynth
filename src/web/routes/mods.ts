@@ -29,6 +29,7 @@ import {
   exportPatchedPexFiles,
   exportProjectZip,
 } from '../exportService';
+import { getPexSourceSnippetForString } from '../pexDecompileService';
 import type { GameType } from '../../types';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -56,6 +57,37 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const stats = await getModStats(db, id);
     return reply.send({ ...(mod as object), stats });
   });
+
+  // GET /api/mods/:id/pex-source/:stringId — decompile PEX and return PSC context for one row.
+  app.get<{ Params: { id: string; stringId: string } }>(
+    '/api/mods/:id/pex-source/:stringId',
+    async (req, reply) => {
+      const modId = Number(req.params.id);
+      const stringId = Number(req.params.stringId);
+      if (!Number.isInteger(modId) || modId < 1) {
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      }
+      if (!Number.isInteger(stringId) || stringId < 1) {
+        return reply.code(400).send({ error: 'Invalid string id' });
+      }
+
+      const mod = await getMod(db, modId);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
+
+      const result = await getPexSourceSnippetForString(db, modId, stringId);
+      if (!result.ok) {
+        const status =
+          result.reason === 'string_not_found' || result.reason === 'mod_not_found'
+            ? 404
+            : result.reason === 'not_pex'
+              ? 400
+              : 503;
+        return reply.code(status).send(result);
+      }
+
+      return reply.send(result);
+    },
+  );
 
   // DELETE /api/mods/:id/rows — remove all imported rows for a mod but keep the mod entry.
   app.delete<{ Params: { id: string } }>('/api/mods/:id/rows', async (req, reply) => {

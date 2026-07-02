@@ -33,4 +33,10 @@ export {
   pexScriptKeyFromInfo,
   writeWString,
 } from './pexParser';
+export {
+  findPexLiteralLineNumbers,
+  locatePexLiteralInPsc,
+  pexScriptKeyFromRecordPath,
+} from './pexSourceLocate';
+export type { PexSourceLine, PexSourceLocateResult } from './pexSourceLocate';
 export type { PexInfo, PexResult, PexStringUsage, PexUserStringDetail } from './pexParser';

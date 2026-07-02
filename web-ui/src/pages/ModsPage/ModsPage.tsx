@@ -54,6 +54,8 @@ import {
   kindFromExt,
 } from './modsPageUtils';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
+import { ModDataMenuItems } from './ModDataMenuItems';
+import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { modListQueryKey } from '../../langDefaults';
 import s from './ModsPage.module.scss';
@@ -210,11 +212,74 @@ export const ModsPage = () => {
     id: number;
   } | null>(null);
   const [pendingClear, setPendingClear] = useState<{ id: number; name: string } | null>(null);
-  const [pendingDeleteAll, setPendingDeleteAll] = useState<{ id: number; name: string } | null>(
-    null,
-  );
+  const [pendingDeleteAll, setPendingDeleteAll] = useState<{
+    mods: Array<{ id: number; name: string }>;
+  } | null>(null);
   const [clearingModId, setClearingModId] = useState<number | null>(null);
-  const [deletingAllModId, setDeletingAllModId] = useState<number | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [selectedModIds, setSelectedModIds] = useState<Set<number>>(() => new Set());
+  const [batchMenuOpen, setBatchMenuOpen] = useState(false);
+  const batchMenuRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const selectedModCount = selectedModIds.size;
+  const multiSelectActive = selectedModCount > 1;
+  const allModsSelected = sortedMods.length > 0 && selectedModCount === sortedMods.length;
+  const someModsSelected = selectedModCount > 0 && !allModsSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someModsSelected;
+    }
+  }, [someModsSelected]);
+
+  useEffect(() => {
+    if (!batchMenuOpen) return;
+    const onDocClick = (ev: MouseEvent) => {
+      if (!batchMenuRef.current?.contains(ev.target as Node)) {
+        setBatchMenuOpen(false);
+      }
+    };
+    window.addEventListener('click', onDocClick);
+    return () => window.removeEventListener('click', onDocClick);
+  }, [batchMenuOpen]);
+
+  useEffect(() => {
+    setSelectedModIds((prev) => {
+      const valid = new Set(sortedMods.map((mod) => mod.id));
+      const next = new Set([...prev].filter((id) => valid.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [sortedMods]);
+
+  const toggleModSelection = useCallback((modId: number, selected: boolean) => {
+    setSelectedModIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(modId);
+      else next.delete(modId);
+      return next;
+    });
+  }, []);
+
+  const clearModSelection = useCallback(() => {
+    setSelectedModIds(new Set());
+  }, []);
+
+  const toggleSelectAllMods = useCallback(() => {
+    setSelectedModIds((prev) =>
+      prev.size === sortedMods.length ? new Set() : new Set(sortedMods.map((mod) => mod.id)),
+    );
+  }, [sortedMods]);
+
+  const selectedModsForDelete = useCallback(() => {
+    const selected = sortedMods.filter((mod) => selectedModIds.has(mod.id));
+    return selected.map((mod) => ({ id: mod.id, name: mod.name }));
+  }, [sortedMods, selectedModIds]);
+
+  const requestDeleteMods = useCallback((modsToDelete: Array<{ id: number; name: string }>) => {
+    if (modsToDelete.length === 0) return;
+    setPendingDeleteAll({ mods: modsToDelete });
+  }, []);
 
   const refreshAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['eet-imports'] });
@@ -566,22 +631,29 @@ export const ModsPage = () => {
 
   const confirmDeleteAll = async () => {
     if (!pendingDeleteAll) return;
-    const { id, name } = pendingDeleteAll;
-    setDeletingAllModId(id);
+    const { mods: modsToDelete } = pendingDeleteAll;
+    setDeletingAll(true);
     try {
-      const importJob = importJobByModId.get(id);
-      if (importJob) {
-        await api.modImport.remove(importJob.id, 'mod');
-      } else {
-        await api.mods.remove(id);
+      for (const { id } of modsToDelete) {
+        const importJob = importJobByModId.get(id);
+        if (importJob) {
+          await api.modImport.remove(importJob.id, 'mod');
+        } else {
+          await api.mods.remove(id);
+        }
       }
       await refreshAll();
-      showToast(t('mods.deleteAllSuccess', { name }), 'success');
+      if (modsToDelete.length === 1) {
+        showToast(t('mods.deleteAllSuccess', { name: modsToDelete[0].name }), 'success');
+      } else {
+        showToast(t('mods.deleteAllBatchSuccess', { count: modsToDelete.length }), 'success');
+      }
       setPendingDeleteAll(null);
+      clearModSelection();
     } catch (err) {
       showToast(t('common.error', { message: String(err) }), 'error');
     } finally {
-      setDeletingAllModId(null);
+      setDeletingAll(false);
     }
   };
 
@@ -844,9 +916,9 @@ export const ModsPage = () => {
                         onClearRows: () =>
                           setPendingClear({ id: modJob.mod_id!, name: modJob.file_name }),
                         onDeleteAll: () =>
-                          setPendingDeleteAll({ id: modJob.mod_id!, name: modJob.file_name }),
+                          requestDeleteMods([{ id: modJob.mod_id!, name: modJob.file_name }]),
                         clearingRows: clearingModId === modJob.mod_id,
-                        deletingAll: deletingAllModId === modJob.mod_id,
+                        deletingAll,
                       }
                     : undefined
                 }
@@ -872,6 +944,64 @@ export const ModsPage = () => {
             );
           })}
 
+          {sortedMods.length > 0 && (
+            <div className={s.modListHeader}>
+              <label className={s.selectAllLabel}>
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allModsSelected}
+                  onChange={toggleSelectAllMods}
+                  disabled={deletingAll}
+                />
+                {selectedModCount > 0
+                  ? t('mods.selectedCount', { count: selectedModCount })
+                  : t('mods.selectAll')}
+              </label>
+              {selectedModCount > 0 && (
+                <>
+                  <button
+                    type="button"
+                    className={s.selectionBtn}
+                    onClick={clearModSelection}
+                    disabled={deletingAll}
+                  >
+                    {t('mods.clearSelection')}
+                  </button>
+                  {multiSelectActive && (
+                    <div className={rowS.menuWrap} ref={batchMenuRef}>
+                      <button
+                        type="button"
+                        className={s.selectionBtn}
+                        disabled={deletingAll}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBatchMenuOpen((v) => !v);
+                        }}
+                      >
+                        {t('mods.batchActions')} ⋯
+                      </button>
+                      {batchMenuOpen && (
+                        <div className={rowS.menuList}>
+                          <ModDataMenuItems
+                            deletingAll={deletingAll}
+                            batchOnly
+                            onClearRows={() => {}}
+                            onDeleteAll={() => {
+                              requestDeleteMods(selectedModsForDelete());
+                              setBatchMenuOpen(false);
+                            }}
+                            onAfterAction={() => setBatchMenuOpen(false)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {sortedMods.map((mod) => {
             const importJob = importJobByModId.get(mod.id) ?? null;
             const exportActions = buildExportActions(
@@ -881,6 +1011,7 @@ export const ModsPage = () => {
               targetLang,
               `mod-${mod.id}`,
             );
+            const isSelected = selectedModIds.has(mod.id);
 
             return (
               <ModWorkspaceRow
@@ -889,10 +1020,19 @@ export const ModsPage = () => {
                 importJob={importJob}
                 exportActions={exportActions}
                 clearingRows={clearingModId === mod.id}
-                deletingAll={deletingAllModId === mod.id}
+                deletingAll={deletingAll}
+                selected={isSelected}
+                multiSelectActive={multiSelectActive}
+                onSelectedChange={(selected) => toggleModSelection(mod.id, selected)}
                 onOpen={() => nav(`/games/${gameId}/mods/${mod.id}`)}
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
-                onDeleteAll={() => setPendingDeleteAll({ id: mod.id, name: mod.name })}
+                onDeleteAll={() =>
+                  requestDeleteMods(
+                    multiSelectActive && isSelected
+                      ? selectedModsForDelete()
+                      : [{ id: mod.id, name: mod.name }],
+                  )
+                }
                 onReimport={importJob ? () => setModPreviewId(importJob.id) : undefined}
                 onDeleteImport={importJob ? () => setDeleteModalJob(importJob) : undefined}
               />
@@ -990,10 +1130,18 @@ export const ModsPage = () => {
 
       {pendingDeleteAll && (
         <ConfirmModal
-          title={t('mods.deleteAllTitle')}
-          message={t('mods.deleteAllMessage', { name: pendingDeleteAll.name })}
+          title={
+            pendingDeleteAll.mods.length === 1
+              ? t('mods.deleteAllTitle')
+              : t('mods.deleteAllBatchTitle')
+          }
+          message={
+            pendingDeleteAll.mods.length === 1
+              ? t('mods.deleteAllMessage', { name: pendingDeleteAll.mods[0].name })
+              : t('mods.deleteAllBatchMessage', { count: pendingDeleteAll.mods.length })
+          }
           confirmLabel={t('mods.deleteAll')}
-          pending={deletingAllModId === pendingDeleteAll.id}
+          pending={deletingAll}
           onClose={() => setPendingDeleteAll(null)}
           onConfirm={() => {
             void confirmDeleteAll();

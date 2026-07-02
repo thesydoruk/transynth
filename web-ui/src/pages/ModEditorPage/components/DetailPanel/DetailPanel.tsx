@@ -5,7 +5,8 @@ import { Button } from '../../../../components/Button';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
-import { getPlaceholderParts, resolvePexScriptContext } from './utils';
+import { getPlaceholderParts } from './utils';
+import { PexSourcePanel } from './PexSourcePanel';
 import styles from './DetailPanel.module.scss';
 
 /** Bottom-panel tab identifiers. */
@@ -13,6 +14,7 @@ export type BottomTab = 'suggestions' | 'qa' | 'history';
 
 /** Props for the detail editing panel below the string grid. */
 export interface DetailPanelProps {
+  modId: number;
   /** The row currently being edited. */
   activeRow: StringRow;
   /** Working copy of the translation text. */
@@ -52,6 +54,7 @@ export interface DetailPanelProps {
  * sub-panel for TM suggestions, QA issues, and edit history.
  */
 export const DetailPanel = ({
+  modId,
   activeRow,
   draftTranslation,
   srcLang,
@@ -72,7 +75,6 @@ export const DetailPanel = ({
 }: DetailPanelProps) => {
   const { t } = useTranslation();
   const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
-  const pexScriptContext = useMemo(() => resolvePexScriptContext(activeRow), [activeRow]);
 
   const maxLengthRemaining =
     activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
@@ -94,12 +96,7 @@ export const DetailPanel = ({
           <div className={styles.panelLabel}>
             {t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
           </div>
-          {pexScriptContext && (
-            <div className={styles.speakerContext} title={t('modEditor.pexScriptContextTitle')}>
-              {t('modEditor.pexScriptContextLabel')}
-              {pexScriptContext}
-            </div>
-          )}
+          {activeRow.signature === 'PEX' && <PexSourcePanel modId={modId} activeRow={activeRow} />}
           {activeRow.context && activeRow.signature !== 'PEX' && (
             <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
               {t('modEditor.speakerContextLabel')}

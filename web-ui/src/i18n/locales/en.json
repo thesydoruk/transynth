@@ -109,7 +109,15 @@
     "deleteAllTitle": "Delete mod completely",
     "deleteAllMessage": "Delete '{{name}}' along with all imported rows and translations? This cannot be undone.",
     "deleteAllSuccess": "Deleted mod '{{name}}'.",
-    "deleteImportJob": "Delete import job"
+    "deleteImportJob": "Delete import job",
+    "selectAll": "Select all",
+    "selectMod": "Select {{name}}",
+    "selectedCount": "{{count}} selected",
+    "clearSelection": "Clear selection",
+    "batchActions": "Actions",
+    "deleteAllBatchTitle": "Delete mods completely",
+    "deleteAllBatchMessage": "Delete {{count}} mods along with all imported rows and translations? This cannot be undone.",
+    "deleteAllBatchSuccess": "Deleted {{count}} mods."
   },
   "modEditor": {
     "source": "Source:",
@@ -234,6 +242,10 @@
     "speakerContextTitle": "NPC speaker resolved from the ANAM subrecord of this dialog record",
     "pexScriptContextLabel": "Script: ",
     "pexScriptContextTitle": "Papyrus source script, function, call site, and source line when debug info is present",
+    "pexSourceTitle": "Source code",
+    "pexSourceLoading": "Decompiling script…",
+    "pexSourceUnavailable": "Papyrus source not available",
+    "pexSourceError": "Could not load Papyrus source",
     "sourceTextLabel": "Source text ({{lang}})",
     "translationTextLabel": "Translation text ({{lang}})",
     "charCount": "Chars: {{count}}",

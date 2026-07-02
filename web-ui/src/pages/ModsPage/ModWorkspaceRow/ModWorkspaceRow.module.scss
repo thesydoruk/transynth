@@ -6,6 +6,19 @@
   }
 }
 
+.rowSelected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg-raised));
+}
+
+.selectCheckbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
 .main {
   min-width: 0;
 }

@@ -20,6 +20,9 @@ export interface ModWorkspaceRowProps {
   }>;
   clearingRows?: boolean;
   deletingAll?: boolean;
+  selected?: boolean;
+  multiSelectActive?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
   onOpen: () => void;
   onClearRows: () => void;
   onDeleteAll: () => void;
@@ -34,6 +37,9 @@ export const ModWorkspaceRow = ({
   exportActions,
   clearingRows,
   deletingAll,
+  selected,
+  multiSelectActive,
+  onSelectedChange,
   onOpen,
   onClearRows,
   onDeleteAll,
@@ -58,7 +64,7 @@ export const ModWorkspaceRow = ({
 
   return (
     <div
-      className={`${parentS.row} ${s.row}`}
+      className={`${parentS.row} ${s.row}${selected ? ` ${s.rowSelected}` : ''}`}
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -70,6 +76,16 @@ export const ModWorkspaceRow = ({
       tabIndex={0}
     >
       <div className={parentS.rowLeft}>
+        {onSelectedChange && (
+          <input
+            type="checkbox"
+            className={s.selectCheckbox}
+            checked={selected ?? false}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => onSelectedChange(e.target.checked)}
+            aria-label={t('mods.selectMod', { name: mod.name })}
+          />
+        )}
         <span className={parentS.typeBadge} style={{ background: '#2e7d32' }}>
           MOD
         </span>
@@ -119,7 +135,7 @@ export const ModWorkspaceRow = ({
             </button>
             {menuOpen && (
               <div className={rowS.menuList}>
-                {onReimport && (
+                {!multiSelectActive && onReimport && (
                   <button
                     type="button"
                     onClick={() => {
@@ -132,29 +148,31 @@ export const ModWorkspaceRow = ({
                     <span>{t('imports.reimportTooltip')}</span>
                   </button>
                 )}
-                {exportActions.map((action) => (
-                  <button
-                    key={action.key}
-                    type="button"
-                    onClick={() => {
-                      action.onClick();
-                      setMenuOpen(false);
-                    }}
-                    className={rowS.menuItem}
-                    disabled={action.disabled}
-                  >
-                    <span className={rowS.menuIcon}>{action.icon}</span>
-                    <span>{action.title}</span>
-                  </button>
-                ))}
+                {!multiSelectActive &&
+                  exportActions.map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onClick={() => {
+                        action.onClick();
+                        setMenuOpen(false);
+                      }}
+                      className={rowS.menuItem}
+                      disabled={action.disabled}
+                    >
+                      <span className={rowS.menuIcon}>{action.icon}</span>
+                      <span>{action.title}</span>
+                    </button>
+                  ))}
                 <ModDataMenuItems
                   clearingRows={clearingRows}
                   deletingAll={deletingAll}
+                  batchOnly={multiSelectActive}
                   onClearRows={onClearRows}
                   onDeleteAll={onDeleteAll}
                   onAfterAction={() => setMenuOpen(false)}
                 />
-                {onDeleteImport && (
+                {!multiSelectActive && onDeleteImport && (
                   <button
                     type="button"
                     onClick={() => {

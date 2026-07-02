@@ -4,6 +4,8 @@ import rowS from '../UnifiedJobRow/UnifiedJobRow.module.scss';
 export interface ModDataMenuItemsProps {
   clearingRows?: boolean;
   deletingAll?: boolean;
+  /** When true, only batch-capable actions are shown (currently delete all). */
+  batchOnly?: boolean;
   onClearRows: () => void;
   onDeleteAll: () => void;
   onAfterAction?: () => void;
@@ -13,6 +15,7 @@ export interface ModDataMenuItemsProps {
 export const ModDataMenuItems = ({
   clearingRows,
   deletingAll,
+  batchOnly,
   onClearRows,
   onDeleteAll,
   onAfterAction,
@@ -22,18 +25,20 @@ export const ModDataMenuItems = ({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          onClearRows();
-          onAfterAction?.();
-        }}
-        className={rowS.menuItem}
-        disabled={busy}
-      >
-        <span className={rowS.menuIcon}>⌫</span>
-        <span>{clearingRows ? t('mods.clearingRows') : t('mods.clearRows')}</span>
-      </button>
+      {!batchOnly && (
+        <button
+          type="button"
+          onClick={() => {
+            onClearRows();
+            onAfterAction?.();
+          }}
+          className={rowS.menuItem}
+          disabled={busy}
+        >
+          <span className={rowS.menuIcon}>⌫</span>
+          <span>{clearingRows ? t('mods.clearingRows') : t('mods.clearRows')}</span>
+        </button>
+      )}
       <button
         type="button"
         onClick={() => {

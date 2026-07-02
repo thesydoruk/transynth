@@ -998,6 +998,27 @@ export type RagSuggestion = {
   similarity: number;
 };
 
+export type PexSourceLine = {
+  lineNumber: number;
+  text: string;
+  highlight: boolean;
+};
+
+export type PexSourceSnippet = {
+  scriptLabel: string;
+  headerSourceFile: string | null;
+  matchLineNumbers: number[];
+  contextLines: PexSourceLine[];
+};
+
+export type PexSourceSnippetResponse =
+  | { ok: true; snippet: PexSourceSnippet }
+  | {
+      ok: false;
+      reason: string;
+      message: string;
+    };
+
 export const api = {
   mods: {
     list: (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
@@ -1006,6 +1027,12 @@ export const api = {
       return req<Mod[]>(`/api/mods?${params}`);
     },
     get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
+    pexSource: async (modId: number, stringId: number): Promise<PexSourceSnippetResponse> => {
+      const res = await fetch(`${BASE}/api/mods/${modId}/pex-source/${stringId}`, {
+        credentials: 'include',
+      });
+      return (await res.json()) as PexSourceSnippetResponse;
+    },
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),

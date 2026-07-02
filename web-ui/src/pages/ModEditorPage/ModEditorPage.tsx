@@ -846,6 +846,7 @@ export const ModEditorPage = () => {
 
             {activeRow && (
               <DetailPanel
+                modId={modId}
                 activeRow={activeRow}
                 draftTranslation={draftTranslation}
                 srcLang={srcLang}

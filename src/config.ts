@@ -1,6 +1,7 @@
 import './loadEnv';
 import { resolveDatabaseUrl } from './databaseUrl';
 import { log } from './logger';
+import { resolveChampollionPath } from './champollionPath';
 
 export type LLMProviderName = 'vllm' | 'openai';
 
@@ -135,6 +136,9 @@ export const CONFIG = {
   // These are used as fallback defaults when the caller does not specify a language.
   defaultSrcLang: process.env.SRC_LANG || 'en',
   defaultTgtLang: process.env.TGT_LANG || 'uk',
+
+  /** Absolute path to Champollion.exe for on-demand PEX decompilation in the editor. */
+  champollionPath: resolveChampollionPath(),
 };
 
 /** Resolve the translation model based on provider. */
