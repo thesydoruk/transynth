@@ -26,8 +26,8 @@ interface ModalShellProps {
   ariaDescribedBy?: string;
   /** Close button aria-label. */
   closeAriaLabel?: string;
-  /** Width preset. 'md' = default 680 px max-width, 'xl' = up to 1100 px. */
-  size?: 'md' | 'xl';
+  /** Width preset. 'md' = default 680 px max-width, 'xl' = up to 1100 px, '2xl' = up to 1400 px. */
+  size?: 'md' | 'xl' | '2xl';
   /**
    * When true, the content area becomes a flex column container, allowing inner
    * flex children (e.g. a tableWrap with flex: 1) to fill available modal height.
@@ -74,15 +74,15 @@ export const ModalShell = ({
       role="presentation"
     >
       <div
-        className={`${s.container}${size === 'xl' ? ` ${s.containerXl}` : ''}`}
+        className={`${s.container}${size === 'xl' ? ` ${s.containerXl}` : ''}${size === '2xl' ? ` ${s.container2xl}` : ''}`}
         role={role}
         aria-modal="true"
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
         onClick={(event) => event.stopPropagation()}
       >
-        {customHeader ?? (
-          (title != null || !hideCloseButton) && (
+        {customHeader ??
+          ((title != null || !hideCloseButton) && (
             <div className={s.header}>
               {title != null ? (
                 <h2 className={s.title}>{title}</h2>
@@ -100,8 +100,7 @@ export const ModalShell = ({
                 </button>
               )}
             </div>
-          )
-        )}
+          ))}
 
         <div className={stretchContent ? s.contentStretch : s.content}>{children}</div>
       </div>

@@ -1,4 +1,8 @@
 import type { StringRow } from '../../../../../api';
+import {
+  formatPexStoredContextLabel,
+  parsePexStoredContext,
+} from '../../../../../utils/pexStoredContext';
 
 /** Derive a minimal script label from a PEX record path (`PEX\\ScriptName`). */
 export const pexScriptLabelFromPath = (recordPath: string): string | null => {
@@ -9,12 +13,17 @@ export const pexScriptLabelFromPath = (recordPath: string): string | null => {
   return /\.psc$/i.test(scriptKey) ? scriptKey : `${scriptKey}.psc`;
 };
 
-/** Script context for PEX rows: stored context or path fallback for older imports. */
+/** Script context for PEX rows: import-time decompile snippet or legacy fallback. */
 export const resolvePexScriptContext = (
   row: Pick<StringRow, 'signature' | 'context' | 'path'>,
 ): string | null => {
   if (row.signature !== 'PEX') return null;
-  const stored = row.context?.trim();
-  if (stored) return stored;
+
+  const stored = parsePexStoredContext(row.context);
+  if (stored) return formatPexStoredContextLabel(stored);
+
+  const legacy = row.context?.trim();
+  if (legacy) return legacy;
+
   return pexScriptLabelFromPath(row.path ?? '');
 };

@@ -50,6 +50,17 @@ export type LlmVerifyIssue = {
   suggestion: string | null;
 };
 
+/** One row in the auto-approve action log streamed during verification. */
+export type LlmVerifyActionLogEntry = {
+  stringId: number;
+  edid: string | null;
+  path: string | null;
+  signature: string | null;
+  source: string;
+  action: 'approved' | 'fixed' | 'issue';
+  detail?: string | null;
+};
+
 export type LlmVerifyJobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 
 export type LlmVerifyJobSnapshot = {
@@ -63,6 +74,7 @@ export type LlmVerifyJobSnapshot = {
   /** Strings auto-corrected from LLM suggestions (incorrect always; suspicious when enabled). */
   fixed: number;
   issues: LlmVerifyIssue[];
+  actionLog: LlmVerifyActionLogEntry[];
   error: string | null;
 };
 
@@ -73,6 +85,8 @@ type ActiveLlmVerifyJob = LlmVerifyJobSnapshot & {
   autoApproveVerified: boolean;
   /** Apply LLM suggestions for suspicious verdicts (incorrect rows are always auto-fixed). */
   fixSuspicious: boolean;
+  /** Include reviewed/human rows in the scan (CLI `--force`). */
+  includeConfirmed: boolean;
   /** Aborts in-flight LLM requests the instant Stop is pressed. */
   abort: AbortController;
 };
@@ -89,6 +103,7 @@ const toSnapshot = (job: ActiveLlmVerifyJob): LlmVerifyJobSnapshot => ({
   approved: job.approved,
   fixed: job.fixed,
   issues: job.issues,
+  actionLog: job.actionLog,
   error: job.error,
 });
 
@@ -246,6 +261,7 @@ export type LlmVerifyProgressEvent =
       approved: number;
       fixed: number;
       issue?: LlmVerifyIssue;
+      action?: LlmVerifyActionLogEntry;
     }
   | {
       type: 'done';
@@ -277,6 +293,8 @@ export const runLlmVerifyJob = async (
     autoApproveVerified?: boolean;
     /** Apply LLM suggestions for suspicious verdicts (incorrect rows are always auto-fixed). */
     fixSuspicious?: boolean;
+    /** Include reviewed/human translations in the scan. */
+    includeConfirmed?: boolean;
   },
   onEvent: (event: LlmVerifyProgressEvent) => void,
 ): Promise<LlmVerifyJobSnapshot> => {
@@ -287,6 +305,7 @@ export const runLlmVerifyJob = async (
 
   const autoApproveVerified = opts.autoApproveVerified === true;
   const fixSuspicious = opts.fixSuspicious === true;
+  const includeConfirmed = opts.includeConfirmed === true;
   const jobId = nextJobId++;
   const job: ActiveLlmVerifyJob = {
     jobId,
@@ -297,12 +316,14 @@ export const runLlmVerifyJob = async (
     approved: 0,
     fixed: 0,
     issues: [],
+    actionLog: [],
     error: null,
     cancel: false,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
     autoApproveVerified,
     fixSuspicious,
+    includeConfirmed,
     abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
@@ -310,7 +331,13 @@ export const runLlmVerifyJob = async (
   // Register early so Stop works during the count / RAG setup phase.
   onEvent({ type: 'started', jobId, total: 0 });
 
-  const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang);
+  const total = await countVerifiableStrings(
+    db,
+    opts.modId,
+    opts.srcLang,
+    opts.targetLang,
+    includeConfirmed,
+  );
   if (total === 0) {
     activeJobs.delete(jobId);
     throw new Error('No strings pending review');
@@ -339,6 +366,7 @@ export const runLlmVerifyJob = async (
     targetLang: opts.targetLang,
     autoApproveVerified,
     fixSuspicious,
+    includeConfirmed,
     llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
   });
 
@@ -367,14 +395,20 @@ export const runLlmVerifyJob = async (
 
   const chatConcurrency = llmChatPipelineConcurrency();
 
-  const emitProgress = (issue?: LlmVerifyIssue): void => {
+  const emitProgress = (extra?: {
+    issue?: LlmVerifyIssue;
+    action?: LlmVerifyActionLogEntry;
+  }): void => {
+    if (extra?.action) {
+      job.actionLog.push(extra.action);
+    }
     onEvent({
       type: 'progress',
       done: job.done,
       total: job.total,
       approved: job.approved,
       fixed: job.fixed,
-      ...(issue ? { issue } : {}),
+      ...extra,
     });
   };
 
@@ -459,6 +493,25 @@ export const runLlmVerifyJob = async (
     );
 
     const okStringIds: number[] = [];
+    const logAction = (
+      row: VerifyStringRow,
+      action: LlmVerifyActionLogEntry['action'],
+      detail?: string | null,
+    ) => {
+      if (!job.autoApproveVerified) return;
+      emitProgress({
+        action: {
+          stringId: row.string_id,
+          edid: row.edid,
+          path: row.path,
+          signature: row.signature,
+          source: row.source,
+          action,
+          detail: detail ?? null,
+        },
+      });
+    };
+
     for (const result of results) {
       job.done++;
       if (result.verdict === 'ok') {
@@ -510,6 +563,7 @@ export const runLlmVerifyJob = async (
           try {
             await upsertTranslation(db, result.id, suggestion, 'auto', opts.targetLang);
             job.fixed++;
+            logAction(row, 'fixed', suggestion);
           } catch (err) {
             logVerify.warn('auto-fix failed for verify row', {
               jobId,
@@ -522,14 +576,21 @@ export const runLlmVerifyJob = async (
       }
 
       job.issues.push(issue);
-      emitProgress(issue);
+      if (job.autoApproveVerified) {
+        logAction(row, 'issue', result.reason);
+      } else {
+        emitProgress({ issue });
+      }
     }
 
     if (job.autoApproveVerified && okStringIds.length > 0) {
       try {
         const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
         job.approved += promoted;
-        emitProgress();
+        for (const id of okStringIds) {
+          const row = rowById.get(id);
+          if (row) logAction(row, 'approved');
+        }
       } catch (approveErr) {
         logVerify.warn('auto-approve failed for chunk', {
           jobId,
@@ -575,6 +636,7 @@ export const runLlmVerifyJob = async (
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
         dbChunkSize: LLM_VERIFY_DB_CHUNK_SIZE,
+        force: includeConfirmed,
       }),
       chatConcurrency,
       async ({ chunk }) => {

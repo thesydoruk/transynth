@@ -20,6 +20,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
       targetLang?: string;
       autoApproveVerified?: boolean;
       fixSuspicious?: boolean;
+      includeConfirmed?: boolean;
     };
   }>('/api/mods/:modId/llm-verify', async (req, reply) => {
     const modId = Number(req.params.modId);
@@ -31,6 +32,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
     const autoApproveVerified = req.body?.autoApproveVerified === true;
     const fixSuspicious = req.body?.fixSuspicious === true;
+    const includeConfirmed = req.body?.includeConfirmed === true;
 
     const runningJobId = findRunningLlmVerifyJob(modId);
     if (runningJobId != null) {
@@ -79,6 +81,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
             game: mod.game,
             autoApproveVerified,
             fixSuspicious,
+            includeConfirmed,
           },
           send,
         );

@@ -14,6 +14,7 @@ import {
   pexScriptKeyFromRecordPath,
   type PexSourceLocateResult,
 } from '../bethesda/parsers/pexSourceLocate';
+import { parsePexStoredContext } from '../bethesda/parsers/pexStoredContext';
 import { parsePexBuffer } from '../bethesda/parsers/pexParser';
 import { log } from '../logger';
 
@@ -107,10 +108,10 @@ const runChampollion = async (
 const decompilePexToPsc = async (
   pexData: Buffer,
   scriptKey: string,
-  modId: number,
+  cacheBucket: number | string,
 ): Promise<{ pscPath: string; headerSourceFile: string }> => {
   const digest = sha1Hex(pexData);
-  const cacheDir = path.join(PATHS.pexDecompile, String(modId), digest);
+  const cacheDir = path.join(PATHS.pexDecompile, String(cacheBucket), digest);
   fs.mkdirSync(cacheDir, { recursive: true });
 
   const parsed = parsePexBuffer(pexData);
@@ -150,6 +151,39 @@ const decompilePexToPsc = async (
   return { pscPath: cachedPsc, headerSourceFile };
 };
 
+export type DecompiledPexScript = {
+  headerSourceFile: string;
+  pscSource: string;
+};
+
+/** Decompile one `.pex` buffer to PSC text (cached under mod id + digest). */
+export const decompilePexScript = async (
+  pexData: Buffer,
+  scriptKey: string,
+  cacheBucket: number | string,
+): Promise<DecompiledPexScript> => {
+  const { pscPath, headerSourceFile } = await decompilePexToPsc(pexData, scriptKey, cacheBucket);
+  return { headerSourceFile, pscSource: fs.readFileSync(pscPath, 'utf8') };
+};
+
+/** Decompile every script in the map; failures are skipped with a warning. */
+export const decompilePexScriptMap = async (
+  scripts: Map<string, Buffer>,
+  cacheBucket: number | string,
+): Promise<Map<string, DecompiledPexScript>> => {
+  const out = new Map<string, DecompiledPexScript>();
+  for (const [scriptKey, data] of scripts) {
+    try {
+      out.set(scriptKey, await decompilePexScript(data, scriptKey, cacheBucket));
+    } catch (err) {
+      log.warn(
+        `PEX decompile skipped script=${scriptKey}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+  return out;
+};
+
 /**
  * Decompile the owning `.pex` and locate the Papyrus source line for one PEX string row.
  */
@@ -162,9 +196,10 @@ export const getPexSourceSnippetForString = async (
     signature: string | null;
     path: string | null;
     text_raw: string;
+    context: string | null;
     abs_path: string | null;
   }>(
-    `SELECT r.signature, r.path, s.text_raw, m.abs_path
+    `SELECT r.signature, r.path, s.text_raw, s.context, m.abs_path
        FROM strings s
        JOIN records r ON s.record_id = r.id
        JOIN mods m ON r.mod_id = m.id
@@ -178,6 +213,11 @@ export const getPexSourceSnippetForString = async (
   }
   if (row.signature !== 'PEX') {
     return { ok: false, reason: 'not_pex', message: 'Not a PEX string row' };
+  }
+
+  const stored = parsePexStoredContext(row.context);
+  if (stored) {
+    return { ok: true, snippet: stored };
   }
   if (!row.abs_path || !fs.existsSync(row.abs_path)) {
     return { ok: false, reason: 'mod_not_found', message: 'Mod plugin file not found on disk' };

@@ -39,4 +39,10 @@ export {
   pexScriptKeyFromRecordPath,
 } from './pexSourceLocate';
 export type { PexSourceLine, PexSourceLocateResult } from './pexSourceLocate';
+export {
+  formatPexStoredContextLabel,
+  parsePexStoredContext,
+  serializePexStoredContext,
+  PEX_STORED_CONTEXT_PREFIX,
+} from './pexStoredContext';
 export type { PexInfo, PexResult, PexStringUsage, PexUserStringDetail } from './pexParser';

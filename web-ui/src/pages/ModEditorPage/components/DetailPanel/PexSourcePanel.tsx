@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StringRow } from '../../../../api';
+import type { StringRow, PexSourceSnippet } from '../../../../api';
 import { api } from '../../../../api';
+import { parsePexStoredContext } from '../../../../utils/pexStoredContext';
 import styles from './DetailPanel.module.scss';
 
 export interface PexSourcePanelProps {
@@ -9,43 +11,8 @@ export interface PexSourcePanelProps {
   activeRow: StringRow;
 }
 
-/**
- * Lazy-load decompiled Papyrus source around the active PEX literal.
- * Requires Champollion on the server (`CHAMPOLLION_PATH`).
- */
-export const PexSourcePanel = ({ modId, activeRow }: PexSourcePanelProps) => {
+const PexSourceCodeBlock = ({ snippet }: { snippet: PexSourceSnippet }) => {
   const { t } = useTranslation();
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['pex-source', modId, activeRow.string_id],
-    queryFn: () => api.mods.pexSource(modId, activeRow.string_id),
-    enabled: activeRow.signature === 'PEX',
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  });
-
-  if (activeRow.signature !== 'PEX') return null;
-
-  if (isLoading) {
-    return <div className={styles.pexSourcePanel}>{t('modEditor.pexSourceLoading')}</div>;
-  }
-
-  if (!data || !data.ok) {
-    const message =
-      data && !data.ok
-        ? data.message
-        : isError
-          ? t('modEditor.pexSourceError')
-          : t('modEditor.pexSourceUnavailable');
-    return (
-      <div className={styles.pexSourcePanel} title={message}>
-        <div className={styles.pexSourceHint}>{t('modEditor.pexSourceUnavailable')}</div>
-        <div className={styles.pexSourceHintDetail}>{message}</div>
-      </div>
-    );
-  }
-
-  const { snippet } = data;
   const primaryLine = snippet.matchLineNumbers[0];
 
   return (
@@ -70,4 +37,51 @@ export const PexSourcePanel = ({ modId, activeRow }: PexSourcePanelProps) => {
       </pre>
     </div>
   );
+};
+
+/**
+ * Show decompiled Papyrus source around the active PEX literal.
+ * Uses context stored at import time; falls back to on-demand decompile for legacy rows.
+ */
+export const PexSourcePanel = ({ modId, activeRow }: PexSourcePanelProps) => {
+  const { t } = useTranslation();
+  const storedSnippet = useMemo(
+    () => parsePexStoredContext(activeRow.context),
+    [activeRow.context],
+  );
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['pex-source', modId, activeRow.string_id],
+    queryFn: () => api.mods.pexSource(modId, activeRow.string_id),
+    enabled: activeRow.signature === 'PEX' && storedSnippet == null,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+
+  if (activeRow.signature !== 'PEX') return null;
+
+  if (storedSnippet) {
+    return <PexSourceCodeBlock snippet={storedSnippet} />;
+  }
+
+  if (isLoading) {
+    return <div className={styles.pexSourcePanel}>{t('modEditor.pexSourceLoading')}</div>;
+  }
+
+  if (!data || !data.ok) {
+    const message =
+      data && !data.ok
+        ? data.message
+        : isError
+          ? t('modEditor.pexSourceError')
+          : t('modEditor.pexSourceUnavailable');
+    return (
+      <div className={styles.pexSourcePanel} title={message}>
+        <div className={styles.pexSourceHint}>{t('modEditor.pexSourceUnavailable')}</div>
+        <div className={styles.pexSourceHintDetail}>{message}</div>
+      </div>
+    );
+  }
+
+  return <PexSourceCodeBlock snippet={data.snippet} />;
 };

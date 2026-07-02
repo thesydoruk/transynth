@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { api, type LlmVerifyIssue, type LlmVerifyJobSnapshot } from '../../../api';
+import {
+  api,
+  type LlmVerifyActionLogEntry,
+  type LlmVerifyIssue,
+  type LlmVerifyJobSnapshot,
+} from '../../../api';
 
 export type AiVerifyState = {
   status: 'idle' | 'running' | 'stopping' | 'completed' | 'cancelled' | 'failed';
@@ -9,6 +14,7 @@ export type AiVerifyState = {
   approved: number;
   fixed: number;
   issues: LlmVerifyIssue[];
+  actionLog: LlmVerifyActionLogEntry[];
   error: string | null;
 };
 
@@ -20,6 +26,7 @@ const initialState: AiVerifyState = {
   approved: 0,
   fixed: 0,
   issues: [],
+  actionLog: [],
   error: null,
 };
 
@@ -46,12 +53,13 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
       approved: snapshot.approved,
       fixed: snapshot.fixed,
       issues: snapshot.issues,
+      actionLog: snapshot.actionLog ?? [],
       error: snapshot.error,
     });
   }, []);
 
   const start = useCallback(
-    async (autoApproveVerified = false, fixSuspicious = false) => {
+    async (autoApproveVerified = false, fixSuspicious = false, includeConfirmed = false) => {
       if (inFlight.current) return;
       inFlight.current = true;
       streamAbortRef.current?.abort();
@@ -67,6 +75,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
         approved: 0,
         fixed: 0,
         issues: [],
+        actionLog: [],
         error: null,
       }));
 
@@ -87,6 +96,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 approved: 0,
                 fixed: 0,
                 issues: [],
+                actionLog: [],
               }));
             }
             if (event.type === 'progress') {
@@ -97,6 +107,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 approved: event.approved,
                 fixed: event.fixed,
                 issues: event.issue ? [...prev.issues, event.issue] : prev.issues,
+                actionLog: event.action ? [...prev.actionLog, event.action] : prev.actionLog,
               }));
             }
             if (event.type === 'done') {
@@ -131,6 +142,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
           },
           autoApproveVerified,
           fixSuspicious,
+          includeConfirmed,
           streamAbort.signal,
         );
         if (snapshot) applySnapshot(snapshot);

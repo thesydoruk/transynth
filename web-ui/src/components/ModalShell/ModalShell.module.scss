@@ -69,6 +69,11 @@
   width: min(96vw, 1100px);
 }
 
+.container2xl {
+  width: min(98vw, 1400px);
+  max-height: 92vh;
+}
+
 /**
  * Stretched content area — flex column container that lets inner children
  * (e.g. a tableWrap with flex: 1) fill the remaining modal height.

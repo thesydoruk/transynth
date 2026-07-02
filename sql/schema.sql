@@ -316,6 +316,8 @@ CREATE INDEX IF NOT EXISTS idx_translations_trgm_text ON translations USING GIN 
 CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);
+CREATE INDEX IF NOT EXISTS idx_dialog_nodes_response_string ON dialog_nodes(response_string_id)
+  WHERE response_string_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id, from_info_formid_hex);
 CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);

@@ -687,6 +687,10 @@ export type ClearModRowsResult = {
   deletedRecords: number;
 };
 
+export type DeleteModsBatchResult = ClearModRowsResult & {
+  deletedMods: number;
+};
+
 /**
  * One row from GET /api/mods/:id/previous-versions.
  * Represents an older version of the same mod (same name, different file hash).
@@ -871,6 +875,16 @@ export type LlmVerifyIssue = {
   suggestion: string | null;
 };
 
+export type LlmVerifyActionLogEntry = {
+  stringId: number;
+  edid: string | null;
+  path: string | null;
+  signature: string | null;
+  source: string;
+  action: 'approved' | 'fixed' | 'issue';
+  detail?: string | null;
+};
+
 export type LlmVerifyJobSnapshot = {
   jobId: number;
   modId: number;
@@ -880,6 +894,7 @@ export type LlmVerifyJobSnapshot = {
   approved: number;
   fixed: number;
   issues: LlmVerifyIssue[];
+  actionLog: LlmVerifyActionLogEntry[];
   error: string | null;
 };
 
@@ -892,6 +907,7 @@ export type LlmVerifyStreamEvent =
       approved: number;
       fixed: number;
       issue?: LlmVerifyIssue;
+      action?: LlmVerifyActionLogEntry;
     }
   | {
       type: 'done';
@@ -1036,6 +1052,11 @@ export const api = {
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),
+    removeBatch: (modIds: number[]) =>
+      req<DeleteModsBatchResult>(`/api/mods/batch-delete`, {
+        method: 'POST',
+        body: JSON.stringify({ modIds }),
+      }),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
     tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<TMApplyResult>(
@@ -2007,13 +2028,20 @@ export const api = {
       onEvent?: (e: LlmVerifyStreamEvent) => void,
       autoApproveVerified = false,
       fixSuspicious = false,
+      includeConfirmed = false,
       signal?: AbortSignal,
     ): Promise<LlmVerifyJobSnapshot | null> {
       const response = await fetch(`${BASE}/api/mods/${modId}/llm-verify`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, targetLang, autoApproveVerified, fixSuspicious }),
+        body: JSON.stringify({
+          srcLang,
+          targetLang,
+          autoApproveVerified,
+          fixSuspicious,
+          includeConfirmed,
+        }),
         signal,
       });
       if (!response.ok || !response.body) {
@@ -2047,6 +2075,7 @@ export const api = {
                 approved: 0,
                 fixed: 0,
                 issues: [],
+                actionLog: [],
                 error: null,
               };
             }
@@ -2058,6 +2087,9 @@ export const api = {
                 approved: event.approved,
                 fixed: event.fixed,
                 issues: event.issue ? [...snapshot.issues, event.issue] : snapshot.issues,
+                actionLog: event.action
+                  ? [...snapshot.actionLog, event.action]
+                  : snapshot.actionLog,
               };
             }
             if (event.type === 'done' && snapshot) {
@@ -2069,6 +2101,7 @@ export const api = {
                 approved: event.approved,
                 fixed: event.fixed,
                 issues: event.issues,
+                actionLog: snapshot.actionLog,
               };
             }
             if (event.type === 'cancelled' && snapshot) {
@@ -2080,6 +2113,7 @@ export const api = {
                 approved: event.approved,
                 fixed: event.fixed,
                 issues: event.issues,
+                actionLog: snapshot.actionLog,
               };
             }
             if (event.type === 'error') {

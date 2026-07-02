@@ -11,6 +11,7 @@ import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { deleteModData } from '../queries';
+import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../modDeleteService';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -46,36 +47,6 @@ const modFilePath = (fileName: string) => {
 /** Per-archive extraction directory. */
 const extractDir = (jobHash: string) => {
   return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
-};
-
-/** Returns true when a path is inside the mod upload root directory. */
-const isInsideModUploadDir = (absPath: string): boolean => {
-  const rel = path.relative(MOD_UPLOAD_DIR, absPath);
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
-};
-
-/**
- * Resolves extraction root directory for a plugin path when it follows
- * the uploads/mod/_extracted_* directory layout.
- */
-const resolveExtractedRootDir = (pluginPath: string | null | undefined): string | null => {
-  if (!pluginPath) return null;
-  const absPluginPath = path.resolve(pluginPath);
-  if (!isInsideModUploadDir(absPluginPath)) return null;
-
-  let current =
-    fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
-      ? absPluginPath
-      : path.dirname(absPluginPath);
-
-  while (isInsideModUploadDir(current)) {
-    if (path.basename(current).startsWith('_extracted_')) return current;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-
-  return null;
 };
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -333,43 +304,21 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     // DB first — large mods were timing out when CASCADE ran after slow fs.rmSync.
+    if (job.mod_id != null && deleteData === 'mod') {
+      await deleteModsCompletely(db, [job.mod_id]);
+      return { ok: true };
+    }
+
     if (job.mod_id != null && deleteData === 'rows') {
       await deleteModData(db, job.mod_id, 'rows');
-    }
-    if (job.mod_id != null && deleteData === 'mod') {
-      await deleteModData(db, job.mod_id, 'mod');
     }
 
     await deleteModImportJob(db, jobId);
 
-    // File cleanup after DB commit; do not block the HTTP response on large archives.
-    const filePaths = new Set<string>();
-    filePaths.add(modFilePath(job.file_name));
-    if (job.esp_path) filePaths.add(job.esp_path);
-    if (modAbsPath) filePaths.add(modAbsPath);
-
-    const extractedDirs = new Set<string>();
-    const fromJobEsp = resolveExtractedRootDir(job.esp_path);
-    const fromModAbs = resolveExtractedRootDir(modAbsPath);
-    if (fromJobEsp) extractedDirs.add(fromJobEsp);
-    if (fromModAbs) extractedDirs.add(fromModAbs);
-
-    setImmediate(() => {
-      for (const filePath of filePaths) {
-        try {
-          fs.unlinkSync(filePath);
-        } catch {
-          /* file may not exist */
-        }
-      }
-      for (const dirPath of extractedDirs) {
-        try {
-          fs.rmSync(dirPath, { recursive: true, force: true });
-        } catch {
-          /* ignore */
-        }
-      }
-    });
+    scheduleModDeleteFileCleanup(
+      [job],
+      job.mod_id != null ? new Map([[job.mod_id, modAbsPath]]) : new Map(),
+    );
 
     return { ok: true };
   });

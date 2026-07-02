@@ -634,19 +634,15 @@ export const ModsPage = () => {
     const { mods: modsToDelete } = pendingDeleteAll;
     setDeletingAll(true);
     try {
-      for (const { id } of modsToDelete) {
-        const importJob = importJobByModId.get(id);
-        if (importJob) {
-          await api.modImport.remove(importJob.id, 'mod');
-        } else {
-          await api.mods.remove(id);
-        }
+      const result = await api.mods.removeBatch(modsToDelete.map((mod) => mod.id));
+      if (result.deletedMods === 0) {
+        throw new Error('No mods were deleted');
       }
-      await refreshAll();
+      refreshAll();
       if (modsToDelete.length === 1) {
         showToast(t('mods.deleteAllSuccess', { name: modsToDelete[0].name }), 'success');
       } else {
-        showToast(t('mods.deleteAllBatchSuccess', { count: modsToDelete.length }), 'success');
+        showToast(t('mods.deleteAllBatchSuccess', { count: result.deletedMods }), 'success');
       }
       setPendingDeleteAll(null);
       clearModSelection();

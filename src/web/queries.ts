@@ -604,20 +604,26 @@ export const getMod = async (db: Tx, id: number) => {
 };
 
 /**
- * Remove imported data for a mod without relying on FK CASCADE.
+ * Remove imported data for one or more mods without relying on FK CASCADE.
  *
  * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
  * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
  * row-by-row. Explicit bulk DELETE/UPDATE statements use set-based plans instead.
  *
- * @param scope - `rows` keeps the mod row; `mod` also removes dialog graph + mod.
+ * @param scope - `rows` keeps mod rows; `mod` also removes dialog graph + mods.
  */
-export const deleteModData = async (
+export const deleteModDataForModIds = async (
   db: Tx,
-  modId: number,
+  modIds: number[],
   scope: 'rows' | 'mod',
 ): Promise<{ deletedRecords: number }> => {
+  const uniqueModIds = [...new Set(modIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (uniqueModIds.length === 0) {
+    return { deletedRecords: 0 };
+  }
+
   const started = Date.now();
+  const TE_CHUNK = 5000;
 
   const result = await withTransaction(db as pg.Pool, async (client) => {
     await client.query(
@@ -626,27 +632,33 @@ export const deleteModData = async (
          FROM strings s
          JOIN records r ON s.record_id = r.id
         WHERE dn.response_string_id = s.id
-          AND r.mod_id = $1`,
-      [modId],
+          AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
     );
 
-    await client.query(
-      `DELETE FROM translation_examples te
-        USING translations t
-        JOIN strings s ON t.src_string_id = s.id
-        JOIN records r ON s.record_id = r.id
-       WHERE te.translation_id = t.id
-         AND r.mod_id = $1`,
-      [modId],
-    );
+    for (;;) {
+      const { rowCount } = await client.query(
+        `DELETE FROM translation_examples te
+          WHERE te.translation_id IN (
+            SELECT t.id
+              FROM translations t
+              JOIN strings s ON t.src_string_id = s.id
+              JOIN records r ON s.record_id = r.id
+             WHERE r.mod_id = ANY($1::int[])
+             LIMIT $2
+          )`,
+        [uniqueModIds, TE_CHUNK],
+      );
+      if (!rowCount || rowCount < TE_CHUNK) break;
+    }
 
     await client.query(
       `DELETE FROM qa_issues qi
         USING strings s
         JOIN records r ON s.record_id = r.id
        WHERE qi.src_string_id = s.id
-         AND r.mod_id = $1`,
-      [modId],
+         AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
     );
 
     await client.query(
@@ -654,8 +666,8 @@ export const deleteModData = async (
         USING strings s
         JOIN records r ON s.record_id = r.id
        WHERE tr.src_string_id = s.id
-         AND r.mod_id = $1`,
-      [modId],
+         AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
     );
 
     await client.query(
@@ -663,54 +675,63 @@ export const deleteModData = async (
         USING strings s
         JOIN records r ON s.record_id = r.id
        WHERE t.src_string_id = s.id
-         AND r.mod_id = $1`,
-      [modId],
+         AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
     );
 
     await client.query(
       `DELETE FROM strings s
         USING records r
        WHERE s.record_id = r.id
-         AND r.mod_id = $1`,
-      [modId],
+         AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
     );
 
-    const { rowCount } = await client.query(`DELETE FROM records WHERE mod_id = $1`, [modId]);
+    const { rowCount } = await client.query(`DELETE FROM records WHERE mod_id = ANY($1::int[])`, [
+      uniqueModIds,
+    ]);
 
     if (scope === 'mod') {
       await client.query(
         `DELETE FROM dialog_scene_phases dsp
-          WHERE dsp.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = $1)
-             OR dsp.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = $1)`,
-        [modId],
+          WHERE dsp.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = ANY($1::int[]))
+             OR dsp.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = ANY($1::int[]))`,
+        [uniqueModIds],
       );
       await client.query(
         `DELETE FROM dialog_edges de
           USING dialog_topics dt
          WHERE de.topic_id = dt.id
-           AND dt.mod_id = $1`,
-        [modId],
+           AND dt.mod_id = ANY($1::int[])`,
+        [uniqueModIds],
       );
       await client.query(
         `DELETE FROM dialog_nodes dn
           USING dialog_topics dt
          WHERE dn.topic_id = dt.id
-           AND dt.mod_id = $1`,
-        [modId],
+           AND dt.mod_id = ANY($1::int[])`,
+        [uniqueModIds],
       );
-      await client.query(`DELETE FROM dialog_scenes WHERE mod_id = $1`, [modId]);
-      await client.query(`DELETE FROM dialog_topics WHERE mod_id = $1`, [modId]);
-      await client.query(`DELETE FROM mods WHERE id = $1`, [modId]);
+      await client.query(`DELETE FROM dialog_scenes WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM dialog_topics WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM mods WHERE id = ANY($1::int[])`, [uniqueModIds]);
     }
 
     return { deletedRecords: rowCount ?? 0 };
   });
 
   log.info(
-    `deleteModData modId=${modId} scope=${scope} records=${result.deletedRecords} ms=${Date.now() - started}`,
+    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} ms=${Date.now() - started}`,
   );
   return result;
 };
+
+/** @see deleteModDataForModIds */
+export const deleteModData = async (
+  db: Tx,
+  modId: number,
+  scope: 'rows' | 'mod',
+): Promise<{ deletedRecords: number }> => deleteModDataForModIds(db, [modId], scope);
 
 // ── Strings ───────────────────────────────────────────────────────────────────
 

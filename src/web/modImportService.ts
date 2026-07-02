@@ -39,6 +39,8 @@ import {
   formatPexStringContext,
   parsePexBuffer,
   pexScriptKeyFromInfo,
+  locatePexLiteralInPsc,
+  serializePexStoredContext,
   resolveMcmLocaleKey,
   resolveMcmModPrefix,
   resolveMcmTranslationPrefixes,
@@ -66,6 +68,8 @@ import {
   type ModImportBulkRow,
   type DialogGraphImportContext,
 } from './modImportBulk';
+import { isChampollionInstalled } from '../champollionPath';
+import { decompilePexScriptMap, type DecompiledPexScript } from './pexDecompileService';
 
 const { Pool } = pg;
 
@@ -592,7 +596,7 @@ export const extractModImportApplyRows = (
 
     const pexMap = collectPexStringsSync(anchorPath, (job.game as GameType) ?? 'fo4');
     if (pexMap.size > 0) {
-      collected.push(...buildPexCsvRows(pexMap).map((row) => row.csvRow));
+      collected.push(...buildPexCsvRows(pexMap, new Map()).map((row) => row.csvRow));
     }
   }
 
@@ -1418,6 +1422,7 @@ const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
 type PexScriptStrings = {
   sourceFile: string;
   pexFile: string | null;
+  data: Buffer;
   literals: Array<{
     text: string;
     literalIndex: number;
@@ -1433,9 +1438,11 @@ type PexImportRow = {
 const pexBundleFromParse = (
   parsed: ReturnType<typeof parsePexBuffer>,
   pexFile: string | null,
+  data: Buffer,
 ): PexScriptStrings => ({
   sourceFile: parsed.info.sourceFile,
   pexFile,
+  data,
   literals: parsed.userStrings.map((entry) => ({
     text: entry.text,
     literalIndex: entry.literalIndex,
@@ -1458,7 +1465,7 @@ const loadPexStringsFromBA2 = (ba2Path: string): Map<string, PexScriptStrings> =
       const parsed = parsePexBuffer(buf);
       if (parsed.strings.length === 0) continue;
       const scriptKey = pexScriptKeyFromInfo(parsed.info) || entry.name.replace(/\.pex$/i, '');
-      result.set(scriptKey, pexBundleFromParse(parsed, entry.name));
+      result.set(scriptKey, pexBundleFromParse(parsed, entry.name, buf));
     } catch (err) {
       logImport.debug(`PEX: skipping "${entry.name}": ${err instanceof Error ? err.message : err}`);
     }
@@ -1491,7 +1498,7 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, PexScriptStri
       const parsed = parsePexBuffer(buf);
       if (parsed.strings.length === 0) continue;
       const scriptKey = pexScriptKeyFromInfo(parsed.info) || file.replace(/\.pex$/i, '');
-      result.set(scriptKey, pexBundleFromParse(parsed, file));
+      result.set(scriptKey, pexBundleFromParse(parsed, file, buf));
     } catch (err) {
       logImport.debug(
         `PEX: skipping loose file "${file}": ${err instanceof Error ? err.message : err}`,
@@ -1582,20 +1589,35 @@ const collectPexStrings = async (
  *   Path      : 'PEX\\<script>' (e.g. PEX\\CraftingScript)
  *   Source    : the string literal text
  *
- * `context` stores the `.psc` source file and 1-based literal index for the UI.
+ * `context` stores decompiled Papyrus source context (line + snippet) when Champollion
+ * is available, otherwise falls back to script name and literal index.
  *
  * Duplicate strings within the same script are deduplicated here to avoid
  * inserting the same text twice (the PEX string table may repeat entries
  * that are referenced from multiple call sites).
  */
-const buildPexCsvRows = (pexMap: Map<string, PexScriptStrings>): PexImportRow[] => {
+const buildPexCsvRows = (
+  pexMap: Map<string, PexScriptStrings>,
+  decompiled: Map<string, DecompiledPexScript>,
+): PexImportRow[] => {
   const rows: PexImportRow[] = [];
   for (const [scriptName, bundle] of pexMap) {
     const recordPath = `PEX\\${scriptName}`;
     const seen = new Set<string>();
+    const pscBundle = decompiled.get(scriptName);
     for (const { text, literalIndex, usages } of bundle.literals) {
       if (seen.has(text)) continue;
       seen.add(text);
+
+      let context = formatPexStringContext(bundle.sourceFile, { literalIndex, usages });
+      if (pscBundle) {
+        const snippet = locatePexLiteralInPsc(pscBundle.pscSource, text, {
+          scriptLabel: path.basename(pscBundle.headerSourceFile || `${scriptName}.psc`),
+          headerSourceFile: pscBundle.headerSourceFile,
+        });
+        if (snippet) context = serializePexStoredContext(snippet);
+      }
+
       rows.push({
         csvRow: {
           FormID: '',
@@ -1604,7 +1626,7 @@ const buildPexCsvRows = (pexMap: Map<string, PexScriptStrings>): PexImportRow[] 
           PathSimplified: recordPath,
           Source: text,
         },
-        context: formatPexStringContext(bundle.sourceFile, { literalIndex, usages }),
+        context,
       });
     }
   }
@@ -2498,7 +2520,23 @@ export const runModImport = async (
     if (!state.cancel && !state.pause) {
       const pexMap = await collectPexStrings(espPath, game);
       if (pexMap.size > 0) {
-        const pexRows = buildPexCsvRows(pexMap);
+        let decompiled = new Map<string, DecompiledPexScript>();
+        if (isChampollionInstalled()) {
+          const scriptBuffers = new Map<string, Buffer>();
+          for (const [scriptKey, bundle] of pexMap) {
+            scriptBuffers.set(scriptKey, bundle.data);
+          }
+          decompiled = await decompilePexScriptMap(scriptBuffers, importModId);
+          logImport.info(
+            `[Mod Import #${job.id}] PEX decompile: ${decompiled.size}/${scriptBuffers.size} script(s)`,
+          );
+        } else {
+          logImport.warn(
+            `[Mod Import #${job.id}] Champollion not installed — PEX rows without source lines (npm run tools:champollion)`,
+          );
+        }
+
+        const pexRows = buildPexCsvRows(pexMap, decompiled);
         logImport.info(
           `[Mod Import #${job.id}] PEX scripts: ${pexMap.size} script(s), ${pexRows.length} unique string(s)`,
         );
