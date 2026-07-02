@@ -66,6 +66,7 @@ import {
   bulkUpsertImportTranslations,
   bulkUpsertDialogGraphForImportBatch,
   pruneStaleModImportData,
+  sqlConvertImportedStringsToTranslations,
   trackModImportBulkResults,
   type ModImportBulkResult,
   type ModImportBulkRow,
@@ -1902,13 +1903,14 @@ const convertImportedStringsToTranslations = async (
   isLocalized = false,
 ): Promise<void> => {
   try {
-    // Find all locales used in this mod
-    const localesResult = await db.query(
-      `SELECT DISTINCT lang FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang IS NOT NULL`,
+    const localesResult = await db.query<{ lang: string }>(
+      `SELECT DISTINCT s.lang
+       FROM strings s
+       JOIN records r ON r.id = s.record_id
+       WHERE r.mod_id = $1 AND s.lang IS NOT NULL`,
       [modId],
     );
-
-    const locales = (localesResult.rows as { lang: string }[]).map((r) => r.lang).filter((l) => l);
+    const locales = localesResult.rows.map((r) => r.lang).filter(Boolean);
     if (locales.length === 0) {
       logImport.info(`[ModImport] No strings found for mod ${modId}; skipping conversion`);
       return;
@@ -1920,98 +1922,32 @@ const convertImportedStringsToTranslations = async (
       resolveAvailableLocale(localeLookup, MOD_IMPORT_DEFAULT_SOURCE_LOCALE)?.resolvedKey ??
       locales.sort()[0];
 
-    const sourceResult = await db.query(
-      `SELECT s.id, s.record_id, s.lstring_id, s.text_raw
-       FROM strings s
-       WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
-       AND s.lang = $2
-       ORDER BY s.record_id, s.id`,
-      [modId, resolvedSourceLocale],
-    );
-
-    const sourceRows = sourceResult.rows as ImportStringRow[];
-    if (sourceRows.length === 0) {
-      throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
-    }
-
-    // A single record can hold MANY translatable strings (e.g. inline RACE/TTGP
-    // tint-preset names, GMST lists). Keying only by record_id would collapse
-    // them to one entry and silently drop translations for the rest. We align
-    // each string by a stable per-record key: the lstring id when present (it is
-    // identical across locales), or a positional ordinal among inline strings
-    // (rows are ingested in the same espRow order for every locale).
-    const sourceByKey = new Map<string, ImportStringRow>();
-    for (const { key, row } of alignmentKeyedStrings(sourceRows)) {
-      sourceByKey.set(key, row);
-    }
-
     logImport.info(
       `[ModImport] Converting ${locales.length} locale(s) (${locales.join(', ')}) to translations for mod ${modId}; ` +
         `resolved src locale="${resolvedSourceLocale}"` +
         (isLocalized ? ' [localized]' : ' [non-localized]'),
     );
 
-    // For each locale, create translations anchored to source-locale strings.
-    for (const locale of locales) {
-      if (locale === resolvedSourceLocale) {
-        const items = sourceRows.map((source) => ({
-          srcStringId: source.id,
-          text: source.text_raw,
-        }));
-        const created = await bulkUpsertImportTranslations(
-          db,
-          items,
-          locale,
-          'import_self_translation',
-        );
-        logImport.info(
-          `[ModImport] Created ${created} self-translations for source locale ${locale}`,
-        );
-        continue;
-      }
+    const { inserted, skippedWithoutSource } = await sqlConvertImportedStringsToTranslations(
+      db,
+      modId,
+      resolvedSourceLocale,
+    );
 
-      const localeStringsResult = await db.query(
-        `SELECT s.id, s.record_id, s.lstring_id, s.text_raw
-         FROM strings s
-         WHERE s.record_id IN (SELECT id FROM records WHERE mod_id = $1)
-         AND s.lang = $2
-         ORDER BY s.record_id, s.id`,
-        [modId, locale],
-      );
-
-      const localeRows = localeStringsResult.rows as ImportStringRow[];
-      const items: { srcStringId: number; text: string }[] = [];
-      let skippedWithoutSource = 0;
-
-      for (const { key, row } of alignmentKeyedStrings(localeRows)) {
-        const source = sourceByKey.get(key);
-        if (!source) {
-          skippedWithoutSource++;
-          continue;
-        }
-        items.push({ srcStringId: source.id, text: row.text_raw });
-      }
-
-      const createdForLocale = await bulkUpsertImportTranslations(
-        db,
-        items,
-        locale,
-        'import_self_translation',
-      );
-
-      logImport.info(
-        `[ModImport] Created ${createdForLocale} translations for locale ${locale}` +
-          (skippedWithoutSource > 0
-            ? `; skipped ${skippedWithoutSource} rows without source pair`
-            : ''),
-      );
-    }
+    logImport.info(
+      `[ModImport] Created ${inserted} import translations via SQL alignment` +
+        (skippedWithoutSource > 0
+          ? `; skipped ${skippedWithoutSource} target rows without source pair`
+          : ''),
+    );
 
     // After all translations created, delete non-source strings only for localized mods
     // For non-localized mods, keep the source strings alongside their self-translations
     if (isLocalized && srcLang) {
       const deleteNonSrcResult = await db.query(
-        `DELETE FROM strings WHERE record_id IN (SELECT id FROM records WHERE mod_id = $1) AND lang != $2`,
+        `DELETE FROM strings s
+         USING records r
+         WHERE s.record_id = r.id AND r.mod_id = $1 AND s.lang != $2`,
         [modId, resolvedSourceLocale],
       );
       logImport.info(

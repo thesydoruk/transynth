@@ -3,6 +3,7 @@ import {
   dedupeDialogInfoRowsForImport,
   modImportRecordKey,
   parseModImportRecordKey,
+  stringAlignKeySql,
   trackModImportBulkResults,
 } from '../modImportBulk';
 
@@ -126,6 +127,16 @@ describe('dedupeBulkTranslationRows', () => {
       { srcStringId: 1, text: 'c' },
       { srcStringId: 2, text: 'b' },
     ]);
+  });
+});
+
+describe('stringAlignKeySql', () => {
+  it('matches alignmentKeyedStrings lstring and inline key shapes', () => {
+    const expr = stringAlignKeySql('s');
+    expect(expr).toContain("':L' || s.lstring_id::text");
+    expect(expr).toContain("':P' ||");
+    expect(expr).toContain('PARTITION BY s.record_id, s.lang');
+    expect(expr).toContain('ORDER BY s.id');
   });
 });
 
