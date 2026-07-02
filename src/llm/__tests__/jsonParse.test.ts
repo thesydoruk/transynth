@@ -3,6 +3,8 @@ import {
   peelStringWrappers,
   stripMarkdownFence,
   extractJsonObject,
+  isJsonUnterminatedAtEnd,
+  trySalvageTruncatedTranslateJson,
 } from '../jsonParse';
 
 describe('jsonParse', () => {
@@ -70,5 +72,18 @@ describe('jsonParse', () => {
     });
     const parsed = parseLlmJson(JSON.stringify(inner));
     expect(parsed).toEqual(JSON.parse(inner));
+  });
+
+  it('detects unterminated string at EOF', () => {
+    const err = new SyntaxError('Unterminated string in JSON at position 42');
+    expect(isJsonUnterminatedAtEnd(err, 42)).toBe(true);
+    expect(isJsonUnterminatedAtEnd(err, 100)).toBe(false);
+  });
+
+  it('salvages truncated single-item translate JSON', () => {
+    const inner = '{"items":[{"id":2177256,"translation":"Того дня в Цитаделі';
+    const wrapped = JSON.stringify(inner);
+    const salvaged = trySalvageTruncatedTranslateJson(wrapped, 2177256);
+    expect(salvaged?.items[0]?.translation).toBe('Того дня в Цитаделі');
   });
 });

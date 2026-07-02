@@ -158,15 +158,15 @@ const argv = await addCliRagFlagOptions(
       default: false,
       describe: 'Overwrite every non-skipped row, including verified translations',
     })
-    .option('no-tm', {
+    .option('tm', {
       type: 'boolean',
-      default: false,
-      describe: 'Skip TM auto-apply before LLM (default: run TM first for exact matches)',
+      default: true,
+      describe: 'Run TM auto-apply before LLM (disable with --no-tm)',
     })
-    .option('no-llm', {
+    .option('llm', {
       type: 'boolean',
-      default: false,
-      describe: 'Skip LLM translation (TM only when TM is enabled)',
+      default: true,
+      describe: 'Run LLM translation after TM (disable with --no-llm)',
     })
     .option('db-chunk', {
       type: 'number',
@@ -182,11 +182,11 @@ const argv = await addCliRagFlagOptions(
     if (args['force-all'] && args.force) {
       throw new Error('Use either --force or --force-all, not both');
     }
-    if (args['no-tm'] && args['no-llm']) {
+    if (args.tm === false && args.llm === false) {
       throw new Error('Cannot use --no-tm and --no-llm together (nothing to run)');
     }
     assertCliRagFlags({
-      noRag: args.noRag === true,
+      noRag: args.rag === false,
       ragModOnly: args.ragModOnly === true,
     });
     return true;
@@ -199,8 +199,8 @@ validateConfig();
 const ragFlags = readCliRagFlags(argv);
 
 const tgtLang = argv['tgt-lang'].trim();
-const useTm = !argv['no-tm'];
-const useLlm = !argv['no-llm'];
+const useTm = argv.tm;
+const useLlm = argv.llm;
 const overwriteMode = resolveOverwriteMode(argv.force, argv['force-all']);
 const dbChunkSize =
   argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_TRANSLATE_DB_CHUNK_SIZE;

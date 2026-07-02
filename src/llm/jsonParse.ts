@@ -24,6 +24,91 @@ const extractJsonErrorPosition = (err: unknown): number | null => {
   return match ? Number(match[1]) : null;
 };
 
+/** True when JSON.parse failed because a string literal ran to EOF (typical output truncation). */
+export const isJsonUnterminatedAtEnd = (err: unknown, rawLength: number): boolean => {
+  if (!(err instanceof Error)) return false;
+  if (!/Unterminated string/i.test(err.message)) return false;
+  const pos = extractJsonErrorPosition(err);
+  return pos != null && pos >= rawLength - 4;
+};
+
+const unescapePartialJsonString = (value: string): string => {
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch !== '\\') {
+      out += ch;
+      continue;
+    }
+    const next = value[i + 1];
+    if (next === undefined) break;
+    switch (next) {
+      case '"':
+        out += '"';
+        break;
+      case '\\':
+        out += '\\';
+        break;
+      case 'n':
+        out += '\n';
+        break;
+      case 'r':
+        out += '\r';
+        break;
+      case 't':
+        out += '\t';
+        break;
+      case 'u': {
+        const hex = value.slice(i + 2, i + 6);
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+          out += String.fromCharCode(Number.parseInt(hex, 16));
+          i += 5;
+          break;
+        }
+        out += next;
+        break;
+      }
+      default:
+        out += next;
+        break;
+    }
+    i++;
+  }
+  return out;
+};
+
+/**
+ * Best-effort recovery when a single-item translate response is truncated mid-string.
+ * Handles double-encoded JSON wrappers from some vLLM builds.
+ */
+export const trySalvageTruncatedTranslateJson = (
+  raw: string,
+  expectedId: number,
+): { items: Array<{ id: number; translation: string }> } | undefined => {
+  const markers = [
+    `"id":${expectedId},"translation":"`,
+    `"id": ${expectedId}, "translation": "`,
+    `\\"id\\":${expectedId},\\"translation\\":\\"`,
+    `\\"id\\": ${expectedId}, \\"translation\\": \\"`,
+  ];
+
+  for (const candidate of uniqueCandidates(raw)) {
+    for (const marker of markers) {
+      const idx = candidate.indexOf(marker);
+      if (idx < 0) continue;
+      let tail = candidate.slice(idx + marker.length);
+      tail = tail.replace(/\\?"\}\s*\]\s*\}\\?"?\s*$/u, '');
+      tail = tail.replace(/"\}\s*\]\s*\}"?\s*$/u, '');
+      const translation = unescapePartialJsonString(tail).trim();
+      if (translation.length >= 8) {
+        return { items: [{ id: expectedId, translation }] };
+      }
+    }
+  }
+
+  return undefined;
+};
+
 /** Recursively unwrap JSON returned as a string literal (common with some vLLM models). */
 export const peelStringWrappers = (text: string, maxDepth = 4): string => {
   let current = text.trim();

@@ -115,10 +115,10 @@ const argv = await yargs(hideBin(process.argv))
     default: false,
     describe: 'Pack STRINGS (and scripts unless --no-scripts) into BA2/BSA archives',
   })
-  .option('no-scripts', {
+  .option('scripts', {
     type: 'boolean',
-    default: false,
-    describe: 'Skip Papyrus script localization',
+    default: true,
+    describe: 'Localize Papyrus scripts during export (disable with --no-scripts)',
   })
   .option('flat', {
     type: 'boolean',
@@ -156,7 +156,7 @@ const srcLangOverride = argv['src-lang'];
 const exportOptions: ModReleaseExportOptions = {
   forceLocalized: argv['force-localized'],
   repackArchives: argv['repack-archives'],
-  localizeScripts: !argv['no-scripts'],
+  localizeScripts: argv.scripts,
 };
 const flat = argv.flat;
 const parallel = clampParallel(argv.parallel);

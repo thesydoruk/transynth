@@ -205,9 +205,21 @@ describe('translate completion budgets', () => {
     expect(estimateMaxTranslationChars('Hello')).toBe(32);
   });
 
-  it('keeps translate max tokens far below global llmMaxTokens for vocalizations', () => {
-    const budget = estimateTranslateMaxTokens([{ source: scream }]);
-    expect(budget).toBeLessThan(1024);
-    expect(budget).toBeGreaterThanOrEqual(256);
+  it('allows extra schema headroom for long BOOK rows', () => {
+    const longSource = 'x'.repeat(5800);
+    expect(estimateMaxTranslationChars(longSource)).toBeGreaterThan(10_000);
+  });
+
+  it('scales completion tokens with long source rows', () => {
+    const longSource = 'x'.repeat(5800);
+    expect(estimateTranslateMaxTokens([{ source: longSource }])).toBeGreaterThan(4000);
+  });
+
+  it('salvages truncated translate JSON via parseLlmTranslateResponse', () => {
+    const inner = '{"items":[{"id":99,"translation":"Частина тексту';
+    const raw = JSON.stringify(inner);
+    expect(parseLlmTranslateResponse(raw, [99])).toEqual([
+      { id: 99, translation: 'Частина тексту' },
+    ]);
   });
 });

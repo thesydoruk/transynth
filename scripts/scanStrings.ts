@@ -67,10 +67,10 @@ const argv = await yargs(hideBin(process.argv))
     describe:
       'Game Data folder with .esp/.esm plugins for record enrichment (required unless plugins are already in DB)',
   })
-  .option('no-recursive', {
+  .option('recursive', {
     type: 'boolean',
-    default: false,
-    describe: 'Only inspect the top-level directory (do not walk subfolders)',
+    default: true,
+    describe: 'Walk subfolders when scanning (disable with --no-recursive)',
   })
   .help()
   .parse();
@@ -80,7 +80,7 @@ ensureDataDirs();
 const scanDir = resolveDirectoryInput(argv.dir);
 const game = isGameType(argv.game) ? argv.game : 'fo4';
 const force = argv.force;
-const recursive = !argv['no-recursive'];
+const recursive = argv.recursive;
 const pluginSearchDirs = argv['plugins-dir']
   ? [resolveDirectoryInput(argv['plugins-dir']), scanDir]
   : [scanDir];

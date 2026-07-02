@@ -110,7 +110,7 @@ const argv = await addCliRagFlagOptions(
       modName: args['mod-name'],
     });
     assertCliRagFlags({
-      noRag: args.noRag === true,
+      noRag: args.rag === false,
       ragModOnly: args.ragModOnly === true,
     });
     return true;

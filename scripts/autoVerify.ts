@@ -118,11 +118,11 @@ const argv = await addCliRagFlagOptions(
       default: false,
       describe: 'Only log suspicious/incorrect rows; do not approve or apply fixes',
     })
-    .option('no-auto-approve', {
+    .option('auto-approve', {
       type: 'boolean',
-      default: false,
+      default: true,
       describe:
-        'Do not promote passing rows to reviewed (still auto-fixes incorrect rows unless --dry-run)',
+        'Promote passing rows to reviewed (disable with --no-auto-approve; still auto-fixes incorrect rows unless --dry-run)',
     })
     .option('fix-suspicious', {
       type: 'boolean',
@@ -147,7 +147,7 @@ const argv = await addCliRagFlagOptions(
       modName: args['mod-name'],
     });
     assertCliRagFlags({
-      noRag: args.noRag === true,
+      noRag: args.rag === false,
       ragModOnly: args.ragModOnly === true,
     });
     return true;
@@ -161,7 +161,7 @@ const ragFlags = readCliRagFlags(argv);
 
 const tgtLang = argv['tgt-lang'].trim();
 const dryRun = argv['dry-run'];
-const autoApproveVerified = !argv['no-auto-approve'];
+const autoApproveVerified = argv.autoApprove;
 const fixSuspicious = argv['fix-suspicious'];
 const force = argv.force;
 const dbChunkSize =

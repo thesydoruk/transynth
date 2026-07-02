@@ -10,10 +10,10 @@ export type CliRagFlagValues = {
 /** Shared yargs flags for reference-example retrieval (translate & verify). */
 export const addCliRagFlagOptions = <T>(yargs: Argv<T>): Argv<T> =>
   yargs
-    .option('no-rag', {
+    .option('rag', {
       type: 'boolean',
-      default: false,
-      describe: 'Disable reference-example search entirely (no TM, no embedding)',
+      default: true,
+      describe: 'Enable reference-example search (disable with --no-rag)',
     })
     .option('rag-mod-only', {
       type: 'boolean',
@@ -28,7 +28,7 @@ export const assertCliRagFlags = (flags: CliRagFlagValues): void => {
 };
 
 export const readCliRagFlags = (argv: Record<string, unknown>): CliRagFlagValues => ({
-  noRag: argv.noRag === true,
+  noRag: argv.rag === false,
   ragModOnly: argv.ragModOnly === true,
 });
 

@@ -87,7 +87,7 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
           provider: provider.name,
           responseChars: result.content.length,
           completionTokens: result.meta.completionTokens,
-          maxTokens: CONFIG.llmMaxTokens,
+          maxTokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
           ...context,
         });
       }
