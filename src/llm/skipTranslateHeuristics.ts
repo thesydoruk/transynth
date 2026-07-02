@@ -1,8 +1,8 @@
 /**
  * Heuristic detection of source strings that should not be translated.
  */
-import { isNonPlayerFacingRecord } from '../bethesda/subrecords/nonPlayerFacing';
-import { detectPexSkipFromContext } from '../bethesda/parsers/pexTranslatableFilter';
+import { isNonPlayerFacingRecord } from '../formats/subrecords/nonPlayerFacing';
+import { detectPexSkipFromContext } from '../formats/pex/pexTranslatableFilter';
 
 /** Internal mask markers injected by the translation pipeline (¤PH0¤, ¤GL1¤, ¤FK2¤). */
 const MARKER_RE = /¤(?:PH|GL|FK)\d+¤/g;

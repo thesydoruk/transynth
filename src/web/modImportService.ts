@@ -30,19 +30,13 @@ import { sha1Hex } from '../utils/hash';
 import { mapWithConcurrency } from '../utils/concurrency';
 import { CONFIG } from '../config';
 import { logImport } from '../logging/loggers';
-import { EspReader, type EspStringRow } from '../bethesda/esp';
-import { BsaReader, isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../bethesda/archives';
-import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
+import { EspReader, type EspStringRow } from '../formats/esp';
+import { BsaReader } from '../formats/bsa';
+import { isBa2GnrArchive, getBa2Reader, clearBa2Cache } from '../formats/ba2';
+import { parseStringsBuffer, stringsTypeFromPath } from '../formats/strings';
 import {
   parseMcmBuffer,
   mcmLocaleFromPath,
-  formatPexStringContext,
-  parsePexBuffer,
-  pexScriptKeyFromInfo,
-  locatePexLiteralInPsc,
-  serializePexStoredContext,
-  extractQuotedStringLiteralsFromPsc,
-  isPexLiteralTranslatable,
   resolveMcmLocaleKey,
   resolveMcmModPrefix,
   resolveMcmTranslationPrefixes,
@@ -54,9 +48,18 @@ import {
   resolveModDirectoryFromPath,
   loadMcmLocalesFromConfigJson,
   MCM_LOCALE_ALIASES,
+} from '../formats/mcm';
+import {
+  formatPexStringContext,
+  parsePexBuffer,
+  pexScriptKeyFromInfo,
+  locatePexLiteralInPsc,
+  serializePexStoredContext,
+  extractQuotedStringLiteralsFromPsc,
+  isPexLiteralTranslatable,
   type PexStringUsage,
-} from '../bethesda/parsers';
-import { loadNpcReferenceMap } from '../bethesda/subrecords';
+} from '../formats/pex';
+import { loadNpcReferenceMap } from '../formats/subrecords';
 import type { CsvRow, GameType } from '../types';
 import { parseVortexModFolder, resolveVortexFolderFromPath } from '../utils/vortexFolder';
 import type { VortexFolderInfo } from '../utils/vortexFolder';

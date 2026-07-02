@@ -7,9 +7,9 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import type { StringsType } from '../bethesda/types/StringsType';
-import { EspReader, type EspStringRow } from '../bethesda/esp';
-import { parseStringsBuffer, stringsTypeFromPath } from '../bethesda/strings';
+import type { StringsType } from '../formats/types/StringsType';
+import { EspReader, type EspStringRow } from '../formats/esp';
+import { parseStringsBuffer, stringsTypeFromPath } from '../formats/strings';
 import type { Tx } from '../db';
 import { upsertMod } from '../db';
 import { log } from '../logger';

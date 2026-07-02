@@ -74,7 +74,7 @@ At a high level, the system supports these flows:
 
 ## File and Game-Format Processing
 
-- Custom TypeScript readers and writers under `src/bethesda/` process ESP, EET,
+- Custom TypeScript readers and writers under `src/formats/` (`ba2/`, `bsa/`, `esp/`, …) process ESP, EET,
   PEX, MCM, BA2, BSA, and STRINGS-related formats.
 - `archiver`, `node-7z`, and `7zip-bin` are used for archive generation and
   archive handling where required.

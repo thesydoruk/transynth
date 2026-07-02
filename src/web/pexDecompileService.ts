@@ -8,14 +8,14 @@ import type { Tx } from '../db';
 import { PATHS } from '../paths';
 import { ensureChampollionInstalled } from '../tools/installChampollion';
 import { sha1Hex } from '../utils/hash';
-import { collectModPexSources } from '../bethesda/parsers';
+import { collectModPexSources } from '../formats/pex';
 import {
   locatePexLiteralInPsc,
   pexScriptKeyFromRecordPath,
   type PexSourceLocateResult,
-} from '../bethesda/parsers/pexSourceLocate';
-import { normalizePexScriptKey, parsePexBuffer } from '../bethesda/parsers/pexParser';
-import { parsePexStoredContext } from '../bethesda/parsers/pexStoredContext';
+} from '../formats/pex/pexSourceLocate';
+import { normalizePexScriptKey, parsePexBuffer } from '../formats/pex/pexParser';
+import { parsePexStoredContext } from '../formats/pex/pexStoredContext';
 import { log } from '../logger';
 
 export type PexSourceSnippetResult =

@@ -21,7 +21,7 @@ import {
   requestPause,
   updateJobLanguages,
 } from '../eetImportService';
-import { parseEetHeader, iterEetRecords } from '../../bethesda/parsers';
+import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 
 import { PATHS } from '../../paths';
 

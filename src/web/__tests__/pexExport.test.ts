@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../db';
-import { parsePexBuffer, patchPexBuffer, writeWString } from '../../bethesda/parsers';
+import { parsePexBuffer, patchPexBuffer, writeWString } from '../../formats/pex';
 import { exportPatchedPexFiles } from '../exportService';
 
 const buildPex = (strings: string[], sourceFile = 'DialogScript.psc'): Buffer => {

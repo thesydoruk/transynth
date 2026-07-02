@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { EspStringRow } from '../../bethesda/esp';
+import type { EspStringRow } from '../../formats/esp';
 import {
   buildLstringEspIndex,
   buildStringsPackModName,

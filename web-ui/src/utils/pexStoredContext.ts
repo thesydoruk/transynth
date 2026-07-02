@@ -1,4 +1,4 @@
-/** Must match `src/bethesda/parsers/pexStoredContext.ts`. */
+/** Must match `src/formats/pex/pexStoredContext.ts`. */
 export const PEX_STORED_CONTEXT_PREFIX = 'pex-json:';
 
 export type PexSourceLine = {

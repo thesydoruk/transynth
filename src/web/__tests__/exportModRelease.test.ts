@@ -3,9 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../db';
-import { Ba2Reader } from '../../bethesda/archives';
-import { parsePexBuffer, writeWString } from '../../bethesda/parsers';
-import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/strings';
+import { Ba2Reader } from '../../formats/ba2';
+import { parsePexBuffer, writeWString } from '../../formats/pex';
+import { parseStringsBuffer, writeStringsBuffer } from '../../formats/strings';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,

@@ -1,4 +1,4 @@
-import type { StringsType } from '../bethesda/strings';
+import type { StringsType } from '../formats/strings';
 
 /**
  * Canonical localized strings file used by the export regression suite.
@@ -107,4 +107,4 @@ export const LOCALIZED_EXPORT_GOLDEN_CORPUS: LocalizedExportGoldenCorpus = {
  */
 export const goldenFixtureToMap = (file: GoldenStringsFileFixture): Map<number, string> => {
   return new Map(file.entries.map(({ id, text }) => [id, text]));
-}
+};

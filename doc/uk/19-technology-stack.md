@@ -74,7 +74,7 @@ Localization Pipeline, і пояснює роль кожної частини в
 
 ## Обробка файлів і форматів гри
 
-- Власні TypeScript readers і writers у `src/bethesda/` обробляють формати ESP,
+- Власні TypeScript readers і writers у `src/formats/` (`ba2/`, `bsa/`, `esp/`, …) обробляють формати ESP,
   EET, PEX, MCM, BA2, BSA та пов'язані зі STRINGS дані.
 - `archiver`, `node-7z` і `7zip-bin` використовуються для створення та обробки
   архівів там, де це потрібно.

@@ -3,7 +3,7 @@
  *
  * Request and response payloads are JSON-only.
  */
-import { MCM_LOCALE_ALIASES } from '../bethesda/parsers/mcmDiscovery';
+import { MCM_LOCALE_ALIASES } from '../formats/mcm/mcmDiscovery';
 import { chatWithFallback } from './index';
 import { parseLlmJson } from './jsonParse';
 import type { GameType } from '../types';

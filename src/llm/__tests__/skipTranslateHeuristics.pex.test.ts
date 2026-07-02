@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { detectSkipHeuristic } from '../skipTranslateHeuristics';
-import { serializePexStoredContext } from '../../bethesda/parsers/pexStoredContext';
-import { locatePexLiteralInPsc } from '../../bethesda/parsers/pexSourceLocate';
+import { serializePexStoredContext } from '../../formats/pex/pexStoredContext';
+import { locatePexLiteralInPsc } from '../../formats/pex/pexSourceLocate';
 
 describe('detectSkipHeuristic — PEX', () => {
   it('skips debug literals using stored PSC context', () => {

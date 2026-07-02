@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../db';
-import { Ba2Reader } from '../../bethesda/archives';
-import { parseStringsBuffer, writeStringsBuffer } from '../../bethesda/strings';
+import { Ba2Reader } from '../../formats/ba2';
+import { parseStringsBuffer, writeStringsBuffer } from '../../formats/strings';
 import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
@@ -69,7 +69,10 @@ describe('localized export golden corpus', () => {
     for (const expected of LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles) {
       const actual = exported.find((file) => file.fileName === expected.fileName);
       expect(actual).toBeDefined();
-      const parsed = parseStringsBuffer(Buffer.from(actual!.contentBase64, 'base64'), expected.type);
+      const parsed = parseStringsBuffer(
+        Buffer.from(actual!.contentBase64, 'base64'),
+        expected.type,
+      );
       expect([...parsed.entries()]).toEqual([...goldenFixtureToMap(expected).entries()]);
     }
   });

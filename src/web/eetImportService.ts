@@ -17,7 +17,7 @@
  * transaction statements are executed on the same connection.
  */
 import pg from 'pg';
-import { parseEetHeader, iterEetRecords, type EetRecord } from '../bethesda/parsers';
+import { parseEetHeader, iterEetRecords, type EetRecord } from '../formats/eet';
 import { upsertMod, upsertRecord, insertString, addTranslation, type Tx } from '../db';
 import { sha1Hex } from '../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../utils/textNorm';
@@ -50,31 +50,41 @@ export type ProgressCb = (imported: number, total: number) => void;
 
 export const ensureImportSchema = async (_db: Tx) => {
   // Schema is now managed by sql/schema.sql — no-op
-}
+};
 
 export const listImportJobs = async (db: Tx): Promise<ImportJob[]> => {
   const { rows } = await db.query('SELECT * FROM eet_imports ORDER BY created_at DESC');
   return rows as ImportJob[];
-}
+};
 
 export const getImportJob = async (db: Tx, id: number): Promise<ImportJob | undefined> => {
   const { rows } = await db.query('SELECT * FROM eet_imports WHERE id = $1', [id]);
   return rows[0] as ImportJob | undefined;
-}
+};
 
 export const updateJobLanguages = async (db: Tx, id: number, srcLang: string, tgtLang: string) => {
   await db.query(
     `UPDATE eet_imports SET src_lang = $1, tgt_lang = $2, updated_at = NOW() WHERE id = $3`,
     [srcLang, tgtLang, id],
   );
-}
+};
 
 export const deleteImportJob = async (db: Tx, id: number) => {
   await db.query('DELETE FROM eet_imports WHERE id = $1', [id]);
-}
+};
 
-const getOrCreateJob = async (db: Tx, fileName: string, fileHash: string, modId: number, totalRecords: number, srcLang: string, tgtLang: string): Promise<ImportJob> => {
-  const { rows: existing } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
+const getOrCreateJob = async (
+  db: Tx,
+  fileName: string,
+  fileHash: string,
+  modId: number,
+  totalRecords: number,
+  srcLang: string,
+  tgtLang: string,
+): Promise<ImportJob> => {
+  const { rows: existing } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [
+    fileHash,
+  ]);
   if (existing[0]) return existing[0] as ImportJob;
 
   await db.query(
@@ -85,47 +95,79 @@ const getOrCreateJob = async (db: Tx, fileName: string, fileHash: string, modId:
 
   const { rows } = await db.query('SELECT * FROM eet_imports WHERE file_hash = $1', [fileHash]);
   return rows[0] as ImportJob;
-}
+};
 
 const updateProgress = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
-}
+};
 
 const markDone = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'completed', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
-}
+};
 
 const markFailed = async (db: Tx, jobId: number, importedRecords: number, errorMsg?: string) => {
   await db.query(
     `UPDATE eet_imports SET status = 'failed', imported_records = $1, last_error = $2, updated_at = NOW() WHERE id = $3`,
     [importedRecords, errorMsg ?? null, jobId],
   );
-}
+};
 
 const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
     [importedRecords, jobId],
   );
-}
+};
 
-const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: string, tgtLang: string) => {
+const importRecord = async (
+  db: Tx,
+  modId: number,
+  rec: EetRecord,
+  srcLang: string,
+  tgtLang: string,
+) => {
   const recPath = rec.field || 'FULL';
   const hashNorm = normalizeForHash(rec.source);
-  const recordId = await upsertRecord(db, modId, rec.signature, recPath, recPath, rec.edid || null, hashNorm, rec.formId || null);
+  const recordId = await upsertRecord(
+    db,
+    modId,
+    rec.signature,
+    recPath,
+    recPath,
+    rec.edid || null,
+    hashNorm,
+    rec.formId || null,
+  );
   const srcNorm = normalizeForHash(rec.source);
-  const srcStringId = await insertString(db, recordId, srcLang, rec.source, srcNorm, 'eet', undefined, normalizeNoPunct(rec.source));
+  const srcStringId = await insertString(
+    db,
+    recordId,
+    srcLang,
+    rec.source,
+    srcNorm,
+    'eet',
+    undefined,
+    normalizeNoPunct(rec.source),
+  );
   if (rec.target) {
     const status = rec.status === 0x63 ? 'human' : 'auto';
-    await addTranslation(db, srcStringId, tgtLang, rec.target, status, rec.status === 0x63 ? 1.0 : 0.5, 'eet');
+    await addTranslation(
+      db,
+      srcStringId,
+      tgtLang,
+      rec.target,
+      status,
+      rec.status === 0x63 ? 1.0 : 0.5,
+      'eet',
+    );
   }
-}
+};
 
 /**
  * Register an uploaded EET file by creating (or reusing) an import job row.
@@ -140,7 +182,13 @@ const importRecord = async (db: Tx, modId: number, rec: EetRecord, srcLang: stri
  * @param tgtLang - Target language code for ingested translations.
  * @returns Created or existing job descriptor.
  */
-export const registerEetFile = async (db: Tx, fileName: string, buf: Buffer, srcLang = 'en', tgtLang = 'uk'): Promise<ImportJob> => {
+export const registerEetFile = async (
+  db: Tx,
+  fileName: string,
+  buf: Buffer,
+  srcLang = 'en',
+  tgtLang = 'uk',
+): Promise<ImportJob> => {
   const fileHash = sha1Hex(buf);
   const header = parseEetHeader(buf);
 
@@ -155,7 +203,7 @@ export const registerEetFile = async (db: Tx, fileName: string, buf: Buffer, src
   const modId = await upsertMod(db, modName, `eet-upload/${fileName}`, fileHash);
 
   return getOrCreateJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
-}
+};
 
 // ── Active import tracking ──────────────────────────────────────────────────
 
@@ -168,17 +216,17 @@ const activeImports = new Map<number, ActiveImport>();
 
 export const isImportRunning = (jobId: number): boolean => {
   return activeImports.has(jobId);
-}
+};
 
 export const requestCancel = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.cancel = true;
-}
+};
 
 export const requestPause = (jobId: number) => {
   const state = activeImports.get(jobId);
   if (state) state.pause = true;
-}
+};
 
 /**
  * Run the import for a single job. Reads the file buffer, resumes from last offset.
@@ -228,7 +276,9 @@ export const runImport = async (
   let inTx = false;
   const startTime = Date.now();
 
-  log.info(`[EET Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount}`);
+  log.info(
+    `[EET Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount}`,
+  );
 
   try {
     for (const rec of iterEetRecords(buf, header.recordsOffset)) {
@@ -236,19 +286,29 @@ export const runImport = async (
       if (processed <= skipCount) continue;
 
       if (state.cancel) {
-        if (inTx) { await client.query('COMMIT'); inTx = false; }
+        if (inTx) {
+          await client.query('COMMIT');
+          inTx = false;
+        }
         await markFailed(client, job.id, imported, 'Cancelled by user');
         log.info(`Import #${job.id} cancelled at ${imported}/${job.total_records}`);
         break;
       }
       if (state.pause) {
-        if (inTx) { await client.query('COMMIT'); inTx = false; }
+        if (inTx) {
+          await client.query('COMMIT');
+          inTx = false;
+        }
         await markPaused(client, job.id, imported);
         log.info(`Import #${job.id} paused at ${imported}/${job.total_records}`);
         break;
       }
 
-      if (!inTx) { await client.query('BEGIN'); inTx = true; batchCount = 0; }
+      if (!inTx) {
+        await client.query('BEGIN');
+        inTx = true;
+        batchCount = 0;
+      }
 
       await importRecord(client, job.mod_id!, rec, job.src_lang, job.tgt_lang);
       imported++;
@@ -264,7 +324,10 @@ export const runImport = async (
       }
     }
 
-    if (inTx) { await client.query('COMMIT'); inTx = false; }
+    if (inTx) {
+      await client.query('COMMIT');
+      inTx = false;
+    }
 
     if (!state.cancel && !state.pause) {
       await markDone(client, job.id, imported);
@@ -273,7 +336,13 @@ export const runImport = async (
       onProgress?.(imported, job.total_records);
     }
   } catch (err) {
-    if (inTx) { try { await client.query('ROLLBACK'); } catch { /* ignore */ } }
+    if (inTx) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        /* ignore */
+      }
+    }
     const errMsg = err instanceof Error ? err.message : String(err);
     await markFailed(client, job.id, imported, errMsg);
     log.error(`[EET Import #${job.id}] Failed at ${imported}/${job.total_records}: ${errMsg}`);
@@ -284,4 +353,4 @@ export const runImport = async (
   }
 
   return (await getImportJob(pool, job.id))!;
-}
+};

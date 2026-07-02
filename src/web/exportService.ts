@@ -21,16 +21,17 @@ import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
 import type { Tx } from '../db';
 import type { GameType } from '../types';
-import { Ba2Reader, BsaReader, writeBa2, writeBsa } from '../bethesda/archives';
-import type { ArchiveInputFile, EspPatch } from '../bethesda/types';
-import { patchEsp, patchStringsMap } from '../bethesda/esp';
-import { patchPexBuffer, collectModPexSources } from '../bethesda/parsers';
+import { Ba2Reader, writeBa2 } from '../formats/ba2';
+import { BsaReader, writeBsa } from '../formats/bsa';
+import type { ArchiveInputFile, EspPatch } from '../formats/types';
+import { patchEsp, patchStringsMap } from '../formats/esp';
+import { patchPexBuffer, collectModPexSources } from '../formats/pex';
 import {
   parseStringsBuffer,
   stringsTypeFromPath,
   writeStringsBuffer,
   type StringsType,
-} from '../bethesda/strings';
+} from '../formats/strings';
 import { CONFIG } from '../config';
 import { log } from '../logger';
 import { ensureDir } from '../utils/file';
