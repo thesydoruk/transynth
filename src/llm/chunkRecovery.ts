@@ -20,10 +20,20 @@ export type RunLlmChunkWithRecoveryOptions<T> = {
   maxAttempts?: number;
   /** When true for an error and chunk.length > 1, bisect and retry each half. */
   shouldSplit?: (err: unknown) => boolean;
+  /**
+   * When set, split parts are handed to the caller instead of awaited inline.
+   * Used by {@link runLlmChunkWorkPool} so a slow split does not hold a pipeline slot.
+   */
+  enqueueSplit?: (parts: readonly (readonly T[])[]) => void;
   onFailure: (failed: readonly T[], message: string) => void | Promise<void>;
   log: ChunkRecoveryLogger;
   operation: string;
   itemIds?: (chunk: readonly T[]) => unknown[];
+};
+
+export type RunLlmChunkWorkPoolOptions<T> = Omit<RunLlmChunkWithRecoveryOptions<T>, 'chunk'> & {
+  initialChunks: readonly (readonly T[])[];
+  concurrency: number;
 };
 
 const chunkBackoffMs = (attempt: number): number =>
@@ -34,9 +44,57 @@ const splitChunkParallel = async <T>(
   parts: readonly (readonly T[])[],
 ): Promise<void> => {
   if (parts.length === 0) return;
+  if (opts.enqueueSplit) {
+    opts.enqueueSplit(parts);
+    return;
+  }
   await mapWithConcurrency(parts, Math.min(parts.length, llmChatPipelineConcurrency()), (part) =>
     runLlmChunkWithRecovery({ ...opts, chunk: part }),
   );
+};
+
+/**
+ * Work pool over LLM chunks — workers pull the next chunk as soon as they are free.
+ * Split/retry parts are re-queued on the same pool instead of blocking the parent worker.
+ */
+export const runLlmChunkWorkPool = async <T>(
+  opts: RunLlmChunkWorkPoolOptions<T>,
+): Promise<void> => {
+  const { initialChunks, concurrency, shouldAbort, ...recoveryOpts } = opts;
+  const queue: (readonly T[])[] = initialChunks.map((chunk) => [...chunk]);
+  let inFlight = 0;
+
+  await new Promise<void>((resolve) => {
+    const maybeDone = (): void => {
+      if (queue.length === 0 && inFlight === 0) resolve();
+    };
+
+    const enqueueSplit = (parts: readonly (readonly T[])[]): void => {
+      for (const part of parts) queue.push([...part]);
+      pump();
+    };
+
+    const pump = (): void => {
+      while (queue.length > 0 && inFlight < concurrency) {
+        if (shouldAbort?.()) break;
+        const chunk = queue.shift()!;
+        inFlight++;
+        void runLlmChunkWithRecovery({
+          ...recoveryOpts,
+          chunk,
+          shouldAbort,
+          enqueueSplit,
+        }).finally(() => {
+          inFlight--;
+          pump();
+          maybeDone();
+        });
+      }
+      maybeDone();
+    };
+
+    pump();
+  });
 };
 
 /** Run one LLM batch with timeout split, bisect-on-error, and exponential backoff. */

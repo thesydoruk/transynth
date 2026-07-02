@@ -108,6 +108,12 @@ export const CONFIG = {
   /** Max concurrent embedding HTTP requests (global semaphore). */
   embedMaxParallel: parseMaxParallel(process.env.EMBED_MAX_PARALLEL, 4),
 
+  /** Texts per RAG embed HTTP request (server may 413 if too large). */
+  ragEmbedBatchSize: parsePositiveInt(process.env.RAG_EMBED_BATCH_SIZE, 8, 64),
+
+  /** Source string rows loaded from DB per translate:auto / web job page (default 100). */
+  llmTranslateDbChunkSize: parsePositiveInt(process.env.LLM_TRANSLATE_DB_CHUNK_SIZE, 100, 10_000),
+
   // Nexus Mods personal API key (Bearer token).
   // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
   // Required for NexusMods GraphQL API v2 queries (mod search, translations).

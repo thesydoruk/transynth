@@ -7,19 +7,14 @@ import type { Tx } from '../db';
 import { CONFIG } from '../config';
 import { translateStringIdsBatch } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
+import { awaitPendingQaRefresh } from './qaHooks';
 
 /**
  * String IDs fetched from the database per pagination step.
  *
- * Each page is handed to {@link translateStringIdsBatch}, which splits it into
- * `CONFIG.batchSize` LLM chunks run in parallel. Size the page to hold at least
- * one chunk per concurrent worker (chat + embed pipeline) so parallelism isn't
- * starved and the per-page barrier is hit far less often.
+ * Default from `LLM_TRANSLATE_DB_CHUNK_SIZE` env (100). Override via `--db-chunk` on the CLI.
  */
-export const LLM_TRANSLATE_DB_CHUNK_SIZE = Math.max(
-  100,
-  CONFIG.batchSize * (CONFIG.llmMaxParallel + CONFIG.embedMaxParallel),
-);
+export const LLM_TRANSLATE_DB_CHUNK_SIZE = CONFIG.llmTranslateDbChunkSize;
 
 export type LlmTranslateRow = {
   stringId: number;
@@ -281,6 +276,8 @@ export const runLlmTranslateJob = async (
         }
       }
     }
+
+    await awaitPendingQaRefresh();
 
     if (job.cancel) {
       job.status = 'cancelled';

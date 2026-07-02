@@ -419,6 +419,7 @@ export const refreshQAIssuesBatch = async (
   stringIds: number[],
   targetLang: string,
   srcLang = CONFIG.defaultSrcLang,
+  opts?: { skipDuplicateCheck?: boolean },
 ): Promise<void> => {
   if (stringIds.length === 0) return;
 
@@ -443,23 +444,25 @@ export const refreshQAIssuesBatch = async (
     [stringIds, targetLang],
   );
 
-  const { rows: duplicateRows } = await db.query<{ string_id: number; alt_text: string }>(
-    `SELECT s1.id AS string_id, t2.text AS alt_text
-     FROM strings s1
-     JOIN translations t1 ON t1.src_string_id = s1.id AND t1.target_lang = $2
-     JOIN strings s2
-       ON s2.text_norm = s1.text_norm AND s2.lang = s1.lang AND s2.id <> s1.id
-      AND s1.text_norm IS NOT NULL AND s1.text_norm <> ''
-     JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
-     WHERE s1.id = ANY($1::int[])
-       AND t2.text <> t1.text`,
-    [stringIds, targetLang],
-  );
   const duplicateAltsByStringId = new Map<number, string[]>();
-  for (const dup of duplicateRows) {
-    const existing = duplicateAltsByStringId.get(dup.string_id) ?? [];
-    if (!existing.includes(dup.alt_text)) existing.push(dup.alt_text);
-    duplicateAltsByStringId.set(dup.string_id, existing);
+  if (!opts?.skipDuplicateCheck) {
+    const { rows: duplicateRows } = await db.query<{ string_id: number; alt_text: string }>(
+      `SELECT s1.id AS string_id, t2.text AS alt_text
+       FROM strings s1
+       JOIN translations t1 ON t1.src_string_id = s1.id AND t1.target_lang = $2
+       JOIN strings s2
+         ON s2.text_norm = s1.text_norm AND s2.lang = s1.lang AND s2.id <> s1.id
+        AND s1.text_norm IS NOT NULL AND s1.text_norm <> ''
+       JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
+       WHERE s1.id = ANY($1::int[])
+         AND t2.text <> t1.text`,
+      [stringIds, targetLang],
+    );
+    for (const dup of duplicateRows) {
+      const existing = duplicateAltsByStringId.get(dup.string_id) ?? [];
+      if (!existing.includes(dup.alt_text)) existing.push(dup.alt_text);
+      duplicateAltsByStringId.set(dup.string_id, existing);
+    }
   }
 
   const qaRulesByGame = new Map<string, QaRuleRow[]>();

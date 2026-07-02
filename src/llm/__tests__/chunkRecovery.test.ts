@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runLlmChunkWithRecovery } from '../chunkRecovery';
+import { runLlmChunkWithRecovery, runLlmChunkWorkPool } from '../chunkRecovery';
 import type { Logger } from '../../logger';
 
 const timeoutErr = (): Error => {
@@ -56,5 +56,32 @@ describe('runLlmChunkWithRecovery', () => {
     });
 
     expect(onFailure).toHaveBeenCalledWith([{ id: 42 }], 'Request timed out.');
+  });
+
+  it('runLlmChunkWorkPool re-queues split parts without blocking other workers', async () => {
+    const order: number[] = [];
+    const runOnce = jest.fn(async (chunk: readonly { id: number }[]) => {
+      if (chunk.length === 1 && chunk[0]!.id === 2) {
+        await new Promise((r) => setTimeout(r, 60));
+      }
+      order.push(chunk[0]!.id);
+      if (chunk.length > 1) throw timeoutErr();
+    });
+
+    await runLlmChunkWorkPool({
+      initialChunks: [
+        [{ id: 1 }, { id: 2 }],
+        [{ id: 3 }, { id: 4 }],
+      ],
+      concurrency: 2,
+      runOnce,
+      maxAttempts: 1,
+      onFailure: () => {},
+      log: silentLog,
+      operation: 'test',
+      itemIds: (c) => c.map((item) => item.id),
+    });
+
+    expect(order.indexOf(3)).toBeLessThan(order.indexOf(2));
   });
 });

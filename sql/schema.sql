@@ -284,6 +284,8 @@ CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
 CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);
 CREATE INDEX IF NOT EXISTS idx_strings_text_norm ON strings USING HASH(text_norm);
+CREATE INDEX IF NOT EXISTS idx_strings_lang_text_norm ON strings(lang, text_norm)
+  WHERE text_norm IS NOT NULL AND text_norm <> '';
 CREATE INDEX IF NOT EXISTS idx_strings_text_norm_nopunct ON strings USING HASH(text_norm_nopunct);
 CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);

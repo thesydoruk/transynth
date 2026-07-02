@@ -134,6 +134,43 @@ const embedTextsForRag = async (texts: string[]): Promise<number[][]> => {
   return vectors.map(normalizeEmbedding);
 };
 
+const isEmbedPayloadTooLarge = (err: unknown): boolean => {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b413\b/.test(msg) || msg.toLowerCase().includes('payload too large');
+};
+
+/** Split embed batches on HTTP 413 until the server accepts the payload. */
+const embedTextsForRagResilient = async (texts: string[]): Promise<number[][]> => {
+  if (texts.length === 0) return [];
+  try {
+    return await embedTextsForRag(texts);
+  } catch (err) {
+    if (!isEmbedPayloadTooLarge(err) || texts.length <= 1) throw err;
+    const mid = Math.ceil(texts.length / 2);
+    logRag.debug('rag_embed split after 413', {
+      from: texts.length,
+      left: mid,
+      right: texts.length - mid,
+    });
+    const left = await embedTextsForRagResilient(texts.slice(0, mid));
+    const right = await embedTextsForRagResilient(texts.slice(mid));
+    return [...left, ...right];
+  }
+};
+
+const finalizePendingEmbedRow = (
+  row: { stringId: number; merged: Map<string, RagCandidate> },
+  cappedMaxExamples: number,
+  out: Map<number, RagReferenceExample[]>,
+): void => {
+  out.set(
+    row.stringId,
+    rankCandidates([...row.merged.values()])
+      .slice(0, cappedMaxExamples)
+      .map(toPublicExample),
+  );
+};
+
 const candidateKey = (source: string, translation: string): string => `${source}\0${translation}`;
 
 const toPublicExample = (row: RagCandidate): RagReferenceExample => {
@@ -151,6 +188,164 @@ const toPublicExample = (row: RagCandidate): RagReferenceExample => {
 
 const RAG_STATUS_FILTER = `t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})`;
 
+type TmMatchRow = {
+  text: string;
+  source_text: string;
+  signature: string | null;
+  path: string | null;
+  edid: string | null;
+};
+
+const addTmCandidates = (
+  merged: Map<string, RagCandidate>,
+  rows: TmMatchRow[],
+  method: RagReferenceExample['match_method'],
+  similarity: number,
+  limit: number,
+): void => {
+  for (const row of rows) {
+    if (merged.size >= limit) return;
+    const key = candidateKey(row.source_text, row.text);
+    if (merged.has(key)) continue;
+    merged.set(key, {
+      key,
+      source: row.source_text,
+      translation: row.text,
+      signature: row.signature,
+      path: row.path,
+      edid: row.edid,
+      match_method: method,
+      similarity,
+    });
+  }
+};
+
+const addExactNormCandidates = (
+  merged: Map<string, RagCandidate>,
+  queryRaw: string,
+  rows: TmMatchRow[],
+  limit: number,
+): void => {
+  for (const row of rows) {
+    if (merged.size >= limit) return;
+    if (row.source_text === queryRaw) {
+      addTmCandidates(merged, [row], 'exact', 1.0, limit);
+    } else {
+      const transplanted = transplantNumbers(
+        row.text,
+        extractNumbers(row.source_text),
+        extractNumbers(queryRaw),
+      );
+      if (transplanted !== null) {
+        addTmCandidates(merged, [{ ...row, text: transplanted }], 'numeric', 0.95, limit);
+      } else {
+        addTmCandidates(merged, [row], 'exact', 0.9, limit);
+      }
+    }
+  }
+};
+
+const groupBulkTmRows = <T extends { query_id: number }>(rows: T[]): Map<number, T[]> => {
+  const byId = new Map<number, T[]>();
+  for (const row of rows) {
+    const list = byId.get(row.query_id);
+    if (list) list.push(row);
+    else byId.set(row.query_id, [row]);
+  }
+  return byId;
+};
+
+/** Two SQL round trips for TM exact + punct_norm (batch prefetch — no per-row fuzzy trigram). */
+const fetchTmCandidatesBulk = async (
+  db: Tx,
+  items: Array<{
+    stringId: number;
+    sourceText: string;
+    textNorm: string;
+    textNormNopunct: string | null;
+  }>,
+  targetLang: string,
+  srcLang: string,
+  limitPerItem: number,
+): Promise<Map<number, Map<string, RagCandidate>>> => {
+  const byId = new Map<number, Map<string, RagCandidate>>();
+  for (const item of items) byId.set(item.stringId, new Map());
+  if (items.length === 0) return byId;
+
+  type BulkTmDbRow = TmMatchRow & { query_id: number; query_raw: string };
+
+  const { rows: exactRows } = await db.query<BulkTmDbRow>(
+    `WITH batch AS (
+       SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[]) AS b(query_id, query_raw, text_norm)
+     )
+     SELECT b.query_id, b.query_raw,
+            t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
+     FROM batch b
+     JOIN strings s ON s.text_norm = b.text_norm AND s.id <> b.query_id AND s.lang = $5
+     JOIN records r ON r.id = s.record_id
+     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $4
+     WHERE ${RAG_STATUS_FILTER}`,
+    [
+      items.map((i) => i.stringId),
+      items.map((i) => i.sourceText),
+      items.map((i) => i.textNorm),
+      targetLang,
+      srcLang,
+    ],
+  );
+
+  for (const [queryId, rows] of groupBulkTmRows(exactRows)) {
+    const item = items.find((i) => i.stringId === queryId);
+    if (!item) continue;
+    addExactNormCandidates(byId.get(queryId)!, item.sourceText, rows, limitPerItem);
+  }
+
+  const punctItems = items.filter((item) => {
+    const merged = byId.get(item.stringId);
+    return (
+      merged &&
+      merged.size < limitPerItem &&
+      item.textNormNopunct != null &&
+      item.textNormNopunct !== ''
+    );
+  });
+
+  if (punctItems.length > 0) {
+    const { rows: punctRows } = await db.query<BulkTmDbRow>(
+      `WITH batch AS (
+         SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[]) AS b(
+           query_id, query_raw, text_norm, text_norm_nopunct
+         )
+       )
+       SELECT b.query_id, b.query_raw,
+              t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
+       FROM batch b
+       JOIN strings s
+         ON s.text_norm_nopunct = b.text_norm_nopunct
+        AND s.text_norm <> b.text_norm
+        AND s.id <> b.query_id
+        AND s.lang = $6
+       JOIN records r ON r.id = s.record_id
+       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $5
+       WHERE ${RAG_STATUS_FILTER}`,
+      [
+        punctItems.map((i) => i.stringId),
+        punctItems.map((i) => i.sourceText),
+        punctItems.map((i) => i.textNorm),
+        punctItems.map((i) => i.textNormNopunct!),
+        targetLang,
+        srcLang,
+      ],
+    );
+
+    for (const [queryId, rows] of groupBulkTmRows(punctRows)) {
+      addTmCandidates(byId.get(queryId)!, rows, 'punct_norm', 0.9, limitPerItem);
+    }
+  }
+
+  return byId;
+};
+
 const fetchTmCandidates = async (
   db: Tx,
   stringId: number,
@@ -160,45 +355,10 @@ const fetchTmCandidates = async (
   targetLang: string,
   limit: number,
 ): Promise<RagCandidate[]> => {
-  const results: RagCandidate[] = [];
-  const seen = new Set<string>();
+  const merged = new Map<string, RagCandidate>();
+  const limitPerQuery = limit;
 
-  const add = (
-    rows: Array<{
-      text: string;
-      source_text: string;
-      signature: string | null;
-      path: string | null;
-      edid: string | null;
-    }>,
-    method: RagReferenceExample['match_method'],
-    similarity: number,
-  ) => {
-    for (const row of rows) {
-      const key = candidateKey(row.source_text, row.text);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      results.push({
-        key,
-        source: row.source_text,
-        translation: row.text,
-        signature: row.signature,
-        path: row.path,
-        edid: row.edid,
-        match_method: method,
-        similarity,
-      });
-    }
-  };
-
-  // Exact text_norm
-  const { rows: normRows } = await db.query<{
-    text: string;
-    source_text: string;
-    signature: string | null;
-    path: string | null;
-    edid: string | null;
-  }>(
+  const { rows: normRows } = await db.query<TmMatchRow>(
     `SELECT DISTINCT ON (t.text)
         t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
      FROM strings s
@@ -207,34 +367,13 @@ const fetchTmCandidates = async (
      WHERE s.text_norm = $1 AND s.id <> $3 AND ${RAG_STATUS_FILTER}
      ORDER BY t.text
      LIMIT $4`,
-    [textNorm, targetLang, stringId, limit],
+    [textNorm, targetLang, stringId, limitPerQuery],
   );
 
-  for (const row of normRows) {
-    if (row.source_text === textRaw) {
-      add([row], 'exact', 1.0);
-    } else {
-      const transplanted = transplantNumbers(
-        row.text,
-        extractNumbers(row.source_text),
-        extractNumbers(textRaw),
-      );
-      if (transplanted !== null) {
-        add([{ ...row, text: transplanted }], 'numeric', 0.95);
-      } else {
-        add([row], 'exact', 0.9);
-      }
-    }
-  }
+  addExactNormCandidates(merged, textRaw, normRows, limitPerQuery);
 
-  if (textNormNopunct && results.length < limit) {
-    const { rows: punctRows } = await db.query<{
-      text: string;
-      source_text: string;
-      signature: string | null;
-      path: string | null;
-      edid: string | null;
-    }>(
+  if (textNormNopunct && merged.size < limitPerQuery) {
+    const { rows: punctRows } = await db.query<TmMatchRow>(
       `SELECT DISTINCT ON (t.text)
           t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
        FROM strings s
@@ -244,20 +383,13 @@ const fetchTmCandidates = async (
          AND ${RAG_STATUS_FILTER}
        ORDER BY t.text
        LIMIT $4`,
-      [textNormNopunct, targetLang, stringId, limit - results.length, textNorm],
+      [textNormNopunct, targetLang, stringId, limitPerQuery - merged.size, textNorm],
     );
-    add(punctRows, 'punct_norm', 0.9);
+    addTmCandidates(merged, punctRows, 'punct_norm', 0.9, limitPerQuery);
   }
 
-  if (results.length < limit && textNorm.length >= 4) {
-    const { rows: fuzzyRows } = await db.query<{
-      text: string;
-      source_text: string;
-      signature: string | null;
-      path: string | null;
-      edid: string | null;
-      sim: number;
-    }>(
+  if (merged.size < limitPerQuery && textNorm.length >= 4) {
+    const { rows: fuzzyRows } = await db.query<TmMatchRow & { sim: number }>(
       `SELECT DISTINCT ON (t.text)
           t.text, s.text_raw AS source_text, r.signature, r.path, r.edid,
           similarity(s.text_norm, $1)::double precision AS sim
@@ -268,10 +400,11 @@ const fetchTmCandidates = async (
          AND ${RAG_STATUS_FILTER}
        ORDER BY t.text, similarity(s.text_norm, $1) DESC
        LIMIT $4`,
-      [textNorm, targetLang, stringId, limit - results.length],
+      [textNorm, targetLang, stringId, limitPerQuery - merged.size],
     );
     for (const row of fuzzyRows) {
-      add(
+      addTmCandidates(
+        merged,
         [
           {
             text: row.text,
@@ -283,11 +416,12 @@ const fetchTmCandidates = async (
         ],
         'fuzzy',
         row.sim,
+        limitPerQuery,
       );
     }
   }
 
-  return results;
+  return [...merged.values()];
 };
 
 const fetchEmbeddingCandidates = async (
@@ -552,8 +686,8 @@ export type FetchReferenceExamplesBatchItem = {
 /**
  * Fetch reference examples for a batch of strings.
  *
- * TM lookups run per item; embedding queries are batched into a single API call
- * to avoid flooding the embed server when BATCH_SIZE is large.
+ * TM: two bulk SQL queries (exact + punct_norm). Embedding: parallel HTTP batches
+ * sized by {@link CONFIG.ragEmbedBatchSize} and {@link CONFIG.embedMaxParallel}.
  */
 export const fetchReferenceExamplesBatch = async (
   db: Tx,
@@ -566,10 +700,11 @@ export const fetchReferenceExamplesBatch = async (
   await requirePgvectorForRag(db);
 
   const cappedMaxExamples = clampRagMaxExamples(maxExamples);
+  const tmLimit = cappedMaxExamples * 2;
+  const started = Date.now();
 
   logRag.debug('fetchReferenceExamplesBatch start', {
     itemCount: items.length,
-    stringIds: items.map((i) => i.stringId),
     maxExamples: cappedMaxExamples,
     minSimilarity,
     srcLang,
@@ -587,75 +722,112 @@ export const fetchReferenceExamplesBatch = async (
 
   const pendingEmbed: PendingEmbed[] = [];
 
-  await Promise.all(
-    items.map(async (item) => {
-      const textNorm = item.textNorm ?? normalizeForHash(item.sourceText);
-      const tmCandidates = await fetchTmCandidates(
-        db,
-        item.stringId,
-        item.sourceText,
-        textNorm,
-        item.textNormNopunct ?? null,
-        targetLang,
-        cappedMaxExamples * 2,
-      );
+  const normalizedItems = items.map((item) => ({
+    stringId: item.stringId,
+    sourceText: item.sourceText,
+    textNorm: item.textNorm ?? normalizeForHash(item.sourceText),
+    textNormNopunct: item.textNormNopunct ?? null,
+    signature: item.signature,
+    path: item.path,
+    context: item.context,
+  }));
 
-      const merged = new Map<string, RagCandidate>();
-      for (const c of tmCandidates) merged.set(c.key, c);
+  const tmStarted = Date.now();
+  const tmById = await fetchTmCandidatesBulk(db, normalizedItems, targetLang, srcLang, tmLimit);
+  const tmMs = Date.now() - tmStarted;
 
-      if (merged.size < cappedMaxExamples) {
-        pendingEmbed.push({
-          stringId: item.stringId,
-          merged,
-          embedInput: buildEmbeddingInput({
-            sourceText: item.sourceText,
-            signature: item.signature,
-            path: item.path,
-            context: item.context,
-          }),
-        });
-        return;
-      }
-
-      out.set(
-        item.stringId,
-        rankCandidates([...merged.values()])
-          .slice(0, cappedMaxExamples)
-          .map(toPublicExample),
-      );
-    }),
-  );
+  for (const item of normalizedItems) {
+    const merged = tmById.get(item.stringId) ?? new Map<string, RagCandidate>();
+    if (merged.size < cappedMaxExamples) {
+      pendingEmbed.push({
+        stringId: item.stringId,
+        merged,
+        embedInput: buildEmbeddingInput({
+          sourceText: item.sourceText,
+          signature: item.signature,
+          path: item.path,
+          context: item.context,
+        }),
+      });
+      continue;
+    }
+    out.set(
+      item.stringId,
+      rankCandidates([...merged.values()])
+        .slice(0, cappedMaxExamples)
+        .map(toPublicExample),
+    );
+  }
 
   if (pendingEmbed.length > 0) {
+    const embedBatchSize = CONFIG.ragEmbedBatchSize;
+    const embedSlices: PendingEmbed[][] = [];
+    for (let offset = 0; offset < pendingEmbed.length; offset += embedBatchSize) {
+      embedSlices.push(pendingEmbed.slice(offset, offset + embedBatchSize));
+    }
+
+    const vectorConcurrency = Math.max(
+      2,
+      Math.min(8, Math.floor((CONFIG.dbPoolMax - 4) / Math.max(1, CONFIG.embedMaxParallel))),
+    );
+
+    const embedStarted = Date.now();
     logRag.debug('batch embedding retrieval', {
-      itemCount: pendingEmbed.length,
-      totalItems: items.length,
+      pendingCount: pendingEmbed.length,
+      embedSlices: embedSlices.length,
+      embedBatchSize,
+      embedMaxParallel: CONFIG.embedMaxParallel,
     });
 
-    const vectors = await embedTextsForRag(pendingEmbed.map((row) => row.embedInput));
-
-    await Promise.all(
-      pendingEmbed.map(async (row, index) => {
-        const embedCandidates = await fetchEmbeddingCandidates(
-          db,
-          vectors[index],
-          srcLang,
-          targetLang,
-          row.stringId,
-          cappedMaxExamples * 2,
-          minSimilarity,
-        );
-        for (const c of embedCandidates) {
-          if (!row.merged.has(c.key)) row.merged.set(c.key, c);
+    const processEmbedSlice = async (slice: PendingEmbed[]): Promise<void> => {
+      try {
+        const vectors = await embedTextsForRagResilient(slice.map((row) => row.embedInput));
+        await mapWithConcurrency(slice, vectorConcurrency, async (row, index) => {
+          const embedCandidates = await fetchEmbeddingCandidates(
+            db,
+            vectors[index]!,
+            srcLang,
+            targetLang,
+            row.stringId,
+            tmLimit,
+            minSimilarity,
+          );
+          for (const c of embedCandidates) {
+            if (!row.merged.has(c.key)) row.merged.set(c.key, c);
+          }
+          finalizePendingEmbedRow(row, cappedMaxExamples, out);
+        });
+      } catch (err) {
+        logRag.warn('rag_embed slice failed; keeping TM-only examples', {
+          err: err instanceof Error ? err.message : String(err),
+          sliceSize: slice.length,
+        });
+        for (const row of slice) {
+          finalizePendingEmbedRow(row, cappedMaxExamples, out);
         }
-        out.set(
-          row.stringId,
-          rankCandidates([...row.merged.values()])
-            .slice(0, cappedMaxExamples)
-            .map(toPublicExample),
-        );
-      }),
-    );
+      }
+    };
+
+    await mapWithConcurrency(embedSlices, CONFIG.embedMaxParallel, processEmbedSlice);
+    const embedMs = Date.now() - embedStarted;
+
+    if (items.length >= 50) {
+      logRag.info('fetchReferenceExamplesBatch timing', {
+        itemCount: items.length,
+        tmOnly: pendingEmbed.length === 0,
+        embedPending: pendingEmbed.length,
+        tmMs,
+        embedMs,
+        totalMs: Date.now() - started,
+      });
+    }
+  } else if (items.length >= 50) {
+    logRag.info('fetchReferenceExamplesBatch timing', {
+      itemCount: items.length,
+      tmOnly: true,
+      tmMs,
+      totalMs: Date.now() - started,
+    });
   }
 
   logRag.debug('fetchReferenceExamplesBatch done', {

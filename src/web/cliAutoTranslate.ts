@@ -9,6 +9,7 @@ import {
 } from './llmTranslateService';
 import { translateStringIdsBatch, type TranslateBatchResult } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
+import { awaitPendingQaRefresh } from './qaHooks';
 
 export type CliTranslateProgressEvent =
   | { type: 'started'; total: number; dbChunkSize: number; force?: boolean }
@@ -141,6 +142,7 @@ export const runCliModTranslate = async (
     }
 
     const summary = { done: globalDone, total, ok: globalOk, errors: globalErrors };
+    await awaitPendingQaRefresh();
     logTranslate.info('cli translate completed', { modId: opts.modId, ...summary });
     onEvent?.({ type: 'done', ...summary });
     return summary;
