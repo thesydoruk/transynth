@@ -80,6 +80,7 @@ import {
   estimateLocalizedImportTotal,
   resolveEnglishLocaleSource,
 } from './modImportLocaleStream';
+import { tryBeginDeferredImportIndexes, restoreDeferredImportIndexes } from './modImportIndexes';
 import { ensureChampollionInstalled } from '../tools/installChampollion';
 import { decompilePexScriptMap, type DecompiledPexScript } from './pexDecompileService';
 
@@ -2002,10 +2003,11 @@ export const runModImport = async (
 
   logImport.info(
     `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records} ` +
-      `(dbBatch=${CONFIG.modImportBatchSize}, ioParallel=${CONFIG.modImportIoParallel})`,
+      `(dbBatch=${CONFIG.modImportBatchSize}, ioParallel=${CONFIG.modImportIoParallel}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
   );
 
   let imported = job.imported_records;
+  let deferredIndexes = false;
   const pruneStaleImportData = job.imported_records === 0;
   const keptImportRecordKeys = new Set<string>();
   const keptImportStringIds = new Set<number>();
@@ -2015,6 +2017,10 @@ export const runModImport = async (
   };
 
   try {
+    if (CONFIG.modImportDeferIndexes) {
+      deferredIndexes = await tryBeginDeferredImportIndexes(db);
+    }
+
     const importBatchSize = CONFIG.modImportBatchSize;
     const progressEvery = CONFIG.modImportProgressEvery;
     const game: GameType = (job.game as GameType) ?? 'fo4';
@@ -2470,6 +2476,15 @@ export const runModImport = async (
     await markFailed(db, job.id, imported);
     throw err;
   } finally {
+    if (deferredIndexes) {
+      try {
+        await restoreDeferredImportIndexes(db);
+      } catch (err) {
+        logImport.error(
+          `[Mod Import #${job.id}] Failed to restore deferred search indexes: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
     clearBa2Cache();
     activeImports.delete(job.id);
     releaseClient?.();
