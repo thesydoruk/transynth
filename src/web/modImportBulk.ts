@@ -175,14 +175,15 @@ export const dedupeBulkTranslationRows = (items: BulkTranslationRow[]): BulkTran
   return [...byId.entries()].map(([srcStringId, text]) => ({ srcStringId, text }));
 };
 
-/** Fast translation upsert for import pipelines (no RAG, revision, or QA). */
-export const bulkUpsertImportTranslations = async (
+/** Fast translation upsert (no revision, QA, or RAG). */
+const bulkUpsertTranslationsCore = async (
   db: Tx,
   items: BulkTranslationRow[],
   targetLang: string,
   provenance: string,
-  batchSize = 1000,
-  status = 'reviewed',
+  status: string,
+  batchSize: number,
+  model: string | null,
 ): Promise<number> => {
   const deduped = dedupeBulkTranslationRows(items);
   let total = 0;
@@ -196,13 +197,37 @@ export const bulkUpsertImportTranslations = async (
     );
     await db.query(
       `INSERT INTO translations(
-         src_string_id, target_lang, text, status, confidence, provenance, user_id, updated_at
+         src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
        )
-       SELECT s, $3, t, $5, 1.0, $4, NULL, NOW()
+       SELECT s, $3, t, $5, 1.0, $4, $6, NULL, NOW()
        FROM UNNEST($1::int[], $2::text[]) AS u(s, t)`,
-      [stringIds, texts, targetLang, provenance, status],
+      [stringIds, texts, targetLang, provenance, status, model],
     );
     total += part.length;
   }
   return total;
 };
+
+/** Fast translation upsert for import pipelines (no RAG, revision, or QA). */
+export const bulkUpsertImportTranslations = async (
+  db: Tx,
+  items: BulkTranslationRow[],
+  targetLang: string,
+  provenance: string,
+  batchSize = 1000,
+  status = 'reviewed',
+): Promise<number> =>
+  bulkUpsertTranslationsCore(db, items, targetLang, provenance, status, batchSize, null);
+
+/**
+ * Fast bulk upsert for LLM auto-translate (no revision, RAG sync, or inline QA).
+ * QA is refreshed asynchronously via scheduleRefreshQAIssuesBatch in qaHooks.ts.
+ */
+export const bulkUpsertAutoTranslations = async (
+  db: Tx,
+  items: BulkTranslationRow[],
+  targetLang: string,
+  model: string,
+  batchSize = 1000,
+): Promise<number> =>
+  bulkUpsertTranslationsCore(db, items, targetLang, 'auto_generated', 'auto', batchSize, model);

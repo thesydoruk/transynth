@@ -115,6 +115,11 @@ export const cacheLookupMany = async (
  * @param model    - LLM model identifier
  * @param translated - The translated text to cache
  */
+export type CacheStoreEntry = {
+  raw: string;
+  translated: string;
+};
+
 export const cacheStore = async (
   db: Tx,
   raw: string,
@@ -123,22 +128,57 @@ export const cacheStore = async (
   model: string,
   translated: string,
 ): Promise<void> => {
-  const norm = normalizeForHash(raw);
-  const normHash = hashNormForCache(norm);
+  await cacheStoreMany(db, [{ raw, translated }], srcLang, tgtLang, model);
+};
+
+/**
+ * Store many LLM translation results in one round trip.
+ *
+ * Deduplicates by normalised source key (last translation wins), matching
+ * {@link cacheLookupMany} behaviour for keys that normalise identically.
+ */
+export const cacheStoreMany = async (
+  db: Tx,
+  entries: CacheStoreEntry[],
+  srcLang: string,
+  tgtLang: string,
+  model: string,
+): Promise<void> => {
+  if (entries.length === 0) return;
+
+  const byNorm = new Map<string, { norm: string; normHash: string; translated: string }>();
+  for (const entry of entries) {
+    const norm = normalizeForHash(entry.raw);
+    byNorm.set(norm, {
+      norm,
+      normHash: hashNormForCache(norm),
+      translated: entry.translated,
+    });
+  }
+
+  const norms = [...byNorm.values()];
   await db.query(
     `INSERT INTO translation_cache (text_norm, text_norm_hash, src_lang, tgt_lang, model, translated)
-     VALUES ($1, $2, $3, $4, $5, $6)
+     SELECT n, h, $2, $3, $4, t
+     FROM UNNEST($1::text[], $5::char(64)[], $6::text[]) AS u(n, h, t)
      ON CONFLICT (text_norm_hash, src_lang, tgt_lang, model) DO UPDATE SET
        text_norm = EXCLUDED.text_norm,
        translated = EXCLUDED.translated,
        created_at = NOW()`,
-    [norm, normHash, srcLang, tgtLang, model, translated],
+    [
+      norms.map((row) => row.norm),
+      srcLang,
+      tgtLang,
+      model,
+      norms.map((row) => row.normHash),
+      norms.map((row) => row.translated),
+    ],
   );
-  logCache.debug('store', {
+  logCache.debug('storeMany', {
     srcLang,
     tgtLang,
     model,
-    textLen: raw.length,
-    translationLen: translated.length,
+    requested: entries.length,
+    stored: norms.length,
   });
 };

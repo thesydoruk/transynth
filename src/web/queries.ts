@@ -6,6 +6,7 @@ import { CONFIG } from '../config';
 import type { GameType } from '../types';
 import { findReferenceExamples, type RagReferenceExample } from '../llm/ragService';
 import { compareProtectedTokens } from '../utils/placeholders';
+import { parseRecordLocation } from '../utils/recordLocation';
 import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from './ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from './modImportBulk';
@@ -68,6 +69,14 @@ export const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]
 export const termWordBoundaryRe = (term: string): RegExp =>
   new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i');
 
+/** Mixed-case glossary entries are proper nouns; do not match lower-case common words in source. */
+export const glossaryTermMatchesSource = (source: string, term: string): boolean => {
+  if (/^[A-Z]/.test(term) && term !== term.toUpperCase()) {
+    return new RegExp(`\\b${escapeRegExp(term)}\\b`).test(source);
+  }
+  return termWordBoundaryRe(term).test(source);
+};
+
 /**
  * Per-run QA check settings loaded from `project_settings` before each
  * `refreshQAIssues` call.  Passed to `buildQAIssues` so the function stays pure.
@@ -93,6 +102,7 @@ const buildQAIssues = (
   translation: string,
   game?: GameType | null,
   settings?: Partial<QACheckSettings>,
+  tokenContext?: { grup?: string | null; field?: string | null },
 ): QAIssueInput[] => {
   const issues: QAIssueInput[] = [];
   const trimmed = translation.trim();
@@ -106,7 +116,7 @@ const buildQAIssues = (
     return issues;
   }
 
-  const tokenCheck = compareProtectedTokens(source, translation, game);
+  const tokenCheck = compareProtectedTokens(source, translation, game, tokenContext);
   if (!tokenCheck.ok) {
     issues.push({
       issueType: 'placeholder_mismatch',
@@ -184,6 +194,195 @@ const buildQAIssues = (
   return issues;
 };
 
+type QaRuleRow = {
+  rule_type: string;
+  value: string;
+  severity: string;
+  description: string | null;
+  rule_sig: string | null;
+  rule_path: string | null;
+};
+
+const qaRuleGameKey = (game: string | null | undefined): string =>
+  game === 'fo76' ? 'fo4' : (game ?? 'fo4');
+
+const loadQaCheckSettings = async (db: Tx): Promise<QACheckSettings> => {
+  const { rows: settingRows } = await db.query<{ key: string; value: unknown }>(
+    `SELECT key, value FROM project_settings WHERE key IN ('qa.end_punct_match', 'qa.min_word_count')`,
+  );
+  const qaSettings: QACheckSettings = { endPunctMatch: true, minWordCount: 1 };
+  for (const s of settingRows) {
+    if (s.key === 'qa.end_punct_match') qaSettings.endPunctMatch = Boolean(s.value);
+    if (s.key === 'qa.min_word_count') qaSettings.minWordCount = Number(s.value);
+  }
+  return qaSettings;
+};
+
+const loadGlossaryTermsForQa = async (
+  db: Tx,
+  srcLang: string,
+  targetLang: string,
+): Promise<Array<{ term: string; translation: string }>> => {
+  const { rows } = await db.query<{ term: string; translation: string }>(
+    `SELECT term, translation FROM glossary
+     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
+    [srcLang, targetLang],
+  );
+  return rows;
+};
+
+const loadQaRulesForGame = async (db: Tx, game: string): Promise<QaRuleRow[]> => {
+  const { rows } = await db.query<QaRuleRow>(
+    `SELECT rule_type, value, severity, description, signature AS rule_sig, path AS rule_path
+     FROM qa_rules
+     WHERE game = $1 AND is_active = TRUE`,
+    [game],
+  );
+  return rows;
+};
+
+const applyConfigurableQaRules = (
+  issues: QAIssueInput[],
+  translation: string,
+  signature: string | null | undefined,
+  path: string | null | undefined,
+  qaRules: QaRuleRow[],
+): void => {
+  for (const rule of qaRules) {
+    if (rule.rule_sig && rule.rule_sig !== signature) continue;
+    if (rule.rule_path && rule.rule_path !== path) continue;
+
+    if (rule.rule_type === 'forbidden_chars') {
+      const found: string[] = [];
+      for (const ch of rule.value) {
+        if (translation.includes(ch)) found.push(ch);
+      }
+      if (found.length > 0) {
+        const display = found.map((c) => {
+          const cp = c.codePointAt(0)!;
+          return cp >= 0x20 && cp < 0x7f
+            ? `"${c}"`
+            : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+        });
+        issues.push({
+          issueType: 'forbidden_chars',
+          severity: rule.severity as 'warning' | 'error',
+          message: rule.description ?? `Forbidden characters found: ${display.join(', ')}`,
+        });
+      }
+    } else if (rule.rule_type === 'max_length') {
+      const maxLen = parseInt(rule.value, 10);
+      if (!Number.isNaN(maxLen) && translation.length > maxLen) {
+        issues.push({
+          issueType: 'max_length',
+          severity: rule.severity as 'warning' | 'error',
+          message:
+            rule.description ??
+            `Translation is ${translation.length} chars, exceeds max ${maxLen}.`,
+        });
+      }
+    }
+  }
+};
+
+const applyGlossaryQaIssues = (
+  issues: QAIssueInput[],
+  source: string,
+  translation: string,
+  glossaryTerms: Array<{ term: string; translation: string }>,
+): void => {
+  const tgtLower = translation.toLowerCase();
+  for (const g of glossaryTerms) {
+    if (
+      glossaryTermMatchesSource(source, g.term) &&
+      !tgtLower.includes(g.translation.toLowerCase())
+    ) {
+      issues.push({
+        issueType: 'glossary_violation',
+        severity: 'warning',
+        message: `Glossary: "${g.term}" should be translated as "${g.translation}".`,
+      });
+    }
+  }
+};
+
+const appendDuplicateInconsistencyIssue = (issues: QAIssueInput[], altTexts: string[]): void => {
+  if (altTexts.length === 0) return;
+  const alts = altTexts.map((text) => `"${text}"`).join(', ');
+  issues.push({
+    issueType: 'duplicate_inconsistency',
+    severity: 'warning',
+    message: `Same source text is translated differently elsewhere: ${alts}`,
+  });
+};
+
+type QaTranslationContextRow = {
+  source: string;
+  is_ignored?: boolean;
+  translation_id?: number | null;
+  translation?: string | null;
+  translation_status?: TranslationStatus | null;
+  signature?: string | null;
+  path?: string | null;
+  game?: string;
+};
+
+const collectQAIssuesForRow = (
+  row: QaTranslationContextRow,
+  qaSettings: QACheckSettings,
+  qaRules: QaRuleRow[],
+  glossaryTerms: Array<{ term: string; translation: string }>,
+  duplicateAlts: string[],
+): QAIssueInput[] => {
+  if (!row.source || row.translation == null || row.is_ignored) return [];
+  if (row.translation_status && !PENDING_REVIEW_STATUSES.has(row.translation_status)) {
+    return [];
+  }
+
+  const issues = buildQAIssues(
+    row.source,
+    row.translation,
+    row.game as GameType | undefined,
+    qaSettings,
+    parseRecordLocation(row.signature, row.path),
+  );
+  applyConfigurableQaRules(issues, row.translation, row.signature, row.path, qaRules);
+  applyGlossaryQaIssues(issues, row.source, row.translation, glossaryTerms);
+  appendDuplicateInconsistencyIssue(issues, duplicateAlts);
+  return issues;
+};
+
+const bulkInsertQAIssues = async (
+  db: Tx,
+  rows: Array<{
+    stringId: number;
+    translationId: number | null;
+    targetLang: string;
+    issueType: string;
+    severity: string;
+    message: string;
+  }>,
+): Promise<void> => {
+  if (rows.length === 0) return;
+  await db.query(
+    `INSERT INTO qa_issues(
+       src_string_id, translation_id, target_lang, issue_type, severity, message, is_active, updated_at
+     )
+     SELECT s, tid, tl, it, sev, msg, TRUE, NOW()
+     FROM UNNEST(
+       $1::int[], $2::int[], $3::text[], $4::text[], $5::text[], $6::text[]
+     ) AS u(s, tid, tl, it, sev, msg)`,
+    [
+      rows.map((r) => r.stringId),
+      rows.map((r) => r.translationId),
+      rows.map((r) => r.targetLang),
+      rows.map((r) => r.issueType),
+      rows.map((r) => r.severity),
+      rows.map((r) => r.message),
+    ],
+  );
+};
+
 const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<void> => {
   await db.query(
     `INSERT INTO translation_revisions(
@@ -208,196 +407,99 @@ const refreshQAIssues = async (
   targetLang: string,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<void> => {
-  // Fetch source text, best translation, and record context (signature + path + game) for rule matching
-  const { rows } = await db.query(
-    `SELECT s.text_raw AS source, s.is_ignored, t.id AS translation_id, t.text AS translation,
-            t.status AS translation_status,
+  await refreshQAIssuesBatch(db, [stringId], targetLang, srcLang);
+};
+
+/**
+ * Recompute QA issues for many strings in one pass — shared settings/glossary loads,
+ * batched delete/insert. Used by the LLM auto-translate pipeline (async).
+ */
+export const refreshQAIssuesBatch = async (
+  db: Tx,
+  stringIds: number[],
+  targetLang: string,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<void> => {
+  if (stringIds.length === 0) return;
+
+  const qaSettings = await loadQaCheckSettings(db);
+  const glossaryTerms = await loadGlossaryTermsForQa(db, srcLang, targetLang);
+
+  const { rows } = await db.query<QaTranslationContextRow & { string_id: number }>(
+    `SELECT s.id AS string_id,
+            s.text_raw AS source, s.is_ignored,
+            t.id AS translation_id, t.text AS translation, t.status AS translation_status,
             r.signature, r.path, m.game
      FROM strings s
      JOIN records r ON r.id = s.record_id
      JOIN mods m ON m.id = r.mod_id
-     LEFT JOIN translations t
-       ON t.src_string_id = s.id AND t.target_lang = $2
-       AND t.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s.id AND target_lang = $2
-         ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
-         LIMIT 1
-       )
-     WHERE s.id = $1`,
-    [stringId, targetLang],
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     WHERE s.id = ANY($1::int[])`,
+    [stringIds, targetLang],
   );
 
-  const row = rows[0] as
-    | {
-        source?: string;
-        is_ignored?: boolean;
-        translation_id?: number | null;
-        translation?: string | null;
-        translation_status?: TranslationStatus | null;
-        signature?: string | null;
-        path?: string | null;
-        game?: string;
-      }
-    | undefined;
-
-  await db.query(`DELETE FROM qa_issues WHERE src_string_id = $1 AND target_lang = $2`, [
-    stringId,
-    targetLang,
-  ]);
-
-  if (!row?.source || row.translation == null) {
-    return;
-  }
-
-  if (row.is_ignored) {
-    return;
-  }
-
-  if (row.translation_status && !PENDING_REVIEW_STATUSES.has(row.translation_status)) {
-    return;
-  }
-
-  // Load QA-relevant project settings in parallel with (or just before) rule fetch.
-  const { rows: settingRows } = await db.query<{ key: string; value: unknown }>(
-    `SELECT key, value FROM project_settings WHERE key IN ('qa.end_punct_match', 'qa.min_word_count')`,
-  );
-  const qaSettings: QACheckSettings = { endPunctMatch: true, minWordCount: 1 };
-  for (const s of settingRows) {
-    if (s.key === 'qa.end_punct_match') qaSettings.endPunctMatch = Boolean(s.value);
-    if (s.key === 'qa.min_word_count') qaSettings.minWordCount = Number(s.value);
-  }
-
-  const issues = buildQAIssues(
-    row.source,
-    row.translation,
-    row.game as GameType | undefined,
-    qaSettings,
+  await db.query(
+    `DELETE FROM qa_issues WHERE src_string_id = ANY($1::int[]) AND target_lang = $2`,
+    [stringIds, targetLang],
   );
 
-  // ── Configurable QA rules (forbidden_chars / max_length per GRUP·field) ───
-  // FO76 shares the same record format as FO4, so QA rules configured for
-  // 'fo4' also apply to 'fo76' strings.
-  const ruleGame = row.game === 'fo76' ? 'fo4' : (row.game ?? 'fo4');
-  const { rows: qaRules } = await db.query(
-    `SELECT rule_type, value, severity, description, signature AS rule_sig, path AS rule_path
-     FROM qa_rules
-     WHERE game = $1 AND is_active = TRUE`,
-    [ruleGame],
+  const { rows: duplicateRows } = await db.query<{ string_id: number; alt_text: string }>(
+    `SELECT s1.id AS string_id, t2.text AS alt_text
+     FROM strings s1
+     JOIN translations t1 ON t1.src_string_id = s1.id AND t1.target_lang = $2
+     JOIN strings s2
+       ON s2.text_norm = s1.text_norm AND s2.lang = s1.lang AND s2.id <> s1.id
+      AND s1.text_norm IS NOT NULL AND s1.text_norm <> ''
+     JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
+     WHERE s1.id = ANY($1::int[])
+       AND t2.text <> t1.text`,
+    [stringIds, targetLang],
   );
+  const duplicateAltsByStringId = new Map<number, string[]>();
+  for (const dup of duplicateRows) {
+    const existing = duplicateAltsByStringId.get(dup.string_id) ?? [];
+    if (!existing.includes(dup.alt_text)) existing.push(dup.alt_text);
+    duplicateAltsByStringId.set(dup.string_id, existing);
+  }
 
-  for (const rule of qaRules as Array<{
-    rule_type: string;
-    value: string;
+  const qaRulesByGame = new Map<string, QaRuleRow[]>();
+  const issueRows: Array<{
+    stringId: number;
+    translationId: number | null;
+    targetLang: string;
+    issueType: string;
     severity: string;
-    description: string | null;
-    rule_sig: string | null;
-    rule_path: string | null;
-  }>) {
-    // Skip rule if its signature filter doesn't match this record
-    if (rule.rule_sig && rule.rule_sig !== row.signature) continue;
-    // Skip rule if its path filter doesn't match this record
-    if (rule.rule_path && rule.rule_path !== row.path) continue;
+    message: string;
+  }> = [];
 
-    if (rule.rule_type === 'forbidden_chars') {
-      // Check if translation contains any of the forbidden characters listed in rule.value
-      const found: string[] = [];
-      for (const ch of rule.value) {
-        if (row.translation.includes(ch)) found.push(ch);
-      }
-      if (found.length > 0) {
-        const display = found.map((c) => {
-          const cp = c.codePointAt(0)!;
-          // Show printable chars as-is, non-printable as U+XXXX
-          return cp >= 0x20 && cp < 0x7f
-            ? `"${c}"`
-            : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
-        });
-        issues.push({
-          issueType: 'forbidden_chars',
-          severity: rule.severity as 'warning' | 'error',
-          message: rule.description ?? `Forbidden characters found: ${display.join(', ')}`,
-        });
-      }
-    } else if (rule.rule_type === 'max_length') {
-      // Check if translation exceeds the maximum character length
-      const maxLen = parseInt(rule.value, 10);
-      if (!Number.isNaN(maxLen) && row.translation.length > maxLen) {
-        issues.push({
-          issueType: 'max_length',
-          severity: rule.severity as 'warning' | 'error',
-          message:
-            rule.description ??
-            `Translation is ${row.translation.length} chars, exceeds max ${maxLen}.`,
-        });
-      }
+  for (const row of rows) {
+    const gameKey = qaRuleGameKey(row.game);
+    let qaRules = qaRulesByGame.get(gameKey);
+    if (!qaRules) {
+      qaRules = await loadQaRulesForGame(db, gameKey);
+      qaRulesByGame.set(gameKey, qaRules);
     }
-  }
 
-  // ── Glossary violation check ────────────────────────────────────────────
-  // Source matching uses \b word boundaries so that e.g. "iron" won't match
-  // inside "environment". Target matching uses a plain case-insensitive
-  // substring check because Cyrillic word forms may be inflected.
-  const { rows: glossaryTerms } = await db.query(
-    `SELECT term, translation FROM glossary
-     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
-    [srcLang, targetLang],
-  );
-  const tgtLower = row.translation.toLowerCase();
-  for (const g of glossaryTerms as Array<{ term: string; translation: string }>) {
-    if (
-      termWordBoundaryRe(g.term).test(row.source) &&
-      !tgtLower.includes(g.translation.toLowerCase())
-    ) {
-      issues.push({
-        issueType: 'glossary_violation',
-        severity: 'warning',
-        message: `Glossary: "${g.term}" should be translated as "${g.translation}".`,
+    const issues = collectQAIssuesForRow(
+      row,
+      qaSettings,
+      qaRules,
+      glossaryTerms,
+      (duplicateAltsByStringId.get(row.string_id) ?? []).slice(0, 5),
+    );
+    for (const issue of issues) {
+      issueRows.push({
+        stringId: row.string_id,
+        translationId: row.translation_id ?? null,
+        targetLang,
+        issueType: issue.issueType,
+        severity: issue.severity,
+        message: issue.message,
       });
     }
   }
 
-  // Duplicate inconsistency: same source text_norm translated differently elsewhere
-  const { rows: inconsistent } = await db.query(
-    `SELECT DISTINCT t2.text
-     FROM strings s1
-     JOIN strings s2 ON s2.text_norm = s1.text_norm AND s2.lang = s1.lang AND s2.id <> s1.id
-     JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
-       AND t2.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s2.id AND target_lang = $2
-         ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
-         LIMIT 1
-       )
-     WHERE s1.id = $1 AND s1.text_norm IS NOT NULL AND s1.text_norm <> ''
-       AND t2.text <> $3
-     LIMIT 5`,
-    [stringId, targetLang, row.translation],
-  );
-  if (inconsistent.length > 0) {
-    const alts = (inconsistent as Array<{ text: string }>).map((r) => `"${r.text}"`).join(', ');
-    issues.push({
-      issueType: 'duplicate_inconsistency',
-      severity: 'warning',
-      message: `Same source text is translated differently elsewhere: ${alts}`,
-    });
-  }
-
-  for (const issue of issues) {
-    await db.query(
-      `INSERT INTO qa_issues(
-         src_string_id, translation_id, target_lang, issue_type, severity, message, is_active, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())`,
-      [
-        stringId,
-        row.translation_id ?? null,
-        targetLang,
-        issue.issueType,
-        issue.severity,
-        issue.message,
-      ],
-    );
-  }
+  await bulkInsertQAIssues(db, issueRows);
 };
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
@@ -2811,7 +2913,6 @@ export const enforceGlossary = async (
 
   /* ── 4. Build word-boundary checks and scan every string ───────────── */
   const checks = (glossaryTerms as Array<{ term: string; translation: string }>).map((g) => ({
-    srcRe: termWordBoundaryRe(g.term),
     tgtNeedle: g.translation.toLowerCase(),
     term: g.term,
     translation: g.translation,
@@ -2828,7 +2929,7 @@ export const enforceGlossary = async (
   }>) {
     const tgtLower = row.translation.toLowerCase();
     for (const c of checks) {
-      if (c.srcRe.test(row.source) && !tgtLower.includes(c.tgtNeedle)) {
+      if (glossaryTermMatchesSource(row.source, c.term) && !tgtLower.includes(c.tgtNeedle)) {
         insertValues.push([
           row.string_id,
           row.translation_id,

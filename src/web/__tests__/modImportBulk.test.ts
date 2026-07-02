@@ -22,3 +22,10 @@ describe('dedupeBulkTranslationRows', () => {
     ]);
   });
 });
+
+describe('bulkUpsertAutoTranslations', () => {
+  it('is exported alongside import bulk helper', async () => {
+    const { bulkUpsertAutoTranslations } = await import('../modImportBulk');
+    expect(typeof bulkUpsertAutoTranslations).toBe('function');
+  });
+});

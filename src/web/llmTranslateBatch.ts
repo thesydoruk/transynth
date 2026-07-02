@@ -13,13 +13,10 @@ import { runLlmChunkWithRecovery } from '../llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../llm/requestPool';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
-import { cacheLookupMany, cacheStore } from './cacheService';
-import {
-  upsertTranslation,
-  termWordBoundaryRe,
-  filterStringIdsForLlmTranslate,
-  markStringsAsSkip,
-} from './queries';
+import { cacheLookupMany, cacheStoreMany, type CacheStoreEntry } from './cacheService';
+import { bulkUpsertAutoTranslations } from './modImportBulk';
+import { termWordBoundaryRe, filterStringIdsForLlmTranslate, markStringsAsSkip } from './queries';
+import { scheduleRefreshQAIssuesBatch } from './qaHooks';
 import { logTranslate } from '../logging/loggers';
 import { mapWithConcurrency } from '../utils/concurrency';
 import {
@@ -74,6 +71,7 @@ type PreparedLlmItem = {
   textNorm: string | null;
   textNormNopunct: string | null;
   grup: string | null;
+  field: string | null;
   recordPath: string | null;
   placeholderMap: Record<string, string>;
   functionKeywordMap: Record<string, string>;
@@ -163,8 +161,34 @@ export const translateStringIdsBatch = async (
 
   // RAG (embed pool) and chat (llmChatPool) are interleaved per chunk inside each worker.
   const chatConcurrency = llmChatPipelineConcurrency();
-  // Bound post-chat DB writes per chunk so a single batch can't monopolise the pool.
-  const dbWriteConcurrency = Math.max(2, Math.min(8, CONFIG.dbPoolMax));
+
+  /** Bulk persist auto translations + cache, then refresh QA in the background. */
+  const persistAutoTranslationRows = async (
+    rows: Array<{ stringId: number; text: string; sourceText: string }>,
+  ): Promise<void> => {
+    if (rows.length === 0) return;
+    await bulkUpsertAutoTranslations(
+      db,
+      rows.map((r) => ({ srcStringId: r.stringId, text: r.text })),
+      targetLang,
+      model,
+    );
+    const cacheEntries: CacheStoreEntry[] = rows.map((r) => ({
+      raw: r.sourceText,
+      translated: r.text,
+    }));
+    try {
+      await cacheStoreMany(db, cacheEntries, srcLang, targetLang, model);
+    } catch (err) {
+      logTranslate.warn('batch cache store failed', { err, count: rows.length });
+    }
+    scheduleRefreshQAIssuesBatch(
+      db,
+      rows.map((r) => r.stringId),
+      targetLang,
+      srcLang,
+    );
+  };
 
   // Batch the cache warm-up: one query instead of one round trip per string.
   const cacheCandidates = eligibleIds
@@ -182,7 +206,7 @@ export const translateStringIdsBatch = async (
   const runtimeSkipIds: number[] = [];
 
   /** Strings resolved without the LLM (untranslatable or cache hit) — persisted in bulk. */
-  const immediateResults: Array<{ stringId: number; text: string }> = [];
+  const immediateResults: Array<{ stringId: number; text: string; sourceText: string }> = [];
 
   type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
@@ -218,19 +242,20 @@ export const translateStringIdsBatch = async (
   /** Phase 2 — translate one chunk (single LLM chat) and persist the results. */
   const persistChunkResults = async (
     chunk: PreparedLlmItem[],
-    ragByStringId: RagByStringId,
+    _ragByStringId: RagByStringId,
     translations: Awaited<ReturnType<typeof translateStrings>>,
   ): Promise<void> => {
     const translationById = new Map(translations.map((row) => [row.id, row.translation]));
+    const okRows: Array<{ stringId: number; text: string; sourceText: string }> = [];
 
-    await mapWithConcurrency(chunk, dbWriteConcurrency, async (entry) => {
+    for (const entry of chunk) {
       const maskedTranslation = translationById.get(entry.stringId);
       if (maskedTranslation === undefined) {
         emitResult({
           stringId: entry.stringId,
           error: `LLM response missing translation for id=${entry.stringId}`,
         });
-        return;
+        continue;
       }
 
       const placeholderCheck = validateTranslationPlaceholders(
@@ -239,23 +264,29 @@ export const translateStringIdsBatch = async (
         entry.placeholderMap,
         entry.functionKeywordMap,
         (entry.game ?? modGame) as GameType | undefined,
+        { grup: entry.grup, field: entry.field },
       );
       if (!placeholderCheck.ok) {
         emitResult({
           stringId: entry.stringId,
           error: placeholderCheck.message,
         });
-        return;
+        continue;
       }
 
       const translated = unmask(
         unmask(maskedTranslation, entry.functionKeywordMap),
         entry.placeholderMap,
       );
-      await cacheStore(db, entry.sourceText, srcLang, targetLang, model, translated);
-      await upsertTranslation(db, entry.stringId, translated, 'auto', targetLang);
-      emitResult({ stringId: entry.stringId, text: translated });
-    });
+      okRows.push({ stringId: entry.stringId, text: translated, sourceText: entry.sourceText });
+    }
+
+    if (okRows.length > 0) {
+      await persistAutoTranslationRows(okRows);
+      for (const row of okRows) {
+        emitResult({ stringId: row.stringId, text: row.text });
+      }
+    }
   };
 
   const translateChunkOnce = async (
@@ -329,18 +360,22 @@ export const translateStringIdsBatch = async (
     const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
       placeholderMasked,
       game as GameType | undefined,
+      { grup, field },
     );
     const maskedSourceText = protectedMasked;
 
     const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
     if (!translatableContent) {
-      immediateResults.push({ stringId, text: sourceText });
+      immediateResults.push({ stringId, text: sourceText, sourceText });
       continue;
     }
 
     const cached = cacheByRaw.get(sourceText);
     if (cached !== undefined) {
-      const cacheCheck = compareProtectedTokens(sourceText, cached, game as GameType | undefined);
+      const cacheCheck = compareProtectedTokens(sourceText, cached, game as GameType | undefined, {
+        grup,
+        field,
+      });
       if (!cacheCheck.ok) {
         logTranslate.warn('cache hit rejected — placeholder mismatch', {
           stringId,
@@ -348,7 +383,7 @@ export const translateStringIdsBatch = async (
         });
       } else {
         logTranslate.debug('cache hit', { stringId, srcLang, targetLang, model });
-        immediateResults.push({ stringId, text: cached });
+        immediateResults.push({ stringId, text: cached, sourceText });
         continue;
       }
     }
@@ -359,7 +394,8 @@ export const translateStringIdsBatch = async (
       sourceText,
       textNorm: row.text_norm,
       textNormNopunct: row.text_norm_nopunct,
-      grup: parseRecordLocation(row.signature, row.path).grup,
+      grup,
+      field,
       recordPath: row.path,
       placeholderMap,
       functionKeywordMap,
@@ -395,11 +431,9 @@ export const translateStringIdsBatch = async (
     singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
   });
 
-  // Persist cache hits / untranslatable strings concurrently before/while the LLM runs.
+  // Persist cache hits / untranslatable strings before/while the LLM runs.
   if (immediateResults.length > 0) {
-    await mapWithConcurrency(immediateResults, dbWriteConcurrency, async (r) => {
-      await upsertTranslation(db, r.stringId, r.text, 'auto', targetLang);
-    });
+    await persistAutoTranslationRows(immediateResults);
     for (const r of immediateResults) emitResult(r);
   }
 
