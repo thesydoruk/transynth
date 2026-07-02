@@ -9,6 +9,7 @@ import { log } from '../logger';
 import { chatWithFallback } from './index';
 import {
   parseLlmJson,
+  tryParseLlmJson,
   isJsonUnterminatedAtEnd,
   trySalvageTruncatedTranslateJson,
 } from './jsonParse';
@@ -126,28 +127,25 @@ export const parseLlmTranslateResponse = (
   expectedIds: number[],
   completionMeta?: ChatCompletionMeta,
 ): LlmTranslateResult[] => {
-  let parsed: unknown;
-  try {
-    parsed = parseLlmJson(raw, {
-      operation: 'translate',
-      itemIds: expectedIds,
-      itemCount: expectedIds.length,
-      finishReason: completionMeta?.finishReason,
-      completionTokens: completionMeta?.completionTokens,
-    });
-  } catch (err) {
-    if (expectedIds.length === 1) {
-      const salvaged = trySalvageTruncatedTranslateJson(raw, expectedIds[0]);
-      if (salvaged) {
-        parsed = salvaged;
-      } else if (isJsonUnterminatedAtEnd(err, raw.length)) {
+  let parsed: unknown = tryParseLlmJson(raw);
+  if (parsed === undefined && expectedIds.length === 1) {
+    parsed = trySalvageTruncatedTranslateJson(raw, expectedIds[0]);
+  }
+  if (parsed === undefined) {
+    try {
+      parsed = parseLlmJson(raw, {
+        operation: 'translate',
+        itemIds: expectedIds,
+        itemCount: expectedIds.length,
+        finishReason: completionMeta?.finishReason,
+        completionTokens: completionMeta?.completionTokens,
+      });
+    } catch (err) {
+      if (expectedIds.length === 1 && isJsonUnterminatedAtEnd(err, raw.length)) {
         throw new LlmResponseTruncatedError(
           `LLM translate JSON truncated (${raw.length} chars, id=${expectedIds[0]})`,
         );
-      } else {
-        throw err;
       }
-    } else {
       throw err;
     }
   }
@@ -203,28 +201,6 @@ export class LlmResponseTruncatedError extends Error {
 export const isLlmResponseTruncatedError = (err: unknown): err is LlmResponseTruncatedError =>
   err instanceof LlmResponseTruncatedError;
 
-/** JSON Schema maxLength for one translation field, derived from masked source text. */
-export const estimateMaxTranslationChars = (source: string): number => {
-  const len = source.length;
-  const base = Math.max(32, Math.ceil(len * 1.5) + 24);
-  if (len <= 500) return base;
-  // Long BOOK/terminal rows: UA prose + strict JSON schema need extra headroom (vLLM may double-encode).
-  return Math.max(base, Math.ceil(len * 2.25) + 256);
-};
-
-/** Completion token budget from source material — prevents runaway generation on vocalizations. */
-export const estimateTranslateMaxTokens = (items: readonly { source: string }[]): number => {
-  if (items.length === 0) return CONFIG.llmMaxTokens;
-
-  const maxTranslationLength = Math.max(
-    ...items.map((item) => estimateMaxTranslationChars(item.source)),
-  );
-  const byTranslation = Math.ceil(maxTranslationLength / 2.5) + 256;
-  const bySchema = Math.ceil(maxTranslationLength / 3) + items.length * 48 + 128;
-
-  return Math.min(CONFIG.llmMaxTokens, Math.max(512, byTranslation, bySchema));
-};
-
 export const translateStrings = async (
   opts: LlmTranslateOptions,
 ): Promise<LlmTranslateResult[]> => {
@@ -234,25 +210,14 @@ export const translateStrings = async (
   const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game);
   const payload = buildTranslateUserPayload(opts);
   const maxAttempts = CONFIG.llmMaxAttempts;
-  const maxTranslationLength = Math.max(
-    ...opts.items.map((item) => estimateMaxTranslationChars(item.source)),
-  );
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const attemptLengthScale = 1 + attempt * 0.2;
-    const schemaMaxLength = Math.ceil(maxTranslationLength * attemptLengthScale);
-    const maxTokens = Math.min(
-      CONFIG.llmMaxTokens,
-      Math.ceil(estimateTranslateMaxTokens(opts.items) * attemptLengthScale),
-    );
-
     try {
       const { content: text, meta } = await chatWithFallback({
         model: opts.model,
         temperature: 0,
-        maxTokens,
-        responseFormat: buildTranslateResponseFormat(expectedIds.length, schemaMaxLength),
+        responseFormat: buildTranslateResponseFormat(expectedIds.length),
         signal: opts.signal,
         logMeta: {
           operation: 'translate',
@@ -260,8 +225,6 @@ export const translateStrings = async (
             itemIds: expectedIds,
             itemCount: expectedIds.length,
             attempt: attempt + 1,
-            maxTokens,
-            maxTranslationLength: schemaMaxLength,
             srcLang: opts.srcLang,
             targetLang: opts.targetLang,
             game: opts.game ?? null,
@@ -288,7 +251,7 @@ export const translateStrings = async (
 
       if (meta.finishReason === 'length') {
         throw new LlmResponseTruncatedError(
-          `LLM response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${maxTokens})`,
+          `LLM response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${CONFIG.llmMaxTokens})`,
         );
       }
 

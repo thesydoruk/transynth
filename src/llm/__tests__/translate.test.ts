@@ -1,8 +1,6 @@
 import {
   buildTranslateSystemPrompt,
   buildTranslateUserPayload,
-  estimateMaxTranslationChars,
-  estimateTranslateMaxTokens,
   isUkrainianTargetLang,
   parseLlmTranslateResponse,
 } from '../translate';
@@ -196,30 +194,20 @@ describe('parseLlmTranslateResponse', () => {
   });
 });
 
-describe('translate completion budgets', () => {
-  const scream =
-    'AAaaaaaaahhhhhghhhhhhghhghhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh!';
-
-  it('caps max translation chars near source length', () => {
-    expect(estimateMaxTranslationChars(scream)).toBeLessThan(250);
-    expect(estimateMaxTranslationChars('Hello')).toBe(32);
-  });
-
-  it('allows extra schema headroom for long BOOK rows', () => {
-    const longSource = 'x'.repeat(5800);
-    expect(estimateMaxTranslationChars(longSource)).toBeGreaterThan(10_000);
-  });
-
-  it('scales completion tokens with long source rows', () => {
-    const longSource = 'x'.repeat(5800);
-    expect(estimateTranslateMaxTokens([{ source: longSource }])).toBeGreaterThan(4000);
-  });
-
-  it('salvages truncated translate JSON via parseLlmTranslateResponse', () => {
+describe('parseLlmTranslateResponse salvage', () => {
+  it('salvages truncated translate JSON without logging-only failure', () => {
     const inner = '{"items":[{"id":99,"translation":"Частина тексту';
     const raw = JSON.stringify(inner);
     expect(parseLlmTranslateResponse(raw, [99])).toEqual([
       { id: 99, translation: 'Частина тексту' },
+    ]);
+  });
+
+  it('parses vLLM double-encoded JSON with a missing outer closing quote', () => {
+    const inner = JSON.stringify({ items: [{ id: 2177256, translation: 'Повний текст' }] });
+    const raw = JSON.stringify(inner).slice(0, -1);
+    expect(parseLlmTranslateResponse(raw, [2177256])).toEqual([
+      { id: 2177256, translation: 'Повний текст' },
     ]);
   });
 });

@@ -109,6 +109,12 @@ export const trySalvageTruncatedTranslateJson = (
   return undefined;
 };
 
+const tryCloseOuterStringWrapper = (text: string): string[] => {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('"') || trimmed.endsWith('"')) return [];
+  return [`${trimmed}"`];
+};
+
 /** Recursively unwrap JSON returned as a string literal (common with some vLLM models). */
 export const peelStringWrappers = (text: string, maxDepth = 4): string => {
   let current = text.trim();
@@ -183,6 +189,7 @@ const uniqueCandidates = (raw: string): string[] => {
   const extracted = (text: string) => extractJsonObject(stripMarkdownFence(text));
 
   for (const candidate of [
+    ...tryCloseOuterStringWrapper(trimmed),
     ...(looksLikeJsonText(peeled) ? [peeled] : []),
     ...(looksLikeJsonText(trimmed) ? [trimmed] : []),
     extracted(peeled),

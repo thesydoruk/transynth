@@ -1,5 +1,6 @@
 import {
   parseLlmJson,
+  tryParseLlmJson,
   peelStringWrappers,
   stripMarkdownFence,
   extractJsonObject,
@@ -85,5 +86,11 @@ describe('jsonParse', () => {
     const wrapped = JSON.stringify(inner);
     const salvaged = trySalvageTruncatedTranslateJson(wrapped, 2177256);
     expect(salvaged?.items[0]?.translation).toBe('Того дня в Цитаделі');
+  });
+
+  it('parses vLLM output when the outer string wrapper is missing its closing quote', () => {
+    const inner = JSON.stringify({ items: [{ id: 2177256, translation: 'Готово' }] });
+    const raw = JSON.stringify(inner).slice(0, -1);
+    expect(tryParseLlmJson(raw)).toEqual({ items: [{ id: 2177256, translation: 'Готово' }] });
   });
 });
