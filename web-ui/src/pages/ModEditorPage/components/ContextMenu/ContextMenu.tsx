@@ -21,6 +21,7 @@ export interface ContextMenuProps {
   onTextTransform: (row: StringRow, transform: (text: string) => string) => void;
   onBulkCopySource: (row: StringRow) => void;
   onBatchTranslate: () => void;
+  onSetSkip: (row: StringRow, skip: boolean) => void;
 }
 
 /**
@@ -36,12 +37,14 @@ export const ContextMenu = ({
   onTextTransform,
   onBulkCopySource,
   onBatchTranslate,
+  onSetSkip,
 }: ContextMenuProps) => {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const row = anchor.row;
   const hasTrans = !!row.translation;
+  const isSkipped = row.status === 'skip' || row.is_ignored === true;
   const bulkCount = selectedCount;
 
   useEffect(() => {
@@ -85,6 +88,16 @@ export const ContextMenu = ({
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
             <span className={styles.ctxLabel}>{t('ctx.bulkCopySource', { count: bulkCount })}</span>
           </button>
+          <div className={styles.ctxSep} />
+          <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
+            <span className={styles.ctxIcon}>⊘</span>
+            <span className={styles.ctxLabel}>{t('ctx.bulkMarkSkip', { count: bulkCount })}</span>
+          </button>
+          <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>
+            <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>↩</span>
+            <span className={styles.ctxLabel}>{t('ctx.bulkUnmarkSkip', { count: bulkCount })}</span>
+          </button>
+          <div className={styles.ctxSep} />
           <button
             className={styles.ctxItem}
             onClick={() => onTextTransform(row, (tx) => tx.toUpperCase())}
@@ -117,6 +130,18 @@ export const ContextMenu = ({
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
             <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
           </button>
+          <div className={styles.ctxSep} />
+          {isSkipped ? (
+            <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>
+              <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>↩</span>
+              <span className={styles.ctxLabel}>{t('ctx.unmarkSkip')}</span>
+            </button>
+          ) : (
+            <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
+              <span className={styles.ctxIcon}>⊘</span>
+              <span className={styles.ctxLabel}>{t('ctx.markSkip')}</span>
+            </button>
+          )}
 
           {hasTrans && (
             <>

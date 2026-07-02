@@ -34,6 +34,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Railroad', translation: 'Підземка' },
   { term: 'Minutemen', translation: 'Мінітмени' },
   { term: 'Gunners', translation: 'Стрільці' },
+  { term: 'Gunner', translation: 'стрілець' },
   { term: 'Raiders', translation: 'Рейдери' },
   { term: 'Raider', translation: 'Рейдер' },
   { term: 'Children of Atom', translation: 'Діти Атома' },
@@ -209,4 +210,17 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Intelligence', translation: 'Інтелект' },
   { term: 'Agility', translation: 'Спритність' },
   { term: 'Luck', translation: 'Удача' },
+
+  // ── Dialogue menu options (DIAL/MESG) ───────────────────────────────────────
+  { term: 'Sarcastic', translation: 'Сарказм' },
+  { term: 'Barter', translation: 'Торгувати' },
+  { term: 'Not Interested', translation: 'Мені це не цікаво' },
+  { term: 'Not interested', translation: 'Мені це не цікаво' },
+  { term: 'Dismiss', translation: 'Відпустити' },
+  { term: 'Threaten', translation: 'Налякати' },
+  { term: 'Unsure', translation: 'Невпевнено' },
+  { term: 'Never mind', translation: 'Неважливо' },
+  { term: 'Never Mind', translation: 'Неважливо' },
+  { term: 'Maybe', translation: 'Може бути' },
+  { term: 'Trade', translation: 'Обмін' },
 ];

@@ -612,6 +612,100 @@ export const ModEditorPage = () => {
     [qc, modId],
   );
 
+  /** Patch skip flag on loaded grid rows after mark/unmark. */
+  const patchSkipInCache = useCallback(
+    (matchRow: (row: StringRow) => boolean, skip: boolean) => {
+      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            rows: page.rows.map((r) =>
+              matchRow(r)
+                ? skip
+                  ? {
+                      ...r,
+                      is_ignored: true,
+                      status: 'skip' as const,
+                      translation: null,
+                      translation_id: null,
+                      qa_issue_count: 0,
+                    }
+                  : {
+                      ...r,
+                      is_ignored: false,
+                      status: null,
+                    }
+                : r,
+            ),
+          })),
+        };
+      });
+    },
+    [qc, modId],
+  );
+
+  const MARK_SKIP_CHUNK = 100;
+
+  /** Context-menu skip toggle: one row or whole selection (including select-all-matching). */
+  const ctxSetSkip = useCallback(
+    async (row: StringRow, skip: boolean) => {
+      const applySkipToActiveRow = (stringId: number) => {
+        const activeId = activeRowRef.current?.string_id;
+        if (activeId !== stringId) return;
+        setActiveRow((prev) =>
+          prev
+            ? skip
+              ? {
+                  ...prev,
+                  is_ignored: true,
+                  status: 'skip',
+                  translation: null,
+                  translation_id: null,
+                  qa_issue_count: 0,
+                }
+              : { ...prev, is_ignored: false, status: null }
+            : prev,
+        );
+        if (skip) setDraftTranslation('');
+      };
+
+      if (ctxActsOnSelection(row)) {
+        patchSkipInCache((r) => isRowSelected(r.string_id), skip);
+        try {
+          const ids = await resolveSelectedIds();
+          for (let i = 0; i < ids.length; i += MARK_SKIP_CHUNK) {
+            await api.strings.markSkip(ids.slice(i, i + MARK_SKIP_CHUNK), skip);
+          }
+          void refetchStats();
+          const activeId = activeRowRef.current?.string_id;
+          if (activeId && isRowSelected(activeId)) applySkipToActiveRow(activeId);
+        } catch {
+          qc.invalidateQueries({ queryKey: ['strings', modId] });
+        }
+      } else {
+        patchSkipInCache((r) => r.string_id === row.string_id, skip);
+        try {
+          await api.strings.markSkip([row.string_id], skip);
+          void refetchStats();
+          applySkipToActiveRow(row.string_id);
+        } catch {
+          qc.invalidateQueries({ queryKey: ['strings', modId] });
+        }
+      }
+    },
+    [
+      ctxActsOnSelection,
+      patchSkipInCache,
+      resolveSelectedIds,
+      isRowSelected,
+      refetchStats,
+      qc,
+      modId,
+    ],
+  );
+
   /** Context-menu clear: whole selection (all matching IDs) or just the clicked row. */
   const ctxClear = useCallback(
     async (row: StringRow) => {
@@ -998,6 +1092,7 @@ export const ModEditorPage = () => {
           onTextTransform={applyTextTransform}
           onBulkCopySource={ctxCopySource}
           onBatchTranslate={handleBatchTranslate}
+          onSetSkip={ctxSetSkip}
         />
       )}
 

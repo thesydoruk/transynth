@@ -1918,6 +1918,16 @@ export const markStringsAsSkip = async (db: Tx, stringIds: number[]): Promise<nu
   return rows.length;
 };
 
+/** Clear the global skip flag so the string(s) can be translated again. */
+export const unmarkStringsSkip = async (db: Tx, stringIds: number[]): Promise<number> => {
+  if (stringIds.length === 0) return 0;
+  const { rowCount } = await db.query(
+    `UPDATE strings SET is_ignored = FALSE WHERE id = ANY($1::int[])`,
+    [stringIds],
+  );
+  return rowCount ?? 0;
+};
+
 /** Record that skip-detect has audited these source strings (keep or skip verdict). */
 export const markStringsSkipDetectScanned = async (
   db: Tx,

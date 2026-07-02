@@ -52,6 +52,66 @@ describe('validateVerifySuggestion', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('token_mismatch');
   });
+
+  it('rejects barrel suggestion using "Стіл"', () => {
+    const item: LlmVerifyItem = {
+      id: 2,
+      source: 'Tesla Cannon Tesla Beaton Barrel',
+      translation: 'Стівол Тесла-Бітон для гармати Тесли',
+      grup: 'OMOD',
+      field: 'FULL',
+      edid: 'mod_TesCan_Barrel_TeslaBeaton',
+      context: null,
+    };
+    const result = validateVerifySuggestion(item, 'Стіл Тесла-Бітон для гармати Тесли', 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('invalid_term');
+  });
+
+  it('rejects damage terminology swap from шкода to урон', () => {
+    const item: LlmVerifyItem = {
+      id: 3,
+      source: 'Improved damage.',
+      translation: 'Покращена шкода.',
+      grup: 'OMOD',
+      field: 'DESC',
+      edid: null,
+      context: null,
+    };
+    const result = validateVerifySuggestion(item, 'Покращений урон.', 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('terminology_swap');
+  });
+
+  it('rejects verbose FMRN expansion', () => {
+    const item: LlmVerifyItem = {
+      id: 4,
+      source: 'Mouth Main',
+      translation: 'Рот',
+      grup: 'RACE',
+      field: 'FMRN',
+      edid: 'Morph',
+      context: null,
+    };
+    const result = validateVerifySuggestion(item, 'Основна частина рота', 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('oververbose');
+  });
+
+  it('rejects Latin tokens absent from source', () => {
+    const item: LlmVerifyItem = {
+      id: 5,
+      source: 'Pipboy Cloak',
+      translation: 'Плащ Піп-боя',
+      grup: 'ARMO',
+      field: 'FULL',
+      edid: 'PipboyPickUpCloak',
+      context: null,
+    };
+    const result = validateVerifySuggestion(item, 'Плащ Піп-боя (PickUp)', 'fo4');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('introduced_latin');
+  });
 });
 
 describe('reconcileVerifyResult', () => {
@@ -122,5 +182,31 @@ describe('sanitizeVerifyResult', () => {
     );
     expect(sanitized.verdict).toBe('ok');
     expect(sanitized.suggestion).toBeNull();
+  });
+
+  it('strips invalid barrel suggestion and keeps suspicious row approved', () => {
+    const item: LlmVerifyItem = {
+      id: 2,
+      source: 'Tesla Cannon Tesla Beaton Barrel',
+      translation: 'Стівол Тесла-Бітон для гармати Тесли',
+      grup: 'OMOD',
+      field: 'FULL',
+      edid: 'mod_TesCan_Barrel_TeslaBeaton',
+      context: null,
+    };
+    const sanitized = sanitizeVerifyResult(
+      item,
+      {
+        id: item.id,
+        verdict: 'suspicious',
+        reason: 'Wrong barrel term.',
+        confidence: 0.9,
+        suggestion: 'Стіл Тесла-Бітон для гармати Тесли',
+      },
+      'fo4',
+    );
+    expect(sanitized.verdict).toBe('ok');
+    expect(sanitized.suggestion).toBeNull();
+    expect(sanitized.reason).toContain('Suggestion rejected');
   });
 });

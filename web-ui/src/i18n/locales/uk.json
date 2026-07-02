@@ -366,7 +366,11 @@
     "bulkGroup": "Масові дії ({{count}})",
     "bulkClear": "Очистити {{count}} рядків",
     "bulkTranslate": "Авто-переклад {{count}} рядків",
-    "bulkCopySource": "Копіювати оригінал → переклад ({{count}})"
+    "bulkCopySource": "Копіювати оригінал → переклад ({{count}})",
+    "markSkip": "Не перекладати",
+    "unmarkSkip": "Дозволити переклад",
+    "bulkMarkSkip": "Не перекладати ({{count}} рядків)",
+    "bulkUnmarkSkip": "Дозволити переклад ({{count}} рядків)"
   },
   "dashboard": {
     "title": "Панель",

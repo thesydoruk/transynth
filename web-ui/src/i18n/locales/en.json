@@ -366,7 +366,11 @@
     "bulkGroup": "Bulk ({{count}})",
     "bulkClear": "Clear {{count}} rows",
     "bulkTranslate": "Auto-translate {{count}} rows",
-    "bulkCopySource": "Copy source → translation ({{count}})"
+    "bulkCopySource": "Copy source → translation ({{count}})",
+    "markSkip": "Mark as non-translatable",
+    "unmarkSkip": "Allow translation",
+    "bulkMarkSkip": "Mark {{count}} rows as non-translatable",
+    "bulkUnmarkSkip": "Allow translation for {{count}} rows"
   },
   "dashboard": {
     "title": "Dashboard",

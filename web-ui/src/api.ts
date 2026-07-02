@@ -1368,10 +1368,10 @@ export const api = {
         body: JSON.stringify({ ignore }),
       }),
 
-    markSkip: (stringIds: number[]) =>
+    markSkip: (stringIds: number[], skip = true) =>
       req<{ ok: boolean; marked: number }>(`/api/strings/mark-skip`, {
         method: 'POST',
-        body: JSON.stringify({ stringIds }),
+        body: JSON.stringify({ stringIds, skip }),
       }),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.

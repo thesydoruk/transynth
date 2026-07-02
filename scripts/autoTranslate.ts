@@ -14,12 +14,16 @@
  *   --force             Non-verified rows (draft, tm, fuzzy, auto, …)
  *   --force-all         Every non-skipped row, including human/reviewed/rejected
  *
+ * Pipeline (default): TM auto-apply for exact matches, then LLM for the rest.
+ *
  * Usage:
  *   npm run translate:auto -- [options]
  *
  * Options:
  *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
  *   --tgt-lang <code>   Target translation language (default: TGT_LANG)
+ *   --no-tm             Skip TM auto-apply (LLM only)
+ *   --no-llm            Skip LLM (TM only)
  *   --db-chunk <n>      DB page size for large mods (default: service default)
  *   --no-rag            Disable reference-example search (no TM, no embedding)
  *   --rag-mod-only      Search reference examples only within the current mod
@@ -30,6 +34,8 @@
  *   npm run translate:auto -- --all
  *   npm run translate:auto -- --mod-id 45 --force
  *   npm run translate:auto -- --mod-id 45 --force-all
+ *   npm run translate:auto -- --mod-id 45 --no-tm
+ *   npm run translate:auto -- --mod-id 45 --no-llm
  *   npm run translate:auto -- --mod-id 45 --tgt-lang uk --no-rag
  *   npm run translate:auto -- --mod-id 1,2,3 --rag-mod-only --db-chunk 500
  */
@@ -45,6 +51,7 @@ import {
 } from '../src/web/llmTranslateService';
 import { runCliModTranslate, type CliTranslateProgressEvent } from '../src/web/cliAutoTranslate';
 import { getModStats } from '../src/web/queries';
+import { applyTMToMod } from '../src/web/tm';
 import {
   assertCliModSelector,
   formatPct,
@@ -151,6 +158,16 @@ const argv = await addCliRagFlagOptions(
       default: false,
       describe: 'Overwrite every non-skipped row, including verified translations',
     })
+    .option('no-tm', {
+      type: 'boolean',
+      default: false,
+      describe: 'Skip TM auto-apply before LLM (default: run TM first for exact matches)',
+    })
+    .option('no-llm', {
+      type: 'boolean',
+      default: false,
+      describe: 'Skip LLM translation (TM only when TM is enabled)',
+    })
     .option('db-chunk', {
       type: 'number',
       describe: `DB page size for large mods (default: ${LLM_TRANSLATE_DB_CHUNK_SIZE})`,
@@ -164,6 +181,9 @@ const argv = await addCliRagFlagOptions(
     });
     if (args['force-all'] && args.force) {
       throw new Error('Use either --force or --force-all, not both');
+    }
+    if (args['no-tm'] && args['no-llm']) {
+      throw new Error('Cannot use --no-tm and --no-llm together (nothing to run)');
     }
     assertCliRagFlags({
       noRag: args.noRag === true,
@@ -179,6 +199,8 @@ validateConfig();
 const ragFlags = readCliRagFlags(argv);
 
 const tgtLang = argv['tgt-lang'].trim();
+const useTm = !argv['no-tm'];
+const useLlm = !argv['no-llm'];
 const overwriteMode = resolveOverwriteMode(argv.force, argv['force-all']);
 const dbChunkSize =
   argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_TRANSLATE_DB_CHUNK_SIZE;
@@ -235,6 +257,32 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
   );
   log.info(`Before: ${formatModStats(statsBefore)}`);
 
+  if (useTm) {
+    log.info(
+      `TM auto-apply: mod_id=${target.modId} (chunk=${CONFIG.tmApplyChunkSize}, workers=${CONFIG.tmApplyWorkers})`,
+    );
+    const tm = await applyTMToMod(db, target.modId, tgtLang, target.srcLang);
+    log.info(
+      `TM auto-apply done: applied=${tm.applied}, skipped=${tm.skipped}, ` +
+        `anchor=${tm.byMethod.anchor ?? 0}, edid=${tm.byMethod.edid ?? 0}, text_norm=${tm.byMethod.text_norm ?? 0}`,
+    );
+    const statsAfterTm = await loadModStats(target.modId, target.srcLang);
+    log.info(`After TM: ${formatModStats(statsAfterTm)}`);
+  }
+
+  if (!useLlm) {
+    const statsAfter = await loadModStats(target.modId, target.srcLang);
+    log.info(`After: ${formatModStats(statsAfter)}`);
+    log.info(
+      `Mod summary: translated +${statsAfter.translated - statsBefore.translated}, ` +
+        `untranslated ${statsBefore.untranslated} → ${statsAfter.untranslated}`,
+    );
+    if (statsAfter.untranslated > 0) {
+      log.warn(`TM-only: ${statsAfter.untranslated} string(s) still untranslated (no LLM pass)`);
+    }
+    return 'ok';
+  }
+
   const ctx = { lastLogged: { done: 0 }, ok: 0, errors: 0, startedAt: Date.now() };
   try {
     const summary = await runCliModTranslate(
@@ -272,6 +320,15 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.startsWith('No strings to translate')) {
+      const statsAfter = await loadModStats(target.modId, target.srcLang);
+      log.info(`After: ${formatModStats(statsAfter)}`);
+      if (useTm && statsAfter.translated > statsBefore.translated) {
+        log.info(
+          `Translate: LLM skipped (mod_id=${target.modId}) — no rows left after TM; ` +
+            `translated +${statsAfter.translated - statsBefore.translated}`,
+        );
+        return 'ok';
+      }
       log.info(skippedLogLine(overwriteMode, target.modId));
       return 'skipped';
     }
@@ -293,7 +350,7 @@ try {
   }
 
   log.info(
-    `Translate: ${targets.length} mod(s), overwriteMode=${overwriteMode}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+    `Translate: ${targets.length} mod(s), tm=${useTm}, llm=${useLlm}, overwriteMode=${overwriteMode}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;

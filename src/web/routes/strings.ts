@@ -13,6 +13,7 @@ import {
   getTranslationHistory,
   getQAIssues,
   markStringsAsSkip,
+  unmarkStringsSkip,
 } from '../queries';
 import { propagateTranslation } from '../tm';
 import { getAllProjectSettings } from '../projectSettings';
@@ -361,18 +362,21 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send(await deleteTranslationsBatch(db, stringIds, targetLang));
   });
 
-  // POST /api/strings/mark-skip — mark strings as non-translatable (global is_ignored)
+  // POST /api/strings/mark-skip — set skip flag (global is_ignored)
   app.post<{
-    Body: { stringIds: number[] };
+    Body: { stringIds: number[]; skip?: boolean };
   }>('/api/strings/mark-skip', async (req, reply) => {
     const stringIds = req.body?.stringIds;
+    const skip = req.body?.skip !== false;
     if (!Array.isArray(stringIds) || stringIds.length === 0) {
       return reply.code(400).send({ error: 'stringIds array is required' });
     }
     if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
       return reply.code(400).send({ error: 'Invalid stringIds' });
     }
-    const marked = await markStringsAsSkip(db, stringIds);
+    const marked = skip
+      ? await markStringsAsSkip(db, stringIds)
+      : await unmarkStringsSkip(db, stringIds);
     return reply.send({ ok: true, marked });
   });
 

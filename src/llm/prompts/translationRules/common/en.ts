@@ -41,6 +41,7 @@ export const englishVerifyCommonRules = (targetLang: string): string[] => [
   '',
   '### TERMINOLOGY AND ESP/ESM CONTEXT (VERIFY):',
   '- Glossary: apply only when the term appears in source.',
+  '- "Gunners" (plural, faction) → faction name; singular "Gunner" (one person) → member term, NOT the plural faction name.',
   '- Glossary "Sentry Bot" is for creature/dialogue references; model token "Sentry" in item names/edid — transliterate, do not expand to a creature name in item labels.',
   '- reference_examples: use ONLY for terminology. Do NOT copy word order from a different item unless grup, field, and edid pattern match.',
   '- Metadata (grup, field, edid): context only; do not copy edid into the translation.',

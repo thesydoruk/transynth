@@ -21,11 +21,28 @@ import type pg from 'pg';
 import { log } from '../logger';
 import { CONFIG } from '../config';
 import { upsertTranslation } from './queries';
+import { mapWithConcurrency } from '../utils/concurrency';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
 type MatchMethod = 'anchor' | 'edid' | 'text_norm';
 type Match = { text: string; method: MatchMethod; confidence: number };
+
+type UntranslatedRow = {
+  id: number;
+  text_norm: string;
+  formid_hex: string | null;
+  path: string;
+  edid: string | null;
+};
+
+const untranslatedWhereSql = `
+  r.mod_id = $1 AND s.lang = $3
+  AND s.is_ignored = FALSE
+  AND NOT EXISTS (
+    SELECT 1 FROM translations t
+    WHERE t.src_string_id = s.id AND t.target_lang = $2
+  )`;
 
 /**
  * Find the best existing translation for a source string using three
@@ -100,49 +117,72 @@ const findBestMatch = async (
   return null;
 };
 
-/**
- * Apply TM to all untranslated strings in a mod.
- * Only fills strings that have NO existing translation for targetLang.
- * Returns counts of applied/skipped matches and a breakdown by method.
- */
-/**
- * Auto-apply translation memory to all untranslated strings in a mod.
- *
- * Only strings that have **no** translation for `targetLang` are considered.
- * Each string is matched using {@link findBestMatch}. When an exact/anchor
- * match is found, a new translation is upserted with status `tm`.
- *
- * @param db - Database handle.
- * @param modId - Mod id to process.
- * @param targetLang - Target language code.
- * @param srcLang - Source language code.
- * @returns Counts of applied/skipped translations and a breakdown by method.
- */
-export const applyTMToMod = async (
+const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
-  targetLang = CONFIG.defaultTgtLang,
-  srcLang = CONFIG.defaultSrcLang,
-): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
-  const { rows: untranslated } = await db.query(
+  targetLang: string,
+  srcLang: string,
+): Promise<number> => {
+  const { rows } = await db.query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE ${untranslatedWhereSql}`,
+    [modId, targetLang, srcLang],
+  );
+  return rows[0]?.n ?? 0;
+};
+
+const fetchUntranslatedChunk = async (
+  db: Tx,
+  modId: number,
+  targetLang: string,
+  srcLang: string,
+  chunkSize: number,
+  afterStringId: number,
+): Promise<UntranslatedRow[]> => {
+  const { rows } = await db.query<UntranslatedRow>(
     `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = $3
-       AND s.is_ignored = FALSE
-       AND NOT EXISTS (
-         SELECT 1 FROM translations t
-         WHERE t.src_string_id = s.id AND t.target_lang = $2
-       )`,
-    [modId, targetLang, srcLang],
+     WHERE ${untranslatedWhereSql}
+       AND s.id > $4
+     ORDER BY s.id
+     LIMIT $5`,
+    [modId, targetLang, srcLang, afterStringId, chunkSize],
   );
-  log.info(`TM auto-apply: ${untranslated.length} untranslated strings for mod ${modId}`);
+  return rows;
+};
 
-  let applied = 0;
+const splitChunk = (chunk: UntranslatedRow[], workers: number): UntranslatedRow[][] => {
+  if (chunk.length === 0) return [];
+  const parts = Math.min(Math.max(1, workers), chunk.length);
+  const sliceSize = Math.ceil(chunk.length / parts);
+  const out: UntranslatedRow[][] = [];
+  for (let i = 0; i < chunk.length; i += sliceSize) {
+    out.push(chunk.slice(i, i + sliceSize));
+  }
+  return out;
+};
+
+const mergeByMethod = (target: Record<string, number>, partial: Record<string, number>): void => {
+  for (const [method, count] of Object.entries(partial)) {
+    target[method] = (target[method] ?? 0) + count;
+  }
+};
+
+const applyTMSubChunk = async (
+  db: pg.Pool,
+  modId: number,
+  targetLang: string,
+  srcLang: string,
+  chunk: UntranslatedRow[],
+): Promise<{ applied: number; byMethod: Record<string, number> }> => {
   const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  let applied = 0;
 
-  await withTransaction(db as pg.Pool, async (client) => {
-    for (const s of untranslated) {
+  await withTransaction(db, async (client) => {
+    for (const s of chunk) {
       const match = await findBestMatch(
         client,
         s.formid_hex,
@@ -168,7 +208,106 @@ export const applyTMToMod = async (
     }
   });
 
-  return { applied, skipped: untranslated.length - applied, byMethod };
+  return { applied, byMethod };
+};
+
+const applyTMChunk = async (
+  db: Tx,
+  modId: number,
+  targetLang: string,
+  srcLang: string,
+  chunk: UntranslatedRow[],
+  byMethod: Record<string, number>,
+  workers: number,
+): Promise<number> => {
+  const pool = db as pg.Pool;
+  const subChunks = splitChunk(chunk, workers);
+  const partials = await mapWithConcurrency(subChunks, workers, (subChunk) =>
+    applyTMSubChunk(pool, modId, targetLang, srcLang, subChunk),
+  );
+
+  let applied = 0;
+  for (const partial of partials) {
+    applied += partial.applied;
+    mergeByMethod(byMethod, partial.byMethod);
+  }
+
+  return applied;
+};
+
+/**
+ * Apply TM to all untranslated strings in a mod.
+ * Only fills strings that have NO existing translation for targetLang.
+ * Returns counts of applied/skipped matches and a breakdown by method.
+ */
+/**
+ * Auto-apply translation memory to all untranslated strings in a mod.
+ *
+ * Only strings that have **no** translation for `targetLang` are considered.
+ * Each string is matched using {@link findBestMatch}. When an exact/anchor
+ * match is found, a new translation is upserted with status `tm`.
+ *
+ * Processing is paginated by {@link CONFIG.tmApplyChunkSize} (env: TM_APPLY_CHUNK_SIZE)
+ * so large mods do not hold one long transaction or load all rows at once.
+ * Within each chunk, up to {@link CONFIG.tmApplyWorkers} sub-chunks run in parallel
+ * (env: TM_APPLY_WORKERS), each in its own DB transaction.
+ *
+ * @param db - Database handle.
+ * @param modId - Mod id to process.
+ * @param targetLang - Target language code.
+ * @param srcLang - Source language code.
+ * @returns Counts of applied/skipped translations and a breakdown by method.
+ */
+export const applyTMToMod = async (
+  db: Tx,
+  modId: number,
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
+  const chunkSize = CONFIG.tmApplyChunkSize;
+  const workers = CONFIG.tmApplyWorkers;
+  const totalUntranslated = await countUntranslatedStrings(db, modId, targetLang, srcLang);
+  log.info(
+    `TM auto-apply: ${totalUntranslated} untranslated strings for mod ${modId}, chunkSize=${chunkSize}, workers=${workers}`,
+  );
+
+  let applied = 0;
+  let processed = 0;
+  const byMethod: Record<string, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  let afterStringId = 0;
+
+  while (true) {
+    const chunk = await fetchUntranslatedChunk(
+      db,
+      modId,
+      targetLang,
+      srcLang,
+      chunkSize,
+      afterStringId,
+    );
+    if (chunk.length === 0) break;
+
+    const chunkApplied = await applyTMChunk(
+      db,
+      modId,
+      targetLang,
+      srcLang,
+      chunk,
+      byMethod,
+      workers,
+    );
+    applied += chunkApplied;
+    processed += chunk.length;
+    afterStringId = chunk[chunk.length - 1]!.id;
+
+    log.info(
+      `TM auto-apply: mod ${modId} chunk done ${processed}/${totalUntranslated}, applied=${chunkApplied}, totalApplied=${applied}`,
+    );
+
+    if (chunk.length < chunkSize) break;
+  }
+
+  return { applied, skipped: processed - applied, byMethod };
 };
 
 // ── Translation propagation ───────────────────────────────────────────────────

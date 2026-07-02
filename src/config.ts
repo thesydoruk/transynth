@@ -115,6 +115,12 @@ export const CONFIG = {
   /** Source string rows loaded from DB per translate:auto / web job page (default 100). */
   llmTranslateDbChunkSize: parsePositiveInt(process.env.LLM_TRANSLATE_DB_CHUNK_SIZE, 100, 10_000),
 
+  /** Untranslated strings processed per TM auto-apply transaction (default 2000). */
+  tmApplyChunkSize: parsePositiveInt(process.env.TM_APPLY_CHUNK_SIZE, 2000, 50_000),
+
+  /** Parallel workers per TM auto-apply chunk (default 1; each worker runs its own DB transaction). */
+  tmApplyWorkers: parseMaxParallel(process.env.TM_APPLY_WORKERS, 1, 16),
+
   /** Records + strings written per mod-import DB transaction (default 5000). */
   modImportBatchSize: parsePositiveInt(process.env.MOD_IMPORT_BATCH_SIZE, 5000, 20_000),
 
