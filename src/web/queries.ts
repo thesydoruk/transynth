@@ -31,8 +31,30 @@ const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
 /** Translation statuses still eligible for automated LLM review and QA validation. */
 export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
 
+/** Translation statuses included when CLI auto-verify runs with `--force`. */
+export const LLM_VERIFY_FORCE_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto', 'reviewed', 'human')`;
+
+/** SQL `IN (...)` list for mod-wide LLM verify row selection. */
+export const llmVerifyEligibleStatusSql = (force: boolean): string =>
+  force ? LLM_VERIFY_FORCE_STATUS_SQL : PENDING_REVIEW_STATUS_SQL;
+
 /** Translation statuses that LLM translate/verify must never overwrite or re-process. */
-export const LLM_PROTECTED_TRANSLATION_STATUS_SQL = `('reviewed', 'human', 'skip', 'rejected')`;
+export const LLM_PROTECTED_TRANSLATION_STATUS_SQL = `('reviewed', 'human', 'rejected')`;
+
+/** How CLI / mod-wide LLM translate selects existing translations to overwrite. */
+export type LlmTranslateOverwriteMode = 'default' | 'force' | 'force-all';
+
+/** SQL predicate on LEFT JOIN translations t — combined with s.is_ignored = FALSE elsewhere. */
+export const llmTranslateEligibilitySql = (mode: LlmTranslateOverwriteMode): string => {
+  switch (mode) {
+    case 'default':
+      return 't.id IS NULL';
+    case 'force':
+      return `(t.id IS NULL OR t.status NOT IN ${LLM_PROTECTED_TRANSLATION_STATUS_SQL})`;
+    case 'force-all':
+      return 'TRUE';
+  }
+};
 
 const PENDING_REVIEW_STATUSES = new Set<TranslationStatus>(['draft', 'tm', 'fuzzy', 'auto']);
 
@@ -1543,13 +1565,16 @@ export const upsertTranslation = async (
   /** ID of the user who saved this translation. Null for automated pipelines. */
   userId: number | null = null,
 ) => {
+  if (status === 'skip') {
+    await markStringsAsSkip(db, [stringId]);
+    return { id: stringId, text: '', status: 'skip' as const };
+  }
+
   const effectiveProvenance =
     provenance ??
-    (status === 'skip'
-      ? 'skip_marked'
-      : status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
-        ? 'human_edit'
-        : `${status}_generated`);
+    (status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
+      ? 'human_edit'
+      : `${status}_generated`);
 
   await db.query(`DELETE FROM translations WHERE src_string_id = $1 AND target_lang = $2`, [
     stringId,
@@ -1583,12 +1608,13 @@ export const upsertTranslation = async (
 
 /**
  * Keep only string IDs that LLM batch translate may process: not marked skip
- * (`is_ignored`) and without a confirmed / skip / rejected translation.
+ * (`is_ignored`) and eligible under {@link llmTranslateEligibilitySql}.
  */
 export const filterStringIdsForLlmTranslate = async (
   db: Tx,
   stringIds: number[],
   targetLang = CONFIG.defaultTgtLang,
+  overwriteMode: LlmTranslateOverwriteMode = 'default',
 ): Promise<number[]> => {
   if (stringIds.length === 0) return [];
   const { rows } = await db.query<{ id: number }>(
@@ -1598,7 +1624,7 @@ export const filterStringIdsForLlmTranslate = async (
          ON t.src_string_id = s.id AND t.target_lang = $2
       WHERE s.id = ANY($1::int[])
         AND s.is_ignored = FALSE
-        AND (t.id IS NULL OR t.status NOT IN ('reviewed', 'human', 'skip', 'rejected'))`,
+        AND ${llmTranslateEligibilitySql(overwriteMode)}`,
     [stringIds, targetLang],
   );
   return rows.map((r) => r.id);
@@ -1853,14 +1879,8 @@ export const deleteAllTranslationsForString = async (db: Tx, stringId: number): 
  * (every target language) are deleted here. Export still emits the source text
  * via `COALESCE(t.text, s.text_raw)` once translations are gone.
  *
- * @param targetLang - Kept for API compatibility; all languages are cleared.
  */
-export const markStringsAsSkip = async (
-  db: Tx,
-  stringIds: number[],
-  targetLang = CONFIG.defaultTgtLang,
-): Promise<number> => {
-  void targetLang;
+export const markStringsAsSkip = async (db: Tx, stringIds: number[]): Promise<number> => {
   if (stringIds.length === 0) return 0;
 
   const { rows } = await db.query<{ id: number }>(

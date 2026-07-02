@@ -22,7 +22,7 @@ const initialState: SkipDetectState = {
 };
 
 /** Manages non-translatable string detection — survives modal close while the stream runs. */
-export const useSkipDetect = (modId: number, srcLang: string, targetLang: string) => {
+export const useSkipDetect = (modId: number, srcLang: string) => {
   const [state, setState] = useState<SkipDetectState>(initialState);
   const inFlight = useRef(false);
   const jobIdRef = useRef<number | null>(null);
@@ -56,61 +56,53 @@ export const useSkipDetect = (modId: number, srcLang: string, targetLang: string
       });
 
       try {
-        const snapshot = await api.llmSkipDetect.start(
-          modId,
-          srcLang,
-          targetLang,
-          useLlm,
-          (event) => {
-            if (event.type === 'started') {
-              jobIdRef.current = event.jobId;
-              setState((prev) => ({
-                ...prev,
-                status: 'running',
-                jobId: event.jobId,
-                total: event.total,
-                useLlm: event.useLlm,
-                done: 0,
-                candidates: [],
-              }));
-            }
-            if (event.type === 'progress') {
-              setState((prev) => ({
-                ...prev,
-                done: event.done,
-                total: event.total,
-                candidates: event.candidate
-                  ? [...prev.candidates, event.candidate]
-                  : prev.candidates,
-              }));
-            }
-            if (event.type === 'done') {
-              setState((prev) => ({
-                ...prev,
-                status: 'completed',
-                done: event.done,
-                total: event.total,
-                candidates: event.candidates,
-              }));
-            }
-            if (event.type === 'cancelled') {
-              setState((prev) => ({
-                ...prev,
-                status: 'cancelled',
-                done: event.done,
-                total: event.total,
-                candidates: event.candidates,
-              }));
-            }
-            if (event.type === 'error') {
-              setState((prev) => ({
-                ...prev,
-                status: 'failed',
-                error: event.error,
-              }));
-            }
-          },
-        );
+        const snapshot = await api.llmSkipDetect.start(modId, srcLang, useLlm, (event) => {
+          if (event.type === 'started') {
+            jobIdRef.current = event.jobId;
+            setState((prev) => ({
+              ...prev,
+              status: 'running',
+              jobId: event.jobId,
+              total: event.total,
+              useLlm: event.useLlm,
+              done: 0,
+              candidates: [],
+            }));
+          }
+          if (event.type === 'progress') {
+            setState((prev) => ({
+              ...prev,
+              done: event.done,
+              total: event.total,
+              candidates: event.candidate ? [...prev.candidates, event.candidate] : prev.candidates,
+            }));
+          }
+          if (event.type === 'done') {
+            setState((prev) => ({
+              ...prev,
+              status: 'completed',
+              done: event.done,
+              total: event.total,
+              candidates: event.candidates,
+            }));
+          }
+          if (event.type === 'cancelled') {
+            setState((prev) => ({
+              ...prev,
+              status: 'cancelled',
+              done: event.done,
+              total: event.total,
+              candidates: event.candidates,
+            }));
+          }
+          if (event.type === 'error') {
+            setState((prev) => ({
+              ...prev,
+              status: 'failed',
+              error: event.error,
+            }));
+          }
+        });
         if (snapshot) applySnapshot(snapshot);
       } catch (err) {
         setState((prev) => ({
@@ -122,7 +114,7 @@ export const useSkipDetect = (modId: number, srcLang: string, targetLang: string
         inFlight.current = false;
       }
     },
-    [applySnapshot, modId, srcLang, targetLang],
+    [applySnapshot, modId, srcLang],
   );
 
   const stop = useCallback(async () => {

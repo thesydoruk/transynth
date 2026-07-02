@@ -6,13 +6,19 @@ import {
   LLM_TRANSLATE_DB_CHUNK_SIZE,
   countUntranslatedStrings,
   loadUntranslatedChunk,
+  type LlmTranslateOverwriteMode,
 } from './llmTranslateService';
 import { translateStringIdsBatch, type TranslateBatchResult } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
 import { awaitPendingQaRefresh } from './qaHooks';
 
 export type CliTranslateProgressEvent =
-  | { type: 'started'; total: number; dbChunkSize: number; force?: boolean }
+  | {
+      type: 'started';
+      total: number;
+      dbChunkSize: number;
+      overwriteMode: LlmTranslateOverwriteMode;
+    }
   | {
       type: 'progress';
       done: number;
@@ -32,6 +38,17 @@ export type CliTranslateResult = {
   errors: number;
 };
 
+const emptyJobMessage = (mode: LlmTranslateOverwriteMode): string => {
+  switch (mode) {
+    case 'default':
+      return 'No untranslated strings to translate';
+    case 'force':
+      return 'No strings to translate (all skipped or verified human/reviewed/rejected)';
+    case 'force-all':
+      return 'No strings to translate (all skipped or absent)';
+  }
+};
+
 export const runCliModTranslate = async (
   db: Tx,
   opts: {
@@ -41,38 +58,33 @@ export const runCliModTranslate = async (
     modName?: string | null;
     game?: string | null;
     dbChunkSize?: number;
-    /** Re-translate existing auto/draft rows (never human/reviewed). */
-    force?: boolean;
+    overwriteMode?: LlmTranslateOverwriteMode;
   },
   onEvent?: (event: CliTranslateProgressEvent) => void,
 ): Promise<CliTranslateResult> => {
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_TRANSLATE_DB_CHUNK_SIZE);
-  const force = opts.force === true;
+  const overwriteMode = opts.overwriteMode ?? 'default';
   const total = await countUntranslatedStrings(
     db,
     opts.modId,
     opts.srcLang,
     opts.targetLang,
-    force,
+    overwriteMode,
   );
   if (total === 0) {
-    throw new Error(
-      force
-        ? 'No translatable strings to translate (all skipped or human/reviewed)'
-        : 'No untranslated strings to translate',
-    );
+    throw new Error(emptyJobMessage(overwriteMode));
   }
 
   logTranslate.info('cli translate started', {
     modId: opts.modId,
     total,
     dbChunkSize,
-    force,
+    overwriteMode,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
   });
 
-  onEvent?.({ type: 'started', total, dbChunkSize, force });
+  onEvent?.({ type: 'started', total, dbChunkSize, overwriteMode });
 
   let afterStringId = 0;
   let globalDone = 0;
@@ -89,7 +101,7 @@ export const runCliModTranslate = async (
         opts.targetLang,
         afterStringId,
         dbChunkSize,
-        force,
+        overwriteMode,
       );
       if (dbChunk.length === 0) break;
       afterStringId = dbChunk[dbChunk.length - 1]!.string_id;
@@ -103,6 +115,7 @@ export const runCliModTranslate = async (
           targetLang: opts.targetLang,
           modGame: opts.game,
           modName: opts.modName,
+          overwriteMode,
           onProgress: (_doneInBatch, _batchTotal, result) => {
             globalDone++;
             if (result.error) globalErrors++;

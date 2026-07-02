@@ -8,7 +8,6 @@ import { parseLlmJson } from './jsonParse';
 import { buildSkipDetectResponseFormat } from './responseSchemas';
 import type { ChatCompletionMeta } from './provider';
 import { isAbortError } from './retry';
-import { isUkrainianTargetLang } from './translate';
 import type { GameType } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
 
@@ -35,7 +34,6 @@ export interface LlmSkipDetectOptions {
   items: LlmSkipDetectItem[];
   model: string;
   srcLang: string;
-  targetLang: string;
   game?: GameType | string | null;
   modName?: string | null;
   /** Aborts the in-flight LLM request when the owning job is stopped. */
@@ -44,16 +42,16 @@ export interface LlmSkipDetectOptions {
 
 const VALID_VERDICTS = new Set<LlmSkipDetectVerdict>(['skip', 'keep']);
 
-const buildEnglishSkipDetectSystemPrompt = (
+export const buildSkipDetectSystemPrompt = (
   srcLang: string,
-  targetLang: string,
   game?: GameType | string | null,
 ): string => {
   const title = game ? `${game} / Bethesda` : 'Bethesda';
 
   return [
-    `You are an expert ${title} localization engineer auditing which source strings (${srcLang}) should NOT be translated into ${targetLang}.`,
-    'Your task: identify rows that must remain unchanged in the localized plugin (technical tokens, internal IDs, format markers, untranslatable codes, duplicate variable names, etc.).',
+    `You are an expert ${title} localization engineer auditing which source strings (${srcLang}) should NOT be translated at all.`,
+    'Skip marks are global: a flagged row must stay as source text in every localized output, regardless of target language.',
+    'Your task: identify rows that must remain unchanged (technical tokens, internal IDs, format markers, untranslatable codes, duplicate variable names, etc.).',
     '',
     '### TECHNICAL REQUIREMENTS:',
     '- Input: JSON with metadata and an "items" array (id, source, grup, field, path, edid, context).',
@@ -95,71 +93,9 @@ const buildEnglishSkipDetectSystemPrompt = (
   ].join('\n');
 };
 
-const buildUkrainianSkipDetectSystemPrompt = (
-  srcLang: string,
-  game?: GameType | string | null,
-): string => {
-  const title = game ? `${game} / Bethesda` : 'Bethesda';
-
-  return [
-    `Ти — експерт з локалізації ігор ${title}, який визначає, які рядки (${srcLang}) НЕ потрібно перекладати українською.`,
-    'Завдання: знайти рядки, які мають залишитися без перекладу (технічні токени, внутрішні ID, форматні маркери, коди, дублікати змінних тощо).',
-    '',
-    '### ТЕХНІЧНІ ВИМОГИ:',
-    '- Вхід: JSON з масивом "items" (id, source, grup, field, path, edid, context).',
-    '- Вихід: лише валідний JSON, без markdown.',
-    '- Для кожного id — один об’єкт у відповіді.',
-    '- Увага: задана source_language не завжди точна — частина рядків може бути вже частково локалізована. Оцінюй за реальним вмістом, а не за заявленою мовою.',
-    '- Використовуй grup, field, path, edid і context разом — не суди лише за текстом source.',
-    '',
-    '### VERDICT:',
-    '- "skip": не перекладати — залишити source як є.',
-    '- "keep": звичайний текст для гравця, потребує перекладу.',
-    '',
-    '### КОНТЕКСТ (Creation Kit / ESP):',
-    '- grup — тип запису (ACTI, WEAP, INFO, GMST, …); field/path — підполе (FULL, DESC, NAM1, DATA, …).',
-    '- edid — editor ID запису; часто підказує призначення (AddonNode, Particle, FX_, Quest_, …).',
-    '- context — підказка про мовця / сцену, якщо є.',
-    '- Для гравця: INFO/DIAL (діалоги), BOOK, WEAP/ARMO FULL (предмети), квестові стадії, більшість UI.',
-    '- Зазвичай внутрішні (skip): ACTI/MSTT/EFSH FULL на effect/node; GMST DATA debug; dense camelCase з цифрами/підкресленнями на не-UI записах.',
-    '- Particle / VFX: MPS…, AddonNode, LightNode…, Impact… — посилання рушія, не назви в інвентарі.',
-    '- Табличка з назвою місця ("Somerville Place" на ACTI FULL) → keep, навіть якщо grup=ACTI.',
-    '',
-    '### SKIP КОЛИ (після прибирання розмітки не лишається читабельних слів):',
-    '- Лише розмітка/змінні: напр. "<Alias.CurrentName=Location384>", "<Token.Name=SettlementName>", "<img src=\'…\'>", "<font face=\'…\'>42</font>", "<Alias=QuestVerb> <Alias=myLocation>".',
-    '- Лише числа, дати, стати чи символи: "+15%", "10/22/2077", "->", "№3", "=====", "....".',
-    '- FormID/hex-дампи, шляхи до файлів чи властивостей, debug-мітки.',
-    '- EDID, скопійований у текст (source дорівнює edid рядка).',
-    '- Однолітерні коди та короткі мовно-незалежні абревіатури статів (напр. "AGI", "AP", "CHR" у контексті AVIF/SPECIAL).',
-    '- Dense internal id: один токен без пробілів, camelCase з цифрами (напр. "MPSSmokeDustGeneric") на effect/node записах — skip, навіть якщо слова англійські.',
-    '',
-    '### KEEP КОЛИ (є реальні слова для перекладу, навіть якщо вони в обгортці):',
-    '- UI, діалоги, назви предметів, описи, книги, нотатки, квестовий текст.',
-    '- Ремарки/тон у квадратних дужках — це текст для гравця: "[Sarcasm]", "[Шепоче]", "[Нетерпляче]" → keep.',
-    '- Проза, що просто містить кутові дужки: "<User \\"Bergman\\" signed in>", "<***Використання ICE-Breaker***>" → keep (всередині справжній текст).',
-    '- Рядок, що поєднує розмітку зі словами ("Help defend <Alias=myLocation>") → keep.',
-    '- Якщо сумніваєшся — "keep".',
-    '',
-    '### ФОРМАТ ВІДПОВІДІ:',
-    '{"items":[{"id":1,"verdict":"skip","reason":"…","confidence":0.95}]}',
-  ].join('\n');
-};
-
-export const buildSkipDetectSystemPrompt = (
-  srcLang: string,
-  targetLang: string,
-  game?: GameType | string | null,
-): string => {
-  if (isUkrainianTargetLang(targetLang)) {
-    return buildUkrainianSkipDetectSystemPrompt(srcLang, game);
-  }
-  return buildEnglishSkipDetectSystemPrompt(srcLang, targetLang, game);
-};
-
 export const buildSkipDetectUserPayload = (opts: Omit<LlmSkipDetectOptions, 'model'>): object => ({
   task: 'non_translatable_audit',
   source_language: opts.srcLang.trim().toLowerCase(),
-  target_language: opts.targetLang.trim().toLowerCase(),
   game: opts.game ?? null,
   mod_name: opts.modName ?? null,
   items: opts.items.map((item) => ({
@@ -318,14 +254,13 @@ const callSkipDetectLlm = async (
         itemCount: expectedIds.length,
         attempt,
         srcLang: opts.srcLang,
-        targetLang: opts.targetLang,
         modName: opts.modName ?? null,
       },
     },
     messages: [
       {
         role: 'system',
-        content: buildSkipDetectSystemPrompt(opts.srcLang, opts.targetLang, opts.game),
+        content: buildSkipDetectSystemPrompt(opts.srcLang, opts.game),
       },
       { role: 'user', content: JSON.stringify(payload) },
     ],

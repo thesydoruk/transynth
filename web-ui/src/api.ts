@@ -1320,10 +1320,10 @@ export const api = {
         body: JSON.stringify({ ignore }),
       }),
 
-    markSkip: (stringIds: number[], targetLang = getTgtLang()) =>
+    markSkip: (stringIds: number[]) =>
       req<{ ok: boolean; marked: number }>(`/api/strings/mark-skip`, {
         method: 'POST',
-        body: JSON.stringify({ stringIds, targetLang }),
+        body: JSON.stringify({ stringIds }),
       }),
 
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
@@ -2102,7 +2102,6 @@ export const api = {
     async start(
       modId: number,
       srcLang = getSrcLang(),
-      targetLang = getTgtLang(),
       useLlm = false,
       onEvent?: (e: LlmSkipDetectStreamEvent) => void,
       signal?: AbortSignal,
@@ -2111,7 +2110,7 @@ export const api = {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, targetLang, useLlm }),
+        body: JSON.stringify({ srcLang, useLlm }),
         signal,
       });
       if (!response.ok || !response.body) {

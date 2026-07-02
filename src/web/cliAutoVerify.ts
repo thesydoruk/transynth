@@ -77,6 +77,8 @@ export const runCliModVerify = async (
     autoApproveVerified?: boolean;
     /** Apply LLM suggestions for suspicious verdicts (default false — only incorrect rows are fixed). */
     fixSuspicious?: boolean;
+    /** Re-verify reviewed/human rows, not only pending draft/tm/fuzzy/auto (default false). */
+    force?: boolean;
     dbChunkSize?: number;
   },
   onEvent?: (event: CliVerifyProgressEvent) => void,
@@ -84,9 +86,10 @@ export const runCliModVerify = async (
   const dryRun = opts.dryRun === true;
   const autoApproveVerified = !dryRun && opts.autoApproveVerified !== false;
   const fixSuspicious = opts.fixSuspicious === true;
+  const force = opts.force === true;
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_VERIFY_DB_CHUNK_SIZE);
 
-  const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang);
+  const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang, force);
   if (total === 0) {
     throw new Error('No strings pending review');
   }
@@ -97,6 +100,7 @@ export const runCliModVerify = async (
     dryRun,
     autoApproveVerified,
     fixSuspicious,
+    force,
     dbChunkSize,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
@@ -361,6 +365,7 @@ export const runCliModVerify = async (
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
         dbChunkSize,
+        force,
       }),
       chatConcurrency,
       async ({ page, chunk }) => {

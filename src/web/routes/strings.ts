@@ -361,9 +361,9 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send(await deleteTranslationsBatch(db, stringIds, targetLang));
   });
 
-  // POST /api/strings/mark-skip — mark strings as non-translatable (status skip)
+  // POST /api/strings/mark-skip — mark strings as non-translatable (global is_ignored)
   app.post<{
-    Body: { stringIds: number[]; targetLang?: string };
+    Body: { stringIds: number[] };
   }>('/api/strings/mark-skip', async (req, reply) => {
     const stringIds = req.body?.stringIds;
     if (!Array.isArray(stringIds) || stringIds.length === 0) {
@@ -372,8 +372,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
       return reply.code(400).send({ error: 'Invalid stringIds' });
     }
-    const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
-    const marked = await markStringsAsSkip(db, stringIds, targetLang);
+    const marked = await markStringsAsSkip(db, stringIds);
     return reply.send({ ok: true, marked });
   });
 
@@ -448,6 +447,7 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       targetLang,
       modGame: resolvedModGame,
       modName: resolvedModName,
+      overwriteMode: 'force',
       onProgress: (done, total, result) => {
         send({ type: 'progress', done, total, result });
       },

@@ -267,7 +267,7 @@ export const ModEditorPage = () => {
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
-  const skipDetect = useSkipDetect(modId, srcLang, targetLang);
+  const skipDetect = useSkipDetect(modId, srcLang);
   const applyImported = useApplyImported(modId, srcLang, targetLang);
   const prevAiTranslateStatus = useRef(aiTranslate.status);
   const prevApplyImportedStatus = useRef(applyImported.status);
@@ -952,7 +952,7 @@ export const ModEditorPage = () => {
             }
           }}
           onApply={async (candidate) => {
-            await api.strings.markSkip([candidate.stringId], targetLang);
+            await api.strings.markSkip([candidate.stringId]);
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}
@@ -961,7 +961,7 @@ export const ModEditorPage = () => {
             const CHUNK_SIZE = 100;
             for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
               const chunk = ids.slice(i, i + CHUNK_SIZE);
-              await api.strings.markSkip(chunk, targetLang);
+              await api.strings.markSkip(chunk);
               onProgress?.(Math.min(i + chunk.length, ids.length), ids.length);
             }
             qc.invalidateQueries({ queryKey: ['strings', modId] });

@@ -5,6 +5,7 @@
  */
 import type { Tx } from '../db';
 import { CONFIG } from '../config';
+import { llmTranslateEligibilitySql, type LlmTranslateOverwriteMode } from './queries';
 import { translateStringIdsBatch } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
 import { awaitPendingQaRefresh } from './qaHooks';
@@ -81,20 +82,17 @@ export const requestLlmTranslateStop = (jobId: number): boolean => {
   return true;
 };
 
-/** Statuses that must not be overwritten by LLM batch translate (even with --force). */
-const LLM_TRANSLATE_PROTECTED_STATUSES = ['reviewed', 'human', 'skip', 'rejected'] as const;
+export type { LlmTranslateOverwriteMode } from './queries';
 
-const translatableStringsSql = (force: boolean): string =>
-  force
-    ? `(t.id IS NULL OR t.status NOT IN ('reviewed', 'human', 'skip', 'rejected'))`
-    : `t.id IS NULL`;
+/** Statuses that must not be overwritten unless `--force-all`. */
+export const LLM_TRANSLATE_VERIFIED_STATUSES = ['reviewed', 'human', 'rejected'] as const;
 
 export const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-  force = false,
+  overwriteMode: LlmTranslateOverwriteMode = 'default',
 ): Promise<number> => {
   const { rows } = await db.query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt
@@ -105,7 +103,7 @@ export const countUntranslatedStrings = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
-        AND ${translatableStringsSql(force)}`,
+        AND ${llmTranslateEligibilitySql(overwriteMode)}`,
     [modId, srcLang, targetLang],
   );
   return Number.parseInt(rows[0]?.cnt ?? '0', 10);
@@ -130,7 +128,7 @@ export const loadUntranslatedChunk = async (
   targetLang: string,
   afterStringId: number,
   limit: number,
-  force = false,
+  overwriteMode: LlmTranslateOverwriteMode = 'default',
 ): Promise<UntranslatedMetaRow[]> => {
   const { rows } = await db.query<UntranslatedMetaRow>(
     `SELECT s.id AS string_id,
@@ -146,7 +144,7 @@ export const loadUntranslatedChunk = async (
         AND s.lang = $2
         AND s.is_ignored = FALSE
         AND s.id > $5
-        AND ${translatableStringsSql(force)}
+        AND ${llmTranslateEligibilitySql(overwriteMode)}
       ORDER BY s.id
       LIMIT $4`,
     [modId, srcLang, targetLang, limit, afterStringId],
@@ -233,6 +231,7 @@ export const runLlmTranslateJob = async (
           targetLang: opts.targetLang,
           modGame: opts.game,
           modName: opts.modName,
+          overwriteMode: 'default',
           shouldCancel: () => job.cancel,
           signal: job.abort.signal,
           onProgress: (doneInBatch, _batchTotal, result) => {

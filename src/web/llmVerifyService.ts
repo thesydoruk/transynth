@@ -18,8 +18,7 @@ import { getAllProjectSettings } from './projectSettings';
 import {
   approveVerifiedTranslations,
   upsertTranslation,
-  PENDING_REVIEW_STATUS_SQL,
-  LLM_PROTECTED_TRANSLATION_STATUS_SQL,
+  llmVerifyEligibleStatusSql,
 } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
 import { runPoolOverAsyncIterable } from '../utils/concurrency';
@@ -127,6 +126,7 @@ export const countVerifiableStrings = async (
   modId: number,
   srcLang: string,
   targetLang: string,
+  force = false,
 ): Promise<number> => {
   const { rows } = await db.query<{ cnt: string }>(
     `SELECT COUNT(*)::text AS cnt
@@ -136,8 +136,7 @@ export const countVerifiableStrings = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
-        AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
-        AND t.status NOT IN ${LLM_PROTECTED_TRANSLATION_STATUS_SQL}
+        AND t.status IN ${llmVerifyEligibleStatusSql(force)}
         AND length(trim(t.text)) > 0`,
     [modId, srcLang, targetLang],
   );
@@ -169,6 +168,7 @@ export const loadVerifyChunk = async (
   targetLang: string,
   afterId: number,
   limit: number,
+  force = false,
 ): Promise<VerifyStringRow[]> => {
   const { rows } = await db.query<VerifyStringRow>(
     `SELECT s.id AS string_id,
@@ -186,8 +186,7 @@ export const loadVerifyChunk = async (
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE
-        AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
-        AND t.status NOT IN ${LLM_PROTECTED_TRANSLATION_STATUS_SQL}
+        AND t.status IN ${llmVerifyEligibleStatusSql(force)}
         AND length(trim(t.text)) > 0
         AND s.id > $5
       ORDER BY s.id
@@ -210,11 +209,13 @@ export async function* iterateVerifyLlmChunks(
     srcLang: string;
     targetLang: string;
     dbChunkSize?: number;
+    force?: boolean;
   },
 ): AsyncGenerator<VerifyLlmWorkUnit> {
   let afterStringId = 0;
   let page = 0;
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_VERIFY_DB_CHUNK_SIZE);
+  const force = opts.force === true;
 
   while (true) {
     const dbChunk = await loadVerifyChunk(
@@ -224,6 +225,7 @@ export async function* iterateVerifyLlmChunks(
       opts.targetLang,
       afterStringId,
       dbChunkSize,
+      force,
     );
     if (dbChunk.length === 0) break;
     afterStringId = dbChunk[dbChunk.length - 1]!.string_id;

@@ -15,7 +15,12 @@ import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragSe
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookupMany, cacheStoreMany, type CacheStoreEntry } from './cacheService';
 import { bulkUpsertAutoTranslations } from './modImportBulk';
-import { termWordBoundaryRe, filterStringIdsForLlmTranslate, markStringsAsSkip } from './queries';
+import {
+  termWordBoundaryRe,
+  filterStringIdsForLlmTranslate,
+  markStringsAsSkip,
+  type LlmTranslateOverwriteMode,
+} from './queries';
 import { scheduleRefreshQAIssuesBatch } from './qaHooks';
 import { logTranslate } from '../logging/loggers';
 import { Semaphore } from '../utils/concurrency';
@@ -45,6 +50,7 @@ export type TranslateBatchOptions = {
   targetLang: string;
   modGame?: string | null;
   modName?: string | null;
+  overwriteMode?: LlmTranslateOverwriteMode;
   shouldCancel?: () => boolean;
   /** Aborts in-flight LLM requests when the owning job is stopped. */
   signal?: AbortSignal;
@@ -88,8 +94,22 @@ export const translateStringIdsBatch = async (
 ): Promise<TranslateBatchResult[]> => {
   if (stringIds.length === 0) return [];
 
-  const { srcLang, targetLang, modGame, modName, shouldCancel, signal, onProgress } = opts;
-  const eligibleIds = await filterStringIdsForLlmTranslate(db, stringIds, targetLang);
+  const {
+    srcLang,
+    targetLang,
+    modGame,
+    modName,
+    overwriteMode = 'default',
+    shouldCancel,
+    signal,
+    onProgress,
+  } = opts;
+  const eligibleIds = await filterStringIdsForLlmTranslate(
+    db,
+    stringIds,
+    targetLang,
+    overwriteMode,
+  );
   if (eligibleIds.length === 0) return [];
 
   logTranslate.info('batch start', {
@@ -417,7 +437,7 @@ export const translateStringIdsBatch = async (
   }
 
   if (runtimeSkipIds.length > 0) {
-    await markStringsAsSkip(db, runtimeSkipIds, targetLang);
+    await markStringsAsSkip(db, runtimeSkipIds);
     for (const stringId of runtimeSkipIds) {
       emitResult({ stringId, skipped: true });
     }

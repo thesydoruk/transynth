@@ -16,7 +16,6 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { modId: string };
     Body: {
       srcLang?: string;
-      targetLang?: string;
       useLlm?: boolean;
       heuristicOnly?: boolean;
       force?: boolean;
@@ -28,7 +27,6 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
-    const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
     const useLlm = req.body?.useLlm !== false && req.body?.heuristicOnly !== true;
     const force = req.body?.force === true;
 
@@ -72,7 +70,6 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
           {
             modId,
             srcLang,
-            targetLang,
             modName: mod.name,
             game: mod.game,
             useLlm,

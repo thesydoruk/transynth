@@ -2,12 +2,16 @@
 /**
  * Automatic AI translation review: verify pending rows, auto-approve OK, auto-fix incorrect rows.
  *
+ * By default only draft/tm/fuzzy/auto translations are checked. Use --force to re-check
+ * confirmed (reviewed/human) rows as well.
+ *
  * Usage:
  *   npm run verify:auto -- --mod-id 45
  *   npm run verify:auto -- --mod-name "MyMod.esp"
  *   npm run verify:auto -- --all
  *   npm run verify:auto -- --mod-id 45 --dry-run
  *   npm run verify:auto -- --mod-id 45 --fix-suspicious
+ *   npm run verify:auto -- --mod-id 45 --force
  *   npm run verify:auto -- --mod-id 45 --tgt-lang uk
  */
 import '../src/loadEnv';
@@ -17,34 +21,15 @@ import { CONFIG, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { formatLogBlock } from '../src/logging/format';
-import type { GameType } from '../src/types';
 import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llmVerifyService';
 import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/cliAutoVerify';
 import type { LlmVerifyIssue } from '../src/web/llmVerifyService';
-
-type ModTarget = {
-  modId: number;
-  modName: string;
-  game: GameType;
-  srcLang: string;
-};
-
-const parseModIds = (raw: string | undefined): number[] | undefined => {
-  if (!raw?.trim()) return undefined;
-  const ids = raw
-    .split(',')
-    .map((part) => Number.parseInt(part.trim(), 10))
-    .filter((id) => Number.isInteger(id) && id > 0);
-  if (ids.length === 0) {
-    throw new Error('--mod-id must list one or more positive integers');
-  }
-  return ids;
-};
-
-const formatPct = (done: number, total: number): string => {
-  if (total <= 0) return '0%';
-  return `${Math.round((done / total) * 100)}%`;
-};
+import {
+  assertCliModSelector,
+  formatPct,
+  resolveCliModTargets,
+  type CliModTarget,
+} from './cliModTargets';
 
 const formatIssueLocation = (issue: LlmVerifyIssue): string =>
   issue.edid ?? issue.path ?? issue.signature ?? '—';
@@ -117,21 +102,21 @@ const argv = await yargs(hideBin(process.argv))
     describe:
       'Also apply LLM suggestions for suspicious rows (default: only incorrect rows are auto-fixed)',
   })
+  .option('force', {
+    type: 'boolean',
+    default: false,
+    describe: 'Also verify confirmed translations (reviewed/human), not only pending rows',
+  })
   .option('db-chunk', {
     type: 'number',
     describe: `DB page size for large mods (default: ${LLM_VERIFY_DB_CHUNK_SIZE})`,
   })
   .check((args) => {
-    const hasTarget = args.all || args['mod-id'] || args['mod-name'];
-    if (!hasTarget) {
-      throw new Error('Specify --mod-id, --mod-name, or --all');
-    }
-    if (args.all && (args['mod-id'] || args['mod-name'])) {
-      throw new Error('Use either --all or a single-mod selector, not both');
-    }
-    if (args['mod-id'] && args['mod-name']) {
-      throw new Error('Use either --mod-id or --mod-name, not both');
-    }
+    assertCliModSelector({
+      all: args.all,
+      modId: args['mod-id'],
+      modName: args['mod-name'],
+    });
     return true;
   })
   .help()
@@ -140,95 +125,14 @@ const argv = await yargs(hideBin(process.argv))
 validateConfig();
 
 const tgtLang = argv['tgt-lang'].trim();
-const srcLangOverride = argv['src-lang']?.trim() || undefined;
 const dryRun = argv['dry-run'];
 const autoApproveVerified = !argv['no-auto-approve'];
 const fixSuspicious = argv['fix-suspicious'];
+const force = argv.force;
 const dbChunkSize =
   argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_VERIFY_DB_CHUNK_SIZE;
 
 const db = openDb();
-
-const listAllModTargets = async (): Promise<ModTarget[]> => {
-  const { rows } = await db.query<{
-    mod_id: number;
-    mod_name: string;
-    game: string;
-    src_lang: string | null;
-  }>(
-    `SELECT DISTINCT ON (m.id)
-        m.id AS mod_id,
-        m.name AS mod_name,
-        COALESCE(m.game, mi.game, 'fo4') AS game,
-        mi.src_lang
-     FROM mods m
-     JOIN mod_imports mi ON mi.mod_id = m.id
-     WHERE mi.status = 'completed'
-       AND mi.mod_id IS NOT NULL
-     ORDER BY m.id, mi.updated_at DESC`,
-  );
-
-  return rows.map((row) => ({
-    modId: row.mod_id,
-    modName: row.mod_name,
-    game: row.game as GameType,
-    srcLang: srcLangOverride ?? row.src_lang?.trim() ?? CONFIG.defaultSrcLang,
-  }));
-};
-
-const resolveModTargets = async (): Promise<ModTarget[]> => {
-  if (argv.all) {
-    return listAllModTargets();
-  }
-
-  let modIds: number[];
-  if (argv['mod-name']) {
-    const name = argv['mod-name'].trim();
-    const { rows } = await db.query<{ id: number }>(
-      `SELECT id FROM mods WHERE name ILIKE $1 ORDER BY id LIMIT 2`,
-      [name],
-    );
-    if (rows.length === 0) throw new Error(`Mod not found: "${name}"`);
-    if (rows.length > 1) throw new Error(`Multiple mods match "${name}" — use --mod-id`);
-    modIds = [rows[0]!.id];
-  } else {
-    modIds = parseModIds(argv['mod-id']) ?? [];
-  }
-
-  const targets: ModTarget[] = [];
-  for (const modId of modIds) {
-    const { rows } = await db.query<{
-      mod_id: number;
-      mod_name: string;
-      game: string;
-      src_lang: string | null;
-    }>(
-      `SELECT m.id AS mod_id,
-              m.name AS mod_name,
-              COALESCE(m.game, mi.game, 'fo4') AS game,
-              mi.src_lang
-       FROM mods m
-       LEFT JOIN LATERAL (
-         SELECT game, src_lang
-           FROM mod_imports
-          WHERE mod_id = m.id AND status = 'completed'
-          ORDER BY updated_at DESC
-          LIMIT 1
-       ) mi ON TRUE
-       WHERE m.id = $1`,
-      [modId],
-    );
-    const row = rows[0];
-    if (!row) throw new Error(`Mod id=${modId} not found`);
-    targets.push({
-      modId: row.mod_id,
-      modName: row.mod_name,
-      game: row.game as GameType,
-      srcLang: srcLangOverride ?? row.src_lang?.trim() ?? CONFIG.defaultSrcLang,
-    });
-  }
-  return targets;
-};
 
 const logVerifyProgress = (
   ctx: {
@@ -241,8 +145,9 @@ const logVerifyProgress = (
   event: CliVerifyProgressEvent,
 ): void => {
   if (event.type === 'started') {
+    const scope = force ? 'eligible' : 'pending';
     log.info(
-      `Verify: ${event.total} pending row(s), dryRun=${event.dryRun}, db-chunk=${event.dbChunkSize}`,
+      `Verify${force ? ' (force)' : ''}: ${event.total} ${scope} row(s), dryRun=${event.dryRun}, db-chunk=${event.dbChunkSize}`,
     );
     return;
   }
@@ -285,7 +190,7 @@ const logVerifyProgress = (
   }
 };
 
-const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped'> => {
+const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skipped'> => {
   log.info(
     `Processing mod_id=${target.modId} "${target.modName}" (src=${target.srcLang}, tgt=${tgtLang}, game=${target.game})`,
   );
@@ -309,6 +214,7 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
         dryRun,
         autoApproveVerified,
         fixSuspicious,
+        force,
         dbChunkSize,
       },
       (event) => logVerifyProgress(ctx, event),
@@ -325,7 +231,11 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes('No strings pending review')) {
-      log.info(`Verify: nothing to do (mod_id=${target.modId}) — no pending rows`);
+      log.info(
+        force
+          ? `Verify: nothing to do (mod_id=${target.modId}) — no eligible rows`
+          : `Verify: nothing to do (mod_id=${target.modId}) — no pending rows`,
+      );
       return 'skipped';
     }
     log.error(`Verify failed for mod_id=${target.modId}: ${message}`);
@@ -334,14 +244,19 @@ const processMod = async (target: ModTarget): Promise<'ok' | 'failed' | 'skipped
 };
 
 try {
-  const targets = await resolveModTargets();
+  const targets = await resolveCliModTargets(db, {
+    all: argv.all,
+    modId: argv['mod-id'],
+    modName: argv['mod-name'],
+    srcLang: argv['src-lang'],
+  });
   if (targets.length === 0) {
     log.warn('No mods found');
     process.exit(0);
   }
 
   log.info(
-    `Auto-verify: ${targets.length} mod(s), dryRun=${dryRun}, autoApprove=${!dryRun && autoApproveVerified}, ` +
+    `Auto-verify: ${targets.length} mod(s), dryRun=${dryRun}, force=${force}, autoApprove=${!dryRun && autoApproveVerified}, ` +
       `fixSuspicious=${!dryRun && fixSuspicious}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 

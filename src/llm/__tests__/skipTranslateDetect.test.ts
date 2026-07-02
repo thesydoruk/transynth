@@ -27,7 +27,6 @@ describe('detectSkipCandidatesWithLlm', () => {
   const baseOpts = {
     model: 'test-model',
     srcLang: 'en',
-    targetLang: 'uk',
   };
 
   it('returns skip verdicts from valid JSON', async () => {

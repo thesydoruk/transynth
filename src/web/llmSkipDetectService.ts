@@ -49,7 +49,6 @@ export type LlmSkipDetectJobSnapshot = {
 type ActiveLlmSkipDetectJob = LlmSkipDetectJobSnapshot & {
   cancel: boolean;
   srcLang: string;
-  targetLang: string;
   useLlm: boolean;
   persist: boolean;
   force: boolean;
@@ -232,7 +231,6 @@ export const runLlmSkipDetectJob = async (
   opts: {
     modId: number;
     srcLang: string;
-    targetLang: string;
     modName?: string | null;
     game?: string | null;
     useLlm?: boolean;
@@ -268,7 +266,6 @@ export const runLlmSkipDetectJob = async (
     error: null,
     cancel: false,
     srcLang: opts.srcLang,
-    targetLang: opts.targetLang,
     useLlm,
     persist,
     force,
@@ -284,7 +281,6 @@ export const runLlmSkipDetectJob = async (
     persist,
     force,
     srcLang: opts.srcLang,
-    targetLang: opts.targetLang,
     llmBatchSize: LLM_SKIP_DETECT_LLM_BATCH_SIZE,
   });
 
@@ -298,7 +294,6 @@ export const runLlmSkipDetectJob = async (
     const marked = await markStringsAsSkip(
       db,
       candidates.map((c) => c.stringId),
-      opts.targetLang,
     );
     job.markedCount += marked;
     logVerify.info('skip-detect chunk persisted', {
@@ -408,7 +403,6 @@ export const runLlmSkipDetectJob = async (
                 items: [...llmItems],
                 model,
                 srcLang: opts.srcLang,
-                targetLang: opts.targetLang,
                 game: opts.game,
                 modName: opts.modName,
                 signal,
