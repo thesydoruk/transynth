@@ -24,7 +24,7 @@
  *   --src-lang <code>   Lang tag for non-localized plugins and PEX strings (default: en)
  *   --tgt-lang <code>   Target translation language stored on the job (default: TGT_LANG)
  *   --force             Re-import mods whose jobs are already completed
- *   --parallel <n>      Concurrent imports, 1–8 (default: 2)
+ *   --parallel <n>      Concurrent imports, 1–8 (default: 1; DB writes serialize via advisory lock)
  *
  * Examples:
  *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
@@ -112,8 +112,9 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option('parallel', {
     type: 'number',
-    default: 2,
-    describe: 'Import this many mods concurrently (1–8)',
+    default: 1,
+    describe:
+      'Import this many mods concurrently (1–8; DB writes are serialized — use 1 for large scans)',
   })
   .help()
   .parse();
@@ -164,6 +165,11 @@ await ensureModImportSchema(db);
 log.info(`Scanning ${candidates.length} mod file(s) under ${scanDir} (game=${game}, recursive)`);
 log.info(`Archive extract cache: ${extractRoot}`);
 log.info(`Parallel import workers: ${parallel}`);
+if (parallel > 1) {
+  log.warn(
+    'parallel > 1 only overlaps file I/O — PostgreSQL bulk writes are serialized; prefer --parallel 1 for large game data scans',
+  );
+}
 
 type ScanOutcome = 'imported' | 'skipped' | 'failed';
 

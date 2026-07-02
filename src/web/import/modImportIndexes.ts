@@ -11,6 +11,29 @@ import { logImport } from '../../logging/loggers';
 /** Session advisory lock — only one import defers indexes at a time. */
 export const MOD_IMPORT_INDEX_ADVISORY_LOCK_KEY = 0x4d6f6449;
 
+/** Session advisory lock — serializes bulk writes to records/strings across imports. */
+export const MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY = 0x4d6f6457;
+
+/** True for PostgreSQL deadlock error (SQLSTATE 40P01). */
+export const isPgDeadlockError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  if ('code' in err && (err as { code?: string }).code === '40P01') return true;
+  return err.message.toLowerCase().includes('deadlock');
+};
+
+/**
+ * Hold an exclusive session lock for the duration of a bulk import.
+ * Concurrent mod/EET/CSV imports block here instead of deadlocking in PostgreSQL.
+ */
+export const withModImportWriteLock = async <T>(db: Tx, fn: () => Promise<T>): Promise<T> => {
+  await db.query(`SELECT pg_advisory_lock($1)`, [MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY]);
+  try {
+    return await fn();
+  } finally {
+    await db.query(`SELECT pg_advisory_unlock($1)`, [MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY]);
+  }
+};
+
 export type DeferredImportIndex = {
   name: string;
   createSql: string;

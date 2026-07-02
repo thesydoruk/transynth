@@ -21,7 +21,7 @@ import { parseCsvLine } from '../../utils/csv';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 import { bulkInsertRecordImportRows } from './recordImportBulk';
-import { withDeferredImportIndexes } from './modImportIndexes';
+import { withDeferredImportIndexes, withModImportWriteLock } from './modImportIndexes';
 
 /**
  * Import job row stored in the `csv_imports` table.
@@ -346,68 +346,72 @@ export const runCsvImport = async (
   };
 
   try {
-    await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
-      for (const rec of iterCsvRecords(text)) {
-        processed++;
-        if (processed <= skipCount) continue;
+    await withModImportWriteLock(db, async () => {
+      await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
+        for (const rec of iterCsvRecords(text)) {
+          processed++;
+          if (processed <= skipCount) continue;
 
-        if (state.cancel) {
-          if (pending.length > 0) {
-            if (!inTx) {
-              await db.query('BEGIN');
-              inTx = true;
+          if (state.cancel) {
+            if (pending.length > 0) {
+              if (!inTx) {
+                await db.query('BEGIN');
+                inTx = true;
+              }
+              await flushPendingBatch();
             }
-            await flushPendingBatch();
+            await commitOpenTx();
+            await markFailed(db, job.id, imported);
+            log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+            break;
           }
-          await commitOpenTx();
-          await markFailed(db, job.id, imported);
-          log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
-          break;
-        }
-        if (state.pause) {
-          if (pending.length > 0) {
-            if (!inTx) {
-              await db.query('BEGIN');
-              inTx = true;
+          if (state.pause) {
+            if (pending.length > 0) {
+              if (!inTx) {
+                await db.query('BEGIN');
+                inTx = true;
+              }
+              await flushPendingBatch();
             }
-            await flushPendingBatch();
+            await commitOpenTx();
+            await markPaused(db, job.id, imported);
+            log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
+            break;
           }
-          await commitOpenTx();
-          await markPaused(db, job.id, imported);
-          log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
-          break;
+
+          pending.push(rec);
+
+          if (pending.length >= importBatchSize) {
+            await db.query('BEGIN');
+            inTx = true;
+            await flushPendingBatch();
+            await updateProgress(db, job.id, imported);
+            await commitOpenTx();
+            const pct = ((imported / job.total_records) * 100).toFixed(1);
+            log.info(
+              `[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`,
+            );
+            onProgress?.(imported, job.total_records);
+          }
         }
 
-        pending.push(rec);
-
-        if (pending.length >= importBatchSize) {
-          await db.query('BEGIN');
-          inTx = true;
+        if (!state.cancel && !state.pause && pending.length > 0) {
+          if (!inTx) {
+            await db.query('BEGIN');
+            inTx = true;
+          }
           await flushPendingBatch();
-          await updateProgress(db, job.id, imported);
-          await commitOpenTx();
-          const pct = ((imported / job.total_records) * 100).toFixed(1);
-          log.info(`[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
+        }
+
+        await commitOpenTx();
+
+        if (!state.cancel && !state.pause) {
+          await markDone(db, job.id, imported);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
           onProgress?.(imported, job.total_records);
         }
-      }
-
-      if (!state.cancel && !state.pause && pending.length > 0) {
-        if (!inTx) {
-          await db.query('BEGIN');
-          inTx = true;
-        }
-        await flushPendingBatch();
-      }
-
-      await commitOpenTx();
-
-      if (!state.cancel && !state.pause) {
-        await markDone(db, job.id, imported);
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
-        onProgress?.(imported, job.total_records);
-      }
+      });
     });
   } catch (err) {
     if (inTx) {

@@ -2,11 +2,14 @@ import type { Tx } from '../../../db';
 import {
   DEFERRED_IMPORT_INDEXES,
   MOD_IMPORT_INDEX_ADVISORY_LOCK_KEY,
+  MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY,
   deferredImportIndexDropSql,
+  isPgDeadlockError,
   releaseDeferredImportIndexLock,
   restoreDeferredImportIndexes,
   tryBeginDeferredImportIndexes,
   withDeferredImportIndexes,
+  withModImportWriteLock,
 } from '../modImportIndexes';
 
 describe('deferredImportIndexDropSql', () => {
@@ -141,5 +144,33 @@ describe('releaseDeferredImportIndexLock', () => {
     };
     await releaseDeferredImportIndexLock(db as unknown as Tx);
     expect(unlocked).toBe(true);
+  });
+});
+
+describe('isPgDeadlockError', () => {
+  it('detects SQLSTATE 40P01', () => {
+    expect(isPgDeadlockError(Object.assign(new Error('deadlock'), { code: '40P01' }))).toBe(true);
+  });
+
+  it('detects message substring', () => {
+    expect(isPgDeadlockError(new Error('deadlock detected'))).toBe(true);
+  });
+});
+
+describe('withModImportWriteLock', () => {
+  it('acquires and releases the write advisory lock', async () => {
+    const queries: string[] = [];
+    const db = {
+      query: async (sql: string, params?: unknown[]) => {
+        queries.push(sql);
+        expect(params?.[0]).toBe(MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY);
+        return { rows: [] };
+      },
+    };
+
+    const value = await withModImportWriteLock(db as unknown as Tx, async () => 42);
+    expect(value).toBe(42);
+    expect(queries.filter((q) => q.includes('pg_advisory_lock'))).toHaveLength(1);
+    expect(queries.filter((q) => q.includes('pg_advisory_unlock'))).toHaveLength(1);
   });
 });
