@@ -2,14 +2,23 @@
 /**
  * Restore PostgreSQL database from a pg_dump custom-format file.
  *
- * Default input: data/backups/localizer.dump
- *
- * Uses pg_restore against DATABASE_URL (remote Postgres). Falls back to
- * `docker run postgres:17 pg_restore` when client tools are not on PATH.
+ * Destructive — replaces existing data in the target database. Requires `--yes`.
+ * Uses pg_restore against DATABASE_URL. Falls back to `docker run postgres:17 pg_restore`
+ * when client tools are not on PATH.
  *
  * Usage:
+ *   npm run db:restore -- --yes [options]
+ *
+ * Options:
+ *   --file <path>   Dump file to restore (default: data/backups/localizer.dump)
+ *   --yes           Confirm destructive restore (required)
+ *
+ * Examples:
  *   npm run db:restore -- --yes
  *   npm run db:restore -- --yes --file data/backups/my-backup.dump
+ *
+ * Environment:
+ *   DATABASE_URL   PostgreSQL connection string (see .env.example)
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

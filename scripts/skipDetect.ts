@@ -5,15 +5,29 @@
  * Heuristics run first; LLM audit follows by default. Skip marks apply to the
  * source string for all target languages — not per-locale translation status.
  *
+ * Mod selector (exactly one required):
+ *   --mod-id <ids>      Comma-separated database mod ids
+ *   --mod-name <name>   Exact mod name (must be unique)
+ *   --all               Every mod with a completed import job
+ *
  * Usage:
+ *   npm run skip:detect -- [options]
+ *
+ * Options:
+ *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
+ *   --heuristic-only    Heuristics only (no LLM audit)
+ *   --use-llm           Run LLM skip detection after heuristics (default: true)
+ *   --force             Re-scan all strings, including already marked or scanned
+ *   --no-rag            Accepted for CLI consistency; has no effect on skip-detect
+ *   --rag-mod-only      Accepted for CLI consistency; has no effect on skip-detect
+ *
+ * Examples:
  *   npm run skip:detect -- --mod-id 45
  *   npm run skip:detect -- --mod-name "MyMod.esp"
  *   npm run skip:detect -- --all
  *   npm run skip:detect -- --mod-id 45 --heuristic-only
  *   npm run skip:detect -- --mod-id 45 --force
- *
- * RAG flags (--no-rag, --rag-mod-only) are accepted for CLI consistency but have no
- * effect here — skip-detect does not use reference-example search.
+ *   npm run skip:detect -- --mod-id 1,2,3 --src-lang en
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

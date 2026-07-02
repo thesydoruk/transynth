@@ -4,10 +4,12 @@
  *
  * Idempotent: re-running upserts every entry (ON CONFLICT DO UPDATE), so the
  * curated terms in `src/resources/glossary/fo4-uk.ts` are always the source of
- * truth and the project's terminology can never be lost. Manually-added terms
- * (source = 'manual') are left untouched.
+ * truth. Manually-added terms (`source = 'manual'`) are left untouched.
  *
- * Usage:  npm run db:seed:glossary
+ * Usage:
+ *   npm run db:seed:glossary
+ *
+ * No CLI flags. Requires an initialized database (`npm run db:init`).
  */
 import '../src/loadEnv';
 import { openDb, closeDb } from '../src/db';

@@ -4,20 +4,34 @@
  *
  * Run `npm run skip:detect` first to mark non-translatable strings.
  *
- * Overwrite modes (for the target language from `--tgt-lang`):
- *   (default)     untranslated rows only
- *   --force       non-verified rows (draft, tm, fuzzy, auto, …)
- *   --force-all   every non-skipped row, including human/reviewed/rejected
+ * Mod selector (exactly one required):
+ *   --mod-id <ids>      Comma-separated database mod ids
+ *   --mod-name <name>   Exact mod name (must be unique)
+ *   --all               Every mod with a completed import job
+ *
+ * Overwrite modes (for `--tgt-lang`):
+ *   (default)           Untranslated rows only
+ *   --force             Non-verified rows (draft, tm, fuzzy, auto, …)
+ *   --force-all         Every non-skipped row, including human/reviewed/rejected
  *
  * Usage:
+ *   npm run translate:auto -- [options]
+ *
+ * Options:
+ *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
+ *   --tgt-lang <code>   Target translation language (default: TGT_LANG)
+ *   --db-chunk <n>      DB page size for large mods (default: service default)
+ *   --no-rag            Disable reference-example search (no TM, no embedding)
+ *   --rag-mod-only      Search reference examples only within the current mod
+ *
+ * Examples:
  *   npm run translate:auto -- --mod-id 45
  *   npm run translate:auto -- --mod-name "MyMod.esp"
  *   npm run translate:auto -- --all
  *   npm run translate:auto -- --mod-id 45 --force
  *   npm run translate:auto -- --mod-id 45 --force-all
- *   npm run translate:auto -- --mod-id 45 --tgt-lang uk
- *   npm run translate:auto -- --mod-id 45 --no-rag
- *   npm run translate:auto -- --mod-id 45 --rag-mod-only
+ *   npm run translate:auto -- --mod-id 45 --tgt-lang uk --no-rag
+ *   npm run translate:auto -- --mod-id 1,2,3 --rag-mod-only --db-chunk 500
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

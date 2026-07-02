@@ -2,19 +2,35 @@
 /**
  * Automatic AI translation review: verify pending rows, auto-approve OK, auto-fix incorrect rows.
  *
- * By default only draft/tm/fuzzy/auto translations are checked. Use --force to re-check
+ * By default only draft/tm/fuzzy/auto translations are checked. Use `--force` to re-check
  * confirmed (reviewed/human) rows as well.
  *
+ * Mod selector (exactly one required):
+ *   --mod-id <ids>      Comma-separated database mod ids
+ *   --mod-name <name>   Exact mod name (must be unique)
+ *   --all               Every mod with a completed import job
+ *
  * Usage:
+ *   npm run verify:auto -- [options]
+ *
+ * Options:
+ *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
+ *   --tgt-lang <code>   Target language to verify (default: TGT_LANG)
+ *   --dry-run           Log issues only; do not approve or apply fixes
+ *   --no-auto-approve   Do not promote passing rows to reviewed
+ *   --fix-suspicious    Also apply LLM suggestions for suspicious rows (not only incorrect)
+ *   --force             Also verify confirmed translations (reviewed/human)
+ *   --db-chunk <n>      DB page size for large mods (default: service default)
+ *   --no-rag            Disable reference-example search
+ *   --rag-mod-only      Search reference examples only within the current mod
+ *
+ * Examples:
  *   npm run verify:auto -- --mod-id 45
  *   npm run verify:auto -- --mod-name "MyMod.esp"
  *   npm run verify:auto -- --all
  *   npm run verify:auto -- --mod-id 45 --dry-run
- *   npm run verify:auto -- --mod-id 45 --fix-suspicious
- *   npm run verify:auto -- --mod-id 45 --force
- *   npm run verify:auto -- --mod-id 45 --tgt-lang uk
- *   npm run verify:auto -- --mod-id 45 --no-rag
- *   npm run verify:auto -- --mod-id 45 --rag-mod-only
+ *   npm run verify:auto -- --mod-id 45 --fix-suspicious --force
+ *   npm run verify:auto -- --mod-id 45 --tgt-lang uk --no-rag
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

@@ -8,13 +8,33 @@
  * - loose patched PEX scripts under Scripts\ (not repacked into archives),
  * - no BA2/BSA archives.
  *
+ * Mod selector (exactly one required):
+ *   --all               Every mod with a completed import job
+ *   --mod-id <ids>      Comma-separated database mod ids
+ *   --mod-name <name>   Exact mod name (must be unique)
+ *
  * Usage:
- *   npm run export:mods -- --out "D:\Output\F4_UA"
+ *   npm run export:mods -- --out <path> [options]
+ *
+ * Required:
+ *   --out <path>        Output root directory (one subfolder per mod unless --flat)
+ *
+ * Options:
+ *   --game <id>         With --all: only export mods for this game
+ *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
+ *   --tgt-lang <code>   Target translation language (default: TGT_LANG)
+ *   --force-localized   Export external STRINGS tables instead of patching the ESP
+ *   --repack-archives   Pack STRINGS (and scripts unless --no-scripts) into BA2/BSA
+ *   --no-scripts        Skip Papyrus script localization
+ *   --flat              Write files directly into --out (no per-mod subfolders)
+ *   --parallel <n>      Concurrent exports, 1–4 (default: 1)
+ *
+ * Examples:
+ *   npm run export:mods -- --out "D:\Output\F4_UA" --mod-id 45
  *   npm run export:mods -- --out "D:\Output" --all --tgt-lang uk
- *   npm run export:mods -- --out "D:\Output" --mod-id 1,2,3
- *   npm run export:mods -- --out "D:\Output" --all --force-localized
- *   npm run export:mods -- --out "D:\Output" --all --repack-archives
- *   npm run export:mods -- --out "D:\Output" --all --no-scripts
+ *   npm run export:mods -- --out "D:\Output" --mod-id 1,2,3 --force-localized
+ *   npm run export:mods -- --out "D:\Output" --all --repack-archives --parallel 2
+ *   npm run export:mods -- --out "D:\Output" --mod-name "WorkshopPlus.esp" --no-scripts
  */
 import '../src/loadEnv';
 import path from 'node:path';

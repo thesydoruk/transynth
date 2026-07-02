@@ -2,14 +2,21 @@
 /**
  * Dump PostgreSQL database to a custom-format file (pg_dump -Fc).
  *
- * Default output: data/backups/localizer.dump
- *
- * Uses pg_dump against DATABASE_URL (remote Postgres). Falls back to
- * `docker run postgres:17 pg_dump` when client tools are not on PATH.
+ * Uses pg_dump against DATABASE_URL. Falls back to `docker run postgres:17 pg_dump`
+ * when client tools are not on PATH.
  *
  * Usage:
+ *   npm run db:dump [options]
+ *
+ * Options:
+ *   --out <path>   Output dump path (default: data/backups/localizer.dump)
+ *
+ * Examples:
  *   npm run db:dump
  *   npm run db:dump -- --out data/backups/my-backup.dump
+ *
+ * Environment:
+ *   DATABASE_URL   PostgreSQL connection string (see .env.example)
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

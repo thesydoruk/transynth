@@ -5,11 +5,24 @@
  * Detects non-localized mods that ship embedded translations (e.g. Russian text
  * stored as English source). Detection only — no automatic fixes.
  *
+ * Mod selector (exactly one required):
+ *   --mod-id <id>       Database mod id to audit
+ *   --mod-name <name>   Exact mod name (must be unique)
+ *   --all               Every mod with a completed import job
+ *
  * Usage:
+ *   npm run detect:locale -- [options]
+ *
+ * Options:
+ *   --import-id <id>    Specific mod_imports job id (default: latest for mod)
+ *   --sample <n>        Random string sample size for the LLM (default: service default)
+ *   --json              Print machine-readable JSON report to stdout
+ *
+ * Examples:
  *   npm run detect:locale -- --mod-id 45
  *   npm run detect:locale -- --mod-name "MyMod.esp"
- *   npm run detect:locale -- --all
- *   npm run detect:locale -- --all --sample 50 --json
+ *   npm run detect:locale -- --all --sample 50
+ *   npm run detect:locale -- --mod-id 45 --import-id 12 --json
  */
 import '../src/loadEnv';
 import yargs from 'yargs';

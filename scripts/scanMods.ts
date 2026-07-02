@@ -3,15 +3,34 @@
  * Batch-scan a mod directory tree and import every plugin/archive into the database.
  *
  * Walks the given folder recursively (skips `.transynth-extracted`, `.git`, `node_modules`).
- * Reuses the same registration and import pipeline as the web UI.
+ * Reuses the same registration and import pipeline as the web UI. Imports ESP rows,
+ * STRINGS locales, MCM translations, and PEX script literals.
  *
- * Usage:
- *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
- *   npm run scan:mods -- --dir "\\nas\share\mods" --game fo4
- *   npm run scan:mods -- --dir "Z:\Mods" --game fo4 --parallel 3
+ * Completed jobs are skipped unless `--force` is set. Deduplication is by file content
+ * hash (same plugin bytes = same import job).
  *
  * Network/mapped drives are read-only scan sources. Archives extract to local
- * DATA_DIR/cache/scan-extract (override with SCAN_EXTRACT_DIR).
+ * `DATA_DIR/cache/scan-extract` (override with `SCAN_EXTRACT_DIR`).
+ *
+ * Usage:
+ *   npm run scan:mods -- --dir <path> [options]
+ *
+ * Required:
+ *   --dir <path>        Root folder to scan recursively for .esp/.esm/.esl and archives
+ *
+ * Options:
+ *   --game <id>         Game rules for ESP parsing (default: fo4)
+ *                       fo4 | fo76 | fo3 | fnv | ob | mw | sse | sle
+ *   --src-lang <code>   Lang tag for non-localized plugins and PEX strings (default: en)
+ *   --tgt-lang <code>   Target translation language stored on the job (default: TGT_LANG)
+ *   --force             Re-import mods whose jobs are already completed
+ *   --parallel <n>      Concurrent imports, 1–8 (default: 2)
+ *
+ * Examples:
+ *   npm run scan:mods -- --dir "D:\Games\Fallout4\Data" --game fo4
+ *   npm run scan:mods -- --dir "\\nas\share\mods" --game fo4 --parallel 3
+ *   npm run scan:mods -- --dir "Z:\Mods" --game fo4 --force
+ *   npm run scan:mods -- --dir "Z:\Mods" --force --src-lang en --tgt-lang uk
  */
 import '../src/loadEnv';
 import fs from 'node:fs';

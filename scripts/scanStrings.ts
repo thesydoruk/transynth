@@ -8,8 +8,22 @@
  * so records keep FormID, EDID, and subrecord paths.
  *
  * Usage:
+ *   npm run scan:strings -- --dir <path> [options]
+ *
+ * Required:
+ *   --dir <path>              Folder to scan for orphaned strings packs
+ *
+ * Options:
+ *   --plugins-dir <path>      Game Data folder with .esp/.esm for record enrichment
+ *                             (required unless plugins are already in the database)
+ *   --game <id>               Game stored on imported mod rows (default: fo4)
+ *   --force                   Re-import packs whose content hash is already in the DB
+ *   --no-recursive            Only inspect the top-level directory
+ *
+ * Examples:
  *   npm run scan:strings -- --dir "C:\path\F4_UA" --plugins-dir "D:\Games\Fallout4\Data"
  *   npm run scan:strings -- --dir "D:\Mods" --game fo4 --force
+ *   npm run scan:strings -- --dir "D:\Mods" --plugins-dir "D:\Data" --no-recursive
  */
 import '../src/loadEnv';
 import fs from 'node:fs';

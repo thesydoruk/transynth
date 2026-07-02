@@ -11,9 +11,13 @@ const writeWString = (buf: Buffer, offset: number, s: string): number => {
   return offset + 2 + bytes.length;
 };
 
-const buildPex = (strings: string[], opts?: { sourceFile?: string; gameId?: number }): Buffer => {
+const buildPex = (
+  strings: string[],
+  opts?: { sourceFile?: string; gameId?: number; endian?: 'be' | 'le' },
+): Buffer => {
   const sourceFile = opts?.sourceFile ?? 'TestScript.psc';
   const gameId = opts?.gameId ?? 3;
+  const endian = opts?.endian ?? 'be';
 
   const wsize = (s: string) => 2 + Buffer.byteLength(s, 'utf8');
   const totalSize =
@@ -27,25 +31,34 @@ const buildPex = (strings: string[], opts?: { sourceFile?: string; gameId?: numb
   const buf = Buffer.alloc(totalSize, 0);
   let pos = 0;
 
-  buf.writeUInt32BE(0xfa57c0de, pos);
+  if (endian === 'le') buf.writeUInt32LE(0xfa57c0de, pos);
+  else buf.writeUInt32BE(0xfa57c0de, pos);
   pos += 4;
   buf.writeUInt8(3, pos);
   pos += 1;
   buf.writeUInt8(2, pos);
   pos += 1;
-  buf.writeUInt16BE(gameId, pos);
+  if (endian === 'le') buf.writeUInt16LE(gameId, pos);
+  else buf.writeUInt16BE(gameId, pos);
   pos += 2;
   pos += 8;
 
-  pos = writeWString(buf, pos, sourceFile);
-  pos = writeWString(buf, pos, 'testuser');
-  pos = writeWString(buf, pos, 'testmachine');
+  const writeW = (s: string) => {
+    const bytes = Buffer.from(s, 'utf8');
+    if (endian === 'le') buf.writeUInt16LE(bytes.length, pos);
+    else buf.writeUInt16BE(bytes.length, pos);
+    bytes.copy(buf, pos + 2);
+    pos += 2 + bytes.length;
+  };
 
-  buf.writeUInt16BE(strings.length, pos);
+  writeW(sourceFile);
+  writeW('testuser');
+  writeW('testmachine');
+
+  if (endian === 'le') buf.writeUInt16LE(strings.length, pos);
+  else buf.writeUInt16BE(strings.length, pos);
   pos += 2;
-  for (const s of strings) {
-    pos = writeWString(buf, pos, s);
-  }
+  for (const s of strings) writeW(s);
 
   return buf;
 };
@@ -139,6 +152,15 @@ describe('parsePexBuffer — UTF-8 / encoding', () => {
     expect(result.info.gameId).toBe(1);
     expect(result.strings).toContain('Quest marker set.');
   });
+
+  it('parses little-endian Fallout 4 CK output', () => {
+    const strings = ['Hello from layer script', 'TriggerScript', 'Done!'];
+    const result = parsePexBuffer(
+      buildPex(strings, { endian: 'le', sourceFile: 'LayerScript.psc' }),
+    );
+    expect(result.info.sourceFile).toBe('LayerScript.psc');
+    expect(result.strings).toEqual(['Hello from layer script', 'Done!']);
+  });
 });
 
 describe('isLikelyUserText', () => {
@@ -219,5 +241,15 @@ describe('patchPexBuffer', () => {
 
     const parsed = parsePexBuffer(patchPexBuffer(source, overlay));
     expect(parsed.strings).toEqual(['Перше повідомлення', 'Second message']);
+  });
+
+  it('preserves little-endian layout when patching', () => {
+    const strings = ['Hello world', 'ActorValue'];
+    const source = buildPex(strings, { sourceFile: 'DialogScript.psc', endian: 'le' });
+    const overlay = new Map([['Hello world', 'Привіт, світ']]);
+    const patched = patchPexBuffer(source, overlay);
+    expect(patched.readUInt32LE(0)).toBe(0xfa57c0de);
+    const parsed = parsePexBuffer(patched);
+    expect(parsed.strings).toContain('Привіт, світ');
   });
 });

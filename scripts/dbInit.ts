@@ -1,4 +1,16 @@
 #!/usr/bin/env tsx
+/**
+ * Create the PostgreSQL database (if missing) and apply `sql/schema.sql`.
+ *
+ * Idempotent: safe to re-run; existing tables are not dropped. For a full wipe use
+ * `npm run db:reset -- --yes`.
+ *
+ * Usage:
+ *   npm run db:init
+ *
+ * Environment:
+ *   DATABASE_URL   PostgreSQL connection string (see .env.example)
+ */
 import '../src/loadEnv';
 import fs from 'fs';
 import path from 'path';

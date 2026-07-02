@@ -1,4 +1,16 @@
 #!/usr/bin/env tsx
+/**
+ * Full development database reset: drop `public` schema, recreate it, re-apply schema.
+ *
+ * Destructive — deletes all mods, strings, translations, and jobs. Requires explicit
+ * confirmation via `--yes`.
+ *
+ * Usage:
+ *   npm run db:reset -- --yes
+ *
+ * Environment:
+ *   DATABASE_URL   PostgreSQL connection string (see .env.example)
+ */
 import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';

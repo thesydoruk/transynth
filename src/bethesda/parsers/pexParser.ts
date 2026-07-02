@@ -7,7 +7,8 @@
  * PEX format reference:
  *   https://en.uesp.net/wiki/Skyrim_Mod:Compiled_Script_File_Format
  *
- * Binary layout (all integers are big-endian throughout the PEX format):
+ * Binary layout (Skyrim-era tooling uses big-endian; Fallout 4 / modern CK emit
+ * little-endian magic, wstring lengths, and string-table counts):
  *
  *   Header (fixed portion — 16 bytes):
  *     magic           : uint32   = 0xFA57C0DE
@@ -28,7 +29,7 @@
  *   … followed by debugInfo, userFlags, and objects — not parsed here.
  *
  * wstring encoding:
- *   uint16 (BE) as the byte-length prefix, then that many UTF-8 bytes.
+ *   uint16 length prefix (BE or LE, matching the file endianness) + UTF-8 body.
  *   No null terminator.
  *
  * Key insight for string extraction:
@@ -39,8 +40,30 @@
  *   for user-visible text that might need localisation.
  */
 
-/** Magic number at offset 0 of every valid PEX file — big-endian. */
+/** Magic number at offset 0 of every valid PEX file. */
 const PEX_MAGIC = 0xfa57c0de;
+
+type PexEndian = 'be' | 'le';
+
+const detectPexEndian = (buf: Buffer): PexEndian => {
+  if (buf.length < 4) {
+    throw new Error(`PEX: file too small (${buf.length} bytes)`);
+  }
+  if (buf.readUInt32LE(0) === PEX_MAGIC) return 'le';
+  if (buf.readUInt32BE(0) === PEX_MAGIC) return 'be';
+  const be = buf.readUInt32BE(0);
+  throw new Error(
+    `PEX: invalid magic 0x${be.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`,
+  );
+};
+
+const readUInt16 = (buf: Buffer, offset: number, endian: PexEndian): number =>
+  endian === 'le' ? buf.readUInt16LE(offset) : buf.readUInt16BE(offset);
+
+const writeUInt16 = (buf: Buffer, value: number, offset: number, endian: PexEndian): void => {
+  if (endian === 'le') buf.writeUInt16LE(value, offset);
+  else buf.writeUInt16BE(value, offset);
+};
 
 /** Metadata extracted from the PEX header. */
 export interface PexInfo {
@@ -67,19 +90,19 @@ export interface PexResult {
 // ── Internal parser helpers ─────────────────────────────────────────────────
 
 /**
- * Read a PEX wstring (uint16 BE length prefix + UTF-8 body) at the given offset.
- * Returns the decoded string and the offset immediately after it.
- *
- * @param buf    - Buffer containing PEX data
- * @param offset - Byte offset of the uint16 length field
- * @throws Error if the buffer is too short
+ * Read a PEX wstring (uint16 length prefix + UTF-8 body) at the given offset.
+ * Defaults to big-endian for legacy Skyrim-style fixtures.
  */
-export const readWString = (buf: Buffer, offset: number): { value: string; nextOffset: number } => {
+export const readWString = (
+  buf: Buffer,
+  offset: number,
+  endian: PexEndian = 'be',
+): { value: string; nextOffset: number } => {
   if (offset + 2 > buf.length) {
     throw new Error(`PEX: out of bounds reading wstring length at offset ${offset}`);
   }
 
-  const len = buf.readUInt16BE(offset);
+  const len = readUInt16(buf, offset, endian);
   offset += 2;
 
   if (offset + len > buf.length) {
@@ -138,35 +161,27 @@ export const isLikelyUserText = (s: string): boolean => {
  *            or is too small to be a valid PEX file
  */
 export const parsePexBuffer = (buf: Buffer): PexResult => {
-  // ── Validate minimum size and magic ──────────────────────────────────────
   if (buf.length < 16) {
     throw new Error(`PEX: file too small (${buf.length} bytes)`);
   }
 
-  const magic = buf.readUInt32BE(0);
-  if (magic !== PEX_MAGIC) {
-    throw new Error(
-      `PEX: invalid magic 0x${magic.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`,
-    );
-  }
+  const endian = detectPexEndian(buf);
 
   // ── Fixed-size header fields ─────────────────────────────────────────────
   const majorVersion = buf.readUInt8(4);
   const minorVersion = buf.readUInt8(5);
-  const gameId = buf.readUInt16BE(6);
-  // compilationTime occupies bytes 8–15 (uint64 BE) — skip it
+  const gameId = readUInt16(buf, 6, endian);
+  // compilationTime occupies bytes 8–15 — skip it
   let offset = 16;
 
   // ── Variable-length header wstrings ──────────────────────────────────────
-  // Read sourceFileName — we keep this for identification
-  const { value: sourceFile, nextOffset: o1 } = readWString(buf, offset);
+  const { value: sourceFile, nextOffset: o1 } = readWString(buf, offset, endian);
   offset = o1;
 
-  // Skip username and machinename — not relevant for string extraction
-  const { nextOffset: o2 } = readWString(buf, offset);
+  const { nextOffset: o2 } = readWString(buf, offset, endian);
   offset = o2;
 
-  const { nextOffset: o3 } = readWString(buf, offset);
+  const { nextOffset: o3 } = readWString(buf, offset, endian);
   offset = o3;
 
   // ── String table ─────────────────────────────────────────────────────────
@@ -174,13 +189,13 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
     throw new Error('PEX: out of bounds reading string table count');
   }
 
-  const count = buf.readUInt16BE(offset);
+  const count = readUInt16(buf, offset, endian);
   offset += 2;
 
   const strings: string[] = [];
 
   for (let i = 0; i < count; i++) {
-    const { value, nextOffset } = readWString(buf, offset);
+    const { value, nextOffset } = readWString(buf, offset, endian);
     offset = nextOffset;
 
     // Apply heuristic — skip identifiers, type names, and empty strings
@@ -199,11 +214,11 @@ export const parsePexBuffer = (buf: Buffer): PexResult => {
   };
 };
 
-/** Serialize a PEX wstring (uint16 BE length prefix + UTF-8 body). */
-export const writeWString = (value: string): Buffer => {
+/** Serialize a PEX wstring. Defaults to big-endian for legacy fixtures. */
+export const writeWString = (value: string, endian: PexEndian = 'be'): Buffer => {
   const body = Buffer.from(value, 'utf8');
   const buf = Buffer.alloc(2 + body.length);
-  buf.writeUInt16BE(body.length, 0);
+  writeUInt16(buf, body.length, 0, endian);
   body.copy(buf, 2);
   return buf;
 };
@@ -234,19 +249,14 @@ export const patchPexBuffer = (input: Buffer, overlay: Map<string, string>): Buf
     throw new Error(`PEX: file too small (${input.length} bytes)`);
   }
 
-  const magic = input.readUInt32BE(0);
-  if (magic !== PEX_MAGIC) {
-    throw new Error(
-      `PEX: invalid magic 0x${magic.toString(16).toUpperCase().padStart(8, '0')} (expected 0xFA57C0DE)`,
-    );
-  }
+  const endian = detectPexEndian(input);
 
   let offset = 16;
-  const { nextOffset: o1 } = readWString(input, offset);
+  const { nextOffset: o1 } = readWString(input, offset, endian);
   offset = o1;
-  const { nextOffset: o2 } = readWString(input, offset);
+  const { nextOffset: o2 } = readWString(input, offset, endian);
   offset = o2;
-  const { nextOffset: o3 } = readWString(input, offset);
+  const { nextOffset: o3 } = readWString(input, offset, endian);
   offset = o3;
 
   const countOffset = offset;
@@ -254,12 +264,12 @@ export const patchPexBuffer = (input: Buffer, overlay: Map<string, string>): Buf
     throw new Error('PEX: out of bounds reading string table count');
   }
 
-  const count = input.readUInt16BE(offset);
+  const count = readUInt16(input, offset, endian);
   offset += 2;
 
   const strings: string[] = [];
   for (let i = 0; i < count; i++) {
-    const { value, nextOffset } = readWString(input, offset);
+    const { value, nextOffset } = readWString(input, offset, endian);
     offset = nextOffset;
     strings.push(overlay.has(value) ? overlay.get(value)! : value);
   }
@@ -268,10 +278,10 @@ export const patchPexBuffer = (input: Buffer, overlay: Map<string, string>): Buf
   const tail = input.subarray(offset);
 
   const countBuf = Buffer.alloc(2);
-  countBuf.writeUInt16BE(strings.length, 0);
+  writeUInt16(countBuf, strings.length, 0, endian);
   const tableParts: Buffer[] = [countBuf];
   for (const value of strings) {
-    tableParts.push(writeWString(value));
+    tableParts.push(writeWString(value, endian));
   }
 
   return Buffer.concat([prefix, ...tableParts, tail]);
