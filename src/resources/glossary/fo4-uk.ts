@@ -133,6 +133,7 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   { term: 'Sentry Bot', translation: 'Робот-охоронець' },
   { term: 'Assaultron', translation: 'Штурмотрон' },
   { term: 'Eyebot', translation: 'Робооко' },
+  { term: 'EyeBot', translation: 'Робооко' },
   { term: 'Liberty Prime', translation: 'Ліберті Прайм' },
   { term: 'Turret', translation: 'Турель' },
   { term: 'Courser', translation: 'Мисливець' },

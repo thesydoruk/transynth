@@ -2,7 +2,7 @@
  * Language-agnostic checks on LLM verify suggestions before show/auto-apply.
  */
 import type { GameType } from '../types';
-import { compareProtectedTokens } from '../utils/placeholders';
+import { compareProtectedTokens, type ProtectedTokenContext } from '../utils/placeholders';
 import type { LlmVerifyItem, LlmVerifyItemResult } from './verifyTranslate';
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
@@ -13,12 +13,22 @@ export type VerifySuggestionValidation =
   | { ok: true }
   | { ok: false; reason: SuggestionRejectReason; message: string };
 
+const tokenContextFromItem = (item: LlmVerifyItem): ProtectedTokenContext => ({
+  grup: item.grup,
+  field: item.field,
+});
+
 export const validateVerifySuggestion = (
   item: LlmVerifyItem,
   suggestion: string,
   game?: GameType | string | null,
 ): VerifySuggestionValidation => {
-  const tokenCheck = compareProtectedTokens(item.source, suggestion, game as GameType | undefined);
+  const tokenCheck = compareProtectedTokens(
+    item.source,
+    suggestion,
+    game as GameType | undefined,
+    tokenContextFromItem(item),
+  );
   if (!tokenCheck.ok) {
     return { ok: false, reason: 'token_mismatch', message: tokenCheck.message };
   }
@@ -84,6 +94,7 @@ export const sanitizeVerifyResult = (
     item.source,
     item.translation,
     game as GameType | undefined,
+    tokenContextFromItem(item),
   ).ok;
 
   if (

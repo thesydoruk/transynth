@@ -62,7 +62,12 @@ export const applyPlaceholderGuardToVerifyResult = (
   result: LlmVerifyItemResult,
   game?: GameType | string | null,
 ): LlmVerifyItemResult => {
-  const check = compareProtectedTokens(item.source, item.translation, game as GameType | undefined);
+  const check = compareProtectedTokens(
+    item.source,
+    item.translation,
+    game as GameType | undefined,
+    { grup: item.grup, field: item.field },
+  );
   if (check.ok) return result;
 
   if (result.verdict === 'ok') {

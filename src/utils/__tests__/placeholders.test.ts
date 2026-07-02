@@ -192,6 +192,23 @@ describe('extractProtectedTokens', () => {
     const badTranslation = 'If (akActor.IsDead())\r\n  Debug.Message("done")';
     expect(compareProtectedTokens(source, badTranslation, 'fo4').ok).toBe(false);
   });
+
+  it('ignores prose keywords in terminal BTXT when record context is set', () => {
+    const source =
+      '::password bypass detected::\r\n--Door Control--\r\nPlease enter command:\r\nIf access granted, continue.';
+    const translation =
+      '::виявлено обхід пароля::\r\n--Керування дверима--\r\nБудь ласка, введіть команду:\r\nЯкщо доступ надано, продовжуйте.';
+    const ctx = { grup: 'TERM', field: 'BTXT' };
+    expect(extractProtectedTokens(source, 'fo4', ctx)).toEqual([]);
+    expect(compareProtectedTokens(source, translation, 'fo4', ctx).ok).toBe(true);
+  });
+
+  it('allows localized terminal status lines without generic tag equality', () => {
+    const source = 'Resource Scanner BIOS\r\n\r\n<Waiting for EyeBot to return>';
+    const translation = 'БІОС сканера ресурсів\r\n\r\n<Очікування повернення робоока>';
+    const ctx = { grup: 'TERM', field: 'BTXT' };
+    expect(compareProtectedTokens(source, translation, 'fo4', ctx).ok).toBe(true);
+  });
 });
 
 describe('validateTranslationPlaceholders', () => {

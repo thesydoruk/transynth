@@ -89,9 +89,29 @@ export const PLACEHOLDER_PATTERN_PARTS = [
  */
 export const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');
 
+/** QA/compare subset: omits generic `<...>` so localized status lines are not frozen. */
+const PLACEHOLDER_COMPARE_PATTERN_PARTS = PLACEHOLDER_PATTERN_PARTS.filter(
+  (part) => part !== String.raw`<[^>]+>`,
+);
+export const PLACEHOLDER_COMPARE_RE = new RegExp(PLACEHOLDER_COMPARE_PATTERN_PARTS.join('|'), 'g');
+
+/** Record metadata for deciding whether Papyrus FunctionKeywords apply. */
+export type ProtectedTokenContext = {
+  grup?: string | null;
+  field?: string | null;
+};
+
+/** FunctionKeywords are literal identifiers only in script source subrecords. */
+export const shouldProtectFunctionKeywords = (context?: ProtectedTokenContext | null): boolean => {
+  if (context == null || (context.grup == null && context.field == null)) {
+    return true;
+  }
+  return context.grup === 'SCPT' || context.field === 'SCTX';
+};
+
 const IDENTIFIER_RE = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
-/** Papyrus-only punctuation; commas and bare math chars appear in normal prose. */
-const SCRIPT_PUNCTUATION_RE = /::|->|[()[\]=;]/;
+/** Papyrus-only punctuation; `::` appears in terminal prose and must not trigger script mode. */
+const SCRIPT_PUNCTUATION_RE = /->|[()[\]=;]/;
 const DECLARATION_SIGNAL_RE =
   /\b(?:Auto|AutoReadOnly|Conditional|Event|EndEvent|EndFunction|Function|Hidden|Property|ScriptName|State)\b/;
 
@@ -205,7 +225,14 @@ export const maskPlaceholders = (text: string) => {
  * @param game - Active game identifier for the keyword corpus.
  * @returns Masked text and the restoration mapping.
  */
-export const maskFunctionKeywords = (text: string, game?: GameType | null): MaskResult => {
+export const maskFunctionKeywords = (
+  text: string,
+  game?: GameType | null,
+  context?: ProtectedTokenContext | null,
+): MaskResult => {
+  if (!shouldProtectFunctionKeywords(context)) {
+    return { masked: text, mapping: {} };
+  }
   const matches = findFunctionKeywordMatches(text, game);
   if (matches.length === 0) {
     return { masked: text, mapping: {} };
@@ -234,9 +261,15 @@ export const maskFunctionKeywords = (text: string, game?: GameType | null): Mask
  * @param game - Active game identifier for the keyword corpus.
  * @returns Sorted token list for QA comparisons.
  */
-export const extractProtectedTokens = (text: string, game?: GameType | null): string[] => {
-  const placeholderMatches = text.match(PLACEHOLDER_RE) ?? [];
-  const keywordMatches = findFunctionKeywordMatches(text, game).map((match) => match.token);
+export const extractProtectedTokens = (
+  text: string,
+  game?: GameType | null,
+  context?: ProtectedTokenContext | null,
+): string[] => {
+  const placeholderMatches = text.match(PLACEHOLDER_COMPARE_RE) ?? [];
+  const keywordMatches = shouldProtectFunctionKeywords(context)
+    ? findFunctionKeywordMatches(text, game).map((match) => match.token)
+    : [];
   return filterCompareTokens([...placeholderMatches, ...keywordMatches]).sort();
 };
 
@@ -317,9 +350,10 @@ export const compareProtectedTokens = (
   source: string,
   translation: string,
   game?: GameType | null,
+  context?: ProtectedTokenContext | null,
 ): PlaceholderValidationResult => {
-  const srcProtectedTokens = extractProtectedTokens(source, game);
-  const dstProtectedTokens = extractProtectedTokens(translation, game);
+  const srcProtectedTokens = extractProtectedTokens(source, game, context);
+  const dstProtectedTokens = extractProtectedTokens(translation, game, context);
   if (srcProtectedTokens.join('\u0000') !== dstProtectedTokens.join('\u0000')) {
     return {
       ok: false,
@@ -338,11 +372,12 @@ export const validateTranslationPlaceholders = (
   placeholderMap: Record<string, string>,
   functionKeywordMap: Record<string, string>,
   game?: GameType | null,
+  context?: ProtectedTokenContext | null,
 ): PlaceholderValidationResult => {
   const combinedMap = { ...placeholderMap, ...functionKeywordMap };
   const maskCheck = validateMaskedTranslation(maskedTranslation, combinedMap);
   if (!maskCheck.ok) return maskCheck;
 
   const translated = unmask(unmask(maskedTranslation, functionKeywordMap), placeholderMap);
-  return compareProtectedTokens(source, translated, game);
+  return compareProtectedTokens(source, translated, game, context);
 };
