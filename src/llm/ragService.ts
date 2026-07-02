@@ -255,6 +255,9 @@ const groupBulkTmRows = <T extends { query_id: number }>(rows: T[]): Map<number,
   return byId;
 };
 
+/** SQL fragment restricting candidate rows to one mod (`records.mod_id`). */
+const ragModFilterSql = (modId: number | undefined, paramIndex: number): string =>
+  modId != null ? `AND r.mod_id = $${paramIndex}` : '';
 /** Two SQL round trips for TM exact + punct_norm (batch prefetch — no per-row fuzzy trigram). */
 const fetchTmCandidatesBulk = async (
   db: Tx,
@@ -267,12 +270,23 @@ const fetchTmCandidatesBulk = async (
   targetLang: string,
   srcLang: string,
   limitPerItem: number,
+  modId?: number,
 ): Promise<Map<number, Map<string, RagCandidate>>> => {
   const byId = new Map<number, Map<string, RagCandidate>>();
   for (const item of items) byId.set(item.stringId, new Map());
   if (items.length === 0) return byId;
 
   type BulkTmDbRow = TmMatchRow & { query_id: number; query_raw: string };
+
+  const exactModFilter = ragModFilterSql(modId, 6);
+  const exactParams: unknown[] = [
+    items.map((i) => i.stringId),
+    items.map((i) => i.sourceText),
+    items.map((i) => i.textNorm),
+    targetLang,
+    srcLang,
+  ];
+  if (modId != null) exactParams.push(modId);
 
   const { rows: exactRows } = await db.query<BulkTmDbRow>(
     `WITH batch AS (
@@ -284,14 +298,9 @@ const fetchTmCandidatesBulk = async (
      JOIN strings s ON s.text_norm = b.text_norm AND s.id <> b.query_id AND s.lang = $5
      JOIN records r ON r.id = s.record_id
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $4
-     WHERE ${RAG_STATUS_FILTER}`,
-    [
-      items.map((i) => i.stringId),
-      items.map((i) => i.sourceText),
-      items.map((i) => i.textNorm),
-      targetLang,
-      srcLang,
-    ],
+     WHERE ${RAG_STATUS_FILTER}
+       ${exactModFilter}`,
+    exactParams,
   );
 
   for (const [queryId, rows] of groupBulkTmRows(exactRows)) {
@@ -311,6 +320,17 @@ const fetchTmCandidatesBulk = async (
   });
 
   if (punctItems.length > 0) {
+    const punctModFilter = ragModFilterSql(modId, 7);
+    const punctParams: unknown[] = [
+      punctItems.map((i) => i.stringId),
+      punctItems.map((i) => i.sourceText),
+      punctItems.map((i) => i.textNorm),
+      punctItems.map((i) => i.textNormNopunct!),
+      targetLang,
+      srcLang,
+    ];
+    if (modId != null) punctParams.push(modId);
+
     const { rows: punctRows } = await db.query<BulkTmDbRow>(
       `WITH batch AS (
          SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[]) AS b(
@@ -327,15 +347,9 @@ const fetchTmCandidatesBulk = async (
         AND s.lang = $6
        JOIN records r ON r.id = s.record_id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $5
-       WHERE ${RAG_STATUS_FILTER}`,
-      [
-        punctItems.map((i) => i.stringId),
-        punctItems.map((i) => i.sourceText),
-        punctItems.map((i) => i.textNorm),
-        punctItems.map((i) => i.textNormNopunct!),
-        targetLang,
-        srcLang,
-      ],
+       WHERE ${RAG_STATUS_FILTER}
+         ${punctModFilter}`,
+      punctParams,
     );
 
     for (const [queryId, rows] of groupBulkTmRows(punctRows)) {
@@ -354,9 +368,13 @@ const fetchTmCandidates = async (
   textNormNopunct: string | null,
   targetLang: string,
   limit: number,
+  modId?: number,
 ): Promise<RagCandidate[]> => {
   const merged = new Map<string, RagCandidate>();
   const limitPerQuery = limit;
+  const modFilter = ragModFilterSql(modId, 5);
+  const normParams: unknown[] = [textNorm, targetLang, stringId, limitPerQuery];
+  if (modId != null) normParams.push(modId);
 
   const { rows: normRows } = await db.query<TmMatchRow>(
     `SELECT DISTINCT ON (t.text)
@@ -365,14 +383,25 @@ const fetchTmCandidates = async (
      JOIN records r ON r.id = s.record_id
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
      WHERE s.text_norm = $1 AND s.id <> $3 AND ${RAG_STATUS_FILTER}
+       ${modFilter}
      ORDER BY t.text
      LIMIT $4`,
-    [textNorm, targetLang, stringId, limitPerQuery],
+    normParams,
   );
 
   addExactNormCandidates(merged, textRaw, normRows, limitPerQuery);
 
   if (textNormNopunct && merged.size < limitPerQuery) {
+    const punctModFilter = ragModFilterSql(modId, 6);
+    const punctParams: unknown[] = [
+      textNormNopunct,
+      targetLang,
+      stringId,
+      limitPerQuery - merged.size,
+      textNorm,
+    ];
+    if (modId != null) punctParams.push(modId);
+
     const { rows: punctRows } = await db.query<TmMatchRow>(
       `SELECT DISTINCT ON (t.text)
           t.text, s.text_raw AS source_text, r.signature, r.path, r.edid
@@ -381,14 +410,19 @@ const fetchTmCandidates = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
        WHERE s.text_norm_nopunct = $1 AND s.text_norm <> $5 AND s.id <> $3
          AND ${RAG_STATUS_FILTER}
+         ${punctModFilter}
        ORDER BY t.text
        LIMIT $4`,
-      [textNormNopunct, targetLang, stringId, limitPerQuery - merged.size, textNorm],
+      punctParams,
     );
     addTmCandidates(merged, punctRows, 'punct_norm', 0.9, limitPerQuery);
   }
 
   if (merged.size < limitPerQuery && textNorm.length >= 4) {
+    const fuzzyModFilter = ragModFilterSql(modId, 5);
+    const fuzzyParams: unknown[] = [textNorm, targetLang, stringId, limitPerQuery - merged.size];
+    if (modId != null) fuzzyParams.push(modId);
+
     const { rows: fuzzyRows } = await db.query<TmMatchRow & { sim: number }>(
       `SELECT DISTINCT ON (t.text)
           t.text, s.text_raw AS source_text, r.signature, r.path, r.edid,
@@ -398,9 +432,10 @@ const fetchTmCandidates = async (
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
        WHERE s.text_norm % $1 AND s.text_norm <> $1 AND s.id <> $3
          AND ${RAG_STATUS_FILTER}
+         ${fuzzyModFilter}
        ORDER BY t.text, similarity(s.text_norm, $1) DESC
        LIMIT $4`,
-      [textNorm, targetLang, stringId, limitPerQuery - merged.size],
+      fuzzyParams,
     );
     for (const row of fuzzyRows) {
       addTmCandidates(
@@ -432,8 +467,13 @@ const fetchEmbeddingCandidates = async (
   excludeStringId: number,
   limit: number,
   minSimilarity: number,
+  modId?: number,
 ): Promise<RagCandidate[]> => {
   const literal = vectorLiteral(queryVector);
+  const modFilter = modId != null ? 'AND r.mod_id = $7' : '';
+  const params: unknown[] = [literal, srcLang, targetLang, excludeStringId, minSimilarity, limit];
+  if (modId != null) params.push(modId);
+
   const { rows } = await db.query<{
     source_text: string;
     translation_text: string;
@@ -452,9 +492,10 @@ const fetchEmbeddingCandidates = async (
        AND te.src_string_id <> $4
        AND t.status IN (${RAG_ELIGIBLE_STATUSES_SQL})
        AND (1 - (te.embedding <=> $1::vector)) >= $5
+       ${modFilter}
      ORDER BY te.embedding <=> $1::vector
      LIMIT $6`,
-    [literal, srcLang, targetLang, excludeStringId, minSimilarity, limit],
+    params,
   );
 
   return rows.map((row) => ({
@@ -599,6 +640,8 @@ export type FindReferenceExamplesOpts = {
   targetLang: string;
   maxExamples?: number;
   minSimilarity?: number;
+  disableRag?: boolean;
+  modId?: number;
 };
 
 /**
@@ -608,6 +651,8 @@ export const findReferenceExamples = async (
   db: Tx,
   opts: FindReferenceExamplesOpts,
 ): Promise<RagReferenceExample[]> => {
+  if (opts.disableRag) return [];
+
   await requirePgvectorForRag(db);
 
   const maxExamples = clampRagMaxExamples(opts.maxExamples);
@@ -621,6 +666,7 @@ export const findReferenceExamples = async (
     minSimilarity,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
+    modId: opts.modId ?? null,
   });
 
   const tmCandidates = await fetchTmCandidates(
@@ -631,6 +677,7 @@ export const findReferenceExamples = async (
     textNormNopunct,
     opts.targetLang,
     maxExamples * 2,
+    opts.modId,
   );
 
   const merged = new Map<string, RagCandidate>();
@@ -652,6 +699,7 @@ export const findReferenceExamples = async (
       opts.stringId,
       maxExamples * 2,
       minSimilarity,
+      opts.modId,
     );
     for (const c of embedCandidates) {
       if (!merged.has(c.key)) merged.set(c.key, c);
@@ -683,6 +731,14 @@ export type FetchReferenceExamplesBatchItem = {
   context?: string | null;
 };
 
+/** Controls hybrid RAG retrieval (translation memory + embedding similarity). */
+export type RagRetrievalOptions = {
+  /** Skip all reference-example retrieval (no TM, no embedding). */
+  disableRag?: boolean;
+  /** Limit TM and embedding candidates to this mod (global corpus when omitted). */
+  modId?: number;
+};
+
 /**
  * Fetch reference examples for a batch of strings.
  *
@@ -696,7 +752,14 @@ export const fetchReferenceExamplesBatch = async (
   targetLang: string,
   maxExamples: number,
   minSimilarity: number,
+  options: RagRetrievalOptions = {},
 ): Promise<Map<number, RagReferenceExample[]>> => {
+  const disableRag = options.disableRag === true;
+  const scopeModId = options.modId;
+
+  const out = new Map<number, RagReferenceExample[]>();
+  if (items.length === 0 || disableRag) return out;
+
   await requirePgvectorForRag(db);
 
   const cappedMaxExamples = clampRagMaxExamples(maxExamples);
@@ -709,10 +772,9 @@ export const fetchReferenceExamplesBatch = async (
     minSimilarity,
     srcLang,
     targetLang,
+    disableRag,
+    scopeModId: scopeModId ?? null,
   });
-
-  const out = new Map<number, RagReferenceExample[]>();
-  if (items.length === 0) return out;
 
   type PendingEmbed = {
     stringId: number;
@@ -733,7 +795,14 @@ export const fetchReferenceExamplesBatch = async (
   }));
 
   const tmStarted = Date.now();
-  const tmById = await fetchTmCandidatesBulk(db, normalizedItems, targetLang, srcLang, tmLimit);
+  const tmById = await fetchTmCandidatesBulk(
+    db,
+    normalizedItems,
+    targetLang,
+    srcLang,
+    tmLimit,
+    scopeModId,
+  );
   const tmMs = Date.now() - tmStarted;
 
   for (const item of normalizedItems) {
@@ -791,6 +860,7 @@ export const fetchReferenceExamplesBatch = async (
             row.stringId,
             tmLimit,
             minSimilarity,
+            scopeModId,
           );
           for (const c of embedCandidates) {
             if (!row.merged.has(c.key)) row.merged.set(c.key, c);

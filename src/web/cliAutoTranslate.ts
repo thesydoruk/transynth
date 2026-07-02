@@ -8,6 +8,7 @@ import {
   loadUntranslatedChunk,
   type LlmTranslateOverwriteMode,
 } from './llmTranslateService';
+import type { RagRetrievalOptions } from '../llm/ragService';
 import { translateStringIdsBatch, type TranslateBatchResult } from './llmTranslateBatch';
 import { logTranslate } from '../logging/loggers';
 import { awaitPendingQaRefresh } from './qaHooks';
@@ -59,6 +60,7 @@ export const runCliModTranslate = async (
     game?: string | null;
     dbChunkSize?: number;
     overwriteMode?: LlmTranslateOverwriteMode;
+    rag?: RagRetrievalOptions;
   },
   onEvent?: (event: CliTranslateProgressEvent) => void,
 ): Promise<CliTranslateResult> => {
@@ -80,6 +82,7 @@ export const runCliModTranslate = async (
     total,
     dbChunkSize,
     overwriteMode,
+    rag: opts.rag,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
   });
@@ -116,6 +119,7 @@ export const runCliModTranslate = async (
           modGame: opts.game,
           modName: opts.modName,
           overwriteMode,
+          rag: opts.rag,
           onProgress: (_doneInBatch, _batchTotal, result) => {
             globalDone++;
             if (result.error) globalErrors++;

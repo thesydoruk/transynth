@@ -16,6 +16,8 @@
  *   npm run translate:auto -- --mod-id 45 --force
  *   npm run translate:auto -- --mod-id 45 --force-all
  *   npm run translate:auto -- --mod-id 45 --tgt-lang uk
+ *   npm run translate:auto -- --mod-id 45 --no-rag
+ *   npm run translate:auto -- --mod-id 45 --rag-mod-only
  */
 import '../src/loadEnv';
 import yargs from 'yargs';
@@ -35,6 +37,13 @@ import {
   resolveCliModTargets,
   type CliModTarget,
 } from './cliModTargets';
+import {
+  addCliRagFlagOptions,
+  assertCliRagFlags,
+  formatCliRagFlags,
+  readCliRagFlags,
+  toRagRetrievalOptions,
+} from './cliRagFlags';
 
 type ModStats = {
   total: number;
@@ -92,45 +101,47 @@ const skippedLogLine = (mode: LlmTranslateOverwriteMode, modId: number): string 
   }
 };
 
-const argv = await yargs(hideBin(process.argv))
-  .scriptName('translate:auto')
-  .usage('$0 [options]')
-  .option('mod-id', {
-    type: 'string',
-    describe: 'Comma-separated database mod ids',
-  })
-  .option('mod-name', {
-    type: 'string',
-    describe: 'Exact mod name (must be unique in the database)',
-  })
-  .option('all', {
-    type: 'boolean',
-    default: false,
-    describe: 'Process every mod with a completed import job',
-  })
-  .option('src-lang', {
-    type: 'string',
-    describe: 'Source language override (default: mod import or SRC_LANG)',
-  })
-  .option('tgt-lang', {
-    type: 'string',
-    default: CONFIG.defaultTgtLang,
-    describe: 'Target translation language (default: TGT_LANG)',
-  })
-  .option('force', {
-    type: 'boolean',
-    default: false,
-    describe: 'Also overwrite draft/tm/fuzzy (still skips verified human/reviewed/rejected)',
-  })
-  .option('force-all', {
-    type: 'boolean',
-    default: false,
-    describe: 'Overwrite every non-skipped row, including verified translations',
-  })
-  .option('db-chunk', {
-    type: 'number',
-    describe: `DB page size for large mods (default: ${LLM_TRANSLATE_DB_CHUNK_SIZE})`,
-  })
+const argv = await addCliRagFlagOptions(
+  yargs(hideBin(process.argv))
+    .scriptName('translate:auto')
+    .usage('$0 [options]')
+    .option('mod-id', {
+      type: 'string',
+      describe: 'Comma-separated database mod ids',
+    })
+    .option('mod-name', {
+      type: 'string',
+      describe: 'Exact mod name (must be unique in the database)',
+    })
+    .option('all', {
+      type: 'boolean',
+      default: false,
+      describe: 'Process every mod with a completed import job',
+    })
+    .option('src-lang', {
+      type: 'string',
+      describe: 'Source language override (default: mod import or SRC_LANG)',
+    })
+    .option('tgt-lang', {
+      type: 'string',
+      default: CONFIG.defaultTgtLang,
+      describe: 'Target translation language (default: TGT_LANG)',
+    })
+    .option('force', {
+      type: 'boolean',
+      default: false,
+      describe: 'Also overwrite draft/tm/fuzzy (still skips verified human/reviewed/rejected)',
+    })
+    .option('force-all', {
+      type: 'boolean',
+      default: false,
+      describe: 'Overwrite every non-skipped row, including verified translations',
+    })
+    .option('db-chunk', {
+      type: 'number',
+      describe: `DB page size for large mods (default: ${LLM_TRANSLATE_DB_CHUNK_SIZE})`,
+    }),
+)
   .check((args) => {
     assertCliModSelector({
       all: args.all,
@@ -140,12 +151,18 @@ const argv = await yargs(hideBin(process.argv))
     if (args['force-all'] && args.force) {
       throw new Error('Use either --force or --force-all, not both');
     }
+    assertCliRagFlags({
+      noRag: args.noRag === true,
+      ragModOnly: args.ragModOnly === true,
+    });
     return true;
   })
   .help()
   .parse();
 
 validateConfig();
+
+const ragFlags = readCliRagFlags(argv);
 
 const tgtLang = argv['tgt-lang'].trim();
 const overwriteMode = resolveOverwriteMode(argv.force, argv['force-all']);
@@ -216,6 +233,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
         game: target.game,
         dbChunkSize,
         overwriteMode,
+        rag: toRagRetrievalOptions(ragFlags, target.modId),
       },
       (event) => logTranslateProgress(ctx, event),
     );
@@ -261,7 +279,7 @@ try {
   }
 
   log.info(
-    `Translate: ${targets.length} mod(s), overwriteMode=${overwriteMode}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+    `Translate: ${targets.length} mod(s), overwriteMode=${overwriteMode}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;

@@ -11,7 +11,11 @@ import {
 } from '../llm/translate';
 import { runLlmChunkWorkPool } from '../llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../llm/requestPool';
-import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
+import {
+  fetchReferenceExamplesBatch,
+  requirePgvectorForRag,
+  type RagRetrievalOptions,
+} from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { cacheLookupMany, cacheStoreMany, type CacheStoreEntry } from './cacheService';
 import { bulkUpsertAutoTranslations } from './modImportBulk';
@@ -51,6 +55,7 @@ export type TranslateBatchOptions = {
   modGame?: string | null;
   modName?: string | null;
   overwriteMode?: LlmTranslateOverwriteMode;
+  rag?: RagRetrievalOptions;
   shouldCancel?: () => boolean;
   /** Aborts in-flight LLM requests when the owning job is stopped. */
   signal?: AbortSignal;
@@ -100,6 +105,7 @@ export const translateStringIdsBatch = async (
     modGame,
     modName,
     overwriteMode = 'default',
+    rag = {},
     shouldCancel,
     signal,
     onProgress,
@@ -121,7 +127,9 @@ export const translateStringIdsBatch = async (
     modName: modName ?? null,
   });
 
-  await requirePgvectorForRag(db);
+  if (!rag.disableRag) {
+    await requirePgvectorForRag(db);
+  }
 
   const model = getTranslateModel();
 
@@ -246,7 +254,7 @@ export const translateStringIdsBatch = async (
 
   /** RAG for one LLM chunk — runs inside the work pool so embed overlaps with chat. */
   const prefetchChunkRag = async (entries: PreparedLlmItem[]): Promise<RagByStringId> => {
-    if (entries.length === 0 || shouldCancel?.()) return new Map();
+    if (entries.length === 0 || shouldCancel?.() || rag.disableRag) return new Map();
     const started = Date.now();
     try {
       const ragByStringId = await fetchReferenceExamplesBatch(
@@ -256,6 +264,7 @@ export const translateStringIdsBatch = async (
         targetLang,
         ragMaxExamples,
         ragMinSimilarity,
+        rag,
       );
       logTranslate.debug('chunk RAG ready', {
         itemCount: entries.length,

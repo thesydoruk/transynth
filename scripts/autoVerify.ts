@@ -13,6 +13,8 @@
  *   npm run verify:auto -- --mod-id 45 --fix-suspicious
  *   npm run verify:auto -- --mod-id 45 --force
  *   npm run verify:auto -- --mod-id 45 --tgt-lang uk
+ *   npm run verify:auto -- --mod-id 45 --no-rag
+ *   npm run verify:auto -- --mod-id 45 --rag-mod-only
  */
 import '../src/loadEnv';
 import yargs from 'yargs';
@@ -30,6 +32,13 @@ import {
   resolveCliModTargets,
   type CliModTarget,
 } from './cliModTargets';
+import {
+  addCliRagFlagOptions,
+  assertCliRagFlags,
+  formatCliRagFlags,
+  readCliRagFlags,
+  toRagRetrievalOptions,
+} from './cliRagFlags';
 
 const formatIssueLocation = (issue: LlmVerifyIssue): string =>
   issue.edid ?? issue.path ?? issue.signature ?? '—';
@@ -60,62 +69,68 @@ const logIssue = (
   log.info(opts?.separator ? `\n${block}` : block);
 };
 
-const argv = await yargs(hideBin(process.argv))
-  .scriptName('verify:auto')
-  .usage('$0 [options]')
-  .option('mod-id', {
-    type: 'string',
-    describe: 'Comma-separated database mod ids',
-  })
-  .option('mod-name', {
-    type: 'string',
-    describe: 'Exact mod name (must be unique in the database)',
-  })
-  .option('all', {
-    type: 'boolean',
-    default: false,
-    describe: 'Process every mod with a completed import job',
-  })
-  .option('src-lang', {
-    type: 'string',
-    describe: 'Source language override (default: mod import or SRC_LANG)',
-  })
-  .option('tgt-lang', {
-    type: 'string',
-    default: CONFIG.defaultTgtLang,
-    describe: 'Target translation language (default: TGT_LANG)',
-  })
-  .option('dry-run', {
-    type: 'boolean',
-    default: false,
-    describe: 'Only log suspicious/incorrect rows; do not approve or apply fixes',
-  })
-  .option('no-auto-approve', {
-    type: 'boolean',
-    default: false,
-    describe:
-      'Do not promote passing rows to reviewed (still auto-fixes incorrect rows unless --dry-run)',
-  })
-  .option('fix-suspicious', {
-    type: 'boolean',
-    default: false,
-    describe:
-      'Also apply LLM suggestions for suspicious rows (default: only incorrect rows are auto-fixed)',
-  })
-  .option('force', {
-    type: 'boolean',
-    default: false,
-    describe: 'Also verify confirmed translations (reviewed/human), not only pending rows',
-  })
-  .option('db-chunk', {
-    type: 'number',
-    describe: `DB page size for large mods (default: ${LLM_VERIFY_DB_CHUNK_SIZE})`,
-  })
+const argv = await addCliRagFlagOptions(
+  yargs(hideBin(process.argv))
+    .scriptName('verify:auto')
+    .usage('$0 [options]')
+    .option('mod-id', {
+      type: 'string',
+      describe: 'Comma-separated database mod ids',
+    })
+    .option('mod-name', {
+      type: 'string',
+      describe: 'Exact mod name (must be unique in the database)',
+    })
+    .option('all', {
+      type: 'boolean',
+      default: false,
+      describe: 'Process every mod with a completed import job',
+    })
+    .option('src-lang', {
+      type: 'string',
+      describe: 'Source language override (default: mod import or SRC_LANG)',
+    })
+    .option('tgt-lang', {
+      type: 'string',
+      default: CONFIG.defaultTgtLang,
+      describe: 'Target translation language (default: TGT_LANG)',
+    })
+    .option('dry-run', {
+      type: 'boolean',
+      default: false,
+      describe: 'Only log suspicious/incorrect rows; do not approve or apply fixes',
+    })
+    .option('no-auto-approve', {
+      type: 'boolean',
+      default: false,
+      describe:
+        'Do not promote passing rows to reviewed (still auto-fixes incorrect rows unless --dry-run)',
+    })
+    .option('fix-suspicious', {
+      type: 'boolean',
+      default: false,
+      describe:
+        'Also apply LLM suggestions for suspicious rows (default: only incorrect rows are auto-fixed)',
+    })
+    .option('force', {
+      type: 'boolean',
+      default: false,
+      describe: 'Also verify confirmed translations (reviewed/human), not only pending rows',
+    })
+    .option('db-chunk', {
+      type: 'number',
+      describe: `DB page size for large mods (default: ${LLM_VERIFY_DB_CHUNK_SIZE})`,
+    }),
+)
   .check((args) => {
     assertCliModSelector({
       all: args.all,
       modId: args['mod-id'],
       modName: args['mod-name'],
+    });
+    assertCliRagFlags({
+      noRag: args.noRag === true,
+      ragModOnly: args.ragModOnly === true,
     });
     return true;
   })
@@ -123,6 +138,8 @@ const argv = await yargs(hideBin(process.argv))
   .parse();
 
 validateConfig();
+
+const ragFlags = readCliRagFlags(argv);
 
 const tgtLang = argv['tgt-lang'].trim();
 const dryRun = argv['dry-run'];
@@ -216,6 +233,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
         fixSuspicious,
         force,
         dbChunkSize,
+        rag: toRagRetrievalOptions(ragFlags, target.modId),
       },
       (event) => logVerifyProgress(ctx, event),
     );
@@ -257,7 +275,7 @@ try {
 
   log.info(
     `Auto-verify: ${targets.length} mod(s), dryRun=${dryRun}, force=${force}, autoApprove=${!dryRun && autoApproveVerified}, ` +
-      `fixSuspicious=${!dryRun && fixSuspicious}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
+      `fixSuspicious=${!dryRun && fixSuspicious}, ${formatCliRagFlags(ragFlags)}, dbChunk=${dbChunkSize}, llmRetries=${CONFIG.llmMaxAttempts}`,
   );
 
   let ok = 0;

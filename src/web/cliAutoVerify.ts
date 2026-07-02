@@ -7,7 +7,11 @@ import { filterVerifyReferenceExamples } from '../llm/verifyReferenceExamples';
 import { validateVerifySuggestion } from '../llm/verifySuggestionGuards';
 import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../llm/ragConstants';
-import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../llm/ragService';
+import {
+  fetchReferenceExamplesBatch,
+  requirePgvectorForRag,
+  type RagRetrievalOptions,
+} from '../llm/ragService';
 import { getAllProjectSettings } from './projectSettings';
 import { approveVerifiedTranslations, upsertTranslation } from './queries';
 import { parseRecordLocation } from '../utils/recordLocation';
@@ -80,6 +84,7 @@ export const runCliModVerify = async (
     /** Re-verify reviewed/human rows, not only pending draft/tm/fuzzy/auto (default false). */
     force?: boolean;
     dbChunkSize?: number;
+    rag?: RagRetrievalOptions;
   },
   onEvent?: (event: CliVerifyProgressEvent) => void,
 ): Promise<CliVerifyResult> => {
@@ -88,6 +93,7 @@ export const runCliModVerify = async (
   const fixSuspicious = opts.fixSuspicious === true;
   const force = opts.force === true;
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_VERIFY_DB_CHUNK_SIZE);
+  const rag = opts.rag ?? {};
 
   const total = await countVerifiableStrings(db, opts.modId, opts.srcLang, opts.targetLang, force);
   if (total === 0) {
@@ -102,13 +108,16 @@ export const runCliModVerify = async (
     fixSuspicious,
     force,
     dbChunkSize,
+    rag,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
   });
 
   onEvent?.({ type: 'started', total, dryRun, dbChunkSize });
 
-  await requirePgvectorForRag(db);
+  if (!rag.disableRag) {
+    await requirePgvectorForRag(db);
+  }
 
   const glossaryAll = await loadGlossaryEntries(db, opts.srcLang, opts.targetLang);
 
@@ -141,6 +150,7 @@ export const runCliModVerify = async (
         opts.targetLang,
         ragMaxExamples,
         ragMinSimilarity,
+        rag,
       );
     } catch (err) {
       logVerify.warn('RAG fetch failed for verify chunk; continuing without examples', {

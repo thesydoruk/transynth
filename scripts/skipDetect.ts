@@ -11,6 +11,9 @@
  *   npm run skip:detect -- --all
  *   npm run skip:detect -- --mod-id 45 --heuristic-only
  *   npm run skip:detect -- --mod-id 45 --force
+ *
+ * RAG flags (--no-rag, --rag-mod-only) are accepted for CLI consistency but have no
+ * effect here — skip-detect does not use reference-example search.
  */
 import '../src/loadEnv';
 import yargs from 'yargs';
@@ -30,6 +33,7 @@ import {
   resolveCliModTargets,
   type CliModTarget,
 } from './cliModTargets';
+import { addCliRagFlagOptions, assertCliRagFlags } from './cliRagFlags';
 
 type ModStats = {
   total: number;
@@ -48,46 +52,52 @@ const toModStats = (row: Record<string, unknown> | undefined): ModStats => ({
 const formatModStats = (stats: ModStats): string =>
   `total=${stats.total}, untranslated=${stats.untranslated}, translated=${stats.translated}, skipped=${stats.skipped}`;
 
-const argv = await yargs(hideBin(process.argv))
-  .scriptName('skip:detect')
-  .usage('$0 [options]')
-  .option('mod-id', {
-    type: 'string',
-    describe: 'Comma-separated database mod ids',
-  })
-  .option('mod-name', {
-    type: 'string',
-    describe: 'Exact mod name (must be unique in the database)',
-  })
-  .option('all', {
-    type: 'boolean',
-    default: false,
-    describe: 'Process every mod with a completed import job',
-  })
-  .option('src-lang', {
-    type: 'string',
-    describe: 'Source language override (default: mod import or SRC_LANG)',
-  })
-  .option('heuristic-only', {
-    type: 'boolean',
-    default: false,
-    describe: 'Heuristics only (no LLM audit)',
-  })
-  .option('use-llm', {
-    type: 'boolean',
-    default: true,
-    describe: 'Run LLM skip detection after heuristics (default: true)',
-  })
-  .option('force', {
-    type: 'boolean',
-    default: false,
-    describe: 'Re-scan all strings, including already marked or previously scanned',
-  })
+const argv = await addCliRagFlagOptions(
+  yargs(hideBin(process.argv))
+    .scriptName('skip:detect')
+    .usage('$0 [options]')
+    .option('mod-id', {
+      type: 'string',
+      describe: 'Comma-separated database mod ids',
+    })
+    .option('mod-name', {
+      type: 'string',
+      describe: 'Exact mod name (must be unique in the database)',
+    })
+    .option('all', {
+      type: 'boolean',
+      default: false,
+      describe: 'Process every mod with a completed import job',
+    })
+    .option('src-lang', {
+      type: 'string',
+      describe: 'Source language override (default: mod import or SRC_LANG)',
+    })
+    .option('heuristic-only', {
+      type: 'boolean',
+      default: false,
+      describe: 'Heuristics only (no LLM audit)',
+    })
+    .option('use-llm', {
+      type: 'boolean',
+      default: true,
+      describe: 'Run LLM skip detection after heuristics (default: true)',
+    })
+    .option('force', {
+      type: 'boolean',
+      default: false,
+      describe: 'Re-scan all strings, including already marked or previously scanned',
+    }),
+)
   .check((args) => {
     assertCliModSelector({
       all: args.all,
       modId: args['mod-id'],
       modName: args['mod-name'],
+    });
+    assertCliRagFlags({
+      noRag: args.noRag === true,
+      ragModOnly: args.ragModOnly === true,
     });
     return true;
   })
