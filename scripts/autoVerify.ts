@@ -4,7 +4,7 @@
  *
  * By default only draft/tm/fuzzy/auto translations are checked. Use `--force` to re-check
  * confirmed (reviewed/human) rows as well. Rows with verdict ok are promoted to reviewed;
- * auto-applied fixes are saved as `auto` and left for manual review.
+ * successfully auto-fixed rows are also promoted when auto-approve is enabled (default).
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids

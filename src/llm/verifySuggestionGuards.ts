@@ -197,7 +197,8 @@ export type VerifyFixAction =
   | { kind: 'flag_only' }
   | { kind: 'apply'; suggestion: string }
   | { kind: 'reject_fix'; suggestion: string; message: string }
-  | { kind: 'rewrite_from_source' };
+  | { kind: 'rewrite_from_source' }
+  | { kind: 'approve_as_ok' };
 
 /** Decide whether an LLM suggestion should be auto-applied. */
 export const resolveVerifyFixAction = (
@@ -221,11 +222,13 @@ export const resolveVerifyFixAction = (
 
   const check = validateVerifySuggestion(item, suggestion, _game);
   if (!check.ok) {
+    if (check.reason === 'noop') {
+      return { kind: 'approve_as_ok' };
+    }
     if (
       check.reason === 'json_artifact' ||
       check.reason === 'truncated' ||
-      check.reason === 'token_mismatch' ||
-      (check.reason === 'noop' && isCorruptedVerifyTranslation(item.translation))
+      check.reason === 'token_mismatch'
     ) {
       return { kind: 'rewrite_from_source' };
     }
@@ -243,6 +246,8 @@ export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction
       return dryRun ? 'Would flag (fix rejected)' : 'Flagged (fix rejected)';
     case 'rewrite_from_source':
       return dryRun ? 'Would rewrite from source' : 'Rewrote from source';
+    case 'approve_as_ok':
+      return dryRun ? 'Would approve' : 'Approved';
     case 'flag_only':
       return dryRun ? 'Would flag' : 'Flagged';
     default:

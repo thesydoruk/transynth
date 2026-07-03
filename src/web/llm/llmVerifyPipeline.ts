@@ -275,6 +275,8 @@ export const runModVerifyPipeline = async (
         fixes.push({ stringId: result.id, text: fixAction.suggestion, row });
       } else if (!dryRun && fixAction.kind === 'rewrite_from_source') {
         rewrites.push({ item: itemForValidation, row });
+      } else if (fixAction.kind === 'approve_as_ok') {
+        okStringIds.push(result.id);
       } else if (!dryRun && fixAction.kind === 'reject_fix') {
         logVerify.warn('verify fix skipped — suggestion failed validation', {
           modId: opts.modId,
@@ -301,6 +303,7 @@ export const runModVerifyPipeline = async (
     persistJobs.push(
       persistPool.run(async () => {
         const approvedIds = new Set<number>();
+        const fixedStringIds: number[] = [];
 
         if (!dryRun) {
           if (job.rewrites.length > 0) {
@@ -321,6 +324,7 @@ export const runModVerifyPipeline = async (
                 try {
                   await upsertTranslation(db, row.id, row.text, 'auto', opts.targetLang);
                   fixed++;
+                  fixedStringIds.push(row.id);
                   logAction(sourceRow, 'fixed', row.text);
                 } catch (err) {
                   errors++;
@@ -353,6 +357,7 @@ export const runModVerifyPipeline = async (
             try {
               await upsertTranslation(db, fix.stringId, fix.text, 'auto', opts.targetLang);
               fixed++;
+              fixedStringIds.push(fix.stringId);
               logAction(fix.row, 'fixed', fix.text);
             } catch (err) {
               errors++;
@@ -364,22 +369,21 @@ export const runModVerifyPipeline = async (
             }
           }
 
-          if (autoApproveVerified && job.okStringIds.length > 0) {
-            try {
-              const promoted = await approveVerifiedTranslations(
-                db,
-                job.okStringIds,
-                opts.targetLang,
-              );
-              approved += promoted;
-              for (const id of job.okStringIds) approvedIds.add(id);
-            } catch (err) {
-              errors += job.okStringIds.length;
-              logVerify.warn('verify auto-approve failed for chunk', {
-                modId: opts.modId,
-                error: err instanceof Error ? err.message : String(err),
-                stringIds: job.okStringIds,
-              });
+          if (autoApproveVerified) {
+            const toApprove = [...new Set([...job.okStringIds, ...fixedStringIds])];
+            if (toApprove.length > 0) {
+              try {
+                const promoted = await approveVerifiedTranslations(db, toApprove, opts.targetLang);
+                approved += promoted;
+                for (const id of toApprove) approvedIds.add(id);
+              } catch (err) {
+                errors += toApprove.length;
+                logVerify.warn('verify auto-approve failed for chunk', {
+                  modId: opts.modId,
+                  error: err instanceof Error ? err.message : String(err),
+                  stringIds: toApprove,
+                });
+              }
             }
           }
         }
@@ -388,10 +392,12 @@ export const runModVerifyPipeline = async (
           done++;
           if (entry.verdictCounts?.suspicious) suspicious++;
           if (entry.verdictCounts?.incorrect) incorrect++;
+          if (entry.row && approvedIds.has(entry.result.id)) {
+            logAction(entry.row, 'approved');
+            emitProgress();
+            continue;
+          }
           if (entry.result.verdict === 'ok') {
-            if (entry.row && approvedIds.has(entry.result.id)) {
-              logAction(entry.row, 'approved');
-            }
             emitProgress();
             continue;
           }

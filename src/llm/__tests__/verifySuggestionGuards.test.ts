@@ -267,6 +267,21 @@ describe('resolveVerifyFixAction', () => {
     expect(resolveVerifyFixAction(item, 'suspicious', null, false, 'fo4').kind).toBe('flag_only');
   });
 
+  it('approves suspicious rows when suggestion matches current translation', () => {
+    const item: LlmVerifyItem = {
+      id: 15,
+      source: 'Ballistic Weave Mk4',
+      translation: 'Куленепробивний шар, клас 4',
+      grup: 'ARMO',
+      field: 'FULL',
+      edid: 'mod_armor_Railroad_ClothingArmor4',
+      context: null,
+    };
+    expect(
+      resolveVerifyFixAction(item, 'suspicious', 'Куленепробивний шар, клас 4', true, 'fo4').kind,
+    ).toBe('approve_as_ok');
+  });
+
   it('rewrites corrupted verify JSON stored as translation even without fixSuspicious', () => {
     const artifact = JSON.stringify({
       id: 779051,
