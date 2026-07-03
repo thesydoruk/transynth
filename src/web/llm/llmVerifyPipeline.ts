@@ -304,11 +304,13 @@ export const runModVerifyPipeline = async (
       persistPool.run(async () => {
         const approvedIds = new Set<number>();
 
+        const rewriteConfirmedIds: number[] = [];
+
         if (!dryRun) {
           if (job.rewrites.length > 0) {
             const rewriteRowById = new Map(job.rewrites.map((entry) => [entry.item.id, entry.row]));
             try {
-              const rewritten = await rewriteVerifyTranslationsFromSource({
+              const { rewritten, confirmedUnchanged } = await rewriteVerifyTranslationsFromSource({
                 items: job.rewrites.map((entry) => entry.item),
                 model,
                 srcLang: opts.srcLang,
@@ -317,6 +319,7 @@ export const runModVerifyPipeline = async (
                 modName: opts.modName,
                 signal: opts.signal,
               });
+              rewriteConfirmedIds.push(...confirmedUnchanged);
               for (const row of rewritten) {
                 const sourceRow = rewriteRowById.get(row.id);
                 if (!sourceRow) continue;
@@ -333,9 +336,12 @@ export const runModVerifyPipeline = async (
                   });
                 }
               }
-              const rewrittenIds = new Set(rewritten.map((row) => row.id));
+              const handledRewriteIds = new Set([
+                ...rewritten.map((row) => row.id),
+                ...confirmedUnchanged,
+              ]);
               for (const { item } of job.rewrites) {
-                if (rewrittenIds.has(item.id)) continue;
+                if (handledRewriteIds.has(item.id)) continue;
                 logVerify.warn('verify source rewrite produced no valid translation', {
                   modId: opts.modId,
                   stringId: item.id,
@@ -366,21 +372,18 @@ export const runModVerifyPipeline = async (
             }
           }
 
-          if (autoApproveVerified && job.okStringIds.length > 0) {
+          const idsToApprove = [...job.okStringIds, ...rewriteConfirmedIds];
+          if (autoApproveVerified && idsToApprove.length > 0) {
             try {
-              const promoted = await approveVerifiedTranslations(
-                db,
-                job.okStringIds,
-                opts.targetLang,
-              );
+              const promoted = await approveVerifiedTranslations(db, idsToApprove, opts.targetLang);
               approved += promoted;
-              for (const id of job.okStringIds) approvedIds.add(id);
+              for (const id of idsToApprove) approvedIds.add(id);
             } catch (err) {
-              errors += job.okStringIds.length;
+              errors += idsToApprove.length;
               logVerify.warn('verify auto-approve failed for chunk', {
                 modId: opts.modId,
                 error: err instanceof Error ? err.message : String(err),
-                stringIds: job.okStringIds,
+                stringIds: idsToApprove,
               });
             }
           }

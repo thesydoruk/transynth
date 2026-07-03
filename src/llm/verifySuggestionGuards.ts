@@ -18,6 +18,12 @@ export type VerifySuggestionValidation =
   | { ok: true }
   | { ok: false; reason: SuggestionRejectReason; message: string };
 
+export const REWRITE_UNCHANGED_MESSAGE = 'Rewrite unchanged translation.';
+
+/** True when a source rewrite reproduced the current translation — treat as verified. */
+export const isRewriteUnchangedConfirmation = (check: VerifySuggestionValidation): boolean =>
+  !check.ok && check.reason === 'noop' && check.message === REWRITE_UNCHANGED_MESSAGE;
+
 /** True when text looks like a raw verify item JSON object echoed into suggestion. */
 export const looksLikeVerifyJsonArtifact = (text: string): boolean => {
   const trimmed = text.trim();
@@ -128,7 +134,7 @@ export const validateRewrittenTranslation = (
     !isCorruptedVerifyTranslation(item.translation) &&
     normalizeForCompare(trimmed) === normalizeForCompare(item.translation)
   ) {
-    return { ok: false, reason: 'noop', message: 'Rewrite unchanged translation.' };
+    return { ok: false, reason: 'noop', message: REWRITE_UNCHANGED_MESSAGE };
   }
 
   return { ok: true };

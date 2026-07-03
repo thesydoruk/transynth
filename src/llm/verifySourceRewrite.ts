@@ -6,7 +6,10 @@ import { normalizeAutoTranslationDashes } from '../utils/textNorm';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
-import { validateRewrittenTranslation } from './verifySuggestionGuards';
+import {
+  isRewriteUnchangedConfirmation,
+  validateRewrittenTranslation,
+} from './verifySuggestionGuards';
 import { logVerify } from '../logging/loggers';
 
 export type VerifySourceRewriteOpts = {
@@ -24,10 +27,15 @@ export type VerifySourceRewriteResult = {
   text: string;
 };
 
+export type VerifySourceRewriteOutcome = {
+  rewritten: VerifySourceRewriteResult[];
+  confirmedUnchanged: number[];
+};
+
 export const rewriteVerifyTranslationsFromSource = async (
   opts: VerifySourceRewriteOpts,
-): Promise<VerifySourceRewriteResult[]> => {
-  if (opts.items.length === 0) return [];
+): Promise<VerifySourceRewriteOutcome> => {
+  if (opts.items.length === 0) return { rewritten: [], confirmedUnchanged: [] };
 
   const maskedById = new Map<
     number,
@@ -66,7 +74,8 @@ export const rewriteVerifyTranslationsFromSource = async (
     signal: opts.signal,
   });
 
-  const ok: VerifySourceRewriteResult[] = [];
+  const rewritten: VerifySourceRewriteResult[] = [];
+  const confirmedUnchanged: number[] = [];
   for (const row of translations) {
     const item = opts.items.find((entry) => entry.id === row.id);
     const masks = maskedById.get(row.id);
@@ -77,6 +86,13 @@ export const rewriteVerifyTranslationsFromSource = async (
     );
     const check = validateRewrittenTranslation(item, text, opts.game);
     if (!check.ok) {
+      if (isRewriteUnchangedConfirmation(check)) {
+        confirmedUnchanged.push(row.id);
+        logVerify.info('verify source rewrite confirmed existing translation', {
+          stringId: row.id,
+        });
+        continue;
+      }
       logVerify.warn('verify source rewrite rejected translation', {
         stringId: row.id,
         reason: check.reason,
@@ -84,8 +100,8 @@ export const rewriteVerifyTranslationsFromSource = async (
       });
       continue;
     }
-    ok.push({ id: row.id, text });
+    rewritten.push({ id: row.id, text });
   }
 
-  return ok;
+  return { rewritten, confirmedUnchanged };
 };

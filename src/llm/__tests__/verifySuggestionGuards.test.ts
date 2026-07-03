@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import {
   isCorruptedVerifyTranslation,
   isFullTranslationMismatch,
+  isRewriteUnchangedConfirmation,
   looksLikeTruncatedSuggestion,
   looksLikeVerifyJsonArtifact,
   normalizeVerifySuggestionText,
@@ -318,6 +319,36 @@ describe('validateRewrittenTranslation', () => {
     };
     const result = validateRewrittenTranslation(item, 'Безсоння: ви спите менше.', 'fo4');
     expect(result.ok).toBe(true);
+  });
+
+  it('flags unchanged rewrite as confirmation candidate', () => {
+    const item: LlmVerifyItem = {
+      id: 55079,
+      source: 'Scrap ?',
+      translation: 'Розібрати ?',
+      grup: 'GMST',
+      field: 'DATA',
+      edid: null,
+      context: null,
+    };
+    const result = validateRewrittenTranslation(item, 'Розібрати ?', 'fo4');
+    expect(result.ok).toBe(false);
+    expect(isRewriteUnchangedConfirmation(result)).toBe(true);
+  });
+
+  it('does not treat empty rewrite as confirmation', () => {
+    const item: LlmVerifyItem = {
+      id: 1,
+      source: 'Test',
+      translation: 'Тест',
+      grup: 'GMST',
+      field: 'DATA',
+      edid: null,
+      context: null,
+    };
+    const result = validateRewrittenTranslation(item, '   ', 'fo4');
+    expect(result.ok).toBe(false);
+    expect(isRewriteUnchangedConfirmation(result)).toBe(false);
   });
 });
 
