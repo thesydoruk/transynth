@@ -65,13 +65,14 @@ const chatOperation = (opts: ChatOptions): string => opts.logMeta?.operation ?? 
 
 /** Chat with automatic fallback to secondary provider on availability errors. */
 export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> => {
-  const temperature = nextChatTemperature();
+  const usedExplicitTemperature = opts.temperature != null;
+  const temperature = usedExplicitTemperature ? opts.temperature! : nextChatTemperature();
   const chatOpts: ChatOptions = { ...opts, temperature };
   const operation = chatOperation(chatOpts);
   const context = {
     ...chatOpts.logMeta?.context,
     temperature,
-    temperatureSeq: llmChatRequestSeq - 1,
+    ...(usedExplicitTemperature ? {} : { temperatureSeq: llmChatRequestSeq - 1 }),
   };
   logLlmRequest(logLlm, {
     operation,
