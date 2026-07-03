@@ -115,6 +115,9 @@ export const CONFIG = {
   /** Source string rows loaded from DB per translate:auto / web job page (default 100). */
   llmTranslateDbChunkSize: parsePositiveInt(process.env.LLM_TRANSLATE_DB_CHUNK_SIZE, 100, 10_000),
 
+  /** Rows loaded per DB page during LLM verify (default 500). */
+  llmVerifyDbChunkSize: parsePositiveInt(process.env.LLM_VERIFY_DB_CHUNK_SIZE, 500, 10_000),
+
   /** Untranslated strings processed per TM auto-apply transaction (default 2000). */
   tmApplyChunkSize: parsePositiveInt(process.env.TM_APPLY_CHUNK_SIZE, 2000, 50_000),
 

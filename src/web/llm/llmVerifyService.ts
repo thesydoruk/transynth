@@ -4,29 +4,11 @@
  * Jobs are not persisted — they are lost on worker restart by design.
  */
 import type { Tx } from '../../db';
-import { CONFIG, getTranslateModel } from '../../config';
-import {
-  verifyTranslationsWithLlm,
-  type LlmVerifyItem,
-  type LlmVerifyVerdict,
-} from '../../llm/verifyTranslate';
-import { filterVerifyReferenceExamples } from '../../llm/verifyReferenceExamples';
-import { resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
-import { clampRagMaxExamples } from '../../llm/ragConstants';
-import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../../llm/ragService';
-import { getAllProjectSettings } from '../services/projectSettings';
-import {
-  approveVerifiedTranslations,
-  upsertTranslation,
-  llmVerifyEligibleStatusSql,
-} from '../data/queries';
-import { parseRecordLocation } from '../../utils/recordLocation';
-import { runPoolOverAsyncIterable } from '../../utils/concurrency';
-import { runLlmChunkWithRecovery } from '../../llm/chunkRecovery';
-import { withRequestDeadline } from '../../llm/requestDeadline';
-import { llmChatPipelineConcurrency } from '../../llm/requestPool';
+import { CONFIG } from '../../config';
+import type { LlmVerifyVerdict } from '../../llm/verifyTranslate';
+import { llmVerifyEligibleStatusSql } from '../data/queries';
 import { logVerify } from '../../logging/loggers';
-import { loadGlossaryEntries, relevantGlossaryEntries } from './glossaryForLlm';
+import { runModVerifyPipeline } from './llmVerifyPipeline';
 
 /** Rows per LLM HTTP request — default 1 so a slow row never blocks siblings in one batch. */
 export const LLM_VERIFY_LLM_BATCH_SIZE = Math.max(
@@ -34,8 +16,8 @@ export const LLM_VERIFY_LLM_BATCH_SIZE = Math.max(
   parseInt(process.env.LLM_VERIFY_BATCH_SIZE || '1', 10),
 );
 
-/** Rows fetched from the database per pagination step. */
-export const LLM_VERIFY_DB_CHUNK_SIZE = 100;
+/** Rows fetched from the database per pagination step (see CONFIG.llmVerifyDbChunkSize). */
+export const LLM_VERIFY_DB_CHUNK_SIZE = CONFIG.llmVerifyDbChunkSize;
 
 export type LlmVerifyIssue = {
   stringId: number;
@@ -218,7 +200,7 @@ export type VerifyLlmWorkUnit = {
   chunk: VerifyStringRow[];
 };
 
-/** Stream LLM work units from the DB — no page barrier; workers pull as they free up. */
+/** Stream LLM work units from the DB — prefetches the next page while workers drain the current one. */
 export async function* iterateVerifyLlmChunks(
   db: Tx,
   opts: {
@@ -234,19 +216,28 @@ export async function* iterateVerifyLlmChunks(
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? LLM_VERIFY_DB_CHUNK_SIZE);
   const force = opts.force === true;
 
-  while (true) {
-    const dbChunk = await loadVerifyChunk(
-      db,
-      opts.modId,
-      opts.srcLang,
-      opts.targetLang,
-      afterStringId,
-      dbChunkSize,
-      force,
-    );
+  let nextPagePromise: Promise<VerifyStringRow[]> = loadVerifyChunk(
+    db,
+    opts.modId,
+    opts.srcLang,
+    opts.targetLang,
+    afterStringId,
+    dbChunkSize,
+    force,
+  );
+
+  while (nextPagePromise) {
+    const dbChunk = await nextPagePromise;
     if (dbChunk.length === 0) break;
-    afterStringId = dbChunk[dbChunk.length - 1]!.string_id;
+
+    const lastId = dbChunk[dbChunk.length - 1]!.string_id;
     page++;
+    afterStringId = lastId;
+
+    nextPagePromise =
+      dbChunk.length >= dbChunkSize
+        ? loadVerifyChunk(db, opts.modId, opts.srcLang, opts.targetLang, lastId, dbChunkSize, force)
+        : Promise.resolve([]);
 
     for (let i = 0; i < dbChunk.length; i += LLM_VERIFY_LLM_BATCH_SIZE) {
       yield { page, chunk: dbChunk.slice(i, i + LLM_VERIFY_LLM_BATCH_SIZE) };
@@ -370,286 +361,69 @@ export const runLlmVerifyJob = async (
     fixSuspicious,
     includeConfirmed,
     llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
+    dbChunkSize: CONFIG.llmVerifyDbChunkSize,
   });
 
-  await requirePgvectorForRag(db);
-
-  const glossaryAll = await loadGlossaryEntries(db, opts.srcLang, opts.targetLang);
-
-  if (job.cancel) {
-    job.status = 'cancelled';
-    onEvent({
-      type: 'cancelled',
-      done: job.done,
-      total: job.total,
-      approved: job.approved,
-      fixed: job.fixed,
-      issues: job.issues,
-    });
-    return toSnapshot(job);
-  }
-
-  const projectSettings = await getAllProjectSettings(db);
-  const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
-  const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
-
-  const model = getTranslateModel();
-
-  const chatConcurrency = llmChatPipelineConcurrency();
-
-  const emitProgress = (extra?: {
-    issue?: LlmVerifyIssue;
-    action?: LlmVerifyActionLogEntry;
-  }): void => {
-    if (extra?.action) {
-      job.actionLog.push(extra.action);
-    }
-    onEvent({
-      type: 'progress',
-      done: job.done,
-      total: job.total,
-      approved: job.approved,
-      fixed: job.fixed,
-      ...extra,
-    });
-  };
-
-  type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
-
-  const fetchChunkRag = async (llmChunk: VerifyStringRow[]): Promise<RagByStringId> => {
-    if (job.cancel || llmChunk.length === 0) return new Map();
-    try {
-      return await fetchReferenceExamplesBatch(
-        db,
-        llmChunk.map((row) => {
-          const { grup } = parseRecordLocation(row.signature, row.path);
-          return {
-            stringId: row.string_id,
-            sourceText: row.source,
-            textNorm: row.text_norm,
-            textNormNopunct: row.text_norm_nopunct,
-            signature: grup,
-            path: row.path,
-            context: row.context,
-          };
-        }),
-        opts.srcLang,
-        opts.targetLang,
-        ragMaxExamples,
-        ragMinSimilarity,
-      );
-    } catch (err) {
-      logVerify.warn('RAG fetch failed for verify chunk; continuing without examples', {
-        jobId,
-        modId: opts.modId,
-        err: err instanceof Error ? err.message : String(err),
-        stringIds: llmChunk.map((row) => row.string_id),
-      });
-      return new Map();
-    }
-  };
-
-  /** Verify one batch (LLM call + DB updates). Throws on LLM failure for chunk recovery. */
-  const processLlmBatchInner = async (
-    llmChunk: VerifyStringRow[],
-    ragByStringId: RagByStringId,
-  ): Promise<void> => {
-    if (job.cancel) return;
-
-    const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
-
-    const items: LlmVerifyItem[] = llmChunk.map((row) => {
-      const { grup, field } = parseRecordLocation(row.signature, row.path);
-      return {
-        id: row.string_id,
-        source: row.source,
-        translation: row.translation,
-        grup,
-        edid: row.edid,
-        field,
-        context: row.context,
-        reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
-          grup,
-          field,
-          source: row.source,
-        }),
-      };
-    });
-
-    const results = await withRequestDeadline(
-      CONFIG.llmVerifyRequestTimeoutMs,
-      job.abort.signal,
-      (signal) =>
-        verifyTranslationsWithLlm({
-          items,
-          model,
-          srcLang: opts.srcLang,
-          targetLang: opts.targetLang,
-          game: opts.game,
-          modName: opts.modName,
-          glossary: relevantGlossaryEntries(
-            glossaryAll,
-            llmChunk.map((row) => row.source),
-          ),
-          signal,
-        }),
-    );
-
-    const okStringIds: number[] = [];
-    const logAction = (
-      row: VerifyStringRow,
-      action: LlmVerifyActionLogEntry['action'],
-      detail?: string | null,
-    ) => {
-      if (!job.autoApproveVerified) return;
-      emitProgress({
-        action: {
-          stringId: row.string_id,
-          edid: row.edid,
-          path: row.path,
-          signature: row.signature,
-          source: row.source,
-          action,
-          detail: detail ?? null,
-        },
-      });
-    };
-
-    for (const result of results) {
-      job.done++;
-      const row = rowById.get(result.id);
-
-      if (result.verdict === 'ok') {
-        okStringIds.push(result.id);
-        emitProgress();
-        continue;
-      }
-
-      if (!row) continue;
-
-      const itemForValidation: LlmVerifyItem = {
-        id: row.string_id,
-        source: row.source,
-        translation: row.translation,
-        grup: parseRecordLocation(row.signature, row.path).grup,
-        edid: row.edid,
-        field: parseRecordLocation(row.signature, row.path).field,
-        context: row.context,
-      };
-
-      const fixAction = resolveVerifyFixAction(
-        itemForValidation,
-        result.verdict,
-        result.suggestion,
-        job.fixSuspicious,
-        opts.game,
-      );
-
-      const issue: LlmVerifyIssue = {
-        stringId: result.id,
-        source: row.source,
-        translation: row.translation,
-        signature: row.signature,
-        path: row.path,
-        edid: row.edid,
-        verdict: result.verdict,
-        reason: result.reason,
-        confidence: result.confidence,
-        suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : result.suggestion,
-        fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
-      };
-
-      if (fixAction.kind === 'apply') {
-        try {
-          await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
-          job.fixed++;
-          logAction(row, 'fixed', fixAction.suggestion);
-        } catch (err) {
-          logVerify.warn('auto-fix failed for verify row', {
-            jobId,
-            modId: opts.modId,
-            stringId: result.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      } else if (fixAction.kind === 'reject_fix') {
-        logVerify.warn('auto-fix skipped — suggestion failed validation', {
-          jobId,
-          modId: opts.modId,
-          stringId: result.id,
-          reason: fixAction.message,
-        });
-      }
-
-      job.issues.push(issue);
-      if (job.autoApproveVerified) {
-        logAction(row, 'issue', result.reason);
-      } else {
-        emitProgress({ issue });
-      }
-    }
-
-    if (job.autoApproveVerified && okStringIds.length > 0) {
-      try {
-        const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
-        job.approved += promoted;
-        for (const id of okStringIds) {
-          const row = rowById.get(id);
-          if (row) logAction(row, 'approved');
-        }
-      } catch (approveErr) {
-        logVerify.warn('auto-approve failed for chunk', {
-          jobId,
-          modId: opts.modId,
-          error: approveErr instanceof Error ? approveErr.message : String(approveErr),
-        });
-      }
-    }
-  };
-
-  const emitChunkFailure = (llmChunk: readonly VerifyStringRow[], message: string): void => {
-    logVerify.error('job chunk failed; continuing with next chunk', {
-      jobId,
-      modId: opts.modId,
-      error: message,
-      stringIds: llmChunk.map((row) => row.string_id),
-    });
-    for (const _row of llmChunk) {
-      job.done++;
-      emitProgress();
-    }
-  };
-
-  const processLlmChunk = async (llmChunk: VerifyStringRow[]): Promise<void> => {
-    if (job.cancel || llmChunk.length === 0) return;
-    const ragByStringId = await fetchChunkRag(llmChunk);
-    if (job.cancel) return;
-    await runLlmChunkWithRecovery({
-      chunk: llmChunk,
-      shouldAbort: () => job.cancel,
-      runOnce: (chunk) => processLlmBatchInner([...chunk], ragByStringId),
-      onFailure: (failed, message) => emitChunkFailure(failed, message),
-      log: logVerify,
-      operation: 'verify',
-      itemIds: (chunk) => chunk.map((row) => row.string_id),
-    });
-  };
-
   try {
-    await runPoolOverAsyncIterable(
-      iterateVerifyLlmChunks(db, {
+    const summary = await runModVerifyPipeline(
+      db,
+      {
         modId: opts.modId,
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
-        dbChunkSize: LLM_VERIFY_DB_CHUNK_SIZE,
+        modName: opts.modName,
+        game: opts.game,
+        autoApproveVerified,
+        fixSuspicious,
         force: includeConfirmed,
-      }),
-      chatConcurrency,
-      async ({ chunk }) => {
-        if (job.cancel) return;
-        await processLlmChunk(chunk);
+        knownTotal: total,
+        shouldCancel: () => job.cancel,
+        signal: job.abort.signal,
+      },
+      {
+        collectIssue: (issue) => {
+          job.issues.push(issue);
+        },
+        onActionLog: (entry) => {
+          job.actionLog.push(entry);
+          onEvent({
+            type: 'progress',
+            done: job.done,
+            total: job.total,
+            approved: job.approved,
+            fixed: job.fixed,
+            action: entry,
+          });
+        },
+        onProgress: (progress) => {
+          job.done = progress.done;
+          job.approved = progress.approved;
+          job.fixed = progress.fixed;
+          if (progress.issue) {
+            onEvent({
+              type: 'progress',
+              done: job.done,
+              total: job.total,
+              approved: job.approved,
+              fixed: job.fixed,
+              issue: progress.issue,
+            });
+          } else if (!autoApproveVerified) {
+            onEvent({
+              type: 'progress',
+              done: job.done,
+              total: job.total,
+              approved: job.approved,
+              fixed: job.fixed,
+            });
+          }
+        },
       },
     );
+
+    job.done = summary.done;
+    job.approved = summary.approved;
+    job.fixed = summary.fixed;
 
     if (job.cancel) {
       job.status = 'cancelled';

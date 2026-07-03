@@ -36,6 +36,14 @@ export type RunLlmChunkWorkPoolOptions<T> = Omit<RunLlmChunkWithRecoveryOptions<
   concurrency: number;
 };
 
+export type RunLlmChunkWorkPoolFromFeedOptions<T> = Omit<
+  RunLlmChunkWorkPoolOptions<T>,
+  'initialChunks'
+> & {
+  /** Max chunks buffered ahead of workers (default: concurrency * 2). */
+  maxBufferedChunks?: number;
+};
+
 const chunkBackoffMs = (attempt: number): number =>
   Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
 
@@ -53,15 +61,15 @@ const splitChunkParallel = async <T>(
   );
 };
 
-/**
- * Work pool over LLM chunks — workers pull the next chunk as soon as they are free.
- * Split/retry parts are re-queued on the same pool instead of blocking the parent worker.
- */
-export const runLlmChunkWorkPool = async <T>(
-  opts: RunLlmChunkWorkPoolOptions<T>,
+const runLlmChunkWorkPoolCore = async <T>(
+  opts: Omit<RunLlmChunkWorkPoolOptions<T>, 'initialChunks'> & {
+    seedQueue: (readonly T[])[];
+    /** When set, the producer pauses while the buffer is full. */
+    awaitBufferSpace?: () => Promise<void>;
+  },
 ): Promise<void> => {
-  const { initialChunks, concurrency, shouldAbort, ...recoveryOpts } = opts;
-  const queue: (readonly T[])[] = initialChunks.map((chunk) => [...chunk]);
+  const { seedQueue, concurrency, shouldAbort, awaitBufferSpace, ...recoveryOpts } = opts;
+  const queue: (readonly T[])[] = seedQueue.map((chunk) => [...chunk]);
   let inFlight = 0;
 
   await new Promise<void>((resolve) => {
@@ -94,7 +102,112 @@ export const runLlmChunkWorkPool = async <T>(
     };
 
     pump();
+
+    if (awaitBufferSpace) {
+      void (async () => {
+        while (true) {
+          await awaitBufferSpace();
+          pump();
+        }
+      })();
+    }
   });
+};
+
+/**
+ * Work pool over LLM chunks — workers pull the next chunk as soon as they are free.
+ * Split/retry parts are re-queued on the same pool instead of blocking the parent worker.
+ */
+export const runLlmChunkWorkPool = async <T>(
+  opts: RunLlmChunkWorkPoolOptions<T>,
+): Promise<void> => {
+  const { initialChunks, ...rest } = opts;
+  await runLlmChunkWorkPoolCore({
+    ...rest,
+    seedQueue: initialChunks.map((chunk) => [...chunk]),
+  });
+};
+
+/**
+ * Continuous work pool fed by an async iterable — keeps up to `concurrency` LLM
+ * requests in flight while the producer prefetches DB/RAG work ahead of workers.
+ */
+export const runLlmChunkWorkPoolFromFeed = async <T>(
+  feed: AsyncIterable<readonly T[]>,
+  opts: RunLlmChunkWorkPoolFromFeedOptions<T>,
+): Promise<void> => {
+  const { maxBufferedChunks, concurrency, shouldAbort, ...recoveryOpts } = opts;
+  const bufferLimit = Math.max(concurrency, maxBufferedChunks ?? concurrency * 2);
+  const queue: (readonly T[])[] = [];
+  let inFlight = 0;
+  let feedDone = false;
+  let feedError: unknown = null;
+  let bufferWaiters: Array<() => void> = [];
+  let pump!: () => void;
+
+  const notifyBufferWaiters = (): void => {
+    const waiters = bufferWaiters;
+    bufferWaiters = [];
+    for (const wake of waiters) wake();
+  };
+
+  const feedPromise = (async () => {
+    try {
+      for await (const chunk of feed) {
+        if (shouldAbort?.()) break;
+        while (queue.length >= bufferLimit && !shouldAbort?.()) {
+          await new Promise<void>((resolve) => bufferWaiters.push(resolve));
+        }
+        if (shouldAbort?.()) break;
+        queue.push([...chunk]);
+        notifyBufferWaiters();
+        pump();
+      }
+    } catch (err) {
+      feedError = err;
+    } finally {
+      feedDone = true;
+      notifyBufferWaiters();
+      pump();
+    }
+  })();
+
+  await new Promise<void>((resolve) => {
+    const maybeDone = (): void => {
+      if (feedDone && queue.length === 0 && inFlight === 0) resolve();
+    };
+
+    const enqueueSplit = (parts: readonly (readonly T[])[]): void => {
+      for (const part of parts) queue.push([...part]);
+      notifyBufferWaiters();
+      pump();
+    };
+
+    pump = (): void => {
+      while (queue.length > 0 && inFlight < concurrency) {
+        if (shouldAbort?.()) break;
+        const chunk = queue.shift()!;
+        notifyBufferWaiters();
+        inFlight++;
+        void runLlmChunkWithRecovery({
+          ...recoveryOpts,
+          chunk,
+          shouldAbort,
+          enqueueSplit,
+        }).finally(() => {
+          inFlight--;
+          pump();
+          maybeDone();
+        });
+      }
+      maybeDone();
+    };
+
+    pump();
+  });
+
+  await feedPromise;
+  if (feedError) throw feedError;
 };
 
 /** Run one LLM batch with timeout split, bisect-on-error, and exponential backoff. */

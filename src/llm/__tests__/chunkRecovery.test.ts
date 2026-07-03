@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { runLlmChunkWithRecovery, runLlmChunkWorkPool } from '../chunkRecovery';
+import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../chunkRecovery';
 import type { Logger } from '../../logger';
 
 const timeoutErr = (): Error => {
@@ -58,8 +58,12 @@ describe('runLlmChunkWithRecovery', () => {
     expect(onFailure).toHaveBeenCalledWith([{ id: 42 }], 'Request timed out.');
   });
 
-  it('runLlmChunkWorkPool re-queues split parts without blocking other workers', async () => {
+  it('runLlmChunkWorkPoolFromFeed keeps workers busy while feed streams', async () => {
     const order: number[] = [];
+    async function* feed() {
+      yield [{ id: 1 }, { id: 2 }];
+      yield [{ id: 3 }];
+    }
     const runOnce = jest.fn(async (chunk: readonly { id: number }[]) => {
       if (chunk.length === 1 && chunk[0]!.id === 2) {
         await new Promise((r) => setTimeout(r, 60));
@@ -68,11 +72,7 @@ describe('runLlmChunkWithRecovery', () => {
       if (chunk.length > 1) throw timeoutErr();
     });
 
-    await runLlmChunkWorkPool({
-      initialChunks: [
-        [{ id: 1 }, { id: 2 }],
-        [{ id: 3 }, { id: 4 }],
-      ],
+    await runLlmChunkWorkPoolFromFeed(feed(), {
       concurrency: 2,
       runOnce,
       maxAttempts: 1,
