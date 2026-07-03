@@ -303,7 +303,6 @@ export const runModVerifyPipeline = async (
     persistJobs.push(
       persistPool.run(async () => {
         const approvedIds = new Set<number>();
-        const fixedStringIds: number[] = [];
 
         if (!dryRun) {
           if (job.rewrites.length > 0) {
@@ -324,7 +323,6 @@ export const runModVerifyPipeline = async (
                 try {
                   await upsertTranslation(db, row.id, row.text, 'auto', opts.targetLang);
                   fixed++;
-                  fixedStringIds.push(row.id);
                   logAction(sourceRow, 'fixed', row.text);
                 } catch (err) {
                   errors++;
@@ -357,7 +355,6 @@ export const runModVerifyPipeline = async (
             try {
               await upsertTranslation(db, fix.stringId, fix.text, 'auto', opts.targetLang);
               fixed++;
-              fixedStringIds.push(fix.stringId);
               logAction(fix.row, 'fixed', fix.text);
             } catch (err) {
               errors++;
@@ -369,21 +366,22 @@ export const runModVerifyPipeline = async (
             }
           }
 
-          if (autoApproveVerified) {
-            const toApprove = [...new Set([...job.okStringIds, ...fixedStringIds])];
-            if (toApprove.length > 0) {
-              try {
-                const promoted = await approveVerifiedTranslations(db, toApprove, opts.targetLang);
-                approved += promoted;
-                for (const id of toApprove) approvedIds.add(id);
-              } catch (err) {
-                errors += toApprove.length;
-                logVerify.warn('verify auto-approve failed for chunk', {
-                  modId: opts.modId,
-                  error: err instanceof Error ? err.message : String(err),
-                  stringIds: toApprove,
-                });
-              }
+          if (autoApproveVerified && job.okStringIds.length > 0) {
+            try {
+              const promoted = await approveVerifiedTranslations(
+                db,
+                job.okStringIds,
+                opts.targetLang,
+              );
+              approved += promoted;
+              for (const id of job.okStringIds) approvedIds.add(id);
+            } catch (err) {
+              errors += job.okStringIds.length;
+              logVerify.warn('verify auto-approve failed for chunk', {
+                modId: opts.modId,
+                error: err instanceof Error ? err.message : String(err),
+                stringIds: job.okStringIds,
+              });
             }
           }
         }
