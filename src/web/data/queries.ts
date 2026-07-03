@@ -1926,6 +1926,37 @@ export const markStringsAsSkip = async (db: Tx, stringIds: number[]): Promise<nu
   return markedIds.length;
 };
 
+/** Clear skip flags and audit timestamps for a mod before a force re-scan. */
+export const resetModSkipDetectState = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+): Promise<{ resetCount: number; clearedSkips: number }> => {
+  const { rows: before } = await db.query<{ cnt: string }>(
+    `SELECT COUNT(*)::text AS cnt
+       FROM strings s
+       JOIN records r ON r.id = s.record_id
+      WHERE r.mod_id = $1
+        AND s.lang = $2
+        AND s.is_ignored = TRUE`,
+    [modId, srcLang],
+  );
+  const clearedSkips = Number.parseInt(before[0]?.cnt ?? '0', 10);
+
+  const { rowCount } = await db.query(
+    `UPDATE strings s
+        SET is_ignored = FALSE,
+            skip_detect_scanned_at = NULL
+       FROM records r
+      WHERE r.id = s.record_id
+        AND r.mod_id = $1
+        AND s.lang = $2`,
+    [modId, srcLang],
+  );
+
+  return { resetCount: rowCount ?? 0, clearedSkips };
+};
+
 /** Clear the global skip flag so the string(s) can be translated again. */
 export const unmarkStringsSkip = async (db: Tx, stringIds: number[]): Promise<number> => {
   if (stringIds.length === 0) return 0;

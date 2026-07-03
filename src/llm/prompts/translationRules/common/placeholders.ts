@@ -18,19 +18,21 @@ export const englishPlaceholderRules = (): string[] => [
   '- WRONG: dropping ¤PH0¤, splitting it as "¤ PH0 ¤", or replacing %s with %d.',
 ];
 
-/** Placeholder rules for verify/audit (raw unmasked source and translation). */
+/** Placeholder rules for verify/audit (pre-masked like translate). */
 export const englishVerifyPlaceholderRules = (): string[] => [
   '### PLACEHOLDER AND TAG PRESERVATION (CRITICAL):',
-  '- Verify receives RAW unmasked "source" and "translation" (%s, %d, <Alias=…>, [Mod], etc.).',
-  '- Every protected token in source must appear in translation and in any "suggestion" with identical syntax.',
-  '- WRONG: missing tokens, %s→%d swaps, altered <Alias=…> syntax, invented placeholders.',
+  '- Verify receives pre-masked "source", "translation", and "reference_examples": opaque keys like ¤PH0¤, ¤PH1¤.',
+  '- Every mask key in source must appear in translation and in any "suggestion" unchanged — same count, same spelling.',
+  '- Copy mask keys into suggestions exactly; the pipeline restores originals such as %s, <Alias=…>, <Global=…>, <font>, [Mod] after the response.',
+  '- WRONG: dropping ¤PH0¤, splitting it as "¤ PH0 ¤", or replacing one mask key with another.',
 ];
 
 export const ukrainianVerifyPlaceholderRules = (): string[] => [
   '### ЗБЕРЕЖЕННЯ ПЛЕЙСХОЛДЕРІВ І ТЕГІВ (КРИТИЧНО):',
-  '- Verify отримує НЕЗАМАСКОВАНІ поля "source" та "translation" (%s, %d, <Alias=…>, [Mod] тощо).',
-  '- Усі захищені токени з source мають бути в translation і в "suggestion" без змін синтаксису.',
-  '- ПОМИЛКА: пропущені токени, заміна %s на %d, змінений синтаксис <Alias=…>, вигадані плейсхолдери.',
+  '- Verify отримує замасковані поля "source", "translation" і "reference_examples": ключі ¤PH0¤, ¤PH1¤ тощо.',
+  '- Усі ключі з source мають бути в translation і в "suggestion" без змін — та сама кількість, той самий напис.',
+  '- Копіюй ключі в suggestion без змін; після відповіді пайплайн відновлює %s, <Alias=…>, <Global=…>, <font>, [Mod] тощо.',
+  '- ПОМИЛКА: пропустити ¤PH0¤, розбити "¤ PH0 ¤" або замінити один ключ іншим.',
 ];
 
 export const ukrainianPlaceholderRules = (): string[] => [

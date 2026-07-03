@@ -24,7 +24,7 @@ export const buildUkrainianTranslationRules = (game?: GameType | string | null):
   return [...ukrainianCommonRules(), '', ...gameRules].join('\n');
 };
 
-/** Ukrainian rules block for verify-only prompts (no translate-time masking). */
+/** Ukrainian rules block for verify-only prompts (pre-masked text). */
 export const buildUkrainianVerifyTranslationRules = (game?: GameType | string | null): string => {
   const resolved = resolveGameType(game);
   const gameRules = GAME_RULES[resolved].uk();

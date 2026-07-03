@@ -35,6 +35,7 @@ import {
   unmask,
   validateTranslationPlaceholders,
 } from '../../utils/placeholders';
+import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../llm/llmTextMask';
 import { detectSkipHeuristic } from '../../llm/skipTranslateHeuristics';
 import { parseRecordLocation } from '../../utils/recordLocation';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
@@ -325,7 +326,8 @@ export const translateStringIdsBatch = async (
       const translations = await translateStrings({
         items: chunk.map((entry) => ({
           ...entry.llmItem,
-          reference_examples: ragByStringId.get(entry.stringId),
+          context: maskLlmOptionalText(entry.llmItem.context),
+          reference_examples: maskLlmReferenceExamples(ragByStringId.get(entry.stringId)),
         })),
         model,
         srcLang,
@@ -424,7 +426,7 @@ export const translateStringIdsBatch = async (
           edid: row.edid,
           field,
           form_id: row.formid_hex,
-          context: row.context,
+          context: maskLlmOptionalText(row.context),
         };
       })(),
     });

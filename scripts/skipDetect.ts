@@ -14,7 +14,7 @@
  * Options:
  *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
  *   --use-llm           Run LLM skip detection after heuristics (default: false)
- *   --force             Re-scan all strings, including already marked or scanned
+ *   --force             Clear all skip flags, then re-scan every string
  *   --db-chunk <n>      DB page size for large mods (default: DB_CHUNK_SIZE)
  *
  * Examples:
@@ -84,7 +84,7 @@ const argv = await yargs(hideBin(process.argv))
   .option('force', {
     type: 'boolean',
     default: false,
-    describe: 'Re-scan all strings, including already marked or previously scanned',
+    describe: 'Clear all skip flags and scan timestamps, then re-scan every string',
   })
   .option('db-chunk', {
     type: 'number',
@@ -188,10 +188,18 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
 
     const statsAfter = await loadModStats(target.modId, target.srcLang);
     log.info(`After: ${formatModStats(statsAfter)}`);
-    log.info(
-      `Mod summary: skipped +${statsAfter.skipped - statsBefore.skipped}, ` +
-        `untranslated ${statsBefore.untranslated} → ${statsAfter.untranslated}`,
-    );
+    if (force) {
+      log.info(
+        `Mod summary (force): cleared ${statsBefore.skipped} prior skip(s), ` +
+          `marked ${snapshot.markedCount} as non-translatable, ` +
+          `untranslated ${statsBefore.untranslated} → ${statsAfter.untranslated}`,
+      );
+    } else {
+      log.info(
+        `Mod summary: skipped +${statsAfter.skipped - statsBefore.skipped}, ` +
+          `untranslated ${statsBefore.untranslated} → ${statsAfter.untranslated}`,
+      );
+    }
 
     if (snapshot.markedCount === 0 && snapshot.candidates.length === 0) {
       log.info(`No skip candidates for mod_id=${target.modId}`);

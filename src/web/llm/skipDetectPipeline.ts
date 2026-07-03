@@ -269,7 +269,7 @@ export const runModSkipDetectPipeline = async (
     throw new Error(
       force
         ? 'No strings to scan'
-        : 'No unscanned strings — use force to re-scan already audited rows',
+        : 'No unscanned strings — use force to reset skip flags and re-scan all strings',
     );
   }
 

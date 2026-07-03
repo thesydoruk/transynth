@@ -4,6 +4,7 @@
 import type { Tx } from '../../db';
 import { CONFIG, DB_CHUNK_SIZE } from '../../config';
 import { logVerify } from '../../logging/loggers';
+import { resetModSkipDetectState } from '../data/queries';
 import { runModSkipDetectPipeline } from './skipDetectPipeline';
 
 /** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
@@ -266,13 +267,21 @@ export const runLlmSkipDetectJob = async (
 
   let total = 0;
   try {
+    if (force) {
+      const forceReset = await resetModSkipDetectState(db, opts.modId, opts.srcLang);
+      logVerify.info('skip-detect force reset', {
+        modId: opts.modId,
+        ...forceReset,
+      });
+    }
+
     total = await countScannableStrings(db, opts.modId, opts.srcLang, force);
     if (total === 0) {
       activeJobs.delete(jobId);
       throw new Error(
         force
           ? 'No strings to scan'
-          : 'No unscanned strings — use force to re-scan already audited rows',
+          : 'No unscanned strings — use force to reset skip flags and re-scan all strings',
       );
     }
     job.total = total;

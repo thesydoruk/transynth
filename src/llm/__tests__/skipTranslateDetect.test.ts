@@ -17,8 +17,30 @@ jest.unstable_mockModule('../index', () => ({
   chatWithFallback,
 }));
 
-const { detectSkipCandidatesWithLlm, LlmSkipDetectMissingIdsError } =
+const { detectSkipCandidatesWithLlm, LlmSkipDetectMissingIdsError, buildSkipDetectUserPayload } =
   await import('../skipTranslateDetect');
+
+describe('buildSkipDetectUserPayload', () => {
+  it('masks source and context placeholders', () => {
+    const payload = buildSkipDetectUserPayload({
+      srcLang: 'en',
+      items: [
+        {
+          id: 1,
+          source: '<Alias=Player> entered',
+          context: 'RegisterForAnimationEvent("Idle")',
+          grup: 'INFO',
+          edid: null,
+          field: 'NAM1',
+          path: null,
+        },
+      ],
+    }) as { items: Array<{ source: string; context: string | null }> };
+
+    expect(payload.items[0]?.source).toBe('¤PH0¤ entered');
+    expect(payload.items[0]?.context).toBe('RegisterForAnimationEvent("Idle")');
+  });
+});
 
 describe('detectSkipCandidatesWithLlm', () => {
   beforeEach(() => {

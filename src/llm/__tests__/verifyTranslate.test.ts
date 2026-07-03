@@ -3,12 +3,45 @@ import {
   buildVerifySystemPrompt,
   buildVerifyTranslateUserPayload,
   LlmVerifyMissingIdsError,
+  maskVerifyItemForLlm,
   parseLlmVerifyTranslateResponse,
   applyPlaceholderGuardToVerifyResult,
   VERIFY_TRANSLATE_SYSTEM_PROMPT,
 } from '../verifyTranslate';
 import { buildEnglishVerifySystemPrompt } from '../prompts/en';
 import { buildUkrainianVerifySystemPrompt } from '../prompts/uk';
+
+describe('maskVerifyItemForLlm', () => {
+  it('masks source, translation, and reference examples with shared keys', () => {
+    const tag = "<font color='#<Global=SS2_Instance_ResourceManager_ComponentFontColor05>'>";
+    const { item, mapping } = maskVerifyItemForLlm({
+      id: 1,
+      source: `${tag}Scrap`,
+      translation: `${tag}Брухт`,
+      grup: 'WEAP',
+      field: 'FULL',
+      edid: null,
+      context: null,
+      reference_examples: [
+        {
+          source: '<Alias=Player> left',
+          translation: '<Alias=Player> пішов',
+          grup: 'INFO',
+          edid: null,
+          field: 'NAM1',
+          match_method: 'exact',
+          similarity: 1,
+        },
+      ],
+    });
+
+    expect(item.source).toBe('¤PH0¤Scrap');
+    expect(item.translation).toBe('¤PH1¤Брухт');
+    expect(item.reference_examples?.[0]?.source).toBe('¤PH2¤ left');
+    expect(mapping['¤PH0¤']).toBe(tag);
+    expect(mapping['¤PH2¤']).toBe('<Alias=Player>');
+  });
+});
 
 describe('buildVerifyTranslateUserPayload', () => {
   it('builds JSON audit payload', () => {

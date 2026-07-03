@@ -34,7 +34,7 @@ export const englishCommonRules = (targetLang: string): string[] => [
   '- Homonyms: the same English word may need different translations by grup/field (e.g. "Light" in ARMO/FULL vs WEAP/MOD).',
 ];
 
-/** Shared verify/audit rules (raw text — no translate-time masking). */
+/** Shared verify/audit rules (pre-masked text sent to the LLM). */
 export const englishVerifyCommonRules = (targetLang: string): string[] => [
   ...englishVerifyPlaceholderRules(),
   '',

@@ -12,6 +12,7 @@ import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
+import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
 import { reconcileVerifyResult } from './verifySuggestionGuards';
 import type { LlmGlossaryEntry } from './translate';
 
@@ -69,6 +70,47 @@ export class LlmVerifyMissingIdsError extends Error {
 
 export const isLlmVerifyMissingIdsError = (err: unknown): err is LlmVerifyMissingIdsError =>
   err instanceof LlmVerifyMissingIdsError;
+
+/** Mask text fields sent to the verify LLM; keeps raw items for post-audit guards. */
+export const maskVerifyItemForLlm = (
+  item: LlmVerifyItem,
+): { item: LlmVerifyItem; mapping: Record<string, string> } => {
+  const fields: Array<string | null | undefined> = [item.source, item.translation];
+  for (const ref of item.reference_examples ?? []) {
+    fields.push(ref.source, ref.translation);
+  }
+  if (item.context != null) fields.push(item.context);
+
+  const { masked, mapping } = maskLlmTextFields(fields);
+  let idx = 0;
+  const take = (): string => masked[idx++] as string;
+
+  return {
+    mapping,
+    item: {
+      ...item,
+      source: take(),
+      translation: take(),
+      reference_examples: item.reference_examples?.map((ref) => ({
+        ...ref,
+        source: take(),
+        translation: take(),
+      })),
+      context: item.context != null ? take() : item.context,
+    },
+  };
+};
+
+const unmaskVerifySuggestions = (
+  results: LlmVerifyItemResult[],
+  mappingById: Map<number, Record<string, string>>,
+): LlmVerifyItemResult[] =>
+  results.map((result) => {
+    if (!result.suggestion) return result;
+    const mapping = mappingById.get(result.id);
+    if (!mapping || Object.keys(mapping).length === 0) return result;
+    return { ...result, suggestion: unmaskLlmText(result.suggestion, mapping) };
+  });
 
 /** Apply placeholder guard and suggestion reconciliation to parsed LLM rows. */
 export const finalizeVerifyItemResults = (
@@ -297,8 +339,16 @@ export const verifyTranslationsWithLlm = async (
 ): Promise<LlmVerifyItemResult[]> => {
   if (opts.items.length === 0) return [];
 
+  const mappingById = new Map<number, Record<string, string>>();
+  const maskedItems = opts.items.map((item) => {
+    const masked = maskVerifyItemForLlm(item);
+    mappingById.set(item.id, masked.mapping);
+    return masked.item;
+  });
+
   const expectedIds = opts.items.map((item) => item.id);
-  const { content: raw, meta } = await callVerifyTranslateLlm(opts, opts.items);
+  const { content: raw, meta } = await callVerifyTranslateLlm(opts, maskedItems);
   const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta);
-  return finalizeVerifyItemResults(opts.items, parsed, opts.game);
+  const unmasked = unmaskVerifySuggestions(parsed, mappingById);
+  return finalizeVerifyItemResults(opts.items, unmasked, opts.game);
 };

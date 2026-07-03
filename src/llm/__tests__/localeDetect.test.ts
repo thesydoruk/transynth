@@ -7,6 +7,30 @@ import {
 } from '../localeDetect';
 
 describe('buildLocaleDetectUserPayload', () => {
+  it('masks placeholders in sample text', () => {
+    const payload = buildLocaleDetectUserPayload({
+      expectedLang: 'en',
+      storedLang: 'en',
+      isLocalized: false,
+      game: 'fo4',
+      modName: 'TestMod.esp',
+      fileName: 'TestMod.esp',
+      samples: [
+        {
+          id: 7,
+          text: '<Alias=Player> says hello',
+          signature: 'WEAP',
+          path: 'WEAP\\FULL',
+          edid: 'MyGun',
+        },
+      ],
+    });
+
+    expect(payload).toMatchObject({
+      samples: [{ id: 7, text: '¤PH0¤ says hello' }],
+    });
+  });
+
   it('builds JSON audit payload', () => {
     const payload = buildLocaleDetectUserPayload({
       expectedLang: 'en',

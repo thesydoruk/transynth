@@ -2,6 +2,7 @@
  * LLM audit — flags source strings that should not be translated.
  */
 import { chatWithFallback } from './index';
+import { maskLlmTextFields } from './llmTextMask';
 import { parseLlmJson } from './jsonParse';
 import { buildSkipDetectResponseFormat } from './responseSchemas';
 import type { ChatCompletionMeta } from './provider';
@@ -74,6 +75,7 @@ export const buildSkipDetectSystemPrompt = (
     '',
     '### TECHNICAL REQUIREMENTS:',
     '- Input: JSON with metadata and an "items" array (id, source, grup, field, path, edid, context).',
+    '- Source and context may contain pre-masked placeholder keys (¤PH0¤, ¤PH1¤, …) instead of raw game tags — judge language and translatability from the remaining words.',
     '- Output: valid JSON ONLY. No markdown fences.',
     '- Return one object per input id.',
     '- The declared source_language is not always accurate — some rows may already be partly localized. Judge by the actual content, not by the declared language alone.',
@@ -115,15 +117,18 @@ export const buildSkipDetectUserPayload = (opts: Omit<LlmSkipDetectOptions, 'mod
   source_language: opts.srcLang.trim().toLowerCase(),
   game: opts.game ?? null,
   mod_name: opts.modName ?? null,
-  items: opts.items.map((item) => ({
-    id: item.id,
-    source: item.source,
-    grup: item.grup,
-    edid: item.edid,
-    field: item.field,
-    path: item.path,
-    context: item.context,
-  })),
+  items: opts.items.map((item) => {
+    const { masked } = maskLlmTextFields([item.source, item.context]);
+    return {
+      id: item.id,
+      source: masked[0] ?? item.source,
+      grup: item.grup,
+      edid: item.edid,
+      field: item.field,
+      path: item.path,
+      context: masked[1],
+    };
+  }),
 });
 
 const clampConfidence = (value: unknown): number => {

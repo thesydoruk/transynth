@@ -20,7 +20,11 @@ const initialState: SkipDetectState = {
 };
 
 /** Manages non-translatable string detection — survives modal close while the stream runs. */
-export const useSkipDetect = (modId: number, srcLang: string) => {
+export const useSkipDetect = (
+  modId: number,
+  srcLang: string,
+  hooks?: { onForceReset?: () => void },
+) => {
   const [state, setState] = useState<SkipDetectState>(initialState);
   const inFlight = useRef(false);
   const jobIdRef = useRef<number | null>(null);
@@ -52,12 +56,14 @@ export const useSkipDetect = (modId: number, srcLang: string) => {
       });
 
       try {
+        const forceRun = opts?.force === true;
         const snapshot = await api.llmSkipDetect.start(modId, srcLang, {
-          force: opts?.force === true,
+          force: forceRun,
           useLlm: opts?.useLlm === true,
           onEvent: (event) => {
             if (event.type === 'started') {
               jobIdRef.current = event.jobId;
+              if (forceRun) hooks?.onForceReset?.();
               setState((prev) => ({
                 ...prev,
                 status: 'running',
@@ -117,7 +123,7 @@ export const useSkipDetect = (modId: number, srcLang: string) => {
         inFlight.current = false;
       }
     },
-    [applySnapshot, modId, srcLang],
+    [applySnapshot, hooks, modId, srcLang],
   );
 
   const stop = useCallback(async () => {

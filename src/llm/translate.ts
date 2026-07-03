@@ -2,7 +2,8 @@
  * Structured JSON translation via LLM.
  *
  * Both the request payload and the model response use JSON. Placeholder tokens
- * (¤PH…¤, ¤GL…¤, ¤FK…¤) must already be applied by the caller.
+ * (¤PH…¤, ¤GL…¤, ¤FK…¤) must already be applied to source by the caller;
+ * context and reference_examples are masked at send time when not pre-masked.
  */
 import { CONFIG } from '../config';
 import { chatWithFallback } from './index';

@@ -35,7 +35,7 @@ export const ukrainianCommonRules = (): string[] => [
   '- Омоніми: те саме англійське слово може мати різні відповідники залежно від grup/field.',
 ];
 
-/** Shared verify/audit rules (raw text — no translate-time masking). */
+/** Shared verify/audit rules (pre-masked text sent to the LLM). */
 export const ukrainianVerifyCommonRules = (): string[] => [
   ...ukrainianVerifyPlaceholderRules(),
   '',

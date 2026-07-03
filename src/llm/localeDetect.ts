@@ -5,6 +5,7 @@
  */
 import { MCM_LOCALE_ALIASES } from '../formats/mcm/mcmDiscovery';
 import { chatWithFallback } from './index';
+import { maskLlmText } from './llmTextMask';
 import { parseLlmJson } from './jsonParse';
 import type { GameType } from '../types';
 
@@ -102,7 +103,7 @@ export const buildLocaleDetectUserPayload = (
   file_name: opts.fileName ?? null,
   samples: opts.samples.map((s) => ({
     id: s.id,
-    text: s.text,
+    text: maskLlmText(s.text).masked,
     signature: s.signature,
     path: s.path,
     edid: s.edid,

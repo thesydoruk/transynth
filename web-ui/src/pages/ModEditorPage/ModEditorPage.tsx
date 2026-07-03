@@ -271,7 +271,12 @@ export const ModEditorPage = () => {
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
-  const skipDetect = useSkipDetect(modId, srcLang);
+  const skipDetect = useSkipDetect(modId, srcLang, {
+    onForceReset: () => {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    },
+  });
   const applyImported = useApplyImported(modId, srcLang, targetLang);
   const prevAiTranslateStatus = useRef(aiTranslate.status);
   const prevApplyImportedStatus = useRef(applyImported.status);
