@@ -200,7 +200,6 @@ export const detectLocaleWithLlm = async (
   const payload = buildLocaleDetectUserPayload({ ...opts, allowedLanguages });
   const { content: text } = await chatWithFallback({
     model: opts.model,
-    temperature: 0,
     responseFormat: { type: 'json_object' },
     logMeta: {
       operation: 'locale_detect',

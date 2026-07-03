@@ -71,9 +71,11 @@ export const useSkipDetect = (modId: number, srcLang: string) => {
                 ...prev,
                 done: event.done,
                 total: event.total,
-                candidates: event.candidate
-                  ? [...prev.candidates, event.candidate]
-                  : prev.candidates,
+                candidates: event.candidatesBatch
+                  ? [...prev.candidates, ...event.candidatesBatch]
+                  : event.candidate
+                    ? [...prev.candidates, event.candidate]
+                    : prev.candidates,
               }));
             }
             if (event.type === 'done') {

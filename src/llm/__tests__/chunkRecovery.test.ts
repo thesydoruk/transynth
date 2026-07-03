@@ -84,4 +84,32 @@ describe('runLlmChunkWithRecovery', () => {
 
     expect(order.indexOf(3)).toBeLessThan(order.indexOf(2));
   });
+
+  it('deferred retry frees the worker for other chunks', async () => {
+    const order: string[] = [];
+    const runOnce = jest.fn(async (chunk: readonly { id: number }[]) => {
+      if (chunk[0]!.id === 1) {
+        order.push('fail-1');
+        throw new Error('transient');
+      }
+      order.push(`ok-${chunk[0]!.id}`);
+    });
+
+    async function* feed() {
+      yield [{ id: 1 }];
+      yield [{ id: 2 }];
+    }
+
+    await runLlmChunkWorkPoolFromFeed(feed(), {
+      concurrency: 1,
+      runOnce,
+      maxAttempts: 2,
+      onFailure: () => {},
+      log: silentLog,
+      operation: 'test',
+    });
+
+    expect(order.indexOf('ok-2')).toBeLessThan(order.lastIndexOf('fail-1'));
+    expect(runOnce).toHaveBeenCalledTimes(3);
+  });
 });

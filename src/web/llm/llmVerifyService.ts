@@ -4,20 +4,15 @@
  * Jobs are not persisted — they are lost on worker restart by design.
  */
 import type { Tx } from '../../db';
-import { CONFIG } from '../../config';
+import { CONFIG, DB_CHUNK_SIZE } from '../../config';
 import type { LlmVerifyVerdict } from '../../llm/verifyTranslate';
 import { llmVerifyEligibleStatusSql } from '../data/queries';
 import { logVerify } from '../../logging/loggers';
 import { runModVerifyPipeline } from './llmVerifyPipeline';
+import { buildLlmTranslateChunks } from './llmTranslateChunking';
 
-/** Rows per LLM HTTP request — default 1 so a slow row never blocks siblings in one batch. */
-export const LLM_VERIFY_LLM_BATCH_SIZE = Math.max(
-  1,
-  parseInt(process.env.LLM_VERIFY_BATCH_SIZE || '1', 10),
-);
-
-/** Rows fetched from the database per pagination step (see CONFIG.llmVerifyDbChunkSize). */
-export const LLM_VERIFY_DB_CHUNK_SIZE = CONFIG.llmVerifyDbChunkSize;
+/** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
+export const LLM_VERIFY_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
 export type LlmVerifyIssue = {
   stringId: number;
@@ -239,8 +234,17 @@ export async function* iterateVerifyLlmChunks(
         ? loadVerifyChunk(db, opts.modId, opts.srcLang, opts.targetLang, lastId, dbChunkSize, force)
         : Promise.resolve([]);
 
-    for (let i = 0; i < dbChunk.length; i += LLM_VERIFY_LLM_BATCH_SIZE) {
-      yield { page, chunk: dbChunk.slice(i, i + LLM_VERIFY_LLM_BATCH_SIZE) };
+    const llmChunks = buildLlmTranslateChunks(
+      dbChunk.map((row) => ({ row, sourceText: row.source })),
+      {
+        batchSize: CONFIG.batchSize,
+        maxSourceChars: CONFIG.llmBatchMaxSourceChars,
+        singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
+      },
+    );
+
+    for (const part of llmChunks) {
+      yield { page, chunk: part.map((entry) => entry.row) };
     }
   }
 }
@@ -360,8 +364,8 @@ export const runLlmVerifyJob = async (
     autoApproveVerified,
     fixSuspicious,
     includeConfirmed,
-    llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
-    dbChunkSize: CONFIG.llmVerifyDbChunkSize,
+    llmBatchSize: CONFIG.batchSize,
+    dbChunkSize: CONFIG.dbChunkSize,
   });
 
   try {

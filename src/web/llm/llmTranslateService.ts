@@ -4,7 +4,7 @@
  * Jobs are not persisted — they are lost on worker restart by design.
  */
 import type { Tx } from '../../db';
-import { CONFIG } from '../../config';
+import { CONFIG, DB_CHUNK_SIZE } from '../../config';
 import { llmTranslateEligibilitySql, type LlmTranslateOverwriteMode } from '../data/queries';
 import { translateStringIdsBatch } from './llmTranslateBatch';
 import { logTranslate } from '../../logging/loggers';
@@ -13,9 +13,9 @@ import { awaitPendingQaRefresh } from '../services/qaHooks';
 /**
  * String IDs fetched from the database per pagination step.
  *
- * Default from `LLM_TRANSLATE_DB_CHUNK_SIZE` env (100). Override via `--db-chunk` on the CLI.
+ * Default from `DB_CHUNK_SIZE` env (5000). Override via `--db-chunk` on the CLI.
  */
-export const LLM_TRANSLATE_DB_CHUNK_SIZE = CONFIG.llmTranslateDbChunkSize;
+export const LLM_TRANSLATE_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
 export type LlmTranslateRow = {
   stringId: number;

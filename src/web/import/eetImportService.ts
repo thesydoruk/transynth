@@ -226,7 +226,7 @@ export const runImport = async (
 
   const header = parseEetHeader(buf);
   const skipCount = job.imported_records;
-  const importBatchSize = CONFIG.modImportBatchSize;
+  const importBatchSize = CONFIG.dbChunkSize;
   let processed = 0;
   let imported = job.imported_records;
   let inTx = false;

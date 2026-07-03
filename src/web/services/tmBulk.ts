@@ -166,7 +166,7 @@ export const bulkUpsertTmTranslations = async (
   db: Tx,
   items: TmBulkWriteRow[],
   targetLang: string,
-  batchSize = CONFIG.modImportBatchSize,
+  batchSize = CONFIG.dbChunkSize,
 ): Promise<number> => {
   if (items.length === 0) return 0;
 

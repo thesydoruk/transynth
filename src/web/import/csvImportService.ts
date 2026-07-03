@@ -317,7 +317,7 @@ export const runCsvImport = async (
   activeImports.set(job.id, state);
 
   const skipCount = job.imported_records;
-  const importBatchSize = CONFIG.modImportBatchSize;
+  const importBatchSize = CONFIG.dbChunkSize;
   let processed = 0;
   let imported = job.imported_records;
   let inTx = false;

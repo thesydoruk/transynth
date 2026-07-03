@@ -136,7 +136,7 @@ const applyTMChunk = async (
  * Only strings that have **no** translation for `targetLang` are considered.
  * Matches use set-based SQL (anchor → edid → text_norm) via {@link bulkApplyTmBatch}.
  *
- * Processing is paginated by {@link CONFIG.tmApplyChunkSize} (env: TM_APPLY_CHUNK_SIZE).
+ * Processing is paginated by {@link CONFIG.dbChunkSize} (env: DB_CHUNK_SIZE).
  * Within each chunk, up to {@link CONFIG.tmApplyWorkers} sub-chunks run in parallel
  * (env: TM_APPLY_WORKERS), each in its own DB transaction.
  */
@@ -146,7 +146,7 @@ export const applyTMToMod = async (
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
-  const chunkSize = CONFIG.tmApplyChunkSize;
+  const chunkSize = CONFIG.dbChunkSize;
   const workers = CONFIG.tmApplyWorkers;
   const totalUntranslated = await countUntranslatedStrings(db, modId, targetLang, srcLang);
   log.info(

@@ -2,9 +2,8 @@
  * Fallout 4 RACE face editor glossary (FMRN / MPPN / TTGP).
  *
  * Canonical EN→UK pairs for character creation morph sliders, presets, and
- * face-detail labels. Generated from DB (mods 2/43/44) with manual overrides.
+ * face-detail labels. Curated from DB (mods 2/43/44) with manual overrides.
  *
- * Regenerate: `node --import tsx scripts/_analyzeRaceGlossary.ts`
  * Merged into `FO4_UK_GLOSSARY` — run `npm run db:seed:glossary` after edits.
  */
 import type { GlossaryEntry } from './types';

@@ -36,11 +36,10 @@
 import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { CONFIG, validateConfig } from '../src/config';
+import { CONFIG, DB_CHUNK_SIZE, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { formatLogBlock } from '../src/logging/format';
-import { LLM_VERIFY_DB_CHUNK_SIZE } from '../src/web/llm/llmVerifyService';
 import { runCliModVerify, type CliVerifyProgressEvent } from '../src/web/llm/cliAutoVerify';
 import type { LlmVerifyIssue } from '../src/web/llm/llmVerifyService';
 import { formatVerifyIssuePrefix, type VerifyFixAction } from '../src/llm/verifySuggestionGuards';
@@ -137,7 +136,7 @@ const argv = await addCliRagFlagOptions(
     })
     .option('db-chunk', {
       type: 'number',
-      describe: `DB page size for large mods (default: ${LLM_VERIFY_DB_CHUNK_SIZE})`,
+      describe: `DB page size for large mods (default: ${DB_CHUNK_SIZE})`,
     }),
 )
   .check((args) => {
@@ -164,8 +163,7 @@ const dryRun = argv['dry-run'];
 const autoApproveVerified = argv.autoApprove;
 const fixSuspicious = argv['fix-suspicious'];
 const force = argv.force;
-const dbChunkSize =
-  argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_VERIFY_DB_CHUNK_SIZE;
+const dbChunkSize = argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : DB_CHUNK_SIZE;
 
 const db = openDb();
 

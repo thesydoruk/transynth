@@ -2,16 +2,12 @@
  * Non-translatable string detection jobs (heuristic rules only).
  */
 import type { Tx } from '../../db';
-import { partitionSkipAuditRows } from '../../llm/skipTranslateHeuristics';
-import { markStringsAsSkip, markStringsSkipDetectScanned } from '../data/queries';
-import { parseRecordLocation } from '../../utils/recordLocation';
-import { runPoolOverAsyncIterable } from '../../utils/concurrency';
+import { CONFIG, DB_CHUNK_SIZE } from '../../config';
 import { logVerify } from '../../logging/loggers';
+import { runModSkipDetectPipeline } from './skipDetectPipeline';
 
-export const SKIP_DETECT_DB_CHUNK_SIZE = 500;
-
-/** In-memory processing batch size within each DB page. */
-export const SKIP_DETECT_PROCESS_BATCH_SIZE = 500;
+/** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
+export const SKIP_DETECT_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
 export type LlmSkipDetectCandidate = {
   stringId: number;
@@ -87,7 +83,7 @@ export const requestLlmSkipDetectStopByModId = (modId: number): boolean => {
 const scannableFilterSql = (force: boolean): string =>
   force ? '' : 'AND s.is_ignored = FALSE AND s.skip_detect_scanned_at IS NULL';
 
-const countScannableStrings = async (
+export const countScannableStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -105,7 +101,7 @@ const countScannableStrings = async (
   return Number.parseInt(rows[0]?.cnt ?? '0', 10);
 };
 
-type ScanStringRow = {
+export type ScanStringRow = {
   string_id: number;
   source: string;
   signature: string | null;
@@ -147,7 +143,7 @@ export type SkipDetectWorkUnit = {
   chunk: ScanStringRow[];
 };
 
-/** Stream scan work units — workers pull rows as they free up (no DB-page barrier). */
+/** Stream scan chunks from the DB — prefetches the next page while workers drain the current one. */
 export async function* iterateSkipDetectWorkUnits(
   db: Tx,
   opts: {
@@ -159,7 +155,7 @@ export async function* iterateSkipDetectWorkUnits(
 ): AsyncGenerator<SkipDetectWorkUnit> {
   let afterId = 0;
   let page = 0;
-  const dbChunkSize = opts.dbChunkSize ?? SKIP_DETECT_DB_CHUNK_SIZE;
+  const dbChunkSize = Math.max(50, opts.dbChunkSize ?? DB_CHUNK_SIZE);
 
   let nextChunkPromise: Promise<ScanStringRow[]> = loadScanChunk(
     db,
@@ -183,9 +179,7 @@ export async function* iterateSkipDetectWorkUnits(
         ? loadScanChunk(db, opts.modId, opts.srcLang, lastId, dbChunkSize, opts.force)
         : Promise.resolve([]);
 
-    for (let i = 0; i < dbChunk.length; i += SKIP_DETECT_PROCESS_BATCH_SIZE) {
-      yield { page, chunk: dbChunk.slice(i, i + SKIP_DETECT_PROCESS_BATCH_SIZE) };
-    }
+    yield { page, chunk: dbChunk };
   }
 }
 
@@ -196,6 +190,7 @@ export type LlmSkipDetectProgressEvent =
       done: number;
       total: number;
       candidate?: LlmSkipDetectCandidate;
+      candidatesBatch?: LlmSkipDetectCandidate[];
       marked?: number;
     }
   | {
@@ -221,10 +216,9 @@ export const runLlmSkipDetectJob = async (
     srcLang: string;
     modName?: string | null;
     game?: string | null;
-    /** Write skip marks to the database after each batch (default: false). */
     persist?: boolean;
-    /** Re-scan all strings, including already marked skip or previously scanned (default: false). */
     force?: boolean;
+    dbChunkSize?: number;
   },
   onEvent: (event: LlmSkipDetectProgressEvent) => void,
 ): Promise<LlmSkipDetectJobSnapshot> => {
@@ -235,14 +229,6 @@ export const runLlmSkipDetectJob = async (
 
   const persist = opts.persist === true;
   const force = opts.force === true;
-  const total = await countScannableStrings(db, opts.modId, opts.srcLang, force);
-  if (total === 0) {
-    throw new Error(
-      force
-        ? 'No strings to scan'
-        : 'No unscanned strings — use force to re-scan already audited rows',
-    );
-  }
 
   const jobId = nextJobId++;
   const job: ActiveLlmSkipDetectJob = {
@@ -250,7 +236,7 @@ export const runLlmSkipDetectJob = async (
     modId: opts.modId,
     status: 'running',
     done: 0,
-    total,
+    total: 0,
     candidates: [],
     markedCount: 0,
     error: null,
@@ -261,116 +247,64 @@ export const runLlmSkipDetectJob = async (
   };
   activeJobs.set(jobId, job);
 
-  logVerify.info('skip-detect job started', {
-    jobId,
-    modId: opts.modId,
-    total,
-    persist,
-    force,
-    srcLang: opts.srcLang,
-  });
+  let total = 0;
+  try {
+    total = await countScannableStrings(db, opts.modId, opts.srcLang, force);
+    if (total === 0) {
+      activeJobs.delete(jobId);
+      throw new Error(
+        force
+          ? 'No strings to scan'
+          : 'No unscanned strings — use force to re-scan already audited rows',
+      );
+    }
+    job.total = total;
 
-  onEvent({ type: 'started', jobId, total, persist });
-
-  const persistCandidates = async (candidates: LlmSkipDetectCandidate[]): Promise<number> => {
-    if (!persist || candidates.length === 0) return 0;
-    const marked = await markStringsAsSkip(
-      db,
-      candidates.map((c) => c.stringId),
-    );
-    job.markedCount += marked;
-    logVerify.info('skip-detect chunk persisted', {
+    logVerify.info('skip-detect job started', {
       jobId,
       modId: opts.modId,
-      marked,
-      markedTotal: job.markedCount,
-    });
-    return marked;
-  };
-
-  const finishRows = async (
-    rows: ScanStringRow[],
-    hits: Map<number, LlmSkipDetectCandidate>,
-  ): Promise<void> => {
-    if (rows.length === 0) return;
-
-    const toPersist: LlmSkipDetectCandidate[] = [];
-    for (const row of rows) {
-      job.done++;
-      const candidate = hits.get(row.string_id);
-      if (candidate) {
-        job.candidates.push(candidate);
-        toPersist.push(candidate);
-      }
-      onEvent({
-        type: 'progress',
-        done: job.done,
-        total: job.total,
-        ...(candidate ? { candidate } : {}),
-      });
-    }
-
-    if (persist && toPersist.length > 0) {
-      await persistCandidates(toPersist);
-    }
-  };
-
-  const processScanChunk = async (chunk: ScanStringRow[]): Promise<void> => {
-    if (job.cancel || chunk.length === 0) return;
-
-    const hits = new Map<number, LlmSkipDetectCandidate>();
-
-    const auditRows = chunk.map((row) => {
-      const { grup } = parseRecordLocation(row.signature, row.path);
-      return {
-        id: row.string_id,
-        source: row.source,
-        edid: row.edid,
-        path: row.path,
-        signature: grup,
-        context: row.context,
-      };
+      total,
+      persist,
+      force,
+      srcLang: opts.srcLang,
+      dbChunkSize: opts.dbChunkSize ?? CONFIG.dbChunkSize,
+      workers: CONFIG.skipDetectWorkers,
     });
 
-    const { heuristicHits } = partitionSkipAuditRows(auditRows);
+    onEvent({ type: 'started', jobId, total, persist });
 
-    for (const row of chunk) {
-      const heuristic = heuristicHits.get(row.string_id);
-      if (heuristic) {
-        hits.set(row.string_id, {
-          stringId: row.string_id,
-          source: row.source,
-          signature: row.signature,
-          path: row.path,
-          edid: row.edid,
-          reason: heuristic.reason,
-          confidence: 0.85,
-          method: 'heuristic',
-        });
-      }
-    }
-
-    await finishRows(chunk, hits);
-    if (job.cancel) return;
-    await markStringsSkipDetectScanned(
+    const summary = await runModSkipDetectPipeline(
       db,
-      chunk.map((row) => row.string_id),
-    );
-  };
-
-  try {
-    await runPoolOverAsyncIterable(
-      iterateSkipDetectWorkUnits(db, {
+      {
         modId: opts.modId,
         srcLang: opts.srcLang,
+        persist,
         force,
-      }),
-      1,
-      async ({ chunk }) => {
-        if (job.cancel) return;
-        await processScanChunk(chunk);
+        dbChunkSize: opts.dbChunkSize,
+        knownTotal: total,
+        shouldCancel: () => job.cancel,
+      },
+      {
+        collectCandidate: (candidate) => {
+          job.candidates.push(candidate);
+        },
+        onProgress: (progress) => {
+          job.done = progress.done;
+          job.markedCount = progress.markedCount;
+          onEvent({
+            type: 'progress',
+            done: progress.done,
+            total: job.total,
+            ...(progress.candidatesBatch?.length
+              ? { candidatesBatch: progress.candidatesBatch }
+              : {}),
+          });
+        },
       },
     );
+
+    job.done = summary.done;
+    job.markedCount = summary.markedCount;
 
     if (job.cancel) {
       job.status = 'cancelled';
@@ -413,3 +347,6 @@ export const scheduleLlmSkipDetectJobCleanup = (jobId: number, delayMs = 60_000)
 
 /** @deprecated Use {@link SKIP_DETECT_DB_CHUNK_SIZE}. */
 export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = SKIP_DETECT_DB_CHUNK_SIZE;
+
+/** @deprecated Processing uses full DB pages; kept for CLI compatibility. */
+export const SKIP_DETECT_PROCESS_BATCH_SIZE = SKIP_DETECT_DB_CHUNK_SIZE;

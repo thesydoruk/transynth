@@ -2,6 +2,7 @@ import {
   buildTranslateSystemPrompt,
   buildTranslateUserPayload,
   isUkrainianTargetLang,
+  LlmTranslateMissingIdsError,
   parseLlmTranslateResponse,
 } from '../translate';
 import { buildEnglishTranslateSystemPrompt } from '../prompts/en';
@@ -167,9 +168,22 @@ describe('parseLlmTranslateResponse', () => {
     expect(parseLlmTranslateResponse(raw, [7])).toEqual([{ id: 7, translation: 'Тест' }]);
   });
 
-  it('throws when an expected id is missing', () => {
+  it('throws LlmTranslateMissingIdsError when some ids are missing', () => {
     const raw = JSON.stringify({ items: [{ id: 1, translation: 'OK' }] });
-    expect(() => parseLlmTranslateResponse(raw, [1, 2])).toThrow('missing translation for id=2');
+    expect(() => parseLlmTranslateResponse(raw, [1, 2])).toThrow(LlmTranslateMissingIdsError);
+    try {
+      parseLlmTranslateResponse(raw, [1, 2]);
+    } catch (err) {
+      expect(err).toMatchObject({
+        missingIds: [2],
+        partialResults: [{ id: 1, translation: 'OK' }],
+      });
+    }
+  });
+
+  it('throws LlmTranslateMissingIdsError when every expected id is missing', () => {
+    const raw = JSON.stringify({ items: [] });
+    expect(() => parseLlmTranslateResponse(raw, [1, 2])).toThrow(LlmTranslateMissingIdsError);
   });
 
   it('throws on invalid JSON', () => {

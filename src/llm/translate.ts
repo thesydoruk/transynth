@@ -5,7 +5,6 @@
  * (¤PH…¤, ¤GL…¤, ¤FK…¤) must already be applied by the caller.
  */
 import { CONFIG } from '../config';
-import { log } from '../logger';
 import { chatWithFallback } from './index';
 import {
   parseLlmJson,
@@ -17,7 +16,6 @@ import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildTranslateResponseFormat } from './responseSchemas';
-import { isAbortError } from './retry';
 import type { GameType } from '../types';
 
 /** Glossary entry included in the translation payload. */
@@ -68,6 +66,35 @@ export interface LlmTranslateResult {
   id: number;
   translation: string;
 }
+
+/** Thrown when the model hits max_tokens before completing the JSON batch response. */
+export class LlmResponseTruncatedError extends Error {
+  readonly finishReason = 'length';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'LlmResponseTruncatedError';
+  }
+}
+
+export const isLlmResponseTruncatedError = (err: unknown): err is LlmResponseTruncatedError =>
+  err instanceof LlmResponseTruncatedError;
+
+/** Some ids parsed; others missing from the model JSON — caller may persist partial results. */
+export class LlmTranslateMissingIdsError extends Error {
+  readonly missingIds: readonly number[];
+  readonly partialResults: readonly LlmTranslateResult[];
+
+  constructor(missingIds: number[], partialResults: LlmTranslateResult[]) {
+    super(`LLM response missing translation for id=${missingIds[0]}`);
+    this.name = 'LlmTranslateMissingIdsError';
+    this.missingIds = missingIds;
+    this.partialResults = partialResults;
+  }
+}
+
+export const isLlmTranslateMissingIdsError = (err: unknown): err is LlmTranslateMissingIdsError =>
+  err instanceof LlmTranslateMissingIdsError;
 
 /** Language codes that select the dedicated Ukrainian system prompt. */
 export const isUkrainianTargetLang = (targetLang: string): boolean => {
@@ -169,12 +196,18 @@ export const parseLlmTranslateResponse = (
   }
 
   const results: LlmTranslateResult[] = [];
+  const missingIds: number[] = [];
   for (const id of expectedIds) {
     const translation = byId.get(id);
     if (translation === undefined) {
-      throw new Error(`LLM response missing translation for id=${id}`);
+      missingIds.push(id);
+      continue;
     }
     results.push({ id, translation });
+  }
+
+  if (missingIds.length > 0) {
+    throw new LlmTranslateMissingIdsError(missingIds, results);
   }
 
   return results;
@@ -185,22 +218,6 @@ export const parseLlmTranslateResponse = (
  *
  * @returns Translations in the same order as {@link LlmTranslateOptions.items}.
  */
-const translateBackoffMs = (attempt: number): number =>
-  Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
-
-/** Thrown when the model hits max_tokens before completing the JSON batch response. */
-export class LlmResponseTruncatedError extends Error {
-  readonly finishReason = 'length';
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'LlmResponseTruncatedError';
-  }
-}
-
-export const isLlmResponseTruncatedError = (err: unknown): err is LlmResponseTruncatedError =>
-  err instanceof LlmResponseTruncatedError;
-
 export const translateStrings = async (
   opts: LlmTranslateOptions,
 ): Promise<LlmTranslateResult[]> => {
@@ -209,64 +226,45 @@ export const translateStrings = async (
   const expectedIds = opts.items.map((item) => item.id);
   const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game);
   const payload = buildTranslateUserPayload(opts);
-  const maxAttempts = CONFIG.llmMaxAttempts;
 
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      const { content: text, meta } = await chatWithFallback({
-        model: opts.model,
-        temperature: 0,
-        responseFormat: buildTranslateResponseFormat(expectedIds.length),
-        signal: opts.signal,
-        logMeta: {
-          operation: 'translate',
-          context: {
-            itemIds: expectedIds,
-            itemCount: expectedIds.length,
-            attempt: attempt + 1,
-            srcLang: opts.srcLang,
-            targetLang: opts.targetLang,
-            game: opts.game ?? null,
-            modName: opts.modName ?? null,
-            glossaryCount: opts.glossary?.length ?? 0,
-            ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
-          },
-        },
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: JSON.stringify(payload),
-          },
-        ],
-      });
+  const { content: text, meta } = await chatWithFallback({
+    model: opts.model,
+    responseFormat: buildTranslateResponseFormat(expectedIds.length),
+    signal: opts.signal,
+    logMeta: {
+      operation: 'translate',
+      context: {
+        itemIds: expectedIds,
+        itemCount: expectedIds.length,
+        srcLang: opts.srcLang,
+        targetLang: opts.targetLang,
+        game: opts.game ?? null,
+        modName: opts.modName ?? null,
+        glossaryCount: opts.glossary?.length ?? 0,
+        ragExampleCounts: opts.items.map((item) => item.reference_examples?.length ?? 0),
+      },
+    },
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      {
+        role: 'user',
+        content: JSON.stringify(payload),
+      },
+    ],
+  });
 
-      if (!text.trim()) {
-        throw new Error('LLM returned empty response');
-      }
-
-      if (meta.finishReason === 'length') {
-        throw new LlmResponseTruncatedError(
-          `LLM response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${CONFIG.llmMaxTokens})`,
-        );
-      }
-
-      return parseLlmTranslateResponse(text, expectedIds, meta);
-    } catch (err) {
-      if (isAbortError(err)) throw err;
-      lastErr = err;
-      if (attempt === maxAttempts - 1) break;
-      const message = err instanceof Error ? err.message : String(err);
-      log.warn(
-        `Translate LLM retry ${attempt + 1}/${maxAttempts}: ${message} — waiting ${Math.round(translateBackoffMs(attempt))}ms`,
-      );
-      await new Promise((r) => setTimeout(r, translateBackoffMs(attempt)));
-    }
+  if (!text.trim()) {
+    throw new Error('LLM returned empty response');
   }
 
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  if (meta.finishReason === 'length') {
+    throw new LlmResponseTruncatedError(
+      `LLM response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${CONFIG.llmMaxTokens})`,
+    );
+  }
+
+  return parseLlmTranslateResponse(text, expectedIds, meta);
 };

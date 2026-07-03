@@ -29,6 +29,9 @@ export const isLlmTimeoutError = (err: unknown): boolean => {
   return /\btimeout\b/.test(msg) || msg.includes('timed out');
 };
 
+/** True when the error may succeed on a later HTTP attempt (429, 5xx, network, timeout). */
+export const isRetryableLlmError = (err: unknown): boolean => isRetryable(err);
+
 /**
  * Retry `fn` up to `maxAttempts` times on transient errors.
  * Backoff: 1s, 2s, 4s, … (capped at 30s) + jitter.

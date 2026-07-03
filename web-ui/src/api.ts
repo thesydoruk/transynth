@@ -955,6 +955,7 @@ export type LlmSkipDetectStreamEvent =
       done: number;
       total: number;
       candidate?: LlmSkipDetectCandidate;
+      candidatesBatch?: LlmSkipDetectCandidate[];
       marked?: number;
     }
   | {
@@ -2213,9 +2214,11 @@ export const api = {
                 ...snapshot,
                 done: event.done,
                 total: event.total,
-                candidates: event.candidate
-                  ? [...snapshot.candidates, event.candidate]
-                  : snapshot.candidates,
+                candidates: event.candidatesBatch
+                  ? [...snapshot.candidates, ...event.candidatesBatch]
+                  : event.candidate
+                    ? [...snapshot.candidates, event.candidate]
+                    : snapshot.candidates,
               };
             }
             if (event.type === 'done' && snapshot) {

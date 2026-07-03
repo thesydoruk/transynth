@@ -42,13 +42,10 @@
 import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { CONFIG, validateConfig } from '../src/config';
+import { CONFIG, DB_CHUNK_SIZE, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
-import {
-  LLM_TRANSLATE_DB_CHUNK_SIZE,
-  type LlmTranslateOverwriteMode,
-} from '../src/web/llm/llmTranslateService';
+import { type LlmTranslateOverwriteMode } from '../src/web/llm/llmTranslateService';
 import {
   runCliModTranslate,
   type CliTranslateProgressEvent,
@@ -173,7 +170,7 @@ const argv = await addCliRagFlagOptions(
     })
     .option('db-chunk', {
       type: 'number',
-      describe: `DB page size for large mods (default: ${LLM_TRANSLATE_DB_CHUNK_SIZE})`,
+      describe: `DB page size for large mods (default: ${DB_CHUNK_SIZE})`,
     }),
 )
   .check((args) => {
@@ -205,8 +202,7 @@ const tgtLang = argv['tgt-lang'].trim();
 const useTm = argv.tm;
 const useLlm = argv.llm;
 const overwriteMode = resolveOverwriteMode(argv.force, argv['force-all']);
-const dbChunkSize =
-  argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : LLM_TRANSLATE_DB_CHUNK_SIZE;
+const dbChunkSize = argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : DB_CHUNK_SIZE;
 
 const db = openDb();
 
@@ -262,7 +258,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
 
   if (useTm) {
     log.info(
-      `TM auto-apply: mod_id=${target.modId} (chunk=${CONFIG.tmApplyChunkSize}, workers=${CONFIG.tmApplyWorkers})`,
+      `TM auto-apply: mod_id=${target.modId} (chunk=${CONFIG.dbChunkSize}, workers=${CONFIG.tmApplyWorkers})`,
     );
     const tm = await applyTMToMod(db, target.modId, tgtLang, target.srcLang);
     log.info(

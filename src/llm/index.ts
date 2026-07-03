@@ -1,7 +1,7 @@
 // LLM provider factory — resolves provider from CONFIG.llmProvider
 import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
-import { isAbortError } from './retry';
+import { isAbortError, isRetryableLlmError, isLlmTimeoutError } from './retry';
 import { embedPool, llmChatPool } from './requestPool';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
@@ -14,6 +14,20 @@ import {
 import { logLlm, logEmbed } from '../logging/loggers';
 
 let _instance: LLMProvider | undefined;
+
+/** Monotonic sequence for per-request temperature decay (see {@link resolveLlmChatTemperature}). */
+let llmChatRequestSeq = 0;
+
+/** Temperature for the Nth chat request: `max(0, base - N * decay)`. */
+export const resolveLlmChatTemperature = (seq: number): number =>
+  Math.max(0, CONFIG.llmTemperature - seq * CONFIG.llmTemperatureDecay);
+
+const nextChatTemperature = (): number => resolveLlmChatTemperature(llmChatRequestSeq++);
+
+/** Reset the chat temperature sequence (tests / long-lived workers). */
+export const resetLlmChatTemperatureSeq = (): void => {
+  llmChatRequestSeq = 0;
+};
 
 /** Network or HTTP-level error shape for availability checks. */
 interface HttpLikeError {
@@ -39,6 +53,9 @@ const makeFallback = (): LLMProvider | null => {
 
 const AVAILABILITY_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET']);
 
+const llmChatBackoffMs = (attempt: number): number =>
+  Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
+
 const isAvailabilityError = (err: unknown): boolean => {
   const e = err as HttpLikeError;
   return AVAILABILITY_CODES.has(e?.code ?? '') || e?.status === 503;
@@ -48,30 +65,39 @@ const chatOperation = (opts: ChatOptions): string => opts.logMeta?.operation ?? 
 
 /** Chat with automatic fallback to secondary provider on availability errors. */
 export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> => {
-  const operation = chatOperation(opts);
-  const context = opts.logMeta?.context;
+  const temperature = nextChatTemperature();
+  const chatOpts: ChatOptions = { ...opts, temperature };
+  const operation = chatOperation(chatOpts);
+  const context = {
+    ...chatOpts.logMeta?.context,
+    temperature,
+    temperatureSeq: llmChatRequestSeq - 1,
+  };
   logLlmRequest(logLlm, {
     operation,
-    model: opts.model,
-    messages: opts.messages,
-    responseFormat: opts.responseFormat?.type,
+    model: chatOpts.model,
+    messages: chatOpts.messages,
+    responseFormat: chatOpts.responseFormat?.type,
     schemaName:
-      opts.responseFormat?.type === 'json_schema'
-        ? opts.responseFormat.json_schema.name
+      chatOpts.responseFormat?.type === 'json_schema'
+        ? chatOpts.responseFormat.json_schema.name
         : undefined,
     context,
   });
 
   const started = Date.now();
 
-  const runChat = async (provider: LLMProvider): Promise<ChatResult> => {
+  const runChat = async (
+    provider: LLMProvider,
+    attemptContext: Record<string, unknown>,
+  ): Promise<ChatResult> => {
     const queueWaitMs = Date.now() - started;
     const httpStarted = Date.now();
     try {
-      const result = await provider.chat(opts);
+      const result = await provider.chat(chatOpts);
       logLlmResponse(logLlm, {
         operation,
-        model: opts.model,
+        model: chatOpts.model,
         response: result.content,
         durationMs: Date.now() - httpStarted,
         provider: provider.name,
@@ -79,51 +105,88 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
         promptTokens: result.meta.promptTokens,
         completionTokens: result.meta.completionTokens,
         totalTokens: result.meta.totalTokens,
-        context: { ...context, queueWaitMs },
+        context: { ...attemptContext, queueWaitMs },
       });
       if (result.meta.finishReason === 'length') {
         logLlm.warn(`${operation} response truncated (finish_reason=length)`, {
-          model: opts.model,
+          model: chatOpts.model,
           provider: provider.name,
           responseChars: result.content.length,
           completionTokens: result.meta.completionTokens,
-          maxTokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
-          ...context,
+          maxTokens: chatOpts.maxTokens ?? CONFIG.llmMaxTokens,
+          ...attemptContext,
         });
       }
       return result;
     } catch (err) {
       if (isAbortError(err)) {
-        logLlm.debug(`${operation} aborted`, { model: opts.model, provider: provider.name });
+        logLlm.debug(`${operation} aborted`, { model: chatOpts.model, provider: provider.name });
         throw err;
       }
       logLlm.error(`${operation} failed`, {
-        model: opts.model,
+        model: chatOpts.model,
         provider: provider.name,
         durationMs: Date.now() - httpStarted,
         queueWaitMs,
         pool: llmChatPool.stats,
         err: err instanceof Error ? err.message : String(err),
-        ...context,
+        ...attemptContext,
       });
       throw err;
     }
   };
 
   const primary = getLLM();
+  const fallback = makeFallback();
+  const maxAttempts = CONFIG.llmMaxAttempts;
+  let lastErr: unknown;
 
-  try {
-    return await llmChatPool.run(() => runChat(primary));
-  } catch (err) {
-    const fallback = makeFallback();
-    if (isAbortError(err) || !fallback || !isAvailabilityError(err)) throw err;
-    logLlm.warn(`${operation} primary unavailable, using fallback`, {
-      primary: primary.name,
-      fallback: CONFIG.llmFallback,
-      ...context,
-    });
-    return llmChatPool.run(() => runChat(fallback));
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const attemptContext = { ...context, httpAttempt: attempt + 1, maxAttempts };
+
+    const callProvider = async (provider: LLMProvider): Promise<ChatResult> =>
+      llmChatPool.run(() => runChat(provider, attemptContext));
+
+    try {
+      return await callProvider(primary);
+    } catch (err) {
+      if (isAbortError(err)) throw err;
+      lastErr = err;
+
+      if (fallback && isAvailabilityError(err)) {
+        logLlm.warn(`${operation} primary unavailable, using fallback`, {
+          primary: primary.name,
+          fallback: CONFIG.llmFallback,
+          ...attemptContext,
+        });
+        try {
+          return await callProvider(fallback);
+        } catch (fallbackErr) {
+          if (isAbortError(fallbackErr)) throw fallbackErr;
+          lastErr = fallbackErr;
+        }
+      }
+
+      if (
+        !isRetryableLlmError(lastErr) ||
+        isLlmTimeoutError(lastErr) ||
+        attempt === maxAttempts - 1
+      ) {
+        throw lastErr;
+      }
+
+      const delay = llmChatBackoffMs(attempt);
+      logLlm.warn(`${operation} HTTP retry`, {
+        delayMs: Math.round(delay),
+        err: lastErr instanceof Error ? lastErr.message : String(lastErr),
+        pool: llmChatPool.stats,
+        ...attemptContext,
+      });
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
+
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 };
 
 export type EmbedCallOptions = EmbedOptions & {

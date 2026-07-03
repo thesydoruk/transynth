@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import {
   buildVerifySystemPrompt,
   buildVerifyTranslateUserPayload,
+  LlmVerifyMissingIdsError,
   parseLlmVerifyTranslateResponse,
   applyPlaceholderGuardToVerifyResult,
   VERIFY_TRANSLATE_SYSTEM_PROMPT,
@@ -93,11 +94,19 @@ describe('parseLlmVerifyTranslateResponse', () => {
     expect(parseLlmVerifyTranslateResponse(raw, [1])[0]?.suggestion).toBeNull();
   });
 
-  it('throws when an item id is missing', () => {
+  it('throws LlmVerifyMissingIdsError when an item id is missing', () => {
     const raw = JSON.stringify({
       items: [{ id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.9 }],
     });
-    expect(() => parseLlmVerifyTranslateResponse(raw, itemIds)).toThrow(/missing item id=2/);
+    expect(() => parseLlmVerifyTranslateResponse(raw, itemIds)).toThrow(LlmVerifyMissingIdsError);
+    try {
+      parseLlmVerifyTranslateResponse(raw, itemIds);
+    } catch (err) {
+      expect(err).toMatchObject({
+        missingIds: [2],
+        partialResults: [{ id: 1, verdict: 'ok', suggestion: null }],
+      });
+    }
   });
 
   it('accepts string item ids from the LLM', () => {

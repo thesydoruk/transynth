@@ -1912,11 +1912,18 @@ export const markStringsAsSkip = async (db: Tx, stringIds: number[]): Promise<nu
     [stringIds],
   );
 
-  for (const row of rows) {
-    await deleteAllTranslationsForString(db, row.id);
+  const markedIds = rows.map((row) => row.id);
+  if (markedIds.length === 0) return 0;
+
+  if (markedIds.length === 1) {
+    await deleteAllTranslationsForString(db, markedIds[0]!);
+    return 1;
   }
 
-  return rows.length;
+  await db.query(`DELETE FROM translations WHERE src_string_id = ANY($1::int[])`, [markedIds]);
+  await db.query(`DELETE FROM qa_issues WHERE src_string_id = ANY($1::int[])`, [markedIds]);
+
+  return markedIds.length;
 };
 
 /** Clear the global skip flag so the string(s) can be translated again. */

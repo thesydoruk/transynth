@@ -6,7 +6,12 @@ import type { Tx } from '../../db';
 import { CONFIG, getTranslateModel } from '../../config';
 import { filterVerifyReferenceExamples } from '../../llm/verifyReferenceExamples';
 import { resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
-import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../../llm/verifyTranslate';
+import {
+  verifyTranslationsWithLlm,
+  isLlmVerifyMissingIdsError,
+  finalizeVerifyItemResults,
+  type LlmVerifyItem,
+} from '../../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import {
   fetchReferenceExamplesBatch,
@@ -18,6 +23,7 @@ import { approveVerifiedTranslations, upsertTranslation } from '../data/queries'
 import { parseRecordLocation } from '../../utils/recordLocation';
 import { runLlmChunkWorkPoolFromFeed } from '../../llm/chunkRecovery';
 import { withRequestDeadline } from '../../llm/requestDeadline';
+import { isLlmTimeoutError } from '../../llm/retry';
 import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import { logVerify } from '../../logging/loggers';
 import { Semaphore } from '../../utils/concurrency';
@@ -25,7 +31,6 @@ import { loadGlossaryEntries, relevantGlossaryEntries } from './glossaryForLlm';
 import {
   countVerifiableStrings,
   iterateVerifyLlmChunks,
-  LLM_VERIFY_LLM_BATCH_SIZE,
   type LlmVerifyIssue,
   type VerifyLlmWorkUnit,
 } from './llmVerifyService';
@@ -107,7 +112,7 @@ export const runModVerifyPipeline = async (
   const autoApproveVerified = !dryRun && opts.autoApproveVerified !== false;
   const fixSuspicious = opts.fixSuspicious === true;
   const force = opts.force === true;
-  const dbChunkSize = Math.max(50, opts.dbChunkSize ?? CONFIG.llmVerifyDbChunkSize);
+  const dbChunkSize = Math.max(50, opts.dbChunkSize ?? CONFIG.dbChunkSize);
   const rag = opts.rag ?? {};
   const shouldCancel = opts.shouldCancel;
 
@@ -353,8 +358,11 @@ export const runModVerifyPipeline = async (
     );
   };
 
-  const verifyChunkOnce = async (llmChunk: VerifyStringRow[], ragByStringId: RagByStringId) => {
-    const items: LlmVerifyItem[] = llmChunk.map((row) => {
+  const buildVerifyItems = (
+    llmChunk: VerifyStringRow[],
+    ragByStringId: RagByStringId,
+  ): LlmVerifyItem[] =>
+    llmChunk.map((row) => {
       const { grup, field } = parseRecordLocation(row.signature, row.path);
       return {
         id: row.string_id,
@@ -372,26 +380,70 @@ export const runModVerifyPipeline = async (
       };
     });
 
-    const results = await withRequestDeadline(
-      CONFIG.llmVerifyRequestTimeoutMs,
-      opts.signal,
-      (signal) =>
-        verifyTranslationsWithLlm({
-          items,
-          model,
-          srcLang: opts.srcLang,
-          targetLang: opts.targetLang,
-          game: opts.game,
-          modName: opts.modName,
-          glossary: relevantGlossaryEntries(
-            glossaryAll,
-            llmChunk.map((row) => row.source),
-          ),
-          signal,
-        }),
-    );
+  const verifyChunkOnce = async (
+    llmChunk: VerifyStringRow[],
+    ragByStringId: RagByStringId,
+    enqueueSplit: (parts: VerifyStringRow[][]) => void,
+  ) => {
+    const items = buildVerifyItems(llmChunk, ragByStringId);
 
-    scheduleBatchPersist(buildBatchPersistJob(llmChunk, ragByStringId, results));
+    try {
+      const results = await withRequestDeadline(
+        CONFIG.llmVerifyRequestTimeoutMs,
+        opts.signal,
+        (signal) =>
+          verifyTranslationsWithLlm({
+            items,
+            model,
+            srcLang: opts.srcLang,
+            targetLang: opts.targetLang,
+            game: opts.game,
+            modName: opts.modName,
+            glossary: relevantGlossaryEntries(
+              glossaryAll,
+              llmChunk.map((row) => row.source),
+            ),
+            signal,
+          }),
+      );
+
+      scheduleBatchPersist(buildBatchPersistJob(llmChunk, ragByStringId, results));
+    } catch (err) {
+      if (isLlmVerifyMissingIdsError(err)) {
+        const missingSet = new Set(err.missingIds);
+        const okRows = llmChunk.filter((row) => !missingSet.has(row.string_id));
+        if (err.partialResults.length > 0) {
+          const okItems = buildVerifyItems(okRows, ragByStringId);
+          scheduleBatchPersist(
+            buildBatchPersistJob(
+              okRows,
+              ragByStringId,
+              finalizeVerifyItemResults(okItems, [...err.partialResults], opts.game),
+            ),
+          );
+        }
+        const missingRows = llmChunk.filter((row) => missingSet.has(row.string_id));
+        logVerify.warn('partial LLM verify batch — solo retry for missing rows', {
+          ok: okRows.length,
+          missing: missingRows.map((row) => row.string_id),
+        });
+        for (const row of missingRows) {
+          enqueueSplit([[row]]);
+        }
+        return;
+      }
+      if (isLlmTimeoutError(err) && llmChunk.length > 1) {
+        logVerify.warn('LLM verify batch timeout — solo retry', {
+          chunkSize: llmChunk.length,
+          stringIds: llmChunk.map((row) => row.string_id),
+        });
+        for (const row of llmChunk) {
+          enqueueSplit([[row]]);
+        }
+        return;
+      }
+      throw err;
+    }
   };
 
   const emitChunkFailure = (llmChunk: readonly VerifyStringRow[], message: string): void => {
@@ -417,7 +469,7 @@ export const runModVerifyPipeline = async (
     fixSuspicious,
     force,
     dbChunkSize,
-    llmBatchSize: LLM_VERIFY_LLM_BATCH_SIZE,
+    llmBatchSize: CONFIG.batchSize,
     chatConcurrency,
     llmMaxParallel: CONFIG.llmMaxParallel,
     embedMaxParallel: CONFIG.embedMaxParallel,
@@ -441,11 +493,15 @@ export const runModVerifyPipeline = async (
     concurrency: chatConcurrency,
     maxBufferedChunks: chatConcurrency * 2,
     shouldAbort: shouldCancel,
-    runOnce: async (chunk) => {
+    runOnce: async (chunk, { enqueueSplit }) => {
       const ragByStringId = await fetchChunkRag([...chunk]);
       if (shouldCancel?.()) return;
-      await verifyChunkOnce([...chunk], ragByStringId);
+      if (chunk.length === 1) {
+        logVerify.debug('solo LLM verify request', { stringId: chunk[0]!.string_id });
+      }
+      await verifyChunkOnce([...chunk], ragByStringId, (parts) => enqueueSplit(parts));
     },
+    shouldSplit: (err) => isLlmVerifyMissingIdsError(err) || isLlmTimeoutError(err),
     onFailure: (failed, message) => emitChunkFailure(failed, message),
     log: logVerify,
     operation: 'verify',

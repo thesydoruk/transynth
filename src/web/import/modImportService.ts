@@ -2008,7 +2008,7 @@ export const runModImport = async (
 
   logImport.info(
     `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records} ` +
-      `(dbBatch=${CONFIG.modImportBatchSize}, ioParallel=${CONFIG.modImportIoParallel}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
+      `(dbBatch=${CONFIG.dbChunkSize}, ioParallel=${CONFIG.modImportIoParallel}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
   );
 
   let imported = job.imported_records;
@@ -2028,7 +2028,7 @@ export const runModImport = async (
       }
 
       try {
-        const importBatchSize = CONFIG.modImportBatchSize;
+        const importBatchSize = CONFIG.dbChunkSize;
         const progressEvery = CONFIG.modImportProgressEvery;
         const game: GameType = (job.game as GameType) ?? 'fo4';
         let importModId = job.mod_id;

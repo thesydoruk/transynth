@@ -476,7 +476,7 @@ export const importStringsPack = async (
     );
   }
 
-  const importBatchSize = CONFIG.modImportBatchSize;
+  const importBatchSize = CONFIG.dbChunkSize;
   let imported = 0;
   await withModImportWriteLock(db, async () => {
     await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {

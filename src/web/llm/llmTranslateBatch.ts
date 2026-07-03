@@ -6,9 +6,11 @@ import { CONFIG, getTranslateModel } from '../../config';
 import {
   translateStrings,
   isLlmResponseTruncatedError,
+  isLlmTranslateMissingIdsError,
   type LlmGlossaryEntry,
   type LlmTranslateItem,
 } from '../../llm/translate';
+import { isLlmTimeoutError } from '../../llm/retry';
 import { runLlmChunkWorkPool } from '../../llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import {
@@ -314,24 +316,60 @@ export const translateStringIdsBatch = async (
     return okRows;
   };
 
+  const enqueueSoloTranslateRows = (
+    entries: PreparedLlmItem[],
+    enqueueSplit: (parts: PreparedLlmItem[][]) => void,
+  ): void => {
+    for (const entry of entries) {
+      enqueueSplit([[entry]]);
+    }
+  };
+
   const translateChunkOnce = async (
     chunk: PreparedLlmItem[],
     ragByStringId: RagByStringId,
+    enqueueSplit: (parts: PreparedLlmItem[][]) => void,
   ): Promise<void> => {
-    const translations = await translateStrings({
-      items: chunk.map((entry) => ({
-        ...entry.llmItem,
-        reference_examples: ragByStringId.get(entry.stringId),
-      })),
-      model,
-      srcLang,
-      targetLang,
-      game: modGame ?? chunk[0]?.game,
-      modName: modName ?? chunk[0]?.modName,
-      glossary: relevantGlossary(chunk.map((entry) => entry.sourceText)),
-      signal,
-    });
-    scheduleChunkPersist(collectValidatedRows(chunk, translations));
+    try {
+      const translations = await translateStrings({
+        items: chunk.map((entry) => ({
+          ...entry.llmItem,
+          reference_examples: ragByStringId.get(entry.stringId),
+        })),
+        model,
+        srcLang,
+        targetLang,
+        game: modGame ?? chunk[0]?.game,
+        modName: modName ?? chunk[0]?.modName,
+        glossary: relevantGlossary(chunk.map((entry) => entry.sourceText)),
+        signal,
+      });
+      scheduleChunkPersist(collectValidatedRows(chunk, translations));
+    } catch (err) {
+      if (isLlmTranslateMissingIdsError(err)) {
+        const missingSet = new Set(err.missingIds);
+        const okEntries = chunk.filter((entry) => !missingSet.has(entry.stringId));
+        if (err.partialResults.length > 0) {
+          scheduleChunkPersist(collectValidatedRows(okEntries, [...err.partialResults]));
+        }
+        const missingEntries = chunk.filter((entry) => missingSet.has(entry.stringId));
+        logTranslate.warn('partial LLM batch — solo retry for missing rows', {
+          ok: okEntries.length,
+          missing: missingEntries.map((entry) => entry.stringId),
+        });
+        enqueueSoloTranslateRows(missingEntries, enqueueSplit);
+        return;
+      }
+      if (isLlmTimeoutError(err) && chunk.length > 1) {
+        logTranslate.warn('LLM translate batch timeout — solo retry', {
+          chunkSize: chunk.length,
+          itemIds: chunk.map((entry) => entry.stringId),
+        });
+        enqueueSoloTranslateRows(chunk, enqueueSplit);
+        return;
+      }
+      throw err;
+    }
   };
 
   for (const stringId of eligibleIds) {
@@ -436,11 +474,17 @@ export const translateStringIdsBatch = async (
       initialChunks: llmChunks,
       concurrency: chatConcurrency,
       shouldAbort: shouldCancel,
-      runOnce: async (chunk) => {
+      runOnce: async (chunk, { enqueueSplit }) => {
         const ragByStringId = await prefetchChunkRag([...chunk]);
-        await translateChunkOnce([...chunk], ragByStringId);
+        if (chunk.length === 1) {
+          logTranslate.debug('solo LLM translate request', { stringId: chunk[0]!.stringId });
+        }
+        await translateChunkOnce([...chunk], ragByStringId, (parts) => enqueueSplit(parts));
       },
-      shouldSplit: (err) => isLlmResponseTruncatedError(err),
+      shouldSplit: (err) =>
+        isLlmResponseTruncatedError(err) ||
+        isLlmTranslateMissingIdsError(err) ||
+        isLlmTimeoutError(err),
       onFailure: (failed, message) => {
         for (const entry of failed) {
           emitResult({ stringId: entry.stringId, error: message });

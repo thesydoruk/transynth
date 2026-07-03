@@ -39,6 +39,36 @@ const parsePositiveInt = (value: string | undefined, defaultValue: number, max: 
   return Math.min(parsed, max);
 };
 
+const parseTemperature = (value: string | undefined, defaultValue: number): number => {
+  const parsed = Number.parseFloat(value ?? '');
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 2) return defaultValue;
+  return parsed;
+};
+
+const parseTemperatureDecay = (value: string | undefined, defaultValue: number): number => {
+  const parsed = Number.parseFloat(value ?? '');
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return defaultValue;
+  return parsed;
+};
+
+/** Unified DB pagination / bulk-write size (translate, verify, skip-detect, TM, mod import). */
+const resolveDbChunkSize = (): number => {
+  if (process.env.DB_CHUNK_SIZE) {
+    return parsePositiveInt(process.env.DB_CHUNK_SIZE, 5000, 20_000);
+  }
+  for (const key of [
+    'MOD_IMPORT_BATCH_SIZE',
+    'SKIP_DETECT_DB_CHUNK_SIZE',
+    'TM_APPLY_CHUNK_SIZE',
+    'LLM_VERIFY_DB_CHUNK_SIZE',
+    'LLM_TRANSLATE_DB_CHUNK_SIZE',
+  ]) {
+    const legacy = process.env[key];
+    if (legacy) return parsePositiveInt(legacy, 5000, 20_000);
+  }
+  return 5000;
+};
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'vllm') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -106,26 +136,27 @@ export const CONFIG = {
 
   /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
   llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
+
+  /** Starting chat temperature for the first LLM request in a process (env: LLM_TEMPERATURE). */
+  llmTemperature: parseTemperature(process.env.LLM_TEMPERATURE, 0.7),
+
+  /** Temperature subtracted on each subsequent LLM chat request (env: LLM_TEMPERATURE_DECAY). */
+  llmTemperatureDecay: parseTemperatureDecay(process.env.LLM_TEMPERATURE_DECAY, 0.02),
+
   /** Max concurrent embedding HTTP requests (global semaphore). */
   embedMaxParallel: parseMaxParallel(process.env.EMBED_MAX_PARALLEL, 4),
 
   /** Texts per RAG embed HTTP request (server may 413 if too large). */
   ragEmbedBatchSize: parsePositiveInt(process.env.RAG_EMBED_BATCH_SIZE, 8, 64),
 
-  /** Source string rows loaded from DB per translate:auto / web job page (default 100). */
-  llmTranslateDbChunkSize: parsePositiveInt(process.env.LLM_TRANSLATE_DB_CHUNK_SIZE, 100, 10_000),
-
-  /** Rows loaded per DB page during LLM verify (default 500). */
-  llmVerifyDbChunkSize: parsePositiveInt(process.env.LLM_VERIFY_DB_CHUNK_SIZE, 500, 10_000),
-
-  /** Untranslated strings processed per TM auto-apply transaction (default 2000). */
-  tmApplyChunkSize: parsePositiveInt(process.env.TM_APPLY_CHUNK_SIZE, 2000, 50_000),
+  /** Rows per DB read/write page — translate, verify, skip-detect, TM, mod import (env: DB_CHUNK_SIZE). */
+  dbChunkSize: resolveDbChunkSize(),
 
   /** Parallel workers per TM auto-apply chunk (default 1; each worker runs its own DB transaction). */
   tmApplyWorkers: parseMaxParallel(process.env.TM_APPLY_WORKERS, 1, 16),
 
-  /** Records + strings written per mod-import DB transaction (default 5000). */
-  modImportBatchSize: parsePositiveInt(process.env.MOD_IMPORT_BATCH_SIZE, 5000, 20_000),
+  /** Parallel heuristic workers per skip-detect job (default 4). */
+  skipDetectWorkers: parseMaxParallel(process.env.SKIP_DETECT_WORKERS, 4, 16),
 
   /** Log/SSE progress every N imported rows during mod import (default 10000). */
   modImportProgressEvery: parsePositiveInt(process.env.MOD_IMPORT_PROGRESS_EVERY, 10_000, 100_000),
@@ -154,6 +185,9 @@ export const CONFIG = {
   /** Absolute path to Champollion.exe for on-demand PEX decompilation in the editor. */
   champollionPath: resolveChampollionPath(),
 };
+
+/** @see CONFIG.dbChunkSize */
+export const DB_CHUNK_SIZE = CONFIG.dbChunkSize;
 
 /** Resolve the translation model based on provider. */
 export const getTranslateModel = (): string => {

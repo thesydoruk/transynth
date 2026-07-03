@@ -251,7 +251,6 @@ const callSkipDetectLlm = async (
   const payload = buildSkipDetectUserPayload({ ...opts, items });
   return chatWithFallback({
     model: opts.model,
-    temperature: 0,
     responseFormat: buildSkipDetectResponseFormat(expectedIds.length),
     signal: opts.signal,
     logMeta: {

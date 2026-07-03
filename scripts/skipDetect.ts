@@ -16,6 +16,7 @@
  * Options:
  *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
  *   --force             Re-scan all strings, including already marked or scanned
+ *   --db-chunk <n>      DB page size for large mods (default: DB_CHUNK_SIZE)
  *
  * Examples:
  *   npm run skip:detect -- --mod-id 45
@@ -27,7 +28,7 @@
 import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { CONFIG, validateConfig } from '../src/config';
+import { CONFIG, DB_CHUNK_SIZE, validateConfig } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import {
@@ -85,6 +86,10 @@ const argv = await yargs(hideBin(process.argv))
     default: false,
     describe: 'Re-scan all strings, including already marked or previously scanned',
   })
+  .option('db-chunk', {
+    type: 'number',
+    describe: `DB page size for large mods (default: ${DB_CHUNK_SIZE})`,
+  })
   .check((args) => {
     assertCliModSelector({
       all: args.all,
@@ -99,6 +104,7 @@ const argv = await yargs(hideBin(process.argv))
 validateConfig();
 
 const force = argv['force'];
+const dbChunkSize = argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : DB_CHUNK_SIZE;
 
 const db = openDb();
 
@@ -118,9 +124,11 @@ const logSkipProgress = (
     return;
   }
   if (event.type === 'progress') {
-    if (event.candidate) ctx.candidates++;
+    if (event.candidatesBatch) ctx.candidates += event.candidatesBatch.length;
+    else if (event.candidate) ctx.candidates++;
     if (event.marked) ctx.marked += event.marked;
-    const step = event.total >= 500 ? 100 : event.total >= 100 ? 50 : 25;
+    const step =
+      event.total >= 50_000 ? 5000 : event.total >= 10_000 ? 1000 : event.total >= 500 ? 100 : 25;
     if (event.done === event.total || event.done - ctx.lastLogged.done >= step) {
       ctx.lastLogged.done = event.done;
       log.info(
@@ -164,6 +172,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
         game: target.game,
         persist: true,
         force,
+        dbChunkSize,
       },
       (event) => logSkipProgress(ctx, event),
     );
@@ -216,7 +225,7 @@ try {
     process.exit(0);
   }
 
-  log.info(`Skip detect: ${targets.length} mod(s), force=${force}`);
+  log.info(`Skip detect: ${targets.length} mod(s), force=${force}, db-chunk=${dbChunkSize}`);
 
   let ok = 0;
   let skipped = 0;

@@ -54,7 +54,36 @@ export interface LlmVerifyOptions {
 
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
 
-const VERIFY_MISSING_ITEM_MAX_ATTEMPTS = 3;
+/** Some ids parsed; others missing from the model JSON — caller may persist partial results. */
+export class LlmVerifyMissingIdsError extends Error {
+  readonly missingIds: readonly number[];
+  readonly partialResults: readonly LlmVerifyItemResult[];
+
+  constructor(missingIds: number[], partialResults: LlmVerifyItemResult[]) {
+    super(`LLM verify response missing item id=${missingIds[0]}`);
+    this.name = 'LlmVerifyMissingIdsError';
+    this.missingIds = missingIds;
+    this.partialResults = partialResults;
+  }
+}
+
+export const isLlmVerifyMissingIdsError = (err: unknown): err is LlmVerifyMissingIdsError =>
+  err instanceof LlmVerifyMissingIdsError;
+
+/** Apply placeholder guard and suggestion reconciliation to parsed LLM rows. */
+export const finalizeVerifyItemResults = (
+  items: LlmVerifyItem[],
+  parsed: LlmVerifyItemResult[],
+  game?: GameType | string | null,
+): LlmVerifyItemResult[] => {
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  return parsed.map((result) => {
+    const item = itemById.get(result.id);
+    if (!item) return result;
+    const guarded = applyPlaceholderGuardToVerifyResult(item, result, game);
+    return reconcileVerifyResult(item, guarded);
+  });
+};
 
 /** Upgrade LLM ok → incorrect only when protected tokens are broken in the translation. */
 export const applyPlaceholderGuardToVerifyResult = (
@@ -211,7 +240,6 @@ const callVerifyTranslateLlm = async (opts: LlmVerifyOptions, items: LlmVerifyIt
   const payload = buildVerifyTranslateUserPayload({ ...opts, items });
   return chatWithFallback({
     model: opts.model,
-    temperature: 0,
     responseFormat: buildVerifyResponseFormat(expectedIds.length),
     signal: opts.signal,
     logMeta: {
@@ -246,12 +274,18 @@ export const parseLlmVerifyTranslateResponse = (
   const byId = parseVerifyItemsFromRaw(raw, expectedItemIds, completionMeta);
 
   const items: LlmVerifyItemResult[] = [];
+  const missingIds: number[] = [];
   for (const id of expectedItemIds) {
     const row = byId.get(id);
     if (!row) {
-      throw new Error(`LLM verify response missing item id=${id}`);
+      missingIds.push(id);
+      continue;
     }
     items.push(row);
+  }
+
+  if (missingIds.length > 0) {
+    throw new LlmVerifyMissingIdsError(missingIds, items);
   }
 
   return items;
@@ -263,38 +297,8 @@ export const verifyTranslationsWithLlm = async (
 ): Promise<LlmVerifyItemResult[]> => {
   if (opts.items.length === 0) return [];
 
-  const results = new Map<number, LlmVerifyItemResult>();
-  let pending = opts.items;
-
-  for (
-    let attempt = 0;
-    attempt < VERIFY_MISSING_ITEM_MAX_ATTEMPTS && pending.length > 0;
-    attempt++
-  ) {
-    const expectedIds = pending.map((item) => item.id);
-    const { content: raw, meta } = await callVerifyTranslateLlm(opts, pending);
-    const parsed = parseVerifyItemsFromRaw(raw, expectedIds, meta);
-
-    const missing: LlmVerifyItem[] = [];
-    for (const item of pending) {
-      const row = parsed.get(item.id);
-      if (row) results.set(item.id, row);
-      else missing.push(item);
-    }
-
-    if (missing.length === 0) break;
-    if (attempt === VERIFY_MISSING_ITEM_MAX_ATTEMPTS - 1) {
-      throw new Error(`LLM verify response missing item id=${missing[0].id}`);
-    }
-    pending = missing;
-  }
-
-  return opts.items.map((item) => {
-    const row = results.get(item.id);
-    if (!row) {
-      throw new Error(`LLM verify response missing item id=${item.id}`);
-    }
-    const guarded = applyPlaceholderGuardToVerifyResult(item, row, opts.game);
-    return reconcileVerifyResult(item, guarded);
-  });
+  const expectedIds = opts.items.map((item) => item.id);
+  const { content: raw, meta } = await callVerifyTranslateLlm(opts, opts.items);
+  const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta);
+  return finalizeVerifyItemResults(opts.items, parsed, opts.game);
 };

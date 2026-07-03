@@ -31,17 +31,15 @@ export class OpenAIProvider implements LLMProvider {
    * @returns The model's plain-text reply.
    */
   async chat(opts: ChatOptions): Promise<ChatResult> {
-    const resp = await withRetry(() =>
-      this.client.chat.completions.create(
-        {
-          model: opts.model,
-          messages: opts.messages,
-          temperature: opts.temperature ?? 0,
-          max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
-          ...(opts.responseFormat && { response_format: opts.responseFormat }),
-        },
-        opts.signal ? { signal: opts.signal } : undefined,
-      ),
+    const resp = await this.client.chat.completions.create(
+      {
+        model: opts.model,
+        messages: opts.messages,
+        temperature: opts.temperature ?? 0,
+        max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
+        ...(opts.responseFormat && { response_format: opts.responseFormat }),
+      },
+      opts.signal ? { signal: opts.signal } : undefined,
     );
     const choice = resp.choices[0];
     const usage = resp.usage;
