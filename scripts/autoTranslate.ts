@@ -6,7 +6,6 @@
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids
- *   --mod-name <name>   Exact mod name (must be unique)
  *   --all               Every mod with a completed import job
  *
  * Overwrite modes (for `--tgt-lang`):
@@ -30,7 +29,6 @@
  *
  * Examples:
  *   npm run translate:auto -- --mod-id 45
- *   npm run translate:auto -- --mod-name "MyMod.esp"
  *   npm run translate:auto -- --all
  *   npm run translate:auto -- --mod-id 45 --force
  *   npm run translate:auto -- --mod-id 45 --force-all
@@ -130,10 +128,6 @@ const argv = await addCliRagFlagOptions(
       type: 'string',
       describe: 'Comma-separated database mod ids',
     })
-    .option('mod-name', {
-      type: 'string',
-      describe: 'Exact mod name (must be unique in the database)',
-    })
     .option('all', {
       type: 'boolean',
       default: false,
@@ -177,7 +171,6 @@ const argv = await addCliRagFlagOptions(
     assertCliModSelector({
       all: args.all,
       modId: args['mod-id'],
-      modName: args['mod-name'],
     });
     if (args['force-all'] && args.force) {
       throw new Error('Use either --force or --force-all, not both');
@@ -340,7 +333,6 @@ try {
   const targets = await resolveCliModTargets(db, {
     all: argv.all,
     modId: argv['mod-id'],
-    modName: argv['mod-name'],
     srcLang: argv['src-lang'],
   });
   if (targets.length === 0) {

@@ -56,28 +56,14 @@ type ModImportRow = {
   status: string;
 };
 
-const resolveModId = async (db: Tx, modId?: number, modName?: string): Promise<number> => {
-  if (modId != null) return modId;
-  if (!modName?.trim()) {
-    throw new Error('Provide --mod-id or --mod-name');
-  }
-
-  const { rows } = await db.query<{ id: number }>(
-    `SELECT id FROM mods WHERE name ILIKE $1 ORDER BY id LIMIT 2`,
-    [modName.trim()],
-  );
-  if (rows.length === 0) throw new Error(`Mod not found: "${modName}"`);
-  if (rows.length > 1) {
-    throw new Error(`Multiple mods match "${modName}" — use --mod-id instead`);
-  }
-  return rows[0]!.id;
-};
-
 export const loadModLocaleAuditTarget = async (
   db: Tx,
-  opts: { modId?: number; modName?: string; importId?: number },
+  opts: { modId?: number; importId?: number },
 ): Promise<ModLocaleAuditTarget> => {
-  const modId = await resolveModId(db, opts.modId, opts.modName);
+  if (opts.modId == null) {
+    throw new Error('Provide --mod-id');
+  }
+  const modId = opts.modId;
 
   const { rows: modRows } = await db.query<{ id: number; name: string }>(
     `SELECT id, name FROM mods WHERE id = $1`,
@@ -213,7 +199,6 @@ export const auditModLocale = async (
   db: Tx,
   opts: {
     modId?: number;
-    modName?: string;
     importId?: number;
     sampleSize?: number;
     model?: string;

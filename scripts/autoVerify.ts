@@ -8,7 +8,6 @@
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids
- *   --mod-name <name>   Exact mod name (must be unique)
  *   --all               Every mod with a completed import job
  *
  * Usage:
@@ -27,7 +26,6 @@
  *
  * Examples:
  *   npm run verify:auto -- --mod-id 45
- *   npm run verify:auto -- --mod-name "MyMod.esp"
  *   npm run verify:auto -- --all
  *   npm run verify:auto -- --mod-id 45 --dry-run
  *   npm run verify:auto -- --mod-id 45 --fix-suspicious --force
@@ -94,10 +92,6 @@ const argv = await addCliRagFlagOptions(
       type: 'string',
       describe: 'Comma-separated database mod ids',
     })
-    .option('mod-name', {
-      type: 'string',
-      describe: 'Exact mod name (must be unique in the database)',
-    })
     .option('all', {
       type: 'boolean',
       default: false,
@@ -143,7 +137,6 @@ const argv = await addCliRagFlagOptions(
     assertCliModSelector({
       all: args.all,
       modId: args['mod-id'],
-      modName: args['mod-name'],
     });
     assertCliRagFlags({
       noRag: args.rag === false,
@@ -283,7 +276,6 @@ try {
   const targets = await resolveCliModTargets(db, {
     all: argv.all,
     modId: argv['mod-id'],
-    modName: argv['mod-name'],
     srcLang: argv['src-lang'],
   });
   if (targets.length === 0) {

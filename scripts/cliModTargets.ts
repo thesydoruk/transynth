@@ -12,7 +12,6 @@ export type CliModTarget = {
 export type CliModSelector = {
   all?: boolean;
   modId?: string;
-  modName?: string;
   srcLang?: string;
 };
 
@@ -34,15 +33,12 @@ export const formatPct = (done: number, total: number): string => {
 };
 
 export const assertCliModSelector = (args: CliModSelector): void => {
-  const hasTarget = args.all || args.modId || args.modName;
+  const hasTarget = args.all || args.modId;
   if (!hasTarget) {
-    throw new Error('Specify --mod-id, --mod-name, or --all');
+    throw new Error('Specify --mod-id or --all');
   }
-  if (args.all && (args.modId || args.modName)) {
-    throw new Error('Use either --all or a single-mod selector, not both');
-  }
-  if (args.modId && args.modName) {
-    throw new Error('Use either --mod-id or --mod-name, not both');
+  if (args.all && args.modId) {
+    throw new Error('Use either --all or --mod-id, not both');
   }
 };
 
@@ -87,19 +83,7 @@ export const resolveCliModTargets = async (
     return listAllModTargets(db, srcLangOverride);
   }
 
-  let modIds: number[];
-  if (selector.modName) {
-    const name = selector.modName.trim();
-    const { rows } = await db.query<{ id: number }>(
-      `SELECT id FROM mods WHERE name ILIKE $1 ORDER BY id LIMIT 2`,
-      [name],
-    );
-    if (rows.length === 0) throw new Error(`Mod not found: "${name}"`);
-    if (rows.length > 1) throw new Error(`Multiple mods match "${name}" — use --mod-id`);
-    modIds = [rows[0]!.id];
-  } else {
-    modIds = parseModIds(selector.modId) ?? [];
-  }
+  const modIds = parseModIds(selector.modId) ?? [];
 
   const targets: CliModTarget[] = [];
   for (const modId of modIds) {

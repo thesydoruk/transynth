@@ -11,7 +11,6 @@
  * Mod selector (exactly one required):
  *   --all               Every mod with a completed import job
  *   --mod-id <ids>      Comma-separated database mod ids
- *   --mod-name <name>   Exact mod name (must be unique)
  *
  * Usage:
  *   npm run export:mods -- --out <path> [options]
@@ -34,7 +33,6 @@
  *   npm run export:mods -- --out "D:\Output" --all --tgt-lang uk
  *   npm run export:mods -- --out "D:\Output" --mod-id 1,2,3 --force-localized
  *   npm run export:mods -- --out "D:\Output" --all --repack-archives --parallel 2
- *   npm run export:mods -- --out "D:\Output" --mod-name "WorkshopPlus.esp" --no-scripts
  */
 import '../src/loadEnv';
 import path from 'node:path';
@@ -87,10 +85,6 @@ const argv = await yargs(hideBin(process.argv))
     type: 'string',
     describe: 'Comma-separated mod database ids to export',
   })
-  .option('mod-name', {
-    type: 'string',
-    describe: 'Exact mod name (must be unique in the database)',
-  })
   .option('game', {
     type: 'string',
     choices: [...GAME_CHOICES],
@@ -131,15 +125,12 @@ const argv = await yargs(hideBin(process.argv))
     describe: 'Export this many mods concurrently (1–4)',
   })
   .check((args) => {
-    const hasTarget = args.all || args['mod-id'] || args['mod-name'];
+    const hasTarget = args.all || args['mod-id'];
     if (!hasTarget) {
-      throw new Error('Provide --all, --mod-id, or --mod-name');
+      throw new Error('Provide --all or --mod-id');
     }
-    if (args.all && (args['mod-id'] || args['mod-name'])) {
-      throw new Error('Use either --all or a specific mod selector, not both');
-    }
-    if (args['mod-id'] && args['mod-name']) {
-      throw new Error('Use either --mod-id or --mod-name, not both');
+    if (args.all && args['mod-id']) {
+      throw new Error('Use either --all or --mod-id, not both');
     }
     return true;
   })
@@ -169,17 +160,6 @@ const db = openDb();
 type ExportOutcome = 'exported' | 'failed';
 
 const resolveTargets = async () => {
-  if (argv['mod-name']) {
-    const name = argv['mod-name'].trim();
-    const { rows } = await db.query<{ id: number }>(
-      `SELECT id FROM mods WHERE name ILIKE $1 ORDER BY id LIMIT 2`,
-      [name],
-    );
-    if (rows.length === 0) throw new Error(`Mod not found: "${name}"`);
-    if (rows.length > 1) throw new Error(`Multiple mods match "${name}" — use --mod-id`);
-    return listModExportTargets(db, { modIds: [rows[0]!.id] });
-  }
-
   const modIds = parseModIds(argv['mod-id']);
   return listModExportTargets(db, {
     modIds: argv.all ? undefined : modIds,

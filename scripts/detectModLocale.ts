@@ -7,7 +7,6 @@
  *
  * Mod selector (exactly one required):
  *   --mod-id <id>       Database mod id to audit
- *   --mod-name <name>   Exact mod name (must be unique)
  *   --all               Every mod with a completed import job
  *
  * Usage:
@@ -20,7 +19,6 @@
  *
  * Examples:
  *   npm run detect:locale -- --mod-id 45
- *   npm run detect:locale -- --mod-name "MyMod.esp"
  *   npm run detect:locale -- --all --sample 50
  *   npm run detect:locale -- --mod-id 45 --import-id 12 --json
  */
@@ -46,10 +44,6 @@ const argv = await yargs(hideBin(process.argv))
     type: 'number',
     describe: 'Database mod id to audit',
   })
-  .option('mod-name', {
-    type: 'string',
-    describe: 'Exact mod name (must be unique)',
-  })
   .option('import-id', {
     type: 'number',
     describe: 'Specific mod_imports job id (default: latest for mod)',
@@ -70,12 +64,12 @@ const argv = await yargs(hideBin(process.argv))
     describe: 'Print machine-readable JSON report to stdout',
   })
   .check((args) => {
-    const hasTarget = args.all || args['mod-id'] != null || args['mod-name'];
+    const hasTarget = args.all || args['mod-id'] != null;
     if (!hasTarget) {
-      throw new Error('Specify --mod-id, --mod-name, or --all');
+      throw new Error('Specify --mod-id or --all');
     }
-    if (args.all && (args['mod-id'] != null || args['mod-name'])) {
-      throw new Error('Use either --all or a single-mod selector, not both');
+    if (args.all && args['mod-id'] != null) {
+      throw new Error('Use either --all or --mod-id, not both');
     }
     return true;
   })
@@ -140,7 +134,6 @@ try {
   } else {
     const report = await auditModLocale(db, {
       modId: argv['mod-id'],
-      modName: argv['mod-name'],
       importId: argv['import-id'],
       sampleSize,
     });
