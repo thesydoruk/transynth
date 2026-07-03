@@ -217,14 +217,16 @@ export const DetailPanel = ({
         ))}
       </div>
       <div className={styles.tabContent}>
-        {activeTab === 'suggestions' && (
-          <SuggestionsPanel
-            suggestions={suggestions ?? []}
-            onApply={(text) => onDraftChange(text)}
-          />
-        )}
-        {activeTab === 'qa' && <QAPanel issues={qaIssues ?? []} />}
-        {activeTab === 'history' && <HistoryPanel items={history ?? []} />}
+        <div className={styles.tabContentScroll}>
+          {activeTab === 'suggestions' && (
+            <SuggestionsPanel
+              suggestions={suggestions ?? []}
+              onApply={(text) => onDraftChange(text)}
+            />
+          )}
+          {activeTab === 'qa' && <QAPanel issues={qaIssues ?? []} />}
+          {activeTab === 'history' && <HistoryPanel items={history ?? []} />}
+        </div>
       </div>
     </div>
   );

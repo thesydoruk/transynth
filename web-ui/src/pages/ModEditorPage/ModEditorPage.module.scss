@@ -66,3 +66,26 @@
     color: var(--text);
   }
 }
+
+/* ── Shared bottom-tab panel primitives (Suggestions / QA / History) ─────── */
+
+.panelList {
+  display: flex;
+  flex-direction: column;
+}
+
+.panelListGap4 {
+  composes: panelList;
+  gap: 4px;
+}
+
+.panelEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 144px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+}
