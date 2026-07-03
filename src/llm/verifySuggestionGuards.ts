@@ -30,8 +30,9 @@ export const looksLikeVerifyJsonArtifact = (text: string): boolean => {
   }
 };
 
-/** True when the model truncated a multi-line rewrite with an ellipsis. */
-export const looksLikeTruncatedSuggestion = (text: string): boolean => /\.\.\./.test(text);
+/** True when a verify patch suggestion skips lines with a standalone ellipsis marker. */
+export const looksLikeTruncatedSuggestion = (text: string): boolean =>
+  /\n\s*\.\.\.\s*(?:\n|$)/.test(text) || /\.\.\.\s*$/.test(text.trim());
 
 /** Unwrap nested verify JSON artifacts; returns null when nothing usable remains. */
 export const normalizeVerifySuggestionText = (value: string): string | null => {
@@ -110,13 +111,6 @@ export const validateRewrittenTranslation = (
       ok: false,
       reason: 'json_artifact',
       message: 'Rewritten translation is a verify JSON object.',
-    };
-  }
-  if (looksLikeTruncatedSuggestion(trimmed)) {
-    return {
-      ok: false,
-      reason: 'truncated',
-      message: 'Rewritten translation contains ellipsis truncation.',
     };
   }
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import {
   isCorruptedVerifyTranslation,
   isFullTranslationMismatch,
+  looksLikeTruncatedSuggestion,
   looksLikeVerifyJsonArtifact,
   normalizeVerifySuggestionText,
   parseVerifySuggestionValue,
@@ -94,6 +95,11 @@ describe('validateVerifySuggestion', () => {
     const result = validateVerifySuggestion(item, artifact, 'fo4');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('json_artifact');
+  });
+
+  it('does not treat inline ellipsis in prose as truncated', () => {
+    expect(looksLikeTruncatedSuggestion('Wait... what?')).toBe(false);
+    expect(looksLikeTruncatedSuggestion('Line one\n...\nLine three')).toBe(true);
   });
 
   it('rejects truncated suggestions with ellipsis', () => {

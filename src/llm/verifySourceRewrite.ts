@@ -7,6 +7,7 @@ import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeho
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
 import { validateRewrittenTranslation } from './verifySuggestionGuards';
+import { logVerify } from '../logging/loggers';
 
 export type VerifySourceRewriteOpts = {
   items: LlmVerifyItem[];
@@ -75,7 +76,14 @@ export const rewriteVerifyTranslationsFromSource = async (
       unmask(unmask(row.translation, masks.functionKeywordMap), masks.placeholderMap),
     );
     const check = validateRewrittenTranslation(item, text, opts.game);
-    if (!check.ok) continue;
+    if (!check.ok) {
+      logVerify.warn('verify source rewrite rejected translation', {
+        stringId: row.id,
+        reason: check.reason,
+        message: check.message,
+      });
+      continue;
+    }
     ok.push({ id: row.id, text });
   }
 
