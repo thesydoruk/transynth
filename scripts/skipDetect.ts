@@ -2,8 +2,8 @@
 /**
  * Scan mod strings and mark non-translatable rows (global `strings.is_ignored` flag).
  *
- * Heuristics run first; LLM audit follows by default. Skip marks apply to the
- * source string for all target languages — not per-locale translation status.
+ * Uses heuristic rules only (technical tokens, IDs, placeholders, etc.).
+ * Skip marks apply to the source string for all target languages.
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids
@@ -15,17 +15,12 @@
  *
  * Options:
  *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
- *   --heuristic-only    Heuristics only (no LLM audit)
- *   --use-llm           Run LLM skip detection after heuristics (default: true)
  *   --force             Re-scan all strings, including already marked or scanned
- *   --no-rag            Accepted for CLI consistency; has no effect on skip-detect
- *   --rag-mod-only      Accepted for CLI consistency; has no effect on skip-detect
  *
  * Examples:
  *   npm run skip:detect -- --mod-id 45
  *   npm run skip:detect -- --mod-name "MyMod.esp"
  *   npm run skip:detect -- --all
- *   npm run skip:detect -- --mod-id 45 --heuristic-only
  *   npm run skip:detect -- --mod-id 45 --force
  *   npm run skip:detect -- --mod-id 1,2,3 --src-lang en
  */
@@ -47,7 +42,6 @@ import {
   resolveCliModTargets,
   type CliModTarget,
 } from './cliModTargets';
-import { addCliRagFlagOptions, assertCliRagFlags } from './cliRagFlags';
 
 type ModStats = {
   total: number;
@@ -66,52 +60,36 @@ const toModStats = (row: Record<string, unknown> | undefined): ModStats => ({
 const formatModStats = (stats: ModStats): string =>
   `total=${stats.total}, untranslated=${stats.untranslated}, translated=${stats.translated}, skipped=${stats.skipped}`;
 
-const argv = await addCliRagFlagOptions(
-  yargs(hideBin(process.argv))
-    .scriptName('skip:detect')
-    .usage('$0 [options]')
-    .option('mod-id', {
-      type: 'string',
-      describe: 'Comma-separated database mod ids',
-    })
-    .option('mod-name', {
-      type: 'string',
-      describe: 'Exact mod name (must be unique in the database)',
-    })
-    .option('all', {
-      type: 'boolean',
-      default: false,
-      describe: 'Process every mod with a completed import job',
-    })
-    .option('src-lang', {
-      type: 'string',
-      describe: 'Source language override (default: mod import or SRC_LANG)',
-    })
-    .option('heuristic-only', {
-      type: 'boolean',
-      default: false,
-      describe: 'Heuristics only (no LLM audit)',
-    })
-    .option('use-llm', {
-      type: 'boolean',
-      default: true,
-      describe: 'Run LLM skip detection after heuristics (default: true)',
-    })
-    .option('force', {
-      type: 'boolean',
-      default: false,
-      describe: 'Re-scan all strings, including already marked or previously scanned',
-    }),
-)
+const argv = await yargs(hideBin(process.argv))
+  .scriptName('skip:detect')
+  .usage('$0 [options]')
+  .option('mod-id', {
+    type: 'string',
+    describe: 'Comma-separated database mod ids',
+  })
+  .option('mod-name', {
+    type: 'string',
+    describe: 'Exact mod name (must be unique in the database)',
+  })
+  .option('all', {
+    type: 'boolean',
+    default: false,
+    describe: 'Process every mod with a completed import job',
+  })
+  .option('src-lang', {
+    type: 'string',
+    describe: 'Source language override (default: mod import or SRC_LANG)',
+  })
+  .option('force', {
+    type: 'boolean',
+    default: false,
+    describe: 'Re-scan all strings, including already marked or previously scanned',
+  })
   .check((args) => {
     assertCliModSelector({
       all: args.all,
       modId: args['mod-id'],
       modName: args['mod-name'],
-    });
-    assertCliRagFlags({
-      noRag: args.rag === false,
-      ragModOnly: args.ragModOnly === true,
     });
     return true;
   })
@@ -120,7 +98,6 @@ const argv = await addCliRagFlagOptions(
 
 validateConfig();
 
-const useLlm = argv['heuristic-only'] ? false : argv['use-llm'];
 const force = argv['force'];
 
 const db = openDb();
@@ -136,7 +113,7 @@ const logSkipProgress = (
 ): void => {
   if (event.type === 'started') {
     log.info(
-      `Skip detect: scanning ${event.total} string(s) (heuristics${event.useLlm ? ' + LLM' : ''}${event.persist ? ', persist' : ''})`,
+      `Skip detect: scanning ${event.total} string(s) (heuristics${event.persist ? ', persist' : ''})`,
     );
     return;
   }
@@ -185,7 +162,6 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
         srcLang: target.srcLang,
         modName: target.modName,
         game: target.game,
-        useLlm,
         persist: true,
         force,
       },
@@ -240,7 +216,7 @@ try {
     process.exit(0);
   }
 
-  log.info(`Skip detect: ${targets.length} mod(s), useLlm=${useLlm}, force=${force}`);
+  log.info(`Skip detect: ${targets.length} mod(s), force=${force}`);
 
   let ok = 0;
   let skipped = 0;

@@ -1,25 +1,17 @@
 /**
- * In-memory non-translatable string detection jobs.
+ * Non-translatable string detection jobs (heuristic rules only).
  */
 import type { Tx } from '../../db';
-import { CONFIG, getTranslateModel } from '../../config';
-import { detectSkipCandidatesWithLlm, type LlmSkipDetectItem } from '../../llm/skipTranslateDetect';
 import { partitionSkipAuditRows } from '../../llm/skipTranslateHeuristics';
 import { markStringsAsSkip, markStringsSkipDetectScanned } from '../data/queries';
 import { parseRecordLocation } from '../../utils/recordLocation';
 import { runPoolOverAsyncIterable } from '../../utils/concurrency';
-import { runLlmChunkWithRecovery } from '../../llm/chunkRecovery';
-import { withRequestDeadline } from '../../llm/requestDeadline';
-import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import { logVerify } from '../../logging/loggers';
 
-export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = 500;
+export const SKIP_DETECT_DB_CHUNK_SIZE = 500;
 
-/** Rows per LLM HTTP request — defaults to BATCH_SIZE (skip-detect has no RAG; batching is safe). */
-export const LLM_SKIP_DETECT_LLM_BATCH_SIZE = Math.max(
-  1,
-  parseInt(process.env.LLM_SKIP_DETECT_BATCH_SIZE || String(CONFIG.batchSize), 10),
-);
+/** In-memory processing batch size within each DB page. */
+export const SKIP_DETECT_PROCESS_BATCH_SIZE = 500;
 
 export type LlmSkipDetectCandidate = {
   stringId: number;
@@ -49,11 +41,8 @@ export type LlmSkipDetectJobSnapshot = {
 type ActiveLlmSkipDetectJob = LlmSkipDetectJobSnapshot & {
   cancel: boolean;
   srcLang: string;
-  useLlm: boolean;
   persist: boolean;
   force: boolean;
-  /** Aborts in-flight LLM requests the instant Stop is pressed. */
-  abort: AbortController;
 };
 
 const activeJobs = new Map<number, ActiveLlmSkipDetectJob>();
@@ -86,7 +75,6 @@ export const requestLlmSkipDetectStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
-  job.abort.abort();
   return true;
 };
 
@@ -171,7 +159,7 @@ export async function* iterateSkipDetectWorkUnits(
 ): AsyncGenerator<SkipDetectWorkUnit> {
   let afterId = 0;
   let page = 0;
-  const dbChunkSize = opts.dbChunkSize ?? LLM_SKIP_DETECT_DB_CHUNK_SIZE;
+  const dbChunkSize = opts.dbChunkSize ?? SKIP_DETECT_DB_CHUNK_SIZE;
 
   let nextChunkPromise: Promise<ScanStringRow[]> = loadScanChunk(
     db,
@@ -195,14 +183,14 @@ export async function* iterateSkipDetectWorkUnits(
         ? loadScanChunk(db, opts.modId, opts.srcLang, lastId, dbChunkSize, opts.force)
         : Promise.resolve([]);
 
-    for (let i = 0; i < dbChunk.length; i += LLM_SKIP_DETECT_LLM_BATCH_SIZE) {
-      yield { page, chunk: dbChunk.slice(i, i + LLM_SKIP_DETECT_LLM_BATCH_SIZE) };
+    for (let i = 0; i < dbChunk.length; i += SKIP_DETECT_PROCESS_BATCH_SIZE) {
+      yield { page, chunk: dbChunk.slice(i, i + SKIP_DETECT_PROCESS_BATCH_SIZE) };
     }
   }
 }
 
 export type LlmSkipDetectProgressEvent =
-  | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist: boolean }
+  | { type: 'started'; jobId: number; total: number; persist: boolean }
   | {
       type: 'progress';
       done: number;
@@ -233,7 +221,6 @@ export const runLlmSkipDetectJob = async (
     srcLang: string;
     modName?: string | null;
     game?: string | null;
-    useLlm?: boolean;
     /** Write skip marks to the database after each batch (default: false). */
     persist?: boolean;
     /** Re-scan all strings, including already marked skip or previously scanned (default: false). */
@@ -246,7 +233,6 @@ export const runLlmSkipDetectJob = async (
     throw new Error(`Skip-detect already running for mod ${opts.modId} (job #${runningJobId})`);
   }
 
-  const useLlm = opts.useLlm === true;
   const persist = opts.persist === true;
   const force = opts.force === true;
   const total = await countScannableStrings(db, opts.modId, opts.srcLang, force);
@@ -266,10 +252,8 @@ export const runLlmSkipDetectJob = async (
     error: null,
     cancel: false,
     srcLang: opts.srcLang,
-    useLlm,
     persist,
     force,
-    abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
 
@@ -277,17 +261,12 @@ export const runLlmSkipDetectJob = async (
     jobId,
     modId: opts.modId,
     total,
-    useLlm,
     persist,
     force,
     srcLang: opts.srcLang,
-    llmBatchSize: LLM_SKIP_DETECT_LLM_BATCH_SIZE,
   });
 
-  onEvent({ type: 'started', jobId, total, useLlm, persist });
-
-  const model = getTranslateModel();
-  const chatConcurrency = llmChatPipelineConcurrency();
+  onEvent({ type: 'started', jobId, total, persist });
 
   const persistCandidates = async (candidates: LlmSkipDetectCandidate[]): Promise<number> => {
     if (!persist || candidates.length === 0) return 0;
@@ -349,7 +328,7 @@ export const runLlmSkipDetectJob = async (
       };
     });
 
-    const { heuristicHits, llmCandidates } = partitionSkipAuditRows(auditRows);
+    const { heuristicHits } = partitionSkipAuditRows(auditRows);
 
     for (const row of chunk) {
       const heuristic = heuristicHits.get(row.string_id);
@@ -367,86 +346,11 @@ export const runLlmSkipDetectJob = async (
       }
     }
 
-    const heuristicRows = chunk.filter((row) => heuristicHits.has(row.string_id));
-    const llmRows = chunk.filter((row) => !heuristicHits.has(row.string_id));
-
-    if (heuristicRows.length > 0 && !job.cancel) {
-      await finishRows(heuristicRows, hits);
-      await markStringsSkipDetectScanned(
-        db,
-        heuristicRows.map((row) => row.string_id),
-      );
-    }
-
-    if (useLlm && !job.cancel && llmCandidates.length > 0) {
-      const items: LlmSkipDetectItem[] = llmRows.map((row) => {
-        const { grup, field } = parseRecordLocation(row.signature, row.path);
-        return {
-          id: row.string_id,
-          source: row.source,
-          grup,
-          edid: row.edid,
-          field,
-          path: row.path,
-          context: row.context,
-        };
-      });
-
-      await runLlmChunkWithRecovery({
-        chunk: items,
-        shouldAbort: () => job.cancel,
-        runOnce: async (llmItems) => {
-          const llmHits = await withRequestDeadline(
-            CONFIG.llmVerifyRequestTimeoutMs,
-            job.abort.signal,
-            (signal) =>
-              detectSkipCandidatesWithLlm({
-                items: [...llmItems],
-                model,
-                srcLang: opts.srcLang,
-                game: opts.game,
-                modName: opts.modName,
-                signal,
-              }),
-          );
-
-          for (const llmHit of llmHits) {
-            const row = chunk.find((r) => r.string_id === llmHit.id);
-            if (!row) continue;
-            const existing = hits.get(llmHit.id);
-            hits.set(llmHit.id, {
-              stringId: llmHit.id,
-              source: row.source,
-              signature: row.signature,
-              path: row.path,
-              edid: row.edid,
-              reason: llmHit.reason,
-              confidence: llmHit.confidence,
-              method: existing ? 'both' : 'llm',
-            });
-          }
-        },
-        onFailure: (failed, message) => {
-          logVerify.warn('skip-detect LLM chunk skipped after error', {
-            jobId,
-            modId: opts.modId,
-            error: message,
-            stringIds: failed.map((item) => item.id),
-          });
-        },
-        log: logVerify,
-        operation: 'skip_detect',
-        itemIds: (c) => c.map((item) => item.id),
-      });
-    }
-
-    if (llmRows.length > 0 && !job.cancel) {
-      await finishRows(llmRows, hits);
-      await markStringsSkipDetectScanned(
-        db,
-        llmRows.map((row) => row.string_id),
-      );
-    }
+    await finishRows(chunk, hits);
+    await markStringsSkipDetectScanned(
+      db,
+      chunk.map((row) => row.string_id),
+    );
   };
 
   try {
@@ -456,7 +360,7 @@ export const runLlmSkipDetectJob = async (
         srcLang: opts.srcLang,
         force,
       }),
-      chatConcurrency,
+      4,
       async ({ chunk }) => {
         if (job.cancel) return;
         await processScanChunk(chunk);
@@ -501,3 +405,6 @@ export const scheduleLlmSkipDetectJobCleanup = (jobId: number, delayMs = 60_000)
     }
   }, delayMs);
 };
+
+/** @deprecated Use {@link SKIP_DETECT_DB_CHUNK_SIZE}. */
+export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = SKIP_DETECT_DB_CHUNK_SIZE;

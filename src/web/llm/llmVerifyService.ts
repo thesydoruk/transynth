@@ -11,7 +11,7 @@ import {
   type LlmVerifyVerdict,
 } from '../../llm/verifyTranslate';
 import { filterVerifyReferenceExamples } from '../../llm/verifyReferenceExamples';
-import { canApproveAppliedFix, resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
+import { resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import { fetchReferenceExamplesBatch, requirePgvectorForRag } from '../../llm/ragService';
 import { getAllProjectSettings } from '../services/projectSettings';
@@ -496,7 +496,6 @@ export const runLlmVerifyJob = async (
     );
 
     const okStringIds: number[] = [];
-    const validatedFixedIds: number[] = [];
     const logAction = (
       row: VerifyStringRow,
       action: LlmVerifyActionLogEntry['action'],
@@ -564,9 +563,6 @@ export const runLlmVerifyJob = async (
         try {
           await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
           job.fixed++;
-          if (canApproveAppliedFix(itemForValidation, fixAction.suggestion, opts.game)) {
-            validatedFixedIds.push(result.id);
-          }
           logAction(row, 'fixed', fixAction.suggestion);
         } catch (err) {
           logVerify.warn('auto-fix failed for verify row', {
@@ -593,16 +589,11 @@ export const runLlmVerifyJob = async (
       }
     }
 
-    if (job.autoApproveVerified && (okStringIds.length > 0 || validatedFixedIds.length > 0)) {
-      const toApprove = [...okStringIds, ...validatedFixedIds];
+    if (job.autoApproveVerified && okStringIds.length > 0) {
       try {
-        const promoted = await approveVerifiedTranslations(db, toApprove, opts.targetLang);
+        const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
         job.approved += promoted;
         for (const id of okStringIds) {
-          const row = rowById.get(id);
-          if (row) logAction(row, 'approved');
-        }
-        for (const id of validatedFixedIds) {
           const row = rowById.get(id);
           if (row) logAction(row, 'approved');
         }

@@ -73,13 +73,6 @@ export const resolveVerifyFixAction = (
   return { kind: 'apply', suggestion };
 };
 
-/** Whether a successfully applied fix may be promoted to reviewed. */
-export const canApproveAppliedFix = (
-  item: LlmVerifyItem,
-  suggestion: string,
-  game?: GameType | string | null,
-): boolean => validateVerifySuggestion(item, suggestion, game).ok;
-
 export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction): string => {
   switch (action.kind) {
     case 'apply':

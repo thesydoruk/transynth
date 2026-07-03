@@ -10,7 +10,7 @@ interface SkipTranslateModalProps {
   srcLang: string;
   state: SkipDetectState & {
     isRunning: boolean;
-    start: (useLlm: boolean) => void;
+    start: () => void;
     stop: () => void;
   };
   onClose: () => void;
@@ -39,7 +39,6 @@ export const SkipTranslateModal = ({
 }: SkipTranslateModalProps) => {
   const { t } = useTranslation();
   const { isRunning, done, total, candidates, error, status, start, stop } = state;
-  const [useLlm, setUseLlm] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [applyingAll, setApplyingAll] = useState(false);
   const [applyAllProgress, setApplyAllProgress] = useState<{ done: number; total: number } | null>(
@@ -106,22 +105,9 @@ export const SkipTranslateModal = ({
             {t('modEditor.aiVerifyStop')}
           </Button>
         ) : (
-          <>
-            <label className={s.llmToggle}>
-              <input
-                type="checkbox"
-                checked={useLlm}
-                onChange={(e) => setUseLlm(e.target.checked)}
-                disabled={status === 'running'}
-              />
-              {t('modEditor.skipDetectUseLlm')}
-            </label>
-            <Button variant="success" size="sm" onClick={() => void start(useLlm)}>
-              {status === 'idle'
-                ? t('modEditor.skipDetectStart')
-                : t('modEditor.skipDetectRestart')}
-            </Button>
-          </>
+          <Button variant="success" size="sm" onClick={() => void start()}>
+            {status === 'idle' ? t('modEditor.skipDetectStart') : t('modEditor.skipDetectRestart')}
+          </Button>
         )}
         <div className={s.progressWrap}>
           <div className={s.progressTrack}>

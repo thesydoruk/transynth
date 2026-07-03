@@ -949,7 +949,7 @@ export type LlmSkipDetectJobSnapshot = {
 };
 
 export type LlmSkipDetectStreamEvent =
-  | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist?: boolean }
+  | { type: 'started'; jobId: number; total: number; persist?: boolean }
   | {
       type: 'progress';
       done: number;
@@ -2162,7 +2162,6 @@ export const api = {
     async start(
       modId: number,
       srcLang = getSrcLang(),
-      useLlm = false,
       onEvent?: (e: LlmSkipDetectStreamEvent) => void,
       signal?: AbortSignal,
     ): Promise<LlmSkipDetectJobSnapshot | null> {
@@ -2170,7 +2169,7 @@ export const api = {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, useLlm }),
+        body: JSON.stringify({ srcLang }),
         signal,
       });
       if (!response.ok || !response.body) {

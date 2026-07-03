@@ -4,7 +4,7 @@
 import type { Tx } from '../../db';
 import { CONFIG, getTranslateModel } from '../../config';
 import { filterVerifyReferenceExamples } from '../../llm/verifyReferenceExamples';
-import { canApproveAppliedFix, resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
+import { resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
 import { verifyTranslationsWithLlm, type LlmVerifyItem } from '../../llm/verifyTranslate';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import {
@@ -238,7 +238,6 @@ export const runCliModVerify = async (
     );
 
     const okStringIds: number[] = [];
-    const validatedFixedIds: number[] = [];
     for (const result of results) {
       done++;
       const row = rowById.get(result.id);
@@ -300,9 +299,6 @@ export const runCliModVerify = async (
         try {
           await upsertTranslation(db, result.id, fixAction.suggestion, 'auto', opts.targetLang);
           fixed++;
-          if (canApproveAppliedFix(itemForValidation, fixAction.suggestion, opts.game)) {
-            validatedFixedIds.push(result.id);
-          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           logVerify.error('cli verify fix failed; continuing', {
@@ -334,19 +330,18 @@ export const runCliModVerify = async (
       });
     }
 
-    if (autoApproveVerified && (okStringIds.length > 0 || validatedFixedIds.length > 0)) {
-      const toApprove = [...okStringIds, ...validatedFixedIds];
+    if (autoApproveVerified && okStringIds.length > 0) {
       try {
-        const promoted = await approveVerifiedTranslations(db, toApprove, opts.targetLang);
+        const promoted = await approveVerifiedTranslations(db, okStringIds, opts.targetLang);
         approved += promoted;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         logVerify.warn('cli verify auto-approve failed for chunk; continuing', {
           modId: opts.modId,
           error: message,
-          stringIds: toApprove,
+          stringIds: okStringIds,
         });
-        errors += toApprove.length;
+        errors += okStringIds.length;
       }
 
       onEvent?.({
