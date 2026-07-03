@@ -949,7 +949,7 @@ export type LlmSkipDetectJobSnapshot = {
 };
 
 export type LlmSkipDetectStreamEvent =
-  | { type: 'started'; jobId: number; total: number; persist?: boolean }
+  | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist?: boolean }
   | {
       type: 'progress';
       done: number;
@@ -2165,16 +2165,17 @@ export const api = {
       srcLang = getSrcLang(),
       opts?: {
         force?: boolean;
+        useLlm?: boolean;
         onEvent?: (e: LlmSkipDetectStreamEvent) => void;
         signal?: AbortSignal;
       },
     ): Promise<LlmSkipDetectJobSnapshot | null> {
-      const { force = false, onEvent, signal } = opts ?? {};
+      const { force = false, useLlm = false, onEvent, signal } = opts ?? {};
       const response = await fetch(`${BASE}/api/mods/${modId}/llm-skip-detect`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, force }),
+        body: JSON.stringify({ srcLang, force, useLlm }),
         signal,
       });
       if (!response.ok || !response.body) {

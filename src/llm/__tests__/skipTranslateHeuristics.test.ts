@@ -123,8 +123,8 @@ describe('detectSkipHeuristic', () => {
     ).toBeNull();
   });
 
-  it('partitionSkipAuditRows collects heuristic hits only', () => {
-    const { heuristicHits } = partitionSkipAuditRows([
+  it('partitionSkipAuditRows splits heuristic hits from LLM candidates', () => {
+    const { heuristicHits, llmCandidates } = partitionSkipAuditRows([
       { id: 1, source: 'MPSSmokeDustGeneric', signature: 'ACTI', path: 'ACTI\\FULL' },
       { id: 2, source: 'Somerville Place', signature: 'ACTI', path: 'ACTI\\FULL' },
       { id: 3, source: '+15%' },
@@ -132,5 +132,6 @@ describe('detectSkipHeuristic', () => {
     expect(heuristicHits.has(1)).toBe(true);
     expect(heuristicHits.has(2)).toBe(false);
     expect(heuristicHits.has(3)).toBe(true);
+    expect(llmCandidates.map((row) => row.id)).toEqual([2]);
   });
 });

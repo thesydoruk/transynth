@@ -16,6 +16,7 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { modId: string };
     Body: {
       srcLang?: string;
+      useLlm?: boolean;
       force?: boolean;
     };
   }>('/api/mods/:modId/llm-skip-detect', async (req, reply) => {
@@ -25,6 +26,7 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
+    const useLlm = req.body?.useLlm === true;
     const force = req.body?.force === true;
 
     const runningJobId = findRunningLlmSkipDetectJob(modId);
@@ -69,6 +71,7 @@ export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
             srcLang,
             modName: mod.name,
             game: mod.game,
+            useLlm,
             force,
           },
           send,

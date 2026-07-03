@@ -38,7 +38,7 @@ export const useSkipDetect = (modId: number, srcLang: string) => {
   }, []);
 
   const start = useCallback(
-    async (opts?: { force?: boolean }) => {
+    async (opts?: { force?: boolean; useLlm?: boolean }) => {
       if (inFlight.current) return;
       inFlight.current = true;
       jobIdRef.current = null;
@@ -54,6 +54,7 @@ export const useSkipDetect = (modId: number, srcLang: string) => {
       try {
         const snapshot = await api.llmSkipDetect.start(modId, srcLang, {
           force: opts?.force === true,
+          useLlm: opts?.useLlm === true,
           onEvent: (event) => {
             if (event.type === 'started') {
               jobIdRef.current = event.jobId;

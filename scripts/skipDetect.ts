@@ -2,8 +2,7 @@
 /**
  * Scan mod strings and mark non-translatable rows (global `strings.is_ignored` flag).
  *
- * Uses heuristic rules only (technical tokens, IDs, placeholders, etc.).
- * Skip marks apply to the source string for all target languages.
+ * Heuristics always run first; pass --use-llm to add an LLM audit pass.
  *
  * Mod selector (exactly one required):
  *   --mod-id <ids>      Comma-separated database mod ids
@@ -15,6 +14,7 @@
  *
  * Options:
  *   --src-lang <code>   Source language override (default: per-mod import or SRC_LANG)
+ *   --use-llm           Run LLM skip detection after heuristics (default: false)
  *   --force             Re-scan all strings, including already marked or scanned
  *   --db-chunk <n>      DB page size for large mods (default: DB_CHUNK_SIZE)
  *
@@ -22,6 +22,7 @@
  *   npm run skip:detect -- --mod-id 45
  *   npm run skip:detect -- --mod-name "MyMod.esp"
  *   npm run skip:detect -- --all
+ *   npm run skip:detect -- --mod-id 45 --use-llm
  *   npm run skip:detect -- --mod-id 45 --force
  *   npm run skip:detect -- --mod-id 1,2,3 --src-lang en
  */
@@ -81,6 +82,11 @@ const argv = await yargs(hideBin(process.argv))
     type: 'string',
     describe: 'Source language override (default: mod import or SRC_LANG)',
   })
+  .option('use-llm', {
+    type: 'boolean',
+    default: false,
+    describe: 'Run LLM skip detection after heuristics (default: false)',
+  })
   .option('force', {
     type: 'boolean',
     default: false,
@@ -104,6 +110,7 @@ const argv = await yargs(hideBin(process.argv))
 validateConfig();
 
 const force = argv['force'];
+const useLlm = argv['use-llm'];
 const dbChunkSize = argv['db-chunk'] != null ? Math.max(50, argv['db-chunk']) : DB_CHUNK_SIZE;
 
 const db = openDb();
@@ -119,7 +126,7 @@ const logSkipProgress = (
 ): void => {
   if (event.type === 'started') {
     log.info(
-      `Skip detect: scanning ${event.total} string(s) (heuristics${event.persist ? ', persist' : ''})`,
+      `Skip detect: scanning ${event.total} string(s) (heuristics${event.useLlm ? ' + LLM' : ''}${event.persist ? ', persist' : ''})`,
     );
     return;
   }
@@ -170,6 +177,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
         srcLang: target.srcLang,
         modName: target.modName,
         game: target.game,
+        useLlm,
         persist: true,
         force,
         dbChunkSize,
@@ -225,7 +233,9 @@ try {
     process.exit(0);
   }
 
-  log.info(`Skip detect: ${targets.length} mod(s), force=${force}, db-chunk=${dbChunkSize}`);
+  log.info(
+    `Skip detect: ${targets.length} mod(s), useLlm=${useLlm}, force=${force}, db-chunk=${dbChunkSize}`,
+  );
 
   let ok = 0;
   let skipped = 0;

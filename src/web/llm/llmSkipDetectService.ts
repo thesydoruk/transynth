@@ -1,5 +1,5 @@
 /**
- * Non-translatable string detection jobs (heuristic rules only).
+ * Non-translatable string detection jobs (heuristics + optional LLM audit).
  */
 import type { Tx } from '../../db';
 import { CONFIG, DB_CHUNK_SIZE } from '../../config';
@@ -37,8 +37,11 @@ export type LlmSkipDetectJobSnapshot = {
 type ActiveLlmSkipDetectJob = LlmSkipDetectJobSnapshot & {
   cancel: boolean;
   srcLang: string;
+  useLlm: boolean;
   persist: boolean;
   force: boolean;
+  /** Aborts in-flight LLM requests the instant Stop is pressed. */
+  abort: AbortController;
 };
 
 const activeJobs = new Map<number, ActiveLlmSkipDetectJob>();
@@ -71,6 +74,7 @@ export const requestLlmSkipDetectStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
+  job.abort.abort();
   return true;
 };
 
@@ -151,11 +155,14 @@ export async function* iterateSkipDetectWorkUnits(
     srcLang: string;
     force: boolean;
     dbChunkSize?: number;
+    /** Split each DB page into smaller worker batches (e.g. LLM batch size). */
+    processBatchSize?: number;
   },
 ): AsyncGenerator<SkipDetectWorkUnit> {
   let afterId = 0;
   let page = 0;
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? DB_CHUNK_SIZE);
+  const processBatchSize = opts.processBatchSize;
 
   let nextChunkPromise: Promise<ScanStringRow[]> = loadScanChunk(
     db,
@@ -179,12 +186,18 @@ export async function* iterateSkipDetectWorkUnits(
         ? loadScanChunk(db, opts.modId, opts.srcLang, lastId, dbChunkSize, opts.force)
         : Promise.resolve([]);
 
-    yield { page, chunk: dbChunk };
+    if (processBatchSize != null && processBatchSize > 0) {
+      for (let i = 0; i < dbChunk.length; i += processBatchSize) {
+        yield { page, chunk: dbChunk.slice(i, i + processBatchSize) };
+      }
+    } else {
+      yield { page, chunk: dbChunk };
+    }
   }
 }
 
 export type LlmSkipDetectProgressEvent =
-  | { type: 'started'; jobId: number; total: number; persist: boolean }
+  | { type: 'started'; jobId: number; total: number; useLlm: boolean; persist: boolean }
   | {
       type: 'progress';
       done: number;
@@ -216,6 +229,7 @@ export const runLlmSkipDetectJob = async (
     srcLang: string;
     modName?: string | null;
     game?: string | null;
+    useLlm?: boolean;
     persist?: boolean;
     force?: boolean;
     dbChunkSize?: number;
@@ -227,6 +241,7 @@ export const runLlmSkipDetectJob = async (
     throw new Error(`Skip-detect already running for mod ${opts.modId} (job #${runningJobId})`);
   }
 
+  const useLlm = opts.useLlm === true;
   const persist = opts.persist === true;
   const force = opts.force === true;
 
@@ -242,8 +257,10 @@ export const runLlmSkipDetectJob = async (
     error: null,
     cancel: false,
     srcLang: opts.srcLang,
+    useLlm,
     persist,
     force,
+    abort: new AbortController(),
   };
   activeJobs.set(jobId, job);
 
@@ -264,25 +281,30 @@ export const runLlmSkipDetectJob = async (
       jobId,
       modId: opts.modId,
       total,
+      useLlm,
       persist,
       force,
       srcLang: opts.srcLang,
       dbChunkSize: opts.dbChunkSize ?? CONFIG.dbChunkSize,
-      workers: CONFIG.skipDetectWorkers,
+      workers: useLlm ? undefined : CONFIG.skipDetectWorkers,
     });
 
-    onEvent({ type: 'started', jobId, total, persist });
+    onEvent({ type: 'started', jobId, total, useLlm, persist });
 
     const summary = await runModSkipDetectPipeline(
       db,
       {
         modId: opts.modId,
         srcLang: opts.srcLang,
+        modName: opts.modName,
+        game: opts.game,
+        useLlm,
         persist,
         force,
         dbChunkSize: opts.dbChunkSize,
         knownTotal: total,
         shouldCancel: () => job.cancel,
+        signal: job.abort.signal,
       },
       {
         collectCandidate: (candidate) => {

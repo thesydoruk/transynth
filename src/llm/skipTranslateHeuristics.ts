@@ -122,8 +122,9 @@ const isDenseInternalIdentifier = (token: string): boolean =>
  */
 export const partitionSkipAuditRows = (
   rows: SkipAuditRow[],
-): { heuristicHits: Map<number, SkipHeuristicHit> } => {
+): { heuristicHits: Map<number, SkipHeuristicHit>; llmCandidates: SkipAuditRow[] } => {
   const heuristicHits = new Map<number, SkipHeuristicHit>();
+  const llmCandidates: SkipAuditRow[] = [];
 
   for (const row of rows) {
     const hit = detectSkipHeuristic(row.source, {
@@ -133,9 +134,10 @@ export const partitionSkipAuditRows = (
       context: row.context,
     });
     if (hit) heuristicHits.set(row.id, hit);
+    else llmCandidates.push(row);
   }
 
-  return { heuristicHits };
+  return { heuristicHits, llmCandidates };
 };
 
 /** Strip internal mask markers before analysing translatable content. */

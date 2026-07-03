@@ -1,13 +1,16 @@
 /**
- * High-throughput skip-detect pipeline — DB prefetch, parallel heuristics,
+ * High-throughput skip-detect pipeline — DB prefetch, parallel heuristics + LLM audit,
  * and async persist so workers stay busy on large mods.
  */
 import type { Tx } from '../../db';
-import { CONFIG } from '../../config';
+import { CONFIG, getTranslateModel } from '../../config';
 import { partitionSkipAuditRows } from '../../llm/skipTranslateHeuristics';
+import { detectSkipCandidatesWithLlm, type LlmSkipDetectItem } from '../../llm/skipTranslateDetect';
 import { markStringsAsSkip, markStringsSkipDetectScanned } from '../data/queries';
 import { parseRecordLocation } from '../../utils/recordLocation';
-import { runLlmChunkWorkPoolFromFeed } from '../../llm/chunkRecovery';
+import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../../llm/chunkRecovery';
+import { withRequestDeadline } from '../../llm/requestDeadline';
+import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import { logVerify } from '../../logging/loggers';
 import { Semaphore } from '../../utils/concurrency';
 import {
@@ -16,6 +19,12 @@ import {
   type LlmSkipDetectCandidate,
   type ScanStringRow,
 } from './llmSkipDetectService';
+
+/** Rows per LLM HTTP request — defaults to BATCH_SIZE (skip-detect has no RAG). */
+export const SKIP_DETECT_LLM_BATCH_SIZE = Math.max(
+  1,
+  parseInt(process.env.LLM_SKIP_DETECT_BATCH_SIZE || String(CONFIG.batchSize), 10),
+);
 
 export type SkipDetectPipelineProgress = {
   done: number;
@@ -29,11 +38,15 @@ export type SkipDetectPipelineProgress = {
 export type RunModSkipDetectPipelineOpts = {
   modId: number;
   srcLang: string;
+  modName?: string | null;
+  game?: string | null;
+  useLlm?: boolean;
   persist?: boolean;
   force?: boolean;
   dbChunkSize?: number;
   workers?: number;
   shouldCancel?: () => boolean;
+  signal?: AbortSignal;
   knownTotal?: number;
 };
 
@@ -53,7 +66,34 @@ type ChunkPersistJob = {
   candidates: LlmSkipDetectCandidate[];
 };
 
-const analyzeChunk = (chunk: ScanStringRow[]): LlmSkipDetectCandidate[] => {
+const rowById = (chunk: readonly ScanStringRow[]): Map<number, ScanStringRow> => {
+  const map = new Map<number, ScanStringRow>();
+  for (const row of chunk) map.set(row.string_id, row);
+  return map;
+};
+
+const toLlmItems = (rows: readonly ScanStringRow[]): LlmSkipDetectItem[] =>
+  rows.map((row) => {
+    const { grup, field } = parseRecordLocation(row.signature, row.path);
+    return {
+      id: row.string_id,
+      source: row.source,
+      grup,
+      edid: row.edid,
+      field,
+      path: row.path,
+      context: row.context,
+    };
+  });
+
+const processChunk = async (
+  chunk: readonly ScanStringRow[],
+  opts: RunModSkipDetectPipelineOpts,
+): Promise<LlmSkipDetectCandidate[]> => {
+  const useLlm = opts.useLlm === true;
+  const shouldCancel = opts.shouldCancel;
+  const rows = rowById(chunk);
+
   const auditRows = chunk.map((row) => {
     const { grup } = parseRecordLocation(row.signature, row.path);
     return {
@@ -67,12 +107,12 @@ const analyzeChunk = (chunk: ScanStringRow[]): LlmSkipDetectCandidate[] => {
   });
 
   const { heuristicHits } = partitionSkipAuditRows(auditRows);
-  const candidates: LlmSkipDetectCandidate[] = [];
+  const hits = new Map<number, LlmSkipDetectCandidate>();
 
   for (const row of chunk) {
     const heuristic = heuristicHits.get(row.string_id);
     if (!heuristic) continue;
-    candidates.push({
+    hits.set(row.string_id, {
       stringId: row.string_id,
       source: row.source,
       signature: row.signature,
@@ -84,7 +124,64 @@ const analyzeChunk = (chunk: ScanStringRow[]): LlmSkipDetectCandidate[] => {
     });
   }
 
-  return candidates;
+  const llmRows = chunk.filter((row) => !heuristicHits.has(row.string_id));
+  if (useLlm && llmRows.length > 0 && !shouldCancel?.()) {
+    const model = getTranslateModel();
+    const items = toLlmItems(llmRows);
+
+    for (let i = 0; i < items.length; i += SKIP_DETECT_LLM_BATCH_SIZE) {
+      if (shouldCancel?.()) break;
+      const batch = items.slice(i, i + SKIP_DETECT_LLM_BATCH_SIZE);
+
+      await runLlmChunkWithRecovery({
+        chunk: batch,
+        shouldAbort: shouldCancel,
+        runOnce: async (llmItems) => {
+          const llmHits = await withRequestDeadline(
+            CONFIG.llmVerifyRequestTimeoutMs,
+            opts.signal,
+            (signal) =>
+              detectSkipCandidatesWithLlm({
+                items: [...llmItems],
+                model,
+                srcLang: opts.srcLang,
+                game: opts.game,
+                modName: opts.modName,
+                signal,
+              }),
+          );
+
+          for (const llmHit of llmHits) {
+            const row = rows.get(llmHit.id);
+            if (!row) continue;
+            const existing = hits.get(llmHit.id);
+            hits.set(llmHit.id, {
+              stringId: llmHit.id,
+              source: row.source,
+              signature: row.signature,
+              path: row.path,
+              edid: row.edid,
+              reason: llmHit.reason,
+              confidence: llmHit.confidence,
+              method: existing ? 'both' : 'llm',
+            });
+          }
+        },
+        onFailure: (failed, message) => {
+          logVerify.warn('skip-detect LLM batch skipped after error', {
+            modId: opts.modId,
+            error: message,
+            stringIds: failed.map((item) => item.id),
+          });
+        },
+        log: logVerify,
+        operation: 'skip_detect',
+        itemIds: (c) => c.map((item) => item.id),
+      });
+    }
+  }
+
+  return [...hits.values()];
 };
 
 export const runModSkipDetectPipeline = async (
@@ -92,11 +189,16 @@ export const runModSkipDetectPipeline = async (
   opts: RunModSkipDetectPipelineOpts,
   handlers: RunModSkipDetectPipelineHandlers = {},
 ): Promise<SkipDetectPipelineSummary> => {
+  const useLlm = opts.useLlm === true;
   const persist = opts.persist === true;
   const force = opts.force === true;
   const dbChunkSize = Math.max(50, opts.dbChunkSize ?? CONFIG.dbChunkSize);
-  const workers = Math.max(1, opts.workers ?? CONFIG.skipDetectWorkers);
+  const workers = Math.max(
+    1,
+    opts.workers ?? (useLlm ? llmChatPipelineConcurrency() : CONFIG.skipDetectWorkers),
+  );
   const shouldCancel = opts.shouldCancel;
+  const processBatchSize = useLlm ? SKIP_DETECT_LLM_BATCH_SIZE : undefined;
 
   const total =
     opts.knownTotal ?? (await countScannableStrings(db, opts.modId, opts.srcLang, force));
@@ -161,10 +263,12 @@ export const runModSkipDetectPipeline = async (
   logVerify.info('skip-detect pipeline started', {
     modId: opts.modId,
     total,
+    useLlm,
     persist,
     force,
     dbChunkSize,
     workers,
+    llmBatchSize: useLlm ? SKIP_DETECT_LLM_BATCH_SIZE : null,
     srcLang: opts.srcLang,
   });
 
@@ -174,6 +278,7 @@ export const runModSkipDetectPipeline = async (
       srcLang: opts.srcLang,
       force,
       dbChunkSize,
+      processBatchSize,
     })) {
       yield unit.chunk;
     }
@@ -185,7 +290,7 @@ export const runModSkipDetectPipeline = async (
     shouldAbort: shouldCancel,
     runOnce: async (chunk, _helpers) => {
       if (shouldCancel?.()) return;
-      const candidates = analyzeChunk([...chunk]);
+      const candidates = await processChunk(chunk, opts);
       scheduleChunkPersist({
         scannedIds: chunk.map((row) => row.string_id),
         candidates,
