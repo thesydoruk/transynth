@@ -257,6 +257,7 @@
     "pexSourceError": "Не вдалося завантажити код Papyrus",
     "sourceTextLabel": "Текст оригіналу ({{lang}})",
     "translationTextLabel": "Текст перекладу ({{lang}})",
+    "resizeDetailPanel": "Змінити висоту панелі перекладу",
     "charCount": "Символів: {{count}}",
     "maxLength": "Макс: {{max}}",
     "maxLengthRemaining": "залишилось {{count}}",

@@ -257,6 +257,7 @@
     "pexSourceError": "Could not load Papyrus source",
     "sourceTextLabel": "Source text ({{lang}})",
     "translationTextLabel": "Translation text ({{lang}})",
+    "resizeDetailPanel": "Resize translation panel",
     "charCount": "Chars: {{count}}",
     "maxLength": "Max: {{max}}",
     "maxLengthRemaining": "{{count}} left",

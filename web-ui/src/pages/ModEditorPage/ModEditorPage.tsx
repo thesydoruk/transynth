@@ -34,6 +34,7 @@ import {
   useAiTranslate,
   useSkipDetect,
   useApplyImported,
+  useDetailPanelHeight,
 } from './hooks';
 import { parseStatusParam, statusParamFromSelection, type StatusFilterValue } from './statusFilter';
 import styles from './ModEditorPage.module.scss';
@@ -144,6 +145,9 @@ export const ModEditorPage = () => {
   const activeRowRef = useRef(activeRow);
   activeRowRef.current = activeRow;
   const translAreaRef = useRef<HTMLTextAreaElement>(null);
+  const centerColRef = useRef<HTMLDivElement>(null);
+  const { detailPanelHeight, isResizing, startDetailPanelResize } =
+    useDetailPanelHeight(centerColRef);
 
   // ── Translate progress ──
   const [translateProgress, setTranslateProgress] = useState<{
@@ -906,59 +910,74 @@ export const ModEditorPage = () => {
             }}
           />
 
-          <div className={styles.centerCol}>
-            <StringGrid
-              rows={strings?.rows ?? []}
-              total={total}
-              isLoading={isLoading}
-              isRowSelected={isRowSelected}
-              allSelected={allSelected}
-              someSelected={someSelected}
-              hasMore={!!hasNextPage}
-              isFetchingMore={isFetchingNextPage}
-              onLoadMore={() => fetchNextPage()}
-              activeRow={activeRow}
-              focusedRow={focusedRow}
-              srcLang={srcLang}
-              targetLang={targetLang}
-              sortCol={sortCol}
-              sortDir={sortDir}
-              columnFilters={columnFilters}
-              onRowSelect={handleRowSelect}
-              onRowOpen={handleRowOpen}
-              onToggleRow={toggleRow}
-              onToggleAll={toggleAll}
-              onSort={handleSort}
-              onColumnFilterChange={handleColumnFilterChange}
-              onContextMenu={handleContextMenu}
-              onClear={handleClear}
-              onCopySource={(row) => {
-                handleRowOpen(row);
-                setTimeout(() => setDraftTranslation(row.source), 0);
-              }}
-            />
-
-            {activeRow && (
-              <DetailPanel
-                modId={modId}
+          <div className={styles.centerCol} ref={centerColRef}>
+            <div className={styles.gridArea}>
+              <StringGrid
+                rows={strings?.rows ?? []}
+                total={total}
+                isLoading={isLoading}
+                isRowSelected={isRowSelected}
+                allSelected={allSelected}
+                someSelected={someSelected}
+                hasMore={!!hasNextPage}
+                isFetchingMore={isFetchingNextPage}
+                onLoadMore={() => fetchNextPage()}
                 activeRow={activeRow}
-                draftTranslation={draftTranslation}
+                focusedRow={focusedRow}
                 srcLang={srcLang}
                 targetLang={targetLang}
-                activeTab={activeTab}
-                saveIndicator={saveIndicator}
-                savePending={saveMutation.isPending}
-                activeMaxLength={activeMaxLength}
-                suggestions={suggestions ?? []}
-                qaIssues={qaIssues ?? []}
-                history={history ?? []}
-                translAreaRef={translAreaRef}
-                onDraftChange={setDraftTranslation}
-                onSave={handleSave}
-                onCopySource={handleCopySource}
-                onTabChange={setActiveTab}
-                onOpenBookEditor={() => setShowBookEditor(true)}
+                sortCol={sortCol}
+                sortDir={sortDir}
+                columnFilters={columnFilters}
+                onRowSelect={handleRowSelect}
+                onRowOpen={handleRowOpen}
+                onToggleRow={toggleRow}
+                onToggleAll={toggleAll}
+                onSort={handleSort}
+                onColumnFilterChange={handleColumnFilterChange}
+                onContextMenu={handleContextMenu}
+                onClear={handleClear}
+                onCopySource={(row) => {
+                  handleRowOpen(row);
+                  setTimeout(() => setDraftTranslation(row.source), 0);
+                }}
               />
+            </div>
+
+            {activeRow && (
+              <>
+                <div
+                  className={`${styles.detailPanelResizeHandle} ${isResizing ? styles.detailPanelResizeHandleActive : ''}`}
+                  onMouseDown={startDetailPanelResize}
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label={t('modEditor.resizeDetailPanel')}
+                  aria-valuenow={detailPanelHeight}
+                  aria-valuemin={240}
+                />
+                <div className={styles.detailPanelSizer} style={{ height: detailPanelHeight }}>
+                  <DetailPanel
+                    modId={modId}
+                    activeRow={activeRow}
+                    draftTranslation={draftTranslation}
+                    srcLang={srcLang}
+                    targetLang={targetLang}
+                    activeTab={activeTab}
+                    saveIndicator={saveIndicator}
+                    savePending={saveMutation.isPending}
+                    activeMaxLength={activeMaxLength}
+                    suggestions={suggestions ?? []}
+                    qaIssues={qaIssues ?? []}
+                    history={history ?? []}
+                    translAreaRef={translAreaRef}
+                    onDraftChange={setDraftTranslation}
+                    onSave={handleSave}
+                    onCopySource={handleCopySource}
+                    onTabChange={setActiveTab}
+                    onOpenBookEditor={() => setShowBookEditor(true)}
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>
