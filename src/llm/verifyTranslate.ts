@@ -81,7 +81,7 @@ export const maskVerifyItemForLlm = (
   }
   if (item.context != null) fields.push(item.context);
 
-  const { masked, mapping } = maskLlmTextFields(fields);
+  const { masked, mapping } = maskLlmTextFields(fields, { reuseKeysForIdenticalTokens: true });
   let idx = 0;
   const take = (): string => masked[idx++] as string;
 

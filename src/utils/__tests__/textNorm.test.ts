@@ -1,5 +1,25 @@
 import { describe, it, expect } from '@jest/globals';
-import { normalizeForHash, normalizeNoPunct, extractNumbers, transplantNumbers } from '../textNorm';
+import {
+  normalizeAutoTranslationDashes,
+  normalizeForHash,
+  normalizeNoPunct,
+  extractNumbers,
+  transplantNumbers,
+} from '../textNorm';
+
+describe('normalizeAutoTranslationDashes', () => {
+  it('replaces em dash with hyphen', () => {
+    expect(normalizeAutoTranslationDashes('Броня — легка')).toBe('Броня - легка');
+  });
+
+  it('replaces en dash with hyphen', () => {
+    expect(normalizeAutoTranslationDashes('Layer Handle – 4')).toBe('Layer Handle - 4');
+  });
+
+  it('leaves ASCII hyphen unchanged', () => {
+    expect(normalizeAutoTranslationDashes('Ammo - Ballistic')).toBe('Ammo - Ballistic');
+  });
+});
 
 describe('normalizeForHash', () => {
   it('lowercases text', () => {

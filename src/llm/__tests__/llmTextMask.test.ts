@@ -7,6 +7,16 @@ import {
 } from '../llmTextMask';
 
 describe('maskLlmTextFields', () => {
+  it('reuses one key when the same token appears in source and translation', () => {
+    const alias = '<Alias=ComponentNameHolder01>';
+    const { masked, mapping } = maskLlmTextFields([`${alias} Scrap`, `${alias} Брухт`], {
+      reuseKeysForIdenticalTokens: true,
+    });
+    expect(masked[0]).toBe('¤PH0¤ Scrap');
+    expect(masked[1]).toBe('¤PH0¤ Брухт');
+    expect(Object.keys(mapping)).toHaveLength(1);
+  });
+
   it('uses one shared counter across fields', () => {
     const tag = "<font color='#<Global=SS2_Instance_ResourceManager_ComponentFontColor05>'>";
     const { masked, mapping } = maskLlmTextFields([

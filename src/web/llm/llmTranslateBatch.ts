@@ -37,6 +37,7 @@ import {
 } from '../../utils/placeholders';
 import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../llm/llmTextMask';
 import { detectSkipHeuristic } from '../../llm/skipTranslateHeuristics';
+import { normalizeAutoTranslationDashes } from '../../utils/textNorm';
 import { parseRecordLocation } from '../../utils/recordLocation';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import { buildLlmTranslateChunks } from './llmTranslateChunking';
@@ -307,9 +308,8 @@ export const translateStringIdsBatch = async (
         continue;
       }
 
-      const translated = unmask(
-        unmask(maskedTranslation, entry.functionKeywordMap),
-        entry.placeholderMap,
+      const translated = normalizeAutoTranslationDashes(
+        unmask(unmask(maskedTranslation, entry.functionKeywordMap), entry.placeholderMap),
       );
       okRows.push({ stringId: entry.stringId, text: translated });
     }

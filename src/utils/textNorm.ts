@@ -14,6 +14,10 @@ export const normalizeForHash = (s: string): string => {
  * Extra-aggressive normalization: strip all punctuation on top of normalizeForHash.
  * Used for punctuation-insensitive TM matching.
  */
+/** Replace typographic dashes (en/em) with ASCII hyphen in LLM auto-translations. */
+export const normalizeAutoTranslationDashes = (text: string): string =>
+  text.replace(/\u2013|\u2014/g, '-');
+
 export const normalizeNoPunct = (s: string): string => {
   let t = normalizeForHash(s);
   t = t.replace(/[^\w¤ ]/g, '');

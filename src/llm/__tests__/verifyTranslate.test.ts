@@ -36,10 +36,10 @@ describe('maskVerifyItemForLlm', () => {
     });
 
     expect(item.source).toBe('¤PH0¤Scrap');
-    expect(item.translation).toBe('¤PH1¤Брухт');
-    expect(item.reference_examples?.[0]?.source).toBe('¤PH2¤ left');
+    expect(item.translation).toBe('¤PH0¤Брухт');
+    expect(item.reference_examples?.[0]?.source).toBe('¤PH1¤ left');
     expect(mapping['¤PH0¤']).toBe(tag);
-    expect(mapping['¤PH2¤']).toBe('<Alias=Player>');
+    expect(mapping['¤PH1¤']).toBe('<Alias=Player>');
   });
 });
 
