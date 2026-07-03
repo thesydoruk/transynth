@@ -118,13 +118,12 @@ const isDenseInternalIdentifier = (token: string): boolean =>
   token.length >= 10;
 
 /**
- * Split rows into heuristic skip hits vs candidates that still need LLM audit.
+ * Classify rows with heuristic skip rules.
  */
 export const partitionSkipAuditRows = (
   rows: SkipAuditRow[],
-): { heuristicHits: Map<number, SkipHeuristicHit>; llmCandidates: SkipAuditRow[] } => {
+): { heuristicHits: Map<number, SkipHeuristicHit> } => {
   const heuristicHits = new Map<number, SkipHeuristicHit>();
-  const llmCandidates: SkipAuditRow[] = [];
 
   for (const row of rows) {
     const hit = detectSkipHeuristic(row.source, {
@@ -134,10 +133,9 @@ export const partitionSkipAuditRows = (
       context: row.context,
     });
     if (hit) heuristicHits.set(row.id, hit);
-    else llmCandidates.push(row);
   }
 
-  return { heuristicHits, llmCandidates };
+  return { heuristicHits };
 };
 
 /** Strip internal mask markers before analysing translatable content. */

@@ -10,7 +10,7 @@ interface SkipTranslateModalProps {
   srcLang: string;
   state: SkipDetectState & {
     isRunning: boolean;
-    start: () => void;
+    start: (opts?: { force?: boolean }) => void;
     stop: () => void;
   };
   onClose: () => void;
@@ -46,6 +46,8 @@ export const SkipTranslateModal = ({
   );
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
   const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const rescanForce =
+    status === 'completed' || (status === 'failed' && (error?.includes('unscanned') ?? false));
 
   const visibleCandidates = useMemo(
     () => candidates.filter((c) => !appliedIds.has(c.stringId)),
@@ -105,7 +107,7 @@ export const SkipTranslateModal = ({
             {t('modEditor.aiVerifyStop')}
           </Button>
         ) : (
-          <Button variant="success" size="sm" onClick={() => void start()}>
+          <Button variant="success" size="sm" onClick={() => void start({ force: rescanForce })}>
             {status === 'idle' ? t('modEditor.skipDetectStart') : t('modEditor.skipDetectRestart')}
           </Button>
         )}

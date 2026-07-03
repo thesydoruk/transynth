@@ -193,7 +193,7 @@ const processMod = async (target: CliModTarget): Promise<'ok' | 'failed' | 'skip
     return 'ok';
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('No strings to scan')) {
+    if (message.includes('No strings to scan') || message.includes('No unscanned strings')) {
       log.info(
         `Skip detect: nothing to scan (mod_id=${target.modId}) — all strings already marked or absent`,
       );

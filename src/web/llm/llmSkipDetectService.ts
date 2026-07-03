@@ -237,7 +237,11 @@ export const runLlmSkipDetectJob = async (
   const force = opts.force === true;
   const total = await countScannableStrings(db, opts.modId, opts.srcLang, force);
   if (total === 0) {
-    throw new Error('No strings to scan');
+    throw new Error(
+      force
+        ? 'No strings to scan'
+        : 'No unscanned strings — use force to re-scan already audited rows',
+    );
   }
 
   const jobId = nextJobId++;
@@ -347,6 +351,7 @@ export const runLlmSkipDetectJob = async (
     }
 
     await finishRows(chunk, hits);
+    if (job.cancel) return;
     await markStringsSkipDetectScanned(
       db,
       chunk.map((row) => row.string_id),
@@ -360,7 +365,7 @@ export const runLlmSkipDetectJob = async (
         srcLang: opts.srcLang,
         force,
       }),
-      4,
+      1,
       async ({ chunk }) => {
         if (job.cancel) return;
         await processScanChunk(chunk);

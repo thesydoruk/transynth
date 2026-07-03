@@ -1907,6 +1907,7 @@ export const markStringsAsSkip = async (db: Tx, stringIds: number[]): Promise<nu
   const { rows } = await db.query<{ id: number }>(
     `UPDATE strings SET is_ignored = TRUE
       WHERE id = ANY($1::int[])
+        AND is_ignored = FALSE
       RETURNING id`,
     [stringIds],
   );
