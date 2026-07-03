@@ -258,6 +258,7 @@
     "sourceTextLabel": "Source text ({{lang}})",
     "translationTextLabel": "Translation text ({{lang}})",
     "resizeDetailPanel": "Resize translation panel",
+    "resizeTabContent": "Resize tab panel",
     "charCount": "Chars: {{count}}",
     "maxLength": "Max: {{max}}",
     "maxLengthRemaining": "{{count}} left",

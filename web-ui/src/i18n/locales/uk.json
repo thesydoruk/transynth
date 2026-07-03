@@ -258,6 +258,7 @@
     "sourceTextLabel": "Текст оригіналу ({{lang}})",
     "translationTextLabel": "Текст перекладу ({{lang}})",
     "resizeDetailPanel": "Змінити висоту панелі перекладу",
+    "resizeTabContent": "Змінити висоту блоку вкладок",
     "charCount": "Символів: {{count}}",
     "maxLength": "Макс: {{max}}",
     "maxLengthRemaining": "залишилось {{count}}",

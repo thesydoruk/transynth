@@ -1,4 +1,4 @@
-import { useMemo, type UIEvent } from 'react';
+import { useMemo, useRef, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
 import { Button } from '../../../../components/Button';
@@ -7,6 +7,7 @@ import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
 import { getPlaceholderParts } from './utils';
 import { PexSourcePanel } from './PexSourcePanel';
+import { useTabContentHeight } from '../../hooks/useTabContentHeight';
 import styles from './DetailPanel.module.scss';
 
 /** Bottom-panel tab identifiers. */
@@ -74,6 +75,9 @@ export const DetailPanel = ({
   onOpenBookEditor,
 }: DetailPanelProps) => {
   const { t } = useTranslation();
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const { tabContentHeight, isResizing, startTabContentResize } =
+    useTabContentHeight(detailPanelRef);
   const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
 
   const maxLengthRemaining =
@@ -91,7 +95,7 @@ export const DetailPanel = ({
   const isPex = activeRow.signature === 'PEX';
 
   return (
-    <div className={styles.detailPanel}>
+    <div ref={detailPanelRef} className={styles.detailPanel}>
       <div className={styles.detailPanels}>
         {/* Source text — PEX rows show decompiled script instead of a duplicate source field */}
         <div className={styles.textPanel}>
@@ -220,6 +224,16 @@ export const DetailPanel = ({
         </div>
       </div>
 
+      <div
+        className={`${styles.tabContentResizeHandle} ${isResizing ? styles.tabContentResizeHandleActive : ''}`}
+        onMouseDown={startTabContentResize}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={t('modEditor.resizeTabContent')}
+        aria-valuenow={tabContentHeight}
+        aria-valuemin={80}
+      />
+
       {/* Bottom tabs */}
       <div className={styles.tabs}>
         {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
@@ -236,7 +250,7 @@ export const DetailPanel = ({
           </button>
         ))}
       </div>
-      <div className={styles.tabContent}>
+      <div className={styles.tabContent} style={{ height: tabContentHeight }}>
         <div className={styles.tabContentScroll}>
           {activeTab === 'suggestions' && (
             <SuggestionsPanel
