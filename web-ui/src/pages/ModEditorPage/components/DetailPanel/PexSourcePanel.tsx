@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { StringRow, PexSourceSnippet } from '../../../../api';
 import { api } from '../../../../api';
 import { parsePexStoredContext } from '../../../../utils/pexStoredContext';
+import { splitPexLineForLiteralHighlight } from './utils/pexLineLiteralHighlight';
 import styles from './DetailPanel.module.scss';
 
 export interface PexSourcePanelProps {
@@ -11,33 +12,40 @@ export interface PexSourcePanelProps {
   activeRow: StringRow;
 }
 
-const PexSourceCodeBlock = ({ snippet }: { snippet: PexSourceSnippet }) => {
-  const { t } = useTranslation();
-  const primaryLine = snippet.matchLineNumbers[0];
-
-  return (
-    <div className={styles.pexSourcePanel}>
-      <div className={styles.pexSourceHeader}>
-        <span className={styles.pexSourceTitle}>{t('modEditor.pexSourceTitle')}</span>
-        <span className={styles.pexSourceMeta}>
-          {snippet.scriptLabel}
-          {primaryLine != null ? ` · line ${primaryLine}` : ''}
-        </span>
-      </div>
-      <pre className={styles.pexSourceCode}>
-        {snippet.contextLines.map((line) => (
-          <div
-            key={line.lineNumber}
-            className={line.highlight ? styles.pexSourceLineHighlight : styles.pexSourceLine}
-          >
-            <span className={styles.pexSourceLineNo}>{line.lineNumber}</span>
-            <span className={styles.pexSourceLineText}>{line.text || ' '}</span>
-          </div>
-        ))}
-      </pre>
-    </div>
-  );
-};
+const PexSourceCodeBlock = ({
+  snippet,
+  literal,
+  fill = false,
+}: {
+  snippet: PexSourceSnippet;
+  literal: string;
+  fill?: boolean;
+}) => (
+  <div className={`${styles.pexSourcePanel} ${fill ? styles.pexSourcePanelFill : ''}`}>
+    <pre className={`${styles.pexSourceCode} ${fill ? styles.pexSourceCodeFill : ''}`}>
+      {snippet.contextLines.map((line) => (
+        <div
+          key={line.lineNumber}
+          className={line.highlight ? styles.pexSourceLineHighlight : styles.pexSourceLine}
+        >
+          <span className={styles.pexSourceLineNo}>{line.lineNumber}</span>
+          <span className={styles.pexSourceLineText}>
+            {splitPexLineForLiteralHighlight(line.text, literal, line.highlight).map(
+              (part, index) =>
+                part.highlight ? (
+                  <mark key={index} className={styles.pexSourceLiteral}>
+                    {part.text}
+                  </mark>
+                ) : (
+                  <span key={index}>{part.text}</span>
+                ),
+            )}
+          </span>
+        </div>
+      ))}
+    </pre>
+  </div>
+);
 
 /**
  * Show decompiled Papyrus source around the active PEX literal.
@@ -61,11 +69,15 @@ export const PexSourcePanel = ({ modId, activeRow }: PexSourcePanelProps) => {
   if (activeRow.signature !== 'PEX') return null;
 
   if (storedSnippet) {
-    return <PexSourceCodeBlock snippet={storedSnippet} />;
+    return <PexSourceCodeBlock snippet={storedSnippet} literal={activeRow.source} fill />;
   }
 
   if (isLoading) {
-    return <div className={styles.pexSourcePanel}>{t('modEditor.pexSourceLoading')}</div>;
+    return (
+      <div className={`${styles.pexSourcePanel} ${styles.pexSourcePanelFill}`}>
+        {t('modEditor.pexSourceLoading')}
+      </div>
+    );
   }
 
   if (!data || !data.ok) {
@@ -76,12 +88,12 @@ export const PexSourcePanel = ({ modId, activeRow }: PexSourcePanelProps) => {
           ? t('modEditor.pexSourceError')
           : t('modEditor.pexSourceUnavailable');
     return (
-      <div className={styles.pexSourcePanel} title={message}>
+      <div className={`${styles.pexSourcePanel} ${styles.pexSourcePanelFill}`} title={message}>
         <div className={styles.pexSourceHint}>{t('modEditor.pexSourceUnavailable')}</div>
         <div className={styles.pexSourceHintDetail}>{message}</div>
       </div>
     );
   }
 
-  return <PexSourceCodeBlock snippet={data.snippet} />;
+  return <PexSourceCodeBlock snippet={data.snippet} literal={activeRow.source} fill />;
 };

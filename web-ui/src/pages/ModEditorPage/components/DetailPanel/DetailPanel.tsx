@@ -88,24 +88,39 @@ export const DetailPanel = ({
     overlay.scrollLeft = e.currentTarget.scrollLeft;
   };
 
+  const isPex = activeRow.signature === 'PEX';
+
   return (
     <div className={styles.detailPanel}>
       <div className={styles.detailPanels}>
-        {/* Source text */}
+        {/* Source text — PEX rows show decompiled script instead of a duplicate source field */}
         <div className={styles.textPanel}>
           <div className={styles.panelLabel}>
-            {t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
+            {isPex
+              ? t('modEditor.pexSourceTitle')
+              : t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
           </div>
-          {activeRow.signature === 'PEX' && <PexSourcePanel modId={modId} activeRow={activeRow} />}
-          {activeRow.context && activeRow.signature !== 'PEX' && (
-            <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
-              {t('modEditor.speakerContextLabel')}
-              {activeRow.context}
-            </div>
-          )}
-          <textarea readOnly value={activeRow.source} className={styles.sourceArea} rows={4} />
-          <div className={styles.charCount}>
-            {t('modEditor.charCount', { count: activeRow.source.length })}
+          <div className={styles.textPanelBody}>
+            {isPex ? (
+              <PexSourcePanel modId={modId} activeRow={activeRow} />
+            ) : (
+              <>
+                {activeRow.context && (
+                  <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
+                    {t('modEditor.speakerContextLabel')}
+                    {activeRow.context}
+                  </div>
+                )}
+                <textarea readOnly value={activeRow.source} className={styles.sourceArea} />
+              </>
+            )}
+          </div>
+          <div className={styles.textPanelFooter}>
+            {!isPex && (
+              <div className={styles.charCount}>
+                {t('modEditor.charCount', { count: activeRow.source.length })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -124,77 +139,82 @@ export const DetailPanel = ({
               </button>
             )}
           </div>
-          <div className={styles.translAreaWrap}>
-            <div className={styles.translAreaOverlay} aria-hidden="true">
-              <div className={styles.translAreaOverlayContent}>
-                {draftTranslation.length === 0 ? (
-                  <span className={styles.translPlaceholder}>
-                    {t('modEditor.enterTranslation')}
-                  </span>
-                ) : (
-                  placeholderParts.map((part, index) => (
-                    <span
-                      key={`${part.isPlaceholder ? 'ph' : 'txt'}-${index}`}
-                      className={part.isPlaceholder ? styles.placeholderToken : undefined}
-                    >
-                      {part.text}
+          <div className={styles.textPanelBody}>
+            <div className={styles.translAreaWrap}>
+              <div className={styles.translAreaOverlay} aria-hidden="true">
+                <div className={styles.translAreaOverlayContent}>
+                  {draftTranslation.length === 0 ? (
+                    <span className={styles.translPlaceholder}>
+                      {t('modEditor.enterTranslation')}
                     </span>
-                  ))
+                  ) : (
+                    placeholderParts.map((part, index) => (
+                      <span
+                        key={`${part.isPlaceholder ? 'ph' : 'txt'}-${index}`}
+                        className={part.isPlaceholder ? styles.placeholderToken : undefined}
+                      >
+                        {part.text}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              <textarea
+                ref={translAreaRef}
+                value={draftTranslation}
+                onChange={(e) => onDraftChange(e.target.value)}
+                className={styles.translArea}
+                onScroll={syncOverlayScroll}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave();
+                }}
+                placeholder={t('modEditor.enterTranslation')}
+              />
+            </div>
+          </div>
+          <div className={styles.textPanelFooter}>
+            <div className={styles.detailBtnBar}>
+              <div className={styles.charInfo}>
+                <div className={styles.charCount}>
+                  {t('modEditor.charCount', { count: draftTranslation.length })}
+                </div>
+                {activeMaxLength != null && (
+                  <div
+                    className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
+                  >
+                    {t('modEditor.maxLength', { max: activeMaxLength })}
+                    {' · '}
+                    {maxLengthExceeded
+                      ? t('modEditor.maxLengthExceeded', {
+                          count: Math.abs(maxLengthRemaining ?? 0),
+                        })
+                      : t('modEditor.maxLengthRemaining', { count: maxLengthRemaining ?? 0 })}
+                  </div>
                 )}
               </div>
-            </div>
-            <textarea
-              ref={translAreaRef}
-              value={draftTranslation}
-              onChange={(e) => onDraftChange(e.target.value)}
-              className={styles.translArea}
-              rows={4}
-              onScroll={syncOverlayScroll}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave();
-              }}
-              placeholder={t('modEditor.enterTranslation')}
-            />
-          </div>
-          <div className={styles.detailBtnBar}>
-            <div className={styles.charInfo}>
-              <div className={styles.charCount}>
-                {t('modEditor.charCount', { count: draftTranslation.length })}
-              </div>
-              {activeMaxLength != null && (
-                <div
-                  className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
+              <div className={styles.detailSaveRow}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onCopySource}
+                  title={t('modEditor.copySourceToTranslation')}
                 >
-                  {t('modEditor.maxLength', { max: activeMaxLength })}
-                  {' · '}
-                  {maxLengthExceeded
-                    ? t('modEditor.maxLengthExceeded', { count: Math.abs(maxLengthRemaining ?? 0) })
-                    : t('modEditor.maxLengthRemaining', { count: maxLengthRemaining ?? 0 })}
-                </div>
-              )}
-            </div>
-            <div className={styles.detailSaveRow}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onCopySource}
-                title={t('modEditor.copySourceToTranslation')}
-              >
-                {t('modEditor.copySrc')}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onSave}
-                disabled={savePending}
-                title="Ctrl+Enter"
-              >
-                {savePending
-                  ? t('modEditor.saving')
-                  : saveIndicator === 'saved'
-                    ? t('modEditor.saved')
-                    : t('common.save')}
-              </Button>
+                  {t('modEditor.copySrc')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onSave}
+                  disabled={savePending}
+                  title="Ctrl+Enter"
+                >
+                  {savePending
+                    ? t('modEditor.saving')
+                    : saveIndicator === 'saved'
+                      ? t('modEditor.saved')
+                      : t('common.save')}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
