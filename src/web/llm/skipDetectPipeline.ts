@@ -5,11 +5,21 @@
 import type { Tx } from '../../db';
 import { CONFIG, getTranslateModel } from '../../config';
 import { partitionSkipAuditRows } from '../../llm/skipTranslateHeuristics';
-import { detectSkipCandidatesWithLlm, type LlmSkipDetectItem } from '../../llm/skipTranslateDetect';
+import {
+  detectSkipCandidatesWithLlm,
+  isLlmSkipDetectMissingIdsError,
+  type LlmSkipDetectItem,
+  type LlmSkipDetectItemResult,
+} from '../../llm/skipTranslateDetect';
 import { markStringsAsSkip, markStringsSkipDetectScanned } from '../data/queries';
 import { parseRecordLocation } from '../../utils/recordLocation';
-import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../../llm/chunkRecovery';
+import {
+  enqueueSoloChunks,
+  runLlmChunkWithRecovery,
+  runLlmChunkWorkPoolFromFeed,
+} from '../../llm/chunkRecovery';
 import { withRequestDeadline } from '../../llm/requestDeadline';
+import { isLlmTimeoutError } from '../../llm/retry';
 import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import { logVerify } from '../../logging/loggers';
 import { Semaphore } from '../../utils/concurrency';
@@ -86,9 +96,43 @@ const toLlmItems = (rows: readonly ScanStringRow[]): LlmSkipDetectItem[] =>
     };
   });
 
+const mergeLlmSkipHits = (
+  hits: Map<number, LlmSkipDetectCandidate>,
+  llmHits: readonly LlmSkipDetectItemResult[],
+  rows: Map<number, ScanStringRow>,
+): void => {
+  for (const llmHit of llmHits) {
+    const row = rows.get(llmHit.id);
+    if (!row) continue;
+    const existing = hits.get(llmHit.id);
+    hits.set(llmHit.id, {
+      stringId: llmHit.id,
+      source: row.source,
+      signature: row.signature,
+      path: row.path,
+      edid: row.edid,
+      reason: llmHit.reason,
+      confidence: llmHit.confidence,
+      method: existing ? 'both' : 'llm',
+    });
+  }
+};
+
+const enqueueSoloSkipDetectRows = (
+  llmItems: readonly LlmSkipDetectItem[],
+  rows: Map<number, ScanStringRow>,
+  enqueueSplit: (parts: readonly (readonly ScanStringRow[])[]) => void,
+): void => {
+  const scanRows = llmItems
+    .map((item) => rows.get(item.id))
+    .filter((row): row is ScanStringRow => row != null);
+  enqueueSoloChunks(scanRows, enqueueSplit);
+};
+
 const processChunk = async (
   chunk: readonly ScanStringRow[],
   opts: RunModSkipDetectPipelineOpts,
+  enqueueSplit?: (parts: readonly (readonly ScanStringRow[])[]) => void,
 ): Promise<LlmSkipDetectCandidate[]> => {
   const useLlm = opts.useLlm === true;
   const shouldCancel = opts.shouldCancel;
@@ -136,37 +180,56 @@ const processChunk = async (
       await runLlmChunkWithRecovery({
         chunk: batch,
         shouldAbort: shouldCancel,
+        enqueueSplit: enqueueSplit
+          ? (parts) => {
+              for (const part of parts) {
+                enqueueSoloSkipDetectRows(part, rows, enqueueSplit);
+              }
+            }
+          : undefined,
         runOnce: async (llmItems) => {
-          const llmHits = await withRequestDeadline(
-            CONFIG.llmVerifyRequestTimeoutMs,
-            opts.signal,
-            (signal) =>
-              detectSkipCandidatesWithLlm({
-                items: [...llmItems],
-                model,
-                srcLang: opts.srcLang,
-                game: opts.game,
-                modName: opts.modName,
-                signal,
-              }),
-          );
-
-          for (const llmHit of llmHits) {
-            const row = rows.get(llmHit.id);
-            if (!row) continue;
-            const existing = hits.get(llmHit.id);
-            hits.set(llmHit.id, {
-              stringId: llmHit.id,
-              source: row.source,
-              signature: row.signature,
-              path: row.path,
-              edid: row.edid,
-              reason: llmHit.reason,
-              confidence: llmHit.confidence,
-              method: existing ? 'both' : 'llm',
-            });
+          try {
+            const llmHits = await withRequestDeadline(
+              CONFIG.llmRequestTimeoutMs,
+              opts.signal,
+              (signal) =>
+                detectSkipCandidatesWithLlm({
+                  items: [...llmItems],
+                  model,
+                  srcLang: opts.srcLang,
+                  game: opts.game,
+                  modName: opts.modName,
+                  signal,
+                }),
+            );
+            mergeLlmSkipHits(hits, llmHits, rows);
+          } catch (err) {
+            if (isLlmSkipDetectMissingIdsError(err)) {
+              mergeLlmSkipHits(hits, err.partialResults, rows);
+              const missingItems = llmItems.filter((item) => err.missingIds.includes(item.id));
+              logVerify.warn('partial LLM skip-detect batch — solo retry for missing rows', {
+                ok: llmItems.length - missingItems.length,
+                missing: missingItems.map((item) => item.id),
+              });
+              if (enqueueSplit) {
+                enqueueSoloSkipDetectRows(missingItems, rows, enqueueSplit);
+              }
+              return;
+            }
+            if (isLlmTimeoutError(err) && llmItems.length > 1) {
+              logVerify.warn('LLM skip-detect batch timeout — solo retry', {
+                chunkSize: llmItems.length,
+                itemIds: llmItems.map((item) => item.id),
+              });
+              if (enqueueSplit) {
+                enqueueSoloSkipDetectRows(llmItems, rows, enqueueSplit);
+              }
+              return;
+            }
+            throw err;
           }
         },
+        shouldSplit: (err) => isLlmSkipDetectMissingIdsError(err) || isLlmTimeoutError(err),
         onFailure: (failed, message) => {
           logVerify.warn('skip-detect LLM batch skipped after error', {
             modId: opts.modId,
@@ -288,9 +351,12 @@ export const runModSkipDetectPipeline = async (
     concurrency: workers,
     maxBufferedChunks: workers * 2,
     shouldAbort: shouldCancel,
-    runOnce: async (chunk, _helpers) => {
+    runOnce: async (chunk, { enqueueSplit }) => {
       if (shouldCancel?.()) return;
-      const candidates = await processChunk(chunk, opts);
+      if (useLlm && chunk.length === 1) {
+        logVerify.debug('solo LLM skip-detect request', { stringId: chunk[0]!.string_id });
+      }
+      const candidates = await processChunk(chunk, opts, enqueueSplit);
       scheduleChunkPersist({
         scannedIds: chunk.map((row) => row.string_id),
         candidates,

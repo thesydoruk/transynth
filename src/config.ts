@@ -124,16 +124,6 @@ export const CONFIG = {
   /** OpenAI SDK HTTP timeout per request in ms (env: LLM_REQUEST_TIMEOUT_SEC). */
   llmRequestTimeoutMs: parseLlmRequestTimeoutMs(process.env.LLM_REQUEST_TIMEOUT_SEC),
 
-  /** Per verify LLM call deadline in ms — abort and retry before the SDK timeout (env: LLM_VERIFY_TIMEOUT_SEC). */
-  llmVerifyRequestTimeoutMs: (() => {
-    const sdkMs = parseLlmRequestTimeoutMs(process.env.LLM_REQUEST_TIMEOUT_SEC);
-    const parsed = Number.parseInt(process.env.LLM_VERIFY_TIMEOUT_SEC ?? '', 10);
-    if (Number.isFinite(parsed) && parsed >= 1) {
-      return Math.min(parsed * 1000, sdkMs);
-    }
-    return Math.min(45_000, sdkMs);
-  })(),
-
   /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
   llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
 

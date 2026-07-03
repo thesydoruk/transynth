@@ -1,17 +1,30 @@
 /**
  * LLM audit — flags source strings that should not be translated.
  */
-import { CONFIG } from '../config';
-import { log } from '../logger';
 import { chatWithFallback } from './index';
 import { parseLlmJson } from './jsonParse';
 import { buildSkipDetectResponseFormat } from './responseSchemas';
 import type { ChatCompletionMeta } from './provider';
-import { isAbortError } from './retry';
 import type { GameType } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
 
 export type LlmSkipDetectVerdict = 'skip' | 'keep';
+
+/** Some ids parsed; others missing from the model JSON — caller may merge partial skip hits. */
+export class LlmSkipDetectMissingIdsError extends Error {
+  readonly missingIds: readonly number[];
+  readonly partialResults: readonly LlmSkipDetectItemResult[];
+
+  constructor(missingIds: number[], partialResults: LlmSkipDetectItemResult[]) {
+    super(`LLM skip-detect response missing item id=${missingIds[0]}`);
+    this.name = 'LlmSkipDetectMissingIdsError';
+    this.missingIds = missingIds;
+    this.partialResults = partialResults;
+  }
+}
+
+export const isLlmSkipDetectMissingIdsError = (err: unknown): err is LlmSkipDetectMissingIdsError =>
+  err instanceof LlmSkipDetectMissingIdsError;
 
 export interface LlmSkipDetectItem {
   id: number;
@@ -175,70 +188,6 @@ const parseSkipItemsFromRaw = (
   return byId;
 };
 
-const skipDetectBackoffMs = (attempt: number): number =>
-  Math.min(1000 * Math.pow(2, attempt) + Math.random() * 300, 30_000);
-
-type SkipDetectBatchOutcome = {
-  skip: LlmSkipDetectItemResult[];
-  missing: LlmSkipDetectItem[];
-  abandoned: boolean;
-};
-
-/**
- * Call LLM for one batch with retries/backoff. On persistent failure returns
- * `abandoned: true` (items treated as keep). On partial parse returns `missing`.
- */
-const auditSkipBatchWithRetry = async (
-  opts: LlmSkipDetectOptions,
-  items: LlmSkipDetectItem[],
-): Promise<SkipDetectBatchOutcome> => {
-  const maxAttempts = CONFIG.llmMaxAttempts;
-  let lastErr: unknown;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      const raw = await callSkipDetectLlm(opts, items, attempt + 1);
-      if (!raw.content.trim()) {
-        throw new Error('LLM returned empty response');
-      }
-
-      const expectedIds = items.map((item) => item.id);
-      const parsed = parseSkipItemsFromRaw(raw.content, expectedIds, raw.meta);
-      const skip: LlmSkipDetectItemResult[] = [];
-      const missing: LlmSkipDetectItem[] = [];
-
-      for (const item of items) {
-        const row = parsed.get(item.id);
-        if (!row) {
-          missing.push(item);
-          continue;
-        }
-        if (row.verdict === 'skip') skip.push(row);
-      }
-
-      return { skip, missing, abandoned: false };
-    } catch (err) {
-      if (isAbortError(err)) throw err;
-      lastErr = err;
-      if (attempt === maxAttempts - 1) break;
-      const message = err instanceof Error ? err.message : String(err);
-      log.warn(
-        `Skip-detect LLM retry ${attempt + 1}/${maxAttempts}: ${message} — waiting ${Math.round(skipDetectBackoffMs(attempt))}ms`,
-      );
-      await new Promise((r) => setTimeout(r, skipDetectBackoffMs(attempt)));
-    }
-  }
-
-  const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
-  log.warn('Skip-detect LLM batch abandoned after retries; treating items as keep', {
-    error: message,
-    itemCount: items.length,
-    itemIds: items.map((item) => item.id),
-  });
-
-  return { skip: [], missing: items, abandoned: true };
-};
-
 const callSkipDetectLlm = async (
   opts: LlmSkipDetectOptions,
   items: LlmSkipDetectItem[],
@@ -271,41 +220,34 @@ const callSkipDetectLlm = async (
   });
 };
 
-/** Run LLM non-translatable audit on a batch; returns only skip verdicts. */
+/** Run LLM non-translatable audit on one batch; returns only skip verdicts. */
 export const detectSkipCandidatesWithLlm = async (
   opts: LlmSkipDetectOptions,
 ): Promise<LlmSkipDetectItemResult[]> => {
   if (opts.items.length === 0) return [];
 
-  const skipResults: LlmSkipDetectItemResult[] = [];
-  let pending = opts.items;
-  let missingRounds = 0;
-  const maxMissingRounds = CONFIG.llmMaxAttempts;
-
-  while (pending.length > 0) {
-    const { skip, missing, abandoned } = await auditSkipBatchWithRetry(opts, pending);
-    skipResults.push(...skip);
-
-    if (abandoned) break;
-
-    if (missing.length === 0) break;
-
-    missingRounds++;
-    if (missingRounds >= maxMissingRounds) {
-      log.warn('Skip-detect unresolved after retries; treating as keep', {
-        count: missing.length,
-        itemIds: missing.map((item) => item.id),
-      });
-      break;
-    }
-
-    log.warn('Skip-detect LLM response missing some ids; retrying subset', {
-      missingCount: missing.length,
-      missingIds: missing.map((item) => item.id),
-      round: missingRounds,
-    });
-    pending = missing;
+  const raw = await callSkipDetectLlm(opts, opts.items, 1);
+  if (!raw.content.trim()) {
+    throw new Error('LLM returned empty response');
   }
 
-  return skipResults;
+  const expectedIds = opts.items.map((item) => item.id);
+  const parsed = parseSkipItemsFromRaw(raw.content, expectedIds, raw.meta);
+  const skip: LlmSkipDetectItemResult[] = [];
+  const missingIds: number[] = [];
+
+  for (const item of opts.items) {
+    const row = parsed.get(item.id);
+    if (!row) {
+      missingIds.push(item.id);
+      continue;
+    }
+    if (row.verdict === 'skip') skip.push(row);
+  }
+
+  if (missingIds.length > 0) {
+    throw new LlmSkipDetectMissingIdsError(missingIds, skip);
+  }
+
+  return skip;
 };

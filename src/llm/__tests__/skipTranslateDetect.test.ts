@@ -17,7 +17,8 @@ jest.unstable_mockModule('../index', () => ({
   chatWithFallback,
 }));
 
-const { detectSkipCandidatesWithLlm } = await import('../skipTranslateDetect');
+const { detectSkipCandidatesWithLlm, LlmSkipDetectMissingIdsError } =
+  await import('../skipTranslateDetect');
 
 describe('detectSkipCandidatesWithLlm', () => {
   beforeEach(() => {
@@ -71,72 +72,75 @@ describe('detectSkipCandidatesWithLlm', () => {
     expect(chatWithFallback).toHaveBeenCalledTimes(1);
   });
 
-  it('retries on invalid JSON then succeeds', async () => {
-    jest.useFakeTimers();
-    chatWithFallback
-      .mockResolvedValueOnce(chatResult('not json'))
-      .mockResolvedValueOnce(
-        chatResult(
-          JSON.stringify({ items: [{ id: 3, verdict: 'skip', reason: 'Code', confidence: 0.8 }] }),
-        ),
-      );
+  it('throws on invalid JSON', async () => {
+    chatWithFallback.mockResolvedValue(chatResult('not json'));
 
-    const promise = detectSkipCandidatesWithLlm({
-      ...baseOpts,
-      items: [
-        {
-          id: 3,
-          source: 'DEBUG_01',
-          grup: 'GMST',
-          edid: 'DEBUG_01',
-          field: 'DATA',
-          path: null,
-          context: null,
-        },
-      ],
-    });
-
-    await jest.runAllTimersAsync();
-    const results = await promise;
-
-    expect(results).toHaveLength(1);
-    expect(chatWithFallback).toHaveBeenCalledTimes(2);
-    jest.useRealTimers();
+    await expect(
+      detectSkipCandidatesWithLlm({
+        ...baseOpts,
+        items: [
+          {
+            id: 3,
+            source: 'DEBUG_01',
+            grup: 'GMST',
+            edid: 'DEBUG_01',
+            field: 'DATA',
+            path: null,
+            context: null,
+          },
+        ],
+      }),
+    ).rejects.toThrow();
+    expect(chatWithFallback).toHaveBeenCalledTimes(1);
   });
 
-  it('abandons batch after retries and returns partial results without throwing', async () => {
-    jest.useFakeTimers();
-    chatWithFallback.mockResolvedValue(chatResult('{{{invalid'));
+  it('throws LlmSkipDetectMissingIdsError when some ids are missing', async () => {
+    chatWithFallback.mockResolvedValue(
+      chatResult(
+        JSON.stringify({
+          items: [{ id: 4, verdict: 'skip', reason: 'Code', confidence: 0.8 }],
+        }),
+      ),
+    );
 
-    const promise = detectSkipCandidatesWithLlm({
-      ...baseOpts,
-      items: [
-        {
-          id: 4,
-          source: 'Keep me',
-          grup: 'INFO',
-          edid: null,
-          field: 'NAM1',
-          path: null,
-          context: null,
-        },
-        {
-          id: 5,
-          source: 'Also keep',
-          grup: 'INFO',
-          edid: null,
-          field: 'NAM1',
-          path: null,
-          context: null,
-        },
-      ],
+    await expect(
+      detectSkipCandidatesWithLlm({
+        ...baseOpts,
+        items: [
+          {
+            id: 4,
+            source: 'DEBUG_01',
+            grup: 'GMST',
+            edid: 'DEBUG_01',
+            field: 'DATA',
+            path: null,
+            context: null,
+          },
+          {
+            id: 5,
+            source: 'Also keep',
+            grup: 'INFO',
+            edid: null,
+            field: 'NAM1',
+            path: null,
+            context: null,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      name: 'LlmSkipDetectMissingIdsError',
+      missingIds: [5],
+      partialResults: [expect.objectContaining({ id: 4, verdict: 'skip' })],
     });
+    expect(chatWithFallback).toHaveBeenCalledTimes(1);
+  });
 
-    await jest.runAllTimersAsync();
-    const results = await promise;
-
-    expect(results).toEqual([]);
-    expect(chatWithFallback.mock.calls.length).toBeGreaterThanOrEqual(1);
-    jest.useRealTimers();
+  it('LlmSkipDetectMissingIdsError carries partial skip hits', () => {
+    const err = new LlmSkipDetectMissingIdsError(
+      [5],
+      [{ id: 4, verdict: 'skip', reason: 'Code', confidence: 0.8 }],
+    );
+    expect(err.partialResults).toHaveLength(1);
+    expect(err.missingIds).toEqual([5]);
   });
 });

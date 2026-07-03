@@ -11,7 +11,7 @@ import {
   type LlmTranslateItem,
 } from '../../llm/translate';
 import { isLlmTimeoutError } from '../../llm/retry';
-import { runLlmChunkWorkPool } from '../../llm/chunkRecovery';
+import { runLlmChunkWorkPool, enqueueSoloChunks } from '../../llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../../llm/requestPool';
 import {
   fetchReferenceExamplesBatch,
@@ -316,15 +316,6 @@ export const translateStringIdsBatch = async (
     return okRows;
   };
 
-  const enqueueSoloTranslateRows = (
-    entries: PreparedLlmItem[],
-    enqueueSplit: (parts: PreparedLlmItem[][]) => void,
-  ): void => {
-    for (const entry of entries) {
-      enqueueSplit([[entry]]);
-    }
-  };
-
   const translateChunkOnce = async (
     chunk: PreparedLlmItem[],
     ragByStringId: RagByStringId,
@@ -357,7 +348,7 @@ export const translateStringIdsBatch = async (
           ok: okEntries.length,
           missing: missingEntries.map((entry) => entry.stringId),
         });
-        enqueueSoloTranslateRows(missingEntries, enqueueSplit);
+        enqueueSoloChunks(missingEntries, enqueueSplit);
         return;
       }
       if (isLlmTimeoutError(err) && chunk.length > 1) {
@@ -365,7 +356,7 @@ export const translateStringIdsBatch = async (
           chunkSize: chunk.length,
           itemIds: chunk.map((entry) => entry.stringId),
         });
-        enqueueSoloTranslateRows(chunk, enqueueSplit);
+        enqueueSoloChunks(chunk, enqueueSplit);
         return;
       }
       throw err;

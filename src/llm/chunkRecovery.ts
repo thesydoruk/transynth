@@ -9,6 +9,7 @@
  */
 import { CONFIG } from '../config';
 import { isAbortError, isLlmTimeoutError } from './retry';
+import { isLlmSkipDetectMissingIdsError } from './skipTranslateDetect';
 import { isLlmTranslateMissingIdsError } from './translate';
 import { isLlmVerifyMissingIdsError } from './verifyTranslate';
 import { llmChatPipelineConcurrency } from './requestPool';
@@ -21,6 +22,21 @@ type ChunkWork<T> = { chunk: readonly T[]; attempt: number };
 
 export type LlmChunkRunOnceHelpers<T> = {
   enqueueSplit: (parts: readonly (readonly T[])[]) => void;
+};
+
+/** Re-queue each item as its own chunk (shared by translate, verify, skip-detect). */
+export const enqueueSoloChunks = <T>(
+  items: readonly T[],
+  enqueueSplit: (parts: readonly (readonly T[])[]) => void,
+): void => {
+  for (const item of items) {
+    enqueueSplit([[item]]);
+  }
+};
+
+const chunkItemId = (item: unknown): number | undefined => {
+  const row = item as { stringId?: number; string_id?: number; id?: number };
+  return row.stringId ?? row.string_id ?? row.id;
 };
 
 export type RunLlmChunkWithRecoveryOptions<T> = {
@@ -69,6 +85,7 @@ const chunkBackoffMs = (attempt: number): number =>
 const isMissingTranslationChunkError = (err: unknown): boolean =>
   isLlmTranslateMissingIdsError(err) ||
   isLlmVerifyMissingIdsError(err) ||
+  isLlmSkipDetectMissingIdsError(err) ||
   (err instanceof Error &&
     /LLM (?:response missing translation|verify response missing item) for id=\d+/.test(
       err.message,
@@ -334,7 +351,11 @@ export const runLlmChunkWithRecovery = async <T>(
       return;
     }
 
-    if (isLlmTranslateMissingIdsError(err) || isLlmVerifyMissingIdsError(err)) {
+    if (
+      isLlmTranslateMissingIdsError(err) ||
+      isLlmVerifyMissingIdsError(err) ||
+      isLlmSkipDetectMissingIdsError(err)
+    ) {
       log.warn(`${operation} chunk split to single rows (missing LLM items)`, {
         reason: message,
         chunkSize: chunk.length,
@@ -343,8 +364,7 @@ export const runLlmChunkWithRecovery = async <T>(
       });
       const missingSet = new Set(err.missingIds);
       const missingParts = chunk.filter((item) => {
-        const id =
-          (item as { stringId?: number }).stringId ?? (item as { string_id?: number }).string_id;
+        const id = chunkItemId(item);
         return typeof id === 'number' && missingSet.has(id);
       });
       await splitChunkParallel(

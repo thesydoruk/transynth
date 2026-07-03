@@ -21,7 +21,7 @@ import {
 import { getAllProjectSettings } from '../services/projectSettings';
 import { approveVerifiedTranslations, upsertTranslation } from '../data/queries';
 import { parseRecordLocation } from '../../utils/recordLocation';
-import { runLlmChunkWorkPoolFromFeed } from '../../llm/chunkRecovery';
+import { runLlmChunkWorkPoolFromFeed, enqueueSoloChunks } from '../../llm/chunkRecovery';
 import { withRequestDeadline } from '../../llm/requestDeadline';
 import { isLlmTimeoutError } from '../../llm/retry';
 import { llmChatPipelineConcurrency } from '../../llm/requestPool';
@@ -388,23 +388,20 @@ export const runModVerifyPipeline = async (
     const items = buildVerifyItems(llmChunk, ragByStringId);
 
     try {
-      const results = await withRequestDeadline(
-        CONFIG.llmVerifyRequestTimeoutMs,
-        opts.signal,
-        (signal) =>
-          verifyTranslationsWithLlm({
-            items,
-            model,
-            srcLang: opts.srcLang,
-            targetLang: opts.targetLang,
-            game: opts.game,
-            modName: opts.modName,
-            glossary: relevantGlossaryEntries(
-              glossaryAll,
-              llmChunk.map((row) => row.source),
-            ),
-            signal,
-          }),
+      const results = await withRequestDeadline(CONFIG.llmRequestTimeoutMs, opts.signal, (signal) =>
+        verifyTranslationsWithLlm({
+          items,
+          model,
+          srcLang: opts.srcLang,
+          targetLang: opts.targetLang,
+          game: opts.game,
+          modName: opts.modName,
+          glossary: relevantGlossaryEntries(
+            glossaryAll,
+            llmChunk.map((row) => row.source),
+          ),
+          signal,
+        }),
       );
 
       scheduleBatchPersist(buildBatchPersistJob(llmChunk, ragByStringId, results));
@@ -427,9 +424,7 @@ export const runModVerifyPipeline = async (
           ok: okRows.length,
           missing: missingRows.map((row) => row.string_id),
         });
-        for (const row of missingRows) {
-          enqueueSplit([[row]]);
-        }
+        enqueueSoloChunks(missingRows, enqueueSplit);
         return;
       }
       if (isLlmTimeoutError(err) && llmChunk.length > 1) {
@@ -437,9 +432,7 @@ export const runModVerifyPipeline = async (
           chunkSize: llmChunk.length,
           stringIds: llmChunk.map((row) => row.string_id),
         });
-        for (const row of llmChunk) {
-          enqueueSplit([[row]]);
-        }
+        enqueueSoloChunks(llmChunk, enqueueSplit);
         return;
       }
       throw err;
