@@ -66,11 +66,13 @@ const logIssue = (
   opts?: { separator?: boolean },
 ): void => {
   const loc = formatIssueLocation(issue);
-  const fixAction: VerifyFixAction = issue.fixRejected
-    ? { kind: 'reject_fix', suggestion: issue.suggestion ?? '', message: issue.fixRejected }
-    : issue.suggestion
-      ? { kind: 'apply', suggestion: issue.suggestion }
-      : { kind: 'flag_only' };
+  const fixAction: VerifyFixAction = issue.rewriteFromSource
+    ? { kind: 'rewrite_from_source' }
+    : issue.fixRejected
+      ? { kind: 'reject_fix', suggestion: issue.suggestion ?? '', message: issue.fixRejected }
+      : issue.suggestion
+        ? { kind: 'apply', suggestion: issue.suggestion }
+        : { kind: 'flag_only' };
   const prefix = formatVerifyIssuePrefix(dryRun, fixAction);
   const block = formatLogBlock(
     `${prefix} [${issue.verdict}] string_id=${issue.stringId} ${loc} (conf=${issue.confidence.toFixed(2)})`,

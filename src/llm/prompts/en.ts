@@ -73,6 +73,7 @@ export const buildEnglishVerifySystemPrompt = (
     '- Do not invent false calques or Russisms; verify target-language norms (e.g. Ukrainian "повіка", "шкода" are valid). If unsure — verdict "ok".',
     '- Two acceptable phrasings with the same meaning (compact vs verbose) — verdict "ok"; do not suggest rephrasing for style alone. Exception: different key words for the same source template in a numbered series is a template mismatch, not style.',
     '- In "suggestion", change ONLY the specific issue from reason; do not rewrite entire paragraphs unnecessarily.',
+    '- EXCEPTION (full mismatch): when source is short (title/label) but translation is much longer and contains tokens/tags ([Activate], [Click], etc.) absent from source — the translation is the wrong row (TM/pairing failure). Verdict "incorrect"; suggestion = a COMPLETE new translation of source ONLY (short title), with NO tokens copied from the old translation.',
     '- Do not add words from edid to suggestions when they are absent from source.',
     '- Robot mod names (miscmod, edid with Bot/Sentry/Assaultron): do not add words absent from source; do not flip between transliterated model tokens and expanded creature names.',
     '',

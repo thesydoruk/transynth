@@ -27,6 +27,8 @@ export type LlmVerifyIssue = {
   suggestion: string | null;
   /** Set when a fix was attempted but rejected by {@link validateVerifySuggestion}. */
   fixRejected?: string | null;
+  /** Full mismatch — translation will be replaced by a fresh translate of source. */
+  rewriteFromSource?: boolean;
 };
 
 /** One row in the auto-approve action log streamed during verification. */

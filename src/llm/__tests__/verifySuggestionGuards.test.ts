@@ -1,7 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
 import {
+  isFullTranslationMismatch,
   reconcileVerifyResult,
   resolveVerifyFixAction,
+  shouldRewriteFromSource,
   validateVerifySuggestion,
 } from '../verifySuggestionGuards';
 import type { LlmVerifyItem } from '../verifyTranslate';
@@ -86,6 +88,52 @@ describe('resolveVerifyFixAction', () => {
     };
     const action = resolveVerifyFixAction(item, 'incorrect', 'Обробник шару — 4', true, 'fo4');
     expect(action.kind).toBe('apply');
+  });
+
+  it('rewrites from source on full mismatch with null suggestion', () => {
+    const item: LlmVerifyItem = {
+      id: 9,
+      source: 'Controls',
+      translation: 'Керування персонажем: [Activate] — взаємодія, [Click] — вибір у меню.',
+      grup: 'MESG',
+      field: 'ITXT',
+      edid: 'HelpControls',
+      context: null,
+    };
+    expect(isFullTranslationMismatch(item, 'fo4')).toBe(true);
+    expect(shouldRewriteFromSource(item, 'incorrect', null, false, 'fo4')).toBe(true);
+    expect(resolveVerifyFixAction(item, 'incorrect', null, false, 'fo4').kind).toBe(
+      'rewrite_from_source',
+    );
+  });
+
+  it('rewrites from source when suggestion copies alien tokens', () => {
+    const item: LlmVerifyItem = {
+      id: 10,
+      source: 'Perks',
+      translation: 'Перки: [Activate] відкриває меню, [Accept] підтверджує вибір.',
+      grup: 'MESG',
+      field: 'ITXT',
+      edid: 'HelpPerks',
+      context: null,
+    };
+    const badSuggestion = 'Перки: [Activate] відкриває меню, [Accept] підтверджує вибір.';
+    expect(resolveVerifyFixAction(item, 'incorrect', badSuggestion, false, 'fo4').kind).toBe(
+      'rewrite_from_source',
+    );
+  });
+
+  it('applies short valid suggestion on full mismatch', () => {
+    const item: LlmVerifyItem = {
+      id: 11,
+      source: 'Controls',
+      translation: 'Керування персонажем: [Activate] — взаємодія, [Click] — вибір у меню.',
+      grup: 'MESG',
+      field: 'ITXT',
+      edid: 'HelpControls',
+      context: null,
+    };
+    expect(resolveVerifyFixAction(item, 'incorrect', 'Керування', false, 'fo4').kind).toBe('apply');
   });
 });
 

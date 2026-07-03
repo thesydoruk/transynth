@@ -6,6 +6,7 @@ import type { Tx } from '../../db';
 import { CONFIG, getTranslateModel } from '../../config';
 import { filterVerifyReferenceExamples } from '../../llm/verifyReferenceExamples';
 import { resolveVerifyFixAction } from '../../llm/verifySuggestionGuards';
+import { rewriteVerifyTranslationsFromSource } from '../../llm/verifySourceRewrite';
 import {
   verifyTranslationsWithLlm,
   isLlmVerifyMissingIdsError,
@@ -93,6 +94,7 @@ export type VerifyPipelineSummary = {
 type VerifyBatchPersistJob = {
   okStringIds: number[];
   fixes: Array<{ stringId: number; text: string; row: VerifyStringRow }>;
+  rewrites: Array<{ item: LlmVerifyItem; row: VerifyStringRow }>;
   issues: LlmVerifyIssue[];
   rowById: Map<number, VerifyStringRow>;
   progressRows: Array<{
@@ -218,6 +220,7 @@ export const runModVerifyPipeline = async (
     const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
     const okStringIds: number[] = [];
     const fixes: VerifyBatchPersistJob['fixes'] = [];
+    const rewrites: VerifyBatchPersistJob['rewrites'] = [];
     const issues: LlmVerifyIssue[] = [];
     const progressRows: VerifyBatchPersistJob['progressRows'] = [];
 
@@ -262,6 +265,7 @@ export const runModVerifyPipeline = async (
         confidence: result.confidence,
         suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : result.suggestion,
         fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
+        rewriteFromSource: fixAction.kind === 'rewrite_from_source',
       };
 
       issues.push(issue);
@@ -269,6 +273,8 @@ export const runModVerifyPipeline = async (
 
       if (!dryRun && fixAction.kind === 'apply') {
         fixes.push({ stringId: result.id, text: fixAction.suggestion, row });
+      } else if (!dryRun && fixAction.kind === 'rewrite_from_source') {
+        rewrites.push({ item: itemForValidation, row });
       } else if (!dryRun && fixAction.kind === 'reject_fix') {
         logVerify.warn('verify fix skipped — suggestion failed validation', {
           modId: opts.modId,
@@ -288,7 +294,7 @@ export const runModVerifyPipeline = async (
       });
     }
 
-    return { okStringIds, fixes, issues, rowById, progressRows };
+    return { okStringIds, fixes, rewrites, issues, rowById, progressRows };
   };
 
   const scheduleBatchPersist = (job: VerifyBatchPersistJob): void => {
@@ -297,6 +303,52 @@ export const runModVerifyPipeline = async (
         const approvedIds = new Set<number>();
 
         if (!dryRun) {
+          if (job.rewrites.length > 0) {
+            const rewriteRowById = new Map(job.rewrites.map((entry) => [entry.item.id, entry.row]));
+            try {
+              const rewritten = await rewriteVerifyTranslationsFromSource({
+                items: job.rewrites.map((entry) => entry.item),
+                model,
+                srcLang: opts.srcLang,
+                targetLang: opts.targetLang,
+                game: opts.game,
+                modName: opts.modName,
+                signal: opts.signal,
+              });
+              for (const row of rewritten) {
+                const sourceRow = rewriteRowById.get(row.id);
+                if (!sourceRow) continue;
+                try {
+                  await upsertTranslation(db, row.id, row.text, 'auto', opts.targetLang);
+                  fixed++;
+                  logAction(sourceRow, 'fixed', row.text);
+                } catch (err) {
+                  errors++;
+                  logVerify.warn('verify source rewrite persist failed', {
+                    modId: opts.modId,
+                    stringId: row.id,
+                    error: err instanceof Error ? err.message : String(err),
+                  });
+                }
+              }
+              const rewrittenIds = new Set(rewritten.map((row) => row.id));
+              for (const { item } of job.rewrites) {
+                if (rewrittenIds.has(item.id)) continue;
+                logVerify.warn('verify source rewrite produced no valid translation', {
+                  modId: opts.modId,
+                  stringId: item.id,
+                });
+              }
+            } catch (err) {
+              errors += job.rewrites.length;
+              logVerify.warn('verify source rewrite batch failed', {
+                modId: opts.modId,
+                stringIds: job.rewrites.map((entry) => entry.item.id),
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+
           for (const fix of job.fixes) {
             try {
               await upsertTranslation(db, fix.stringId, fix.text, 'auto', opts.targetLang);

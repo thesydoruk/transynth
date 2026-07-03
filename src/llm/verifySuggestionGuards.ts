@@ -3,7 +3,11 @@
  * Verdict quality is delegated to the LLM; only token safety and noop are checked here.
  */
 import type { GameType } from '../types';
-import { compareProtectedTokens, type ProtectedTokenContext } from '../utils/placeholders';
+import {
+  compareProtectedTokens,
+  extractProtectedTokens,
+  type ProtectedTokenContext,
+} from '../utils/placeholders';
 import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './verifyTranslate';
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
@@ -18,6 +22,47 @@ const tokenContextFromItem = (item: LlmVerifyItem): ProtectedTokenContext => ({
   grup: item.grup,
   field: item.field,
 });
+
+/** Short source paired with a much longer translation that contains alien protected tokens. */
+export const isFullTranslationMismatch = (
+  item: LlmVerifyItem,
+  game?: GameType | string | null,
+): boolean => {
+  const ctx = tokenContextFromItem(item);
+  if (compareProtectedTokens(item.source, item.translation, game as GameType | undefined, ctx).ok) {
+    return false;
+  }
+
+  const srcTokens = extractProtectedTokens(item.source, game as GameType | undefined, ctx);
+  const trTokens = extractProtectedTokens(item.translation, game as GameType | undefined, ctx);
+  const srcSet = new Set(srcTokens);
+  const extraInTranslation = trTokens.some((token) => !srcSet.has(token));
+  if (!extraInTranslation) return false;
+
+  const srcLen = item.source.trim().length;
+  const trLen = item.translation.trim().length;
+  if (srcTokens.length === 0) return true;
+  return srcLen <= 48 && trLen >= srcLen * 4;
+};
+
+const wantsVerifyFix = (verdict: LlmVerifyVerdict, fixSuspicious: boolean): boolean =>
+  verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious);
+
+/** Re-translate source from scratch instead of editing a wrongly attached long translation. */
+export const shouldRewriteFromSource = (
+  item: LlmVerifyItem,
+  verdict: LlmVerifyVerdict,
+  suggestion: string | null,
+  fixSuspicious: boolean,
+  game?: GameType | string | null,
+): boolean => {
+  if (!isFullTranslationMismatch(item, game) || !wantsVerifyFix(verdict, fixSuspicious)) {
+    return false;
+  }
+  if (!suggestion) return true;
+  const check = validateVerifySuggestion(item, suggestion, game);
+  return !check.ok && check.reason === 'token_mismatch';
+};
 
 export const validateVerifySuggestion = (
   item: LlmVerifyItem,
@@ -49,7 +94,8 @@ export type VerifyFixAction =
   | { kind: 'none' }
   | { kind: 'flag_only' }
   | { kind: 'apply'; suggestion: string }
-  | { kind: 'reject_fix'; suggestion: string; message: string };
+  | { kind: 'reject_fix'; suggestion: string; message: string }
+  | { kind: 'rewrite_from_source' };
 
 /** Decide whether an LLM suggestion should be auto-applied. */
 export const resolveVerifyFixAction = (
@@ -60,6 +106,10 @@ export const resolveVerifyFixAction = (
   _game?: GameType | string | null,
 ): VerifyFixAction => {
   if (verdict === 'ok') return { kind: 'none' };
+
+  if (shouldRewriteFromSource(item, verdict, suggestion, fixSuspicious, _game)) {
+    return { kind: 'rewrite_from_source' };
+  }
 
   const wantsFix =
     !!suggestion && (verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious));
@@ -79,6 +129,8 @@ export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction
       return dryRun ? 'Would fix' : 'Fixed';
     case 'reject_fix':
       return dryRun ? 'Would flag (fix rejected)' : 'Flagged (fix rejected)';
+    case 'rewrite_from_source':
+      return dryRun ? 'Would rewrite from source' : 'Rewrote from source';
     case 'flag_only':
       return dryRun ? 'Would flag' : 'Flagged';
     default:
