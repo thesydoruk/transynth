@@ -46,8 +46,9 @@ export const englishVerifyCommonRules = (targetLang: string): string[] => [
   '- Avoid calques and awkward literal translations.',
   '',
   '### TEMPLATE CONSISTENCY (VERIFY):',
+  '- Apply series templates ONLY when translation already matches the same source; otherwise treat as pairing mismatch → "incorrect", not "suspicious".',
   '- When reference_examples show an established template for the same source skeleton (identical words, numbers only differ) in the same grup/field, the translation must follow it.',
-  '- Different key words for the same English term in a series (e.g. two renderings of "Handle"; different separator before the number) is a template mismatch, NOT stylistic preference → verdict "suspicious" with a suggestion matching the canonical reference template.',
+  '- Different key words for the same English term in a series (e.g. two renderings of "Handle"; different separator before the number) is a template mismatch, NOT stylistic preference → verdict "suspicious" with a suggestion built from translating source using the canonical batch/reference template for the same source skeleton.',
   '- When several items in one batch belong to the same series, align them the same way as in translate.',
   '',
   '### TERMINOLOGY AND ESP/ESM CONTEXT (VERIFY):',
@@ -55,6 +56,6 @@ export const englishVerifyCommonRules = (targetLang: string): string[] => [
   '- Faction nouns vs adjectives in gear names — follow game-specific rules; quoted faction name inside an item label may be "suspicious".',
   '- "Gunners" (plural, faction) → faction name; singular "Gunner" (one person) → member term, NOT the plural faction name.',
   '- Glossary "Sentry Bot" is for creature/dialogue references; model token "Sentry" in item names/edid — transliterate, do not expand to a creature name in item labels.',
-  '- reference_examples: align terminology and series templates. Do not copy a template from a different grup/field or a different source structure.',
+  '- reference_examples: align terminology and series templates only when the example source skeleton matches the current source. Do not copy a template from a different grup/field, source structure, or edid faction. Ignore examples that contradict source.',
   '- Metadata (grup, field, edid): context only; do not copy edid into the translation.',
 ];
