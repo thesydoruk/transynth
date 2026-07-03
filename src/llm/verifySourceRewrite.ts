@@ -6,7 +6,7 @@ import { normalizeAutoTranslationDashes } from '../utils/textNorm';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
-import { validateVerifySuggestion } from './verifySuggestionGuards';
+import { validateRewrittenTranslation } from './verifySuggestionGuards';
 
 export type VerifySourceRewriteOpts = {
   items: LlmVerifyItem[];
@@ -74,7 +74,7 @@ export const rewriteVerifyTranslationsFromSource = async (
     const text = normalizeAutoTranslationDashes(
       unmask(unmask(row.translation, masks.functionKeywordMap), masks.placeholderMap),
     );
-    const check = validateVerifySuggestion(item, text, opts.game);
+    const check = validateRewrittenTranslation(item, text, opts.game);
     if (!check.ok) continue;
     ok.push({ id: row.id, text });
   }

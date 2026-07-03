@@ -72,8 +72,12 @@ export const buildEnglishVerifySystemPrompt = (
     '- If suggestion equals translation — verdict MUST be "ok", suggestion null.',
     '- Do not invent false calques or Russisms; verify target-language norms (e.g. Ukrainian "повіка", "шкода" are valid). If unsure — verdict "ok".',
     '- Two acceptable phrasings with the same meaning (compact vs verbose) — verdict "ok"; do not suggest rephrasing for style alone. Exception: different key words for the same source template in a numbered series is a template mismatch, not style.',
-    '- In "suggestion", change ONLY the specific issue from reason; do not rewrite entire paragraphs unnecessarily.',
-    '- EXCEPTION (full mismatch): when source is short (title/label) but translation is much longer and contains tokens/tags ([Activate], [Click], etc.) absent from source — the translation is the wrong row (TM/pairing failure). Verdict "incorrect"; suggestion = a COMPLETE new translation of source ONLY (short title), with NO tokens copied from the old translation.',
+    '- In "suggestion", change ONLY the specific issue from reason; do not rewrite entire paragraphs unnecessarily. This applies to verdict "suspicious" only.',
+    '- For verdict "incorrect", "suggestion" MUST always be null — the system retranslates source from scratch; do not patch the current translation.',
+    '- NEVER put a verify JSON object (id, verdict, reason, confidence) in "suggestion". Only plain translated text or null.',
+    '- NEVER truncate "suggestion" with "..." — provide the full corrected text or null.',
+    '- For multi-line source (multiple paragraphs/lines), "suggestion" MUST be null; describe the issue in reason and let the system retranslate.',
+    '- EXCEPTION (full mismatch): when source is short (title/label) but translation is much longer and contains tokens/tags ([Activate], [Click], etc.) absent from source — the translation is the wrong row (TM/pairing failure). Verdict "incorrect"; suggestion null.',
     '- Do not add words from edid to suggestions when they are absent from source.',
     '- Robot mod names (miscmod, edid with Bot/Sentry/Assaultron): do not add words absent from source; do not flip between transliterated model tokens and expanded creature names.',
     '',
@@ -91,9 +95,9 @@ export const buildEnglishVerifySystemPrompt = (
       targetLang +
       '. Avoid vague praise like "Good translation". State WHY it is good or WHAT is wrong (e.g. "Broken token ¤PH0¤", "Calque from source language", "Accurate military tone").',
     '- "confidence": your expert confidence from 0.0 to 1.0.',
-    '- "suggestion": if verdict is "ok" -> strictly null. If "suspicious" or "incorrect" -> provide a fix that addresses the SPECIFIC problem in reason; preserve all technical tokens from source. If unsure — null and verdict "ok".',
+    '- "suggestion": if verdict is "ok" or "incorrect" -> strictly null. If "suspicious" -> provide a fix that addresses the SPECIFIC problem in reason; preserve all technical tokens from source. If unsure — null and verdict "ok".',
     '',
     '### RESPONSE FORMAT:',
-    '{"items":[{"id":1,"verdict":"ok","reason":"Accurate translation; dialogue tone preserved.","confidence":1.0,"suggestion":null},{"id":2,"verdict":"incorrect","reason":"Critical error: broken ¤PH0¤ token syntax.","confidence":0.95,"suggestion":"Listen up, ¤PH0¤, we have a problem."}]}',
+    '{"items":[{"id":1,"verdict":"ok","reason":"Accurate translation; dialogue tone preserved.","confidence":1.0,"suggestion":null},{"id":2,"verdict":"incorrect","reason":"Critical error: broken ¤PH0¤ token syntax.","confidence":0.95,"suggestion":null}]}',
   ].join('\n');
 };

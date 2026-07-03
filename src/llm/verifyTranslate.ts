@@ -13,7 +13,11 @@ import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
 import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
-import { reconcileVerifyResult } from './verifySuggestionGuards';
+import {
+  reconcileVerifyResult,
+  parseVerifySuggestionValue,
+  applyCorruptedTranslationGuard,
+} from './verifySuggestionGuards';
 import type { LlmGlossaryEntry } from './translate';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
@@ -123,7 +127,8 @@ export const finalizeVerifyItemResults = (
     const item = itemById.get(result.id);
     if (!item) return result;
     const guarded = applyPlaceholderGuardToVerifyResult(item, result, game);
-    return reconcileVerifyResult(item, guarded);
+    const cleaned = applyCorruptedTranslationGuard(item, guarded);
+    return reconcileVerifyResult(item, cleaned);
   });
 };
 
@@ -209,12 +214,8 @@ const parseVerdict = (value: unknown): LlmVerifyVerdict => {
   return 'suspicious';
 };
 
-const parseSuggestion = (value: unknown, verdict: LlmVerifyVerdict): string | null => {
-  if (verdict === 'ok') return null;
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed || null;
-};
+const parseSuggestion = (value: unknown, verdict: LlmVerifyVerdict): string | null =>
+  parseVerifySuggestionValue(value, verdict);
 
 /** Accept integer ids returned as JSON numbers or numeric strings. */
 export const parseVerifyItemId = (value: unknown): number | null => {

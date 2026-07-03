@@ -12,11 +12,55 @@ import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './ver
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
 
-export type SuggestionRejectReason = 'token_mismatch' | 'noop';
+export type SuggestionRejectReason = 'token_mismatch' | 'noop' | 'json_artifact' | 'truncated';
 
 export type VerifySuggestionValidation =
   | { ok: true }
   | { ok: false; reason: SuggestionRejectReason; message: string };
+
+/** True when text looks like a raw verify item JSON object echoed into suggestion. */
+export const looksLikeVerifyJsonArtifact = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    return typeof parsed.verdict === 'string' && parsed.id != null;
+  } catch {
+    return /^\{\s*"id"\s*:\s*\d+/.test(trimmed) && /"verdict"\s*:/.test(trimmed);
+  }
+};
+
+/** True when the model truncated a multi-line rewrite with an ellipsis. */
+export const looksLikeTruncatedSuggestion = (text: string): boolean => /\.\.\./.test(text);
+
+/** Unwrap nested verify JSON artifacts; returns null when nothing usable remains. */
+export const normalizeVerifySuggestionText = (value: string): string | null => {
+  let text = value.trim();
+  if (!text) return null;
+
+  if (looksLikeVerifyJsonArtifact(text)) {
+    try {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      if (typeof parsed.suggestion !== 'string') return null;
+      text = parsed.suggestion.trim();
+      if (!text) return null;
+    } catch {
+      return null;
+    }
+  }
+
+  return text;
+};
+
+/** Parse suggestion from a verify LLM row. */
+export const parseVerifySuggestionValue = (
+  value: unknown,
+  verdict: LlmVerifyVerdict,
+): string | null => {
+  if (verdict === 'ok') return null;
+  if (typeof value !== 'string') return null;
+  return normalizeVerifySuggestionText(value);
+};
 
 const tokenContextFromItem = (item: LlmVerifyItem): ProtectedTokenContext => ({
   grup: item.grup,
@@ -45,23 +89,71 @@ export const isFullTranslationMismatch = (
   return srcLen <= 48 && trLen >= srcLen * 4;
 };
 
-const wantsVerifyFix = (verdict: LlmVerifyVerdict, fixSuspicious: boolean): boolean =>
-  verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious);
+const isMultiLineSource = (source: string): boolean => /\r?\n/.test(source.trim());
 
-/** Re-translate source from scratch instead of editing a wrongly attached long translation. */
+/** Translation field polluted with a verify JSON object (often truncated). */
+export const isCorruptedVerifyTranslation = (translation: string): boolean =>
+  looksLikeVerifyJsonArtifact(translation);
+
+/** Validate text produced by verify source rewrite (not a patch suggestion). */
+export const validateRewrittenTranslation = (
+  item: LlmVerifyItem,
+  text: string,
+  game?: GameType | string | null,
+): VerifySuggestionValidation => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { ok: false, reason: 'noop', message: 'Empty rewritten translation.' };
+  }
+  if (looksLikeVerifyJsonArtifact(trimmed)) {
+    return {
+      ok: false,
+      reason: 'json_artifact',
+      message: 'Rewritten translation is a verify JSON object.',
+    };
+  }
+  if (looksLikeTruncatedSuggestion(trimmed)) {
+    return {
+      ok: false,
+      reason: 'truncated',
+      message: 'Rewritten translation contains ellipsis truncation.',
+    };
+  }
+
+  const tokenCheck = compareProtectedTokens(
+    item.source,
+    trimmed,
+    game as GameType | undefined,
+    tokenContextFromItem(item),
+  );
+  if (!tokenCheck.ok) {
+    return { ok: false, reason: 'token_mismatch', message: tokenCheck.message };
+  }
+
+  if (
+    !isCorruptedVerifyTranslation(item.translation) &&
+    normalizeForCompare(trimmed) === normalizeForCompare(item.translation)
+  ) {
+    return { ok: false, reason: 'noop', message: 'Rewrite unchanged translation.' };
+  }
+
+  return { ok: true };
+};
+
+/** Re-translate source from scratch instead of patching an incorrect translation. */
 export const shouldRewriteFromSource = (
   item: LlmVerifyItem,
   verdict: LlmVerifyVerdict,
   suggestion: string | null,
   fixSuspicious: boolean,
-  game?: GameType | string | null,
+  _game?: GameType | string | null,
 ): boolean => {
-  if (!isFullTranslationMismatch(item, game) || !wantsVerifyFix(verdict, fixSuspicious)) {
-    return false;
+  if (isCorruptedVerifyTranslation(item.translation)) return true;
+  if (verdict === 'incorrect') return true;
+  if (verdict === 'suspicious' && fixSuspicious && !suggestion && isMultiLineSource(item.source)) {
+    return true;
   }
-  if (!suggestion) return true;
-  const check = validateVerifySuggestion(item, suggestion, game);
-  return !check.ok && check.reason === 'token_mismatch';
+  return false;
 };
 
 export const validateVerifySuggestion = (
@@ -69,6 +161,22 @@ export const validateVerifySuggestion = (
   suggestion: string,
   game?: GameType | string | null,
 ): VerifySuggestionValidation => {
+  if (looksLikeVerifyJsonArtifact(suggestion)) {
+    return {
+      ok: false,
+      reason: 'json_artifact',
+      message: 'Suggestion is a verify JSON object, not translated text.',
+    };
+  }
+
+  if (looksLikeTruncatedSuggestion(suggestion)) {
+    return {
+      ok: false,
+      reason: 'truncated',
+      message: 'Suggestion contains ellipsis truncation.',
+    };
+  }
+
   const tokenCheck = compareProtectedTokens(
     item.source,
     suggestion,
@@ -105,18 +213,28 @@ export const resolveVerifyFixAction = (
   fixSuspicious: boolean,
   _game?: GameType | string | null,
 ): VerifyFixAction => {
+  if (isCorruptedVerifyTranslation(item.translation)) {
+    return { kind: 'rewrite_from_source' };
+  }
   if (verdict === 'ok') return { kind: 'none' };
 
   if (shouldRewriteFromSource(item, verdict, suggestion, fixSuspicious, _game)) {
     return { kind: 'rewrite_from_source' };
   }
 
-  const wantsFix =
-    !!suggestion && (verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious));
+  const wantsFix = !!suggestion && verdict === 'suspicious' && fixSuspicious;
   if (!wantsFix) return { kind: 'flag_only' };
 
   const check = validateVerifySuggestion(item, suggestion, _game);
   if (!check.ok) {
+    if (
+      check.reason === 'json_artifact' ||
+      check.reason === 'truncated' ||
+      check.reason === 'token_mismatch' ||
+      (check.reason === 'noop' && isCorruptedVerifyTranslation(item.translation))
+    ) {
+      return { kind: 'rewrite_from_source' };
+    }
     return { kind: 'reject_fix', suggestion, message: check.message };
   }
 
@@ -136,6 +254,23 @@ export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction
     default:
       return dryRun ? 'Would flag' : 'Flagged';
   }
+};
+
+/** Upgrade corrupted translations saved as verify JSON blobs. */
+export const applyCorruptedTranslationGuard = (
+  item: LlmVerifyItem,
+  result: LlmVerifyItemResult,
+): LlmVerifyItemResult => {
+  if (!isCorruptedVerifyTranslation(item.translation)) return result;
+  if (result.verdict === 'incorrect' && !result.suggestion) return result;
+
+  return {
+    id: result.id,
+    verdict: 'incorrect',
+    reason: `${result.reason} (Translation field contains verify JSON artifact.)`,
+    confidence: Math.max(result.confidence, 0.99),
+    suggestion: null,
+  };
 };
 
 /** Resolve LLM contradictions before applying a fix. */
