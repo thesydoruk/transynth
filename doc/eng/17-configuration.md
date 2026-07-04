@@ -79,6 +79,8 @@ LLM_FALLBACK=none
 VLLM_BASE_URL=http://localhost:8000
 VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
 # VLLM_API_KEY=
+# Optional: multiple identical vLLM servers (JSON array). Per-server limits override LLM_MAX_PARALLEL.
+# VLLM_SERVERS=[{"host":"http://localhost:8000","maxParallel":4,"apiKey":""},{"host":"http://localhost:8001","maxParallel":2,"apiKey":"secret"}]
 # VLLM_EMBED_MODEL=
 
 # --- OpenAI (only if LLM_PROVIDER=openai) ---
@@ -140,13 +142,20 @@ You do not need to set it manually when running the full stack with `docker comp
 | `OPENAI_API_KEY`         | _(required for OpenAI)_  | Your OpenAI API key                                                   |
 | `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | OpenAI model used for translation                                     |
 | `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | OpenAI model used for embeddings                                      |
-| `VLLM_BASE_URL`          | `http://localhost:8000`  | vLLM / OpenAI-compatible API endpoint                                 |
+| `VLLM_BASE_URL`          | `http://localhost:8000`  | vLLM / OpenAI-compatible API endpoint (legacy single-server mode)     |
+| `VLLM_SERVERS`           | _(optional)_             | JSON array of chat servers: `[{host, maxParallel, apiKey}, …]`        |
 | `VLLM_API_KEY`           | _(optional)_             | API key when the inference server requires authentication             |
+| `LLM_MAX_PARALLEL`       | `2`                      | Max concurrent chat requests (single-server mode only)                |
 | `VLLM_MODEL`             | _(required for vLLM)_    | Model name served by vLLM, e.g. `meta-llama/Meta-Llama-3-8B-Instruct` |
 | `VLLM_EMBED_MODEL`       | _(optional)_             | Separate embedding model; defaults to `VLLM_MODEL`                    |
 
 > Note: temperature, max tokens, and retry count are not configurable via
 > environment variables. The backend uses provider defaults.
+>
+> When `VLLM_SERVERS` is set, chat requests are load-balanced across the listed
+> hosts. Each entry needs `host`, `maxParallel`, and `apiKey`. Total chat concurrency
+> is the sum of per-server limits; `LLM_MAX_PARALLEL` is ignored in that mode.
+> Embeddings still use `VLLM_EMBED_BASE_URL` or the first server host.
 
 ---
 

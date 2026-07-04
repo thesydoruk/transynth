@@ -37,6 +37,8 @@ export interface ChatOptions {
   signal?: AbortSignal;
   /** Override completion token budget (defaults to {@link CONFIG.llmMaxTokens}). */
   maxTokens?: number;
+  /** @internal Injected by multi-server vLLM chat pool. */
+  _vllmHttpClient?: import('openai').default;
   logMeta?: {
     operation: string;
     context?: Record<string, unknown>;

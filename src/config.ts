@@ -2,6 +2,12 @@ import './loadEnv';
 import { resolveDatabaseUrl } from './databaseUrl';
 import { log } from './logger';
 import { resolveChampollionPath } from './champollionPath';
+import {
+  parseVllmServersJson,
+  resolveVllmServers,
+  totalVllmChatParallel,
+  type VllmServerEntry,
+} from './llm/vllmServerConfig';
 
 export type LLMProviderName = 'vllm' | 'openai';
 
@@ -69,6 +75,17 @@ const resolveDbChunkSize = (): number => {
   return 5000;
 };
 
+const legacyLlmMaxParallel = parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2);
+
+const vllmServersFromEnv = resolveVllmServers({
+  serversJson: process.env.VLLM_SERVERS,
+  baseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
+  apiKey: process.env.VLLM_API_KEY || '',
+  maxParallel: legacyLlmMaxParallel,
+});
+
+const vllmMultiServer = parseVllmServersJson(process.env.VLLM_SERVERS) != null;
+
 export const CONFIG = {
   llmProvider: (process.env.LLM_PROVIDER || 'vllm') as LLMProviderName,
   llmFallback: (process.env.LLM_FALLBACK || 'none') as LLMProviderName | 'none',
@@ -77,9 +94,16 @@ export const CONFIG = {
   vllmBaseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
   vllmApiKey: process.env.VLLM_API_KEY || '',
   vllmModel: process.env.VLLM_MODEL || '',
-  /** Embeddings may run on a separate OpenAI-compatible server (defaults to VLLM_BASE_URL). */
+  /** Chat endpoints — from `VLLM_SERVERS` JSON or legacy single `VLLM_BASE_URL`. */
+  vllmServers: vllmServersFromEnv as VllmServerEntry[],
+  /** True when `VLLM_SERVERS` JSON is set (multi-endpoint routing). */
+  vllmMultiServer,
+  /** Embeddings may run on a separate OpenAI-compatible server (defaults to first chat host). */
   vllmEmbedBaseUrl:
-    process.env.VLLM_EMBED_BASE_URL || process.env.VLLM_BASE_URL || 'http://localhost:8000',
+    process.env.VLLM_EMBED_BASE_URL ||
+    process.env.VLLM_BASE_URL ||
+    vllmServersFromEnv[0]?.host ||
+    'http://localhost:8000',
   vllmEmbedModel: process.env.VLLM_EMBED_MODEL || 'Snowflake/snowflake-arctic-embed-l-v2.0',
 
   // OpenAI
@@ -124,8 +148,10 @@ export const CONFIG = {
   /** OpenAI SDK HTTP timeout per request in ms (env: LLM_REQUEST_TIMEOUT_SEC). */
   llmRequestTimeoutMs: parseLlmRequestTimeoutMs(process.env.LLM_REQUEST_TIMEOUT_SEC),
 
-  /** Max concurrent chat/translate LLM HTTP requests (global semaphore). */
-  llmMaxParallel: parseMaxParallel(process.env.LLM_MAX_PARALLEL, 2),
+  /** Max concurrent chat/translate LLM HTTP requests (sum of per-server limits). */
+  llmMaxParallel: vllmMultiServer
+    ? totalVllmChatParallel(vllmServersFromEnv)
+    : legacyLlmMaxParallel,
 
   /** Starting chat temperature for the first LLM request in a process (env: LLM_TEMPERATURE). */
   llmTemperature: parseTemperature(process.env.LLM_TEMPERATURE, 0.7),
@@ -202,7 +228,7 @@ export const getEmbedModel = (): string => {
 /** Fail-fast validation — call at CLI entry points. */
 export const validateConfig = (): void => {
   log.info(
-    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, embedMaxParallel=${CONFIG.embedMaxParallel}, llmMaxTokens=${CONFIG.llmMaxTokens}, llmRequestTimeoutSec=${CONFIG.llmRequestTimeoutMs / 1000}`,
+    `Config: provider=${CONFIG.llmProvider}, fallback=${CONFIG.llmFallback}, batchSize=${CONFIG.batchSize}, llmMaxParallel=${CONFIG.llmMaxParallel}, vllmServers=${CONFIG.vllmServers.length}, embedMaxParallel=${CONFIG.embedMaxParallel}, llmMaxTokens=${CONFIG.llmMaxTokens}, llmRequestTimeoutSec=${CONFIG.llmRequestTimeoutMs / 1000}`,
   );
   if (CONFIG.llmProvider === 'openai') {
     if (!CONFIG.openaiApiKey) {

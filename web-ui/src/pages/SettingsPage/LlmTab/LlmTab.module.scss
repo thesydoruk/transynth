@@ -62,6 +62,31 @@
 
 /* ── Monospace field value ─────────────────────────────────────────────────── */
 
+.serverBlock {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+.serverFields {
+  display: grid;
+  gap: 8px;
+}
+
+.subLabel {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
 /** Displays a configuration value with monospace font for model names, URLs. */
 .fieldValue {
   font-size: 13px;

@@ -73,6 +73,8 @@ LLM_FALLBACK=none
 VLLM_BASE_URL=http://localhost:8000
 VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
 # VLLM_API_KEY=
+# Необов’язково: кілька однакових vLLM-серверів (JSON-масив). Ліміти на сервер замінюють LLM_MAX_PARALLEL.
+# VLLM_SERVERS=[{"host":"http://localhost:8000","maxParallel":4,"apiKey":""},{"host":"http://localhost:8001","maxParallel":2,"apiKey":"secret"}]
 # VLLM_EMBED_MODEL=
 
 # OPENAI_API_KEY=sk-...
@@ -119,19 +121,26 @@ postgresql://localizer:localizer@localhost:5433/localizer
 
 ## Налаштування LLM-провайдера
 
-| Змінна                   | За замовчуванням         | Опис                                                   |
-| ------------------------ | ------------------------ | ------------------------------------------------------ |
-| `LLM_PROVIDER`           | `vllm`                   | Основний провайдер: `openai` або `vllm`                |
-| `LLM_FALLBACK`           | `none`                   | Fallback: `none`, `openai` або `vllm`                  |
-| `OPENAI_API_KEY`         | _(для OpenAI)_           | Ваш OpenAI API key                                     |
-| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | Модель OpenAI для перекладу                            |
-| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                           |
-| `VLLM_BASE_URL`          | `http://localhost:8000`  | API endpoint vLLM / OpenAI-compatible сервера          |
-| `VLLM_API_KEY`           | _(опційно)_              | API key, якщо сервер вимагає автентифікацію            |
-| `VLLM_MODEL`             | _(для vLLM)_             | Назва моделі на inference-сервері                      |
-| `VLLM_EMBED_MODEL`       | _(опційно)_              | Окрема embedding-модель; за замовчуванням `VLLM_MODEL` |
+| Змінна                   | За замовчуванням         | Опис                                                         |
+| ------------------------ | ------------------------ | ------------------------------------------------------------ |
+| `LLM_PROVIDER`           | `vllm`                   | Основний провайдер: `openai` або `vllm`                      |
+| `LLM_FALLBACK`           | `none`                   | Fallback: `none`, `openai` або `vllm`                        |
+| `OPENAI_API_KEY`         | _(для OpenAI)_           | Ваш OpenAI API key                                           |
+| `OPENAI_TRANSLATE_MODEL` | `gpt-4.1-mini`           | Модель OpenAI для перекладу                                  |
+| `OPENAI_EMBED_MODEL`     | `text-embedding-3-large` | Модель OpenAI для embeddings                                 |
+| `VLLM_BASE_URL`          | `http://localhost:8000`  | API endpoint vLLM (режим одного сервера)                     |
+| `VLLM_SERVERS`           | _(опційно)_              | JSON-масив chat-серверів: `[{host, maxParallel, apiKey}, …]` |
+| `VLLM_API_KEY`           | _(опційно)_              | API key, якщо сервер вимагає автентифікацію                  |
+| `LLM_MAX_PARALLEL`       | `2`                      | Макс. одночасних chat-запитів (лише один сервер)             |
+| `VLLM_MODEL`             | _(для vLLM)_             | Назва моделі на inference-сервері                            |
+| `VLLM_EMBED_MODEL`       | _(опційно)_              | Окрема embedding-модель; за замовчуванням `VLLM_MODEL`       |
 
 Поточна реалізація не дає конфігурувати через `.env` температуру, max tokens чи retry-count — backend використовує вбудовані defaults.
+
+Якщо задано `VLLM_SERVERS`, chat-запити розподіляються між переліченими хостами.
+Кожен запис містить `host`, `maxParallel` і `apiKey`. Загальна concurrency — сума лімітів серверів;
+`LLM_MAX_PARALLEL` у цьому режимі ігнорується. Embeddings як і раніше йдуть на `VLLM_EMBED_BASE_URL`
+або перший хост із списку.
 
 ---
 

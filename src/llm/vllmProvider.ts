@@ -1,63 +1,36 @@
 /**
  * OpenAI-compatible local inference backend (vLLM, TGI, etc.).
  *
- * Connects to `CONFIG.vllmBaseUrl` using the standard `/v1` REST API.
+ * Connects to `CONFIG.vllmServers` using the standard `/v1` REST API.
  */
-import OpenAI from 'openai';
 import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG } from '../config';
 import { withRetry } from './retry';
 import { logLlm } from '../logging/loggers';
-
-const normalizeBaseUrl = (url: string): string => {
-  const trimmed = url.replace(/\/+$/, '');
-  return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
-};
+import { createVllmOpenAiClient, normalizeVllmBaseUrl, vllmChatCompletion } from './vllmClient';
 
 /**
  * LLM provider for any OpenAI-compatible inference server (vLLM by default).
  */
 export class VllmProvider implements LLMProvider {
   readonly name = 'vllm';
-  private chatClient: OpenAI;
-  private embedClient: OpenAI;
+  private embedClient: ReturnType<typeof createVllmOpenAiClient>;
 
   constructor() {
-    const chatBaseURL = normalizeBaseUrl(CONFIG.vllmBaseUrl);
-    const embedBaseURL = normalizeBaseUrl(CONFIG.vllmEmbedBaseUrl);
-    const apiKey = CONFIG.vllmApiKey || 'EMPTY';
-    const clientOpts = { apiKey, timeout: CONFIG.llmRequestTimeoutMs, maxRetries: 0 };
-    this.chatClient = new OpenAI({ ...clientOpts, baseURL: chatBaseURL });
-    this.embedClient = new OpenAI({ ...clientOpts, baseURL: embedBaseURL });
+    const embedBaseURL = normalizeVllmBaseUrl(CONFIG.vllmEmbedBaseUrl);
+    this.embedClient = createVllmOpenAiClient(CONFIG.vllmEmbedBaseUrl, CONFIG.vllmApiKey);
     logLlm.debug('vLLM provider initialized', {
-      chatBaseURL,
+      chatServers: CONFIG.vllmServers.length,
+      chatMaxParallel: CONFIG.llmMaxParallel,
       embedBaseURL,
       requestTimeoutSec: CONFIG.llmRequestTimeoutMs / 1000,
     });
   }
 
   async chat(opts: ChatOptions): Promise<ChatResult> {
-    const resp = await this.chatClient.chat.completions.create(
-      {
-        model: opts.model,
-        messages: opts.messages,
-        temperature: opts.temperature ?? 0,
-        max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
-        ...(opts.responseFormat && { response_format: opts.responseFormat }),
-      },
-      opts.signal ? { signal: opts.signal } : undefined,
-    );
-    const choice = resp.choices[0];
-    const usage = resp.usage;
-    return {
-      content: choice?.message?.content ?? '',
-      meta: {
-        finishReason: choice?.finish_reason ?? null,
-        promptTokens: usage?.prompt_tokens ?? null,
-        completionTokens: usage?.completion_tokens ?? null,
-        totalTokens: usage?.total_tokens ?? null,
-      },
-    };
+    const client =
+      opts._vllmHttpClient ?? createVllmOpenAiClient(CONFIG.vllmBaseUrl, CONFIG.vllmApiKey);
+    return vllmChatCompletion(client, opts);
   }
 
   async embed(texts: string[], model: string, _options?: EmbedOptions): Promise<number[][]> {

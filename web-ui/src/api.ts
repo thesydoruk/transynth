@@ -528,8 +528,16 @@ export type SettingsPayload = {
   llmProvider: string;
   /** Fallback LLM provider when the primary fails: 'vllm' | 'openai' | 'none'. */
   llmFallback: string;
-  /** vLLM / OpenAI-compatible server base URL. */
+  /** vLLM / OpenAI-compatible server base URL (legacy single-server display). */
   vllmBaseUrl: string;
+  /** Configured vLLM chat servers. */
+  vllmServers: Array<{
+    host: string;
+    maxParallel: number;
+    apiKeyConfigured: boolean;
+  }>;
+  /** True when `VLLM_SERVERS` JSON is set. */
+  vllmMultiServer: boolean;
   /** vLLM model used for translation. */
   vllmModel: string;
   /** vLLM model used for embeddings. */

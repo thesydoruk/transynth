@@ -124,14 +124,42 @@ export const LlmTab = () => {
       <div className={parentS.section}>
         <h2 className={parentS.sectionTitle}>{t('settings.llm.vllmSection')}</h2>
         <div className={parentS.fieldGrid}>
-          <span className={parentS.fieldLabel}>{t('settings.llm.vllmUrl')}</span>
-          <span className={s.fieldValue}>{data.vllmBaseUrl}</span>
-          <span className={parentS.fieldLabel}>{t('settings.llm.vllmApiKey')}</span>
-          <span className={s.fieldValue}>
-            <span className={data.vllmApiKeyConfigured ? s.badgeOk : s.badgeWarn}>
-              {data.vllmApiKeyConfigured ? t('settings.llm.keySet') : t('settings.llm.keyNotSet')}
-            </span>
-          </span>
+          {data.vllmServers.length > 0 ? (
+            data.vllmServers.map((server, index) => (
+              <div key={`${server.host}-${index}`} className={s.serverBlock}>
+                <span className={parentS.fieldLabel}>
+                  {t('settings.llm.vllmServer', { index: index + 1 })}
+                </span>
+                <div className={s.serverFields}>
+                  <div>
+                    <span className={s.subLabel}>{t('settings.llm.vllmUrl')}</span>
+                    <span className={s.fieldValue}>{server.host}</span>
+                  </div>
+                  <div>
+                    <span className={s.subLabel}>{t('settings.llm.vllmMaxParallel')}</span>
+                    <span className={s.fieldValue}>{server.maxParallel}</span>
+                  </div>
+                  <div>
+                    <span className={s.subLabel}>{t('settings.llm.vllmApiKey')}</span>
+                    <span className={s.fieldValue}>
+                      <span className={server.apiKeyConfigured ? s.badgeOk : s.badgeWarn}>
+                        {server.apiKeyConfigured
+                          ? t('settings.llm.keySet')
+                          : t('settings.llm.keyNotSet')}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <>
+              <span className={parentS.fieldLabel}>{t('settings.llm.vllmUrl')}</span>
+              <span className={s.fieldValue}>{data.vllmBaseUrl}</span>
+            </>
+          )}
+          <span className={parentS.fieldLabel}>{t('settings.llm.llmMaxParallelTotal')}</span>
+          <span className={s.fieldValue}>{data.llmMaxParallel}</span>
           <span className={parentS.fieldLabel}>{t('settings.llm.vllmModel')}</span>
           <span className={s.fieldValue}>{data.vllmModel || '—'}</span>
           <span className={parentS.fieldLabel}>{t('settings.llm.vllmEmbedModel')}</span>

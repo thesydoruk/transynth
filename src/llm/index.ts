@@ -91,11 +91,12 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
   const runChat = async (
     provider: LLMProvider,
     attemptContext: Record<string, unknown>,
+    chatOptsForProvider: ChatOptions = chatOpts,
   ): Promise<ChatResult> => {
     const queueWaitMs = Date.now() - started;
     const httpStarted = Date.now();
     try {
-      const result = await provider.chat(chatOpts);
+      const result = await provider.chat(chatOptsForProvider);
       logLlmResponse(logLlm, {
         operation,
         model: chatOpts.model,
@@ -145,8 +146,18 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const attemptContext = { ...context, httpAttempt: attempt + 1, maxAttempts };
 
-    const callProvider = async (provider: LLMProvider): Promise<ChatResult> =>
-      llmChatPool.run(() => runChat(provider, attemptContext));
+    const callProvider = async (provider: LLMProvider): Promise<ChatResult> => {
+      if (provider.name === 'vllm' && CONFIG.vllmMultiServer && llmChatPool.runWithClient) {
+        return llmChatPool.runWithClient((client, meta) =>
+          runChat(
+            provider,
+            { ...attemptContext, vllmHost: meta.host, vllmServerIndex: meta.index },
+            { ...chatOpts, _vllmHttpClient: client },
+          ),
+        );
+      }
+      return llmChatPool.run(() => runChat(provider, attemptContext));
+    };
 
     try {
       return await callProvider(primary);
