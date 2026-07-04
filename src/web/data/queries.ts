@@ -612,9 +612,11 @@ export const getMod = async (db: Tx, id: number) => {
  *
  * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
  * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
- * row-by-row. Explicit bulk DELETE/UPDATE statements use set-based plans instead.
- * Heavy pg_trgm/HASH indexes and the RAG HNSW index are dropped for the purge
- * window when MOD_IMPORT_DEFER_INDEXES is enabled (default).
+ * row-by-row. Records are removed in DB_CHUNK_SIZE batches; dependents are
+ * deleted via preselected string ids (index-friendly) instead of joining the
+ * full translations table. Heavy pg_trgm/HASH indexes and the RAG HNSW index
+ * are dropped for the purge window when MOD_IMPORT_DEFER_INDEXES is enabled
+ * (default).
  *
  * @param scope - `rows` keeps mod rows; `mod` also removes dialog graph + mods.
  */
@@ -624,7 +626,9 @@ const deleteModDataOnClient = async (
   scope: 'rows' | 'mod',
   indexCtx: DeferredBulkWriteIndexContext,
 ): Promise<{ deletedRecords: number }> => {
+  const CHUNK = CONFIG.dbChunkSize;
   const TE_CHUNK = CONFIG.dbChunkSize;
+  let deletedRecords = 0;
 
   await client.query('BEGIN');
   try {
@@ -638,72 +642,67 @@ const deleteModDataOnClient = async (
       [uniqueModIds],
     );
 
-    if (indexCtx.hnswDropped) {
-      await client.query(
-        `DELETE FROM translation_examples te
-          USING translations t
-          JOIN strings s ON t.src_string_id = s.id
-          JOIN records r ON s.record_id = r.id
-         WHERE te.translation_id = t.id
-           AND r.mod_id = ANY($1::int[])`,
-        [uniqueModIds],
+    /*
+     * Purge records in batches. A single DELETE … USING strings JOIN records
+     * makes PostgreSQL seq-scan all translations (~millions of rows) even when
+     * only one mod is removed. Collect string ids per record batch and delete
+     * dependents via src_string_id = ANY(…) so btree indexes are used instead.
+     */
+    for (;;) {
+      const { rows: recordRows } = await client.query<{ id: number }>(
+        `SELECT id FROM records WHERE mod_id = ANY($1::int[]) LIMIT $2`,
+        [uniqueModIds, CHUNK],
       );
-    } else {
-      for (;;) {
-        const { rowCount } = await client.query(
-          `DELETE FROM translation_examples te
-            WHERE te.translation_id IN (
-              SELECT t.id
-                FROM translations t
-                JOIN strings s ON t.src_string_id = s.id
-                JOIN records r ON s.record_id = r.id
-               WHERE r.mod_id = ANY($1::int[])
-               LIMIT $2
-            )`,
-          [uniqueModIds, TE_CHUNK],
-        );
-        if (!rowCount || rowCount < TE_CHUNK) break;
+      if (recordRows.length === 0) break;
+
+      const recordIds = recordRows.map((r) => r.id);
+      const { rows: stringRows } = await client.query<{ id: number }>(
+        `SELECT id FROM strings WHERE record_id = ANY($1::int[])`,
+        [recordIds],
+      );
+      const stringIds = stringRows.map((r) => r.id);
+
+      if (stringIds.length > 0) {
+        if (indexCtx.hnswDropped) {
+          await client.query(
+            `DELETE FROM translation_examples te
+              WHERE te.translation_id IN (
+                SELECT t.id FROM translations t WHERE t.src_string_id = ANY($1::int[])
+              )`,
+            [stringIds],
+          );
+        } else {
+          for (;;) {
+            const { rowCount } = await client.query(
+              `DELETE FROM translation_examples te
+                WHERE te.translation_id IN (
+                  SELECT t.id FROM translations t
+                   WHERE t.src_string_id = ANY($1::int[])
+                   LIMIT $2
+                )`,
+              [stringIds, TE_CHUNK],
+            );
+            if (!rowCount || rowCount < TE_CHUNK) break;
+          }
+        }
+
+        await client.query(`DELETE FROM qa_issues WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
+        await client.query(`DELETE FROM translation_revisions WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
+        await client.query(`DELETE FROM translations WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
       }
+
+      await client.query(`DELETE FROM strings WHERE record_id = ANY($1::int[])`, [recordIds]);
+      const { rowCount } = await client.query(`DELETE FROM records WHERE id = ANY($1::int[])`, [
+        recordIds,
+      ]);
+      deletedRecords += rowCount ?? recordIds.length;
     }
-
-    await client.query(
-      `DELETE FROM qa_issues qi
-        USING strings s
-        JOIN records r ON s.record_id = r.id
-       WHERE qi.src_string_id = s.id
-         AND r.mod_id = ANY($1::int[])`,
-      [uniqueModIds],
-    );
-
-    await client.query(
-      `DELETE FROM translation_revisions tr
-        USING strings s
-        JOIN records r ON s.record_id = r.id
-       WHERE tr.src_string_id = s.id
-         AND r.mod_id = ANY($1::int[])`,
-      [uniqueModIds],
-    );
-
-    await client.query(
-      `DELETE FROM translations t
-        USING strings s
-        JOIN records r ON s.record_id = r.id
-       WHERE t.src_string_id = s.id
-         AND r.mod_id = ANY($1::int[])`,
-      [uniqueModIds],
-    );
-
-    await client.query(
-      `DELETE FROM strings s
-        USING records r
-       WHERE s.record_id = r.id
-         AND r.mod_id = ANY($1::int[])`,
-      [uniqueModIds],
-    );
-
-    const { rowCount } = await client.query(`DELETE FROM records WHERE mod_id = ANY($1::int[])`, [
-      uniqueModIds,
-    ]);
 
     if (scope === 'mod') {
       await client.query(
@@ -732,7 +731,7 @@ const deleteModDataOnClient = async (
     }
 
     await client.query('COMMIT');
-    return { deletedRecords: rowCount ?? 0 };
+    return { deletedRecords };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

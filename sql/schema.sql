@@ -291,7 +291,9 @@ CREATE INDEX IF NOT EXISTS idx_strings_text_norm_nopunct ON strings USING HASH(t
 CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_norm ON strings USING GIN(text_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_translations_by_lang ON translations(target_lang, status);
 CREATE INDEX IF NOT EXISTS idx_translation_revisions_string_lang ON translation_revisions(src_string_id, target_lang, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_translation_revisions_translation_id ON translation_revisions(translation_id);
 CREATE INDEX IF NOT EXISTS idx_qa_issues_string_lang ON qa_issues(src_string_id, target_lang, is_active);
+CREATE INDEX IF NOT EXISTS idx_qa_issues_translation_id ON qa_issues(translation_id);
 
 -- Mod editor string grid: join path (records.mod_id + strings.lang)
 CREATE INDEX IF NOT EXISTS idx_strings_record_lang ON strings(record_id, lang);
