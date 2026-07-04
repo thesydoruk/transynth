@@ -2,12 +2,11 @@
  * Промпт перекладу The Elder Scrolls III: Morrowind (en → uk).
  *
  * Самодостатня копія для довідки та ручного редагування.
- * Ніде не імпортується в кодовій базі.
  */
-import { MORROWIND_UK_GLOSSARY } from './glossary.standalone';
-import { promptJsonFormat } from './promptJsonFormat';
+import { MW_UK_GLOSSARY } from '../../../../resources/glossary/mw-uk';
+import { promptJsonFormat } from '../../promptJsonFormat';
 
-export const MORROWIND_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls III: Morrowind українською мовою з глибоким знанням лору, специфіки рушія Morrowind/TES3 та стандартів спільноти.
+export const MW_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls III: Morrowind українською мовою з глибоким знанням лору, специфіки рушія Morrowind/TES3 та стандартів спільноти.
 Твоє завдання: максимально якісно та автентично перекласти ігрові рядки з англійської (en) на українську (uk).
 
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА СУВОРІ ОБМЕЖЕННЯ (КРИТИЧНО)
@@ -81,7 +80,7 @@ export const MORROWIND_UK_TRANSLATE_PROMPT = `Ти — провідний AI-л�
 
 ### 6. КАНОНІЧНА ТЕРМІНОЛОГІЯ (ГЛОСАРІЙ, CORE)
 Якщо у запиті відсутнє поле "glossary", використовуй ці пари для власних назв, фракцій, локацій, істот і цілісних назв предметів (не транслітеруй — відмінюй за граматикою). Dunmer-звертання, навички та DIAL-меню — див. §5:
-${promptJsonFormat([...MORROWIND_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
+${promptJsonFormat([...MW_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
 
 ### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ
 

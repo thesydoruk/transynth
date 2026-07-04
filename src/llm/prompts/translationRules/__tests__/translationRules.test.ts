@@ -3,7 +3,6 @@ import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt }
 import {
   buildEnglishTranslationRules,
   buildEnglishVerifyTranslationRules,
-  buildUkrainianTranslationRules,
   resolveGameType,
 } from '../index';
 
@@ -22,39 +21,21 @@ describe('translationRules', () => {
     expect(buildEnglishTranslationRules('pl', 'fo4')).toContain('idiomatic pl');
   });
 
-  it('uses different rules per game', () => {
-    const fo4 = buildUkrainianTranslationRules('fo4');
-    const sse = buildUkrainianTranslationRules('sse');
-    expect(fo4).toContain('Fallout 4');
-    expect(fo4).toContain('### КАНОНІЧНА ТЕРМІНОЛОГІЯ FALLOUT 4');
-    expect(fo4).toContain('Stealth Boy → Стелс-бой');
-    expect(fo4).toContain('Інститут');
-    expect(sse).toContain('Skyrim');
-    expect(sse).toContain('ПРИКЛАДИ (Skyrim)');
-    expect(sse).toContain('ярл');
-    expect(sse).not.toContain('Інститут');
-  });
-
   it('defaults unknown game to fo4', () => {
     expect(resolveGameType(null)).toBe('fo4');
     expect(resolveGameType('unknown-mod')).toBe('fo4');
-    expect(buildUkrainianTranslationRules(undefined)).toContain('Fallout 4');
+    expect(buildUkrainianTranslateSystemPrompt('en', null)).toBe(
+      buildUkrainianTranslateSystemPrompt('en', 'fo4'),
+    );
   });
 
-  it('sle shares rules with sse', () => {
-    expect(buildUkrainianTranslationRules('sle')).toBe(buildUkrainianTranslationRules('sse'));
-  });
-
-  it('includes New Vegas factions for fnv', () => {
-    const fnv = buildUkrainianTranslationRules('fnv');
-    expect(fnv).toContain('Легіон Цезаря');
-    expect(fnv).toContain('НКР');
-  });
-
-  it('includes Morrowind-specific tone for mw', () => {
-    const mw = buildUkrainianTranslationRules('mw');
-    expect(mw).toContain('Morrowind');
-    expect(mw).toContain('данмер');
+  it('sle shares prompts with sse', () => {
+    expect(buildUkrainianTranslateSystemPrompt('en', 'sle')).toBe(
+      buildUkrainianTranslateSystemPrompt('en', 'sse'),
+    );
+    expect(buildUkrainianVerifySystemPrompt('en', 'sle')).toBe(
+      buildUkrainianVerifySystemPrompt('en', 'sse'),
+    );
   });
 
   it('is injected into translate and verify prompts with game', () => {
@@ -67,19 +48,24 @@ describe('translationRules', () => {
     expect(verifyPrompt).toContain('VERIFY — item/mod names');
   });
 
-  it('injects game-specific verify notes for Ukrainian Fallout 4', () => {
+  it('uses per-game Ukrainian standalone prompts', () => {
+    const fo4 = buildUkrainianTranslateSystemPrompt('en', 'fo4');
+    const fnv = buildUkrainianTranslateSystemPrompt('en', 'fnv');
+    const sse = buildUkrainianTranslateSystemPrompt('en', 'sse');
+    expect(fo4).toContain('### 1. ТЕХНІЧНИЙ ФОРМАТ');
+    expect(fo4).toContain('Fallout 4');
+    expect(fnv).toContain('FALLOUT: NEW VEGAS');
+    expect(sse).toContain('SKYRIM');
+    expect(fnv).not.toContain('### ТЕХНІЧНІ ВИМОГИ');
+  });
+
+  it('injects game-specific verify rules for Ukrainian Fallout 4', () => {
     const verifyPrompt = buildUkrainianVerifySystemPrompt('en', 'fo4');
-    expect(verifyPrompt).toContain('силової броні');
+    expect(verifyPrompt).toContain('### 6. СПЕЦИФІЧНІ ПРАВИЛА');
     expect(verifyPrompt).toContain('Hellfire Mk.II Arm Armor');
-    expect(verifyPrompt).toContain('УЗГОДЖЕНІСТЬ ШАБЛОНІВ');
+    expect(verifyPrompt).toContain('reference_examples');
     const skyrimVerify = buildUkrainianVerifySystemPrompt('en', 'sse');
     expect(skyrimVerify).toContain('Лексика Fallout');
     expect(skyrimVerify).not.toContain('силової броні');
-  });
-
-  it('is injected into Ukrainian translate prompts per game', () => {
-    const ukRules = buildUkrainianTranslationRules('fo4');
-    const translatePrompt = buildUkrainianTranslateSystemPrompt('en', 'fo4');
-    expect(translatePrompt).toContain(ukRules);
   });
 });

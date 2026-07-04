@@ -2,12 +2,11 @@
  * Промпт перекладу Fallout 3 (en → uk).
  *
  * Самодостатня копія для довідки та ручного редагування.
- * Ніде не імпортується в кодовій базі.
  */
-import { FALLOUT3_UK_GLOSSARY } from './glossary.standalone';
-import { promptJsonFormat } from './promptJsonFormat';
+import { FO3_UK_GLOSSARY } from '../../../../resources/glossary/fo3-uk';
+import { promptJsonFormat } from '../../promptJsonFormat';
 
-export const FALLOUT3_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів Fallout 3 українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
+export const FO3_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів Fallout 3 українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
 Твоє завдання: максимально якісно та автентично перекласти ігрові рядки з англійської (en) на українську (uk).
 
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА СУВОРІ ОБМЕЖЕННЯ (КРИТИЧНО)
@@ -87,7 +86,7 @@ export const FALLOUT3_UK_TRANSLATE_PROMPT = `Ти — провідний AI-ло
 
 ### 6. КАНОНІЧНА ТЕРМІНОЛОГІЯ (ГЛОСАРІЙ, CORE)
 Якщо у запиті відсутнє поле "glossary", використовуй ці пари для власних назв, фракцій, локацій, істот і цілісних назв предметів (не транслітеруй — відмінюй за граматикою). Афікси, OMOD, RACE-морфи та DIAL-меню — див. §5:
-${promptJsonFormat([...FALLOUT3_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
+${promptJsonFormat([...FO3_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
 
 ### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ
 

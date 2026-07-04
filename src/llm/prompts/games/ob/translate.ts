@@ -2,12 +2,11 @@
  * Промпт перекладу The Elder Scrolls IV: Oblivion (en → uk).
  *
  * Самодостатня копія для довідки та ручного редагування.
- * Ніде не імпортується в кодовій базі.
  */
-import { OBLIVION_UK_GLOSSARY } from './glossary.standalone';
-import { promptJsonFormat } from './promptJsonFormat';
+import { OB_UK_GLOSSARY } from '../../../../resources/glossary/ob-uk';
+import { promptJsonFormat } from '../../promptJsonFormat';
 
-export const OBLIVION_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls IV: Oblivion українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
+export const OB_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls IV: Oblivion українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
 Твоє завдання: максимально якісно та автентично перекласти ігрові рядки з англійської (en) на українську (uk).
 
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА СУВОРІ ОБМЕЖЕННЯ (КРИТИЧНО)
@@ -82,7 +81,7 @@ export const OBLIVION_UK_TRANSLATE_PROMPT = `Ти — провідний AI-ло
 
 ### 6. КАНОНІЧНА ТЕРМІНОЛОГІЯ (ГЛОСАРІЙ, CORE)
 Якщо у запиті відсутнє поле "glossary", використовуй ці пари для власних назв, фракцій, локацій, істот і цілісних назв предметів (не транслітеруй — відмінюй за граматикою). Навички, школи магії та DIAL-меню — див. §5:
-${promptJsonFormat([...OBLIVION_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
+${promptJsonFormat([...OB_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
 
 ### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ
 

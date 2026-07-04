@@ -1,346 +1,816 @@
 /**
  * Canonical Fallout 4 English → Ukrainian glossary.
  *
- * Curated from the confirmed (manually-saved) Ukrainian translations of the
- * base game (`Fallout4.esm`) and the BDD main patch (`BDD_Fallout4_UA_Main`, mod 2)
- * stored in this project's database. Each pair was picked as the most frequent /
- * least ambiguous translation for that term across NPC_/RACE/FACT/LCTN/ALCH/WEAP/ARMO
- * records.
- *
- * This file is the single source of truth for the glossary; it is loaded by
- * `scripts/seedGlossary.ts` (run via `npm run db:seed:glossary`) which upserts
- * the rows into the `glossary` table. Keep it in sync with project conventions
- * rather than editing the database directly, so the glossary is never lost.
- *
- * Conventions observed in the localization (useful when adding new entries):
- *  - Firearms ("…Rifle"/"…Gun") are usually rendered as "…карабін".
- *  - "caps" → "кришки"; "Vault" → "Сховище"; "rads" → "радіація".
- *  - Brand / proper names are transliterated (Diamond City → Даймонд-сіті),
- *    while descriptive names are translated (Goodneighbor → Добросусідство).
- *
- * NOTE: highly ambiguous bare common words (e.g. the companion "Strong" vs the
- * adjective "strong", or the name "Father") are intentionally omitted to avoid
- * false positives in glossary QA enforcement, which matches the English term on
- * word boundaries.
+ * Loaded by `scripts/seedGlossary.ts` (`npm run db:seed:glossary`).
  */
 
 import type { GlossaryEntry } from './types';
 
 export type { GlossaryEntry } from './types';
 
-import { FO4_RACE_UK_GLOSSARY } from './fo4-race-uk';
-
-const mergeGlossaries = (...lists: GlossaryEntry[][]): GlossaryEntry[] => {
-  const byTerm = new Map<string, GlossaryEntry>();
-  for (const list of lists) {
-    for (const entry of list) {
-      byTerm.set(entry.term.toLowerCase(), entry);
-    }
-  }
-  return [...byTerm.values()].sort((a, b) => a.term.localeCompare(b.term));
-};
-
-const FO4_BASE_UK_GLOSSARY: GlossaryEntry[] = [
-  // ── Factions & organizations ──────────────────────────────────────────────
-  { term: 'Brotherhood of Steel', translation: 'Братерство сталі' },
-  { term: 'Institute', translation: 'Інститут' },
-  { term: 'Railroad', translation: 'Підземка' },
-  { term: 'Minutemen', translation: 'Мінітмени' },
-  { term: 'Gunners', translation: 'Стрільці' },
-  { term: 'Gunner', translation: 'стрілець' },
-  { term: 'Raiders', translation: 'Рейдери' },
-  { term: 'Raider', translation: 'Рейдер' },
-  { term: 'Children of Atom', translation: 'Діти Атома' },
-  { term: 'Atom Cats', translation: 'Атомні коти' },
-  { term: 'The Forged', translation: 'Ковані' },
-  { term: 'Covenant', translation: 'Альянс' },
-  { term: 'Triggerman', translation: 'Гангстер' },
-  { term: 'Triggermen', translation: 'Гангстери' },
-  { term: 'The Pack', translation: 'Зграя' },
-  { term: 'Vault-Tec', translation: 'Волт-Тек' },
-  { term: 'Enclave', translation: 'Анклав' },
-  { term: 'The Mechanist', translation: 'Механіст' },
-
-  // ── Locations ─────────────────────────────────────────────────────────────
-  { term: 'Commonwealth', translation: 'Співдружність' },
-  { term: 'Diamond City', translation: 'Даймонд-сіті' },
-  { term: 'Goodneighbor', translation: 'Добросусідство' },
-  { term: 'Sanctuary Hills', translation: 'Сенкчуарі-Гіллз' },
-  { term: 'Concord', translation: 'Конкорд' },
-  { term: 'Lexington', translation: 'Лексінгтон' },
-  { term: 'Bunker Hill', translation: 'Банкер-Гілл' },
-  { term: 'Glowing Sea', translation: 'Сяюче море' },
-  { term: 'Far Harbor', translation: 'Фар Гарбор' },
-  { term: 'Nuka-World', translation: 'Ядер-Світ' },
-  { term: 'The Memory Den', translation: 'Лігво спогадів' },
-  { term: 'The Third Rail', translation: 'Третя рейка' },
-  { term: 'The Combat Zone', translation: 'Бойова зона' },
-  { term: 'Vault 111', translation: 'Сховище 111' },
-  { term: 'Spectacle Island', translation: 'Спектакл-айленд' },
-  { term: 'Red Rocket', translation: 'Червона ракета' },
-  { term: 'Cambridge', translation: 'Кембридж' },
-  { term: 'Prydwen', translation: 'Придвен' },
-  { term: 'Mass Fusion', translation: "Масс ф'южн" },
-  { term: 'Acadia', translation: 'Акадія' },
-  { term: 'The Fog', translation: 'Туман' },
-  { term: 'Freedom Trail', translation: 'Шлях Свободи' },
-  { term: 'Signal Interceptor', translation: 'Перехоплювач сигналу' },
-  { term: 'Radio Freedom', translation: 'Радіо Свобода' },
-  { term: 'Gwinnett Brewery', translation: 'Броварня «Гвіннетт»' },
-  { term: 'Gwinnett Brand', translation: 'Гвіннетт' },
-  { term: 'Wasteland Workshop', translation: 'Майстерня пустки' },
-  { term: 'The Institute', translation: 'Інститут' },
-  { term: 'The Brotherhood', translation: 'Братерство' },
-  { term: 'The Railroad', translation: 'Підземка' },
-  { term: 'The Commonwealth', translation: 'Співдружність' },
-  { term: 'Far Harbor Children of Atom', translation: 'Діти Атома з Фар-Гарбор' },
-  { term: 'Red Death', translation: 'Червона смерть' },
-
-  // ── Companions & named characters ───────────────────────────────────────────
-  { term: 'Codsworth', translation: 'Кодсворт' },
-  { term: 'Dogmeat', translation: 'Собака' },
-  { term: 'Piper', translation: 'Пайпер' },
-  { term: 'Preston Garvey', translation: 'Престон Гарві' },
-  { term: 'Nick Valentine', translation: 'Нік Валентайн' },
-  { term: 'Paladin Danse', translation: 'Паладин Данс' },
-  { term: 'Danse', translation: 'Данс' },
-  { term: 'Curie', translation: 'Кюрі' },
-  { term: 'Cait', translation: 'Кейт' },
-  { term: 'Deacon', translation: 'Дікон' },
-  { term: 'Hancock', translation: 'Генкок' },
-  { term: 'MacCready', translation: 'Маккріді' },
-  { term: 'X6-88', translation: 'X6-88' },
-  { term: 'Shaun', translation: 'Шон' },
-  { term: 'Nora', translation: 'Нора' },
-  { term: 'Nate', translation: 'Нейт' },
-  { term: 'Kellogg', translation: 'Келлог' },
-  { term: 'Virgil', translation: 'Верджіл' },
-  { term: 'Desdemona', translation: 'Дездемона' },
-  { term: 'Tinker Tom', translation: 'Технік Том' },
-  { term: 'Elder Maxson', translation: 'Старійшина Мексон' },
-  { term: 'Maxson', translation: 'Мексон' },
-  { term: 'Sturges', translation: 'Стурджес' },
-  { term: 'Mama Murphy', translation: 'Матінка Мерфі' },
-  { term: 'Marcy Long', translation: 'Марсі Лон' },
-  { term: 'Jun Long', translation: 'Цзюнь Лон' },
-  { term: 'Magnolia', translation: 'Магнолія' },
-  { term: 'Myrna', translation: 'Мирна' },
-  { term: 'Pickman', translation: 'Пікман' },
-  { term: 'Trashcan Carla', translation: 'Карла Урна' },
-  { term: 'Old Longfellow', translation: 'Старий Лонгфелло' },
-  { term: 'Doctor Amari', translation: 'Доктор Амарі' },
-  { term: 'Doctor Li', translation: 'Докторка Лі' },
-  { term: 'Proctor Ingram', translation: 'Прокторка Інграм' },
-  { term: 'Paladin Brandis', translation: 'Паладин Брендіс' },
-  { term: 'Earl Sterling', translation: 'Ерл Стерлінг' },
-  { term: 'Captain Kells', translation: 'Капітан Келлс' },
-  { term: 'Silver Shroud', translation: 'Срібний Плащ' },
-  { term: 'The Silver Shroud', translation: 'Срібний Плащ' },
-  { term: 'High Confessor', translation: 'Верховний сповідник' },
-  { term: 'High Confessor Tektus', translation: 'Верховний сповідник Тект' },
-  { term: 'Sister Gwyneth', translation: 'Сестра Гвінет' },
-  { term: 'DiMA', translation: 'ДіМА' },
-  { term: 'Henry Cooke', translation: 'Генрі Кук' },
-
-  // ── Creatures ───────────────────────────────────────────────────────────────
-  { term: 'Deathclaw', translation: 'Кіготь смерті' },
-  { term: 'Mirelurk', translation: 'Болотник' },
-  { term: 'Mirelurk Queen', translation: 'Королева болотників' },
-  { term: 'Mirelurk King', translation: 'Король болотників' },
-  { term: 'Super Mutant', translation: 'Супермутант' },
-  { term: 'Super Mutants', translation: 'Супермутанти' },
-  { term: 'Feral Ghoul', translation: 'Дикий гуль' },
-  { term: 'Ghoul', translation: 'Гуль' },
-  { term: 'Glowing One', translation: 'Сяючий' },
-  { term: 'Radroach', translation: 'Радтарган' },
-  { term: 'Bloatfly', translation: 'Дутень' },
-  { term: 'Bloodbug', translation: 'Гнус' },
-  { term: 'Stingwing', translation: 'Жалокрил' },
-  { term: 'Mole Rat', translation: 'Кротощур' },
-  { term: 'Molerat', translation: 'Кротощур' },
-  { term: 'Yao Guai', translation: 'Яо-гай' },
-  { term: 'Brahmin', translation: 'Брамін' },
-  { term: 'Radstag', translation: 'Рад-олень' },
-  { term: 'Radscorpion', translation: 'Радскорпіон' },
-  { term: 'Mutant Hound', translation: 'Гончак-мутант' },
-  { term: 'Behemoth', translation: 'Чудовисько' },
-  { term: 'Synth', translation: 'Синт' },
-  { term: 'Mongrel', translation: 'Собака' },
-  { term: 'Gen 1 Synth', translation: 'Синт першого покоління' },
-  { term: 'Gen 2 Synth', translation: 'Синт другого покоління' },
-  { term: 'Wastelander', translation: 'Мешканець Пустки' },
-
-  // ── Robots ──────────────────────────────────────────────────────────────────
-  { term: 'Protectron', translation: 'Протектрон' },
-  { term: 'Mr. Handy', translation: 'Містер Помічник' },
-  { term: 'Mister Handy', translation: 'Містер Помічник' },
-  { term: 'Mr. Gutsy', translation: 'Містер Сміливець' },
-  { term: 'Sentry Bot', translation: 'Робот-охоронець' },
-  { term: 'Assaultron', translation: 'Штурмотрон' },
-  { term: 'Eyebot', translation: 'Робооко' },
-  { term: 'EyeBot', translation: 'Робооко' },
-  { term: 'Liberty Prime', translation: 'Ліберті Прайм' },
-  { term: 'Turret', translation: 'Турель' },
-  { term: 'Courser', translation: 'Мисливець' },
-
-  // ── Chems & consumables ─────────────────────────────────────────────────────
-  { term: 'Stimpak', translation: 'Стимулятор' },
-  { term: 'Stimpack', translation: 'Стимулятор' },
-  { term: 'RadAway', translation: 'Антирадин' },
-  { term: 'Rad-X', translation: 'Рад-Х' },
-  { term: 'Jet', translation: 'Гвинт' },
-  { term: 'Psycho', translation: 'Психо' },
-  { term: 'Mentats', translation: 'Ментати' },
-  { term: 'Buffout', translation: 'Баффаут' },
-  { term: 'Med-X', translation: 'Мед-Х' },
-  { term: 'Addictol', translation: 'Аддиктол' },
-  { term: 'Bufftats', translation: 'Бафф-тати' },
-  { term: 'Berry Mentats', translation: 'Ягідні ментати' },
-  { term: 'Nuka-Cola', translation: 'Ядер-Кола' },
-  { term: 'Nuka-Cola Quantum', translation: 'Квантова Ядер-Кола' },
-  { term: 'Purified Water', translation: 'Очищена вода' },
-  { term: 'Dirty Water', translation: 'Брудна вода' },
-  { term: 'Mutfruit', translation: 'Мутафрукт' },
-  { term: 'Tarberry', translation: 'Смоляниця' },
-  { term: 'Razorgrain', translation: 'Бритвозлак' },
-
-  // ── Items, gear & core mechanics ────────────────────────────────────────────
-  { term: 'Power Armor', translation: 'Силова броня' },
-  { term: 'Fusion Core', translation: 'Ядерний блок' },
-  { term: 'Fusion Cell', translation: 'Ядерна батарея' },
-  { term: 'Pip-Boy', translation: 'Піп-бой' },
-  { term: 'Vault', translation: 'Сховище' },
-  { term: 'caps', translation: 'кришки' },
-  { term: 'Caps', translation: 'Кришки' },
-  { term: 'rads', translation: 'радіація' },
-  { term: 'Holotape', translation: 'Голозапис' },
-  { term: 'Settler', translation: 'Поселенець' },
-  { term: 'Workshop', translation: 'Майстерня' },
-  { term: 'Layer Handle', translation: 'Обробник шару' },
-  { term: 'Provisioner', translation: 'Постачальник' },
-  { term: 'Stealth Boy', translation: 'Стелс-бой' },
-  { term: 'Hazmat Suit', translation: 'Захисний комплект' },
-  { term: 'Combat Armor', translation: 'Бойова броня' },
-  { term: 'Metal Armor', translation: 'Металева броня' },
-  { term: 'Frag Grenade', translation: 'Осколкова граната' },
-  { term: 'Molotov Cocktail', translation: 'Коктейль Молотова' },
-  { term: 'Courser Chip', translation: 'Чип мисливця' },
-  { term: 'Enclave Soldier', translation: 'Солдат Анклаву' },
-  { term: 'Utility Jumpsuit', translation: 'Утилітарний комбінезон' },
-  { term: 'Pack Captive', translation: 'Бранець Зграї' },
-  { term: 'Synth Refugee', translation: 'Синт-втікач' },
-
-  // ── Legendary affixes (weapon / armor prefixes) ─────────────────────────────
-  { term: "Assassin's", translation: 'Вбивчий' },
-  { term: "Exterminator's", translation: 'Винищувальний' },
-  { term: "Sentinel's", translation: 'Статичний' },
-  { term: "Ghoul Slayer's", translation: 'Гулевинищувальний' },
-  { term: "Mutant Slayer's", translation: 'Мутантовинищувальний' },
-  { term: "Poisoner's", translation: 'Отруйний' },
-  { term: "Troubleshooter's", translation: 'Механічний' },
-  { term: "Cavalier's", translation: 'Кавалериста' },
-  { term: "Hunter's", translation: 'Мисливський' },
-  { term: "Stalker's", translation: 'Розвідувальний' },
-  { term: "Berserker's", translation: 'Берсеркерський' },
-  { term: 'Lucky', translation: 'Фартовий' },
-  { term: 'VATS Enhanced', translation: 'VATS оптимізований' },
-  { term: 'Two Shot', translation: 'Двоствольний' },
-  { term: 'Never Ending', translation: 'Необмежений' },
-  { term: 'Plasma Infused', translation: 'Насичений плазмою' },
-  { term: 'Incendiary', translation: 'Запальний' },
-  { term: 'Explosive', translation: 'Вибуховий' },
-  { term: 'Wounding', translation: 'Кривавий' },
-  { term: 'Furious', translation: 'Шалений' },
-  { term: 'Instigating', translation: 'Провокуючий' },
-  { term: 'Bloodied', translation: 'Закривавлений' },
-  { term: 'Nocturnal', translation: 'Нічний' },
-  { term: 'Chameleon', translation: 'Хамелеон' },
-
-  // ── Armor mod names (OMOD slots) ────────────────────────────────────────────
-  { term: 'Deep Pocketed', translation: 'Глибокі кишені' },
-  { term: 'Pocketed', translation: 'Додаткові кишені' },
-  { term: 'Lead Lined', translation: 'Свинцева обшивка' },
-  { term: 'Dense', translation: 'Вибухозахист' },
-  { term: 'Ultra-Light Build', translation: 'Надлегкість' },
-  { term: 'BioCommMesh', translation: 'Біомережа' },
-  { term: 'Tesla Bracers', translation: 'Наручі Тесли' },
-  { term: 'Jet Pack', translation: 'Реактивний ранець' },
-  { term: 'Aerodynamic', translation: 'Аеродинаміка' },
-  { term: 'Braced', translation: 'Гартування' },
-  { term: 'Comfort Grip', translation: "Зручне руків'я" },
-  { term: 'Cushioned', translation: "М'яка підкладка" },
-  { term: 'Sleek', translation: 'Вирівнювання' },
-  { term: 'Strengthened', translation: 'Зміцнення' },
-  { term: 'Weighted', translation: 'Збалансований' },
-  { term: 'Shielded', translation: 'Екранований' },
-  { term: 'Recon', translation: 'Розвідувальний' },
-  { term: 'Spiked', translation: 'З шипами' },
-  { term: 'Padded', translation: 'Підбій' },
-  { term: 'Pneumatic', translation: 'Пневматика' },
-  { term: 'Hardened', translation: 'Зміцнена' },
-  { term: 'Targeting', translation: 'Прицільний' },
-  { term: 'Bladed', translation: 'Лезо' },
-  { term: 'Calibrated', translation: 'Калібрований' },
-  { term: 'Vented', translation: 'Отруйний' },
-  { term: 'Lighter Build', translation: 'Полегшення' },
-
-  // ── Faction ranks & Children of Atom ────────────────────────────────────────
-  { term: 'Minuteman', translation: 'Мінітмен' },
-  { term: 'Star Paladin', translation: 'Зоряний паладин' },
-  { term: 'Knight-Sergeant', translation: 'Лицар-сержант' },
-  { term: 'Knight-Captain', translation: 'Лицар-капітан' },
-  { term: 'Knight-Commander', translation: 'Лицар-командор' },
-  { term: 'Lancer-Knight', translation: 'Пілот-лицар' },
-  { term: 'Glory to Atom!', translation: 'Слава Атому!' },
-  { term: 'Atom watch over you', translation: 'Атом захистить вас' },
-
-  // ── Weapons ─────────────────────────────────────────────────────────────────
-  { term: 'Mini Nuke', translation: 'Ядерний мінізаряд' },
-  { term: 'Nuke', translation: 'Ядерна бомба' },
-  { term: 'Fat Man', translation: 'Товстун' },
-  { term: 'Junk Jet', translation: 'Хламотрон' },
-  { term: 'Cryolator', translation: 'Кріолятор' },
-  { term: 'Gauss Rifle', translation: 'Карабін Гауса' },
-  { term: 'Combat Rifle', translation: 'Бойовий карабін' },
-  { term: 'Assault Rifle', translation: 'Штурмовий карабін' },
-  { term: 'Hunting Rifle', translation: 'Мисливський карабін' },
-  { term: 'Laser Musket', translation: 'Лазерний мушкет' },
-  { term: 'Gamma Gun', translation: 'Гамма-пістолет' },
-  { term: 'Minigun', translation: 'Мініган' },
-  { term: 'Flamer', translation: 'Вогнемет' },
-  { term: 'Gatling Laser', translation: 'Гатлінг-лазер' },
-  { term: 'Plasma Gun', translation: 'Плазмовий карабін' },
-  { term: 'Laser Gun', translation: 'Лазерний карабін' },
-  { term: 'Missile Launcher', translation: 'Гранатомет' },
-  { term: 'Deliverer', translation: 'Спаситель' },
-  { term: 'Alien Blaster', translation: 'Бластер Чужих' },
-  { term: 'Plasma Cartridge', translation: 'Заряд плазми' },
-
-  // ── S.P.E.C.I.A.L. attributes ───────────────────────────────────────────────
-  { term: 'Strength', translation: 'Сила' },
-  { term: 'Perception', translation: 'Пильність' },
-  { term: 'Endurance', translation: 'Витривалість' },
-  { term: 'Charisma', translation: 'Харизма' },
-  { term: 'Intelligence', translation: 'Інтелект' },
-  { term: 'Agility', translation: 'Спритність' },
-  { term: 'Luck', translation: 'Удача' },
-
-  // ── Dialogue menu options (DIAL/MESG) ───────────────────────────────────────
-  { term: 'Sarcastic', translation: 'Сарказм' },
-  { term: 'Barter', translation: 'Торгувати' },
-  { term: 'Not Interested', translation: 'Мені це не цікаво' },
-  { term: 'Not interested', translation: 'Мені це не цікаво' },
-  { term: 'Dismiss', translation: 'Відпустити' },
-  { term: 'Threaten', translation: 'Налякати' },
-  { term: 'Unsure', translation: 'Невпевнено' },
-  { term: 'Never mind', translation: 'Неважливо' },
-  { term: 'Never Mind', translation: 'Неважливо' },
-  { term: 'Maybe', translation: 'Може бути' },
-  { term: 'Trade', translation: 'Обмін' },
+export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
+  {
+    term: 'Acadia',
+    translation: 'Акадія',
+  },
+  {
+    term: 'Addictol',
+    translation: 'Аддиктол',
+  },
+  {
+    term: 'Alien Blaster',
+    translation: 'Бластер Чужих',
+  },
+  {
+    term: 'Assault Rifle',
+    translation: 'Штурмовий карабін',
+  },
+  {
+    term: 'Assaultron',
+    translation: 'Штурмотрон',
+  },
+  {
+    term: 'Atom Cats',
+    translation: 'Атомні коти',
+  },
+  {
+    term: 'Atom watch over you',
+    translation: 'Атом захистить вас',
+  },
+  {
+    term: 'Behemoth',
+    translation: 'Чудовисько',
+  },
+  {
+    term: 'Berry Mentats',
+    translation: 'Ягідні ментати',
+  },
+  {
+    term: 'Bloatfly',
+    translation: 'Дутень',
+  },
+  {
+    term: 'Bloodbug',
+    translation: 'Гнус',
+  },
+  {
+    term: 'Brahmin',
+    translation: 'Брамін',
+  },
+  {
+    term: 'Brotherhood of Steel',
+    translation: 'Братерство сталі',
+  },
+  {
+    term: 'Buffout',
+    translation: 'Баффаут',
+  },
+  {
+    term: 'Bufftats',
+    translation: 'Бафф-тати',
+  },
+  {
+    term: 'Bunker Hill',
+    translation: 'Банкер-Гілл',
+  },
+  {
+    term: 'Cait',
+    translation: 'Кейт',
+  },
+  {
+    term: 'Cambridge',
+    translation: 'Кембридж',
+  },
+  {
+    term: 'Caps',
+    translation: 'Кришки',
+  },
+  {
+    term: 'Captain Kells',
+    translation: 'Капітан Келлс',
+  },
+  {
+    term: 'Children of Atom',
+    translation: 'Діти Атома',
+  },
+  {
+    term: 'Codsworth',
+    translation: 'Кодсворт',
+  },
+  {
+    term: 'Combat Armor',
+    translation: 'Бойова броня',
+  },
+  {
+    term: 'Combat Rifle',
+    translation: 'Бойовий карабін',
+  },
+  {
+    term: 'Commonwealth',
+    translation: 'Співдружність',
+  },
+  {
+    term: 'Concord',
+    translation: 'Конкорд',
+  },
+  {
+    term: 'Courser',
+    translation: 'Мисливець',
+  },
+  {
+    term: 'Courser Chip',
+    translation: 'Чип мисливця',
+  },
+  {
+    term: 'Covenant',
+    translation: 'Альянс',
+  },
+  {
+    term: 'Cryolator',
+    translation: 'Кріолятор',
+  },
+  {
+    term: 'Curie',
+    translation: 'Кюрі',
+  },
+  {
+    term: 'Danse',
+    translation: 'Данс',
+  },
+  {
+    term: 'Deacon',
+    translation: 'Дікон',
+  },
+  {
+    term: 'Deathclaw',
+    translation: 'Кіготь смерті',
+  },
+  {
+    term: 'Deliverer',
+    translation: 'Спаситель',
+  },
+  {
+    term: 'Desdemona',
+    translation: 'Дездемона',
+  },
+  {
+    term: 'Diamond City',
+    translation: 'Даймонд-сіті',
+  },
+  {
+    term: 'DiMA',
+    translation: 'ДіМА',
+  },
+  {
+    term: 'Dirty Water',
+    translation: 'Брудна вода',
+  },
+  {
+    term: 'Doctor Amari',
+    translation: 'Доктор Амарі',
+  },
+  {
+    term: 'Doctor Li',
+    translation: 'Докторка Лі',
+  },
+  {
+    term: 'Dogmeat',
+    translation: 'Собака',
+  },
+  {
+    term: 'Earl Sterling',
+    translation: 'Ерл Стерлінг',
+  },
+  {
+    term: 'Elder Maxson',
+    translation: 'Старійшина Мексон',
+  },
+  {
+    term: 'Enclave',
+    translation: 'Анклав',
+  },
+  {
+    term: 'Enclave Soldier',
+    translation: 'Солдат Анклаву',
+  },
+  {
+    term: 'EyeBot',
+    translation: 'Робооко',
+  },
+  {
+    term: 'Far Harbor',
+    translation: 'Фар Гарбор',
+  },
+  {
+    term: 'Far Harbor Children of Atom',
+    translation: 'Діти Атома з Фар-Гарбор',
+  },
+  {
+    term: 'Fat Man',
+    translation: 'Товстун',
+  },
+  {
+    term: 'Feral Ghoul',
+    translation: 'Дикий гуль',
+  },
+  {
+    term: 'Flamer',
+    translation: 'Вогнемет',
+  },
+  {
+    term: 'Frag Grenade',
+    translation: 'Осколкова граната',
+  },
+  {
+    term: 'Freedom Trail',
+    translation: 'Шлях Свободи',
+  },
+  {
+    term: 'Fusion Cell',
+    translation: 'Ядерна батарея',
+  },
+  {
+    term: 'Fusion Core',
+    translation: 'Ядерний блок',
+  },
+  {
+    term: 'Gamma Gun',
+    translation: 'Гамма-пістолет',
+  },
+  {
+    term: 'Gatling Laser',
+    translation: 'Гатлінг-лазер',
+  },
+  {
+    term: 'Gauss Rifle',
+    translation: 'Карабін Гауса',
+  },
+  {
+    term: 'Gen 1 Synth',
+    translation: 'Синт першого покоління',
+  },
+  {
+    term: 'Gen 2 Synth',
+    translation: 'Синт другого покоління',
+  },
+  {
+    term: 'Ghoul',
+    translation: 'Гуль',
+  },
+  {
+    term: 'Glory to Atom!',
+    translation: 'Слава Атому!',
+  },
+  {
+    term: 'Glowing One',
+    translation: 'Сяючий',
+  },
+  {
+    term: 'Glowing Sea',
+    translation: 'Сяюче море',
+  },
+  {
+    term: 'Goodneighbor',
+    translation: 'Добросусідство',
+  },
+  {
+    term: 'Gunner',
+    translation: 'стрілець',
+  },
+  {
+    term: 'Gunners',
+    translation: 'Стрільці',
+  },
+  {
+    term: 'Gwinnett Brand',
+    translation: 'Гвіннетт',
+  },
+  {
+    term: 'Gwinnett Brewery',
+    translation: 'Броварня «Гвіннетт»',
+  },
+  {
+    term: 'Hancock',
+    translation: 'Генкок',
+  },
+  {
+    term: 'Hazmat Suit',
+    translation: 'Захисний комплект',
+  },
+  {
+    term: 'Henry Cooke',
+    translation: 'Генрі Кук',
+  },
+  {
+    term: 'High Confessor',
+    translation: 'Верховний сповідник',
+  },
+  {
+    term: 'High Confessor Tektus',
+    translation: 'Верховний сповідник Тект',
+  },
+  {
+    term: 'Holotape',
+    translation: 'Голозапис',
+  },
+  {
+    term: 'Hunting Rifle',
+    translation: 'Мисливський карабін',
+  },
+  {
+    term: 'Institute',
+    translation: 'Інститут',
+  },
+  {
+    term: 'Jet',
+    translation: 'Гвинт',
+  },
+  {
+    term: 'Jun Long',
+    translation: 'Цзюнь Лон',
+  },
+  {
+    term: 'Junk Jet',
+    translation: 'Хламотрон',
+  },
+  {
+    term: 'Kellogg',
+    translation: 'Келлог',
+  },
+  {
+    term: 'Knight-Captain',
+    translation: 'Лицар-капітан',
+  },
+  {
+    term: 'Knight-Commander',
+    translation: 'Лицар-командор',
+  },
+  {
+    term: 'Knight-Sergeant',
+    translation: 'Лицар-сержант',
+  },
+  {
+    term: 'Lancer-Knight',
+    translation: 'Пілот-лицар',
+  },
+  {
+    term: 'Laser Gun',
+    translation: 'Лазерний карабін',
+  },
+  {
+    term: 'Laser Musket',
+    translation: 'Лазерний мушкет',
+  },
+  {
+    term: 'Layer Handle',
+    translation: 'Обробник шару',
+  },
+  {
+    term: 'Lexington',
+    translation: 'Лексінгтон',
+  },
+  {
+    term: 'Liberty Prime',
+    translation: 'Ліберті Прайм',
+  },
+  {
+    term: 'MacCready',
+    translation: 'Маккріді',
+  },
+  {
+    term: 'Magnolia',
+    translation: 'Магнолія',
+  },
+  {
+    term: 'Mama Murphy',
+    translation: 'Матінка Мерфі',
+  },
+  {
+    term: 'Marcy Long',
+    translation: 'Марсі Лон',
+  },
+  {
+    term: 'Mass Fusion',
+    translation: "Масс ф'южн",
+  },
+  {
+    term: 'Maxson',
+    translation: 'Мексон',
+  },
+  {
+    term: 'Med-X',
+    translation: 'Мед-Х',
+  },
+  {
+    term: 'Mentats',
+    translation: 'Ментати',
+  },
+  {
+    term: 'Metal Armor',
+    translation: 'Металева броня',
+  },
+  {
+    term: 'Mini Nuke',
+    translation: 'Ядерний мінізаряд',
+  },
+  {
+    term: 'Minigun',
+    translation: 'Мініган',
+  },
+  {
+    term: 'Minuteman',
+    translation: 'Мінітмен',
+  },
+  {
+    term: 'Minutemen',
+    translation: 'Мінітмени',
+  },
+  {
+    term: 'Mirelurk',
+    translation: 'Болотник',
+  },
+  {
+    term: 'Mirelurk King',
+    translation: 'Король болотників',
+  },
+  {
+    term: 'Mirelurk Queen',
+    translation: 'Королева болотників',
+  },
+  {
+    term: 'Missile Launcher',
+    translation: 'Гранатомет',
+  },
+  {
+    term: 'Mister Handy',
+    translation: 'Містер Помічник',
+  },
+  {
+    term: 'Mole Rat',
+    translation: 'Кротощур',
+  },
+  {
+    term: 'Molerat',
+    translation: 'Кротощур',
+  },
+  {
+    term: 'Molotov Cocktail',
+    translation: 'Коктейль Молотова',
+  },
+  {
+    term: 'Mongrel',
+    translation: 'Дикий пес',
+  },
+  {
+    term: 'Mr. Gutsy',
+    translation: 'Містер Сміливець',
+  },
+  {
+    term: 'Mr. Handy',
+    translation: 'Містер Помічник',
+  },
+  {
+    term: 'Mutant Hound',
+    translation: 'Гончак-мутант',
+  },
+  {
+    term: 'Mutfruit',
+    translation: 'Мутафрукт',
+  },
+  {
+    term: 'Myrna',
+    translation: 'Мирна',
+  },
+  {
+    term: 'Nate',
+    translation: 'Нейт',
+  },
+  {
+    term: 'Nick Valentine',
+    translation: 'Нік Валентайн',
+  },
+  {
+    term: 'Nora',
+    translation: 'Нора',
+  },
+  {
+    term: 'Nuka-Cola',
+    translation: 'Ядер-Кола',
+  },
+  {
+    term: 'Nuka-Cola Quantum',
+    translation: 'Квантова Ядер-Кола',
+  },
+  {
+    term: 'Nuka-World',
+    translation: 'Ядер-Світ',
+  },
+  {
+    term: 'Nuke',
+    translation: 'Ядерна бомба',
+  },
+  {
+    term: 'Old Longfellow',
+    translation: 'Старий Лонгфелло',
+  },
+  {
+    term: 'Pack Captive',
+    translation: 'Бранець Зграї',
+  },
+  {
+    term: 'Paladin Brandis',
+    translation: 'Паладин Брендіс',
+  },
+  {
+    term: 'Paladin Danse',
+    translation: 'Паладин Данс',
+  },
+  {
+    term: 'Pickman',
+    translation: 'Пікман',
+  },
+  {
+    term: 'Pip-Boy',
+    translation: 'Піп-бой',
+  },
+  {
+    term: 'Piper',
+    translation: 'Пайпер',
+  },
+  {
+    term: 'Plasma Cartridge',
+    translation: 'Заряд плазми',
+  },
+  {
+    term: 'Plasma Gun',
+    translation: 'Плазмовий карабін',
+  },
+  {
+    term: 'Power Armor',
+    translation: 'Силова броня',
+  },
+  {
+    term: 'Preston Garvey',
+    translation: 'Престон Гарві',
+  },
+  {
+    term: 'Proctor Ingram',
+    translation: 'Прокторка Інграм',
+  },
+  {
+    term: 'Protectron',
+    translation: 'Протектрон',
+  },
+  {
+    term: 'Provisioner',
+    translation: 'Постачальник',
+  },
+  {
+    term: 'Prydwen',
+    translation: 'Придвен',
+  },
+  {
+    term: 'Psycho',
+    translation: 'Психо',
+  },
+  {
+    term: 'Purified Water',
+    translation: 'Очищена вода',
+  },
+  {
+    term: 'Rad-X',
+    translation: 'Рад-Х',
+  },
+  {
+    term: 'RadAway',
+    translation: 'Антирадин',
+  },
+  {
+    term: 'Radio Freedom',
+    translation: 'Радіо Свобода',
+  },
+  {
+    term: 'Radroach',
+    translation: 'Радтарган',
+  },
+  {
+    term: 'rads',
+    translation: 'радіація',
+  },
+  {
+    term: 'Radscorpion',
+    translation: 'Радскорпіон',
+  },
+  {
+    term: 'Radstag',
+    translation: 'Рад-олень',
+  },
+  {
+    term: 'Raider',
+    translation: 'Рейдер',
+  },
+  {
+    term: 'Raiders',
+    translation: 'Рейдери',
+  },
+  {
+    term: 'Railroad',
+    translation: 'Підземка',
+  },
+  {
+    term: 'Razorgrain',
+    translation: 'Бритвозлак',
+  },
+  {
+    term: 'Red Death',
+    translation: 'Червона смерть',
+  },
+  {
+    term: 'Red Rocket',
+    translation: 'Червона ракета',
+  },
+  {
+    term: 'Sanctuary Hills',
+    translation: 'Сенкчуарі-Гіллз',
+  },
+  {
+    term: 'Sentry Bot',
+    translation: 'Робот-охоронець',
+  },
+  {
+    term: 'Settler',
+    translation: 'Поселенець',
+  },
+  {
+    term: 'Shaun',
+    translation: 'Шон',
+  },
+  {
+    term: 'Signal Interceptor',
+    translation: 'Перехоплювач сигналу',
+  },
+  {
+    term: 'Silver Shroud',
+    translation: 'Срібний Плащ',
+  },
+  {
+    term: 'Sister Gwyneth',
+    translation: 'Сестра Гвінет',
+  },
+  {
+    term: 'Spectacle Island',
+    translation: 'Спектакл-айленд',
+  },
+  {
+    term: 'Star Paladin',
+    translation: 'Зоряний паладин',
+  },
+  {
+    term: 'Stealth Boy',
+    translation: 'Стелс-бой',
+  },
+  {
+    term: 'Stimpack',
+    translation: 'Стимулятор',
+  },
+  {
+    term: 'Stimpak',
+    translation: 'Стимулятор',
+  },
+  {
+    term: 'Stingwing',
+    translation: 'Жалокрил',
+  },
+  {
+    term: 'Sturges',
+    translation: 'Стурджес',
+  },
+  {
+    term: 'Super Mutant',
+    translation: 'Супермутант',
+  },
+  {
+    term: 'Super Mutants',
+    translation: 'Супермутанти',
+  },
+  {
+    term: 'Synth',
+    translation: 'Синт',
+  },
+  {
+    term: 'Synth Refugee',
+    translation: 'Синт-втікач',
+  },
+  {
+    term: 'Tarberry',
+    translation: 'Смоляниця',
+  },
+  {
+    term: 'The Brotherhood',
+    translation: 'Братерство',
+  },
+  {
+    term: 'The Combat Zone',
+    translation: 'Бойова зона',
+  },
+  {
+    term: 'The Commonwealth',
+    translation: 'Співдружність',
+  },
+  {
+    term: 'The Fog',
+    translation: 'Туман',
+  },
+  {
+    term: 'The Forged',
+    translation: 'Ковані',
+  },
+  {
+    term: 'The Institute',
+    translation: 'Інститут',
+  },
+  {
+    term: 'The Mechanist',
+    translation: 'Механіст',
+  },
+  {
+    term: 'The Memory Den',
+    translation: 'Лігво спогадів',
+  },
+  {
+    term: 'The Pack',
+    translation: 'Зграя',
+  },
+  {
+    term: 'The Railroad',
+    translation: 'Підземка',
+  },
+  {
+    term: 'The Silver Shroud',
+    translation: 'Срібний Плащ',
+  },
+  {
+    term: 'The Third Rail',
+    translation: 'Третя рейка',
+  },
+  {
+    term: 'Tinker Tom',
+    translation: 'Технік Том',
+  },
+  {
+    term: 'Trashcan Carla',
+    translation: 'Карла Урна',
+  },
+  {
+    term: 'Triggerman',
+    translation: 'Гангстер',
+  },
+  {
+    term: 'Triggermen',
+    translation: 'Гангстери',
+  },
+  {
+    term: 'Turret',
+    translation: 'Турель',
+  },
+  {
+    term: 'Utility Jumpsuit',
+    translation: 'Утилітарний комбінезон',
+  },
+  {
+    term: 'Vault',
+    translation: 'Сховище',
+  },
+  {
+    term: 'Vault 111',
+    translation: 'Сховище 111',
+  },
+  {
+    term: 'Vault-Tec',
+    translation: 'Волт-Тек',
+  },
+  {
+    term: 'Virgil',
+    translation: 'Верджіл',
+  },
+  {
+    term: 'Wasteland Workshop',
+    translation: 'Майстерня пустки',
+  },
+  {
+    term: 'Wastelander',
+    translation: 'Мешканець Пустки',
+  },
+  {
+    term: 'Workshop',
+    translation: 'Майстерня',
+  },
+  {
+    term: 'X6-88',
+    translation: 'X6-88',
+  },
+  {
+    term: 'Yao Guai',
+    translation: 'Яо-гай',
+  },
 ];
-
-/** FO4 core + RACE face editor (FMRN/MPPN/TTGP); later lists override earlier on term clash. */
-export const FO4_UK_GLOSSARY: GlossaryEntry[] = mergeGlossaries(
-  FO4_BASE_UK_GLOSSARY,
-  FO4_RACE_UK_GLOSSARY,
-);

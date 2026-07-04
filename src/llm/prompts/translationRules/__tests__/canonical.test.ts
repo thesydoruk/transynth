@@ -8,11 +8,7 @@ import {
   formatCanonicalUkLines,
 } from '../canonical';
 import { GAME_RULES } from '../games';
-import {
-  buildEnglishTranslationRules,
-  buildEnglishVerifyTranslationRules,
-  buildUkrainianTranslationRules,
-} from '../index';
+import { buildEnglishTranslationRules, buildEnglishVerifyTranslationRules } from '../index';
 import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } from '../../en';
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
 
@@ -46,15 +42,6 @@ describe('canonical terminology', () => {
     expect(lines.some((l) => l.includes('de'))).toBe(true);
   });
 
-  it.each(ALL_GAMES)('Ukrainian rules for %s include full canonical section', (game) => {
-    const rules = buildUkrainianTranslationRules(game);
-    expect(rules).toMatch(/### КАНОНІЧНА ТЕРМІНОЛОГІЯ .+ \(за відсутності "glossary" у запиті\):/);
-
-    for (const { term, translation } of GAME_UK_GLOSSARIES[game]) {
-      expect(rules).toContain(`${term} → ${translation}`);
-    }
-  });
-
   it.each(ALL_GAMES)('English rules for %s list every canonical English term', (game) => {
     const rules = buildEnglishTranslationRules('de', game);
     expect(rules).toMatch(/### .+ CANONICAL TERMINOLOGY/);
@@ -65,28 +52,15 @@ describe('canonical terminology', () => {
     }
   });
 
-  it('FO4 glossary merges RACE face editor terms', () => {
-    const rules = buildUkrainianTranslationRules('fo4');
-    expect(rules).toContain('Nose Bridge → Переносиця');
-    expect(rules).toContain('Prominent 4 → Виразний 4');
-    expect(rules).toContain('Eyelids - Top → Верхня повіка');
-  });
-
-  it('FO4 Ukrainian prompt includes Stealth Boy canonical pair', () => {
-    const rules = buildUkrainianTranslationRules('fo4');
-    expect(rules).toContain('Stealth Boy → Стелс-бой');
-  });
-
-  it('every FO4 glossary entry appears in Ukrainian translate and verify prompts', () => {
-    const rules = buildUkrainianTranslationRules('fo4');
+  it('every FO4 glossary entry appears in Ukrainian translate and verify prompts as JSON', () => {
     const translate = buildUkrainianTranslateSystemPrompt('en', 'fo4');
     const verify = buildUkrainianVerifySystemPrompt('en', 'fo4');
 
     for (const { term, translation } of FO4_UK_GLOSSARY) {
-      const pair = `${term} → ${translation}`;
-      expect(rules).toContain(pair);
-      expect(translate).toContain(pair);
-      expect(verify).toContain(pair);
+      expect(translate).toContain(`"term": "${term}"`);
+      expect(translate).toContain(`"translation": "${translation}"`);
+      expect(verify).toContain(`"term": "${term}"`);
+      expect(verify).toContain(`"translation": "${translation}"`);
     }
   });
 
@@ -104,7 +78,9 @@ describe('canonical terminology', () => {
 
   it('sle shares sse glossary and rules', () => {
     expect(GAME_UK_GLOSSARIES.sle).toBe(GAME_UK_GLOSSARIES.sse);
-    expect(buildUkrainianTranslationRules('sle')).toBe(buildUkrainianTranslationRules('sse'));
+    expect(buildUkrainianTranslateSystemPrompt('en', 'sle')).toBe(
+      buildUkrainianTranslateSystemPrompt('en', 'sse'),
+    );
     expect(GAME_RULES.sle).toBe(GAME_RULES.sse);
   });
 });

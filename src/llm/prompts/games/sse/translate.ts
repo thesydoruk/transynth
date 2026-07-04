@@ -2,12 +2,11 @@
  * Промпт перекладу The Elder Scrolls V: Skyrim (en → uk).
  *
  * Самодостатня копія для довідки та ручного редагування.
- * Ніде не імпортується в кодовій базі.
  */
-import { SKYRIM_UK_GLOSSARY } from './glossary.standalone';
-import { promptJsonFormat } from './promptJsonFormat';
+import { SSE_UK_GLOSSARY } from '../../../../resources/glossary/sse-uk';
+import { promptJsonFormat } from '../../promptJsonFormat';
 
-export const SKYRIM_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls V: Skyrim українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
+export const SSE_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів The Elder Scrolls V: Skyrim українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
 Твоє завдання: максимально якісно та автентично перекласти ігрові рядки з англійської (en) на українську (uk).
 
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА СУВОРІ ОБМЕЖЕННЯ (КРИТИЧНО)
@@ -82,7 +81,7 @@ export const SKYRIM_UK_TRANSLATE_PROMPT = `Ти — провідний AI-лок
 
 ### 6. КАНОНІЧНА ТЕРМІНОЛОГІЯ (ГЛОСАРІЙ, CORE)
 Якщо у запиті відсутнє поле "glossary", використовуй ці пари для власних назв, фракцій, локацій, істот і цілісних назв предметів (не транслітеруй — відмінюй за граматикою). Крики, школи магії та DIAL-меню — див. §5:
-${promptJsonFormat([...SKYRIM_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
+${promptJsonFormat([...SSE_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.length))}
 
 ### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ
 

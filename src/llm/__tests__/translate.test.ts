@@ -6,7 +6,7 @@ import {
   parseLlmTranslateResponse,
 } from '../translate';
 import { buildEnglishTranslateSystemPrompt } from '../prompts/en';
-import { buildEnglishPromptExamples, buildUkrainianPromptExamples } from '../prompts/examples';
+import { buildEnglishPromptExamples } from '../prompts/examples';
 import { buildUkrainianTranslateSystemPrompt } from '../prompts/uk';
 
 describe('isUkrainianTargetLang', () => {
@@ -35,14 +35,14 @@ describe('buildTranslateSystemPrompt', () => {
 });
 
 describe('prompt examples', () => {
-  it('includes JSON few-shot examples in the Ukrainian prompt', () => {
-    const examples = buildUkrainianPromptExamples();
-    expect(examples).toContain('"id": 101');
-    expect(examples).toContain('¤PH0¤ кришок');
+  it('includes JSON few-shot examples in the Ukrainian FO4 prompt', () => {
     const prompt = buildUkrainianTranslateSystemPrompt('en', 'fo4');
-    expect(prompt).toContain('Приклад вхідних даних');
+    expect(prompt).toContain('"id": 101');
+    expect(prompt).toContain('¤PH0¤ кришок');
+    expect(prompt).toContain('### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ');
+    expect(prompt).toContain('source_language');
     expect(prompt).toContain('reference_examples');
-    expect(prompt).toContain('ТЕХНІЧНІ ВИМОГИ');
+    expect(prompt).toContain('### 1. ТЕХНІЧНИЙ ФОРМАТ');
   });
 
   it('includes target-language examples in the English prompt', () => {

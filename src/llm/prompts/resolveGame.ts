@@ -1,4 +1,4 @@
-import type { GameType } from '../../../types';
+import type { GameType } from '../../types';
 
 const GAME_TYPES = new Set<GameType>(['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle']);
 
