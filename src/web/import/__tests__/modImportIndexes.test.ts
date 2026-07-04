@@ -3,11 +3,15 @@ import {
   DEFERRED_IMPORT_INDEXES,
   MOD_IMPORT_INDEX_ADVISORY_LOCK_KEY,
   MOD_IMPORT_WRITE_ADVISORY_LOCK_KEY,
+  TRANSLATION_EXAMPLES_HNSW_INDEX,
   deferredImportIndexDropSql,
+  dropTranslationExamplesHnswIndex,
   isPgDeadlockError,
   releaseDeferredImportIndexLock,
   restoreDeferredImportIndexes,
+  restoreTranslationExamplesHnswIndex,
   tryBeginDeferredImportIndexes,
+  withDeferredBulkModWriteIndexes,
   withDeferredImportIndexes,
   withModImportWriteLock,
 } from '../modImportIndexes';
@@ -172,5 +176,76 @@ describe('withModImportWriteLock', () => {
     expect(value).toBe(42);
     expect(queries.filter((q) => q.includes('pg_advisory_lock'))).toHaveLength(1);
     expect(queries.filter((q) => q.includes('pg_advisory_unlock'))).toHaveLength(1);
+  });
+});
+
+describe('withDeferredBulkModWriteIndexes', () => {
+  it('runs fn without index changes when disabled', async () => {
+    const queries: string[] = [];
+    const db = {
+      query: async (sql: string) => {
+        queries.push(sql);
+        return { rows: [] };
+      },
+    };
+
+    const value = await withDeferredBulkModWriteIndexes(db as unknown as Tx, false, async () => 7);
+    expect(value).toBe(7);
+    expect(queries.some((q) => q.includes('DROP INDEX'))).toBe(false);
+    expect(queries.some((q) => q.includes('CREATE INDEX'))).toBe(false);
+  });
+
+  it('drops and restores search + HNSW indexes when enabled', async () => {
+    const queries: string[] = [];
+    const db = {
+      query: async (sql: string) => {
+        queries.push(sql);
+        if (sql.includes('pg_try_advisory_lock')) return { rows: [{ acquired: true }] };
+        return { rows: [] };
+      },
+    };
+
+    await withDeferredBulkModWriteIndexes(db as unknown as Tx, true, async () => 'ok');
+
+    expect(queries.some((q) => q.includes('idx_strings_trgm_text_norm'))).toBe(true);
+    expect(queries.some((q) => q.includes(TRANSLATION_EXAMPLES_HNSW_INDEX.name))).toBe(true);
+    expect(queries.some((q) => q.includes('CREATE INDEX IF NOT EXISTS idx_strings_trgm'))).toBe(
+      true,
+    );
+    expect(
+      queries.some((q) =>
+        q.includes(`CREATE INDEX IF NOT EXISTS ${TRANSLATION_EXAMPLES_HNSW_INDEX.name}`),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('dropTranslationExamplesHnswIndex', () => {
+  it('issues DROP INDEX for the HNSW index', async () => {
+    const queries: string[] = [];
+    const db = {
+      query: async (sql: string) => {
+        queries.push(sql);
+        return { rows: [] };
+      },
+    };
+
+    await dropTranslationExamplesHnswIndex(db as unknown as Tx);
+    expect(queries).toEqual([`DROP INDEX IF EXISTS ${TRANSLATION_EXAMPLES_HNSW_INDEX.name}`]);
+  });
+});
+
+describe('restoreTranslationExamplesHnswIndex', () => {
+  it('recreates the HNSW index', async () => {
+    const queries: string[] = [];
+    const db = {
+      query: async (sql: string) => {
+        queries.push(sql);
+        return { rows: [] };
+      },
+    };
+
+    await restoreTranslationExamplesHnswIndex(db as unknown as Tx);
+    expect(queries).toEqual([TRANSLATION_EXAMPLES_HNSW_INDEX.createSql]);
   });
 });

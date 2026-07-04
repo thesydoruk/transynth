@@ -10,6 +10,10 @@ import { parseRecordLocation } from '../../utils/recordLocation';
 import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from '../services/ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from '../import/modImportBulk';
+import {
+  type DeferredBulkWriteIndexContext,
+  withDeferredBulkModWriteIndexes,
+} from '../import/modImportIndexes';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
@@ -609,23 +613,21 @@ export const getMod = async (db: Tx, id: number) => {
  * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
  * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
  * row-by-row. Explicit bulk DELETE/UPDATE statements use set-based plans instead.
+ * Heavy pg_trgm/HASH indexes and the RAG HNSW index are dropped for the purge
+ * window when MOD_IMPORT_DEFER_INDEXES is enabled (default).
  *
  * @param scope - `rows` keeps mod rows; `mod` also removes dialog graph + mods.
  */
-export const deleteModDataForModIds = async (
-  db: Tx,
-  modIds: number[],
+const deleteModDataOnClient = async (
+  client: Tx,
+  uniqueModIds: number[],
   scope: 'rows' | 'mod',
+  indexCtx: DeferredBulkWriteIndexContext,
 ): Promise<{ deletedRecords: number }> => {
-  const uniqueModIds = [...new Set(modIds.filter((id) => Number.isInteger(id) && id > 0))];
-  if (uniqueModIds.length === 0) {
-    return { deletedRecords: 0 };
-  }
+  const TE_CHUNK = CONFIG.dbChunkSize;
 
-  const started = Date.now();
-  const TE_CHUNK = 5000;
-
-  const result = await withTransaction(db as pg.Pool, async (client) => {
+  await client.query('BEGIN');
+  try {
     await client.query(
       `UPDATE dialog_nodes dn
           SET response_string_id = NULL
@@ -636,20 +638,32 @@ export const deleteModDataForModIds = async (
       [uniqueModIds],
     );
 
-    for (;;) {
-      const { rowCount } = await client.query(
+    if (indexCtx.hnswDropped) {
+      await client.query(
         `DELETE FROM translation_examples te
-          WHERE te.translation_id IN (
-            SELECT t.id
-              FROM translations t
-              JOIN strings s ON t.src_string_id = s.id
-              JOIN records r ON s.record_id = r.id
-             WHERE r.mod_id = ANY($1::int[])
-             LIMIT $2
-          )`,
-        [uniqueModIds, TE_CHUNK],
+          USING translations t
+          JOIN strings s ON t.src_string_id = s.id
+          JOIN records r ON s.record_id = r.id
+         WHERE te.translation_id = t.id
+           AND r.mod_id = ANY($1::int[])`,
+        [uniqueModIds],
       );
-      if (!rowCount || rowCount < TE_CHUNK) break;
+    } else {
+      for (;;) {
+        const { rowCount } = await client.query(
+          `DELETE FROM translation_examples te
+            WHERE te.translation_id IN (
+              SELECT t.id
+                FROM translations t
+                JOIN strings s ON t.src_string_id = s.id
+                JOIN records r ON s.record_id = r.id
+               WHERE r.mod_id = ANY($1::int[])
+               LIMIT $2
+            )`,
+          [uniqueModIds, TE_CHUNK],
+        );
+        if (!rowCount || rowCount < TE_CHUNK) break;
+      }
     }
 
     await client.query(
@@ -717,11 +731,34 @@ export const deleteModDataForModIds = async (
       await client.query(`DELETE FROM mods WHERE id = ANY($1::int[])`, [uniqueModIds]);
     }
 
+    await client.query('COMMIT');
     return { deletedRecords: rowCount ?? 0 };
-  });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  }
+};
+
+export const deleteModDataForModIds = async (
+  db: Tx,
+  modIds: number[],
+  scope: 'rows' | 'mod',
+): Promise<{ deletedRecords: number }> => {
+  const uniqueModIds = [...new Set(modIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (uniqueModIds.length === 0) {
+    return { deletedRecords: 0 };
+  }
+
+  const started = Date.now();
+
+  const result = await withDeferredBulkModWriteIndexes(
+    db,
+    CONFIG.modImportDeferIndexes,
+    (client, indexCtx) => deleteModDataOnClient(client, uniqueModIds, scope, indexCtx),
+  );
 
   log.info(
-    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} ms=${Date.now() - started}`,
+    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} deferIndexes=${CONFIG.modImportDeferIndexes} ms=${Date.now() - started}`,
   );
   return result;
 };
