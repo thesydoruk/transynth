@@ -26,11 +26,11 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
       fastapi==0.115.12 \
       "uvicorn[standard]==0.34.2" \
       python-multipart==0.0.20 \
-      huggingface_hub==0.30.2 \
-      soundfile==0.13.1
+      soundfile==0.13.1 \
+      "transformers>=4.48,<5.0"
 
 COPY entrypoint.sh server.py /app/
-RUN chmod +x /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /data/xtts
