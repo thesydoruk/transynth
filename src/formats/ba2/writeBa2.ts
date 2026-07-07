@@ -25,7 +25,7 @@
  *   Name table:
  *     For each file: uint16 nameLength + UTF-8 name bytes (no null terminator).
  */
-import { deflateSync } from 'zlib';
+import { deflateSync, constants as zlibConstants } from 'zlib';
 import { log } from '../../logger';
 import type { ArchiveInputFile } from '../types';
 import {
@@ -46,7 +46,7 @@ const packBa2Payload = (
     return { payload: raw, packedSize: 0, realSize: raw.length };
   }
 
-  const compressed = deflateSync(raw);
+  const compressed = deflateSync(raw, { level: zlibConstants.Z_BEST_COMPRESSION });
   if (compressed.length >= raw.length) {
     return { payload: raw, packedSize: 0, realSize: raw.length };
   }

@@ -14,6 +14,7 @@
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "mod:prepare": "tsx scripts/prepareModWorkspace.ts",
     "mod:pack": "tsx scripts/packModWorkspace.ts",
+    "mod:localize": "tsx scripts/localizeModWorkspace.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
     "export:mods": "tsx scripts/exportMods.ts",

@@ -1,5 +1,5 @@
 import lz4 from 'lz4js';
-import { deflateSync } from 'zlib';
+import { deflateSync, constants as zlibConstants } from 'zlib';
 
 const FILE_FLAG_COMPRESS_TOGGLE = 0x40000000;
 const FILE_SIZE_MASK = 0x3fffffff;
@@ -52,7 +52,7 @@ export const packBsaFilePayload = (
   if (version === 105) {
     compressed = compressLz4Block(raw);
   } else {
-    const zlib = deflateSync(raw);
+    const zlib = deflateSync(raw, { level: zlibConstants.Z_BEST_COMPRESSION });
     compressed = zlib.length < raw.length ? zlib : null;
   }
 
