@@ -8,6 +8,8 @@ export type ArchiveManifestEntry = {
   type: 'ba2' | 'bsa';
   fileName: string;
   entries: string[];
+  /** BSA format version (104 = LE, 105 = SE). Only for `type: "bsa"`. */
+  bsaVersion?: number;
 };
 
 export type ModWorkspacePackage = {

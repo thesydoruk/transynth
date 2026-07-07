@@ -1,19 +1,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { writeBa2 } from '../formats/ba2';
-import { writeBsa } from '../formats/bsa';
-import type { ArchiveInputFile } from '../formats/types';
 import { log } from '../logger';
 import type { GameType } from '../types';
 import { copyFileSafe, ensureDir } from '../utils/file';
 import { discoverModFiles } from '../web/import/modImportService';
 import {
-  type ArchiveManifestEntry,
   type ModWorkspaceManifest,
   type ModWorkspacePackage,
   readModWorkspaceManifest,
 } from './archiveManifest';
+import { isBethesdaArchiveFile, normalizeArchivePath } from './bethesdaArchivePaths';
 import { create7zArchive } from './create7zArchive';
+import {
+  manifestArchivedPaths,
+  packBethesdaArchivesIntoDir,
+  resolvePackageArchives,
+} from './packBethesdaArchives';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 
@@ -26,6 +28,7 @@ export type PackModWorkspaceResult = {
   modName: string;
   outputDir: string;
   archives: string[];
+  bethesdaArchives: string[];
 };
 
 const removeDirectory = (dir: string): void => {
@@ -42,56 +45,19 @@ const copyDirectory = (fromDir: string, toDir: string): void => {
   }
 };
 
-const archiveEntryToDiskPath = (rootDir: string, entryName: string): string => {
-  const parts = entryName.replace(/\\/g, '/').split('/').filter(Boolean);
-  return path.join(rootDir, ...parts);
-};
-
-const collectArchiveInputFiles = (rootDir: string, entries: string[]): ArchiveInputFile[] => {
-  const files: ArchiveInputFile[] = [];
-  for (const entryName of entries) {
-    const diskPath = archiveEntryToDiskPath(rootDir, entryName);
-    if (!fs.existsSync(diskPath)) {
-      throw new Error(`Missing file for archive entry "${entryName}" in ${rootDir}`);
-    }
-    files.push({
-      name: entryName.replace(/\//g, '\\'),
-      data: fs.readFileSync(diskPath),
-    });
-  }
-  return files;
-};
-
-const writeBethesdaArchive = (
-  destPath: string,
-  archive: ArchiveManifestEntry,
-  files: ArchiveInputFile[],
-): void => {
-  if (archive.type === 'ba2') {
-    fs.writeFileSync(destPath, writeBa2(files));
-    return;
-  }
-  fs.writeFileSync(destPath, writeBsa(files, 105));
-};
-
-const manifestEntryPaths = (pkg: ModWorkspacePackage): Set<string> => {
-  const paths = new Set<string>();
-  for (const archive of pkg.archives) {
-    for (const entry of archive.entries) {
-      paths.add(entry.replace(/\\/g, '/').toLowerCase());
-    }
-  }
-  return paths;
-};
-
 const isPluginFile = (fileName: string): boolean =>
   PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
 
-const copyLooseFiles = (sourceDir: string, destDir: string, archivedPaths: Set<string>): void => {
+const copyLooseFiles = (
+  sourceDir: string,
+  destDir: string,
+  archivedPaths: Set<string>,
+  skipArchiveNames: Set<string>,
+): void => {
   const walk = (current: string, rel = ''): void => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       const relPath = rel ? `${rel}/${entry.name}` : entry.name;
-      const relNorm = relPath.replace(/\\/g, '/').toLowerCase();
+      const relNorm = normalizeArchivePath(relPath);
       const full = path.join(current, entry.name);
 
       if (entry.isDirectory()) {
@@ -112,8 +78,13 @@ const copyLooseFiles = (sourceDir: string, destDir: string, archivedPaths: Set<s
         continue;
       }
 
-      const ext = path.extname(entry.name).toLowerCase();
-      if (ext === '.ba2' || ext === '.bsa') continue;
+      if (isBethesdaArchiveFile(entry.name)) {
+        if (!skipArchiveNames.has(entry.name.toLowerCase())) {
+          copyFileSafe(full, path.join(destDir, relPath));
+        }
+        continue;
+      }
+
       copyFileSafe(full, path.join(destDir, relPath));
     }
   };
@@ -132,7 +103,8 @@ const buildPackageStagingDir = (
   extractedDir: string,
   pkg: ModWorkspacePackage,
   stagingRoot: string,
-): string => {
+  game: GameType,
+): { stagingDir: string; bethesdaArchives: string[] } => {
   const packageDir = pkg.folder ? path.join(extractedDir, pkg.folder) : extractedDir;
   if (!fs.existsSync(packageDir)) {
     throw new Error(`Package folder not found: ${packageDir}`);
@@ -142,15 +114,23 @@ const buildPackageStagingDir = (
   removeDirectory(stagingDir);
   ensureDir(stagingDir);
 
-  const archivedPaths = manifestEntryPaths(pkg);
-  for (const archive of pkg.archives) {
-    const files = collectArchiveInputFiles(packageDir, archive.entries);
-    const archivePath = path.join(stagingDir, archive.fileName);
-    writeBethesdaArchive(archivePath, archive, files);
-  }
+  const resolvedArchives = resolvePackageArchives(packageDir, pkg.archives, pkg.pluginFiles, game);
+  const packed = packBethesdaArchivesIntoDir(
+    packageDir,
+    stagingDir,
+    resolvedArchives,
+    pkg.pluginFiles,
+    game,
+  );
+  const packedNames = new Set(packed.map((item) => item.fileName.toLowerCase()));
+  const archivedPaths = manifestArchivedPaths(resolvedArchives);
 
-  copyLooseFiles(packageDir, stagingDir, archivedPaths);
-  return stagingDir;
+  copyLooseFiles(packageDir, stagingDir, archivedPaths, packedNames);
+
+  return {
+    stagingDir,
+    bethesdaArchives: packed.map((item) => item.destPath),
+  };
 };
 
 const listTopLevelPackageFolders = (extractedDir: string): string[] => {
@@ -190,7 +170,7 @@ const inferPackagesFromExtracted = (extractedDir: string): ModWorkspacePackage[]
 
 /**
  * Pack `extracted/` into .7z archives under `output/`.
- * Output format is always 7z. BA2/BSA are rebuilt from loose files using `manifest.json`.
+ * Rebuilds BA2/BSA from loose files (manifest or inferred layout) before creating 7z.
  */
 export const packModWorkspace = async (
   options: PackModWorkspaceOptions,
@@ -212,17 +192,27 @@ export const packModWorkspace = async (
       packages: inferPackagesFromExtracted(extractedDir),
     } satisfies ModWorkspaceManifest);
 
+  const game = options.game ?? manifest.game;
+
   ensureDir(outputDir);
   const stagingRoot = path.join(workspaceDir, '.pack-staging');
   removeDirectory(stagingRoot);
   ensureDir(stagingRoot);
 
   const createdArchives: string[] = [];
+  const bethesdaArchives: string[] = [];
   const multiPackage = manifest.packages.length > 1;
 
   try {
     for (const pkg of manifest.packages) {
-      const stagingDir = buildPackageStagingDir(extractedDir, pkg, stagingRoot);
+      const { stagingDir, bethesdaArchives: packedBa } = buildPackageStagingDir(
+        extractedDir,
+        pkg,
+        stagingRoot,
+        game,
+      );
+      bethesdaArchives.push(...packedBa);
+
       const archiveBase = resolvePackageArchiveName(pkg);
       const archiveName = multiPackage ? `${archiveBase}.7z` : `${manifest.modName}.7z`;
       const archivePath = path.join(outputDir, archiveName);
@@ -240,5 +230,6 @@ export const packModWorkspace = async (
     modName: manifest.modName,
     outputDir,
     archives: createdArchives,
+    bethesdaArchives,
   };
 };

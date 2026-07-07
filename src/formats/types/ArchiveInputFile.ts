@@ -9,4 +9,9 @@ export interface ArchiveInputFile {
   name: string;
   /** Raw file bytes to store in the archive. */
   data: Buffer;
+  /**
+   * When true, apply Creation Kit compression for this entry (zlib in BA2 / BSA v104,
+   * LZ4 block in BSA v105). Defaults to false when omitted.
+   */
+  compressed?: boolean;
 }

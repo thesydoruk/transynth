@@ -40,6 +40,7 @@
 
 import { log } from '../../logger';
 import type { ArchiveInputFile } from '../types';
+import { packBsaFilePayload } from './bsaPayload';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
@@ -160,8 +161,10 @@ interface FileEntry {
   ext: string;
   /** Name hash for the file record */
   nameHash: bigint;
-  /** Raw file data */
+  /** On-disk bytes (raw or compressed payload) */
   data: Buffer;
+  /** BSA file record size field */
+  sizeField: number;
 }
 
 /**
@@ -234,7 +237,15 @@ export const writeBsa = (files: ArchiveInputFile[], version: number = 105): Buff
   for (const f of files) {
     const { folder, baseName, stem, ext } = splitPath(f.name);
     const nameHash = bethesdaHashFile(stem, ext);
-    const entry: FileEntry = { baseName, stem, ext, nameHash, data: f.data };
+    const packed = packBsaFilePayload(f.data, f.compressed === true, version);
+    const entry: FileEntry = {
+      baseName,
+      stem,
+      ext,
+      nameHash,
+      data: packed.data,
+      sizeField: packed.sizeField,
+    };
 
     if (!folderMap.has(folder)) folderMap.set(folder, []);
     folderMap.get(folder)!.push(entry);
@@ -361,7 +372,7 @@ export const writeBsa = (files: ArchiveInputFile[], version: number = 105): Buff
     for (const f of folder.files) {
       buf.writeBigUInt64LE(f.nameHash, pos); // nameHash
       pos += 8;
-      buf.writeUInt32LE(f.data.length, pos); // size (uncompressed, no flags)
+      buf.writeUInt32LE(f.sizeField, pos); // size (with compression toggle when set)
       pos += 4;
       buf.writeUInt32LE(fileDataOffsets[fileIdx], pos); // absolute offset
       pos += 4;

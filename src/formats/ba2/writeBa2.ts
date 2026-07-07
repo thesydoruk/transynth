@@ -25,6 +25,7 @@
  *   Name table:
  *     For each file: uint16 nameLength + UTF-8 name bytes (no null terminator).
  */
+import { deflateSync } from 'zlib';
 import { log } from '../../logger';
 import type { ArchiveInputFile } from '../types';
 import {
@@ -37,6 +38,22 @@ import {
 import { crc32 } from './utils/crc32';
 import { getBa2PathParts } from './utils/getBa2PathParts';
 
+const packBa2Payload = (
+  raw: Buffer,
+  compress: boolean,
+): { payload: Buffer; packedSize: number; realSize: number } => {
+  if (!compress) {
+    return { payload: raw, packedSize: 0, realSize: raw.length };
+  }
+
+  const compressed = deflateSync(raw);
+  if (compressed.length >= raw.length) {
+    return { payload: raw, packedSize: 0, realSize: raw.length };
+  }
+
+  return { payload: compressed, packedSize: compressed.length, realSize: raw.length };
+};
+
 /**
  * Build a BA2 (GNRL, version 1) archive buffer from a list of files.
  *
@@ -47,11 +64,13 @@ export const writeBa2 = (files: ArchiveInputFile[]): Buffer => {
   const fileCount = files.length;
   const dataStart = BA2_HEADER_SIZE + fileCount * BA2_ENTRY_SIZE;
 
+  const payloads = files.map((f) => packBa2Payload(f.data, f.compressed === true));
+
   const offsets: number[] = [];
   let currentOffset = dataStart;
-  for (const f of files) {
+  for (const packed of payloads) {
     offsets.push(currentOffset);
-    currentOffset += f.data.length;
+    currentOffset += packed.payload.length;
   }
 
   const nameTableOffset = currentOffset;
@@ -79,8 +98,8 @@ export const writeBa2 = (files: ArchiveInputFile[]): Buffer => {
     entries.writeUInt32LE(crc32(Buffer.from(dir)), base + 8);
     entries.writeUInt32LE(0, base + 12); // flags (0 = uncompressed)
     entries.writeBigUInt64LE(BigInt(offsets[i]), base + 16); // absolute data offset
-    entries.writeUInt32LE(0, base + 24); // packedSize (0 = not compressed)
-    entries.writeUInt32LE(files[i].data.length, base + 28); // realSize
+    entries.writeUInt32LE(payloads[i].packedSize, base + 24);
+    entries.writeUInt32LE(payloads[i].realSize, base + 28);
     entries.writeUInt32LE(0, base + 32); // alignment padding
   }
 
@@ -92,7 +111,12 @@ export const writeBa2 = (files: ArchiveInputFile[]): Buffer => {
     nameParts.push(lenBuf, nameBytes);
   }
 
-  const result = Buffer.concat([header, entries, ...files.map((f) => f.data), ...nameParts]);
+  const result = Buffer.concat([
+    header,
+    entries,
+    ...payloads.map((packed) => packed.payload),
+    ...nameParts,
+  ]);
   log.info(`BA2: wrote archive with ${fileCount} files, ${result.length} bytes`);
   return result;
 };

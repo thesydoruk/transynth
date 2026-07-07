@@ -80,6 +80,29 @@ describe('BA2 writer', () => {
     expect(parsed.get(2)).toBe('Пустка');
   });
 
+  it('round-trips zlib-compressed non-string assets', () => {
+    const payload = Buffer.alloc(256, 0xab);
+    const ba2 = writeBa2([{ name: 'Meshes\\Armor.nif', data: payload, compressed: true }]);
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formats-ba2-zlib-'));
+    const archivePath = path.join(tempDir, 'test.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(archivePath, ba2);
+
+    const packedSize = ba2.readUInt32LE(24 + 24);
+    const realSize = ba2.readUInt32LE(24 + 28);
+    expect(packedSize).toBeGreaterThan(0);
+    expect(realSize).toBe(payload.length);
+
+    const reader = new Ba2Reader(archivePath);
+    try {
+      const extracted = reader.extractByName('Meshes\\Armor.nif');
+      expect(extracted).toEqual(payload);
+    } finally {
+      reader.close();
+    }
+  });
+
   it('preserves the golden corpus file inventory and per-file payloads', () => {
     const files: ArchiveInputFile[] = LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles.map((file) => ({
       name: `Strings\\${file.fileName}`,

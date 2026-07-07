@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Pack a mod workspace `extracted/` tree into .7z archives under `output/`.
+ * Rebuilds BA2/BSA from loose files before creating the 7z (manifest or inferred layout).
  *
  * Layout:
  *   workingDir/
@@ -87,7 +88,10 @@ try {
 
   log.info(`Packed "${result.modName}" → ${result.outputDir}`);
   for (const archive of result.archives) {
-    log.info(`  ${archive}`);
+    log.info(`  7z: ${archive}`);
+  }
+  for (const ba of result.bethesdaArchives) {
+    log.info(`  ba: ${ba}`);
   }
 } catch (err) {
   log.error(err instanceof Error ? err.message : String(err));

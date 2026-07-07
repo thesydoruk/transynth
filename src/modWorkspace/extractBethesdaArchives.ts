@@ -73,11 +73,13 @@ export const extractBethesdaArchiveInPlace = (archivePath: string): ArchiveManif
   }
 
   if (ext === '.bsa') {
-    const entries = listBsaArchiveEntries(archivePath);
+    const reader = new BsaReader(archivePath);
+    const entries = reader.list().map((entry) => entry.name);
+    const bsaVersion = reader.version;
     extractBsaToDir(archivePath, outDir);
     fs.unlinkSync(archivePath);
     log.debug(`Extracted and removed ${fileName}`);
-    return { type: 'bsa', fileName, entries };
+    return { type: 'bsa', fileName, entries, bsaVersion };
   }
 
   return null;

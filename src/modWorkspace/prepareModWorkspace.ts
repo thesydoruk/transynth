@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isBa2GnrArchive } from '../formats/ba2/readBa2ArchiveType';
+import { BsaReader } from '../formats/bsa';
 import { log } from '../logger';
 import type { GameType } from '../types';
 import { copyFileSafe, ensureDir } from '../utils/file';
@@ -10,7 +11,6 @@ import {
   extractBa2ToDir,
   extractBsaToDir,
   listBa2ArchiveEntries,
-  listBsaArchiveEntries,
 } from './extractBethesdaArchives';
 import {
   type ArchiveManifestEntry,
@@ -212,10 +212,13 @@ const extractCompanionArchives = (
       });
       extractBa2ToDir(destArch, pluginOut);
     } else if (ext === '.bsa') {
+      const reader = new BsaReader(destArch);
+      const entries = reader.list().map((entry) => entry.name);
       manifest.push({
         type: 'bsa',
         fileName: path.basename(destArch),
-        entries: listBsaArchiveEntries(destArch),
+        entries,
+        bsaVersion: reader.version,
       });
       extractBsaToDir(destArch, pluginOut);
     }
