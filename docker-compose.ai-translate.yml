@@ -1,0 +1,118 @@
+# AI stack: Gemma 4 26B A4B (GPU 0, full VRAM) + Open WebUI + SearXNG.
+# docker compose -f docker-compose.ai-translate.yml up -d
+#
+# Ubuntu + RTX 5090 (32 GiB) — vLLM owns the sole GPU (no TEI/audio/face sidecars).
+# Model: cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit + compressed-tensors (override VLLM_GEMMA4_MODEL).
+# Image: VLLM_OPENAI_IMAGE (default gemma4-0505-cu130 for Blackwell sm_120). HF_TOKEN if gated.
+#
+# Pool:
+#   - Chat (OpenAI): http://localhost:8011/v1 — gemma4:26b-a4b
+#   - Chat (Web UI): http://localhost:8088
+#
+# Caches: ./data/huggingface, ./data/vllm-gemma-4-26b-a4b, ./data/open-webui.
+
+services:
+  vllm-gemma-4-26b-a4b:
+    image: ${VLLM_OPENAI_IMAGE:-vllm/vllm-openai:gemma4-0505-cu130}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    shm_size: '8gb'
+    ipc: host
+    ports:
+      - '8011:8000'
+    volumes:
+      - ./data/huggingface:/root/.cache/huggingface
+      - ./data/vllm-gemma-4-26b-a4b:/root/.cache/vllm
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /root/.cache/huggingface
+      CUDA_VISIBLE_DEVICES: '0'
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python3',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=12).read()",
+        ]
+      interval: 10s
+      timeout: 25s
+      retries: 8
+      start_period: 300s
+    command:
+      - ${VLLM_GEMMA4_MODEL:-cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit}
+      - --quantization
+      - compressed-tensors
+      - --served-model-name
+      - gemma4:26b-a4b
+      - --max-num-batched-tokens
+      - '4096'
+      - --max-model-len
+      - '200000'
+      - --gpu-memory-utilization
+      - '0.94'
+      - --max-num-seqs
+      - '16'
+      - --cpu-offload-gb
+      - '0'
+      - --tool-call-parser
+      - gemma4
+      - --enable-auto-tool-choice
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8000'
+
+  open-webui:
+    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:v0.6.15}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    environment:
+      OPENAI_API_BASE_URLS: http://vllm-gemma-4-26b-a4b:8000/v1
+      OPENAI_API_KEYS: ${OPEN_WEBUI_API_KEY:-not-needed}
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-change-me-local-vllm}
+      ENABLE_SIGNUP: 'false'
+      ENABLE_OAUTH_SIGNUP: 'false'
+      DEFAULT_MODELS: gemma4:26b-a4b
+      WEBUI_NAME: Gemma 4 26B Chat
+      ENABLE_PERSISTENT_CONFIG: 'false'
+      ENABLE_WEB_SEARCH: 'true'
+      WEB_SEARCH_ENGINE: searxng
+      SEARXNG_QUERY_URL: 'http://searxng:8080/search?q=<query>'
+      WEB_SEARCH_RESULT_COUNT: '3'
+      WEB_SEARCH_CONCURRENT_REQUESTS: '10'
+    depends_on:
+      vllm-gemma-4-26b-a4b:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - '8089:8080'
+    volumes:
+      - ./searxng:/etc/searxng
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8089/
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-searxng-local-telegram-stack}
+    restart: unless-stopped

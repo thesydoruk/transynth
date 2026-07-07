@@ -1,0 +1,62 @@
+# XTTS v2 Ukrainian — fine-tuned GPT encoder (mouseyy/xttsv2-ukrainian_22012, language code `uk`).
+# Standalone stack for the gaming PC (RTX 5090). Not included in docker-compose.yml.
+#
+#   docker compose -f docker-compose.xtts-uk.yml up -d --build
+#   docker compose -f docker-compose.xtts-uk.yml logs -f xtts-uk
+#
+# API:  http://localhost:${XTTS_UK_PORT:-8020}
+# Docs: http://localhost:${XTTS_UK_PORT:-8020}/docs
+#
+# First run downloads ~6 GB (Ukrainian fine-tune + XTTS v2 base weights).
+# Put mono 22050 Hz reference clips (6–10 s) in ./data/xtts-uk/speakers/
+#
+# Example:
+#   curl -X POST http://localhost:8020/tts \
+#     -F 'text=Привіт! Це тест українського синтезу мовлення.' \
+#     -F 'speaker=my-voice.wav' \
+#     --output hello.wav
+#
+# If vLLM (docker-compose.ai-translate.yml) uses GPU 0, set TTS_GPU_DEVICE_ID=0 only when
+# the LLM stack is stopped, or assign a free GPU index.
+
+services:
+  xtts-uk:
+    build:
+      context: ./docker/xtts-uk
+    image: xtts-uk:${IMAGE_TAG:-latest}
+    container_name: xtts-uk
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '${XTTS_UK_PORT:-8020}:8020'
+    volumes:
+      - ./data/xtts-uk/checkpoints:/data/xtts/checkpoints
+      - ./data/xtts-uk/speakers:/data/xtts/speakers
+      - ./data/xtts-uk/output:/data/xtts/output
+      - ./data/huggingface:/root/.cache/huggingface
+    environment:
+      NVIDIA_DISABLE_REQUIRE: 1
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /root/.cache/huggingface
+      XTTS_UK_MODEL_ID: ${XTTS_UK_MODEL_ID:-mouseyy/xttsv2-ukrainian_22012}
+      XTTS_UK_LANGUAGE: ${XTTS_UK_LANGUAGE:-uk}
+      XTTS_UK_DEVICE: ${XTTS_UK_DEVICE:-cuda}
+      XTTS_UK_HOST: 0.0.0.0
+      XTTS_UK_PORT: '8020'
+      XTTS_CHECKPOINT_DIR: /data/xtts/checkpoints
+      XTTS_SPEAKERS_DIR: /data/xtts/speakers
+      XTTS_OUTPUT_DIR: /data/xtts/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${TTS_GPU_DEVICE_ID:-0}']
+              capabilities: [gpu]
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:8020/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s

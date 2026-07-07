@@ -1,0 +1,74 @@
+---
+description: SSH to gaming PC (windows-ssh) and DB server (ai-pipeline) via WSL
+alwaysApply: true
+---
+
+# Remote hosts (SSH via WSL)
+
+Two servers — do not confuse them.
+
+| Host | Role | SSH alias | User |
+|------|------|-----------|------|
+| **Gaming PC** | GPU / AI inference (vLLM, Open WebUI, TTS, SearXNG, …) | `windows-ssh` | `valerii` |
+| **DB server** | PostgreSQL and DB admin | `ai-pipeline` | `root` |
+
+`windows-ssh` is **not** the database host. For DB sessions, dumps, or `psql` — use `ai-pipeline`.
+
+## How to connect
+
+From Windows, **always run SSH through WSL** — aliases and keys live in WSL `~/.ssh/config`.
+
+```bash
+# Gaming PC (AI workloads)
+wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh '<command>'"
+
+# DB server
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline '<command>'"
+```
+
+Both use jump host `router-kyiv` and key `~/.ssh/id_rsa` (WSL). Key-only — no passwords.
+
+## Gaming PC (`windows-ssh`)
+
+| Setting | Value |
+|---------|-------|
+| Machine | Gaming PC (RTX 5090) |
+| Hostname | `Gaming-pc` |
+| Home | `/home/valerii` |
+| Project dir | `~/Source/telegram` |
+
+Typical tasks: `docker compose`, GPU stacks, model serving, TTS WebUI.
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh 'docker ps'"
+```
+
+Health check — expect `Gaming-pc`, `valerii`, `/home/valerii`.
+
+## DB server (`ai-pipeline`)
+
+| Setting | Value |
+|---------|-------|
+| Role | PostgreSQL / database |
+| User | `root` |
+
+Typical tasks: `psql`, `pg_dump`, terminate sessions, DB maintenance.
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'docker ps'"
+```
+
+See `scripts/killDbSessions.sh` — runs SQL via `ssh ai-pipeline`.
+
+## Agent workflow
+
+1. **AI / Docker / GPU** → `windows-ssh`
+2. **Database** → `ai-pipeline`
+3. Prefer one-liners; use `BatchMode=yes` and `ConnectTimeout=10`.
+4. Do not use `ssh` from PowerShell — it misses WSL SSH config and keys.
+
+## Related local files
+
+- `docker-compose.ai-translate.yml` — AI stack on gaming PC
+- `docker-compose.xtts-uk.yml` — XTTS v2 Ukrainian TTS API (gaming PC)
+- `scripts/killDbSessions.sh` — DB admin on `ai-pipeline`

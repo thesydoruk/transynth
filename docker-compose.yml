@@ -1,4 +1,5 @@
 # Production stack: PostgreSQL (docker-compose.db.yml) + web API/SPA.
+# Optional XTTS v2 Ukrainian: docker-compose.xtts-uk.yml (gaming PC).
 #
 #   docker compose up -d --build
 #   docker compose run --rm web npm run db:init
