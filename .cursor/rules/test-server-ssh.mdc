@@ -35,12 +35,15 @@ Both use jump host `router-kyiv` and key `~/.ssh/id_rsa` (WSL). Key-only — no 
 | Machine | Gaming PC (RTX 5090) |
 | Hostname | `Gaming-pc` |
 | Home | `/home/valerii` |
-| Project dir | `~/Source/telegram` |
+| Project dir | `~/Source/fallout4-localization-project` |
 
-Typical tasks: `docker compose`, GPU stacks, model serving, TTS WebUI.
+On the gaming PC this repo lives at **`~/Source/fallout4-localization-project`** (not `~/Source/telegram`). Use it for `docker compose`, `.env`, and `data/` paths.
+
+Typical tasks: `docker compose`, GPU stacks, model serving, XTTS Ukrainian TTS.
 
 ```bash
 wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh 'docker ps'"
+wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh 'docker compose -f ~/Source/fallout4-localization-project/docker-compose.xtts-uk.yml ps'"
 ```
 
 Health check — expect `Gaming-pc`, `valerii`, `/home/valerii`.
