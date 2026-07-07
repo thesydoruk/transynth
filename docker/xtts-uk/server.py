@@ -1,51 +1,31 @@
 import io
 import os
+import uuid
 import wave
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
 
 import numpy as np
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
 
 CKPT_DIR = Path(os.environ.get("XTTS_CHECKPOINT_DIR", "/data/xtts/checkpoints"))
-SPEAKERS_DIR = Path(os.environ.get("XTTS_SPEAKERS_DIR", "/data/xtts/speakers"))
-OUTPUT_DIR = Path(os.environ.get("XTTS_OUTPUT_DIR", "/data/xtts/output"))
+TEMP_DIR = Path(os.environ.get("XTTS_TEMP_DIR", "/data/xtts/temp"))
 LANGUAGE = os.environ.get("XTTS_UK_LANGUAGE", "uk")
 DEVICE = os.environ.get("XTTS_UK_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 HOST = os.environ.get("XTTS_UK_HOST", "0.0.0.0")
 PORT = int(os.environ.get("XTTS_UK_PORT", "8020"))
 
-app = FastAPI(title="XTTS v2 Ukrainian", version="1.0.0")
 _model: Xtts | None = None
 _config: XttsConfig | None = None
 
 
-def _resolve_speaker_wav(speaker: str | None, upload: UploadFile | None) -> Path:
-    if upload is not None:
-        suffix = Path(upload.filename or "speaker.wav").suffix or ".wav"
-        target = OUTPUT_DIR / f"_upload_{os.getpid()}{suffix}"
-        target.write_bytes(upload.file.read())
-        return target
-
-    if not speaker:
-        raise HTTPException(status_code=400, detail="speaker or speaker_wav file is required")
-
-    candidate = Path(speaker)
-    if not candidate.is_absolute():
-        candidate = SPEAKERS_DIR / speaker
-    if candidate.is_dir():
-        wavs = sorted(candidate.glob("*.wav"))
-        if not wavs:
-            raise HTTPException(status_code=404, detail=f"No .wav files in speaker folder: {candidate}")
-        return wavs[0]
-    if not candidate.exists():
-        raise HTTPException(status_code=404, detail=f"Speaker reference not found: {candidate}")
-    return candidate
+def _normalize_language(language: str | None) -> str:
+    lang = (language or LANGUAGE).strip().lower()
+    return "uk" if lang == "ua" else lang
 
 
 def _wav_bytes(audio: np.ndarray, sample_rate: int) -> bytes:
@@ -91,92 +71,102 @@ def _load_model() -> tuple[Xtts, XttsConfig]:
     return model, config
 
 
-@app.on_event("startup")
-def startup() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    SPEAKERS_DIR.mkdir(parents=True, exist_ok=True)
-    _load_model()
+async def _save_reference(reference: UploadFile) -> Path:
+    suffix = Path(reference.filename or "reference.wav").suffix.lower()
+    if suffix not in {".wav", ".mp3", ".flac", ".ogg", ".m4a"}:
+        suffix = ".wav"
+
+    path = TEMP_DIR / f"{uuid.uuid4().hex}{suffix}"
+    data = await reference.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="reference audio is empty")
+    path.write_bytes(data)
+    return path
 
 
-@app.get("/health")
-def health() -> dict[str, str | bool]:
-    ready = _model is not None
-    return {
-        "status": "ok" if ready else "loading",
-        "language": LANGUAGE,
-        "device": DEVICE,
-        "model_ready": ready,
-    }
-
-
-@app.get("/speakers")
-def list_speakers() -> dict[str, list[str]]:
-    files = sorted(p.name for p in SPEAKERS_DIR.glob("*.wav"))
-    folders = sorted(p.name for p in SPEAKERS_DIR.iterdir() if p.is_dir())
-    return {"wav_files": files, "folders": folders}
-
-
-@app.post("/tts")
-async def synthesize(
-    text: Annotated[str, Form()],
-    speaker: Annotated[str | None, Form()] = None,
-    language: Annotated[str | None, Form()] = None,
-    speaker_wav: UploadFile | None = File(None),
-) -> Response:
-    text = text.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="text is required")
-
+async def _synthesize(text: str, reference_path: Path, language: str | None) -> bytes:
     model, config = _load_model()
-    speaker_path = _resolve_speaker_wav(speaker, speaker_wav)
-    lang = (language or LANGUAGE).strip().lower()
-    if lang == "ua":
-        lang = "uk"
+    lang = _normalize_language(language)
 
     try:
         outputs = model.synthesize(
             text,
             config,
-            speaker_wav=str(speaker_path),
+            speaker_wav=str(reference_path),
             language=lang,
         )
     except Exception as exc:  # noqa: BLE001 — surface model errors to client
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    wav = outputs["wav"]
     sample_rate = int(getattr(config, "output_sample_rate", 24000))
-    return Response(content=_wav_bytes(wav, sample_rate), media_type="audio/wav")
+    return _wav_bytes(outputs["wav"], sample_rate)
 
 
-class OpenAISpeechRequest(BaseModel):
-    input: str
-    voice: str | None = None
-    speaker: str | None = None
-    language: str = LANGUAGE
-    response_format: str = "wav"
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    _load_model()
+    yield
+
+
+app = FastAPI(
+    title="XTTS v2 Ukrainian",
+    version="2.0.0",
+    description="Stateless TTS: every request must include reference audio for voice cloning.",
+    lifespan=lifespan,
+)
+
+
+@app.get("/health")
+def health() -> dict[str, str | bool]:
+    return {
+        "status": "ok" if _model is not None else "loading",
+        "language": LANGUAGE,
+        "device": DEVICE,
+        "model_ready": _model is not None,
+    }
+
+
+@app.post("/tts")
+async def synthesize(
+    text: str = Form(..., description="Text to synthesize"),
+    reference: UploadFile = File(..., description="Reference voice clip (mono 22050 Hz WAV, 6–10 s)"),
+    language: str | None = Form(None, description="Language code (default: uk)"),
+) -> Response:
+    text = text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required")
+
+    reference_path = await _save_reference(reference)
+    try:
+        wav = await _synthesize(text, reference_path, language)
+    finally:
+        reference_path.unlink(missing_ok=True)
+
+    return Response(content=wav, media_type="audio/wav")
 
 
 @app.post("/v1/audio/speech")
-async def openai_speech(payload: OpenAISpeechRequest) -> Response:
-    text = payload.input.strip()
+async def openai_speech(
+    input: str = Form(..., description="Text to synthesize"),
+    reference: UploadFile = File(..., description="Reference voice clip"),
+    language: str | None = Form(None),
+    response_format: str = Form("wav"),
+) -> Response:
+    if response_format.lower() != "wav":
+        raise HTTPException(status_code=400, detail="Only response_format=wav is supported")
+
+    text = input.strip()
     if not text:
         raise HTTPException(status_code=400, detail="input is required")
 
-    speaker = payload.speaker or payload.voice
-    model, config = _load_model()
-    speaker_path = _resolve_speaker_wav(speaker, None)
-    lang = payload.language.strip().lower()
-    if lang == "ua":
-        lang = "uk"
+    reference_path = await _save_reference(reference)
+    try:
+        wav = await _synthesize(text, reference_path, language)
+    finally:
+        reference_path.unlink(missing_ok=True)
 
-    outputs = model.synthesize(text, config, speaker_wav=str(speaker_path), language=lang)
-    wav = outputs["wav"]
-    sample_rate = int(getattr(config, "output_sample_rate", 24000))
-
-    if payload.response_format.lower() != "wav":
-        raise HTTPException(status_code=400, detail="Only response_format=wav is supported")
-
-    return Response(content=_wav_bytes(wav, sample_rate), media_type="audio/wav")
+    return Response(content=wav, media_type="audio/wav")
 
 
 if __name__ == "__main__":
