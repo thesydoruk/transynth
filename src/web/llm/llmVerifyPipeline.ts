@@ -479,12 +479,15 @@ export const runModVerifyPipeline = async (
           );
         }
         const missingRows = llmChunk.filter((row) => missingSet.has(row.string_id));
-        logVerify.warn('partial LLM verify batch — solo retry for missing rows', {
-          ok: okRows.length,
-          missing: missingRows.map((row) => row.string_id),
-        });
-        enqueueSoloChunks(missingRows, enqueueSplit);
-        return;
+        if (llmChunk.length > 1) {
+          logVerify.warn('partial LLM verify batch — solo retry for missing rows', {
+            ok: okRows.length,
+            missing: missingRows.map((row) => row.string_id),
+          });
+          enqueueSoloChunks(missingRows, enqueueSplit);
+          return;
+        }
+        throw err;
       }
       if (isLlmTimeoutError(err) && llmChunk.length > 1) {
         logVerify.warn('LLM verify batch timeout — solo retry', {

@@ -352,9 +352,10 @@ export const runLlmChunkWithRecovery = async <T>(
     }
 
     if (
-      isLlmTranslateMissingIdsError(err) ||
-      isLlmVerifyMissingIdsError(err) ||
-      isLlmSkipDetectMissingIdsError(err)
+      (isLlmTranslateMissingIdsError(err) ||
+        isLlmVerifyMissingIdsError(err) ||
+        isLlmSkipDetectMissingIdsError(err)) &&
+      chunk.length > 1
     ) {
       log.warn(`${operation} chunk split to single rows (missing LLM items)`, {
         reason: message,

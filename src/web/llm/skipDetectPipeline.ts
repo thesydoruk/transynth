@@ -207,14 +207,17 @@ const processChunk = async (
             if (isLlmSkipDetectMissingIdsError(err)) {
               mergeLlmSkipHits(hits, err.partialResults, rows);
               const missingItems = llmItems.filter((item) => err.missingIds.includes(item.id));
-              logVerify.warn('partial LLM skip-detect batch — solo retry for missing rows', {
-                ok: llmItems.length - missingItems.length,
-                missing: missingItems.map((item) => item.id),
-              });
-              if (enqueueSplit) {
-                enqueueSoloSkipDetectRows(missingItems, rows, enqueueSplit);
+              if (llmItems.length > 1) {
+                logVerify.warn('partial LLM skip-detect batch — solo retry for missing rows', {
+                  ok: llmItems.length - missingItems.length,
+                  missing: missingItems.map((item) => item.id),
+                });
+                if (enqueueSplit) {
+                  enqueueSoloSkipDetectRows(missingItems, rows, enqueueSplit);
+                }
+                return;
               }
-              return;
+              throw err;
             }
             if (isLlmTimeoutError(err) && llmItems.length > 1) {
               logVerify.warn('LLM skip-detect batch timeout — solo retry', {

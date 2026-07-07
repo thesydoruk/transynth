@@ -346,12 +346,15 @@ export const translateStringIdsBatch = async (
           scheduleChunkPersist(collectValidatedRows(okEntries, [...err.partialResults]));
         }
         const missingEntries = chunk.filter((entry) => missingSet.has(entry.stringId));
-        logTranslate.warn('partial LLM batch — solo retry for missing rows', {
-          ok: okEntries.length,
-          missing: missingEntries.map((entry) => entry.stringId),
-        });
-        enqueueSoloChunks(missingEntries, enqueueSplit);
-        return;
+        if (chunk.length > 1) {
+          logTranslate.warn('partial LLM batch — solo retry for missing rows', {
+            ok: okEntries.length,
+            missing: missingEntries.map((entry) => entry.stringId),
+          });
+          enqueueSoloChunks(missingEntries, enqueueSplit);
+          return;
+        }
+        throw err;
       }
       if (isLlmTimeoutError(err) && chunk.length > 1) {
         logTranslate.warn('LLM translate batch timeout — solo retry', {

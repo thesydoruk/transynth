@@ -1,5 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../chunkRecovery';
+import { LlmVerifyMissingIdsError } from '../verifyTranslate';
 import type { Logger } from '../../logger';
 
 const timeoutErr = (): Error => {
@@ -83,6 +84,25 @@ describe('runLlmChunkWithRecovery', () => {
     });
 
     expect(order.indexOf(3)).toBeLessThan(order.indexOf(2));
+  });
+
+  it('solo missing-id errors use maxAttempts then onFailure instead of re-enqueueing solo', async () => {
+    const onFailure = jest.fn<(failed: readonly { id: number }[], message: string) => void>();
+    const runOnce = jest.fn(async () => {
+      throw new LlmVerifyMissingIdsError([42], []);
+    });
+
+    await runLlmChunkWithRecovery({
+      chunk: [{ id: 42 }],
+      runOnce,
+      maxAttempts: 3,
+      onFailure,
+      log: silentLog,
+      operation: 'test',
+    });
+
+    expect(runOnce).toHaveBeenCalledTimes(3);
+    expect(onFailure).toHaveBeenCalledWith([{ id: 42 }], 'LLM verify response missing item id=42');
   });
 
   it('deferred retry frees the worker for other chunks', async () => {
