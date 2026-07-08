@@ -48,6 +48,24 @@ export type WorkspacePackageContext = {
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
+/** Plugin path relative to the package root (e.g. `Data/Mod.esp`). */
+export const pluginRelPath = (packageDir: string, pluginPath: string): string =>
+  normalizeRelPath(path.relative(packageDir, pluginPath));
+
+/**
+ * Resolve archive-relative asset paths next to the plugin (Scripts/, Strings/, Sound/, …).
+ * Keeps `localize/` mirroring `extracted/` (e.g. `Data/Scripts/Foo.pex`, not `Scripts/Foo.pex`).
+ */
+export const pluginSiblingRelPath = (
+  packageDir: string,
+  pluginPath: string,
+  siblingRel: string,
+): string => {
+  const pluginDir = path.dirname(pluginRelPath(packageDir, pluginPath));
+  const sibling = normalizeRelPath(siblingRel);
+  return pluginDir === '.' ? sibling : normalizeRelPath(path.join(pluginDir, sibling));
+};
+
 const toDiskPath = (rootDir: string, relPath: string): string => {
   const parts = normalizeRelPath(relPath).split('/').filter(Boolean);
   return path.join(rootDir, ...parts);
@@ -90,25 +108,6 @@ const trackWrite = (
   const label = prefix + rel;
   if (writeIfChanged(dest, data, baseline)) written.push(label);
   else skipped.push(label);
-};
-
-const writeExportedIfChanged = (
-  file: ExportedStringsFile,
-  prefix: string,
-  packageDir: string,
-  localizeDir: string,
-  written: string[],
-  skipped: string[],
-): void => {
-  trackWrite(
-    file.fileName,
-    prefix,
-    packageDir,
-    localizeDir,
-    exportedFileToBuffer(file),
-    written,
-    skipped,
-  );
 };
 
 export const resolveDbModForWorkspace = async (
@@ -259,9 +258,8 @@ const localizeWorkspacePackage = async (
       game,
     );
     for (const file of stringsFiles) {
-      const rel = path.join('Strings', file.fileName);
       trackWrite(
-        rel,
+        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, path.join('Strings', file.fileName)),
         prefix,
         pkg.packageDir,
         pkg.localizeDir,
@@ -275,7 +273,15 @@ const localizeWorkspacePackage = async (
   const writeScripts = async (): Promise<void> => {
     const pexFiles = await exportPatchedPexFiles(db, mod.modId, pkg.pluginPath, srcLang, tgtLang);
     for (const pex of pexFiles) {
-      writeExportedIfChanged(pex, prefix, pkg.packageDir, pkg.localizeDir, written, skipped);
+      trackWrite(
+        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, pex.fileName),
+        prefix,
+        pkg.packageDir,
+        pkg.localizeDir,
+        exportedFileToBuffer(pex),
+        written,
+        skipped,
+      );
     }
   };
 
@@ -290,7 +296,15 @@ const localizeWorkspacePackage = async (
 
   try {
     const esp = await exportPatchedEsp(db, mod.modId, pkg.pluginPath, srcLang, tgtLang);
-    writeExportedIfChanged(esp, prefix, pkg.packageDir, pkg.localizeDir, written, skipped);
+    trackWrite(
+      pluginRelPath(pkg.packageDir, pkg.pluginPath),
+      prefix,
+      pkg.packageDir,
+      pkg.localizeDir,
+      exportedFileToBuffer(esp),
+      written,
+      skipped,
+    );
   } catch (espErr) {
     try {
       await writeStrings();

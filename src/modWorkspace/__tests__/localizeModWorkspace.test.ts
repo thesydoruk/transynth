@@ -1,7 +1,33 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { writeIfChanged } from '../localizeModWorkspace';
+import { pluginRelPath, pluginSiblingRelPath, writeIfChanged } from '../localizeModWorkspace';
+
+describe('workspace localize paths', () => {
+  const packageDir = path.join('extracted');
+  const pluginPath = path.join(packageDir, 'Data', 'Mod.esp');
+
+  it('keeps plugin path relative to package root', () => {
+    expect(pluginRelPath(packageDir, pluginPath)).toBe('Data/Mod.esp');
+  });
+
+  it('prefixes sibling assets with plugin directory', () => {
+    expect(pluginSiblingRelPath(packageDir, pluginPath, 'Scripts/Foo.pex')).toBe(
+      'Data/Scripts/Foo.pex',
+    );
+    expect(
+      pluginSiblingRelPath(packageDir, pluginPath, path.join('Strings', 'Mod_uk.STRINGS')),
+    ).toBe('Data/Strings/Mod_uk.STRINGS');
+    expect(pluginSiblingRelPath(packageDir, pluginPath, 'Sound/Voice/Mod.esp/line.fuz')).toBe(
+      'Data/Sound/Voice/Mod.esp/line.fuz',
+    );
+  });
+
+  it('leaves sibling paths unchanged when plugin is at package root', () => {
+    const rootPlugin = path.join(packageDir, 'Mod.esp');
+    expect(pluginSiblingRelPath(packageDir, rootPlugin, 'Scripts/Foo.pex')).toBe('Scripts/Foo.pex');
+  });
+});
 
 describe('writeIfChanged', () => {
   let tmpDir: string;

@@ -86,7 +86,7 @@ import {
   withModImportWriteLock,
   isPgDeadlockError,
 } from './modImportIndexes';
-import { ensureChampollionInstalled } from '../../tools/installChampollion';
+import { ensureChampollionInstalled } from '../../tools/installTools';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../export/pexDecompileService';
 
 const { Pool } = pg;

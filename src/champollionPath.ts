@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS } from './paths';
 
-/** Bundled Champollion release installed by `npm run tools:champollion`. */
+/** Bundled Champollion release installed by `npm run tools:install`. */
 export const CHAMPOLLION_VERSION = '1.3.2';
 
 export const champollionInstallDir = (): string => PATHS.champollion;

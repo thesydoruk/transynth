@@ -8,6 +8,7 @@ export * from './bsa';
 export * from './esp';
 export * from './strings';
 export * from './eet';
+export * from './fuz';
 export * from './mcm';
 export * from './pex';
 export * from './types';

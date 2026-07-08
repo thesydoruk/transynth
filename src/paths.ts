@@ -19,7 +19,7 @@ export const PATHS = {
   pexDecompile: path.resolve(
     process.env.PEX_DECOMPILE_CACHE_DIR ?? path.join(dataDir, 'cache', 'pex-decompile'),
   ),
-  /** Champollion CLI installed by `npm run tools:champollion`. */
+  /** Champollion CLI installed by `npm run tools:install`. */
   champollion: path.resolve(
     process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(dataDir, 'tools', 'champollion'),
   ),

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import type { Tx } from '../../db';
 import { PATHS } from '../../paths';
-import { ensureChampollionInstalled } from '../../tools/installChampollion';
+import { ensureChampollionInstalled } from '../../tools/installTools';
 import { sha1Hex } from '../../utils/hash';
 import { collectModPexSources } from '../../formats/pex';
 import {
