@@ -17,7 +17,7 @@ import {
   resolveVoiceRootRel,
   type VoiceFileEntry,
 } from './discoverVoiceFiles';
-import { loadVoiceTranslations } from './loadVoiceTranslations';
+import { loadVoiceTranslations, voiceTranslationMapKey } from './loadVoiceTranslations';
 import {
   pluginRelPath,
   resolveDbModForWorkspace,
@@ -65,6 +65,11 @@ const outputFuzRelPath = (entry: VoiceFileEntry): string => {
 const outputTtsWavRelPath = (entry: VoiceFileEntry): string => {
   const base = entry.fileName.replace(/\.(fuz|wav|xwm)$/i, '');
   return normalizeRelPath(path.join(path.dirname(entry.relPath), `${base}.tts.wav`));
+};
+
+const outputRefWavRelPath = (entry: VoiceFileEntry): string => {
+  const base = entry.fileName.replace(/\.(fuz|wav|xwm)$/i, '');
+  return normalizeRelPath(path.join(path.dirname(entry.relPath), `${base}.ref.wav`));
 };
 
 type SynthesizedVoice = {
@@ -151,16 +156,18 @@ const localizeVoicePackage = async (
     for (const entry of voiceFiles) {
       if (options.limit != null && processed >= options.limit) break;
 
-      const row = translations.get(entry.formidLower6);
+      const row = translations.get(voiceTranslationMapKey(entry.formidLower6, entry.variant));
       if (!row) {
-        skipped.push(`${prefix}${entry.relPath} (no translation)`);
+        skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
         continue;
       }
 
       const outRel = outputFuzRelPath(entry);
       const ttsWavRel = outputTtsWavRelPath(entry);
+      const refWavRel = outputRefWavRelPath(entry);
       const destPath = toDiskPath(pkg.localizeDir, outRel);
       const ttsWavDest = toDiskPath(pkg.localizeDir, ttsWavRel);
+      const refWavDest = toDiskPath(pkg.localizeDir, refWavRel);
       const baselinePath = toDiskPath(pkg.packageDir, outRel);
 
       if (options.dryRun) {
@@ -183,10 +190,12 @@ const localizeVoicePackage = async (
           resolveXttsUkLanguage(),
         );
 
-        // TODO: remove — keep raw TTS WAV next to .fuz for listening/debug.
+        // TODO: remove — keep TTS + reference WAV next to .fuz for A/B listening.
         ensureDir(path.dirname(ttsWavDest));
         fs.writeFileSync(ttsWavDest, ttsWav);
+        fs.copyFileSync(referenceWav, refWavDest);
         written.push(prefix + ttsWavRel);
+        written.push(prefix + refWavRel);
 
         if (
           !options.force &&
