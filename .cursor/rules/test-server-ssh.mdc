@@ -39,11 +39,10 @@ Both use jump host `router-kyiv` and key `~/.ssh/id_rsa` (WSL). Key-only — no 
 
 On the gaming PC this repo lives at **`~/Source/fallout4-localization-project`** (not `~/Source/telegram`). Use it for `docker compose`, `.env`, and `data/` paths.
 
-Typical tasks: `docker compose`, GPU stacks, model serving, XTTS Ukrainian TTS.
+Typical tasks: `docker compose`, GPU stacks, model serving.
 
 ```bash
 wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh 'docker ps'"
-wsl -e bash -lc "ssh -o BatchMode=yes windows-ssh 'docker compose -f ~/Source/fallout4-localization-project/docker-compose.xtts-uk.yml ps'"
 ```
 
 Health check — expect `Gaming-pc`, `valerii`, `/home/valerii`.
@@ -73,5 +72,5 @@ See `scripts/killDbSessions.sh` — runs SQL via `ssh ai-pipeline`.
 ## Related local files
 
 - `docker-compose.ai-translate.yml` — AI stack on gaming PC
-- `docker-compose.xtts-uk.yml` — XTTS v2 Ukrainian TTS API (gaming PC)
+- External TTS API: `http://192.168.50.140:8080/v1/synthesize` (gaming PC, not in repo)
 - `scripts/killDbSessions.sh` — DB admin on `ai-pipeline`

@@ -1,5 +1,5 @@
 # Production stack: PostgreSQL (docker-compose.db.yml) + web API/SPA.
-# Optional XTTS v2 Ukrainian: docker-compose.xtts-uk.yml (gaming PC).
+# External TTS: http://192.168.50.140:8080 (gaming PC, not in this compose).
 #
 #   docker compose up -d --build
 #   docker compose run --rm web npm run db:init
