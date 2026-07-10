@@ -70,6 +70,7 @@ export interface EditorToolbarProps {
   onAiVerify: () => void;
   onAiTranslate: () => void;
   onSkipDetect: () => void;
+  onVoice: () => void;
   aiVerifyRunning?: boolean;
   aiTranslateRunning?: boolean;
   skipDetectRunning?: boolean;
@@ -113,6 +114,7 @@ export const EditorToolbar = ({
   onAiVerify,
   onAiTranslate,
   onSkipDetect,
+  onVoice,
   aiVerifyRunning = false,
   aiTranslateRunning = false,
   skipDetectRunning = false,
@@ -240,6 +242,14 @@ export const EditorToolbar = ({
           {t('modEditor.bookEditor')}
         </Link>
       )}
+      <Button
+        onClick={onVoice}
+        variant="secondary"
+        size="sm"
+        title={t('modEditor.voiceTitleButton')}
+      >
+        {t('modEditor.voice')}
+      </Button>
       {qaIssueRowCount > 0 && (
         <Button
           onClick={onNextQaIssue}

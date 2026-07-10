@@ -19,6 +19,10 @@ export const PATHS = {
   pexDecompile: path.resolve(
     process.env.PEX_DECOMPILE_CACHE_DIR ?? path.join(dataDir, 'cache', 'pex-decompile'),
   ),
+  /** Cached FUZ/XWM → WAV previews for the mod editor voice modal. */
+  voicePreview: path.resolve(
+    process.env.VOICE_PREVIEW_CACHE_DIR ?? path.join(dataDir, 'cache', 'voice-preview'),
+  ),
   /** Champollion CLI installed by `npm run tools:install`. */
   champollion: path.resolve(
     process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(dataDir, 'tools', 'champollion'),
@@ -37,6 +41,7 @@ export const ensureDataDirs = (): void => {
     PATHS.gamesCache,
     PATHS.scanExtract,
     PATHS.pexDecompile,
+    PATHS.voicePreview,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

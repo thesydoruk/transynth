@@ -11,6 +11,7 @@ import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromM
 import { AiVerifyModal } from './components/AiVerifyModal';
 import { AiTranslateModal } from './components/AiTranslateModal';
 import { SkipTranslateModal } from './components/SkipTranslateModal';
+import { VoiceModal } from './components/VoiceModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
@@ -169,6 +170,7 @@ export const ModEditorPage = () => {
   const [showAiVerify, setShowAiVerify] = useState(false);
   const [showAiTranslate, setShowAiTranslate] = useState(false);
   const [showSkipDetect, setShowSkipDetect] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -942,6 +944,7 @@ export const ModEditorPage = () => {
         onAiVerify={() => setShowAiVerify(true)}
         onAiTranslate={() => setShowAiTranslate(true)}
         onSkipDetect={() => setShowSkipDetect(true)}
+        onVoice={() => setShowVoice(true)}
         aiVerifyRunning={aiVerify.isRunning}
         aiTranslateRunning={aiTranslate.isRunning}
         skipDetectRunning={skipDetect.isRunning}
@@ -1163,6 +1166,14 @@ export const ModEditorPage = () => {
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}
+        />
+      )}
+      {showVoice && (
+        <VoiceModal
+          modId={modId}
+          srcLang={srcLang}
+          targetLang={targetLang}
+          onClose={() => setShowVoice(false)}
         />
       )}
       {showBookEditor && activeRow && (

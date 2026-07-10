@@ -931,8 +931,6 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
    * GET /api/games/:gameId/nexus/translations?modId=<n>[&language=<lang>&count=<n>]
    *
    * Finds heuristically ranked translation candidates for a given mod.
-   * The source mod is fetched first, then candidates are scored based on
-   * title overlap, translation keywords, and optional language match.
    *
    * Path parameters:
    *   gameId   {string} — internal game ID (e.g. "fo4")
@@ -982,8 +980,6 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.send(result);
     } catch (err) {
       if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
-        // Fallback for mods unavailable in GraphQL index: return empty list
-        // instead of surfacing a hard error in UI.
         log.warn(`NexusMods translation fallback for ${gameId}/${modId}: ${err.message}`);
         try {
           const rest = await fetchNexusModInfo(game.domainName, modId);

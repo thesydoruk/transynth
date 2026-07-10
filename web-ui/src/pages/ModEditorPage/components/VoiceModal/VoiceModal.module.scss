@@ -1,0 +1,150 @@
+@use '../scanModalShared';
+
+.intro {
+  margin: 0 0 14px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.status {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.error {
+  margin: 0 0 12px;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 420px;
+  flex: 1;
+}
+
+.speakerList {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.linesPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.speakerItems {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  flex: 1;
+}
+
+.speakerBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: hsl(var(--speaker-hue) 35% 18% / 0.35);
+  }
+}
+
+.speakerBtnActive {
+  background: hsl(var(--speaker-hue) 45% 24% / 0.45);
+  border-color: hsl(var(--speaker-hue) 55% 45% / 0.5);
+}
+
+.speakerName {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.speakerCount {
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg-input);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.tableWrap {
+  overflow: auto;
+  flex: 1;
+  min-height: 360px;
+  max-height: min(72vh, 720px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-panel);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dim);
+    z-index: 1;
+  }
+
+  tbody tr:hover {
+    background: var(--bg-hover, rgb(255 255 255 / 3%));
+  }
+}
+
+.idCell code {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.textCell {
+  max-width: 280px;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.playCell {
+  width: 1%;
+  white-space: nowrap;
+}

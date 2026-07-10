@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import {
@@ -30,6 +31,7 @@ import {
   exportProjectZip,
 } from '../export/exportService';
 import { getPexSourceSnippetForString } from '../export/pexDecompileService';
+import { getVoicePreviewWav, listVoiceLinesForMod } from '../voice/voicePreviewService';
 import { deleteModsCompletely } from '../import/modDeleteService';
 import type { GameType } from '../../types';
 
@@ -87,6 +89,59 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
 
       return reply.send(result);
+    },
+  );
+
+  // GET /api/mods/:id/voice/lines — list voice lines grouped by speaker.
+  app.get<{
+    Params: { id: string };
+    Querystring: { srcLang?: string; targetLang?: string };
+  }>('/api/mods/:id/voice/lines', async (req, reply) => {
+    const modId = Number(req.params.id);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+
+    const srcLang = req.query.srcLang?.trim() || CONFIG.defaultSrcLang;
+    const targetLang = req.query.targetLang?.trim() || CONFIG.defaultTgtLang;
+    const result = await listVoiceLinesForMod(db, modId, srcLang, targetLang);
+    if (!result.ok) {
+      const status =
+        result.reason === 'mod_not_found' ? 404 : result.reason === 'no_voice_files' ? 404 : 400;
+      return reply.code(status).send(result);
+    }
+    return reply.send(result);
+  });
+
+  // GET /api/mods/:id/voice/audio/:formidLower6/:variant — stream cached preview WAV.
+  app.get<{ Params: { id: string; formidLower6: string; variant: string } }>(
+    '/api/mods/:id/voice/audio/:formidLower6/:variant',
+    async (req, reply) => {
+      const modId = Number(req.params.id);
+      const formidLower6 = req.params.formidLower6.trim();
+      const variant = Number.parseInt(req.params.variant, 10);
+      if (!Number.isInteger(modId) || modId < 1) {
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      }
+      if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+        return reply.code(400).send({ error: 'Invalid formid' });
+      }
+      if (!Number.isInteger(variant) || variant < 1) {
+        return reply.code(400).send({ error: 'Invalid variant' });
+      }
+
+      const result = await getVoicePreviewWav(db, modId, formidLower6, variant);
+      if (!result.ok) {
+        const status =
+          result.reason === 'mod_not_found' || result.reason === 'line_not_found'
+            ? 404
+            : result.reason === 'convert_failed'
+              ? 503
+              : 400;
+        return reply.code(status).send(result);
+      }
+
+      return reply.type('audio/wav').send(fs.createReadStream(result.wavPath));
     },
   );
 

@@ -65,6 +65,7 @@ export const scheduleModDeleteFileCleanup = (
     const fromModAbs = resolveExtractedRootDir(absPath);
     if (fromModAbs) extractedDirs.add(fromModAbs);
     extractedDirs.add(path.join(PATHS.pexDecompile, String(modId)));
+    extractedDirs.add(path.join(PATHS.voicePreview, String(modId)));
   }
 
   setImmediate(() => {

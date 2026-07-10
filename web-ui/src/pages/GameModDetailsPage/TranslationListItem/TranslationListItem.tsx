@@ -8,7 +8,7 @@ interface TranslationListItemProps {
   row: NexusTranslationCandidate;
 }
 
-/** Renders one likely-translation mod candidate in the translations tab. */
+/** Renders one translation candidate in the translations tab. */
 export const TranslationListItem = ({ gameDomain, row }: TranslationListItemProps) => {
   const { t } = useTranslation();
 
@@ -18,7 +18,9 @@ export const TranslationListItem = ({ gameDomain, row }: TranslationListItemProp
         <h4 className={s.translationTitle}>{row.mod.name}</h4>
         <div className={s.translationMeta}>
           <span className={parentS.chip}>{t('games.scoreLabel', { score: row.score })}</span>
-          <span className={parentS.chip}>{t('games.downloads', { count: row.mod.downloads.toLocaleString() })}</span>
+          <span className={parentS.chip}>
+            {t('games.downloads', { count: row.mod.downloads.toLocaleString() })}
+          </span>
         </div>
       </div>
       <p className={s.translationSummary}>{row.mod.summary || t('games.noSummary')}</p>

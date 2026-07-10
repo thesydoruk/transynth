@@ -1043,6 +1043,28 @@ export type PexSourceSnippetResponse =
       message: string;
     };
 
+export type VoiceLinePreview = {
+  formidLower6: string;
+  infoFormidHex: string | null;
+  variant: number;
+  fileName: string;
+  source: string | null;
+  translation: string | null;
+};
+
+export type VoiceSpeakerGroup = {
+  key: string;
+  displayName: string;
+  lines: VoiceLinePreview[];
+};
+
+export type VoiceLinesResponse =
+  | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
+  | { ok: false; reason: string; message: string };
+
+export const voiceAudioUrl = (modId: number, formidLower6: string, variant: number): string =>
+  `${BASE}/api/mods/${modId}/voice/audio/${formidLower6}/${variant}`;
+
 export const api = {
   mods: {
     list: (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
@@ -1056,6 +1078,10 @@ export const api = {
         credentials: 'include',
       });
       return (await res.json()) as PexSourceSnippetResponse;
+    },
+    voiceLines: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
+      const params = new URLSearchParams({ srcLang, targetLang });
+      return req<VoiceLinesResponse>(`/api/mods/${modId}/voice/lines?${params}`);
     },
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),

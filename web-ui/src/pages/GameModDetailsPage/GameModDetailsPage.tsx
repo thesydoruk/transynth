@@ -28,13 +28,13 @@ import { RelationsTabContent } from './RelationsTabContent';
 import { TranslationListItem } from './TranslationListItem';
 import s from './GameModDetailsPage.module.scss';
 
-type RelationsTabKey = 'possibleTranslations' | 'requires' | 'requiredBy';
+type RelationsTabKey = 'translations' | 'requires' | 'requiredBy';
 
 export const GameModDetailsPage = () => {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { gameId = '', modId = '' } = useParams<{ gameId: string; modId: string }>();
-  const [activeTab, setActiveTab] = useState<RelationsTabKey>('possibleTranslations');
+  const [activeTab, setActiveTab] = useState<RelationsTabKey>('translations');
   const [fileActionError, setFileActionError] = useState<string | null>(null);
   const [fileActionInfo, setFileActionInfo] = useState<string | null>(null);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
@@ -397,11 +397,11 @@ export const GameModDetailsPage = () => {
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'possibleTranslations'}
-            className={activeTab === 'possibleTranslations' ? `${s.tab} ${s.tabActive}` : s.tab}
-            onClick={() => setActiveTab('possibleTranslations')}
+            aria-selected={activeTab === 'translations'}
+            className={activeTab === 'translations' ? `${s.tab} ${s.tabActive}` : s.tab}
+            onClick={() => setActiveTab('translations')}
           >
-            {t('games.tabPossibleTranslations')}
+            {t('games.tabTranslations')}
           </button>
 
           <button
@@ -425,7 +425,7 @@ export const GameModDetailsPage = () => {
           </button>
         </div>
 
-        {activeTab === 'possibleTranslations' && (
+        {activeTab === 'translations' && (
           <div role="tabpanel" className={s.tabPanel}>
             {translationsError && (
               <p className={s.error}>{t('common.error', { message: String(translationsError) })}</p>

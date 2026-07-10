@@ -1,10 +1,19 @@
 import fs from 'node:fs';
 import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
+import {
+  appendXttsSynthesisFormFields,
+  resolveTtsSynthesisParams,
+  type XttsSynthesisParams,
+} from './xttsSynthesisParams';
+
+export type { XttsSynthesisParams } from './xttsSynthesisParams';
+export { resolveTtsSynthesisParams, XTTS_GAME_DIALOGUE_DEFAULTS } from './xttsSynthesisParams';
 
 export type XttsSynthesizeOptions = {
   baseUrl?: string;
   language?: string;
   timeoutMs?: number;
+  synthesis?: Partial<XttsSynthesisParams>;
 };
 
 /** Call the external TTS HTTP API and return synthesized WAV bytes. */
@@ -28,6 +37,7 @@ export const synthesizeXttsWav = async (
   form.append('text', trimmed);
   form.append('speaker_wav', referenceBlob, 'speaker.wav');
   if (options.language) form.append('language', options.language);
+  appendXttsSynthesisFormFields(form, resolveTtsSynthesisParams(options.synthesis));
 
   try {
     const response = await fetch(`${baseUrl}/v1/synthesize`, {
@@ -53,9 +63,11 @@ export const checkXttsHealth = async (baseUrl?: string): Promise<void> => {
 
   const body = (await response.json().catch(() => null)) as {
     model_ready?: boolean;
+    model_loaded?: boolean;
     status?: string;
   } | null;
-  if (body && 'model_ready' in body && !body.model_ready) {
+  const modelReady = body?.model_ready ?? body?.model_loaded;
+  if (body && modelReady === false) {
     throw new Error(`TTS is not ready (status=${body.status ?? 'unknown'})`);
   }
 };
