@@ -22,11 +22,12 @@ import {
   type VoiceFileEntry,
 } from './discoverVoiceFiles';
 import {
-  buildSpeakerReferencePool,
+  groupVoiceFilesBySpeaker,
+  resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
-  type SpeakerReferencePool,
 } from './speakerReferencePool';
 import { loadVoiceTranslations, voiceTranslationMapKey } from './loadVoiceTranslations';
+import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   pluginRelPath,
   resolveDbModForWorkspace,
@@ -166,14 +167,11 @@ const localizeVoicePackage = async (
   let processed = 0;
 
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
-  let speakerRefPool: SpeakerReferencePool = new Map();
+  const voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
+  const speakerRefCache = new Map<string, string>();
+
   if (options.speakerReference && !options.dryRun) {
-    speakerRefPool = await buildSpeakerReferencePool(
-      voiceFiles,
-      pkg.packageDir,
-      pluginRel,
-      tempRoot,
-    );
+    await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
   }
 
   try {
@@ -203,14 +201,35 @@ const localizeVoicePackage = async (
       try {
         const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
         ensureDir(workDir);
+
         const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-        const pooledRef = options.speakerReference ? speakerRefPool.get(speakerKey) : undefined;
-        const referenceWav = pooledRef ?? (await prepareReferenceAudio(entry, workDir));
+        let referenceWav: string | undefined;
+        if (options.speakerReference && speakerKey) {
+          referenceWav = speakerRefCache.get(speakerKey);
+          if (!referenceWav) {
+            const speakerEntries = voiceFilesBySpeaker.get(speakerKey) ?? [entry];
+            const resolved = await resolveSpeakerReferenceForSpeaker(
+              db,
+              modId,
+              speakerKey,
+              speakerEntries,
+              pkg.packageDir,
+              pluginRel,
+              tempRoot,
+            );
+            if (resolved) {
+              referenceWav = resolved.wavPath;
+              speakerRefCache.set(speakerKey, resolved.wavPath);
+            }
+          }
+        }
+
+        const finalReferenceWav = referenceWav ?? (await prepareReferenceAudio(entry, workDir));
         const { fuz: fuzData, ttsWav } = await synthesizeVoicedFuz(
           game,
           entry,
           row.translation,
-          referenceWav,
+          finalReferenceWav,
           workDir,
           options.xttsBaseUrl,
           resolveXttsUkLanguage(),
@@ -219,7 +238,7 @@ const localizeVoicePackage = async (
         // TODO: remove — keep TTS + reference WAV next to .fuz for A/B listening.
         ensureDir(path.dirname(ttsWavDest));
         fs.writeFileSync(ttsWavDest, ttsWav);
-        fs.copyFileSync(referenceWav, refWavDest);
+        fs.copyFileSync(finalReferenceWav, refWavDest);
         written.push(prefix + ttsWavRel);
         written.push(prefix + refWavRel);
 

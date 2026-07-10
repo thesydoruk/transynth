@@ -1,9 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { Tx } from '../db';
 import { log } from '../logger';
 import { decodeAudioToReferenceWav } from '../voice/ffmpegAudio';
 import { extractXwmFromFuzFile } from '../formats/fuz';
 import { resolveVoiceRootRel, type VoiceFileEntry } from './discoverVoiceFiles';
+import {
+  loadVoiceSpeakerRef,
+  setVoiceSpeakerRef,
+  type VoiceSpeakerRefPick,
+} from './voiceSpeakerRefs';
 
 const MANUAL_REFERENCE_NAME = '_reference.wav';
 
@@ -187,22 +193,12 @@ const decodeEntryToReferenceWav = async (
   await decodeAudioToReferenceWav(entry.absolutePath, outputPath);
 };
 
-export type SpeakerReferencePool = Map<string, string>;
-
-/**
- * Pick one decoded reference WAV per speaker folder.
- * Manual override: `<voiceRoot>/<Speaker>/_reference.wav`.
- */
-export const buildSpeakerReferencePool = async (
+/** Group voice files by NPC folder name under the plugin voice root. */
+export const groupVoiceFilesBySpeaker = (
   entries: VoiceFileEntry[],
-  packageDir: string,
-  pluginRelPath: string,
-  cacheDir: string,
-): Promise<SpeakerReferencePool> => {
-  const voiceRootRel = resolveVoiceRootRel(pluginRelPath);
-  const voiceRootAbs = path.join(packageDir, ...voiceRootRel.split('/'));
+  voiceRootRel: string,
+): Map<string, VoiceFileEntry[]> => {
   const bySpeaker = new Map<string, VoiceFileEntry[]>();
-
   for (const entry of entries) {
     const speaker = voiceSpeakerKey(entry, voiceRootRel);
     if (!speaker) continue;
@@ -210,55 +206,118 @@ export const buildSpeakerReferencePool = async (
     list.push(entry);
     bySpeaker.set(speaker, list);
   }
+  return bySpeaker;
+};
 
-  const pool: SpeakerReferencePool = new Map();
+export type ResolvedSpeakerReference = {
+  wavPath: string;
+  pick: VoiceSpeakerRefPick;
+  source: 'manual' | 'saved' | 'auto';
+  score?: number;
+};
 
-  for (const [speaker, speakerEntries] of bySpeaker) {
-    const manualPath = path.join(voiceRootAbs, speaker, MANUAL_REFERENCE_NAME);
-    const speakerCacheDir = path.join(cacheDir, 'speaker-ref', speaker);
-    fs.mkdirSync(speakerCacheDir, { recursive: true });
+const findSpeakerEntry = (
+  speakerEntries: VoiceFileEntry[],
+  pick: VoiceSpeakerRefPick,
+): VoiceFileEntry | undefined =>
+  speakerEntries.find(
+    (entry) =>
+      entry.formidLower6.toUpperCase() === pick.formidLower6.toUpperCase() &&
+      entry.variant === pick.variant,
+  );
 
-    if (fs.existsSync(manualPath)) {
-      const outPath = path.join(speakerCacheDir, MANUAL_REFERENCE_NAME);
-      await decodeAudioToReferenceWav(manualPath, outPath);
-      pool.set(speaker, outPath);
-      log.info(`Speaker ref "${speaker}": manual ${MANUAL_REFERENCE_NAME}`);
-      continue;
-    }
+/**
+ * Resolve one speaker's XTTS reference clip immediately before synthesizing that NPC.
+ * Uses a saved DB pick when valid; otherwise auto-selects from the speaker's lines and persists.
+ */
+export const resolveSpeakerReferenceForSpeaker = async (
+  db: Tx,
+  modId: number,
+  speakerKey: string,
+  speakerEntries: VoiceFileEntry[],
+  packageDir: string,
+  pluginRelPath: string,
+  cacheDir: string,
+): Promise<ResolvedSpeakerReference | null> => {
+  const voiceRootRel = resolveVoiceRootRel(pluginRelPath);
+  const voiceRootAbs = path.join(packageDir, ...voiceRootRel.split('/'));
+  const speakerCacheDir = path.join(cacheDir, 'speaker-ref', speakerKey);
+  fs.mkdirSync(speakerCacheDir, { recursive: true });
 
-    let bestPath: string | null = null;
-    let bestScore = Number.NEGATIVE_INFINITY;
-    let bestEntry: VoiceFileEntry | null = null;
+  const manualPath = path.join(voiceRootAbs, speakerKey, MANUAL_REFERENCE_NAME);
+  if (fs.existsSync(manualPath)) {
+    const outPath = path.join(speakerCacheDir, MANUAL_REFERENCE_NAME);
+    await decodeAudioToReferenceWav(manualPath, outPath);
+    log.info(`Speaker ref "${speakerKey}": manual ${MANUAL_REFERENCE_NAME}`);
+    return {
+      wavPath: outPath,
+      pick: { formidLower6: 'MANUAL', variant: 1 },
+      source: 'manual',
+    };
+  }
 
-    for (const entry of speakerEntries) {
-      const candidatePath = path.join(
+  const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
+  if (savedPick) {
+    const pickedEntry = findSpeakerEntry(speakerEntries, savedPick);
+    if (pickedEntry) {
+      const outPath = path.join(
         speakerCacheDir,
-        `${entry.formidLower6}_${entry.variant}.ref.wav`,
+        `${pickedEntry.formidLower6}_${pickedEntry.variant}.ref.wav`,
       );
       try {
-        await decodeEntryToReferenceWav(entry, candidatePath, speakerCacheDir);
-        const score = scoreReferenceWav(candidatePath);
-        if (score > bestScore) {
-          bestScore = score;
-          bestPath = candidatePath;
-          bestEntry = entry;
-        }
+        await decodeEntryToReferenceWav(pickedEntry, outPath, speakerCacheDir);
+        log.info(`Speaker ref "${speakerKey}": saved ${pickedEntry.fileName}`);
+        return { wavPath: outPath, pick: savedPick, source: 'saved' };
       } catch (err) {
         log.warn(
-          `Speaker ref "${speaker}": skip ${entry.fileName}: ${err instanceof Error ? err.message : String(err)}`,
+          `Speaker ref "${speakerKey}": saved pick ${pickedEntry.fileName} failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         );
       }
-    }
-
-    if (bestPath && bestEntry) {
-      pool.set(speaker, bestPath);
-      log.info(
-        `Speaker ref "${speaker}": auto ${bestEntry.fileName} (score=${bestScore.toFixed(1)})`,
-      );
     } else {
-      log.warn(`Speaker ref "${speaker}": no suitable reference found`);
+      log.warn(
+        `Speaker ref "${speakerKey}": saved pick ${savedPick.formidLower6}_${savedPick.variant} not found on disk`,
+      );
     }
   }
 
-  return pool;
+  let bestPath: string | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let bestEntry: VoiceFileEntry | null = null;
+
+  for (const entry of speakerEntries) {
+    const candidatePath = path.join(
+      speakerCacheDir,
+      `${entry.formidLower6}_${entry.variant}.ref.wav`,
+    );
+    try {
+      await decodeEntryToReferenceWav(entry, candidatePath, speakerCacheDir);
+      const score = scoreReferenceWav(candidatePath);
+      if (score > bestScore) {
+        bestScore = score;
+        bestPath = candidatePath;
+        bestEntry = entry;
+      }
+    } catch (err) {
+      log.warn(
+        `Speaker ref "${speakerKey}": skip ${entry.fileName}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  if (!bestPath || !bestEntry) {
+    log.warn(`Speaker ref "${speakerKey}": no suitable reference found`);
+    return null;
+  }
+
+  const pick: VoiceSpeakerRefPick = {
+    formidLower6: bestEntry.formidLower6,
+    variant: bestEntry.variant,
+  };
+  await setVoiceSpeakerRef(db, modId, speakerKey, pick, bestScore);
+  log.info(
+    `Speaker ref "${speakerKey}": auto ${bestEntry.fileName} (score=${bestScore.toFixed(1)})`,
+  );
+  return { wavPath: bestPath, pick, source: 'auto', score: bestScore };
 };

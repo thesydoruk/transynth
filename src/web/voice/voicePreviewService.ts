@@ -21,6 +21,13 @@ import {
 } from '../../modWorkspace/loadVoiceTranslations';
 import { sanitizeDirName } from '../../modWorkspace/prepareModWorkspace';
 import { voiceSpeakerKey } from '../../modWorkspace/speakerReferencePool';
+import {
+  clearVoiceSpeakerRef,
+  loadVoiceSpeakerRefs,
+  setVoiceSpeakerRef,
+  voiceSpeakerRefMatches,
+  type VoiceSpeakerRefPick,
+} from '../../modWorkspace/voiceSpeakerRefs';
 import { PATHS } from '../../paths';
 import { sha1Hex, sha1HexFile } from '../../utils/hash';
 import { ensureDir } from '../../utils/file';
@@ -33,11 +40,13 @@ export type VoiceLinePreview = {
   fileName: string;
   source: string | null;
   translation: string | null;
+  isReference: boolean;
 };
 
 export type VoiceSpeakerGroup = {
   key: string;
   displayName: string;
+  referencePick: VoiceSpeakerRefPick | null;
   lines: VoiceLinePreview[];
 };
 
@@ -60,6 +69,20 @@ export type VoiceAudioResult =
         | 'line_not_found'
         | 'source_missing'
         | 'convert_failed';
+      message: string;
+    };
+
+export type VoiceSpeakerRefResult =
+  | { ok: true; referencePick: VoiceSpeakerRefPick | null }
+  | {
+      ok: false;
+      reason:
+        | 'mod_not_found'
+        | 'no_plugin_path'
+        | 'plugin_missing'
+        | 'speaker_not_found'
+        | 'line_not_found'
+        | 'line_not_in_speaker';
       message: string;
     };
 
@@ -273,6 +296,7 @@ export const listVoiceLinesForMod = async (
     targetLang || CONFIG.defaultTgtLang,
   );
   const dbSpeakerNames = await loadSpeakerNamesFromDb(db, modId);
+  const speakerRefs = await loadVoiceSpeakerRefs(db, modId);
 
   const groups = new Map<string, VoiceSpeakerGroup>();
 
@@ -283,10 +307,11 @@ export const listVoiceLinesForMod = async (
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel) || 'Unknown';
     const dbSpeaker = dbSpeakerNames.get(entry.formidLower6.toUpperCase());
     const displayName = dbSpeaker || formatVoiceSpeakerLabel(speakerKey);
+    const referencePick = speakerRefs[speakerKey] ?? null;
 
     let group = groups.get(speakerKey);
     if (!group) {
-      group = { key: speakerKey, displayName, lines: [] };
+      group = { key: speakerKey, displayName, referencePick, lines: [] };
       groups.set(speakerKey, group);
     }
 
@@ -297,12 +322,16 @@ export const listVoiceLinesForMod = async (
       fileName: entry.fileName,
       source: sourceRow?.source ?? translationRow?.source ?? null,
       translation: translationRow?.translation ?? null,
+      isReference: referencePick
+        ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
+        : false,
     });
   }
 
   const speakers = [...groups.values()]
     .map((group) => ({
       ...group,
+      referencePick: speakerRefs[group.key] ?? null,
       lines: group.lines.sort((a, b) => {
         const formidCmp = a.formidLower6.localeCompare(b.formidLower6);
         return formidCmp !== 0 ? formidCmp : a.variant - b.variant;
@@ -313,6 +342,90 @@ export const listVoiceLinesForMod = async (
   const totalLines = speakers.reduce((sum, group) => sum + group.lines.length, 0);
   log.debug(`Voice list mod=${modId}: ${totalLines} lines in ${speakers.length} speaker groups`);
   return { ok: true, speakers, totalLines };
+};
+
+const resolveModVoiceContext = async (
+  db: Tx,
+  modId: number,
+): Promise<
+  | { ok: true; mod: { name: string; abs_path: string }; ctx: VoicePackageContext }
+  | { ok: false; reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing'; message: string }
+> => {
+  const { rows } = await db.query<{ name: string; abs_path: string | null }>(
+    `SELECT name, abs_path FROM mods WHERE id = $1`,
+    [modId],
+  );
+  const mod = rows[0];
+  if (!mod) {
+    return { ok: false, reason: 'mod_not_found', message: 'Mod not found' };
+  }
+  if (!mod.abs_path) {
+    return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
+  }
+
+  const ctx = resolveVoicePackageContext(mod.abs_path, mod.name);
+  if (!ctx) {
+    return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
+  }
+
+  return { ok: true, mod: { name: mod.name, abs_path: mod.abs_path }, ctx };
+};
+
+/** Set or replace the TTS reference line for one speaker. */
+export const setVoiceSpeakerReferenceForMod = async (
+  db: Tx,
+  modId: number,
+  speakerKey: string,
+  formidLower6: string,
+  variant: number,
+): Promise<VoiceSpeakerRefResult> => {
+  const resolved = await resolveModVoiceContext(db, modId);
+  if (!resolved.ok) return resolved;
+
+  const trimmedSpeaker = speakerKey.trim();
+  if (!trimmedSpeaker) {
+    return { ok: false, reason: 'speaker_not_found', message: 'Speaker key is required' };
+  }
+
+  const voiceRootRel = resolveVoiceRootRel(resolved.ctx.pluginRel);
+  const entry = findVoiceEntry(discoverVoiceEntries(resolved.ctx), formidLower6, variant);
+  if (!entry) {
+    return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
+  }
+
+  const entrySpeaker = voiceSpeakerKey(entry, voiceRootRel);
+  if (entrySpeaker !== trimmedSpeaker) {
+    return {
+      ok: false,
+      reason: 'line_not_in_speaker',
+      message: 'Voice line does not belong to this speaker',
+    };
+  }
+
+  const pick: VoiceSpeakerRefPick = {
+    formidLower6: entry.formidLower6,
+    variant: entry.variant,
+  };
+  await setVoiceSpeakerRef(db, modId, trimmedSpeaker, pick);
+  return { ok: true, referencePick: pick };
+};
+
+/** Clear the saved TTS reference line for one speaker. */
+export const clearVoiceSpeakerReferenceForMod = async (
+  db: Tx,
+  modId: number,
+  speakerKey: string,
+): Promise<VoiceSpeakerRefResult> => {
+  const resolved = await resolveModVoiceContext(db, modId);
+  if (!resolved.ok) return resolved;
+
+  const trimmedSpeaker = speakerKey.trim();
+  if (!trimmedSpeaker) {
+    return { ok: false, reason: 'speaker_not_found', message: 'Speaker key is required' };
+  }
+
+  await clearVoiceSpeakerRef(db, modId, trimmedSpeaker);
+  return { ok: true, referencePick: null };
 };
 
 /** Resolve or create a cached browser-playable WAV for one voice line. */

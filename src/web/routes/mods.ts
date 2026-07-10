@@ -31,7 +31,12 @@ import {
   exportProjectZip,
 } from '../export/exportService';
 import { getPexSourceSnippetForString } from '../export/pexDecompileService';
-import { getVoicePreviewWav, listVoiceLinesForMod } from '../voice/voicePreviewService';
+import {
+  clearVoiceSpeakerReferenceForMod,
+  getVoicePreviewWav,
+  listVoiceLinesForMod,
+  setVoiceSpeakerReferenceForMod,
+} from '../voice/voicePreviewService';
 import { deleteModsCompletely } from '../import/modDeleteService';
 import type { GameType } from '../../types';
 
@@ -142,6 +147,65 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       }
 
       return reply.type('audio/wav').send(fs.createReadStream(result.wavPath));
+    },
+  );
+
+  // PUT /api/mods/:id/voice/speaker-ref — set TTS reference line for one speaker.
+  app.put<{
+    Params: { id: string };
+    Body: { speakerKey?: string; formidLower6?: string; variant?: number };
+  }>('/api/mods/:id/voice/speaker-ref', async (req, reply) => {
+    const modId = Number(req.params.id);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+
+    const speakerKey = req.body?.speakerKey?.trim() ?? '';
+    const formidLower6 = req.body?.formidLower6?.trim() ?? '';
+    const variant = Number(req.body?.variant);
+    if (!speakerKey) return reply.code(400).send({ error: 'speakerKey is required' });
+    if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+      return reply.code(400).send({ error: 'Invalid formidLower6' });
+    }
+    if (!Number.isInteger(variant) || variant < 1) {
+      return reply.code(400).send({ error: 'Invalid variant' });
+    }
+
+    const result = await setVoiceSpeakerReferenceForMod(
+      db,
+      modId,
+      speakerKey,
+      formidLower6,
+      variant,
+    );
+    if (!result.ok) {
+      const status =
+        result.reason === 'mod_not_found' || result.reason === 'line_not_found'
+          ? 404
+          : result.reason === 'line_not_in_speaker'
+            ? 400
+            : 400;
+      return reply.code(status).send(result);
+    }
+    return reply.send(result);
+  });
+
+  // DELETE /api/mods/:id/voice/speaker-ref/:speakerKey — clear saved TTS reference.
+  app.delete<{ Params: { id: string; speakerKey: string } }>(
+    '/api/mods/:id/voice/speaker-ref/:speakerKey',
+    async (req, reply) => {
+      const modId = Number(req.params.id);
+      if (!Number.isInteger(modId) || modId < 1) {
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      }
+
+      const speakerKey = decodeURIComponent(req.params.speakerKey).trim();
+      const result = await clearVoiceSpeakerReferenceForMod(db, modId, speakerKey);
+      if (!result.ok) {
+        const status = result.reason === 'mod_not_found' ? 404 : 400;
+        return reply.code(status).send(result);
+      }
+      return reply.send(result);
     },
   );
 

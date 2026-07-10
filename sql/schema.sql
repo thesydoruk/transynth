@@ -510,3 +510,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
   ON translations(src_string_id, target_lang);
 
 DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;
+
+-- ── Per-speaker XTTS reference picks ────────────────────────────────────────
+-- Stores which voiced line (formid + variant) is used as the XTTS speaker_wav
+-- reference for each NPC voice folder. Auto-selected on first localize run;
+-- editable from the editor voice modal.
+CREATE TABLE IF NOT EXISTS voice_speaker_refs (
+  mod_id        INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  speaker_key   TEXT NOT NULL,
+  formid_lower6 TEXT NOT NULL,
+  variant       INTEGER NOT NULL CHECK (variant >= 1),
+  auto_score    DOUBLE PRECISION,
+  updated_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (mod_id, speaker_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_speaker_refs_mod
+  ON voice_speaker_refs(mod_id);

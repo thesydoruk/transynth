@@ -1050,11 +1050,18 @@ export type VoiceLinePreview = {
   fileName: string;
   source: string | null;
   translation: string | null;
+  isReference: boolean;
+};
+
+export type VoiceSpeakerRefPick = {
+  formidLower6: string;
+  variant: number;
 };
 
 export type VoiceSpeakerGroup = {
   key: string;
   displayName: string;
+  referencePick: VoiceSpeakerRefPick | null;
   lines: VoiceLinePreview[];
 };
 
@@ -1083,6 +1090,24 @@ export const api = {
       const params = new URLSearchParams({ srcLang, targetLang });
       return req<VoiceLinesResponse>(`/api/mods/${modId}/voice/lines?${params}`);
     },
+    setVoiceSpeakerRef: (
+      modId: number,
+      speakerKey: string,
+      formidLower6: string,
+      variant: number,
+    ) =>
+      req<{ ok: true; referencePick: VoiceSpeakerRefPick }>(
+        `/api/mods/${modId}/voice/speaker-ref`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ speakerKey, formidLower6, variant }),
+        },
+      ),
+    clearVoiceSpeakerRef: (modId: number, speakerKey: string) =>
+      req<{ ok: true; referencePick: null }>(
+        `/api/mods/${modId}/voice/speaker-ref/${encodeURIComponent(speakerKey)}`,
+        { method: 'DELETE' },
+      ),
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),
