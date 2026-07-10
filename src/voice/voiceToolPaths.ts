@@ -54,6 +54,15 @@ export const resolveXttsUkBaseUrl = resolveTtsBaseUrl;
 /** @deprecated Use {@link resolveTtsLanguage}. */
 export const resolveXttsUkLanguage = resolveTtsLanguage;
 
+/** Pick the cleanest per-NPC reference clip for XTTS (default on). Set `TTS_SPEAKER_REFERENCE=0` to use each line's own audio. */
+export const resolveSpeakerReferenceEnabled = (): boolean => {
+  const raw = process.env.TTS_SPEAKER_REFERENCE?.trim().toLowerCase();
+  if (!raw) return true;
+  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
+  if (['1', 'true', 'yes', 'on'].includes(raw)) return true;
+  return true;
+};
+
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];
   const faceFx = resolveFaceFxWrapperPath();
