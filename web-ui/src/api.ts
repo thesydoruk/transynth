@@ -1382,6 +1382,16 @@ export const api = {
         body: JSON.stringify({ stringIds, skip }),
       }),
 
+    setStatus: (
+      stringIds: number[],
+      status: 'draft' | 'reviewed' | 'rejected' | 'human' | 'fuzzy' | 'auto' | 'tm',
+      targetLang = getTgtLang(),
+    ) =>
+      req<{ ok: boolean; updated: number }>(`/api/strings/set-status`, {
+        method: 'POST',
+        body: JSON.stringify({ stringIds, status, targetLang }),
+      }),
+
     /** SSE-streaming batch translate. Calls onProgress for each completed string.
      *  Returns final results array after stream closes. */
     async batchTranslate(

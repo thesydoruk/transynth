@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
+import { statusAccentColor } from '../../../../components/StatusBadge/statusColors';
+import { CONTEXT_MENU_STATUSES, type ContextMenuStatus } from '../../statusFilter';
 import styles from './ContextMenu.module.scss';
 
 /** Props for the right-click context menu shown over a grid row. */
@@ -22,6 +24,7 @@ export interface ContextMenuProps {
   onBulkCopySource: (row: StringRow) => void;
   onBatchTranslate: () => void;
   onSetSkip: (row: StringRow, skip: boolean) => void;
+  onSetStatus: (row: StringRow, status: ContextMenuStatus) => void;
 }
 
 /**
@@ -38,6 +41,7 @@ export const ContextMenu = ({
   onBulkCopySource,
   onBatchTranslate,
   onSetSkip,
+  onSetStatus,
 }: ContextMenuProps) => {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -46,6 +50,33 @@ export const ContextMenu = ({
   const hasTrans = !!row.translation;
   const isSkipped = row.status === 'skip' || row.is_ignored === true;
   const bulkCount = selectedCount;
+  const showStatusItems = actsOnSelection ? bulkCount > 0 : hasTrans && !isSkipped;
+
+  const renderStatusItems = () =>
+    CONTEXT_MENU_STATUSES.map((status) => {
+      const effectiveStatus = row.status === 'human' ? 'reviewed' : row.status;
+      const isCurrent = !actsOnSelection && effectiveStatus === status;
+      const color = statusAccentColor(status);
+      const label = actsOnSelection
+        ? t('ctx.bulkSetStatus', {
+            status: t(`status.${status}`, { defaultValue: status }),
+            count: bulkCount,
+          })
+        : t(`status.${status}`, { defaultValue: status });
+      return (
+        <button key={status} className={styles.ctxItem} onClick={() => onSetStatus(row, status)}>
+          <span className={styles.ctxCheck} aria-hidden>
+            {isCurrent ? '✓' : ''}
+          </span>
+          <span
+            className={styles.ctxStatusDot}
+            style={{ '--status-color': color } as React.CSSProperties}
+            aria-hidden
+          />
+          <span className={styles.ctxLabel}>{label}</span>
+        </button>
+      );
+    });
 
   useEffect(() => {
     const el = menuRef.current;
@@ -88,6 +119,13 @@ export const ContextMenu = ({
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
             <span className={styles.ctxLabel}>{t('ctx.bulkCopySource', { count: bulkCount })}</span>
           </button>
+          {showStatusItems && (
+            <>
+              <div className={styles.ctxSep} />
+              <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>
+              {renderStatusItems()}
+            </>
+          )}
           <div className={styles.ctxSep} />
           <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
             <span className={styles.ctxIcon}>⊘</span>
@@ -130,6 +168,13 @@ export const ContextMenu = ({
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
             <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
           </button>
+          {showStatusItems && (
+            <>
+              <div className={styles.ctxSep} />
+              <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>
+              {renderStatusItems()}
+            </>
+          )}
           <div className={styles.ctxSep} />
           {isSkipped ? (
             <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>

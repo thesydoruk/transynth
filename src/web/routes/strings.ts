@@ -14,7 +14,9 @@ import {
   getQAIssues,
   markStringsAsSkip,
   unmarkStringsSkip,
+  setTranslationsStatus,
 } from '../data/queries';
+import { isValidTranslationStatus } from '../data/statusMachine';
 import { propagateTranslation } from '../services/tm';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { CONFIG } from '../../config';
@@ -360,6 +362,35 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'Invalid stringIds' });
     }
     return reply.send(await deleteTranslationsBatch(db, stringIds, targetLang));
+  });
+
+  // POST /api/strings/set-status — batch-assign translation status (text unchanged)
+  app.post<{
+    Body: {
+      stringIds: number[];
+      status: string;
+      targetLang?: string;
+    };
+  }>('/api/strings/set-status', async (req, reply) => {
+    const stringIds = req.body?.stringIds;
+    const status = req.body?.status;
+    const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
+    if (!Array.isArray(stringIds) || stringIds.length === 0) {
+      return reply.code(400).send({ error: 'stringIds array is required' });
+    }
+    if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
+      return reply.code(400).send({ error: 'Invalid stringIds' });
+    }
+    if (
+      typeof status !== 'string' ||
+      !isValidTranslationStatus(status) ||
+      status === 'skip' ||
+      status === 'deleted'
+    ) {
+      return reply.code(400).send({ error: 'Invalid status' });
+    }
+    const updated = await setTranslationsStatus(db, stringIds, status, targetLang);
+    return reply.send({ ok: true, updated });
   });
 
   // POST /api/strings/mark-skip — set skip flag (global is_ignored)

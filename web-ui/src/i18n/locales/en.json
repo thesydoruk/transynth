@@ -372,7 +372,9 @@
     "markSkip": "Mark as non-translatable",
     "unmarkSkip": "Allow translation",
     "bulkMarkSkip": "Mark {{count}} rows as non-translatable",
-    "bulkUnmarkSkip": "Allow translation for {{count}} rows"
+    "bulkUnmarkSkip": "Allow translation for {{count}} rows",
+    "statusSection": "Status",
+    "bulkSetStatus": "{{status}} ({{count}} rows)"
   },
   "dashboard": {
     "title": "Dashboard",

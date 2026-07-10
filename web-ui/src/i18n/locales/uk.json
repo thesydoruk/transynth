@@ -372,7 +372,9 @@
     "markSkip": "Не перекладати",
     "unmarkSkip": "Дозволити переклад",
     "bulkMarkSkip": "Не перекладати ({{count}} рядків)",
-    "bulkUnmarkSkip": "Дозволити переклад ({{count}} рядків)"
+    "bulkUnmarkSkip": "Дозволити переклад ({{count}} рядків)",
+    "statusSection": "Статус",
+    "bulkSetStatus": "{{status}} ({{count}} рядків)"
   },
   "dashboard": {
     "title": "Панель",

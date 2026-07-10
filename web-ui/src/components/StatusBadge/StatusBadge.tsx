@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { STATUS_COLORS } from './statusColors';
+import { statusAccentColor } from './statusColors';
 import s from './StatusBadge.module.scss';
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 export const StatusBadge = ({ status, small }: Props) => {
   const { t } = useTranslation();
   const key = status ?? 'untranslated';
-  const color = STATUS_COLORS[key] ?? '#888';
+  const color = statusAccentColor(key);
   const label = t(`status.${key}`, { defaultValue: key });
   return (
     <span

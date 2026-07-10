@@ -36,7 +36,12 @@ import {
   useApplyImported,
   useDetailPanelHeight,
 } from './hooks';
-import { parseStatusParam, statusParamFromSelection, type StatusFilterValue } from './statusFilter';
+import {
+  parseStatusParam,
+  statusParamFromSelection,
+  type ContextMenuStatus,
+  type StatusFilterValue,
+} from './statusFilter';
 import styles from './ModEditorPage.module.scss';
 
 /** Rows fetched per infinite-scroll page (the grid accumulates pages). */
@@ -655,6 +660,78 @@ export const ModEditorPage = () => {
     [qc, modId],
   );
 
+  /** Patch translation status on loaded grid rows after a context-menu change. */
+  const patchStatusInCache = useCallback(
+    (matchRow: (row: StringRow) => boolean, status: ContextMenuStatus) => {
+      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            rows: page.rows.map((r) =>
+              matchRow(r) && r.translation ? { ...r, status, is_ignored: false } : r,
+            ),
+          })),
+        };
+      });
+    },
+    [qc, modId],
+  );
+
+  const SET_STATUS_CHUNK = 100;
+
+  /** Context-menu status change: one row or whole selection (including select-all-matching). */
+  const ctxSetStatus = useCallback(
+    async (row: StringRow, status: ContextMenuStatus) => {
+      const applyStatusToActiveRow = (stringId: number) => {
+        const activeId = activeRowRef.current?.string_id;
+        if (activeId !== stringId) return;
+        setActiveRow((prev) => (prev ? { ...prev, status, is_ignored: false } : prev));
+      };
+
+      const eligibleLoadedRows = (rows: StringRow[]) =>
+        rows.filter((r) => !!r.translation && r.status !== 'skip' && !r.is_ignored);
+
+      if (ctxActsOnSelection(row)) {
+        const loadedTargets = eligibleLoadedRows(selectedLoadedRows());
+        patchStatusInCache((r) => loadedTargets.some((t) => t.string_id === r.string_id), status);
+        try {
+          const ids = await resolveSelectedIds();
+          for (let i = 0; i < ids.length; i += SET_STATUS_CHUNK) {
+            await api.strings.setStatus(ids.slice(i, i + SET_STATUS_CHUNK), status, targetLang);
+          }
+          void refetchStats();
+          const activeId = activeRowRef.current?.string_id;
+          if (activeId && isRowSelected(activeId)) applyStatusToActiveRow(activeId);
+        } catch {
+          qc.invalidateQueries({ queryKey: ['strings', modId] });
+        }
+      } else {
+        if (!row.translation || row.status === 'skip' || row.is_ignored) return;
+        patchStatusInCache((r) => r.string_id === row.string_id, status);
+        try {
+          await api.strings.setStatus([row.string_id], status, targetLang);
+          void refetchStats();
+          applyStatusToActiveRow(row.string_id);
+        } catch {
+          qc.invalidateQueries({ queryKey: ['strings', modId] });
+        }
+      }
+    },
+    [
+      ctxActsOnSelection,
+      patchStatusInCache,
+      selectedLoadedRows,
+      resolveSelectedIds,
+      isRowSelected,
+      refetchStats,
+      qc,
+      modId,
+      targetLang,
+    ],
+  );
+
   const MARK_SKIP_CHUNK = 100;
 
   /** Context-menu skip toggle: one row or whole selection (including select-all-matching). */
@@ -1117,6 +1194,7 @@ export const ModEditorPage = () => {
           onBulkCopySource={ctxCopySource}
           onBatchTranslate={handleBatchTranslate}
           onSetSkip={ctxSetSkip}
+          onSetStatus={ctxSetStatus}
         />
       )}
 

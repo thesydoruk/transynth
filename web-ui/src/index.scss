@@ -67,15 +67,15 @@
   --status-skip: #757575;
   --status-untranslated: #555;
 
-  /* Translation status row backgrounds (editor grid) */
-  --status-row-reviewed: #183a18;
-  --status-row-human: #183a18;
-  --status-row-draft: #2e3400;
-  --status-row-rejected: #3b1616;
-  --status-row-tm: #003d45;
-  --status-row-auto: #001a3d;
-  --status-row-fuzzy: #3d3100;
-  --status-row-skip: #2a2a2a;
+  /* Editor grid row tints — derived from the accent palette above */
+  --status-row-reviewed: color-mix(in srgb, var(--status-reviewed) 24%, var(--bg-card));
+  --status-row-human: color-mix(in srgb, var(--status-human) 24%, var(--bg-card));
+  --status-row-draft: color-mix(in srgb, var(--status-draft) 24%, var(--bg-card));
+  --status-row-rejected: color-mix(in srgb, var(--status-rejected) 28%, var(--bg-card));
+  --status-row-tm: color-mix(in srgb, var(--status-tm) 22%, var(--bg-card));
+  --status-row-fuzzy: color-mix(in srgb, var(--status-fuzzy) 22%, var(--bg-card));
+  --status-row-auto: color-mix(in srgb, var(--status-auto) 22%, var(--bg-card));
+  --status-row-skip: color-mix(in srgb, var(--status-skip) 30%, var(--bg-card));
 
   /* Links */
   --link: #72afe5;
@@ -215,15 +215,15 @@
   --status-skip: #8f7e68;
   --status-untranslated: #8f7e68;
 
-  /* Translation status row backgrounds (editor grid) */
-  --status-row-reviewed: #dceedd;
-  --status-row-human: #dceedd;
-  --status-row-draft: #f0f3d6;
-  --status-row-rejected: #f8e3e1;
-  --status-row-tm: #deebf7;
-  --status-row-auto: #e6edf9;
-  --status-row-fuzzy: #f7efd8;
-  --status-row-skip: #eceae6;
+  /* Editor grid row tints — derived from the accent palette above */
+  --status-row-reviewed: color-mix(in srgb, var(--status-reviewed) 16%, var(--bg-card));
+  --status-row-human: color-mix(in srgb, var(--status-human) 16%, var(--bg-card));
+  --status-row-draft: color-mix(in srgb, var(--status-draft) 16%, var(--bg-card));
+  --status-row-rejected: color-mix(in srgb, var(--status-rejected) 18%, var(--bg-card));
+  --status-row-tm: color-mix(in srgb, var(--status-tm) 14%, var(--bg-card));
+  --status-row-fuzzy: color-mix(in srgb, var(--status-fuzzy) 14%, var(--bg-card));
+  --status-row-auto: color-mix(in srgb, var(--status-auto) 14%, var(--bg-card));
+  --status-row-skip: color-mix(in srgb, var(--status-skip) 20%, var(--bg-card));
 
   --link: #2f6fa8;
   --link-hover: #1f5689;

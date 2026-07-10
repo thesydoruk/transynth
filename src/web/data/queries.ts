@@ -2045,6 +2045,43 @@ export const approveVerifiedTranslations = async (
   return rowCount ?? 0;
 };
 
+/** Manual statuses assignable from the editor context menu (excludes skip). */
+export type ContextMenuTranslationStatus = Exclude<TranslationStatus, 'deleted' | 'skip'>;
+
+/**
+ * Set translation status for existing target-language rows without changing text.
+ * Only updates strings that already have a translation and are not marked skip.
+ *
+ * @returns Number of translation rows updated.
+ */
+export const setTranslationsStatus = async (
+  db: Tx,
+  stringIds: number[],
+  status: ContextMenuTranslationStatus,
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<number> => {
+  if (stringIds.length === 0) return 0;
+
+  const provenance =
+    status === 'draft' || status === 'reviewed' || status === 'rejected' || status === 'human'
+      ? 'human_edit'
+      : `${status}_generated`;
+
+  const { rowCount } = await db.query(
+    `UPDATE translations t
+        SET status = $3,
+            provenance = $4,
+            updated_at = NOW()
+      FROM strings s
+      WHERE t.src_string_id = s.id
+        AND s.id = ANY($1::int[])
+        AND s.is_ignored = FALSE
+        AND t.target_lang = $2`,
+    [stringIds, targetLang, status, provenance],
+  );
+  return rowCount ?? 0;
+};
+
 // Returns text_norm for a string ID (used by propagation)
 export const getStringTextNorm = async (db: Tx, stringId: number): Promise<string | null> => {
   const { rows } = await db.query(`SELECT text_norm FROM strings WHERE id = $1`, [stringId]);

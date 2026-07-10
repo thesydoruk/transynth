@@ -1,3 +1,15 @@
+/** Statuses assignable from the row context menu (excludes skip and untranslated). */
+export const CONTEXT_MENU_STATUSES = [
+  'draft',
+  'reviewed',
+  'rejected',
+  'tm',
+  'fuzzy',
+  'auto',
+] as const;
+
+export type ContextMenuStatus = (typeof CONTEXT_MENU_STATUSES)[number];
+
 /** Status values available in the editor filter (excluding the "all" sentinel). */
 export const STATUS_FILTER_OPTS = [
   'untranslated',

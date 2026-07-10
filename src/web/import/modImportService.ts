@@ -14,16 +14,14 @@
  *   translation, review, and export.
  *
  * Key features:
- * - multi-format extraction (7z for zip/7z, optional system `unrar` for rar),
+ * - multi-format extraction (bundled 7za for zip/7z, bundled full 7z for rar),
  * - automatic discovery of BA2/BSA companions,
  * - locale enumeration for localized mods,
  * - and pause/cancel controls via an in-memory active-job registry.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import Seven from 'node-7z';
-import { path7za } from '7zip-bin';
+import { extractArchive } from '../../tools/archiveUtils';
 import pg from 'pg';
 import { upsertMod, upsertDialogScene, upsertDialogScenePhase, type Tx } from '../../db';
 import { sha1Hex } from '../../utils/hash';
@@ -680,76 +678,7 @@ const isPluginPath = (filePath: string): boolean => {
   return isPlugin(path.basename(filePath));
 };
 
-/**
- * Extracts a ZIP or 7z archive using the bundled 7za binary.
- */
-const extract7z = (archivePath: string, outDir: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const stream = Seven.extractFull(archivePath, outDir, {
-      $bin: path7za,
-      yes: true,
-      recursive: true,
-    });
-    stream.on('end', () => resolve());
-    stream.on('error', (err: Error) => reject(err));
-  });
-};
-
-/**
- * Extracts a RAR archive using the system `unrar` binary (RARLAB freeware).
- *
- * `unrar` must be installed separately:
- *  - Docker/Linux: `apt-get install unrar` (non-free repo, supports RAR5)
- *  - Windows (dev): install WinRAR or the standalone unrar.exe and ensure it's on PATH
- *
- * Throws a clear error if `unrar` is not found so the caller can surface a
- * useful message to the user instead of a cryptic ENOENT.
- */
-const extractRar = (archivePath: string, outDir: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // `x` = extract with full paths; `-y` = assume yes; `-o+` = overwrite
-    execFile(
-      'unrar',
-      ['x', '-y', '-o+', archivePath, `${outDir}${path.sep}`],
-      (err, _stdout, stderr) => {
-        if (!err) return resolve();
-
-        // Provide a helpful message when unrar is not installed
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-          return reject(
-            new Error(
-              'RAR extraction requires "unrar" to be installed. ' +
-                'On Linux/Docker: apt-get install unrar. ' +
-                'On Windows (dev): install WinRAR or standalone unrar.exe and add to PATH.',
-            ),
-          );
-        }
-
-        reject(new Error(`unrar failed: ${stderr || err.message}`));
-      },
-    );
-  });
-};
-
-/**
- * Extracts a ZIP, 7z, or RAR archive to the given directory.
- * Dispatches to the appropriate backend based on file extension.
- */
-/**
- * Extract an archive into a destination directory.
- *
- * Uses:
- * - bundled `7za` for `.zip` and `.7z`,
- * - and system `unrar` for `.rar` (must be installed separately).
- *
- * @param archivePath - Absolute path to the archive.
- * @param outDir - Destination directory (must exist).
- */
-export const extractArchive = (archivePath: string, outDir: string): Promise<void> => {
-  const ext = path.extname(archivePath).toLowerCase();
-  if (ext === '.rar') return extractRar(archivePath, outDir);
-  return extract7z(archivePath, outDir);
-};
+export { extractArchive } from '../../tools/archiveUtils';
 
 /**
  * Discover ESP/ESL/ESM + BA2 (FO4) and BSA (SSE) files inside a directory (recursive).

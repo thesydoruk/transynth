@@ -22,16 +22,6 @@ FROM node:24-slim AS runtime
 
 WORKDIR /app
 
-# Install unrar (freeware RARLAB binary) for RAR archive extraction.
-# unrar-free is intentionally NOT used — it lacks RAR5 support.
-# The non-free repo is needed on Debian slim images.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gnupg && \
-    echo "deb http://deb.debian.org/debian bookworm non-free" >> /etc/apt/sources.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends unrar && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # Backend dependencies (production only)
 COPY --from=deps /app/node_modules ./node_modules
 

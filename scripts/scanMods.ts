@@ -65,7 +65,7 @@ const isGameType = (value: string): value is GameType => {
 const isUncPath = (p: string): boolean => process.platform === 'win32' && p.startsWith('\\\\');
 
 /**
- * 7-Zip and unrar are unreliable with UNC sources — copy to local staging first.
+ * 7-Zip is unreliable with UNC sources — copy to local staging first.
  * Returns the path to extract from (original or staged copy).
  */
 const stageArchiveForExtract = async (archivePath: string, fileHash: string): Promise<string> => {
