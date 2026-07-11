@@ -80,6 +80,26 @@ describe('BA2 writer', () => {
     expect(parsed.get(2)).toBe('Пустка');
   });
 
+  it('extractByName resolves forward-slash paths from the name index', () => {
+    const ba2 = writeBa2([
+      { name: 'materials/HN66FO4/test.bgsm', data: Buffer.from('mat') },
+      { name: 'scripts\\Source\\User\\Test.psc', data: Buffer.from('psc') },
+    ]);
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formats-ba2-slash-'));
+    const archivePath = path.join(tempDir, 'test.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(archivePath, ba2);
+
+    const reader = new Ba2Reader(archivePath);
+    try {
+      expect(reader.extractByName('materials/HN66FO4/test.bgsm')?.toString()).toBe('mat');
+      expect(reader.extractByName('materials\\HN66FO4\\test.bgsm')?.toString()).toBe('mat');
+      expect(reader.extractByName('scripts/Source/User/Test.psc')?.toString()).toBe('psc');
+    } finally {
+      reader.close();
+    }
+  });
+
   it('round-trips zlib-compressed non-string assets', () => {
     const payload = Buffer.alloc(256, 0xab);
     const ba2 = writeBa2([{ name: 'Meshes\\Armor.nif', data: payload, compressed: true }]);

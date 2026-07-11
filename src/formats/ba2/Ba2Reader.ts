@@ -42,6 +42,10 @@ import { BA2_MAGIC, BA2_TYPE_GNRL, BA2_HEADER_SIZE, BA2_ENTRY_SIZE } from './uti
 const HEADER_SIZE = BA2_HEADER_SIZE;
 const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
 
+/** Case-insensitive archive path key used by the name index and `extractByName`. */
+export const normalizeBa2ArchivePath = (name: string): string =>
+  name.toLowerCase().replace(/\//g, '\\');
+
 const readAt = (fd: number, offset: number, length: number): Buffer => {
   const buf = Buffer.alloc(length);
   let read = 0;
@@ -160,7 +164,7 @@ export class Ba2Reader {
         unpackedSize,
       };
       this.entries.push(entry);
-      this.nameIndex.set(names[i]?.toLowerCase() ?? '', entry);
+      this.nameIndex.set(normalizeBa2ArchivePath(names[i] ?? ''), entry);
     }
   }
 
@@ -198,9 +202,14 @@ export class Ba2Reader {
    *          or `null` when the file does not exist in the archive.
    */
   extractByName(name: string): Buffer | null {
-    const entry = this.nameIndex.get(name.toLowerCase().replace(/\//g, '\\'));
+    const entry = this.nameIndex.get(normalizeBa2ArchivePath(name));
     if (!entry) return null;
     return this.extractEntry(entry);
+  }
+
+  /** Return all indexed file entries (same order as {@link listFiles}). */
+  listEntries(): Ba2FileEntry[] {
+    return this.entries;
   }
 
   /**

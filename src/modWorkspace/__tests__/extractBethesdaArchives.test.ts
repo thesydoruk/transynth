@@ -45,6 +45,25 @@ describe('extractAllBethesdaArchivesInTreeWithManifest', () => {
       packing: 'ba2',
     });
   });
+
+  it('writes forward-slash BA2 entries to disk', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-manifest-slash-'));
+    tempArtifacts.push(root);
+
+    const ba2 = writeBa2([
+      { name: 'materials/HN66FO4/test.bgsm', data: Buffer.from('mat') },
+      { name: 'scripts/Source/User/Test.psc', data: Buffer.from('psc') },
+    ]);
+    fs.writeFileSync(path.join(root, 'Mod - Main.ba2'), ba2);
+
+    extractAllBethesdaArchivesInTreeWithManifest(root);
+
+    expect(fs.existsSync(path.join(root, 'materials', 'HN66FO4', 'test.bgsm'))).toBe(true);
+    expect(fs.readFileSync(path.join(root, 'materials', 'HN66FO4', 'test.bgsm'), 'utf8')).toBe(
+      'mat',
+    );
+    expect(fs.existsSync(path.join(root, 'scripts', 'Source', 'User', 'Test.psc'))).toBe(true);
+  });
 });
 
 describe('extractGameArchivesForImport', () => {

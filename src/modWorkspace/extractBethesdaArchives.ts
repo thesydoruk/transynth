@@ -16,6 +16,10 @@ const normalizeEntryPath = (entryPath: string): string => entryPath.replace(/\\/
 const relativeFromRoot = (extractRoot: string, absPath: string): string =>
   normalizeEntryPath(path.relative(extractRoot, absPath));
 
+/** Map an archive-internal path to a safe on-disk path under `outDir`. */
+const archiveEntryPathToDisk = (outDir: string, entryName: string): string =>
+  path.join(outDir, ...entryName.split(/[/\\]/).filter(Boolean));
+
 export const listBa2ArchiveEntries = (archivePath: string): string[] => {
   const reader = new Ba2Reader(archivePath);
   try {
@@ -39,12 +43,10 @@ export const extractBa2ToDir = (archivePath: string, outDir: string): void => {
 
   const reader = new Ba2Reader(archivePath);
   try {
-    for (const name of reader.listFiles()) {
-      const dest = path.join(outDir, name);
+    for (const entry of reader.listEntries()) {
+      const dest = archiveEntryPathToDisk(outDir, entry.name);
       ensureDir(path.dirname(dest));
-      const data = reader.extractByName(name);
-      if (!data) continue;
-      fs.writeFileSync(dest, data);
+      fs.writeFileSync(dest, reader.extractEntry(entry));
     }
   } finally {
     reader.close();
@@ -55,7 +57,7 @@ export const extractBa2ToDir = (archivePath: string, outDir: string): void => {
 export const extractBsaToDir = (archivePath: string, outDir: string): void => {
   const reader = new BsaReader(archivePath);
   for (const entry of reader.list()) {
-    const dest = path.join(outDir, entry.name);
+    const dest = archiveEntryPathToDisk(outDir, entry.name);
     ensureDir(path.dirname(dest));
     fs.writeFileSync(dest, reader.extractEntry(entry));
   }
