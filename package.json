@@ -12,7 +12,6 @@
     "db:restore": "tsx scripts/dbRestore.ts",
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
-    "mod:prepare": "tsx scripts/prepareModWorkspace.ts",
     "mod:pack": "tsx scripts/packModWorkspace.ts",
     "mod:localize": "tsx scripts/localizeModWorkspace.ts",
     "mod:localize-voice": "tsx scripts/localizeModWorkspaceVoice.ts",

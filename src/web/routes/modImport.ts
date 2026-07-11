@@ -3,9 +3,7 @@
  * list, start/pause/cancel imports with SSE progress.
  */
 import fs from 'node:fs';
-import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
@@ -17,8 +15,6 @@ import {
   listModImportJobs,
   getModImportJob,
   deleteModImportJob,
-  registerPluginFile,
-  registerArchiveFile,
   runModImport,
   isModImportRunning,
   requestModCancel,
@@ -29,28 +25,12 @@ import {
   isPlugin,
 } from '../import/modImportService';
 import { CONFIG } from '../../config';
-
-import { PATHS } from '../../paths';
-
-const MOD_UPLOAD_DIR = PATHS.modUploads;
-
-const ensureUploadDir = () => {
-  if (!fs.existsSync(MOD_UPLOAD_DIR)) fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
-};
-
-const modFilePath = (fileName: string) => {
-  const safe = path.basename(fileName);
-  return path.join(MOD_UPLOAD_DIR, safe);
-};
-
-/** Per-archive extraction directory. */
-const extractDir = (jobHash: string) => {
-  return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
-};
+import { ensureModStorageDir, modUploadTempPath, modUploadedFilePath } from '../../modStorage';
+import { registerUploadedModFile } from '../import/registerModUpload';
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
-  ensureUploadDir();
+  ensureModStorageDir();
 
   // ── List all mod import jobs ──────────────────────────────────────────────
   app.get('/api/mod-import', async () => {
@@ -88,27 +68,22 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
         });
       }
 
-      const tmpPath = path.join(
-        MOD_UPLOAD_DIR,
-        `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
-      );
-      ensureUploadDir();
+      const tmpPath = modUploadTempPath();
+      ensureModStorageDir();
 
       try {
         await pipeline(data.file, fs.createWriteStream(tmpPath));
 
-        const finalPath = modFilePath(origName);
+        const finalPath = modUploadedFilePath(origName);
         fs.renameSync(tmpPath, finalPath);
 
-        let job;
-        if (isPlugin(origName)) {
-          job = await registerPluginFile(db, origName, finalPath, srcLang, tgtLang, game);
-        } else {
-          // Archive — extract then register
-          const hash = crypto.randomBytes(8).toString('hex');
-          const outDir = extractDir(hash);
-          job = await registerArchiveFile(db, origName, finalPath, outDir, srcLang, tgtLang, game);
-        }
+        const job = await registerUploadedModFile(db, {
+          fileName: origName,
+          storedPath: finalPath,
+          srcLang,
+          tgtLang,
+          game,
+        });
 
         return reply.status(201).send({ ...job, running: false });
       } catch (err: unknown) {

@@ -19,7 +19,7 @@ import {
   loadVoiceTranslations,
   voiceTranslationMapKey,
 } from '../../modWorkspace/loadVoiceTranslations';
-import { sanitizeDirName } from '../../modWorkspace/prepareModWorkspace';
+import { resolveModImportExtractRoot, resolveModImportLocalizeDir } from '../../modStorage';
 import { voiceSpeakerKey } from '../../modWorkspace/speakerReferencePool';
 import {
   clearVoiceSpeakerRef,
@@ -110,17 +110,12 @@ type VoicePackageContext = {
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-const resolveWorkspaceLocalizeDir = (modName: string): string | null => {
-  const workingDir = process.env.MOD_WORKING_DIR?.trim();
-  if (!workingDir) return null;
-  const localizeDir = path.join(workingDir, sanitizeDirName(modName), 'localize');
-  return fs.existsSync(localizeDir) ? localizeDir : null;
+const resolveVoiceLocalizeDir = (pluginPath: string): string | null => {
+  const extractRoot = resolveModImportExtractRoot(pluginPath);
+  return extractRoot ? resolveModImportLocalizeDir(extractRoot) : null;
 };
 
-const resolveVoicePackageContext = (
-  pluginPath: string,
-  modName: string,
-): VoicePackageContext | null => {
+const resolveVoicePackageContext = (pluginPath: string): VoicePackageContext | null => {
   if (!pluginPath || !fs.existsSync(pluginPath)) return null;
 
   const pluginDir = path.dirname(pluginPath);
@@ -146,7 +141,7 @@ const resolveVoicePackageContext = (
       return {
         ...candidate,
         pluginPath,
-        localizeDir: resolveWorkspaceLocalizeDir(modName),
+        localizeDir: resolveVoiceLocalizeDir(pluginPath),
       };
     }
   }
@@ -155,7 +150,7 @@ const resolveVoicePackageContext = (
     packageDir: pluginDir,
     pluginRel: pluginName,
     pluginPath,
-    localizeDir: resolveWorkspaceLocalizeDir(modName),
+    localizeDir: resolveVoiceLocalizeDir(pluginPath),
   };
 };
 
@@ -277,7 +272,7 @@ export const listVoiceLinesForMod = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path, mod.name);
+  const ctx = resolveVoicePackageContext(mod.abs_path);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
@@ -363,7 +358,7 @@ const resolveModVoiceContext = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path, mod.name);
+  const ctx = resolveVoicePackageContext(mod.abs_path);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
@@ -447,7 +442,7 @@ export const getVoicePreviewWav = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path, mod.name);
+  const ctx = resolveVoicePackageContext(mod.abs_path);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }

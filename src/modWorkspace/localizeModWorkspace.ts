@@ -12,17 +12,17 @@ import {
   type ExportedStringsFile,
 } from '../web/export/exportService';
 import { discoverModFiles } from '../web/import/modImportService';
-import { readModWorkspaceManifest, type ModWorkspacePackage } from './archiveManifest';
 
-export type LocalizeModWorkspaceOptions = {
-  workspaceDir: string;
+export type LocalizeModImportOptions = {
+  extractDir: string;
+  pluginPath?: string;
   modId?: number;
   tgtLang?: string;
   srcLang?: string;
   game?: GameType;
 };
 
-export type LocalizeModWorkspaceResult = {
+export type LocalizeModImportResult = {
   modId: number;
   modName: string;
   localizeDir: string;
@@ -39,7 +39,7 @@ export type ResolvedDbMod = {
   isLocalized: boolean;
 };
 
-export type WorkspacePackageContext = {
+export type ImportPackageContext = {
   folder: string;
   packageDir: string;
   pluginPath: string;
@@ -110,7 +110,7 @@ const trackWrite = (
   else skipped.push(label);
 };
 
-export const resolveDbModForWorkspace = async (
+export const resolveDbModForImport = async (
   db: Tx,
   modName: string,
   modId?: number,
@@ -184,60 +184,55 @@ export const resolveDbModForWorkspace = async (
   };
 };
 
-export const resolveWorkspacePackages = (
-  workspaceDir: string,
-  manifestPackages?: ModWorkspacePackage[],
-): WorkspacePackageContext[] => {
-  const extractedDir = path.join(workspaceDir, 'extracted');
-  const localizeRoot = path.join(workspaceDir, 'localize');
+export const resolveImportPackages = (
+  extractDir: string,
+  primaryPluginPath?: string,
+): ImportPackageContext[] => {
+  const resolvedExtractDir = path.resolve(extractDir);
+  const localizeRoot = path.join(resolvedExtractDir, 'localize');
 
-  if (!fs.existsSync(extractedDir)) {
-    throw new Error(`extracted/ not found in workspace: ${workspaceDir}`);
+  if (!fs.existsSync(resolvedExtractDir)) {
+    throw new Error(`Import extract directory not found: ${resolvedExtractDir}`);
   }
 
-  if (manifestPackages && manifestPackages.length > 0) {
-    return manifestPackages.map((pkg) => {
-      const packageDir = pkg.folder ? path.join(extractedDir, pkg.folder) : extractedDir;
-      const pluginFile = pkg.pluginFiles[0];
-      if (!pluginFile)
-        throw new Error(`Package "${pkg.folder || '(root)'}" has no plugin in manifest`);
-      const pluginPath = path.join(packageDir, pluginFile);
-      if (!fs.existsSync(pluginPath)) {
-        throw new Error(`Plugin not found in workspace: ${pluginPath}`);
-      }
-      return {
-        folder: pkg.folder,
-        packageDir,
+  if (primaryPluginPath) {
+    const pluginPath = path.resolve(primaryPluginPath);
+    const folder = path.relative(resolvedExtractDir, path.dirname(pluginPath));
+    const normalizedFolder = folder === '.' ? '' : folder.replace(/\\/g, '/');
+    return [
+      {
+        folder: normalizedFolder,
+        packageDir: path.dirname(pluginPath),
         pluginPath,
-        localizeDir: pkg.folder ? path.join(localizeRoot, pkg.folder) : localizeRoot,
-      };
-    });
+        localizeDir: normalizedFolder ? path.join(localizeRoot, normalizedFolder) : localizeRoot,
+      },
+    ];
   }
 
-  const plugins = discoverModFiles(extractedDir).plugins;
+  const plugins = discoverModFiles(resolvedExtractDir).plugins;
   if (plugins.length === 0) {
-    throw new Error(`No plugins found under ${extractedDir}`);
+    throw new Error(`No plugins found under ${resolvedExtractDir}`);
   }
 
   const pluginDirs = new Map<string, string>();
   for (const plugin of plugins) {
-    const relDir = path.relative(extractedDir, path.dirname(plugin));
-    const folder = relDir === '.' ? '' : relDir;
+    const relDir = path.relative(resolvedExtractDir, path.dirname(plugin));
+    const folder = relDir === '.' ? '' : relDir.replace(/\\/g, '/');
     if (!pluginDirs.has(folder)) pluginDirs.set(folder, plugin);
   }
 
   return [...pluginDirs.entries()].map(([folder, pluginPath]) => ({
     folder,
-    packageDir: folder ? path.join(extractedDir, folder) : extractedDir,
+    packageDir: folder ? path.join(resolvedExtractDir, folder) : resolvedExtractDir,
     pluginPath,
     localizeDir: folder ? path.join(localizeRoot, folder) : localizeRoot,
   }));
 };
 
-const localizeWorkspacePackage = async (
+const localizeImportPackage = async (
   db: Tx,
   mod: ResolvedDbMod,
-  pkg: WorkspacePackageContext,
+  pkg: ImportPackageContext,
   srcLang: string,
   tgtLang: string,
   game: GameType,
@@ -324,21 +319,18 @@ const localizeWorkspacePackage = async (
   }
 };
 
-export const localizeModWorkspace = async (
+export const localizeModImport = async (
   db: Tx,
-  options: LocalizeModWorkspaceOptions,
-): Promise<LocalizeModWorkspaceResult> => {
-  const workspaceDir = path.resolve(options.workspaceDir);
-  const manifest = readModWorkspaceManifest(workspaceDir);
-  const lookupName = manifest?.modName?.trim() || path.basename(workspaceDir);
-
-  const mod = await resolveDbModForWorkspace(db, lookupName, options.modId);
+  options: LocalizeModImportOptions,
+): Promise<LocalizeModImportResult> => {
+  const extractDir = path.resolve(options.extractDir);
+  const mod = await resolveDbModForImport(db, path.basename(extractDir), options.modId);
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
-  const game = options.game ?? manifest?.game ?? mod.game;
+  const game = options.game ?? mod.game;
 
-  const packages = resolveWorkspacePackages(workspaceDir, manifest?.packages);
-  const localizeDir = path.join(workspaceDir, 'localize');
+  const packages = resolveImportPackages(extractDir, options.pluginPath);
+  const localizeDir = path.join(extractDir, 'localize');
   ensureDir(localizeDir);
 
   const written: string[] = [];
@@ -346,21 +338,11 @@ export const localizeModWorkspace = async (
   const warnings: string[] = [];
 
   log.info(
-    `Localizing workspace "${lookupName}" → localize/ (mod id=${mod.modId}, ${srcLang}→${tgtLang}, game=${game})`,
+    `Localizing import "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, game=${game})`,
   );
 
   for (const pkg of packages) {
-    await localizeWorkspacePackage(
-      db,
-      mod,
-      pkg,
-      srcLang,
-      tgtLang,
-      game,
-      written,
-      skipped,
-      warnings,
-    );
+    await localizeImportPackage(db, mod, pkg, srcLang, tgtLang, game, written, skipped, warnings);
   }
 
   return {

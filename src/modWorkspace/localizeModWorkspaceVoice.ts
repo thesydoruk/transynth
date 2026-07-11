@@ -38,17 +38,17 @@ import {
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   pluginRelPath,
-  resolveDbModForWorkspace,
-  resolveWorkspacePackages,
+  resolveDbModForImport,
+  resolveImportPackages,
   writeIfChanged,
-  type WorkspacePackageContext,
+  type ImportPackageContext,
 } from './localizeModWorkspace';
-import { readModWorkspaceManifest } from './archiveManifest';
 import { CONFIG } from '../config';
 import type { Tx } from '../db';
 
-export type LocalizeModWorkspaceVoiceOptions = {
-  workspaceDir: string;
+export type LocalizeModImportVoiceOptions = {
+  extractDir: string;
+  pluginPath?: string;
   modId?: number;
   srcLang?: string;
   tgtLang?: string;
@@ -57,16 +57,12 @@ export type LocalizeModWorkspaceVoiceOptions = {
   limit?: number;
   dryRun?: boolean;
   force?: boolean;
-  /**
-   * XTTS English reference: `speaker` = one clip per NPC; `line` = same phrase audio per row.
-   * Default from `TTS_LINE_REFERENCE` / `TTS_SPEAKER_REFERENCE` env (see .env.example).
-   */
   referenceMode?: TtsReferenceMode;
-  /** @deprecated Prefer {@link referenceMode}. `false` → `line`, `true` → `speaker`. */
+  /** @deprecated Prefer {@link referenceMode}. */
   speakerReference?: boolean;
 };
 
-export type LocalizeModWorkspaceVoiceResult = {
+export type LocalizeModImportVoiceResult = {
   modId: number;
   modName: string;
   localizeDir: string;
@@ -177,7 +173,7 @@ const resolveReferenceMode = (
 const localizeVoicePackage = async (
   db: Tx,
   modId: number,
-  pkg: WorkspacePackageContext,
+  pkg: ImportPackageContext,
   game: GameType,
   srcLang: string,
   tgtLang: string,
@@ -332,28 +328,26 @@ const localizeVoicePackage = async (
   }
 };
 
-export const localizeModWorkspaceVoice = async (
+export const localizeModImportVoice = async (
   db: Tx,
-  options: LocalizeModWorkspaceVoiceOptions,
-): Promise<LocalizeModWorkspaceVoiceResult> => {
-  const workspaceDir = path.resolve(options.workspaceDir);
-  const manifest = readModWorkspaceManifest(workspaceDir);
-  const lookupName = manifest?.modName?.trim() || path.basename(workspaceDir);
+  options: LocalizeModImportVoiceOptions,
+): Promise<LocalizeModImportVoiceResult> => {
+  const extractDir = path.resolve(options.extractDir);
 
   if (!options.dryRun) {
     await ensureVoiceToolsInstalled();
     await checkXttsHealth(options.xttsBaseUrl);
   }
 
-  const mod = await resolveDbModForWorkspace(db, lookupName, options.modId);
+  const mod = await resolveDbModForImport(db, path.basename(extractDir), options.modId);
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
-  const game = options.game ?? manifest?.game ?? mod.game;
+  const game = options.game ?? mod.game;
   const xttsBaseUrl = options.xttsBaseUrl ?? resolveXttsUkBaseUrl();
   const referenceMode = resolveReferenceMode(options);
 
-  const packages = resolveWorkspacePackages(workspaceDir, manifest?.packages);
-  const localizeDir = path.join(workspaceDir, 'localize');
+  const packages = resolveImportPackages(extractDir, options.pluginPath);
+  const localizeDir = path.join(extractDir, 'localize');
   ensureDir(localizeDir);
 
   const written: string[] = [];
@@ -361,7 +355,7 @@ export const localizeModWorkspaceVoice = async (
   const warnings: string[] = [];
 
   log.info(
-    `Voice localize "${lookupName}" → localize/ (mod id=${mod.modId}, ${srcLang}→${tgtLang}, XTTS=${xttsBaseUrl}, refMode=${referenceMode})`,
+    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, XTTS=${xttsBaseUrl}, refMode=${referenceMode})`,
   );
 
   for (const pkg of packages) {

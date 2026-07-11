@@ -3,12 +3,9 @@ import path from 'node:path';
 import { log } from '../logger';
 import type { GameType } from '../types';
 import { copyFileSafe, ensureDir } from '../utils/file';
+import { modImportPackOutputDir } from '../modStorage';
 import { discoverModFiles } from '../web/import/modImportService';
-import {
-  type ModWorkspaceManifest,
-  type ModWorkspacePackage,
-  readModWorkspaceManifest,
-} from './archiveManifest';
+import { type ArchiveManifestEntry, readModImportExtractManifest } from './archiveManifest';
 import { isBethesdaArchiveFile, normalizeArchivePath } from './bethesdaArchivePaths';
 import { create7zArchive } from './create7zArchive';
 import {
@@ -19,12 +16,21 @@ import {
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 
-export type PackModWorkspaceOptions = {
-  workspaceDir: string;
-  game?: GameType;
+type ImportPackPackage = {
+  folder: string;
+  pluginFiles: string[];
+  archives: ArchiveManifestEntry[];
 };
 
-export type PackModWorkspaceResult = {
+export type PackModImportOptions = {
+  extractDir: string;
+  modName?: string;
+  pluginPath?: string;
+  game?: GameType;
+  outputDir?: string;
+};
+
+export type PackModImportResult = {
   modName: string;
   outputDir: string;
   archives: string[];
@@ -92,7 +98,7 @@ const copyLooseFiles = (
   walk(sourceDir);
 };
 
-const resolvePackageArchiveName = (pkg: ModWorkspacePackage): string => {
+const resolvePackageArchiveName = (pkg: ImportPackPackage): string => {
   const plugin = pkg.pluginFiles[0];
   if (plugin) return path.basename(plugin, path.extname(plugin));
   if (pkg.folder) return path.basename(pkg.folder);
@@ -101,7 +107,7 @@ const resolvePackageArchiveName = (pkg: ModWorkspacePackage): string => {
 
 const buildPackageStagingDir = (
   extractedDir: string,
-  pkg: ModWorkspacePackage,
+  pkg: ImportPackPackage,
   stagingRoot: string,
   game: GameType,
 ): { stagingDir: string; bethesdaArchives: string[] } => {
@@ -142,7 +148,24 @@ const listTopLevelPackageFolders = (extractedDir: string): string[] => {
   return [...pluginDirs];
 };
 
-const inferPackagesFromExtracted = (extractedDir: string): ModWorkspacePackage[] => {
+const inferPackagesFromExtracted = (
+  extractedDir: string,
+  primaryPluginPath?: string,
+): ImportPackPackage[] => {
+  if (primaryPluginPath) {
+    const pluginPath = path.resolve(primaryPluginPath);
+    const folder = path.relative(extractedDir, path.dirname(pluginPath));
+    const normalizedFolder = folder === '.' ? '' : folder.replace(/\\/g, '/');
+    const packageDir = path.dirname(pluginPath);
+    return [
+      {
+        folder: normalizedFolder,
+        pluginFiles: [path.relative(packageDir, pluginPath).replace(/\\/g, '/')],
+        archives: [],
+      },
+    ];
+  }
+
   const folders = listTopLevelPackageFolders(extractedDir);
   if (folders.length === 0) {
     return [
@@ -168,43 +191,46 @@ const inferPackagesFromExtracted = (extractedDir: string): ModWorkspacePackage[]
   });
 };
 
+const deriveModName = (extractDir: string, modName?: string): string => {
+  if (modName?.trim()) return modName.trim();
+  const importManifest = readModImportExtractManifest(extractDir);
+  const containerName = importManifest?.container?.fileName;
+  if (containerName) {
+    return containerName.replace(/\.(zip|7z|rar)$/i, '');
+  }
+  const base = path.basename(extractDir);
+  return base.startsWith('_extracted_') ? 'mod' : base;
+};
+
 /**
- * Pack `extracted/` into .7z archives under `output/`.
- * Rebuilds BA2/BSA from loose files (manifest or inferred layout) before creating 7z.
+ * Pack an import extract tree into .7z archives under `_output/{extractName}/`.
+ * Rebuilds BA2/BSA from loose files (import manifest or inferred layout) before creating 7z.
  */
-export const packModWorkspace = async (
-  options: PackModWorkspaceOptions,
-): Promise<PackModWorkspaceResult> => {
-  const workspaceDir = path.resolve(options.workspaceDir);
-  const extractedDir = path.join(workspaceDir, 'extracted');
-  const outputDir = path.join(workspaceDir, 'output');
+export const packModImport = async (
+  options: PackModImportOptions,
+): Promise<PackModImportResult> => {
+  const extractedDir = path.resolve(options.extractDir);
+  const outputDir = path.resolve(options.outputDir ?? modImportPackOutputDir(extractedDir));
 
   if (!fs.existsSync(extractedDir)) {
-    throw new Error(`extracted/ not found in workspace: ${workspaceDir}`);
+    throw new Error(`Import extract directory not found: ${extractedDir}`);
   }
 
-  const manifest =
-    readModWorkspaceManifest(workspaceDir) ??
-    ({
-      version: 1,
-      game: options.game ?? 'fo4',
-      modName: path.basename(workspaceDir),
-      packages: inferPackagesFromExtracted(extractedDir),
-    } satisfies ModWorkspaceManifest);
-
-  const game = options.game ?? manifest.game;
+  const modName = deriveModName(extractedDir, options.modName);
+  const game = options.game ?? 'fo4';
+  const packages = inferPackagesFromExtracted(extractedDir, options.pluginPath);
 
   ensureDir(outputDir);
-  const stagingRoot = path.join(workspaceDir, '.pack-staging');
+  const stagingRoot = path.join(outputDir, '.pack-staging');
   removeDirectory(stagingRoot);
   ensureDir(stagingRoot);
 
   const createdArchives: string[] = [];
   const bethesdaArchives: string[] = [];
-  const multiPackage = manifest.packages.length > 1;
+  const multiPackage = packages.length > 1;
 
   try {
-    for (const pkg of manifest.packages) {
+    for (const pkg of packages) {
       const { stagingDir, bethesdaArchives: packedBa } = buildPackageStagingDir(
         extractedDir,
         pkg,
@@ -214,7 +240,7 @@ export const packModWorkspace = async (
       bethesdaArchives.push(...packedBa);
 
       const archiveBase = resolvePackageArchiveName(pkg);
-      const archiveName = multiPackage ? `${archiveBase}.7z` : `${manifest.modName}.7z`;
+      const archiveName = multiPackage ? `${archiveBase}.7z` : `${modName}.7z`;
       const archivePath = path.join(outputDir, archiveName);
 
       log.info(`Packing ${pkg.folder || '(root)'} → ${archiveName}`);
@@ -227,7 +253,7 @@ export const packModWorkspace = async (
   }
 
   return {
-    modName: manifest.modName,
+    modName,
     outputDir,
     archives: createdArchives,
     bethesdaArchives,

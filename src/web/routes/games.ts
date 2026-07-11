@@ -32,19 +32,19 @@ import { createNexusClient, NexusModsNotFoundError, NexusModsError } from '../..
 import { CONFIG } from '../../config';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
+import { isArchive, isPlugin } from '../import/modImportService';
 import {
-  isArchive,
-  isPlugin,
-  registerArchiveFile,
-  registerPluginFile,
-} from '../import/modImportService';
+  ensureModStorageDir,
+  modNexusDownloadTempPath,
+  modUploadedFilePath,
+} from '../../modStorage';
+import { registerUploadedModFile } from '../import/registerModUpload';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 import { PATHS } from '../../paths';
 
 const CACHE_DIR = PATHS.gamesCache;
-const MOD_UPLOAD_DIR = PATHS.modUploads;
 
 /** Browser cache TTL for game covers (7 days). */
 const COVER_CACHE_SECONDS = 60 * 60 * 24 * 7;
@@ -325,30 +325,6 @@ const fetchNexusFileDownloadUrl = async (
 };
 
 /**
- * Ensures the shared uploads/mod directory exists.
- */
-const ensureModUploadDir = () => {
-  if (!fs.existsSync(MOD_UPLOAD_DIR)) {
-    fs.mkdirSync(MOD_UPLOAD_DIR, { recursive: true });
-  }
-};
-
-/**
- * Returns the on-disk path used for stored mod import files.
- */
-const modFilePath = (fileName: string) => {
-  const safe = path.basename(fileName);
-  return path.join(MOD_UPLOAD_DIR, safe);
-};
-
-/**
- * Returns the extraction directory path for archive imports.
- */
-const extractDir = (jobHash: string) => {
-  return path.join(MOD_UPLOAD_DIR, `_extracted_${jobHash}`);
-};
-
-/**
  * Downloads a Nexus file into the mod uploads directory.
  */
 const downloadNexusFileToDisk = async (
@@ -357,11 +333,11 @@ const downloadNexusFileToDisk = async (
   fileId: number,
   fileName: string,
 ): Promise<string> => {
-  ensureModUploadDir();
+  ensureModStorageDir();
 
   const safeFileName = path.basename(fileName);
-  const finalPath = modFilePath(safeFileName);
-  const tempPath = path.join(MOD_UPLOAD_DIR, `_nexus_${crypto.randomBytes(8).toString('hex')}.tmp`);
+  const finalPath = modUploadedFilePath(safeFileName);
+  const tempPath = modNexusDownloadTempPath();
   const downloadUrl = await fetchNexusFileDownloadUrl(domainName, modId, fileId);
   const res = await fetch(downloadUrl, { redirect: 'follow' });
 
@@ -827,29 +803,13 @@ export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
 
       const localPath = await downloadNexusFileToDisk(game.domainName, modId, fileId, fileName);
 
-      let job;
-      if (isPlugin(fileName)) {
-        job = await registerPluginFile(
-          db,
-          fileName,
-          localPath,
-          srcLang,
-          tgtLang,
-          game.id as GameType,
-        );
-      } else {
-        const hash = crypto.randomBytes(8).toString('hex');
-        const outDir = extractDir(hash);
-        job = await registerArchiveFile(
-          db,
-          fileName,
-          localPath,
-          outDir,
-          srcLang,
-          tgtLang,
-          game.id as GameType,
-        );
-      }
+      const job = await registerUploadedModFile(db, {
+        fileName,
+        storedPath: localPath,
+        srcLang,
+        tgtLang,
+        game: game.id as GameType,
+      });
 
       return reply.code(201).send({ ...job, running: false });
     } catch (err) {

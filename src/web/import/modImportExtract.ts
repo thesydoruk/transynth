@@ -1,11 +1,12 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import {
   type ModImportExtractManifest,
   writeModImportExtractManifest,
 } from '../../modWorkspace/archiveManifest';
 import { extractAllBethesdaArchivesInTreeWithManifest } from '../../modWorkspace/extractBethesdaArchives';
-import { PATHS } from '../../paths';
+import { resolveModImportExtractRoot } from '../../modStorage';
+
+export { resolveModImportExtractRoot } from '../../modStorage';
 
 const normalizeEntryPath = (entryPath: string): string => entryPath.replace(/\\/g, '/');
 
@@ -14,31 +15,6 @@ const containerPackingFromName = (fileName: string): 'zip' | '7z' | 'rar' | null
   if (ext === '.zip') return 'zip';
   if (ext === '.7z') return '7z';
   if (ext === '.rar') return 'rar';
-  return null;
-};
-
-const isInsideModUploadDir = (absPath: string): boolean => {
-  const rel = path.relative(PATHS.modUploads, absPath);
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
-};
-
-/** Resolve `_extracted_*` root for a plugin path under mod uploads, if any. */
-export const resolveModImportExtractRoot = (pluginPath: string): string | null => {
-  const absPluginPath = path.resolve(pluginPath);
-  if (!isInsideModUploadDir(absPluginPath)) return null;
-
-  let current =
-    fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
-      ? absPluginPath
-      : path.dirname(absPluginPath);
-
-  while (isInsideModUploadDir(current)) {
-    if (path.basename(current).startsWith('_extracted_')) return current;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-
   return null;
 };
 

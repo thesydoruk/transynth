@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GameType } from '../types';
 
-export const MANIFEST_FILE_NAME = 'manifest.json';
+export const MANIFEST_FILE_NAME = 'import-manifest.json';
 export const MOD_IMPORT_MANIFEST_FILE_NAME = 'import-manifest.json';
 
 /** Container / in-game archive packing formats tracked during mod import. */
@@ -51,36 +50,6 @@ export type ModImportExtractManifest = {
   archives: ModImportArchiveRecord[];
   /** Loose file path (relative to extract root, forward slashes) → provenance. */
   files: Record<string, ModImportFileProvenance>;
-};
-
-export type ModWorkspacePackage = {
-  /** Relative path under `extracted/` (empty string = root). */
-  folder: string;
-  pluginFiles: string[];
-  archives: ArchiveManifestEntry[];
-};
-
-export type ModWorkspaceManifest = {
-  version: 1;
-  game: GameType;
-  modName: string;
-  packages: ModWorkspacePackage[];
-};
-
-export const manifestPath = (workspaceDir: string): string =>
-  path.join(workspaceDir, MANIFEST_FILE_NAME);
-
-export const readModWorkspaceManifest = (workspaceDir: string): ModWorkspaceManifest | null => {
-  const filePath = manifestPath(workspaceDir);
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, 'utf8')) as ModWorkspaceManifest;
-};
-
-export const writeModWorkspaceManifest = (
-  workspaceDir: string,
-  manifest: ModWorkspaceManifest,
-): void => {
-  fs.writeFileSync(manifestPath(workspaceDir), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 };
 
 export const modImportManifestPath = (extractRoot: string): string =>
