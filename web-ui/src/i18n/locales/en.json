@@ -117,7 +117,15 @@
     "batchActions": "Actions",
     "deleteAllBatchTitle": "Delete mods completely",
     "deleteAllBatchMessage": "Delete {{count}} mods along with all imported rows and translations? This cannot be undone.",
-    "deleteAllBatchSuccess": "Deleted {{count}} mods."
+    "deleteAllBatchSuccess": "Deleted {{count}} mods.",
+    "aiWorkflowTitle": "AI tasks"
+  },
+  "modAi": {
+    "progressShort": "{{done}} / {{total}}",
+    "statusCompleted": "Done",
+    "statusCancelled": "Stopped",
+    "statusStopping": "Stopping…",
+    "statusFailed": "Failed"
   },
   "modEditor": {
     "source": "Source:",
@@ -206,17 +214,6 @@
     "skipDetectApplyingAllProgress": "Marking all… {{done}} / {{total}}",
     "aiTranslate": "AI translate",
     "aiTranslateRunning": "AI translate…",
-    "aiTranslateTitle": "AI auto-translate",
-    "aiTranslateIntro": "The LLM will translate all untranslated strings in this mod ({{src}} → {{target}}).",
-    "aiTranslateProgress": "Translated {{done}} / {{total}}",
-    "aiTranslateCompleted": "Done: {{done}} / {{total}}, {{success}} succeeded, {{errors}} errors",
-    "aiTranslateCancelled": "Stopped: {{done}} / {{total}}, {{success}} succeeded, {{errors}} errors",
-    "aiTranslateFailed": "Translation stopped due to an error",
-    "aiTranslateIdle": "Click Start to begin translation",
-    "aiTranslateScanning": "Translation in progress…",
-    "aiTranslateNoErrors": "No translation errors",
-    "aiTranslateAllSuccess": "Successfully translated {{count}} strings",
-    "aiTranslateStatus": "Status",
     "applyTranslationFromModTitle": "Apply translation from another mod",
     "applyTranslationFromModIntro": "Pick a source mod and the locale of its strings to copy into this mod as translations for the current target language.",
     "applyTranslationSourceMod": "Source mod",

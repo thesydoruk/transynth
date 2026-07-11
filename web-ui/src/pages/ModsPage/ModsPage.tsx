@@ -56,6 +56,9 @@ import { ModWorkspaceRow } from './ModWorkspaceRow';
 import { ModDataMenuItems } from './ModDataMenuItems';
 import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 import { useContentLangs } from '../../hooks/useContentLangs';
+import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
+import { getModAiJob } from '../../modAiJobsStore';
+import { toggleModAiTranslate } from '../../modAiTranslateRunner';
 import { modListQueryKey } from '../../langDefaults';
 import s from './ModsPage.module.scss';
 
@@ -77,6 +80,7 @@ export const ModsPage = () => {
   const { gameId = 'fo4' } = useParams<{ gameId: string }>();
   const qc = useQueryClient();
   const { srcLang, targetLang } = useContentLangs();
+  useModAiJobsPoll(true);
   const { toast, showToast, clearToast } = useToast();
 
   const {
@@ -680,6 +684,13 @@ export const ModsPage = () => {
     [deleteModalJob, refreshAll],
   );
 
+  const openModAiPanel = useCallback(
+    (modId: number, panel: 'ai-verify' | 'skip-detect') => {
+      nav(`/games/${gameId}/mods/${modId}?open=${panel}`);
+    },
+    [gameId, nav],
+  );
+
   const eetPreviewJob =
     eetPreviewId != null ? (eetJobs ?? []).find((j) => j.id === eetPreviewId) : null;
   const csvPreviewJob =
@@ -1029,6 +1040,16 @@ export const ModsPage = () => {
                 multiSelectActive={multiSelectActive}
                 onSelectedChange={(selected) => toggleModSelection(mod.id, selected)}
                 onOpen={() => nav(`/games/${gameId}/mods/${mod.id}`)}
+                onAiTranslate={() =>
+                  toggleModAiTranslate(
+                    mod.id,
+                    srcLang,
+                    targetLang,
+                    getModAiJob(mod.id, 'translate'),
+                  )
+                }
+                onAiVerify={() => openModAiPanel(mod.id, 'ai-verify')}
+                onSkipDetect={() => openModAiPanel(mod.id, 'skip-detect')}
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
                 onDeleteAll={() =>
                   requestDeleteMods(

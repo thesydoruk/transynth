@@ -6,6 +6,8 @@ import { modProgress } from '../../../utils/modProgress';
 import parentS from '../ModsPage.module.scss';
 import rowS from '../UnifiedJobRow/UnifiedJobRow.module.scss';
 import { ModDataMenuItems } from '../ModDataMenuItems';
+import { ModAiControls } from '../../../components/ModAiControls';
+import { useModAiJobsForMod } from '../../../hooks/useModAiJobsForMod';
 import s from './ModWorkspaceRow.module.scss';
 
 export interface ModWorkspaceRowProps {
@@ -28,6 +30,9 @@ export interface ModWorkspaceRowProps {
   onDeleteAll: () => void;
   onReimport?: () => void;
   onDeleteImport?: () => void;
+  onAiTranslate?: () => void;
+  onAiVerify?: () => void;
+  onSkipDetect?: () => void;
 }
 
 /** Imported mod row — translation progress plus import/export workspace actions. */
@@ -45,8 +50,12 @@ export const ModWorkspaceRow = ({
   onDeleteAll,
   onReimport,
   onDeleteImport,
+  onAiTranslate,
+  onAiVerify,
+  onSkipDetect,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
+  const aiJobs = useModAiJobsForMod(mod.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { stats, approvedPct, fuzzyPct } = modProgress(mod);
@@ -110,6 +119,17 @@ export const ModWorkspaceRow = ({
             </span>
           </div>
         </div>
+        {(onAiTranslate || onAiVerify || onSkipDetect) && (
+          <ModAiControls
+            compact
+            translate={aiJobs.translate}
+            verify={aiJobs.verify}
+            skipDetect={aiJobs.skipDetect}
+            onTranslate={onAiTranslate ?? (() => {})}
+            onVerify={onAiVerify ?? (() => {})}
+            onSkipDetect={onSkipDetect ?? (() => {})}
+          />
+        )}
         <div className={parentS.actions}>
           <button
             type="button"

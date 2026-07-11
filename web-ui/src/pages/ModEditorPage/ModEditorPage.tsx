@@ -4,15 +4,19 @@ import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow, type StringFilterParams, type StringsResult } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
+import { upsertModAiJob } from '../../modAiJobsStore';
+import { toggleModAiTranslate, startModAiTranslate } from '../../modAiTranslateRunner';
+import { useModAiJobsForMod } from '../../hooks/useModAiJobsForMod';
+import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { BookEditorModal } from '../../components/BookEditorModal';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
 import { AiVerifyModal } from './components/AiVerifyModal';
-import { AiTranslateModal } from './components/AiTranslateModal';
 import { SkipTranslateModal } from './components/SkipTranslateModal';
 import { VoiceModal } from './components/VoiceModal';
 import { EditorToolbar } from './components/EditorToolbar';
+import { ModAiJobsBar } from './components/ModAiJobsBar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
 import {
@@ -32,7 +36,6 @@ import {
   useAutosave,
   useEditorKeyboard,
   useAiVerify,
-  useAiTranslate,
   useSkipDetect,
   useApplyImported,
   useDetailPanelHeight,
@@ -168,7 +171,6 @@ export const ModEditorPage = () => {
   const [showSearchReplace, setShowSearchReplace] = useState(false);
   const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
   const [showAiVerify, setShowAiVerify] = useState(false);
-  const [showAiTranslate, setShowAiTranslate] = useState(false);
   const [showSkipDetect, setShowSkipDetect] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
@@ -277,29 +279,70 @@ export const ModEditorPage = () => {
     });
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
-  const aiTranslate = useAiTranslate(modId, srcLang, targetLang);
   const skipDetect = useSkipDetect(modId, srcLang, {
     onForceReset: () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
   });
+  const aiJobs = useModAiJobsForMod(modId);
+  useModAiJobsPoll(true);
   const applyImported = useApplyImported(modId, srcLang, targetLang);
-  const prevAiTranslateStatus = useRef(aiTranslate.status);
   const prevApplyImportedStatus = useRef(applyImported.status);
   const prevSkipDetectStatus = useRef(skipDetect.status);
   const prevAiVerifyStatus = useRef(aiVerify.status);
+  const prevTranslateStatus = useRef(aiJobs.translate.status);
+
+  useEffect(() => {
+    upsertModAiJob(modId, 'verify', {
+      status: aiVerify.status,
+      jobId: aiVerify.jobId,
+      done: aiVerify.done,
+      total: aiVerify.total,
+      error: aiVerify.error,
+    });
+  }, [modId, aiVerify.status, aiVerify.jobId, aiVerify.done, aiVerify.total, aiVerify.error]);
+
+  useEffect(() => {
+    upsertModAiJob(modId, 'skip-detect', {
+      status: skipDetect.status,
+      jobId: skipDetect.jobId,
+      done: skipDetect.done,
+      total: skipDetect.total,
+      error: skipDetect.error,
+    });
+  }, [
+    modId,
+    skipDetect.status,
+    skipDetect.jobId,
+    skipDetect.done,
+    skipDetect.total,
+    skipDetect.error,
+  ]);
+
+  useEffect(() => {
+    const open = searchParams.get('open');
+    if (open === 'ai-translate') void startModAiTranslate(modId, srcLang, targetLang);
+    if (open === 'ai-verify') setShowAiVerify(true);
+    if (open === 'skip-detect') setShowSkipDetect(true);
+    if (open) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('open');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount / deep-link
+  }, []);
 
   useEffect(() => {
     if (
-      prevAiTranslateStatus.current === 'running' &&
-      (aiTranslate.status === 'completed' || aiTranslate.status === 'cancelled')
+      prevTranslateStatus.current === 'running' &&
+      (aiJobs.translate.status === 'completed' || aiJobs.translate.status === 'cancelled')
     ) {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     }
-    prevAiTranslateStatus.current = aiTranslate.status;
-  }, [aiTranslate.status, modId, qc, refetchStats]);
+    prevTranslateStatus.current = aiJobs.translate.status;
+  }, [aiJobs.translate.status, modId, qc, refetchStats]);
 
   // Auto-approve / auto-fix during verification update rows on the server — refresh when a run finishes.
   useEffect(() => {
@@ -940,18 +983,19 @@ export const ModEditorPage = () => {
         onSearchReplace={() => setShowSearchReplace(true)}
         onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
         applyImportedRunning={applyImported.isRunning}
-        onAiVerify={() => setShowAiVerify(true)}
-        onAiTranslate={() => setShowAiTranslate(true)}
-        onSkipDetect={() => setShowSkipDetect(true)}
         onVoice={() => setShowVoice(true)}
-        aiVerifyRunning={aiVerify.isRunning}
-        aiTranslateRunning={aiTranslate.isRunning}
-        skipDetectRunning={skipDetect.isRunning}
         onShortcuts={() => setShowShortcuts((v) => !v)}
         onBatchTranslate={handleBatchTranslate}
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
         onPageModeChange={setPageMode}
+      />
+
+      <ModAiJobsBar
+        aiJobs={aiJobs}
+        onAiTranslate={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
+        onAiVerify={() => setShowAiVerify(true)}
+        onSkipDetect={() => setShowSkipDetect(true)}
       />
 
       {/* Post-LLM-run action banner — shown after a successful batch translate */}
@@ -1086,21 +1130,6 @@ export const ModEditorPage = () => {
           targetLang={targetLang}
           job={applyImported}
           onClose={() => setShowApplyTranslationFromMod(false)}
-        />
-      )}
-      {showAiTranslate && (
-        <AiTranslateModal
-          srcLang={srcLang}
-          targetLang={targetLang}
-          state={aiTranslate}
-          onClose={() => setShowAiTranslate(false)}
-          onRowClick={(stringId) => {
-            const row = strings?.rows.find((r) => r.string_id === stringId);
-            if (row) {
-              handleRowOpen(row);
-              setShowAiTranslate(false);
-            }
-          }}
         />
       )}
       {showAiVerify && (

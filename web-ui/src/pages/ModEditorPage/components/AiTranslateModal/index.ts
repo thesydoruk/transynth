@@ -1,1 +1,0 @@
-export { AiTranslateModal } from './AiTranslateModal';

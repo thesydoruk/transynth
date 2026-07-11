@@ -1,0 +1,116 @@
+.bar {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.compact {
+  gap: 4px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.compact .item {
+  min-width: 72px;
+  max-width: 96px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-hover);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-heavy);
+    background: var(--bg-input);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.85;
+  }
+}
+
+.compact .btn {
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.btnRunning {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border-light));
+  background: color-mix(in srgb, var(--primary) 10%, var(--bg-hover));
+}
+
+.btnCompleted {
+  border-color: color-mix(in srgb, var(--success-deep) 50%, var(--border-light));
+  background: color-mix(in srgb, var(--success-deep) 12%, var(--bg-hover));
+}
+
+.btnFailed {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border-light));
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-hover));
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progressTrack {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-light);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.progressLabel {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.statusChip {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusChipError {
+  color: var(--danger);
+}

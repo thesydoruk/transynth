@@ -66,13 +66,7 @@ export interface EditorToolbarProps {
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
   applyImportedRunning?: boolean;
-  onAiVerify: () => void;
-  onAiTranslate: () => void;
-  onSkipDetect: () => void;
   onVoice: () => void;
-  aiVerifyRunning?: boolean;
-  aiTranslateRunning?: boolean;
-  skipDetectRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onNextQaIssue: () => void;
@@ -109,13 +103,7 @@ export const EditorToolbar = ({
   onSearchReplace,
   onApplyTranslationFromMod,
   applyImportedRunning = false,
-  onAiVerify,
-  onAiTranslate,
-  onSkipDetect,
   onVoice,
-  aiVerifyRunning = false,
-  aiTranslateRunning = false,
-  skipDetectRunning = false,
   onShortcuts,
   onBatchTranslate,
   onNextQaIssue,
@@ -205,20 +193,6 @@ export const EditorToolbar = ({
               ? t('modEditor.applyTranslationFromModRunning')
               : t('modEditor.applyTranslationFromMod'),
             onClick: onApplyTranslationFromMod,
-          },
-          {
-            label: aiTranslateRunning
-              ? t('modEditor.aiTranslateRunning')
-              : t('modEditor.aiTranslate'),
-            onClick: onAiTranslate,
-          },
-          {
-            label: aiVerifyRunning ? t('modEditor.aiVerifyRunning') : t('modEditor.aiVerify'),
-            onClick: onAiVerify,
-          },
-          {
-            label: skipDetectRunning ? t('modEditor.skipDetectRunning') : t('modEditor.skipDetect'),
-            onClick: onSkipDetect,
           },
         ]}
       />

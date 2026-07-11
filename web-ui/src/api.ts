@@ -984,6 +984,17 @@ export type LlmTranslateJobSnapshot = {
   error: string | null;
 };
 
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect';
+
+export type ActiveModAiJob = {
+  jobId: number;
+  modId: number;
+  kind: ModAiJobKind;
+  done: number;
+  total: number;
+  status: 'running';
+};
+
 export type LlmTranslateStreamEvent =
   | { type: 'started'; jobId: number; total: number }
   | { type: 'progress'; done: number; total: number; row?: LlmTranslateRow }
@@ -2393,5 +2404,9 @@ export const api = {
       req<{ ok: boolean }>(`/api/llm-translate/${jobId}/stop`, { method: 'POST' }),
 
     status: (jobId: number) => req<LlmTranslateJobSnapshot>(`/api/llm-translate/${jobId}`),
+  },
+
+  modAiJobs: {
+    listActive: () => req<ActiveModAiJob[]>('/api/ai-jobs/active'),
   },
 };

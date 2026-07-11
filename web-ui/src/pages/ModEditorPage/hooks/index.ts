@@ -4,7 +4,6 @@ export { useEditorMutations } from './useEditorMutations';
 export { useAutosave } from './useAutosave';
 export { useEditorKeyboard } from './useEditorKeyboard';
 export { useAiVerify } from './useAiVerify';
-export { useAiTranslate } from './useAiTranslate';
 export { useSkipDetect } from './useSkipDetect';
 export { useApplyImported } from './useApplyImported';
 export { useDetailPanelHeight } from './useDetailPanelHeight';

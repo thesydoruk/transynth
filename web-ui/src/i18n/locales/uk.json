@@ -117,7 +117,15 @@
     "batchActions": "Дії",
     "deleteAllBatchTitle": "Видалити моди повністю",
     "deleteAllBatchMessage": "Видалити {{count}} модів разом із усіма імпортованими рядками та перекладами? Цю дію неможливо відкотити.",
-    "deleteAllBatchSuccess": "Видалено {{count}} модів."
+    "deleteAllBatchSuccess": "Видалено {{count}} модів.",
+    "aiWorkflowTitle": "ШІ-завдання"
+  },
+  "modAi": {
+    "progressShort": "{{done}} / {{total}}",
+    "statusCompleted": "Готово",
+    "statusCancelled": "Зупинено",
+    "statusStopping": "Зупинка…",
+    "statusFailed": "Помилка"
   },
   "modEditor": {
     "source": "Джерело:",
@@ -206,17 +214,6 @@
     "skipDetectApplyingAllProgress": "Позначення всіх… {{done}} / {{total}}",
     "aiTranslate": "ШІ переклад",
     "aiTranslateRunning": "ШІ переклад…",
-    "aiTranslateTitle": "ШІ автопереклад",
-    "aiTranslateIntro": "LLM перекладе всі неперекладені рядки мода ({{src}} → {{target}}).",
-    "aiTranslateProgress": "Перекладено {{done}} / {{total}}",
-    "aiTranslateCompleted": "Завершено: {{done}} / {{total}}, успішно {{success}}, помилок {{errors}}",
-    "aiTranslateCancelled": "Зупинено: {{done}} / {{total}}, успішно {{success}}, помилок {{errors}}",
-    "aiTranslateFailed": "Переклад перервано через помилку",
-    "aiTranslateIdle": "Натисніть «Запустити», щоб почати переклад",
-    "aiTranslateScanning": "Переклад триває…",
-    "aiTranslateNoErrors": "Помилок перекладу немає",
-    "aiTranslateAllSuccess": "Успішно перекладено {{count}} рядків",
-    "aiTranslateStatus": "Статус",
     "applyTranslationFromModTitle": "Застосувати переклад з іншого мода",
     "applyTranslationFromModIntro": "Оберіть мод-джерело та локаль його рядків, щоб скопіювати їх у цей мод як переклади для поточної цільової мови.",
     "applyTranslationSourceMod": "Мод-джерело",
