@@ -73,7 +73,6 @@ export interface EditorToolbarProps {
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
   onTranslateStop: () => void;
-  translateTmDisabled?: boolean;
   onAiVerify: () => void;
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
@@ -118,7 +117,6 @@ export const EditorToolbar = ({
   onTranslateTm,
   onTranslateLlm,
   onTranslateStop,
-  translateTmDisabled = false,
   onAiVerify,
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
@@ -139,7 +137,6 @@ export const EditorToolbar = ({
           onTranslateTm={onTranslateTm}
           onTranslateLlm={onTranslateLlm}
           onTranslateStop={onTranslateStop}
-          translateTmDisabled={translateTmDisabled}
           onVerify={onAiVerify}
           onSkipDetectHeuristic={onSkipDetectHeuristic}
           onSkipDetectWithLlm={onSkipDetectWithLlm}

@@ -33,7 +33,6 @@ export interface ModWorkspaceRowProps {
   onAiTranslateTm?: () => void;
   onAiTranslateLlm?: () => void;
   onAiTranslateStop?: () => void;
-  translateTmDisabled?: boolean;
   onAiVerify?: () => void;
   onSkipDetectHeuristic?: () => void;
   onSkipDetectWithLlm?: () => void;
@@ -59,7 +58,6 @@ export const ModWorkspaceRow = ({
   onAiTranslateTm,
   onAiTranslateLlm,
   onAiTranslateStop,
-  translateTmDisabled,
   onAiVerify,
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
@@ -146,7 +144,6 @@ export const ModWorkspaceRow = ({
             onTranslateTm={onAiTranslateTm ?? (() => {})}
             onTranslateLlm={onAiTranslateLlm ?? (() => {})}
             onTranslateStop={onAiTranslateStop ?? (() => {})}
-            translateTmDisabled={translateTmDisabled}
             onVerify={onAiVerify ?? (() => {})}
             onSkipDetectHeuristic={onSkipDetectHeuristic ?? (() => {})}
             onSkipDetectWithLlm={onSkipDetectWithLlm ?? (() => {})}

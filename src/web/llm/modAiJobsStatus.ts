@@ -2,8 +2,10 @@ import { listRunningLlmSkipDetectJobs } from './llmSkipDetectService';
 import { listRunningLlmTranslateJobs } from './llmTranslateService';
 import { listRunningLlmVerifyJobs } from './llmVerifyService';
 import { listRunningModVoiceGenerateJobs } from '../voice/modVoiceGenerateService';
+import { listRunningTmApplyJobs } from '../services/tmApplyJobService';
 
 export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
+export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {
   jobId: number;
@@ -12,6 +14,7 @@ export type ActiveModAiJob = {
   done: number;
   total: number;
   status: 'running';
+  translateMode?: ModTranslateMode;
 };
 
 /** Snapshot of every mod-scoped AI job currently running in this worker. */
@@ -26,6 +29,19 @@ export const listActiveModAiJobs = (): ActiveModAiJob[] => {
       done: job.done,
       total: job.total,
       status: 'running',
+      translateMode: 'llm',
+    });
+  }
+
+  for (const job of listRunningTmApplyJobs()) {
+    jobs.push({
+      jobId: job.jobId,
+      modId: job.modId,
+      kind: 'translate',
+      done: job.done,
+      total: job.total,
+      status: 'running',
+      translateMode: 'tm',
     });
   }
 

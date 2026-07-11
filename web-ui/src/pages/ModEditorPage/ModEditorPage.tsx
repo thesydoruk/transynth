@@ -8,6 +8,7 @@ import { upsertModAiJob } from '../../modAiJobsStore';
 import {
   toggleModAiTranslate,
   startModAiTranslate,
+  startModAiTranslateTm,
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
 import { toggleModAiVoice, startModAiVoice } from '../../modAiVoiceRunner';
@@ -53,6 +54,8 @@ import styles from './ModEditorPage.module.scss';
 
 /** Rows fetched per infinite-scroll page (the grid accumulates pages). */
 const FETCH_PAGE_SIZE = 100;
+/** Max string IDs per translate/TM API request. */
+const TRANSLATE_CHUNK = 100;
 
 /**
  * Top-level page component for the mod-editor view.
@@ -270,15 +273,14 @@ export const ModEditorPage = () => {
     return [...selected];
   }, [selectAllMatching, selected, modId, buildFilter]);
 
-  const { saveMutation, clearMutation, tmApplyMut, clearSameAsSourceMut, saveIndicator } =
-    useEditorMutations({
-      modId,
-      srcLang,
-      targetLang,
-      refetchStats,
-      activeRowRef,
-      setActiveRow,
-    });
+  const { saveMutation, clearMutation, clearSameAsSourceMut, saveIndicator } = useEditorMutations({
+    modId,
+    srcLang,
+    targetLang,
+    refetchStats,
+    activeRowRef,
+    setActiveRow,
+  });
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
   const aiJobs = useModAiJobsForMod(modId);
@@ -494,15 +496,12 @@ export const ModEditorPage = () => {
     }
   }, [allSelected, clearSelection]);
 
-  const handleBatchTranslate = async () => {
+  const handleTranslate = async (mode: 'llm' | 'tm', explicitIds?: number[]) => {
     if (translateInFlight.current) return;
 
-    // Resolve the target ID list. In "all matching" mode we fetch the full
-    // filtered set from the server (minus de-selections) so the action covers
-    // rows that have not been scrolled into memory yet.
     let ids: number[];
     try {
-      ids = await resolveSelectedIds();
+      ids = explicitIds ?? (await resolveSelectedIds());
     } catch (err) {
       setTranslateError(String(err));
       return;
@@ -513,12 +512,13 @@ export const ModEditorPage = () => {
     setTranslateError(null);
     setTranslateDoneCount(null);
     setTranslateProgress({ done: 0, total: ids.length });
-    const appJobId = `llm-${modId}-${Date.now()}`;
+    const appJobId = `${mode}-${modId}-${Date.now()}`;
     const startedAt = Date.now();
-    const appJobLabel = `LLM batch translate · mod ${modId}`;
+    const appJobLabel =
+      mode === 'llm' ? `LLM batch translate · mod ${modId}` : `TM batch apply · mod ${modId}`;
     upsertAppJob({
       id: appJobId,
-      kind: 'llm',
+      kind: mode === 'llm' ? 'llm' : 'tm',
       label: appJobLabel,
       status: 'running',
       progress: 0,
@@ -526,33 +526,46 @@ export const ModEditorPage = () => {
       updatedAt: startedAt,
     });
 
-    try {
-      const results = await api.strings.batchTranslate(
-        ids,
-        srcLang,
-        targetLang,
-        (e) => {
-          const progress = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
-          upsertAppJob({
-            id: appJobId,
-            kind: 'llm',
-            label: appJobLabel,
-            status: 'running',
-            progress,
-            createdAt: startedAt,
-            updatedAt: Date.now(),
-          });
-        },
-        modId,
-      );
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-      const doneCount = results.filter((r) => r.text !== undefined).length;
-      setTranslateDoneCount(doneCount);
-      clearSelection();
+    const updateProgress = (done: number) => {
+      const progress = ids.length > 0 ? Math.round((done / ids.length) * 100) : 0;
+      setTranslateProgress({ done, total: ids.length });
       upsertAppJob({
         id: appJobId,
-        kind: 'llm',
+        kind: mode === 'llm' ? 'llm' : 'tm',
+        label: appJobLabel,
+        status: 'running',
+        progress,
+        createdAt: startedAt,
+        updatedAt: Date.now(),
+      });
+    };
+
+    try {
+      let doneCount = 0;
+      for (let i = 0; i < ids.length; i += TRANSLATE_CHUNK) {
+        const chunk = ids.slice(i, i + TRANSLATE_CHUNK);
+        if (mode === 'llm') {
+          const results = await api.strings.batchTranslate(
+            chunk,
+            srcLang,
+            targetLang,
+            (e) => updateProgress(i + e.done),
+            modId,
+          );
+          doneCount += results.filter((r) => r.text !== undefined).length;
+        } else {
+          const result = await api.strings.batchApplyTm(chunk, srcLang, targetLang, modId);
+          doneCount += result.applied;
+        }
+        updateProgress(Math.min(i + chunk.length, ids.length));
+      }
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+      setTranslateDoneCount(doneCount);
+      if (!explicitIds) clearSelection();
+      upsertAppJob({
+        id: appJobId,
+        kind: mode === 'llm' ? 'llm' : 'tm',
         label: appJobLabel,
         status: 'completed',
         progress: 100,
@@ -564,7 +577,7 @@ export const ModEditorPage = () => {
       setTranslateError(String(err));
       upsertAppJob({
         id: appJobId,
-        kind: 'llm',
+        kind: mode === 'llm' ? 'llm' : 'tm',
         label: appJobLabel,
         status: 'failed',
         progress: null,
@@ -577,6 +590,11 @@ export const ModEditorPage = () => {
       translateInFlight.current = false;
     }
   };
+
+  const handleBatchTranslate = () => handleTranslate('llm');
+  const handleBatchApplyTm = () => handleTranslate('tm');
+  const handleRowTranslate = (row: StringRow, mode: 'llm' | 'tm') =>
+    handleTranslate(mode, [row.string_id]);
 
   // ── Context menu helpers ──
 
@@ -963,10 +981,9 @@ export const ModEditorPage = () => {
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
         onPageModeChange={setPageMode}
-        onTranslateTm={() => tmApplyMut.mutate()}
+        onTranslateTm={() => startModAiTranslateTm(modId, srcLang, targetLang)}
         onTranslateLlm={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
-        onTranslateStop={() => void stopModAiTranslate(modId, aiJobs.translate.jobId)}
-        translateTmDisabled={tmApplyMut.isPending}
+        onTranslateStop={() => void stopModAiTranslate(modId, aiJobs.translate)}
         onAiVerify={() => setShowAiVerify(true)}
         onSkipDetectHeuristic={() =>
           void startModAiSkipDetect(modId, srcLang, false, aiJobs.skipDetect)
@@ -1182,6 +1199,8 @@ export const ModEditorPage = () => {
           onTextTransform={applyTextTransform}
           onBulkCopySource={ctxCopySource}
           onBatchTranslate={handleBatchTranslate}
+          onBatchApplyTm={handleBatchApplyTm}
+          onRowTranslate={handleRowTranslate}
           onSetSkip={ctxSetSkip}
           onSetStatus={ctxSetStatus}
         />

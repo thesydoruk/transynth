@@ -17,7 +17,6 @@ export interface ModAiControlsProps {
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
   onTranslateStop: () => void;
-  translateTmDisabled?: boolean;
   onVerify: () => void;
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
@@ -235,7 +234,6 @@ export const ModAiControls = ({
   onTranslateTm,
   onTranslateLlm,
   onTranslateStop,
-  translateTmDisabled = false,
   onVerify,
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
@@ -253,13 +251,14 @@ export const ModAiControls = ({
   ];
 
   const translateMenuItems: CircularProgressButtonMenuItem[] = [
-    {
-      label: t('modEditor.autoTranslateTm'),
-      onClick: onTranslateTm,
-      disabled: translateTmDisabled,
-    },
+    { label: t('modEditor.autoTranslateTm'), onClick: onTranslateTm },
     { label: t('modEditor.autoTranslateLlm'), onClick: onTranslateLlm },
   ];
+
+  const translateRunningLabel =
+    translate.translateMode === 'tm'
+      ? t('modEditor.autoTranslateTmRunning')
+      : t('modEditor.autoTranslateLlmRunning');
 
   return (
     <div
@@ -281,7 +280,7 @@ export const ModAiControls = ({
       <Slot
         entry={translate}
         label={t('modEditor.autoTranslate')}
-        runningLabel={t('modEditor.autoTranslateLlmRunning')}
+        runningLabel={translateRunningLabel}
         idleHint={t('modAi.hintTranslate')}
         icon="⇄"
         menuItems={translateMenuItems}

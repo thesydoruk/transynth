@@ -17,7 +17,7 @@ import {
   setTranslationsStatus,
 } from '../data/queries';
 import { isValidTranslationStatus } from '../data/statusMachine';
-import { propagateTranslation } from '../services/tm';
+import { applyTMToStringIds, propagateTranslation } from '../services/tm';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { CONFIG } from '../../config';
 import { translateStringIdsBatch } from '../llm/llmTranslateBatch';
@@ -507,5 +507,44 @@ export const stringsRoutes = async (app: FastifyInstance, db: Tx) => {
         log.warn({ updateErr, llmJobId }, 'llm_jobs: failed to finalize job row');
       }
     }
+  });
+
+  // POST /api/strings/tm-apply — apply translation memory to selected string IDs
+  app.post<{
+    Body: { stringIds: number[]; srcLang?: string; targetLang?: string; modId?: number };
+  }>('/api/strings/tm-apply', async (req, reply) => {
+    const {
+      stringIds,
+      srcLang = CONFIG.defaultSrcLang,
+      targetLang = CONFIG.defaultTgtLang,
+      modId: bodyModId,
+    } = req.body ?? {};
+    if (!Array.isArray(stringIds) || stringIds.length === 0) {
+      return reply.code(400).send({ error: 'stringIds array is required' });
+    }
+    if (stringIds.length > 100) {
+      return reply.code(400).send({ error: 'Max 100 strings per batch' });
+    }
+    if (!stringIds.every((id) => Number.isInteger(id) && id > 0)) {
+      return reply.code(400).send({ error: 'Invalid stringIds' });
+    }
+
+    let resolvedModId: number | null = bodyModId ?? null;
+    if (resolvedModId === null && stringIds[0] !== undefined) {
+      const { rows: modRows } = await db.query<{ mod_id: number }>(
+        `SELECT r.mod_id
+           FROM strings s
+           JOIN records r ON r.id = s.record_id
+          WHERE s.id = $1 LIMIT 1`,
+        [stringIds[0]],
+      );
+      resolvedModId = modRows[0]?.mod_id ?? null;
+    }
+    if (resolvedModId === null) {
+      return reply.code(400).send({ error: 'modId is required' });
+    }
+
+    const result = await applyTMToStringIds(db, resolvedModId, stringIds, targetLang, srcLang);
+    return reply.send({ ok: true, ...result });
   });
 };

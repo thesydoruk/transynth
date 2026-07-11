@@ -27,9 +27,14 @@ const scheduleClear = (modId: number, kind: ModAiJobKind) => {
 const fetchTerminalStatus = async (
   kind: ModAiJobKind,
   jobId: number,
+  translateMode?: 'tm' | 'llm',
 ): Promise<'completed' | 'cancelled' | 'failed' | null> => {
   try {
     if (kind === 'translate') {
+      if (translateMode === 'tm') {
+        const snap = await api.tmApply.status(jobId);
+        return snap.status === 'running' ? null : snap.status;
+      }
       const snap = await api.llmTranslate.status(jobId);
       return snap.status === 'running' ? null : snap.status;
     }
@@ -74,6 +79,7 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             jobId: job.jobId,
             done: job.done,
             total: job.total,
+            translateMode: job.translateMode,
             error: null,
           });
         }
@@ -84,7 +90,11 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
           if (activeKeys.has(key)) continue;
 
           if (entry.jobId != null) {
-            const terminal = await fetchTerminalStatus(entry.kind, entry.jobId);
+            const terminal = await fetchTerminalStatus(
+              entry.kind,
+              entry.jobId,
+              entry.translateMode,
+            );
             if (cancelled) return;
             if (terminal) {
               upsertModAiJob(entry.modId, entry.kind, { status: terminal, error: null });

@@ -58,7 +58,11 @@ import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { getModAiJob } from '../../modAiJobsStore';
-import { toggleModAiTranslate, stopModAiTranslate } from '../../modAiTranslateRunner';
+import {
+  toggleModAiTranslate,
+  toggleModAiTranslateTm,
+  stopModAiTranslate,
+} from '../../modAiTranslateRunner';
 import { toggleModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { modListQueryKey } from '../../langDefaults';
@@ -1042,9 +1046,14 @@ export const ModsPage = () => {
                 multiSelectActive={multiSelectActive}
                 onSelectedChange={(selected) => toggleModSelection(mod.id, selected)}
                 onOpen={() => nav(`/games/${gameId}/mods/${mod.id}`)}
-                onAiTranslateTm={() => {
-                  void api.mods.tmApply(mod.id, srcLang, targetLang).then(() => refreshAll());
-                }}
+                onAiTranslateTm={() =>
+                  toggleModAiTranslateTm(
+                    mod.id,
+                    srcLang,
+                    targetLang,
+                    getModAiJob(mod.id, 'translate'),
+                  )
+                }
                 onAiTranslateLlm={() =>
                   toggleModAiTranslate(
                     mod.id,
@@ -1054,7 +1063,7 @@ export const ModsPage = () => {
                   )
                 }
                 onAiTranslateStop={() =>
-                  void stopModAiTranslate(mod.id, getModAiJob(mod.id, 'translate').jobId)
+                  void stopModAiTranslate(mod.id, getModAiJob(mod.id, 'translate'))
                 }
                 onAiVerify={() => openModAiPanel(mod.id, 'ai-verify')}
                 onSkipDetectHeuristic={() =>

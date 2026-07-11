@@ -13,7 +13,6 @@ import {
   clearSameAsSourceTranslations,
   deleteModData,
 } from '../data/queries';
-import { applyTMToMod } from '../services/tm';
 import {
   findRunningApplyImportedJob,
   getApplyImportedJob,
@@ -345,21 +344,6 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const rows = await listPreviousVersions(db, id);
     return reply.send(rows);
   });
-
-  // POST /api/mods/:id/tm-apply — auto-fill untranslated strings from TM
-  app.post<{ Params: { id: string }; Querystring: { targetLang?: string } }>(
-    '/api/mods/:id/tm-apply',
-    async (req, reply) => {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-
-      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      log.info(`POST /api/mods/${id}/tm-apply lang=${targetLang}`);
-      const result = await applyTMToMod(db, id, targetLang);
-      log.info(`TM apply result: applied=${result.applied}, skipped=${result.skipped}`);
-      return reply.send(result);
-    },
-  );
 
   // POST /api/mods/:id/clear-same-as-source — remove translations identical to source
   app.post<{

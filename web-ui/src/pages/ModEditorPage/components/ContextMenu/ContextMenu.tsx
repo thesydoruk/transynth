@@ -23,6 +23,8 @@ export interface ContextMenuProps {
   onTextTransform: (row: StringRow, transform: (text: string) => string) => void;
   onBulkCopySource: (row: StringRow) => void;
   onBatchTranslate: () => void;
+  onBatchApplyTm: () => void;
+  onRowTranslate: (row: StringRow, mode: 'llm' | 'tm') => void;
   onSetSkip: (row: StringRow, skip: boolean) => void;
   onSetStatus: (row: StringRow, status: ContextMenuStatus) => void;
 }
@@ -40,6 +42,8 @@ export const ContextMenu = ({
   onTextTransform,
   onBulkCopySource,
   onBatchTranslate,
+  onBatchApplyTm,
+  onRowTranslate,
   onSetSkip,
   onSetStatus,
 }: ContextMenuProps) => {
@@ -111,9 +115,13 @@ export const ContextMenu = ({
             <span className={styles.ctxLabel}>{t('ctx.bulkClear', { count: bulkCount })}</span>
           </button>
           <div className={styles.ctxSep} />
+          <button className={styles.ctxItem} onClick={onBatchApplyTm}>
+            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>◎</span>
+            <span className={styles.ctxLabel}>{t('ctx.bulkApplyTm', { count: bulkCount })}</span>
+          </button>
           <button className={styles.ctxItem} onClick={onBatchTranslate}>
             <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkTranslate', { count: bulkCount })}</span>
+            <span className={styles.ctxLabel}>{t('ctx.bulkApplyLlm', { count: bulkCount })}</span>
           </button>
           <button className={styles.ctxItem} onClick={() => onBulkCopySource(row)}>
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
@@ -168,6 +176,19 @@ export const ContextMenu = ({
             <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
             <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
           </button>
+          {!isSkipped && (
+            <>
+              <div className={styles.ctxSep} />
+              <button className={styles.ctxItem} onClick={() => onRowTranslate(row, 'tm')}>
+                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>◎</span>
+                <span className={styles.ctxLabel}>{t('ctx.applyTm')}</span>
+              </button>
+              <button className={styles.ctxItem} onClick={() => onRowTranslate(row, 'llm')}>
+                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
+                <span className={styles.ctxLabel}>{t('ctx.applyLlm')}</span>
+              </button>
+            </>
+          )}
           {showStatusItems && (
             <>
               <div className={styles.ctxSep} />

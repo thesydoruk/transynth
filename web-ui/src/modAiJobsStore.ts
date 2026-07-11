@@ -7,6 +7,8 @@ export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
 
 export type ModAiJobStatus = 'idle' | 'running' | 'stopping' | 'completed' | 'cancelled' | 'failed';
 
+export type ModTranslateMode = 'tm' | 'llm';
+
 export type ModAiJobEntry = {
   modId: number;
   kind: ModAiJobKind;
@@ -15,6 +17,7 @@ export type ModAiJobEntry = {
   done: number;
   total: number;
   error: string | null;
+  translateMode?: ModTranslateMode;
   updatedAt: number;
 };
 
@@ -62,7 +65,7 @@ export const subscribeModAiJobs = (listener: Listener) => {
 };
 
 export type UpsertModAiJobPatch = Partial<
-  Pick<ModAiJobEntry, 'status' | 'jobId' | 'done' | 'total' | 'error'>
+  Pick<ModAiJobEntry, 'status' | 'jobId' | 'done' | 'total' | 'error' | 'translateMode'>
 >;
 
 /** Insert or merge a job entry and notify subscribers. */

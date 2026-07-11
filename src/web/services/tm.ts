@@ -38,7 +38,7 @@ const untranslatedWhereSql = `
     WHERE t.src_string_id = s.id AND t.target_lang = $2
   )`;
 
-const countUntranslatedStrings = async (
+export const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
   targetLang: string,
@@ -140,11 +140,17 @@ const applyTMChunk = async (
  * Within each chunk, up to {@link CONFIG.tmApplyWorkers} sub-chunks run in parallel
  * (env: TM_APPLY_WORKERS), each in its own DB transaction.
  */
+export type TmApplyHandlers = {
+  onProgress?: (progress: { done: number; total: number; applied: number }) => void;
+  shouldCancel?: () => boolean;
+};
+
 export const applyTMToMod = async (
   db: Tx,
   modId: number,
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
+  handlers?: TmApplyHandlers,
 ): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
   const chunkSize = CONFIG.dbChunkSize;
   const workers = CONFIG.tmApplyWorkers;
@@ -159,6 +165,8 @@ export const applyTMToMod = async (
   let afterStringId = 0;
 
   while (true) {
+    if (handlers?.shouldCancel?.()) break;
+
     const chunk = await fetchUntranslatedChunk(
       db,
       modId,
@@ -186,10 +194,56 @@ export const applyTMToMod = async (
       `TM auto-apply: mod ${modId} chunk done ${processed}/${totalUntranslated}, applied=${chunkApplied}, totalApplied=${applied}`,
     );
 
+    handlers?.onProgress?.({ done: processed, total: totalUntranslated, applied });
+
     if (chunk.length < chunkSize) break;
   }
 
   return { applied, skipped: processed - applied, byMethod };
+};
+
+/**
+ * Apply translation memory to specific untranslated string IDs.
+ *
+ * Strings that already have a translation, are ignored, or belong to another mod
+ * are skipped. Only lossless TM matches are written (same rules as mod-wide apply).
+ */
+export const applyTMToStringIds = async (
+  db: Tx,
+  modId: number,
+  stringIds: number[],
+  targetLang = CONFIG.defaultTgtLang,
+  srcLang = CONFIG.defaultSrcLang,
+): Promise<{ applied: number; skipped: number; byMethod: Record<TmMatchMethod, number> }> => {
+  if (stringIds.length === 0) {
+    return { applied: 0, skipped: 0, byMethod: { anchor: 0, edid: 0, text_norm: 0 } };
+  }
+
+  const { rows } = await db.query<TmUntranslatedRow>(
+    `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
+     FROM strings s
+     JOIN records r ON s.record_id = r.id
+     WHERE s.id = ANY($1::int[])
+       AND r.mod_id = $2
+       AND s.lang = $4
+       AND s.is_ignored = FALSE
+       AND NOT EXISTS (
+         SELECT 1 FROM translations t
+         WHERE t.src_string_id = s.id AND t.target_lang = $3
+       )`,
+    [stringIds, modId, targetLang, srcLang],
+  );
+
+  const byMethod: Record<TmMatchMethod, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  const workers = CONFIG.tmApplyWorkers;
+  let applied = 0;
+
+  for (let i = 0; i < rows.length; i += CONFIG.dbChunkSize) {
+    const chunk = rows.slice(i, i + CONFIG.dbChunkSize);
+    applied += await applyTMChunk(db, modId, targetLang, srcLang, chunk, byMethod, workers);
+  }
+
+  return { applied, skipped: stringIds.length - applied, byMethod };
 };
 
 // ── Translation propagation ───────────────────────────────────────────────────

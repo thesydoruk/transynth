@@ -385,7 +385,30 @@ export type QARule = {
   updated_at: string;
 };
 
-export type TMApplyResult = { applied: number; skipped: number; byMethod: Record<string, number> };
+export type TmApplyJobSnapshot = {
+  jobId: number;
+  modId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  applied: number;
+  skipped: number;
+  error: string | null;
+};
+
+export type TmApplyStreamEvent =
+  | { type: 'started'; jobId: number; total: number }
+  | { type: 'progress'; done: number; total: number; applied: number }
+  | {
+      type: 'done';
+      done: number;
+      total: number;
+      applied: number;
+      skipped: number;
+    }
+  | { type: 'cancelled'; done: number; total: number; applied: number; skipped: number }
+  | { type: 'error'; error: string };
+
 export type ClearSameAsSourceResult = { cleared: number };
 
 /**
@@ -985,6 +1008,7 @@ export type LlmTranslateJobSnapshot = {
 };
 
 export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
+export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {
   jobId: number;
@@ -993,6 +1017,7 @@ export type ActiveModAiJob = {
   done: number;
   total: number;
   status: 'running';
+  translateMode?: ModTranslateMode;
 };
 
 export type ModVoiceGenerateJobSnapshot = {
@@ -1157,11 +1182,6 @@ export const api = {
         body: JSON.stringify({ modIds }),
       }),
     langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
-    tmApply: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<TMApplyResult>(
-        `/api/mods/${modId}/tm-apply?srcLang=${srcLang}&targetLang=${targetLang}`,
-        { method: 'POST' },
-      ),
     clearSameAsSource: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       req<ClearSameAsSourceResult>(
         `/api/mods/${modId}/clear-same-as-source?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
@@ -1524,6 +1544,23 @@ export const api = {
       }
       return results;
     },
+
+    /** Apply translation memory to selected untranslated string IDs. */
+    batchApplyTm: (
+      stringIds: number[],
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      modId?: number,
+    ) =>
+      req<{
+        ok: boolean;
+        applied: number;
+        skipped: number;
+        byMethod: Record<string, number>;
+      }>(`/api/strings/tm-apply`, {
+        method: 'POST',
+        body: JSON.stringify({ stringIds, srcLang, targetLang, modId }),
+      }),
   },
 
   search: {
@@ -2359,6 +2396,106 @@ export const api = {
       req<{ ok: boolean }>(`/api/mods/${modId}/llm-skip-detect/stop`, { method: 'POST' }),
 
     status: (jobId: number) => req<LlmSkipDetectJobSnapshot>(`/api/llm-skip-detect/${jobId}`),
+  },
+
+  tmApply: {
+    async start(
+      modId: number,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+      onEvent?: (e: TmApplyStreamEvent) => void,
+      signal?: AbortSignal,
+    ): Promise<TmApplyJobSnapshot | null> {
+      const response = await fetch(`${BASE}/api/mods/${modId}/tm-apply`, {
+        credentials: 'include',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srcLang, targetLang }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let snapshot: TmApplyJobSnapshot | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as TmApplyStreamEvent;
+            if (onEvent) onEvent(event);
+            if (event.type === 'started') {
+              snapshot = {
+                jobId: event.jobId,
+                modId,
+                status: 'running',
+                done: 0,
+                total: event.total,
+                applied: 0,
+                skipped: 0,
+                error: null,
+              };
+            }
+            if (event.type === 'progress' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                done: event.done,
+                total: event.total,
+                applied: event.applied,
+                skipped: event.done - event.applied,
+              };
+            }
+            if (event.type === 'done' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'completed',
+                done: event.done,
+                total: event.total,
+                applied: event.applied,
+                skipped: event.skipped,
+              };
+            }
+            if (event.type === 'cancelled' && snapshot) {
+              snapshot = {
+                ...snapshot,
+                status: 'cancelled',
+                done: event.done,
+                total: event.total,
+                applied: event.applied,
+                skipped: event.skipped,
+              };
+            }
+            if (event.type === 'error') {
+              if (snapshot) {
+                snapshot = { ...snapshot, status: 'failed', error: event.error };
+              }
+              throw new Error(event.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+      return snapshot;
+    },
+
+    stop: (jobId: number) =>
+      req<{ ok: boolean }>(`/api/tm-apply/${jobId}/stop`, { method: 'POST' }),
+
+    stopMod: (modId: number) =>
+      req<{ ok: boolean }>(`/api/mods/${modId}/tm-apply/stop`, { method: 'POST' }),
+
+    status: (jobId: number) => req<TmApplyJobSnapshot>(`/api/tm-apply/${jobId}`),
   },
 
   llmTranslate: {

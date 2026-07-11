@@ -8,7 +8,7 @@
  * - Export operations started from Imports page
  */
 
-export type AppJobKind = 'llm' | 'export';
+export type AppJobKind = 'llm' | 'tm' | 'export';
 
 export type AppJobStatus = 'running' | 'completed' | 'failed';
 
@@ -33,8 +33,7 @@ const emit = () => {
 };
 
 /** Returns app jobs sorted newest-first by update timestamp. */
-export const listAppJobs = (): AppJob[] =>
-  [...jobs].sort((a, b) => b.updatedAt - a.updatedAt);
+export const listAppJobs = (): AppJob[] => [...jobs].sort((a, b) => b.updatedAt - a.updatedAt);
 
 /** Subscribes to app-job queue updates. */
 export const subscribeAppJobs = (listener: Listener) => {

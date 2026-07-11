@@ -4,18 +4,18 @@ import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import { findRunningModTranslateJob } from '../services/modTranslateGuard';
 import {
-  getLlmTranslateJob,
-  requestLlmTranslateStop,
-  runLlmTranslateJob,
-  scheduleLlmTranslateJobCleanup,
-} from '../llm/llmTranslateService';
+  getTmApplyJob,
+  requestTmApplyStop,
+  requestTmApplyStopByModId,
+  runTmApplyJob,
+  scheduleTmApplyJobCleanup,
+} from '../services/tmApplyJobService';
 
-export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
-  // POST /api/mods/:modId/llm-translate — start mod-wide translation (SSE progress stream)
+export const tmApplyRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
     Params: { modId: string };
     Body: { srcLang?: string; targetLang?: string };
-  }>('/api/mods/:modId/llm-translate', async (req, reply) => {
+  }>('/api/mods/:modId/tm-apply', async (req, reply) => {
     const modId = Number(req.params.modId);
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid modId' });
@@ -30,12 +30,11 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(409).send({ error: `${label} already running (job #${running.jobId})` });
     }
 
-    const { rows: modRows } = await db.query<{ name: string; game: string }>(
-      `SELECT name, game FROM mods WHERE id = $1`,
+    const { rows: modRows } = await db.query<{ name: string }>(
+      `SELECT name FROM mods WHERE id = $1`,
       [modId],
     );
-    const mod = modRows[0];
-    if (!mod) return reply.code(404).send({ error: 'Mod not found' });
+    if (!modRows[0]) return reply.code(404).send({ error: 'Mod not found' });
 
     req.raw.socket.setTimeout(0);
     reply.hijack();
@@ -52,7 +51,7 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
           reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
         }
       } catch {
-        /* client disconnected — job continues */
+        /* client disconnected */
       }
     };
 
@@ -60,25 +59,15 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
 
     void (async () => {
       try {
-        const snapshot = await runLlmTranslateJob(
-          db,
-          {
-            modId,
-            srcLang,
-            targetLang,
-            modName: mod.name,
-            game: mod.game,
-          },
-          send,
-        );
+        const snapshot = await runTmApplyJob(db, { modId, srcLang, targetLang }, send);
         finishedJobId = snapshot.jobId;
       } catch (err: unknown) {
         log.error(
-          `[LLM Translate mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
+          `[TM apply mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
         );
         send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
       } finally {
-        if (finishedJobId != null) scheduleLlmTranslateJobCleanup(finishedJobId);
+        if (finishedJobId != null) scheduleTmApplyJobCleanup(finishedJobId);
         try {
           reply.raw.end();
         } catch {
@@ -88,24 +77,35 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     })();
   });
 
-  app.post<{ Params: { jobId: string } }>('/api/llm-translate/:jobId/stop', async (req, reply) => {
+  app.post<{ Params: { jobId: string } }>('/api/tm-apply/:jobId/stop', async (req, reply) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!requestLlmTranslateStop(jobId)) {
-      return reply.code(404).send({ error: 'Running translation job not found' });
+    if (!requestTmApplyStop(jobId)) {
+      return reply.code(404).send({ error: 'Running TM apply job not found' });
     }
     return reply.send({ ok: true });
   });
 
-  app.get<{ Params: { jobId: string } }>('/api/llm-translate/:jobId', async (req, reply) => {
+  app.post<{ Params: { modId: string } }>('/api/mods/:modId/tm-apply/stop', async (req, reply) => {
+    const modId = Number(req.params.modId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid modId' });
+    }
+    if (!requestTmApplyStopByModId(modId)) {
+      return reply.code(404).send({ error: 'Running TM apply job not found' });
+    }
+    return reply.send({ ok: true });
+  });
+
+  app.get<{ Params: { jobId: string } }>('/api/tm-apply/:jobId', async (req, reply) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getLlmTranslateJob(jobId);
-    if (!job) return reply.code(404).send({ error: 'Translation job not found' });
+    const job = getTmApplyJob(jobId);
+    if (!job) return reply.code(404).send({ error: 'TM apply job not found' });
     return reply.send(job);
   });
 };

@@ -99,14 +99,6 @@ export function useEditorMutations({
     },
   });
 
-  const tmApplyMut = useMutation({
-    mutationFn: () => api.mods.tmApply(modId, srcLang, targetLang),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-  });
-
   const clearSameAsSourceMut = useMutation({
     mutationFn: () => api.mods.clearSameAsSource(modId, srcLang, targetLang),
     onSuccess: () => {
@@ -125,7 +117,6 @@ export function useEditorMutations({
   return {
     saveMutation,
     clearMutation,
-    tmApplyMut,
     clearSameAsSourceMut,
     saveIndicator,
   };
