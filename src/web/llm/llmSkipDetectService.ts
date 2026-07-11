@@ -71,6 +71,10 @@ export const findRunningLlmSkipDetectJob = (modId: number): number | null => {
   return null;
 };
 
+/** All in-flight skip-detect jobs (for status dashboards). */
+export const listRunningLlmSkipDetectJobs = (): LlmSkipDetectJobSnapshot[] =>
+  [...activeJobs.values()].filter((job) => job.status === 'running').map(toSnapshot);
+
 export const requestLlmSkipDetectStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;

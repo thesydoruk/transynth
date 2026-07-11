@@ -100,6 +100,10 @@ export const findRunningLlmVerifyJob = (modId: number): number | null => {
   return null;
 };
 
+/** All in-flight verification jobs (for status dashboards). */
+export const listRunningLlmVerifyJobs = (): LlmVerifyJobSnapshot[] =>
+  [...activeJobs.values()].filter((job) => job.status === 'running').map(toSnapshot);
+
 export const requestLlmVerifyStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;

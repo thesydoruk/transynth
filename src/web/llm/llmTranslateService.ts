@@ -72,6 +72,10 @@ export const findRunningLlmTranslateJob = (modId: number): number | null => {
   return null;
 };
 
+/** All in-flight mod-wide translation jobs (for status dashboards). */
+export const listRunningLlmTranslateJobs = (): LlmTranslateJobSnapshot[] =>
+  [...activeJobs.values()].filter((job) => job.status === 'running').map(toSnapshot);
+
 export const requestLlmTranslateStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
