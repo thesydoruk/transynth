@@ -12,7 +12,8 @@ import { ensureVoiceToolsInstalled } from '../tools/installTools';
 import {
   resolveXttsUkBaseUrl,
   resolveXttsUkLanguage,
-  resolveSpeakerReferenceEnabled,
+  resolveTtsReferenceMode,
+  type TtsReferenceMode,
 } from '../voice/voiceToolPaths';
 import { encodeWavToXwm } from '../voice/xwmEncode';
 import {
@@ -25,8 +26,15 @@ import {
   groupVoiceFilesBySpeaker,
   resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
+  type ResolvedSpeakerReference,
 } from './speakerReferencePool';
-import { loadVoiceTranslations, voiceTranslationMapKey } from './loadVoiceTranslations';
+import {
+  loadVoiceSources,
+  loadVoiceTranslations,
+  lookupVoiceSource,
+  voiceTranslationMapKey,
+  type VoiceSourceRow,
+} from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   pluginRelPath,
@@ -49,7 +57,12 @@ export type LocalizeModWorkspaceVoiceOptions = {
   limit?: number;
   dryRun?: boolean;
   force?: boolean;
-  /** Pick one clean reference clip per NPC speaker folder (default: env TTS_SPEAKER_REFERENCE or true). */
+  /**
+   * XTTS English reference: `speaker` = one clip per NPC; `line` = same phrase audio per row.
+   * Default from `TTS_LINE_REFERENCE` / `TTS_SPEAKER_REFERENCE` env (see .env.example).
+   */
+  referenceMode?: TtsReferenceMode;
+  /** @deprecated Prefer {@link referenceMode}. `false` → `line`, `true` → `speaker`. */
   speakerReference?: boolean;
 };
 
@@ -108,11 +121,25 @@ const prepareReferenceAudio = async (entry: VoiceFileEntry, tempDir: string): Pr
   return referencePath;
 };
 
+type SpeakerRefCacheEntry = {
+  wavPath: string;
+  referenceText: string | null;
+};
+
+const referenceTextForPick = (
+  sources: Map<string, VoiceSourceRow>,
+  pick: ResolvedSpeakerReference['pick'],
+): string | null => {
+  if (pick.formidLower6.toUpperCase() === 'MANUAL') return null;
+  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
+};
+
 const synthesizeVoicedFuz = async (
   game: GameType,
   entry: VoiceFileEntry,
   translation: string,
   referenceWavPath: string,
+  speakerText: string | null,
   workDir: string,
   xttsBaseUrl: string,
   xttsLanguage: string,
@@ -126,6 +153,7 @@ const synthesizeVoicedFuz = async (
   const ttsBytes = await synthesizeXttsWav(translation, referenceWavPath, {
     baseUrl: xttsBaseUrl,
     language: xttsLanguage,
+    speakerText: speakerText ?? undefined,
   });
   writeTempWav(rawTtsWav, ttsBytes);
   await convertToFo4Wav(rawTtsWav, fo4Wav);
@@ -137,6 +165,15 @@ const synthesizeVoicedFuz = async (
   return { fuz: writeFuz(lip, xwm), ttsWav: ttsBytes };
 };
 
+const resolveReferenceMode = (
+  options: Pick<LocalizeModWorkspaceVoiceOptions, 'referenceMode' | 'speakerReference'>,
+): TtsReferenceMode => {
+  if (options.referenceMode) return options.referenceMode;
+  if (options.speakerReference === false) return 'line';
+  if (options.speakerReference === true) return 'speaker';
+  return resolveTtsReferenceMode();
+};
+
 const localizeVoicePackage = async (
   db: Tx,
   modId: number,
@@ -145,7 +182,7 @@ const localizeVoicePackage = async (
   srcLang: string,
   tgtLang: string,
   options: Required<
-    Pick<LocalizeModWorkspaceVoiceOptions, 'xttsBaseUrl' | 'dryRun' | 'force' | 'speakerReference'>
+    Pick<LocalizeModWorkspaceVoiceOptions, 'xttsBaseUrl' | 'dryRun' | 'force' | 'referenceMode'>
   > & {
     limit?: number;
   },
@@ -156,6 +193,7 @@ const localizeVoicePackage = async (
   const prefix = pkg.folder ? `${pkg.folder}/` : '';
   const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
   const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
+  const voiceSources = await loadVoiceSources(db, modId, srcLang);
   const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
 
   if (voiceFiles.length === 0) {
@@ -167,10 +205,20 @@ const localizeVoicePackage = async (
   let processed = 0;
 
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
-  const voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
-  const speakerRefCache = new Map<string, string>();
+  const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
+  let voiceFilesBySpeaker: Map<string, VoiceFileEntry[]> | undefined;
 
-  if (options.speakerReference && !options.dryRun) {
+  const getSiblingEntries = (speakerKey: string, current: VoiceFileEntry): VoiceFileEntry[] => {
+    if (!voiceFilesBySpeaker) {
+      voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
+    }
+    return (voiceFilesBySpeaker.get(speakerKey) ?? []).filter(
+      (candidate) =>
+        candidate.formidLower6 !== current.formidLower6 || candidate.variant !== current.variant,
+    );
+  };
+
+  if (options.referenceMode === 'speaker' && !options.dryRun) {
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
   }
 
@@ -204,32 +252,49 @@ const localizeVoicePackage = async (
 
         const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
         let referenceWav: string | undefined;
-        if (options.speakerReference && speakerKey) {
-          referenceWav = speakerRefCache.get(speakerKey);
-          if (!referenceWav) {
-            const speakerEntries = voiceFilesBySpeaker.get(speakerKey) ?? [entry];
+        let referenceText: string | null =
+          options.referenceMode === 'line'
+            ? row.source
+            : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
+        if (options.referenceMode === 'speaker' && speakerKey) {
+          const cached = speakerRefCache.get(speakerKey);
+          if (cached) {
+            referenceWav = cached.wavPath;
+            referenceText = cached.referenceText;
+          } else {
             const resolved = await resolveSpeakerReferenceForSpeaker(
               db,
               modId,
               speakerKey,
-              speakerEntries,
+              entry,
+              () => getSiblingEntries(speakerKey, entry),
               pkg.packageDir,
               pluginRel,
-              tempRoot,
             );
             if (resolved) {
               referenceWav = resolved.wavPath;
-              speakerRefCache.set(speakerKey, resolved.wavPath);
+              referenceText = referenceTextForPick(voiceSources, resolved.pick);
+              speakerRefCache.set(speakerKey, {
+                wavPath: resolved.wavPath,
+                referenceText,
+              });
             }
           }
         }
 
-        const finalReferenceWav = referenceWav ?? (await prepareReferenceAudio(entry, workDir));
+        const finalReferenceWav =
+          options.referenceMode === 'line'
+            ? await prepareReferenceAudio(entry, workDir)
+            : (referenceWav ?? (await prepareReferenceAudio(entry, workDir)));
+        if (!referenceText) {
+          referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
+        }
         const { fuz: fuzData, ttsWav } = await synthesizeVoicedFuz(
           game,
           entry,
           row.translation,
           finalReferenceWav,
+          referenceText,
           workDir,
           options.xttsBaseUrl,
           resolveXttsUkLanguage(),
@@ -285,7 +350,7 @@ export const localizeModWorkspaceVoice = async (
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
   const game = options.game ?? manifest?.game ?? mod.game;
   const xttsBaseUrl = options.xttsBaseUrl ?? resolveXttsUkBaseUrl();
-  const speakerReference = options.speakerReference ?? resolveSpeakerReferenceEnabled();
+  const referenceMode = resolveReferenceMode(options);
 
   const packages = resolveWorkspacePackages(workspaceDir, manifest?.packages);
   const localizeDir = path.join(workspaceDir, 'localize');
@@ -296,7 +361,7 @@ export const localizeModWorkspaceVoice = async (
   const warnings: string[] = [];
 
   log.info(
-    `Voice localize "${lookupName}" → localize/ (mod id=${mod.modId}, ${srcLang}→${tgtLang}, XTTS=${xttsBaseUrl}, speakerRef=${speakerReference})`,
+    `Voice localize "${lookupName}" → localize/ (mod id=${mod.modId}, ${srcLang}→${tgtLang}, XTTS=${xttsBaseUrl}, refMode=${referenceMode})`,
   );
 
   for (const pkg of packages) {
@@ -311,7 +376,7 @@ export const localizeModWorkspaceVoice = async (
         xttsBaseUrl,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
-        speakerReference,
+        referenceMode,
         limit: options.limit,
       },
       written,

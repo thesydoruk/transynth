@@ -54,14 +54,35 @@ export const resolveXttsUkBaseUrl = resolveTtsBaseUrl;
 /** @deprecated Use {@link resolveTtsLanguage}. */
 export const resolveXttsUkLanguage = resolveTtsLanguage;
 
-/** Pick the cleanest per-NPC reference clip for XTTS (default on). Set `TTS_SPEAKER_REFERENCE=0` to use each line's own audio. */
-export const resolveSpeakerReferenceEnabled = (): boolean => {
-  const raw = process.env.TTS_SPEAKER_REFERENCE?.trim().toLowerCase();
-  if (!raw) return true;
-  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
+/** How XTTS picks the English reference clip sent with each synthesis request. */
+export type TtsReferenceMode = 'speaker' | 'line';
+
+const readEnvOn = (name: string): boolean | undefined => {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return undefined;
   if (['1', 'true', 'yes', 'on'].includes(raw)) return true;
-  return true;
+  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
+  return undefined;
 };
+
+/**
+ * Resolve XTTS reference mode from env.
+ *
+ * - `line` — always the same voiced line's original English audio (per row).
+ * - `speaker` — one shared clip per NPC folder (auto / DB pick / `_reference.wav`).
+ */
+export const resolveTtsReferenceMode = (): TtsReferenceMode => {
+  if (readEnvOn('TTS_LINE_REFERENCE') === true) return 'line';
+
+  const speakerRaw = process.env.TTS_SPEAKER_REFERENCE?.trim().toLowerCase();
+  if (speakerRaw && ['0', 'false', 'no', 'off'].includes(speakerRaw)) return 'line';
+
+  return 'speaker';
+};
+
+/** Pick the cleanest per-NPC reference clip for XTTS (default on). Set `TTS_SPEAKER_REFERENCE=0` or `TTS_LINE_REFERENCE=1` for per-line references. */
+export const resolveSpeakerReferenceEnabled = (): boolean =>
+  resolveTtsReferenceMode() === 'speaker';
 
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];

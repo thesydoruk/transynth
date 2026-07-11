@@ -3,7 +3,7 @@
  * Synthesize localized voice lines into `localize/` using XTTS Ukrainian + fresh LIP generation.
  *
  * Pipeline per voiced line:
- *   1. XTTS clone from a per-speaker reference clip (auto-picked or _reference.wav override)
+ *   1. XTTS clone from a reference clip (`speaker` = per NPC, `line` = same English phrase)
  *   2. FaceFXWrapper generates a new LIP from Ukrainian text + synthesized WAV
  *   3. xWMAEncode + FUZE pack → new .fuz (never reuses old lipsync)
  *
@@ -25,7 +25,7 @@ import { log } from '../src/logger';
 import { localizeModWorkspaceVoice } from '../src/modWorkspace/localizeModWorkspaceVoice';
 import type { GameType } from '../src/types';
 import { resolveDirectoryInput } from '../src/utils/file';
-import { resolveXttsUkBaseUrl, resolveSpeakerReferenceEnabled } from '../src/voice/voiceToolPaths';
+import { resolveXttsUkBaseUrl, resolveTtsReferenceMode } from '../src/voice/voiceToolPaths';
 
 const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
 
@@ -87,15 +87,24 @@ const argv = await yargs(hideBin(process.argv))
     default: false,
     describe: 'Rewrite localize files even when unchanged',
   })
+  .option('reference-mode', {
+    choices: ['speaker', 'line'] as const,
+    describe: 'XTTS reference: speaker = one clip per NPC; line = same English phrase per row',
+  })
+  .option('line-reference', {
+    type: 'boolean',
+    default: false,
+    describe: 'Shorthand for --reference-mode line (same English audio as the voiced line)',
+  })
   .option('speaker-reference', {
     type: 'boolean',
-    default: resolveSpeakerReferenceEnabled(),
-    describe: 'Pick one clean reference clip per NPC speaker folder (default: on)',
+    default: resolveTtsReferenceMode() === 'speaker',
+    describe: 'Shorthand for --reference-mode speaker (default)',
   })
   .option('no-speaker-reference', {
     type: 'boolean',
     default: false,
-    describe: "Use each line's own audio as XTTS reference (legacy behavior)",
+    describe: 'Shorthand for --reference-mode line (legacy alias)',
   })
   .check((args) => {
     if (args.workspace?.trim()) return true;
@@ -116,6 +125,14 @@ if (argv.game && !isGameType(argv.game)) {
 
 const db = openDb();
 
+const referenceMode =
+  argv['reference-mode'] ??
+  (argv['line-reference'] || argv['no-speaker-reference']
+    ? 'line'
+    : argv['speaker-reference'] === false
+      ? 'line'
+      : resolveTtsReferenceMode());
+
 try {
   const result = await localizeModWorkspaceVoice(db, {
     workspaceDir,
@@ -127,7 +144,7 @@ try {
     limit: argv.limit,
     dryRun: argv['dry-run'],
     force: argv.force,
-    speakerReference: argv['no-speaker-reference'] ? false : argv['speaker-reference'],
+    referenceMode,
   });
 
   log.info(
