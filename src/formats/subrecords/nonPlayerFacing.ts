@@ -4,7 +4,7 @@
  * Aligned with xTranslator / community practice: REFR (placed refs), KYWD (keywords),
  * INNR (inheritance markers), LVLI (leveled-list overrides), ARMA (armor mesh slots).
  *
- * Used at import (subrecord JSON `read: false`) and as a runtime skip heuristic
+ * Used at import (subrecord JSON `read: false`) and by the skip-detect scan
  * for rows already in the DB (CSV import, older scans).
  */
 export const NON_PLAYER_FACING_RECORDS = ['REFR', 'KYWD', 'INNR', 'LVLI', 'ARMA'] as const;

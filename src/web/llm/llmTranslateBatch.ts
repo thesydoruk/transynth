@@ -23,7 +23,6 @@ import { bulkUpsertAutoTranslations } from '../import/modImportBulk';
 import {
   termWordBoundaryRe,
   filterStringIdsForLlmTranslate,
-  markStringsAsSkip,
   type LlmTranslateOverwriteMode,
 } from '../data/queries';
 import { scheduleRefreshQAIssuesBatch } from '../services/qaHooks';
@@ -36,7 +35,6 @@ import {
   validateTranslationPlaceholders,
 } from '../../utils/placeholders';
 import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../llm/llmTextMask';
-import { detectSkipHeuristic } from '../../llm/skipTranslateHeuristics';
 import { normalizeAutoTranslationDashes } from '../../utils/textNorm';
 import { parseRecordLocation } from '../../utils/recordLocation';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
@@ -47,8 +45,6 @@ export type TranslateBatchResult = {
   stringId: number;
   text?: string;
   error?: string;
-  /** Row marked non-translatable during batch (heuristic). */
-  skipped?: boolean;
 };
 
 export type TranslateBatchOptions = {
@@ -215,9 +211,8 @@ export const translateStringIdsBatch = async (
   };
 
   const llmPending: PreparedLlmItem[] = [];
-  const runtimeSkipIds: number[] = [];
 
-  /** Strings resolved without the LLM (untranslatable) — persisted in bulk. */
+  /** Strings resolved without the LLM (placeholder-only) — persisted in bulk. */
   const immediateResults: Array<{ stringId: number; text: string }> = [];
 
   type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
@@ -381,20 +376,6 @@ export const translateStringIdsBatch = async (
     const game = row.game ?? modGame ?? undefined;
     const { grup, field } = parseRecordLocation(row.signature, row.path);
 
-    const skipHit = detectSkipHeuristic(sourceText, {
-      edid: row.edid,
-      path: row.path,
-      signature: grup,
-    });
-    if (skipHit) {
-      logTranslate.debug('runtime skip heuristic', {
-        stringId,
-        reason: skipHit.reason,
-      });
-      runtimeSkipIds.push(stringId);
-      continue;
-    }
-
     const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
     const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
       placeholderMasked,
@@ -432,16 +413,6 @@ export const translateStringIdsBatch = async (
           context: maskLlmOptionalText(row.context),
         };
       })(),
-    });
-  }
-
-  if (runtimeSkipIds.length > 0) {
-    await markStringsAsSkip(db, runtimeSkipIds);
-    for (const stringId of runtimeSkipIds) {
-      emitResult({ stringId, skipped: true });
-    }
-    logTranslate.info('runtime skip heuristic marked rows', {
-      count: runtimeSkipIds.length,
     });
   }
 
@@ -498,9 +469,8 @@ export const translateStringIdsBatch = async (
   }
 
   const ok = results.filter((r) => r.text).length;
-  const skipped = results.filter((r) => r.skipped).length;
   const failed = results.filter((r) => r.error).length;
-  logTranslate.info('batch done', { total: eligibleIds.length, ok, skipped, failed });
+  logTranslate.info('batch done', { total: eligibleIds.length, ok, failed });
 
   return results;
 };
