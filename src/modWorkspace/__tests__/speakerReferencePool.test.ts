@@ -3,9 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
 import {
+  AUTO_SELECT_GOOD_ENOUGH_SCORE,
   computeHesitationPenalty,
+  resolveSpeakerReferenceForSpeaker,
   scoreReferencePcm,
   scoreReferenceWav,
+  speakerReferenceCacheRoot,
   voiceSpeakerKey,
 } from '../speakerReferencePool';
 
@@ -129,5 +132,149 @@ describe('scoreReferenceWav integration', () => {
     const wavPath = path.join(tmpDir, 'speech.wav');
     writeTestWav(wavPath, makeSpeechLike(5));
     expect(scoreReferenceWav(wavPath)).toBeGreaterThan(0);
+  });
+});
+
+describe('resolveSpeakerReferenceForSpeaker', () => {
+  let tmpDir: string;
+  let modId: number;
+
+  const createMockDb = () => {
+    const picks = new Map<string, { formidLower6: string; variant: number }>();
+    return {
+      query: async (sql: string, params: unknown[] = []) => {
+        const key = params[1] as string | undefined;
+        if (sql.includes('SELECT formid_lower6, variant') && key) {
+          const pick = picks.get(key);
+          return {
+            rows: pick ? [{ formid_lower6: pick.formidLower6, variant: pick.variant }] : [],
+          };
+        }
+        if (sql.includes('INSERT INTO voice_speaker_refs')) {
+          picks.set(params[1] as string, {
+            formidLower6: params[2] as string,
+            variant: params[3] as number,
+          });
+          return { rows: [] };
+        }
+        return { rows: [] };
+      },
+    };
+  };
+
+  const makeEntry = (
+    packageDir: string,
+    speaker: string,
+    formidLower6: string,
+    variant: number,
+    samples: Int16Array,
+  ): VoiceFileEntry => {
+    const fileName = `${formidLower6}_${variant}.wav`;
+    const relPath = `Data/Sound/Voice/Mod.esp/${speaker}/${fileName}`;
+    const absolutePath = path.join(packageDir, ...relPath.split('/'));
+    writeTestWav(absolutePath, samples);
+    return {
+      relPath,
+      absolutePath,
+      fileName,
+      formidLower6,
+      variant,
+      ext: 'wav',
+    };
+  };
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'speaker-ref-resolve-'));
+    modId = 90_000 + Math.floor(Math.random() * 10_000);
+    fs.rmSync(speakerReferenceCacheRoot(modId), { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(speakerReferenceCacheRoot(modId), { recursive: true, force: true });
+  });
+
+  it('reuses the cached speaker reference WAV on a second resolve', async () => {
+    const speaker = 'AlexanderBrown';
+    const entry = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(5));
+    const db = createMockDb() as unknown as import('../../db').Tx;
+
+    const first = await resolveSpeakerReferenceForSpeaker(
+      db,
+      modId,
+      speaker,
+      entry,
+      () => [],
+      tmpDir,
+      'Data/Mod.esp',
+    );
+    const second = await resolveSpeakerReferenceForSpeaker(
+      db,
+      modId,
+      speaker,
+      entry,
+      () => [],
+      tmpDir,
+      'Data/Mod.esp',
+    );
+
+    expect(first?.wavPath).toBe(second?.wavPath);
+    expect(first?.source).toBe('auto');
+    expect(fs.existsSync(first!.wavPath)).toBe(true);
+  });
+
+  it('uses the current line without scanning sibling entries when it is suitable', async () => {
+    const speaker = 'AlexanderBrown';
+    const preferred = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(5));
+    const sibling = makeEntry(tmpDir, speaker, '00002CBB', 1, makeSpeechLike(5));
+    let fallbackCalled = false;
+    const db = createMockDb() as unknown as import('../../db').Tx;
+
+    const result = await resolveSpeakerReferenceForSpeaker(
+      db,
+      modId,
+      speaker,
+      preferred,
+      () => {
+        fallbackCalled = true;
+        return [sibling];
+      },
+      tmpDir,
+      'Data/Mod.esp',
+    );
+
+    expect(result?.source).toBe('auto');
+    expect(result?.pick).toEqual({ formidLower6: '00002CBA', variant: 1 });
+    expect(fallbackCalled).toBe(false);
+  });
+
+  it('scans sibling entries only when the current line is unsuitable', async () => {
+    const speaker = 'AlexanderBrown';
+    const preferred = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(0.4));
+    const sibling = makeEntry(tmpDir, speaker, '00002CBB', 1, makeSpeechLike(5));
+    let fallbackCalled = false;
+    const db = createMockDb() as unknown as import('../../db').Tx;
+
+    const result = await resolveSpeakerReferenceForSpeaker(
+      db,
+      modId,
+      speaker,
+      preferred,
+      () => {
+        fallbackCalled = true;
+        return [sibling];
+      },
+      tmpDir,
+      'Data/Mod.esp',
+    );
+
+    expect(result?.source).toBe('auto');
+    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(fallbackCalled).toBe(true);
+  });
+
+  it('stops auto-select early once a clip is good enough', () => {
+    const speechScore = scoreReferencePcm(makeSpeechLike(5), SAMPLE_RATE);
+    expect(speechScore).toBeGreaterThanOrEqual(AUTO_SELECT_GOOD_ENOUGH_SCORE);
   });
 });

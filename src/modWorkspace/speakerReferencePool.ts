@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
+import { PATHS } from '../paths';
+import { sha1Hex } from '../utils/hash';
+import { ensureDir } from '../utils/file';
 import { decodeAudioToReferenceWav } from '../voice/ffmpegAudio';
 import { extractXwmFromFuzFile } from '../formats/fuz';
 import { resolveVoiceRootRel, type VoiceFileEntry } from './discoverVoiceFiles';
@@ -12,6 +15,69 @@ import {
 } from './voiceSpeakerRefs';
 
 const MANUAL_REFERENCE_NAME = '_reference.wav';
+
+/** Stop auto-select after the first clip scoring at or above this (lazy search). */
+export const AUTO_SELECT_GOOD_ENOUGH_SCORE = 5;
+
+export const speakerReferenceCacheRoot = (modId: number): string =>
+  path.join(PATHS.voicePreview, String(modId), 'speaker-ref');
+
+const entryReferenceCacheRoot = (modId: number): string =>
+  path.join(PATHS.voicePreview, String(modId), 'entry-ref');
+
+const sourceDigest = (sourcePath: string): string => {
+  const stat = fs.statSync(sourcePath);
+  return sha1Hex(`${sourcePath}|${stat.mtimeMs}|${stat.size}`);
+};
+
+const readCacheMarker = (markerPath: string): string | null => {
+  if (!fs.existsSync(markerPath)) return null;
+  return fs.readFileSync(markerPath, 'utf8').trim() || null;
+};
+
+const writeCacheMarker = (markerPath: string, marker: string): void => {
+  fs.writeFileSync(markerPath, marker);
+};
+
+/** Reuse a cached decoded reference WAV for one voice line when the source file is unchanged. */
+const getOrDecodeEntryReferenceWav = async (
+  entry: VoiceFileEntry,
+  entryCacheDir: string,
+  workDir: string,
+): Promise<string> => {
+  const base = `${entry.formidLower6}_${entry.variant}`;
+  const outPath = path.join(entryCacheDir, `${base}.wav`);
+  const markerPath = path.join(entryCacheDir, `${base}.source`);
+  const digest = sourceDigest(entry.absolutePath);
+  if (fs.existsSync(outPath) && readCacheMarker(markerPath) === digest) {
+    return outPath;
+  }
+
+  ensureDir(entryCacheDir);
+  await decodeEntryToReferenceWav(entry, outPath, workDir);
+  writeCacheMarker(markerPath, digest);
+  return outPath;
+};
+
+const getOrReuseSpeakerReferenceWav = async (
+  speakerKey: string,
+  speakerCacheDir: string,
+  marker: string,
+  produceWav: () => Promise<string>,
+): Promise<string> => {
+  const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
+  const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
+  const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
+  if (fs.existsSync(outPath) && readCacheMarker(markerPath) === marker) {
+    return outPath;
+  }
+
+  const decodedPath = await produceWav();
+  ensureDir(speakerCacheDir);
+  fs.copyFileSync(decodedPath, outPath);
+  writeCacheMarker(markerPath, marker);
+  return outPath;
+};
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
@@ -216,38 +282,130 @@ export type ResolvedSpeakerReference = {
   score?: number;
 };
 
-const findSpeakerEntry = (
-  speakerEntries: VoiceFileEntry[],
+const findPickedEntry = (
   pick: VoiceSpeakerRefPick,
-): VoiceFileEntry | undefined =>
-  speakerEntries.find(
+  preferredEntry: VoiceFileEntry,
+  getFallbackEntries: () => VoiceFileEntry[],
+): VoiceFileEntry | undefined => {
+  if (
+    pick.formidLower6.toUpperCase() === preferredEntry.formidLower6.toUpperCase() &&
+    pick.variant === preferredEntry.variant
+  ) {
+    return preferredEntry;
+  }
+  return getFallbackEntries().find(
     (entry) =>
       entry.formidLower6.toUpperCase() === pick.formidLower6.toUpperCase() &&
       entry.variant === pick.variant,
   );
+};
+
+const tryCachedSpeakerReference = (speakerKey: string, speakerCacheDir: string): string | null => {
+  const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
+  const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
+  const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
+  if (!fs.existsSync(outPath) || !readCacheMarker(markerPath)) return null;
+  return outPath;
+};
+
+type ScoredEntry = {
+  entry: VoiceFileEntry;
+  wavPath: string;
+  score: number;
+};
+
+const scoreEntryReference = async (
+  entry: VoiceFileEntry,
+  entryCacheDir: string,
+  workDir: string,
+): Promise<ScoredEntry | null> => {
+  try {
+    const wavPath = await getOrDecodeEntryReferenceWav(entry, entryCacheDir, workDir);
+    const score = scoreReferenceWav(wavPath);
+    return { entry, wavPath, score };
+  } catch (err) {
+    log.warn(
+      `Speaker ref skip ${entry.fileName}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return null;
+  }
+};
+
+const finalizeAutoReference = async (
+  db: Tx,
+  modId: number,
+  speakerKey: string,
+  speakerCacheDir: string,
+  scored: ScoredEntry,
+): Promise<ResolvedSpeakerReference> => {
+  const pick: VoiceSpeakerRefPick = {
+    formidLower6: scored.entry.formidLower6,
+    variant: scored.entry.variant,
+  };
+  await setVoiceSpeakerRef(db, modId, speakerKey, pick, scored.score);
+
+  const autoMarker = `auto:${scored.entry.formidLower6}_${scored.entry.variant}:${sourceDigest(scored.entry.absolutePath)}`;
+  const outPath = await getOrReuseSpeakerReferenceWav(
+    speakerKey,
+    speakerCacheDir,
+    autoMarker,
+    async () => scored.wavPath,
+  );
+
+  log.info(
+    `Speaker ref "${speakerKey}": auto ${scored.entry.fileName} (score=${scored.score.toFixed(1)})`,
+  );
+  return { wavPath: outPath, pick, source: 'auto', score: scored.score };
+};
 
 /**
- * Resolve one speaker's XTTS reference clip immediately before synthesizing that NPC.
- * Uses a saved DB pick when valid; otherwise auto-selects from the speaker's lines and persists.
+ * Resolve one speaker's XTTS reference clip when synthesizing a voice line.
+ * Uses cache / saved DB pick / manual override when available.
+ * Auto-select tries `preferredEntry` first and only scans sibling lines on demand.
  */
 export const resolveSpeakerReferenceForSpeaker = async (
   db: Tx,
   modId: number,
   speakerKey: string,
-  speakerEntries: VoiceFileEntry[],
+  preferredEntry: VoiceFileEntry,
+  getFallbackEntries: () => VoiceFileEntry[],
   packageDir: string,
   pluginRelPath: string,
-  cacheDir: string,
 ): Promise<ResolvedSpeakerReference | null> => {
   const voiceRootRel = resolveVoiceRootRel(pluginRelPath);
   const voiceRootAbs = path.join(packageDir, ...voiceRootRel.split('/'));
-  const speakerCacheDir = path.join(cacheDir, 'speaker-ref', speakerKey);
-  fs.mkdirSync(speakerCacheDir, { recursive: true });
+  const speakerCacheDir = speakerReferenceCacheRoot(modId);
+  const entryCacheDir = entryReferenceCacheRoot(modId);
+  const workDir = path.join(speakerCacheDir, '.work', speakerKey.replace(/[^\w.-]+/g, '_'));
+  ensureDir(workDir);
+
+  const cachedWav = tryCachedSpeakerReference(speakerKey, speakerCacheDir);
+  if (cachedWav) {
+    const cachedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
+    log.debug(`Speaker ref "${speakerKey}": cache hit`);
+    return {
+      wavPath: cachedWav,
+      pick: cachedPick ?? {
+        formidLower6: preferredEntry.formidLower6,
+        variant: preferredEntry.variant,
+      },
+      source: cachedPick ? 'saved' : 'auto',
+    };
+  }
 
   const manualPath = path.join(voiceRootAbs, speakerKey, MANUAL_REFERENCE_NAME);
   if (fs.existsSync(manualPath)) {
-    const outPath = path.join(speakerCacheDir, MANUAL_REFERENCE_NAME);
-    await decodeAudioToReferenceWav(manualPath, outPath);
+    const manualMarker = `manual:${sourceDigest(manualPath)}`;
+    const outPath = await getOrReuseSpeakerReferenceWav(
+      speakerKey,
+      speakerCacheDir,
+      manualMarker,
+      async () => {
+        const decodedPath = path.join(workDir, MANUAL_REFERENCE_NAME);
+        await decodeAudioToReferenceWav(manualPath, decodedPath);
+        return decodedPath;
+      },
+    );
     log.info(`Speaker ref "${speakerKey}": manual ${MANUAL_REFERENCE_NAME}`);
     return {
       wavPath: outPath,
@@ -258,14 +416,17 @@ export const resolveSpeakerReferenceForSpeaker = async (
 
   const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
   if (savedPick) {
-    const pickedEntry = findSpeakerEntry(speakerEntries, savedPick);
+    const pickedEntry = findPickedEntry(savedPick, preferredEntry, getFallbackEntries);
     if (pickedEntry) {
-      const outPath = path.join(
-        speakerCacheDir,
-        `${pickedEntry.formidLower6}_${pickedEntry.variant}.ref.wav`,
-      );
       try {
-        await decodeEntryToReferenceWav(pickedEntry, outPath, speakerCacheDir);
+        const entryDigest = sourceDigest(pickedEntry.absolutePath);
+        const savedMarker = `saved:${pickedEntry.formidLower6}_${pickedEntry.variant}:${entryDigest}`;
+        const outPath = await getOrReuseSpeakerReferenceWav(
+          speakerKey,
+          speakerCacheDir,
+          savedMarker,
+          () => getOrDecodeEntryReferenceWav(pickedEntry, entryCacheDir, workDir),
+        );
         log.info(`Speaker ref "${speakerKey}": saved ${pickedEntry.fileName}`);
         return { wavPath: outPath, pick: savedPick, source: 'saved' };
       } catch (err) {
@@ -282,42 +443,27 @@ export const resolveSpeakerReferenceForSpeaker = async (
     }
   }
 
-  let bestPath: string | null = null;
-  let bestScore = Number.NEGATIVE_INFINITY;
-  let bestEntry: VoiceFileEntry | null = null;
+  const preferredScored = await scoreEntryReference(preferredEntry, entryCacheDir, workDir);
+  if (preferredScored && preferredScored.score > Number.NEGATIVE_INFINITY) {
+    return finalizeAutoReference(db, modId, speakerKey, speakerCacheDir, preferredScored);
+  }
 
-  for (const entry of speakerEntries) {
-    const candidatePath = path.join(
-      speakerCacheDir,
-      `${entry.formidLower6}_${entry.variant}.ref.wav`,
-    );
-    try {
-      await decodeEntryToReferenceWav(entry, candidatePath, speakerCacheDir);
-      const score = scoreReferenceWav(candidatePath);
-      if (score > bestScore) {
-        bestScore = score;
-        bestPath = candidatePath;
-        bestEntry = entry;
-      }
-    } catch (err) {
-      log.warn(
-        `Speaker ref "${speakerKey}": skip ${entry.fileName}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+  let best: ScoredEntry | null = preferredScored;
+  for (const entry of getFallbackEntries()) {
+    const scored = await scoreEntryReference(entry, entryCacheDir, workDir);
+    if (!scored) continue;
+    if (!best || scored.score > best.score) {
+      best = scored;
+    }
+    if (scored.score >= AUTO_SELECT_GOOD_ENOUGH_SCORE) {
+      break;
     }
   }
 
-  if (!bestPath || !bestEntry) {
+  if (!best || best.score === Number.NEGATIVE_INFINITY) {
     log.warn(`Speaker ref "${speakerKey}": no suitable reference found`);
     return null;
   }
 
-  const pick: VoiceSpeakerRefPick = {
-    formidLower6: bestEntry.formidLower6,
-    variant: bestEntry.variant,
-  };
-  await setVoiceSpeakerRef(db, modId, speakerKey, pick, bestScore);
-  log.info(
-    `Speaker ref "${speakerKey}": auto ${bestEntry.fileName} (score=${bestScore.toFixed(1)})`,
-  );
-  return { wavPath: bestPath, pick, source: 'auto', score: bestScore };
+  return finalizeAutoReference(db, modId, speakerKey, speakerCacheDir, best);
 };
