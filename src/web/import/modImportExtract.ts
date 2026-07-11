@@ -2,8 +2,8 @@ import path from 'node:path';
 import {
   type ModImportExtractManifest,
   writeModImportExtractManifest,
-} from '../../modWorkspace/archiveManifest';
-import { extractAllBethesdaArchivesInTreeWithManifest } from '../../modWorkspace/extractBethesdaArchives';
+  extractAllBethesdaArchivesInTreeWithManifest,
+} from '../../modImport';
 import { resolveModImportExtractRoot } from '../../modStorage';
 
 export { resolveModImportExtractRoot } from '../../modStorage';

@@ -86,7 +86,7 @@ import {
 } from './modImportIndexes';
 import { ensureChampollionInstalled } from '../../tools/installTools';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../export/pexDecompileService';
-import type { ModImportExtractManifest } from '../../modWorkspace/archiveManifest';
+import type { ModImportExtractManifest } from '../../modImport';
 import {
   collectPluginArchiveScopeDirs,
   extractGameArchivesForImport,
