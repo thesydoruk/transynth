@@ -12,8 +12,30 @@ export { resolveTtsSynthesisParams, XTTS_GAME_DIALOGUE_DEFAULTS } from './xttsSy
 export type XttsSynthesizeOptions = {
   baseUrl?: string;
   language?: string;
+  /** English transcript of `speaker_wav` (Fish Speech `speaker_text`). */
+  speakerText?: string;
   timeoutMs?: number;
   synthesis?: Partial<XttsSynthesisParams>;
+};
+
+/** Build multipart body for `POST /v1/synthesize`. */
+export const buildXttsSynthesisForm = (
+  text: string,
+  referenceWav: Buffer,
+  options: XttsSynthesizeOptions = {},
+): FormData => {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('TTS text is empty');
+  if (referenceWav.length === 0) throw new Error('Reference audio is empty');
+
+  const form = new FormData();
+  form.append('text', trimmed);
+  form.append('speaker_wav', new Blob([referenceWav], { type: 'audio/wav' }), 'speaker.wav');
+  if (options.language) form.append('language', options.language);
+  const speakerText = options.speakerText?.trim();
+  if (speakerText) form.append('speaker_text', speakerText);
+  appendXttsSynthesisFormFields(form, resolveTtsSynthesisParams(options.synthesis));
+  return form;
 };
 
 /** Call the external TTS HTTP API and return synthesized WAV bytes. */
@@ -22,22 +44,13 @@ export const synthesizeXttsWav = async (
   referenceWavPath: string,
   options: XttsSynthesizeOptions = {},
 ): Promise<Buffer> => {
-  const trimmed = text.trim();
-  if (!trimmed) throw new Error('TTS text is empty');
-
   const reference = fs.readFileSync(referenceWavPath);
   if (reference.length === 0) throw new Error(`Reference audio is empty: ${referenceWavPath}`);
 
   const baseUrl = (options.baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
-  const referenceBlob = new Blob([reference], { type: 'audio/wav' });
+  const form = buildXttsSynthesisForm(text, reference, options);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 300_000);
-
-  const form = new FormData();
-  form.append('text', trimmed);
-  form.append('speaker_wav', referenceBlob, 'speaker.wav');
-  if (options.language) form.append('language', options.language);
-  appendXttsSynthesisFormFields(form, resolveTtsSynthesisParams(options.synthesis));
 
   try {
     const response = await fetch(`${baseUrl}/v1/synthesize`, {
