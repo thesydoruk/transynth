@@ -838,24 +838,6 @@ export type ChangeModImportLocaleResult = {
 export type ModProgressEvent = { type: 'progress'; imported: number; total: number; jobId: number };
 export type UploadProgressEvent = { loaded: number; total: number; percent: number };
 
-export type ModPreviewRow = {
-  formId: string;
-  signature: string;
-  edid: string;
-  path: string;
-  source: string;
-};
-
-export type ModPreviewResult = {
-  rows: ModPreviewRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-  signatures: string[];
-  locales: string[];
-  isLocalized: boolean;
-};
-
 export type ProgressEvent = {
   type: 'progress';
   done: number;
@@ -1846,18 +1828,6 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ srcLang, tgtLang }),
       }),
-
-    preview: (
-      jobId: number,
-      params?: { page?: number; pageSize?: number; signature?: string; q?: string },
-    ) => {
-      const qs = new URLSearchParams();
-      if (params?.page) qs.set('page', String(params.page));
-      if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
-      if (params?.signature) qs.set('signature', params.signature);
-      if (params?.q) qs.set('q', params.q);
-      return req<ModPreviewResult>(`/api/mod-import/${jobId}/preview?${qs}`);
-    },
   },
 
   activity: {

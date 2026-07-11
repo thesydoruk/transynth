@@ -1,6 +1,6 @@
 /**
  * Mod Import routes — upload ESP/ESL or archive (zip/7z/rar),
- * list, preview, start/pause/cancel imports with SSE progress.
+ * list, start/pause/cancel imports with SSE progress.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,7 +25,6 @@ import {
   requestModPause,
   updateModJobLanguages,
   restartModImportJob,
-  previewModRecords,
   isArchive,
   isPlugin,
 } from '../import/modImportService';
@@ -125,57 +124,6 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       }
     },
   );
-
-  // ── Preview mod records (paginated + filterable) ──────────────────────────
-  app.get<{
-    Params: { id: string };
-    Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
-  }>('/api/mod-import/:id/preview', async (req, reply) => {
-    const jobId = Number(req.params.id);
-    const job = await getModImportJob(db, jobId);
-    if (!job) return reply.status(404).send({ error: 'Import job not found' });
-
-    try {
-      const { rows: allRows, locales, isLocalized } = previewModRecords(job);
-
-      const page = Math.max(1, Number(req.query.page ?? 1));
-      const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize ?? 50)));
-      const sigFilter = (req.query.signature ?? '').toUpperCase();
-      const qFilter = (req.query.q ?? '').toLowerCase();
-
-      const sigSet = new Set<string>();
-      const matched: typeof allRows = [];
-
-      for (const r of allRows) {
-        if (r.signature) sigSet.add(r.signature);
-        if (sigFilter && r.signature.toUpperCase() !== sigFilter) continue;
-        if (qFilter) {
-          const hay = `${r.formId}\t${r.edid}\t${r.source}`.toLowerCase();
-          if (!hay.includes(qFilter)) continue;
-        }
-        matched.push(r);
-      }
-
-      const total = matched.length;
-      const start = (page - 1) * pageSize;
-      const rows = matched.slice(start, start + pageSize);
-
-      return {
-        rows,
-        total,
-        page,
-        pageSize,
-        signatures: [...sigSet].sort(),
-        locales,
-        isLocalized,
-      };
-    } catch (err: unknown) {
-      log.error(`Mod preview failed: ${err instanceof Error ? err.message : err}`);
-      return reply
-        .status(500)
-        .send({ error: err instanceof Error ? err.message : 'Preview failed' });
-    }
-  });
 
   // ── Update job languages ──────────────────────────────────────────────────
   app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string } }>(

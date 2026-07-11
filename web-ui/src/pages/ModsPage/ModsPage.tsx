@@ -36,7 +36,6 @@ import { Toast, useToast } from '../../components/Toast';
 import { CsvPreviewModal } from './CsvPreviewModal';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 import { EetPreviewModal } from './EetPreviewModal';
-import { ModPreviewModal } from './ModPreviewModal';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { UnifiedJobRow } from './UnifiedJobRow';
 import {
@@ -197,8 +196,6 @@ export const ModsPage = () => {
 
   const [eetPreviewId, setEetPreviewId] = useState<number | null>(null);
   const [csvPreviewId, setCsvPreviewId] = useState<number | null>(null);
-  const [modPreviewId, setModPreviewId] = useState<number | null>(null);
-
   const [reimport, setReimport] = useState<{
     newModId: number;
     prevVersions: PreviousVersionRow[];
@@ -404,7 +401,10 @@ export const ModsPage = () => {
               row.id === uploadId ? { ...row, phase: 'extracting', percent: 100 } : row,
             ),
           );
-          if (job) refreshAll();
+          if (job) {
+            refreshAll();
+            void startModImportJob(job);
+          }
           setPendingModUploads((prev) => prev.filter((row) => row.id !== uploadId));
         }
       }
@@ -423,6 +423,18 @@ export const ModsPage = () => {
     [liveProgress],
   );
 
+  const startModImportJob = useCallback(
+    async (job: ModImportJob) => {
+      await api.modImport.updateLanguages(job.id, 'en', job.tgt_lang);
+      refreshAll();
+      if (job.status === 'completed') {
+        await api.modImport.restart(job.id);
+      }
+      await doStart('mod', job.id);
+    },
+    [doStart, refreshAll],
+  );
+
   const handleImportStart = useCallback(
     (u: UnifiedJob) => {
       const running = isImportJobRunning(u.kind, u.job.id, u.job.running);
@@ -432,25 +444,23 @@ export const ModsPage = () => {
       }
       if (u.kind === 'eet') setEetPreviewId(u.job.id);
       else if (u.kind === 'csv') setCsvPreviewId(u.job.id);
-      else setModPreviewId(u.job.id);
+      else void startModImportJob(u.job);
     },
-    [doStart, isImportJobRunning],
+    [doStart, isImportJobRunning, startModImportJob],
   );
 
   const startAll = () => {
     for (const u of activeImportJobs) {
-      if (u.kind === 'mod') continue;
       if (!canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind)) {
         continue;
       }
-      doStart(u.kind, u.job.id);
+      if (u.kind === 'mod') void startModImportJob(u.job);
+      else void doStart(u.kind, u.job.id);
     }
   };
 
-  const pendingCount = activeImportJobs.filter(
-    (u) =>
-      u.kind !== 'mod' &&
-      canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind),
+  const pendingCount = activeImportJobs.filter((u) =>
+    canStartImportJob(u.job, isImportJobRunning(u.kind, u.job.id, u.job.running), u.kind),
   ).length;
 
   const runModExport = useCallback(
@@ -674,8 +684,6 @@ export const ModsPage = () => {
     eetPreviewId != null ? (eetJobs ?? []).find((j) => j.id === eetPreviewId) : null;
   const csvPreviewJob =
     csvPreviewId != null ? (csvJobs ?? []).find((j) => j.id === csvPreviewId) : null;
-  const modPreviewJob =
-    modPreviewId != null ? (modJobs ?? []).find((j) => j.id === modPreviewId) : null;
   const visibleNexusDownloads = nexusDownloads.filter((d) => d.gameId === gameId);
   const visibleAppJobs = appJobs.filter((j) => j.status === 'running' || j.status === 'failed');
   const backendLlmJobs: OpsLlmJob[] = opsData?.llmJobs ?? [];
@@ -1029,7 +1037,7 @@ export const ModsPage = () => {
                       : [{ id: mod.id, name: mod.name }],
                   )
                 }
-                onReimport={importJob ? () => setModPreviewId(importJob.id) : undefined}
+                onReimport={importJob ? () => void startModImportJob(importJob) : undefined}
                 onDeleteImport={importJob ? () => setDeleteModalJob(importJob) : undefined}
               />
             );
@@ -1058,21 +1066,6 @@ export const ModsPage = () => {
             refreshAll();
             setCsvPreviewId(null);
             setTimeout(() => doStart('csv', csvPreviewJob.id), 100);
-          }}
-        />
-      )}
-      {modPreviewJob && (
-        <ModPreviewModal
-          job={modPreviewJob}
-          onClose={() => setModPreviewId(null)}
-          onConfirm={async () => {
-            await api.modImport.updateLanguages(modPreviewJob.id, 'en', modPreviewJob.tgt_lang);
-            refreshAll();
-            setModPreviewId(null);
-            if (modPreviewJob.status === 'completed') {
-              await api.modImport.restart(modPreviewJob.id);
-            }
-            await doStart('mod', modPreviewJob.id);
           }}
         />
       )}

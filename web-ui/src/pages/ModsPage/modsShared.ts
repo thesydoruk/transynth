@@ -15,7 +15,7 @@ export type ImportJobLike = {
 export const isStaleImportInProgress = (job: ImportJobLike, isRunning: boolean): boolean =>
   job.status === 'in_progress' && !isRunning;
 
-/** Resume paused or interrupted import — skip preview modal and continue from saved progress. */
+/** Resume paused or interrupted import — continue from saved progress. */
 export const isImportJobResume = (job: ImportJobLike, isRunning: boolean): boolean =>
   job.status === 'paused' || isStaleImportInProgress(job, isRunning);
 
