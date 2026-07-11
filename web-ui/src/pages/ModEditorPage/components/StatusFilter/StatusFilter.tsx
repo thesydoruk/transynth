@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { statusAccentColor } from '../../../../components/StatusBadge/statusColors';
 import { STATUS_FILTER_OPTS, type StatusFilterValue } from '../../statusFilter';
 import styles from './StatusFilter.module.scss';
 
@@ -19,11 +20,24 @@ export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const label =
-    selected.length === 0
-      ? t('modEditor.allStatuses')
-      : selected.length <= 2
-        ? selected.map((s) => t(`status.${s}`, { defaultValue: s })).join(', ')
-        : t('modEditor.statusFilterCount', { count: selected.length });
+    selected.length === 0 ? (
+      t('modEditor.allStatuses')
+    ) : selected.length <= 2 ? (
+      <span className={styles.triggerLabels}>
+        {selected.map((status) => (
+          <span key={status} className={styles.triggerChip}>
+            <span
+              className={styles.statusDot}
+              style={{ '--status-color': statusAccentColor(status) } as React.CSSProperties}
+              aria-hidden
+            />
+            {t(`status.${status}`, { defaultValue: status })}
+          </span>
+        ))}
+      </span>
+    ) : (
+      t('modEditor.statusFilterCount', { count: selected.length })
+    );
 
   const updateMenuPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -110,6 +124,11 @@ export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
                   type="checkbox"
                   checked={selected.includes(status)}
                   onChange={() => toggle(status)}
+                />
+                <span
+                  className={styles.statusDot}
+                  style={{ '--status-color': statusAccentColor(status) } as React.CSSProperties}
+                  aria-hidden
                 />
                 {t(`status.${status}`, { defaultValue: status })}
               </label>
