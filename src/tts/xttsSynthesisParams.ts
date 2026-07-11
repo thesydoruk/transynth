@@ -1,9 +1,9 @@
 /**
  * XTTS /v1/synthesize hyperparameters for game dialogue.
  *
- * Server defaults (temperature 0.65, length_penalty 1.0, speed 1.0, splitting on)
- * tend to sound slightly slow/drawn-out for short FO4 lines. Overrides below tighten
- * pacing; tune further via TTS_* env vars (see .env.example).
+ * Server defaults (temperature 0.65, length_penalty 1.0, repetition_penalty 2.0,
+ * speed 1.0, splitting on) tend to sound slightly slow/drawn-out for short FO4 lines.
+ * Overrides below tighten pacing; tune further via TTS_* env vars (see .env.example).
  */
 
 export type XttsSynthesisParams = {
@@ -20,6 +20,9 @@ export type XttsSynthesisParams = {
 export const XTTS_GAME_DIALOGUE_DEFAULTS: XttsSynthesisParams = {
   speed: 1.1,
   lengthPenalty: 1.2,
+  repetitionPenalty: 2.0,
+  topK: 50,
+  topP: 0.85,
   enableTextSplitting: false,
   temperature: 0.6,
 };

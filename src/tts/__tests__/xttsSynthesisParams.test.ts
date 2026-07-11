@@ -42,11 +42,17 @@ describe('resolveTtsSynthesisParams', () => {
   it('reads pacing from env', () => {
     process.env.TTS_SPEED = '1.18';
     process.env.TTS_LENGTH_PENALTY = '1.25';
+    process.env.TTS_REPETITION_PENALTY = '3';
+    process.env.TTS_TOP_K = '40';
+    process.env.TTS_TOP_P = '0.9';
     process.env.TTS_ENABLE_TEXT_SPLITTING = 'true';
 
     expect(resolveTtsSynthesisParams()).toMatchObject({
       speed: 1.18,
       lengthPenalty: 1.25,
+      repetitionPenalty: 3,
+      topK: 40,
+      topP: 0.9,
       enableTextSplitting: true,
     });
   });
