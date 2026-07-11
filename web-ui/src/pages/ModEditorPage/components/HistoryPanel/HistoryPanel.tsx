@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { TranslationHistoryEntry } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
+import { HistorySourceBadge } from './HistorySourceBadge';
 import parentS from '../../ModEditorPage.module.scss';
 import s from './HistoryPanel.module.scss';
 
@@ -21,9 +22,9 @@ export const HistoryPanel = ({ items }: HistoryPanelProps) => {
       {items.map((item) => (
         <div key={item.id} className={s.historyRow}>
           <div className={s.histHeader}>
+            <HistorySourceBadge entry={item} small />
             <StatusBadge status={item.status} small />
             <span className={s.histDate}>{new Date(item.created_at).toLocaleString()}</span>
-            {item.note && <span className={s.histNote}>{item.note}</span>}
           </div>
           <div className={s.histText}>{item.text ?? t('modEditor.cleared')}</div>
         </div>

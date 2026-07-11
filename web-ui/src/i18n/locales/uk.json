@@ -61,6 +61,18 @@
     "total": "Всього",
     "noStrings": "Немає рядків"
   },
+  "history": {
+    "source": {
+      "llm": "LLM",
+      "tm": "TM",
+      "tm_propagation": "TM поширення",
+      "save": "Вручну",
+      "clear": "Очищено",
+      "search_replace": "Заміна",
+      "clear_same_as_source": "Як оригінал",
+      "unknown": "Зміна"
+    }
+  },
   "importStatus": {
     "pending": "Очікує",
     "in_progress": "Виконується",

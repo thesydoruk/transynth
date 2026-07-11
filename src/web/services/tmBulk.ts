@@ -6,6 +6,10 @@
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
+import {
+  bulkRecordTranslationRevisions,
+  tmRevisionNoteForProvenance,
+} from '../data/translationRevisions';
 
 export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm';
 
@@ -161,7 +165,7 @@ export type TmBulkWriteRow = {
   confidence: number;
 };
 
-/** Fast TM upsert without revision, QA, or RAG side effects. */
+/** TM bulk upsert with revision history (no inline QA or RAG). */
 export const bulkUpsertTmTranslations = async (
   db: Tx,
   items: TmBulkWriteRow[],
@@ -181,14 +185,35 @@ export const bulkUpsertTmTranslations = async (
       `DELETE FROM translations WHERE src_string_id = ANY($1::int[]) AND target_lang = $2`,
       [stringIds, targetLang],
     );
-    await db.query(
+    const { rows: inserted } = await db.query<{
+      id: number;
+      src_string_id: number;
+      text: string;
+      provenance: string | null;
+    }>(
       `INSERT INTO translations(
          src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
        )
        SELECT s, $2, t, 'tm', cf, p, NULL, NULL, NOW()
-       FROM UNNEST($1::int[], $3::text[], $4::float8[], $5::text[]) AS u(s, t, cf, p)`,
+       FROM UNNEST($1::int[], $3::text[], $4::float8[], $5::text[]) AS u(s, t, cf, p)
+       RETURNING id, src_string_id, text, provenance`,
       [stringIds, targetLang, texts, confidences, provenances],
     );
+
+    await bulkRecordTranslationRevisions(
+      db,
+      inserted.map((row) => ({
+        stringId: row.src_string_id,
+        translationId: row.id,
+        targetLang,
+        text: row.text,
+        status: 'tm',
+        provenance: row.provenance,
+        model: null,
+        note: tmRevisionNoteForProvenance(row.provenance ?? 'tm_auto'),
+      })),
+    );
+
     total += part.length;
   }
   return total;

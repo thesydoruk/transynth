@@ -61,6 +61,18 @@
     "total": "Total",
     "noStrings": "No strings"
   },
+  "history": {
+    "source": {
+      "llm": "LLM",
+      "tm": "TM",
+      "tm_propagation": "TM propagate",
+      "save": "Manual",
+      "clear": "Cleared",
+      "search_replace": "Search & replace",
+      "clear_same_as_source": "Same as source",
+      "unknown": "Change"
+    }
+  },
   "importStatus": {
     "pending": "Pending",
     "in_progress": "In progress",

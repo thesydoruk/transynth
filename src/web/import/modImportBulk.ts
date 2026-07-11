@@ -4,6 +4,8 @@
 import type { CsvRow } from '../../types';
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
+import { bulkRecordTranslationRevisions } from '../data/translationRevisions';
+import type { TranslationStatus } from '../data/statusMachine';
 import { sha1Hex } from '../../utils/hash';
 import { normalizeForHash, normalizeNoPunct } from '../../utils/textNorm';
 
@@ -524,7 +526,7 @@ export const dedupeBulkTranslationRows = (items: BulkTranslationRow[]): BulkTran
   return [...byId.entries()].map(([srcStringId, text]) => ({ srcStringId, text }));
 };
 
-/** Fast translation upsert (no revision, QA, or RAG). */
+/** Fast translation upsert (no QA or RAG). Optionally records revision history. */
 const bulkUpsertTranslationsCore = async (
   db: Tx,
   items: BulkTranslationRow[],
@@ -533,6 +535,7 @@ const bulkUpsertTranslationsCore = async (
   status: string,
   batchSize: number,
   model: string | null,
+  revisionNote?: string | null,
 ): Promise<number> => {
   const deduped = dedupeBulkTranslationRows(items);
   let total = 0;
@@ -544,14 +547,38 @@ const bulkUpsertTranslationsCore = async (
       `DELETE FROM translations WHERE src_string_id = ANY($1::int[]) AND target_lang = $2`,
       [stringIds, targetLang],
     );
-    await db.query(
+    const { rows: inserted } = await db.query<{
+      id: number;
+      src_string_id: number;
+      text: string;
+      status: string;
+      provenance: string | null;
+    }>(
       `INSERT INTO translations(
          src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
        )
        SELECT s, $3, t, $5, 1.0, $4, $6, NULL, NOW()
-       FROM UNNEST($1::int[], $2::text[]) AS u(s, t)`,
+       FROM UNNEST($1::int[], $2::text[]) AS u(s, t)
+       RETURNING id, src_string_id, text, status, provenance`,
       [stringIds, texts, targetLang, provenance, status, model],
     );
+
+    if (revisionNote) {
+      await bulkRecordTranslationRevisions(
+        db,
+        inserted.map((row) => ({
+          stringId: row.src_string_id,
+          translationId: row.id,
+          targetLang,
+          text: row.text,
+          status: status as TranslationStatus,
+          provenance: row.provenance,
+          model,
+          note: revisionNote,
+        })),
+      );
+    }
+
     total += part.length;
   }
   return total;
@@ -695,8 +722,7 @@ export const bulkUpsertImportTranslations = async (
   bulkUpsertTranslationsCore(db, items, targetLang, provenance, status, batchSize, null);
 
 /**
- * Fast bulk upsert for LLM auto-translate (no revision, RAG sync, or inline QA).
- * QA is refreshed asynchronously via scheduleRefreshQAIssuesBatch in qaHooks.ts.
+ * Bulk upsert for LLM auto-translate. Records revision history; QA runs asynchronously.
  */
 export const bulkUpsertAutoTranslations = async (
   db: Tx,
@@ -705,4 +731,13 @@ export const bulkUpsertAutoTranslations = async (
   model: string,
   batchSize = 1000,
 ): Promise<number> =>
-  bulkUpsertTranslationsCore(db, items, targetLang, 'auto_generated', 'auto', batchSize, model);
+  bulkUpsertTranslationsCore(
+    db,
+    items,
+    targetLang,
+    'auto_generated',
+    'auto',
+    batchSize,
+    model,
+    'llm',
+  );

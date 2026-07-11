@@ -11,6 +11,9 @@ import type { TranslationStatus } from './statusMachine';
 import { scheduleRagSync } from '../services/ragHooks';
 import { bulkUpsertImportTranslations, type BulkTranslationRow } from '../import/modImportBulk';
 import {
+  recordTranslationRevision,
+} from './translationRevisions';
+import {
   type DeferredBulkWriteIndexContext,
   withDeferredBulkModWriteIndexes,
 } from '../import/modImportIndexes';
@@ -61,17 +64,6 @@ export const llmTranslateEligibilitySql = (mode: LlmTranslateOverwriteMode): str
 };
 
 const PENDING_REVIEW_STATUSES = new Set<TranslationStatus>(['draft', 'tm', 'fuzzy', 'auto']);
-
-type RevisionInput = {
-  stringId: number;
-  translationId: number | null;
-  targetLang: string;
-  text: string | null;
-  status: TranslationStatus;
-  provenance?: string | null;
-  model?: string | null;
-  note?: string | null;
-};
 
 type QAIssueInput = {
   issueType: string;
@@ -405,24 +397,6 @@ const bulkInsertQAIssues = async (
       rows.map((r) => r.issueType),
       rows.map((r) => r.severity),
       rows.map((r) => r.message),
-    ],
-  );
-};
-
-const recordTranslationRevision = async (db: Tx, input: RevisionInput): Promise<void> => {
-  await db.query(
-    `INSERT INTO translation_revisions(
-       src_string_id, translation_id, target_lang, text, status, provenance, model, note
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      input.stringId,
-      input.translationId,
-      input.targetLang,
-      input.text,
-      input.status,
-      input.provenance ?? null,
-      input.model ?? null,
-      input.note ?? null,
     ],
   );
 };
