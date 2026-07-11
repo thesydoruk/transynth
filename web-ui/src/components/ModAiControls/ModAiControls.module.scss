@@ -114,3 +114,18 @@
 .statusChipError {
   color: var(--danger);
 }
+
+.circularBar {
+  align-items: center;
+  gap: 8px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circularItem {
+  composes: menuItem;
+}

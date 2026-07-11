@@ -30,9 +30,14 @@ export interface ModWorkspaceRowProps {
   onDeleteAll: () => void;
   onReimport?: () => void;
   onDeleteImport?: () => void;
-  onAiTranslate?: () => void;
+  onAiTranslateTm?: () => void;
+  onAiTranslateLlm?: () => void;
+  onAiTranslateStop?: () => void;
+  translateTmDisabled?: boolean;
   onAiVerify?: () => void;
-  onSkipDetect?: () => void;
+  onSkipDetectHeuristic?: () => void;
+  onSkipDetectWithLlm?: () => void;
+  onSkipDetectStop?: () => void;
   onAiVoice?: () => void;
 }
 
@@ -51,9 +56,14 @@ export const ModWorkspaceRow = ({
   onDeleteAll,
   onReimport,
   onDeleteImport,
-  onAiTranslate,
+  onAiTranslateTm,
+  onAiTranslateLlm,
+  onAiTranslateStop,
+  translateTmDisabled,
   onAiVerify,
-  onSkipDetect,
+  onSkipDetectHeuristic,
+  onSkipDetectWithLlm,
+  onSkipDetectStop,
   onAiVoice,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
@@ -121,16 +131,26 @@ export const ModWorkspaceRow = ({
             </span>
           </div>
         </div>
-        {(onAiTranslate || onAiVerify || onSkipDetect || onAiVoice) && (
+        {(onAiTranslateTm ||
+          onAiTranslateLlm ||
+          onAiVerify ||
+          onSkipDetectHeuristic ||
+          onSkipDetectWithLlm ||
+          onAiVoice) && (
           <ModAiControls
             compact
             translate={aiJobs.translate}
             verify={aiJobs.verify}
             skipDetect={aiJobs.skipDetect}
             voice={aiJobs.voice}
-            onTranslate={onAiTranslate ?? (() => {})}
+            onTranslateTm={onAiTranslateTm ?? (() => {})}
+            onTranslateLlm={onAiTranslateLlm ?? (() => {})}
+            onTranslateStop={onAiTranslateStop ?? (() => {})}
+            translateTmDisabled={translateTmDisabled}
             onVerify={onAiVerify ?? (() => {})}
-            onSkipDetect={onSkipDetect ?? (() => {})}
+            onSkipDetectHeuristic={onSkipDetectHeuristic ?? (() => {})}
+            onSkipDetectWithLlm={onSkipDetectWithLlm ?? (() => {})}
+            onSkipDetectStop={onSkipDetectStop ?? (() => {})}
             onVoice={onAiVoice ?? (() => {})}
           />
         )}

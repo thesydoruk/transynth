@@ -5,8 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { api, type StringRow, type StringFilterParams, type StringsResult } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { upsertModAiJob } from '../../modAiJobsStore';
-import { toggleModAiTranslate, startModAiTranslate } from '../../modAiTranslateRunner';
+import {
+  toggleModAiTranslate,
+  startModAiTranslate,
+  stopModAiTranslate,
+} from '../../modAiTranslateRunner';
 import { toggleModAiVoice, startModAiVoice } from '../../modAiVoiceRunner';
+import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { useModAiJobsForMod } from '../../hooks/useModAiJobsForMod';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
@@ -14,10 +19,8 @@ import { BookEditorModal } from '../../components/BookEditorModal';
 import { SearchReplaceModal } from './components/SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
 import { AiVerifyModal } from './components/AiVerifyModal';
-import { SkipTranslateModal } from './components/SkipTranslateModal';
 import { VoiceModal } from './components/VoiceModal';
 import { EditorToolbar } from './components/EditorToolbar';
-import { ModAiJobsBar } from './components/ModAiJobsBar';
 import { DialogsMode } from './components/DialogsMode';
 import { SignaturePanel } from './components/SignaturePanel';
 import {
@@ -37,7 +40,6 @@ import {
   useAutosave,
   useEditorKeyboard,
   useAiVerify,
-  useSkipDetect,
   useApplyImported,
   useDetailPanelHeight,
 } from './hooks';
@@ -172,7 +174,6 @@ export const ModEditorPage = () => {
   const [showSearchReplace, setShowSearchReplace] = useState(false);
   const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
   const [showAiVerify, setShowAiVerify] = useState(false);
-  const [showSkipDetect, setShowSkipDetect] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -280,19 +281,13 @@ export const ModEditorPage = () => {
     });
 
   const aiVerify = useAiVerify(modId, srcLang, targetLang);
-  const skipDetect = useSkipDetect(modId, srcLang, {
-    onForceReset: () => {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-  });
   const aiJobs = useModAiJobsForMod(modId);
   useModAiJobsPoll(true);
   const applyImported = useApplyImported(modId, srcLang, targetLang);
   const prevApplyImportedStatus = useRef(applyImported.status);
-  const prevSkipDetectStatus = useRef(skipDetect.status);
   const prevAiVerifyStatus = useRef(aiVerify.status);
   const prevTranslateStatus = useRef(aiJobs.translate.status);
+  const prevSkipDetectStatus = useRef(aiJobs.skipDetect.status);
 
   useEffect(() => {
     upsertModAiJob(modId, 'verify', {
@@ -305,28 +300,10 @@ export const ModEditorPage = () => {
   }, [modId, aiVerify.status, aiVerify.jobId, aiVerify.done, aiVerify.total, aiVerify.error]);
 
   useEffect(() => {
-    upsertModAiJob(modId, 'skip-detect', {
-      status: skipDetect.status,
-      jobId: skipDetect.jobId,
-      done: skipDetect.done,
-      total: skipDetect.total,
-      error: skipDetect.error,
-    });
-  }, [
-    modId,
-    skipDetect.status,
-    skipDetect.jobId,
-    skipDetect.done,
-    skipDetect.total,
-    skipDetect.error,
-  ]);
-
-  useEffect(() => {
     const open = searchParams.get('open');
     if (open === 'ai-translate') void startModAiTranslate(modId, srcLang, targetLang);
     if (open === 'ai-voice') void startModAiVoice(modId, srcLang, targetLang);
     if (open === 'ai-verify') setShowAiVerify(true);
-    if (open === 'skip-detect') setShowSkipDetect(true);
     if (open) {
       const next = new URLSearchParams(searchParams);
       next.delete('open');
@@ -373,13 +350,13 @@ export const ModEditorPage = () => {
   useEffect(() => {
     if (
       prevSkipDetectStatus.current === 'running' &&
-      (skipDetect.status === 'completed' || skipDetect.status === 'cancelled')
+      (aiJobs.skipDetect.status === 'completed' || aiJobs.skipDetect.status === 'cancelled')
     ) {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     }
-    prevSkipDetectStatus.current = skipDetect.status;
-  }, [skipDetect.status, modId, qc, refetchStats]);
+    prevSkipDetectStatus.current = aiJobs.skipDetect.status;
+  }, [aiJobs.skipDetect.status, modId, qc, refetchStats]);
 
   const { flushAutosave, cancelAutosave } = useAutosave({
     activeRow,
@@ -950,11 +927,6 @@ export const ModEditorPage = () => {
         selectedCount={selectedCount}
         translateProgress={translateProgress}
         translateError={translateError}
-        tmApply={{
-          isPending: tmApplyMut.isPending,
-          isSuccess: tmApplyMut.isSuccess,
-          applied: (tmApplyMut.data as { applied: number } | undefined)?.applied ?? 0,
-        }}
         clearSameAsSource={{
           isPending: clearSameAsSourceMut.isPending,
           isSuccess: clearSameAsSourceMut.isSuccess,
@@ -964,6 +936,7 @@ export const ModEditorPage = () => {
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
         qaIssueRowCount={qaIssueRowCount}
+        aiJobs={aiJobs}
         onSrcLangChange={(l) => {
           setSrcLang(l);
           clearSelection();
@@ -980,7 +953,6 @@ export const ModEditorPage = () => {
           setQaOnly((v) => !v);
           clearSelection();
         }}
-        onTmApply={() => tmApplyMut.mutate()}
         onClearSameAsSource={() => clearSameAsSourceMut.mutate()}
         onSearchReplace={() => setShowSearchReplace(true)}
         onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
@@ -991,13 +963,18 @@ export const ModEditorPage = () => {
         onNextQaIssue={handleNextQaIssue}
         pageMode={pageMode}
         onPageModeChange={setPageMode}
-      />
-
-      <ModAiJobsBar
-        aiJobs={aiJobs}
-        onAiTranslate={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
+        onTranslateTm={() => tmApplyMut.mutate()}
+        onTranslateLlm={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
+        onTranslateStop={() => void stopModAiTranslate(modId, aiJobs.translate.jobId)}
+        translateTmDisabled={tmApplyMut.isPending}
         onAiVerify={() => setShowAiVerify(true)}
-        onSkipDetect={() => setShowSkipDetect(true)}
+        onSkipDetectHeuristic={() =>
+          void startModAiSkipDetect(modId, srcLang, false, aiJobs.skipDetect)
+        }
+        onSkipDetectWithLlm={() =>
+          void startModAiSkipDetect(modId, srcLang, true, aiJobs.skipDetect)
+        }
+        onSkipDetectStop={() => void stopModAiSkipDetect(modId, aiJobs.skipDetect.jobId)}
         onAiVoice={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice)}
       />
 
@@ -1163,36 +1140,6 @@ export const ModEditorPage = () => {
                 'auto',
                 targetLang,
               );
-            }
-            qc.invalidateQueries({ queryKey: ['strings', modId] });
-            void refetchStats();
-          }}
-        />
-      )}
-      {showSkipDetect && (
-        <SkipTranslateModal
-          srcLang={srcLang}
-          state={skipDetect}
-          onClose={() => setShowSkipDetect(false)}
-          onRowClick={(stringId) => {
-            const row = strings?.rows.find((r) => r.string_id === stringId);
-            if (row) {
-              handleRowOpen(row);
-              setShowSkipDetect(false);
-            }
-          }}
-          onApply={async (candidate) => {
-            await api.strings.markSkip([candidate.stringId]);
-            qc.invalidateQueries({ queryKey: ['strings', modId] });
-            void refetchStats();
-          }}
-          onApplyAll={async (batch, onProgress) => {
-            const ids = batch.map((c) => c.stringId);
-            const CHUNK_SIZE = 100;
-            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-              const chunk = ids.slice(i, i + CHUNK_SIZE);
-              await api.strings.markSkip(chunk);
-              onProgress?.(Math.min(i + chunk.length, ids.length), ids.length);
             }
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();

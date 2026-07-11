@@ -2263,16 +2263,17 @@ export const api = {
       opts?: {
         force?: boolean;
         useLlm?: boolean;
+        persist?: boolean;
         onEvent?: (e: LlmSkipDetectStreamEvent) => void;
         signal?: AbortSignal;
       },
     ): Promise<LlmSkipDetectJobSnapshot | null> {
-      const { force = false, useLlm = false, onEvent, signal } = opts ?? {};
+      const { force = false, useLlm = false, persist = true, onEvent, signal } = opts ?? {};
       const response = await fetch(`${BASE}/api/mods/${modId}/llm-skip-detect`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, force, useLlm }),
+        body: JSON.stringify({ srcLang, force, useLlm, persist }),
         signal,
       });
       if (!response.ok || !response.body) {

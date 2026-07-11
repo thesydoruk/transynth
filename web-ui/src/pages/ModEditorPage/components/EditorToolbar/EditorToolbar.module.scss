@@ -16,14 +16,21 @@
   flex-shrink: 0;
 }
 
+.modHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .modName {
   font-weight: 700;
   font-size: 14px;
   color: var(--accent);
-  margin-right: 8px;
   white-space: nowrap;
   min-width: 0;
-  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }

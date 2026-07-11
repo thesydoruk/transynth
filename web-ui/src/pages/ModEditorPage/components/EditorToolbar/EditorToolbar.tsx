@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { ProgressBar } from '../../../../components/StatusBadge';
 import { Button } from '../../../../components/Button';
 import { DropdownButton } from '../../../../components/DropdownButton';
+import { ModAiControls } from '../../../../components/ModAiControls';
+import type { ModAiJobEntry } from '../../../../modAiJobsStore';
 import { StatusFilter } from '../StatusFilter';
 import { type StatusFilterValue } from '../../statusFilter';
 import styles from './EditorToolbar.module.scss';
@@ -20,13 +22,6 @@ export interface ModStats {
   translated: number;
   total: number;
   percent: number;
-}
-
-/** Shape of the TM-apply mutation state passed from the parent. */
-export interface TmApplyState {
-  isPending: boolean;
-  isSuccess: boolean;
-  applied: number;
 }
 
 /** Shape of the clear-same-as-source mutation state passed from the parent. */
@@ -50,18 +45,22 @@ export interface EditorToolbarProps {
   selectedCount: number;
   translateProgress: { done: number; total: number } | null;
   translateError: string | null;
-  tmApply: TmApplyState;
   clearSameAsSource: ClearSameAsSourceState;
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
   qaIssueRowCount: number;
+  aiJobs: {
+    translate: ModAiJobEntry;
+    verify: ModAiJobEntry;
+    skipDetect: ModAiJobEntry;
+    voice: ModAiJobEntry;
+  };
 
   onSrcLangChange: (lang: string) => void;
   onTargetLangChange: (lang: string) => void;
   onSelectedStatusesChange: (statuses: StatusFilterValue[]) => void;
   onQaOnlyToggle: () => void;
-  onTmApply: () => void;
   onClearSameAsSource: () => void;
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
@@ -71,6 +70,15 @@ export interface EditorToolbarProps {
   onBatchTranslate: () => void;
   onNextQaIssue: () => void;
   onPageModeChange: (mode: 'strings' | 'dialogs') => void;
+  onTranslateTm: () => void;
+  onTranslateLlm: () => void;
+  onTranslateStop: () => void;
+  translateTmDisabled?: boolean;
+  onAiVerify: () => void;
+  onSkipDetectHeuristic: () => void;
+  onSkipDetectWithLlm: () => void;
+  onSkipDetectStop: () => void;
+  onAiVoice: () => void;
 }
 
 /**
@@ -88,17 +96,16 @@ export const EditorToolbar = ({
   selectedCount,
   translateProgress,
   translateError,
-  tmApply,
   clearSameAsSource,
   gameId,
   modId,
   hasInnrSignature,
   qaIssueRowCount,
+  aiJobs,
   onSrcLangChange,
   onTargetLangChange,
   onSelectedStatusesChange,
   onQaOnlyToggle,
-  onTmApply,
   onClearSameAsSource,
   onSearchReplace,
   onApplyTranslationFromMod,
@@ -108,12 +115,41 @@ export const EditorToolbar = ({
   onBatchTranslate,
   onNextQaIssue,
   onPageModeChange,
+  onTranslateTm,
+  onTranslateLlm,
+  onTranslateStop,
+  translateTmDisabled = false,
+  onAiVerify,
+  onSkipDetectHeuristic,
+  onSkipDetectWithLlm,
+  onSkipDetectStop,
+  onAiVoice,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
 
   return (
     <div className={styles.toolbar}>
-      <span className={styles.modName}>{modName ?? '…'}</span>
+      <div className={styles.modHeader}>
+        <span className={styles.modName}>{modName ?? '…'}</span>
+        <ModAiControls
+          translate={aiJobs.translate}
+          verify={aiJobs.verify}
+          skipDetect={aiJobs.skipDetect}
+          voice={aiJobs.voice}
+          onTranslateTm={onTranslateTm}
+          onTranslateLlm={onTranslateLlm}
+          onTranslateStop={onTranslateStop}
+          translateTmDisabled={translateTmDisabled}
+          onVerify={onAiVerify}
+          onSkipDetectHeuristic={onSkipDetectHeuristic}
+          onSkipDetectWithLlm={onSkipDetectWithLlm}
+          onSkipDetectStop={onSkipDetectStop}
+          onVoice={onAiVoice}
+          variant="circular"
+        />
+      </div>
+
+      <div className={styles.sep} />
 
       <label className={styles.langLabel}>
         {t('modEditor.source')}
@@ -170,15 +206,6 @@ export const EditorToolbar = ({
         label={t('modEditor.translationMenu')}
         title={t('modEditor.translationMenuTitle')}
         items={[
-          {
-            label: tmApply.isPending
-              ? t('modEditor.applyingTm')
-              : tmApply.isSuccess
-                ? t('modEditor.tmApplied', { count: tmApply.applied })
-                : t('modEditor.applyTm'),
-            onClick: onTmApply,
-            disabled: tmApply.isPending,
-          },
           {
             label: clearSameAsSource.isPending
               ? t('modEditor.clearSameAsSourceRunning')
@@ -249,7 +276,7 @@ export const EditorToolbar = ({
             </span>
           ) : (
             <Button onClick={onBatchTranslate} variant="primary" size="sm">
-              {t('modEditor.autoTranslate', { count: selectedCount })}
+              {t('modEditor.autoTranslateSelection', { count: selectedCount })}
             </Button>
           )}
         </>

@@ -1,0 +1,144 @@
+.container {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.triggerOpen {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.sm {
+  width: 32px;
+  height: 32px;
+}
+
+.md {
+  width: 40px;
+  height: 40px;
+}
+
+.ringWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconOnly .icon {
+  position: static;
+}
+
+.ring {
+  display: block;
+}
+
+.track {
+  stroke: var(--border-light);
+}
+
+.progress {
+  stroke: var(--primary);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.2s ease;
+}
+
+.progressSuccess {
+  stroke: var(--success);
+}
+
+.progressDanger {
+  stroke: var(--danger);
+}
+
+.triggerRunning {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.triggerCompleted {
+  background: color-mix(in srgb, var(--success-deep) 12%, transparent);
+}
+
+.triggerFailed {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.md .icon {
+  font-size: 16px;
+}
+
+.menu {
+  position: fixed;
+  min-width: 160px;
+  background: var(--surface-raised, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.item {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.itemDanger {
+  color: var(--danger);
+
+  &:hover:not(:disabled) {
+    background: rgba(var(--danger-rgb, 200, 50, 50), 0.1);
+  }
+}

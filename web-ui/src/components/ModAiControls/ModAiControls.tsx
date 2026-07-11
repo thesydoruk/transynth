@@ -1,4 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import {
+  CircularProgressButton,
+  type CircularProgressButtonMenuItem,
+  type CircularProgressButtonState,
+  type CircularProgressButtonTone,
+} from '../CircularProgressButton';
 import type { ModAiJobEntry } from '../../modAiJobsStore';
 import s from './ModAiControls.module.scss';
 
@@ -7,21 +14,33 @@ export interface ModAiControlsProps {
   verify: ModAiJobEntry;
   skipDetect: ModAiJobEntry;
   voice: ModAiJobEntry;
-  onTranslate: () => void;
+  onTranslateTm: () => void;
+  onTranslateLlm: () => void;
+  onTranslateStop: () => void;
+  translateTmDisabled?: boolean;
   onVerify: () => void;
-  onSkipDetect: () => void;
+  onSkipDetectHeuristic: () => void;
+  onSkipDetectWithLlm: () => void;
+  onSkipDetectStop: () => void;
   onVoice: () => void;
   /** Compact layout for mod list rows. */
   compact?: boolean;
+  /** Circular icon buttons with progress ring (mod editor strip). */
+  variant?: 'bar' | 'circular';
 }
 
 type SlotProps = {
   entry: ModAiJobEntry;
   label: string;
   runningLabel: string;
+  idleHint: string;
   icon: string;
-  onClick: () => void;
+  onClick?: () => void;
+  menuItems?: CircularProgressButtonMenuItem[];
+  onStop?: () => void;
+  stoppable?: boolean;
   compact?: boolean;
+  circular?: boolean;
 };
 
 const progressPct = (done: number, total: number): number | null => {
@@ -29,18 +48,95 @@ const progressPct = (done: number, total: number): number | null => {
   return Math.max(0, Math.min(100, Math.round((done / total) * 100)));
 };
 
-const Slot = ({ entry, label, runningLabel, icon, onClick, compact }: SlotProps) => {
+const formatProgress = (entry: ModAiJobEntry, t: TFunction): string | null => {
+  const pct = progressPct(entry.done, entry.total);
+  if (pct == null) return null;
+  return t('modAi.tooltipProgress', { done: entry.done, total: entry.total, pct });
+};
+
+const buildAiJobTooltip = (
+  t: TFunction,
+  label: string,
+  idleHint: string,
+  runningLabel: string,
+  entry: ModAiJobEntry,
+  stoppable = false,
+): string => {
+  const progress = formatProgress(entry, t);
+
+  switch (entry.status) {
+    case 'idle':
+      return t('modAi.tooltipIdle', { label, hint: idleHint });
+    case 'running':
+      if (stoppable) {
+        return progress
+          ? t('modAi.tooltipRunningWithProgressStop', { label, status: runningLabel, progress })
+          : t('modAi.tooltipRunningStop', { label, status: runningLabel });
+      }
+      return progress
+        ? t('modAi.tooltipRunningWithProgress', { label, status: runningLabel, progress })
+        : t('modAi.tooltipRunning', { label, status: runningLabel });
+    case 'stopping':
+      return t('modAi.tooltipStopping', { label });
+    case 'completed':
+      return progress
+        ? t('modAi.tooltipCompleted', { label, progress })
+        : t('modAi.tooltipCompletedShort', { label });
+    case 'cancelled':
+      return progress
+        ? t('modAi.tooltipCancelled', { label, progress })
+        : t('modAi.tooltipCancelledShort', { label });
+    case 'failed':
+      return t('modAi.tooltipFailed', {
+        label,
+        error: entry.error ?? t('modAi.statusFailed'),
+      });
+    default:
+      return t('modAi.tooltipIdle', { label, hint: idleHint });
+  }
+};
+
+const resolveCircularProgress = (entry: ModAiJobEntry, pct: number | null): number | null => {
+  if (pct == null) return null;
+  if (entry.status === 'completed') return 100;
+  return pct;
+};
+
+const resolveCircularTone = (entry: ModAiJobEntry): CircularProgressButtonTone => {
+  if (entry.status === 'failed') return 'danger';
+  if (entry.status === 'completed') return 'success';
+  return 'default';
+};
+
+const resolveCircularState = (entry: ModAiJobEntry): CircularProgressButtonState | undefined => {
+  if (entry.status === 'running' || entry.status === 'stopping') return 'running';
+  if (entry.status === 'completed') return 'completed';
+  if (entry.status === 'failed') return 'failed';
+  return undefined;
+};
+
+const Slot = ({
+  entry,
+  label,
+  runningLabel,
+  idleHint,
+  icon,
+  onClick,
+  menuItems,
+  onStop,
+  stoppable = false,
+  compact,
+  circular,
+}: SlotProps) => {
   const { t } = useTranslation();
   const isRunning = entry.status === 'running' || entry.status === 'stopping';
   const isFailed = entry.status === 'failed';
   const isDone =
     entry.status === 'completed' || entry.status === 'cancelled' || entry.status === 'failed';
   const pct = progressPct(entry.done, entry.total);
-
-  let btnClass = s.btn;
-  if (isRunning) btnClass += ` ${s.btnRunning}`;
-  else if (isFailed) btnClass += ` ${s.btnFailed}`;
-  else if (entry.status === 'completed') btnClass += ` ${s.btnCompleted}`;
+  const tooltip = buildAiJobTooltip(t, label, idleHint, runningLabel, entry, stoppable);
+  const useProgressButton = circular || menuItems != null;
+  const buttonSize = circular ? 'md' : 'sm';
 
   let statusText: string | null = null;
   if (entry.status === 'stopping') {
@@ -58,6 +154,33 @@ const Slot = ({ entry, label, runningLabel, icon, onClick, compact }: SlotProps)
     statusText = entry.error ?? t('modAi.statusFailed');
   }
 
+  if (useProgressButton) {
+    const sharedProps = {
+      icon,
+      progress: resolveCircularProgress(entry, pct),
+      tone: resolveCircularTone(entry),
+      state: resolveCircularState(entry),
+      ariaLabel: label,
+      title: tooltip,
+      size: buttonSize as 'sm' | 'md',
+      disabled: entry.status === 'stopping',
+    };
+
+    const button =
+      menuItems && !isRunning ? (
+        <CircularProgressButton {...sharedProps} menuItems={menuItems} />
+      ) : (
+        <CircularProgressButton {...sharedProps} onClick={onStop ?? onClick ?? (() => {})} />
+      );
+
+    return <div className={circular ? s.circularItem : s.menuItem}>{button}</div>;
+  }
+
+  let btnClass = s.btn;
+  if (isRunning) btnClass += ` ${s.btnRunning}`;
+  else if (isFailed) btnClass += ` ${s.btnFailed}`;
+  else if (entry.status === 'completed') btnClass += ` ${s.btnCompleted}`;
+
   return (
     <div className={s.item}>
       <button
@@ -65,9 +188,9 @@ const Slot = ({ entry, label, runningLabel, icon, onClick, compact }: SlotProps)
         className={btnClass}
         onClick={(e) => {
           e.stopPropagation();
-          onClick();
+          onClick?.();
         }}
-        title={statusText ?? label}
+        title={tooltip}
         aria-label={label}
       >
         <span className={s.icon} aria-hidden>
@@ -109,50 +232,84 @@ export const ModAiControls = ({
   verify,
   skipDetect,
   voice,
-  onTranslate,
+  onTranslateTm,
+  onTranslateLlm,
+  onTranslateStop,
+  translateTmDisabled = false,
   onVerify,
-  onSkipDetect,
+  onSkipDetectHeuristic,
+  onSkipDetectWithLlm,
+  onSkipDetectStop,
   onVoice,
   compact = false,
+  variant = 'bar',
 }: ModAiControlsProps) => {
   const { t } = useTranslation();
+  const circular = variant === 'circular';
+
+  const skipDetectMenuItems: CircularProgressButtonMenuItem[] = [
+    { label: t('modEditor.skipDetectMethodHeuristic'), onClick: onSkipDetectHeuristic },
+    { label: t('modEditor.skipDetectMethodBoth'), onClick: onSkipDetectWithLlm },
+  ];
+
+  const translateMenuItems: CircularProgressButtonMenuItem[] = [
+    {
+      label: t('modEditor.autoTranslateTm'),
+      onClick: onTranslateTm,
+      disabled: translateTmDisabled,
+    },
+    { label: t('modEditor.autoTranslateLlm'), onClick: onTranslateLlm },
+  ];
 
   return (
     <div
-      className={`${s.bar}${compact ? ` ${s.compact}` : ''}`}
+      className={`${s.bar}${compact ? ` ${s.compact}` : ''}${circular ? ` ${s.circularBar}` : ''}`}
       onClick={(e) => e.stopPropagation()}
     >
       <Slot
         entry={skipDetect}
         label={t('modEditor.skipDetect')}
         runningLabel={t('modEditor.skipDetectRunning')}
+        idleHint={t('modAi.hintSkipDetect')}
         icon="⊘"
-        onClick={onSkipDetect}
+        menuItems={skipDetectMenuItems}
+        onStop={onSkipDetectStop}
+        stoppable
         compact={compact}
+        circular={circular}
       />
       <Slot
         entry={translate}
-        label={t('modEditor.aiTranslate')}
-        runningLabel={t('modEditor.aiTranslateRunning')}
+        label={t('modEditor.autoTranslate')}
+        runningLabel={t('modEditor.autoTranslateLlmRunning')}
+        idleHint={t('modAi.hintTranslate')}
         icon="⇄"
-        onClick={onTranslate}
+        menuItems={translateMenuItems}
+        onStop={onTranslateStop}
+        stoppable
         compact={compact}
+        circular={circular}
       />
       <Slot
         entry={verify}
         label={t('modEditor.aiVerify')}
         runningLabel={t('modEditor.aiVerifyRunning')}
+        idleHint={t('modAi.hintVerify')}
         icon="✓"
         onClick={onVerify}
         compact={compact}
+        circular={circular}
       />
       <Slot
         entry={voice}
         label={t('modEditor.aiVoiceGenerate')}
         runningLabel={t('modEditor.aiVoiceGenerateRunning')}
+        idleHint={t('modAi.hintVoice')}
         icon="🔊"
         onClick={onVoice}
+        stoppable
         compact={compact}
+        circular={circular}
       />
     </div>
   );
