@@ -1,45 +1,34 @@
-import { useState, useCallback } from 'react';
-
-/** Toast severity variants matching the Toast component. */
-type ToastType = 'success' | 'warning' | 'error' | 'info';
+import { useCallback } from 'react';
+import { dismissAllToasts, pushToast, type ToastOptions, type ToastType } from './toastStore';
 
 /** Shape returned by useToast. */
 export interface UseToastReturn {
-  /** Current toast state. Null when no toast is visible. */
-  toast: { message: string; type: ToastType } | null;
   /**
    * Display a toast notification.
    * @param message - Text to show.
    * @param type - Visual variant. Defaults to 'info'.
+   * @param options - Optional action button or custom duration.
    */
-  showToast: (message: string, type?: ToastType) => void;
-  /** Clear the current toast (also called automatically by the Toast component on dismiss). */
+  showToast: (message: string, type?: ToastType, options?: ToastOptions) => void;
+  /** Clear all visible toasts. */
   clearToast: () => void;
 }
 
 /**
- * Local state hook for controlling a single Toast notification.
- *
- * Keeps toast state inside the calling component — no global context needed
- * since all current usages are page-level and don't cross component boundaries.
- *
- * @example
- * const { toast, showToast, clearToast } = useToast();
- * // after a mutation:
- * showToast(t('page.successMsg'), 'success');
- * // in JSX:
- * <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
+ * Hook wrapper around the global toast store.
+ * Toasts are rendered by {@link ToastHost} mounted in the app root.
  */
 export function useToast(): UseToastReturn {
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    setToast({ message, type });
-  }, []);
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'info', options?: ToastOptions) => {
+      pushToast(message, type, options);
+    },
+    [],
+  );
 
   const clearToast = useCallback(() => {
-    setToast(null);
+    dismissAllToasts();
   }, []);
 
-  return { toast, showToast, clearToast };
+  return { showToast, clearToast };
 }

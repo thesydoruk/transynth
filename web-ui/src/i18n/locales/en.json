@@ -368,7 +368,10 @@
     "nextQaIssue": "Next QA ({{count}})",
     "nextQaIssueTitle": "Jump to next row with active QA issues (Q)",
     "translateDone": "{{count}} string(s) auto-translated.",
-    "showDraftsAction": "Show drafts →"
+    "tmApplyDone": "TM applied to {{count}} string(s).",
+    "translateNone": "No strings were translated.",
+    "tmApplyNone": "No TM matches found.",
+    "showDraftsAction": "Show drafts"
   },
   "dialogs": {
     "modeButton": "Dialogs",

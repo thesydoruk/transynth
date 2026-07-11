@@ -44,7 +44,6 @@ export interface EditorToolbarProps {
   stats: ModStats | undefined;
   selectedCount: number;
   translateProgress: { done: number; total: number } | null;
-  translateError: string | null;
   clearSameAsSource: ClearSameAsSourceState;
   gameId: string | undefined;
   modId: number;
@@ -94,7 +93,6 @@ export const EditorToolbar = ({
   stats,
   selectedCount,
   translateProgress,
-  translateError,
   clearSameAsSource,
   gameId,
   modId,
@@ -278,7 +276,6 @@ export const EditorToolbar = ({
           )}
         </>
       )}
-      {translateError && <span className={styles.errorBadge}>{translateError}</span>}
 
       {stats && (
         <div className={styles.progressSection}>

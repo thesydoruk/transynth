@@ -4,6 +4,7 @@ import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type StringRow, type StringFilterParams, type StringsResult } from '../../api';
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
+import { toast } from '../../components/Toast';
 import { upsertModAiJob } from '../../modAiJobsStore';
 import {
   toggleModAiTranslate,
@@ -169,8 +170,6 @@ export const ModEditorPage = () => {
     done: number;
     total: number;
   } | null>(null);
-  const [translateError, setTranslateError] = useState<string | null>(null);
-  const [translateDoneCount, setTranslateDoneCount] = useState<number | null>(null);
   const translateInFlight = useRef(false);
 
   // ── Modal / overlay visibility ──
@@ -291,6 +290,26 @@ export const ModEditorPage = () => {
   const prevTranslateStatus = useRef(aiJobs.translate.status);
   const prevSkipDetectStatus = useRef(aiJobs.skipDetect.status);
 
+  const showTranslateResultToast = useCallback(
+    (mode: 'llm' | 'tm', count: number) => {
+      if (count > 0) {
+        if (mode === 'llm') {
+          toast.success(t('modEditor.translateDone', { count }), {
+            action: {
+              label: t('modEditor.showDraftsAction'),
+              onClick: () => setSelectedStatuses(['draft']),
+            },
+          });
+        } else {
+          toast.success(t('modEditor.tmApplyDone', { count }));
+        }
+        return;
+      }
+      toast.info(mode === 'llm' ? t('modEditor.translateNone') : t('modEditor.tmApplyNone'));
+    },
+    [t],
+  );
+
   useEffect(() => {
     upsertModAiJob(modId, 'verify', {
       status: aiVerify.status,
@@ -315,15 +334,28 @@ export const ModEditorPage = () => {
   }, []);
 
   useEffect(() => {
-    if (
-      prevTranslateStatus.current === 'running' &&
-      (aiJobs.translate.status === 'completed' || aiJobs.translate.status === 'cancelled')
-    ) {
+    const wasRunning = prevTranslateStatus.current === 'running';
+    const mode = aiJobs.translate.translateMode ?? 'llm';
+
+    if (wasRunning && aiJobs.translate.status === 'completed') {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
+      showTranslateResultToast(mode, aiJobs.translate.done);
+    }
+    if (wasRunning && aiJobs.translate.status === 'failed' && aiJobs.translate.error) {
+      toast.error(aiJobs.translate.error);
     }
     prevTranslateStatus.current = aiJobs.translate.status;
-  }, [aiJobs.translate.status, modId, qc, refetchStats]);
+  }, [
+    aiJobs.translate.status,
+    aiJobs.translate.done,
+    aiJobs.translate.error,
+    aiJobs.translate.translateMode,
+    modId,
+    qc,
+    refetchStats,
+    showTranslateResultToast,
+  ]);
 
   // Auto-approve / auto-fix during verification update rows on the server — refresh when a run finishes.
   useEffect(() => {
@@ -503,14 +535,12 @@ export const ModEditorPage = () => {
     try {
       ids = explicitIds ?? (await resolveSelectedIds());
     } catch (err) {
-      setTranslateError(String(err));
+      toast.error(String(err));
       return;
     }
     if (ids.length === 0) return;
 
     translateInFlight.current = true;
-    setTranslateError(null);
-    setTranslateDoneCount(null);
     setTranslateProgress({ done: 0, total: ids.length });
     const appJobId = `${mode}-${modId}-${Date.now()}`;
     const startedAt = Date.now();
@@ -561,7 +591,7 @@ export const ModEditorPage = () => {
       }
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
-      setTranslateDoneCount(doneCount);
+      showTranslateResultToast(mode, doneCount);
       if (!explicitIds) clearSelection();
       upsertAppJob({
         id: appJobId,
@@ -574,7 +604,7 @@ export const ModEditorPage = () => {
       });
       setTimeout(() => removeAppJob(appJobId), 15_000);
     } catch (err) {
-      setTranslateError(String(err));
+      toast.error(String(err));
       upsertAppJob({
         id: appJobId,
         kind: mode === 'llm' ? 'llm' : 'tm',
@@ -944,7 +974,6 @@ export const ModEditorPage = () => {
         stats={stats}
         selectedCount={selectedCount}
         translateProgress={translateProgress}
-        translateError={translateError}
         clearSameAsSource={{
           isPending: clearSameAsSourceMut.isPending,
           isSuccess: clearSameAsSourceMut.isSuccess,
@@ -994,29 +1023,6 @@ export const ModEditorPage = () => {
         onSkipDetectStop={() => void stopModAiSkipDetect(modId, aiJobs.skipDetect.jobId)}
         onAiVoice={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice)}
       />
-
-      {/* Post-LLM-run action banner — shown after a successful batch translate */}
-      {translateDoneCount !== null && (
-        <div className={styles.translateBanner}>
-          <span>{t('modEditor.translateDone', { count: translateDoneCount })}</span>
-          <button
-            className={styles.translateBannerLink}
-            onClick={() => {
-              setSelectedStatuses(['draft']);
-              setTranslateDoneCount(null);
-            }}
-          >
-            {t('modEditor.showDraftsAction')}
-          </button>
-          <button
-            className={styles.translateBannerDismiss}
-            onClick={() => setTranslateDoneCount(null)}
-            aria-label={t('common.dismiss')}
-          >
-            ×
-          </button>
-        </div>
-      )}
 
       {/* ── 3-column body ── */}
       {pageMode === 'dialogs' ? (

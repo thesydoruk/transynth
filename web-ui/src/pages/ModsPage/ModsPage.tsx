@@ -32,7 +32,7 @@ import {
 } from '../../api';
 import { ReimportModal } from '../../components/ReimportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Toast, useToast } from '../../components/Toast';
+import { useToast } from '../../components/Toast';
 import { CsvPreviewModal } from './CsvPreviewModal';
 import { DeleteModConfirmModal } from './DeleteModConfirmModal/DeleteModConfirmModal';
 import { EetPreviewModal } from './EetPreviewModal';
@@ -87,7 +87,7 @@ export const ModsPage = () => {
   const qc = useQueryClient();
   const { srcLang, targetLang } = useContentLangs();
   useModAiJobsPoll(true);
-  const { toast, showToast, clearToast } = useToast();
+  const { showToast } = useToast();
 
   const {
     data: mods,
@@ -1196,8 +1196,6 @@ export const ModsPage = () => {
           }}
         />
       )}
-
-      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </div>
   );
 };

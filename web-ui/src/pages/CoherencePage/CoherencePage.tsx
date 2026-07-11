@@ -6,7 +6,7 @@ import { getContentLanguageOptions, getTgtLang } from '../../langDefaults';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { LoadingState } from '../../components/LoadingState';
 import { PaginationControls } from '../../components/PaginationControls';
-import { Toast, useToast } from '../../components/Toast';
+import { useToast } from '../../components/Toast';
 import { GroupCard } from './GroupCard';
 import s from './CoherencePage.module.scss';
 
@@ -39,7 +39,7 @@ export const CoherencePage = () => {
   const [targetLang, setTargetLang] = useState(getTgtLang());
   const [page, setPage] = useState(0);
   const [showResolveAllConfirm, setShowResolveAllConfirm] = useState(false);
-  const { toast, showToast, clearToast } = useToast();
+  const { showToast } = useToast();
 
   const offset = page * PAGE_SIZE;
 
@@ -186,9 +186,6 @@ export const CoherencePage = () => {
           onClose={() => setShowResolveAllConfirm(false)}
         />
       )}
-
-      {/* Success toast after resolve-all */}
-      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </div>
   );
 };

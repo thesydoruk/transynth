@@ -368,7 +368,10 @@
     "nextQaIssue": "Наступний QA ({{count}})",
     "nextQaIssueTitle": "Перейти до наступного рядка з активними QA-проблемами (Q)",
     "translateDone": "{{count}} рядок(ів) перекладено автоматично.",
-    "showDraftsAction": "Показати чернетки →"
+    "tmApplyDone": "TM застосовано до {{count}} рядків.",
+    "translateNone": "Жоден рядок не перекладено.",
+    "tmApplyNone": "Збігів TM не знайдено.",
+    "showDraftsAction": "Показати чернетки"
   },
   "dialogs": {
     "modeButton": "Діалоги",

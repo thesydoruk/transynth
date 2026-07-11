@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type QARule } from '../../api';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Toast, useToast } from '../../components/Toast';
+import { useToast } from '../../components/Toast';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import s from './QARulesPage.module.scss';
 
@@ -39,7 +39,7 @@ export const QARulesPage = ({ embedded = false }: { embedded?: boolean }) => {
 
   // ── Pending delete confirmation ──────────────────────────────────────────
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const { toast, showToast, clearToast } = useToast();
+  const { showToast } = useToast();
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const { data: rules, isLoading } = useQuery({
@@ -67,8 +67,10 @@ export const QARulesPage = ({ embedded = false }: { embedded?: boolean }) => {
   });
 
   const updateMut = useMutation({
-    mutationFn: (args: { id: number; data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>> }) =>
-      api.qaRules.update(args.id, args.data),
+    mutationFn: (args: {
+      id: number;
+      data: Partial<Omit<QARule, 'id' | 'created_at' | 'updated_at'>>;
+    }) => api.qaRules.update(args.id, args.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qaRules'] });
       setEditId(null);
@@ -124,185 +126,237 @@ export const QARulesPage = ({ embedded = false }: { embedded?: boolean }) => {
   return (
     <>
       <div className={`${s.page} ${embedded ? s.pageEmbedded : ''}`}>
-      <h1 className={s.title}>{t('qaRules.title')}</h1>
-      <p className={s.description}>{t('qaRules.description')}</p>
+        <h1 className={s.title}>{t('qaRules.title')}</h1>
+        <p className={s.description}>{t('qaRules.description')}</p>
 
-      {/* ── Add-rule form ────────────────────────────────────────────────── */}
-      <div className={s.addForm}>
-        <select
-          className={s.select}
-          value={form.rule_type}
-          onChange={(e) => setForm({ ...form, rule_type: e.target.value as typeof form.rule_type })}
-        >
-          <option value="">{t('qaRules.ruleTypePlaceholder')}</option>
-          <option value="forbidden_chars">{t('qaRules.forbidden_chars')}</option>
-          <option value="max_length">{t('qaRules.max_length')}</option>
-        </select>
+        {/* ── Add-rule form ────────────────────────────────────────────────── */}
+        <div className={s.addForm}>
+          <select
+            className={s.select}
+            value={form.rule_type}
+            onChange={(e) =>
+              setForm({ ...form, rule_type: e.target.value as typeof form.rule_type })
+            }
+          >
+            <option value="">{t('qaRules.ruleTypePlaceholder')}</option>
+            <option value="forbidden_chars">{t('qaRules.forbidden_chars')}</option>
+            <option value="max_length">{t('qaRules.max_length')}</option>
+          </select>
 
-        <input
-          className={s.input}
-          placeholder={t('qaRules.signaturePlaceholder')}
-          value={form.signature}
-          onChange={(e) => setForm({ ...form, signature: e.target.value })}
-        />
-        <input
-          className={s.input}
-          placeholder={t('qaRules.pathPlaceholder')}
-          value={form.path}
-          onChange={(e) => setForm({ ...form, path: e.target.value })}
-        />
-        <input
-          className={s.input}
-          placeholder={
-            form.rule_type === 'max_length'
-              ? t('qaRules.valueLengthPlaceholder')
-              : t('qaRules.valueForbiddenPlaceholder')
-          }
-          value={form.value}
-          onChange={(e) => setForm({ ...form, value: e.target.value })}
-        />
-        <select
-          className={s.select}
-          value={form.severity}
-          onChange={(e) => setForm({ ...form, severity: e.target.value as 'warning' | 'error' })}
-        >
-          <option value="error">{t('qaRules.error')}</option>
-          <option value="warning">{t('qaRules.warning')}</option>
-        </select>
-        <input
-          className={s.inputWide}
-          placeholder={t('qaRules.descriptionPlaceholder')}
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          onKeyDown={(e) => e.key === 'Enter' && canAdd && addMut.mutate()}
-        />
-        <button className={s.btnAdd} disabled={!canAdd || addMut.isPending} onClick={() => addMut.mutate()}>
-          {t('qaRules.add')}
-        </button>
-        {addMut.isError && <span className={s.mutError}>{addMut.error?.message}</span>}
+          <input
+            className={s.input}
+            placeholder={t('qaRules.signaturePlaceholder')}
+            value={form.signature}
+            onChange={(e) => setForm({ ...form, signature: e.target.value })}
+          />
+          <input
+            className={s.input}
+            placeholder={t('qaRules.pathPlaceholder')}
+            value={form.path}
+            onChange={(e) => setForm({ ...form, path: e.target.value })}
+          />
+          <input
+            className={s.input}
+            placeholder={
+              form.rule_type === 'max_length'
+                ? t('qaRules.valueLengthPlaceholder')
+                : t('qaRules.valueForbiddenPlaceholder')
+            }
+            value={form.value}
+            onChange={(e) => setForm({ ...form, value: e.target.value })}
+          />
+          <select
+            className={s.select}
+            value={form.severity}
+            onChange={(e) => setForm({ ...form, severity: e.target.value as 'warning' | 'error' })}
+          >
+            <option value="error">{t('qaRules.error')}</option>
+            <option value="warning">{t('qaRules.warning')}</option>
+          </select>
+          <input
+            className={s.inputWide}
+            placeholder={t('qaRules.descriptionPlaceholder')}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onKeyDown={(e) => e.key === 'Enter' && canAdd && addMut.mutate()}
+          />
+          <button
+            className={s.btnAdd}
+            disabled={!canAdd || addMut.isPending}
+            onClick={() => addMut.mutate()}
+          >
+            {t('qaRules.add')}
+          </button>
+          {addMut.isError && <span className={s.mutError}>{addMut.error?.message}</span>}
+        </div>
+
+        {/* ── Rules table ──────────────────────────────────────────────────── */}
+        {isLoading ? (
+          <div className={s.center}>{t('common.loading')}</div>
+        ) : !rules?.length ? (
+          <div className={s.center}>
+            <p>{t('qaRules.noRules')}</p>
+            <p className={s.emptyHint}>{t('qaRules.emptyHint')}</p>
+          </div>
+        ) : (
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th className={s.th}>{t('qaRules.ruleType')}</th>
+                <th className={s.th}>{t('qaRules.signature')}</th>
+                <th className={s.th}>{t('qaRules.path')}</th>
+                <th className={s.th}>{t('qaRules.value')}</th>
+                <th className={s.th}>{t('qaRules.severity')}</th>
+                <th className={s.th}>{t('qaRules.descriptionCol')}</th>
+                <th className={s.th}>{t('qaRules.active')}</th>
+                <th className={s.th}>{t('qaRules.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((rule) =>
+                editId === rule.id ? (
+                  /* ── Inline edit row ─────────────────────────────────────── */
+                  <tr key={rule.id}>
+                    <td className={s.td}>
+                      <select
+                        className={s.editSelect}
+                        value={editData.rule_type}
+                        onChange={(e) =>
+                          setEditData({
+                            ...editData,
+                            rule_type: e.target.value as typeof editData.rule_type,
+                          })
+                        }
+                      >
+                        <option value="forbidden_chars">{t('qaRules.forbidden_chars')}</option>
+                        <option value="max_length">{t('qaRules.max_length')}</option>
+                      </select>
+                    </td>
+                    <td className={s.td}>
+                      <input
+                        className={s.editInput}
+                        value={editData.signature}
+                        onChange={(e) => setEditData({ ...editData, signature: e.target.value })}
+                      />
+                    </td>
+                    <td className={s.td}>
+                      <input
+                        className={s.editInput}
+                        value={editData.path}
+                        onChange={(e) => setEditData({ ...editData, path: e.target.value })}
+                      />
+                    </td>
+                    <td className={s.td}>
+                      <input
+                        className={s.editInput}
+                        value={editData.value}
+                        onChange={(e) => setEditData({ ...editData, value: e.target.value })}
+                      />
+                    </td>
+                    <td className={s.td}>
+                      <select
+                        className={s.editSelect}
+                        value={editData.severity}
+                        onChange={(e) =>
+                          setEditData({
+                            ...editData,
+                            severity: e.target.value as 'warning' | 'error',
+                          })
+                        }
+                      >
+                        <option value="error">{t('qaRules.error')}</option>
+                        <option value="warning">{t('qaRules.warning')}</option>
+                      </select>
+                    </td>
+                    <td className={s.td}>
+                      <input
+                        className={s.editInput}
+                        value={editData.description}
+                        onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                      />
+                    </td>
+                    <td className={s.td}>
+                      <input
+                        type="checkbox"
+                        checked={editData.is_active}
+                        onChange={(e) => setEditData({ ...editData, is_active: e.target.checked })}
+                      />
+                    </td>
+                    <td className={s.td}>
+                      <div className={s.editActions}>
+                        <button
+                          className={s.btnSave}
+                          onClick={saveEdit}
+                          disabled={updateMut.isPending}
+                        >
+                          {t('qaRules.save')}
+                        </button>
+                        <button className={s.btnCancel} onClick={() => setEditId(null)}>
+                          {t('qaRules.cancel')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  /* ── Display row ─────────────────────────────────────────── */
+                  <tr key={rule.id}>
+                    <td className={s.td}>{t(`qaRules.${rule.rule_type}`)}</td>
+                    <td className={rule.signature ? s.tdMono : s.tdAny}>
+                      {rule.signature ?? t('qaRules.anyGrup')}
+                    </td>
+                    <td className={rule.path ? s.tdMono : s.tdAny}>
+                      {rule.path ?? t('qaRules.anyField')}
+                    </td>
+                    <td className={s.tdMono}>{rule.value}</td>
+                    <td className={s.td}>
+                      <span
+                        className={rule.severity === 'error' ? s.severityError : s.severityWarning}
+                      >
+                        {t(`qaRules.${rule.severity}`)}
+                      </span>
+                    </td>
+                    <td className={s.td}>{rule.description ?? '—'}</td>
+                    <td className={s.td}>
+                      <span className={rule.is_active ? s.activeOn : s.activeOff}>
+                        {rule.is_active ? '✓' : '✗'}
+                      </span>
+                    </td>
+                    <td className={s.td}>
+                      <button className={s.btnSmall} onClick={() => startEdit(rule)}>
+                        {t('qaRules.edit')}
+                      </button>
+                      <OverflowMenu
+                        items={[
+                          {
+                            label: t('qaRules.delete'),
+                            onClick: () => setPendingDeleteId(rule.id),
+                            danger: true,
+                            disabled: removeMut.isPending,
+                          },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* ── Rules table ──────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className={s.center}>{t('common.loading')}</div>
-      ) : !rules?.length ? (
-        <div className={s.center}>
-          <p>{t('qaRules.noRules')}</p>
-          <p className={s.emptyHint}>{t('qaRules.emptyHint')}</p>
-        </div>
-      ) : (
-        <table className={s.table}>
-          <thead>
-            <tr>
-              <th className={s.th}>{t('qaRules.ruleType')}</th>
-              <th className={s.th}>{t('qaRules.signature')}</th>
-              <th className={s.th}>{t('qaRules.path')}</th>
-              <th className={s.th}>{t('qaRules.value')}</th>
-              <th className={s.th}>{t('qaRules.severity')}</th>
-              <th className={s.th}>{t('qaRules.descriptionCol')}</th>
-              <th className={s.th}>{t('qaRules.active')}</th>
-              <th className={s.th}>{t('qaRules.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rules.map((rule) =>
-              editId === rule.id ? (
-                /* ── Inline edit row ─────────────────────────────────────── */
-                <tr key={rule.id}>
-                  <td className={s.td}>
-                    <select
-                      className={s.editSelect}
-                      value={editData.rule_type}
-                      onChange={(e) => setEditData({ ...editData, rule_type: e.target.value as typeof editData.rule_type })}
-                    >
-                      <option value="forbidden_chars">{t('qaRules.forbidden_chars')}</option>
-                      <option value="max_length">{t('qaRules.max_length')}</option>
-                    </select>
-                  </td>
-                  <td className={s.td}>
-                    <input className={s.editInput} value={editData.signature} onChange={(e) => setEditData({ ...editData, signature: e.target.value })} />
-                  </td>
-                  <td className={s.td}>
-                    <input className={s.editInput} value={editData.path} onChange={(e) => setEditData({ ...editData, path: e.target.value })} />
-                  </td>
-                  <td className={s.td}>
-                    <input className={s.editInput} value={editData.value} onChange={(e) => setEditData({ ...editData, value: e.target.value })} />
-                  </td>
-                  <td className={s.td}>
-                    <select className={s.editSelect} value={editData.severity} onChange={(e) => setEditData({ ...editData, severity: e.target.value as 'warning' | 'error' })}>
-                      <option value="error">{t('qaRules.error')}</option>
-                      <option value="warning">{t('qaRules.warning')}</option>
-                    </select>
-                  </td>
-                  <td className={s.td}>
-                    <input className={s.editInput} value={editData.description} onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
-                  </td>
-                  <td className={s.td}>
-                    <input type="checkbox" checked={editData.is_active} onChange={(e) => setEditData({ ...editData, is_active: e.target.checked })} />
-                  </td>
-                  <td className={s.td}>
-                    <div className={s.editActions}>
-                      <button className={s.btnSave} onClick={saveEdit} disabled={updateMut.isPending}>{t('qaRules.save')}</button>
-                      <button className={s.btnCancel} onClick={() => setEditId(null)}>{t('qaRules.cancel')}</button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                /* ── Display row ─────────────────────────────────────────── */
-                <tr key={rule.id}>
-                  <td className={s.td}>{t(`qaRules.${rule.rule_type}`)}</td>
-                  <td className={rule.signature ? s.tdMono : s.tdAny}>
-                    {rule.signature ?? t('qaRules.anyGrup')}
-                  </td>
-                  <td className={rule.path ? s.tdMono : s.tdAny}>
-                    {rule.path ?? t('qaRules.anyField')}
-                  </td>
-                  <td className={s.tdMono}>{rule.value}</td>
-                  <td className={s.td}>
-                    <span className={rule.severity === 'error' ? s.severityError : s.severityWarning}>
-                      {t(`qaRules.${rule.severity}`)}
-                    </span>
-                  </td>
-                  <td className={s.td}>{rule.description ?? '—'}</td>
-                  <td className={s.td}>
-                    <span className={rule.is_active ? s.activeOn : s.activeOff}>
-                      {rule.is_active ? '✓' : '✗'}
-                    </span>
-                  </td>
-                  <td className={s.td}>
-                    <button className={s.btnSmall} onClick={() => startEdit(rule)}>{t('qaRules.edit')}</button>
-                    <OverflowMenu
-                      items={[{
-                        label: t('qaRules.delete'),
-                        onClick: () => setPendingDeleteId(rule.id),
-                        danger: true,
-                        disabled: removeMut.isPending,
-                      }]}
-                    />
-                  </td>
-                </tr>
-              ),
-            )}
-          </tbody>
-        </table>
+      {pendingDeleteId != null && (
+        <ConfirmModal
+          title={t('qaRules.deleteTitle')}
+          message={t('qaRules.deleteMessage')}
+          confirmLabel={t('qaRules.delete')}
+          pending={removeMut.isPending}
+          onConfirm={() => {
+            removeMut.mutate(pendingDeleteId!);
+            setPendingDeleteId(null);
+          }}
+          onClose={() => setPendingDeleteId(null)}
+        />
       )}
-    </div>
-
-    {pendingDeleteId != null && (
-      <ConfirmModal
-        title={t('qaRules.deleteTitle')}
-        message={t('qaRules.deleteMessage')}
-        confirmLabel={t('qaRules.delete')}
-        pending={removeMut.isPending}
-        onConfirm={() => {
-          removeMut.mutate(pendingDeleteId!);
-          setPendingDeleteId(null);
-        }}
-        onClose={() => setPendingDeleteId(null)}
-      />
-    )}
-    <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={clearToast} />
     </>
   );
 };
-
