@@ -9,11 +9,43 @@ export type VoiceTranslationRow = {
 };
 
 /** INFO response lines imported as `INFO\NAM1` (multiple per INFO when voiced). */
-export const INFO_NAM1_RECORD_PATHS = ['INFO\\NAM1', 'INFO/NAM1'] as const;
+export const INFO_NAM1_RECORD_PATHS = ['INFO\\NAM1', 'INFO/NAM1', 'NAM1'] as const;
+
+/** SQL filter matching INFO NAM1 rows regardless of path storage format. */
+export const infoNam1RecordsSql = (recordAlias: string, pathParam: string): string =>
+  `${recordAlias}.signature = 'INFO'
+   AND (
+     ${recordAlias}.path = ANY(${pathParam}::text[])
+     OR ${recordAlias}.path_simplified = 'NAM1'
+     OR SPLIT_PART(REPLACE(${recordAlias}.path, '/', '\\'), '\\', -1) = 'NAM1'
+   )`;
 
 /** Map key for voice file `00002CBA_4.fuz` → formid lower-6 + variant (`002CBA:4`). */
 export const voiceTranslationMapKey = (formidLower6: string, variant: number): string =>
   `${formidLower6.toUpperCase()}:${variant}`;
+
+/** Resolve a translated voice row; falls back to the closest variant for the same FormID. */
+export const lookupVoiceTranslation = (
+  translations: Map<string, VoiceTranslationRow>,
+  formidLower6: string,
+  variant: number,
+): VoiceTranslationRow | undefined => {
+  const exact = translations.get(voiceTranslationMapKey(formidLower6, variant));
+  if (exact) return exact;
+
+  const formid = formidLower6.toUpperCase();
+  let best: VoiceTranslationRow | undefined;
+  let bestDistance = Infinity;
+  for (const row of translations.values()) {
+    if (row.formidLower6.toUpperCase() !== formid) continue;
+    const distance = Math.abs(row.voiceVariant - variant);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = row;
+    }
+  }
+  return best;
+};
 
 const bestTranslationOrder = (statusColumn: string): string => `CASE ${statusColumn}
   WHEN 'skip' THEN 0
@@ -55,8 +87,7 @@ export const loadVoiceTranslations = async (
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
-         AND r.signature = 'INFO'
-         AND r.path = ANY($4::text[])
+         AND ${infoNam1RecordsSql('r', '$4')}
      )
      SELECT v.formid_lower6,
             v.info_formid_hex,
@@ -112,8 +143,7 @@ export const loadVoiceSources = async (
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
-         AND r.signature = 'INFO'
-         AND r.path = ANY($3::text[])
+         AND ${infoNam1RecordsSql('r', '$3')}
      )
      SELECT formid_lower6, voice_variant, source
      FROM voiced

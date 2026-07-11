@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, voiceAudioUrl, type VoiceLinePreview } from '../../../../api';
+import {
+  api,
+  voiceAudioUrl,
+  voiceTranslationAudioUrl,
+  type VoiceLinePreview,
+} from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
 import s from './VoiceModal.module.scss';
@@ -13,7 +18,11 @@ interface VoiceModalProps {
   onClose: () => void;
 }
 
+type PlayKind = 'source' | 'translation';
+
 const lineKey = (line: VoiceLinePreview): string => `${line.formidLower6}:${line.variant}`;
+
+const playTrackKey = (kind: PlayKind, line: VoiceLinePreview): string => `${kind}:${lineKey(line)}`;
 
 const speakerHue = (key: string): number => {
   let hash = 0;
@@ -29,10 +38,11 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
   const qc = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [selectedSpeakerKey, setSelectedSpeakerKey] = useState<string | null>(null);
-  const [playingKey, setPlayingKey] = useState<string | null>(null);
-  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
+  const [loadingTrack, setLoadingTrack] = useState<string | null>(null);
   const [playError, setPlayError] = useState<string | null>(null);
   const [refError, setRefError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const voiceQueryKey = ['voice-lines', modId, srcLang, targetLang] as const;
 
@@ -77,47 +87,61 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
       audio.removeAttribute('src');
       audio.load();
     }
-    setPlayingKey(null);
-    setLoadingKey(null);
+    setPlayingTrack(null);
+    setLoadingTrack(null);
   }, []);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
   const handlePlay = useCallback(
-    async (line: VoiceLinePreview) => {
-      const key = lineKey(line);
-      if (playingKey === key) {
+    async (line: VoiceLinePreview, kind: PlayKind) => {
+      const track = playTrackKey(kind, line);
+      if (playingTrack === track) {
         stopPlayback();
         return;
       }
 
       stopPlayback();
       setPlayError(null);
-      setLoadingKey(key);
+      setLoadingTrack(track);
 
       const audio = audioRef.current ?? new Audio();
       audioRef.current = audio;
 
-      const url = voiceAudioUrl(modId, line.formidLower6, line.variant);
+      const url =
+        kind === 'source'
+          ? voiceAudioUrl(modId, line.formidLower6, line.variant)
+          : `${voiceTranslationAudioUrl(modId, line.formidLower6, line.variant)}?t=${Date.now()}`;
+
       audio.src = url;
 
       const onCanPlay = () => {
-        setLoadingKey(null);
-        setPlayingKey(key);
+        setLoadingTrack(null);
+        setPlayingTrack(track);
         void audio.play().catch((err: unknown) => {
-          setPlayError(err instanceof Error ? err.message : String(err));
-          setPlayingKey(null);
+          setPlayError(
+            err instanceof Error
+              ? err.message
+              : kind === 'source'
+                ? t('modEditor.voicePlayError')
+                : t('modEditor.voicePlayTranslationError'),
+          );
+          setPlayingTrack(null);
         });
       };
 
       const onEnded = () => {
-        setPlayingKey(null);
+        setPlayingTrack(null);
       };
 
       const onError = () => {
-        setLoadingKey(null);
-        setPlayingKey(null);
-        setPlayError(t('modEditor.voicePlayError'));
+        setLoadingTrack(null);
+        setPlayingTrack(null);
+        setPlayError(
+          kind === 'source'
+            ? t('modEditor.voicePlayError')
+            : t('modEditor.voicePlayTranslationError'),
+        );
       };
 
       audio.addEventListener('canplay', onCanPlay, { once: true });
@@ -125,13 +149,31 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
       audio.addEventListener('error', onError, { once: true });
       audio.load();
     },
-    [modId, playingKey, stopPlayback, t],
+    [modId, playingTrack, stopPlayback, t],
   );
+
+  const generateMut = useMutation({
+    mutationFn: (line: VoiceLinePreview) =>
+      api.mods.generateVoiceLine(modId, line.formidLower6, line.variant, srcLang, targetLang),
+    onSuccess: async (_result, line) => {
+      setGenerateError(null);
+      await qc.invalidateQueries({ queryKey: voiceQueryKey });
+      await handlePlay(line, 'translation');
+    },
+    onError: (err: unknown) => {
+      setGenerateError(err instanceof Error ? err.message : t('modEditor.voiceGenerateError'));
+    },
+  });
 
   const handleSetReference = (line: VoiceLinePreview) => {
     if (!selectedSpeaker) return;
     setRefError(null);
     setReferenceMut.mutate({ speakerKey: selectedSpeaker.key, line });
+  };
+
+  const handleGenerate = (line: VoiceLinePreview) => {
+    setGenerateError(null);
+    generateMut.mutate(line);
   };
 
   const totalLines = data?.ok ? data.totalLines : 0;
@@ -162,6 +204,7 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
         {data && !data.ok && <p className={s.error}>{data.message}</p>}
         {playError && <p className={s.error}>{playError}</p>}
         {refError && <p className={s.error}>{refError}</p>}
+        {generateError && <p className={s.error}>{generateError}</p>}
 
         {speakers.length > 0 && (
           <div className={s.layout}>
@@ -219,12 +262,24 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
                   <tbody>
                     {(selectedSpeaker?.lines ?? []).map((line) => {
                       const key = lineKey(line);
-                      const isPlaying = playingKey === key;
-                      const isLoading = loadingKey === key;
+                      const sourceTrack = playTrackKey('source', line);
+                      const translationTrack = playTrackKey('translation', line);
+                      const isSourcePlaying = playingTrack === sourceTrack;
+                      const isTranslationPlaying = playingTrack === translationTrack;
+                      const isSourceLoading = loadingTrack === sourceTrack;
+                      const isTranslationLoading = loadingTrack === translationTrack;
                       const isRefSaving =
                         setReferenceMut.isPending &&
                         setReferenceMut.variables?.line.formidLower6 === line.formidLower6 &&
                         setReferenceMut.variables?.line.variant === line.variant;
+                      const isGenerating =
+                        generateMut.isPending &&
+                        generateMut.variables?.formidLower6 === line.formidLower6 &&
+                        generateMut.variables?.variant === line.variant;
+                      const canGenerate =
+                        line.canGenerateVoice ?? Boolean(line.translation?.trim());
+                      const hasTranslationAudio = Boolean(line.hasTranslationAudio);
+
                       return (
                         <tr key={key} className={line.isReference ? s.referenceRow : undefined}>
                           <td className={s.idCell}>
@@ -240,21 +295,68 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
                           <td className={s.playCell}>
                             <div className={s.actionGroup}>
                               <Button
-                                variant={isPlaying ? 'primary' : 'secondary'}
+                                variant={isSourcePlaying ? 'primary' : 'secondary'}
                                 size="sm"
-                                onClick={() => void handlePlay(line)}
-                                disabled={isLoading}
+                                onClick={() => void handlePlay(line, 'source')}
+                                disabled={isSourceLoading}
                                 title={t('modEditor.voicePlayTitle')}
                                 aria-label={t('modEditor.voicePlayTitle')}
                               >
                                 <span className={s.iconBtnGlyph} aria-hidden>
-                                  {isLoading
+                                  {isSourceLoading
                                     ? t('modEditor.voicePlayLoading')
-                                    : isPlaying
+                                    : isSourcePlaying
                                       ? t('modEditor.voicePlayStop')
                                       : t('modEditor.voicePlay')}
                                 </span>
                               </Button>
+                              {hasTranslationAudio ? (
+                                <Button
+                                  variant={isTranslationPlaying ? 'primary' : 'secondary'}
+                                  size="sm"
+                                  onClick={() => void handlePlay(line, 'translation')}
+                                  disabled={isTranslationLoading}
+                                  title={t('modEditor.voicePlayTranslationTitle')}
+                                  aria-label={t('modEditor.voicePlayTranslationTitle')}
+                                >
+                                  <span
+                                    className={`${s.iconBtnGlyph} ${s.translationBtn}`}
+                                    aria-hidden
+                                  >
+                                    {isTranslationLoading
+                                      ? t('modEditor.voicePlayLoading')
+                                      : isTranslationPlaying
+                                        ? t('modEditor.voicePlayTranslationStop')
+                                        : t('modEditor.voicePlayTranslation')}
+                                  </span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleGenerate(line)}
+                                  disabled={!canGenerate || generateMut.isPending}
+                                  title={
+                                    canGenerate
+                                      ? t('modEditor.voiceGenerateTitle')
+                                      : t('modEditor.voiceGenerateNeedsTranslation')
+                                  }
+                                  aria-label={
+                                    canGenerate
+                                      ? t('modEditor.voiceGenerateTitle')
+                                      : t('modEditor.voiceGenerateNeedsTranslation')
+                                  }
+                                >
+                                  <span
+                                    className={`${s.iconBtnGlyph} ${s.generateBtn}`}
+                                    aria-hidden
+                                  >
+                                    {isGenerating
+                                      ? t('modEditor.voiceGenerating')
+                                      : t('modEditor.voiceGenerate')}
+                                  </span>
+                                </Button>
+                              )}
                               <Button
                                 variant={line.isReference ? 'primary' : 'secondary'}
                                 size="sm"

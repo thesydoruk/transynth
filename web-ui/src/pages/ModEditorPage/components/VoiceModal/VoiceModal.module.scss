@@ -168,6 +168,7 @@
 
 .playCell {
   width: 1%;
+  min-width: 108px;
   white-space: nowrap;
 }
 
@@ -196,6 +197,14 @@
 
 .iconBtnGlyphActive {
   color: hsl(45 90% 68%);
+}
+
+.translationBtn {
+  color: hsl(200 75% 68%);
+}
+
+.generateBtn {
+  color: hsl(140 55% 62%);
 }
 
 .referenceRow {

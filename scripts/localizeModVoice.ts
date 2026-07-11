@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Synthesize localized voice lines into `localize/` under a mod import extract tree.
+ * Synthesize TTS WAV files into `localize/` under a mod import extract tree.
  *
  * Usage:
  *   npm run mod:localize-voice -- --job-id <id> [options]
@@ -13,15 +13,8 @@ import { CONFIG } from '../src/config';
 import { closeDb, openDb } from '../src/db';
 import { log } from '../src/logger';
 import { localizeModImportVoice } from '../src/voice';
-import type { GameType } from '../src/types';
 import { resolveTtsBaseUrl, resolveTtsReferenceMode } from '../src/voice/voiceToolPaths';
 import { loadModImportPaths } from '../src/web/import/resolveModImportPaths';
-
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
-
-const isGameType = (value: string): value is GameType => {
-  return (GAME_CHOICES as readonly string[]).includes(value);
-};
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('mod:localize-voice')
@@ -42,10 +35,6 @@ const argv = await yargs(hideBin(process.argv))
     type: 'string',
     default: CONFIG.defaultTgtLang,
     describe: 'Target translation language',
-  })
-  .option('game', {
-    choices: [...GAME_CHOICES],
-    describe: 'Game override',
   })
   .option('xtts-url', {
     type: 'string',
@@ -78,11 +67,6 @@ const argv = await yargs(hideBin(process.argv))
   .help()
   .parse();
 
-if (argv.game && !isGameType(argv.game)) {
-  log.error(`Invalid --game value: ${argv.game}`);
-  process.exit(1);
-}
-
 const db = openDb();
 
 try {
@@ -97,7 +81,6 @@ try {
     modId: paths.modId,
     srcLang: argv['src-lang'],
     tgtLang: argv['tgt-lang'],
-    game: argv.game as GameType | undefined,
     xttsBaseUrl: argv['xtts-url'],
     limit: argv.limit,
     dryRun: argv['dry-run'],

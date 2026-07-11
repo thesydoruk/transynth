@@ -16,11 +16,14 @@ import {
 } from '../../voice/discoverVoiceFiles';
 import {
   INFO_NAM1_RECORD_PATHS,
+  infoNam1RecordsSql,
   loadVoiceTranslations,
+  lookupVoiceTranslation,
   voiceTranslationMapKey,
 } from '../../voice/loadVoiceTranslations';
 import { resolveModImportExtractRoot, resolveModImportLocalizeDir } from '../../modStorage';
 import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
+import { resolveTtsWavAbsPath, synthesizeModVoiceLine } from '../../voice/synthesizeModVoiceLine';
 import {
   clearVoiceSpeakerRef,
   loadVoiceSpeakerRefs,
@@ -41,6 +44,8 @@ export type VoiceLinePreview = {
   source: string | null;
   translation: string | null;
   isReference: boolean;
+  hasTranslationAudio: boolean;
+  canGenerateVoice: boolean;
 };
 
 export type VoiceSpeakerGroup = {
@@ -68,7 +73,24 @@ export type VoiceAudioResult =
         | 'plugin_missing'
         | 'line_not_found'
         | 'source_missing'
+        | 'translation_missing'
+        | 'translation_not_generated'
         | 'convert_failed';
+      message: string;
+    };
+
+export type VoiceGenerateLineResult =
+  | { ok: true; relPath: string; skipped: boolean }
+  | {
+      ok: false;
+      reason:
+        | 'mod_not_found'
+        | 'no_plugin_path'
+        | 'plugin_missing'
+        | 'line_not_found'
+        | 'no_translation'
+        | 'no_localize_dir'
+        | 'tts_failed';
       message: string;
     };
 
@@ -174,8 +196,7 @@ const loadVoiceSources = async (
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
-         AND r.signature = 'INFO'
-         AND r.path = ANY($3::text[])
+         AND ${infoNam1RecordsSql('r', '$3')}
      )
      SELECT formid_lower6, info_formid_hex, voice_variant, source
      FROM voiced
@@ -298,11 +319,16 @@ export const listVoiceLinesForMod = async (
   for (const entry of voiceFiles) {
     const mapKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
     const sourceRow = sources.get(mapKey);
-    const translationRow = translations.get(mapKey);
+    const translationRow = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel) || 'Unknown';
     const dbSpeaker = dbSpeakerNames.get(entry.formidLower6.toUpperCase());
     const displayName = dbSpeaker || formatVoiceSpeakerLabel(speakerKey);
     const referencePick = speakerRefs[speakerKey] ?? null;
+    const hasTranslationAudio = (() => {
+      const wavPath = resolveTtsWavAbsPath(ctx.localizeDir, entry);
+      return wavPath != null && fs.existsSync(wavPath);
+    })();
+    const translationText = translationRow?.translation?.trim() ?? '';
 
     let group = groups.get(speakerKey);
     if (!group) {
@@ -316,10 +342,12 @@ export const listVoiceLinesForMod = async (
       variant: entry.variant,
       fileName: entry.fileName,
       source: sourceRow?.source ?? translationRow?.source ?? null,
-      translation: translationRow?.translation ?? null,
+      translation: translationText || null,
       isReference: referencePick
         ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
         : false,
+      hasTranslationAudio,
+      canGenerateVoice: translationText.length > 0 && !hasTranslationAudio,
     });
   }
 
@@ -486,4 +514,74 @@ export const getVoicePreviewWav = async (
       message: err instanceof Error ? err.message : String(err),
     };
   }
+};
+
+const resolveLocalizeDir = (ctx: VoicePackageContext): string | null => {
+  if (ctx.localizeDir && fs.existsSync(ctx.localizeDir)) return ctx.localizeDir;
+  const extractRoot = resolveModImportExtractRoot(ctx.pluginPath);
+  if (!extractRoot) return null;
+  const localizeDir = resolveModImportLocalizeDir(extractRoot);
+  ensureDir(localizeDir);
+  return localizeDir;
+};
+
+/** Stream a synthesized translation WAV from `localize/` when it exists. */
+export const getVoiceTranslationWav = async (
+  db: Tx,
+  modId: number,
+  formidLower6: string,
+  variant: number,
+): Promise<VoiceAudioResult> => {
+  const resolved = await resolveModVoiceContext(db, modId);
+  if (!resolved.ok) return resolved;
+
+  const entry = findVoiceEntry(discoverVoiceEntries(resolved.ctx), formidLower6, variant);
+  if (!entry) {
+    return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
+  }
+
+  const localizeDir = resolveLocalizeDir(resolved.ctx);
+  const wavPath = localizeDir ? resolveTtsWavAbsPath(localizeDir, entry) : null;
+  if (!wavPath || !fs.existsSync(wavPath)) {
+    return {
+      ok: false,
+      reason: 'translation_not_generated',
+      message: 'Translation audio has not been generated yet',
+    };
+  }
+
+  return { ok: true, wavPath };
+};
+
+/** Synthesize translation audio for one voice line into `localize/`. */
+export const generateVoiceTranslationForMod = async (
+  db: Tx,
+  modId: number,
+  formidLower6: string,
+  variant: number,
+  srcLang: string,
+  targetLang: string,
+): Promise<VoiceGenerateLineResult> => {
+  const resolved = await resolveModVoiceContext(db, modId);
+  if (!resolved.ok) return resolved;
+
+  const localizeDir = resolveLocalizeDir(resolved.ctx);
+  if (!localizeDir) {
+    return {
+      ok: false,
+      reason: 'no_localize_dir',
+      message: 'Mod import localize directory not found',
+    };
+  }
+
+  return synthesizeModVoiceLine(db, {
+    modId,
+    packageDir: resolved.ctx.packageDir,
+    pluginPath: resolved.ctx.pluginPath,
+    localizeDir,
+    formidLower6,
+    variant,
+    srcLang,
+    tgtLang: targetLang,
+  });
 };

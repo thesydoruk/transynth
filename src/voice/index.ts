@@ -9,6 +9,7 @@ export {
   loadVoiceSources,
   loadVoiceTranslations,
   lookupVoiceSource,
+  lookupVoiceTranslation,
   voiceTranslationMapKey,
   type VoiceSourceRow,
   type VoiceTranslationRow,

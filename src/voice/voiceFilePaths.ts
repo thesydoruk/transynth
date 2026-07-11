@@ -3,17 +3,8 @@ import type { VoiceFileEntry } from './discoverVoiceFiles';
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-export const outputFuzRelPath = (entry: VoiceFileEntry): string => {
-  const base = entry.fileName.replace(/\.(fuz|wav|xwm)$/i, '');
-  return normalizeRelPath(path.join(path.dirname(entry.relPath), `${base}.fuz`));
-};
-
+/** Relative path for synthesized TTS WAV stored under `localize/`. */
 export const outputTtsWavRelPath = (entry: VoiceFileEntry): string => {
   const base = entry.fileName.replace(/\.(fuz|wav|xwm)$/i, '');
   return normalizeRelPath(path.join(path.dirname(entry.relPath), `${base}.tts.wav`));
-};
-
-export const outputRefWavRelPath = (entry: VoiceFileEntry): string => {
-  const base = entry.fileName.replace(/\.(fuz|wav|xwm)$/i, '');
-  return normalizeRelPath(path.join(path.dirname(entry.relPath), `${base}.ref.wav`));
 };

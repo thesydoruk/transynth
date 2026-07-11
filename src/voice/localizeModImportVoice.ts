@@ -9,8 +9,6 @@ import {
   resolveImportPackages,
   type ImportPackageContext,
 } from '../modImport';
-import { ensureVoiceToolsInstalled } from '../tools/installTools';
-import type { GameType } from '../types';
 import { ensureDir } from '../utils/file';
 import { checkXttsHealth } from '../tts/xttsClient';
 import {
@@ -19,7 +17,7 @@ import {
   type TtsReferenceMode,
 } from './voiceToolPaths';
 import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
-import { loadVoiceTranslations, voiceTranslationMapKey } from './loadVoiceTranslations';
+import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
 import { localizeVoicePackage } from './localizeVoicePackage';
 
 export type LocalizeModImportVoiceOptions = {
@@ -28,7 +26,6 @@ export type LocalizeModImportVoiceOptions = {
   modId: number;
   srcLang?: string;
   tgtLang?: string;
-  game?: GameType;
   xttsBaseUrl?: string;
   limit?: number;
   dryRun?: boolean;
@@ -65,7 +62,7 @@ export const countVoiceLocalizeWork = async (
     const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
     const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
     for (const entry of voiceFiles) {
-      if (translations.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
+      if (lookupVoiceTranslation(translations, entry.formidLower6, entry.variant)) {
         total += 1;
       }
     }
@@ -73,7 +70,7 @@ export const countVoiceLocalizeWork = async (
   return total;
 };
 
-/** Synthesize localized voice lines into `localize/` under a mod import extract tree. */
+/** Synthesize TTS WAV files into `localize/` under a mod import extract tree. */
 export const localizeModImportVoice = async (
   db: Tx,
   options: LocalizeModImportVoiceOptions,
@@ -81,14 +78,12 @@ export const localizeModImportVoice = async (
   const extractDir = path.resolve(options.extractDir);
 
   if (!options.dryRun) {
-    await ensureVoiceToolsInstalled();
     await checkXttsHealth(options.xttsBaseUrl);
   }
 
   const mod = await loadImportedMod(db, options.modId);
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
-  const game = options.game ?? mod.game;
   const xttsBaseUrl = options.xttsBaseUrl ?? resolveTtsBaseUrl();
   const referenceMode = resolveReferenceMode(options);
 
@@ -120,7 +115,6 @@ export const localizeModImportVoice = async (
       db,
       mod.modId,
       pkg,
-      game,
       srcLang,
       tgtLang,
       {

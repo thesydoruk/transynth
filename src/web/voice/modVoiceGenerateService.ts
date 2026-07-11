@@ -1,10 +1,9 @@
 /**
- * In-memory mod-wide voice synthesis jobs (XTTS → FUZ in import localize/).
+ * In-memory mod-wide voice synthesis jobs (XTTS WAV → import localize/).
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
 import { countVoiceLocalizeWork, localizeModImportVoice } from '../../voice';
 import { resolveImportPackages } from '../../modImport';
 import { loadModImportPaths } from '../import/resolveModImportPaths';
@@ -143,7 +142,6 @@ export const runModVoiceGenerateJob = async (
       modId: opts.modId,
       srcLang: opts.srcLang,
       tgtLang: opts.targetLang,
-      game: opts.game as GameType,
       shouldCancel: () => job.cancel,
       onProgress: (done, progressTotal) => {
         job.done = done;

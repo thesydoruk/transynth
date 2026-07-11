@@ -1070,6 +1070,8 @@ export type VoiceLinePreview = {
   source: string | null;
   translation: string | null;
   isReference: boolean;
+  hasTranslationAudio: boolean;
+  canGenerateVoice: boolean;
 };
 
 export type VoiceSpeakerRefPick = {
@@ -1090,6 +1092,12 @@ export type VoiceLinesResponse =
 
 export const voiceAudioUrl = (modId: number, formidLower6: string, variant: number): string =>
   `${BASE}/api/mods/${modId}/voice/audio/${formidLower6}/${variant}`;
+
+export const voiceTranslationAudioUrl = (
+  modId: number,
+  formidLower6: string,
+  variant: number,
+): string => `${BASE}/api/mods/${modId}/voice/translation-audio/${formidLower6}/${variant}`;
 
 export const api = {
   mods: {
@@ -1127,6 +1135,19 @@ export const api = {
         `/api/mods/${modId}/voice/speaker-ref/${encodeURIComponent(speakerKey)}`,
         { method: 'DELETE' },
       ),
+    generateVoiceLine: (
+      modId: number,
+      formidLower6: string,
+      variant: number,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+    ) => {
+      const params = new URLSearchParams({ srcLang, targetLang });
+      return req<{ ok: true; relPath: string; skipped: boolean }>(
+        `/api/mods/${modId}/voice/translation-audio/${formidLower6}/${variant}?${params}`,
+        { method: 'POST' },
+      );
+    },
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),
