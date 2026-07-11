@@ -918,7 +918,6 @@ export const ModEditorPage = () => {
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
-        hasBookSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'BOOK')}
         qaIssueRowCount={qaIssueRowCount}
         onSrcLangChange={(l) => {
           setSrcLang(l);

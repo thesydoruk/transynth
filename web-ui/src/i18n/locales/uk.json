@@ -335,8 +335,6 @@
     "voiceRefHintEmpty": "Оберіть одну репліку як референс для озвучки — інакше система вибере автоматично.",
     "voiceRefSaving": "…",
     "voiceRefError": "Не вдалося зберегти референс",
-    "bookEditor": "BOOK",
-    "bookEditorTitle": "Фільтрувати за записами BOOK",
     "nextQaIssue": "Наступний QA ({{count}})",
     "nextQaIssueTitle": "Перейти до наступного рядка з активними QA-проблемами (Q)",
     "translateDone": "{{count}} рядок(ів) перекладено автоматично.",

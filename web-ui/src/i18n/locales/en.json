@@ -335,8 +335,6 @@
     "voiceRefHintEmpty": "Pick one line as the TTS reference — otherwise the system auto-selects one.",
     "voiceRefSaving": "…",
     "voiceRefError": "Failed to save reference",
-    "bookEditor": "BOOK",
-    "bookEditorTitle": "Filter by BOOK records",
     "nextQaIssue": "Next QA ({{count}})",
     "nextQaIssueTitle": "Jump to next row with active QA issues (Q)",
     "translateDone": "{{count}} string(s) auto-translated.",

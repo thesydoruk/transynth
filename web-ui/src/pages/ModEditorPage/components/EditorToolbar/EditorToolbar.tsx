@@ -55,7 +55,6 @@ export interface EditorToolbarProps {
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
-  hasBookSignature: boolean;
   qaIssueRowCount: number;
 
   onSrcLangChange: (lang: string) => void;
@@ -100,7 +99,6 @@ export const EditorToolbar = ({
   gameId,
   modId,
   hasInnrSignature,
-  hasBookSignature,
   qaIssueRowCount,
   onSrcLangChange,
   onTargetLangChange,
@@ -231,15 +229,6 @@ export const EditorToolbar = ({
           title={t('modEditor.innrEditorTitle')}
         >
           {t('modEditor.innrEditor')}
-        </Link>
-      )}
-      {hasBookSignature && (
-        <Link
-          to={`/games/${gameId}/mods/${modId}?signature=BOOK`}
-          className={styles.btnSec}
-          title={t('modEditor.bookEditorTitle')}
-        >
-          {t('modEditor.bookEditor')}
         </Link>
       )}
       <Button
