@@ -273,6 +273,8 @@ ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER;
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS source_folder TEXT;
 ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_name TEXT;
+ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS extract_dir TEXT;
+ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS archive_manifest JSONB;
 
 -- Indices
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version ON mods(name, version_hash);

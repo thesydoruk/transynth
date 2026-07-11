@@ -86,6 +86,12 @@ import {
 } from './modImportIndexes';
 import { ensureChampollionInstalled } from '../../tools/installTools';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../export/pexDecompileService';
+import type { ModImportExtractManifest } from '../../modWorkspace/archiveManifest';
+import {
+  collectPluginArchiveScopeDirs,
+  extractGameArchivesForImport,
+  resolveModImportExtractRoot,
+} from './modImportExtract';
 
 const { Pool } = pg;
 
@@ -111,6 +117,8 @@ export interface ModImportJob {
   is_localized: number; // 0 | 1
   game: GameType;
   esp_path: string | null;
+  extract_dir: string | null;
+  archive_manifest: ModImportExtractManifest | null;
   nexus_mod_id: number | null;
   source_folder: string | null;
   nexus_mod_name: string | null;
@@ -176,6 +184,8 @@ export const ensureModImportSchema = async (db: Tx) => {
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER');
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS source_folder TEXT');
   await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS nexus_mod_name TEXT');
+  await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS extract_dir TEXT');
+  await db.query('ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS archive_manifest JSONB');
 };
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
@@ -1436,6 +1446,8 @@ const insertModImportJob = async (
     isLocalized: number;
     game: GameType;
     espPath: string;
+    extractDir?: string | null;
+    archiveManifest?: ModImportExtractManifest | null;
     scan?: ModScanContext;
   },
 ): Promise<ModImportJob> => {
@@ -1443,8 +1455,9 @@ const insertModImportJob = async (
     `INSERT INTO mod_imports(
        file_name, file_hash, mod_id, total_records, status,
        src_lang, tgt_lang, is_localized, game, esp_path,
+       extract_dir, archive_manifest,
        nexus_mod_id, source_folder, nexus_mod_name
-     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, $10, $11)`,
+     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)`,
     [
       params.fileName,
       params.fileHash,
@@ -1454,6 +1467,8 @@ const insertModImportJob = async (
       params.isLocalized,
       params.game,
       params.espPath,
+      params.extractDir ?? null,
+      params.archiveManifest ? JSON.stringify(params.archiveManifest) : null,
       params.scan?.nexusModId ?? null,
       params.scan?.sourceFolder ?? null,
       params.scan?.nexusModName ?? null,
@@ -1496,6 +1511,12 @@ export const registerPluginFile = async (
     return refreshed[0] as ModImportJob;
   }
 
+  const extractRoot = resolveModImportExtractRoot(pluginPath) ?? path.dirname(pluginPath);
+  const archiveManifest = extractGameArchivesForImport({
+    extractRoot,
+    scopeDirs: collectPluginArchiveScopeDirs(pluginPath, discoverArchiveCandidatesForPlugin),
+  });
+
   const esp = new EspReader(pluginPath, game);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
@@ -1525,6 +1546,8 @@ export const registerPluginFile = async (
     isLocalized,
     game,
     espPath: pluginPath,
+    extractDir: archiveManifest.extractRoot,
+    archiveManifest,
     scan,
   });
 };
@@ -1563,6 +1586,12 @@ export const registerArchiveFile = async (
 
   await extractArchive(archivePath, extractDir);
 
+  const archiveManifest = extractGameArchivesForImport({
+    extractRoot: extractDir,
+    container: { fileName, archivePath },
+    scopeDirs: [extractDir],
+  });
+
   const { plugins } = discoverModFiles(extractDir);
 
   if (plugins.length === 0) {
@@ -1583,6 +1612,8 @@ export const registerArchiveFile = async (
       isLocalized: 0,
       game,
       espPath: anchorPath,
+      extractDir: archiveManifest.extractRoot,
+      archiveManifest,
       scan,
     });
   }
@@ -1617,6 +1648,8 @@ export const registerArchiveFile = async (
     isLocalized,
     game,
     espPath: pluginPath,
+    extractDir: archiveManifest.extractRoot,
+    archiveManifest,
     scan,
   });
 };

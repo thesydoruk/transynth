@@ -1,11 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Ba2Reader } from '../formats/ba2';
-import { isBa2GnrArchive } from '../formats/ba2/readBa2ArchiveType';
+import { isBa2GnrArchive, readBa2ArchiveType } from '../formats/ba2/readBa2ArchiveType';
 import { BsaReader } from '../formats/bsa';
 import { log } from '../logger';
 import { ensureDir } from '../utils/file';
-import type { ArchiveManifestEntry } from './archiveManifest';
+import type {
+  ArchiveManifestEntry,
+  ModImportArchiveRecord,
+  ModImportFileProvenance,
+} from './archiveManifest';
+
+const normalizeEntryPath = (entryPath: string): string => entryPath.replace(/\\/g, '/');
+
+const relativeFromRoot = (extractRoot: string, absPath: string): string =>
+  normalizeEntryPath(path.relative(extractRoot, absPath));
 
 export const listBa2ArchiveEntries = (archivePath: string): string[] => {
   const reader = new Ba2Reader(archivePath);
@@ -52,24 +61,79 @@ export const extractBsaToDir = (archivePath: string, outDir: string): void => {
   }
 };
 
+export type BethesdaExtractWithManifestResult = {
+  archive: ModImportArchiveRecord;
+  fileProvenance: ModImportFileProvenance[];
+};
+
 /**
  * Extract a BA2/BSA archive next to itself, remove the archive file, and return manifest metadata.
  */
 export const extractBethesdaArchiveInPlace = (archivePath: string): ArchiveManifestEntry | null => {
+  const result = extractBethesdaArchiveInPlaceWithManifest(archivePath, path.dirname(archivePath));
+  if (!result) return null;
+  const { archive } = result;
+  return {
+    type: archive.packing,
+    fileName: archive.fileName,
+    entries: archive.entries,
+    bsaVersion: archive.bsaVersion,
+  };
+};
+
+/**
+ * Like {@link extractBethesdaArchiveInPlace} but also records per-file provenance relative to
+ * `extractRoot`.
+ */
+export const extractBethesdaArchiveInPlaceWithManifest = (
+  archivePath: string,
+  extractRoot: string,
+): BethesdaExtractWithManifestResult | null => {
   const ext = path.extname(archivePath).toLowerCase();
   const fileName = path.basename(archivePath);
+  const archiveRelativePath = relativeFromRoot(extractRoot, archivePath);
   const outDir = path.dirname(archivePath);
 
   if (ext === '.ba2') {
+    const ba2Type = readBa2ArchiveType(archivePath);
     if (!isBa2GnrArchive(archivePath)) {
       log.warn(`Skipping non-GNRL BA2: ${fileName}`);
-      return null;
+      return {
+        archive: {
+          fileName,
+          relativePath: archiveRelativePath,
+          packing: 'ba2',
+          extracted: false,
+          skipReason: ba2Type ? `unsupported BA2 type ${ba2Type}` : 'invalid BA2 archive',
+          entries: [],
+          ba2Type,
+        },
+        fileProvenance: [],
+      };
     }
+
     const entries = listBa2ArchiveEntries(archivePath);
     extractBa2ToDir(archivePath, outDir);
     fs.unlinkSync(archivePath);
     log.debug(`Extracted and removed ${fileName}`);
-    return { type: 'ba2', fileName, entries };
+
+    const fileProvenance: ModImportFileProvenance[] = entries.map((entryPath) => ({
+      sourceArchiveRelativePath: archiveRelativePath,
+      entryPath: normalizeEntryPath(entryPath),
+      packing: 'ba2',
+    }));
+
+    return {
+      archive: {
+        fileName,
+        relativePath: archiveRelativePath,
+        packing: 'ba2',
+        extracted: true,
+        entries: entries.map(normalizeEntryPath),
+        ba2Type,
+      },
+      fileProvenance,
+    };
   }
 
   if (ext === '.bsa') {
@@ -79,7 +143,24 @@ export const extractBethesdaArchiveInPlace = (archivePath: string): ArchiveManif
     extractBsaToDir(archivePath, outDir);
     fs.unlinkSync(archivePath);
     log.debug(`Extracted and removed ${fileName}`);
-    return { type: 'bsa', fileName, entries, bsaVersion };
+
+    const fileProvenance = entries.map((entryPath) => ({
+      sourceArchiveRelativePath: archiveRelativePath,
+      entryPath: normalizeEntryPath(entryPath),
+      packing: 'bsa' as const,
+    }));
+
+    return {
+      archive: {
+        fileName,
+        relativePath: archiveRelativePath,
+        packing: 'bsa',
+        extracted: true,
+        entries: entries.map(normalizeEntryPath),
+        bsaVersion,
+      },
+      fileProvenance,
+    };
   }
 
   return null;
@@ -98,15 +179,57 @@ const walkBethesdaArchives = (dir: string, out: string[]): string[] => {
   return out;
 };
 
+const collectBethesdaArchivesInDirs = (dirs: string[]): string[] => {
+  const archives = new Set<string>();
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const archivePath of walkBethesdaArchives(dir, [])) {
+      archives.add(archivePath);
+    }
+  }
+  return [...archives];
+};
+
 /** Extract every BA2/BSA under `root` in place (deepest archives first). */
 export const extractAllBethesdaArchivesInTree = (root: string): ArchiveManifestEntry[] => {
-  const archives = walkBethesdaArchives(root, []);
+  const result = extractAllBethesdaArchivesInTreeWithManifest(root);
+  return result.archives
+    .filter((archive) => archive.extracted)
+    .map((archive) => ({
+      type: archive.packing,
+      fileName: archive.fileName,
+      entries: archive.entries,
+      bsaVersion: archive.bsaVersion,
+    }));
+};
+
+/** Extract every BA2/BSA under `root` and build a provenance manifest. */
+export const extractAllBethesdaArchivesInTreeWithManifest = (
+  root: string,
+  scopeDirs: string[] = [root],
+): {
+  archives: ModImportArchiveRecord[];
+  files: Record<string, ModImportFileProvenance>;
+} => {
+  const archives = collectBethesdaArchivesInDirs(scopeDirs);
   archives.sort((a, b) => b.length - a.length);
-  const manifest: ArchiveManifestEntry[] = [];
+
+  const archiveRecords: ModImportArchiveRecord[] = [];
+  const files: Record<string, ModImportFileProvenance> = {};
+
   for (const archivePath of archives) {
     if (!fs.existsSync(archivePath)) continue;
-    const entry = extractBethesdaArchiveInPlace(archivePath);
-    if (entry) manifest.push(entry);
+    const result = extractBethesdaArchiveInPlaceWithManifest(archivePath, root);
+    if (!result) continue;
+    archiveRecords.push(result.archive);
+    for (const provenance of result.fileProvenance) {
+      const looseRelativePath = relativeFromRoot(
+        root,
+        path.join(path.dirname(archivePath), provenance.entryPath),
+      );
+      files[looseRelativePath] = provenance;
+    }
   }
-  return manifest;
+
+  return { archives: archiveRecords, files };
 };
