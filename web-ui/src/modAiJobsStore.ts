@@ -1,9 +1,9 @@
 /**
- * Client-side store for mod-scoped AI jobs (translate, verify, skip-detect).
+ * Client-side store for mod-scoped AI jobs (translate, verify, skip-detect, voice).
  * Synced from the mod editor SSE hooks and polled from the backend on the mods list.
  */
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
 
 export type ModAiJobStatus = 'idle' | 'running' | 'stopping' | 'completed' | 'cancelled' | 'failed';
 
@@ -44,11 +44,12 @@ const idleEntry = (modId: number, kind: ModAiJobKind): ModAiJobEntry => ({
 export const getModAiJob = (modId: number, kind: ModAiJobKind): ModAiJobEntry =>
   jobs.get(jobKey(modId, kind)) ?? idleEntry(modId, kind);
 
-/** All three job kinds for one mod. */
+/** All four job kinds for one mod. */
 export const getModAiJobsForMod = (modId: number) => ({
   translate: getModAiJob(modId, 'translate'),
   verify: getModAiJob(modId, 'verify'),
   skipDetect: getModAiJob(modId, 'skip-detect'),
+  voice: getModAiJob(modId, 'voice'),
 });
 
 /** Every non-idle job across mods (newest update first). */

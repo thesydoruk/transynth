@@ -14,7 +14,7 @@
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "mod:pack": "tsx scripts/packModWorkspace.ts",
     "mod:localize": "tsx scripts/localizeModWorkspace.ts",
-    "mod:localize-voice": "tsx scripts/localizeModWorkspaceVoice.ts",
+    "mod:localize-voice": "tsx scripts/localizeModVoice.ts",
     "tools:install": "tsx scripts/installTools.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",

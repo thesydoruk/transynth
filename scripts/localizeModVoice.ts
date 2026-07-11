@@ -12,9 +12,9 @@ import { hideBin } from 'yargs/helpers';
 import { CONFIG } from '../src/config';
 import { closeDb, openDb } from '../src/db';
 import { log } from '../src/logger';
-import { localizeModImportVoice } from '../src/modWorkspace/localizeModWorkspaceVoice';
+import { localizeModImportVoice } from '../src/voice';
 import type { GameType } from '../src/types';
-import { resolveXttsUkBaseUrl, resolveTtsReferenceMode } from '../src/voice/voiceToolPaths';
+import { resolveTtsBaseUrl, resolveTtsReferenceMode } from '../src/voice/voiceToolPaths';
 import { loadModImportPaths } from '../src/web/import/resolveModImportPaths';
 
 const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
@@ -49,7 +49,7 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option('xtts-url', {
     type: 'string',
-    default: resolveXttsUkBaseUrl(),
+    default: resolveTtsBaseUrl(),
     describe: 'XTTS Ukrainian API base URL',
   })
   .option('limit', {
@@ -68,22 +68,8 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option('reference-mode', {
     choices: ['speaker', 'line'] as const,
+    default: resolveTtsReferenceMode(),
     describe: 'XTTS reference: speaker = one clip per NPC; line = same English phrase per row',
-  })
-  .option('line-reference', {
-    type: 'boolean',
-    default: false,
-    describe: 'Shorthand for --reference-mode line',
-  })
-  .option('speaker-reference', {
-    type: 'boolean',
-    default: resolveTtsReferenceMode() === 'speaker',
-    describe: 'Shorthand for --reference-mode speaker (default)',
-  })
-  .option('no-speaker-reference', {
-    type: 'boolean',
-    default: false,
-    describe: 'Shorthand for --reference-mode line (legacy alias)',
   })
   .check((args) => {
     if (args['job-id'] != null || args['mod-id'] != null) return true;
@@ -99,14 +85,6 @@ if (argv.game && !isGameType(argv.game)) {
 
 const db = openDb();
 
-const referenceMode =
-  argv['reference-mode'] ??
-  (argv['line-reference'] || argv['no-speaker-reference']
-    ? 'line'
-    : argv['speaker-reference'] === false
-      ? 'line'
-      : resolveTtsReferenceMode());
-
 try {
   const paths = await loadModImportPaths(db, {
     jobId: argv['job-id'],
@@ -116,7 +94,7 @@ try {
   const result = await localizeModImportVoice(db, {
     extractDir: paths.extractDir,
     pluginPath: paths.pluginPath,
-    modId: paths.modId ?? argv['mod-id'],
+    modId: paths.modId,
     srcLang: argv['src-lang'],
     tgtLang: argv['tgt-lang'],
     game: argv.game as GameType | undefined,
@@ -124,7 +102,7 @@ try {
     limit: argv.limit,
     dryRun: argv['dry-run'],
     force: argv.force,
-    referenceMode,
+    referenceMode: argv['reference-mode'],
   });
 
   log.info(

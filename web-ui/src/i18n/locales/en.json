@@ -214,6 +214,8 @@
     "skipDetectApplyingAllProgress": "Marking all… {{done}} / {{total}}",
     "aiTranslate": "AI translate",
     "aiTranslateRunning": "AI translate…",
+    "aiVoiceGenerate": "Voice synthesis",
+    "aiVoiceGenerateRunning": "Voice synthesis…",
     "applyTranslationFromModTitle": "Apply translation from another mod",
     "applyTranslationFromModIntro": "Pick a source mod and the locale of its strings to copy into this mod as translations for the current target language.",
     "applyTranslationSourceMod": "Source mod",

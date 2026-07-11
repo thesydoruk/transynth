@@ -48,12 +48,6 @@ export const resolveTtsLanguage = (): string => {
   return lang === 'ua' ? 'uk' : lang;
 };
 
-/** @deprecated Use {@link resolveTtsBaseUrl}. */
-export const resolveXttsUkBaseUrl = resolveTtsBaseUrl;
-
-/** @deprecated Use {@link resolveTtsLanguage}. */
-export const resolveXttsUkLanguage = resolveTtsLanguage;
-
 /** How XTTS picks the English reference clip sent with each synthesis request. */
 export type TtsReferenceMode = 'speaker' | 'line';
 
@@ -79,10 +73,6 @@ export const resolveTtsReferenceMode = (): TtsReferenceMode => {
 
   return 'speaker';
 };
-
-/** Pick the cleanest per-NPC reference clip for XTTS (default on). Set `TTS_SPEAKER_REFERENCE=0` or `TTS_LINE_REFERENCE=1` for per-line references. */
-export const resolveSpeakerReferenceEnabled = (): boolean =>
-  resolveTtsReferenceMode() === 'speaker';
 
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];

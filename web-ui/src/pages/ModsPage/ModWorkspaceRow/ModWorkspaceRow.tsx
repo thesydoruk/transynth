@@ -33,6 +33,7 @@ export interface ModWorkspaceRowProps {
   onAiTranslate?: () => void;
   onAiVerify?: () => void;
   onSkipDetect?: () => void;
+  onAiVoice?: () => void;
 }
 
 /** Imported mod row — translation progress plus import/export workspace actions. */
@@ -53,6 +54,7 @@ export const ModWorkspaceRow = ({
   onAiTranslate,
   onAiVerify,
   onSkipDetect,
+  onAiVoice,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
   const aiJobs = useModAiJobsForMod(mod.id);
@@ -119,15 +121,17 @@ export const ModWorkspaceRow = ({
             </span>
           </div>
         </div>
-        {(onAiTranslate || onAiVerify || onSkipDetect) && (
+        {(onAiTranslate || onAiVerify || onSkipDetect || onAiVoice) && (
           <ModAiControls
             compact
             translate={aiJobs.translate}
             verify={aiJobs.verify}
             skipDetect={aiJobs.skipDetect}
+            voice={aiJobs.voice}
             onTranslate={onAiTranslate ?? (() => {})}
             onVerify={onAiVerify ?? (() => {})}
             onSkipDetect={onSkipDetect ?? (() => {})}
+            onVoice={onAiVoice ?? (() => {})}
           />
         )}
         <div className={parentS.actions}>

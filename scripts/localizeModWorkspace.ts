@@ -69,7 +69,7 @@ try {
   const result = await localizeModImport(db, {
     extractDir: paths.extractDir,
     pluginPath: paths.pluginPath,
-    modId: paths.modId ?? argv['mod-id'],
+    modId: paths.modId,
     srcLang: argv['src-lang'],
     tgtLang: argv['tgt-lang'],
     game: argv.game as GameType | undefined,

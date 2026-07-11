@@ -13,21 +13,21 @@ import {
   discoverVoiceFiles,
   resolveVoiceRootRel,
   type VoiceFileEntry,
-} from '../../modWorkspace/discoverVoiceFiles';
+} from '../../voice/discoverVoiceFiles';
 import {
   INFO_NAM1_RECORD_PATHS,
   loadVoiceTranslations,
   voiceTranslationMapKey,
-} from '../../modWorkspace/loadVoiceTranslations';
+} from '../../voice/loadVoiceTranslations';
 import { resolveModImportExtractRoot, resolveModImportLocalizeDir } from '../../modStorage';
-import { voiceSpeakerKey } from '../../modWorkspace/speakerReferencePool';
+import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
 import {
   clearVoiceSpeakerRef,
   loadVoiceSpeakerRefs,
   setVoiceSpeakerRef,
   voiceSpeakerRefMatches,
   type VoiceSpeakerRefPick,
-} from '../../modWorkspace/voiceSpeakerRefs';
+} from '../../voice/voiceSpeakerRefs';
 import { PATHS } from '../../paths';
 import { sha1Hex, sha1HexFile } from '../../utils/hash';
 import { ensureDir } from '../../utils/file';

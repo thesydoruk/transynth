@@ -4,7 +4,6 @@ import type { Tx } from '../../db';
 import { PATHS } from '../../paths';
 import {
   clearVoiceSpeakerRef,
-  legacyVoiceSpeakerRefsFilePath,
   loadVoiceSpeakerRefs,
   migrateVoiceSpeakerRefsFromJsonIfNeeded,
   setVoiceSpeakerRef,
@@ -63,7 +62,7 @@ const createMockDb = () => {
 describe('voiceSpeakerRefs', () => {
   const modId = 99_999;
   let db: Tx;
-  const jsonPath = legacyVoiceSpeakerRefsFilePath(modId);
+  const jsonPath = path.join(PATHS.voicePreview, String(modId), 'speaker-refs.json');
 
   beforeEach(() => {
     db = createMockDb();

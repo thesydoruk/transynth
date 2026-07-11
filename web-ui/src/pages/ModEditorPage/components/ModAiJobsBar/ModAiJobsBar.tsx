@@ -8,10 +8,12 @@ export interface ModAiJobsBarProps {
     translate: ModAiJobEntry;
     verify: ModAiJobEntry;
     skipDetect: ModAiJobEntry;
+    voice: ModAiJobEntry;
   };
   onAiTranslate: () => void;
   onAiVerify: () => void;
   onSkipDetect: () => void;
+  onAiVoice: () => void;
 }
 
 /** Dedicated strip for mod-scoped AI workflow controls and live job status. */
@@ -20,6 +22,7 @@ export const ModAiJobsBar = ({
   onAiTranslate,
   onAiVerify,
   onSkipDetect,
+  onAiVoice,
 }: ModAiJobsBarProps) => {
   const { t } = useTranslation();
 
@@ -30,9 +33,11 @@ export const ModAiJobsBar = ({
         translate={aiJobs.translate}
         verify={aiJobs.verify}
         skipDetect={aiJobs.skipDetect}
+        voice={aiJobs.voice}
         onTranslate={onAiTranslate}
         onVerify={onAiVerify}
         onSkipDetect={onSkipDetect}
+        onVoice={onAiVoice}
       />
     </div>
   );

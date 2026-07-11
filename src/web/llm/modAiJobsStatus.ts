@@ -1,8 +1,9 @@
 import { listRunningLlmSkipDetectJobs } from './llmSkipDetectService';
 import { listRunningLlmTranslateJobs } from './llmTranslateService';
 import { listRunningLlmVerifyJobs } from './llmVerifyService';
+import { listRunningModVoiceGenerateJobs } from '../voice/modVoiceGenerateService';
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
 
 export type ActiveModAiJob = {
   jobId: number;
@@ -44,6 +45,17 @@ export const listActiveModAiJobs = (): ActiveModAiJob[] => {
       jobId: job.jobId,
       modId: job.modId,
       kind: 'skip-detect',
+      done: job.done,
+      total: job.total,
+      status: 'running',
+    });
+  }
+
+  for (const job of listRunningModVoiceGenerateJobs()) {
+    jobs.push({
+      jobId: job.jobId,
+      modId: job.modId,
+      kind: 'voice',
       done: job.done,
       total: job.total,
       status: 'running',

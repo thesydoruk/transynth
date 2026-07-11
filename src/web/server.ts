@@ -46,6 +46,7 @@ import { llmVerifyRoutes } from './routes/llmVerify';
 import { llmTranslateRoutes } from './routes/llmTranslate';
 import { llmSkipDetectRoutes } from './routes/llmSkipDetect';
 import { modAiJobsRoutes } from './routes/modAiJobs';
+import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -107,6 +108,7 @@ await llmVerifyRoutes(app, db);
 await llmTranslateRoutes(app, db);
 await llmSkipDetectRoutes(app, db);
 await modAiJobsRoutes(app);
+await modVoiceGenerateRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

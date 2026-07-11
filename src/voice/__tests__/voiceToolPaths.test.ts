@@ -1,4 +1,4 @@
-import { resolveSpeakerReferenceEnabled, resolveTtsReferenceMode } from '../voiceToolPaths';
+import { resolveTtsReferenceMode } from '../voiceToolPaths';
 
 describe('resolveTtsReferenceMode', () => {
   const saved: Record<string, string | undefined> = {};
@@ -19,13 +19,11 @@ describe('resolveTtsReferenceMode', () => {
 
   it('defaults to speaker reference', () => {
     expect(resolveTtsReferenceMode()).toBe('speaker');
-    expect(resolveSpeakerReferenceEnabled()).toBe(true);
   });
 
   it('uses line reference when TTS_LINE_REFERENCE=1', () => {
     process.env.TTS_LINE_REFERENCE = '1';
     expect(resolveTtsReferenceMode()).toBe('line');
-    expect(resolveSpeakerReferenceEnabled()).toBe(false);
   });
 
   it('uses line reference when TTS_SPEAKER_REFERENCE=0', () => {

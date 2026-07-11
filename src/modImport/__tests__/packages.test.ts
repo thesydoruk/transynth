@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pluginRelPath, pluginSiblingRelPath, writeIfChanged } from '../localizeModWorkspace';
+import { pluginRelPath, pluginSiblingRelPath, writeIfChanged } from '../packages';
 
-describe('workspace localize paths', () => {
+describe('import package paths', () => {
   const packageDir = path.join('extracted');
   const pluginPath = path.join(packageDir, 'Data', 'Mod.esp');
 

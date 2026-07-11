@@ -6,9 +6,11 @@ export interface ModAiControlsProps {
   translate: ModAiJobEntry;
   verify: ModAiJobEntry;
   skipDetect: ModAiJobEntry;
+  voice: ModAiJobEntry;
   onTranslate: () => void;
   onVerify: () => void;
   onSkipDetect: () => void;
+  onVoice: () => void;
   /** Compact layout for mod list rows. */
   compact?: boolean;
 }
@@ -101,14 +103,16 @@ const Slot = ({ entry, label, runningLabel, icon, onClick, compact }: SlotProps)
   );
 };
 
-/** Per-mod controls for skip-detect, auto-translate, and auto-verify with live status. */
+/** Per-mod controls for skip-detect, auto-translate, auto-verify, and voice generation with live status. */
 export const ModAiControls = ({
   translate,
   verify,
   skipDetect,
+  voice,
   onTranslate,
   onVerify,
   onSkipDetect,
+  onVoice,
   compact = false,
 }: ModAiControlsProps) => {
   const { t } = useTranslation();
@@ -140,6 +144,14 @@ export const ModAiControls = ({
         runningLabel={t('modEditor.aiVerifyRunning')}
         icon="✓"
         onClick={onVerify}
+        compact={compact}
+      />
+      <Slot
+        entry={voice}
+        label={t('modEditor.aiVoiceGenerate')}
+        runningLabel={t('modEditor.aiVoiceGenerateRunning')}
+        icon="🔊"
+        onClick={onVoice}
         compact={compact}
       />
     </div>

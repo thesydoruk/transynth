@@ -37,6 +37,10 @@ const fetchTerminalStatus = async (
       const snap = await api.llmVerify.status(jobId);
       return snap.status === 'running' ? null : snap.status;
     }
+    if (kind === 'voice') {
+      const snap = await api.voiceGenerate.status(jobId);
+      return snap.status === 'running' ? null : snap.status;
+    }
     const snap = await api.llmSkipDetect.status(jobId);
     return snap.status === 'running' ? null : snap.status;
   } catch {

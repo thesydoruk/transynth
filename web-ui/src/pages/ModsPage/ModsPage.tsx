@@ -59,6 +59,7 @@ import { useContentLangs } from '../../hooks/useContentLangs';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { getModAiJob } from '../../modAiJobsStore';
 import { toggleModAiTranslate } from '../../modAiTranslateRunner';
+import { toggleModAiVoice } from '../../modAiVoiceRunner';
 import { modListQueryKey } from '../../langDefaults';
 import s from './ModsPage.module.scss';
 
@@ -1050,6 +1051,9 @@ export const ModsPage = () => {
                 }
                 onAiVerify={() => openModAiPanel(mod.id, 'ai-verify')}
                 onSkipDetect={() => openModAiPanel(mod.id, 'skip-detect')}
+                onAiVoice={() =>
+                  toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'))
+                }
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
                 onDeleteAll={() =>
                   requestDeleteMods(

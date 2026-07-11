@@ -6,6 +6,7 @@ import { api, type StringRow, type StringFilterParams, type StringsResult } from
 import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
 import { upsertModAiJob } from '../../modAiJobsStore';
 import { toggleModAiTranslate, startModAiTranslate } from '../../modAiTranslateRunner';
+import { toggleModAiVoice, startModAiVoice } from '../../modAiVoiceRunner';
 import { useModAiJobsForMod } from '../../hooks/useModAiJobsForMod';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
@@ -323,6 +324,7 @@ export const ModEditorPage = () => {
   useEffect(() => {
     const open = searchParams.get('open');
     if (open === 'ai-translate') void startModAiTranslate(modId, srcLang, targetLang);
+    if (open === 'ai-voice') void startModAiVoice(modId, srcLang, targetLang);
     if (open === 'ai-verify') setShowAiVerify(true);
     if (open === 'skip-detect') setShowSkipDetect(true);
     if (open) {
@@ -996,6 +998,7 @@ export const ModEditorPage = () => {
         onAiTranslate={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
         onAiVerify={() => setShowAiVerify(true)}
         onSkipDetect={() => setShowSkipDetect(true)}
+        onAiVoice={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice)}
       />
 
       {/* Post-LLM-run action banner — shown after a successful batch translate */}

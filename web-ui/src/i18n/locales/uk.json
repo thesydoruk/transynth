@@ -214,6 +214,8 @@
     "skipDetectApplyingAllProgress": "Позначення всіх… {{done}} / {{total}}",
     "aiTranslate": "ШІ переклад",
     "aiTranslateRunning": "ШІ переклад…",
+    "aiVoiceGenerate": "Озвучка",
+    "aiVoiceGenerateRunning": "Озвучка…",
     "applyTranslationFromModTitle": "Застосувати переклад з іншого мода",
     "applyTranslationFromModIntro": "Оберіть мод-джерело та локаль його рядків, щоб скопіювати їх у цей мод як переклади для поточної цільової мови.",
     "applyTranslationSourceMod": "Мод-джерело",

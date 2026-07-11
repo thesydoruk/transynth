@@ -11,7 +11,7 @@ import { getModImportJob, type ModImportJob } from './modImportService';
 
 export type ModImportPaths = {
   jobId: number;
-  modId: number | null;
+  modId: number;
   fileName: string;
   game: GameType;
   extractDir: string;
@@ -35,6 +35,10 @@ export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
 
   if (!fs.existsSync(extractDir)) {
     throw new Error(`Extract directory not found for import job #${job.id}: ${extractDir}`);
+  }
+
+  if (job.mod_id == null) {
+    throw new Error(`Import job #${job.id} has no linked mod`);
   }
 
   return {

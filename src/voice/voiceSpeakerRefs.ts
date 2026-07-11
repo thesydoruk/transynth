@@ -148,6 +148,3 @@ export const voiceSpeakerRefMatches = (
   variant: number,
 ): boolean =>
   pick.formidLower6.toUpperCase() === formidLower6.toUpperCase() && pick.variant === variant;
-
-/** @deprecated Legacy JSON path kept for migration only. */
-export const legacyVoiceSpeakerRefsFilePath = speakerRefsFilePath;
