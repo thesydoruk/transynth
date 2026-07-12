@@ -23,7 +23,6 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /app/data
-      DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
@@ -68,7 +67,6 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /app/data
-      DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
       WINEARCH: win32
       WINEPREFIX: /app/data/tools/.wine

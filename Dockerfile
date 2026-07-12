@@ -4,7 +4,8 @@ FROM node:24-slim AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+ENV HUSKY=0
+RUN npm ci --omit=dev --ignore-scripts
 
 # ── Stage 2: build web-ui (React SPA) ─────────────────────────────────────────
 FROM node:24-slim AS ui-build

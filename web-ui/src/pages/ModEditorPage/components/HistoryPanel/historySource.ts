@@ -1,4 +1,4 @@
-import type { TranslationHistoryEntry } from '../../api';
+import type { TranslationHistoryEntry } from '../../../../api';
 
 /** Known history revision source keys (stored in translation_revisions.note). */
 export type HistorySourceKey =
