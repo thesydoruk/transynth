@@ -39,7 +39,7 @@ const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
 /** Translation statuses still eligible for automated LLM review and QA validation. */
 export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
 
-/** Translation statuses included when CLI auto-verify runs with `--force`. */
+/** Translation statuses included when mod-wide LLM verify runs with `force`. */
 export const LLM_VERIFY_FORCE_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto', 'reviewed', 'human')`;
 
 /** SQL `IN (...)` list for mod-wide LLM verify row selection. */

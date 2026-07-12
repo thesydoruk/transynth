@@ -17,7 +17,6 @@
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
     "detect:locale": "tsx scripts/detectModLocale.ts",
-    "verify:auto": "tsx scripts/autoVerify.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
