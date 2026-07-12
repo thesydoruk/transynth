@@ -191,20 +191,39 @@ export const ensureModImportSchema = async (db: Tx) => {
 
 // ── CRUD helpers ────────────────────────────────────────────────────────────
 
+/** API/job row shape — excludes `archive_manifest` (lives on disk as import-manifest.json). */
+const MOD_IMPORT_JOB_LIST_SQL = `SELECT
+  id, file_name, file_hash, mod_id, total_records, imported_records, status,
+  src_lang, tgt_lang, is_localized, game, esp_path, extract_dir,
+  nexus_mod_id, source_folder, nexus_mod_name, created_at, updated_at
+ FROM mod_imports`;
+
 /**
  * List all mod import jobs ordered by newest first.
  */
 export const listModImportJobs = async (db: Tx): Promise<ModImportJob[]> => {
-  const { rows } = await db.query('SELECT * FROM mod_imports ORDER BY created_at DESC');
-  return rows as ModImportJob[];
+  const { rows } = await db.query(`${MOD_IMPORT_JOB_LIST_SQL} ORDER BY created_at DESC`);
+  return rows.map((row) => ({ ...row, archive_manifest: null })) as ModImportJob[];
 };
 
 /**
  * Fetch a single import job by id.
  */
 export const getModImportJob = async (db: Tx, id: number): Promise<ModImportJob | undefined> => {
-  const { rows } = await db.query('SELECT * FROM mod_imports WHERE id = $1', [id]);
-  return rows[0] as ModImportJob | undefined;
+  const { rows } = await db.query(`${MOD_IMPORT_JOB_LIST_SQL} WHERE id = $1`, [id]);
+  const row = rows[0];
+  if (!row) return undefined;
+  return { ...row, archive_manifest: null } as ModImportJob;
+};
+
+const getModImportJobByFileHash = async (
+  db: Tx,
+  fileHash: string,
+): Promise<ModImportJob | undefined> => {
+  const { rows } = await db.query(`${MOD_IMPORT_JOB_LIST_SQL} WHERE file_hash = $1`, [fileHash]);
+  const row = rows[0];
+  if (!row) return undefined;
+  return { ...row, archive_manifest: null } as ModImportJob;
 };
 
 /**
@@ -1448,7 +1467,6 @@ const insertModImportJob = async (
     game: GameType;
     espPath: string;
     extractDir?: string | null;
-    archiveManifest?: ModImportExtractManifest | null;
     scan?: ModScanContext;
   },
 ): Promise<ModImportJob> => {
@@ -1458,7 +1476,7 @@ const insertModImportJob = async (
        src_lang, tgt_lang, is_localized, game, esp_path,
        extract_dir, archive_manifest,
        nexus_mod_id, source_folder, nexus_mod_name
-     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)`,
+     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12)`,
     [
       params.fileName,
       params.fileHash,
@@ -1469,17 +1487,15 @@ const insertModImportJob = async (
       params.game,
       params.espPath,
       params.extractDir ?? null,
-      params.archiveManifest ? JSON.stringify(params.archiveManifest) : null,
       params.scan?.nexusModId ?? null,
       params.scan?.sourceFolder ?? null,
       params.scan?.nexusModName ?? null,
     ],
   );
 
-  const { rows } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
-    params.fileHash,
-  ]);
-  return rows[0] as ModImportJob;
+  const job = await getModImportJobByFileHash(db, params.fileHash);
+  if (!job) throw new Error('Failed to load mod import job after insert');
+  return job;
 };
 
 /**
@@ -1500,19 +1516,14 @@ export const registerPluginFile = async (
 ): Promise<ModImportJob> => {
   const fileHash = await sha1HexFile(pluginPath);
 
-  const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
-    fileHash,
-  ]);
-  if (existing[0]) {
+  const existing = await getModImportJobByFileHash(db, fileHash);
+  if (existing) {
     await patchModImportScanContext(db, fileHash, scan);
-    const { rows: refreshed } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
-      fileHash,
-    ]);
-    return refreshed[0] as ModImportJob;
+    return (await getModImportJobByFileHash(db, fileHash))!;
   }
 
   const extractRoot = resolveModImportExtractRoot(pluginPath) ?? path.dirname(pluginPath);
-  const archiveManifest = extractGameArchivesForImport({
+  const manifest = extractGameArchivesForImport({
     extractRoot,
     scopeDirs: collectPluginArchiveScopeDirs(pluginPath, discoverArchiveCandidatesForPlugin),
   });
@@ -1546,8 +1557,7 @@ export const registerPluginFile = async (
     isLocalized,
     game,
     espPath: pluginPath,
-    extractDir: archiveManifest.extractRoot,
-    archiveManifest,
+    extractDir: manifest.extractRoot,
     scan,
   });
 };
@@ -1572,20 +1582,15 @@ export const registerArchiveFile = async (
 ): Promise<ModImportJob> => {
   const fileHash = await sha1HexFile(archivePath);
 
-  const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
-    fileHash,
-  ]);
-  if (existing[0]) {
+  const existing = await getModImportJobByFileHash(db, fileHash);
+  if (existing) {
     await patchModImportScanContext(db, fileHash, scan);
-    const { rows: refreshed } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
-      fileHash,
-    ]);
-    return refreshed[0] as ModImportJob;
+    return (await getModImportJobByFileHash(db, fileHash))!;
   }
 
   await extractArchive(archivePath, extractDir);
 
-  const archiveManifest = extractGameArchivesForImport({
+  const manifest = extractGameArchivesForImport({
     extractRoot: extractDir,
     container: { fileName, archivePath },
     scopeDirs: [extractDir],
@@ -1611,8 +1616,7 @@ export const registerArchiveFile = async (
       isLocalized: 0,
       game,
       espPath: anchorPath,
-      extractDir: archiveManifest.extractRoot,
-      archiveManifest,
+      extractDir: manifest.extractRoot,
       scan,
     });
   }
@@ -1647,8 +1651,7 @@ export const registerArchiveFile = async (
     isLocalized,
     game,
     espPath: pluginPath,
-    extractDir: archiveManifest.extractRoot,
-    archiveManifest,
+    extractDir: manifest.extractRoot,
     scan,
   });
 };

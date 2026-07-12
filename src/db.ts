@@ -15,12 +15,16 @@ export const openDb = (): pg.Pool => {
     _pool = new Pool({
       connectionString: CONFIG.databaseUrl,
       max: CONFIG.dbPoolMax,
+      keepAlive: true,
       ...(CONFIG.dbStatementTimeoutMs > 0
         ? { statement_timeout: CONFIG.dbStatementTimeoutMs }
         : {}),
       ...(CONFIG.dbIdleInTransactionTimeoutMs > 0
         ? { idle_in_transaction_session_timeout: CONFIG.dbIdleInTransactionTimeoutMs }
         : {}),
+    });
+    _pool.on('error', (err) => {
+      log.error('DB: idle pool client error', err);
     });
     log.info(`DB: connection pool created (max=${CONFIG.dbPoolMax})`);
   }

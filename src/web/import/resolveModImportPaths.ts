@@ -71,10 +71,13 @@ export const loadModImportPaths = async (
 
   if (options.modId != null) {
     const { rows } = await db.query<ModImportJob>(
-      `SELECT * FROM mod_imports WHERE mod_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+      `SELECT id, file_name, file_hash, mod_id, total_records, imported_records, status,
+              src_lang, tgt_lang, is_localized, game, esp_path, extract_dir,
+              nexus_mod_id, source_folder, nexus_mod_name, created_at, updated_at
+       FROM mod_imports WHERE mod_id = $1 ORDER BY updated_at DESC LIMIT 1`,
       [options.modId],
     );
-    const job = rows[0];
+    const job = rows[0] ? ({ ...rows[0], archive_manifest: null } as ModImportJob) : undefined;
     if (!job) {
       throw new Error(`No import job found for mod id ${options.modId}`);
     }
