@@ -1,13 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
+import { useStringGridColumnWidths } from '../../hooks/useStringGridColumnWidths';
 import { rowBg, rowTextColor } from '../../utils';
 import styles from './StringGrid.module.scss';
-
-/** Keys identifying each resizable column in the string grid. */
-type ColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
 
 /** Column keys that support server-side sorting. */
 export type SortCol = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl';
@@ -97,55 +95,7 @@ export const StringGrid = ({
   onCopySource,
 }: StringGridProps) => {
   const { t } = useTranslation();
-
-  /* ── Resizable column widths ── */
-  const [colWidths, setColWidths] = useState<Record<ColKey, number | null>>({
-    grup: 52,
-    formid: 70,
-    edid: 160,
-    field: 50,
-    src: null,
-    transl: null,
-    act: 170,
-  });
-  const resizeRef = useRef<{ col: ColKey; startX: number; startW: number } | null>(null);
-
-  /**
-   * Initiates a column resize drag.  Reads the rendered width of the header
-   * cell from the DOM, then tracks mousemove until mouseup.
-   */
-  const startResize = useCallback((col: ColKey, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const thEl = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
-    const startW = thEl.getBoundingClientRect().width;
-    resizeRef.current = { col, startX: e.clientX, startW };
-
-    const onMove = (ev: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const delta = ev.clientX - resizeRef.current.startX;
-      const newW = Math.max(30, resizeRef.current.startW + delta);
-      setColWidths((prev) => ({ ...prev, [resizeRef.current!.col]: newW }));
-    };
-    const onUp = () => {
-      resizeRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, []);
-
-  /** Returns the inline CSS style for a resizable column cell. */
-  const colStyle = useCallback(
-    (col: ColKey): React.CSSProperties => {
-      const w = colWidths[col];
-      return w !== null
-        ? { flex: `0 0 ${w}px`, overflow: 'hidden' }
-        : { flex: 1, minWidth: 180, overflow: 'hidden' };
-    },
-    [colWidths],
-  );
+  const { colStyle, startResize } = useStringGridColumnWidths();
 
   /** Helper — renders a sortable column header with a resize handle. */
   const renderSortableHeader = (col: SortCol, label: string) => (
@@ -194,10 +144,10 @@ export const StringGrid = ({
     }
   }, [activeIndex]);
 
-  /* Reflect the partial-selection state on the header checkbox. */
-  const headerCheckRef = useRef<HTMLInputElement>(null);
+  /* Reflect the partial-selection state on the select-all checkbox. */
+  const selectAllCheckRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (headerCheckRef.current) headerCheckRef.current.indeterminate = someSelected;
+    if (selectAllCheckRef.current) selectAllCheckRef.current.indeterminate = someSelected;
   }, [someSelected]);
 
   return (
@@ -208,15 +158,7 @@ export const StringGrid = ({
         <>
           {/* Sticky header */}
           <div className={styles.gridHeader}>
-            <div className={`${styles.th} ${styles.colCheck}`}>
-              <input
-                ref={headerCheckRef}
-                type="checkbox"
-                checked={allSelected}
-                onChange={onToggleAll}
-                title={t('modEditor.selectAllMatching')}
-              />
-            </div>
+            <div className={`${styles.th} ${styles.colCheck}`} />
             {renderSortableHeader('grup', t('modEditor.grup'))}
             {renderSortableHeader('formid', t('modEditor.formId'))}
             {renderSortableHeader('edid', t('modEditor.edid'))}
@@ -237,7 +179,15 @@ export const StringGrid = ({
 
           {/* Per-column filter row */}
           <div className={styles.filterRow}>
-            <div className={styles.colCheck} />
+            <div className={`${styles.colCheck} ${styles.filterCheck}`}>
+              <input
+                ref={selectAllCheckRef}
+                type="checkbox"
+                checked={allSelected}
+                onChange={onToggleAll}
+                title={t('modEditor.selectAllMatching')}
+              />
+            </div>
             <div style={colStyle('grup')}>
               <input
                 className={styles.filterInput}
