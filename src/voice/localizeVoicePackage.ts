@@ -28,8 +28,10 @@ import {
   type ResolvedSpeakerReference,
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
-import { outputTtsWavRelPath } from './voiceFilePaths';
+import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
+import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { resolveTtsLanguage } from './voiceToolPaths';
+import type { GameType } from '../types';
 
 type SpeakerRefCacheEntry = {
   wavPath: string;
@@ -52,6 +54,7 @@ export const localizeVoicePackage = async (
   srcLang: string,
   tgtLang: string,
   options: {
+    game: GameType;
     xttsBaseUrl: string;
     dryRun: boolean;
     force: boolean;
@@ -113,11 +116,11 @@ export const localizeVoicePackage = async (
         options.onEligibleStep?.();
       };
 
-      const ttsWavRel = outputTtsWavRelPath(entry);
-      const ttsWavDest = toDiskPath(pkg.localizeDir, ttsWavRel);
+      const fuzRel = outputLocalizedFuzRelPath(entry);
+      const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
 
       if (options.dryRun) {
-        log.info(`[dry-run] ${prefix}${ttsWavRel} ← "${row.translation.slice(0, 80)}..."`);
+        log.info(`[dry-run] ${prefix}${fuzRel} ← "${row.translation.slice(0, 80)}..."`);
         finishEligibleStep();
         continue;
       }
@@ -173,18 +176,26 @@ export const localizeVoicePackage = async (
           synthesis: options.synthesis,
         });
 
-        const baselinePath = fs.existsSync(ttsWavDest) ? ttsWavDest : null;
-        if (!options.force && writeIfChanged(ttsWavDest, ttsWav, baselinePath)) {
-          written.push(prefix + ttsWavRel);
+        const fuzData = await buildVoicedFuzFromTtsWav(
+          options.game,
+          ttsWav,
+          workDir,
+          entry.fileName,
+          row.translation,
+        );
+
+        const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
+        if (!options.force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
+          written.push(prefix + fuzRel);
         } else if (options.force) {
-          ensureDir(path.dirname(ttsWavDest));
-          fs.writeFileSync(ttsWavDest, ttsWav);
-          written.push(prefix + ttsWavRel);
+          ensureDir(path.dirname(fuzDest));
+          fs.writeFileSync(fuzDest, fuzData);
+          written.push(prefix + fuzRel);
         } else {
-          skipped.push(prefix + ttsWavRel);
+          skipped.push(prefix + fuzRel);
         }
         finishEligibleStep();
-        log.info(`Voice ${prefix}${ttsWavRel}`);
+        log.info(`Voice ${prefix}${fuzRel}`);
       } catch (err) {
         warnings.push(
           `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`,

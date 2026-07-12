@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../db';
+import type { GameType } from '../types';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
+import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
 import { checkXttsHealth, synthesizeXttsWav } from '../tts/xttsClient';
 import {
@@ -24,7 +26,8 @@ import {
   voiceSpeakerKey,
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
-import { outputTtsWavRelPath } from './voiceFilePaths';
+import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
+import { outputLocalizedFuzRelPath, outputTtsWavRelPath } from './voiceFilePaths';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 
@@ -36,12 +39,32 @@ export type SynthesizeModVoiceLineResult =
       message: string;
     };
 
+export const resolveLocalizedFuzAbsPath = (
+  localizeDir: string | null,
+  entry: VoiceFileEntry,
+): string | null => {
+  if (!localizeDir) return null;
+  return toDiskPath(localizeDir, outputLocalizedFuzRelPath(entry));
+};
+
+/** @deprecated Use {@link resolveLocalizedFuzAbsPath}. */
 export const resolveTtsWavAbsPath = (
   localizeDir: string | null,
   entry: VoiceFileEntry,
 ): string | null => {
   if (!localizeDir) return null;
   return toDiskPath(localizeDir, outputTtsWavRelPath(entry));
+};
+
+export const resolveLocalizedVoiceAbsPath = (
+  localizeDir: string | null,
+  entry: VoiceFileEntry,
+): string | null => {
+  const fuzPath = resolveLocalizedFuzAbsPath(localizeDir, entry);
+  if (fuzPath && fs.existsSync(fuzPath)) return fuzPath;
+  const legacyWavPath = resolveTtsWavAbsPath(localizeDir, entry);
+  if (legacyWavPath && fs.existsSync(legacyWavPath)) return legacyWavPath;
+  return fuzPath;
 };
 
 const findVoiceEntry = (
@@ -54,7 +77,7 @@ const findVoiceEntry = (
       entry.formidLower6.toUpperCase() === formidLower6.toUpperCase() && entry.variant === variant,
   );
 
-/** Synthesize one voiced line into `localize/` as raw TTS WAV. */
+/** Synthesize one voiced line into `localize/` as a localized `.fuz` file. */
 export const synthesizeModVoiceLine = async (
   db: Tx,
   opts: {
@@ -66,6 +89,7 @@ export const synthesizeModVoiceLine = async (
     variant: number;
     srcLang: string;
     tgtLang: string;
+    game?: GameType;
     referenceMode?: TtsReferenceMode;
     xttsBaseUrl?: string;
     force?: boolean;
@@ -95,14 +119,16 @@ export const synthesizeModVoiceLine = async (
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
   const xttsBaseUrl = opts.xttsBaseUrl ?? resolveTtsBaseUrl();
+  const mod = await loadImportedMod(db, opts.modId);
+  const game = opts.game ?? mod.game;
   await checkXttsHealth(xttsBaseUrl);
 
   if (referenceMode === 'speaker') {
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
   }
 
-  const ttsWavRel = outputTtsWavRelPath(entry);
-  const ttsWavDest = toDiskPath(opts.localizeDir, ttsWavRel);
+  const fuzRel = outputLocalizedFuzRelPath(entry);
+  const fuzDest = toDiskPath(opts.localizeDir, fuzRel);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
 
   try {
@@ -162,16 +188,24 @@ export const synthesizeModVoiceLine = async (
       synthesis: voiceConfig.synthesis,
     });
 
-    const baselinePath = fs.existsSync(ttsWavDest) ? ttsWavDest : null;
-    if (!opts.force && writeIfChanged(ttsWavDest, ttsWav, baselinePath)) {
-      return { ok: true, relPath: ttsWavRel, skipped: false };
+    const fuzData = await buildVoicedFuzFromTtsWav(
+      game,
+      ttsWav,
+      workDir,
+      entry.fileName,
+      row.translation,
+    );
+
+    const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
+    if (!opts.force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
+      return { ok: true, relPath: fuzRel, skipped: false };
     }
     if (opts.force) {
-      ensureDir(path.dirname(ttsWavDest));
-      fs.writeFileSync(ttsWavDest, ttsWav);
-      return { ok: true, relPath: ttsWavRel, skipped: false };
+      ensureDir(path.dirname(fuzDest));
+      fs.writeFileSync(fuzDest, fuzData);
+      return { ok: true, relPath: fuzRel, skipped: false };
     }
-    return { ok: true, relPath: ttsWavRel, skipped: true };
+    return { ok: true, relPath: fuzRel, skipped: true };
   } catch (err) {
     return {
       ok: false,

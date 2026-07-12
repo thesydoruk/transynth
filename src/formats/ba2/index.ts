@@ -5,6 +5,7 @@ export { isBa2GnrArchive, readBa2ArchiveType } from './readBa2ArchiveType';
 export {
   classifyBa2Archive,
   defaultArchiveFileName,
+  isRepackableBethesdaArchive,
   isStringsTablePath,
   shouldCompressArchiveEntry,
   shouldCompressBa2Entry,

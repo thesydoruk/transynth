@@ -21,9 +21,16 @@ import {
   lookupVoiceTranslation,
   voiceTranslationMapKey,
 } from '../../voice/loadVoiceTranslations';
-import { resolveModImportExtractRoot, resolveModImportLocalizeDir } from '../../modStorage';
+import {
+  resolveModImportExtractRoot,
+  modImportLocalizeDir,
+  resolveModImportLocalizeDir,
+} from '../../modStorage';
 import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
-import { resolveTtsWavAbsPath, synthesizeModVoiceLine } from '../../voice/synthesizeModVoiceLine';
+import {
+  resolveLocalizedVoiceAbsPath,
+  synthesizeModVoiceLine,
+} from '../../voice/synthesizeModVoiceLine';
 import {
   clearVoiceSpeakerRef,
   loadVoiceSpeakerRefs,
@@ -325,8 +332,8 @@ export const listVoiceLinesForMod = async (
     const displayName = dbSpeaker || formatVoiceSpeakerLabel(speakerKey);
     const referencePick = speakerRefs[speakerKey] ?? null;
     const hasTranslationAudio = (() => {
-      const wavPath = resolveTtsWavAbsPath(ctx.localizeDir, entry);
-      return wavPath != null && fs.existsSync(wavPath);
+      const audioPath = resolveLocalizedVoiceAbsPath(ctx.localizeDir, entry);
+      return audioPath != null && fs.existsSync(audioPath);
     })();
     const translationText = translationRow?.translation?.trim() ?? '';
 
@@ -520,12 +527,12 @@ const resolveLocalizeDir = (ctx: VoicePackageContext): string | null => {
   if (ctx.localizeDir && fs.existsSync(ctx.localizeDir)) return ctx.localizeDir;
   const extractRoot = resolveModImportExtractRoot(ctx.pluginPath);
   if (!extractRoot) return null;
-  const localizeDir = resolveModImportLocalizeDir(extractRoot);
+  const localizeDir = modImportLocalizeDir(extractRoot);
   ensureDir(localizeDir);
   return localizeDir;
 };
 
-/** Stream a synthesized translation WAV from `localize/` when it exists. */
+/** Stream a synthesized translation as browser-playable WAV (converts stored `.fuz` on demand). */
 export const getVoiceTranslationWav = async (
   db: Tx,
   modId: number,
@@ -541,8 +548,8 @@ export const getVoiceTranslationWav = async (
   }
 
   const localizeDir = resolveLocalizeDir(resolved.ctx);
-  const wavPath = localizeDir ? resolveTtsWavAbsPath(localizeDir, entry) : null;
-  if (!wavPath || !fs.existsSync(wavPath)) {
+  const sourcePath = localizeDir ? resolveLocalizedVoiceAbsPath(localizeDir, entry) : null;
+  if (!sourcePath || !fs.existsSync(sourcePath)) {
     return {
       ok: false,
       reason: 'translation_not_generated',
@@ -550,7 +557,41 @@ export const getVoiceTranslationWav = async (
     };
   }
 
-  return { ok: true, wavPath };
+  if (path.extname(sourcePath).toLowerCase() === '.wav') {
+    return { ok: true, wavPath: sourcePath };
+  }
+
+  const digest = await cacheKeyForSource(sourcePath);
+  const cacheDir = path.join(PATHS.voicePreview, String(modId), 'translation');
+  const cachedWav = path.join(cacheDir, `${digest}.wav`);
+
+  if (fs.existsSync(cachedWav)) {
+    const sourceDigest = await sha1HexFile(sourcePath);
+    const markerPath = path.join(cacheDir, `${digest}.source`);
+    const marker = fs.existsSync(markerPath) ? fs.readFileSync(markerPath, 'utf8').trim() : '';
+    if (marker === sourceDigest) {
+      return { ok: true, wavPath: cachedWav };
+    }
+  }
+
+  ensureDir(cacheDir);
+  try {
+    await convertAudioToPreviewWav(sourcePath, cachedWav);
+    const sourceDigest = await sha1HexFile(sourcePath);
+    fs.writeFileSync(path.join(cacheDir, `${digest}.source`), sourceDigest);
+    return { ok: true, wavPath: cachedWav };
+  } catch (err) {
+    log.warn(
+      `Voice translation preview convert failed mod=${modId} ${formidLower6}_${variant}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return {
+      ok: false,
+      reason: 'convert_failed',
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
 };
 
 /** Synthesize translation audio for one voice line into `localize/`. */

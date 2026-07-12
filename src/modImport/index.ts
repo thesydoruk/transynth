@@ -30,3 +30,20 @@ export {
   listBsaArchiveEntries,
   type BethesdaExtractWithManifestResult,
 } from './extractBethesdaArchives';
+export {
+  archiveEntryToDiskPath,
+  collectArchiveableLooseFiles,
+  defaultArchiveFileName,
+  defaultArchiveType,
+  isBethesdaArchiveFile,
+  normalizeArchivePath,
+  toArchiveRelativePath,
+} from './bethesdaArchivePaths';
+export {
+  inferArchivesForPackage,
+  manifestArchivedPaths,
+  packBethesdaArchivesIntoDir,
+  refreshArchiveEntryPaths,
+  resolvePackageArchives,
+  type PackedBethesdaArchive,
+} from './packBethesdaArchives';

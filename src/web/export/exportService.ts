@@ -34,6 +34,7 @@ import {
 } from '../../formats/strings';
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
+import { resolveModImportExtractRoot } from '../../modStorage/paths';
 import { ensureDir } from '../../utils/file';
 import {
   appendArchiveBuild,
@@ -900,9 +901,10 @@ export const exportLangpackZip = async (
 };
 
 /**
- * Builds a full localized mod ZIP with BA2/BSA archives (and patched ESP when needed).
+ * Builds a full localized mod ZIP from the import extract tree.
  *
- * STRINGS and PEX are packed into the archive; loose script/string files are not included.
+ * Repacks all BA2/BSA archives with translated content and includes every other
+ * mod asset (meshes, textures, plugins, pass-through archives) from the import.
  */
 export const exportFullModZip = async (
   db: Tx,
@@ -914,6 +916,25 @@ export const exportFullModZip = async (
 ): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
   const stem = path.basename(modPath, path.extname(modPath));
   const zipFileName = `${stem}_${targetLang}.zip`;
+
+  const { stageFullLocalizedMod } = await import('./fullModStaging');
+  const extractRoot = resolveModImportExtractRoot(modPath);
+  if (extractRoot) {
+    const staging = await stageFullLocalizedMod(db, modId, modPath, srcLang, targetLang, game);
+    try {
+      const zipBuffer = await packFilesToZip(staging.files);
+      log.info(
+        `Full mod export: ZIP ready — ${staging.files.length} file(s), ${zipBuffer.length} bytes`,
+      );
+      return { zipBuffer, zipFileName };
+    } finally {
+      staging.cleanup();
+    }
+  }
+
+  log.warn(
+    `Full mod export: no import extract tree for mod ${modId}, falling back to translation-only archives`,
+  );
   const files: Array<{ name: string; data: Buffer }> = [];
 
   try {
@@ -923,7 +944,6 @@ export const exportFullModZip = async (
         name: archive.fileName,
         data: Buffer.from(archive.contentBase64, 'base64'),
       });
-      log.info(`Full mod export: included archive ${archive.fileName} (${archive.size} bytes)`);
     }
   } catch {
     log.info(`Full mod export: no localized STRINGS for mod ${modId}, skipping archive`);
@@ -935,7 +955,6 @@ export const exportFullModZip = async (
       name: esp.fileName,
       data: Buffer.from(esp.contentBase64, 'base64'),
     });
-    log.info(`Full mod export: included patched ESP (${esp.size} bytes)`);
   } catch {
     log.info(`Full mod export: no non-localized patches for mod ${modId}, skipping ESP`);
   }

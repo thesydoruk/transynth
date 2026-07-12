@@ -1,5 +1,5 @@
 /**
- * In-memory mod-wide voice synthesis jobs (XTTS WAV → import localize/).
+ * In-memory mod-wide voice synthesis jobs (XTTS → localized `.fuz` in import localize/).
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';

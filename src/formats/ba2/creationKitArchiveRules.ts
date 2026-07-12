@@ -63,3 +63,16 @@ export const defaultArchiveFileName = (pluginStem: string, game: GameType): stri
   if (usesBa2Archives(game)) return `${pluginStem} - Main.ba2`;
   return `${pluginStem} - Strings.bsa`;
 };
+
+/** GNRL BA2 / BSA archives are rebuilt from loose files; DX10 BA2 are copied unchanged. */
+export const isRepackableBethesdaArchive = (
+  archiveType: 'ba2' | 'bsa',
+  archiveFileName: string,
+  game: GameType,
+): boolean => {
+  if (archiveType === 'ba2') {
+    if (!usesBa2Archives(game)) return false;
+    return !isDx10TextureBa2Name(archiveFileName);
+  }
+  return !usesBa2Archives(game);
+};

@@ -68,7 +68,7 @@ export const countVoiceLocalizeWork = async (
   return total;
 };
 
-/** Synthesize TTS WAV files into `localize/` under a mod import extract tree. */
+/** Synthesize localized `.fuz` voice files into `localize/` under a mod import extract tree. */
 export const localizeModImportVoice = async (
   db: Tx,
   options: LocalizeModImportVoiceOptions,
@@ -117,6 +117,7 @@ export const localizeModImportVoice = async (
       srcLang,
       tgtLang,
       {
+        game,
         xttsBaseUrl,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
