@@ -9,6 +9,7 @@ import { llmTranslateEligibilitySql, type LlmTranslateOverwriteMode } from '../d
 import { translateStringIdsBatch } from './llmTranslateBatch';
 import { logTranslate } from '../../logging/loggers';
 import { awaitPendingQaRefresh } from '../services/qaHooks';
+import { tryRefreshModLangStats } from '../services/modLangStats';
 
 /**
  * String IDs fetched from the database per pagination step.
@@ -309,6 +310,7 @@ export const runLlmTranslateJob = async (
     onEvent({ type: 'error', error: message });
   }
 
+  tryRefreshModLangStats(db, opts.modId, opts.srcLang, opts.targetLang);
   return toSnapshot(job);
 };
 

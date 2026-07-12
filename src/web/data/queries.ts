@@ -17,6 +17,7 @@ import {
   type DeferredBulkWriteIndexContext,
   withDeferredBulkModWriteIndexes,
 } from '../import/modImportIndexes';
+import { refreshModLangStatsForMods, tryRefreshModLangStats } from '../services/modLangStats';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
@@ -521,59 +522,60 @@ export const listMods = async (
   const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
   const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
 
-  /* Optional game filter on the outer mods row set. */
   const whereClause = opts.game ? 'WHERE m.game = $3' : '';
   const params: unknown[] = [srcLang, targetLang];
   if (opts.game) params.push(opts.game);
 
-  /*
-   * Aggregate per mod in separate subqueries. A single GROUP BY over four
-   * LEFT JOINs makes PostgreSQL nest-loop every string row against all
-   * translations for the target lang (~215k × 7k = 1.5B row comparisons).
-   */
-  const { rows } = await db.query(
-    `SELECT
-      m.id,
-      m.name,
-      m.abs_path,
-      m.version_hash,
-      m.game,
-      m.nexus_mod_id,
-      m.nexus_name,
-      m.nexus_thumbnail,
-      m.created_at,
-      COALESCE(rs.record_count, 0)::bigint          AS record_count,
-      COALESCE(ss.string_count, 0)::bigint         AS string_count,
-      COALESCE(ts.translated_count, 0)::bigint     AS translated_count,
-      COALESCE(ts.approved_count, 0)::bigint       AS approved_count,
-      COALESCE(ts.fuzzy_count, 0)::bigint          AS fuzzy_count
-     FROM mods m
-     LEFT JOIN (
-       SELECT mod_id, COUNT(*)::bigint AS record_count
-       FROM records
-       GROUP BY mod_id
-     ) rs ON rs.mod_id = m.id
-     LEFT JOIN (
-       SELECT r.mod_id, COUNT(s.id)::bigint AS string_count
-       FROM records r
-       JOIN strings s ON s.record_id = r.id AND s.lang = $1
-       GROUP BY r.mod_id
-     ) ss ON ss.mod_id = m.id
-     LEFT JOIN (
-       SELECT r.mod_id,
-         COUNT(t.id)::bigint AS translated_count,
-         COUNT(*) FILTER (WHERE t.status IN ${APPROVED_STATUS_SQL})::bigint AS approved_count,
-         COUNT(*) FILTER (WHERE t.status = 'fuzzy')::bigint AS fuzzy_count
-       FROM records r
-       JOIN strings s ON s.record_id = r.id AND s.lang = $1
-       JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-       GROUP BY r.mod_id
-     ) ts ON ts.mod_id = m.id
-     ${whereClause}
-     ORDER BY m.created_at DESC`,
-    params,
-  );
-  return rows;
+  const queryMods = () =>
+    db.query<{
+      id: number;
+      name: string;
+      abs_path: string;
+      version_hash: string;
+      game: string;
+      nexus_mod_id: number | null;
+      nexus_name: string | null;
+      nexus_thumbnail: string | null;
+      created_at: Date;
+      record_count: string;
+      string_count: string;
+      translated_count: string;
+      approved_count: string;
+      fuzzy_count: string;
+      has_stats: boolean;
+    }>(
+      `SELECT
+        m.id,
+        m.name,
+        m.abs_path,
+        m.version_hash,
+        m.game,
+        m.nexus_mod_id,
+        m.nexus_name,
+        m.nexus_thumbnail,
+        m.created_at,
+        COALESCE(st.record_count, 0)::bigint AS record_count,
+        COALESCE(st.string_count, 0)::bigint AS string_count,
+        COALESCE(st.translated_count, 0)::bigint AS translated_count,
+        COALESCE(st.approved_count, 0)::bigint AS approved_count,
+        COALESCE(st.fuzzy_count, 0)::bigint AS fuzzy_count,
+        (st.mod_id IS NOT NULL) AS has_stats
+       FROM mods m
+       LEFT JOIN mod_lang_stats st
+         ON st.mod_id = m.id AND st.src_lang = $1 AND st.target_lang = $2
+       ${whereClause}
+       ORDER BY m.created_at DESC`,
+      params,
+    );
+
+  let { rows } = await queryMods();
+  const missingIds = rows.filter((row) => !row.has_stats).map((row) => row.id);
+  if (missingIds.length > 0) {
+    await refreshModLangStatsForMods(db, missingIds, srcLang, targetLang);
+    ({ rows } = await queryMods());
+  }
+
+  return rows.map(({ has_stats: _hasStats, ...mod }) => mod);
 };
 
 export const getMod = async (db: Tx, id: number) => {
@@ -729,6 +731,12 @@ export const deleteModDataForModIds = async (
     CONFIG.modImportDeferIndexes,
     (client, indexCtx) => deleteModDataOnClient(client, uniqueModIds, scope, indexCtx),
   );
+
+  if (scope === 'rows') {
+    for (const modId of uniqueModIds) {
+      tryRefreshModLangStats(db, modId, CONFIG.defaultSrcLang, CONFIG.defaultTgtLang);
+    }
+  }
 
   log.info(
     `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} deferIndexes=${CONFIG.modImportDeferIndexes} ms=${Date.now() - started}`,

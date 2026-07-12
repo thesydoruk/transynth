@@ -4,6 +4,7 @@
 import type { Tx } from '../../db';
 import { log } from '../../logger';
 import { applyTMToMod, countUntranslatedStrings } from './tm';
+import { tryRefreshModLangStats } from './modLangStats';
 
 export type TmApplyJobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 
@@ -184,6 +185,7 @@ export const runTmApplyJob = async (
         skipped: job.skipped,
       });
     }
+    tryRefreshModLangStats(db, opts.modId, opts.srcLang, opts.targetLang);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     job.status = 'failed';

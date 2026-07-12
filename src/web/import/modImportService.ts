@@ -92,6 +92,7 @@ import {
   extractGameArchivesForImport,
   resolveModImportExtractRoot,
 } from './modImportExtract';
+import { tryRefreshModLangStats } from '../services/modLangStats';
 
 const { Pool } = pg;
 
@@ -2465,6 +2466,9 @@ export const runModImport = async (
           }
 
           await markDone(db, job.id, imported);
+          if (job.mod_id != null) {
+            tryRefreshModLangStats(db, job.mod_id, job.src_lang, job.tgt_lang);
+          }
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
           logImport.info(`[Mod Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
           onProgress?.(imported, job.total_records);

@@ -10,6 +10,7 @@ import { llmVerifyEligibleStatusSql } from '../data/queries';
 import { logVerify } from '../../logging/loggers';
 import { runModVerifyPipeline } from './llmVerifyPipeline';
 import { buildLlmTranslateChunks } from './llmTranslateChunking';
+import { tryRefreshModLangStats } from '../services/modLangStats';
 
 /** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
 export const LLM_VERIFY_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
@@ -482,6 +483,7 @@ export const runLlmVerifyJob = async (
     onEvent({ type: 'error', error: message });
   }
 
+  tryRefreshModLangStats(db, opts.modId, opts.srcLang, opts.targetLang);
   return toSnapshot(job);
 };
 

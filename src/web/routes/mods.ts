@@ -22,6 +22,7 @@ import {
 } from '../import/applyImportedJobService';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
+import { tryRefreshModLangStats } from '../services/modLangStats';
 import {
   exportArchive,
   exportLocalizedStringsFiles,
@@ -358,6 +359,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     log.info(`POST /api/mods/${id}/clear-same-as-source ${srcLang}->${targetLang}`);
     const result = await clearSameAsSourceTranslations(db, id, srcLang, targetLang);
     log.info(`Clear same-as-source: cleared=${result.cleared}`);
+    tryRefreshModLangStats(db, id, srcLang, targetLang);
     return reply.send(result);
   });
 
