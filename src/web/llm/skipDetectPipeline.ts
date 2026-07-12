@@ -299,29 +299,36 @@ export const runModSkipDetectPipeline = async (
 
     persistJobs.push(
       persistPool.run(async () => {
-        if (shouldCancel?.()) return;
+        try {
+          if (shouldCancel?.()) return;
 
-        let marked = 0;
-        if (persist && job.candidates.length > 0) {
-          marked = await markStringsAsSkip(
-            db,
-            job.candidates.map((c) => c.stringId),
-          );
-          markedCount += marked;
+          let marked = 0;
+          if (persist && job.candidates.length > 0) {
+            marked = await markStringsAsSkip(
+              db,
+              job.candidates.map((c) => c.stringId),
+            );
+            markedCount += marked;
+          }
+
+          await markStringsSkipDetectScanned(db, job.scannedIds);
+          done += job.scannedIds.length;
+          candidateCount += job.candidates.length;
+
+          for (const candidate of job.candidates) {
+            handlers.collectCandidate?.(candidate);
+          }
+
+          emitProgress({
+            candidatesBatch: job.candidates.length > 0 ? job.candidates : undefined,
+            markedCount,
+          });
+        } catch (err) {
+          logVerify.error('skip-detect persist chunk failed', {
+            err: err instanceof Error ? err.message : String(err),
+            scannedIds: job.scannedIds.length,
+          });
         }
-
-        await markStringsSkipDetectScanned(db, job.scannedIds);
-        done += job.scannedIds.length;
-        candidateCount += job.candidates.length;
-
-        for (const candidate of job.candidates) {
-          handlers.collectCandidate?.(candidate);
-        }
-
-        emitProgress({
-          candidatesBatch: job.candidates.length > 0 ? job.candidates : undefined,
-          markedCount,
-        });
       }),
     );
   };

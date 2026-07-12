@@ -262,9 +262,20 @@ export const translateStringIdsBatch = async (
     if (okRows.length === 0) return;
     persistJobs.push(
       persistPool.run(async () => {
-        await persistAutoTranslationRows(okRows);
-        for (const row of okRows) {
-          emitResult({ stringId: row.stringId, text: row.text });
+        try {
+          await persistAutoTranslationRows(okRows);
+          for (const row of okRows) {
+            emitResult({ stringId: row.stringId, text: row.text });
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          logTranslate.error('persist translation chunk failed', {
+            err: message,
+            rowCount: okRows.length,
+          });
+          for (const row of okRows) {
+            emitResult({ stringId: row.stringId, error: `persist failed: ${message}` });
+          }
         }
       }),
     );

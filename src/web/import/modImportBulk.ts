@@ -3,6 +3,7 @@
  */
 import type { CsvRow } from '../../types';
 import type { Tx } from '../../db';
+import { withPgRetry } from '../../db';
 import { CONFIG } from '../../config';
 import { bulkRecordTranslationRevisions } from '../data/translationRevisions';
 import type { TranslationStatus } from '../data/statusMachine';
@@ -543,41 +544,46 @@ const bulkUpsertTranslationsCore = async (
     if (part.length === 0) continue;
     const stringIds = part.map((p) => p.srcStringId);
     const texts = part.map((p) => p.text);
-    await db.query(
-      `DELETE FROM translations WHERE src_string_id = ANY($1::int[]) AND target_lang = $2`,
-      [stringIds, targetLang],
-    );
-    const { rows: inserted } = await db.query<{
-      id: number;
-      src_string_id: number;
-      text: string;
-      status: string;
-      provenance: string | null;
-    }>(
-      `INSERT INTO translations(
-         src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
-       )
-       SELECT s, $3, t, $5, 1.0, $4, $6, NULL, NOW()
-       FROM UNNEST($1::int[], $2::text[]) AS u(s, t)
-       RETURNING id, src_string_id, text, status, provenance`,
-      [stringIds, texts, targetLang, provenance, status, model],
-    );
+    await withPgRetry(
+      async () => {
+        await db.query(
+          `DELETE FROM translations WHERE src_string_id = ANY($1::int[]) AND target_lang = $2`,
+          [stringIds, targetLang],
+        );
+        const { rows: inserted } = await db.query<{
+          id: number;
+          src_string_id: number;
+          text: string;
+          status: string;
+          provenance: string | null;
+        }>(
+          `INSERT INTO translations(
+             src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
+           )
+           SELECT s, $3, t, $5, 1.0, $4, $6, NULL, NOW()
+           FROM UNNEST($1::int[], $2::text[]) AS u(s, t)
+           RETURNING id, src_string_id, text, status, provenance`,
+          [stringIds, texts, targetLang, provenance, status, model],
+        );
 
-    if (revisionNote) {
-      await bulkRecordTranslationRevisions(
-        db,
-        inserted.map((row) => ({
-          stringId: row.src_string_id,
-          translationId: row.id,
-          targetLang,
-          text: row.text,
-          status: status as TranslationStatus,
-          provenance: row.provenance,
-          model,
-          note: revisionNote,
-        })),
-      );
-    }
+        if (revisionNote) {
+          await bulkRecordTranslationRevisions(
+            db,
+            inserted.map((row) => ({
+              stringId: row.src_string_id,
+              translationId: row.id,
+              targetLang,
+              text: row.text,
+              status: status as TranslationStatus,
+              provenance: row.provenance,
+              model,
+              note: revisionNote,
+            })),
+          );
+        }
+      },
+      { label: 'bulkUpsertTranslations' },
+    );
 
     total += part.length;
   }
