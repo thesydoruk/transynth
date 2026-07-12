@@ -7,6 +7,7 @@ import {
   modImportPackOutputDir,
   modStorageRoot,
   modUploadedFilePath,
+  resolveModStoredPath,
 } from '../paths';
 
 describe('modStorage paths', () => {
@@ -23,6 +24,14 @@ describe('modStorage paths', () => {
     );
     expect(modImportPackOutputDir(path.join(root, '_extracted_abc123'))).toBe(
       path.join(root, '_output', '_extracted_abc123'),
+    );
+  });
+
+  it('remaps Windows data paths to the current DATA_DIR', () => {
+    const winPath =
+      'D:\\Source\\fallout4-localization-project\\data\\uploads\\mod\\_extracted_abc\\plugin.esp';
+    expect(resolveModStoredPath(winPath)).toBe(
+      path.join(PATHS.dataDir, 'uploads', 'mod', '_extracted_abc', 'plugin.esp'),
     );
   });
 });

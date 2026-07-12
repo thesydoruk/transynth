@@ -61,6 +61,30 @@ export const isInsideModStorage = (absPath: string): boolean => {
   return !rel.startsWith('..') && !path.isAbsolute(rel);
 };
 
+/** Remap a DB-stored path from another host/OS to the current {@link PATHS.dataDir}. */
+export const resolveModStoredPath = (storedPath: string): string => {
+  const trimmed = storedPath.trim();
+  if (!trimmed) return trimmed;
+
+  const direct = path.resolve(trimmed);
+  if (fs.existsSync(direct)) return direct;
+
+  const normalized = trimmed.replace(/\\/g, '/');
+  const marker = '/data/';
+  const markerIdx = normalized.toLowerCase().lastIndexOf(marker);
+  if (markerIdx >= 0) {
+    const suffix = normalized.slice(markerIdx + marker.length);
+    return path.resolve(PATHS.dataDir, ...suffix.split('/').filter(Boolean));
+  }
+
+  if (normalized.startsWith('./data/')) {
+    const suffix = normalized.slice('./data/'.length);
+    return path.resolve(PATHS.dataDir, ...suffix.split('/').filter(Boolean));
+  }
+
+  return direct;
+};
+
 /** Resolve `_extracted_*` root for a plugin path under mod storage, if any. */
 export const resolveModImportExtractRoot = (pluginPath: string): string | null => {
   const absPluginPath = path.resolve(pluginPath);

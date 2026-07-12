@@ -27,8 +27,10 @@ export const resolveXwmaEncodePath = (): string => {
 export const resolveFfmpegPath = (): string => {
   const configured = process.env.FFMPEG_PATH?.trim();
   if (configured) return configured;
-  const bundled = path.join(voiceToolsDir(), 'ffmpeg.exe');
-  if (fs.existsSync(bundled)) return bundled;
+  if (process.platform === 'win32') {
+    const bundled = path.join(voiceToolsDir(), 'ffmpeg.exe');
+    if (fs.existsSync(bundled)) return bundled;
+  }
   return 'ffmpeg';
 };
 

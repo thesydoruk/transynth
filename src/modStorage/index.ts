@@ -10,5 +10,6 @@ export {
   modUploadedFilePath,
   resolveModImportExtractRoot,
   resolveModImportLocalizeDir,
+  resolveModStoredPath,
   sanitizeModDirName,
 } from './paths';

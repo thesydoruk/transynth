@@ -25,6 +25,7 @@ import {
   resolveModImportExtractRoot,
   modImportLocalizeDir,
   resolveModImportLocalizeDir,
+  resolveModStoredPath,
 } from '../../modStorage';
 import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
 import {
@@ -300,7 +301,8 @@ export const listVoiceLinesForMod = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path);
+  const pluginPath = resolveModStoredPath(mod.abs_path);
+  const ctx = resolveVoicePackageContext(pluginPath);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
@@ -393,12 +395,13 @@ const resolveModVoiceContext = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path);
+  const pluginPath = resolveModStoredPath(mod.abs_path);
+  const ctx = resolveVoicePackageContext(pluginPath);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
 
-  return { ok: true, mod: { name: mod.name, abs_path: mod.abs_path }, ctx };
+  return { ok: true, mod: { name: mod.name, abs_path: pluginPath }, ctx };
 };
 
 /** Set or replace the TTS reference line for one speaker. */
@@ -477,7 +480,8 @@ export const getVoicePreviewWav = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
-  const ctx = resolveVoicePackageContext(mod.abs_path);
+  const pluginPath = resolveModStoredPath(mod.abs_path);
+  const ctx = resolveVoicePackageContext(pluginPath);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
