@@ -5,12 +5,25 @@ export {
   type VoiceFileEntry,
 } from './discoverVoiceFiles';
 export {
+  findImportedMasterMods,
+  formatInheritedFromLabel,
+  loadInheritedVoiceLookup,
+  lookupInheritedVoiceLine,
+  readMasterPluginNames,
+  type InheritedVoiceLine,
+  type InheritedVoiceLookup,
+  type MasterModRef,
+} from './inheritedVoiceText';
+export {
   INFO_NAM1_RECORD_PATHS,
   loadVoiceSources,
+  loadVoiceSourcesDetailed,
   loadVoiceTranslations,
   lookupVoiceSource,
   lookupVoiceTranslation,
+  normalizeVoiceText,
   voiceTranslationMapKey,
+  type VoiceSourceDetailRow,
   type VoiceSourceRow,
   type VoiceTranslationRow,
 } from './loadVoiceTranslations';

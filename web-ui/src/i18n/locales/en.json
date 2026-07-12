@@ -364,6 +364,8 @@
     "voiceRefClear": "Clear",
     "voiceRefClearTitle": "Clear reference pick (use auto-selection)",
     "voiceRefBadge": "reference",
+    "voiceInheritedBadge": "inherited",
+    "voiceInheritedTitle": "Inherited audio from {{source}}",
     "voiceRefHint": "The selected line is used as the XTTS reference for all lines of this character.",
     "voiceRefHintEmpty": "Pick one line as the TTS reference — otherwise the system auto-selects one.",
     "voiceRefSaving": "…",

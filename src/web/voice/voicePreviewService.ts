@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../../db';
+import type { GameType } from '../../types';
 import { extractXwmFromFuzFile } from '../../formats/fuz';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
@@ -15,12 +16,18 @@ import {
   type VoiceFileEntry,
 } from '../../voice/discoverVoiceFiles';
 import {
-  INFO_NAM1_RECORD_PATHS,
-  infoNam1RecordsSql,
+  loadVoiceSourcesDetailed,
   loadVoiceTranslations,
   lookupVoiceTranslation,
+  normalizeVoiceText,
   voiceTranslationMapKey,
 } from '../../voice/loadVoiceTranslations';
+import {
+  findImportedMasterMods,
+  formatInheritedFromLabel,
+  loadInheritedVoiceLookup,
+  lookupInheritedVoiceLine,
+} from '../../voice/inheritedVoiceText';
 import {
   resolveModImportExtractRoot,
   modImportLocalizeDir,
@@ -52,6 +59,8 @@ export type VoiceLinePreview = {
   source: string | null;
   translation: string | null;
   isReference: boolean;
+  isInheritedAudio: boolean;
+  inheritedFrom: string | null;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
 };
@@ -184,44 +193,6 @@ const resolveVoicePackageContext = (pluginPath: string): VoicePackageContext | n
   };
 };
 
-const loadVoiceSources = async (
-  db: Tx,
-  modId: number,
-  srcLang: string,
-): Promise<Map<string, { source: string; infoFormidHex: string }>> => {
-  const { rows } = await db.query<{
-    formid_lower6: string;
-    info_formid_hex: string;
-    voice_variant: number;
-    source: string;
-  }>(
-    `WITH voiced AS (
-       SELECT
-         UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
-         r.formid_hex AS info_formid_hex,
-         s.text_raw AS source,
-         ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_variant
-       FROM records r
-       JOIN strings s ON s.record_id = r.id AND s.lang = $2
-       WHERE r.mod_id = $1
-         AND ${infoNam1RecordsSql('r', '$3')}
-     )
-     SELECT formid_lower6, info_formid_hex, voice_variant, source
-     FROM voiced
-     ORDER BY formid_lower6, voice_variant`,
-    [modId, srcLang, [...INFO_NAM1_RECORD_PATHS]],
-  );
-
-  const map = new Map<string, { source: string; infoFormidHex: string }>();
-  for (const row of rows) {
-    map.set(voiceTranslationMapKey(row.formid_lower6, row.voice_variant), {
-      source: row.source,
-      infoFormidHex: row.info_formid_hex,
-    });
-  }
-  return map;
-};
-
 const loadSpeakerNamesFromDb = async (db: Tx, modId: number): Promise<Map<string, string>> => {
   const { rows } = await db.query<{ formid_lower6: string; speaker_name: string }>(
     `SELECT DISTINCT ON (UPPER(SUBSTRING(dn.info_formid_hex FROM 3)))
@@ -289,8 +260,8 @@ export const listVoiceLinesForMod = async (
   srcLang: string,
   targetLang: string,
 ): Promise<VoiceLinesListResult> => {
-  const { rows } = await db.query<{ name: string; abs_path: string | null }>(
-    `SELECT name, abs_path FROM mods WHERE id = $1`,
+  const { rows } = await db.query<{ name: string; abs_path: string | null; game: GameType }>(
+    `SELECT name, abs_path, game FROM mods WHERE id = $1`,
     [modId],
   );
   const mod = rows[0];
@@ -313,13 +284,23 @@ export const listVoiceLinesForMod = async (
   }
 
   const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
-  const sources = await loadVoiceSources(db, modId, srcLang);
+  const sources = await loadVoiceSourcesDetailed(db, modId, srcLang);
   const translations = await loadVoiceTranslations(
     db,
     modId,
     srcLang,
     targetLang || CONFIG.defaultTgtLang,
   );
+  const masterMods = await findImportedMasterMods(db, pluginPath, modId, mod.game ?? 'fo4');
+  const inheritedLookup =
+    masterMods.length > 0
+      ? await loadInheritedVoiceLookup(db, masterMods, srcLang, targetLang || CONFIG.defaultTgtLang)
+      : null;
+  if (masterMods.length > 0) {
+    log.debug(
+      `Voice list mod=${modId}: inherited lookup from ${masterMods.map((m) => m.pluginName).join(', ')}`,
+    );
+  }
   const dbSpeakerNames = await loadSpeakerNamesFromDb(db, modId);
   const speakerRefs = await loadVoiceSpeakerRefs(db, modId);
 
@@ -337,7 +318,30 @@ export const listVoiceLinesForMod = async (
       const audioPath = resolveLocalizedVoiceAbsPath(ctx.localizeDir, entry);
       return audioPath != null && fs.existsSync(audioPath);
     })();
-    const translationText = translationRow?.translation?.trim() ?? '';
+    const translationText = normalizeVoiceText(translationRow?.translation) ?? '';
+    const localSource =
+      normalizeVoiceText(sourceRow?.source) ?? normalizeVoiceText(translationRow?.source);
+
+    let source = localSource;
+    let translation = translationText || null;
+    let infoFormidHex = sourceRow?.infoFormidHex ?? translationRow?.infoFormidHex ?? null;
+    let isInheritedAudio = false;
+    let inheritedFrom: string | null = null;
+
+    if (!source && inheritedLookup) {
+      const inherited = lookupInheritedVoiceLine(
+        inheritedLookup,
+        entry.formidLower6,
+        entry.variant,
+      );
+      if (inherited) {
+        source = inherited.source;
+        translation = translation ?? inherited.translation;
+        infoFormidHex = inherited.infoFormidHex || infoFormidHex;
+        isInheritedAudio = true;
+        inheritedFrom = formatInheritedFromLabel(inherited.master);
+      }
+    }
 
     let group = groups.get(speakerKey);
     if (!group) {
@@ -347,16 +351,18 @@ export const listVoiceLinesForMod = async (
 
     group.lines.push({
       formidLower6: entry.formidLower6,
-      infoFormidHex: sourceRow?.infoFormidHex ?? translationRow?.infoFormidHex ?? null,
+      infoFormidHex,
       variant: entry.variant,
       fileName: entry.fileName,
-      source: sourceRow?.source ?? translationRow?.source ?? null,
-      translation: translationText || null,
+      source,
+      translation,
       isReference: referencePick
         ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
         : false,
+      isInheritedAudio,
+      inheritedFrom,
       hasTranslationAudio,
-      canGenerateVoice: translationText.length > 0 && !hasTranslationAudio,
+      canGenerateVoice: Boolean(translation) && !hasTranslationAudio,
     });
   }
 

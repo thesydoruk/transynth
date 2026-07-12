@@ -289,6 +289,14 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
                             {line.isReference && (
                               <span className={s.refBadge}>{t('modEditor.voiceRefBadge')}</span>
                             )}
+                            {line.isInheritedAudio && (
+                              <span
+                                className={s.inheritedBadge}
+                                title={line.inheritedFrom ?? undefined}
+                              >
+                                {t('modEditor.voiceInheritedBadge')}
+                              </span>
+                            )}
                           </td>
                           <td className={s.textCell}>{line.source ?? '—'}</td>
                           <td className={s.textCell}>{line.translation ?? '—'}</td>

@@ -1084,6 +1084,8 @@ export type VoiceLinePreview = {
   source: string | null;
   translation: string | null;
   isReference: boolean;
+  isInheritedAudio: boolean;
+  inheritedFrom: string | null;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
 };

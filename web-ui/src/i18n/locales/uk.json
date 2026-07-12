@@ -364,6 +364,8 @@
     "voiceRefClear": "Скасувати",
     "voiceRefClearTitle": "Скасувати вибір референсу (автовибір)",
     "voiceRefBadge": "референс",
+    "voiceInheritedBadge": "успадковане",
+    "voiceInheritedTitle": "Успадковане аудіо з {{source}}",
     "voiceRefHint": "Обрана репліка використовується як референс XTTS для всіх реплік цього персонажа.",
     "voiceRefHintEmpty": "Оберіть одну репліку як референс для озвучки — інакше система вибере автоматично.",
     "voiceRefSaving": "…",

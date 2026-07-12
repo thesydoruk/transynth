@@ -1,4 +1,19 @@
-import { voiceTranslationMapKey, lookupVoiceTranslation } from '../loadVoiceTranslations';
+import {
+  voiceTranslationMapKey,
+  lookupVoiceTranslation,
+  normalizeVoiceText,
+} from '../loadVoiceTranslations';
+
+describe('normalizeVoiceText', () => {
+  it('treats whitespace-only strings as missing', () => {
+    expect(normalizeVoiceText(' ')).toBeNull();
+    expect(normalizeVoiceText('  \n ')).toBeNull();
+  });
+
+  it('returns trimmed non-empty text', () => {
+    expect(normalizeVoiceText(' hello ')).toBe('hello');
+  });
+});
 
 describe('voiceTranslationMapKey', () => {
   it('combines lower-6 formid and 1-based voice variant', () => {
