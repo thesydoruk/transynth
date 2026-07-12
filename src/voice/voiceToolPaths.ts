@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS } from '../paths';
+import { isWineAvailable, isWineExePath } from './voiceExec';
 
 export const voiceToolsDir = (): string =>
-  path.resolve(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.dataDir, 'tools', 'voice'));
+  path.resolve(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.toolsDir, 'voice'));
 
 export const resolveFaceFxWrapperPath = (): string => {
   const configured = process.env.FACEFX_WRAPPER_PATH?.trim();
@@ -56,14 +57,22 @@ export type TtsReferenceMode = 'speaker' | 'line';
  */
 export const resolveTtsReferenceMode = (): TtsReferenceMode => 'speaker';
 
+const assertVoiceToolFile = (label: string, toolPath: string, missing: string[]): void => {
+  if (!fs.existsSync(toolPath)) {
+    missing.push(`${label} (${toolPath})`);
+    return;
+  }
+  if (process.platform !== 'win32' && isWineExePath(toolPath) && !isWineAvailable()) {
+    missing.push(`Wine (required to run ${label} on Linux — install wine/wine32 or set WINE_PATH)`);
+  }
+};
+
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];
-  const faceFx = resolveFaceFxWrapperPath();
+  assertVoiceToolFile('FaceFXWrapper', resolveFaceFxWrapperPath(), missing);
   const fonix = resolveFonixDataPath();
-  const xwma = resolveXwmaEncodePath();
-  if (!fs.existsSync(faceFx)) missing.push(`FaceFXWrapper (${faceFx})`);
   if (!fs.existsSync(fonix)) missing.push(`FonixData.cdf (${fonix})`);
-  if (!fs.existsSync(xwma)) missing.push(`xWMAEncode (${xwma})`);
+  assertVoiceToolFile('xWMAEncode', resolveXwmaEncodePath(), missing);
   if (missing.length > 0) {
     throw new Error(
       `Missing voice tooling:\n  - ${missing.join('\n  - ')}\nRun \`npm run tools:install\` or set FACEFX_WRAPPER_PATH / FONIX_DATA_PATH / XWMA_ENCODE_PATH`,

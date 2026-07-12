@@ -2,10 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const dataDir = path.resolve(process.env.DATA_DIR ?? './data');
+const toolsDir = path.resolve(process.env.TOOLS_DIR ?? path.join(dataDir, 'tools'));
 
 /** Runtime data directories (logs, uploads, cache, DB files). */
 export const PATHS = {
   dataDir,
+  toolsDir,
   logs: path.resolve(process.env.LOG_DIR ?? path.join(dataDir, 'logs')),
   modUploads: path.resolve(process.env.MOD_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'mod')),
   eetUploads: path.resolve(process.env.EET_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'eet')),
@@ -25,7 +27,7 @@ export const PATHS = {
   ),
   /** Champollion CLI installed by `npm run tools:install`. */
   champollion: path.resolve(
-    process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(dataDir, 'tools', 'champollion'),
+    process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(toolsDir, 'champollion'),
   ),
   backups: path.resolve(process.env.BACKUP_DIR ?? path.join(dataDir, 'backups')),
   postgres: path.resolve(process.env.POSTGRES_DATA_DIR ?? path.join(dataDir, 'postgres')),

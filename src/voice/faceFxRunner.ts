@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execFileAsync } from '../utils/execFile';
+import { execVoiceToolAsync } from './voiceExec';
 import { encodeFaceFxDialogueText } from './faceFxText';
 
 export type FaceFxRunnerResult = {
@@ -69,7 +69,7 @@ const run = async (): Promise<void> => {
   let stdout = '';
   let stderr = '';
   try {
-    ({ stdout, stderr } = await execFileAsync(faceFxExe, [
+    ({ stdout, stderr } = await execVoiceToolAsync(faceFxExe, [
       faceFxGameType(game),
       'USEnglish',
       fonixPath,

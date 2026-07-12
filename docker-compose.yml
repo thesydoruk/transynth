@@ -3,6 +3,7 @@
 #
 #   docker compose up -d --build
 #   docker compose run --rm web npm run db:init
+#   docker compose --profile tools run --rm cli npm run tools:install
 #   docker compose --profile tools run --rm cli npm run translate -- …
 #
 # Put TLS/reverse proxy in front of WEB_PORT (default 3000). Set strong credentials in .env.
@@ -26,6 +27,9 @@ services:
       PORT: '3000'
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEDEBUG: -all
     volumes:
       - ./data:/app/data
     depends_on:
@@ -66,6 +70,9 @@ services:
       DATA_DIR: /app/data
       DATABASE_URL: postgresql://localizer:localizer@db:5432/localizer
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEDEBUG: -all
     volumes:
       - ./data:/app/data
     depends_on:
