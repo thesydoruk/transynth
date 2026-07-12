@@ -11,11 +11,8 @@ import {
 } from '../modImport';
 import { ensureDir } from '../utils/file';
 import { checkXttsHealth } from '../tts/xttsClient';
-import {
-  resolveTtsBaseUrl,
-  resolveTtsReferenceMode,
-  type TtsReferenceMode,
-} from './voiceToolPaths';
+import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
+import { loadVoiceProjectSettings } from './voiceProjectSettings';
 import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
 import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
 import { localizeVoicePackage } from './localizeVoicePackage';
@@ -46,7 +43,8 @@ export type LocalizeModImportVoiceResult = {
 
 const resolveReferenceMode = (
   options: Pick<LocalizeModImportVoiceOptions, 'referenceMode'>,
-): TtsReferenceMode => options.referenceMode ?? resolveTtsReferenceMode();
+  projectReferenceMode: TtsReferenceMode,
+): TtsReferenceMode => options.referenceMode ?? projectReferenceMode;
 
 /** Count voice files that have a target translation and can be synthesized. */
 export const countVoiceLocalizeWork = async (
@@ -85,7 +83,8 @@ export const localizeModImportVoice = async (
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
   const xttsBaseUrl = options.xttsBaseUrl ?? resolveTtsBaseUrl();
-  const referenceMode = resolveReferenceMode(options);
+  const voiceConfig = await loadVoiceProjectSettings(db);
+  const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
 
   const packages = resolveImportPackages(extractDir, options.pluginPath);
   const localizeDir = modImportLocalizeDir(extractDir);
@@ -122,6 +121,7 @@ export const localizeModImportVoice = async (
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
         referenceMode,
+        synthesis: voiceConfig.synthesis,
         limit: options.limit,
         shouldCancel: options.shouldCancel,
         onEligibleStep: options.onProgress ? bumpProgress : undefined,

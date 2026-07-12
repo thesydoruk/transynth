@@ -38,41 +38,23 @@ export const resolveTtsBaseUrl = (): string => {
   return `http://localhost:${port}`;
 };
 
-/** TTS synthesis language — defaults to `uk` for the Ukrainian voice model. */
-export const resolveTtsLanguage = (): string => {
-  const lang = (
-    process.env.TTS_LANGUAGE?.trim() ||
-    process.env.XTTS_UK_LANGUAGE?.trim() ||
-    'uk'
-  ).toLowerCase();
+/** Map mod target locale to the TTS API `language` field. */
+export const resolveTtsLanguage = (targetLang: string): string => {
+  const lang = targetLang.trim().toLowerCase();
+  if (!lang) throw new Error('Target language is required for TTS');
   return lang === 'ua' ? 'uk' : lang;
 };
 
 /** How XTTS picks the English reference clip sent with each synthesis request. */
 export type TtsReferenceMode = 'speaker' | 'line';
 
-const readEnvOn = (name: string): boolean | undefined => {
-  const raw = process.env[name]?.trim().toLowerCase();
-  if (!raw) return undefined;
-  if (['1', 'true', 'yes', 'on'].includes(raw)) return true;
-  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
-  return undefined;
-};
-
 /**
- * Resolve XTTS reference mode from env.
+ * Default XTTS reference mode when project settings are unavailable (CLI).
  *
  * - `line` — always the same voiced line's original English audio (per row).
  * - `speaker` — one shared clip per NPC folder (auto / DB pick / `_reference.wav`).
  */
-export const resolveTtsReferenceMode = (): TtsReferenceMode => {
-  if (readEnvOn('TTS_LINE_REFERENCE') === true) return 'line';
-
-  const speakerRaw = process.env.TTS_SPEAKER_REFERENCE?.trim().toLowerCase();
-  if (speakerRaw && ['0', 'false', 'no', 'off'].includes(speakerRaw)) return 'line';
-
-  return 'speaker';
-};
+export const resolveTtsReferenceMode = (): TtsReferenceMode => 'speaker';
 
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];

@@ -4,9 +4,9 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { pluginRelPath, toDiskPath, writeIfChanged, type ImportPackageContext } from '../modImport';
-import { synthesizeXttsWav } from '../tts/xttsClient';
+import { synthesizeXttsWav, type XttsSynthesisParams } from '../tts/xttsClient';
 import { ensureDir } from '../utils/file';
-import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
+import type { TtsReferenceMode } from './voiceToolPaths';
 import {
   dedupeVoiceFiles,
   discoverVoiceFiles,
@@ -29,6 +29,7 @@ import {
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { outputTtsWavRelPath } from './voiceFilePaths';
+import { resolveTtsLanguage } from './voiceToolPaths';
 
 type SpeakerRefCacheEntry = {
   wavPath: string;
@@ -55,6 +56,7 @@ export const localizeVoicePackage = async (
     dryRun: boolean;
     force: boolean;
     referenceMode: TtsReferenceMode;
+    synthesis: XttsSynthesisParams;
     limit?: number;
     shouldCancel?: () => boolean;
     onEligibleStep?: () => void;
@@ -166,8 +168,9 @@ export const localizeVoicePackage = async (
 
         const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
           baseUrl: options.xttsBaseUrl,
-          language: resolveTtsLanguage(),
+          language: resolveTtsLanguage(tgtLang),
           speakerText: referenceText ?? undefined,
+          synthesis: options.synthesis,
         });
 
         const baselinePath = fs.existsSync(ttsWavDest) ? ttsWavDest : null;

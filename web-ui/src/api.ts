@@ -581,6 +581,8 @@ export type SettingsPayload = {
   llmMaxParallel: number;
   /** Max concurrent embedding HTTP requests. */
   embedMaxParallel: number;
+  /** External TTS server base URL (read-only, from env). */
+  ttsBaseUrl: string;
   /** Computed readiness snapshot used by the Settings LLM tab. */
   llmReadiness: {
     /** Overall readiness level for badges and alerts. */

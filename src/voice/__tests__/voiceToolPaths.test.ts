@@ -1,39 +1,13 @@
-import { resolveTtsReferenceMode } from '../voiceToolPaths';
+import { resolveTtsLanguage } from '../voiceToolPaths';
 
-describe('resolveTtsReferenceMode', () => {
-  const saved: Record<string, string | undefined> = {};
-
-  beforeEach(() => {
-    for (const key of ['TTS_LINE_REFERENCE', 'TTS_SPEAKER_REFERENCE']) {
-      saved[key] = process.env[key];
-      delete process.env[key];
-    }
+describe('resolveTtsLanguage', () => {
+  it('maps target locale to TTS language code', () => {
+    expect(resolveTtsLanguage('uk')).toBe('uk');
+    expect(resolveTtsLanguage('UA')).toBe('uk');
+    expect(resolveTtsLanguage('de')).toBe('de');
   });
 
-  afterEach(() => {
-    for (const key of ['TTS_LINE_REFERENCE', 'TTS_SPEAKER_REFERENCE']) {
-      if (saved[key] === undefined) delete process.env[key];
-      else process.env[key] = saved[key];
-    }
-  });
-
-  it('defaults to speaker reference', () => {
-    expect(resolveTtsReferenceMode()).toBe('speaker');
-  });
-
-  it('uses line reference when TTS_LINE_REFERENCE=1', () => {
-    process.env.TTS_LINE_REFERENCE = '1';
-    expect(resolveTtsReferenceMode()).toBe('line');
-  });
-
-  it('uses line reference when TTS_SPEAKER_REFERENCE=0', () => {
-    process.env.TTS_SPEAKER_REFERENCE = '0';
-    expect(resolveTtsReferenceMode()).toBe('line');
-  });
-
-  it('prefers TTS_LINE_REFERENCE over TTS_SPEAKER_REFERENCE', () => {
-    process.env.TTS_LINE_REFERENCE = '1';
-    process.env.TTS_SPEAKER_REFERENCE = '1';
-    expect(resolveTtsReferenceMode()).toBe('line');
+  it('rejects empty target locale', () => {
+    expect(() => resolveTtsLanguage('  ')).toThrow('Target language is required for TTS');
   });
 });

@@ -1,0 +1,212 @@
+import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../../api';
+import parentS from '../SettingsPage.module.scss';
+import controlS from '../WorkflowTab/WorkflowTab.module.scss';
+import s from './VoiceTab.module.scss';
+import { VoiceSlider } from './VoiceSlider';
+
+type ProjectSettings = {
+  'voice.line_reference': boolean;
+  'voice.speed': number;
+  'voice.length_penalty': number;
+  'voice.temperature': number;
+  'voice.repetition_penalty': number;
+  'voice.top_p': number;
+  'voice.top_k': number;
+  'voice.enable_text_splitting': boolean;
+};
+
+type NumericVoiceKey = Exclude<
+  {
+    [K in keyof ProjectSettings]: ProjectSettings[K] extends number ? K : never;
+  }[keyof ProjectSettings],
+  never
+>;
+
+const DEFAULTS: ProjectSettings = {
+  'voice.line_reference': true,
+  'voice.speed': 1.0,
+  'voice.length_penalty': 2,
+  'voice.temperature': 0.65,
+  'voice.repetition_penalty': 1.2,
+  'voice.top_p': 0.8,
+  'voice.top_k': 50,
+  'voice.enable_text_splitting': false,
+};
+
+const SYNTHESIS_SLIDERS: Array<{
+  key: NumericVoiceKey;
+  labelKey: string;
+  descKey: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  {
+    key: 'voice.speed',
+    labelKey: 'settings.voice.speed',
+    descKey: 'settings.voice.speedDesc',
+    min: 0.5,
+    max: 2,
+    step: 0.05,
+  },
+  {
+    key: 'voice.length_penalty',
+    labelKey: 'settings.voice.lengthPenalty',
+    descKey: 'settings.voice.lengthPenaltyDesc',
+    min: 0.5,
+    max: 5,
+    step: 0.05,
+  },
+  {
+    key: 'voice.temperature',
+    labelKey: 'settings.voice.temperature',
+    descKey: 'settings.voice.temperatureDesc',
+    min: 0,
+    max: 1,
+    step: 0.05,
+  },
+  {
+    key: 'voice.repetition_penalty',
+    labelKey: 'settings.voice.repetitionPenalty',
+    descKey: 'settings.voice.repetitionPenaltyDesc',
+    min: 1,
+    max: 5,
+    step: 0.1,
+  },
+  {
+    key: 'voice.top_p',
+    labelKey: 'settings.voice.topP',
+    descKey: 'settings.voice.topPDesc',
+    min: 0,
+    max: 1,
+    step: 0.05,
+  },
+  {
+    key: 'voice.top_k',
+    labelKey: 'settings.voice.topK',
+    descKey: 'settings.voice.topKDesc',
+    min: 1,
+    max: 200,
+    step: 1,
+  },
+];
+
+/** Voice synthesis settings tab — server URL read-only, hyperparameters editable. */
+export const VoiceTab = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const {
+    data: runtimeSettings,
+    isLoading: runtimeLoading,
+    error: runtimeError,
+  } = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.settings.get,
+    staleTime: 60_000,
+  });
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['projectSettings'],
+    queryFn: () => api.projectSettings.getAll() as Promise<ProjectSettings>,
+    staleTime: 30_000,
+  });
+
+  const { mutate: update } = useMutation({
+    mutationFn: ({ key, value }: { key: string; value: boolean | number }) =>
+      api.projectSettings.update(key, value),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['projectSettings'] });
+    },
+  });
+
+  const settings: ProjectSettings = { ...DEFAULTS, ...(data ?? {}) };
+
+  const handleToggle = (key: keyof ProjectSettings) => {
+    update({ key, value: !settings[key] });
+  };
+
+  const handleNumber = (key: NumericVoiceKey, value: number) => {
+    update({ key, value });
+  };
+
+  if (isLoading || runtimeLoading) return <div className={s.center}>{t('common.loading')}</div>;
+  if (error || runtimeError || !runtimeSettings) {
+    return (
+      <div className={`${s.center} ${s.error}`}>
+        {t('common.error', { message: String(error ?? runtimeError) })}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionServer')}</h2>
+        <div className={s.readonlyNote}>ℹ️ {t('settings.voice.serverReadonlyNote')}</div>
+        <p className={parentS.fieldNote}>{t('settings.voice.serverUrlDesc')}</p>
+        <div className={parentS.fieldGrid}>
+          <span className={parentS.fieldLabel}>{t('settings.voice.serverUrl')}</span>
+          <span className={s.fieldValue}>{runtimeSettings.ttsBaseUrl}</span>
+        </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionReference')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionReferenceDesc')}</p>
+        <div className={controlS.settingsList}>
+          <div className={controlS.settingRow}>
+            <div className={controlS.settingInfo}>
+              <span className={controlS.settingLabel}>{t('settings.voice.lineReference')}</span>
+              <span className={parentS.fieldNote}>{t('settings.voice.lineReferenceDesc')}</span>
+            </div>
+            <label className={controlS.toggle}>
+              <input
+                type="checkbox"
+                checked={settings['voice.line_reference']}
+                onChange={() => handleToggle('voice.line_reference')}
+              />
+              <span className={controlS.toggleTrack} />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionSynthesis')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionSynthesisDesc')}</p>
+        <div className={controlS.settingsList}>
+          {SYNTHESIS_SLIDERS.map(({ key, labelKey, descKey, min, max, step }) => (
+            <VoiceSlider
+              key={key}
+              label={t(labelKey)}
+              description={t(descKey)}
+              value={settings[key]}
+              min={min}
+              max={max}
+              step={step}
+              onCommit={(value) => handleNumber(key, value)}
+            />
+          ))}
+
+          <div className={controlS.settingRow}>
+            <div className={controlS.settingInfo}>
+              <span className={controlS.settingLabel}>{t('settings.voice.textSplitting')}</span>
+              <span className={parentS.fieldNote}>{t('settings.voice.textSplittingDesc')}</span>
+            </div>
+            <label className={controlS.toggle}>
+              <input
+                type="checkbox"
+                checked={settings['voice.enable_text_splitting']}
+                onChange={() => handleToggle('voice.enable_text_splitting')}
+              />
+              <span className={controlS.toggleTrack} />
+            </label>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};

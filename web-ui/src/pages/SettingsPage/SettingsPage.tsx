@@ -7,6 +7,7 @@
  * Sections:
  *   General      — default source / target languages, UI language, theme.
  *   LLM          — read-only display of the active LLM runtime config.
+ *   Voice        — TTS server URL (read-only) and synthesis hyperparameters.
  *   QA Rules     — forbidden characters, length limits, and custom checks.
  *   Workflow     — project-level workflow and QA toggles.
  *   Activity     — paginated audit log of actions.
@@ -25,10 +26,11 @@ import { ActivityPage } from '../ActivityPage';
 import { DataTab } from './DataTab';
 import { GeneralTab } from './GeneralTab';
 import { LlmTab } from './LlmTab';
+import { VoiceTab } from './VoiceTab';
 import { WorkflowTab } from './WorkflowTab';
 import s from './SettingsPage.module.scss';
 
-type TabId = 'general' | 'llm' | 'qaRules' | 'activity' | 'data' | 'workflow';
+type TabId = 'general' | 'llm' | 'voice' | 'qaRules' | 'activity' | 'data' | 'workflow';
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
@@ -38,6 +40,7 @@ export const SettingsPage = () => {
   const isTabId = (value: string | null): value is TabId =>
     value === 'general' ||
     value === 'llm' ||
+    value === 'voice' ||
     value === 'qaRules' ||
     value === 'activity' ||
     value === 'data' ||
@@ -51,6 +54,7 @@ export const SettingsPage = () => {
   const configurationTabs: { id: TabId; label: string }[] = [
     { id: 'general', label: t('settings.tabs.general') },
     { id: 'llm', label: t('settings.tabs.llm') },
+    { id: 'voice', label: t('settings.tabs.voice') },
     { id: 'qaRules', label: t('settings.tabs.qaRules') },
   ];
 
@@ -104,6 +108,7 @@ export const SettingsPage = () => {
         <div className={s.content}>
           {tab === 'general' && <GeneralTab />}
           {tab === 'llm' && <LlmTab />}
+          {tab === 'voice' && <VoiceTab />}
           {tab === 'qaRules' && <QARulesPage embedded />}
           {tab === 'workflow' && <WorkflowTab />}
           {tab === 'activity' && <ActivityPage embedded />}

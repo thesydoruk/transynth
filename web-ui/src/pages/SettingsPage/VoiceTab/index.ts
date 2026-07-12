@@ -1,0 +1,1 @@
+export { VoiceTab } from './VoiceTab';

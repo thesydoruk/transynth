@@ -25,12 +25,8 @@ import {
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { outputTtsWavRelPath } from './voiceFilePaths';
-import {
-  resolveTtsBaseUrl,
-  resolveTtsLanguage,
-  resolveTtsReferenceMode,
-  type TtsReferenceMode,
-} from './voiceToolPaths';
+import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
+import { loadVoiceProjectSettings } from './voiceProjectSettings';
 
 export type SynthesizeModVoiceLineResult =
   | { ok: true; relPath: string; skipped: boolean }
@@ -96,7 +92,8 @@ export const synthesizeModVoiceLine = async (
     };
   }
 
-  const referenceMode = opts.referenceMode ?? resolveTtsReferenceMode();
+  const voiceConfig = await loadVoiceProjectSettings(db);
+  const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
   const xttsBaseUrl = opts.xttsBaseUrl ?? resolveTtsBaseUrl();
   await checkXttsHealth(xttsBaseUrl);
 
@@ -160,8 +157,9 @@ export const synthesizeModVoiceLine = async (
 
     const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
       baseUrl: xttsBaseUrl,
-      language: resolveTtsLanguage(),
+      language: resolveTtsLanguage(opts.tgtLang),
       speakerText: referenceText ?? undefined,
+      synthesis: voiceConfig.synthesis,
     });
 
     const baselinePath = fs.existsSync(ttsWavDest) ? ttsWavDest : null;

@@ -36,7 +36,23 @@ export type ProjectSettingKey =
   /** Max reference examples per string sent to the LLM (1–{@link RAG_MAX_EXAMPLES}). RAG is always required. */
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
-  | 'llm.rag_min_similarity';
+  | 'llm.rag_min_similarity'
+  /** When true, each voiced line uses its own English audio as the XTTS reference clip. */
+  | 'voice.line_reference'
+  /** XTTS synthesis speed multiplier. */
+  | 'voice.speed'
+  /** XTTS length penalty — higher values shorten utterances. */
+  | 'voice.length_penalty'
+  /** XTTS sampling temperature. */
+  | 'voice.temperature'
+  /** XTTS repetition penalty. */
+  | 'voice.repetition_penalty'
+  /** XTTS nucleus sampling top-p (0–1). */
+  | 'voice.top_p'
+  /** XTTS top-k sampling. */
+  | 'voice.top_k'
+  /** When true, XTTS may split long text into multiple utterances. */
+  | 'voice.enable_text_splitting';
 
 /** Typed shape of all project settings. */
 export type ProjectSettings = {
@@ -48,6 +64,14 @@ export type ProjectSettings = {
   'import.skip_tes4': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
+  'voice.line_reference': boolean;
+  'voice.speed': number;
+  'voice.length_penalty': number;
+  'voice.temperature': number;
+  'voice.repetition_penalty': number;
+  'voice.top_p': number;
+  'voice.top_k': number;
+  'voice.enable_text_splitting': boolean;
 };
 
 /**
@@ -65,6 +89,14 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'import.skip_tes4': false,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
+  'voice.line_reference': true,
+  'voice.speed': 1.0,
+  'voice.length_penalty': 2,
+  'voice.temperature': 0.65,
+  'voice.repetition_penalty': 1.2,
+  'voice.top_p': 0.8,
+  'voice.top_k': 50,
+  'voice.enable_text_splitting': false,
 };
 
 /* ── DB helpers ─────────────────────────────────────────────────────────── */

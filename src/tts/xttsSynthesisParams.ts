@@ -3,7 +3,7 @@
  *
  * Server defaults (temperature 0.65, length_penalty 1.0, repetition_penalty 2.0,
  * speed 1.0, splitting on) tend to sound slightly slow/drawn-out for short FO4 lines.
- * Overrides below tighten pacing; tune further via TTS_* env vars (see .env.example).
+ * Overrides below tighten pacing; tune further via project voice settings in the UI.
  */
 
 export type XttsSynthesisParams = {
@@ -27,26 +27,6 @@ export const XTTS_GAME_DIALOGUE_DEFAULTS: XttsSynthesisParams = {
   temperature: 0.6,
 };
 
-const readEnvFloat = (name: string): number | undefined => {
-  const raw = process.env[name]?.trim();
-  if (!raw) return undefined;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : undefined;
-};
-
-const readEnvInt = (name: string): number | undefined => {
-  const value = readEnvFloat(name);
-  return value === undefined ? undefined : Math.round(value);
-};
-
-const readEnvBool = (name: string): boolean | undefined => {
-  const raw = process.env[name]?.trim().toLowerCase();
-  if (!raw) return undefined;
-  if (['1', 'true', 'yes', 'on'].includes(raw)) return true;
-  if (['0', 'false', 'no', 'off'].includes(raw)) return false;
-  return undefined;
-};
-
 const pickDefined = (params: XttsSynthesisParams): XttsSynthesisParams => {
   const out: XttsSynthesisParams = {};
   if (params.temperature != null) out.temperature = params.temperature;
@@ -59,20 +39,11 @@ const pickDefined = (params: XttsSynthesisParams): XttsSynthesisParams => {
   return out;
 };
 
-/** Resolved synthesis params: game defaults → env → optional per-call overrides. */
+/** Resolved synthesis params: game defaults → optional per-call overrides. */
 export const resolveTtsSynthesisParams = (
   overrides: Partial<XttsSynthesisParams> = {},
 ): XttsSynthesisParams => ({
   ...XTTS_GAME_DIALOGUE_DEFAULTS,
-  ...pickDefined({
-    temperature: readEnvFloat('TTS_TEMPERATURE'),
-    lengthPenalty: readEnvFloat('TTS_LENGTH_PENALTY'),
-    repetitionPenalty: readEnvFloat('TTS_REPETITION_PENALTY'),
-    topK: readEnvInt('TTS_TOP_K'),
-    topP: readEnvFloat('TTS_TOP_P'),
-    speed: readEnvFloat('TTS_SPEED'),
-    enableTextSplitting: readEnvBool('TTS_ENABLE_TEXT_SPLITTING'),
-  }),
   ...pickDefined(overrides),
 });
 
