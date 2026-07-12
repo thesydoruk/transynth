@@ -9,19 +9,15 @@ import styles from './ContextMenu.module.scss';
 export interface ContextMenuProps {
   /** Viewport position and the row the menu was invoked on. */
   anchor: { x: number; y: number; row: StringRow };
-  /** Total number of selected rows (across the whole filtered set). */
-  selectedCount: number;
-  /**
-   * When true the menu's actions target the whole selection (the clicked row
-   * is part of an active selection); otherwise they target the clicked row.
-   */
-  actsOnSelection: boolean;
+  /** Rows the menu actions target (selection size, or 1 for the clicked row). */
+  targetCount: number;
+  /** When true, checkbox selection exists and actions apply to it (not only the clicked row). */
+  multiTarget: boolean;
 
   onClose: () => void;
   onClear: (row: StringRow) => void;
   onCopySource: (row: StringRow) => void;
   onTextTransform: (row: StringRow, transform: (text: string) => string) => void;
-  onBulkCopySource: (row: StringRow) => void;
   onBatchTranslate: () => void;
   onBatchApplyTm: () => void;
   onRowTranslate: (row: StringRow, mode: 'llm' | 'tm') => void;
@@ -31,16 +27,16 @@ export interface ContextMenuProps {
 
 /**
  * Fixed-position dropdown that appears on right-click over a grid row.
+ * Item set is identical for every invocation; only labels reflect the target count.
  */
 export const ContextMenu = ({
   anchor,
-  selectedCount,
-  actsOnSelection,
+  targetCount,
+  multiTarget,
   onClose,
   onClear,
   onCopySource,
   onTextTransform,
-  onBulkCopySource,
   onBatchTranslate,
   onBatchApplyTm,
   onRowTranslate,
@@ -51,22 +47,23 @@ export const ContextMenu = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const row = anchor.row;
-  const hasTrans = !!row.translation;
-  const isSkipped = row.status === 'skip' || row.is_ignored === true;
-  const bulkCount = selectedCount;
-  const showStatusItems = actsOnSelection ? bulkCount > 0 : hasTrans && !isSkipped;
+  const count = targetCount;
+
+  const labelForCount = (singleKey: string, bulkKey: string) =>
+    count === 1 ? t(singleKey) : t(bulkKey, { count });
 
   const renderStatusItems = () =>
     CONTEXT_MENU_STATUSES.map((status) => {
       const effectiveStatus = row.status === 'human' ? 'reviewed' : row.status;
-      const isCurrent = !actsOnSelection && effectiveStatus === status;
+      const isCurrent = count === 1 && effectiveStatus === status;
       const color = statusAccentColor(status);
-      const label = actsOnSelection
-        ? t('ctx.bulkSetStatus', {
-            status: t(`status.${status}`, { defaultValue: status }),
-            count: bulkCount,
-          })
-        : t(`status.${status}`, { defaultValue: status });
+      const label =
+        count === 1
+          ? t(`status.${status}`, { defaultValue: status })
+          : t('ctx.bulkSetStatus', {
+              status: t(`status.${status}`, { defaultValue: status }),
+              count,
+            });
       return (
         <button key={status} className={styles.ctxItem} onClick={() => onSetStatus(row, status)}>
           <span className={styles.ctxCheck} aria-hidden>
@@ -108,144 +105,71 @@ export const ContextMenu = ({
       style={{ top: anchor.y, left: anchor.x, opacity: 0 }}
       onClick={onClose}
     >
-      {actsOnSelection ? (
-        <>
-          <button className={styles.ctxItem} onClick={() => onClear(row)}>
-            <span className={styles.ctxIcon}>⌫</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkClear', { count: bulkCount })}</span>
-          </button>
-          <div className={styles.ctxSep} />
-          <button className={styles.ctxItem} onClick={onBatchApplyTm}>
-            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>◎</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkApplyTm', { count: bulkCount })}</span>
-          </button>
-          <button className={styles.ctxItem} onClick={onBatchTranslate}>
-            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkApplyLlm', { count: bulkCount })}</span>
-          </button>
-          <button className={styles.ctxItem} onClick={() => onBulkCopySource(row)}>
-            <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkCopySource', { count: bulkCount })}</span>
-          </button>
-          {showStatusItems && (
-            <>
-              <div className={styles.ctxSep} />
-              <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>
-              {renderStatusItems()}
-            </>
-          )}
-          <div className={styles.ctxSep} />
-          <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
-            <span className={styles.ctxIcon}>⊘</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkMarkSkip', { count: bulkCount })}</span>
-          </button>
-          <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>
-            <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>↩</span>
-            <span className={styles.ctxLabel}>{t('ctx.bulkUnmarkSkip', { count: bulkCount })}</span>
-          </button>
-          <div className={styles.ctxSep} />
-          <button
-            className={styles.ctxItem}
-            onClick={() => onTextTransform(row, (tx) => tx.toUpperCase())}
-          >
-            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇧</span>
-            <span className={styles.ctxLabel}>{t('ctx.uppercase')}</span>
-          </button>
-          <button
-            className={styles.ctxItem}
-            onClick={() => onTextTransform(row, (tx) => tx.toLowerCase())}
-          >
-            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇩</span>
-            <span className={styles.ctxLabel}>{t('ctx.lowercase')}</span>
-          </button>
-          <button
-            className={styles.ctxItem}
-            onClick={() => onTextTransform(row, (tx) => tx.trim())}
-          >
-            <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>✂</span>
-            <span className={styles.ctxLabel}>{t('ctx.trim')}</span>
-          </button>
-        </>
-      ) : (
-        <>
-          <button className={styles.ctxItem} onClick={() => onClear(row)}>
-            <span className={styles.ctxIcon}>⌫</span>
-            <span className={styles.ctxLabel}>{t('ctx.clear')}</span>
-          </button>
-          <button className={styles.ctxItem} onClick={() => onCopySource(row)}>
-            <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
-            <span className={styles.ctxLabel}>{t('ctx.copySource')}</span>
-          </button>
-          {!isSkipped && (
-            <>
-              <div className={styles.ctxSep} />
-              <button className={styles.ctxItem} onClick={() => onRowTranslate(row, 'tm')}>
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>◎</span>
-                <span className={styles.ctxLabel}>{t('ctx.applyTm')}</span>
-              </button>
-              <button className={styles.ctxItem} onClick={() => onRowTranslate(row, 'llm')}>
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
-                <span className={styles.ctxLabel}>{t('ctx.applyLlm')}</span>
-              </button>
-            </>
-          )}
-          {showStatusItems && (
-            <>
-              <div className={styles.ctxSep} />
-              <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>
-              {renderStatusItems()}
-            </>
-          )}
-          <div className={styles.ctxSep} />
-          {isSkipped ? (
-            <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>
-              <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>↩</span>
-              <span className={styles.ctxLabel}>{t('ctx.unmarkSkip')}</span>
-            </button>
-          ) : (
-            <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
-              <span className={styles.ctxIcon}>⊘</span>
-              <span className={styles.ctxLabel}>{t('ctx.markSkip')}</span>
-            </button>
-          )}
-
-          {hasTrans && (
-            <>
-              <div className={styles.ctxSep} />
-              <button
-                className={styles.ctxItem}
-                onClick={() => onTextTransform(row, (tx) => tx.toUpperCase())}
-              >
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇧</span>
-                <span className={styles.ctxLabel}>{t('ctx.uppercase')}</span>
-              </button>
-              <button
-                className={styles.ctxItem}
-                onClick={() => onTextTransform(row, (tx) => tx.toLowerCase())}
-              >
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇩</span>
-                <span className={styles.ctxLabel}>{t('ctx.lowercase')}</span>
-              </button>
-              <button
-                className={styles.ctxItem}
-                onClick={() =>
-                  onTextTransform(row, (tx) => tx.charAt(0).toUpperCase() + tx.slice(1))
-                }
-              >
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>Aa</span>
-                <span className={styles.ctxLabel}>{t('ctx.capitalize')}</span>
-              </button>
-              <button
-                className={styles.ctxItem}
-                onClick={() => onTextTransform(row, (tx) => tx.trim())}
-              >
-                <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>✂</span>
-                <span className={styles.ctxLabel}>{t('ctx.trim')}</span>
-              </button>
-            </>
-          )}
-        </>
-      )}
+      <button className={styles.ctxItem} onClick={() => onClear(row)}>
+        <span className={styles.ctxIcon}>⌫</span>
+        <span className={styles.ctxLabel}>{labelForCount('ctx.clear', 'ctx.bulkClear')}</span>
+      </button>
+      <button className={styles.ctxItem} onClick={() => onCopySource(row)}>
+        <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>⤵</span>
+        <span className={styles.ctxLabel}>
+          {labelForCount('ctx.copySource', 'ctx.bulkCopySource')}
+        </span>
+      </button>
+      <div className={styles.ctxSep} />
+      <button
+        className={styles.ctxItem}
+        onClick={() => (multiTarget ? onBatchApplyTm() : onRowTranslate(row, 'tm'))}
+      >
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>◎</span>
+        <span className={styles.ctxLabel}>{labelForCount('ctx.applyTm', 'ctx.bulkApplyTm')}</span>
+      </button>
+      <button
+        className={styles.ctxItem}
+        onClick={() => (multiTarget ? onBatchTranslate() : onRowTranslate(row, 'llm'))}
+      >
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
+        <span className={styles.ctxLabel}>{labelForCount('ctx.applyLlm', 'ctx.bulkApplyLlm')}</span>
+      </button>
+      <div className={styles.ctxSep} />
+      <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>
+      {renderStatusItems()}
+      <div className={styles.ctxSep} />
+      <button className={styles.ctxItem} onClick={() => onSetSkip(row, true)}>
+        <span className={styles.ctxIcon}>⊘</span>
+        <span className={styles.ctxLabel}>{labelForCount('ctx.markSkip', 'ctx.bulkMarkSkip')}</span>
+      </button>
+      <button className={styles.ctxItem} onClick={() => onSetSkip(row, false)}>
+        <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>↩</span>
+        <span className={styles.ctxLabel}>
+          {labelForCount('ctx.unmarkSkip', 'ctx.bulkUnmarkSkip')}
+        </span>
+      </button>
+      <div className={styles.ctxSep} />
+      <button
+        className={styles.ctxItem}
+        onClick={() => onTextTransform(row, (tx) => tx.toUpperCase())}
+      >
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇧</span>
+        <span className={styles.ctxLabel}>{t('ctx.uppercase')}</span>
+      </button>
+      <button
+        className={styles.ctxItem}
+        onClick={() => onTextTransform(row, (tx) => tx.toLowerCase())}
+      >
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⇩</span>
+        <span className={styles.ctxLabel}>{t('ctx.lowercase')}</span>
+      </button>
+      <button
+        className={styles.ctxItem}
+        onClick={() => onTextTransform(row, (tx) => tx.charAt(0).toUpperCase() + tx.slice(1))}
+      >
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>Aa</span>
+        <span className={styles.ctxLabel}>{t('ctx.capitalize')}</span>
+      </button>
+      <button className={styles.ctxItem} onClick={() => onTextTransform(row, (tx) => tx.trim())}>
+        <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>✂</span>
+        <span className={styles.ctxLabel}>{t('ctx.trim')}</span>
+      </button>
     </div>
   );
 };

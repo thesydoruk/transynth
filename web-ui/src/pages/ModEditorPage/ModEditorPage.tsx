@@ -628,22 +628,24 @@ export const ModEditorPage = () => {
 
   // ── Context menu helpers ──
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, row: StringRow) => {
-    e.preventDefault();
-    setCtxMenu({ x: e.clientX, y: e.clientY, row });
-  }, []);
-
-  /** True when a context-menu action should target the whole selection. */
-  const ctxActsOnSelection = useCallback(
-    (row: StringRow) => hasSelection && isRowSelected(row.string_id),
-    [hasSelection, isRowSelected],
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, row: StringRow) => {
+      e.preventDefault();
+      handleRowSelect(row);
+      setCtxMenu({ x: e.clientX, y: e.clientY, row });
+    },
+    [handleRowSelect],
   );
+
+  /** Context-menu bulk actions apply when any checkbox selection exists. */
+  const ctxMultiTarget = hasSelection;
+  const ctxTargetCount = ctxMultiTarget ? selectedCount : 1;
 
   // Per-row text operations act on the loaded selected rows when invoked on a
   // selection, otherwise on the clicked row.
   const applyTextTransform = useCallback(
     async (row: StringRow, transform: (text: string) => string) => {
-      const targetRows = ctxActsOnSelection(row)
+      const targetRows = hasSelection
         ? selectedLoadedRows().filter((r) => r.translation)
         : row.translation
           ? [row]
@@ -656,19 +658,19 @@ export const ModEditorPage = () => {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
-    [ctxActsOnSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
+    [hasSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
   );
 
   const ctxCopySource = useCallback(
     async (row: StringRow) => {
-      const targetRows = ctxActsOnSelection(row) ? selectedLoadedRows() : [row];
+      const targetRows = hasSelection ? selectedLoadedRows() : [row];
       for (const r of targetRows) {
         await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
       }
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
     },
-    [ctxActsOnSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
+    [hasSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
   );
 
   /** Patch loaded grid rows after a bulk clear (instant UI, no refetch storm). */
@@ -765,7 +767,7 @@ export const ModEditorPage = () => {
       const eligibleLoadedRows = (rows: StringRow[]) =>
         rows.filter((r) => !!r.translation && r.status !== 'skip' && !r.is_ignored);
 
-      if (ctxActsOnSelection(row)) {
+      if (hasSelection) {
         const loadedTargets = eligibleLoadedRows(selectedLoadedRows());
         patchStatusInCache((r) => loadedTargets.some((t) => t.string_id === r.string_id), status);
         try {
@@ -792,7 +794,7 @@ export const ModEditorPage = () => {
       }
     },
     [
-      ctxActsOnSelection,
+      hasSelection,
       patchStatusInCache,
       selectedLoadedRows,
       resolveSelectedIds,
@@ -829,7 +831,7 @@ export const ModEditorPage = () => {
         if (skip) setDraftTranslation('');
       };
 
-      if (ctxActsOnSelection(row)) {
+      if (hasSelection) {
         patchSkipInCache((r) => isRowSelected(r.string_id), skip);
         try {
           const ids = await resolveSelectedIds();
@@ -853,21 +855,13 @@ export const ModEditorPage = () => {
         }
       }
     },
-    [
-      ctxActsOnSelection,
-      patchSkipInCache,
-      resolveSelectedIds,
-      isRowSelected,
-      refetchStats,
-      qc,
-      modId,
-    ],
+    [hasSelection, patchSkipInCache, resolveSelectedIds, isRowSelected, refetchStats, qc, modId],
   );
 
   /** Context-menu clear: whole selection (all matching IDs) or just the clicked row. */
   const ctxClear = useCallback(
     async (row: StringRow) => {
-      if (ctxActsOnSelection(row)) {
+      if (hasSelection) {
         patchClearedInCache((r) => isRowSelected(r.string_id));
         try {
           if (selectAllMatching) {
@@ -906,7 +900,7 @@ export const ModEditorPage = () => {
     },
     // handleClear is a stable-enough page handler; intentionally omitted.
     [
-      ctxActsOnSelection,
+      hasSelection,
       selectAllMatching,
       modId,
       buildFilter,
@@ -1194,16 +1188,12 @@ export const ModEditorPage = () => {
       {ctxMenu && (
         <ContextMenu
           anchor={ctxMenu}
-          selectedCount={selectedCount}
-          actsOnSelection={ctxActsOnSelection(ctxMenu.row)}
+          targetCount={ctxTargetCount}
+          multiTarget={ctxMultiTarget}
           onClose={() => setCtxMenu(null)}
           onClear={ctxClear}
-          onCopySource={(row) => {
-            handleRowOpen(row);
-            setTimeout(() => setDraftTranslation(row.source), 0);
-          }}
+          onCopySource={ctxCopySource}
           onTextTransform={applyTextTransform}
-          onBulkCopySource={ctxCopySource}
           onBatchTranslate={handleBatchTranslate}
           onBatchApplyTm={handleBatchApplyTm}
           onRowTranslate={handleRowTranslate}
