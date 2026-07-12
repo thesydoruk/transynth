@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { openDb, closeDb } from '../db';
 import { log, closeLogStreams } from '../logger';
-import { CONFIG } from '../config';
+import { CONFIG, UPLOAD_FILE_SIZE_LIMIT_BYTES } from '../config';
 import { ensureDataDirs } from '../paths';
 import { ensureDefaultUser } from './auth/authService';
 import { registerAuthHook } from './auth/authMiddleware';
@@ -57,17 +57,15 @@ const WEB_UI_DIST = path.resolve(__dirname, '../../web-ui/dist');
 
 /** Fastify app instance; Fastify logging is disabled in favour of `src/logger.ts`. */
 ensureDataDirs();
-const app = Fastify({ logger: false });
+const app = Fastify({ logger: false, bodyLimit: UPLOAD_FILE_SIZE_LIMIT_BYTES });
 
 await app.register(cors, {
   origin: true,
   credentials: false,
 });
-const multipartOptions =
-  CONFIG.uploadMaxFileSizeBytes != null
-    ? { limits: { fileSize: CONFIG.uploadMaxFileSizeBytes } }
-    : {};
-await app.register(multipart, multipartOptions);
+await app.register(multipart, {
+  limits: { fileSize: UPLOAD_FILE_SIZE_LIMIT_BYTES },
+});
 
 // Serve React SPA from web-ui/dist if the directory exists
 try {

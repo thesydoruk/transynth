@@ -24,7 +24,7 @@ import path from 'node:path';
 import { extractArchive } from '../../tools/archiveUtils';
 import pg from 'pg';
 import { upsertMod, upsertDialogScene, upsertDialogScenePhase, type Tx } from '../../db';
-import { sha1Hex } from '../../utils/hash';
+import { sha1Hex, sha1HexFile } from '../../utils/hash';
 import { mapWithConcurrency } from '../../utils/concurrency';
 import { CONFIG } from '../../config';
 import { logImport } from '../../logging/loggers';
@@ -1498,8 +1498,7 @@ export const registerPluginFile = async (
   game: GameType = 'fo4',
   scan?: ModScanContext,
 ): Promise<ModImportJob> => {
-  const buf = fs.readFileSync(pluginPath);
-  const fileHash = sha1Hex(buf);
+  const fileHash = await sha1HexFile(pluginPath);
 
   const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
     fileHash,
@@ -1571,8 +1570,7 @@ export const registerArchiveFile = async (
   game: GameType = 'fo4',
   scan?: ModScanContext,
 ): Promise<ModImportJob> => {
-  const buf = fs.readFileSync(archivePath);
-  const fileHash = sha1Hex(buf);
+  const fileHash = await sha1HexFile(archivePath);
 
   const { rows: existing } = await db.query('SELECT * FROM mod_imports WHERE file_hash = $1', [
     fileHash,

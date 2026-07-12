@@ -11,13 +11,23 @@ import {
 
 export type LLMProviderName = 'vllm' | 'openai';
 
-/** Optional multipart upload cap; unset = no application-level file size limit. */
+/** Optional multipart upload cap from env; unset = no practical application-level limit. */
 const parseUploadMaxFileSizeBytes = (mbValue: string | undefined): number | undefined => {
   if (mbValue == null || mbValue.trim() === '') return undefined;
   const parsedMb = Number.parseInt(mbValue, 10);
   if (!Number.isFinite(parsedMb) || parsedMb <= 0) return undefined;
   return parsedMb * 1024 * 1024;
 };
+
+/**
+ * Effective upload byte cap for Fastify/multipart.
+ * @fastify/multipart falls back to Fastify `bodyLimit` (default 1 MiB) when fileSize is omitted.
+ */
+const resolvedUploadMaxFileSizeBytes = parseUploadMaxFileSizeBytes(
+  process.env.UPLOAD_MAX_FILE_SIZE_MB,
+);
+export const UPLOAD_FILE_SIZE_LIMIT_BYTES =
+  resolvedUploadMaxFileSizeBytes ?? Number.MAX_SAFE_INTEGER;
 
 const parseMaxParallel = (value: string | undefined, defaultValue: number, max = 32): number => {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -119,8 +129,9 @@ export const CONFIG = {
   /** Idle-in-transaction timeout in ms; 0 disables (default 1 h). */
   dbIdleInTransactionTimeoutMs: parseInt(process.env.DB_IDLE_IN_TX_TIMEOUT_MS || '3600000', 10),
 
-  // Optional multipart upload cap in bytes (Fastify @fastify/multipart fileSize limit).
-  uploadMaxFileSizeBytes: parseUploadMaxFileSizeBytes(process.env.UPLOAD_MAX_FILE_SIZE_MB),
+  // Optional multipart upload cap from UPLOAD_MAX_FILE_SIZE_MB; otherwise no practical limit.
+  uploadMaxFileSizeBytes: resolvedUploadMaxFileSizeBytes,
+  uploadFileSizeLimitBytes: UPLOAD_FILE_SIZE_LIMIT_BYTES,
 
   // Translation batch size
   batchSize: parseInt(process.env.BATCH_SIZE || '30', 10),
