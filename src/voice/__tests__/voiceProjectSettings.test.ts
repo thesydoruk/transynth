@@ -1,11 +1,30 @@
 import { SETTING_DEFAULTS } from '../../web/services/projectSettings';
 import {
+  voiceBackendFromProjectSettings,
   voiceReferenceModeFromProjectSettings,
   voiceSynthesisFromProjectSettings,
 } from '../voiceProjectSettings';
 import { resolveTtsReferenceMode } from '../voiceToolPaths';
 
 describe('voiceProjectSettings', () => {
+  it('maps backend setting to TTS API backend field', () => {
+    expect(voiceBackendFromProjectSettings(SETTING_DEFAULTS)).toBe('xtts');
+    expect(
+      voiceBackendFromProjectSettings({
+        ...SETTING_DEFAULTS,
+        'voice.backend': 'fish-speech',
+      }),
+    ).toBe('fish-speech');
+  });
+
+  it('falls back to xtts for unknown backend values', () => {
+    expect(
+      voiceBackendFromProjectSettings({
+        ...SETTING_DEFAULTS,
+        'voice.backend': 'unknown' as 'xtts',
+      }),
+    ).toBe('xtts');
+  });
   it('maps line reference toggle to XTTS reference mode', () => {
     expect(voiceReferenceModeFromProjectSettings(SETTING_DEFAULTS)).toBe('line');
     expect(

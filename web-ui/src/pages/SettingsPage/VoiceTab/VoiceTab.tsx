@@ -3,11 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../api';
 import parentS from '../SettingsPage.module.scss';
 import controlS from '../WorkflowTab/WorkflowTab.module.scss';
+import generalS from '../GeneralTab/GeneralTab.module.scss';
 import s from './VoiceTab.module.scss';
 import { VoiceSlider } from './VoiceSlider';
 
+type TtsBackend = 'xtts' | 'fish-speech';
+
 type ProjectSettings = {
   'voice.line_reference': boolean;
+  'voice.backend': TtsBackend;
   'voice.speed': number;
   'voice.length_penalty': number;
   'voice.temperature': number;
@@ -26,6 +30,7 @@ type NumericVoiceKey = Exclude<
 
 const DEFAULTS: ProjectSettings = {
   'voice.line_reference': true,
+  'voice.backend': 'xtts',
   'voice.speed': 1.0,
   'voice.length_penalty': 2,
   'voice.temperature': 0.65,
@@ -42,6 +47,7 @@ const SYNTHESIS_SLIDERS: Array<{
   min: number;
   max: number;
   step: number;
+  backends: TtsBackend[] | 'all';
 }> = [
   {
     key: 'voice.speed',
@@ -50,6 +56,7 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 0.5,
     max: 2,
     step: 0.05,
+    backends: ['xtts'],
   },
   {
     key: 'voice.length_penalty',
@@ -58,6 +65,7 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 0.5,
     max: 5,
     step: 0.05,
+    backends: ['xtts'],
   },
   {
     key: 'voice.temperature',
@@ -66,6 +74,7 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 0,
     max: 1,
     step: 0.05,
+    backends: 'all',
   },
   {
     key: 'voice.repetition_penalty',
@@ -74,6 +83,7 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 1,
     max: 5,
     step: 0.1,
+    backends: 'all',
   },
   {
     key: 'voice.top_p',
@@ -82,6 +92,7 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 0,
     max: 1,
     step: 0.05,
+    backends: 'all',
   },
   {
     key: 'voice.top_k',
@@ -90,8 +101,25 @@ const SYNTHESIS_SLIDERS: Array<{
     min: 1,
     max: 200,
     step: 1,
+    backends: ['xtts'],
   },
 ];
+
+const BACKEND_OPTIONS: Array<{ value: TtsBackend; labelKey: string; descKey: string }> = [
+  {
+    value: 'xtts',
+    labelKey: 'settings.voice.backendXtts',
+    descKey: 'settings.voice.backendXttsDesc',
+  },
+  {
+    value: 'fish-speech',
+    labelKey: 'settings.voice.backendFishSpeech',
+    descKey: 'settings.voice.backendFishSpeechDesc',
+  },
+];
+
+const sliderAppliesToBackend = (backends: TtsBackend[] | 'all', backend: TtsBackend): boolean =>
+  backends === 'all' || backends.includes(backend);
 
 /** Voice synthesis settings tab — server URL read-only, hyperparameters editable. */
 export const VoiceTab = () => {
@@ -115,7 +143,7 @@ export const VoiceTab = () => {
   });
 
   const { mutate: update } = useMutation({
-    mutationFn: ({ key, value }: { key: string; value: boolean | number }) =>
+    mutationFn: ({ key, value }: { key: string; value: boolean | number | string }) =>
       api.projectSettings.update(key, value),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['projectSettings'] });
@@ -123,6 +151,7 @@ export const VoiceTab = () => {
   });
 
   const settings: ProjectSettings = { ...DEFAULTS, ...(data ?? {}) };
+  const activeBackend = settings['voice.backend'];
 
   const handleToggle = (key: keyof ProjectSettings) => {
     update({ key, value: !settings[key] });
@@ -130,6 +159,10 @@ export const VoiceTab = () => {
 
   const handleNumber = (key: NumericVoiceKey, value: number) => {
     update({ key, value });
+  };
+
+  const handleBackend = (backend: TtsBackend) => {
+    update({ key: 'voice.backend', value: backend });
   };
 
   if (isLoading || runtimeLoading) return <div className={s.center}>{t('common.loading')}</div>;
@@ -140,6 +173,10 @@ export const VoiceTab = () => {
       </div>
     );
   }
+
+  const visibleSliders = SYNTHESIS_SLIDERS.filter(({ backends }) =>
+    sliderAppliesToBackend(backends, activeBackend),
+  );
 
   return (
     <>
@@ -178,7 +215,30 @@ export const VoiceTab = () => {
         <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionSynthesis')}</h2>
         <p className={parentS.fieldNote}>{t('settings.voice.sectionSynthesisDesc')}</p>
         <div className={controlS.settingsList}>
-          {SYNTHESIS_SLIDERS.map(({ key, labelKey, descKey, min, max, step }) => (
+          <div className={controlS.settingRow}>
+            <div className={controlS.settingInfo}>
+              <span className={controlS.settingLabel}>{t('settings.voice.backend')}</span>
+              <span className={parentS.fieldNote}>
+                {t(
+                  BACKEND_OPTIONS.find((option) => option.value === activeBackend)?.descKey ??
+                    'settings.voice.backendXttsDesc',
+                )}
+              </span>
+            </div>
+            <select
+              className={generalS.select}
+              value={activeBackend}
+              onChange={(event) => handleBackend(event.target.value as TtsBackend)}
+            >
+              {BACKEND_OPTIONS.map(({ value, labelKey }) => (
+                <option key={value} value={value}>
+                  {t(labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {visibleSliders.map(({ key, labelKey, descKey, min, max, step }) => (
             <VoiceSlider
               key={key}
               label={t(labelKey)}
@@ -191,20 +251,22 @@ export const VoiceTab = () => {
             />
           ))}
 
-          <div className={controlS.settingRow}>
-            <div className={controlS.settingInfo}>
-              <span className={controlS.settingLabel}>{t('settings.voice.textSplitting')}</span>
-              <span className={parentS.fieldNote}>{t('settings.voice.textSplittingDesc')}</span>
+          {activeBackend === 'xtts' && (
+            <div className={controlS.settingRow}>
+              <div className={controlS.settingInfo}>
+                <span className={controlS.settingLabel}>{t('settings.voice.textSplitting')}</span>
+                <span className={parentS.fieldNote}>{t('settings.voice.textSplittingDesc')}</span>
+              </div>
+              <label className={controlS.toggle}>
+                <input
+                  type="checkbox"
+                  checked={settings['voice.enable_text_splitting']}
+                  onChange={() => handleToggle('voice.enable_text_splitting')}
+                />
+                <span className={controlS.toggleTrack} />
+              </label>
             </div>
-            <label className={controlS.toggle}>
-              <input
-                type="checkbox"
-                checked={settings['voice.enable_text_splitting']}
-                onChange={() => handleToggle('voice.enable_text_splitting')}
-              />
-              <span className={controlS.toggleTrack} />
-            </label>
-          </div>
+          )}
         </div>
       </div>
     </>

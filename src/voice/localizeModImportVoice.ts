@@ -117,8 +117,9 @@ export const localizeModImportVoice = async (
       srcLang,
       tgtLang,
       {
-        game,
+        game: mod.game,
         xttsBaseUrl,
+        backend: voiceConfig.backend,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
         referenceMode,

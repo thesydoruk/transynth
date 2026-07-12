@@ -39,6 +39,8 @@ export type ProjectSettingKey =
   | 'llm.rag_min_similarity'
   /** When true, each voiced line uses its own English audio as the XTTS reference clip. */
   | 'voice.line_reference'
+  /** TTS model backend sent as `backend` on POST /v1/synthesize. */
+  | 'voice.backend'
   /** XTTS synthesis speed multiplier. */
   | 'voice.speed'
   /** XTTS length penalty — higher values shorten utterances. */
@@ -65,6 +67,7 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
+  'voice.backend': 'xtts' | 'fish-speech';
   'voice.speed': number;
   'voice.length_penalty': number;
   'voice.temperature': number;
@@ -90,6 +93,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
+  'voice.backend': 'xtts',
   'voice.speed': 1.0,
   'voice.length_penalty': 2,
   'voice.temperature': 0.65,

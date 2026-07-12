@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { pluginRelPath, toDiskPath, writeIfChanged, type ImportPackageContext } from '../modImport';
-import { synthesizeXttsWav, type XttsSynthesisParams } from '../tts/xttsClient';
+import { synthesizeXttsWav, type TtsBackend, type XttsSynthesisParams } from '../tts/xttsClient';
 import { ensureDir } from '../utils/file';
 import type { TtsReferenceMode } from './voiceToolPaths';
 import {
@@ -56,6 +56,7 @@ export const localizeVoicePackage = async (
   options: {
     game: GameType;
     xttsBaseUrl: string;
+    backend: TtsBackend;
     dryRun: boolean;
     force: boolean;
     referenceMode: TtsReferenceMode;
@@ -171,6 +172,7 @@ export const localizeVoicePackage = async (
 
         const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
           baseUrl: options.xttsBaseUrl,
+          backend: options.backend,
           language: resolveTtsLanguage(tgtLang),
           speakerText: referenceText ?? undefined,
           synthesis: options.synthesis,

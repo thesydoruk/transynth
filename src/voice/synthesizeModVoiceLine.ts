@@ -183,6 +183,7 @@ export const synthesizeModVoiceLine = async (
 
     const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
       baseUrl: xttsBaseUrl,
+      backend: voiceConfig.backend,
       language: resolveTtsLanguage(opts.tgtLang),
       speakerText: referenceText ?? undefined,
       synthesis: voiceConfig.synthesis,

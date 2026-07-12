@@ -9,8 +9,13 @@ import {
 export type { XttsSynthesisParams } from './xttsSynthesisParams';
 export { resolveTtsSynthesisParams, XTTS_GAME_DIALOGUE_DEFAULTS } from './xttsSynthesisParams';
 
+/** TTS model backend on the xtts-engine server (`POST /v1/synthesize` `backend` field). */
+export type TtsBackend = 'xtts' | 'fish-speech';
+
 export type XttsSynthesizeOptions = {
   baseUrl?: string;
+  /** Overrides server `inference.default_backend` when set. */
+  backend?: TtsBackend;
   language?: string;
   /** English transcript of `speaker_wav` (Fish Speech `speaker_text`). */
   speakerText?: string;
@@ -31,6 +36,7 @@ export const buildXttsSynthesisForm = (
   const form = new FormData();
   form.append('text', trimmed);
   form.append('speaker_wav', new Blob([referenceWav], { type: 'audio/wav' }), 'speaker.wav');
+  if (options.backend) form.append('backend', options.backend);
   if (options.language) form.append('language', options.language);
   const speakerText = options.speakerText?.trim();
   if (speakerText) form.append('speaker_text', speakerText);

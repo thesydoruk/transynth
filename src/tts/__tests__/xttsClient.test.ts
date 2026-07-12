@@ -20,4 +20,18 @@ describe('buildXttsSynthesisForm', () => {
 
     expect(form.get('speaker_text')).toBeNull();
   });
+
+  it('includes backend when specified', () => {
+    const form = buildXttsSynthesisForm('Привіт.', Buffer.from('RIFF'), {
+      backend: 'fish-speech',
+    });
+
+    expect(form.get('backend')).toBe('fish-speech');
+  });
+
+  it('omits backend when not specified', () => {
+    const form = buildXttsSynthesisForm('Привіт.', Buffer.from('RIFF'));
+
+    expect(form.get('backend')).toBeNull();
+  });
 });
