@@ -21,9 +21,9 @@ import { PassThrough } from 'node:stream';
 import archiver from 'archiver';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
-import { Ba2Reader, writeBa2 } from '../../formats/ba2';
+import { Ba2Reader, writeBa2, usesBa2Archives } from '../../formats/ba2';
 import { BsaReader, writeBsa } from '../../formats/bsa';
-import type { ArchiveInputFile, EspPatch } from '../../formats/types';
+import type { EspPatch } from '../../formats/types';
 import { patchEsp, patchStringsMap } from '../../formats/esp';
 import { patchPexBuffer, collectModPexSources } from '../../formats/pex';
 import {
@@ -35,6 +35,14 @@ import {
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
+import {
+  appendArchiveBuild,
+  buildArchiveInputFile,
+  discoverCompanionBa2,
+  resolveScriptsArchiveFileName,
+  resolveStringsArchiveFileName,
+  type ExportArchiveBuild,
+} from './archiveExportPlan';
 
 /**
  * Parsed source strings table loaded from the original mod distribution.
@@ -149,22 +157,10 @@ const sortSourceStringsFiles = (files: SourceStringsFile[]): SourceStringsFile[]
 /**
  * Discover a BA2 archive (Fallout 4/76) next to the plugin file.
  *
- * The tool follows common Fallout naming conventions:
- * - `{Stem} - Main.ba2`
- * - `{Stem}.ba2`
- *
- * @param modPath - Absolute path to the mod plugin file.
- * @returns Path to the discovered BA2 archive, or `null` when not found.
+ * @deprecated Use {@link discoverCompanionBa2} from archiveExportPlan.
  */
-const findBa2 = (modPath: string): string | null => {
-  const dir = path.dirname(modPath);
-  const stem = path.basename(modPath, path.extname(modPath));
-  for (const candidate of [`${stem} - Main.ba2`, `${stem}.ba2`]) {
-    const full = path.join(dir, candidate);
-    if (fs.existsSync(full)) return full;
-  }
-  return null;
-};
+const findBa2 = (modPath: string, game: GameType = 'fo4'): string | null =>
+  discoverCompanionBa2(modPath, game);
 
 /**
  * Discover a BSA archive (Skyrim SE) next to the mod plugin file.
@@ -289,7 +285,7 @@ const loadSourceStringsFiles = (
       if (bsaFiles.length > 0) return bsaFiles;
     }
   }
-  const ba2Path = findBa2(modPath);
+  const ba2Path = findBa2(modPath, game);
   if (ba2Path) {
     const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
     if (ba2Files.length > 0) return ba2Files;
@@ -403,19 +399,121 @@ export const exportLocalizedStringsFiles = async (
 // BA2 archive export — pack localized STRINGS into a BA2
 // ────────────────────────────────────────────────────────────────────────────
 
+const writeBuiltArchives = (
+  builds: Map<string, ExportArchiveBuild>,
+  game: GameType,
+): ExportedStringsFile[] => {
+  if (builds.size === 0) {
+    throw new Error('No exportable STRINGS or PEX content for archive export');
+  }
+
+  const exported: ExportedStringsFile[] = [];
+  for (const build of builds.values()) {
+    const buf =
+      build.archiveType === 'ba2'
+        ? writeBa2(build.files)
+        : writeBsa(build.files, game === 'sse' ? 105 : 104);
+    exported.push({
+      fileName: build.fileName,
+      size: buf.length,
+      contentBase64: buf.toString('base64'),
+    });
+  }
+
+  exported.sort((left, right) =>
+    left.fileName.localeCompare(right.fileName, undefined, { sensitivity: 'base' }),
+  );
+  return exported;
+};
+
+/**
+ * Build one or more game archives with Creation Kit compression and naming rules.
+ *
+ * When string tables originally lived in `{Stem} - Interface.ba2`, they are repacked
+ * there and patched PEX scripts go to `{Stem} - Main.ba2`.
+ */
+export const exportGameArchives = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  game: GameType = 'fo4',
+  options: ArchiveExportOptions = {},
+): Promise<ExportedStringsFile[]> => {
+  const includeScripts = options.includeScripts !== false;
+  const archiveType = usesBa2Archives(game) ? 'ba2' : 'bsa';
+  const stem = path.basename(modPath, path.extname(modPath));
+  const stringsArchiveFileName = resolveStringsArchiveFileName(modPath, stem, game);
+  const scriptsArchiveFileName = resolveScriptsArchiveFileName(stem, stringsArchiveFileName, game);
+  const builds = new Map<string, ExportArchiveBuild>();
+
+  try {
+    const stringsFiles = await exportLocalizedStringsFiles(
+      db,
+      modId,
+      modPath,
+      srcLang,
+      targetLang,
+      game,
+    );
+    appendArchiveBuild(
+      builds,
+      archiveType,
+      stringsArchiveFileName,
+      stringsFiles.map((file) =>
+        buildArchiveInputFile(
+          archiveType,
+          stringsArchiveFileName,
+          `Strings\\${file.fileName}`,
+          Buffer.from(file.contentBase64, 'base64'),
+          game,
+        ),
+      ),
+    );
+    log.info(
+      `Archive export: prepared ${stringsFiles.length} STRINGS file(s) for ${stringsArchiveFileName}`,
+    );
+  } catch {
+    log.info(`Archive export: no localized STRINGS for mod ${modId}, skipping strings tables`);
+  }
+
+  if (includeScripts) {
+    try {
+      const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
+      appendArchiveBuild(
+        builds,
+        archiveType,
+        scriptsArchiveFileName,
+        pexFiles.map((file) =>
+          buildArchiveInputFile(
+            archiveType,
+            scriptsArchiveFileName,
+            file.fileName,
+            Buffer.from(file.contentBase64, 'base64'),
+            game,
+          ),
+        ),
+      );
+      log.info(
+        `Archive export: prepared ${pexFiles.length} PEX script(s) for ${scriptsArchiveFileName}`,
+      );
+    } catch {
+      log.info(`Archive export: no patched PEX scripts for mod ${modId}, skipping scripts`);
+    }
+  }
+
+  return writeBuiltArchives(builds, game);
+};
+
 /**
  * Export a single archive that contains translated strings tables.
  *
  * For Fallout 4/76, this produces a BA2 archive. For Skyrim/FO3/FNV, this
  * produces a BSA archive. The choice is automatic based on {@link GameType}.
  *
- * @param db - Database handle.
- * @param modId - Mod id whose translations should be exported.
- * @param modPath - Absolute path to the imported plugin file (used to find archives).
- * @param srcLang - Source locale suffix (e.g. `"en"`).
- * @param targetLang - Target locale suffix (e.g. `"uk"`).
- * @param game - Target game type (controls archive type selection).
- * @returns Single exported archive file encoded as base64 payload.
+ * When both Interface (strings) and Main (scripts) archives are required, this
+ * returns only the strings archive. Use {@link exportGameArchives} for all outputs.
  */
 export const exportBa2Archive = async (
   db: Tx,
@@ -426,50 +524,15 @@ export const exportBa2Archive = async (
   game: GameType = 'fo4',
   options: ArchiveExportOptions = {},
 ): Promise<ExportedStringsFile> => {
-  const includeScripts = options.includeScripts !== false;
-  const ba2Files: ArchiveInputFile[] = [];
-
-  try {
-    const stringsFiles = await exportLocalizedStringsFiles(
-      db,
-      modId,
-      modPath,
-      srcLang,
-      targetLang,
-      game,
-    );
-    ba2Files.push(
-      ...stringsFiles.map((f) => ({
-        name: `Strings\\${f.fileName}`,
-        data: Buffer.from(f.contentBase64, 'base64'),
-      })),
-    );
-  } catch {
-    log.info(`BA2 export: no localized STRINGS for mod ${modId}, skipping strings tables`);
-  }
-
-  if (includeScripts) {
-    try {
-      const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
-      ba2Files.push(...pexFilesToArchiveInputs(pexFiles));
-    } catch {
-      log.info(`BA2 export: no patched PEX scripts for mod ${modId}, skipping scripts`);
-    }
-  }
-
-  if (ba2Files.length === 0) {
+  const archives = await exportGameArchives(db, modId, modPath, srcLang, targetLang, game, options);
+  const stem = path.basename(modPath, path.extname(modPath));
+  const stringsArchiveFileName = resolveStringsArchiveFileName(modPath, stem, game);
+  const stringsArchive =
+    archives.find((archive) => archive.fileName === stringsArchiveFileName) ?? archives[0];
+  if (!stringsArchive) {
     throw new Error(`No exportable STRINGS or PEX content for mod ${modId}`);
   }
-
-  const ba2Buf = writeBa2(ba2Files);
-  const stem = path.basename(modPath, path.extname(modPath));
-  const fileName = `${stem} - Main.ba2`;
-
-  return {
-    fileName,
-    size: ba2Buf.length,
-    contentBase64: ba2Buf.toString('base64'),
-  };
+  return stringsArchive;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -479,14 +542,6 @@ export const exportBa2Archive = async (
 /**
  * Builds a BSA v105 archive containing localized STRINGS/DLSTRINGS/ILSTRINGS
  * files.  This is the Skyrim SE equivalent of exportBa2Archive.
- *
- * @param db - Database connection
- * @param modId - Mod database ID
- * @param modPath - Path to the original plugin file (.esp/.esm/.esl)
- * @param srcLang - Source language code
- * @param targetLang - Target language code
- * @param game - Game type (should be 'sse' or 'sle')
- * @returns An ExportedStringsFile with the BSA contents (base-64 encoded)
  */
 export const exportBsaArchive = async (
   db: Tx,
@@ -497,58 +552,20 @@ export const exportBsaArchive = async (
   game: GameType = 'sse',
   options: ArchiveExportOptions = {},
 ): Promise<ExportedStringsFile> => {
-  const includeScripts = options.includeScripts !== false;
-  const bsaFiles: ArchiveInputFile[] = [];
-
-  try {
-    const stringsFiles = await exportLocalizedStringsFiles(
-      db,
-      modId,
-      modPath,
-      srcLang,
-      targetLang,
-      game,
-    );
-    bsaFiles.push(
-      ...stringsFiles.map((f) => ({
-        name: `Strings\\${f.fileName}`,
-        data: Buffer.from(f.contentBase64, 'base64'),
-      })),
-    );
-  } catch {
-    log.info(`BSA export: no localized STRINGS for mod ${modId}, skipping strings tables`);
-  }
-
-  if (includeScripts) {
-    try {
-      const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
-      bsaFiles.push(...pexFilesToArchiveInputs(pexFiles));
-    } catch {
-      log.info(`BSA export: no patched PEX scripts for mod ${modId}, skipping scripts`);
-    }
-  }
-
-  if (bsaFiles.length === 0) {
+  const archives = await exportGameArchives(db, modId, modPath, srcLang, targetLang, game, options);
+  const stem = path.basename(modPath, path.extname(modPath));
+  const stringsArchiveFileName = resolveStringsArchiveFileName(modPath, stem, game);
+  const stringsArchive =
+    archives.find((archive) => archive.fileName === stringsArchiveFileName) ?? archives[0];
+  if (!stringsArchive) {
     throw new Error(`No exportable STRINGS or PEX content for mod ${modId}`);
   }
-
-  // FO3, FNV, and SLE (Skyrim LE) use BSA v104; SSE (Skyrim SE) uses BSA v105
-  const bsaVersion = game === 'sse' ? 105 : 104;
-  const bsaBuf = writeBsa(bsaFiles, bsaVersion);
-  const stem = path.basename(modPath, path.extname(modPath));
-  const fileName = `${stem} - Strings.bsa`;
-
-  return {
-    fileName,
-    size: bsaBuf.length,
-    contentBase64: bsaBuf.toString('base64'),
-  };
+  return stringsArchive;
 };
 
 /**
  * Game-aware archive dispatcher: exports a BA2 for Fallout 4/76 or a BSA for
- * Skyrim SE / Skyrim LE / Fallout 3 / Fallout NV.  Routes and CLI code should
- * call this instead of exportBa2Archive / exportBsaArchive directly.
+ * Skyrim SE / Skyrim LE / Fallout 3 / Fallout NV.
  */
 export const exportArchive = async (
   db: Tx,
@@ -559,10 +576,15 @@ export const exportArchive = async (
   game: GameType = 'fo4',
   options: ArchiveExportOptions = {},
 ): Promise<ExportedStringsFile> => {
-  if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
-    return exportBsaArchive(db, modId, modPath, srcLang, targetLang, game, options);
+  const archives = await exportGameArchives(db, modId, modPath, srcLang, targetLang, game, options);
+  const stem = path.basename(modPath, path.extname(modPath));
+  const stringsArchiveFileName = resolveStringsArchiveFileName(modPath, stem, game);
+  const stringsArchive =
+    archives.find((archive) => archive.fileName === stringsArchiveFileName) ?? archives[0];
+  if (!stringsArchive) {
+    throw new Error(`No exportable STRINGS or PEX content for mod ${modId}`);
   }
-  return exportBa2Archive(db, modId, modPath, srcLang, targetLang, game, options);
+  return stringsArchive;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -724,12 +746,6 @@ export const exportPatchedPexFiles = async (
   log.info(`PEX export: ${exported.length} script(s) for mod ${modId}`);
   return exported;
 };
-
-const pexFilesToArchiveInputs = (files: ExportedStringsFile[]): ArchiveInputFile[] =>
-  files.map((f) => ({
-    name: f.fileName.replace(/\//g, '\\'),
-    data: Buffer.from(f.contentBase64, 'base64'),
-  }));
 
 export const exportPatchedEsp = async (
   db: Tx,
@@ -901,12 +917,14 @@ export const exportFullModZip = async (
   const files: Array<{ name: string; data: Buffer }> = [];
 
   try {
-    const archive = await exportArchive(db, modId, modPath, srcLang, targetLang, game);
-    files.push({
-      name: archive.fileName,
-      data: Buffer.from(archive.contentBase64, 'base64'),
-    });
-    log.info(`Full mod export: included archive ${archive.fileName} (${archive.size} bytes)`);
+    const archives = await exportGameArchives(db, modId, modPath, srcLang, targetLang, game);
+    for (const archive of archives) {
+      files.push({
+        name: archive.fileName,
+        data: Buffer.from(archive.contentBase64, 'base64'),
+      });
+      log.info(`Full mod export: included archive ${archive.fileName} (${archive.size} bytes)`);
+    }
   } catch {
     log.info(`Full mod export: no localized STRINGS for mod ${modId}, skipping archive`);
   }
@@ -1101,10 +1119,12 @@ export const exportModRelease = async (
 
   if (repackArchives) {
     try {
-      const archive = await exportArchive(db, modId, modPath, srcLang, targetLang, game, {
+      const archives = await exportGameArchives(db, modId, modPath, srcLang, targetLang, game, {
         includeScripts: localizeScripts,
       });
-      writeExportedFile(outDir, archive, written);
+      for (const archive of archives) {
+        writeExportedFile(outDir, archive, written);
+      }
     } catch (err) {
       warnings.push(`Archive: ${exportErrorMessage(err)}`);
     }
