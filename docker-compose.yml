@@ -8,8 +8,8 @@
 #
 # Put TLS/reverse proxy in front of WEB_PORT (default 3000). Set strong credentials in .env.
 
-include:
-  - docker-compose.db.yml
+# include:
+#   - docker-compose.db.yml
 
 services:
   web:
@@ -32,9 +32,9 @@ services:
       WINEDEBUG: -all
     volumes:
       - ./data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
     ports:
       - '${WEB_PORT:-3000}:3000'
     extra_hosts:
@@ -75,9 +75,9 @@ services:
       WINEDEBUG: -all
     volumes:
       - ./data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', '--import', 'tsx/esm']
