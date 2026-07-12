@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Tx } from '../../db';
 import {
   listMods,
@@ -23,13 +23,7 @@ import {
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 import { tryRefreshModLangStats } from '../services/modLangStats';
-import {
-  exportArchive,
-  exportLocalizedStringsFiles,
-  exportPatchedEsp,
-  exportPatchedPexFiles,
-  exportProjectZip,
-} from '../export/exportService';
+import { exportFullModZip, exportLangpackZip } from '../export/exportService';
 import { getPexSourceSnippetForString } from '../export/pexDecompileService';
 import {
   clearVoiceSpeakerReferenceForMod,
@@ -550,9 +544,36 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send(job);
   });
 
-  // GET /api/mods/:id/export/strings?srcLang=&targetLang= — generate localized STRINGS files
+  const sendModExportZip = async (
+    reply: FastifyReply,
+    modId: number,
+    modPath: string,
+    srcLang: string,
+    targetLang: string,
+    game: GameType,
+    buildZip: typeof exportLangpackZip,
+  ) => {
+    try {
+      const { zipBuffer, zipFileName } = await buildZip(
+        db,
+        modId,
+        modPath,
+        srcLang,
+        targetLang,
+        game,
+      );
+      return reply
+        .header('Content-Type', 'application/zip')
+        .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
+        .send(zipBuffer);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  // GET /api/mods/:id/export/langpack — ZIP with loose changed localization files (no BA2)
   app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
-    '/api/mods/:id/export/strings',
+    '/api/mods/:id/export/langpack',
     async (req, reply) => {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
@@ -565,26 +586,22 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path)
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
-      try {
-        const game = (mod.game ?? 'fo4') as GameType;
-        const files = await exportLocalizedStringsFiles(
-          db,
-          id,
-          mod.abs_path,
-          srcLang,
-          targetLang,
-          game,
-        );
-        return reply.send({ modId: id, srcLang, targetLang, files });
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
+      const game = (mod.game ?? 'fo4') as GameType;
+      return sendModExportZip(
+        reply,
+        id,
+        mod.abs_path,
+        srcLang,
+        targetLang,
+        game,
+        exportLangpackZip,
+      );
     },
   );
 
-  // GET /api/mods/:id/export/esp?srcLang=&targetLang= — patch non-localized ESP with translations
+  // GET /api/mods/:id/export/full-mod — ZIP with BA2/BSA archive (+ patched ESP when needed)
   app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
-    '/api/mods/:id/export/esp',
+    '/api/mods/:id/export/full-mod',
     async (req, reply) => {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
@@ -597,96 +614,8 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path)
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
-      try {
-        const file = await exportPatchedEsp(db, id, mod.abs_path, srcLang, targetLang);
-        return reply.send({ modId: id, srcLang, targetLang, files: [file] });
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
-    },
-  );
-
-  // GET /api/mods/:id/export/ba2?srcLang=&targetLang= — pack localized STRINGS into BA2 archive
-  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
-    '/api/mods/:id/export/ba2',
-    async (req, reply) => {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-
-      const mod = await getMod(db, id);
-      if (!mod) return reply.code(404).send({ error: 'Not found' });
-
-      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
-      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path)
-        return reply.code(400).send({ error: 'Mod file path is not available for export' });
-
-      try {
-        const game = (mod.game ?? 'fo4') as GameType;
-        const file = await exportArchive(db, id, mod.abs_path, srcLang, targetLang, game);
-        return reply.send({ modId: id, srcLang, targetLang, files: [file] });
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
-    },
-  );
-
-  // GET /api/mods/:id/export/pex?srcLang=&targetLang= — patch compiled Papyrus scripts
-  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
-    '/api/mods/:id/export/pex',
-    async (req, reply) => {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-
-      const mod = await getMod(db, id);
-      if (!mod) return reply.code(404).send({ error: 'Not found' });
-
-      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
-      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path)
-        return reply.code(400).send({ error: 'Mod file path is not available for export' });
-
-      try {
-        const files = await exportPatchedPexFiles(db, id, mod.abs_path, srcLang, targetLang);
-        return reply.send({ modId: id, srcLang, targetLang, files });
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
-    },
-  );
-
-  // GET /api/mods/:id/export/project?srcLang=&targetLang= — full project ZIP (BA2 + ESP + PEX)
-  app.get<{ Params: { id: string }; Querystring: { srcLang?: string; targetLang?: string } }>(
-    '/api/mods/:id/export/project',
-    async (req, reply) => {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
-
-      const mod = await getMod(db, id);
-      if (!mod) return reply.code(404).send({ error: 'Not found' });
-
-      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
-      const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
-      if (!mod.abs_path)
-        return reply.code(400).send({ error: 'Mod file path is not available for export' });
-
-      try {
-        const game = (mod.game ?? 'fo4') as GameType;
-        const { zipBuffer, zipFileName } = await exportProjectZip(
-          db,
-          id,
-          mod.abs_path,
-          srcLang,
-          targetLang,
-          game,
-        );
-        return reply
-          .header('Content-Type', 'application/zip')
-          .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
-          .send(zipBuffer);
-      } catch (err) {
-        return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-      }
+      const game = (mod.game ?? 'fo4') as GameType;
+      return sendModExportZip(reply, id, mod.abs_path, srcLang, targetLang, game, exportFullModZip);
     },
   );
 };

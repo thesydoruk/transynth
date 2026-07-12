@@ -760,89 +760,22 @@ export const exportPatchedEsp = async (
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// Project export — ZIP bundle with BA2 + patched ESP (everything in one file)
+// ZIP export — langpack (loose files) and full localized mod (BA2)
 // ────────────────────────────────────────────────────────────────────────────
 
-/**
- * Builds a complete localization package as a ZIP archive.
- *
- * The ZIP contains:
- * - A BA2 archive with all localized STRINGS/DLSTRINGS/ILSTRINGS files
- *   and patched PEX scripts (if available).
- * - A patched ESP/ESM/ESL plugin file with non-localized string translations
- *   (if the mod has any non-localized embedded strings).
- *
- * Either or both may be present depending on the mod structure.
- * If neither is available, an error is thrown.
- *
- * @param db - Database connection (transaction-capable)
- * @param modId - The mod's database ID
- * @param modPath - Absolute filesystem path to the original mod plugin file
- * @param srcLang - Source language code (e.g. 'en')
- * @param targetLang - Target language code (e.g. 'uk')
- * @returns A Buffer containing the ZIP archive
- */
-export const exportProjectZip = async (
-  db: Tx,
-  modId: number,
-  modPath: string,
-  srcLang: string,
-  targetLang: string,
-  game: GameType = 'fo4',
-): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
-  const stem = path.basename(modPath, path.extname(modPath));
-  const zipFileName = `${stem}_${targetLang}.zip`;
-
-  // Collect all exportable files; at least one must succeed
-  const files: Array<{ name: string; data: Buffer }> = [];
-
-  // 1. Try to export a BA2/BSA with localized STRINGS files (game-aware)
-  try {
-    const archive = await exportArchive(db, modId, modPath, srcLang, targetLang, game);
-    files.push({
-      name: archive.fileName,
-      data: Buffer.from(archive.contentBase64, 'base64'),
-    });
-    log.info(`Project export: included archive ${archive.fileName} (${archive.size} bytes)`);
-  } catch {
-    log.info(`Project export: no localized STRINGS files for mod ${modId}, skipping archive`);
+const hasTranslationOverlayChanges = (
+  sourceMap: Map<number, string>,
+  overlay: Map<number, string>,
+): boolean => {
+  for (const [id, srcText] of sourceMap) {
+    const exportText = overlay.get(id);
+    if (exportText !== undefined && exportText !== srcText) return true;
   }
+  return false;
+};
 
-  // 2. Try to export a patched ESP
-  try {
-    const esp = await exportPatchedEsp(db, modId, modPath, srcLang, targetLang);
-    files.push({
-      name: esp.fileName,
-      data: Buffer.from(esp.contentBase64, 'base64'),
-    });
-    log.info(`Project export: included patched ESP (${esp.size} bytes)`);
-  } catch {
-    log.info(`Project export: no non-localized patches for mod ${modId}, skipping ESP`);
-  }
-
-  // 3. Include loose patched PEX scripts when sources exist on disk
-  try {
-    const pexFiles = await exportPatchedPexFiles(db, modId, modPath, srcLang, targetLang);
-    for (const pex of pexFiles) {
-      files.push({
-        name: pex.fileName.replace(/\\/g, '/'),
-        data: Buffer.from(pex.contentBase64, 'base64'),
-      });
-    }
-    log.info(`Project export: included ${pexFiles.length} patched PEX script(s)`);
-  } catch {
-    log.info(`Project export: no patched PEX scripts for mod ${modId}, skipping Scripts`);
-  }
-
-  if (files.length === 0) {
-    throw new Error(
-      'No exportable content found — no localized STRINGS, PEX scripts, or non-localized ESP patches available.',
-    );
-  }
-
-  // 4. Pack everything into a ZIP archive using archiver (store mode — no compression,
-  //    because BA2 and ESP files are already binary and don't compress well)
-  const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+const packFilesToZip = async (files: Array<{ name: string; data: Buffer }>): Promise<Buffer> =>
+  new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const passthrough = new PassThrough();
     passthrough.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -860,7 +793,143 @@ export const exportProjectZip = async (
     archive.finalize();
   });
 
-  log.info(`Project export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
+/**
+ * Builds a langpack ZIP with loose localization files only (no BA2/BSA).
+ *
+ * Includes only files that contain at least one translated string:
+ * - STRINGS/DLSTRINGS/ILSTRINGS under `Strings\`
+ * - patched ESP/ESM when the binary differs from the imported original
+ * - patched PEX scripts under `Scripts\` when literals were translated
+ */
+export const exportLangpackZip = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  game: GameType = 'fo4',
+): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
+  const stem = path.basename(modPath, path.extname(modPath));
+  const zipFileName = `${stem}_${targetLang}_langpack.zip`;
+  const files: Array<{ name: string; data: Buffer }> = [];
+
+  try {
+    const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
+    const overlay = await getTranslationOverlay(db, modId, srcLang, targetLang);
+    let stringsCount = 0;
+    for (const sourceFile of sourceFiles) {
+      if (!hasTranslationOverlayChanges(sourceFile.sourceMap, overlay)) continue;
+      const patched = patchStringsMap(sourceFile.sourceMap, overlay);
+      const buf = writeStringsBuffer(patched, sourceFile.type);
+      const fileName = `${sourceFile.nameStem}_${targetLang.toLowerCase()}.${sourceFile.type}`;
+      files.push({ name: `Strings/${fileName}`, data: buf });
+      stringsCount++;
+    }
+    if (stringsCount > 0) {
+      log.info(
+        `Langpack export: included ${stringsCount} changed STRINGS file(s) for mod ${modId}`,
+      );
+    }
+  } catch {
+    log.info(`Langpack export: no localized STRINGS for mod ${modId}, skipping strings tables`);
+  }
+
+  try {
+    const esp = await exportPatchedEsp(db, modId, modPath, srcLang, targetLang);
+    const patchedBuf = Buffer.from(esp.contentBase64, 'base64');
+    const originalBuf = fs.readFileSync(modPath);
+    if (!patchedBuf.equals(originalBuf)) {
+      files.push({ name: esp.fileName, data: patchedBuf });
+      log.info(`Langpack export: included patched ESP (${esp.size} bytes)`);
+    }
+  } catch {
+    log.info(`Langpack export: no non-localized patches for mod ${modId}, skipping ESP`);
+  }
+
+  try {
+    const overlays = await getPexTranslationOverlays(db, modId, srcLang, targetLang);
+    const sources = collectModPexSources(modPath);
+    let pexCount = 0;
+    for (const [scriptKey, source] of sources) {
+      const overlay = overlays.get(scriptKey);
+      if (!overlay || overlay.size === 0) continue;
+      const hasChanges = [...overlay.entries()].some(([src, exp]) => exp !== src);
+      if (!hasChanges) continue;
+
+      const patched = patchPexBuffer(source.data, overlay);
+      const fileName =
+        source.archivePath.replace(/\\/g, '/').split('/').pop() ?? `${scriptKey}.pex`;
+      const archivePath = source.archivePath.includes('\\')
+        ? source.archivePath
+        : `Scripts\\${fileName}`;
+      files.push({ name: archivePath.replace(/\\/g, '/'), data: patched });
+      pexCount++;
+    }
+    if (pexCount > 0) {
+      log.info(`Langpack export: included ${pexCount} changed PEX script(s) for mod ${modId}`);
+    }
+  } catch {
+    log.info(`Langpack export: no patched PEX scripts for mod ${modId}, skipping Scripts`);
+  }
+
+  if (files.length === 0) {
+    throw new Error(
+      'No exportable langpack content found — no translated STRINGS, PEX scripts, or ESP patches available.',
+    );
+  }
+
+  const zipBuffer = await packFilesToZip(files);
+  log.info(`Langpack export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
+  return { zipBuffer, zipFileName };
+};
+
+/**
+ * Builds a full localized mod ZIP with BA2/BSA archives (and patched ESP when needed).
+ *
+ * STRINGS and PEX are packed into the archive; loose script/string files are not included.
+ */
+export const exportFullModZip = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  game: GameType = 'fo4',
+): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
+  const stem = path.basename(modPath, path.extname(modPath));
+  const zipFileName = `${stem}_${targetLang}.zip`;
+  const files: Array<{ name: string; data: Buffer }> = [];
+
+  try {
+    const archive = await exportArchive(db, modId, modPath, srcLang, targetLang, game);
+    files.push({
+      name: archive.fileName,
+      data: Buffer.from(archive.contentBase64, 'base64'),
+    });
+    log.info(`Full mod export: included archive ${archive.fileName} (${archive.size} bytes)`);
+  } catch {
+    log.info(`Full mod export: no localized STRINGS for mod ${modId}, skipping archive`);
+  }
+
+  try {
+    const esp = await exportPatchedEsp(db, modId, modPath, srcLang, targetLang);
+    files.push({
+      name: esp.fileName,
+      data: Buffer.from(esp.contentBase64, 'base64'),
+    });
+    log.info(`Full mod export: included patched ESP (${esp.size} bytes)`);
+  } catch {
+    log.info(`Full mod export: no non-localized patches for mod ${modId}, skipping ESP`);
+  }
+
+  if (files.length === 0) {
+    throw new Error(
+      'No exportable content found — no localized STRINGS archive or non-localized ESP patches available.',
+    );
+  }
+
+  const zipBuffer = await packFilesToZip(files);
+  log.info(`Full mod export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
   return { zipBuffer, zipFileName };
 };
 

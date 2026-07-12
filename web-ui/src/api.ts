@@ -646,19 +646,6 @@ export type OpsOverview = {
   };
 };
 
-export type ExportedStringsFile = {
-  fileName: string;
-  size: number;
-  contentBase64: string;
-};
-
-export type ExportStringsResult = {
-  modId: number;
-  srcLang: string;
-  targetLang: string;
-  files: ExportedStringsFile[];
-};
-
 export type DiffEntry = {
   formid_hex: string;
   path: string;
@@ -1193,26 +1180,14 @@ export const api = {
       req<DiffResult>(
         `/api/mods/${newModId}/diff?compareModId=${compareModId}&targetLang=${targetLang}`,
       ),
-    exportStrings: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(
-        `/api/mods/${modId}/export/strings?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-      ),
-    exportEsp: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(
-        `/api/mods/${modId}/export/esp?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-      ),
-    exportPex: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(
-        `/api/mods/${modId}/export/pex?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-      ),
-    exportBa2: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-      req<ExportStringsResult>(
-        `/api/mods/${modId}/export/ba2?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-      ),
-    /** Downloads a complete project ZIP (BA2 + patched ESP) as a single file */
-    exportProject: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+    exportLangpack: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
       downloadBinary(
-        `/api/mods/${modId}/export/project?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+        `/api/mods/${modId}/export/langpack?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+        `mod_${modId}_${targetLang}_langpack.zip`,
+      ),
+    exportFullMod: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+      downloadBinary(
+        `/api/mods/${modId}/export/full-mod?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
         `mod_${modId}_${targetLang}.zip`,
       ),
     /** Copy translations from an older mod version into a newer one */

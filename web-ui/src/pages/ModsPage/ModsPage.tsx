@@ -47,7 +47,6 @@ import {
 } from './modsShared';
 import {
   ACCEPTED_UPLOAD_EXTENSIONS,
-  downloadBase64File,
   isActiveModImportJob,
   isSupportedGameId,
   kindFromExt,
@@ -479,12 +478,15 @@ export const ModsPage = () => {
       exportSrcLang: string,
       exportTgtLang: string,
       labelName: string,
-      type: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip',
+      type: 'langpack' | 'fullMod',
       busyKey: string,
     ) => {
       const appJobId = `export-${modId}-${type}-${Date.now()}`;
       const now = Date.now();
-      const label = `${labelName} · ${type.toUpperCase()} export`;
+      const label =
+        type === 'langpack'
+          ? `${labelName} · ${t('mods.exportLangpack')}`
+          : `${labelName} · ${t('mods.exportFullMod')}`;
       upsertAppJob({
         id: appJobId,
         kind: 'export',
@@ -496,20 +498,10 @@ export const ModsPage = () => {
       });
       setExportBusy(busyKey);
       try {
-        if (type === 'strings') {
-          const result = await api.mods.exportStrings(modId, exportSrcLang, exportTgtLang);
-          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
-        } else if (type === 'esp') {
-          const result = await api.mods.exportEsp(modId, exportSrcLang, exportTgtLang);
-          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
-        } else if (type === 'pex') {
-          const result = await api.mods.exportPex(modId, exportSrcLang, exportTgtLang);
-          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
-        } else if (type === 'ba2') {
-          const result = await api.mods.exportBa2(modId, exportSrcLang, exportTgtLang);
-          for (const file of result.files) downloadBase64File(file.fileName, file.contentBase64);
+        if (type === 'langpack') {
+          await api.mods.exportLangpack(modId, exportSrcLang, exportTgtLang);
         } else {
-          await api.mods.exportProject(modId, exportSrcLang, exportTgtLang);
+          await api.mods.exportFullMod(modId, exportSrcLang, exportTgtLang);
         }
         upsertAppJob({
           id: appJobId,
@@ -536,7 +528,7 @@ export const ModsPage = () => {
         setExportBusy(null);
       }
     },
-    [],
+    [t],
   );
 
   const buildExportActions = useCallback(
@@ -550,81 +542,33 @@ export const ModsPage = () => {
       const isBusy = exportBusy != null && exportBusy.startsWith(`${busyPrefix}:`);
       return [
         {
-          key: 'strings' as const,
-          icon: '🧾',
-          title: t('modEditor.exportStringsTitle'),
+          key: 'langpack' as const,
+          icon: '📄',
+          title: t('mods.exportLangpack'),
           onClick: () => {
             void runModExport(
               modId,
               exportSrcLang,
               exportTgtLang,
               labelName,
-              'strings',
-              `${busyPrefix}:strings`,
+              'langpack',
+              `${busyPrefix}:langpack`,
             );
           },
           disabled: isBusy,
         },
         {
-          key: 'esp' as const,
-          icon: '🧩',
-          title: t('modEditor.exportEspTitle'),
-          onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'esp',
-              `${busyPrefix}:esp`,
-            );
-          },
-          disabled: isBusy,
-        },
-        {
-          key: 'pex' as const,
-          icon: '📜',
-          title: t('modEditor.exportPexTitle'),
-          onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'pex',
-              `${busyPrefix}:pex`,
-            );
-          },
-          disabled: isBusy,
-        },
-        {
-          key: 'ba2' as const,
+          key: 'fullMod' as const,
           icon: '📦',
-          title: t('modEditor.exportBa2Title'),
+          title: t('mods.exportFullMod'),
           onClick: () => {
             void runModExport(
               modId,
               exportSrcLang,
               exportTgtLang,
               labelName,
-              'ba2',
-              `${busyPrefix}:ba2`,
-            );
-          },
-          disabled: isBusy,
-        },
-        {
-          key: 'zip' as const,
-          icon: '⬇',
-          title: t('modEditor.exportZipTitle'),
-          onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'zip',
-              `${busyPrefix}:zip`,
+              'fullMod',
+              `${busyPrefix}:fullMod`,
             );
           },
           disabled: isBusy,
@@ -1096,7 +1040,6 @@ export const ModsPage = () => {
                       : [{ id: mod.id, name: mod.name }],
                   )
                 }
-                onReimport={importJob ? () => void startModImportJob(importJob) : undefined}
                 onDeleteImport={importJob ? () => setDeleteModalJob(importJob) : undefined}
               />
             );

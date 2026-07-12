@@ -43,6 +43,7 @@ export const DiffPage = () => {
   const editorBaseTo = selectedNewMod
     ? `/games/${selectedNewMod.game}/mods/${selectedNewMod.id}`
     : null;
+  const modsTo = selectedNewMod ? `/games/${selectedNewMod.game}/mods` : null;
   const activityTo = selectedNewMod
     ? `/settings?tab=activity&entityType=mod&entityId=${selectedNewMod.id}`
     : null;
@@ -238,6 +239,7 @@ export const DiffPage = () => {
               translated={Number(modStats.translated)}
               total={Number(modStats.total)}
               editorTo={editorBaseTo}
+              modsTo={modsTo}
               draftReviewTo={editorBaseTo ? `${editorBaseTo}?status=draft` : null}
               qaTo={editorBaseTo ? `${editorBaseTo}?qaOnly=1` : null}
               activityTo={activityTo}

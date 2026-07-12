@@ -10,7 +10,8 @@ Create the translation files that players install to play the mod in your langua
 - [STRINGS Files](#strings-files)
 - [Patched ESP](#patched-esp)
 - [BA2 Archive](#ba2-archive)
-- [Project ZIP](#project-zip)
+- [Langpack ZIP](#langpack-zip)
+- [Full Localized Mod (ZIP)](#full-localized-mod-zip)
 - [Triggering an Export](#triggering-an-export)
 - [What to Include in a Mod Release](#what-to-include-in-a-mod-release)
 - [Partial Exports and Drafts](#partial-exports-and-drafts)
@@ -21,13 +22,14 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format          | File                                   | Purpose                                                              |
-| --------------- | -------------------------------------- | -------------------------------------------------------------------- |
-| **STRINGS**     | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine                  |
-| **Patched ESP** | `.esp` / `.esm`                        | Mod plugin with translations embedded directly                       |
-| **BA2 Archive** | `.ba2`                                 | Fallout 4/76 archive containing translated STRINGS files             |
-| **BSA Archive** | `.bsa`                                 | Skyrim SE/LE and FO3/FNV archive containing translated STRINGS files |
-| **Project ZIP** | `.zip`                                 | All of the above bundled for distribution                            |
+| Format           | File                                   | Purpose                                                              |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------- |
+| **STRINGS**      | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine                  |
+| **Patched ESP**  | `.esp` / `.esm`                        | Mod plugin with translations embedded directly                       |
+| **BA2 Archive**  | `.ba2`                                 | Fallout 4/76 archive containing translated STRINGS files             |
+| **BSA Archive**  | `.bsa`                                 | Skyrim SE/LE and FO3/FNV archive containing translated STRINGS files |
+| **Langpack ZIP** | `{stem}_{lang}_langpack.zip`           | Changed translation files only (STRINGS, ESP, PEX), no BA2           |
+| **Full mod ZIP** | `{stem}_{lang}.zip`                    | BA2/BSA archive (+ patched ESP when needed)                          |
 
 ---
 
@@ -104,9 +106,43 @@ active in the load order. The exported BA2 is an uncompressed GNRL-type
 archive (version 1) for maximum compatibility across all game versions
 and mod managers.
 
-The **Export BA2** and **Export ZIP** buttons in the Mod Editor toolbar
-both generate a BA2 archive. The ZIP variant bundles the BA2 together
-with a patched ESP (if applicable) into a single distributable file.
+---
+
+## Langpack ZIP
+
+A langpack is a ZIP containing only translation delta files — no BA2 archive.
+Only **changed or new** artifacts are included:
+
+- `Strings\*.STRINGS` / `*.DLSTRINGS` / `*.ILSTRINGS` — only tables where at least one string differs from source;
+- patched ESP/ESM — only when the binary differs from the imported original;
+- `Scripts\*.pex` — only scripts with translated string literals.
+
+Naming:
+
+```
+{PluginStem}_{targetLang}_langpack.zip (e.g., MyMod_uk_langpack.zip)
+```
+
+---
+
+## Full Localized Mod (ZIP)
+
+The full localized mod ZIP is the mod-manager-friendly release bundle. It contains:
+
+- a BA2/BSA archive with STRINGS and PEX;
+- a patched ESP when the mod has non-localized embedded text.
+
+Naming:
+
+```
+{PluginStem}_{targetLang}.zip (e.g., MyMod_uk.zip)
+```
+
+The ZIP is generated in **store mode** (no compression) because BA2 and ESP
+files are already binary-packed.
+
+**Note:** No `README.txt` is included automatically. Add installation
+instructions before uploading to Nexus Mods or sharing with players.
 
 ---
 
@@ -133,63 +169,30 @@ Fallout 3, and Fallout: New Vegas mods produce BSA. No manual selection is neede
 
 ---
 
-## Project ZIP
-
-The Project ZIP bundles:
-
-- The patched ESP (optional)
-- The STRINGS files (or BA2 archive containing them)
-- A `README.txt` with installation instructions (generated automatically)
-
-Click **Export ZIP** in the Mod Editor toolbar. The server generates the
-ZIP on the fly and the browser downloads it automatically.
-
-ZIP file naming:
-
-```
-{PluginStem}_{targetLang}.zip (e.g., MyMod_uk.zip)
-```
-
-The ZIP is generated in **store mode** (no compression), because BA2 and
-ESP files are already binary-packed and don't benefit from further
-compression.
-
-**Note:** No `README.txt` is included in the ZIP automatically. Add
-your own installation instructions before uploading to Nexus Mods or
-sharing with players.
-
----
-
 ## Triggering an Export
 
-All export buttons are located in the **Mod Editor toolbar** at the top
-of the editor page (`/editor/:modId`).
+Export is available from the **⋯ menu** on each mod row in the **Mods** list.
 
-1. Open the mod in the editor by clicking its name in the Mods list.
-2. Ensure the correct **Source language** and **Target language** are
-   selected in the toolbar dropdowns. The export uses these values.
-3. Click one of the four export buttons:
+1. Open the Mods list for the target game.
+2. Ensure the workspace **Source language** and **Target language** are set correctly.
+3. Click **⋯** on the mod row and choose an export option.
 
-| Button             | What downloads                                                          |
-| ------------------ | ----------------------------------------------------------------------- |
-| **Export STRINGS** | Raw `.STRINGS`, `.DLSTRINGS`, `.ILSTRINGS` files (one per string table) |
-| **Export ESP**     | Patched plugin file with embedded translations                          |
-| **Export BA2**     | A single archive (`.ba2` for FO4 or `.bsa` for SSE) containing STRINGS  |
-| **Export ZIP**     | A `.zip` bundle: archive + patched ESP (whichever applies)              |
+| Menu item              | What downloads                                            |
+| ---------------------- | --------------------------------------------------------- |
+| **Export translation** | Langpack ZIP: changed STRINGS, ESP, PEX only (no BA2)     |
+| **Full localized mod** | Full mod ZIP: BA2/BSA archive (+ patched ESP when needed) |
 
-4. The file downloads immediately via the browser once the server
-   finishes generating it. The button label changes to "Exporting…" while
-   the request is in flight.
+While the server builds the archive, an export job appears in the Jobs list.
 
 ---
 
 ## What to Include in a Mod Release
 
-| Mod type                                | Minimum release             | Recommended release                |
-| --------------------------------------- | --------------------------- | ---------------------------------- |
-| Localized (uses external string tables) | Loose STRINGS files         | BA2 archive (mod manager friendly) |
-| Non-localized (text in ESP)             | Patched ESP                 | Patched ESP (same thing)           |
-| Mixed (both)                            | STRINGS files + Patched ESP | Project ZIP (bundles both)         |
+| Mod type                                | Minimum release    | Recommended release             |
+| --------------------------------------- | ------------------ | ------------------------------- |
+| Localized (uses external string tables) | Langpack ZIP       | Full localized mod (BA2 in ZIP) |
+| Non-localized (text in ESP)             | Langpack ZIP (ESP) | Langpack ZIP (ESP)              |
+| Mixed (both)                            | Langpack ZIP       | Full localized mod              |
 
 Practical checklist before publishing:
 

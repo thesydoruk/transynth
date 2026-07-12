@@ -189,7 +189,7 @@ docker compose run --rm cli npm run db:init
 У блоці **Release** також є явна двокрокова схема:
 
 1. **Open Diff** для порівняння оновлених версій і carry-over перекладів.
-2. **Open Imported Mods** для повернення в editor і експорту STRINGS, BA2 або ZIP після review та QA.
+2. **Open Imported Mods** для експорту langpack або повного локалізованого мода після review та QA.
 
 У game-scoped браузері Nexus (`/games/:gameId/nexus`) порожній результат пошуку містить прямі дії: очищення пошуку і повернення в хаб гри.
 

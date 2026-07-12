@@ -14,7 +14,7 @@ export interface ModWorkspaceRowProps {
   mod: Mod;
   importJob?: ModImportJob | null;
   exportActions: Array<{
-    key: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip';
+    key: 'langpack' | 'fullMod';
     icon: string;
     title: string;
     disabled?: boolean;
@@ -28,7 +28,6 @@ export interface ModWorkspaceRowProps {
   onOpen: () => void;
   onClearRows: () => void;
   onDeleteAll: () => void;
-  onReimport?: () => void;
   onDeleteImport?: () => void;
   onAiTranslateTm?: () => void;
   onAiTranslateLlm?: () => void;
@@ -53,7 +52,6 @@ export const ModWorkspaceRow = ({
   onOpen,
   onClearRows,
   onDeleteAll,
-  onReimport,
   onDeleteImport,
   onAiTranslateTm,
   onAiTranslateLlm,
@@ -176,19 +174,6 @@ export const ModWorkspaceRow = ({
             </button>
             {menuOpen && (
               <div className={rowS.menuList}>
-                {!multiSelectActive && onReimport && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onReimport();
-                      setMenuOpen(false);
-                    }}
-                    className={rowS.menuItem}
-                  >
-                    <span className={rowS.menuIcon}>▶</span>
-                    <span>{t('imports.reimportTooltip')}</span>
-                  </button>
-                )}
                 {!multiSelectActive &&
                   exportActions.map((action) => (
                     <button

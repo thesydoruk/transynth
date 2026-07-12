@@ -162,14 +162,14 @@ The checklist tracks these steps:
 3. Drafts reviewed
 4. QA issues resolved
 5. Translation coverage completed
-6. Editor opened for final export
+6. Mods list ready for export
 
 When something is still pending, the checklist provides direct next-action links:
 
 - **Review drafts** → opens the new mod editor with `?status=draft`
 - **Fix QA issues** → opens the new mod editor with `?qaOnly=1`
 - **Continue translating in editor** → opens the new mod editor without filters
-- **Open editor for export** → returns to the editor toolbar once the checklist is clear
+- **Open mods list for export** → opens the Mods list once the checklist is clear
 
 The checklist also includes a **Recent handoff activity** block for the selected mod.
 It shows the latest mod-specific actions recorded in the audit log and includes
@@ -226,7 +226,7 @@ After carrying over translations:
 4. Review and update each translation as needed.
 5. Run the TM waterfall to catch any strings that match other mods.
 6. Run QA to catch placeholder issues introduced by source text changes.
-7. Return to the editor toolbar to export STRINGS, BA2, or ZIP when the checklist is clear.
+7. Open the Mods list and export a langpack or full localized mod from the ⋯ menu when the checklist is clear.
 
 ---
 

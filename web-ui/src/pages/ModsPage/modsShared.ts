@@ -132,7 +132,7 @@ export interface UnifiedJobRowProps {
   live?: LiveProgress;
   isRunning: boolean;
   exportActions?: Array<{
-    key: 'strings' | 'esp' | 'pex' | 'ba2' | 'zip';
+    key: 'langpack' | 'fullMod';
     icon: string;
     title: string;
     disabled?: boolean;
