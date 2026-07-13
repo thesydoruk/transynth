@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../db';
 import type { GameType } from '../types';
+import type { TtsBackend } from '../tts/xttsClient';
+import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
 import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
@@ -38,6 +40,25 @@ export type SynthesizeModVoiceLineResult =
       reason: 'line_not_found' | 'no_translation' | 'no_localize_dir' | 'tts_failed';
       message: string;
     };
+
+export type SynthesizeModVoiceLineOptions = {
+  modId: number;
+  packageDir: string;
+  pluginPath: string;
+  formidLower6: string;
+  variant: number;
+  srcLang: string;
+  tgtLang: string;
+  game?: GameType;
+  backend?: TtsBackend;
+  referenceMode?: TtsReferenceMode;
+  xttsBaseUrl?: string;
+  synthesis?: Partial<XttsSynthesisParams>;
+};
+
+export type SynthesizeModVoiceLineBuffersResult =
+  | { ok: true; ttsWav: Buffer; fuzData: Buffer; fuzRel: string }
+  | { ok: false; reason: string; message: string };
 
 export const resolveLocalizedFuzAbsPath = (
   localizeDir: string | null,
@@ -77,24 +98,11 @@ const findVoiceEntry = (
       entry.formidLower6.toUpperCase() === formidLower6.toUpperCase() && entry.variant === variant,
   );
 
-/** Synthesize one voiced line into `localize/` as a localized `.fuz` file. */
-export const synthesizeModVoiceLine = async (
+/** Synthesize one voiced line and return raw TTS WAV plus packed FUZ without writing to disk. */
+export const synthesizeModVoiceLineBuffers = async (
   db: Tx,
-  opts: {
-    modId: number;
-    packageDir: string;
-    pluginPath: string;
-    localizeDir: string;
-    formidLower6: string;
-    variant: number;
-    srcLang: string;
-    tgtLang: string;
-    game?: GameType;
-    referenceMode?: TtsReferenceMode;
-    xttsBaseUrl?: string;
-    force?: boolean;
-  },
-): Promise<SynthesizeModVoiceLineResult> => {
+  opts: SynthesizeModVoiceLineOptions,
+): Promise<SynthesizeModVoiceLineBuffersResult> => {
   const pluginRel = pluginRelPath(opts.packageDir, opts.pluginPath);
   const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(opts.packageDir, pluginRel));
   const entry = findVoiceEntry(voiceFiles, opts.formidLower6, opts.variant);
@@ -108,30 +116,24 @@ export const synthesizeModVoiceLine = async (
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
 
-  if (!opts.localizeDir) {
-    return {
-      ok: false,
-      reason: 'no_localize_dir',
-      message: 'Mod import localize directory not found',
-    };
-  }
-
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
+  const backend = opts.backend ?? voiceConfig.backend;
+  const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
   const xttsBaseUrl = opts.xttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
-  await checkXttsHealth(xttsBaseUrl);
 
   if (referenceMode === 'speaker') {
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
   }
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
-  const fuzDest = toDiskPath(opts.localizeDir, fuzRel);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
 
   try {
+    await checkXttsHealth(xttsBaseUrl);
+
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
@@ -183,10 +185,10 @@ export const synthesizeModVoiceLine = async (
 
     const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
       baseUrl: xttsBaseUrl,
-      backend: voiceConfig.backend,
+      backend,
       language: resolveTtsLanguage(opts.tgtLang),
       speakerText: referenceText ?? undefined,
-      synthesis: voiceConfig.synthesis,
+      synthesis,
     });
 
     const fuzData = await buildVoicedFuzFromTtsWav(
@@ -197,16 +199,7 @@ export const synthesizeModVoiceLine = async (
       row.translation,
     );
 
-    const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
-    if (!opts.force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
-      return { ok: true, relPath: fuzRel, skipped: false };
-    }
-    if (opts.force) {
-      ensureDir(path.dirname(fuzDest));
-      fs.writeFileSync(fuzDest, fuzData);
-      return { ok: true, relPath: fuzRel, skipped: false };
-    }
-    return { ok: true, relPath: fuzRel, skipped: true };
+    return { ok: true, ttsWav, fuzData, fuzRel };
   } catch (err) {
     return {
       ok: false,
@@ -216,4 +209,44 @@ export const synthesizeModVoiceLine = async (
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+};
+
+/** Synthesize one voiced line into `localize/` as a localized `.fuz` file. */
+export const synthesizeModVoiceLine = async (
+  db: Tx,
+  opts: SynthesizeModVoiceLineOptions & { localizeDir: string; force?: boolean },
+): Promise<SynthesizeModVoiceLineResult> => {
+  if (!opts.localizeDir) {
+    return {
+      ok: false,
+      reason: 'no_localize_dir',
+      message: 'Mod import localize directory not found',
+    };
+  }
+
+  const built = await synthesizeModVoiceLineBuffers(db, opts);
+  if (!built.ok) {
+    return {
+      ok: false,
+      reason:
+        built.reason === 'line_not_found' ||
+        built.reason === 'no_translation' ||
+        built.reason === 'tts_failed'
+          ? built.reason
+          : 'tts_failed',
+      message: built.message,
+    };
+  }
+
+  const fuzDest = toDiskPath(opts.localizeDir, built.fuzRel);
+  const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
+  if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
+    return { ok: true, relPath: built.fuzRel, skipped: false };
+  }
+  if (opts.force) {
+    ensureDir(path.dirname(fuzDest));
+    fs.writeFileSync(fuzDest, built.fuzData);
+    return { ok: true, relPath: built.fuzRel, skipped: false };
+  }
+  return { ok: true, relPath: built.fuzRel, skipped: true };
 };

@@ -10,6 +10,7 @@ type VoiceSliderProps = {
   min: number;
   max: number;
   step: number;
+  disabled?: boolean;
   formatValue?: (value: number) => string;
   onCommit: (value: number) => void;
 };
@@ -25,6 +26,7 @@ export const VoiceSlider = ({
   min,
   max,
   step,
+  disabled = false,
   formatValue,
   onCommit,
 }: VoiceSliderProps) => {
@@ -62,6 +64,7 @@ export const VoiceSlider = ({
         max={max}
         step={step}
         value={local}
+        disabled={disabled}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={local}

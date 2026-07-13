@@ -9,6 +9,7 @@ import {
 } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
+import { VoiceRegenerateModal } from './VoiceRegenerateModal';
 import s from './VoiceModal.module.scss';
 
 interface VoiceModalProps {
@@ -43,6 +44,7 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
   const [playError, setPlayError] = useState<string | null>(null);
   const [refError, setRefError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [regenerateLine, setRegenerateLine] = useState<VoiceLinePreview | null>(null);
 
   const voiceQueryKey = ['voice-lines', modId, srcLang, targetLang] as const;
 
@@ -319,25 +321,44 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
                                 </span>
                               </Button>
                               {hasTranslationAudio ? (
-                                <Button
-                                  variant={isTranslationPlaying ? 'primary' : 'secondary'}
-                                  size="sm"
-                                  onClick={() => void handlePlay(line, 'translation')}
-                                  disabled={isTranslationLoading}
-                                  title={t('modEditor.voicePlayTranslationTitle')}
-                                  aria-label={t('modEditor.voicePlayTranslationTitle')}
-                                >
-                                  <span
-                                    className={`${s.iconBtnGlyph} ${s.translationBtn}`}
-                                    aria-hidden
+                                <>
+                                  <Button
+                                    variant={isTranslationPlaying ? 'primary' : 'secondary'}
+                                    size="sm"
+                                    onClick={() => void handlePlay(line, 'translation')}
+                                    disabled={isTranslationLoading}
+                                    title={t('modEditor.voicePlayTranslationTitle')}
+                                    aria-label={t('modEditor.voicePlayTranslationTitle')}
                                   >
-                                    {isTranslationLoading
-                                      ? t('modEditor.voicePlayLoading')
-                                      : isTranslationPlaying
-                                        ? t('modEditor.voicePlayTranslationStop')
-                                        : t('modEditor.voicePlayTranslation')}
-                                  </span>
-                                </Button>
+                                    <span
+                                      className={`${s.iconBtnGlyph} ${s.translationBtn}`}
+                                      aria-hidden
+                                    >
+                                      {isTranslationLoading
+                                        ? t('modEditor.voicePlayLoading')
+                                        : isTranslationPlaying
+                                          ? t('modEditor.voicePlayTranslationStop')
+                                          : t('modEditor.voicePlayTranslation')}
+                                    </span>
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setRegenerateLine(line)}
+                                    disabled={
+                                      !Boolean(line.translation?.trim()) || Boolean(regenerateLine)
+                                    }
+                                    title={t('modEditor.voiceRegenerateTitle')}
+                                    aria-label={t('modEditor.voiceRegenerateTitle')}
+                                  >
+                                    <span
+                                      className={`${s.iconBtnGlyph} ${s.regenerateBtn}`}
+                                      aria-hidden
+                                    >
+                                      {t('modEditor.voiceRegenerate')}
+                                    </span>
+                                  </Button>
+                                </>
                               ) : (
                                 <Button
                                   variant="secondary"
@@ -408,6 +429,21 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
           <p className={s.status}>{t('modEditor.voiceNoLines')}</p>
         )}
       </div>
+
+      {regenerateLine && (
+        <VoiceRegenerateModal
+          modId={modId}
+          line={regenerateLine}
+          srcLang={srcLang}
+          targetLang={targetLang}
+          hasCurrentTranslation={Boolean(regenerateLine.hasTranslationAudio)}
+          onClose={() => setRegenerateLine(null)}
+          onCommitted={async () => {
+            setRegenerateLine(null);
+            await qc.invalidateQueries({ queryKey: voiceQueryKey });
+          }}
+        />
+      )}
     </ModalShell>
   );
 };

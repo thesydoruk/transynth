@@ -382,7 +382,7 @@ export const listVoiceLinesForMod = async (
   return { ok: true, speakers, totalLines };
 };
 
-const resolveModVoiceContext = async (
+export const resolveModVoiceContext = async (
   db: Tx,
   modId: number,
 ): Promise<

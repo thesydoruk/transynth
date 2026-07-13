@@ -1115,6 +1115,32 @@ export const voiceTranslationAudioUrl = (
   variant: number,
 ): string => `${BASE}/api/mods/${modId}/voice/translation-audio/${formidLower6}/${variant}`;
 
+export type VoiceRegenerateParams = {
+  backend: 'xtts' | 'fish-speech';
+  line_reference: boolean;
+  speed: number;
+  length_penalty: number;
+  temperature: number;
+  repetition_penalty: number;
+  top_p: number;
+  top_k: number;
+  enable_text_splitting: boolean;
+};
+
+export type VoiceRegeneratePreview = {
+  id: string;
+  attempt: number;
+  createdAt: string;
+  audioUrl: string;
+  params: VoiceRegenerateParams;
+};
+
+export const voiceRegeneratePreviewUrl = (
+  modId: number,
+  sessionId: string,
+  previewId: string,
+): string => `${BASE}/api/mods/${modId}/voice/regenerate/${sessionId}/${previewId}.wav`;
+
 export const api = {
   mods: {
     list: (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
@@ -1164,6 +1190,61 @@ export const api = {
         { method: 'POST' },
       );
     },
+    initVoiceRegenerateSession: (
+      modId: number,
+      formidLower6: string,
+      variant: number,
+      sessionId: string,
+      srcLang = getSrcLang(),
+      targetLang = getTgtLang(),
+    ) =>
+      req<{ ok: true; defaultParams: VoiceRegenerateParams }>(
+        `/api/mods/${modId}/voice/regenerate/${formidLower6}/${variant}/session`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ sessionId, srcLang, targetLang }),
+        },
+      ),
+    getVoiceRegenerateSession: (modId: number, sessionId: string) =>
+      req<{
+        ok: true;
+        formidLower6: string;
+        variant: number;
+        srcLang: string;
+        targetLang: string;
+        previews: VoiceRegeneratePreview[];
+      }>(`/api/mods/${modId}/voice/regenerate/${sessionId}`),
+    generateVoiceRegeneratePreview: (
+      modId: number,
+      sessionId: string,
+      body: {
+        formidLower6: string;
+        variant: number;
+        srcLang: string;
+        targetLang: string;
+        params: VoiceRegenerateParams;
+      },
+    ) =>
+      req<{
+        ok: true;
+        previewId: string;
+        attempt: number;
+        audioUrl: string;
+        params: VoiceRegenerateParams;
+      }>(`/api/mods/${modId}/voice/regenerate/${sessionId}/preview`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    commitVoiceRegenerate: (modId: number, sessionId: string, previewId: string) =>
+      req<{ ok: true; relPath: string; kept: 'original' | 'preview' }>(
+        `/api/mods/${modId}/voice/regenerate/${sessionId}/commit`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ previewId }),
+        },
+      ),
+    discardVoiceRegenerate: (modId: number, sessionId: string) =>
+      req<{ ok: true }>(`/api/mods/${modId}/voice/regenerate/${sessionId}`, { method: 'DELETE' }),
     clearRows: (modId: number) =>
       req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
     remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),

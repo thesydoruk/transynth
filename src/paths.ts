@@ -25,6 +25,10 @@ export const PATHS = {
   voicePreview: path.resolve(
     process.env.VOICE_PREVIEW_CACHE_DIR ?? path.join(dataDir, 'cache', 'voice-preview'),
   ),
+  /** Temporary voice regeneration previews before the user commits one attempt. */
+  voiceRegenerate: path.resolve(
+    process.env.VOICE_REGENERATE_DIR ?? path.join(dataDir, 'cache', 'voice-regenerate'),
+  ),
   /** Champollion CLI installed by `npm run tools:install`. */
   champollion: path.resolve(
     process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(toolsDir, 'champollion'),
@@ -44,6 +48,7 @@ export const ensureDataDirs = (): void => {
     PATHS.scanExtract,
     PATHS.pexDecompile,
     PATHS.voicePreview,
+    PATHS.voiceRegenerate,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

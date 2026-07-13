@@ -78,15 +78,23 @@ export const synthesizeXttsWav = async (
 export const checkXttsHealth = async (baseUrl?: string): Promise<void> => {
   const root = (baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
   const response = await fetch(`${root}/health`).catch(() => null);
-  if (!response?.ok) return;
+  if (!response?.ok) {
+    throw new Error('TTS health check failed');
+  }
 
   const body = (await response.json().catch(() => null)) as {
     model_ready?: boolean;
     model_loaded?: boolean;
     status?: string;
   } | null;
-  const modelReady = body?.model_ready ?? body?.model_loaded;
-  if (body && modelReady === false) {
+  if (!body) return;
+
+  const status = body.status?.toLowerCase();
+  // Servers that report status=ok are reachable; model_loaded may stay false until first synthesis.
+  if (status === 'ok' || status === 'ready') return;
+
+  const modelReady = body.model_ready ?? body.model_loaded;
+  if (modelReady === false) {
     throw new Error(`TTS is not ready (status=${body.status ?? 'unknown'})`);
   }
 };
