@@ -4,7 +4,6 @@ import type { Tx } from '../../db';
 import {
   listMods,
   getMod,
-  getModStats,
   diffMods,
   carryOverTranslations,
   applyImportedModStringsAsTranslations,
@@ -59,7 +58,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     },
   );
 
-  // GET /api/mods/:id — single mod with progress stats
+  // GET /api/mods/:id — mod metadata (progress breakdown: GET /api/stats?modId=)
   app.get<{ Params: { id: string } }>('/api/mods/:id', async (req, reply) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
@@ -67,8 +66,7 @@ export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = await getMod(db, id);
     if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-    const stats = await getModStats(db, id);
-    return reply.send({ ...(mod as object), stats });
+    return reply.send(mod);
   });
 
   // GET /api/mods/:id/pex-source/:stringId — decompile PEX and return PSC context for one row.

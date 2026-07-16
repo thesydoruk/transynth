@@ -50,11 +50,12 @@ const UI_BRACKET_TAGS = [
 /**
  * Regex building blocks for {@link PLACEHOLDER_RE}, ordered most-specific first.
  * Keep in sync with the web UI highlighter (`getPlaceholderParts.ts`).
+ *
+ * Line breaks are matched as runs: consecutive breaks and whitespace-only lines
+ * between them become one token so the LLM sees fewer ¤PH*¤ keys.
  */
 export const PLACEHOLDER_PATTERN_PARTS = [
-  String.raw`\r\n`,
-  String.raw`\r`,
-  String.raw`\n`,
+  String.raw`(?:\r\n|\r|\n)(?:[ \t]*(?:\r\n|\r|\n))*`,
   String.raw`<font color='#<Global=[^>]+>'>`,
   String.raw`<font color='#<Global=[^>]+>`,
   String.raw`<Token\.[^>]+>`,
@@ -79,7 +80,7 @@ export const PLACEHOLDER_PATTERN_PARTS = [
  * from modification during LLM translation.
  *
  * Covered patterns:
- * - `\r\n`, `\r`, `\n` — line breaks.
+ * - Paragraph breaks (`\r\n\r\n`, `\r\n \r\n`, …) — one mask per run.
  * - `%d`, `%s`, `%2$s`, `%.0f`, `%%`, etc. — printf-style format specifiers.
  * - `{0}`, `{1}`, … — positional format tokens.
  * - `{name}` — named format tokens.
@@ -117,8 +118,11 @@ const DECLARATION_SIGNAL_RE =
 
 const LINE_BREAK_TOKENS = new Set(['\r\n', '\r', '\n']);
 
+/** True when a protected token is only line breaks (optionally separated by spaces/tabs). */
+const LINE_BREAK_RUN_RE = /^(?:\r\n|\r|\n)(?:[ \t]*(?:\r\n|\r|\n))*$/;
+
 const filterCompareTokens = (tokens: string[]): string[] =>
-  tokens.filter((token) => !LINE_BREAK_TOKENS.has(token));
+  tokens.filter((token) => !LINE_BREAK_TOKENS.has(token) && !LINE_BREAK_RUN_RE.test(token));
 
 const formatTokenForMessage = (token: string): string => {
   if (token === '\r\n') return '\\r\\n';

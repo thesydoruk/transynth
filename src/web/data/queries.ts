@@ -17,7 +17,11 @@ import {
   type DeferredBulkWriteIndexContext,
   withDeferredBulkModWriteIndexes,
 } from '../import/modImportIndexes';
-import { refreshModLangStatsForMods, tryRefreshModLangStats } from '../services/modLangStats';
+import {
+  getCachedModDetailStats,
+  refreshModLangStatsForMods,
+  tryRefreshModLangStats,
+} from '../services/modLangStats';
 
 // Re-export so existing callers that import TranslationStatus from queries.ts
 // continue to work without changes.
@@ -1517,24 +1521,27 @@ export const getConversationDialog = async (
   return rows as SceneDialogLineRow[];
 };
 
+/**
+ * Distinct source + target language codes present for a mod.
+ *
+ * Reads only `mod_lang_stats` (+ defaults). Never touches strings/translations —
+ * a live DISTINCT over Fallout4-sized mods can take minutes and crash Postgres.
+ * The editor UI already merges this with {@link SUPPORTED_CONTENT_LANGUAGES}.
+ */
 export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
-  // Source langs from strings table + target langs from translations table
-  const { rows } = await db.query(
+  const langs = new Set<string>([CONFIG.defaultSrcLang, CONFIG.defaultTgtLang]);
+
+  const { rows } = await db.query<{ lang: string }>(
     `SELECT DISTINCT lang FROM (
-       SELECT s.lang
-       FROM strings s JOIN records r ON s.record_id = r.id
-       WHERE r.mod_id = $1
-       UNION
-       SELECT t.target_lang AS lang
-       FROM translations t
-       JOIN strings s ON t.src_string_id = s.id
-       JOIN records r ON s.record_id = r.id
-       WHERE r.mod_id = $1
-     ) langs
-     ORDER BY lang`,
+       SELECT src_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
+       UNION ALL
+       SELECT target_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
+     ) langs`,
     [modId],
   );
-  return rows.map((r: { lang: string }) => r.lang);
+  for (const r of rows) langs.add(r.lang);
+
+  return [...langs].sort((a, b) => a.localeCompare(b));
 };
 
 /**
@@ -2884,32 +2891,13 @@ export const searchReplaceTranslations = async (
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
+/** Editor / API stats — served from {@link mod_lang_stats} (no live full-mod scan). */
 export const getModStats = async (
   db: Tx,
   modId: number,
   srcLang = CONFIG.defaultSrcLang,
   targetLang = CONFIG.defaultTgtLang,
-) => {
-  const { rows } = await db.query(
-    `SELECT
-      COUNT(DISTINCT s.id)          AS total,
-      COUNT(DISTINCT t.id)          AS translated,
-      COUNT(DISTINCT CASE WHEN t.status IN ${APPROVED_STATUS_SQL} THEN t.id END) AS approved,
-      COUNT(DISTINCT CASE WHEN t.status='draft'  THEN t.id END) AS draft,
-      COUNT(DISTINCT CASE WHEN t.status='rejected' THEN t.id END) AS rejected,
-      COUNT(DISTINCT CASE WHEN t.status='tm'     THEN t.id END) AS tm,
-      COUNT(DISTINCT CASE WHEN t.status='fuzzy'  THEN t.id END) AS fuzzy,
-      COUNT(DISTINCT CASE WHEN t.status='auto'   THEN t.id END) AS auto_translated,
-      COUNT(DISTINCT CASE WHEN s.is_ignored THEN s.id END) AS skipped,
-      COUNT(DISTINCT CASE WHEN t.id IS NULL AND NOT s.is_ignored THEN s.id END) AS untranslated
-     FROM strings s
-     JOIN records r ON s.record_id = r.id
-     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-     WHERE r.mod_id = $1 AND s.lang = $3`,
-    [modId, targetLang, srcLang],
-  );
-  return rows[0];
-};
+) => getCachedModDetailStats(db, modId, srcLang, targetLang);
 
 /**
  * Returns translation progress broken down by record signature (GRUP type) for the

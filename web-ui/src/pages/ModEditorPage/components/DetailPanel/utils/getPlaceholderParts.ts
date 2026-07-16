@@ -5,9 +5,7 @@ export type PlaceholderPart = {
 
 /** Keep in sync with `src/utils/placeholders.ts` (`PLACEHOLDER_PATTERN_PARTS`). */
 const PLACEHOLDER_PATTERN_PARTS = [
-  String.raw`\r\n`,
-  String.raw`\r`,
-  String.raw`\n`,
+  String.raw`(?:\r\n|\r|\n)(?:[ \t]*(?:\r\n|\r|\n))*`,
   String.raw`<font color='#<Global=[^>]+>'>`,
   String.raw`<font color='#<Global=[^>]+>`,
   String.raw`<Token\.[^>]+>`,

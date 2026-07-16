@@ -3,6 +3,7 @@ import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import {
+  failRunningLlmVerifyJob,
   findRunningLlmVerifyJob,
   getLlmVerifyJob,
   requestLlmVerifyStop,
@@ -87,10 +88,11 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
         );
         finishedJobId = snapshot.jobId;
       } catch (err: unknown) {
-        log.error(
-          `[LLM Verify mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
+        const message = err instanceof Error ? err.message : String(err);
+        log.error(`[LLM Verify mod #${modId}] Stream error: ${message}`);
+        send({ type: 'error', error: message });
+        // Safety net: never leave an in-memory job stuck as `running` after a throw.
+        finishedJobId = failRunningLlmVerifyJob(modId, message) ?? finishedJobId;
       } finally {
         if (finishedJobId != null) scheduleLlmVerifyJobCleanup(finishedJobId);
         try {

@@ -1148,7 +1148,7 @@ export const api = {
       if (game) params.set('game', game);
       return req<Mod[]>(`/api/mods?${params}`);
     },
-    get: (id: number) => req<Mod & { stats: Stats }>(`/api/mods/${id}`),
+    get: (id: number) => req<Mod>(`/api/mods/${id}`),
     pexSource: async (modId: number, stringId: number): Promise<PexSourceSnippetResponse> => {
       const res = await fetch(`${BASE}/api/mods/${modId}/pex-source/${stringId}`, {
         credentials: 'include',

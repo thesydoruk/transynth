@@ -22,7 +22,8 @@ ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_name TEXT;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_thumbnail TEXT;
 
--- Per-mod translation progress cache for fast mod list (refreshed after import / bulk jobs).
+-- Per-mod translation progress cache for fast mod list / editor stats
+-- (refreshed after import / bulk jobs; never live-scanned on page load).
 CREATE TABLE IF NOT EXISTS mod_lang_stats (
   mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
   src_lang TEXT NOT NULL,
@@ -32,10 +33,22 @@ CREATE TABLE IF NOT EXISTS mod_lang_stats (
   translated_count BIGINT NOT NULL DEFAULT 0,
   approved_count BIGINT NOT NULL DEFAULT 0,
   fuzzy_count BIGINT NOT NULL DEFAULT 0,
+  draft_count BIGINT NOT NULL DEFAULT 0,
+  rejected_count BIGINT NOT NULL DEFAULT 0,
+  tm_count BIGINT NOT NULL DEFAULT 0,
+  auto_count BIGINT NOT NULL DEFAULT 0,
+  skipped_count BIGINT NOT NULL DEFAULT 0,
+  untranslated_count BIGINT NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (mod_id, src_lang, target_lang)
 );
 CREATE INDEX IF NOT EXISTS idx_mod_lang_stats_langs ON mod_lang_stats(src_lang, target_lang);
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS draft_count BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS rejected_count BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS tm_count BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS auto_count BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS skipped_count BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS untranslated_count BIGINT NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS records (
   id SERIAL PRIMARY KEY,

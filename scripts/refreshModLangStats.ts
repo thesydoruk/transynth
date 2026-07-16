@@ -26,10 +26,22 @@ await db.query(`
     translated_count BIGINT NOT NULL DEFAULT 0,
     approved_count BIGINT NOT NULL DEFAULT 0,
     fuzzy_count BIGINT NOT NULL DEFAULT 0,
+    draft_count BIGINT NOT NULL DEFAULT 0,
+    rejected_count BIGINT NOT NULL DEFAULT 0,
+    tm_count BIGINT NOT NULL DEFAULT 0,
+    auto_count BIGINT NOT NULL DEFAULT 0,
+    skipped_count BIGINT NOT NULL DEFAULT 0,
+    untranslated_count BIGINT NOT NULL DEFAULT 0,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (mod_id, src_lang, target_lang)
   );
   CREATE INDEX IF NOT EXISTS idx_mod_lang_stats_langs ON mod_lang_stats(src_lang, target_lang);
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS draft_count BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS rejected_count BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS tm_count BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS auto_count BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS skipped_count BIGINT NOT NULL DEFAULT 0;
+  ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS untranslated_count BIGINT NOT NULL DEFAULT 0;
 `);
 
 const count = await refreshAllModLangStats(db, {

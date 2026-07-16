@@ -333,49 +333,51 @@ export const runLlmVerifyJob = async (
   activeJobs.set(jobId, job);
 
   // Register early so Stop works during the count / RAG setup phase.
+  // Everything after this must be in try/catch so a PG drop during count
+  // cannot leave the job stuck as `running` (blocking restart with 409).
   onEvent({ type: 'started', jobId, total: 0 });
 
-  const total = await countVerifiableStrings(
-    db,
-    opts.modId,
-    opts.srcLang,
-    opts.targetLang,
-    includeConfirmed,
-  );
-  if (total === 0) {
-    activeJobs.delete(jobId);
-    throw new Error('No strings pending review');
-  }
-  job.total = total;
-  onEvent({ type: 'progress', done: 0, total, approved: 0, fixed: 0 });
-
-  if (job.cancel) {
-    job.status = 'cancelled';
-    onEvent({
-      type: 'cancelled',
-      done: 0,
-      total,
-      approved: 0,
-      fixed: 0,
-      issues: [],
-    });
-    return toSnapshot(job);
-  }
-
-  logVerify.info('job started', {
-    jobId,
-    modId: opts.modId,
-    total,
-    srcLang: opts.srcLang,
-    targetLang: opts.targetLang,
-    autoApproveVerified,
-    fixSuspicious,
-    includeConfirmed,
-    llmBatchSize: CONFIG.batchSize,
-    dbChunkSize: CONFIG.dbChunkSize,
-  });
-
   try {
+    const total = await countVerifiableStrings(
+      db,
+      opts.modId,
+      opts.srcLang,
+      opts.targetLang,
+      includeConfirmed,
+    );
+    if (total === 0) {
+      activeJobs.delete(jobId);
+      throw new Error('No strings pending review');
+    }
+    job.total = total;
+    onEvent({ type: 'progress', done: 0, total, approved: 0, fixed: 0 });
+
+    if (job.cancel) {
+      job.status = 'cancelled';
+      onEvent({
+        type: 'cancelled',
+        done: 0,
+        total,
+        approved: 0,
+        fixed: 0,
+        issues: [],
+      });
+      return toSnapshot(job);
+    }
+
+    logVerify.info('job started', {
+      jobId,
+      modId: opts.modId,
+      total,
+      srcLang: opts.srcLang,
+      targetLang: opts.targetLang,
+      autoApproveVerified,
+      fixSuspicious,
+      includeConfirmed,
+      llmBatchSize: CONFIG.batchSize,
+      dbChunkSize: CONFIG.dbChunkSize,
+    });
+
     const summary = await runModVerifyPipeline(
       db,
       {
@@ -473,6 +475,8 @@ export const runLlmVerifyJob = async (
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // Mark terminal so restart is allowed. Empty-mod path may already have
+    // deleted the map entry; status on the local object still drives the snapshot.
     job.status = 'failed';
     job.error = message;
     logVerify.error('job failed', {
@@ -485,6 +489,20 @@ export const runLlmVerifyJob = async (
 
   tryRefreshModLangStats(db, opts.modId, opts.srcLang, opts.targetLang);
   return toSnapshot(job);
+};
+
+/**
+ * Mark a stuck running job as failed (route-level safety net).
+ * Returns the jobId when a running job was found, else null.
+ */
+export const failRunningLlmVerifyJob = (modId: number, error: string): number | null => {
+  const jobId = findRunningLlmVerifyJob(modId);
+  if (jobId == null) return null;
+  const job = activeJobs.get(jobId);
+  if (!job) return null;
+  job.status = 'failed';
+  job.error = error;
+  return jobId;
 };
 
 /** Remove finished jobs from memory after a delay to allow status polling. */

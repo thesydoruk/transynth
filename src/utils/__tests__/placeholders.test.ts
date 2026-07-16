@@ -31,6 +31,16 @@ describe('maskPlaceholders', () => {
     expect(masked).toBe('Line one¤PH0¤Line two¤PH1¤Line three');
   });
 
+  it('coalesces consecutive line breaks into one mask', () => {
+    const original = 'Para one\r\n\r\nPara two\r\n \r\nPara three';
+    const { masked, mapping } = maskPlaceholders(original);
+    expect(unmask(masked, mapping)).toBe(original);
+    expect(masked).toBe('Para one¤PH0¤Para two¤PH1¤Para three');
+    expect(Object.keys(mapping)).toHaveLength(2);
+    expect(mapping['¤PH0¤']).toBe('\r\n\r\n');
+    expect(mapping['¤PH1¤']).toBe('\r\n \r\n');
+  });
+
   it('masks curly-brace placeholders', () => {
     const { masked, mapping } = maskPlaceholders('{0} gave {item} to {1}');
     expect(masked).toBe('¤PH0¤ gave ¤PH1¤ to ¤PH2¤');
@@ -253,5 +263,22 @@ describe('validateTranslationPlaceholders', () => {
       expect(compareProtectedTokens(source, translation, 'fo4').ok).toBe(true);
       expect(extractProtectedTokens(source, 'fo4')).toEqual([]);
     }
+  });
+
+  it('accepts terminal log with coalesced paragraph-break masks', () => {
+    const source =
+      'Finding him is our top priority.\r\n \r\nWe will find him, make a bot from his bones.';
+    const { masked, mapping } = maskPlaceholders(source);
+    expect(Object.keys(mapping)).toHaveLength(1);
+    expect(mapping['¤PH0¤']).toBe('\r\n \r\n');
+    const maskedTranslation = masked.replace(
+      'Finding him is our top priority.',
+      'Знайти його — наш головний пріоритет.',
+    );
+    const result = validateTranslationPlaceholders(source, maskedTranslation, mapping, {}, 'fo4', {
+      grup: 'TERM',
+      field: 'UNAM',
+    });
+    expect(result.ok).toBe(true);
   });
 });
