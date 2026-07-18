@@ -54,3 +54,14 @@ export {
   type LocalizeModImportVoiceResult,
   type ModVoiceGenerateScope,
 } from './localizeModImportVoice';
+export {
+  canSynthesizeVoiceLine,
+  detectVoiceTtsSkipReason,
+  isFullNonSpeechMarkerLine,
+  isInterjectStubEdid,
+  prepareVoiceTtsText,
+  stripVoiceAsteriskBlocks,
+  voiceTtsSkipMessage,
+  type PrepareVoiceTtsTextResult,
+  type VoiceTtsSkipReason,
+} from './prepareVoiceTtsText';

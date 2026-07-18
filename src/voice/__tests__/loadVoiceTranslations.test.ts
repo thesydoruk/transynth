@@ -32,6 +32,7 @@ describe('lookupVoiceTranslation', () => {
         voiceVariant: 1,
         translation: 'Привіт',
         source: 'Hello',
+        edid: null,
       },
     ],
   ]);

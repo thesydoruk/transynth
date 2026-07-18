@@ -6,6 +6,8 @@ export type VoiceTranslationRow = {
   voiceVariant: number;
   translation: string;
   source: string;
+  /** INFO EDID from `records.edid` — used e.g. for `CA_Interject_Stub_*` TTS skip. */
+  edid: string | null;
 };
 
 /** INFO response lines imported as `INFO\NAM1` (multiple per INFO when voiced). */
@@ -76,11 +78,13 @@ export const loadVoiceTranslations = async (
     voice_variant: number;
     translation: string;
     source: string;
+    edid: string | null;
   }>(
     `WITH voiced AS (
        SELECT
          UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
          r.formid_hex AS info_formid_hex,
+         r.edid,
          s.id AS string_id,
          s.text_raw AS source,
          ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_variant
@@ -92,6 +96,7 @@ export const loadVoiceTranslations = async (
      SELECT v.formid_lower6,
             v.info_formid_hex,
             v.voice_variant,
+            v.edid,
             v.source,
             t.text AS translation
      FROM voiced v
@@ -115,6 +120,7 @@ export const loadVoiceTranslations = async (
       voiceVariant: row.voice_variant,
       translation: row.translation,
       source: row.source,
+      edid: row.edid,
     });
   }
   return map;

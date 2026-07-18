@@ -28,6 +28,7 @@ import {
   voiceSpeakerKey,
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
+import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath, outputTtsWavRelPath } from './voiceFilePaths';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
@@ -37,7 +38,7 @@ export type SynthesizeModVoiceLineResult =
   | { ok: true; relPath: string; skipped: boolean }
   | {
       ok: false;
-      reason: 'line_not_found' | 'no_translation' | 'no_localize_dir' | 'tts_failed';
+      reason: 'line_not_found' | 'no_translation' | 'no_localize_dir' | 'non_speech' | 'tts_failed';
       message: string;
     };
 
@@ -183,11 +184,26 @@ export const synthesizeModVoiceLineBuffers = async (
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
 
-    const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
+    // Skip non-speech / interject stubs; strip *...* from translation and speaker_text.
+    const prepared = prepareVoiceTtsText({
+      lineSource: row.source,
+      translation: row.translation,
+      speakerSource: referenceText,
+      edid: row.edid,
+    });
+    if (prepared.action === 'skip') {
+      return {
+        ok: false,
+        reason: 'non_speech',
+        message: voiceTtsSkipMessage(prepared.reason),
+      };
+    }
+
+    const ttsWav = await synthesizeXttsWav(prepared.text, finalReferenceWav, {
       baseUrl: xttsBaseUrl,
       backend,
       language: resolveTtsLanguage(opts.tgtLang),
-      speakerText: referenceText ?? undefined,
+      speakerText: prepared.speakerText,
       synthesis,
     });
 
@@ -196,7 +212,7 @@ export const synthesizeModVoiceLineBuffers = async (
       ttsWav,
       workDir,
       entry.fileName,
-      row.translation,
+      prepared.text,
     );
 
     return { ok: true, ttsWav, fuzData, fuzRel };
@@ -231,6 +247,7 @@ export const synthesizeModVoiceLine = async (
       reason:
         built.reason === 'line_not_found' ||
         built.reason === 'no_translation' ||
+        built.reason === 'non_speech' ||
         built.reason === 'tts_failed'
           ? built.reason
           : 'tts_failed',

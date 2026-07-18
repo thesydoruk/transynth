@@ -93,6 +93,7 @@ describe('lookupInheritedVoiceLine', () => {
                 voiceVariant: 1,
                 source: 'Hello',
                 translation: 'Привіт',
+                edid: null,
               },
             ],
           ]),

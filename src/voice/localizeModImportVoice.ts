@@ -17,6 +17,7 @@ import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
 import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
+import { canSynthesizeVoiceLine } from './prepareVoiceTtsText';
 import { localizeVoicePackage } from './localizeVoicePackage';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 
@@ -68,7 +69,8 @@ export const countVoiceLocalizeWork = async (
     const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
     const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
     for (const entry of voiceFiles) {
-      if (!lookupVoiceTranslation(translations, entry.formidLower6, entry.variant)) {
+      const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) {
         continue;
       }
       if (scope === 'missing') {

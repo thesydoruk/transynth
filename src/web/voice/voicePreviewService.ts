@@ -35,6 +35,7 @@ import {
   resolveModStoredPath,
 } from '../../modStorage';
 import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
+import { canSynthesizeVoiceLine } from '../../voice/prepareVoiceTtsText';
 import {
   resolveLocalizedVoiceAbsPath,
   synthesizeModVoiceLine,
@@ -107,6 +108,7 @@ export type VoiceGenerateLineResult =
         | 'line_not_found'
         | 'no_translation'
         | 'no_localize_dir'
+        | 'non_speech'
         | 'tts_failed';
       message: string;
     };
@@ -362,7 +364,9 @@ export const listVoiceLinesForMod = async (
       isInheritedAudio,
       inheritedFrom,
       hasTranslationAudio,
-      canGenerateVoice: Boolean(translation) && !hasTranslationAudio,
+      canGenerateVoice:
+        canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid) &&
+        !hasTranslationAudio,
     });
   }
 

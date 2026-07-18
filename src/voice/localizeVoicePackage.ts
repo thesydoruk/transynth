@@ -28,6 +28,11 @@ import {
   type ResolvedSpeakerReference,
 } from './speakerReferencePool';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
+import {
+  prepareVoiceTtsText,
+  stripVoiceAsteriskBlocks,
+  voiceTtsSkipMessage,
+} from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { resolveTtsLanguage } from './voiceToolPaths';
@@ -126,8 +131,21 @@ export const localizeVoicePackage = async (
         continue;
       }
 
+      // See prepareVoiceTtsText — early skip before reference/TTS work.
+      const prepared = prepareVoiceTtsText({
+        lineSource: row.source,
+        translation: row.translation,
+        speakerSource: row.source,
+        edid: row.edid,
+      });
+      if (prepared.action === 'skip') {
+        skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
+        finishEligibleStep();
+        continue;
+      }
+
       if (options.dryRun) {
-        log.info(`[dry-run] ${prefix}${fuzRel} ← "${row.translation.slice(0, 80)}..."`);
+        log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
         finishEligibleStep();
         continue;
       }
@@ -176,11 +194,14 @@ export const localizeVoicePackage = async (
           referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
         }
 
-        const ttsWav = await synthesizeXttsWav(row.translation, finalReferenceWav, {
+        // Speaker mode may use a different ref line; strip its *...* for speaker_text.
+        const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
+
+        const ttsWav = await synthesizeXttsWav(prepared.text, finalReferenceWav, {
           baseUrl: options.xttsBaseUrl,
           backend: options.backend,
           language: resolveTtsLanguage(tgtLang),
-          speakerText: referenceText ?? undefined,
+          speakerText,
           synthesis: options.synthesis,
         });
 
@@ -189,7 +210,7 @@ export const localizeVoicePackage = async (
           ttsWav,
           workDir,
           entry.fileName,
-          row.translation,
+          prepared.text,
         );
 
         const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
