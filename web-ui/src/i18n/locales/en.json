@@ -156,7 +156,7 @@
     "hintSkipDetect": "Find non-translatable strings. Menu: rules only, or rules + LLM.",
     "hintTranslate": "Translate the whole mod. Menu: TM or LLM (both run as background jobs with progress).",
     "hintVerify": "AI review of translations. Click to open the review dialog.",
-    "hintVoice": "Generate voice lines for the whole mod. Click to start; click again while running to stop."
+    "hintVoice": "Generate voice for the mod. Menu: only lines without audio, or all translated lines. Click while running to stop."
   },
   "modEditor": {
     "source": "Source:",
@@ -245,6 +245,8 @@
     "autoTranslateLlm": "LLM",
     "aiVoiceGenerate": "Voice synthesis",
     "aiVoiceGenerateRunning": "Voice synthesis…",
+    "aiVoiceGenerateMissing": "Missing only",
+    "aiVoiceGenerateAll": "All lines",
     "applyTranslationFromModTitle": "Apply translation from another mod",
     "applyTranslationFromModIntro": "Pick a source mod and the locale of its strings to copy into this mod as translations for the current target language.",
     "applyTranslationSourceMod": "Source mod",

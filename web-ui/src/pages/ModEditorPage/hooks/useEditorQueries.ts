@@ -125,25 +125,6 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
     queryFn: () => api.mods.langs(modId),
   });
 
-  /** Record-signature counts for the sidebar (respect current status / QA filters). */
-  const { data: sigs } = useQuery({
-    queryKey: [
-      'sigs',
-      modId,
-      srcLang,
-      targetLang,
-      statusParam ?? '',
-      qaOnly,
-      columnFilters.grup,
-      columnFilters.formid,
-      columnFilters.edid,
-      columnFilters.field,
-      columnFilters.src,
-      columnFilters.transl,
-    ],
-    queryFn: () => api.strings.signatures(modId, stringFilters),
-  });
-
   /** Aggregate translation statistics for the mod. */
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['stats', modId],
@@ -159,6 +140,7 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
   const {
     data: stringsPages,
     isLoading,
+    isFetched: stringsFetched,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -182,6 +164,26 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
       return lastPage.rows.length === lastPage.pageSize ? lastPage.page + 1 : undefined;
     },
     placeholderData: (prev) => prev,
+  });
+
+  /** Record-signature counts for the sidebar (after page 1 — avoids parallel full-mod scans). */
+  const { data: sigs } = useQuery({
+    queryKey: [
+      'sigs',
+      modId,
+      srcLang,
+      targetLang,
+      statusParam ?? '',
+      qaOnly,
+      columnFilters.grup,
+      columnFilters.formid,
+      columnFilters.edid,
+      columnFilters.field,
+      columnFilters.src,
+      columnFilters.transl,
+    ],
+    queryFn: () => api.strings.signatures(modId, stringFilters),
+    enabled: stringsFetched,
   });
 
   /** Flattened rows + total across all loaded pages (grid-friendly shape). */

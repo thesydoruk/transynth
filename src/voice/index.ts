@@ -52,4 +52,5 @@ export {
   localizeModImportVoice,
   type LocalizeModImportVoiceOptions,
   type LocalizeModImportVoiceResult,
+  type ModVoiceGenerateScope,
 } from './localizeModImportVoice';

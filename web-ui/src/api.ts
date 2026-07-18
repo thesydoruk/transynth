@@ -1009,6 +1009,8 @@ export type ActiveModAiJob = {
   translateMode?: ModTranslateMode;
 };
 
+export type ModVoiceGenerateScope = 'all' | 'missing';
+
 export type ModVoiceGenerateJobSnapshot = {
   jobId: number;
   modId: number;
@@ -2658,12 +2660,13 @@ export const api = {
       targetLang = getTgtLang(),
       onEvent?: (e: ModVoiceGenerateStreamEvent) => void,
       signal?: AbortSignal,
+      scope: ModVoiceGenerateScope = 'all',
     ): Promise<ModVoiceGenerateJobSnapshot | null> {
       const response = await fetch(`${BASE}/api/mods/${modId}/voice-generate`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ srcLang, targetLang }),
+        body: JSON.stringify({ srcLang, targetLang, scope }),
         signal,
       });
       if (!response.ok || !response.body) {

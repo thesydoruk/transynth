@@ -76,7 +76,9 @@ export interface EditorToolbarProps {
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
   onSkipDetectStop: () => void;
-  onAiVoice: () => void;
+  onAiVoiceMissing: () => void;
+  onAiVoiceAll: () => void;
+  onAiVoiceStop: () => void;
 }
 
 /**
@@ -119,7 +121,9 @@ export const EditorToolbar = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
-  onAiVoice,
+  onAiVoiceMissing,
+  onAiVoiceAll,
+  onAiVoiceStop,
 }: EditorToolbarProps) => {
   const { t } = useTranslation();
 
@@ -139,7 +143,9 @@ export const EditorToolbar = ({
           onSkipDetectHeuristic={onSkipDetectHeuristic}
           onSkipDetectWithLlm={onSkipDetectWithLlm}
           onSkipDetectStop={onSkipDetectStop}
-          onVoice={onAiVoice}
+          onVoiceMissing={onAiVoiceMissing}
+          onVoiceAll={onAiVoiceAll}
+          onVoiceStop={onAiVoiceStop}
           variant="circular"
         />
       </div>

@@ -24,6 +24,8 @@ export type ModLangStatsRow = {
   auto_count: number;
   skipped_count: number;
   untranslated_count: number;
+  reviewed_count: number;
+  human_count: number;
   updated_at: Date;
 };
 
@@ -55,6 +57,20 @@ export const ensureModLangStatsColumns = async (db: Tx): Promise<void> => {
         ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS auto_count BIGINT NOT NULL DEFAULT 0;
         ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS skipped_count BIGINT NOT NULL DEFAULT 0;
         ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS untranslated_count BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS reviewed_count BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS human_count BIGINT NOT NULL DEFAULT 0;
+        CREATE TABLE IF NOT EXISTS mod_sig_status_stats (
+          mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+          src_lang TEXT NOT NULL,
+          target_lang TEXT NOT NULL,
+          status TEXT NOT NULL,
+          signature TEXT NOT NULL,
+          count BIGINT NOT NULL DEFAULT 0,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (mod_id, src_lang, target_lang, status, signature)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mod_sig_status_stats_lookup
+          ON mod_sig_status_stats(mod_id, src_lang, target_lang, status);
         `,
       )
       .then(() => undefined)
@@ -112,6 +128,129 @@ const readCachedRow = async (
   return rows[0] ?? null;
 };
 
+/** Recompute per-signature counts by status (editor sidebar cache). */
+export const refreshModSigStatusStats = async (
+  db: Tx,
+  modId: number,
+  srcLang = CONFIG.defaultSrcLang,
+  targetLang = CONFIG.defaultTgtLang,
+): Promise<void> => {
+  await db.query(
+    `DELETE FROM mod_sig_status_stats
+     WHERE mod_id = $1 AND src_lang = $2 AND target_lang = $3`,
+    [modId, srcLang, targetLang],
+  );
+  await db.query(
+    `INSERT INTO mod_sig_status_stats (mod_id, src_lang, target_lang, status, signature, count, updated_at)
+     SELECT
+       $1,
+       $3,
+       $2,
+       CASE
+         WHEN s.is_ignored THEN 'skip'
+         WHEN t.id IS NULL THEN 'untranslated'
+         ELSE t.status
+       END,
+       r.signature,
+       COUNT(*)::bigint,
+       NOW()
+     FROM records r
+     JOIN strings s ON s.record_id = r.id AND s.lang = $3
+     LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     WHERE r.mod_id = $1
+     GROUP BY 4, r.signature`,
+    [modId, targetLang, srcLang],
+  );
+};
+
+/** True when signature/status cache rows exist for this mod + language pair. */
+export const hasModSigStatusCache = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+  targetLang: string,
+): Promise<boolean> => {
+  const { rows } = await db.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM mod_sig_status_stats
+       WHERE mod_id = $1 AND src_lang = $2 AND target_lang = $3
+       LIMIT 1
+     ) AS exists`,
+    [modId, srcLang, targetLang],
+  );
+  return Boolean(rows[0]?.exists);
+};
+
+/** Fast sidebar counts for status-only filters (no column / text predicates). */
+export const getCachedSignatureCounts = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+  targetLang: string,
+  statuses: string[],
+): Promise<Array<{ signature: string; count: number }>> => {
+  if (statuses.length === 0) {
+    const { rows } = await db.query<{ signature: string; count: number }>(
+      `SELECT signature, SUM(count)::int AS count
+       FROM mod_sig_status_stats
+       WHERE mod_id = $1 AND src_lang = $2 AND target_lang = $3
+       GROUP BY signature
+       HAVING SUM(count) > 0
+       ORDER BY count DESC`,
+      [modId, srcLang, targetLang],
+    );
+    return rows;
+  }
+
+  const { rows } = await db.query<{ signature: string; count: number }>(
+    `SELECT signature, SUM(count)::int AS count
+     FROM mod_sig_status_stats
+     WHERE mod_id = $1 AND src_lang = $2 AND target_lang = $3 AND status = ANY($4::text[])
+     GROUP BY signature
+     HAVING SUM(count) > 0
+     ORDER BY count DESC`,
+    [modId, srcLang, targetLang, statuses],
+  );
+  return rows;
+};
+
+const STATUS_TOTAL_COLUMNS: Partial<Record<string, keyof ModLangStatsRow>> = {
+  reviewed: 'reviewed_count',
+  human: 'human_count',
+  draft: 'draft_count',
+  rejected: 'rejected_count',
+  tm: 'tm_count',
+  auto: 'auto_count',
+  fuzzy: 'fuzzy_count',
+  skip: 'skipped_count',
+  untranslated: 'untranslated_count',
+};
+
+/** Fast total for status-only filters (page-1 COUNT cache). */
+export const getCachedStatusTotal = async (
+  db: Tx,
+  modId: number,
+  srcLang: string,
+  targetLang: string,
+  statuses: string[],
+): Promise<number | null> => {
+  if (statuses.length === 0) return null;
+
+  const row = await readCachedRow(db, modId, srcLang, targetLang);
+  if (!row) return null;
+
+  if (statuses.length === 1) {
+    const col = STATUS_TOTAL_COLUMNS[statuses[0]!];
+    if (!col) return null;
+    return Number(row[col]) || 0;
+  }
+
+  const allMapped = statuses.every((st) => STATUS_TOTAL_COLUMNS[st]);
+  if (!allMapped) return null;
+
+  return statuses.reduce((sum, st) => sum + (Number(row[STATUS_TOTAL_COLUMNS[st]!]) || 0), 0);
+};
+
 /** Recompute and upsert stats for one mod + language pair (indexed by mod_id — fast). */
 export const refreshModLangStats = async (
   db: Tx,
@@ -125,6 +264,7 @@ export const refreshModLangStats = async (
        mod_id, src_lang, target_lang,
        record_count, string_count, translated_count, approved_count, fuzzy_count,
        draft_count, rejected_count, tm_count, auto_count, skipped_count, untranslated_count,
+       reviewed_count, human_count,
        updated_at
      )
      SELECT
@@ -142,6 +282,8 @@ export const refreshModLangStats = async (
        COUNT(*) FILTER (WHERE t.status = 'auto')::bigint,
        COUNT(*) FILTER (WHERE s.is_ignored)::bigint,
        COUNT(*) FILTER (WHERE t.id IS NULL AND NOT s.is_ignored)::bigint,
+       COUNT(*) FILTER (WHERE t.status = 'reviewed')::bigint,
+       COUNT(*) FILTER (WHERE t.status = 'human')::bigint,
        NOW()
      FROM records r
      JOIN strings s ON s.record_id = r.id AND s.lang = $3
@@ -159,10 +301,13 @@ export const refreshModLangStats = async (
        auto_count = EXCLUDED.auto_count,
        skipped_count = EXCLUDED.skipped_count,
        untranslated_count = EXCLUDED.untranslated_count,
+       reviewed_count = EXCLUDED.reviewed_count,
+       human_count = EXCLUDED.human_count,
        updated_at = EXCLUDED.updated_at
      RETURNING *`,
     [modId, targetLang, srcLang],
   );
+  await refreshModSigStatusStats(db, modId, srcLang, targetLang);
   return rows[0]!;
 };
 

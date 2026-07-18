@@ -21,7 +21,9 @@ export interface ModAiControlsProps {
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
   onSkipDetectStop: () => void;
-  onVoice: () => void;
+  onVoiceMissing: () => void;
+  onVoiceAll: () => void;
+  onVoiceStop: () => void;
   /** Compact layout for mod list rows. */
   compact?: boolean;
   /** Circular icon buttons with progress ring (mod editor strip). */
@@ -238,7 +240,9 @@ export const ModAiControls = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
-  onVoice,
+  onVoiceMissing,
+  onVoiceAll,
+  onVoiceStop,
   compact = false,
   variant = 'bar',
 }: ModAiControlsProps) => {
@@ -253,6 +257,11 @@ export const ModAiControls = ({
   const translateMenuItems: CircularProgressButtonMenuItem[] = [
     { label: t('modEditor.autoTranslateTm'), onClick: onTranslateTm },
     { label: t('modEditor.autoTranslateLlm'), onClick: onTranslateLlm },
+  ];
+
+  const voiceMenuItems: CircularProgressButtonMenuItem[] = [
+    { label: t('modEditor.aiVoiceGenerateMissing'), onClick: onVoiceMissing },
+    { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
   ];
 
   const translateRunningLabel =
@@ -305,7 +314,8 @@ export const ModAiControls = ({
         runningLabel={t('modEditor.aiVoiceGenerateRunning')}
         idleHint={t('modAi.hintVoice')}
         icon="🔊"
-        onClick={onVoice}
+        menuItems={voiceMenuItems}
+        onStop={onVoiceStop}
         stoppable
         compact={compact}
         circular={circular}

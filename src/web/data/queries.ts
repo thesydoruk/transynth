@@ -19,6 +19,9 @@ import {
 } from '../import/modImportIndexes';
 import {
   getCachedModDetailStats,
+  getCachedSignatureCounts,
+  getCachedStatusTotal,
+  hasModSigStatusCache,
   refreshModLangStatsForMods,
   tryRefreshModLangStats,
 } from '../services/modLangStats';
@@ -806,6 +809,23 @@ const statusFilterNeedsTranslationJoin = (statuses: string[]): boolean => {
   return !onlySkip && !onlyUntranslated;
 };
 
+/** Status / QA filters only — no column text predicates (cache-safe). */
+const isStatusOnlyStringsFilter = (
+  f: Pick<
+    StringsFilter,
+    'qaOnly' | 'query' | 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'hideIgnored'
+  >,
+): boolean =>
+  !f.qaOnly &&
+  !f.query &&
+  !f.grup &&
+  !f.formid &&
+  !f.edid &&
+  !f.field &&
+  !f.src &&
+  !f.transl &&
+  !f.hideIgnored;
+
 /** Whitelist mapping from client-facing sort key to SQL column expression. */
 const SORT_COLUMNS: Record<string, string> = {
   grup: 'r.signature',
@@ -1070,12 +1090,25 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
   };
 
   const countQuery = buildCountQuery();
+  const statuses = parseStatusFilter(f.status);
+  const useCachedTotal =
+    page === 1 &&
+    isStatusOnlyStringsFilter(f) &&
+    statuses.length > 0 &&
+    (await hasModSigStatusCache(db, f.modId, srcLang, targetLang));
+  const cachedTotal = useCachedTotal
+    ? await getCachedStatusTotal(db, f.modId, srcLang, targetLang, statuses)
+    : null;
+
   const [pageResult, countResult] = await Promise.all([
     db.query(pageSql, allValues),
-    countQuery ? db.query(countQuery.sql, countQuery.values) : Promise.resolve(null),
+    countQuery && cachedTotal === null
+      ? db.query(countQuery.sql, countQuery.values)
+      : Promise.resolve(null),
   ]);
   const rows = pageResult.rows;
-  const total = countResult ? Number(countResult.rows[0].total) : 0;
+  const total =
+    cachedTotal !== null ? cachedTotal : countResult ? Number(countResult.rows[0].total) : 0;
 
   return { rows, total, page, pageSize };
 };
@@ -1099,6 +1132,12 @@ export const listSignatures = async (
     !!f.src ||
     !!f.transl ||
     f.hideIgnored;
+
+  if (isStatusOnlyStringsFilter(f) && statuses.length > 0) {
+    if (await hasModSigStatusCache(db, f.modId, srcLang, targetLang)) {
+      return getCachedSignatureCounts(db, f.modId, srcLang, targetLang, statuses);
+    }
+  }
 
   if (!hasExtraFilters) {
     const { rows } = await db.query(

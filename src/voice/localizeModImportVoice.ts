@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { CONFIG } from '../config';
 import type { Tx } from '../db';
 import { log } from '../logger';
@@ -7,6 +8,7 @@ import {
   loadImportedMod,
   pluginRelPath,
   resolveImportPackages,
+  toDiskPath,
   type ImportPackageContext,
 } from '../modImport';
 import { ensureDir } from '../utils/file';
@@ -16,6 +18,10 @@ import { loadVoiceProjectSettings } from './voiceProjectSettings';
 import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
 import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
 import { localizeVoicePackage } from './localizeVoicePackage';
+import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+
+/** Whether mod-wide voice jobs synthesize every translated line or only lines without a localized `.fuz`. */
+export type ModVoiceGenerateScope = 'all' | 'missing';
 
 export type LocalizeModImportVoiceOptions = {
   extractDir: string;
@@ -27,6 +33,7 @@ export type LocalizeModImportVoiceOptions = {
   limit?: number;
   dryRun?: boolean;
   force?: boolean;
+  scope?: ModVoiceGenerateScope;
   referenceMode?: TtsReferenceMode;
   onProgress?: (done: number, total: number) => void;
   shouldCancel?: () => boolean;
@@ -53,6 +60,7 @@ export const countVoiceLocalizeWork = async (
   packages: ImportPackageContext[],
   srcLang: string,
   tgtLang: string,
+  scope: ModVoiceGenerateScope = 'all',
 ): Promise<number> => {
   let total = 0;
   for (const pkg of packages) {
@@ -60,9 +68,14 @@ export const countVoiceLocalizeWork = async (
     const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
     const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
     for (const entry of voiceFiles) {
-      if (lookupVoiceTranslation(translations, entry.formidLower6, entry.variant)) {
-        total += 1;
+      if (!lookupVoiceTranslation(translations, entry.formidLower6, entry.variant)) {
+        continue;
       }
+      if (scope === 'missing') {
+        const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
+        if (fs.existsSync(fuzDest)) continue;
+      }
+      total += 1;
     }
   }
   return total;
@@ -89,6 +102,7 @@ export const localizeModImportVoice = async (
   const packages = resolveImportPackages(extractDir, options.pluginPath);
   const localizeDir = modImportLocalizeDir(extractDir);
   ensureDir(localizeDir);
+  const scope = options.scope ?? 'all';
 
   const written: string[] = [];
   const skipped: string[] = [];
@@ -97,7 +111,7 @@ export const localizeModImportVoice = async (
   const total =
     options.dryRun || options.onProgress == null
       ? 0
-      : await countVoiceLocalizeWork(db, mod.modId, packages, srcLang, tgtLang);
+      : await countVoiceLocalizeWork(db, mod.modId, packages, srcLang, tgtLang, scope);
   let progressDone = 0;
   const bumpProgress = () => {
     progressDone += 1;
@@ -122,6 +136,7 @@ export const localizeModImportVoice = async (
         backend: voiceConfig.backend,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
+        scope,
         referenceMode,
         synthesis: voiceConfig.synthesis,
         limit: options.limit,

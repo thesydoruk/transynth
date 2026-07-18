@@ -31,6 +31,7 @@ import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { resolveTtsLanguage } from './voiceToolPaths';
+import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameType } from '../types';
 
 type SpeakerRefCacheEntry = {
@@ -59,6 +60,7 @@ export const localizeVoicePackage = async (
     backend: TtsBackend;
     dryRun: boolean;
     force: boolean;
+    scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
     synthesis: XttsSynthesisParams;
     limit?: number;
@@ -119,6 +121,10 @@ export const localizeVoicePackage = async (
 
       const fuzRel = outputLocalizedFuzRelPath(entry);
       const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
+
+      if (options.scope === 'missing' && fs.existsSync(fuzDest)) {
+        continue;
+      }
 
       if (options.dryRun) {
         log.info(`[dry-run] ${prefix}${fuzRel} ← "${row.translation.slice(0, 80)}..."`);

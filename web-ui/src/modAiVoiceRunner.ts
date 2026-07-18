@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, type ModVoiceGenerateScope } from './api';
 import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStore';
 
 const inFlight = new Set<number>();
@@ -9,6 +9,7 @@ export const startModAiVoice = async (
   modId: number,
   srcLang: string,
   targetLang: string,
+  scope: ModVoiceGenerateScope = 'all',
 ): Promise<void> => {
   if (inFlight.has(modId)) return;
   inFlight.add(modId);
@@ -23,40 +24,47 @@ export const startModAiVoice = async (
   });
 
   try {
-    const snapshot = await api.voiceGenerate.start(modId, srcLang, targetLang, (event) => {
-      if (event.type === 'started') {
-        jobIdByMod.set(modId, event.jobId);
-        upsertModAiJob(modId, 'voice', {
-          status: 'running',
-          jobId: event.jobId,
-          total: event.total,
-          done: 0,
-          error: null,
-        });
-      }
-      if (event.type === 'progress') {
-        upsertModAiJob(modId, 'voice', {
-          status: 'running',
-          done: event.done,
-          total: event.total,
-        });
-      }
-      if (event.type === 'done') {
-        upsertModAiJob(modId, 'voice', {
-          status: 'completed',
-          done: event.done,
-          total: event.total,
-          error: null,
-        });
-      }
-      if (event.type === 'cancelled') {
-        upsertModAiJob(modId, 'voice', {
-          status: 'cancelled',
-          done: event.done,
-          total: event.total,
-        });
-      }
-    });
+    const snapshot = await api.voiceGenerate.start(
+      modId,
+      srcLang,
+      targetLang,
+      (event) => {
+        if (event.type === 'started') {
+          jobIdByMod.set(modId, event.jobId);
+          upsertModAiJob(modId, 'voice', {
+            status: 'running',
+            jobId: event.jobId,
+            total: event.total,
+            done: 0,
+            error: null,
+          });
+        }
+        if (event.type === 'progress') {
+          upsertModAiJob(modId, 'voice', {
+            status: 'running',
+            done: event.done,
+            total: event.total,
+          });
+        }
+        if (event.type === 'done') {
+          upsertModAiJob(modId, 'voice', {
+            status: 'completed',
+            done: event.done,
+            total: event.total,
+            error: null,
+          });
+        }
+        if (event.type === 'cancelled') {
+          upsertModAiJob(modId, 'voice', {
+            status: 'cancelled',
+            done: event.done,
+            total: event.total,
+          });
+        }
+      },
+      undefined,
+      scope,
+    );
 
     if (snapshot) {
       jobIdByMod.set(modId, snapshot.jobId);
@@ -98,17 +106,18 @@ export const stopModAiVoice = async (modId: number, jobId: number | null): Promi
   }
 };
 
-/** Start or stop voice generation based on the current job entry. */
+/** Start voice generation (with scope) or stop if already running. */
 export const toggleModAiVoice = (
   modId: number,
   srcLang: string,
   targetLang: string,
   entry: ModAiJobEntry = getModAiJob(modId, 'voice'),
+  scope: ModVoiceGenerateScope = 'all',
 ): void => {
   const isRunning = entry.status === 'running' || entry.status === 'stopping';
   if (isRunning) {
     void stopModAiVoice(modId, entry.jobId);
     return;
   }
-  void startModAiVoice(modId, srcLang, targetLang);
+  void startModAiVoice(modId, srcLang, targetLang, scope);
 };

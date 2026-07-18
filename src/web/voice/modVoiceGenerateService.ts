@@ -4,7 +4,11 @@
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
 import { log } from '../../logger';
-import { countVoiceLocalizeWork, localizeModImportVoice } from '../../voice';
+import {
+  countVoiceLocalizeWork,
+  localizeModImportVoice,
+  type ModVoiceGenerateScope,
+} from '../../voice';
 import { resolveImportPackages } from '../../modImport';
 import { loadModImportPaths } from '../import/resolveModImportPaths';
 
@@ -92,6 +96,7 @@ export const runModVoiceGenerateJob = async (
     targetLang: string;
     game: string;
     modName?: string | null;
+    scope?: ModVoiceGenerateScope;
   },
   onEvent: (event: ModVoiceGenerateProgressEvent) => void,
 ): Promise<ModVoiceGenerateJobSnapshot> => {
@@ -104,15 +109,21 @@ export const runModVoiceGenerateJob = async (
 
   const paths = await loadModImportPaths(db, { modId: opts.modId });
   const packages = resolveImportPackages(paths.extractDir, paths.pluginPath);
+  const scope = opts.scope ?? 'all';
   const total = await countVoiceLocalizeWork(
     db,
     opts.modId,
     packages,
     opts.srcLang,
     opts.targetLang,
+    scope,
   );
   if (total === 0) {
-    throw new Error('No voiced lines with translations to synthesize');
+    throw new Error(
+      scope === 'missing'
+        ? 'No missing voice lines to synthesize (every translated line already has audio)'
+        : 'No voiced lines with translations to synthesize',
+    );
   }
 
   const jobId = nextJobId++;
@@ -131,7 +142,7 @@ export const runModVoiceGenerateJob = async (
   activeJobs.set(jobId, job);
 
   log.info(
-    `[Voice generate mod #${opts.modId}] job #${jobId} started (${total} lines, ${opts.srcLang}→${opts.targetLang})`,
+    `[Voice generate mod #${opts.modId}] job #${jobId} started (${total} lines, scope=${scope}, ${opts.srcLang}→${opts.targetLang})`,
   );
   onEvent({ type: 'started', jobId, total });
 
@@ -143,6 +154,7 @@ export const runModVoiceGenerateJob = async (
       srcLang: opts.srcLang,
       tgtLang: opts.targetLang,
       shouldCancel: () => job.cancel,
+      scope,
       onProgress: (done, progressTotal) => {
         job.done = done;
         job.total = progressTotal;

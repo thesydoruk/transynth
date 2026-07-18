@@ -12,7 +12,7 @@ import {
   startModAiTranslateTm,
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
-import { toggleModAiVoice, startModAiVoice } from '../../modAiVoiceRunner';
+import { toggleModAiVoice, startModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { useModAiJobsForMod } from '../../hooks/useModAiJobsForMod';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
@@ -323,7 +323,7 @@ export const ModEditorPage = () => {
   useEffect(() => {
     const open = searchParams.get('open');
     if (open === 'ai-translate') void startModAiTranslate(modId, srcLang, targetLang);
-    if (open === 'ai-voice') void startModAiVoice(modId, srcLang, targetLang);
+    if (open === 'ai-voice') void startModAiVoice(modId, srcLang, targetLang, 'missing');
     if (open === 'ai-verify') setShowAiVerify(true);
     if (open) {
       const next = new URLSearchParams(searchParams);
@@ -1015,7 +1015,11 @@ export const ModEditorPage = () => {
           void startModAiSkipDetect(modId, srcLang, true, aiJobs.skipDetect)
         }
         onSkipDetectStop={() => void stopModAiSkipDetect(modId, aiJobs.skipDetect.jobId)}
-        onAiVoice={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice)}
+        onAiVoiceMissing={() =>
+          toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice, 'missing')
+        }
+        onAiVoiceAll={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice, 'all')}
+        onAiVoiceStop={() => void stopModAiVoice(modId, aiJobs.voice.jobId)}
       />
 
       {/* ── 3-column body ── */}

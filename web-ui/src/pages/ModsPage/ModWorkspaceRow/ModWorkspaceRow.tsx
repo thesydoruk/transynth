@@ -36,7 +36,9 @@ export interface ModWorkspaceRowProps {
   onSkipDetectHeuristic?: () => void;
   onSkipDetectWithLlm?: () => void;
   onSkipDetectStop?: () => void;
-  onAiVoice?: () => void;
+  onAiVoiceMissing?: () => void;
+  onAiVoiceAll?: () => void;
+  onAiVoiceStop?: () => void;
 }
 
 /** Imported mod row — translation progress plus import/export workspace actions. */
@@ -60,7 +62,9 @@ export const ModWorkspaceRow = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
-  onAiVoice,
+  onAiVoiceMissing,
+  onAiVoiceAll,
+  onAiVoiceStop,
 }: ModWorkspaceRowProps) => {
   const { t } = useTranslation();
   const aiJobs = useModAiJobsForMod(mod.id);
@@ -132,7 +136,8 @@ export const ModWorkspaceRow = ({
           onAiVerify ||
           onSkipDetectHeuristic ||
           onSkipDetectWithLlm ||
-          onAiVoice) && (
+          onAiVoiceMissing ||
+          onAiVoiceAll) && (
           <ModAiControls
             compact
             translate={aiJobs.translate}
@@ -146,7 +151,9 @@ export const ModWorkspaceRow = ({
             onSkipDetectHeuristic={onSkipDetectHeuristic ?? (() => {})}
             onSkipDetectWithLlm={onSkipDetectWithLlm ?? (() => {})}
             onSkipDetectStop={onSkipDetectStop ?? (() => {})}
-            onVoice={onAiVoice ?? (() => {})}
+            onVoiceMissing={onAiVoiceMissing ?? (() => {})}
+            onVoiceAll={onAiVoiceAll ?? (() => {})}
+            onVoiceStop={onAiVoiceStop ?? (() => {})}
           />
         )}
         <div className={parentS.actions}>

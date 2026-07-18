@@ -62,7 +62,7 @@ import {
   toggleModAiTranslateTm,
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
-import { toggleModAiVoice } from '../../modAiVoiceRunner';
+import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { modListQueryKey } from '../../langDefaults';
 import s from './ModsPage.module.scss';
@@ -1029,8 +1029,20 @@ export const ModsPage = () => {
                 onSkipDetectStop={() =>
                   void stopModAiSkipDetect(mod.id, getModAiJob(mod.id, 'skip-detect').jobId)
                 }
-                onAiVoice={() =>
-                  toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'))
+                onAiVoiceMissing={() =>
+                  toggleModAiVoice(
+                    mod.id,
+                    srcLang,
+                    targetLang,
+                    getModAiJob(mod.id, 'voice'),
+                    'missing',
+                  )
+                }
+                onAiVoiceAll={() =>
+                  toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'), 'all')
+                }
+                onAiVoiceStop={() =>
+                  void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)
                 }
                 onClearRows={() => setPendingClear({ id: mod.id, name: mod.name })}
                 onDeleteAll={() =>
