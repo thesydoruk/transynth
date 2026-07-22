@@ -4,6 +4,30 @@ import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStor
 const inFlight = new Set<number>();
 const jobIdByMod = new Map<number, number>();
 
+const isModVoiceJobActive = (entry: ModAiJobEntry): boolean =>
+  entry.status === 'running' || entry.status === 'stopping';
+
+const isVoiceAlreadyRunningError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes('already running') || err.message.includes('HTTP 409');
+};
+
+/** Attach local store to an in-flight voice job on the server, if any. */
+const syncRunningVoiceJobFromServer = async (modId: number): Promise<boolean> => {
+  const active = await api.modAiJobs.listActive();
+  const existing = active.find((job) => job.modId === modId && job.kind === 'voice');
+  if (!existing) return false;
+
+  upsertModAiJob(modId, 'voice', {
+    status: 'running',
+    jobId: existing.jobId,
+    done: existing.done,
+    total: existing.total,
+    error: null,
+  });
+  return true;
+};
+
 /** Start mod-wide voice synthesis and stream progress into the shared job store. */
 export const startModAiVoice = async (
   modId: number,
@@ -11,19 +35,24 @@ export const startModAiVoice = async (
   targetLang: string,
   scope: ModVoiceGenerateScope = 'all',
 ): Promise<void> => {
+  const entry = getModAiJob(modId, 'voice');
+  if (isModVoiceJobActive(entry)) return;
   if (inFlight.has(modId)) return;
+
   inFlight.add(modId);
   jobIdByMod.delete(modId);
 
-  upsertModAiJob(modId, 'voice', {
-    status: 'running',
-    jobId: null,
-    done: 0,
-    total: 0,
-    error: null,
-  });
-
   try {
+    if (await syncRunningVoiceJobFromServer(modId)) return;
+
+    upsertModAiJob(modId, 'voice', {
+      status: 'running',
+      jobId: null,
+      done: 0,
+      total: 0,
+      error: null,
+    });
+
     const snapshot = await api.voiceGenerate.start(
       modId,
       srcLang,
@@ -77,6 +106,9 @@ export const startModAiVoice = async (
       });
     }
   } catch (err) {
+    if (isVoiceAlreadyRunningError(err) && (await syncRunningVoiceJobFromServer(modId))) {
+      return;
+    }
     upsertModAiJob(modId, 'voice', {
       status: 'failed',
       error: err instanceof Error ? err.message : String(err),
@@ -114,8 +146,7 @@ export const toggleModAiVoice = (
   entry: ModAiJobEntry = getModAiJob(modId, 'voice'),
   scope: ModVoiceGenerateScope = 'all',
 ): void => {
-  const isRunning = entry.status === 'running' || entry.status === 'stopping';
-  if (isRunning) {
+  if (isModVoiceJobActive(entry)) {
     void stopModAiVoice(modId, entry.jobId);
     return;
   }
