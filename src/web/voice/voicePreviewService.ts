@@ -31,9 +31,9 @@ import {
 import {
   resolveModImportExtractRoot,
   modImportLocalizeDir,
-  resolveModImportLocalizeDir,
   resolveModStoredPath,
 } from '../../modStorage';
+import { resolveImportPackages } from '../../modImport';
 import { voiceSpeakerKey } from '../../voice/speakerReferencePool';
 import { canSynthesizeVoiceLine } from '../../voice/prepareVoiceTtsText';
 import {
@@ -151,12 +151,18 @@ type VoicePackageContext = {
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-const resolveVoiceLocalizeDir = (pluginPath: string): string | null => {
+const resolveVoiceLocalizeDir = (pluginPath: string, targetLang: string): string | null => {
   const extractRoot = resolveModImportExtractRoot(pluginPath);
-  return extractRoot ? resolveModImportLocalizeDir(extractRoot) : null;
+  if (!extractRoot) return null;
+  const packages = resolveImportPackages(extractRoot, targetLang, pluginPath);
+  const localizeDir = packages[0]?.localizeDir;
+  return localizeDir && fs.existsSync(localizeDir) ? localizeDir : null;
 };
 
-const resolveVoicePackageContext = (pluginPath: string): VoicePackageContext | null => {
+const resolveVoicePackageContext = (
+  pluginPath: string,
+  targetLang: string,
+): VoicePackageContext | null => {
   if (!pluginPath || !fs.existsSync(pluginPath)) return null;
 
   const pluginDir = path.dirname(pluginPath);
@@ -182,7 +188,7 @@ const resolveVoicePackageContext = (pluginPath: string): VoicePackageContext | n
       return {
         ...candidate,
         pluginPath,
-        localizeDir: resolveVoiceLocalizeDir(pluginPath),
+        localizeDir: resolveVoiceLocalizeDir(pluginPath, targetLang),
       };
     }
   }
@@ -191,7 +197,7 @@ const resolveVoicePackageContext = (pluginPath: string): VoicePackageContext | n
     packageDir: pluginDir,
     pluginRel: pluginName,
     pluginPath,
-    localizeDir: resolveVoiceLocalizeDir(pluginPath),
+    localizeDir: resolveVoiceLocalizeDir(pluginPath, targetLang),
   };
 };
 
@@ -275,7 +281,7 @@ export const listVoiceLinesForMod = async (
   }
 
   const pluginPath = resolveModStoredPath(mod.abs_path);
-  const ctx = resolveVoicePackageContext(pluginPath);
+  const ctx = resolveVoicePackageContext(pluginPath, targetLang || CONFIG.defaultTgtLang);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
@@ -389,8 +395,14 @@ export const listVoiceLinesForMod = async (
 export const resolveModVoiceContext = async (
   db: Tx,
   modId: number,
+  targetLang?: string,
 ): Promise<
-  | { ok: true; mod: { name: string; abs_path: string }; ctx: VoicePackageContext }
+  | {
+      ok: true;
+      mod: { name: string; abs_path: string };
+      ctx: VoicePackageContext;
+      targetLang: string;
+    }
   | { ok: false; reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing'; message: string }
 > => {
   const { rows } = await db.query<{ name: string; abs_path: string | null }>(
@@ -405,13 +417,27 @@ export const resolveModVoiceContext = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
+  let resolvedTargetLang = targetLang?.trim();
+  if (!resolvedTargetLang) {
+    const { rows: importRows } = await db.query<{ tgt_lang: string }>(
+      `SELECT tgt_lang FROM mod_imports WHERE mod_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+      [modId],
+    );
+    resolvedTargetLang = importRows[0]?.tgt_lang?.trim() || CONFIG.defaultTgtLang;
+  }
+
   const pluginPath = resolveModStoredPath(mod.abs_path);
-  const ctx = resolveVoicePackageContext(pluginPath);
+  const ctx = resolveVoicePackageContext(pluginPath, resolvedTargetLang);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
 
-  return { ok: true, mod: { name: mod.name, abs_path: pluginPath }, ctx };
+  return {
+    ok: true,
+    mod: { name: mod.name, abs_path: pluginPath },
+    ctx,
+    targetLang: resolvedTargetLang,
+  };
 };
 
 /** Set or replace the TTS reference line for one speaker. */
@@ -491,7 +517,7 @@ export const getVoicePreviewWav = async (
   }
 
   const pluginPath = resolveModStoredPath(mod.abs_path);
-  const ctx = resolveVoicePackageContext(pluginPath);
+  const ctx = resolveVoicePackageContext(pluginPath, CONFIG.defaultTgtLang);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
@@ -537,11 +563,11 @@ export const getVoicePreviewWav = async (
   }
 };
 
-const resolveLocalizeDir = (ctx: VoicePackageContext): string | null => {
-  if (ctx.localizeDir && fs.existsSync(ctx.localizeDir)) return ctx.localizeDir;
+const resolveLocalizeDir = (ctx: VoicePackageContext, targetLang: string): string | null => {
   const extractRoot = resolveModImportExtractRoot(ctx.pluginPath);
   if (!extractRoot) return null;
-  const localizeDir = modImportLocalizeDir(extractRoot);
+  const packages = resolveImportPackages(extractRoot, targetLang, ctx.pluginPath);
+  const localizeDir = packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, targetLang);
   ensureDir(localizeDir);
   return localizeDir;
 };
@@ -561,7 +587,7 @@ export const getVoiceTranslationWav = async (
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
-  const localizeDir = resolveLocalizeDir(resolved.ctx);
+  const localizeDir = resolveLocalizeDir(resolved.ctx, resolved.targetLang);
   const sourcePath = localizeDir ? resolveLocalizedVoiceAbsPath(localizeDir, entry) : null;
   if (!sourcePath || !fs.existsSync(sourcePath)) {
     return {
@@ -608,7 +634,7 @@ export const getVoiceTranslationWav = async (
   }
 };
 
-/** Synthesize translation audio for one voice line into `localize/`. */
+/** Synthesize translation audio for one voice line into `_localize_{hash}/{lang}/`. */
 export const generateVoiceTranslationForMod = async (
   db: Tx,
   modId: number,
@@ -620,7 +646,7 @@ export const generateVoiceTranslationForMod = async (
   const resolved = await resolveModVoiceContext(db, modId);
   if (!resolved.ok) return resolved;
 
-  const localizeDir = resolveLocalizeDir(resolved.ctx);
+  const localizeDir = resolveLocalizeDir(resolved.ctx, resolved.targetLang);
   if (!localizeDir) {
     return {
       ok: false,

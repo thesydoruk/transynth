@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { modImportLocalizeDir } from '../modStorage';
 import { ensureDir } from '../utils/file';
 import { discoverModFiles } from '../web/import/modImportService';
 
@@ -18,7 +19,7 @@ export const pluginRelPath = (packageDir: string, pluginPath: string): string =>
 
 /**
  * Resolve archive-relative asset paths next to the plugin (Scripts/, Strings/, Sound/, …).
- * Keeps `localize/` mirroring `extracted/` (e.g. `Data/Scripts/Foo.pex`, not `Scripts/Foo.pex`).
+ * Keeps localized deltas mirroring the extract tree (e.g. `Data/Scripts/Foo.pex`, not `Scripts/Foo.pex`).
  */
 export const pluginSiblingRelPath = (
   packageDir: string,
@@ -55,10 +56,11 @@ export const writeIfChanged = (
 /** Resolve one or more plugin packages inside a mod import extract tree. */
 export const resolveImportPackages = (
   extractDir: string,
+  lang: string,
   primaryPluginPath?: string,
 ): ImportPackageContext[] => {
   const resolvedExtractDir = path.resolve(extractDir);
-  const localizeRoot = path.join(resolvedExtractDir, 'localize');
+  const localizeRoot = modImportLocalizeDir(resolvedExtractDir, lang);
 
   if (!fs.existsSync(resolvedExtractDir)) {
     throw new Error(`Import extract directory not found: ${resolvedExtractDir}`);

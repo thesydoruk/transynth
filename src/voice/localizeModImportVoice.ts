@@ -83,7 +83,7 @@ export const countVoiceLocalizeWork = async (
   return total;
 };
 
-/** Synthesize localized `.fuz` voice files into `localize/` under a mod import extract tree. */
+/** Synthesize localized `.fuz` voice files into `_localize_{hash}/{lang}/`. */
 export const localizeModImportVoice = async (
   db: Tx,
   options: LocalizeModImportVoiceOptions,
@@ -101,8 +101,8 @@ export const localizeModImportVoice = async (
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
 
-  const packages = resolveImportPackages(extractDir, options.pluginPath);
-  const localizeDir = modImportLocalizeDir(extractDir);
+  const packages = resolveImportPackages(extractDir, tgtLang, options.pluginPath);
+  const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   ensureDir(localizeDir);
   const scope = options.scope ?? 'all';
 

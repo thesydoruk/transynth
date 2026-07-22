@@ -4,7 +4,8 @@ import crypto from 'node:crypto';
 import type { Tx } from '../../db';
 import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
-import { toDiskPath } from '../../modImport';
+import { toDiskPath, resolveImportPackages } from '../../modImport';
+import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
 import type { TtsBackend } from '../../tts/xttsClient';
 import {
   synthesizeModVoiceLineBuffers,
@@ -288,14 +289,19 @@ export const commitVoiceRegenerateSession = async (
   const resolved = await resolveModVoiceContext(db, modId);
   if (!resolved.ok) return resolved;
 
-  const localizeDir = resolved.ctx.localizeDir;
-  if (!localizeDir || !fs.existsSync(localizeDir)) {
+  const extractRoot = resolveModImportExtractRoot(resolved.ctx.pluginPath);
+  if (!extractRoot) {
     return {
       ok: false,
       reason: 'no_localize_dir',
       message: 'Mod import localize directory not found',
     };
   }
+
+  const packages = resolveImportPackages(extractRoot, resolved.targetLang, resolved.ctx.pluginPath);
+  const localizeDir =
+    packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, resolved.targetLang);
+  ensureDir(localizeDir);
 
   const fuzPath = path.join(sessionDir(modId, sessionId), `${previewId}.fuz`);
   if (!fs.existsSync(fuzPath)) {

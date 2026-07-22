@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
+import { CONFIG } from '../../config';
 import {
   modImportLocalizeDir,
+  modImportLocalizeRoot,
   modImportPackOutputDir,
   resolveModImportExtractRoot,
 } from '../../modStorage';
@@ -16,6 +18,8 @@ export type ModImportPaths = {
   game: GameType;
   extractDir: string;
   pluginPath: string;
+  targetLang: string;
+  localizeRoot: string;
   localizeDir: string;
   packOutputDir: string;
 };
@@ -41,6 +45,8 @@ export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
     throw new Error(`Import job #${job.id} has no linked mod`);
   }
 
+  const targetLang = job.tgt_lang?.trim() || CONFIG.defaultTgtLang;
+
   return {
     jobId: job.id,
     modId: job.mod_id,
@@ -48,7 +54,9 @@ export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
     game: job.game,
     extractDir,
     pluginPath: job.esp_path,
-    localizeDir: modImportLocalizeDir(extractDir),
+    targetLang,
+    localizeRoot: modImportLocalizeRoot(extractDir),
+    localizeDir: modImportLocalizeDir(extractDir, targetLang),
     packOutputDir: modImportPackOutputDir(extractDir),
   };
 };

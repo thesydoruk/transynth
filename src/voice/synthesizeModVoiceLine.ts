@@ -30,7 +30,7 @@ import {
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
-import { outputLocalizedFuzRelPath, outputTtsWavRelPath } from './voiceFilePaths';
+import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 
@@ -61,32 +61,13 @@ export type SynthesizeModVoiceLineBuffersResult =
   | { ok: true; ttsWav: Buffer; fuzData: Buffer; fuzRel: string }
   | { ok: false; reason: string; message: string };
 
-export const resolveLocalizedFuzAbsPath = (
+/** Resolve absolute path to a localized `.fuz` under the mod localize tree. */
+export const resolveLocalizedVoiceAbsPath = (
   localizeDir: string | null,
   entry: VoiceFileEntry,
 ): string | null => {
   if (!localizeDir) return null;
   return toDiskPath(localizeDir, outputLocalizedFuzRelPath(entry));
-};
-
-/** @deprecated Use {@link resolveLocalizedFuzAbsPath}. */
-export const resolveTtsWavAbsPath = (
-  localizeDir: string | null,
-  entry: VoiceFileEntry,
-): string | null => {
-  if (!localizeDir) return null;
-  return toDiskPath(localizeDir, outputTtsWavRelPath(entry));
-};
-
-export const resolveLocalizedVoiceAbsPath = (
-  localizeDir: string | null,
-  entry: VoiceFileEntry,
-): string | null => {
-  const fuzPath = resolveLocalizedFuzAbsPath(localizeDir, entry);
-  if (fuzPath && fs.existsSync(fuzPath)) return fuzPath;
-  const legacyWavPath = resolveTtsWavAbsPath(localizeDir, entry);
-  if (legacyWavPath && fs.existsSync(legacyWavPath)) return legacyWavPath;
-  return fuzPath;
 };
 
 const findVoiceEntry = (
@@ -227,7 +208,7 @@ export const synthesizeModVoiceLineBuffers = async (
   }
 };
 
-/** Synthesize one voiced line into `localize/` as a localized `.fuz` file. */
+/** Synthesize one voiced line into `_localize_{hash}/{lang}/` as a localized `.fuz` file. */
 export const synthesizeModVoiceLine = async (
   db: Tx,
   opts: SynthesizeModVoiceLineOptions & { localizeDir: string; force?: boolean },

@@ -4,6 +4,7 @@ import type { Tx } from '../../db';
 import { log } from '../../logger';
 import { PATHS } from '../../paths';
 import {
+  modImportLocalizeRoot,
   modImportPackOutputDir,
   modUploadedFilePath,
   resolveModImportExtractRoot,
@@ -28,7 +29,10 @@ export const scheduleModDeleteFileCleanup = (
     if (job.esp_path) {
       filePaths.add(job.esp_path);
       const fromJobEsp = resolveModImportExtractRoot(job.esp_path);
-      if (fromJobEsp) extractedDirs.add(fromJobEsp);
+      if (fromJobEsp) {
+        extractedDirs.add(fromJobEsp);
+        extractedDirs.add(modImportLocalizeRoot(fromJobEsp));
+      }
     }
   }
 
@@ -42,7 +46,10 @@ export const scheduleModDeleteFileCleanup = (
     extractedDirs.add(path.join(PATHS.voicePreview, String(modId)));
     if (absPath) {
       const extractRoot = resolveModImportExtractRoot(absPath);
-      if (extractRoot) extractedDirs.add(modImportPackOutputDir(extractRoot));
+      if (extractRoot) {
+        extractedDirs.add(modImportPackOutputDir(extractRoot));
+        extractedDirs.add(modImportLocalizeRoot(extractRoot));
+      }
     }
   }
 

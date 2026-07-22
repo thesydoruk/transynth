@@ -269,7 +269,7 @@ export const stageFullLocalizedMod = async (
   }
 
   const mod = await loadImportedMod(db, modId);
-  const packages = resolveImportPackages(extractRoot, modPath);
+  const packages = resolveImportPackages(extractRoot, targetLang, modPath);
   const pkg = packages[0];
   if (!pkg) {
     throw new Error(`No import package found for plugin ${modPath}`);

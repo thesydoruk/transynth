@@ -1,5 +1,5 @@
 /**
- * In-memory mod-wide voice synthesis jobs (XTTS → localized `.fuz` in import localize/).
+ * In-memory mod-wide voice synthesis jobs (XTTS → localized `.fuz` in `_localize_{hash}/{lang}/`).
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
@@ -108,7 +108,7 @@ export const runModVoiceGenerateJob = async (
   }
 
   const paths = await loadModImportPaths(db, { modId: opts.modId });
-  const packages = resolveImportPackages(paths.extractDir, paths.pluginPath);
+  const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
   const scope = opts.scope ?? 'all';
   const total = await countVoiceLocalizeWork(
     db,
