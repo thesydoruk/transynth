@@ -9,6 +9,7 @@ import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
 } from '../../../testdata/exportGoldenCorpus';
+import { modImportLocalizeDir, modStorageRoot } from '../../../modStorage';
 import { exportBa2Archive, exportLangpackZip, exportLocalizedStringsFiles } from '../exportService';
 
 const writeFakeDx10Ba2 = (filePath: string): void => {
@@ -161,5 +162,45 @@ describe('localized export golden corpus', () => {
       LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
     );
     expect(zipBuffer.length).toBeGreaterThan(0);
+  });
+
+  it('includes localized voice files in langpack ZIP', async () => {
+    const extractRoot = path.join(modStorageRoot(), `_extracted_langpack_voice_${Date.now()}`);
+    tempDirs.push(extractRoot);
+    fs.mkdirSync(extractRoot, { recursive: true });
+
+    const pluginPath = path.join(extractRoot, LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName);
+    const stringsDir = path.join(extractRoot, 'Strings');
+    fs.mkdirSync(stringsDir, { recursive: true });
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+
+    for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+      fs.writeFileSync(
+        path.join(stringsDir, file.fileName),
+        writeStringsBuffer(goldenFixtureToMap(file), file.type),
+      );
+    }
+
+    const voiceRel = `Sound/Voice/${LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName}/00123456_1.fuz`;
+    const voicePath = path.join(modImportLocalizeDir(extractRoot, 'uk'), ...voiceRel.split('/'));
+    fs.mkdirSync(path.dirname(voicePath), { recursive: true });
+    fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
+
+    const db = makeOverlayDb(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
+        lstring_id: id,
+        export_text: text,
+      })),
+    );
+
+    const { zipBuffer } = await exportLangpackZip(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    expect(zipBuffer.toString('latin1')).toContain(voiceRel);
   });
 });

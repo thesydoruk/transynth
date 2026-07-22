@@ -44,6 +44,7 @@ import {
   resolveStringsArchiveFileName,
   type ExportArchiveBuild,
 } from './archiveExportPlan';
+import { collectLocalizedVoiceFiles } from './exportVoiceFiles';
 
 /**
  * Parsed source strings table loaded from the original mod distribution.
@@ -799,7 +800,13 @@ const hasTranslationOverlayChanges = (
   return false;
 };
 
-const packFilesToZip = async (files: Array<{ name: string; data: Buffer }>): Promise<Buffer> =>
+type ZipPackEntry = {
+  name: string;
+  data?: Buffer;
+  absPath?: string;
+};
+
+const packFilesToZip = async (files: ZipPackEntry[]): Promise<Buffer> =>
   new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const passthrough = new PassThrough();
@@ -812,7 +819,16 @@ const packFilesToZip = async (files: Array<{ name: string; data: Buffer }>): Pro
     archive.pipe(passthrough);
 
     for (const file of files) {
-      archive.append(file.data, { name: file.name });
+      if (file.data) {
+        archive.append(file.data, { name: file.name });
+        continue;
+      }
+      if (file.absPath) {
+        archive.file(file.absPath, { name: file.name });
+        continue;
+      }
+      reject(new Error(`ZIP entry "${file.name}" has no data source`));
+      return;
     }
 
     archive.finalize();
@@ -825,6 +841,7 @@ const packFilesToZip = async (files: Array<{ name: string; data: Buffer }>): Pro
  * - STRINGS/DLSTRINGS/ILSTRINGS under `Strings\`
  * - patched ESP/ESM when the binary differs from the imported original
  * - patched PEX scripts under `Scripts\` when literals were translated
+ * - synthesized voice files under `Sound\Voice\` as localized `.fuz`
  */
 export const exportLangpackZip = async (
   db: Tx,
@@ -836,7 +853,7 @@ export const exportLangpackZip = async (
 ): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
   const stem = path.basename(modPath, path.extname(modPath));
   const zipFileName = `${stem}_${targetLang}_langpack.zip`;
-  const files: Array<{ name: string; data: Buffer }> = [];
+  const files: ZipPackEntry[] = [];
 
   try {
     const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
@@ -901,9 +918,27 @@ export const exportLangpackZip = async (
     log.info(`Langpack export: no patched PEX scripts for mod ${modId}, skipping Scripts`);
   }
 
+  try {
+    const voiceFiles = collectLocalizedVoiceFiles(modPath, targetLang);
+    for (const voiceFile of voiceFiles) {
+      files.push({ name: voiceFile.name, absPath: voiceFile.absPath });
+    }
+    if (voiceFiles.length > 0) {
+      log.info(
+        `Langpack export: included ${voiceFiles.length} localized voice file(s) for mod ${modId}`,
+      );
+    }
+  } catch (err) {
+    log.info(
+      `Langpack export: no localized voice files for mod ${modId} (${
+        err instanceof Error ? err.message : String(err)
+      })`,
+    );
+  }
+
   if (files.length === 0) {
     throw new Error(
-      'No exportable langpack content found — no translated STRINGS, PEX scripts, or ESP patches available.',
+      'No exportable langpack content found — no translated STRINGS, PEX scripts, voice files, or ESP patches available.',
     );
   }
 
@@ -1145,6 +1180,21 @@ export const exportModRelease = async (
       }
     } catch (err) {
       warnings.push(`Scripts: ${exportErrorMessage(err)}`);
+    }
+  }
+
+  if (!repackArchives) {
+    try {
+      const voiceFiles = collectLocalizedVoiceFiles(modPath, targetLang);
+      for (const voiceFile of voiceFiles) {
+        const relPath = voiceFile.name.replace(/\\/g, '/');
+        const dest = path.join(outDir, relPath);
+        ensureDir(path.dirname(dest));
+        fs.copyFileSync(voiceFile.absPath, dest);
+        written.push(relPath);
+      }
+    } catch (err) {
+      warnings.push(`Voice: ${exportErrorMessage(err)}`);
     }
   }
 
