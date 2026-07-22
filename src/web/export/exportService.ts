@@ -288,8 +288,16 @@ const loadSourceStringsFiles = (
   }
   const ba2Path = findBa2(modPath, game);
   if (ba2Path) {
-    const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
-    if (ba2Files.length > 0) return ba2Files;
+    try {
+      const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
+      if (ba2Files.length > 0) return ba2Files;
+    } catch (err) {
+      log.warn(
+        `STRINGS export: failed to read source tables from ${path.basename(ba2Path)}: ${
+          err instanceof Error ? err.message : String(err)
+        }; falling back to loose Strings\\`,
+      );
+    }
   }
   return loadSourceStringsFromLooseFiles(modPath, srcLang);
 };
@@ -847,8 +855,12 @@ export const exportLangpackZip = async (
         `Langpack export: included ${stringsCount} changed STRINGS file(s) for mod ${modId}`,
       );
     }
-  } catch {
-    log.info(`Langpack export: no localized STRINGS for mod ${modId}, skipping strings tables`);
+  } catch (err) {
+    log.info(
+      `Langpack export: no localized STRINGS for mod ${modId}, skipping strings tables (${
+        err instanceof Error ? err.message : String(err)
+      })`,
+    );
   }
 
   try {

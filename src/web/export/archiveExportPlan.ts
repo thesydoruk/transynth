@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { GameType } from '../../types';
 import {
   defaultArchiveFileName,
+  isBa2GnrArchive,
   shouldCompressArchiveEntry,
   usesBa2Archives,
 } from '../../formats/ba2';
@@ -31,9 +32,11 @@ export const discoverCompanionBa2 = (modPath: string, game: GameType = 'fo4'): s
   try {
     for (const file of fs.readdirSync(dir)) {
       if (!file.toLowerCase().endsWith('.ba2')) continue;
+      const full = path.join(dir, file);
+      if (!isBa2GnrArchive(full)) continue;
       const base = path.basename(file, '.ba2').toLowerCase();
       if (base === stem || base.startsWith(`${stem} -`)) {
-        return path.join(dir, file);
+        return full;
       }
     }
   } catch {

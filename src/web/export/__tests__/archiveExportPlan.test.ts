@@ -12,6 +12,14 @@ import {
 
 const tempDirs: string[] = [];
 
+const writeFakeDx10Ba2 = (filePath: string): void => {
+  const header = Buffer.alloc(24);
+  header.write('BTDX', 0, 4, 'ascii');
+  header.writeUInt32LE(1, 4);
+  header.write('DX10', 8, 4, 'ascii');
+  fs.writeFileSync(filePath, header);
+};
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
@@ -31,6 +39,16 @@ describe('archiveExportPlan', () => {
     expect(discoverCompanionBa2(pluginPath, 'fo4')).toBe(
       path.join(root, 'Fallout4 - Interface.ba2'),
     );
+  });
+
+  it('ignores DX10 texture BA2 files when Interface/Main are absent', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), '_extracted_plan-'));
+    tempDirs.push(root);
+    const pluginPath = path.join(root, 'Fallout4.esm');
+    fs.writeFileSync(pluginPath, Buffer.from('TES4'));
+    writeFakeDx10Ba2(path.join(root, 'Fallout4 - Textures1.ba2'));
+
+    expect(discoverCompanionBa2(pluginPath, 'fo4')).toBeNull();
   });
 
   it('uses import manifest provenance for strings archive naming', () => {

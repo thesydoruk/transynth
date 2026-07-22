@@ -9,7 +9,15 @@ import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
 } from '../../../testdata/exportGoldenCorpus';
-import { exportBa2Archive, exportLocalizedStringsFiles } from '../exportService';
+import { exportBa2Archive, exportLangpackZip, exportLocalizedStringsFiles } from '../exportService';
+
+const writeFakeDx10Ba2 = (filePath: string): void => {
+  const header = Buffer.alloc(24);
+  header.write('BTDX', 0, 4, 'ascii');
+  header.writeUInt32LE(1, 4);
+  header.write('DX10', 8, 4, 'ascii');
+  fs.writeFileSync(filePath, header);
+};
 
 const makeOverlayDb = (rows: Array<{ lstring_id: number; export_text: string }>): Tx => {
   return {
@@ -108,5 +116,50 @@ describe('localized export golden corpus', () => {
       const parsed = parseStringsBuffer(extracted!, expected.type);
       expect([...parsed.entries()]).toEqual([...goldenFixtureToMap(expected).entries()]);
     }
+  });
+
+  it('falls back to loose Strings when only DX10 texture BA2 files are present', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'golden-export-textures-'));
+    tempDirs.push(root);
+    const pluginPath = path.join(root, 'Fallout4.esm');
+    const stringsDir = path.join(root, 'Strings');
+    fs.mkdirSync(stringsDir, { recursive: true });
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+    writeFakeDx10Ba2(path.join(root, 'Fallout4 - Textures1.ba2'));
+
+    for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+      fs.writeFileSync(
+        path.join(stringsDir, file.fileName),
+        writeStringsBuffer(goldenFixtureToMap(file), file.type),
+      );
+    }
+
+    const db = makeOverlayDb(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
+        lstring_id: id,
+        export_text: text,
+      })),
+    );
+
+    const exported = await exportLocalizedStringsFiles(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    expect(exported.map((file) => file.fileName)).toEqual(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles.map((file) => file.fileName),
+    );
+
+    const { zipBuffer } = await exportLangpackZip(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+    expect(zipBuffer.length).toBeGreaterThan(0);
   });
 });
