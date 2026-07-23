@@ -23,7 +23,7 @@ import {
   restartModImportJob,
   isArchive,
   isPlugin,
-} from '../import/modImportService';
+} from '../import/modImport';
 import { CONFIG } from '../../config';
 import { ensureModStorageDir, modUploadTempPath, modUploadedFilePath } from '../../modStorage';
 import { registerUploadedModFile } from '../import/registerModUpload';

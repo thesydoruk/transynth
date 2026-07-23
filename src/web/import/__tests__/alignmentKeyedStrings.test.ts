@@ -1,4 +1,4 @@
-import { alignmentKeyedStrings, type ImportStringRow } from '../modImportService';
+import { alignmentKeyedStrings, type ImportStringRow } from '../modImport';
 
 describe('alignmentKeyedStrings', () => {
   it('keys lstring-backed strings by their lstring id (stable across locales)', () => {

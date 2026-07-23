@@ -35,7 +35,7 @@ import { log } from '../src/logger';
 import { ensureDataDirs } from '../src/paths';
 import type { GameType } from '../src/types';
 import { resolveDirectoryInput } from '../src/utils/file';
-import { discoverStringsPacks, importStringsPack } from '../src/web/import/stringsPackImport';
+import { discoverStringsPacks, importStringsPack } from '../src/web/import/stringsPack';
 
 const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
 

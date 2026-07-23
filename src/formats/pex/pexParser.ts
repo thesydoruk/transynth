@@ -48,13 +48,13 @@ import {
   readPexStringTable,
   type PexStringUsage,
   type PexUserStringDetail,
-} from './pexUsage';
+} from './usage';
 
 /** Magic number at offset 0 of every valid PEX file. */
 const PEX_MAGIC = 0xfa57c0de;
 
 export type { PexEndian } from './utils/pexBinary';
-export type { PexStringUsage, PexUserStringDetail } from './pexUsage';
+export type { PexStringUsage, PexUserStringDetail } from './usage';
 
 import path from 'node:path';
 

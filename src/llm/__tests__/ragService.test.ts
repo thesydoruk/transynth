@@ -1,4 +1,4 @@
-import { buildEmbeddingInput, isStaleTranslationRagSyncError } from '../ragService';
+import { buildEmbeddingInput, isStaleTranslationRagSyncError } from '../rag';
 import { clampRagMaxExamples, RAG_EXAMPLE_MAX_CHARS, RAG_MAX_EXAMPLES } from '../ragConstants';
 
 describe('buildEmbeddingInput', () => {

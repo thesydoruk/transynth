@@ -15,7 +15,7 @@
 import '../src/loadEnv';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
-import { reindexAllTranslationExamples } from '../src/llm/ragService';
+import { reindexAllTranslationExamples } from '../src/llm/rag';
 
 const db = openDb();
 const result = await reindexAllTranslationExamples(db, (done, total) => {

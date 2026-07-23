@@ -1,5 +1,5 @@
 import type { Argv } from 'yargs';
-import type { RagRetrievalOptions } from '../src/llm/ragService';
+import type { RagRetrievalOptions } from '../src/llm/rag';
 
 /** Parsed yargs values for shared RAG CLI flags (yargs camelCases kebab options). */
 export type CliRagFlagValues = {

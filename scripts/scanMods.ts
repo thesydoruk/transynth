@@ -53,7 +53,7 @@ import {
   registerPluginFile,
   restartModImportJob,
   runModImport,
-} from '../src/web/import/modImportService';
+} from '../src/web/import/modImport';
 
 const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
 

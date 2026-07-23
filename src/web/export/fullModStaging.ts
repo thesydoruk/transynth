@@ -28,7 +28,7 @@ import {
   exportPatchedEsp,
   exportPatchedPexFiles,
   type ExportedStringsFile,
-} from './exportService';
+} from './index';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const SKIP_STAGING_NAMES = new Set(['import-manifest.json', 'localize']);

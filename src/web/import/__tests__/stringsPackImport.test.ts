@@ -12,7 +12,7 @@ import {
   groupStringsFilesByStem,
   parseStringsFileName,
   resolveStringsTypeForEspRow,
-} from '../stringsPackImport';
+} from '../stringsPack';
 
 describe('parseStringsFileName', () => {
   it('parses standard Bethesda strings file names', () => {

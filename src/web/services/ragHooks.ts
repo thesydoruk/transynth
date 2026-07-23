@@ -3,7 +3,7 @@
  */
 import type { Tx } from '../../db';
 import { logRag } from '../../logging/loggers';
-import { isStaleTranslationRagSyncError, syncTranslationExample } from '../../llm/ragService';
+import { isStaleTranslationRagSyncError, syncTranslationExample } from '../../llm/rag';
 
 /** Fire-and-forget RAG sync for a single translation row. */
 export const scheduleRagSync = (db: Tx, translationId: number): void => {

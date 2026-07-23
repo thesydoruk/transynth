@@ -9,7 +9,7 @@ import {
   registerPluginFile,
   type ModImportJob,
   type ModScanContext,
-} from './modImportService';
+} from './modImport';
 
 export type RegisterUploadedModOptions = {
   fileName: string;

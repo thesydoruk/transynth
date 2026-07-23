@@ -21,7 +21,7 @@ import {
   requestCsvPause,
   updateCsvJobLanguages,
   iterCsvRecords,
-} from '../import/csvImportService';
+} from '../import/csvImport';
 
 import { PATHS } from '../../paths';
 

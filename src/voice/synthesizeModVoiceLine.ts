@@ -26,7 +26,7 @@ import {
   groupVoiceFilesBySpeaker,
   resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
-} from './speakerReferencePool';
+} from './speakerReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';

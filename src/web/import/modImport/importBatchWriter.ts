@@ -1,0 +1,117 @@
+import type { Tx } from '../../../db';
+import { CONFIG } from '../../../config';
+import { logImport } from '../../../logging/loggers';
+import {
+  bulkInsertModImportRows,
+  bulkUpsertDialogGraphForImportBatch,
+  type ModImportBulkResult,
+  type ModImportBulkRow,
+  type DialogGraphImportContext,
+} from '../modImportBulk';
+import { isPgDeadlockError } from '../modImportIndexes';
+import type { ProgressCb } from './types';
+import { updateProgress } from './importJobStatus';
+
+export type ModImportBatchWriter = {
+  pushImportRow: (row: ModImportBulkRow) => Promise<void>;
+  flushPendingImportBatch: () => Promise<void>;
+  discardOpenImportBatch: () => Promise<void>;
+  commitOpenTx: () => Promise<void>;
+};
+
+export const createModImportBatchWriter = (opts: {
+  db: Tx;
+  jobId: number;
+  importModId: number;
+  importBatchSize: number;
+  progressEvery: number;
+  progressTotal: number;
+  dialogGraphCtx: DialogGraphImportContext;
+  trackImportBatch: (results: ModImportBulkResult[]) => void;
+  onProgress?: ProgressCb;
+  getImported: () => number;
+  setImported: (value: number) => void;
+}): ModImportBatchWriter => {
+  const pendingRows: ModImportBulkRow[] = [];
+  let inTx = false;
+
+  const flushPendingImportBatch = async (): Promise<void> => {
+    if (pendingRows.length === 0) return;
+    const batch = pendingRows.splice(0, pendingRows.length);
+    const maxAttempts = 4;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const results = await bulkInsertModImportRows(opts.db, opts.importModId, batch);
+        opts.trackImportBatch(results);
+        await bulkUpsertDialogGraphForImportBatch(
+          opts.db,
+          opts.importModId,
+          results,
+          opts.dialogGraphCtx,
+        );
+        opts.setImported(opts.getImported() + results.length);
+        await updateProgress(opts.db, opts.jobId, opts.getImported());
+        await opts.db.query('COMMIT');
+        inTx = false;
+        const imported = opts.getImported();
+        if (
+          opts.progressTotal > 0 &&
+          (imported >= opts.progressTotal || imported % opts.progressEvery < batch.length)
+        ) {
+          const pct = ((imported / opts.progressTotal) * 100).toFixed(1);
+          logImport.info(
+            `[Mod Import #${opts.jobId}] Progress: ${imported}/${opts.progressTotal} (${pct}%)`,
+          );
+          opts.onProgress?.(imported, opts.progressTotal);
+        }
+        return;
+      } catch (err) {
+        if (inTx) {
+          try {
+            await opts.db.query('ROLLBACK');
+          } catch {
+            /* ignore */
+          }
+          inTx = false;
+        }
+        if (isPgDeadlockError(err) && attempt < maxAttempts) {
+          logImport.warn(
+            `[Mod Import #${opts.jobId}] Deadlock on batch (${batch.length} rows), retry ${attempt}/${maxAttempts - 1}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
+  const discardOpenImportBatch = async (): Promise<void> => {
+    pendingRows.length = 0;
+    if (inTx) {
+      await opts.db.query('ROLLBACK');
+      inTx = false;
+    }
+  };
+
+  const pushImportRow = async (row: ModImportBulkRow): Promise<void> => {
+    if (!inTx) {
+      await opts.db.query('BEGIN');
+      inTx = true;
+    }
+    pendingRows.push(row);
+    if (pendingRows.length >= opts.importBatchSize) {
+      await flushPendingImportBatch();
+    }
+  };
+
+  const commitOpenTx = async (): Promise<void> => {
+    if (inTx) {
+      await opts.db.query('COMMIT');
+      inTx = false;
+    }
+  };
+
+  return { pushImportRow, flushPendingImportBatch, discardOpenImportBatch, commitOpenTx };
+};

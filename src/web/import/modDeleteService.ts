@@ -10,7 +10,7 @@ import {
   resolveModImportExtractRoot,
 } from '../../modStorage';
 import { deleteModDataForModIds } from '../data/queries';
-import type { ModImportJob } from './modImportService';
+import type { ModImportJob } from './modImport';
 
 type ModImportJobRow = Pick<ModImportJob, 'id' | 'file_name' | 'esp_path' | 'mod_id'> & {
   abs_path?: string | null;

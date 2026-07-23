@@ -4,7 +4,7 @@
  * Primary signal: quoted occurrences in decompiled `.psc` source (Champollion).
  * Fallback: bytecode usage hints when PSC is unavailable.
  */
-import type { PexStringUsage } from './pexUsage';
+import type { PexStringUsage } from './usage';
 import { isLikelyUserText } from './pexParser';
 import { parsePexStoredContext } from './pexStoredContext';
 

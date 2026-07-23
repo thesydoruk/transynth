@@ -11,7 +11,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
-import { getRagStats, reindexAllTranslationExamples } from '../../llm/ragService';
+import { getRagStats, reindexAllTranslationExamples } from '../../llm/rag';
 
 /* ── Response types ──────────────────────────────────────────────────────── */
 

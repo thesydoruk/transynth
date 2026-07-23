@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { modImportLocalizeDir } from '../modStorage';
 import { ensureDir } from '../utils/file';
-import { discoverModFiles } from '../web/import/modImportService';
+import { discoverModFiles } from '../web/import/modImport';
 
 export type ImportPackageContext = {
   folder: string;

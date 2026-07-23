@@ -10,7 +10,7 @@ import {
   LOCALIZED_EXPORT_GOLDEN_CORPUS,
   goldenFixtureToMap,
 } from '../../../testdata/exportGoldenCorpus';
-import { exportModRelease } from '../exportService';
+import { exportModRelease } from '../index';
 
 const buildPex = (strings: string[], sourceFile = 'DialogScript.psc'): Buffer => {
   const wsize = (s: string) => 2 + Buffer.byteLength(s, 'utf8');

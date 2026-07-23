@@ -6,8 +6,8 @@
  *   npm run db:refresh-mod-stats -- --game=fo4 --src=en --tgt=uk
  */
 import '../src/loadEnv.js';
-import { closeDb, openDb } from '../src/db.js';
-import { refreshAllModLangStats } from '../src/web/services/modLangStats.js';
+import { closeDb, openDb } from '../src/db/index.js';
+import { refreshAllModLangStats } from '../src/web/services/modLangStats/index.js';
 
 const readArg = (prefix: string): string | undefined => {
   const hit = process.argv.find((a) => a.startsWith(`${prefix}=`));

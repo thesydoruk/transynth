@@ -6,7 +6,7 @@
 import type { Tx } from '../../db';
 import { CONFIG, DB_CHUNK_SIZE } from '../../config';
 import { llmTranslateEligibilitySql, type LlmTranslateOverwriteMode } from '../data/queries';
-import { translateStringIdsBatch } from './llmTranslateBatch';
+import { translateStringIdsBatch } from './translateBatch';
 import { logTranslate } from '../../logging/loggers';
 import { awaitPendingQaRefresh } from '../services/qaHooks';
 import { tryRefreshModLangStats } from '../services/modLangStats';

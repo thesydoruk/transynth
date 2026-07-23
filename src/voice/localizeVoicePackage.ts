@@ -26,7 +26,7 @@ import {
   resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
-} from './speakerReferencePool';
+} from './speakerReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import {
   prepareVoiceTtsText,

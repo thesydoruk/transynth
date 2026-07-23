@@ -9,7 +9,7 @@ import {
   resolveModImportExtractRoot,
 } from '../../modStorage';
 import type { GameType } from '../../types';
-import { getModImportJob, type ModImportJob } from './modImportService';
+import { getModImportJob, type ModImportJob } from './modImport';
 
 export type ModImportPaths = {
   jobId: number;

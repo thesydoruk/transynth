@@ -1,6 +1,6 @@
-import { listRunningLlmSkipDetectJobs } from './llmSkipDetectService';
+import { listRunningLlmSkipDetectJobs } from './skipDetectService';
 import { listRunningLlmTranslateJobs } from './llmTranslateService';
-import { listRunningLlmVerifyJobs } from './llmVerifyService';
+import { listRunningLlmVerifyJobs } from './verifyService';
 import { listRunningModVoiceGenerateJobs } from '../voice/modVoiceGenerateService';
 import { listRunningTmApplyJobs } from '../services/tmApplyJobService';
 

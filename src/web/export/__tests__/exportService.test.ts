@@ -10,7 +10,7 @@ import {
   goldenFixtureToMap,
 } from '../../../testdata/exportGoldenCorpus';
 import { modImportLocalizeDir, modStorageRoot } from '../../../modStorage';
-import { exportBa2Archive, exportLangpackZip, exportLocalizedStringsFiles } from '../exportService';
+import { exportBa2Archive, exportLangpackZip, exportLocalizedStringsFiles } from '../index';
 
 const writeFakeDx10Ba2 = (filePath: string): void => {
   const header = Buffer.alloc(24);

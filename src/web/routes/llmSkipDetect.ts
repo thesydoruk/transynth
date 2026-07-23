@@ -9,7 +9,7 @@ import {
   requestLlmSkipDetectStopByModId,
   runLlmSkipDetectJob,
   scheduleLlmSkipDetectJobCleanup,
-} from '../llm/llmSkipDetectService';
+} from '../llm/skipDetectService';
 
 export const llmSkipDetectRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{

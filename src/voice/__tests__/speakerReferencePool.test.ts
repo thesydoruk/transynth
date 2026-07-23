@@ -10,7 +10,7 @@ import {
   scoreReferenceWav,
   speakerReferenceCacheRoot,
   voiceSpeakerKey,
-} from '../speakerReferencePool';
+} from '../speakerReference';
 
 const SAMPLE_RATE = 22_050;
 

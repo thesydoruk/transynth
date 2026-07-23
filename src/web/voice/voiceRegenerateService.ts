@@ -13,7 +13,7 @@ import {
 } from '../../voice/synthesizeModVoiceLine';
 import { voiceBackendFromProjectSettings } from '../../voice/voiceProjectSettings';
 import { getAllProjectSettings } from '../services/projectSettings';
-import { resolveModVoiceContext } from './voicePreviewService';
+import { resolveModVoiceContext } from './preview';
 
 export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 

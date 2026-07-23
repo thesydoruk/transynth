@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import type { PexStringUsage } from '../pexUsage';
+import type { PexStringUsage } from '../usage';
 import {
   classifyPscQuotedLine,
   extractQuotedStringLiteralsFromPsc,

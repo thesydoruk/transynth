@@ -1,0 +1,270 @@
+import type { Tx } from '../../../db';
+import { withTransaction } from '../../../db';
+import { log } from '../../../logger';
+import { CONFIG } from '../../../config';
+import {
+  withDeferredBulkModWriteIndexes,
+  type DeferredBulkWriteIndexContext,
+} from '../../import/modImportIndexes';
+import { refreshModLangStatsForMods, tryRefreshModLangStats } from '../../services/modLangStats';
+
+// ── Mods ─────────────────────────────────────────────────────────────────────
+
+/**
+ * List mods with aggregate translation statistics.
+ * @param db        - database connection / transaction
+ * @param opts.game       - optional game filter (e.g. 'fo4'); when omitted returns all games
+ * @param opts.srcLang    - source language for string counts
+ * @param opts.targetLang - target language for translation counts
+ */
+export const listMods = async (
+  db: Tx,
+  opts: { game?: string; srcLang?: string; targetLang?: string } = {},
+) => {
+  const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
+  const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
+
+  const whereClause = opts.game ? 'WHERE m.game = $3' : '';
+  const params: unknown[] = [srcLang, targetLang];
+  if (opts.game) params.push(opts.game);
+
+  const queryMods = () =>
+    db.query<{
+      id: number;
+      name: string;
+      abs_path: string;
+      version_hash: string;
+      game: string;
+      nexus_mod_id: number | null;
+      nexus_name: string | null;
+      nexus_thumbnail: string | null;
+      created_at: Date;
+      record_count: string;
+      string_count: string;
+      translated_count: string;
+      approved_count: string;
+      fuzzy_count: string;
+      has_stats: boolean;
+    }>(
+      `SELECT
+        m.id,
+        m.name,
+        m.abs_path,
+        m.version_hash,
+        m.game,
+        m.nexus_mod_id,
+        m.nexus_name,
+        m.nexus_thumbnail,
+        m.created_at,
+        COALESCE(st.record_count, 0)::bigint AS record_count,
+        COALESCE(st.string_count, 0)::bigint AS string_count,
+        COALESCE(st.translated_count, 0)::bigint AS translated_count,
+        COALESCE(st.approved_count, 0)::bigint AS approved_count,
+        COALESCE(st.fuzzy_count, 0)::bigint AS fuzzy_count,
+        (st.mod_id IS NOT NULL) AS has_stats
+       FROM mods m
+       LEFT JOIN mod_lang_stats st
+         ON st.mod_id = m.id AND st.src_lang = $1 AND st.target_lang = $2
+       ${whereClause}
+       ORDER BY m.created_at DESC`,
+      params,
+    );
+
+  let { rows } = await queryMods();
+  const missingIds = rows.filter((row) => !row.has_stats).map((row) => row.id);
+  if (missingIds.length > 0) {
+    await refreshModLangStatsForMods(db, missingIds, srcLang, targetLang);
+    ({ rows } = await queryMods());
+  }
+
+  return rows.map(({ has_stats: _hasStats, ...mod }) => mod);
+};
+
+export const getMod = async (db: Tx, id: number) => {
+  const { rows } = await db.query(`SELECT * FROM mods WHERE id = $1`, [id]);
+  return rows[0];
+};
+
+/**
+ * Remove imported data for one or more mods without relying on FK CASCADE.
+ *
+ * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
+ * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
+ * row-by-row. Records are removed in DB_CHUNK_SIZE batches; dependents are
+ * deleted via preselected string ids (index-friendly) instead of joining the
+ * full translations table. Heavy pg_trgm/HASH indexes and the RAG HNSW index
+ * are dropped for the purge window when MOD_IMPORT_DEFER_INDEXES is enabled
+ * (default).
+ *
+ * @param scope - `rows` keeps mod rows; `mod` also removes dialog graph + mods.
+ */
+const deleteModDataOnClient = async (
+  client: Tx,
+  uniqueModIds: number[],
+  scope: 'rows' | 'mod',
+  indexCtx: DeferredBulkWriteIndexContext,
+): Promise<{ deletedRecords: number }> => {
+  const CHUNK = CONFIG.dbChunkSize;
+  const TE_CHUNK = CONFIG.dbChunkSize;
+  let deletedRecords = 0;
+
+  await client.query('BEGIN');
+  try {
+    await client.query(
+      `UPDATE dialog_nodes dn
+          SET response_string_id = NULL
+         FROM strings s
+         JOIN records r ON s.record_id = r.id
+        WHERE dn.response_string_id = s.id
+          AND r.mod_id = ANY($1::int[])`,
+      [uniqueModIds],
+    );
+
+    /*
+     * Purge records in batches. A single DELETE … USING strings JOIN records
+     * makes PostgreSQL seq-scan all translations (~millions of rows) even when
+     * only one mod is removed. Collect string ids per record batch and delete
+     * dependents via src_string_id = ANY(…) so btree indexes are used instead.
+     */
+    for (;;) {
+      const { rows: recordRows } = await client.query<{ id: number }>(
+        `SELECT id FROM records WHERE mod_id = ANY($1::int[]) LIMIT $2`,
+        [uniqueModIds, CHUNK],
+      );
+      if (recordRows.length === 0) break;
+
+      const recordIds = recordRows.map((r) => r.id);
+      const { rows: stringRows } = await client.query<{ id: number }>(
+        `SELECT id FROM strings WHERE record_id = ANY($1::int[])`,
+        [recordIds],
+      );
+      const stringIds = stringRows.map((r) => r.id);
+
+      if (stringIds.length > 0) {
+        if (indexCtx.hnswDropped) {
+          await client.query(
+            `DELETE FROM translation_examples te
+              WHERE te.translation_id IN (
+                SELECT t.id FROM translations t WHERE t.src_string_id = ANY($1::int[])
+              )`,
+            [stringIds],
+          );
+        } else {
+          for (;;) {
+            const { rowCount } = await client.query(
+              `DELETE FROM translation_examples te
+                WHERE te.translation_id IN (
+                  SELECT t.id FROM translations t
+                   WHERE t.src_string_id = ANY($1::int[])
+                   LIMIT $2
+                )`,
+              [stringIds, TE_CHUNK],
+            );
+            if (!rowCount || rowCount < TE_CHUNK) break;
+          }
+        }
+
+        await client.query(`DELETE FROM qa_issues WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
+        await client.query(`DELETE FROM translation_revisions WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
+        await client.query(`DELETE FROM translations WHERE src_string_id = ANY($1::int[])`, [
+          stringIds,
+        ]);
+      }
+
+      await client.query(`DELETE FROM strings WHERE record_id = ANY($1::int[])`, [recordIds]);
+      const { rowCount } = await client.query(`DELETE FROM records WHERE id = ANY($1::int[])`, [
+        recordIds,
+      ]);
+      deletedRecords += rowCount ?? recordIds.length;
+    }
+
+    if (scope === 'mod') {
+      await client.query(
+        `DELETE FROM dialog_scene_phases dsp
+          WHERE dsp.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = ANY($1::int[]))
+             OR dsp.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = ANY($1::int[]))`,
+        [uniqueModIds],
+      );
+      await client.query(
+        `DELETE FROM dialog_edges de
+          USING dialog_topics dt
+         WHERE de.topic_id = dt.id
+           AND dt.mod_id = ANY($1::int[])`,
+        [uniqueModIds],
+      );
+      await client.query(
+        `DELETE FROM dialog_nodes dn
+          USING dialog_topics dt
+         WHERE dn.topic_id = dt.id
+           AND dt.mod_id = ANY($1::int[])`,
+        [uniqueModIds],
+      );
+      await client.query(`DELETE FROM dialog_scenes WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM dialog_topics WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM mods WHERE id = ANY($1::int[])`, [uniqueModIds]);
+    }
+
+    await client.query('COMMIT');
+    return { deletedRecords };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  }
+};
+
+export const deleteModDataForModIds = async (
+  db: Tx,
+  modIds: number[],
+  scope: 'rows' | 'mod',
+): Promise<{ deletedRecords: number }> => {
+  const uniqueModIds = [...new Set(modIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (uniqueModIds.length === 0) {
+    return { deletedRecords: 0 };
+  }
+
+  const started = Date.now();
+
+  const result = await withDeferredBulkModWriteIndexes(
+    db,
+    CONFIG.modImportDeferIndexes,
+    (client, indexCtx) => deleteModDataOnClient(client, uniqueModIds, scope, indexCtx),
+  );
+
+  if (scope === 'rows') {
+    for (const modId of uniqueModIds) {
+      tryRefreshModLangStats(db, modId, CONFIG.defaultSrcLang, CONFIG.defaultTgtLang);
+    }
+  }
+
+  log.info(
+    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} deferIndexes=${CONFIG.modImportDeferIndexes} ms=${Date.now() - started}`,
+  );
+  return result;
+};
+
+/** @see deleteModDataForModIds */
+export const deleteModData = async (
+  db: Tx,
+  modId: number,
+  scope: 'rows' | 'mod',
+): Promise<{ deletedRecords: number }> => deleteModDataForModIds(db, [modId], scope);
+
+export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
+  const langs = new Set<string>([CONFIG.defaultSrcLang, CONFIG.defaultTgtLang]);
+
+  const { rows } = await db.query<{ lang: string }>(
+    `SELECT DISTINCT lang FROM (
+       SELECT src_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
+       UNION ALL
+       SELECT target_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
+     ) langs`,
+    [modId],
+  );
+  for (const r of rows) langs.add(r.lang);
+
+  return [...langs].sort((a, b) => a.localeCompare(b));
+};

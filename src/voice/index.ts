@@ -34,7 +34,7 @@ export {
   speakerReferenceCacheRoot,
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
-} from './speakerReferencePool';
+} from './speakerReference';
 export {
   clearVoiceSpeakerRef,
   loadVoiceSpeakerRef,

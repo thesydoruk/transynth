@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../../db';
 import { parsePexBuffer, patchPexBuffer, writeWString } from '../../../formats/pex';
-import { exportPatchedPexFiles } from '../exportService';
+import { exportPatchedPexFiles } from '../index';
 
 const buildPex = (strings: string[], sourceFile = 'DialogScript.psc'): Buffer => {
   const wsize = (s: string) => 2 + Buffer.byteLength(s, 'utf8');
