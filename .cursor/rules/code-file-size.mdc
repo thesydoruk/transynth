@@ -1,0 +1,14 @@
+---
+description: Keep code files under 300 LOC (comments/blanks ignored); split when larger
+alwaysApply: true
+---
+
+# Code file size limit
+
+- Code files must not exceed **300 lines of code**.
+- **Counting:** only non-empty, non-comment lines count. Blank lines and comments (including block comments and JSDoc) are ignored.
+- Applies to source code (e.g. `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.css`, `.scss`, `.sql` in `src/` and similar). Does not apply to generated output, lockfiles, data dumps, or vendored code.
+- When adding or editing code would push a file over 300 lines of code, **split** it first: extract modules, helpers, route handlers, queries, or components into new files.
+- Prefer cohesive splits (one concern per file) over dumping leftovers into a catch-all.
+- Do not grow an already oversized file; when touching one, extract enough that the result stays ≤ 300 lines of code (or clearly shrinks toward that limit).
+
