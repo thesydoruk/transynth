@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ModImportDeleteDataMode } from '../../../api';
 import { Button } from '../../../components/Button';
 import { ModalShell } from '../../../components/ModalShell';
-import parentS from '../ModsPage.module.scss';
+import parentS from '../PreviewModal.module.scss';
 import s from './DeleteModConfirmModal.module.scss';
 
 interface DeleteModConfirmModalProps {

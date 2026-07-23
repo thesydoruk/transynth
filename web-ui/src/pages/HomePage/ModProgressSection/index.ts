@@ -1,1 +1,0 @@
-export { ModProgressSection } from './ModProgressSection';

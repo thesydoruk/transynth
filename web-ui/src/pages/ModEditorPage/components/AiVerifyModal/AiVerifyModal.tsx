@@ -1,9 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { LlmVerifyIssue } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
-import type { LlmVerifyActionLogEntry, LlmVerifyIssue } from '../../../../api';
 import type { AiVerifyState } from '../../hooks/useAiVerify';
+import { AiVerifyActionLogTable } from './components/AiVerifyActionLogTable';
+import { AiVerifyControls } from './components/AiVerifyControls';
+import { AiVerifyIssuesTable } from './components/AiVerifyIssuesTable';
+import { useAiVerifyApplyState } from './useAiVerifyApplyState';
 import s from './AiVerifyModal.module.scss';
 
 interface AiVerifyModalProps {
@@ -25,17 +29,6 @@ interface AiVerifyModalProps {
   onApplyAllSuggestions?: (issues: LlmVerifyIssue[]) => void | Promise<void>;
 }
 
-const verdictLabelKey = {
-  suspicious: 'modEditor.aiVerifyVerdictSuspicious',
-  incorrect: 'modEditor.aiVerifyVerdictIncorrect',
-} as const;
-
-const actionLabelKey = {
-  approved: 'modEditor.aiVerifyActionApproved',
-  fixed: 'modEditor.aiVerifyActionFixed',
-  issue: 'modEditor.aiVerifyActionIssue',
-} as const;
-
 /** Modal for LLM translation quality verification with progress and flagged rows. */
 export const AiVerifyModal = ({
   srcLang,
@@ -47,42 +40,22 @@ export const AiVerifyModal = ({
   onApplyAllSuggestions,
 }: AiVerifyModalProps) => {
   const { t } = useTranslation();
-  const {
-    isRunning,
-    isStopping,
-    done,
-    total,
-    approved,
-    fixed,
-    issues,
-    actionLog,
-    error,
-    status,
-    start,
-    stop,
-  } = state;
-  const [applyingId, setApplyingId] = useState<number | null>(null);
-  const [applyingAll, setApplyingAll] = useState(false);
+  const { isRunning, issues, actionLog, error } = state;
   const [autoApprove, setAutoApprove] = useState(false);
   const [fixSuspicious, setFixSuspicious] = useState(false);
   const [includeConfirmed, setIncludeConfirmed] = useState(false);
-  const [appliedIds, setAppliedIds] = useState<Set<number>>(() => new Set());
-  const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
   const showActionLog = autoApprove;
 
-  const visibleIssues = useMemo(
-    () => issues.filter((issue) => !appliedIds.has(issue.stringId)),
-    [issues, appliedIds],
-  );
-
-  const pendingIssues = useMemo(
-    () => visibleIssues.filter((issue) => issue.suggestion),
-    [visibleIssues],
-  );
-
-  const markApplied = (stringId: number) => {
-    setAppliedIds((prev) => new Set(prev).add(stringId));
-  };
+  const {
+    applyingId,
+    setApplyingId,
+    applyingAll,
+    setApplyingAll,
+    visibleIssues,
+    pendingIssues,
+    markApplied,
+    setAppliedIds,
+  } = useAiVerifyApplyState(issues);
 
   const handleApply = async (issue: LlmVerifyIssue) => {
     if (!issue.suggestion || !onApplySuggestion) return;
@@ -117,32 +90,6 @@ export const AiVerifyModal = ({
     }
   };
 
-  const renderActionRow = (entry: LlmVerifyActionLogEntry, index: number) => (
-    <tr
-      key={`${entry.stringId}-${entry.action}-${index}`}
-      className={onRowClick ? s.clickable : undefined}
-      onClick={onRowClick ? () => onRowClick(entry.stringId) : undefined}
-    >
-      <td>
-        <span
-          className={
-            entry.action === 'approved'
-              ? s.actionApproved
-              : entry.action === 'fixed'
-                ? s.actionFixed
-                : s.actionIssue
-          }
-        >
-          {t(actionLabelKey[entry.action])}
-        </span>
-      </td>
-      <td className={s.mono}>{entry.edid ?? '—'}</td>
-      <td className={s.mono}>{entry.path ?? entry.signature ?? '—'}</td>
-      <td className={s.textCell}>{entry.source}</td>
-      <td className={s.reasonCell}>{entry.detail ?? '—'}</td>
-    </tr>
-  );
-
   return (
     <ModalShell
       title={t('modEditor.aiVerifyTitle')}
@@ -151,181 +98,39 @@ export const AiVerifyModal = ({
       size="2xl"
       stretchContent
     >
-      <p className={s.intro}>
-        {t(
-          includeConfirmed ? 'modEditor.aiVerifyIntroIncludeConfirmed' : 'modEditor.aiVerifyIntro',
-          {
-            src: srcLang.toUpperCase(),
-            target: targetLang.toUpperCase(),
-          },
-        )}
-      </p>
-
-      <div className={s.controls}>
-        {isRunning ? (
-          <Button variant="danger" size="sm" disabled={isStopping} onClick={() => void stop()}>
-            {isStopping ? t('modEditor.aiVerifyStopping') : t('modEditor.aiVerifyStop')}
-          </Button>
-        ) : (
-          <div className={s.optionGroup}>
-            <label className={s.optionToggle}>
-              <input
-                type="checkbox"
-                checked={autoApprove}
-                onChange={(e) => setAutoApprove(e.target.checked)}
-                disabled={status === 'running'}
-              />
-              {t('modEditor.aiVerifyAutoApprove')}
-            </label>
-            <label className={s.optionToggle}>
-              <input
-                type="checkbox"
-                checked={includeConfirmed}
-                onChange={(e) => setIncludeConfirmed(e.target.checked)}
-                disabled={status === 'running'}
-              />
-              {t('modEditor.aiVerifyIncludeConfirmed')}
-            </label>
-            <label className={s.optionToggle}>
-              <input
-                type="checkbox"
-                checked={fixSuspicious}
-                onChange={(e) => setFixSuspicious(e.target.checked)}
-                disabled={status === 'running'}
-              />
-              {t('modEditor.aiVerifyFixSuspicious')}
-            </label>
-            <Button
-              variant="success"
-              size="sm"
-              onClick={() => void start(autoApprove, fixSuspicious, includeConfirmed)}
-              disabled={status === 'running'}
-            >
-              {status === 'idle' ? t('modEditor.aiVerifyStart') : t('modEditor.aiVerifyRestart')}
-            </Button>
-          </div>
-        )}
-        <div className={s.progressWrap}>
-          <div className={s.progressTrack}>
-            <div className={s.progressFill} style={{ width: `${progressPct}%` }} />
-          </div>
-          <span className={s.progressLabel}>
-            {isStopping
-              ? t('modEditor.aiVerifyStopping')
-              : isRunning
-                ? t('modEditor.aiVerifyProgress', { done, total })
-                : status === 'completed'
-                  ? t('modEditor.aiVerifyCompleted', { done, total, count: issues.length }) +
-                    (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '') +
-                    (fixed > 0 ? ` · ${t('modEditor.aiVerifyFixed', { fixed })}` : '')
-                  : status === 'cancelled'
-                    ? t('modEditor.aiVerifyCancelled', { done, total, count: issues.length }) +
-                      (approved > 0 ? ` · ${t('modEditor.aiVerifyApproved', { approved })}` : '') +
-                      (fixed > 0 ? ` · ${t('modEditor.aiVerifyFixed', { fixed })}` : '')
-                    : status === 'failed'
-                      ? t('modEditor.aiVerifyFailed')
-                      : t('modEditor.aiVerifyIdle')}
-          </span>
-        </div>
-      </div>
+      <AiVerifyControls
+        srcLang={srcLang}
+        targetLang={targetLang}
+        state={state}
+        autoApprove={autoApprove}
+        onAutoApproveChange={setAutoApprove}
+        fixSuspicious={fixSuspicious}
+        onFixSuspiciousChange={setFixSuspicious}
+        includeConfirmed={includeConfirmed}
+        onIncludeConfirmedChange={setIncludeConfirmed}
+      />
 
       {error && <p className={s.error}>{error}</p>}
 
       <div className={s.tableWrap}>
         {showActionLog ? (
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('modEditor.aiVerifyAction')}</th>
-                <th>{t('modEditor.edid')}</th>
-                <th>{t('modEditor.field')}</th>
-                <th>{t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}</th>
-                <th>{t('modEditor.aiVerifyActionDetail')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {actionLog.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className={s.empty}>
-                    {isRunning
-                      ? t('modEditor.aiVerifyLogScanning')
-                      : t('modEditor.aiVerifyLogEmpty')}
-                  </td>
-                </tr>
-              ) : (
-                actionLog.map(renderActionRow)
-              )}
-            </tbody>
-          </table>
+          <AiVerifyActionLogTable
+            actionLog={actionLog}
+            isRunning={isRunning}
+            srcLang={srcLang}
+            onRowClick={onRowClick}
+          />
         ) : (
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('modEditor.edid')}</th>
-                <th>{t('modEditor.field')}</th>
-                <th>{t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}</th>
-                <th>{t('modEditor.translationText', { lang: targetLang.toUpperCase() })}</th>
-                <th>{t('modEditor.aiVerifySuggestion')}</th>
-                <th>{t('modEditor.aiVerifyVerdict')}</th>
-                <th>{t('modEditor.aiVerifyReason')}</th>
-                {onApplySuggestion && <th>{t('modEditor.actions')}</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleIssues.length === 0 ? (
-                <tr>
-                  <td colSpan={onApplySuggestion ? 8 : 7} className={s.empty}>
-                    {isRunning ? t('modEditor.aiVerifyScanning') : t('modEditor.aiVerifyNoIssues')}
-                  </td>
-                </tr>
-              ) : (
-                visibleIssues.map((issue: LlmVerifyIssue) => (
-                  <tr
-                    key={issue.stringId}
-                    className={onRowClick ? s.clickable : undefined}
-                    onClick={onRowClick ? () => onRowClick(issue.stringId) : undefined}
-                  >
-                    <td className={s.mono}>{issue.edid ?? '—'}</td>
-                    <td className={s.mono}>{issue.path ?? issue.signature ?? '—'}</td>
-                    <td className={s.textCell}>{issue.source}</td>
-                    <td className={s.textCell}>{issue.translation}</td>
-                    <td className={s.suggestionCell}>
-                      {issue.suggestion ?? <span className={s.noSuggestion}>—</span>}
-                    </td>
-                    <td>
-                      <span
-                        className={issue.verdict === 'incorrect' ? s.verdictBad : s.verdictWarn}
-                      >
-                        {t(verdictLabelKey[issue.verdict])}
-                      </span>
-                    </td>
-                    <td className={s.reasonCell}>{issue.reason}</td>
-                    {onApplySuggestion && (
-                      <td className={s.actionCell}>
-                        {issue.suggestion ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={applyingId === issue.stringId || applyingAll}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleApply(issue);
-                            }}
-                          >
-                            {applyingId === issue.stringId
-                              ? t('modEditor.aiVerifyApplying')
-                              : t('modEditor.aiVerifyApply')}
-                          </Button>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <AiVerifyIssuesTable
+            issues={visibleIssues}
+            isRunning={isRunning}
+            srcLang={srcLang}
+            targetLang={targetLang}
+            applyingId={applyingId}
+            applyingAll={applyingAll}
+            onRowClick={onRowClick}
+            onApply={onApplySuggestion ? handleApply : undefined}
+          />
         )}
       </div>
 

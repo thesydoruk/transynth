@@ -1,973 +1,59 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { api, type StringRow, type StringFilterParams, type StringsResult } from '../../api';
-import { removeAppJob, upsertAppJob } from '../../appJobsQueue';
-import { toast } from '../../components/Toast';
-import { upsertModAiJob } from '../../modAiJobsStore';
 import {
   toggleModAiTranslate,
-  startModAiTranslate,
   startModAiTranslateTm,
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
-import { toggleModAiVoice, startModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
+import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
-import { useModAiJobsForMod } from '../../hooks/useModAiJobsForMod';
-import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
-import { getSrcLang, getTgtLang } from '../../langDefaults';
-import { BookEditorModal } from '../../components/BookEditorModal';
-import { SearchReplaceModal } from './components/SearchReplaceModal';
-import { ApplyTranslationFromModModal } from './components/ApplyTranslationFromModModal';
-import { AiVerifyModal } from './components/AiVerifyModal';
-import { VoiceModal } from './components/VoiceModal';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
-import { SignaturePanel } from './components/SignaturePanel';
-import {
-  StringGrid,
-  type SortCol,
-  type SortDir,
-  type ColumnFilters,
-} from './components/StringGrid';
-import { DetailPanel, type BottomTab } from './components/DetailPanel';
+import { ModEditorStringsBody } from './components/ModEditorStringsBody';
+import { ModEditorModals } from './components/ModEditorModals';
 import { ContextMenu } from './components/ContextMenu';
 import { ShortcutsOverlay } from './components/ShortcutsOverlay';
 import { EditorStatusBar } from './components/EditorStatusBar';
-import {
-  useThemeObserver,
-  useEditorQueries,
-  useEditorMutations,
-  useAutosave,
-  useEditorKeyboard,
-  useAiVerify,
-  useApplyImported,
-  useDetailPanelHeight,
-} from './hooks';
-import {
-  parseStatusParam,
-  statusParamFromSelection,
-  type ContextMenuStatus,
-  type StatusFilterValue,
-} from './statusFilter';
+import { useModEditorPage } from './hooks/useModEditorPage';
 import styles from './ModEditorPage.module.scss';
-
-/** Rows fetched per infinite-scroll page (the grid accumulates pages). */
-const FETCH_PAGE_SIZE = 100;
-/** Max string IDs per translate/TM API request. */
-const TRANSLATE_CHUNK = 100;
 
 /**
  * Top-level page component for the mod-editor view.
- *
- * Orchestrates filter / sort / selection state, delegates data-fetching to
- * {@link useEditorQueries}, persistence to {@link useEditorMutations},
- * autosave to {@link useAutosave}, and keyboard handling to
- * {@link useEditorKeyboard}.  Rendering is delegated to the individual
- * sub-components (EditorToolbar, SignaturePanel, StringGrid, DetailPanel,
- * ContextMenu, ShortcutsOverlay, EditorStatusBar).
+ * State and handlers live in {@link useModEditorPage}; layout is delegated to sub-components.
  */
 export const ModEditorPage = () => {
-  const { t } = useTranslation();
-  const { id, gameId } = useParams<{ id: string; gameId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const modId = Number(id);
-  const qc = useQueryClient();
-
-  /** localStorage key scoped to this mod — persists the last-used filter intent. */
-  const storageKey = `editor-intent-${modId}`;
-  const storedIntent = (() => {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) ?? 'null') as {
-        statuses?: string[];
-        status?: string;
-        qaOnly?: boolean;
-        signature?: string;
-      } | null;
-    } catch {
-      return null;
-    }
-  })();
-
-  // URL params take priority; localStorage provides the fallback when params are absent
-  const initialStatusParam = searchParams.get('status');
-  const initialQaOnly = searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-  const safeInitialStatuses = (() => {
-    const fromUrl = parseStatusParam(initialStatusParam);
-    if (fromUrl.length > 0) return fromUrl;
-    if (storedIntent?.statuses?.length) {
-      return parseStatusParam(storedIntent.statuses.join(','));
-    }
-    if (storedIntent?.status) {
-      return parseStatusParam(storedIntent.status);
-    }
-    return [];
-  })();
-  const resolvedQaOnly = searchParams.has('qaOnly')
-    ? initialQaOnly
-    : (storedIntent?.qaOnly ?? false);
-  const initialSignature = searchParams.get('signature') ?? storedIntent?.signature ?? '';
-
-  // ── Filter / sort state ──
-  const [srcLang, setSrcLang] = useState(getSrcLang());
-  const [targetLang, setTargetLang] = useState(getTgtLang());
-  const [selectedStatuses, setSelectedStatuses] =
-    useState<StatusFilterValue[]>(safeInitialStatuses);
-  const [qaOnly, setQaOnly] = useState(resolvedQaOnly);
-  const [signature, setSignature] = useState(initialSignature);
-  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
-    grup: '',
-    formid: '',
-    edid: '',
-    field: '',
-    src: '',
-    transl: '',
-  });
-  const [sortCol, setSortCol] = useState<SortCol | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-
-  // ── Page mode: strings grid or dialogs tree ──
-  const [pageMode, setPageMode] = useState<'strings' | 'dialogs'>('strings');
-
-  // Persist the active filter intent per mod so it is restored on the next visit
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({ statuses: selectedStatuses, qaOnly, signature }),
-      );
-    } catch {
-      // Ignore quota / private-browsing errors
-    }
-  }, [selectedStatuses, qaOnly, signature, storageKey]);
-
-  // ── Selection ──
-  //
-  // Two modes:
-  //   • explicit ("some")  — `selected` holds the explicitly included IDs.
-  //   • "all matching"     — `selectAllMatching` is true and `selected` instead
-  //                          holds the IDs the user explicitly DE-selected.
-  // This lets the header checkbox select every row matching the current filter
-  // (potentially thousands) without ever materialising that ID list client-side.
-  const [selectAllMatching, setSelectAllMatching] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-
-  // ── Active row (detail panel) ──
-  const [activeRow, setActiveRow] = useState<StringRow | null>(null);
-  const [focusedRow, setFocusedRow] = useState<StringRow | null>(null);
-  const [draftTranslation, setDraftTranslation] = useState('');
-  const [activeTab, setActiveTab] = useState<BottomTab>('suggestions');
-  const activeRowRef = useRef(activeRow);
-  activeRowRef.current = activeRow;
-  const translAreaRef = useRef<HTMLTextAreaElement>(null);
-  const centerColRef = useRef<HTMLDivElement>(null);
-  const { detailPanelHeight, isResizing, startDetailPanelResize } =
-    useDetailPanelHeight(centerColRef);
-
-  // ── Translate progress ──
-  const [translateProgress, setTranslateProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
-  const translateInFlight = useRef(false);
-
-  // ── Modal / overlay visibility ──
-  const [showSearchReplace, setShowSearchReplace] = useState(false);
-  const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
-  const [showAiVerify, setShowAiVerify] = useState(false);
-  const [showVoice, setShowVoice] = useState(false);
-  const [showBookEditor, setShowBookEditor] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-
-  // ── Context menu ──
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
-
-  // ── Custom hooks ──
-  useThemeObserver();
-
   const {
-    mod,
-    strings,
-    stats,
-    sigs,
-    suggestions,
-    qaIssues,
-    history,
-    isLoading,
-    refetchStats,
-    availLangs,
-    sigCounts,
-    activeMaxLength,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useEditorQueries({
     modId,
     gameId,
-    srcLang,
-    targetLang,
-    selectedStatuses,
-    qaOnly,
-    signature,
-    columnFilters,
-    pageSize: FETCH_PAGE_SIZE,
-    sortCol,
-    sortDir,
-    activeRow,
-    activeTab,
-  });
+    modals,
+    filter,
+    editorQueries,
+    selection,
+    row,
+    saveMutation,
+    clearSameAsSourceMut,
+    saveIndicator,
+    aiVerify,
+    aiJobs,
+    applyImported,
+    batchTranslate,
+    contextMenu,
+    qaIssueRowCount,
+  } = useModEditorPage();
 
-  // ── Derived selection state ──
+  const { mod, strings, stats, sigs, suggestions, qaIssues, history, isLoading } = editorQueries;
   const total = strings?.total ?? 0;
-  /** True when `id` is currently selected, honouring the active selection mode. */
-  const isRowSelected = useCallback(
-    (id: number) => (selectAllMatching ? !selected.has(id) : selected.has(id)),
-    [selectAllMatching, selected],
-  );
-  /** Number of selected rows (across the whole filtered set in "all" mode). */
-  const selectedCount = selectAllMatching ? Math.max(0, total - selected.size) : selected.size;
-  const hasSelection = selectedCount > 0;
-  /** Header checkbox is fully checked only when every matching row is selected. */
-  const allSelected = selectAllMatching && selected.size === 0 && total > 0;
-  /** Header checkbox shows the indeterminate state for a partial selection. */
-  const someSelected = hasSelection && !allSelected;
 
-  /** Clears the selection and exits "all matching" mode. */
-  const clearSelection = useCallback(() => {
-    setSelectAllMatching(false);
-    setSelected(new Set());
-  }, []);
-
-  /** Builds the server filter payload mirroring the current grid query. */
-  const buildFilter = useCallback(
-    (): StringFilterParams => ({
-      srcLang,
-      targetLang,
-      status: statusParamFromSelection(selectedStatuses),
-      qaOnly: qaOnly || undefined,
-      signature: signature || undefined,
-      grup: columnFilters.grup || undefined,
-      formid: columnFilters.formid || undefined,
-      edid: columnFilters.edid || undefined,
-      field: columnFilters.field || undefined,
-      src: columnFilters.src || undefined,
-      transl: columnFilters.transl || undefined,
-    }),
-    [srcLang, targetLang, selectedStatuses, qaOnly, signature, columnFilters],
-  );
-
-  /** Loaded rows that are currently selected (bounded by what's in memory). */
-  const selectedLoadedRows = useCallback(
-    () => (strings?.rows ?? []).filter((r) => isRowSelected(r.string_id)),
-    [strings, isRowSelected],
-  );
-
-  /** Resolve every selected string ID, including rows not yet loaded in the grid. */
-  const resolveSelectedIds = useCallback(async (): Promise<number[]> => {
-    if (selectAllMatching) {
-      const { ids: all } = await api.strings.matchingIds({ modId, ...buildFilter() });
-      return selected.size ? all.filter((id) => !selected.has(id)) : all;
-    }
-    return [...selected];
-  }, [selectAllMatching, selected, modId, buildFilter]);
-
-  const { saveMutation, clearMutation, clearSameAsSourceMut, saveIndicator } = useEditorMutations({
-    modId,
-    srcLang,
-    targetLang,
-    refetchStats,
-    activeRowRef,
-    setActiveRow,
-  });
-
-  const aiVerify = useAiVerify(modId, srcLang, targetLang);
-  const aiJobs = useModAiJobsForMod(modId);
-  useModAiJobsPoll(true);
-  const applyImported = useApplyImported(modId, srcLang, targetLang);
-  const prevApplyImportedStatus = useRef(applyImported.status);
-  const prevAiVerifyStatus = useRef(aiVerify.status);
-  const prevTranslateStatus = useRef(aiJobs.translate.status);
-  const prevSkipDetectStatus = useRef(aiJobs.skipDetect.status);
-
-  const showTranslateResultToast = useCallback(
-    (mode: 'llm' | 'tm', count: number) => {
-      if (count > 0) {
-        if (mode === 'llm') {
-          toast.success(t('modEditor.translateDone', { count }), {
-            action: {
-              label: t('modEditor.showDraftsAction'),
-              onClick: () => setSelectedStatuses(['draft']),
-            },
-          });
-        } else {
-          toast.success(t('modEditor.tmApplyDone', { count }));
-        }
-        return;
-      }
-      toast.info(mode === 'llm' ? t('modEditor.translateNone') : t('modEditor.tmApplyNone'));
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    upsertModAiJob(modId, 'verify', {
-      status: aiVerify.status,
-      jobId: aiVerify.jobId,
-      done: aiVerify.done,
-      total: aiVerify.total,
-      error: aiVerify.error,
-    });
-  }, [modId, aiVerify.status, aiVerify.jobId, aiVerify.done, aiVerify.total, aiVerify.error]);
-
-  useEffect(() => {
-    const open = searchParams.get('open');
-    if (open === 'ai-translate') void startModAiTranslate(modId, srcLang, targetLang);
-    if (open === 'ai-voice') void startModAiVoice(modId, srcLang, targetLang, 'missing');
-    if (open === 'ai-verify') setShowAiVerify(true);
-    if (open) {
-      const next = new URLSearchParams(searchParams);
-      next.delete('open');
-      setSearchParams(next, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount / deep-link
-  }, []);
-
-  useEffect(() => {
-    const wasRunning = prevTranslateStatus.current === 'running';
-    const mode = aiJobs.translate.translateMode ?? 'llm';
-
-    if (wasRunning && aiJobs.translate.status === 'completed') {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-      showTranslateResultToast(mode, aiJobs.translate.done);
-    }
-    if (wasRunning && aiJobs.translate.status === 'failed' && aiJobs.translate.error) {
-      toast.error(aiJobs.translate.error);
-    }
-    prevTranslateStatus.current = aiJobs.translate.status;
-  }, [
-    aiJobs.translate.status,
-    aiJobs.translate.done,
-    aiJobs.translate.error,
-    aiJobs.translate.translateMode,
-    modId,
-    qc,
-    refetchStats,
-    showTranslateResultToast,
-  ]);
-
-  // Auto-approve / auto-fix during verification update rows on the server — refresh when a run finishes.
-  useEffect(() => {
-    if (
-      prevAiVerifyStatus.current === 'running' &&
-      (aiVerify.status === 'completed' || aiVerify.status === 'cancelled') &&
-      (aiVerify.approved > 0 || aiVerify.fixed > 0)
-    ) {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    }
-    prevAiVerifyStatus.current = aiVerify.status;
-  }, [aiVerify.status, aiVerify.approved, aiVerify.fixed, modId, qc, refetchStats]);
-
-  useEffect(() => {
-    if (
-      prevApplyImportedStatus.current === 'running' &&
-      (applyImported.status === 'completed' || applyImported.status === 'cancelled')
-    ) {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    }
-    prevApplyImportedStatus.current = applyImported.status;
-  }, [applyImported.status, modId, qc, refetchStats]);
-
-  useEffect(() => {
-    if (
-      prevSkipDetectStatus.current === 'running' &&
-      (aiJobs.skipDetect.status === 'completed' || aiJobs.skipDetect.status === 'cancelled')
-    ) {
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    }
-    prevSkipDetectStatus.current = aiJobs.skipDetect.status;
-  }, [aiJobs.skipDetect.status, modId, qc, refetchStats]);
-
-  const { flushAutosave, cancelAutosave } = useAutosave({
-    activeRow,
-    draftTranslation,
-    onSave: (stringId, text) => saveMutation.mutate({ stringId, text }),
-    onClear: (stringId) => clearMutation.mutate({ stringId }),
-  });
-
-  // ── Column-filter / sort handlers ──
-
-  const handleColumnFilterChange = useCallback(
-    (col: keyof ColumnFilters, value: string) => {
-      setColumnFilters((prev) => ({ ...prev, [col]: value }));
-      clearSelection();
-    },
-    [clearSelection],
-  );
-
-  /** Toggles sort direction for a column, or activates sorting on it. */
-  const handleSort = useCallback(
-    (col: SortCol) => {
-      if (sortCol === col) {
-        if (sortDir === 'asc') setSortDir('desc');
-        else {
-          setSortCol(null);
-          setSortDir('asc');
-        }
-      } else {
-        setSortCol(col);
-        setSortDir('asc');
-      }
-      clearSelection();
-    },
-    [sortCol, sortDir, clearSelection],
-  );
-
-  // ── Sync status / qaOnly to URL search params ──
-  useEffect(() => {
-    const currentStatus = searchParams.get('status') ?? '';
-    const currentQaOnly =
-      searchParams.get('qaOnly') === '1' || searchParams.get('qaOnly') === 'true';
-    const nextStatus = statusParamFromSelection(selectedStatuses) ?? '';
-    if (currentStatus === nextStatus && currentQaOnly === qaOnly) return;
-    const next = new URLSearchParams(searchParams);
-    if (nextStatus) next.set('status', nextStatus);
-    else next.delete('status');
-    if (qaOnly) next.set('qaOnly', '1');
-    else next.delete('qaOnly');
-    setSearchParams(next, { replace: true });
-  }, [selectedStatuses, qaOnly, searchParams, setSearchParams]);
-
-  /** Drop an active GRUP filter when it has no rows under the current status filter. */
-  useEffect(() => {
-    if (!signature || !sigCounts.length) return;
-    if (!sigCounts.some((row) => row.signature === signature && Number(row.count) > 0)) {
-      setSignature('');
-    }
-  }, [signature, sigCounts]);
-
-  // ── Action helpers ──
-
-  const handleRowSelect = useCallback(
-    (row: StringRow) => {
-      setFocusedRow(row);
-      if (!activeRow) return;
-      if (activeRow.string_id === row.string_id) return;
-      flushAutosave();
-      setActiveRow(row);
-      setDraftTranslation(row.translation ?? '');
-      setActiveTab('suggestions');
-    },
-    [activeRow, flushAutosave],
-  );
-
-  const handleRowOpen = useCallback(
-    (row: StringRow) => {
-      flushAutosave();
-      setActiveRow(row);
-      setFocusedRow(row);
-      setDraftTranslation(row.translation ?? '');
-      setActiveTab('suggestions');
-    },
-    [flushAutosave],
-  );
-
-  const handleCopySource = () => {
-    if (!activeRow) return;
-    setDraftTranslation(activeRow.source);
-  };
-
-  const handleSave = () => {
-    cancelAutosave();
-    if (!activeRow) return;
-    if (draftTranslation.trim() === '') {
-      handleClear(activeRow);
-      return;
-    }
-    saveMutation.mutate({ stringId: activeRow.string_id, text: draftTranslation });
-  };
-
-  const handleClear = (row: StringRow) => {
-    clearMutation.mutate({ stringId: row.string_id });
-    if (activeRow?.string_id === row.string_id) {
-      setActiveRow({
-        ...row,
-        translation: null,
-        translation_id: null,
-        status: null,
-        qa_issue_count: 0,
-      });
-      setDraftTranslation('');
-    }
-  };
-
-  const toggleRow = useCallback((row: StringRow, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(row.string_id)) next.delete(row.string_id);
-      else next.add(row.string_id);
-      return next;
-    });
-  }, []);
-
-  /**
-   * Header checkbox: select every row matching the current filter, or clear
-   * the selection when everything is already selected.
-   */
-  const toggleAll = useCallback(() => {
-    if (allSelected) {
-      clearSelection();
-    } else {
-      setSelectAllMatching(true);
-      setSelected(new Set());
-    }
-  }, [allSelected, clearSelection]);
-
-  const handleTranslate = async (mode: 'llm' | 'tm', explicitIds?: number[]) => {
-    if (translateInFlight.current) return;
-
-    let ids: number[];
-    try {
-      ids = explicitIds ?? (await resolveSelectedIds());
-    } catch (err) {
-      toast.error(String(err));
-      return;
-    }
-    if (ids.length === 0) return;
-
-    translateInFlight.current = true;
-    setTranslateProgress({ done: 0, total: ids.length });
-    const appJobId = `${mode}-${modId}-${Date.now()}`;
-    const startedAt = Date.now();
-    const appJobLabel =
-      mode === 'llm' ? `LLM batch translate · mod ${modId}` : `TM batch apply · mod ${modId}`;
-    upsertAppJob({
-      id: appJobId,
-      kind: mode === 'llm' ? 'llm' : 'tm',
-      label: appJobLabel,
-      status: 'running',
-      progress: 0,
-      createdAt: startedAt,
-      updatedAt: startedAt,
-    });
-
-    const updateProgress = (done: number) => {
-      const progress = ids.length > 0 ? Math.round((done / ids.length) * 100) : 0;
-      setTranslateProgress({ done, total: ids.length });
-      upsertAppJob({
-        id: appJobId,
-        kind: mode === 'llm' ? 'llm' : 'tm',
-        label: appJobLabel,
-        status: 'running',
-        progress,
-        createdAt: startedAt,
-        updatedAt: Date.now(),
-      });
-    };
-
-    try {
-      let doneCount = 0;
-      for (let i = 0; i < ids.length; i += TRANSLATE_CHUNK) {
-        const chunk = ids.slice(i, i + TRANSLATE_CHUNK);
-        if (mode === 'llm') {
-          const results = await api.strings.batchTranslate(
-            chunk,
-            srcLang,
-            targetLang,
-            (e) => updateProgress(i + e.done),
-            modId,
-          );
-          doneCount += results.filter((r) => r.text !== undefined).length;
-        } else {
-          const result = await api.strings.batchApplyTm(chunk, srcLang, targetLang, modId);
-          doneCount += result.applied;
-        }
-        updateProgress(Math.min(i + chunk.length, ids.length));
-      }
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-      showTranslateResultToast(mode, doneCount);
-      if (!explicitIds) clearSelection();
-      upsertAppJob({
-        id: appJobId,
-        kind: mode === 'llm' ? 'llm' : 'tm',
-        label: appJobLabel,
-        status: 'completed',
-        progress: 100,
-        createdAt: startedAt,
-        updatedAt: Date.now(),
-      });
-      setTimeout(() => removeAppJob(appJobId), 15_000);
-    } catch (err) {
-      toast.error(String(err));
-      upsertAppJob({
-        id: appJobId,
-        kind: mode === 'llm' ? 'llm' : 'tm',
-        label: appJobLabel,
-        status: 'failed',
-        progress: null,
-        error: String(err),
-        createdAt: startedAt,
-        updatedAt: Date.now(),
-      });
-    } finally {
-      setTranslateProgress(null);
-      translateInFlight.current = false;
-    }
-  };
-
-  const handleBatchTranslate = () => handleTranslate('llm');
-  const handleBatchApplyTm = () => handleTranslate('tm');
-  const handleRowTranslate = (row: StringRow, mode: 'llm' | 'tm') =>
-    handleTranslate(mode, [row.string_id]);
-
-  // ── Context menu helpers ──
-
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, row: StringRow) => {
-      e.preventDefault();
-      handleRowSelect(row);
-      setCtxMenu({ x: e.clientX, y: e.clientY, row });
-    },
-    [handleRowSelect],
-  );
-
-  /** Context-menu bulk actions apply when any checkbox selection exists. */
-  const ctxMultiTarget = hasSelection;
-  const ctxTargetCount = ctxMultiTarget ? selectedCount : 1;
-
-  // Per-row text operations act on the loaded selected rows when invoked on a
-  // selection, otherwise on the clicked row.
-  const applyTextTransform = useCallback(
-    async (row: StringRow, transform: (text: string) => string) => {
-      const targetRows = hasSelection
-        ? selectedLoadedRows().filter((r) => r.translation)
-        : row.translation
-          ? [row]
-          : [];
-      for (const r of targetRows) {
-        const newText = transform(r.translation!);
-        if (newText !== r.translation)
-          await api.strings.saveTranslation(r.string_id, newText, 'draft', targetLang);
-      }
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-    [hasSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
-  );
-
-  const ctxCopySource = useCallback(
-    async (row: StringRow) => {
-      const targetRows = hasSelection ? selectedLoadedRows() : [row];
-      for (const r of targetRows) {
-        await api.strings.saveTranslation(r.string_id, r.source, 'draft', targetLang);
-      }
-      qc.invalidateQueries({ queryKey: ['strings', modId] });
-      void refetchStats();
-    },
-    [hasSelection, selectedLoadedRows, targetLang, qc, modId, refetchStats],
-  );
-
-  /** Patch loaded grid rows after a bulk clear (instant UI, no refetch storm). */
-  const patchClearedInCache = useCallback(
-    (matchRow: (row: StringRow) => boolean) => {
-      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            rows: page.rows.map((r) =>
-              matchRow(r)
-                ? {
-                    ...r,
-                    translation: null,
-                    translation_id: null,
-                    status: null,
-                    qa_issue_count: 0,
-                  }
-                : r,
-            ),
-          })),
-        };
-      });
-    },
-    [qc, modId],
-  );
-
-  /** Patch skip flag on loaded grid rows after mark/unmark. */
-  const patchSkipInCache = useCallback(
-    (matchRow: (row: StringRow) => boolean, skip: boolean) => {
-      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            rows: page.rows.map((r) =>
-              matchRow(r)
-                ? skip
-                  ? {
-                      ...r,
-                      is_ignored: true,
-                      status: 'skip' as const,
-                      translation: null,
-                      translation_id: null,
-                      qa_issue_count: 0,
-                    }
-                  : {
-                      ...r,
-                      is_ignored: false,
-                      status: null,
-                    }
-                : r,
-            ),
-          })),
-        };
-      });
-    },
-    [qc, modId],
-  );
-
-  /** Patch translation status on loaded grid rows after a context-menu change. */
-  const patchStatusInCache = useCallback(
-    (matchRow: (row: StringRow) => boolean, status: ContextMenuStatus) => {
-      qc.setQueriesData<InfiniteData<StringsResult>>({ queryKey: ['strings', modId] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            rows: page.rows.map((r) =>
-              matchRow(r) && r.translation ? { ...r, status, is_ignored: false } : r,
-            ),
-          })),
-        };
-      });
-    },
-    [qc, modId],
-  );
-
-  const SET_STATUS_CHUNK = 100;
-
-  /** Context-menu status change: one row or whole selection (including select-all-matching). */
-  const ctxSetStatus = useCallback(
-    async (row: StringRow, status: ContextMenuStatus) => {
-      const applyStatusToActiveRow = (stringId: number) => {
-        const activeId = activeRowRef.current?.string_id;
-        if (activeId !== stringId) return;
-        setActiveRow((prev) => (prev ? { ...prev, status, is_ignored: false } : prev));
-      };
-
-      const eligibleLoadedRows = (rows: StringRow[]) =>
-        rows.filter((r) => !!r.translation && r.status !== 'skip' && !r.is_ignored);
-
-      if (hasSelection) {
-        const loadedTargets = eligibleLoadedRows(selectedLoadedRows());
-        patchStatusInCache((r) => loadedTargets.some((t) => t.string_id === r.string_id), status);
-        try {
-          const ids = await resolveSelectedIds();
-          for (let i = 0; i < ids.length; i += SET_STATUS_CHUNK) {
-            await api.strings.setStatus(ids.slice(i, i + SET_STATUS_CHUNK), status, targetLang);
-          }
-          void refetchStats();
-          const activeId = activeRowRef.current?.string_id;
-          if (activeId && isRowSelected(activeId)) applyStatusToActiveRow(activeId);
-        } catch {
-          qc.invalidateQueries({ queryKey: ['strings', modId] });
-        }
-      } else {
-        if (!row.translation || row.status === 'skip' || row.is_ignored) return;
-        patchStatusInCache((r) => r.string_id === row.string_id, status);
-        try {
-          await api.strings.setStatus([row.string_id], status, targetLang);
-          void refetchStats();
-          applyStatusToActiveRow(row.string_id);
-        } catch {
-          qc.invalidateQueries({ queryKey: ['strings', modId] });
-        }
-      }
-    },
-    [
-      hasSelection,
-      patchStatusInCache,
-      selectedLoadedRows,
-      resolveSelectedIds,
-      isRowSelected,
-      refetchStats,
-      qc,
-      modId,
-      targetLang,
-    ],
-  );
-
-  const MARK_SKIP_CHUNK = 100;
-
-  /** Context-menu skip toggle: one row or whole selection (including select-all-matching). */
-  const ctxSetSkip = useCallback(
-    async (row: StringRow, skip: boolean) => {
-      const applySkipToActiveRow = (stringId: number) => {
-        const activeId = activeRowRef.current?.string_id;
-        if (activeId !== stringId) return;
-        setActiveRow((prev) =>
-          prev
-            ? skip
-              ? {
-                  ...prev,
-                  is_ignored: true,
-                  status: 'skip',
-                  translation: null,
-                  translation_id: null,
-                  qa_issue_count: 0,
-                }
-              : { ...prev, is_ignored: false, status: null }
-            : prev,
-        );
-        if (skip) setDraftTranslation('');
-      };
-
-      if (hasSelection) {
-        patchSkipInCache((r) => isRowSelected(r.string_id), skip);
-        try {
-          const ids = await resolveSelectedIds();
-          for (let i = 0; i < ids.length; i += MARK_SKIP_CHUNK) {
-            await api.strings.markSkip(ids.slice(i, i + MARK_SKIP_CHUNK), skip);
-          }
-          void refetchStats();
-          const activeId = activeRowRef.current?.string_id;
-          if (activeId && isRowSelected(activeId)) applySkipToActiveRow(activeId);
-        } catch {
-          qc.invalidateQueries({ queryKey: ['strings', modId] });
-        }
-      } else {
-        patchSkipInCache((r) => r.string_id === row.string_id, skip);
-        try {
-          await api.strings.markSkip([row.string_id], skip);
-          void refetchStats();
-          applySkipToActiveRow(row.string_id);
-        } catch {
-          qc.invalidateQueries({ queryKey: ['strings', modId] });
-        }
-      }
-    },
-    [hasSelection, patchSkipInCache, resolveSelectedIds, isRowSelected, refetchStats, qc, modId],
-  );
-
-  /** Context-menu clear: whole selection (all matching IDs) or just the clicked row. */
-  const ctxClear = useCallback(
-    async (row: StringRow) => {
-      if (hasSelection) {
-        patchClearedInCache((r) => isRowSelected(r.string_id));
-        try {
-          if (selectAllMatching) {
-            await api.strings.batchClearTranslations({
-              modId,
-              filter: buildFilter(),
-              excludeIds: selected.size ? [...selected] : undefined,
-              targetLang,
-            });
-          } else {
-            await api.strings.batchClearTranslations({ stringIds: [...selected], targetLang });
-          }
-          void refetchStats();
-          const activeId = activeRowRef.current?.string_id;
-          if (activeId && isRowSelected(activeId)) {
-            setActiveRow((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    translation: null,
-                    translation_id: null,
-                    status: null,
-                    qa_issue_count: 0,
-                  }
-                : prev,
-            );
-            setDraftTranslation('');
-          }
-          clearSelection();
-        } catch {
-          qc.invalidateQueries({ queryKey: ['strings', modId] });
-        }
-      } else {
-        handleClear(row);
-      }
-    },
-    // handleClear is a stable-enough page handler; intentionally omitted.
-    [
-      hasSelection,
-      selectAllMatching,
-      modId,
-      buildFilter,
-      selected,
-      targetLang,
-      patchClearedInCache,
-      isRowSelected,
-      refetchStats,
-      clearSelection,
-      qc,
-    ], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  /** Programmatic "next QA issue" navigation — mirrors the `q` key shortcut. */
-  const handleNextQaIssue = useCallback(() => {
-    if (!strings?.rows.length) return;
-    const rows = strings.rows;
-    const current = activeRow ?? focusedRow;
-    const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
-    for (let i = 1; i <= rows.length; i++) {
-      const idx = (curIdx + i) % rows.length;
-      if (rows[idx].qa_issue_count > 0) {
-        handleRowOpen(rows[idx]);
-        break;
-      }
-    }
-  }, [strings, activeRow, focusedRow, handleRowOpen]);
-
-  const qaIssueRowCount = strings?.rows.filter((row) => row.qa_issue_count > 0).length ?? 0;
-
-  // ── Keyboard shortcuts ──
-  useEditorKeyboard({
-    activeRow,
-    focusedRow,
-    hasSelection,
-    strings,
-    ctxMenu,
-    translAreaRef,
-    flushAutosave,
-    handleSave,
-    handleCopySource,
-    handleClear,
-    handleRowOpen,
-    handleRowSelect,
-    handleNextQaIssue,
-    toggleAll,
-    clearSelection,
-    setActiveRow,
-    setDraftTranslation,
-    setSelected,
-    setCtxMenu,
-    setShowShortcuts,
-  });
-
-  // ── Render ──
   return (
     <div className={styles.root}>
       <EditorToolbar
         modName={mod?.name}
-        srcLang={srcLang}
-        targetLang={targetLang}
-        availLangs={availLangs}
-        selectedStatuses={selectedStatuses}
-        qaOnly={qaOnly}
+        srcLang={filter.srcLang}
+        targetLang={filter.targetLang}
+        availLangs={editorQueries.availLangs}
+        selectedStatuses={filter.selectedStatuses}
+        qaOnly={filter.qaOnly}
         stats={stats}
-        selectedCount={selectedCount}
-        translateProgress={translateProgress}
+        selectedCount={selection.selectedCount}
+        translateProgress={batchTranslate.translateProgress}
         clearSameAsSource={{
           isPending: clearSameAsSourceMut.isPending,
           isSuccess: clearSameAsSourceMut.isSuccess,
@@ -975,240 +61,163 @@ export const ModEditorPage = () => {
         }}
         gameId={gameId}
         modId={modId}
-        hasInnrSignature={!!sigs?.some((s: { signature: string }) => s.signature === 'INNR')}
+        hasInnrSignature={!!sigs?.some((s) => s.signature === 'INNR')}
         qaIssueRowCount={qaIssueRowCount}
         aiJobs={aiJobs}
         onSrcLangChange={(l) => {
-          setSrcLang(l);
-          clearSelection();
+          filter.setSrcLang(l);
+          selection.clearSelection();
         }}
         onTargetLangChange={(l) => {
-          setTargetLang(l);
-          clearSelection();
+          filter.setTargetLang(l);
+          selection.clearSelection();
         }}
         onSelectedStatusesChange={(next) => {
-          setSelectedStatuses(next);
-          clearSelection();
+          filter.setSelectedStatuses(next);
+          selection.clearSelection();
         }}
         onQaOnlyToggle={() => {
-          setQaOnly((v) => !v);
-          clearSelection();
+          filter.setQaOnly((v) => !v);
+          selection.clearSelection();
         }}
         onClearSameAsSource={() => clearSameAsSourceMut.mutate()}
-        onSearchReplace={() => setShowSearchReplace(true)}
-        onApplyTranslationFromMod={() => setShowApplyTranslationFromMod(true)}
+        onSearchReplace={() => modals.setShowSearchReplace(true)}
+        onApplyTranslationFromMod={() => modals.setShowApplyTranslationFromMod(true)}
         applyImportedRunning={applyImported.isRunning}
-        onVoice={() => setShowVoice(true)}
-        onShortcuts={() => setShowShortcuts((v) => !v)}
-        onBatchTranslate={handleBatchTranslate}
-        onNextQaIssue={handleNextQaIssue}
-        pageMode={pageMode}
-        onPageModeChange={setPageMode}
-        onTranslateTm={() => startModAiTranslateTm(modId, srcLang, targetLang)}
-        onTranslateLlm={() => toggleModAiTranslate(modId, srcLang, targetLang, aiJobs.translate)}
+        onVoice={() => modals.setShowVoice(true)}
+        onShortcuts={() => modals.setShowShortcuts((v) => !v)}
+        onBatchTranslate={batchTranslate.handleBatchTranslate}
+        onNextQaIssue={() => row.handleNextQaIssue(strings?.rows ?? [])}
+        pageMode={filter.pageMode}
+        onPageModeChange={filter.setPageMode}
+        onTranslateTm={() => startModAiTranslateTm(modId, filter.srcLang, filter.targetLang)}
+        onTranslateLlm={() =>
+          toggleModAiTranslate(modId, filter.srcLang, filter.targetLang, aiJobs.translate)
+        }
         onTranslateStop={() => void stopModAiTranslate(modId, aiJobs.translate)}
-        onAiVerify={() => setShowAiVerify(true)}
+        onAiVerify={() => modals.setShowAiVerify(true)}
         onSkipDetectHeuristic={() =>
-          void startModAiSkipDetect(modId, srcLang, false, aiJobs.skipDetect)
+          void startModAiSkipDetect(modId, filter.srcLang, false, aiJobs.skipDetect)
         }
         onSkipDetectWithLlm={() =>
-          void startModAiSkipDetect(modId, srcLang, true, aiJobs.skipDetect)
+          void startModAiSkipDetect(modId, filter.srcLang, true, aiJobs.skipDetect)
         }
         onSkipDetectStop={() => void stopModAiSkipDetect(modId, aiJobs.skipDetect.jobId)}
         onAiVoiceMissing={() =>
-          toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice, 'missing')
+          toggleModAiVoice(modId, filter.srcLang, filter.targetLang, aiJobs.voice, 'missing')
         }
-        onAiVoiceAll={() => toggleModAiVoice(modId, srcLang, targetLang, aiJobs.voice, 'all')}
+        onAiVoiceAll={() =>
+          toggleModAiVoice(modId, filter.srcLang, filter.targetLang, aiJobs.voice, 'all')
+        }
         onAiVoiceStop={() => void stopModAiVoice(modId, aiJobs.voice.jobId)}
       />
 
-      {/* ── 3-column body ── */}
-      {pageMode === 'dialogs' ? (
-        <DialogsMode modId={modId} srcLang={srcLang} targetLang={targetLang} />
+      {filter.pageMode === 'dialogs' ? (
+        <DialogsMode modId={modId} srcLang={filter.srcLang} targetLang={filter.targetLang} />
       ) : (
-        <div className={styles.body}>
-          <SignaturePanel
-            sigCounts={sigCounts}
-            activeSignature={signature}
-            totalFiltered={strings?.total}
-            statusFilterActive={selectedStatuses.length > 0}
-            modTotal={stats?.total}
-            onSelect={(sig) => {
-              setSignature(sig);
-              clearSelection();
-            }}
-          />
-
-          <div className={styles.centerCol} ref={centerColRef}>
-            <div className={styles.gridArea}>
-              <StringGrid
-                rows={strings?.rows ?? []}
-                total={total}
-                isLoading={isLoading}
-                isRowSelected={isRowSelected}
-                allSelected={allSelected}
-                someSelected={someSelected}
-                hasMore={!!hasNextPage}
-                isFetchingMore={isFetchingNextPage}
-                onLoadMore={() => fetchNextPage()}
-                activeRow={activeRow}
-                focusedRow={focusedRow}
-                srcLang={srcLang}
-                targetLang={targetLang}
-                sortCol={sortCol}
-                sortDir={sortDir}
-                columnFilters={columnFilters}
-                onRowSelect={handleRowSelect}
-                onRowOpen={handleRowOpen}
-                onToggleRow={toggleRow}
-                onToggleAll={toggleAll}
-                onSort={handleSort}
-                onColumnFilterChange={handleColumnFilterChange}
-                onContextMenu={handleContextMenu}
-                onClear={handleClear}
-                onCopySource={(row) => {
-                  handleRowOpen(row);
-                  setTimeout(() => setDraftTranslation(row.source), 0);
-                }}
-              />
-            </div>
-
-            {activeRow && (
-              <>
-                <div
-                  className={`${styles.detailPanelResizeHandle} ${isResizing ? styles.detailPanelResizeHandleActive : ''}`}
-                  onMouseDown={startDetailPanelResize}
-                  role="separator"
-                  aria-orientation="horizontal"
-                  aria-label={t('modEditor.resizeDetailPanel')}
-                  aria-valuenow={detailPanelHeight}
-                  aria-valuemin={240}
-                />
-                <div className={styles.detailPanelSizer} style={{ height: detailPanelHeight }}>
-                  <DetailPanel
-                    modId={modId}
-                    activeRow={activeRow}
-                    draftTranslation={draftTranslation}
-                    srcLang={srcLang}
-                    targetLang={targetLang}
-                    activeTab={activeTab}
-                    saveIndicator={saveIndicator}
-                    savePending={saveMutation.isPending}
-                    activeMaxLength={activeMaxLength}
-                    suggestions={suggestions ?? []}
-                    qaIssues={qaIssues ?? []}
-                    history={history ?? []}
-                    translAreaRef={translAreaRef}
-                    onDraftChange={setDraftTranslation}
-                    onSave={handleSave}
-                    onCopySource={handleCopySource}
-                    onTabChange={setActiveTab}
-                    onOpenBookEditor={() => setShowBookEditor(true)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modals */}
-      {showSearchReplace && (
-        <SearchReplaceModal
+        <ModEditorStringsBody
           modId={modId}
-          targetLang={targetLang}
-          onClose={() => setShowSearchReplace(false)}
-          onApplied={() => {
-            qc.invalidateQueries({ queryKey: ['strings', modId] });
+          sigCounts={editorQueries.sigCounts}
+          signature={filter.signature}
+          onSignatureChange={(sig) => {
+            filter.setSignature(sig);
+            selection.clearSelection();
           }}
+          stringsTotal={strings?.total}
+          selectedStatusesLength={filter.selectedStatuses.length}
+          statsTotal={stats?.total}
+          centerColRef={row.centerColRef}
+          rows={strings?.rows ?? []}
+          total={total}
+          isLoading={isLoading}
+          isRowSelected={selection.isRowSelected}
+          allSelected={selection.allSelected}
+          someSelected={selection.someSelected}
+          hasNextPage={!!editorQueries.hasNextPage}
+          isFetchingNextPage={editorQueries.isFetchingNextPage}
+          onLoadMore={() => editorQueries.fetchNextPage()}
+          activeRow={row.activeRow}
+          focusedRow={row.focusedRow}
+          srcLang={filter.srcLang}
+          targetLang={filter.targetLang}
+          sortCol={filter.sortCol}
+          sortDir={filter.sortDir}
+          columnFilters={filter.columnFilters}
+          detailPanelHeight={row.detailPanelHeight}
+          isResizing={row.isResizing}
+          startDetailPanelResize={row.startDetailPanelResize}
+          draftTranslation={row.draftTranslation}
+          activeTab={row.activeTab}
+          saveIndicator={saveIndicator}
+          savePending={saveMutation.isPending}
+          activeMaxLength={editorQueries.activeMaxLength}
+          suggestions={suggestions ?? []}
+          qaIssues={qaIssues ?? []}
+          history={history ?? []}
+          translAreaRef={row.translAreaRef}
+          onRowSelect={row.handleRowSelect}
+          onRowOpen={row.handleRowOpen}
+          onToggleRow={selection.toggleRow}
+          onToggleAll={selection.toggleAll}
+          onSort={filter.handleSort}
+          onColumnFilterChange={filter.handleColumnFilterChange}
+          onContextMenu={contextMenu.handleContextMenu}
+          onClear={row.handleClear}
+          onDraftChange={row.setDraftTranslation}
+          onSave={row.handleSave}
+          onCopySource={row.handleCopySource}
+          onTabChange={row.setActiveTab}
+          onOpenBookEditor={() => modals.setShowBookEditor(true)}
         />
       )}
-      {showApplyTranslationFromMod && gameId && (
-        <ApplyTranslationFromModModal
-          modId={modId}
-          gameId={gameId}
-          srcLang={srcLang}
-          targetLang={targetLang}
-          job={applyImported}
-          onClose={() => setShowApplyTranslationFromMod(false)}
-        />
-      )}
-      {showAiVerify && (
-        <AiVerifyModal
-          srcLang={srcLang}
-          targetLang={targetLang}
-          state={aiVerify}
-          onClose={() => setShowAiVerify(false)}
-          onRowClick={(stringId) => {
-            const row = strings?.rows.find((r) => r.string_id === stringId);
-            if (row) {
-              handleRowOpen(row);
-              setShowAiVerify(false);
-            }
-          }}
-          onApplySuggestion={async (issue) => {
-            if (!issue.suggestion) return;
-            await api.strings.saveTranslation(issue.stringId, issue.suggestion, 'auto', targetLang);
-            qc.invalidateQueries({ queryKey: ['strings', modId] });
-            void refetchStats();
-          }}
-          onApplyAllSuggestions={async (batch) => {
-            for (const issue of batch) {
-              if (!issue.suggestion) continue;
-              await api.strings.saveTranslation(
-                issue.stringId,
-                issue.suggestion,
-                'auto',
-                targetLang,
-              );
-            }
-            qc.invalidateQueries({ queryKey: ['strings', modId] });
-            void refetchStats();
-          }}
-        />
-      )}
-      {showVoice && (
-        <VoiceModal
-          modId={modId}
-          srcLang={srcLang}
-          targetLang={targetLang}
-          onClose={() => setShowVoice(false)}
-        />
-      )}
-      {showBookEditor && activeRow && (
-        <BookEditorModal
-          source={activeRow.source}
-          translation={draftTranslation}
-          onSave={(markup) => {
-            setDraftTranslation(markup);
-            setShowBookEditor(false);
-          }}
-          onClose={() => setShowBookEditor(false)}
-        />
-      )}
-      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
 
-      {/* Context menu */}
-      {ctxMenu && (
+      <ModEditorModals
+        modId={modId}
+        gameId={gameId}
+        srcLang={filter.srcLang}
+        targetLang={filter.targetLang}
+        activeRow={row.activeRow}
+        draftTranslation={row.draftTranslation}
+        stringsRows={strings?.rows}
+        refetchStats={editorQueries.refetchStats}
+        aiVerify={aiVerify}
+        applyImported={applyImported}
+        showSearchReplace={modals.showSearchReplace}
+        showApplyTranslationFromMod={modals.showApplyTranslationFromMod}
+        showAiVerify={modals.showAiVerify}
+        showVoice={modals.showVoice}
+        showBookEditor={modals.showBookEditor}
+        onCloseSearchReplace={() => modals.setShowSearchReplace(false)}
+        onCloseApplyTranslationFromMod={() => modals.setShowApplyTranslationFromMod(false)}
+        onCloseAiVerify={() => modals.setShowAiVerify(false)}
+        onCloseVoice={() => modals.setShowVoice(false)}
+        onCloseBookEditor={() => modals.setShowBookEditor(false)}
+        onDraftChange={row.setDraftTranslation}
+        onRowOpen={row.handleRowOpen}
+      />
+
+      {modals.showShortcuts && <ShortcutsOverlay onClose={() => modals.setShowShortcuts(false)} />}
+
+      {contextMenu.ctxMenu && (
         <ContextMenu
-          anchor={ctxMenu}
-          targetCount={ctxTargetCount}
-          multiTarget={ctxMultiTarget}
-          onClose={() => setCtxMenu(null)}
-          onClear={ctxClear}
-          onCopySource={ctxCopySource}
-          onTextTransform={applyTextTransform}
-          onBatchTranslate={handleBatchTranslate}
-          onBatchApplyTm={handleBatchApplyTm}
-          onRowTranslate={handleRowTranslate}
-          onSetSkip={ctxSetSkip}
-          onSetStatus={ctxSetStatus}
+          anchor={contextMenu.ctxMenu}
+          targetCount={contextMenu.ctxTargetCount}
+          multiTarget={contextMenu.ctxMultiTarget}
+          onClose={() => contextMenu.setCtxMenu(null)}
+          onClear={contextMenu.ctxClear}
+          onCopySource={contextMenu.ctxCopySource}
+          onTextTransform={contextMenu.applyTextTransform}
+          onBatchTranslate={batchTranslate.handleBatchTranslate}
+          onBatchApplyTm={batchTranslate.handleBatchApplyTm}
+          onRowTranslate={batchTranslate.handleRowTranslate}
+          onSetSkip={contextMenu.ctxSetSkip}
+          onSetStatus={contextMenu.ctxSetStatus}
         />
       )}
 
       <EditorStatusBar
-        selectedCount={selectedCount}
-        activeRow={focusedRow ?? activeRow}
+        selectedCount={selection.selectedCount}
+        activeRow={row.focusedRow ?? row.activeRow}
         stats={stats}
       />
     </div>

@@ -175,7 +175,7 @@ column are **not** included — only pairs with a defined translation are inject
 > **Developer note.** Previously the first 80 terms _alphabetically_ were sent
 > with every batch regardless of relevance, so relevant terms past the cutoff
 > could be dropped. Injection is now filtered by chunk content (see
-> `relevantGlossary` in `src/web/llmTranslateBatch.ts`).
+> `relevantGlossaryForChunk` in `src/web/llm/translateBatch/glossary.ts`).
 
 Beyond the glossary, key canonical conventions (e.g. `...Rifle/Gun → ...карабін`,
 `caps → кришки`, `Vault → Сховище`) are baked directly into the Ukrainian system

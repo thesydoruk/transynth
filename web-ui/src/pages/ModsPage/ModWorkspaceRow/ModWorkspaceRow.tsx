@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Mod, ModImportJob } from '../../../api';
 import { ProgressBar, StatusBadge } from '../../../components/StatusBadge';
 import { modProgress } from '../../../utils/modProgress';
-import parentS from '../ModsPage.module.scss';
+import parentS from '../ModsPageRow.module.scss';
 import rowS from '../UnifiedJobRow/UnifiedJobRow.module.scss';
 import { ModDataMenuItems } from '../ModDataMenuItems';
 import { ModAiControls } from '../../../components/ModAiControls';

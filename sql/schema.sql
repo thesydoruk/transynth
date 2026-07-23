@@ -447,7 +447,7 @@ ON CONFLICT(key) DO NOTHING;
 
 -- ── Translation RAG index (pgvector) ────────────────────────────────────────
 -- Stores embeddings of reviewed/human translations for few-shot LLM context.
--- Indexed rows are synced on translation save/status change (see ragService.ts).
+-- Indexed rows are synced on translation save/status change (see src/llm/rag/sync.ts).
 -- Drop legacy 1536-dim table when upgrading to Arctic Embed L v2.0 (1024-dim).
 DO $$
 BEGIN

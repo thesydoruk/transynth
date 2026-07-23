@@ -120,7 +120,7 @@ Rules:
   flagged for review.
 - **Added** strings start with status **Empty**.
 
-Verified carry-over behaviour from `src/web/queries.ts`
+Verified carry-over behaviour from `src/web/data/queries/importDiff.ts`
 (`carryOverTranslations`):
 
 | String situation                  | What happens                                                                                  |

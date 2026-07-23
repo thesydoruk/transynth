@@ -5,7 +5,7 @@ import type { StringRow, PexSourceSnippet } from '../../../../api';
 import { api } from '../../../../api';
 import { parsePexStoredContext } from '../../../../utils/pexStoredContext';
 import { splitPexLineForLiteralHighlight } from './utils/pexLineLiteralHighlight';
-import styles from './DetailPanel.module.scss';
+import styles from './PexSourcePanel.module.scss';
 
 export interface PexSourcePanelProps {
   modId: number;

@@ -76,112 +76,6 @@
   text-overflow: ellipsis;
 }
 
-.pexSourcePanel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  overflow: hidden;
-}
-
-.pexSourcePanelFill {
-  flex: 1;
-  min-height: 0;
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pexSourceHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-card);
-}
-
-.pexSourceTitle {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.pexSourceMeta {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pexSourceHint {
-  font-size: 11px;
-  color: var(--text-muted);
-  padding: 6px 8px;
-}
-
-.pexSourceHintDetail {
-  font-size: 11px;
-  color: var(--text-faint);
-  padding: 0 8px 6px;
-}
-
-.pexSourceCode {
-  margin: 0;
-  max-height: 140px;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.pexSourceCodeFill {
-  flex: 1;
-  max-height: none;
-  min-height: 6.5em;
-}
-
-.pexSourceLine,
-.pexSourceLineHighlight {
-  display: flex;
-  gap: 8px;
-  padding: 0 8px;
-  white-space: pre;
-}
-
-.pexSourceLineHighlight {
-  background: color-mix(in srgb, var(--primary) 18%, transparent);
-}
-
-.pexSourceLineNo {
-  flex: 0 0 2.5em;
-  text-align: right;
-  color: var(--text-faint);
-  user-select: none;
-}
-
-.pexSourceLineText {
-  flex: 1;
-  color: var(--text);
-  white-space: pre;
-}
-
-.pexSourceLiteral {
-  background: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--text-bright);
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
-  font-weight: 600;
-  padding: 0 1px;
-}
-
 .sourceArea {
   flex: 1;
   min-height: 0;
@@ -309,8 +203,6 @@
   gap: 6px;
 }
 
-/* ── Buttons ── */
-
 .btnSec {
   background: var(--bg-hover);
   color: var(--text);
@@ -320,8 +212,6 @@
   cursor: pointer;
   font-size: 12px;
 }
-
-/* ── Tabs ── */
 
 .tabs {
   flex-shrink: 0;

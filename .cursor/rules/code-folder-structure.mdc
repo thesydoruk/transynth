@@ -12,6 +12,7 @@ Follow common **best practices** for project layout. Do not dump new files into 
 - **Group by feature/domain**, not by dumping unrelated files together. Prefer `billing/invoices/createInvoice.ts` over `billingCreateInvoice.ts` at the parent level.
 - **One concern per folder.** Split routes, services, data access, UI, and shared utilities into separate directories when they grow.
 - **Colocate related files.** Keep a component with its styles, tests, and small helpers in the same folder (e.g. `Button/Button.tsx`, `Button.module.scss`, `Button.test.ts`).
+- **No folder for a lone file.** Do not create a subfolder that contains only one source file plus an `index.ts` re-export. Put the file next to its siblings instead (e.g. `components/Foo.tsx`, not `components/Foo/Foo.tsx` + `index.ts`). Create a subfolder only when it will hold **at least two meaningful files** (component + styles, hooks, utils, types, tests, etc.). An `index.ts` alone does not count as a second file.
 - **Shallow, meaningful depth.** Use 2–4 levels when needed; avoid both “everything in one folder” and unnecessarily deep nesting.
 - **Consistent naming.** Use kebab-case or camelCase/PascalCase consistently with the surrounding codebase; folder names should describe *what*, not *how* (`export/`, `voice/`, not `helpers2/`).
 - **Public surface via index files** only when it improves imports; do not create barrel files that re-export entire subtrees without reason.
@@ -29,12 +30,13 @@ Follow common **best practices** for project layout. Do not dump new files into 
 | HTTP/API | Thin route handlers; no business logic |
 | Business logic | `services/`, `use-cases/`, or feature folders |
 | Data | `queries/`, `repositories/`, or `data/` per domain |
-| UI | Feature folders with local `components/`, `hooks/`, `utils/` |
+| UI | Feature folders with local `components/`, `hooks/`, `utils/` — only when a folder holds **2+ meaningful files**; otherwise use `components/Foo.tsx` at the parent level |
 | Tests | Colocated `__tests__/` or `*.test.ts` next to source |
 | Shared | `lib/`, `utils/`, `types/` only for truly cross-cutting code |
 
 ## Avoid
 
 - Flat directories with dozens of mixed-purpose files.
+- **Single-file subfolders** — e.g. `Feature/Feature.tsx` + `index.ts`, or a folder with one `.tsx` and nothing else.
 - Generic catch-all folders (`misc/`, `temp/`, `stuff/`) instead of a clear domain name.
 - Deep paths that mirror every class name (`a/b/c/d/e/file.ts`) without organizational benefit.

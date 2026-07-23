@@ -1,0 +1,203 @@
+/* Preview modal styles shared by EET/CSV import preview modals. */
+
+.modalHeaderTitle {
+  margin: 0;
+  color: var(--text-bright);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.langBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  padding: 16px 24px 8px;
+  flex-wrap: wrap;
+}
+
+.langArrow {
+  color: var(--text-faint);
+  font-size: 20px;
+  padding: 0 12px;
+  align-self: flex-end;
+  padding-bottom: 4px;
+}
+
+.langLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text-bright);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+}
+
+.filterBarCount {
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.searchInput {
+  flex: 1;
+  background: var(--bg-input);
+  color: var(--text-bright);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 24px;
+}
+
+.tableEmpty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+}
+
+.td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--bg-input);
+  color: var(--text);
+  vertical-align: top;
+  min-width: 0;
+}
+
+.cellEllipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.cellEllipsisOneLine {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.tdEdid {
+  composes: td;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+}
+
+.paginationLabel {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.selectSig {
+  composes: select;
+  width: 140px;
+}
+
+.thSource {
+  composes: th;
+  min-width: 200px;
+}
+
+.codeSignature {
+  color: var(--code-blue);
+}
+
+.codeFormId {
+  color: var(--text-muted);
+}
+
+.emptyValue {
+  color: var(--text-faint);
+}
+
+.statusDotConfirmed {
+  background: var(--success);
+}
+
+.statusDotUntranslated {
+  background: var(--text-dim);
+}
+
+.statusDotOther {
+  background: var(--warning);
+}

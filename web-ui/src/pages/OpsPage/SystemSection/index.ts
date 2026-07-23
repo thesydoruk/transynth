@@ -1,1 +1,0 @@
-export { SystemSection } from './SystemSection';

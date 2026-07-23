@@ -13,7 +13,7 @@ import {
   type UnifiedJobRowProps,
 } from '../modsShared';
 import { ModDataMenuItems } from '../ModDataMenuItems';
-import parentS from '../ModsPage.module.scss';
+import parentS from '../ModsPageRow.module.scss';
 import s from './UnifiedJobRow.module.scss';
 
 /** Single row in the unified import list, with a colored type badge. */
