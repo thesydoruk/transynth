@@ -59,6 +59,11 @@ export type SettingsPayload = {
   embedMaxParallel: number;
   /** External TTS server base URL (read-only, from env). */
   ttsBaseUrl: string;
+  /** Max concurrent TTS HTTP requests per model backend. */
+  ttsMaxParallel: {
+    xtts: number;
+    'fish-speech': number;
+  };
   /** Computed readiness snapshot used by the Settings LLM tab. */
   llmReadiness: {
     /** Overall readiness level for badges and alerts. */

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
+import { ttsPool } from './ttsRequestPool';
 import {
   appendXttsSynthesisFormFields,
   resolveTtsSynthesisParams,
@@ -45,7 +46,7 @@ export const buildXttsSynthesisForm = (
 };
 
 /** Call the external TTS HTTP API and return synthesized WAV bytes. */
-export const synthesizeXttsWav = async (
+const synthesizeXttsWavHttp = async (
   text: string,
   referenceWavPath: string,
   options: XttsSynthesizeOptions = {},
@@ -74,6 +75,14 @@ export const synthesizeXttsWav = async (
     clearTimeout(timeout);
   }
 };
+
+/** Queue a TTS synthesis request on the per-backend concurrency pool. */
+export const synthesizeXttsWav = async (
+  text: string,
+  referenceWavPath: string,
+  options: XttsSynthesizeOptions = {},
+): Promise<Buffer> =>
+  ttsPool.run(options.backend, () => synthesizeXttsWavHttp(text, referenceWavPath, options));
 
 export const checkXttsHealth = async (baseUrl?: string): Promise<void> => {
   const root = (baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');

@@ -190,6 +190,12 @@ export const CONFIG = {
   /** Parallel BA2/PEX/MCM file reads during mod import (default 4). */
   modImportIoParallel: parseMaxParallel(process.env.MOD_IMPORT_IO_PARALLEL, 4, 16),
 
+  /** Max concurrent TTS HTTP requests for the XTTS backend (1–32). */
+  ttsXttsMaxParallel: parseMaxParallel(process.env.TTS_XTTS_MAX_PARALLEL, 1),
+
+  /** Max concurrent TTS HTTP requests for the Fish Speech backend (1–32). */
+  ttsFishSpeechMaxParallel: parseMaxParallel(process.env.TTS_FISH_SPEECH_MAX_PARALLEL, 1),
+
   /** Drop pg_trgm/HASH search indexes during mod import and rebuild after (default on). */
   modImportDeferIndexes:
     process.env.MOD_IMPORT_DEFER_INDEXES !== '0' &&

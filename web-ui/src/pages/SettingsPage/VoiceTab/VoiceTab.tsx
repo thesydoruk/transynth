@@ -187,6 +187,10 @@ export const VoiceTab = () => {
         <div className={parentS.fieldGrid}>
           <span className={parentS.fieldLabel}>{t('settings.voice.serverUrl')}</span>
           <span className={s.fieldValue}>{runtimeSettings.ttsBaseUrl}</span>
+          <span className={parentS.fieldLabel}>{t('settings.voice.xttsMaxParallel')}</span>
+          <span className={s.fieldValue}>{runtimeSettings.ttsMaxParallel.xtts}</span>
+          <span className={parentS.fieldLabel}>{t('settings.voice.fishSpeechMaxParallel')}</span>
+          <span className={s.fieldValue}>{runtimeSettings.ttsMaxParallel['fish-speech']}</span>
         </div>
       </div>
 

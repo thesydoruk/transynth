@@ -3,9 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
-import { pluginRelPath, toDiskPath, writeIfChanged, type ImportPackageContext } from '../modImport';
-import { synthesizeXttsWav, type TtsBackend, type XttsSynthesisParams } from '../tts/xttsClient';
-import { ensureDir } from '../utils/file';
+import { pluginRelPath, toDiskPath, type ImportPackageContext } from '../modImport';
+import type { TtsBackend } from '../tts/xttsClient';
+import { ttsPipelineConcurrency } from '../tts/ttsRequestPool';
+import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
+import { mapWithConcurrency } from '../utils/concurrency';
 import type { TtsReferenceMode } from './voiceToolPaths';
 import {
   dedupeVoiceFiles,
@@ -17,39 +19,24 @@ import {
   loadVoiceSources,
   loadVoiceTranslations,
   lookupVoiceTranslation,
-  lookupVoiceSource,
-  type VoiceSourceRow,
+  type VoiceTranslationRow,
 } from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
-import {
-  groupVoiceFilesBySpeaker,
-  resolveSpeakerReferenceForSpeaker,
-  voiceSpeakerKey,
-  type ResolvedSpeakerReference,
-} from './speakerReference';
-import { prepareReferenceAudio } from './prepareReferenceAudio';
+import { groupVoiceFilesBySpeaker } from './speakerReference';
 import {
   prepareVoiceTtsText,
-  stripVoiceAsteriskBlocks,
   voiceTtsSkipMessage,
+  type PrepareVoiceTtsTextResult,
 } from './prepareVoiceTtsText';
-import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
-import { resolveTtsLanguage } from './voiceToolPaths';
+import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameType } from '../types';
 
-type SpeakerRefCacheEntry = {
-  wavPath: string;
-  referenceText: string | null;
-};
-
-const referenceTextForPick = (
-  sources: Map<string, VoiceSourceRow>,
-  pick: ResolvedSpeakerReference['pick'],
-): string | null => {
-  if (pick.formidLower6.toUpperCase() === 'MANUAL') return null;
-  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
+type VoiceLocalizeWorkItem = {
+  entry: VoiceFileEntry;
+  row: VoiceTranslationRow;
+  prepared: Extract<PrepareVoiceTtsTextResult, { action: 'synthesize' }>;
 };
 
 /** Synthesize voice lines for one plugin package inside an import extract tree. */
@@ -88,7 +75,7 @@ export const localizeVoicePackage = async (
   }
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-'));
-  let processed = 0;
+  let eligibleSeen = 0;
 
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
@@ -108,21 +95,22 @@ export const localizeVoicePackage = async (
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
   }
 
+  const finishEligibleStep = () => {
+    options.onEligibleStep?.();
+  };
+
+  const workItems: VoiceLocalizeWorkItem[] = [];
+
   try {
     for (const entry of voiceFiles) {
       if (options.shouldCancel?.()) break;
-      if (options.limit != null && processed >= options.limit) break;
+      if (options.limit != null && eligibleSeen >= options.limit) break;
 
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
       if (!row) {
         skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
         continue;
       }
-
-      const finishEligibleStep = () => {
-        processed += 1;
-        options.onEligibleStep?.();
-      };
 
       const fuzRel = outputLocalizedFuzRelPath(entry);
       const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
@@ -131,7 +119,6 @@ export const localizeVoicePackage = async (
         continue;
       }
 
-      // See prepareVoiceTtsText — early skip before reference/TTS work.
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
@@ -140,97 +127,59 @@ export const localizeVoicePackage = async (
       });
       if (prepared.action === 'skip') {
         skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
+        eligibleSeen += 1;
         finishEligibleStep();
         continue;
       }
 
       if (options.dryRun) {
         log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
+        eligibleSeen += 1;
         finishEligibleStep();
         continue;
       }
 
-      try {
-        const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
-        ensureDir(workDir);
+      workItems.push({ entry, row, prepared });
+      eligibleSeen += 1;
+    }
 
-        const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-        let referenceWav: string | undefined;
-        let referenceText: string | null =
-          options.referenceMode === 'line'
-            ? row.source
-            : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-        if (options.referenceMode === 'speaker' && speakerKey) {
-          const cached = speakerRefCache.get(speakerKey);
-          if (cached) {
-            referenceWav = cached.wavPath;
-            referenceText = cached.referenceText;
-          } else {
-            const resolved = await resolveSpeakerReferenceForSpeaker(
-              db,
-              modId,
-              speakerKey,
-              entry,
-              () => getSiblingEntries(speakerKey, entry),
-              pkg.packageDir,
-              pluginRel,
-            );
-            if (resolved) {
-              referenceWav = resolved.wavPath;
-              referenceText = referenceTextForPick(voiceSources, resolved.pick);
-              speakerRefCache.set(speakerKey, {
-                wavPath: resolved.wavPath,
-                referenceText,
-              });
-            }
-          }
-        }
+    if (workItems.length === 0 || options.shouldCancel?.()) return;
 
-        const finalReferenceWav =
-          options.referenceMode === 'line'
-            ? await prepareReferenceAudio(entry, workDir)
-            : (referenceWav ?? (await prepareReferenceAudio(entry, workDir)));
-        if (!referenceText) {
-          referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-        }
+    const entryOptions = {
+      db,
+      modId,
+      packageDir: pkg.packageDir,
+      pluginRel,
+      voiceRootRel,
+      localizeDir: pkg.localizeDir,
+      prefix,
+      tempRoot,
+      game: options.game,
+      xttsBaseUrl: options.xttsBaseUrl,
+      backend: options.backend,
+      referenceMode: options.referenceMode,
+      synthesis: options.synthesis,
+      tgtLang,
+      force: options.force,
+      voiceSources,
+      speakerRefCache,
+      getSiblingEntries,
+    };
 
-        // Speaker mode may use a different ref line; strip its *...* for speaker_text.
-        const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
-
-        const ttsWav = await synthesizeXttsWav(prepared.text, finalReferenceWav, {
-          baseUrl: options.xttsBaseUrl,
-          backend: options.backend,
-          language: resolveTtsLanguage(tgtLang),
-          speakerText,
-          synthesis: options.synthesis,
-        });
-
-        const fuzData = await buildVoicedFuzFromTtsWav(
-          options.game,
-          ttsWav,
-          workDir,
-          entry.fileName,
-          prepared.text,
-        );
-
-        const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
-        if (!options.force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
-          written.push(prefix + fuzRel);
-        } else if (options.force) {
-          ensureDir(path.dirname(fuzDest));
-          fs.writeFileSync(fuzDest, fuzData);
-          written.push(prefix + fuzRel);
-        } else {
-          skipped.push(prefix + fuzRel);
-        }
+    const results = await mapWithConcurrency(
+      workItems,
+      ttsPipelineConcurrency(options.backend),
+      async ({ entry, row, prepared }) => {
+        const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
         finishEligibleStep();
-        log.info(`Voice ${prefix}${fuzRel}`);
-      } catch (err) {
-        warnings.push(
-          `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        finishEligibleStep();
-      }
+        return result;
+      },
+    );
+
+    for (const result of results) {
+      if (result.kind === 'written') written.push(result.relPath);
+      else if (result.kind === 'skipped') skipped.push(result.relPath);
+      else warnings.push(result.message);
     }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
