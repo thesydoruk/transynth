@@ -21,12 +21,13 @@ RUN npm run build
 # ── Stage 3: production runtime ───────────────────────────────────────────────
 FROM node:24-slim AS runtime
 
-# Wine (32-bit) for Bethesda voice tools: xWMAEncode.exe, FaceFXWrapper.exe
+# Wine for Bethesda voice tools (32-bit) and Champollion (64-bit)
 RUN dpkg --add-architecture i386 \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wine \
     wine32 \
+    wine64 \
     ffmpeg \
   && rm -rf /var/lib/apt/lists/*
 
@@ -48,6 +49,7 @@ ENV LLM_PROVIDER=vllm
 ENV NODE_ENV=production
 ENV WINEARCH=win32
 ENV WINEPREFIX=/app/data/tools/.wine
+ENV WINEPREFIX64=/app/data/tools/.wine64
 ENV WINEDLLOVERRIDES=mscoree,mshtml=
 ENV WINEDEBUG=-all
 

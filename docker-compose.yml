@@ -28,6 +28,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
       WINEARCH: win32
       WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
       WINEDEBUG: -all
     volumes:
       - ./data:/app/data
@@ -70,6 +71,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
       WINEARCH: win32
       WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
       WINEDEBUG: -all
     volumes:
       - ./data:/app/data

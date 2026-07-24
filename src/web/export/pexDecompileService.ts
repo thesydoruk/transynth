@@ -3,10 +3,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import type { Tx } from '../../db';
 import { PATHS } from '../../paths';
 import { ensureChampollionInstalled } from '../../tools/installTools';
+import { execWindowsToolAsync } from '../../wine/windowsToolExec';
 import { sha1Hex } from '../../utils/hash';
 import { collectModPexSources } from '../../formats/pex';
 import {
@@ -80,28 +80,9 @@ const runChampollion = async (
   if (recreateSubdirs) args.push('-s');
   args.push(pexPath);
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(exePath, args, { windowsHide: true });
-    let stderr = '';
-    child.stderr.on('data', (chunk: Buffer | string) => {
-      stderr += String(chunk);
-    });
-
-    const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error('Champollion timed out'));
-    }, DECOMPILE_TIMEOUT_MS);
-
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(stderr.trim() || `Champollion exited with code ${code}`));
-    });
+  await execWindowsToolAsync(exePath, args, {
+    timeoutMs: DECOMPILE_TIMEOUT_MS,
+    arch: 'win64',
   });
 };
 

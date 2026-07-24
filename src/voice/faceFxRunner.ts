@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execVoiceToolAsync } from './voiceExec';
+import { convertToFaceFxWav } from './ffmpegAudio';
 import { encodeFaceFxDialogueText } from './faceFxText';
 
 export type FaceFxRunnerResult = {
@@ -68,16 +69,17 @@ const run = async (): Promise<void> => {
 
   let stdout = '';
   let stderr = '';
+  const dialogueArg = encodeFaceFxDialogueText(dialogueText);
+  const faceFxArgs =
+    process.platform === 'win32'
+      ? [faceFxGameType(game), 'USEnglish', fonixPath, wavPath, resampledPath, lipPath, dialogueArg]
+      : [faceFxGameType(game), 'USEnglish', fonixPath, resampledPath, lipPath, dialogueArg];
+
   try {
-    ({ stdout, stderr } = await execVoiceToolAsync(faceFxExe, [
-      faceFxGameType(game),
-      'USEnglish',
-      fonixPath,
-      wavPath,
-      resampledPath,
-      lipPath,
-      encodeFaceFxDialogueText(dialogueText),
-    ]));
+    if (process.platform !== 'win32') {
+      await convertToFaceFxWav(wavPath, resampledPath);
+    }
+    ({ stdout, stderr } = await execVoiceToolAsync(faceFxExe, faceFxArgs));
   } catch (err) {
     stderr = err instanceof Error ? err.message : String(err);
   }
