@@ -7,6 +7,7 @@ import {
   modImportLocalizeRoot,
   modImportPackOutputDir,
   resolveModImportExtractRoot,
+  resolveModStoredPath,
 } from '../../modStorage';
 import type { GameType } from '../../types';
 import { getModImportJob, type ModImportJob } from './modImport';
@@ -28,14 +29,16 @@ export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
   if (!job.esp_path) {
     throw new Error(`Import job #${job.id} has no plugin path`);
   }
-  if (!fs.existsSync(job.esp_path)) {
-    throw new Error(`Plugin file not found for import job #${job.id}: ${job.esp_path}`);
+
+  // DB may store absolute paths from another host/OS (e.g. Windows import → Linux server).
+  const pluginPath = resolveModStoredPath(job.esp_path);
+  if (!fs.existsSync(pluginPath)) {
+    throw new Error(`Plugin file not found for import job #${job.id}: ${pluginPath}`);
   }
 
-  const extractDir =
-    job.extract_dir?.trim() ||
-    resolveModImportExtractRoot(job.esp_path) ||
-    path.dirname(job.esp_path);
+  const extractDir = resolveModStoredPath(
+    job.extract_dir?.trim() || resolveModImportExtractRoot(pluginPath) || path.dirname(pluginPath),
+  );
 
   if (!fs.existsSync(extractDir)) {
     throw new Error(`Extract directory not found for import job #${job.id}: ${extractDir}`);
@@ -53,7 +56,7 @@ export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
     fileName: job.file_name,
     game: job.game,
     extractDir,
-    pluginPath: job.esp_path,
+    pluginPath,
     targetLang,
     localizeRoot: modImportLocalizeRoot(extractDir),
     localizeDir: modImportLocalizeDir(extractDir, targetLang),
