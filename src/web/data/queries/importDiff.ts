@@ -2,7 +2,6 @@ import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import type { TranslationStatus } from '../statusMachine';
-import { BEST_TRANSLATION_ORDER } from './constants';
 import { upsertTranslation } from './translationsUpsert';
 
 // ── Mod diff ──────────────────────────────────────────────────────────────────
@@ -49,8 +48,6 @@ export const diffMods = async (
        FROM strings s
        JOIN records r ON s.record_id = r.id
        LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-         AND t.id = (SELECT id FROM translations WHERE src_string_id = s.id AND target_lang = $1
-                     ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1)
        WHERE r.mod_id = $2 AND s.lang = $3`,
       [targetLang, modId, srcLang],
     );
@@ -131,11 +128,6 @@ export const carryOverTranslations = async (
      FROM strings s
      JOIN records r ON s.record_id = r.id
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
-       AND t.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s.id AND target_lang = $2
-         ORDER BY ${BEST_TRANSLATION_ORDER} LIMIT 1
-       )
      WHERE r.mod_id = $1 AND s.lang = $3`,
     [oldModId, targetLang, srcLang],
   );

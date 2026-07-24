@@ -18,22 +18,6 @@ const getEspPatches = async (
      JOIN records r ON r.id = s.record_id
      JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $3
-       AND t.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s.id AND target_lang = $3
-         ORDER BY CASE status
-           WHEN 'reviewed' THEN 1
-           WHEN 'human' THEN 2
-           WHEN 'draft' THEN 3
-           WHEN 'tm' THEN 4
-           WHEN 'fuzzy' THEN 5
-           WHEN 'auto' THEN 6
-           WHEN 'rejected' THEN 7
-           ELSE 8 END,
-           COALESCE(confidence, 0) DESC,
-           updated_at DESC
-         LIMIT 1
-       )
      WHERE r.mod_id = $1 AND s.lang = $2 AND s.lstring_id IS NULL`,
     [modId, srcLang, targetLang],
   );

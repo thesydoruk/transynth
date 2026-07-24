@@ -33,16 +33,7 @@ export const bestTranslation = async (
 ): Promise<{ id: number; text: string; status: string } | undefined> => {
   const { rows } = await db.query(
     `SELECT id, text, status FROM translations
-     WHERE src_string_id = $1 AND target_lang = $2
-     ORDER BY CASE status
-       WHEN 'human' THEN 1
-       WHEN 'tm'    THEN 2
-       WHEN 'fuzzy' THEN 3
-       WHEN 'auto'  THEN 4
-       ELSE 5 END,
-       COALESCE(confidence, 0) DESC,
-       created_at DESC
-     LIMIT 1`,
+     WHERE src_string_id = $1 AND target_lang = $2`,
     [srcStringId, targetLang],
   );
   return rows[0];

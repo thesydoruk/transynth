@@ -1,19 +1,6 @@
 export type { TranslationStatus } from '../statusMachine';
 import type { TranslationStatus } from '../statusMachine';
 
-export const BEST_TRANSLATION_ORDER = `CASE status
-  WHEN 'skip' THEN 0
-  WHEN 'draft' THEN 1
-  WHEN 'reviewed' THEN 2
-  WHEN 'human' THEN 3
-  WHEN 'tm' THEN 4
-  WHEN 'fuzzy' THEN 5
-  WHEN 'auto' THEN 6
-  WHEN 'rejected' THEN 7
-  ELSE 8 END`;
-
-const APPROVED_STATUS_SQL = `('reviewed', 'human')`;
-
 /** Translation statuses still eligible for automated LLM review and QA validation. */
 export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
 

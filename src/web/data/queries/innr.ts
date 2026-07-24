@@ -1,6 +1,5 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { BEST_TRANSLATION_ORDER } from './constants';
 
 // ── INNR editor ───────────────────────────────────────────────────────────────
 
@@ -90,12 +89,6 @@ export const listInnrGroups = async (
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $2
-          AND t.id = (
-            SELECT id FROM translations
-            WHERE src_string_id = s.id AND target_lang = $2
-            ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence,0) DESC, created_at DESC
-            LIMIT 1
-          )
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi

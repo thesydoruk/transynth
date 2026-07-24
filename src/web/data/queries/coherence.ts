@@ -3,7 +3,6 @@ import type pg from 'pg';
 import { withTransaction } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
-import { BEST_TRANSLATION_ORDER } from './constants';
 import { upsertTranslation } from './translationsUpsert';
 
 // ── Coherence checking ────────────────────────────────────────────────────────
@@ -61,7 +60,8 @@ export type CoherenceResult = {
  * different strings/mods.
  *
  * Algorithm:
- * 1. For each source string, find its best translation (via BEST_TRANSLATION_ORDER).
+ * 1. Join each source string to its single translation for the target lang
+ *    (unique on `(src_string_id, target_lang)`).
  * 2. Group source strings by text_norm. Groups where COUNT(DISTINCT translation) > 1
  *    are inconsistent.
  * 3. Paginate over the inconsistent groups (ordered by variant_count DESC so the
@@ -81,11 +81,10 @@ export const getCoherenceGroups = async (
   offset = 0,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<CoherenceResult> => {
-  // CTE that selects the single best translation for every (string, lang) pair.
-  // Reused in multiple queries below — defined as a SQL fragment for DRY usage.
+  // One translation per (string, lang) — uniqueness is schema-enforced.
   const btCte = `
     bt AS (
-      SELECT DISTINCT ON (src_string_id, target_lang)
+      SELECT
         src_string_id,
         text               AS translation,
         status,
@@ -94,10 +93,6 @@ export const getCoherenceGroups = async (
         updated_at
       FROM translations
       WHERE target_lang = $1
-      ORDER BY src_string_id, target_lang,
-        ${BEST_TRANSLATION_ORDER},
-        COALESCE(confidence, 0) DESC,
-        updated_at DESC
     )`;
 
   // ── Step 1: total count of inconsistent groups ────────────────────────────
@@ -227,25 +222,14 @@ export const resolveCoherenceGroup = async (
   chosenTranslation: string,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ updated: number }> => {
-  // Find all strings in the group whose best translation differs from the chosen one
+  // Find all strings in the group whose translation differs from the chosen one
   const { rows } = await db.query<{ string_id: number }>(
-    `WITH bt AS (
-       SELECT DISTINCT ON (src_string_id, target_lang)
-         src_string_id,
-         text AS translation
-       FROM translations
-       WHERE target_lang = $1
-       ORDER BY src_string_id, target_lang,
-         ${BEST_TRANSLATION_ORDER},
-         COALESCE(confidence, 0) DESC,
-         updated_at DESC
-     )
-     SELECT s.id AS string_id
+    `SELECT s.id AS string_id
      FROM   strings s
-     JOIN   bt ON bt.src_string_id = s.id
+     JOIN   translations t ON t.src_string_id = s.id AND t.target_lang = $1
      WHERE  s.lang = $4
        AND  s.text_norm = $2
-       AND  bt.translation <> $3`,
+       AND  t.text <> $3`,
     [targetLang, textNorm, chosenTranslation, srcLang],
   );
 
@@ -292,22 +276,18 @@ export const resolveAllCoherenceGroups = async (
   const statusWeight = `CASE status WHEN 'human' THEN 6 WHEN 'reviewed' THEN 5 WHEN 'tm' THEN 4 WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 2 ELSE 1 END`;
 
   // Find the plurality winner for every inconsistent text_norm in one query:
-  //   bt            — best translation per string (mirrors the CTE used elsewhere)
+  //   bt            — translation per string (unique on src_string_id + target_lang)
   //   group_variants — usage count + max quality per (text_norm, translation) pair
   //   conflicted    — text_norms that have more than one distinct translation variant
   //   page_winners  — DISTINCT ON picks best translation per group by count → quality → text
   const { rows: winners } = await db.query<{ text_norm: string; translation: string }>(
     `WITH bt AS (
-       SELECT DISTINCT ON (src_string_id)
+       SELECT
          src_string_id,
          text                  AS translation,
          ${statusWeight}       AS quality
        FROM translations
        WHERE target_lang = $1
-       ORDER BY src_string_id,
-         ${statusWeight} DESC,
-         COALESCE(confidence, 0) DESC,
-         updated_at DESC
      ),
      group_variants AS (
        SELECT s.text_norm,

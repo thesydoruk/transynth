@@ -24,22 +24,6 @@ export const getPexTranslationOverlays = async (
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $3
-       AND t.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s.id AND target_lang = $3
-         ORDER BY CASE status
-           WHEN 'draft' THEN 1
-           WHEN 'reviewed' THEN 2
-           WHEN 'human' THEN 3
-           WHEN 'tm' THEN 4
-           WHEN 'fuzzy' THEN 5
-           WHEN 'auto' THEN 6
-           WHEN 'rejected' THEN 7
-           ELSE 8 END,
-           COALESCE(confidence, 0) DESC,
-           updated_at DESC
-         LIMIT 1
-       )
      WHERE r.mod_id = $1 AND r.signature = 'PEX' AND s.lang = $2`,
     [modId, srcLang, targetLang],
   );

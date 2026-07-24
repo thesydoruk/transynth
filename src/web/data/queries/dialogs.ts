@@ -1,6 +1,5 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { BEST_TRANSLATION_ORDER } from './constants';
 
 export type DialogTopicRow = {
   topic_id: number;
@@ -98,12 +97,6 @@ export const getDialogTree = async (
      LEFT JOIN translations t
        ON t.src_string_id = s.id
       AND t.target_lang = $3
-      AND t.id = (
-        SELECT id FROM translations
-        WHERE src_string_id = s.id AND target_lang = $3
-        ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence,0) DESC, created_at DESC
-        LIMIT 1
-      )
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi
@@ -264,12 +257,6 @@ export const getSceneDialog = async (
      LEFT JOIN translations t
        ON t.src_string_id = s.id
       AND t.target_lang = $3
-      AND t.id = (
-        SELECT id FROM translations
-        WHERE src_string_id = s.id AND target_lang = $3
-        ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence,0) DESC, created_at DESC
-        LIMIT 1
-      )
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi
@@ -324,12 +311,6 @@ export const getConversationDialog = async (
      LEFT JOIN translations t
        ON t.src_string_id = s.id
       AND t.target_lang = $4
-      AND t.id = (
-        SELECT id FROM translations
-        WHERE src_string_id = s.id AND target_lang = $4
-        ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence,0) DESC, created_at DESC
-        LIMIT 1
-      )
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi

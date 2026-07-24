@@ -1,9 +1,6 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import {
-  BEST_TRANSLATION_ORDER,
-  PENDING_REVIEW_STATUS_SQL,
-} from './constants';
+import { PENDING_REVIEW_STATUS_SQL } from './constants';
 import { glossaryTermMatchesSource } from './glossaryHelpers';
 
 // ── Batch glossary enforcement ───────────────────────────────────────────────
@@ -64,12 +61,6 @@ export const enforceGlossary = async (
     FROM strings s
     JOIN records r ON r.id = s.record_id
     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
-      AND t.id = (
-        SELECT id FROM translations
-        WHERE src_string_id = s.id AND target_lang = $1
-        ORDER BY ${BEST_TRANSLATION_ORDER}, COALESCE(confidence, 0) DESC, updated_at DESC
-        LIMIT 1
-      )
     WHERE t.text IS NOT NULL AND t.text <> ''
       AND s.is_ignored = FALSE
       AND t.status IN ${PENDING_REVIEW_STATUS_SQL}`;

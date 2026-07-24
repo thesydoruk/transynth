@@ -3,10 +3,10 @@ import type { Tx } from '../../db';
 /**
  * Build an overlay map of `lstring_id → export_text` for a mod and language pair.
  *
- * The query selects one "best" translation per source string according to
- * status and confidence, then falls back to the original source text when no
- * translation exists. The result can be applied to each source strings table
- * via {@link patchStringsMap}.
+ * Joins the single translation per (source string, target lang) — uniqueness is
+ * enforced by `translations_src_string_id_target_lang_key` — then falls back to
+ * the original source text when no translation exists. The result can be applied
+ * to each source strings table via {@link patchStringsMap}.
  *
  * @param db - Database transaction/pool wrapper.
  * @param modId - Mod identifier.
@@ -28,22 +28,6 @@ export const getTranslationOverlay = async (
      JOIN records r ON r.id = s.record_id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $3
-       AND t.id = (
-         SELECT id FROM translations
-         WHERE src_string_id = s.id AND target_lang = $3
-         ORDER BY CASE status
-           WHEN 'draft' THEN 1
-           WHEN 'reviewed' THEN 2
-           WHEN 'human' THEN 3
-           WHEN 'tm' THEN 4
-           WHEN 'fuzzy' THEN 5
-           WHEN 'auto' THEN 6
-           WHEN 'rejected' THEN 7
-           ELSE 8 END,
-           COALESCE(confidence, 0) DESC,
-           updated_at DESC
-         LIMIT 1
-       )
      WHERE r.mod_id = $1 AND s.lang = $2 AND s.lstring_id IS NOT NULL
      ORDER BY s.lstring_id, s.created_at DESC`,
     [modId, srcLang, targetLang],

@@ -49,17 +49,6 @@ export const lookupVoiceTranslation = (
   return best;
 };
 
-const bestTranslationOrder = (statusColumn: string): string => `CASE ${statusColumn}
-  WHEN 'skip' THEN 0
-  WHEN 'draft' THEN 1
-  WHEN 'reviewed' THEN 2
-  WHEN 'human' THEN 3
-  WHEN 'tm' THEN 4
-  WHEN 'fuzzy' THEN 5
-  WHEN 'auto' THEN 6
-  WHEN 'rejected' THEN 7
-  ELSE 8 END`;
-
 /**
  * Load translated INFO NAM1 lines keyed by lower-6 FormID + voice variant.
  *
@@ -100,13 +89,8 @@ export const loadVoiceTranslations = async (
             v.source,
             t.text AS translation
      FROM voiced v
-     JOIN LATERAL (
-       SELECT text
-       FROM translations
-       WHERE src_string_id = v.string_id AND target_lang = $3
-       ORDER BY ${bestTranslationOrder('status')}, COALESCE(confidence, 0) DESC, created_at DESC
-       LIMIT 1
-     ) t ON TRUE
+     JOIN translations t
+       ON t.src_string_id = v.string_id AND t.target_lang = $3
      WHERE t.text IS NOT NULL AND BTRIM(t.text) <> ''
      ORDER BY v.formid_lower6, v.voice_variant`,
     [modId, srcLang, tgtLang, [...INFO_NAM1_RECORD_PATHS]],
