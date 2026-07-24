@@ -34,19 +34,30 @@ const ensureWineReady = (arch: WineArch): void => {
   wineReady.add(arch);
 
   if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
+  const env = wineProcessEnv(arch);
   try {
     execFileSync(wineCommand(), ['wineboot', '--init'], {
       timeout: 120_000,
       stdio: 'ignore',
-      env: wineProcessEnv(arch),
+      env,
     });
     fs.writeFileSync(marker, `${arch}\n`, 'utf8');
   } catch {
     // First-run prefix creation can fail in restricted environments; tools may still work.
   }
+
+  try {
+    // Without infinite persistence the server exits between tool runs and leaves its
+    // service processes (services.exe, winedevice.exe, …) orphaned on every call.
+    execFileSync(wineServerCommand(), ['-p'], { timeout: 30_000, stdio: 'ignore', env });
+  } catch {
+    // Older Wine builds without `wineserver -p` still work, just with more churn.
+  }
 };
 
 export const wineCommand = (): string => process.env.WINE_PATH?.trim() || 'wine';
+
+export const wineServerCommand = (): string => process.env.WINESERVER_PATH?.trim() || 'wineserver';
 
 /** 32-bit prefix for voice tools; override with `WINEPREFIX`. */
 export const resolveWinePrefix = (arch: WineArch = 'win32'): string => {

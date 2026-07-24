@@ -1,16 +1,20 @@
-#!/usr/bin/env tsx
-/**
- * Isolated FaceFXWrapper runner (no inherited console — avoids AttachConsole spam).
- * stdout: one JSON line { ok, lipPath, summary }
- */
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { execVoiceToolAsync } from './voiceExec';
-import { convertToFaceFxWav } from './ffmpegAudio';
-import { encodeFaceFxDialogueText } from './faceFxText';
+import { convertToFaceFxWav } from '../ffmpegAudio';
+import { execVoiceToolAsync } from '../voiceExec';
+import { encodeFaceFxDialogueText } from './text';
 
-export type FaceFxRunnerResult = {
+export type FaceFxLipRequest = {
+  game: string;
+  fonixPath: string;
+  wavPath: string;
+  resampledPath: string;
+  lipPath: string;
+  faceFxExe: string;
+  dialogueText: string;
+};
+
+export type FaceFxLipResult = {
   ok: boolean;
   lipPath: string;
   summary: string;
@@ -48,33 +52,21 @@ export const summarizeFaceFxOutput = (stdout: string, stderr: string, lipPath: s
   return line ? line.slice(0, 160) : 'FaceFX did not create LIP';
 };
 
-const run = async (): Promise<void> => {
-  const [game, fonixPath, wavPath, resampledPath, lipPath, faceFxExe, ...textParts] =
-    process.argv.slice(2);
-  if (!game || !fonixPath || !wavPath || !resampledPath || !lipPath || !faceFxExe) {
-    process.stdout.write(
-      JSON.stringify({
-        ok: false,
-        lipPath: lipPath ?? '',
-        summary: 'faceFxRunner: missing arguments',
-      } satisfies FaceFxRunnerResult),
-    );
-    process.exit(1);
-    return;
-  }
+/** Resample the dialogue WAV and run FaceFXWrapper to produce the `.lip` file. */
+export const runFaceFxLip = async (request: FaceFxLipRequest): Promise<FaceFxLipResult> => {
+  const { game, fonixPath, wavPath, resampledPath, lipPath, faceFxExe, dialogueText } = request;
 
-  const dialogueText = textParts.join(' ');
-  if (fs.existsSync(`${lipPath}.resampled.wav`)) fs.unlinkSync(`${lipPath}.resampled.wav`);
+  if (fs.existsSync(resampledPath)) fs.unlinkSync(resampledPath);
   if (fs.existsSync(lipPath)) fs.unlinkSync(lipPath);
 
-  let stdout = '';
-  let stderr = '';
   const dialogueArg = encodeFaceFxDialogueText(dialogueText);
   const faceFxArgs =
     process.platform === 'win32'
       ? [faceFxGameType(game), 'USEnglish', fonixPath, wavPath, resampledPath, lipPath, dialogueArg]
       : [faceFxGameType(game), 'USEnglish', fonixPath, resampledPath, lipPath, dialogueArg];
 
+  let stdout = '';
+  let stderr = '';
   try {
     if (process.platform !== 'win32') {
       await convertToFaceFxWav(wavPath, resampledPath);
@@ -84,26 +76,9 @@ const run = async (): Promise<void> => {
     stderr = err instanceof Error ? err.message : String(err);
   }
 
-  const ok = fs.existsSync(lipPath);
-  const result: FaceFxRunnerResult = {
-    ok,
+  return {
+    ok: fs.existsSync(lipPath),
     lipPath,
     summary: summarizeFaceFxOutput(stdout, stderr, lipPath),
   };
-  process.stdout.write(JSON.stringify(result));
-  process.exit(ok ? 0 : 1);
 };
-
-const isMain =
-  Boolean(process.argv[1]) &&
-  import.meta.url === pathToFileURL(path.resolve(process.argv[1]!)).href;
-
-if (isMain) {
-  run().catch((err) => {
-    const message = err instanceof Error ? err.message : String(err);
-    process.stdout.write(
-      JSON.stringify({ ok: false, lipPath: '', summary: message } satisfies FaceFxRunnerResult),
-    );
-    process.exit(1);
-  });
-}

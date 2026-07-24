@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { encodeFaceFxDialogueText } from '../faceFxText';
-import { summarizeFaceFxOutput } from '../faceFxRunner';
+import { encodeFaceFxDialogueText, summarizeFaceFxOutput } from '../faceFx';
 
 describe('encodeFaceFxDialogueText', () => {
   it('preserves UTF-8 bytes for Cyrillic dialogue', () => {

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { writeFuz } from '../formats/fuz';
 import type { GameType } from '../types';
-import { generateLipFile } from './faceFxLipGen';
+import { generateLipFile } from './faceFx';
 import { convertToFo4Wav, writeTempWav } from './ffmpegAudio';
 import { encodeWavToXwm } from './xwmEncode';
 

@@ -1,39 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import type { GameType } from '../types';
-import { log } from '../logger';
-import { ensureDir } from '../utils/file';
-import { resolveFaceFxWrapperPath, resolveFonixDataPath } from './voiceToolPaths';
-import type { FaceFxRunnerResult } from './faceFxRunner';
-
-export { encodeFaceFxDialogueText } from './faceFxText';
+import type { GameType } from '../../types';
+import { log } from '../../logger';
+import { ensureDir } from '../../utils/file';
+import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
+import { runFaceFxLip, type FaceFxLipRequest, type FaceFxLipResult } from './lipCore';
 
 const tsxCliPath = (): string => path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
-const faceFxRunnerPath = (): string => path.join(process.cwd(), 'src', 'voice', 'faceFxRunner.ts');
+const faceFxRunnerPath = (): string =>
+  path.join(process.cwd(), 'src', 'voice', 'faceFx', 'runner.ts');
 
-const spawnFaceFxRunner = (
-  game: GameType,
-  fonixPath: string,
-  wavPath: string,
-  resampledPath: string,
-  lipPath: string,
-  dialogueText: string,
-): Promise<FaceFxRunnerResult> =>
+/**
+ * Windows-only: FaceFXWrapper attaches to the parent console and floods our logs,
+ * so it runs in a throwaway Node process there. Other platforms call it in-process.
+ */
+const spawnFaceFxRunner = (request: FaceFxLipRequest): Promise<FaceFxLipResult> =>
   new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
       [
         tsxCliPath(),
         faceFxRunnerPath(),
-        game,
-        fonixPath,
-        wavPath,
-        resampledPath,
-        lipPath,
-        resolveFaceFxWrapperPath(),
-        dialogueText,
+        request.game,
+        request.fonixPath,
+        request.wavPath,
+        request.resampledPath,
+        request.lipPath,
+        request.faceFxExe,
+        request.dialogueText,
       ],
       { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] },
     );
@@ -51,7 +47,7 @@ const spawnFaceFxRunner = (
       const line = stdout.trim().split(/\r?\n/).find(Boolean);
       if (line) {
         try {
-          const parsed = JSON.parse(line) as FaceFxRunnerResult;
+          const parsed = JSON.parse(line) as FaceFxLipResult;
           resolve(parsed);
           return;
         } catch {
@@ -68,10 +64,7 @@ const spawnFaceFxRunner = (
     });
   });
 
-/**
- * Generate a fresh LIP file from synthesized dialogue audio and translated text.
- * FaceFX runs in an isolated subprocess so its console attach does not flood logs.
- */
+/** Generate a fresh LIP file from synthesized dialogue audio and translated text. */
 export const generateLipFile = async (
   game: GameType,
   sourceWavPath: string,
@@ -79,18 +72,19 @@ export const generateLipFile = async (
   dialogueText: string,
 ): Promise<void> => {
   ensureDir(path.dirname(lipPath));
-  const resampledPath = `${lipPath}.resampled.wav`;
-  if (fs.existsSync(resampledPath)) fs.unlinkSync(resampledPath);
-  if (fs.existsSync(lipPath)) fs.unlinkSync(lipPath);
 
-  const result = await spawnFaceFxRunner(
+  const request: FaceFxLipRequest = {
     game,
-    resolveFonixDataPath(),
-    sourceWavPath,
-    resampledPath,
+    fonixPath: resolveFonixDataPath(),
+    wavPath: sourceWavPath,
+    resampledPath: `${lipPath}.resampled.wav`,
     lipPath,
+    faceFxExe: resolveFaceFxWrapperPath(),
     dialogueText,
-  );
+  };
+
+  const result =
+    process.platform === 'win32' ? await spawnFaceFxRunner(request) : await runFaceFxLip(request);
 
   if (!result.ok || !fs.existsSync(lipPath)) {
     throw new Error(`FaceFX: ${result.summary}`);

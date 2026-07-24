@@ -11,7 +11,7 @@ const lip = path.join(tmp, 't.lip');
 execFileSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '1', '-acodec', 'pcm_s16le', wav], { stdio: 'ignore' });
 
 const { convertToFo4Wav } = await import('/app/src/voice/ffmpegAudio.ts');
-const { generateLipFile } = await import('/app/src/voice/faceFxLipGen.ts');
+const { generateLipFile } = await import('/app/src/voice/faceFx/index.ts');
 await convertToFo4Wav(wav, fo4);
 await generateLipFile('fo4', fo4, lip, 'Hello test');
 console.log('FaceFX OK', fs.statSync(lip).size);

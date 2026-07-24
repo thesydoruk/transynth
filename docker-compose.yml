@@ -18,6 +18,8 @@ services:
       dockerfile: Dockerfile
     image: transynth:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    init: true
     env_file:
       - .env
     environment:
@@ -63,6 +65,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: transynth:${IMAGE_TAG:-latest}
+    init: true
     env_file:
       - .env
     environment:
