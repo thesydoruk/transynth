@@ -54,7 +54,11 @@ export type ProjectSettingKey =
   /** XTTS top-k sampling. */
   | 'voice.top_k'
   /** When true, XTTS may split long text into multiple utterances. */
-  | 'voice.enable_text_splitting';
+  | 'voice.enable_text_splitting'
+  /** Max concurrent TTS HTTP requests when the active backend is XTTS (1–32). */
+  | 'voice.tts_max_parallel_xtts'
+  /** Max concurrent TTS HTTP requests when the active backend is Fish Speech (1–32). */
+  | 'voice.tts_max_parallel_fish_speech';
 
 /** Typed shape of all project settings. */
 export type ProjectSettings = {
@@ -75,6 +79,14 @@ export type ProjectSettings = {
   'voice.top_p': number;
   'voice.top_k': number;
   'voice.enable_text_splitting': boolean;
+  'voice.tts_max_parallel_xtts': number;
+  'voice.tts_max_parallel_fish_speech': number;
+};
+
+/** Clamp TTS parallel request limits to 1–32. */
+export const clampTtsMaxParallel = (value: number): number => {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(32, Math.max(1, Math.round(value)));
 };
 
 /**
@@ -101,6 +113,8 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'voice.top_p': 0.8,
   'voice.top_k': 50,
   'voice.enable_text_splitting': false,
+  'voice.tts_max_parallel_xtts': 1,
+  'voice.tts_max_parallel_fish_speech': 1,
 };
 
 /* ── DB helpers ─────────────────────────────────────────────────────────── */
@@ -123,6 +137,12 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     }
   }
   result['llm.rag_max_examples'] = clampRagMaxExamples(result['llm.rag_max_examples']);
+  result['voice.tts_max_parallel_xtts'] = clampTtsMaxParallel(
+    result['voice.tts_max_parallel_xtts'],
+  );
+  result['voice.tts_max_parallel_fish_speech'] = clampTtsMaxParallel(
+    result['voice.tts_max_parallel_fish_speech'],
+  );
   return result;
 };
 
@@ -160,10 +180,15 @@ export const setProjectSetting = async (
   key: ProjectSettingKey,
   value: ProjectSettings[ProjectSettingKey],
 ): Promise<void> => {
+  let stored: ProjectSettings[ProjectSettingKey] = value;
+  if (key === 'voice.tts_max_parallel_xtts' || key === 'voice.tts_max_parallel_fish_speech') {
+    stored = clampTtsMaxParallel(value as number) as ProjectSettings[ProjectSettingKey];
+  }
+
   await db.query(
     `INSERT INTO project_settings(key, value, updated_at)
      VALUES ($1, $2::jsonb, NOW())
      ON CONFLICT(key) DO UPDATE SET value = $2::jsonb, updated_at = NOW()`,
-    [key, JSON.stringify(value)],
+    [key, JSON.stringify(stored)],
   );
 };

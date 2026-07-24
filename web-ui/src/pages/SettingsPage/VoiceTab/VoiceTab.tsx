@@ -19,6 +19,8 @@ type ProjectSettings = {
   'voice.top_p': number;
   'voice.top_k': number;
   'voice.enable_text_splitting': boolean;
+  'voice.tts_max_parallel_xtts': number;
+  'voice.tts_max_parallel_fish_speech': number;
 };
 
 type NumericVoiceKey = Exclude<
@@ -38,6 +40,8 @@ const DEFAULTS: ProjectSettings = {
   'voice.top_p': 0.8,
   'voice.top_k': 50,
   'voice.enable_text_splitting': false,
+  'voice.tts_max_parallel_xtts': 1,
+  'voice.tts_max_parallel_fish_speech': 1,
 };
 
 const SYNTHESIS_SLIDERS: Array<{
@@ -102,6 +106,32 @@ const SYNTHESIS_SLIDERS: Array<{
     max: 200,
     step: 1,
     backends: ['xtts'],
+  },
+];
+
+const TTS_PARALLEL_SLIDERS: Array<{
+  key: 'voice.tts_max_parallel_xtts' | 'voice.tts_max_parallel_fish_speech';
+  labelKey: string;
+  descKey: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  {
+    key: 'voice.tts_max_parallel_xtts',
+    labelKey: 'settings.voice.xttsMaxParallel',
+    descKey: 'settings.voice.xttsMaxParallelDesc',
+    min: 1,
+    max: 32,
+    step: 1,
+  },
+  {
+    key: 'voice.tts_max_parallel_fish_speech',
+    labelKey: 'settings.voice.fishSpeechMaxParallel',
+    descKey: 'settings.voice.fishSpeechMaxParallelDesc',
+    min: 1,
+    max: 32,
+    step: 1,
   },
 ];
 
@@ -187,10 +217,25 @@ export const VoiceTab = () => {
         <div className={parentS.fieldGrid}>
           <span className={parentS.fieldLabel}>{t('settings.voice.serverUrl')}</span>
           <span className={s.fieldValue}>{runtimeSettings.ttsBaseUrl}</span>
-          <span className={parentS.fieldLabel}>{t('settings.voice.xttsMaxParallel')}</span>
-          <span className={s.fieldValue}>{runtimeSettings.ttsMaxParallel.xtts}</span>
-          <span className={parentS.fieldLabel}>{t('settings.voice.fishSpeechMaxParallel')}</span>
-          <span className={s.fieldValue}>{runtimeSettings.ttsMaxParallel['fish-speech']}</span>
+        </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionConcurrency')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionConcurrencyDesc')}</p>
+        <div className={controlS.settingsList}>
+          {TTS_PARALLEL_SLIDERS.map(({ key, labelKey, descKey, min, max, step }) => (
+            <VoiceSlider
+              key={key}
+              label={t(labelKey)}
+              description={t(descKey)}
+              value={settings[key]}
+              min={min}
+              max={max}
+              step={step}
+              onCommit={(value) => handleNumber(key, value)}
+            />
+          ))}
         </div>
       </div>
 

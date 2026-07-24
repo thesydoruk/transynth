@@ -1,10 +1,10 @@
 /**
  * Global per-backend pools for TTS HTTP requests (`POST /v1/synthesize`).
  *
- * XTTS and Fish Speech share one TTS server but may have different GPU load
- * characteristics — limits are configured separately via env.
+ * Limits are configured in project settings (Settings → Voice) and synced at
+ * startup and whenever those settings change.
  */
-import { CONFIG } from '../config';
+import { SETTING_DEFAULTS } from '../web/services/projectSettings';
 import { Semaphore } from '../utils/concurrency';
 import type { TtsBackend } from './xttsClient';
 
@@ -16,17 +16,30 @@ export type TtsBackendPoolStats = {
 
 export type TtsRequestPoolStats = Record<TtsBackend, TtsBackendPoolStats>;
 
+export type TtsMaxParallelLimits = Record<TtsBackend, number>;
+
 const resolveBackend = (backend: TtsBackend | undefined): TtsBackend => backend ?? 'xtts';
+
+const defaultLimits = (): TtsMaxParallelLimits => ({
+  xtts: SETTING_DEFAULTS['voice.tts_max_parallel_xtts'],
+  'fish-speech': SETTING_DEFAULTS['voice.tts_max_parallel_fish_speech'],
+});
 
 /** Bounded-concurrency wrapper with per-backend semaphores. */
 export class TtsRequestPool {
   private readonly pools: Record<TtsBackend, Semaphore>;
 
-  constructor(limits: Record<TtsBackend, number>) {
+  constructor(limits: TtsMaxParallelLimits) {
     this.pools = {
       xtts: new Semaphore(limits.xtts),
       'fish-speech': new Semaphore(limits['fish-speech']),
     };
+  }
+
+  syncLimits(limits: TtsMaxParallelLimits): void {
+    for (const backend of ['xtts', 'fish-speech'] as const) {
+      this.pools[backend].setMaxConcurrency(limits[backend]);
+    }
   }
 
   maxParallel(backend: TtsBackend | undefined): number {
@@ -60,10 +73,12 @@ export class TtsRequestPool {
 }
 
 /** Shared TTS HTTP pool — used by {@link synthesizeXttsWav}. */
-export const ttsPool = new TtsRequestPool({
-  xtts: CONFIG.ttsXttsMaxParallel,
-  'fish-speech': CONFIG.ttsFishSpeechMaxParallel,
-});
+export const ttsPool = new TtsRequestPool(defaultLimits());
+
+/** Apply project-settings limits to the global TTS pool. */
+export const syncTtsPoolLimits = (limits: TtsMaxParallelLimits): void => {
+  ttsPool.syncLimits(limits);
+};
 
 /** Worker count for mod voice batch synthesis. */
 export const ttsPipelineConcurrency = (backend: TtsBackend | undefined): number =>

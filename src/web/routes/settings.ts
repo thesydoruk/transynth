@@ -60,11 +60,6 @@ export interface SettingsPayload {
   embedMaxParallel: number;
   /** External TTS server base URL (read-only, from env). */
   ttsBaseUrl: string;
-  /** Max concurrent TTS HTTP requests per model backend (read-only, from env). */
-  ttsMaxParallel: {
-    xtts: number;
-    'fish-speech': number;
-  };
   /** Computed readiness snapshot for the currently configured LLM stack. */
   llmReadiness: {
     /** Overall readiness level used by UI badges. */
@@ -189,10 +184,6 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       llmMaxParallel: CONFIG.llmMaxParallel,
       embedMaxParallel: CONFIG.embedMaxParallel,
       ttsBaseUrl: resolveTtsBaseUrl(),
-      ttsMaxParallel: {
-        xtts: CONFIG.ttsXttsMaxParallel,
-        'fish-speech': CONFIG.ttsFishSpeechMaxParallel,
-      },
       llmReadiness: buildLlmReadiness(),
     };
   });

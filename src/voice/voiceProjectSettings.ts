@@ -1,5 +1,6 @@
 import type { Tx } from '../db';
 import type { TtsBackend } from '../tts/xttsClient';
+import { syncTtsPoolLimits, type TtsMaxParallelLimits } from '../tts/ttsRequestPool';
 import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
 import { getAllProjectSettings, type ProjectSettings } from '../web/services/projectSettings';
 import type { TtsReferenceMode } from './voiceToolPaths';
@@ -30,6 +31,19 @@ export const voiceReferenceModeFromProjectSettings = (
   settings: ProjectSettings,
 ): TtsReferenceMode => (settings['voice.line_reference'] ? 'line' : 'speaker');
 
+/** Per-backend TTS HTTP concurrency limits from project settings. */
+export const voiceTtsMaxParallelFromProjectSettings = (
+  settings: ProjectSettings,
+): TtsMaxParallelLimits => ({
+  xtts: settings['voice.tts_max_parallel_xtts'],
+  'fish-speech': settings['voice.tts_max_parallel_fish_speech'],
+});
+
+/** Push voice TTS concurrency limits from project settings into the global pool. */
+export const syncTtsPoolFromProjectSettings = (settings: ProjectSettings): void => {
+  syncTtsPoolLimits(voiceTtsMaxParallelFromProjectSettings(settings));
+};
+
 /** Load voice synthesis and reference settings from project_settings. */
 export const loadVoiceProjectSettings = async (
   db: Tx,
@@ -37,11 +51,14 @@ export const loadVoiceProjectSettings = async (
   backend: TtsBackend;
   referenceMode: TtsReferenceMode;
   synthesis: XttsSynthesisParams;
+  ttsMaxParallel: TtsMaxParallelLimits;
 }> => {
   const settings = await getAllProjectSettings(db);
+  syncTtsPoolFromProjectSettings(settings);
   return {
     backend: voiceBackendFromProjectSettings(settings),
     referenceMode: voiceReferenceModeFromProjectSettings(settings),
     synthesis: voiceSynthesisFromProjectSettings(settings),
+    ttsMaxParallel: voiceTtsMaxParallelFromProjectSettings(settings),
   };
 };

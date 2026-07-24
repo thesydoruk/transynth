@@ -49,6 +49,8 @@ import { llmSkipDetectRoutes } from './routes/llmSkipDetect';
 import { tmApplyRoutes } from './routes/tmApply';
 import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
+import { getAllProjectSettings } from './services/projectSettings';
+import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -86,6 +88,8 @@ try {
 }
 
 const db = openDb();
+
+syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
 
 await ensureModLangStatsColumns(db);
 await ensureDefaultUser(db);

@@ -17,6 +17,7 @@ import {
   SETTING_DEFAULTS,
 } from '../services/projectSettings';
 import type { ProjectSettingKey, ProjectSettings } from '../services/projectSettings';
+import { syncTtsPoolFromProjectSettings } from '../../voice/voiceProjectSettings';
 import { log } from '../../logger';
 
 export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -55,6 +56,9 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
 
     log.info(`Project setting updated: ${key} = ${JSON.stringify(value)}`);
     await setProjectSetting(db, key, value as ProjectSettings[ProjectSettingKey]);
+    if (key === 'voice.tts_max_parallel_xtts' || key === 'voice.tts_max_parallel_fish_speech') {
+      syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
+    }
     return reply.send({ key, value });
   });
 };

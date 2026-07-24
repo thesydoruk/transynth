@@ -1,6 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
 import { TtsRequestPool } from '../ttsRequestPool';
-import { Semaphore } from '../../utils/concurrency';
 
 const tick = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
@@ -33,6 +32,13 @@ describe('TtsRequestPool', () => {
     expect(fishMax).toBeLessThanOrEqual(1);
   });
 
+  it('updates limits at runtime via syncLimits', async () => {
+    const pool = new TtsRequestPool({ xtts: 1, 'fish-speech': 1 });
+    pool.syncLimits({ xtts: 3, 'fish-speech': 1 });
+    expect(pool.maxParallel('xtts')).toBe(3);
+    expect(pool.pipelineConcurrency('xtts')).toBe(4);
+  });
+
   it('defaults missing backend to xtts slot', async () => {
     const pool = new TtsRequestPool({ xtts: 1, 'fish-speech': 4 });
     expect(pool.maxParallel(undefined)).toBe(1);
@@ -43,17 +49,5 @@ describe('TtsRequestPool', () => {
     const pool = new TtsRequestPool({ xtts: 3, 'fish-speech': 5 });
     expect(pool.stats.xtts.max).toBe(3);
     expect(pool.stats['fish-speech'].max).toBe(5);
-  });
-});
-
-describe('Semaphore', () => {
-  it('tracks queued work', async () => {
-    const sem = new Semaphore(1);
-    const hold = sem.run(async () => {
-      await new Promise<void>((resolve) => setTimeout(resolve, 30));
-    });
-    await tick();
-    expect(sem.queuedCount).toBeGreaterThanOrEqual(0);
-    await hold;
   });
 });

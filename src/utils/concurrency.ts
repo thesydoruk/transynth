@@ -7,7 +7,7 @@ export class Semaphore {
   private active = 0;
   private readonly queue: Array<() => void> = [];
 
-  constructor(private readonly max: number) {}
+  constructor(private max: number) {}
 
   get activeCount(): number {
     return this.active;
@@ -19,6 +19,16 @@ export class Semaphore {
 
   get maxConcurrency(): number {
     return this.max;
+  }
+
+  /** Update the concurrency cap; queued waiters are resumed when the limit increases. */
+  setMaxConcurrency(max: number): void {
+    this.max = Math.max(1, max);
+    while (this.active < this.max && this.queue.length > 0) {
+      this.active++;
+      const next = this.queue.shift()!;
+      next();
+    }
   }
 
   async run<T>(fn: () => Promise<T>): Promise<T> {

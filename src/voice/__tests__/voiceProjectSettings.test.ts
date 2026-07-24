@@ -3,6 +3,7 @@ import {
   voiceBackendFromProjectSettings,
   voiceReferenceModeFromProjectSettings,
   voiceSynthesisFromProjectSettings,
+  voiceTtsMaxParallelFromProjectSettings,
 } from '../voiceProjectSettings';
 import { resolveTtsReferenceMode } from '../voiceToolPaths';
 
@@ -44,6 +45,23 @@ describe('voiceProjectSettings', () => {
       topP: 0.8,
       speed: 1,
       enableTextSplitting: false,
+    });
+  });
+
+  it('maps per-backend TTS concurrency from project settings', () => {
+    expect(voiceTtsMaxParallelFromProjectSettings(SETTING_DEFAULTS)).toEqual({
+      xtts: 1,
+      'fish-speech': 1,
+    });
+    expect(
+      voiceTtsMaxParallelFromProjectSettings({
+        ...SETTING_DEFAULTS,
+        'voice.tts_max_parallel_xtts': 4,
+        'voice.tts_max_parallel_fish_speech': 2,
+      }),
+    ).toEqual({
+      xtts: 4,
+      'fish-speech': 2,
     });
   });
 });
