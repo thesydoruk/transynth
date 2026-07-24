@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
+import { randomUUID } from '../../../../utils/randomUUID';
 import { VoiceRegenerateParamsForm } from '../../../SettingsPage/VoiceTab/VoiceRegenerateParamsForm';
 import { CompareTrackList } from './components/CompareTrackList';
 import { useVoiceRegenerateComparePlayback } from './hooks/useVoiceRegenerateComparePlayback';
@@ -30,7 +31,7 @@ export const VoiceRegenerateModal = ({
   onCommitted,
 }: VoiceRegenerateModalProps) => {
   const { t } = useTranslation();
-  const sessionId = useMemo(() => crypto.randomUUID(), []);
+  const sessionId = useMemo(() => randomUUID(), []);
 
   const {
     playingTrack,
