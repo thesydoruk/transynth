@@ -253,18 +253,27 @@ export const deleteModData = async (
   scope: 'rows' | 'mod',
 ): Promise<{ deletedRecords: number }> => deleteModDataForModIds(db, [modId], scope);
 
+/**
+ * Languages actually present on a mod (source `strings` + target `translations`).
+ * Used by apply-from-mod and editor language pickers — not the cached src/tgt pair in
+ * {@link mod_lang_stats}, which only tracks the active editor language pair.
+ */
 export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
-  const langs = new Set<string>([CONFIG.defaultSrcLang, CONFIG.defaultTgtLang]);
-
   const { rows } = await db.query<{ lang: string }>(
     `SELECT DISTINCT lang FROM (
-       SELECT src_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
-       UNION ALL
-       SELECT target_lang AS lang FROM mod_lang_stats WHERE mod_id = $1
-     ) langs`,
+       SELECT s.lang
+       FROM strings s
+       JOIN records r ON s.record_id = r.id
+       WHERE r.mod_id = $1 AND s.lang IS NOT NULL
+       UNION
+       SELECT t.target_lang AS lang
+       FROM translations t
+       JOIN strings s ON t.src_string_id = s.id
+       JOIN records r ON s.record_id = r.id
+       WHERE r.mod_id = $1
+     ) langs
+     ORDER BY lang`,
     [modId],
   );
-  for (const r of rows) langs.add(r.lang);
-
-  return [...langs].sort((a, b) => a.localeCompare(b));
+  return rows.map((r) => r.lang);
 };

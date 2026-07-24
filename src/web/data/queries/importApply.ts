@@ -8,6 +8,7 @@ import {
   normalizeEdid,
   putUnique,
 } from './importApplyHelpers';
+import { loadImportedModLocaleRows } from './importApplyLoad';
 import { resolveImportedCandidate } from './importApplyMatch';
 
 export const applyImportedModStringsAsTranslations = async (
@@ -32,34 +33,18 @@ export const applyImportedModStringsAsTranslations = async (
   empty: number;
   cancelled?: boolean;
 }> => {
-  const { rows: importedRows } = await db.query(
-    `SELECT r.formid_hex,
-            r.path,
-            r.path_simplified,
-            r.signature,
-            r.edid,
-            s.text_raw
-     FROM strings s
-     JOIN records r ON s.record_id = r.id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
-    [fromImportedModId, importedLang],
-  );
+  const importedRows = await loadImportedModLocaleRows(db, fromImportedModId, importedLang);
 
   if (importedRows.length === 0) {
-    throw new Error(`Imported mod has no strings for lang "${importedLang}"`);
+    throw new Error(
+      `Imported mod has no strings or translations for lang "${importedLang}"`,
+    );
   }
 
   return applyImportedRowsAsTranslations(
     db,
     targetModId,
-    importedRows as Array<{
-      formid_hex: string;
-      path: string;
-      path_simplified: string | null;
-      signature: string | null;
-      edid: string | null;
-      text_raw: string;
-    }>,
+    importedRows,
     importedLang,
     targetLang,
     srcLang,
