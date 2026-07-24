@@ -1,3 +1,0 @@
-# Keep the data directory in git; ignore everything inside it.
-*
-!.gitkeep

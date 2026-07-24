@@ -15,5 +15,4 @@ ml_*/
 .env
 
 # Runtime data (logs, uploads, cache, postgres, backups)
-/data/*
-!/data/.gitkeep
+/data/
