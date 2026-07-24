@@ -6,7 +6,7 @@
 #   docker compose --profile tools run --rm cli npm run tools:install
 #   docker compose --profile tools run --rm cli npm run translate -- …
 #
-# Put TLS/reverse proxy in front of WEB_PORT (default 3000). Set strong credentials in .env.
+# Put TLS/reverse proxy in front of WEB_PORT (defaults to PORT, then 3000). Set strong credentials in .env.
 
 # include:
 #   - docker-compose.db.yml
@@ -23,7 +23,7 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /app/data
-      PORT: '3000'
+      PORT: ${PORT:-3000}
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
       WINEARCH: win32
@@ -35,7 +35,7 @@ services:
     #   db:
     #     condition: service_healthy
     ports:
-      - '${WEB_PORT:-3000}:3000'
+      - '${WEB_PORT:-${PORT:-3000}}:${PORT:-3000}'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     healthcheck:
@@ -44,7 +44,7 @@ services:
           'CMD',
           'node',
           '-e',
-          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 30s
       timeout: 5s
