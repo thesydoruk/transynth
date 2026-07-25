@@ -1,3 +1,4 @@
+import type { SpeakerGender } from '../../../dialog';
 import type { VoiceSpeakerRefPick } from '../../../voice/voiceSpeakerRefs';
 
 export type VoiceLinePreview = {
@@ -18,6 +19,10 @@ export type VoiceSpeakerGroup = {
   key: string;
   displayName: string;
   referencePick: VoiceSpeakerRefPick | null;
+  /** Gender of the NPC this folder voices, resolved from the dialog graph. */
+  gender: SpeakerGender;
+  /** True when the folder name implies the opposite gender, so its clips mislead the TTS. */
+  genderMismatch: boolean;
   lines: VoiceLinePreview[];
 };
 

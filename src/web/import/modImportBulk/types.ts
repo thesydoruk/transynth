@@ -1,4 +1,5 @@
 import type { CsvRow } from '../../../types';
+import type { PluginSpeakerIndex } from '../dialogSpeakers';
 
 export type ModImportBulkRow = {
   csvRow: CsvRow;
@@ -17,6 +18,10 @@ export type DialogGraphImportContext = {
   dialogEdidByFormId: Map<string, string>;
   speakerMap: Map<string, string>;
   voiceSpeakerMap: Map<string, string>;
+  /** Lower-6 INFO FormID → raw voice folder name, used to key voice speakers. */
+  voiceFolderMap: Map<string, string>;
+  /** Actor genders and voice types read from the plugin. */
+  speakerIndex: PluginSpeakerIndex;
   topicIdCache: Map<string, number>;
 };
 
@@ -25,6 +30,7 @@ export type DialogInfoImportRow = {
   infoFormId: string;
   speakerFormId: string | null;
   speakerName: string | null;
+  speakerKey: string | null;
   previousInfoFormId: string | null;
 };
 

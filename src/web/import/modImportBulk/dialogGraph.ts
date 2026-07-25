@@ -1,4 +1,5 @@
 import type { Tx } from '../../../db';
+import { npcSpeakerKey, voiceFolderSpeakerKey } from '../../../dialog';
 import type { DialogGraphImportContext, DialogInfoImportRow, ModImportBulkResult } from './types';
 
 const dialogInfoImportKey = (topicFormId: string, infoFormId: string): string =>
@@ -18,6 +19,7 @@ const mergeDialogInfoImportRow = (
   ...kept,
   speakerFormId: kept.speakerFormId ?? next.speakerFormId,
   speakerName: kept.speakerName ?? next.speakerName,
+  speakerKey: kept.speakerKey ?? next.speakerKey,
   previousInfoFormId: kept.previousInfoFormId ?? next.previousInfoFormId,
 });
 
@@ -54,6 +56,7 @@ export const bulkUpsertDialogGraphForImportBatch = async (
     if (row.Signature !== 'INFO' || !row.FormID || !row.DialogTopicFormID) continue;
 
     const speakerFormId = row.SpeakerFormID ?? ctx.speakerMap.get(row.FormID) ?? null;
+    const voiceFolder = ctx.voiceFolderMap.get(row.FormID.substring(2)) ?? null;
     const speakerName = res.row.context ?? ctx.voiceSpeakerMap.get(row.FormID.substring(2)) ?? null;
 
     rawInfoRows.push({
@@ -61,6 +64,11 @@ export const bulkUpsertDialogGraphForImportBatch = async (
       infoFormId: row.FormID,
       speakerFormId,
       speakerName,
+      speakerKey: speakerFormId
+        ? npcSpeakerKey(speakerFormId)
+        : voiceFolder
+          ? voiceFolderSpeakerKey(voiceFolder)
+          : null,
       previousInfoFormId: row.PreviousInfoFormID ?? null,
     });
   }
@@ -93,6 +101,7 @@ export const bulkUpsertDialogGraphForImportBatch = async (
   const infoFormIds: string[] = [];
   const speakerFormIds: Array<string | null> = [];
   const speakerNames: Array<string | null> = [];
+  const speakerKeys: Array<string | null> = [];
   const previousInfoFormIds: Array<string | null> = [];
 
   for (const info of infoRows) {
@@ -104,22 +113,25 @@ export const bulkUpsertDialogGraphForImportBatch = async (
     infoFormIds.push(info.infoFormId);
     speakerFormIds.push(info.speakerFormId);
     speakerNames.push(info.speakerName);
+    speakerKeys.push(info.speakerKey);
     previousInfoFormIds.push(info.previousInfoFormId);
   }
 
   await db.query(
     `INSERT INTO dialog_nodes(
-       topic_id, info_formid_hex, speaker_formid_hex, speaker_name, previous_info_formid_hex
+       topic_id, info_formid_hex, speaker_formid_hex, speaker_name, speaker_key,
+       previous_info_formid_hex
      )
      SELECT * FROM UNNEST(
-       $1::int[], $2::text[], $3::text[], $4::text[], $5::text[]
+       $1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[]
      )
      ON CONFLICT(topic_id, info_formid_hex) DO UPDATE SET
        speaker_formid_hex = COALESCE(EXCLUDED.speaker_formid_hex, dialog_nodes.speaker_formid_hex),
        speaker_name = COALESCE(EXCLUDED.speaker_name, dialog_nodes.speaker_name),
+       speaker_key = COALESCE(EXCLUDED.speaker_key, dialog_nodes.speaker_key),
        previous_info_formid_hex = COALESCE(EXCLUDED.previous_info_formid_hex, dialog_nodes.previous_info_formid_hex),
        updated_at = NOW()`,
-    [topicIds, infoFormIds, speakerFormIds, speakerNames, previousInfoFormIds],
+    [topicIds, infoFormIds, speakerFormIds, speakerNames, speakerKeys, previousInfoFormIds],
   );
 
   const edgeTopicIds: number[] = [];

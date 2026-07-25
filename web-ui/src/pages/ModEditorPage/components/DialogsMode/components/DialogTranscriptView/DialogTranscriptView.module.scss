@@ -204,6 +204,62 @@
   border-radius: 8px;
 }
 
+/* The badge is a symbol with an invisible <select> stretched over it, so the
+   whole pill is the picker without needing a popover. */
+.genderBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border-radius: 8px;
+
+  &[data-gender='male'] {
+    color: #7fb2e8;
+  }
+
+  &[data-gender='female'] {
+    color: #e08fc0;
+  }
+
+  &[data-gender='any'] {
+    color: #b39ce0;
+  }
+
+  &[data-overridden] {
+    outline: 1px solid currentcolor;
+  }
+}
+
+.genderBadgeEditable {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-card);
+  }
+}
+
+.genderSelect {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.addressee {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .formid {
   margin-left: auto;
   font-family: ui-monospace, Consolas, monospace;

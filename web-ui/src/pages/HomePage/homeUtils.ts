@@ -1,6 +1,7 @@
 import type { OpsImportJob } from '../../api';
 
-export const pct = (value: number, total: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
+export const pct = (value: number, total: number) =>
+  total > 0 ? Math.round((value / total) * 100) : 0;
 
 export const fmtBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -28,14 +29,21 @@ export const kindLabel = (kind: 'eet' | 'csv' | 'mod') =>
 
 export const jobStatusClass = (status: string, css: Record<string, string>): string => {
   switch (status) {
-    case 'completed': return css.badgeOk!;
-    case 'failed': return css.badgeErr!;
-    case 'running': return css.badgeRun!;
+    case 'completed':
+      return css.badgeOk!;
+    case 'failed':
+      return css.badgeErr!;
+    case 'running':
+      return css.badgeRun!;
     case 'in_progress':
-    case 'extracting': return css.badgeRun!;
-    case 'downloading': return css.badgeRun!;
-    case 'paused': return css.badgeWarn!;
-    default: return css.badgeDim!;
+    case 'extracting':
+      return css.badgeRun!;
+    case 'downloading':
+      return css.badgeRun!;
+    case 'paused':
+      return css.badgeWarn!;
+    default:
+      return css.badgeDim!;
   }
 };
 
@@ -46,5 +54,6 @@ export const ISSUE_COLORS: Record<string, string> = {
   same_as_source: '#e8a735',
   length_delta: '#e8a735',
   glossary_violation: '#e8a735',
+  gender_mismatch: '#c586d8',
   duplicate_inconsistency: '#7ab',
 };

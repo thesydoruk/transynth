@@ -1,4 +1,5 @@
 import type { LlmVerifyVerdict } from '../../../llm/verifyTranslate';
+import type { DialogParticipantsRow } from '../../data/queries/dialogs';
 
 export type LlmVerifyIssue = {
   stringId: number;
@@ -74,7 +75,7 @@ export type LlmVerifyProgressEvent =
     }
   | { type: 'error'; error: string };
 
-export type VerifyStringRow = {
+export type VerifyStringRow = DialogParticipantsRow & {
   string_id: number;
   source: string;
   translation: string;

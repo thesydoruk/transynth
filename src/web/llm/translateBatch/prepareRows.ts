@@ -1,6 +1,7 @@
 import { maskFunctionKeywords, maskPlaceholders } from '../../../utils/placeholders';
 import { maskLlmOptionalText } from '../../../llm/llmTextMask';
 import { parseRecordLocation } from '../../../utils/recordLocation';
+import { dialogParticipantsFromRow } from '../../data/queries/dialogs';
 import type { GameType } from '../../../types';
 import type { PreparedLlmItem, StringRow, TranslateBatchOptions } from './types';
 
@@ -43,6 +44,8 @@ export const prepareLlmItems = (
       continue;
     }
 
+    const participants = dialogParticipantsFromRow(row, field);
+
     llmPending.push({
       stringId,
       sourceText,
@@ -63,6 +66,10 @@ export const prepareLlmItems = (
         field,
         form_id: row.formid_hex,
         context: maskLlmOptionalText(row.context),
+        speaker: participants.speakerName,
+        speaker_gender: participants.speakerGender,
+        addressee: participants.addresseeName,
+        addressee_gender: participants.addresseeGender,
       },
     });
   }

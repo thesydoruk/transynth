@@ -7,6 +7,7 @@ import type { CommitAdvance } from './components/DialogLineRow';
 import { useDialogLineSave } from './hooks/useDialogLineSave';
 import { useDialogsData } from './hooks/useDialogsData';
 import { useDialogsKeyboard } from './hooks/useDialogsKeyboard';
+import { useDialogSpeakers } from './hooks/useDialogSpeakers';
 import { useDialogsState } from './hooks/useDialogsState';
 import { useDialogVoice } from './hooks/useDialogVoice';
 import { useLineCursor } from './hooks/useLineCursor';
@@ -54,6 +55,7 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
   const view = useTranscriptView(data.transcript, state.filter, state.find);
   const cursor = useLineCursor(view);
   const voice = useDialogVoice(modId, targetLang);
+  const speakers = useDialogSpeakers({ modId, transcriptQueryKey: data.transcriptQueryKey });
 
   const save = useDialogLineSave({
     transcriptQueryKey: data.transcriptQueryKey,
@@ -100,6 +102,7 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
     onCommit: commitLine,
     onSetStatus: (line, status) => void save.setLineStatus(line, status),
     voiceFor: voice.voiceFor,
+    speakers,
   };
 
   /** Prefer the original take: it is the reference a translator listens for. */
@@ -184,10 +187,13 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
             ? t('dialogs.saveFailed', { message: save.error })
             : voice.error
               ? t('dialogs.voiceFailed', { message: voice.error })
-              : null,
+              : speakers.error
+                ? t('dialogs.gender.saveFailed', { message: speakers.error })
+                : null,
           onDismissError: () => {
             save.dismissError();
             voice.clearError();
+            speakers.dismissError();
           },
         }}
         entries={view.entries}

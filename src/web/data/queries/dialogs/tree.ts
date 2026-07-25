@@ -1,3 +1,5 @@
+import { parseSpeakerGender } from '../../../../dialog';
+import { parseAddresseeKind } from './participants';
 import type { DialogLine } from './lines';
 import type { DialogEntryRow } from './scope';
 
@@ -6,6 +8,11 @@ export type TopicNodeRow = {
   node_id: number;
   info_formid_hex: string;
   speaker_name: string | null;
+  speaker_key: string | null;
+  speaker_gender: string | null;
+  addressee_kind: string | null;
+  addressee_name: string | null;
+  addressee_gender: string | null;
   lines: DialogLine[];
 };
 
@@ -71,6 +78,11 @@ export const flattenDialogTree = (
         depth,
         section: null,
         speaker: node.speaker_name,
+        speaker_key: node.speaker_key,
+        speaker_gender: parseSpeakerGender(node.speaker_gender),
+        addressee_kind: parseAddresseeKind(node.addressee_kind),
+        addressee: node.addressee_name,
+        addressee_gender: parseSpeakerGender(node.addressee_gender),
         alias_id: null,
         info_formid_hex: node.info_formid_hex,
         topic_formid_hex: topicFormId,

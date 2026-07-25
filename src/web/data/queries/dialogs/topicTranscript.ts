@@ -5,6 +5,10 @@ import {
   dialogLinesLateralSql,
   type DialogLine,
 } from './lines';
+import {
+  DIALOG_NODE_PARTICIPANT_COLUMNS,
+  dialogNodeSpeakerJoinsSql,
+} from './participants';
 import type { DialogTranscriptRow } from './scope';
 import { flattenDialogTree, type TopicEdgeRow, type TopicNodeRow } from './tree';
 
@@ -46,9 +50,11 @@ export const getTopicTranscript = async (
        dn.id AS node_id,
        dn.info_formid_hex,
        dn.speaker_name,
+       ${DIALOG_NODE_PARTICIPANT_COLUMNS},
        COALESCE(dl.lines, '[]'::json) AS lines
      FROM dialog_nodes dn
      JOIN dialog_topics dt ON dt.id = dn.topic_id
+     ${dialogNodeSpeakerJoinsSql('dt.mod_id')}
      LEFT JOIN LATERAL (${dialogLinesLateralSql({
        srcLang: '$2',
        targetLang: '$3',

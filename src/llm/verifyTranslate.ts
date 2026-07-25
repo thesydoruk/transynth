@@ -4,6 +4,7 @@
  * Request and response payloads are JSON-only.
  */
 import { chatWithFallback } from './index';
+import { participantPayloadFields, type LlmDialogParticipants } from './dialogParticipants';
 import { parseLlmJson } from './jsonParse';
 import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
@@ -23,7 +24,7 @@ import type { LlmGlossaryEntry } from './translate';
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
 
 /** One source/translation pair sent to the verifier. */
-export interface LlmVerifyItem {
+export interface LlmVerifyItem extends LlmDialogParticipants {
   id: number;
   source: string;
   translation: string;
@@ -196,6 +197,7 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
     edid: item.edid,
     field: item.field,
     context: item.context,
+    ...participantPayloadFields(item),
     ...(item.reference_examples && item.reference_examples.length > 0
       ? { reference_examples: item.reference_examples }
       : {}),

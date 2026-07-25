@@ -385,6 +385,7 @@
     "voicePlayError": "Failed to play audio",
     "voiceColActions": "Actions",
     "voiceRefSet": "Reference",
+    "voiceGenderMismatch": "This speaker is {{gender}}, but the voice folder name says the opposite — its clips will make the synthesized voice sound wrong.",
     "voiceRefSetTitle": "Use this line as the TTS reference for this character",
     "voiceRefClear": "Clear",
     "voiceRefClearTitle": "Clear reference pick (use auto-selection)",
@@ -475,7 +476,19 @@
     "playSourceTitle": "Play the voice-over shipped with the mod (P)",
     "playTranslation": "Dub",
     "playTranslationTitle": "Play the generated voice-over of the translation",
-    "stopPlayback": "Stop playback"
+    "stopPlayback": "Stop playback",
+    "gender": {
+      "male": "Male",
+      "female": "Female",
+      "any": "Player — either gender",
+      "unknown": "Gender unknown",
+      "auto": "Detected",
+      "selectLabel": "Speaker gender",
+      "overriddenTitle": "{{label}} (set manually)",
+      "addressee": "→ {{name}}",
+      "addresseeTitle": "Speaking to {{name}} ({{gender}})",
+      "saveFailed": "Could not save the gender: {{message}} — click to dismiss"
+    }
   },
   "ctx": {
     "clear": "Clear translation",

@@ -13,11 +13,14 @@ import {
   isJsonUnterminatedAtEnd,
   trySalvageTruncatedTranslateJson,
 } from './jsonParse';
+import { participantPayloadFields, type LlmDialogParticipants } from './dialogParticipants';
 import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildTranslateResponseFormat } from './responseSchemas';
 import type { GameType } from '../types';
+
+export type { LlmDialogParticipants, LlmParticipantGender } from './dialogParticipants';
 
 /** Glossary entry included in the translation payload. */
 export interface LlmGlossaryEntry {
@@ -37,7 +40,7 @@ export interface LlmReferenceExample {
 }
 
 /** One string row sent to the LLM (source text must already be masked). */
-export interface LlmTranslateItem {
+export interface LlmTranslateItem extends LlmDialogParticipants {
   id: number;
   source: string;
   grup: string | null;
@@ -138,6 +141,7 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
       field: item.field,
       form_id: item.form_id,
       context: item.context,
+      ...participantPayloadFields(item),
       ...(item.reference_examples && item.reference_examples.length > 0
         ? { reference_examples: item.reference_examples }
         : {}),

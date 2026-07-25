@@ -1,5 +1,8 @@
 export { EspReader } from './EspReader';
 export type {
+  ActorRecord,
+  EspActorIndex,
+  VoiceTypeRecord,
   EspGrupInfo,
   EspPluginInfo,
   EspRecordsPage,

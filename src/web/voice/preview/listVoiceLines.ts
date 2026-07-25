@@ -23,6 +23,7 @@ import { canSynthesizeVoiceLine } from '../../../voice/prepareVoiceTtsText';
 import { resolveLocalizedVoiceAbsPath } from '../../../voice/synthesizeModVoiceLine';
 import { loadVoiceSpeakerRefs, voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { resolveVoicePackageContext } from './context';
+import { loadVoiceFolderGenders } from './speakerGender';
 import {
   discoverVoiceEntries,
   formatVoiceSpeakerLabel,
@@ -80,6 +81,7 @@ export const listVoiceLinesForMod = async (
   }
   const dbSpeakerNames = await loadSpeakerNamesFromDb(db, modId);
   const speakerRefs = await loadVoiceSpeakerRefs(db, modId);
+  const folderGenders = await loadVoiceFolderGenders(db, modId);
 
   const groups = new Map<string, VoiceSpeakerGroup>();
 
@@ -122,7 +124,15 @@ export const listVoiceLinesForMod = async (
 
     let group = groups.get(speakerKey);
     if (!group) {
-      group = { key: speakerKey, displayName, referencePick, lines: [] };
+      const folderGender = folderGenders.get(speakerKey);
+      group = {
+        key: speakerKey,
+        displayName,
+        referencePick,
+        gender: folderGender?.gender ?? 'unknown',
+        genderMismatch: folderGender?.mismatch ?? false,
+        lines: [],
+      };
       groups.set(speakerKey, group);
     }
 

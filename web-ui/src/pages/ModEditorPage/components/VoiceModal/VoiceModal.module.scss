@@ -113,6 +113,17 @@
   color: hsl(45 90% 65%);
 }
 
+.speakerGender {
+  margin-left: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+
+  &[data-mismatch] {
+    color: var(--danger);
+    font-weight: 700;
+  }
+}
+
 .speakerCount {
   font-size: 12px;
   color: var(--text-dim);

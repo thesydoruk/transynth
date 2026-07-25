@@ -1,6 +1,10 @@
 import type { Tx } from '../../../db';
 import { CONFIG, DB_CHUNK_SIZE } from '../../../config';
 import { llmVerifyEligibleStatusSql } from '../../data/queries';
+import {
+  DIALOG_PARTICIPANT_COLUMNS,
+  dialogParticipantsLateralSql,
+} from '../../data/queries/dialogs';
 import { buildLlmTranslateChunks } from '../llmTranslateChunking';
 import type { VerifyLlmWorkUnit, VerifyStringRow } from './types';
 
@@ -55,10 +59,13 @@ export const loadVerifyChunk = async (
             r.signature,
             r.path,
             r.edid,
-            s.context
+            s.context,
+            ${DIALOG_PARTICIPANT_COLUMNS}
        FROM strings s
        JOIN records r ON r.id = s.record_id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
+       LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}
+       ) dp ON TRUE
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE

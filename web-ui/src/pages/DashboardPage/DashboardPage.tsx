@@ -19,6 +19,7 @@ const ISSUE_COLORS: Record<string, string> = {
   same_as_source: '#e8a735',
   length_delta: '#e8a735',
   glossary_violation: '#e8a735',
+  gender_mismatch: '#c586d8',
   duplicate_inconsistency: '#7ab',
 };
 
@@ -36,13 +37,19 @@ export const DashboardPage = () => {
     refetchInterval: (query) => {
       const d = query.state.data;
       if (!d) return false;
-      const hasActive = (d.activeJobs?.llmModIds.length ?? 0) > 0 || (d.activeJobs?.importModIds.length ?? 0) > 0;
+      const hasActive =
+        (d.activeJobs?.llmModIds.length ?? 0) > 0 || (d.activeJobs?.importModIds.length ?? 0) > 0;
       return hasActive ? 8000 : false;
     },
   });
 
   if (isLoading) return <LoadingState message={t('dashboard.loadingDashboard')} />;
-  if (error) return <div className={`${s.center} ${s.error}`}>{t('common.error', { message: String(error) })}</div>;
+  if (error)
+    return (
+      <div className={`${s.center} ${s.error}`}>
+        {t('common.error', { message: String(error) })}
+      </div>
+    );
   if (!data) return null;
 
   /** Mod IDs currently running an LLM batch job. */
@@ -63,12 +70,25 @@ export const DashboardPage = () => {
       rejected: acc.rejected + Number(m.rejected),
       qa: acc.qa + Number(m.qa_issues),
     }),
-    { total: 0, translated: 0, approved: 0, reviewed: 0, draft: 0, tm: 0, fuzzy: 0, auto: 0, rejected: 0, qa: 0 },
+    {
+      total: 0,
+      translated: 0,
+      approved: 0,
+      reviewed: 0,
+      draft: 0,
+      tm: 0,
+      fuzzy: 0,
+      auto: 0,
+      rejected: 0,
+      qa: 0,
+    },
   );
 
   const totalQA = data.qaByType.reduce((s, r) => s + Number(r.count), 0);
   const firstQaMod = data.mods.find((m) => Number(m.qa_issues) > 0);
-  const qaDrilldownTo = firstQaMod ? `/games/${firstQaMod.game}/mods/${firstQaMod.id}?qaOnly=1` : null;
+  const qaDrilldownTo = firstQaMod
+    ? `/games/${firstQaMod.game}/mods/${firstQaMod.id}?qaOnly=1`
+    : null;
 
   return (
     <div className={s.page}>
@@ -77,9 +97,23 @@ export const DashboardPage = () => {
       {/* Summary cards */}
       <div className={s.cards}>
         <DashboardCard label={t('dashboard.cardStrings')} value={totals.total} />
-        <DashboardCard label={t('dashboard.cardTranslated')} value={totals.translated} sub={`${pct(totals.translated, totals.total)}%`} color="#4caf50" />
-        <DashboardCard label={t('dashboard.cardApproved')} value={totals.approved + totals.reviewed} sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`} color="#2196f3" />
-        <DashboardCard label={t('dashboard.cardQaIssues')} value={totalQA} color={totalQA > 0 ? '#e55' : '#4caf50'} />
+        <DashboardCard
+          label={t('dashboard.cardTranslated')}
+          value={totals.translated}
+          sub={`${pct(totals.translated, totals.total)}%`}
+          color="#4caf50"
+        />
+        <DashboardCard
+          label={t('dashboard.cardApproved')}
+          value={totals.approved + totals.reviewed}
+          sub={`${pct(totals.approved + totals.reviewed, totals.total)}%`}
+          color="#2196f3"
+        />
+        <DashboardCard
+          label={t('dashboard.cardQaIssues')}
+          value={totalQA}
+          color={totalQA > 0 ? '#e55' : '#4caf50'}
+        />
       </div>
 
       {/* QA breakdown */}
@@ -89,10 +123,19 @@ export const DashboardPage = () => {
           <div className={s.qaGrid}>
             {data.qaByType.map((r) => (
               <div key={r.issue_type} className={s.qaRow}>
-                <span className={s.qaLabel} style={{ '--label-color': ISSUE_COLORS[r.issue_type] ?? '#aaa' } as React.CSSProperties}>
+                <span
+                  className={s.qaLabel}
+                  style={
+                    { '--label-color': ISSUE_COLORS[r.issue_type] ?? '#aaa' } as React.CSSProperties
+                  }
+                >
                   {issueLabel(r.issue_type)}
                 </span>
-                <Bar value={Number(r.count)} max={totalQA} color={ISSUE_COLORS[r.issue_type] ?? '#888'} />
+                <Bar
+                  value={Number(r.count)}
+                  max={totalQA}
+                  color={ISSUE_COLORS[r.issue_type] ?? '#888'}
+                />
                 {qaDrilldownTo ? (
                   <Link
                     to={qaDrilldownTo}
@@ -156,24 +199,36 @@ export const DashboardPage = () => {
                       </Link>
                       {/* Active-job indicators — auto-dismiss when the job finishes (poll every 8 s). */}
                       {activeLlmIds.has(m.id) && (
-                        <span className={s.jobBadgeLlm} title={t('dashboard.llmRunning')}>⚙</span>
+                        <span className={s.jobBadgeLlm} title={t('dashboard.llmRunning')}>
+                          ⚙
+                        </span>
                       )}
                       {activeImportIds.has(m.id) && (
-                        <span className={s.jobBadgeImport} title={t('dashboard.importRunning')}>↓</span>
+                        <span className={s.jobBadgeImport} title={t('dashboard.importRunning')}>
+                          ↓
+                        </span>
                       )}
                       {/* Release-readiness signal: shown only when translation is complete. */}
                       {p === 100 && Number(m.qa_issues) === 0 && (
-                        <span className={s.readyBadge} title={t('dashboard.releaseReady')}>✓</span>
+                        <span className={s.readyBadge} title={t('dashboard.releaseReady')}>
+                          ✓
+                        </span>
                       )}
                       {p === 100 && Number(m.qa_issues) > 0 && (
-                        <span className={s.warnBadge} title={t('dashboard.translatedWithQa')}>!</span>
+                        <span className={s.warnBadge} title={t('dashboard.translatedWithQa')}>
+                          !
+                        </span>
                       )}
                     </td>
                     <td className={s.tdR}>{m.total}</td>
                     <td className={s.tdR}>{m.translated}</td>
                     <td className={s.tdR}>{p}%</td>
                     <td className={s.td}>
-                      <Bar value={Number(m.translated)} max={Number(m.total)} color={p === 100 ? '#4caf50' : '#2196f3'} />
+                      <Bar
+                        value={Number(m.translated)}
+                        max={Number(m.total)}
+                        color={p === 100 ? '#4caf50' : '#2196f3'}
+                      />
                     </td>
                     <td className={s.tdR}>{Number(m.approved) + Number(m.reviewed)}</td>
                     <td className={s.tdR}>{m.draft}</td>
@@ -230,4 +285,3 @@ export const DashboardPage = () => {
     </div>
   );
 };
-

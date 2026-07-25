@@ -17,5 +17,7 @@ export {
   clearVoiceSpeakerReferenceForMod,
   setVoiceSpeakerReferenceForMod,
 } from './speakerReference';
+export type { VoiceFolderGender } from './speakerGender';
+export { loadVoiceFolderGenders } from './speakerGender';
 export { getVoicePreviewWav, getVoiceTranslationWav } from './previewWav';
 export { generateVoiceTranslationForMod } from './generateVoice';

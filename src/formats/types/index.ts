@@ -1,3 +1,4 @@
+export type { ActorRecord, EspActorIndex, VoiceTypeRecord } from './EspActorIndex';
 export type { ArchiveInputFile } from './ArchiveInputFile';
 export type { Ba2FileEntry } from './Ba2FileEntry';
 export type { BsaFileEntry } from './BsaFileEntry';

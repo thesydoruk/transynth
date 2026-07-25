@@ -115,6 +115,47 @@ CREATE TABLE IF NOT EXISTS dialog_scene_phases (
   UNIQUE(scene_id, phase_order, topic_id)
 );
 
+-- ── Dialog speakers (grammatical gender of participants) ────────────────────
+-- Ukrainian marks gender on past-tense verbs and predicative adjectives, so a
+-- line cannot be translated or voiced correctly without knowing the sex of the
+-- speaker and of whoever they address.
+--
+-- A speaker is keyed either by its actor record (`npc:0001A2B3`, from INFO\ANAM)
+-- or by its voice folder (`voice:FemaleBoston`), because quest-alias dialog
+-- carries no actor reference and can only be attributed to the folder its audio
+-- ships in.
+
+CREATE TABLE IF NOT EXISTS dialog_speakers (
+  id SERIAL PRIMARY KEY,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  speaker_key TEXT NOT NULL,
+  display_name TEXT,
+  voice_type TEXT,
+  -- The player character, whose gender is chosen in-game and never fixed.
+  is_player BOOLEAN NOT NULL DEFAULT FALSE,
+  -- male | female | any | unknown, resolved during import.
+  detected_gender TEXT NOT NULL DEFAULT 'unknown',
+  -- plugin | voice_type | player
+  detected_source TEXT,
+  -- Set in the speakers editor; always wins over detection.
+  gender_override TEXT,
+  line_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(mod_id, speaker_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dialog_speakers_mod ON dialog_speakers(mod_id);
+
+-- Speaker identity and addressee of each node, resolved once per import.
+ALTER TABLE dialog_nodes ADD COLUMN IF NOT EXISTS speaker_key TEXT;
+-- player | npc | unknown
+ALTER TABLE dialog_nodes ADD COLUMN IF NOT EXISTS addressee_kind TEXT;
+ALTER TABLE dialog_nodes ADD COLUMN IF NOT EXISTS addressee_speaker_key TEXT;
+
+-- Translation and QA resolve a node from an INFO FormID alone.
+CREATE INDEX IF NOT EXISTS idx_dialog_nodes_info_formid ON dialog_nodes(info_formid_hex);
+
 -- ── Activity attribution ──────────────────────────────────────────────────────
 -- Single built-in user row for activity log and translation attribution.
 

@@ -1,3 +1,4 @@
+import { englishGenderRules, englishVerifyGenderRules } from './gender';
 import { englishPlaceholderRules, englishVerifyPlaceholderRules } from './placeholders';
 
 /** Rules shared across all Bethesda games (English prompt, any target language). */
@@ -13,6 +14,8 @@ export const englishCommonRules = (targetLang: string): string[] => [
   '### REGISTER AND ADDRESS:',
   '- Match the in-game relationship and formality implied by context, speaker, and addressee.',
   "- Use informal vs formal address consistently with the target language's conventions and the string's role.",
+  '',
+  ...englishGenderRules(),
   '',
   '### LINGUISTIC QUALITY:',
   '- Write fluent, idiomatic ' + targetLang + '.',
@@ -50,6 +53,8 @@ export const englishVerifyCommonRules = (targetLang: string): string[] => [
   '### LINGUISTIC QUALITY:',
   '- Write fluent, idiomatic ' + targetLang + '.',
   '- Avoid calques and awkward literal translations.',
+  '',
+  ...englishVerifyGenderRules(),
   '',
   '### RARITY / QUALITY TIER LABELS (VERIFY):',
   '- source is ONLY "Epic", "Legendary", "Rare", "Unique", "Common", etc. → translation must be ONLY the matching single word — verdict "ok".',

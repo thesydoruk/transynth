@@ -1,3 +1,5 @@
+import type { SpeakerGender } from './dialogs';
+
 /** One RAG reference example shown in the editor's "RAG examples" panel. */
 export type RagSuggestion = {
   source: string;
@@ -53,6 +55,10 @@ export type VoiceSpeakerGroup = {
   key: string;
   displayName: string;
   referencePick: VoiceSpeakerRefPick | null;
+  /** Gender of the NPC this folder voices, resolved from the dialog graph. */
+  gender: SpeakerGender;
+  /** True when the folder name implies the opposite gender of the speaker bound to it. */
+  genderMismatch: boolean;
   lines: VoiceLinePreview[];
 };
 

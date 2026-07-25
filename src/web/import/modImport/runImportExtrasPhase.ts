@@ -12,6 +12,7 @@ import {
   type ModImportBulkResult,
   type ModImportBulkRow,
 } from '../modImportBulk';
+import { resolveModDialogSpeakers } from '../dialogSpeakers';
 import { importSceneRecords } from './sceneImport';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../../export/pexDecompileService';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
@@ -206,6 +207,33 @@ export const finalizeModImportJob = async (
   } catch (err) {
     logImport.warn(
       `[Mod Import #${ctx.job.id}] Scene import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+    );
+    try {
+      await ctx.db.query('ROLLBACK');
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Runs last: scene aliases are what identify the player and the counterpart
+  // of a conversation, so speaker gender can only be settled once scenes exist.
+  try {
+    await ctx.db.query('BEGIN');
+    const resolved = await resolveModDialogSpeakers(
+      ctx.db,
+      importModId,
+      dialogGraphCtx.speakerIndex,
+    );
+    await ctx.db.query('COMMIT');
+    if (resolved.speakers > 0) {
+      logImport.info(
+        `[Mod Import #${ctx.job.id}] Resolved ${resolved.speakers} dialog speaker(s), ` +
+          `${resolved.withGender} with a known gender`,
+      );
+    }
+  } catch (err) {
+    logImport.warn(
+      `[Mod Import #${ctx.job.id}] Speaker gender resolution failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
     );
     try {
       await ctx.db.query('ROLLBACK');

@@ -1,8 +1,15 @@
 import { useEffect, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { VoiceSpeakerGroup } from '../../../../../api';
+import type { SpeakerGender, VoiceSpeakerGroup } from '../../../../../api';
 import { speakerHue } from '../voiceLineKeys';
 import s from '../VoiceModal.module.scss';
+
+const GENDER_SYMBOL: Record<SpeakerGender, string> = {
+  male: '♂',
+  female: '♀',
+  any: '⚥',
+  unknown: '',
+};
 
 type VoiceSpeakerListProps = {
   speakers: VoiceSpeakerGroup[];
@@ -39,6 +46,21 @@ export const VoiceSpeakerList = ({
                     </span>
                   )}
                   {group.displayName}
+                  {group.gender !== 'unknown' && (
+                    <span
+                      className={s.speakerGender}
+                      data-mismatch={group.genderMismatch ? '' : undefined}
+                      title={
+                        group.genderMismatch
+                          ? t('modEditor.voiceGenderMismatch', {
+                              gender: t(`dialogs.gender.${group.gender}`),
+                            })
+                          : t(`dialogs.gender.${group.gender}`)
+                      }
+                    >
+                      {GENDER_SYMBOL[group.gender]}
+                    </span>
+                  )}
                 </span>
                 <span className={s.speakerCount}>{group.lines.length}</span>
               </button>

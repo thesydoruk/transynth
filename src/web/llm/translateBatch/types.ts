@@ -1,6 +1,7 @@
 import type { LlmTranslateOverwriteMode } from '../../data/queries';
 import type { RagRetrievalOptions } from '../../../llm/rag';
 import type { LlmTranslateItem } from '../../../llm/translate';
+import type { DialogParticipantsRow } from '../../data/queries/dialogs';
 
 export type TranslateBatchResult = {
   stringId: number;
@@ -21,7 +22,7 @@ export type TranslateBatchOptions = {
   onProgress?: (done: number, total: number, result: TranslateBatchResult) => void;
 };
 
-export type StringRow = {
+export type StringRow = DialogParticipantsRow & {
   id: number;
   text_raw: string;
   text_norm: string | null;

@@ -5,9 +5,11 @@ import type { TranslationStatus } from '../statusMachine';
 import { compareProtectedTokens } from '../../../utils/placeholders';
 import { parseRecordLocation } from '../../../utils/recordLocation';
 import { glossaryTermMatchesSource } from './glossaryHelpers';
+import { applyGenderQaIssues } from './qaGender';
+import type { DialogParticipantsRow } from './dialogs';
 import { PENDING_REVIEW_STATUSES } from './constants';
 
-type QAIssueInput = {
+export type QAIssueInput = {
   issueType: string;
   severity: 'warning' | 'error';
   message: string;
@@ -257,7 +259,7 @@ const appendDuplicateInconsistencyIssue = (issues: QAIssueInput[], altTexts: str
   });
 };
 
-export type QaTranslationContextRow = {
+export type QaTranslationContextRow = Partial<DialogParticipantsRow> & {
   source: string;
   is_ignored?: boolean;
   translation_id?: number | null;
@@ -268,11 +270,18 @@ export type QaTranslationContextRow = {
   game?: string;
 };
 
+/** Everything a QA batch loads once and reuses for every row in it. */
+export type QaBatchContext = {
+  targetLang: string;
+  settings: QACheckSettings;
+  /** Configurable `qa_rules` rows for the game of the row being checked. */
+  rules: QaRuleRow[];
+  glossaryTerms: Array<{ term: string; translation: string }>;
+};
+
 export const collectQAIssuesForRow = (
   row: QaTranslationContextRow,
-  qaSettings: QACheckSettings,
-  qaRules: QaRuleRow[],
-  glossaryTerms: Array<{ term: string; translation: string }>,
+  ctx: QaBatchContext,
   duplicateAlts: string[],
 ): QAIssueInput[] => {
   if (!row.source || row.translation == null || row.is_ignored) return [];
@@ -280,15 +289,17 @@ export const collectQAIssuesForRow = (
     return [];
   }
 
+  const location = parseRecordLocation(row.signature, row.path);
   const issues = buildQAIssues(
     row.source,
     row.translation,
     row.game as GameType | undefined,
-    qaSettings,
-    parseRecordLocation(row.signature, row.path),
+    ctx.settings,
+    location,
   );
-  applyConfigurableQaRules(issues, row.translation, row.signature, row.path, qaRules);
-  applyGlossaryQaIssues(issues, row.source, row.translation, glossaryTerms);
+  applyConfigurableQaRules(issues, row.translation, row.signature, row.path, ctx.rules);
+  applyGlossaryQaIssues(issues, row.source, row.translation, ctx.glossaryTerms);
+  applyGenderQaIssues(issues, row.translation, ctx.targetLang, row, location.field);
   appendDuplicateInconsistencyIssue(issues, duplicateAlts);
   return issues;
 };

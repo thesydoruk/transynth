@@ -1,5 +1,6 @@
 import type { DialogEntry, DialogLine } from '../../../../../../api';
 import type { DialogReviewStatus } from '../../hooks/useDialogLineSave';
+import type { DialogSpeakers } from '../../hooks/useDialogSpeakers';
 import type { DialogLineVoice } from '../../hooks/useDialogVoice';
 import type { CommitAdvance } from '../DialogLineRow';
 
@@ -21,4 +22,6 @@ export interface DialogLineHandlers {
   onSetStatus: (line: DialogLine, status: DialogReviewStatus) => void;
   /** Playback controls for the line, or null when it has no voice-over. */
   voiceFor: (entry: DialogEntry, line: DialogLine) => DialogLineVoice | null;
+  /** Speaker genders of the mod, and the writer that corrects them. */
+  speakers: DialogSpeakers;
 }

@@ -37,9 +37,11 @@ import { inflateSync } from 'zlib';
 import { isTranslatableSubrecord } from '../subrecords';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
+import { EspActorExtractor } from './EspActorExtractor';
 import { EspExplorer } from './EspExplorer';
 import { EspSceneExtractor } from './EspSceneExtractor';
 import type {
+  EspActorIndex,
   EspGrupInfo,
   EspPluginInfo,
   EspRecordsPage,
@@ -48,6 +50,8 @@ import type {
 } from '../types';
 
 export type {
+  ActorRecord,
+  EspActorIndex,
   EspGrupInfo,
   EspPluginInfo,
   EspRecordsPage,
@@ -56,6 +60,7 @@ export type {
   EspSubrecordView,
   SceneAction,
   SceneRecord,
+  VoiceTypeRecord,
 } from '../types';
 
 const RECORD_HEADER_SIZE = 24;
@@ -181,6 +186,16 @@ export class EspReader {
    */
   extractScenes(): SceneRecord[] {
     return this.sceneExtractor.extractScenes();
+  }
+
+  /**
+   * Extract every NPC_ and VTYP record of the plugin.
+   *
+   * Used to resolve the gender of dialog speakers: NPC_ carries the Female flag
+   * and a voice type reference, VTYP names the voice folder the audio ships in.
+   */
+  extractActorIndex(): EspActorIndex {
+    return new EspActorExtractor(this.buf, this.info.isLocalized).extractActorIndex();
   }
 
   /**

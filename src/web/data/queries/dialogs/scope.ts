@@ -1,3 +1,4 @@
+import type { AddresseeKind, SpeakerGender } from '../../../../dialog';
 import type { DialogLine } from './lines';
 
 /**
@@ -42,6 +43,13 @@ export type DialogEntryRow = {
   /** Section heading rendered above the entry (scene name in a conversation). */
   section: string | null;
   speaker: string | null;
+  /** Key of the speaker in `dialog_speakers`; null when the node has no ANAM or voice folder. */
+  speaker_key: string | null;
+  /** Gender the speaker's lines must agree with. */
+  speaker_gender: SpeakerGender;
+  addressee_kind: AddresseeKind;
+  addressee: string | null;
+  addressee_gender: SpeakerGender;
   /** Scene alias the speaker is bound to; `-2` is the player. Null outside scenes. */
   alias_id: number | null;
   info_formid_hex: string | null;

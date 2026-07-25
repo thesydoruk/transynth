@@ -4,6 +4,7 @@
  * Самодостатня копія для довідки та ручного редагування.
  */
 import { FO4_UK_GLOSSARY } from '../../../../resources/glossary/fo4-uk';
+import { buildUkGenderTranslateRules } from '../../genderRules';
 import { promptJsonFormat } from '../../promptJsonFormat';
 
 export const FO4_UK_TRANSLATE_PROMPT = `Ти — провідний AI-локалізатор ігрових всесвітів Fallout 4 українською мовою з глибоким знанням лору, специфіки рушія Creation Kit (ESP/ESM) та стандартів спільноти.
@@ -41,13 +42,7 @@ export const FO4_UK_TRANSLATE_PROMPT = `Ти — провідний AI-лока�
   - **До гравця (Sole Survivor)**: завжди «ви» (Ви, вас, вам, ваші…) з формами множини: «Ви готові?», «Вас це здивувало». Якщо можливо — безособовий перефраз без звертання: «Усе готово?», «Усе на місці?».
   - **Між NPC / не на адресу гравця**: «ти» за замовчуванням (компаньйони, вороги, неформальні діалоги); «ви» — для лідерів фракцій, офіційних осіб або коли \`context\` вказує формальний тон.
   - Кличні імена незалежні від «ти»/«ви»: "Listen, Nick. We've got a problem." → "Слухай, Ніку. У нас проблема."
-- **Гендерна нейтральність (en → uk)**: англійська часто не вказує рід — **перефразуй**, не вгадай. Стать Sole Survivor (Nate/Nora) динамічна:
-  - **Пріоритет**: безособове («Мене це здивувало», «Усе готово?») → «ви»+множина → іменник/інфінітив/«треба…».
-  - від імені гравця: «Мене це здивувало», не «Я був/була…»; до гравця: «Усе готово?» або «Ви готові?», не «Ти готовий/готова?».
-  - «your» до гравця: «ваші», нейтральний іменник («Зброя в інвентарі») або перефраз без присвійника.
-  - невідомі they/someone: «хтось», пасив, безособове — не «він/вона» без підказки в source чи \`context\`.
-  - рід NPC — з \`context\`, імені або source, якщо однозначно.
-  - **Якщо перефраз неможливий**: нейтральна конструкція (інфінітив, іменник, «треба…») — **не** чоловічий рід «за замовчуванням».
+${buildUkGenderTranslateRules('Sole Survivor (Nate/Nora)')}
 - **Жива мова**: постапокаліпсис прагматичний і грубий. Активні дієслова замість канцеляриту. До гравця: «Захищайте поселення»; між NPC: «Захищай поселення».
 - **Лайка (18+)**: не цензуруй до «дідька»; органічна жорстка лайка за контекстом ("bastard" → "покидьок/виродок", "get out" → "вали звідси"/"валіть звідси", "fuckers" → "виродки/сучі діти").
 - **Капіталізація**: як у source; не капсом для «важливості». КАПС лише якщо весь source уже КАПСОМ (HP, AP, XP).
@@ -108,8 +103,10 @@ ${promptJsonFormat([...FO4_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.le
     { "id": 107, "source": "Epic", "grup": "ARMO", "edid": "Omod_Epic_Operators" },
     { "id": 108, "source": "[Sarcasm] Oh, great.", "grup": "INFO" },
     { "id": 109, "source": "Fucking synths! Get out of here!", "grup": "INFO", "context": "Raider" },
-    { "id": 110, "source": "I was surprised to hear that.", "grup": "INFO", "context": "Player" },
-    { "id": 111, "source": "Are you ready?", "grup": "INFO", "context": "Preston" }
+    { "id": 110, "source": "I was surprised to hear that.", "grup": "INFO", "speaker": "Player", "speaker_gender": "any", "addressee": "Preston", "addressee_gender": "male" },
+    { "id": 111, "source": "Are you ready?", "grup": "INFO", "speaker": "Preston", "speaker_gender": "male", "addressee": "Player", "addressee_gender": "any" },
+    { "id": 112, "source": "I was there when it happened. I saw everything.", "grup": "INFO", "speaker": "Piper", "speaker_gender": "female", "addressee": "Player", "addressee_gender": "any" },
+    { "id": 113, "source": "I told them I was ready.", "grup": "INFO", "speaker": "Danse", "speaker_gender": "male", "addressee": "Player", "addressee_gender": "any" }
   ]
 }
 
@@ -126,7 +123,9 @@ ${promptJsonFormat([...FO4_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.le
     { "id": 108, "translation": "[Сарказм] О, чудово." },
     { "id": 109, "translation": "Сучі синти! Валіть звідси!" },
     { "id": 110, "translation": "Мене це здивувало." },
-    { "id": 111, "translation": "Усе готово?" }
+    { "id": 111, "translation": "Усе готово?" },
+    { "id": 112, "translation": "Я була там, коли це сталося. Я все бачила." },
+    { "id": 113, "translation": "Я сказав їм, що готовий." }
   ]
 }
 

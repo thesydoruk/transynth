@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { DialogEntry } from '../../../../../../api';
 import { speakerStyle } from '../../speakerColor';
 import { DialogLineRow } from '../DialogLineRow';
+import { SpeakerGenderBadge } from './SpeakerGenderBadge';
 import type { DialogLineHandlers } from './transcriptTypes';
 import styles from './DialogTranscriptView.module.scss';
 
@@ -31,6 +32,9 @@ export const DialogEntryCard = ({ entry, handlers }: DialogEntryCardProps) => {
 
   const indent = Math.min(entry.depth, MAX_INDENT_DEPTH) * INDENT_STEP;
   const colorKey = entry.speaker ?? (entry.alias_id === null ? null : `alias-${entry.alias_id}`);
+  const speakerRecord = entry.speaker_key
+    ? handlers.speakers.byKey.get(entry.speaker_key)
+    : undefined;
 
   return (
     <>
@@ -40,6 +44,26 @@ export const DialogEntryCard = ({ entry, handlers }: DialogEntryCardProps) => {
       <article className={styles.entry} style={{ marginLeft: indent, ...speakerStyle(colorKey) }}>
         <header className={styles.entryHead}>
           <span className={styles.speaker}>{speaker}</span>
+          <SpeakerGenderBadge
+            gender={entry.speaker_gender}
+            override={speakerRecord?.gender_override ?? null}
+            speakerKey={entry.speaker_key}
+            saving={
+              entry.speaker_key !== null && handlers.speakers.pendingKeys.has(entry.speaker_key)
+            }
+            onChange={handlers.speakers.setGender}
+          />
+          {entry.addressee && (
+            <span
+              className={styles.addressee}
+              title={t('dialogs.gender.addresseeTitle', {
+                name: entry.addressee,
+                gender: t(`dialogs.gender.${entry.addressee_gender}`),
+              })}
+            >
+              {t('dialogs.gender.addressee', { name: entry.addressee })}
+            </span>
+          )}
           {entry.depth > 0 && (
             <span className={styles.branchTag} title={t('dialogs.branchTitle')}>
               {t('dialogs.branchTag', { depth: entry.depth })}

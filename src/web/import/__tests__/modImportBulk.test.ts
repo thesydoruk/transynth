@@ -64,6 +64,7 @@ describe('dedupeDialogInfoRowsForImport', () => {
         infoFormId: '0100EF01',
         speakerFormId: null,
         speakerName: null,
+        speakerKey: null,
         previousInfoFormId: '0100EE00',
       },
       {
@@ -71,6 +72,7 @@ describe('dedupeDialogInfoRowsForImport', () => {
         infoFormId: '0100EF01',
         speakerFormId: '01009999',
         speakerName: 'Nick',
+        speakerKey: 'npc:01009999',
         previousInfoFormId: null,
       },
     ]);
@@ -81,6 +83,7 @@ describe('dedupeDialogInfoRowsForImport', () => {
       infoFormId: '0100EF01',
       speakerFormId: '01009999',
       speakerName: 'Nick',
+      speakerKey: 'npc:01009999',
       previousInfoFormId: '0100EE00',
     });
   });
@@ -92,6 +95,7 @@ describe('dedupeDialogInfoRowsForImport', () => {
         infoFormId: '0100EF01',
         speakerFormId: null,
         speakerName: null,
+        speakerKey: null,
         previousInfoFormId: null,
       },
       {
@@ -99,6 +103,7 @@ describe('dedupeDialogInfoRowsForImport', () => {
         infoFormId: '0100EF02',
         speakerFormId: null,
         speakerName: null,
+        speakerKey: null,
         previousInfoFormId: null,
       },
     ]);

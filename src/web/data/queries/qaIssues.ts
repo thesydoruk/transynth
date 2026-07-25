@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
+import { DIALOG_PARTICIPANT_COLUMNS, dialogParticipantsLateralSql } from './dialogs';
 import {
   collectQAIssuesForRow,
   bulkInsertQAIssues,
@@ -40,11 +41,14 @@ export const refreshQAIssuesBatch = async (
     `SELECT s.id AS string_id,
             s.text_raw AS source, s.is_ignored,
             t.id AS translation_id, t.text AS translation, t.status AS translation_status,
-            r.signature, r.path, m.game
+            r.signature, r.path, m.game,
+            ${DIALOG_PARTICIPANT_COLUMNS}
      FROM strings s
      JOIN records r ON r.id = s.record_id
      JOIN mods m ON m.id = r.mod_id
      LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+     LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}
+     ) dp ON TRUE
      WHERE s.id = ANY($1::int[])`,
     [stringIds, targetLang],
   );
@@ -95,9 +99,7 @@ export const refreshQAIssuesBatch = async (
 
     const issues = collectQAIssuesForRow(
       row,
-      qaSettings,
-      qaRules,
-      glossaryTerms,
+      { targetLang, settings: qaSettings, rules: qaRules, glossaryTerms },
       (duplicateAltsByStringId.get(row.string_id) ?? []).slice(0, 5),
     );
     for (const issue of issues) {

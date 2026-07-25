@@ -23,7 +23,14 @@ import {
   resolveSingleImportLocale,
   resolveModStringsLang,
 } from './localeHelpers';
-import { buildSpeakerFormIdMap, buildVoiceSpeakerMap } from './speakerMaps';
+import { loadNpcReferenceMap } from '../../../formats/subrecords';
+import { buildPluginSpeakerIndex } from '../dialogSpeakers';
+import { resolveEnglishLocaleMap } from './csvHelpers';
+import {
+  buildSpeakerFormIdMap,
+  buildVoiceFolderMap,
+  voiceSpeakerNamesFromFolders,
+} from './speakerMaps';
 import { createModImportBatchWriter, type ModImportBatchWriter } from './importBatchWriter';
 import type { ModImportJob, ProgressCb } from './types';
 
@@ -111,7 +118,8 @@ export const prepareEspImportContext = async (
   }
   const dialogTopicIdCache = await loadDialogTopicIdCache(ctx.db, ctx.importModId!);
   const speakerMap = buildSpeakerFormIdMap(espRows);
-  const voiceSpeakerMap = buildVoiceSpeakerMap(ctx.espPath);
+  const voiceFolderMap = buildVoiceFolderMap(ctx.espPath);
+  const voiceSpeakerMap = voiceSpeakerNamesFromFolders(voiceFolderMap);
 
   const archiveCandidates = discoverArchiveCandidatesForPlugin(ctx.espPath);
   ctx.pluginStringLang = resolveModStringsLang(
@@ -160,6 +168,13 @@ export const prepareEspImportContext = async (
     dialogEdidByFormId,
     speakerMap,
     voiceSpeakerMap,
+    voiceFolderMap,
+    speakerIndex: buildPluginSpeakerIndex({
+      actorIndex: esp.extractActorIndex(),
+      englishStrings: resolveEnglishLocaleMap(ctx.localeSources) ?? null,
+      npcReferenceNames: loadNpcReferenceMap(ctx.game),
+      voiceFolders: voiceFolderMap,
+    }),
     topicIdCache: dialogTopicIdCache,
   };
 

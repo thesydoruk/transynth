@@ -1,4 +1,10 @@
 import type { Tx } from '../../../../db';
+import { parseSpeakerGender } from '../../../../dialog';
+import {
+  DIALOG_NODE_PARTICIPANT_COLUMNS,
+  dialogNodeSpeakerJoinsSql,
+  parseAddresseeKind,
+} from './participants';
 import {
   DIALOG_PROMPT_PATH,
   DIALOG_RESPONSE_PATH,
@@ -17,6 +23,11 @@ type PhaseRow = {
   node_id: number | null;
   info_formid_hex: string | null;
   speaker_name: string | null;
+  speaker_key: string | null;
+  speaker_gender: string | null;
+  addressee_kind: string | null;
+  addressee_name: string | null;
+  addressee_gender: string | null;
   variant_index: number;
   variant_count: number;
   lines: DialogLine[];
@@ -50,11 +61,13 @@ const phaseLinesSql = (opts: {
       dn.id AS node_id,
       dn.info_formid_hex,
       dn.speaker_name,
+      ${DIALOG_NODE_PARTICIPANT_COLUMNS},
       COALESCE(dl.lines, '[]'::json) AS lines
     FROM dialog_scene_phases dsp
     JOIN dialog_scenes ds ON ds.id = dsp.scene_id
     JOIN dialog_topics dt ON dt.id = dsp.topic_id
     LEFT JOIN dialog_nodes dn ON dn.topic_id = dt.id
+    ${dialogNodeSpeakerJoinsSql('dt.mod_id')}
     LEFT JOIN LATERAL (${dialogLinesLateralSql(opts)}
     ) dl ON TRUE
     WHERE ${opts.where}
@@ -69,6 +82,7 @@ const phaseLinesSql = (opts: {
   SELECT
     scene_id, scene_formid_hex, scene_edid, phase_order, alias_id,
     topic_formid_hex, node_id, info_formid_hex, speaker_name, lines,
+    speaker_key, speaker_gender, addressee_kind, addressee_name, addressee_gender,
     (ROW_NUMBER() OVER (PARTITION BY phase_id ORDER BY node_id ASC NULLS FIRST))::int AS variant_index,
     (COUNT(*) OVER (PARTITION BY phase_id))::int AS variant_count
   FROM phase_variants
@@ -86,6 +100,11 @@ const toEntries = (rows: PhaseRow[], withSections: boolean): DialogEntryRow[] =>
       depth: 0,
       section: withSections && startsScene ? (row.scene_edid ?? row.scene_formid_hex) : null,
       speaker: row.speaker_name,
+      speaker_key: row.speaker_key,
+      speaker_gender: parseSpeakerGender(row.speaker_gender),
+      addressee_kind: parseAddresseeKind(row.addressee_kind),
+      addressee: row.addressee_name,
+      addressee_gender: parseSpeakerGender(row.addressee_gender),
       alias_id: row.alias_id,
       info_formid_hex: row.info_formid_hex,
       topic_formid_hex: row.topic_formid_hex,

@@ -64,7 +64,7 @@ const cleanVoiceFolderName = (name: string): string => {
 };
 
 /**
- * Build a speaker-name lookup from voice file directories.
+ * Build a lookup from INFO record to the voice folder its audio ships in.
  *
  * FO4 voice files live at `Sound/Voice/<Plugin>/<SpeakerFolder>/<FormID>_<N>.fuz`.
  * Most quest-based INFO records lack an ANAM subrecord (speaker is determined
@@ -76,9 +76,9 @@ const cleanVoiceFolderName = (name: string): string => {
  * with a hard-coded `00` prefix regardless of the plugin's actual load index.
  *
  * @param espPath - Absolute path to the plugin file.
- * @returns Map from lower-6-hex FormID → cleaned speaker display name.
+ * @returns Map from lower-6-hex FormID → raw voice folder name.
  */
-const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
+const buildVoiceFolderMap = (espPath: string): Map<string, string> => {
   const map = new Map<string, string>();
   const modDir = path.dirname(espPath);
   const pluginName = path.basename(espPath);
@@ -95,7 +95,6 @@ const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
 
   for (const dir of dirs) {
     if (!dir.isDirectory()) continue;
-    const speakerName = cleanVoiceFolderName(dir.name);
 
     let files: string[];
     try {
@@ -110,13 +109,23 @@ const buildVoiceSpeakerMap = (espPath: string): Map<string, string> => {
       // Strip the 2-char load-order prefix → lower 6 hex digits as key
       const lower6 = match[1].substring(2).toUpperCase();
       if (!map.has(lower6)) {
-        map.set(lower6, speakerName);
+        map.set(lower6, dir.name);
       }
     }
   }
 
-  logImport.debug(`Voice speaker map: ${map.size} entries from ${voiceRoot}`);
+  logImport.debug(`Voice folder map: ${map.size} entries from ${voiceRoot}`);
   return map;
 };
 
-export { buildNpcNameMap, buildSpeakerFormIdMap, buildVoiceSpeakerMap };
+/** Turn a {@link buildVoiceFolderMap} result into display-ready speaker labels. */
+const voiceSpeakerNamesFromFolders = (folderMap: Map<string, string>): Map<string, string> =>
+  new Map([...folderMap].map(([formId, folder]) => [formId, cleanVoiceFolderName(folder)]));
+
+export {
+  buildNpcNameMap,
+  buildSpeakerFormIdMap,
+  buildVoiceFolderMap,
+  cleanVoiceFolderName,
+  voiceSpeakerNamesFromFolders,
+};

@@ -13,6 +13,7 @@ import { withRequestDeadline } from '../../../llm/requestDeadline';
 import { isLlmTimeoutError } from '../../../llm/retry';
 import { logVerify } from '../../../logging/loggers';
 import { parseRecordLocation } from '../../../utils/recordLocation';
+import { dialogParticipantsFromRow } from '../../data/queries/dialogs';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
 import { scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
@@ -77,6 +78,7 @@ export const buildVerifyItems = (
 ): LlmVerifyItem[] =>
   llmChunk.map((row) => {
     const { grup, field } = parseRecordLocation(row.signature, row.path);
+    const participants = dialogParticipantsFromRow(row, field);
     return {
       id: row.string_id,
       source: row.source,
@@ -85,6 +87,10 @@ export const buildVerifyItems = (
       edid: row.edid,
       field,
       context: row.context,
+      speaker: participants.speakerName,
+      speaker_gender: participants.speakerGender,
+      addressee: participants.addresseeName,
+      addressee_gender: participants.addresseeGender,
       reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
         grup,
         field,
