@@ -61,7 +61,8 @@ export const PLACEHOLDER_PATTERN_PARTS = [
   String.raw`<Token\.[^>]+>`,
   String.raw`<Alias=[^>]+>`,
   String.raw`<Global=[^>]+>`,
-  String.raw`<[^>]+>`,
+  String.raw`<\d[\d,]*\s+`,
+  String.raw`<(?!\d[\d,]*\s+[Cc]aps>)[^>]+>`,
   String.raw`\[(?:${UI_BRACKET_TAGS.map(escapeRegex).join('|')})\]`,
   String.raw`\[\*[A-Za-z]+\]`,
   String.raw`\[<[^>]+>\]`,
@@ -85,14 +86,15 @@ export const PLACEHOLDER_PATTERN_PARTS = [
  * - `{0}`, `{1}`, … — positional format tokens.
  * - `{name}` — named format tokens.
  * - UI bracket tags (`[Mod]`, `[*Class]`, form refs) — not stage directions like `[Sarcasm]`.
- * - `<tag>` — XML/HTML-like and Bethesda alias/token/global tags.
+ * - `<tag>` — XML/HTML-like and Bethesda alias/token/global tags; UI cost prefixes like `<20 ` stay masked while the currency word is translated.
  * - `$Identifier` — script-style variable references.
  */
 export const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');
 
 /** QA/compare subset: omits generic `<...>` so localized status lines are not frozen. */
+const GENERIC_ANGLE_TAG_PATTERN = String.raw`<(?!\d[\d,]*\s+[Cc]aps>)[^>]+>`;
 const PLACEHOLDER_COMPARE_PATTERN_PARTS = PLACEHOLDER_PATTERN_PARTS.filter(
-  (part) => part !== String.raw`<[^>]+>`,
+  (part) => part !== GENERIC_ANGLE_TAG_PATTERN,
 );
 export const PLACEHOLDER_COMPARE_RE = new RegExp(PLACEHOLDER_COMPARE_PATTERN_PARTS.join('|'), 'g');
 

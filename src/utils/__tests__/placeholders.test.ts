@@ -54,6 +54,19 @@ describe('maskPlaceholders', () => {
     expect(masked).toBe('¤PH0¤Bold¤PH1¤ text');
   });
 
+  it('masks only the numeric prefix of UI cost tags so Caps stays translatable', () => {
+    const { masked, mapping } = maskPlaceholders('Call Subway <20 Caps>');
+    expect(masked).toBe('Call Subway ¤PH0¤Caps>');
+    expect(mapping['¤PH0¤']).toBe('<20 ');
+    expect(unmask('Call Subway ¤PH0¤кришок>', mapping)).toBe('Call Subway <20 кришок>');
+  });
+
+  it('accepts localized UI cost tags after unmask', () => {
+    const source = 'Call Subway <20 Caps>';
+    const translation = 'Викликати метро <20 кришок>';
+    expect(compareProtectedTokens(source, translation, 'fo4').ok).toBe(true);
+  });
+
   it('masks nested font/global tags as one token', () => {
     const tag = "<font color='#<Global=SS2_Instance_ResourceManager_ComponentFontColor01>'>";
     const { masked, mapping } = maskPlaceholders(`${tag}Hello`);
