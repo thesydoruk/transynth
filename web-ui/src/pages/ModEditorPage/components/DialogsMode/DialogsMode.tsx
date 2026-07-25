@@ -1,229 +1,200 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../../../api';
-import { TopicSidebar } from './components/TopicSidebar';
-import { DialogTreeView } from './components/DialogTreeView';
-import { SceneSidebar } from './components/SceneSidebar';
-import { SceneConversationView } from './components/SceneConversationView';
-import { ConversationSidebar } from './components/ConversationSidebar';
+import type { DialogLine } from '../../../../api';
+import { DialogNavigator } from './components/DialogNavigator';
+import { DialogTranscriptView, type DialogLineHandlers } from './components/DialogTranscriptView';
+import type { CommitAdvance } from './components/DialogLineRow';
+import { useDialogLineSave } from './hooks/useDialogLineSave';
+import { useDialogsData } from './hooks/useDialogsData';
+import { useDialogsKeyboard } from './hooks/useDialogsKeyboard';
+import { useDialogsState } from './hooks/useDialogsState';
+import { useDialogVoice } from './hooks/useDialogVoice';
+import { useLineCursor } from './hooks/useLineCursor';
+import { useNavigatorWidth } from './hooks/useNavigatorWidth';
+import { useTranscriptFill } from './hooks/useTranscriptFill';
+import { useTranscriptView } from './hooks/useTranscriptView';
 import styles from './DialogsMode.module.scss';
 
-/** Which sub-view is active in the Dialogs mode. */
-type DialogTab = 'topics' | 'scenes' | 'conversations';
-
-/** Props for the Dialogs mode view. */
+/** Props for the dialogs editor. */
 export interface DialogsModeProps {
   /** Numeric id of the currently open mod. */
   modId: number;
-  /** Source language code (used for string resolution). */
+  /** Source language code used to resolve dialog text. */
   srcLang: string;
-  /** Target language code (used for translation save/load). */
+  /** Target language code translations are read from and written to. */
   targetLang: string;
 }
 
 /**
- * Full–page view for the "Dialogs" editor mode.
+ * Dialogs editor: a navigator of topics, scenes, and quest conversations beside
+ * the transcript of the selected one.
  *
- * Two sub-views accessible via tab buttons:
- * - **Topics** — per-DIAL tree view (one speaker per topic).
- * - **Scenes** — per-SCEN conversation view (multi-speaker ordered dialog).
- *
- * Data flow:
- * 1. Fetches all DIAL topics / SCEN scenes for the mod.
- * 2. When the user selects a topic or scene, fetches its content.
- * 3. Passes data down to the appropriate sub-view for rendering.
+ * Everything the user picks lives in the URL, so a reload or a shared link
+ * reopens the same line. Editing is keyboard-driven — see `dialogs.hotkeyHint`
+ * for the full set — and every save patches the cached transcript in place so
+ * the reading position never moves.
  */
 export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) => {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<DialogTab>('topics');
-  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
-  const [selectedSceneId, setSelectedSceneId] = useState<number | null>(null);
-  const [selectedConversationKey, setSelectedConversationKey] = useState<string | null>(null);
+  const state = useDialogsState();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const { width, isResizing, startResize } = useNavigatorWidth();
 
-  // ── Topics list ──────────────────────────────────────────────────────────
-
-  const topicsQuery = useQuery({
-    queryKey: ['dialog-topics', modId],
-    queryFn: () => api.dialogs.topics(modId),
-    staleTime: 60_000,
+  const data = useDialogsData({
+    modId,
+    scope: state.scope,
+    groupKey: state.groupKey,
+    search: state.search,
+    sort: state.sort,
+    hideDone: state.hideDone,
+    srcLang,
+    targetLang,
   });
 
-  const topics = topicsQuery.data ?? [];
-  const effectiveTopicId = selectedTopicId ?? topics[0]?.topic_id ?? null;
+  const view = useTranscriptView(data.transcript, state.filter, state.find);
+  const cursor = useLineCursor(view);
+  const voice = useDialogVoice(modId, targetLang);
 
-  // ── Tree for selected topic ──────────────────────────────────────────────
-
-  const treeQueryKey = ['dialog-tree', effectiveTopicId, srcLang, targetLang] as const;
-
-  const treeQuery = useQuery({
-    queryKey: treeQueryKey,
-    queryFn: () => api.dialogs.tree(effectiveTopicId!, srcLang, targetLang),
-    enabled: tab === 'topics' && effectiveTopicId !== null,
-    staleTime: 30_000,
+  const save = useDialogLineSave({
+    transcriptQueryKey: data.transcriptQueryKey,
+    groupsQueryKey: data.groupsQueryKey,
+    activeKey: data.activeKey,
+    targetLang,
   });
 
-  const nodes = treeQuery.data?.nodes ?? [];
-  const edges = treeQuery.data?.edges ?? [];
-
-  // ── Scenes list ──────────────────────────────────────────────────────────
-
-  const scenesQuery = useQuery({
-    queryKey: ['dialog-scenes', modId],
-    queryFn: () => api.dialogs.scenes(modId),
-    staleTime: 60_000,
-    enabled: tab === 'scenes',
+  const fill = useTranscriptFill({
+    modId,
+    srcLang,
+    targetLang,
+    transcriptQueryKey: data.transcriptQueryKey,
+    groupsQueryKey: data.groupsQueryKey,
   });
 
-  const scenes = scenesQuery.data ?? [];
-  const effectiveSceneId = selectedSceneId ?? scenes[0]?.scene_id ?? null;
+  const stepGroup = (delta: number) => {
+    const groups = data.visibleGroups;
+    if (groups.length === 0) return;
+    const current = groups.findIndex((group) => group.key === data.activeKey);
+    const next =
+      current < 0
+        ? delta > 0
+          ? 0
+          : groups.length - 1
+        : Math.min(Math.max(current + delta, 0), groups.length - 1);
+    state.setGroupKey(groups[next].key);
+  };
 
-  // ── Dialog lines for selected scene ──────────────────────────────────────
+  const commitLine = (line: DialogLine, text: string, advance: CommitAdvance) => {
+    void save.saveLine(line, text);
+    if (advance === 'next') cursor.step(1, true);
+    else if (advance === 'nextTodo') cursor.goToNextTodo(true);
+    else cursor.closeEditor();
+  };
 
-  const sceneQueryKey = ['dialog-scene', effectiveSceneId, srcLang, targetLang] as const;
+  const handlers: DialogLineHandlers = {
+    focusedId: cursor.focusedId,
+    editingId: cursor.editingId,
+    pendingIds: save.pendingIds,
+    onFocus: (line) => cursor.focus(line.string_id),
+    onEdit: (line) => cursor.edit(line.string_id),
+    onCancel: cursor.closeEditor,
+    onCommit: commitLine,
+    onSetStatus: (line, status) => void save.setLineStatus(line, status),
+    voiceFor: voice.voiceFor,
+  };
 
-  const sceneQuery = useQuery({
-    queryKey: sceneQueryKey,
-    queryFn: () => api.dialogs.sceneDialog(effectiveSceneId!, srcLang, targetLang),
-    enabled: tab === 'scenes' && effectiveSceneId !== null,
-    staleTime: 30_000,
+  /** Prefer the original take: it is the reference a translator listens for. */
+  const playFocusedVoice = () => {
+    if (cursor.focusedId === null) return;
+    const line = view.lineById.get(cursor.focusedId);
+    const entry = view.entryByLineId.get(cursor.focusedId);
+    if (!line || !entry) return;
+    const lineVoice = voice.voiceFor(entry, line);
+    if (!lineVoice) return;
+    lineVoice.play(lineVoice.hasSource ? 'source' : 'translation');
+  };
+
+  useDialogsKeyboard({
+    setScope: state.setScope,
+    stepGroup,
+    stepLine: (delta) => cursor.step(delta),
+    goToNextTodo: () => cursor.goToNextTodo(),
+    edit: () => cursor.edit(),
+    playVoice: playFocusedVoice,
+    clearFocus: () => {
+      cursor.closeEditor();
+      cursor.focus(null);
+    },
+    focusSearch: () => searchRef.current?.focus(),
+    isEditing: cursor.editingId !== null,
   });
 
-  const sceneLines = sceneQuery.data ?? [];
-
-  // ── Conversation groups ─────────────────────────────────────────────────
-
-  const conversationsQuery = useQuery({
-    queryKey: ['dialog-conversations', modId],
-    queryFn: () => api.dialogs.conversations(modId),
-    staleTime: 60_000,
-    enabled: tab === 'conversations',
-  });
-
-  const conversations = conversationsQuery.data ?? [];
-  const effectiveConversationKey = selectedConversationKey ?? conversations[0]?.conversation_key ?? null;
-
-  const conversationQueryKey = ['dialog-conversation', modId, effectiveConversationKey, srcLang, targetLang] as const;
-
-  const conversationQuery = useQuery({
-    queryKey: conversationQueryKey,
-    queryFn: () => api.dialogs.conversationDialog(modId, effectiveConversationKey!, srcLang, targetLang),
-    enabled: tab === 'conversations' && effectiveConversationKey !== null,
-    staleTime: 30_000,
-  });
-
-  const conversationLines = conversationQuery.data ?? [];
+  const emptyMessage =
+    data.activeKey !== null
+      ? null
+      : data.groupsQuery.isLoading
+        ? t('dialogs.loadingGroups')
+        : data.groups.length === 0
+          ? t(`dialogs.empty.${state.scope}`)
+          : t('dialogs.selectGroup');
 
   return (
     <div className={styles.root}>
-      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={`${styles.tab} ${tab === 'topics' ? styles.activeTab : ''}`}
-          onClick={() => setTab('topics')}
-        >
-          {t('dialogs.tabTopics')}
-        </button>
-        <button
-          type="button"
-          className={`${styles.tab} ${tab === 'scenes' ? styles.activeTab : ''}`}
-          onClick={() => setTab('scenes')}
-        >
-          {t('dialogs.tabScenes')}
-        </button>
-        <button
-          type="button"
-          className={`${styles.tab} ${tab === 'conversations' ? styles.activeTab : ''}`}
-          onClick={() => setTab('conversations')}
-        >
-          {t('dialogs.tabConversations')}
-        </button>
+      <div className={styles.navigatorPane} style={{ width }}>
+        <DialogNavigator
+          scope={state.scope}
+          onScopeChange={state.setScope}
+          search={state.search}
+          onSearchChange={state.setSearch}
+          sort={state.sort}
+          onSortChange={state.setSort}
+          hideDone={state.hideDone}
+          onHideDoneChange={state.setHideDone}
+          groups={data.visibleGroups}
+          totalCount={data.groups.length}
+          activeKey={data.activeKey}
+          onSelect={state.setGroupKey}
+          onStepGroup={stepGroup}
+          isLoading={data.groupsQuery.isLoading}
+          searchRef={searchRef}
+        />
       </div>
 
-      {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className={styles.content}>
-        {tab === 'topics' ? (
-          <>
-            <TopicSidebar
-              topics={topics}
-              activeTopicId={effectiveTopicId}
-              isLoading={topicsQuery.isLoading}
-              onSelect={setSelectedTopicId}
-            />
-            <main className={styles.main}>
-              {effectiveTopicId === null ? (
-                <div className={styles.placeholder}>
-                  {topics.length === 0 && !topicsQuery.isLoading
-                    ? t('dialogs.noDialogData')
-                    : t('dialogs.selectTopic')}
-                </div>
-              ) : (
-                <DialogTreeView
-                  nodes={nodes}
-                  edges={edges}
-                  targetLang={targetLang}
-                  queryKey={[...treeQueryKey]}
-                  isLoading={treeQuery.isLoading}
-                />
-              )}
-            </main>
-          </>
-        ) : tab === 'scenes' ? (
-          <>
-            <SceneSidebar
-              scenes={scenes}
-              activeSceneId={effectiveSceneId}
-              isLoading={scenesQuery.isLoading}
-              onSelect={setSelectedSceneId}
-            />
-            <main className={styles.main}>
-              {effectiveSceneId === null ? (
-                <div className={styles.placeholder}>
-                  {scenes.length === 0 && !scenesQuery.isLoading
-                    ? t('dialogs.noScenes')
-                    : t('dialogs.selectScene')}
-                </div>
-              ) : (
-                <SceneConversationView
-                  lines={sceneLines}
-                  targetLang={targetLang}
-                  queryKey={[...sceneQueryKey]}
-                  isLoading={sceneQuery.isLoading}
-                />
-              )}
-            </main>
-          </>
-        ) : (
-          <>
-            <ConversationSidebar
-              conversations={conversations}
-              activeConversationKey={effectiveConversationKey}
-              isLoading={conversationsQuery.isLoading}
-              onSelect={setSelectedConversationKey}
-            />
-            <main className={styles.main}>
-              {effectiveConversationKey === null ? (
-                <div className={styles.placeholder}>
-                  {conversations.length === 0 && !conversationsQuery.isLoading
-                    ? t('dialogs.noConversations')
-                    : t('dialogs.selectConversation')}
-                </div>
-              ) : (
-                <SceneConversationView
-                  lines={conversationLines}
-                  targetLang={targetLang}
-                  queryKey={[...conversationQueryKey]}
-                  isLoading={conversationQuery.isLoading}
-                  loadingTextKey="dialogs.loadingConversation"
-                  emptyTextKey="dialogs.noConversationLines"
-                  showSceneBreaks
-                />
-              )}
-            </main>
-          </>
-        )}
-      </div>
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        className={`${styles.divider} ${isResizing ? styles.dividerActive : ''}`}
+        onMouseDown={startResize}
+      />
+
+      <DialogTranscriptView
+        header={{
+          label: data.transcript?.label ?? data.activeGroup?.label ?? '',
+          sublabel: data.activeGroup?.sublabel ?? null,
+          counts: view.counts,
+          filter: state.filter,
+          onFilterChange: state.setFilter,
+          find: state.find,
+          onFindChange: state.setFind,
+          hiddenEntryCount: view.hiddenEntryCount,
+          onNextTodo: () => cursor.goToNextTodo(true),
+          onFill: (mode) => void fill.fill(mode, view.lines),
+          fillProgress: fill.progress,
+          isFetching: data.transcriptQuery.isFetching,
+          error: save.error
+            ? t('dialogs.saveFailed', { message: save.error })
+            : voice.error
+              ? t('dialogs.voiceFailed', { message: voice.error })
+              : null,
+          onDismissError: () => {
+            save.dismissError();
+            voice.clearError();
+          },
+        }}
+        entries={view.entries}
+        handlers={handlers}
+        isLoading={data.transcriptQuery.isLoading}
+        emptyMessage={emptyMessage}
+      />
     </div>
   );
 };

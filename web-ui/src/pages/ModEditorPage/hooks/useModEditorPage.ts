@@ -157,6 +157,7 @@ export function useModEditorPage() {
     editorQueries.strings?.rows.filter((r) => r.qa_issue_count > 0).length ?? 0;
 
   useEditorKeyboard({
+    enabled: filter.pageMode === 'strings',
     activeRow: row.activeRow,
     focusedRow: row.focusedRow,
     hasSelection: selection.hasSelection,

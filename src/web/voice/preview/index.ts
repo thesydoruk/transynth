@@ -1,5 +1,6 @@
 export type {
   VoiceAudioResult,
+  VoiceAvailabilityResult,
   VoiceGenerateLineResult,
   VoiceLinePreview,
   VoiceLinesListResult,
@@ -11,6 +12,7 @@ export { resolveModVoiceContext, resolveVoicePackageContext } from './context';
 export type { VoicePackageContext } from './context';
 
 export { listVoiceLinesForMod } from './listVoiceLines';
+export { listVoiceAvailabilityForMod } from './voiceAvailability';
 export {
   clearVoiceSpeakerReferenceForMod,
   setVoiceSpeakerReferenceForMod,

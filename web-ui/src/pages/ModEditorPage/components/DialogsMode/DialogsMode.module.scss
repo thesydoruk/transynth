@@ -2,62 +2,29 @@
 
 .root {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
-/* ── Tab bar ────────────────────────────────────────────────────────────── */
-
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
+.navigatorPane {
   flex-shrink: 0;
-  background: var(--bg-card);
+  min-width: 0;
+  overflow: hidden;
 }
 
-.tab {
-  padding: 6px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+.divider {
+  flex-shrink: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: var(--bg-body);
+  transition: background 0.12s;
 
   &:hover {
-    color: var(--text);
+    background: var(--accent);
   }
 }
 
-.activeTab {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-/* ── Content area (sidebar + main) ──────────────────────────────────────── */
-
-.content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg-surface);
-}
-
-.placeholder {
-  padding: 32px 24px;
-  font-size: 14px;
-  color: var(--text-muted);
+.dividerActive {
+  background: var(--accent);
 }

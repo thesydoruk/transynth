@@ -1,33 +1,26 @@
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import { req } from '../client';
-import type {
-  DialogConversation,
-  DialogScene,
-  DialogTopic,
-  DialogTreeResult,
-  SceneDialogLine,
-} from '../types';
+import type { DialogGroup, DialogScope, DialogTranscript } from '../types';
+
+const langQuery = (srcLang: string, targetLang: string) =>
+  `srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`;
 
 export const dialogsEndpoints = {
-  topics: (modId: number) => req<DialogTopic[]>(`/api/dialogs/topics?modId=${modId}`),
-  tree: (topicId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-    req<DialogTreeResult>(
-      `/api/dialogs/tree?topicId=${topicId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+  /** Every selectable group of a scope, with translation progress counters. */
+  groups: (modId: number, scope: DialogScope, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+    req<DialogGroup[]>(
+      `/api/dialogs/groups?modId=${modId}&scope=${scope}&${langQuery(srcLang, targetLang)}`,
     ),
-  scenes: (modId: number) => req<DialogScene[]>(`/api/dialogs/scenes?modId=${modId}`),
-  conversations: (modId: number) =>
-    req<DialogConversation[]>(`/api/dialogs/conversations?modId=${modId}`),
-  sceneDialog: (sceneId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-    req<SceneDialogLine[]>(
-      `/api/dialogs/scene?sceneId=${sceneId}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-    ),
-  conversationDialog: (
+
+  /** Ordered dialog content of one group. */
+  transcript: (
     modId: number,
+    scope: DialogScope,
     key: string,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
   ) =>
-    req<SceneDialogLine[]>(
-      `/api/dialogs/conversation?modId=${modId}&key=${encodeURIComponent(key)}&srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
+    req<DialogTranscript>(
+      `/api/dialogs/transcript?modId=${modId}&scope=${scope}&key=${encodeURIComponent(key)}&${langQuery(srcLang, targetLang)}`,
     ),
 };

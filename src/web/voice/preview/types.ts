@@ -29,6 +29,22 @@ export type VoiceLinesListResult =
       message: string;
     };
 
+/** Playable voice lines of a mod, listed as `FORMID6:variant` keys. */
+export type VoiceAvailabilityResult =
+  | {
+      ok: true;
+      targetLang: string;
+      /** Lines shipped with the mod. */
+      source: string[];
+      /** Subset of {@link source} that also has a generated translation take. */
+      translation: string[];
+    }
+  | {
+      ok: false;
+      reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing';
+      message: string;
+    };
+
 export type VoiceAudioResult =
   | { ok: true; wavPath: string }
   | {

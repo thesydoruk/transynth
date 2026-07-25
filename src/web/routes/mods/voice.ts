@@ -7,6 +7,7 @@ import {
   generateVoiceTranslationForMod,
   getVoicePreviewWav,
   getVoiceTranslationWav,
+  listVoiceAvailabilityForMod,
   listVoiceLinesForMod,
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
@@ -29,6 +30,23 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       const status =
         result.reason === 'mod_not_found' ? 404 : result.reason === 'no_voice_files' ? 404 : 400;
       return reply.code(status).send(result);
+    }
+    return reply.send(result);
+  });
+
+  // GET /api/mods/:id/voice/availability — which lines have audio, without the metadata.
+  app.get<{
+    Params: { id: string };
+    Querystring: { targetLang?: string };
+  }>('/api/mods/:id/voice/availability', async (req, reply) => {
+    const modId = Number(req.params.id);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+
+    const result = await listVoiceAvailabilityForMod(db, modId, req.query.targetLang?.trim());
+    if (!result.ok) {
+      return reply.code(result.reason === 'mod_not_found' ? 404 : 400).send(result);
     }
     return reply.send(result);
   });

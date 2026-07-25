@@ -69,7 +69,21 @@ export function useEditorFilterState({ modId, clearSelection }: UseEditorFilterS
   });
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [pageMode, setPageMode] = useState<'strings' | 'dialogs'>('strings');
+
+  /* The active surface lives in the URL so a reload — or a shared link — reopens
+     the dialogs editor instead of falling back to the strings grid. */
+  const pageMode: 'strings' | 'dialogs' =
+    searchParams.get('mode') === 'dialogs' ? 'dialogs' : 'strings';
+
+  const setPageMode = useCallback(
+    (mode: 'strings' | 'dialogs') => {
+      const next = new URLSearchParams(searchParams);
+      if (mode === 'dialogs') next.set('mode', 'dialogs');
+      else next.delete('mode');
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams],
+  );
 
   useEffect(() => {
     try {

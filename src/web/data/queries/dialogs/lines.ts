@@ -26,6 +26,12 @@ export type DialogLine = {
   model: string | null;
   updated_at: string | null;
   qa_issue_count: number;
+  /**
+   * Position of this response among the NAM1 lines of its INFO record, or null
+   * for prompts. Voice assets are named `<FormID>_<variant>.fuz`, so this is
+   * the half of the audio key that the transcript alone cannot reconstruct.
+   */
+  voice_variant: number | null;
 };
 
 /**
@@ -42,37 +48,44 @@ export const dialogLinesLateralSql = (p: {
   responsePath: string;
   promptPath: string;
 }): string => `
-    SELECT json_agg(
-             json_build_object(
-               'kind', CASE WHEN r.path_simplified = ${p.promptPath} THEN 'prompt' ELSE 'response' END,
-               'string_id', s.id,
-               'source', s.text_raw,
-               'context', s.context,
-               'translation_id', t.id,
-               'translation', t.text,
-               'status', t.status,
-               'confidence', t.confidence,
-               'provenance', t.provenance,
-               'model', t.model,
-               'updated_at', t.updated_at,
-               'qa_issue_count', (
-                 SELECT COUNT(*)::int
-                 FROM qa_issues qi
-                 WHERE qi.src_string_id = s.id
-                   AND qi.target_lang = ${p.targetLang}
-                   AND qi.is_active = TRUE
-               )
-             )
-             ORDER BY CASE WHEN r.path_simplified = ${p.promptPath} THEN 0 ELSE 1 END, s.id
-           ) AS lines
-    FROM records r
-    JOIN strings s
-      ON s.record_id = r.id
-     AND s.lang = ${p.srcLang}
-    LEFT JOIN translations t
-      ON t.src_string_id = s.id
-     AND t.target_lang = ${p.targetLang}
-    WHERE r.mod_id = dt.mod_id
-      AND r.signature = 'INFO'
-      AND r.formid_hex = dn.info_formid_hex
-      AND r.path_simplified IN (${p.responsePath}, ${p.promptPath})`;
+    SELECT json_agg(l.line ORDER BY l.prompt_first, l.string_id) AS lines
+    FROM (
+      SELECT
+        CASE WHEN r.path_simplified = ${p.promptPath} THEN 0 ELSE 1 END AS prompt_first,
+        s.id AS string_id,
+        json_build_object(
+          'kind', CASE WHEN r.path_simplified = ${p.promptPath} THEN 'prompt' ELSE 'response' END,
+          'string_id', s.id,
+          'source', s.text_raw,
+          'context', s.context,
+          'translation_id', t.id,
+          'translation', t.text,
+          'status', t.status,
+          'confidence', t.confidence,
+          'provenance', t.provenance,
+          'model', t.model,
+          'updated_at', t.updated_at,
+          'voice_variant', CASE
+            WHEN r.path_simplified = ${p.responsePath}
+              THEN (ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id))::int
+          END,
+          'qa_issue_count', (
+            SELECT COUNT(*)::int
+            FROM qa_issues qi
+            WHERE qi.src_string_id = s.id
+              AND qi.target_lang = ${p.targetLang}
+              AND qi.is_active = TRUE
+          )
+        ) AS line
+      FROM records r
+      JOIN strings s
+        ON s.record_id = r.id
+       AND s.lang = ${p.srcLang}
+      LEFT JOIN translations t
+        ON t.src_string_id = s.id
+       AND t.target_lang = ${p.targetLang}
+      WHERE r.mod_id = dt.mod_id
+        AND r.signature = 'INFO'
+        AND r.formid_hex = dn.info_formid_hex
+        AND r.path_simplified IN (${p.responsePath}, ${p.promptPath})
+    ) l`;

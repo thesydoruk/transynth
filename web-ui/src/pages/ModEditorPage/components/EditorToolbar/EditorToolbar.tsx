@@ -7,6 +7,7 @@ import { ModAiControls } from '../../../../components/ModAiControls';
 import type { ModAiJobEntry } from '../../../../modAiJobsStore';
 import { StatusFilter } from '../StatusFilter';
 import { type StatusFilterValue } from '../../statusFilter';
+import { EditorModeSwitch, type EditorPageMode } from './EditorModeSwitch';
 import styles from './EditorToolbar.module.scss';
 
 /** Shape returned by the stats API. */
@@ -39,8 +40,8 @@ export interface EditorToolbarProps {
   availLangs: string[];
   selectedStatuses: StatusFilterValue[];
   qaOnly: boolean;
-  /** Active view mode — 'strings' shows the grid, 'dialogs' shows the tree. */
-  pageMode: 'strings' | 'dialogs';
+  /** Active view mode — 'strings' shows the grid, 'dialogs' shows the transcript editor. */
+  pageMode: EditorPageMode;
   stats: ModStats | undefined;
   selectedCount: number;
   translateProgress: { done: number; total: number } | null;
@@ -68,7 +69,7 @@ export interface EditorToolbarProps {
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onNextQaIssue: () => void;
-  onPageModeChange: (mode: 'strings' | 'dialogs') => void;
+  onPageModeChange: (mode: EditorPageMode) => void;
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
   onTranslateStop: () => void;
@@ -183,26 +184,26 @@ export const EditorToolbar = ({
 
       <div className={styles.sep} />
 
-      <StatusFilter
-        selected={selectedStatuses}
-        onChange={(next) => {
-          onSelectedStatusesChange(next);
-        }}
-      />
-      <Button
-        onClick={onQaOnlyToggle}
-        variant={qaOnly ? 'primary' : 'secondary'}
-        size="sm"
-        title={t('modEditor.qaOnlyTitle')}
-      >
-        {t('modEditor.qaOnly')}
-      </Button>
+      <EditorModeSwitch mode={pageMode} onChange={onPageModeChange} />
 
       <div className={styles.sep} />
 
-      <Button onClick={onSearchReplace} variant="secondary" size="sm">
-        {t('modEditor.searchReplace')}
-      </Button>
+      {pageMode === 'strings' && (
+        <>
+          <StatusFilter selected={selectedStatuses} onChange={onSelectedStatusesChange} />
+          <Button
+            onClick={onQaOnlyToggle}
+            variant={qaOnly ? 'primary' : 'secondary'}
+            size="sm"
+            title={t('modEditor.qaOnlyTitle')}
+          >
+            {t('modEditor.qaOnly')}
+          </Button>
+          <Button onClick={onSearchReplace} variant="secondary" size="sm">
+            {t('modEditor.searchReplace')}
+          </Button>
+        </>
+      )}
       <DropdownButton
         label={t('modEditor.translationMenu')}
         title={t('modEditor.translationMenuTitle')}
@@ -241,7 +242,7 @@ export const EditorToolbar = ({
       >
         {t('modEditor.voice')}
       </Button>
-      {qaIssueRowCount > 0 && (
+      {pageMode === 'strings' && qaIssueRowCount > 0 && (
         <Button
           onClick={onNextQaIssue}
           variant="secondary"
@@ -255,18 +256,7 @@ export const EditorToolbar = ({
         ?
       </Button>
 
-      <div className={styles.sep} />
-
-      <Button
-        onClick={() => onPageModeChange(pageMode === 'dialogs' ? 'strings' : 'dialogs')}
-        variant={pageMode === 'dialogs' ? 'primary' : 'secondary'}
-        size="sm"
-        title={t('dialogs.modeButtonTitle')}
-      >
-        {t('dialogs.modeButton')}
-      </Button>
-
-      {selectedCount > 0 && (
+      {pageMode === 'strings' && selectedCount > 0 && (
         <>
           {translateProgress ? (
             <span className={styles.progressBadge}>

@@ -92,6 +92,34 @@
   font-size: 12px;
 }
 
+/* ── Mode switch ── */
+
+.modeSwitch {
+  display: flex;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.modeButton {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-bright);
+  }
+}
+
+.modeButtonActive {
+  color: var(--accent-on);
+  background: var(--accent);
+}
+
 .progressBadge {
   background: var(--badge-lang-bg);
   color: var(--badge-lang-text);

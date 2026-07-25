@@ -6,6 +6,8 @@ import type { StringRow } from '../../../api';
  * needs access to on every key-press.
  */
 export interface EditorKeyboardConfig {
+  /** False while another surface owns the keyboard, e.g. the dialogs editor. */
+  enabled: boolean;
   activeRow: StringRow | null;
   focusedRow: StringRow | null;
   hasSelection: boolean;
@@ -40,6 +42,7 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const c = ref.current;
+      if (!c.enabled) return;
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
 

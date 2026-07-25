@@ -60,6 +60,11 @@ export type VoiceLinesResponse =
   | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
   | { ok: false; reason: string; message: string };
 
+/** Playable voice lines of a mod, listed as `FORMID6:variant` keys. */
+export type VoiceAvailabilityResponse =
+  | { ok: true; targetLang: string; source: string[]; translation: string[] }
+  | { ok: false; reason: string; message: string };
+
 export type VoiceRegenerateParams = {
   backend: 'xtts' | 'fish-speech';
   line_reference: boolean;

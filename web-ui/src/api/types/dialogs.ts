@@ -1,9 +1,5 @@
-export type DialogTopic = {
-  topic_id: number;
-  topic_formid_hex: string;
-  topic_edid: string | null;
-  node_count: number;
-};
+/** Which kind of dialog container the editor is browsing. */
+export type DialogScope = 'topics' | 'scenes' | 'conversations';
 
 export type DialogLineStatus =
   | 'draft'
@@ -13,6 +9,7 @@ export type DialogLineStatus =
   | 'fuzzy'
   | 'auto'
   | 'tm'
+  | 'skip'
   | null;
 
 /**
@@ -32,61 +29,47 @@ export type DialogLine = {
   model: string | null;
   updated_at: string | null;
   qa_issue_count: number;
+  /**
+   * Position of this response among the NAM1 lines of its INFO record, or null
+   * for prompts. Together with the entry FormID it addresses the voice file.
+   */
+  voice_variant: number | null;
 };
 
-export type DialogTreeNode = {
-  node_id: number;
-  info_formid_hex: string;
-  previous_info_formid_hex: string | null;
-  speaker_formid_hex: string | null;
-  speaker_name: string | null;
-  lines: DialogLine[];
+/** One selectable container in the navigator, with its translation progress. */
+export type DialogGroup = {
+  /** Topic id, scene id, or conversation key. */
+  key: string;
+  label: string;
+  sublabel: string | null;
+  /** INFO nodes (topics) or phases (scenes and conversations). */
+  node_count: number;
+  line_count: number;
+  translated_count: number;
+  qa_count: number;
 };
 
-export type DialogTreeEdge = {
-  edge_id: number;
-  from_info_formid_hex: string;
-  to_info_formid_hex: string;
-  edge_kind: string;
-  confidence: string;
-};
-
-export type DialogTreeResult = {
-  nodes: DialogTreeNode[];
-  edges: DialogTreeEdge[];
-};
-
-export type DialogScene = {
-  scene_id: number;
-  scene_formid_hex: string;
-  scene_edid: string | null;
-  quest_formid_hex: string | null;
-  phase_count: number;
-};
-
-export type DialogConversation = {
-  conversation_key: string;
-  quest_formid_hex: string | null;
-  sample_scene_edid: string | null;
-  sample_scene_formid_hex: string;
-  scene_count: number;
-  phase_count: number;
-};
-
-export type SceneDialogLine = {
-  scene_id: number;
-  scene_formid_hex: string;
-  scene_edid: string | null;
-  phase_order: number;
-  alias_id: number;
-  topic_formid_hex: string;
-  topic_edid: string | null;
-  node_id: number | null;
+/** One speaker turn of a transcript. */
+export type DialogEntry = {
+  id: string;
+  /** Indentation level; only branch points in a topic tree increase it. */
+  depth: number;
+  /** Heading rendered above the entry, e.g. the scene name inside a conversation. */
+  section: string | null;
+  speaker: string | null;
+  /** Scene alias of the speaker; `-2` is the player. Null outside scenes. */
+  alias_id: number | null;
   info_formid_hex: string | null;
-  speaker_name: string | null;
-  /** Position of this INFO among the alternatives of its phase (1-based). */
+  topic_formid_hex: string | null;
   variant_index: number;
-  /** How many alternative INFOs the phase offers. */
   variant_count: number;
   lines: DialogLine[];
+};
+
+/** Full dialog content of one selected group. */
+export type DialogTranscript = {
+  scope: DialogScope;
+  key: string;
+  label: string;
+  entries: DialogEntry[];
 };

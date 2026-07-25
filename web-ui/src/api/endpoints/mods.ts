@@ -12,6 +12,7 @@ import type {
   Mod,
   PexSourceSnippetResponse,
   PreviousVersionRow,
+  VoiceAvailabilityResponse,
   VoiceLinesResponse,
   VoiceRegenerateParams,
   VoiceRegeneratePreview,
@@ -35,6 +36,11 @@ export const modsEndpoints = {
     const params = new URLSearchParams({ srcLang, targetLang });
     return req<VoiceLinesResponse>(`/api/mods/${modId}/voice/lines?${params}`);
   },
+  /** Which lines of the mod have audio, without the heavier voice-line metadata. */
+  voiceAvailability: (modId: number, targetLang = getTgtLang()) =>
+    req<VoiceAvailabilityResponse>(
+      `/api/mods/${modId}/voice/availability?targetLang=${encodeURIComponent(targetLang)}`,
+    ),
   setVoiceSpeakerRef: (modId: number, speakerKey: string, formidLower6: string, variant: number) =>
     req<{ ok: true; referencePick: VoiceSpeakerRefPick }>(`/api/mods/${modId}/voice/speaker-ref`, {
       method: 'PUT',
