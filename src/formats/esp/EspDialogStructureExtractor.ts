@@ -101,7 +101,12 @@ export class EspDialogStructureExtractor {
         const text = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
         if (text) name = text;
       } else if (subSig === 'INDX' && (subSize === 2 || subSize === 4)) {
-        stageSet.add(subSize === 2 ? data.readUInt16LE(ds) : data.readUInt32LE(ds));
+        const stageIndex = subSize === 2 ? data.readUInt16LE(ds) : data.readInt32LE(ds);
+        // Some QUST subrecords reuse INDX with 4-byte payloads that are not stage
+        // numbers (they look like FormIDs). Real quest stages stay small.
+        if (stageIndex >= 0 && stageIndex <= 65535) {
+          stageSet.add(stageIndex);
+        }
       }
 
       pos = ds + subSize;

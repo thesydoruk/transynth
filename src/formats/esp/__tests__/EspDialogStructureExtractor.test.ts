@@ -44,6 +44,15 @@ const uint16Sub = (sig: string, value: number): Buffer => {
   return Buffer.concat([header, data]);
 };
 
+const uint32Sub = (sig: string, value: number): Buffer => {
+  const header = Buffer.alloc(6);
+  header.write(sig, 0, 4, 'ascii');
+  header.writeUInt16LE(4, 4);
+  const data = Buffer.alloc(4);
+  data.writeUInt32LE(value >>> 0, 0);
+  return Buffer.concat([header, data]);
+};
+
 describe('EspDialogStructureExtractor', () => {
   it('extracts QUST stages, DLBR links, and DIAL ownership', () => {
     const quest = buildRecord('QUST', 0x00000aaa, [
@@ -89,6 +98,25 @@ describe('EspDialogStructureExtractor', () => {
         formId: '00000CCC',
         questFormId: '00000AAA',
         branchFormId: '00000BBB',
+      },
+    ]);
+  });
+
+  it('ignores 4-byte INDX values that are not quest stage indices', () => {
+    const quest = buildRecord('QUST', 0x00000ddd, [
+      zstring('EDID', 'BadStages'),
+      uint32Sub('INDX', 2214592677),
+      uint32Sub('INDX', 100),
+    ]);
+
+    const extracted = new EspDialogStructureExtractor(buildPlugin([quest]), false).extract();
+
+    expect(extracted.quests).toEqual([
+      {
+        formId: '00000DDD',
+        edid: 'BadStages',
+        name: null,
+        stages: [100],
       },
     ]);
   });
