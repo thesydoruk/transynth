@@ -4,6 +4,7 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
 
   // ── Formatting ──────────────────────────────────────────────
+  "files.eol": "\n",
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
