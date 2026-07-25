@@ -13,13 +13,24 @@ const archiveExtractorBin = (archivePath: string): string => {
   return ext === '.rar' ? path7zFull : path7za;
 };
 
+/** npm ci --ignore-scripts can leave bundled 7z binaries without execute permission. */
+const ensureExtractorExecutable = (binPath: string): void => {
+  try {
+    fs.accessSync(binPath, fs.constants.X_OK);
+  } catch {
+    fs.chmodSync(binPath, 0o755);
+  }
+};
+
 export const extractZip = (archivePath: string, outDir: string): Promise<void> =>
   extractArchive(archivePath, outDir);
 
 export const extractArchive = (archivePath: string, outDir: string): Promise<void> =>
   new Promise((resolve, reject) => {
+    const bin = archiveExtractorBin(archivePath);
+    ensureExtractorExecutable(bin);
     const stream = Seven.extractFull(archivePath, outDir, {
-      $bin: archiveExtractorBin(archivePath),
+      $bin: bin,
       yes: true,
       recursive: true,
     });

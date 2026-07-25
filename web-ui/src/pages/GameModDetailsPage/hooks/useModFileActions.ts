@@ -91,13 +91,25 @@ export const useModFileActions = (
         return;
       }
 
-      setFileActionInfo(t('games.fileImportQueued', { name: file.name }));
       qc.invalidateQueries({ queryKey: ['mod-imports'] });
 
       clearInterval(progressTick);
       patchNexusDownloadJob(queueId, { progress: 100 });
       setTimeout(() => removeNexusDownloadJob(queueId), 700);
       setBusyActionKey(null);
+
+      if (job.status === 'pending' || job.status === 'paused' || job.status === 'failed') {
+        setFileActionInfo(t('games.fileImportStarted', { name: file.name }));
+        void api.modImport
+          .startImport(job.id)
+          .promise.then(() => qc.invalidateQueries({ queryKey: ['mod-imports'] }))
+          .catch((error) => {
+            setFileActionError(error instanceof Error ? error.message : String(error));
+          });
+        return;
+      }
+
+      setFileActionInfo(t('games.fileImportQueued', { name: file.name }));
       return;
     } catch (error) {
       clearInterval(progressTick);

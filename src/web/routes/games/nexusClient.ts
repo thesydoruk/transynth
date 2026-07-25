@@ -313,6 +313,13 @@ export const downloadNexusFileToDisk = async (
 
   const safeFileName = path.basename(fileName);
   const finalPath = modUploadedFilePath(safeFileName);
+  if (fs.existsSync(finalPath)) {
+    const stat = fs.statSync(finalPath);
+    if (stat.isFile() && stat.size > 0) {
+      return finalPath;
+    }
+  }
+
   const tempPath = modNexusDownloadTempPath();
   const downloadUrl = await fetchNexusFileDownloadUrl(domainName, modId, fileId);
   const res = await fetch(downloadUrl, { redirect: 'follow' });
