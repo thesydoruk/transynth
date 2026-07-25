@@ -2,7 +2,7 @@ import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import { bulkInsertRecordImportRows } from '../recordImportBulk';
-import { withDeferredImportIndexes, withModImportWriteLock } from '../modImportIndexes';
+import { withModImportWriteLock } from '../modImportLocks';
 import { getCsvImportJob, markDone, markFailed, markPaused, updateProgress } from './jobs';
 import { iterCsvRecords } from './parse';
 import type { CsvImportJob, CsvRecord, ProgressCb } from './types';
@@ -55,7 +55,7 @@ export const runCsvImport = async (
   const startTime = Date.now();
 
   log.info(
-    `[CSV Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount} (batch=${importBatchSize}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
+    `[CSV Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount} (batch=${importBatchSize})`,
   );
 
   const flushPendingBatch = async () => {
@@ -77,71 +77,67 @@ export const runCsvImport = async (
 
   try {
     await withModImportWriteLock(db, async () => {
-      await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
-        for (const rec of iterCsvRecords(text)) {
-          processed++;
-          if (processed <= skipCount) continue;
+      for (const rec of iterCsvRecords(text)) {
+        processed++;
+        if (processed <= skipCount) continue;
 
-          if (state.cancel) {
-            if (pending.length > 0) {
-              if (!inTx) {
-                await db.query('BEGIN');
-                inTx = true;
-              }
-              await flushPendingBatch();
+        if (state.cancel) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await db.query('BEGIN');
+              inTx = true;
             }
-            await commitOpenTx();
-            await markFailed(db, job.id, imported);
-            log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
-            break;
-          }
-          if (state.pause) {
-            if (pending.length > 0) {
-              if (!inTx) {
-                await db.query('BEGIN');
-                inTx = true;
-              }
-              await flushPendingBatch();
-            }
-            await commitOpenTx();
-            await markPaused(db, job.id, imported);
-            log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
-            break;
-          }
-
-          pending.push(rec);
-
-          if (pending.length >= importBatchSize) {
-            await db.query('BEGIN');
-            inTx = true;
             await flushPendingBatch();
-            await updateProgress(db, job.id, imported);
-            await commitOpenTx();
-            const pct = ((imported / job.total_records) * 100).toFixed(1);
-            log.info(
-              `[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`,
-            );
-            onProgress?.(imported, job.total_records);
           }
+          await commitOpenTx();
+          await markFailed(db, job.id, imported);
+          log.info(`CSV Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          break;
+        }
+        if (state.pause) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await db.query('BEGIN');
+              inTx = true;
+            }
+            await flushPendingBatch();
+          }
+          await commitOpenTx();
+          await markPaused(db, job.id, imported);
+          log.info(`CSV Import #${job.id} paused at ${imported}/${job.total_records}`);
+          break;
         }
 
-        if (!state.cancel && !state.pause && pending.length > 0) {
-          if (!inTx) {
-            await db.query('BEGIN');
-            inTx = true;
-          }
+        pending.push(rec);
+
+        if (pending.length >= importBatchSize) {
+          await db.query('BEGIN');
+          inTx = true;
           await flushPendingBatch();
-        }
-
-        await commitOpenTx();
-
-        if (!state.cancel && !state.pause) {
-          await markDone(db, job.id, imported);
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+          await updateProgress(db, job.id, imported);
+          await commitOpenTx();
+          const pct = ((imported / job.total_records) * 100).toFixed(1);
+          log.info(`[CSV Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
           onProgress?.(imported, job.total_records);
         }
-      });
+      }
+
+      if (!state.cancel && !state.pause && pending.length > 0) {
+        if (!inTx) {
+          await db.query('BEGIN');
+          inTx = true;
+        }
+        await flushPendingBatch();
+      }
+
+      await commitOpenTx();
+
+      if (!state.cancel && !state.pause) {
+        await markDone(db, job.id, imported);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        log.info(`[CSV Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+        onProgress?.(imported, job.total_records);
+      }
     });
   } catch (err) {
     if (inTx) {

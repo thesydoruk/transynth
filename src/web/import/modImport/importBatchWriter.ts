@@ -8,7 +8,7 @@ import {
   type ModImportBulkRow,
   type DialogGraphImportContext,
 } from '../modImportBulk';
-import { isPgDeadlockError } from '../modImportIndexes';
+import { isPgDeadlockError } from '../modImportLocks';
 import type { ProgressCb } from './types';
 import { updateProgress } from './importJobStatus';
 

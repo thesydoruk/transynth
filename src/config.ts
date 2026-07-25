@@ -190,11 +190,6 @@ export const CONFIG = {
   /** Parallel BA2/PEX/MCM file reads during mod import (default 4). */
   modImportIoParallel: parseMaxParallel(process.env.MOD_IMPORT_IO_PARALLEL, 4, 16),
 
-  /** Drop pg_trgm/HASH search indexes during mod import and rebuild after (default on). */
-  modImportDeferIndexes:
-    process.env.MOD_IMPORT_DEFER_INDEXES !== '0' &&
-    process.env.MOD_IMPORT_DEFER_INDEXES?.toLowerCase() !== 'false',
-
   // Nexus Mods personal API key (Bearer token).
   // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
   // Required for NexusMods GraphQL API v2 queries (mod search, translations).

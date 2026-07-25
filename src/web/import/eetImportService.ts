@@ -23,7 +23,7 @@ import { sha1Hex } from '../../utils/hash';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 import { bulkInsertRecordImportRows } from './recordImportBulk';
-import { withDeferredImportIndexes, withModImportWriteLock } from './modImportIndexes';
+import { withModImportWriteLock } from './modImportLocks';
 
 /**
  * Import job row stored in the `eet_imports` table.
@@ -234,7 +234,7 @@ export const runImport = async (
   const startTime = Date.now();
 
   log.info(
-    `[EET Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount} (batch=${importBatchSize}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
+    `[EET Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${skipCount} (batch=${importBatchSize})`,
   );
 
   const flushPendingBatch = async () => {
@@ -256,71 +256,67 @@ export const runImport = async (
 
   try {
     await withModImportWriteLock(client, async () => {
-      await withDeferredImportIndexes(client, CONFIG.modImportDeferIndexes, async () => {
-        for (const rec of iterEetRecords(buf, header.recordsOffset)) {
-          processed++;
-          if (processed <= skipCount) continue;
+      for (const rec of iterEetRecords(buf, header.recordsOffset)) {
+        processed++;
+        if (processed <= skipCount) continue;
 
-          if (state.cancel) {
-            if (pending.length > 0) {
-              if (!inTx) {
-                await client.query('BEGIN');
-                inTx = true;
-              }
-              await flushPendingBatch();
+        if (state.cancel) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await client.query('BEGIN');
+              inTx = true;
             }
-            await commitOpenTx();
-            await markFailed(client, job.id, imported, 'Cancelled by user');
-            log.info(`Import #${job.id} cancelled at ${imported}/${job.total_records}`);
-            break;
-          }
-          if (state.pause) {
-            if (pending.length > 0) {
-              if (!inTx) {
-                await client.query('BEGIN');
-                inTx = true;
-              }
-              await flushPendingBatch();
-            }
-            await commitOpenTx();
-            await markPaused(client, job.id, imported);
-            log.info(`Import #${job.id} paused at ${imported}/${job.total_records}`);
-            break;
-          }
-
-          pending.push(rec);
-
-          if (pending.length >= importBatchSize) {
-            await client.query('BEGIN');
-            inTx = true;
             await flushPendingBatch();
-            await updateProgress(client, job.id, imported);
-            await commitOpenTx();
-            const pct = ((imported / job.total_records) * 100).toFixed(1);
-            log.info(
-              `[EET Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`,
-            );
-            onProgress?.(imported, job.total_records);
           }
+          await commitOpenTx();
+          await markFailed(client, job.id, imported, 'Cancelled by user');
+          log.info(`Import #${job.id} cancelled at ${imported}/${job.total_records}`);
+          break;
+        }
+        if (state.pause) {
+          if (pending.length > 0) {
+            if (!inTx) {
+              await client.query('BEGIN');
+              inTx = true;
+            }
+            await flushPendingBatch();
+          }
+          await commitOpenTx();
+          await markPaused(client, job.id, imported);
+          log.info(`Import #${job.id} paused at ${imported}/${job.total_records}`);
+          break;
         }
 
-        if (!state.cancel && !state.pause && pending.length > 0) {
-          if (!inTx) {
-            await client.query('BEGIN');
-            inTx = true;
-          }
+        pending.push(rec);
+
+        if (pending.length >= importBatchSize) {
+          await client.query('BEGIN');
+          inTx = true;
           await flushPendingBatch();
-        }
-
-        await commitOpenTx();
-
-        if (!state.cancel && !state.pause) {
-          await markDone(client, job.id, imported);
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          log.info(`[EET Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+          await updateProgress(client, job.id, imported);
+          await commitOpenTx();
+          const pct = ((imported / job.total_records) * 100).toFixed(1);
+          log.info(`[EET Import #${job.id}] Progress: ${imported}/${job.total_records} (${pct}%)`);
           onProgress?.(imported, job.total_records);
         }
-      });
+      }
+
+      if (!state.cancel && !state.pause && pending.length > 0) {
+        if (!inTx) {
+          await client.query('BEGIN');
+          inTx = true;
+        }
+        await flushPendingBatch();
+      }
+
+      await commitOpenTx();
+
+      if (!state.cancel && !state.pause) {
+        await markDone(client, job.id, imported);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        log.info(`[EET Import #${job.id}] Completed: ${imported} records in ${elapsed}s`);
+        onProgress?.(imported, job.total_records);
+      }
     });
   } catch (err) {
     if (inTx) {

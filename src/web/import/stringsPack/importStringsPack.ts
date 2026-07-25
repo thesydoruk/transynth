@@ -8,7 +8,7 @@ import { log } from '../../../logger';
 import type { GameType } from '../../../types';
 import { CONFIG } from '../../../config';
 import { bulkInsertModImportRows, type ModImportBulkRow } from '../modImportBulk';
-import { withDeferredImportIndexes, withModImportWriteLock } from '../modImportIndexes';
+import { withModImportWriteLock } from '../modImportLocks';
 import { deleteModData } from '../../data/queries';
 import { buildLstringEspIndex } from './espIndex';
 import { buildStringsPackModName, buildStringsPackRows, computeStringsPackHash } from './packRows';
@@ -124,16 +124,14 @@ export const importStringsPack = async (
   const importBatchSize = CONFIG.dbChunkSize;
   let imported = 0;
   await withModImportWriteLock(db, async () => {
-    await withDeferredImportIndexes(db, CONFIG.modImportDeferIndexes, async () => {
-      for (let i = 0; i < pending.length; i += importBatchSize) {
-        const batch = pending.slice(i, i + importBatchSize);
-        const results = await bulkInsertModImportRows(db, modId, batch);
-        imported += results.length;
-        if (imported > 0 && imported % 5000 === 0) {
-          log.info(`  strings pack "${modName}": ${imported}/${pending.length}`);
-        }
+    for (let i = 0; i < pending.length; i += importBatchSize) {
+      const batch = pending.slice(i, i + importBatchSize);
+      const results = await bulkInsertModImportRows(db, modId, batch);
+      imported += results.length;
+      if (imported > 0 && imported % 5000 === 0) {
+        log.info(`  strings pack "${modName}": ${imported}/${pending.length}`);
       }
-    });
+    }
   });
 
   if (unmappedEntries > 0) {

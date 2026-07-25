@@ -2,10 +2,7 @@ import type { Tx } from '../../../db';
 import { withTransaction } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
-import {
-  withDeferredBulkModWriteIndexes,
-  type DeferredBulkWriteIndexContext,
-} from '../../import/modImportIndexes';
+import { withPinnedModImportWriteLock } from '../../import/modImportLocks';
 import { APPROVED_STATUS_SQL } from '../../services/modLangStats';
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
@@ -94,9 +91,7 @@ export const getMod = async (db: Tx, id: number) => {
  * PostgreSQL CASCADE on large mods is slow: translation_examples HNSW updates
  * run row-by-row. Records are removed in DB_CHUNK_SIZE batches; dependents are
  * deleted via preselected string ids (index-friendly) instead of joining the
- * full translations table. Heavy pg_trgm/HASH indexes and the RAG HNSW index
- * are dropped for the purge window when MOD_IMPORT_DEFER_INDEXES is enabled
- * (default).
+ * full translations table.
  *
  * @param scope - `rows` keeps mod rows; `mod` also removes dialog graph + mods.
  */
@@ -104,7 +99,6 @@ const deleteModDataOnClient = async (
   client: Tx,
   uniqueModIds: number[],
   scope: 'rows' | 'mod',
-  indexCtx: DeferredBulkWriteIndexContext,
 ): Promise<{ deletedRecords: number }> => {
   const CHUNK = CONFIG.dbChunkSize;
   const TE_CHUNK = CONFIG.dbChunkSize;
@@ -133,27 +127,17 @@ const deleteModDataOnClient = async (
       const stringIds = stringRows.map((r) => r.id);
 
       if (stringIds.length > 0) {
-        if (indexCtx.hnswDropped) {
-          await client.query(
+        for (;;) {
+          const { rowCount } = await client.query(
             `DELETE FROM translation_examples te
               WHERE te.translation_id IN (
-                SELECT t.id FROM translations t WHERE t.src_string_id = ANY($1::int[])
+                SELECT t.id FROM translations t
+                 WHERE t.src_string_id = ANY($1::int[])
+                 LIMIT $2
               )`,
-            [stringIds],
+            [stringIds, TE_CHUNK],
           );
-        } else {
-          for (;;) {
-            const { rowCount } = await client.query(
-              `DELETE FROM translation_examples te
-                WHERE te.translation_id IN (
-                  SELECT t.id FROM translations t
-                   WHERE t.src_string_id = ANY($1::int[])
-                   LIMIT $2
-                )`,
-              [stringIds, TE_CHUNK],
-            );
-            if (!rowCount || rowCount < TE_CHUNK) break;
-          }
+          if (!rowCount || rowCount < TE_CHUNK) break;
         }
 
         await client.query(`DELETE FROM qa_issues WHERE src_string_id = ANY($1::int[])`, [
@@ -220,14 +204,12 @@ export const deleteModDataForModIds = async (
 
   const started = Date.now();
 
-  const result = await withDeferredBulkModWriteIndexes(
-    db,
-    CONFIG.modImportDeferIndexes,
-    (client, indexCtx) => deleteModDataOnClient(client, uniqueModIds, scope, indexCtx),
+  const result = await withPinnedModImportWriteLock(db, (client) =>
+    deleteModDataOnClient(client, uniqueModIds, scope),
   );
 
   log.info(
-    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} deferIndexes=${CONFIG.modImportDeferIndexes} ms=${Date.now() - started}`,
+    `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} ms=${Date.now() - started}`,
   );
   return result;
 };

@@ -5,11 +5,7 @@ import { clearBa2Cache } from '../../../formats/ba2';
 import { CONFIG } from '../../../config';
 import { logImport } from '../../../logging/loggers';
 import type { GameType } from '../../../types';
-import {
-  tryBeginDeferredImportIndexes,
-  restoreDeferredImportIndexes,
-  withModImportWriteLock,
-} from '../modImportIndexes';
+import { withModImportWriteLock } from '../modImportLocks';
 import { beginActiveImport, endActiveImport, isModImportRunning } from './activeJobs';
 import { getModImportJob } from './jobs';
 import { markFailed } from './importJobStatus';
@@ -51,83 +47,65 @@ export const runModImport = async (
 
   logImport.info(
     `[Mod Import #${job.id}] Starting import of "${job.file_name}" — ${job.total_records} records, resuming from ${job.imported_records} ` +
-      `(dbBatch=${CONFIG.dbChunkSize}, ioParallel=${CONFIG.modImportIoParallel}, deferIndexes=${CONFIG.modImportDeferIndexes})`,
+      `(dbBatch=${CONFIG.dbChunkSize}, ioParallel=${CONFIG.modImportIoParallel})`,
   );
 
   let imported = job.imported_records;
-  let deferredIndexes = false;
 
   try {
     await withModImportWriteLock(db, async () => {
-      if (CONFIG.modImportDeferIndexes) {
-        deferredIndexes = await tryBeginDeferredImportIndexes(db);
+      const game: GameType = (job.game as GameType) ?? 'fo4';
+      const ctx: ModImportPhaseContext = {
+        db,
+        job,
+        state,
+        espPath,
+        game,
+        importModId: job.mod_id,
+        imported: { value: imported },
+        progressTotal: { value: job.total_records },
+        importSingleLocaleMode: { value: false },
+        selectedLocale: { value: null },
+        localeSources: [],
+        pluginStringLang: 'en',
+        pruneStaleImportData: job.imported_records === 0,
+        keptImportRecordKeys: new Set<string>(),
+        keptImportStringIds: new Set<number>(),
+        onProgress,
+        startTime,
+      };
+
+      ctx.importModId = await ensureImportModId(ctx);
+      imported = ctx.imported.value;
+
+      const prep = await prepareEspImportContext(ctx);
+      imported = ctx.imported.value;
+
+      const espOk = await importEspStringRows(ctx, prep);
+      imported = ctx.imported.value;
+      if (!espOk) return;
+
+      await prep.batch.commitOpenTx();
+
+      if (!state.cancel && !state.pause) {
+        await importMcmStringRows(ctx, prep.batch);
+        imported = ctx.imported.value;
       }
 
-      try {
-        const game: GameType = (job.game as GameType) ?? 'fo4';
-        const ctx: ModImportPhaseContext = {
-          db,
-          job,
-          state,
-          espPath,
-          game,
-          importModId: job.mod_id,
-          imported: { value: imported },
-          progressTotal: { value: job.total_records },
-          importSingleLocaleMode: { value: false },
-          selectedLocale: { value: null },
-          localeSources: [],
-          pluginStringLang: 'en',
-          pruneStaleImportData: job.imported_records === 0,
-          keptImportRecordKeys: new Set<string>(),
-          keptImportStringIds: new Set<number>(),
-          onProgress,
-          startTime,
-        };
-
-        ctx.importModId = await ensureImportModId(ctx);
+      if (!state.cancel && !state.pause) {
+        await importPexStringRows(ctx, prep.batch);
         imported = ctx.imported.value;
-
-        const prep = await prepareEspImportContext(ctx);
-        imported = ctx.imported.value;
-
-        const espOk = await importEspStringRows(ctx, prep);
-        imported = ctx.imported.value;
-        if (!espOk) return;
-
         await prep.batch.commitOpenTx();
+      }
 
-        if (!state.cancel && !state.pause) {
-          await importMcmStringRows(ctx, prep.batch);
-          imported = ctx.imported.value;
-        }
-
-        if (!state.cancel && !state.pause) {
-          await importPexStringRows(ctx, prep.batch);
-          imported = ctx.imported.value;
-          await prep.batch.commitOpenTx();
-        }
-
-        if (!state.cancel && !state.pause) {
-          try {
-            await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx);
-          } catch (err) {
-            logImport.error(
-              `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,
-            );
-            throw err;
-          }
-        }
-      } finally {
-        if (deferredIndexes) {
-          try {
-            await restoreDeferredImportIndexes(db);
-          } catch (err) {
-            logImport.error(
-              `[Mod Import #${job.id}] Failed to restore deferred search indexes: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-          deferredIndexes = false;
+      if (!state.cancel && !state.pause) {
+        try {
+          await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx);
+        } catch (err) {
+          logImport.error(
+            `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          throw err;
         }
       }
     });
