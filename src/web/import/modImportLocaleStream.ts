@@ -8,7 +8,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BsaReader } from '../../formats/bsa';
 import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
-import { parseStringsBuffer, stringsTypeFromPath, type StringsType } from '../../formats/strings';
+import {
+  parseStringsBuffer,
+  resolveStringsTableTypeForRow,
+  stringsTypeFromPath,
+  type StringsType,
+} from '../../formats/strings';
 import type { EspStringRow } from '../../formats/esp';
 import type { CsvRow, GameType } from '../../types';
 import { logImport } from '../../logging/loggers';
@@ -225,9 +230,18 @@ export const localeSourcesByLocale = (
   sources: LocaleStringsSource[],
 ): Map<string, LocaleStringsSource> => new Map(sources.map((s) => [s.locale, s]));
 
-/** Load lstring id → text map for a single locale. */
-export const loadLocaleStrings = (source: LocaleStringsSource): Map<number, string> => {
-  const map = new Map<number, string>();
+export type LocaleStringsMaps = Map<StringsType, Map<number, string>>;
+
+const emptyLocaleStringsMaps = (): LocaleStringsMaps =>
+  new Map([
+    ['STRINGS', new Map()],
+    ['DLSTRINGS', new Map()],
+    ['ILSTRINGS', new Map()],
+  ]);
+
+/** Load lstring id → text maps split by STRINGS / DLSTRINGS / ILSTRINGS. */
+export const loadLocaleStringsByType = (source: LocaleStringsSource): LocaleStringsMaps => {
+  const maps = emptyLocaleStringsMaps();
   for (const file of source.files) {
     const buf =
       file.kind === 'loose'
@@ -240,24 +254,49 @@ export const loadLocaleStrings = (source: LocaleStringsSource): Map<number, stri
               return entry ? reader.extractEntry(entry) : null;
             })();
     if (!buf) continue;
+    const bucket = maps.get(file.type) ?? new Map<number, string>();
     for (const [id, text] of parseStringsBuffer(buf, file.type)) {
-      map.set(id, text);
+      bucket.set(id, text);
     }
+    maps.set(file.type, bucket);
   }
-  return map;
+  return maps;
+};
+
+/**
+ * @deprecated Prefer {@link loadLocaleStringsByType} — merged ids collide across tables.
+ */
+export const loadLocaleStrings = (source: LocaleStringsSource): Map<number, string> => {
+  const merged = new Map<number, string>();
+  for (const map of loadLocaleStringsByType(source).values()) {
+    for (const [id, text] of map) merged.set(id, text);
+  }
+  return merged;
+};
+
+const resolveLstringText = (
+  row: EspStringRow,
+  stringsMaps: LocaleStringsMaps | null,
+  game: GameType,
+): string | null => {
+  if (!stringsMaps) return null;
+  const id = Number.parseInt(row.text, 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const table = resolveStringsTableTypeForRow(game, row.signature, row.path);
+  const text = stringsMaps.get(table)?.get(id);
+  return text || null;
 };
 
 /** Count importable rows without allocating CsvRow objects. */
 export const countImportRowsForLocale = (
   espRows: EspStringRow[],
-  stringsMap: Map<number, string> | null,
+  stringsMaps: LocaleStringsMaps | null,
+  game: GameType = 'fo4',
 ): number => {
   let count = 0;
   for (const row of espRows) {
     if (row.isLstringId) {
-      if (!stringsMap) continue;
-      const id = parseInt(row.text, 10);
-      if (!stringsMap.get(id)) continue;
+      if (!resolveLstringText(row, stringsMaps, game)) continue;
     }
     count++;
   }
@@ -267,15 +306,15 @@ export const countImportRowsForLocale = (
 /** Yield CsvRow objects one at a time for a single locale. */
 export function* generateImportCsvRows(
   espRows: EspStringRow[],
-  stringsMap: Map<number, string> | null,
+  stringsMaps: LocaleStringsMaps | null,
+  game: GameType = 'fo4',
 ): Generator<CsvRow> {
   for (const row of espRows) {
     let text: string;
     if (row.isLstringId) {
-      if (!stringsMap) continue;
-      const id = parseInt(row.text, 10);
-      text = stringsMap.get(id) ?? '';
-      if (!text) continue;
+      const resolved = resolveLstringText(row, stringsMaps, game);
+      if (!resolved) continue;
+      text = resolved;
     } else {
       text = row.text;
     }
@@ -316,14 +355,15 @@ export const estimateLocalizedImportTotal = (
   espRows: EspStringRow[],
   sources: LocaleStringsSource[],
   locales: string[],
+  game: GameType = 'fo4',
 ): number => {
   if (locales.length === 0) return 0;
   const sample =
     sources.find((s) => locales.includes(s.locale)) ??
     sources.find((s) => s.locale === resolveEnglishLocaleSource(sources)?.locale);
   if (!sample) return espRows.length * locales.length;
-  const sampleMap = loadLocaleStrings(sample);
-  const perLocale = countImportRowsForLocale(espRows, sampleMap);
+  const sampleMaps = loadLocaleStringsByType(sample);
+  const perLocale = countImportRowsForLocale(espRows, sampleMaps, game);
   return perLocale * locales.length;
 };
 
@@ -332,14 +372,15 @@ export const countLocalizedImportTotalExact = (
   espRows: EspStringRow[],
   sources: LocaleStringsSource[],
   locales: string[],
+  game: GameType = 'fo4',
 ): number => {
   const byLocale = localeSourcesByLocale(sources);
   let total = 0;
   for (const locale of locales) {
     const source = byLocale.get(locale);
     if (!source) continue;
-    const map = loadLocaleStrings(source);
-    total += countImportRowsForLocale(espRows, map);
+    const maps = loadLocaleStringsByType(source);
+    total += countImportRowsForLocale(espRows, maps, game);
   }
   return total;
 };

@@ -34,40 +34,65 @@ describe('parseStringsFileName', () => {
 });
 
 describe('resolveStringsTypeForEspRow', () => {
-  it('maps INFO subrecords to dl/il strings tables', () => {
+  it('maps INFO subrecords per xTranslator fo4 rules', () => {
     expect(
-      resolveStringsTypeForEspRow({
-        formId: '01001234',
-        signature: 'INFO',
-        edid: 'MyInfo',
-        path: 'NAM1',
-        text: '42',
-        isLstringId: true,
-      }),
-    ).toBe('DLSTRINGS');
-    expect(
-      resolveStringsTypeForEspRow({
-        formId: '01001234',
-        signature: 'INFO',
-        edid: 'MyInfo',
-        path: 'RNAM',
-        text: '43',
-        isLstringId: true,
-      }),
+      resolveStringsTypeForEspRow(
+        {
+          formId: '01001234',
+          signature: 'INFO',
+          edid: 'MyInfo',
+          path: 'NAM1',
+          text: '42',
+          isLstringId: true,
+        },
+        'fo4',
+      ),
     ).toBe('ILSTRINGS');
+    expect(
+      resolveStringsTypeForEspRow(
+        {
+          formId: '01001234',
+          signature: 'INFO',
+          edid: 'MyInfo',
+          path: 'RNAM',
+          text: '43',
+          isLstringId: true,
+        },
+        'fo4',
+      ),
+    ).toBe('STRINGS');
   });
 
   it('defaults other rows to STRINGS', () => {
     expect(
-      resolveStringsTypeForEspRow({
-        formId: '01009999',
-        signature: 'ARMO',
-        edid: 'Armor',
-        path: 'FULL',
-        text: '7',
-        isLstringId: true,
-      }),
+      resolveStringsTypeForEspRow(
+        {
+          formId: '01009999',
+          signature: 'ARMO',
+          edid: 'Armor',
+          path: 'FULL',
+          text: '7',
+          isLstringId: true,
+        },
+        'fo4',
+      ),
     ).toBe('STRINGS');
+  });
+
+  it('maps WEAP/DESC to DLSTRINGS', () => {
+    expect(
+      resolveStringsTypeForEspRow(
+        {
+          formId: '01009999',
+          signature: 'WEAP',
+          edid: 'Gun',
+          path: 'DESC',
+          text: '7',
+          isLstringId: true,
+        },
+        'fo4',
+      ),
+    ).toBe('DLSTRINGS');
   });
 });
 
@@ -92,8 +117,8 @@ describe('buildLstringEspIndex', () => {
       },
     ];
 
-    const index = buildLstringEspIndex(rows);
-    expect(index.get('DLSTRINGS')?.get(100)).toHaveLength(1);
+    const index = buildLstringEspIndex(rows, 'fo4');
+    expect(index.get('ILSTRINGS')?.get(100)).toHaveLength(1);
     expect(index.get('STRINGS')?.get(200)).toHaveLength(1);
   });
 });
@@ -133,23 +158,26 @@ describe('buildStringsPackModName', () => {
 
 describe('buildStringsPackRows', () => {
   it('creates rows from ESP references instead of bare ids', () => {
-    const index = buildLstringEspIndex([
-      {
-        formId: '01001234',
-        signature: 'INFO',
-        edid: 'LineA',
-        path: 'NAM1',
-        text: '42',
-        isLstringId: true,
-      },
-    ]);
+    const index = buildLstringEspIndex(
+      [
+        {
+          formId: '01001234',
+          signature: 'INFO',
+          edid: 'LineA',
+          path: 'NAM1',
+          text: '42',
+          isLstringId: true,
+        },
+      ],
+      'fo4',
+    );
 
     const { rows, mapped, unmapped } = buildStringsPackRows(
       {
-        filePath: '/tmp/strings/fallout4_en.dlstrings',
+        filePath: '/tmp/strings/fallout4_en.ilstrings',
         stem: 'fallout4',
         locale: 'en',
-        type: 'DLSTRINGS',
+        type: 'ILSTRINGS',
       },
       new Map([
         [42, 'Hello'],

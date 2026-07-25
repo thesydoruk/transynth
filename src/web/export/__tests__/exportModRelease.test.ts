@@ -79,10 +79,7 @@ const makeOverlayDb = (
     query: async (sql: string) => {
       if (sql.includes('s.lstring_id IS NOT NULL')) {
         return {
-          rows: LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
-            lstring_id: id,
-            export_text: text,
-          })),
+          rows: LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows,
         };
       }
       if (sql.includes("r.signature = 'PEX'")) {

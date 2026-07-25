@@ -20,7 +20,9 @@ const writeFakeDx10Ba2 = (filePath: string): void => {
   fs.writeFileSync(filePath, header);
 };
 
-const makeOverlayDb = (rows: Array<{ lstring_id: number; export_text: string }>): Tx => {
+const makeOverlayDb = (
+  rows: Array<{ lstring_id: number; signature: string; path: string; export_text: string }>,
+): Tx => {
   return {
     query: async () => ({ rows }),
   } as unknown as Tx;
@@ -56,12 +58,7 @@ afterEach(() => {
 describe('localized export golden corpus', () => {
   it('preserves source file inventory, basename casing, and fallback text', async () => {
     const modPath = createLooseStringsMod();
-    const db = makeOverlayDb(
-      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
-        lstring_id: id,
-        export_text: text,
-      })),
-    );
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
 
     const exported = await exportLocalizedStringsFiles(
       db,
@@ -88,12 +85,7 @@ describe('localized export golden corpus', () => {
 
   it('packs the exported corpus into a BA2 with exactly the expected strings files', async () => {
     const modPath = createLooseStringsMod();
-    const db = makeOverlayDb(
-      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
-        lstring_id: id,
-        export_text: text,
-      })),
-    );
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
 
     const ba2 = await exportBa2Archive(
       db,
@@ -135,12 +127,7 @@ describe('localized export golden corpus', () => {
       );
     }
 
-    const db = makeOverlayDb(
-      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
-        lstring_id: id,
-        export_text: text,
-      })),
-    );
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
 
     const exported = await exportLocalizedStringsFiles(
       db,
@@ -186,12 +173,7 @@ describe('localized export golden corpus', () => {
     fs.mkdirSync(path.dirname(voicePath), { recursive: true });
     fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
 
-    const db = makeOverlayDb(
-      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlay.map(({ id, text }) => ({
-        lstring_id: id,
-        export_text: text,
-      })),
-    );
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
 
     const { zipBuffer } = await exportLangpackZip(
       db,

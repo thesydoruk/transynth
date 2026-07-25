@@ -4,7 +4,7 @@ import { resolveMcmLocaleKey, resolveModDirectoryFromPath } from '../../../forma
 import {
   discoverLocaleSources,
   localeSourcesByLocale,
-  loadLocaleStrings,
+  loadLocaleStringsByType,
 } from '../modImportLocaleStream';
 import type { GameType } from '../../../types';
 import { materializeImportCsvRows } from './csvHelpers';
@@ -67,10 +67,10 @@ export const previewModRecords = (
       ?.resolvedKey ??
     localeSources[0]?.locale ??
     null;
-  const stringsMap = previewLocale
-    ? loadLocaleStrings(localeSourcesByLocale(localeSources).get(previewLocale)!)
+  const stringsMaps = previewLocale
+    ? loadLocaleStringsByType(localeSourcesByLocale(localeSources).get(previewLocale)!)
     : null;
-  const csvRows = materializeImportCsvRows(espRows, stringsMap);
+  const csvRows = materializeImportCsvRows(espRows, stringsMaps, game);
 
   const rows: ModPreviewRow[] = csvRows.slice(0, 200).map((r) => ({
     formId: r.FormID,

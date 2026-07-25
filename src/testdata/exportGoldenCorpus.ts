@@ -22,6 +22,13 @@ export interface LocalizedExportGoldenCorpus {
   targetLang: string;
   sourceFiles: GoldenStringsFileFixture[];
   translationOverlay: Array<{ id: number; text: string }>;
+  /** DB-shaped rows for typed overlay export (signature + path → table routing). */
+  translationOverlayRows: Array<{
+    lstring_id: number;
+    signature: string;
+    path: string;
+    export_text: string;
+  }>;
   expectedFiles: GoldenStringsFileFixture[];
 }
 
@@ -70,6 +77,32 @@ export const LOCALIZED_EXPORT_GOLDEN_CORPUS: LocalizedExportGoldenCorpus = {
     { id: 201, text: 'Війна. Війна ніколи не змінюється.' },
     { id: 302, text: 'UTF-8 переклад: Привіт, Співдружність.' },
     { id: 9999, text: 'This ID is absent from source files and must be ignored.' },
+  ],
+  translationOverlayRows: [
+    {
+      lstring_id: 101,
+      signature: 'ACTI',
+      path: 'ACTI\\FULL',
+      export_text: 'Натисніть <Activate>, щоб відкрити майстерню.',
+    },
+    {
+      lstring_id: 201,
+      signature: 'BOOK',
+      path: 'BOOK\\DESC',
+      export_text: 'Війна. Війна ніколи не змінюється.',
+    },
+    {
+      lstring_id: 302,
+      signature: 'INFO',
+      path: 'INFO\\NAM1',
+      export_text: 'UTF-8 переклад: Привіт, Співдружність.',
+    },
+    {
+      lstring_id: 9999,
+      signature: 'MISC',
+      path: 'MISC\\FULL',
+      export_text: 'This ID is absent from source files and must be ignored.',
+    },
   ],
   expectedFiles: [
     {

@@ -15,7 +15,7 @@ import { getPexTranslationOverlays } from './exportPex';
 import { collectLocalizedVoiceFiles } from './exportVoiceFiles';
 import type { ZipPackEntry } from './exportTypes';
 import { loadSourceStringsFiles } from './sourceStringsLoader';
-import { getTranslationOverlay, hasTranslationOverlayChanges } from './translationOverlay';
+import { getTranslationOverlaysByType, hasTranslationOverlayChanges } from './translationOverlay';
 
 export const packFilesToZip = async (files: ZipPackEntry[]): Promise<Buffer> =>
   new Promise<Buffer>((resolve, reject) => {
@@ -68,9 +68,10 @@ export const exportLangpackZip = async (
 
   try {
     const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
-    const overlay = await getTranslationOverlay(db, modId, srcLang, targetLang);
+    const overlays = await getTranslationOverlaysByType(db, modId, srcLang, targetLang, game);
     let stringsCount = 0;
     for (const sourceFile of sourceFiles) {
+      const overlay = overlays.get(sourceFile.type) ?? new Map();
       if (!hasTranslationOverlayChanges(sourceFile.sourceMap, overlay)) continue;
       const patched = patchStringsMap(sourceFile.sourceMap, overlay);
       const buf = writeStringsBuffer(patched, sourceFile.type);

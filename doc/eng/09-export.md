@@ -47,11 +47,11 @@ MyMod_en.ILSTRINGS
 Fallout 4 uses three distinct string table formats, identified by their file
 extension:
 
-| Extension    | Format                                        | Usage                                               |
-| ------------ | --------------------------------------------- | --------------------------------------------------- |
-| `.STRINGS`   | Null-terminated UTF-8 strings                 | Generic text: item names, book titles, descriptions |
-| `.DLSTRINGS` | uint32 length prefix + text + null terminator | Dialogue text shown in conversation menus           |
-| `.ILSTRINGS` | Same binary layout as DLSTRINGS               | NPC topics, Pip-Boy notes, internal info strings    |
+| Extension    | Format                                        | Usage                                                           |
+| ------------ | --------------------------------------------- | --------------------------------------------------------------- |
+| `.STRINGS`   | Null-terminated UTF-8 strings                 | Generic text: item names, book titles, descriptions             |
+| `.DLSTRINGS` | uint32 length prefix + text + null terminator | Long text: book bodies, quest journal (QUST/CNAM), generic DESC |
+| `.ILSTRINGS` | Same binary layout as DLSTRINGS               | Dialogue lines (INFO/NAM1), subtitles                           |
 
 **Player installation:** Translated `.STRINGS`, `.DLSTRINGS`, and `.ILSTRINGS`
 files go in the `Data\Strings\` subfolder of the player's Fallout 4 installation

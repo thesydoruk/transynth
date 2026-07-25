@@ -60,7 +60,7 @@ export const importStringsPack = async (
     throw new Error(`Plugin "${pluginPath}" is not localized — strings tables are not used`);
   }
 
-  const lstringIndex = buildLstringEspIndex(esp.extractStrings());
+  const lstringIndex = buildLstringEspIndex(esp.extractStrings(), game);
   const contentHash = await computeStringsPackHash(pack.files);
   const modName = buildStringsPackModName(pack.stem, contentHash);
   const locales = [...new Set(pack.files.map((f) => f.locale))].sort();

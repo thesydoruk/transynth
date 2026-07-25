@@ -1,24 +1,26 @@
 import type { EspStringRow } from '../../../formats/esp';
-import type { CsvRow } from '../../../types';
+import type { CsvRow, GameType } from '../../../types';
 import {
   discoverLocaleSources,
   generateImportCsvRows,
-  loadLocaleStrings,
+  loadLocaleStringsByType,
   resolveEnglishLocaleSource,
+  type LocaleStringsMaps,
 } from '../modImportLocaleStream';
 import type { ModImportApplyRow } from './types';
 
-const resolveEnglishLocaleMap = (
+const resolveEnglishLocaleMaps = (
   localeSources: ReturnType<typeof discoverLocaleSources>,
-): Map<number, string> | undefined => {
+): LocaleStringsMaps | undefined => {
   const source = resolveEnglishLocaleSource(localeSources);
-  return source ? loadLocaleStrings(source) : undefined;
+  return source ? loadLocaleStringsByType(source) : undefined;
 };
 
 const materializeImportCsvRows = (
   espRows: EspStringRow[],
-  stringsMap: Map<number, string> | null,
-): CsvRow[] => [...generateImportCsvRows(espRows, stringsMap)];
+  stringsMaps: LocaleStringsMaps | null,
+  game: GameType = 'fo4',
+): CsvRow[] => [...generateImportCsvRows(espRows, stringsMaps, game)];
 
 /**
  * Convert generic CSV-style rows into the canonical imported-row shape used by
@@ -34,4 +36,4 @@ const toApplyRows = (rows: CsvRow[]): ModImportApplyRow[] =>
     text_raw: row.Source,
   }));
 
-export { resolveEnglishLocaleMap, materializeImportCsvRows, toApplyRows };
+export { resolveEnglishLocaleMaps, materializeImportCsvRows, toApplyRows };

@@ -4,7 +4,7 @@ import { resolveMcmLocaleKey, resolveModDirectoryFromPath } from '../../../forma
 import {
   discoverLocaleSources,
   localeSourcesByLocale,
-  loadLocaleStrings,
+  loadLocaleStringsByType,
 } from '../modImportLocaleStream';
 import type { CsvRow, GameType } from '../../../types';
 import { materializeImportCsvRows, toApplyRows } from './csvHelpers';
@@ -50,9 +50,11 @@ export const extractModImportApplyRows = (
             : 'Localized import does not contain any STRINGS locales',
         );
       }
-      collected.push(...materializeImportCsvRows(espRows, loadLocaleStrings(resolved.value)));
+      collected.push(
+        ...materializeImportCsvRows(espRows, loadLocaleStringsByType(resolved.value), game),
+      );
     } else {
-      collected.push(...materializeImportCsvRows(espRows, null));
+      collected.push(...materializeImportCsvRows(espRows, null, game));
     }
 
     const pexMap = collectPexStringsSync(anchorPath, (job.game as GameType) ?? 'fo4');

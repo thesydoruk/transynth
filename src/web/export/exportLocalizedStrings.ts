@@ -4,7 +4,7 @@ import { patchStringsMap } from '../../formats/esp';
 import { writeStringsBuffer } from '../../formats/strings';
 import type { ExportedStringsFile } from './exportTypes';
 import { loadSourceStringsFiles } from './sourceStringsLoader';
-import { getTranslationOverlay } from './translationOverlay';
+import { getTranslationOverlaysByType } from './translationOverlay';
 
 /**
  * Export translated strings tables for a localized mod (external STRINGS).
@@ -36,12 +36,13 @@ export const exportLocalizedStringsFiles = async (
     throw new Error(`No source .STRINGS files found for locale ${srcLang}`);
   }
 
-  const overlay = await getTranslationOverlay(db, modId, srcLang, targetLang);
-  if (overlay.size === 0) {
+  const overlays = await getTranslationOverlaysByType(db, modId, srcLang, targetLang, game);
+  if ([...overlays.values()].every((map) => map.size === 0)) {
     throw new Error(`No localized string IDs found for mod ${modId} and locale ${srcLang}`);
   }
 
   return sourceFiles.map((sourceFile) => {
+    const overlay = overlays.get(sourceFile.type) ?? new Map();
     const patched = patchStringsMap(sourceFile.sourceMap, overlay);
     const buf = writeStringsBuffer(patched, sourceFile.type);
     return {

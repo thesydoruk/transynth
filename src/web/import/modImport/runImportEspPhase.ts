@@ -3,10 +3,10 @@ import { loadNpcReferenceMap } from '../../../formats/subrecords';
 import { logImport } from '../../../logging/loggers';
 import {
   localeSourcesByLocale,
-  loadLocaleStrings,
+  loadLocaleStringsByType,
   generateImportCsvRows,
 } from '../modImportLocaleStream';
-import { resolveEnglishLocaleMap } from './csvHelpers';
+import { resolveEnglishLocaleMaps } from './csvHelpers';
 import { buildNpcNameMap } from './speakerMaps';
 import { markFailed, markPaused } from './importJobStatus';
 import type { ModImportBatchWriter } from './importBatchWriter';
@@ -32,7 +32,7 @@ export const importEspStringRows = async (
   const npcRefMap = loadNpcReferenceMap(ctx.game);
   const npcNameFromMod = buildNpcNameMap(
     espRows,
-    resolveEnglishLocaleMap(ctx.localeSources) ?? null,
+    resolveEnglishLocaleMaps(ctx.localeSources)?.get('STRINGS') ?? null,
   );
 
   if (localesToImport.length > 0) {
@@ -47,8 +47,8 @@ export const importEspStringRows = async (
     }
 
     outer: for (const locale of localesToImport) {
-      const stringsMap = loadLocaleStrings(localeCatalog.get(locale)!);
-      for (const r of generateImportCsvRows(espRows, stringsMap)) {
+      const stringsMaps = loadLocaleStringsByType(localeCatalog.get(locale)!);
+      for (const r of generateImportCsvRows(espRows, stringsMaps, ctx.game)) {
         if (skipRows > 0) {
           skipRows--;
           continue;
@@ -96,7 +96,7 @@ export const importEspStringRows = async (
     );
   }
 
-  for (const r of generateImportCsvRows(espRows, null)) {
+  for (const r of generateImportCsvRows(espRows, null, ctx.game)) {
     if (skipRows > 0) {
       skipRows--;
       continue;

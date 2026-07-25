@@ -26,7 +26,7 @@ import {
 import { loadNpcReferenceMap } from '../../../formats/subrecords';
 import { buildPluginSpeakerIndex } from '../dialogSpeakers';
 import { buildSpeakerActorIndex, loadPluginPathByBasename } from '../dialogSpeakers/masterPlugins';
-import { resolveEnglishLocaleMap } from './csvHelpers';
+import { resolveEnglishLocaleMaps } from './csvHelpers';
 import {
   buildSpeakerFormIdMap,
   buildVoiceFolderMap,
@@ -158,6 +158,7 @@ export const prepareEspImportContext = async (
       espRows,
       ctx.localeSources,
       localesToImport,
+      ctx.game,
     );
     await ctx.db.query('UPDATE mod_imports SET total_records = $1 WHERE id = $2', [
       ctx.progressTotal.value,
@@ -174,7 +175,7 @@ export const prepareEspImportContext = async (
     voiceFolderMap,
     speakerIndex: buildPluginSpeakerIndex({
       actorIndex: buildSpeakerActorIndex(esp, ctx.game, storedByBasename),
-      englishStrings: resolveEnglishLocaleMap(ctx.localeSources) ?? null,
+      englishStrings: resolveEnglishLocaleMaps(ctx.localeSources)?.get('STRINGS') ?? null,
       npcReferenceNames: loadNpcReferenceMap(ctx.game),
       voiceFolders: voiceFolderMap,
     }),

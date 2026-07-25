@@ -5,6 +5,7 @@ import {
   generateImportCsvRows,
   localeFromStringsFileName,
   estimateLocalizedImportTotal,
+  type LocaleStringsMaps,
 } from '../modImportLocaleStream';
 
 const espRows: EspStringRow[] = [
@@ -32,6 +33,15 @@ const espRows: EspStringRow[] = [
   },
 ];
 
+const typedMaps = (
+  entries: Partial<Record<'STRINGS' | 'DLSTRINGS' | 'ILSTRINGS', [number, string][]>>,
+): LocaleStringsMaps =>
+  new Map([
+    ['STRINGS', new Map(entries.STRINGS ?? [])],
+    ['DLSTRINGS', new Map(entries.DLSTRINGS ?? [])],
+    ['ILSTRINGS', new Map(entries.ILSTRINGS ?? [])],
+  ]);
+
 describe('localeFromStringsFileName', () => {
   it('parses locale tags from STRINGS paths', () => {
     expect(localeFromStringsFileName('Mod_en.STRINGS')).toBe('en');
@@ -40,17 +50,27 @@ describe('localeFromStringsFileName', () => {
 });
 
 describe('generateImportCsvRows', () => {
-  it('resolves lstring ids and keeps inline text', () => {
-    const map = new Map<number, string>([[42, 'Resolved']]);
-    const rows = [...generateImportCsvRows(espRows, map)];
+  it('resolves INFO/NAM1 from ILSTRINGS table', () => {
+    const maps = typedMaps({ ILSTRINGS: [[42, 'Resolved']] });
+    const rows = [...generateImportCsvRows(espRows, maps, 'fo4')];
     expect(rows).toHaveLength(2);
     expect(rows[0]?.Source).toBe('Resolved');
     expect(rows[0]?.LStringID).toBe(42);
     expect(rows[1]?.Source).toBe('Inline text');
   });
 
+  it('does not resolve NAM1 from wrong table when ids collide', () => {
+    const maps = typedMaps({
+      STRINGS: [[42, 'Wrong table']],
+      ILSTRINGS: [],
+    });
+    const rows = [...generateImportCsvRows(espRows, maps, 'fo4')];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.Source).toBe('Inline text');
+  });
+
   it('skips unresolved lstring refs', () => {
-    const rows = [...generateImportCsvRows(espRows, new Map())];
+    const rows = [...generateImportCsvRows(espRows, typedMaps({}), 'fo4')];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.Source).toBe('Inline text');
   });
@@ -58,9 +78,9 @@ describe('generateImportCsvRows', () => {
 
 describe('countImportRowsForLocale', () => {
   it('matches generator row count', () => {
-    const map = new Map<number, string>([[42, 'Resolved']]);
-    expect(countImportRowsForLocale(espRows, map)).toBe(2);
-    expect(countImportRowsForLocale(espRows, null)).toBe(1);
+    const maps = typedMaps({ ILSTRINGS: [[42, 'Resolved']] });
+    expect(countImportRowsForLocale(espRows, maps, 'fo4')).toBe(2);
+    expect(countImportRowsForLocale(espRows, null, 'fo4')).toBe(1);
   });
 });
 
@@ -74,6 +94,7 @@ describe('estimateLocalizedImportTotal', () => {
         { locale: 'ru', files: [] },
       ],
       ['en', 'ru'],
+      'fo4',
     );
     expect(total).toBe(2);
   });

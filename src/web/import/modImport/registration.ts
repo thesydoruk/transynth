@@ -126,6 +126,7 @@ export const registerPluginFile = async (
         espRows,
         localeSources,
         localeSources.map((s) => s.locale),
+        game,
       );
     }
   }
@@ -220,6 +221,7 @@ export const registerArchiveFile = async (
         espRows,
         localeSources,
         localeSources.map((s) => s.locale),
+        game,
       );
     }
   }

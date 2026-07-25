@@ -15,7 +15,7 @@ import { loadNpcReferenceMap } from '../../../formats/subrecords';
 import { logImport } from '../../../logging/loggers';
 import { resolveModStoredPath } from '../../../modStorage/paths';
 import type { GameType } from '../../../types';
-import { resolveEnglishLocaleMap } from '../modImport/csvHelpers';
+import { resolveEnglishLocaleMaps } from '../modImport/csvHelpers';
 import { discoverArchiveCandidatesForPlugin } from '../modImport/discovery';
 import { buildVoiceFolderMap } from '../modImport/speakerMaps';
 import { discoverLocaleSources } from '../modImportLocaleStream';
@@ -178,7 +178,7 @@ export const backfillModDialogSpeakers = async (
     target.modId,
     buildPluginSpeakerIndex({
       actorIndex: buildSpeakerActorIndex(esp, target.game, storedByBasename),
-      englishStrings: resolveEnglishLocaleMap(localeSources) ?? null,
+      englishStrings: resolveEnglishLocaleMaps(localeSources)?.get('STRINGS') ?? null,
       npcReferenceNames: loadNpcReferenceMap(target.game),
       voiceFolders,
     }),

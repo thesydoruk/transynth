@@ -1,25 +1,25 @@
 import type { EspStringRow } from '../../../formats/esp';
+import { resolveStringsTableTypeForRow } from '../../../formats/strings/recorddefs';
 import type { StringsType } from '../../../formats/types/StringsType';
+import type { GameType } from '../../../types';
 import type { CsvRow } from '../../../types';
 import type { LstringEspIndex } from './types';
 
 /**
  * Map an ESP string row to the strings table type that resolves its lstring id.
  *
- * Fallout/Skyrim convention: INFO/NAM1 → DLSTRINGS, INFO/RNAM → ILSTRINGS,
- * everything else → STRINGS.
+ * Uses per-game xTranslator `_recorddefs.txt` rules (see `formats/strings/recorddefs`).
  */
-export const resolveStringsTypeForEspRow = (row: EspStringRow): StringsType => {
-  const sub = row.path.includes('\\') ? (row.path.split('\\').pop() ?? row.path) : row.path;
-  if (row.signature === 'INFO') {
-    if (sub === 'NAM1') return 'DLSTRINGS';
-    if (sub === 'RNAM') return 'ILSTRINGS';
-  }
-  return 'STRINGS';
-};
+export const resolveStringsTypeForEspRow = (
+  row: EspStringRow,
+  game: GameType = 'fo4',
+): StringsType => resolveStringsTableTypeForRow(game, row.signature, row.path);
 
 /** Build lstring id → ESP row lookup split by strings file type. */
-export const buildLstringEspIndex = (espRows: EspStringRow[]): LstringEspIndex => {
+export const buildLstringEspIndex = (
+  espRows: EspStringRow[],
+  game: GameType = 'fo4',
+): LstringEspIndex => {
   const index: LstringEspIndex = new Map();
 
   for (const row of espRows) {
@@ -27,7 +27,7 @@ export const buildLstringEspIndex = (espRows: EspStringRow[]): LstringEspIndex =
     const id = Number.parseInt(row.text, 10);
     if (!Number.isFinite(id) || id <= 0) continue;
 
-    const type = resolveStringsTypeForEspRow(row);
+    const type = resolveStringsTypeForEspRow(row, game);
     if (!index.has(type)) index.set(type, new Map());
     const byId = index.get(type)!;
     const bucket = byId.get(id);

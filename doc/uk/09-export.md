@@ -47,11 +47,11 @@ MyMod_en.ILSTRINGS
 
 Гра використовує три формати string tables:
 
-| Розширення   | Формат                                    | Для чого використовується                       |
-| ------------ | ----------------------------------------- | ----------------------------------------------- |
-| `.STRINGS`   | null-terminated UTF-8 strings             | Загальний текст: назви, книги, описи            |
-| `.DLSTRINGS` | `uint32 length + text + null terminator`  | Діалоги в меню розмов                           |
-| `.ILSTRINGS` | Такий самий binary layout, як у DLSTRINGS | NPC topics, Pip-Boy notes, внутрішні інфо-рядки |
+| Розширення   | Формат                                    | Для чого використовується                             |
+| ------------ | ----------------------------------------- | ----------------------------------------------------- |
+| `.STRINGS`   | null-terminated UTF-8 strings             | Загальний текст: назви, книги, описи                  |
+| `.DLSTRINGS` | `uint32 length + text + null terminator`  | Довгі тексти: книги, журнал квестів (QUST/CNAM), DESC |
+| `.ILSTRINGS` | Такий самий binary layout, як у DLSTRINGS | Діалогові репліки (INFO/NAM1), субтитри               |
 
 На стороні гравця перекладені `.STRINGS`, `.DLSTRINGS` і `.ILSTRINGS` файли кладуться в `Data\Strings\`.
 
