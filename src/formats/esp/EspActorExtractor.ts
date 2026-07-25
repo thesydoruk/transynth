@@ -14,7 +14,10 @@
  *   VTYP : Voice type FormID (uint32)
  *
  * VTYP records contribute their EDID, which is the voice type name (e.g.
- * `FemaleBoston`) that the Creation Kit also uses as the voice folder name.
+ * `FemaleBoston`) that the Creation Kit also uses as the voice folder name, and
+ * a DNAM flag byte whose bit 1 marks the voice as female. That flag is the only
+ * gender evidence for voice types the name says nothing about — mod-specific
+ * names such as `DP_RoxyVoice`, and robots such as `RobotPAM`.
  */
 import { log } from '../../logger';
 import type { ActorRecord, EspActorIndex, VoiceTypeRecord } from '../types';
@@ -29,6 +32,9 @@ import {
 
 /** Bit 0 of the ACBS flags marks the actor as female. */
 const ACBS_FLAG_FEMALE = 0x00000001;
+
+/** Bit 1 of the VTYP DNAM byte marks the voice type as female. */
+const VTYP_FLAG_FEMALE = 0x02;
 
 export class EspActorExtractor {
   private readonly buf: Buffer;
@@ -121,19 +127,28 @@ export class EspActorExtractor {
     const data = readRecordData(this.buf, recOffset);
     if (!data) return null;
 
-    const formId = formatFormId(this.buf.readUInt32LE(recOffset + 12));
+    const voiceType: VoiceTypeRecord = {
+      formId: formatFormId(this.buf.readUInt32LE(recOffset + 12)),
+      edid: '',
+      isFemale: null,
+    };
+
     let pos = 0;
     while (pos + SUBRECORD_HEADER_SIZE <= data.length) {
       const subSig = data.toString('ascii', pos, pos + 4);
       const subSize = data.readUInt16LE(pos + 4);
       const ds = pos + SUBRECORD_HEADER_SIZE;
       if (ds + subSize > data.length) break;
+
       if (subSig === 'EDID') {
-        return { formId, edid: data.toString('utf8', ds, ds + subSize).replace(/\0/g, '') };
+        voiceType.edid = data.toString('utf8', ds, ds + subSize).replace(/\0/g, '');
+      } else if (subSig === 'DNAM' && subSize >= 1) {
+        voiceType.isFemale = (data.readUInt8(ds) & VTYP_FLAG_FEMALE) !== 0;
       }
+
       pos = ds + subSize;
     }
 
-    return { formId, edid: '' };
+    return voiceType;
   }
 }

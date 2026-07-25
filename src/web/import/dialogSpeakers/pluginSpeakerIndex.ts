@@ -10,7 +10,7 @@ import {
   type GenderSource,
   type SpeakerGender,
 } from '../../../dialog';
-import type { EspActorIndex } from '../../../formats/esp';
+import type { EspActorIndex, VoiceTypeRecord } from '../../../formats/esp';
 
 /** Everything known about one actor record. */
 export type ActorSpeakerInfo = {
@@ -21,11 +21,19 @@ export type ActorSpeakerInfo = {
   isPlayer: boolean;
 };
 
+/** Gender a voice type implies, and what said so. */
+export type VoiceTypeGender = {
+  gender: SpeakerGender;
+  source: GenderSource | null;
+};
+
 export type PluginSpeakerIndex = {
   /** Actor FormID → resolved facts. */
   actors: Map<string, ActorSpeakerInfo>;
   /** Lower-6 INFO FormID → raw voice folder name. */
   voiceFolders: Map<string, string>;
+  /** Lower-cased voice type name → the gender its record proves. */
+  voiceTypeGenders: Map<string, VoiceTypeGender>;
 };
 
 export type BuildPluginSpeakerIndexOptions = {
@@ -35,6 +43,43 @@ export type BuildPluginSpeakerIndexOptions = {
   /** Display names of vanilla actors the mod references but does not define. */
   npcReferenceNames: Map<string, string>;
   voiceFolders: Map<string, string>;
+};
+
+/**
+ * Gender of one voice type, from its name and then its DNAM flag.
+ *
+ * The name wins where it says anything, because a handful of vanilla records
+ * carry the wrong flag — `NPCFScribeNeriah` and `NPCFProctorIngram` are both
+ * women whose voice type is not flagged female.
+ */
+const voiceTypeGender = (record: VoiceTypeRecord): VoiceTypeGender => {
+  const named = genderFromVoiceTypeName(record.edid);
+  if (named !== 'unknown') {
+    return { gender: named, source: isPlayerVoiceType(record.edid) ? 'player' : 'voice_type' };
+  }
+  if (record.isFemale == null) return { gender: 'unknown', source: null };
+  return { gender: record.isFemale ? 'female' : 'male', source: 'voice_type_flag' };
+};
+
+/**
+ * Gender implied by a voice type or voice folder name.
+ *
+ * Falls back to the name alone for folders whose VTYP record lives in a master
+ * this plugin does not define.
+ */
+export const genderFromVoiceTypeIndex = (
+  index: PluginSpeakerIndex,
+  name: string | null | undefined,
+): VoiceTypeGender => {
+  const trimmed = name?.trim();
+  if (!trimmed) return { gender: 'unknown', source: null };
+
+  const known = index.voiceTypeGenders.get(trimmed.toLowerCase());
+  if (known && known.gender !== 'unknown') return known;
+
+  const named = genderFromVoiceTypeName(trimmed);
+  if (named === 'unknown') return { gender: 'unknown', source: null };
+  return { gender: named, source: isPlayerVoiceType(trimmed) ? 'player' : 'voice_type' };
 };
 
 const actorName = (
@@ -63,6 +108,11 @@ export const buildPluginSpeakerIndex = (
   const voiceTypeNames = new Map(
     opts.actorIndex.voiceTypes.map((voiceType) => [voiceType.formId, voiceType.edid]),
   );
+  const voiceTypeGenders = new Map(
+    opts.actorIndex.voiceTypes
+      .filter((voiceType) => voiceType.edid)
+      .map((voiceType) => [voiceType.edid.toLowerCase(), voiceTypeGender(voiceType)]),
+  );
 
   const actors = new Map<string, ActorSpeakerInfo>();
   for (const actor of opts.actorIndex.actors) {
@@ -77,8 +127,9 @@ export const buildPluginSpeakerIndex = (
       gender = actor.isFemale ? 'female' : 'male';
       source = 'plugin';
     } else if (voiceType) {
-      gender = genderFromVoiceTypeName(voiceType);
-      if (gender !== 'unknown') source = 'voice_type';
+      const fromVoiceType = voiceTypeGenders.get(voiceType.toLowerCase());
+      gender = fromVoiceType?.gender ?? 'unknown';
+      source = fromVoiceType?.source ?? null;
     }
 
     const isPlayer = voiceType ? isPlayerVoiceType(voiceType) : false;
@@ -96,5 +147,5 @@ export const buildPluginSpeakerIndex = (
     });
   }
 
-  return { actors, voiceFolders: opts.voiceFolders };
+  return { actors, voiceFolders: opts.voiceFolders, voiceTypeGenders };
 };

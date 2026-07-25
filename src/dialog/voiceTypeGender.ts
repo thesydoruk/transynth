@@ -12,8 +12,13 @@ import type { SpeakerGender } from './gender';
 /** `PlayerVoiceMale01`, `Player Voice Female 02` — the player character. */
 const PLAYER_VOICE_RE = /^player[\s_-]*voice/i;
 
-/** `NPCFPiper`, `NPCMDanse` — Creation Kit prefix for named companions. */
-const NPC_GENDER_PREFIX_RE = /^npc[\s_-]*([fm])[a-z]/i;
+/**
+ * `NPCFPiper`, `NPCMDanse` — Creation Kit marker for named companions.
+ *
+ * Not anchored: add-ons prefix it with the plugin they ship in, as in
+ * `DLC04NPCMGage` and `DLC01NPCFMechanist`.
+ */
+const NPC_GENDER_MARKER_RE = /npc[\s_-]*([fm])[a-z]/i;
 
 /** `female` anywhere in the name; checked first because "female" contains "male". */
 const FEMALE_RE = /female|woman|girl/i;
@@ -40,10 +45,13 @@ export const genderFromVoiceTypeName = (name: string | null | undefined): Speake
   if (!trimmed) return 'unknown';
   if (isPlayerVoiceType(trimmed)) return 'any';
 
-  const prefix = NPC_GENDER_PREFIX_RE.exec(trimmed);
-  if (prefix) return prefix[1]!.toLowerCase() === 'f' ? 'female' : 'male';
-
+  // The spelled-out word wins over the marker letter: an unanchored marker can
+  // also match inside a longer word, as in `FemaleNPCMisc`.
   if (FEMALE_RE.test(trimmed)) return 'female';
+
+  const marker = NPC_GENDER_MARKER_RE.exec(trimmed);
+  if (marker) return marker[1]!.toLowerCase() === 'f' ? 'female' : 'male';
+
   if (MALE_RE.test(trimmed)) return 'male';
 
   return 'unknown';

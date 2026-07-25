@@ -24,6 +24,8 @@ export type GenderSource =
   | 'plugin'
   /** Voice type or voice folder name, e.g. `FemaleBoston`, `NPCMDanse`. */
   | 'voice_type'
+  /** Female flag of the VTYP DNAM byte, for names that say nothing. */
+  | 'voice_type_flag'
   /** The player character, whose gender is chosen in-game. */
   | 'player'
   /** Set by a human in the speakers editor. */

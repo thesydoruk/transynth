@@ -18,6 +18,8 @@ export interface ActorRecord {
 export interface VoiceTypeRecord {
   formId: string;
   edid: string;
+  /** Female flag of the DNAM byte; null when the record omits DNAM. */
+  isFemale: boolean | null;
 }
 
 /** Actor-related records of one plugin, collected in a single walk. */

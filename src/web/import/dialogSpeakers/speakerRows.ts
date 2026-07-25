@@ -3,13 +3,12 @@
  */
 import {
   PLAYER_SPEAKER_KEY,
-  genderFromVoiceTypeName,
   isPlayerVoiceType,
   type GenderSource,
   type SpeakerGender,
 } from '../../../dialog';
 import { cleanVoiceFolderName } from '../modImport/speakerMaps';
-import type { PluginSpeakerIndex } from './pluginSpeakerIndex';
+import { genderFromVoiceTypeIndex, type PluginSpeakerIndex } from './pluginSpeakerIndex';
 
 export type SpeakerSourceNode = {
   speaker_key: string | null;
@@ -55,15 +54,12 @@ const collectEvidence = (
 /** Gender of an actor whose NPC_ record the plugin does not define. */
 const genderFromEvidence = (
   evidence: SpeakerEvidence,
+  index: PluginSpeakerIndex,
 ): { gender: SpeakerGender; source: GenderSource | null; voiceType: string | null } => {
   for (const folder of evidence.voiceFolders) {
-    const gender = genderFromVoiceTypeName(folder);
-    if (gender !== 'unknown') {
-      return {
-        gender,
-        source: isPlayerVoiceType(folder) ? 'player' : 'voice_type',
-        voiceType: folder,
-      };
+    const resolved = genderFromVoiceTypeIndex(index, folder);
+    if (resolved.gender !== 'unknown') {
+      return { gender: resolved.gender, source: resolved.source, voiceType: folder };
     }
   }
   return { gender: 'unknown', source: null, voiceType: [...evidence.voiceFolders][0] ?? null };
@@ -91,7 +87,7 @@ const buildRow = (
   }
 
   const folderName = speakerKey.startsWith('voice:') ? speakerKey.slice('voice:'.length) : null;
-  const inferred = genderFromEvidence(evidence);
+  const inferred = genderFromEvidence(evidence, index);
   const voiceType = actor?.voiceType ?? inferred.voiceType ?? folderName;
 
   return {
