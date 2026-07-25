@@ -30,6 +30,10 @@ export const DialogEntryCard = ({ entry, handlers }: DialogEntryCardProps) => {
         ? t('dialogs.playerAlias')
         : t('dialogs.aliasLabel', { id: entry.alias_id }));
 
+  const addresseeName =
+    entry.addressee ?? (entry.addressee_kind === 'player' ? t('dialogs.playerAlias') : null);
+  const addresseeGender = entry.addressee_kind === 'player' ? 'any' : entry.addressee_gender;
+
   const indent = Math.min(entry.depth, MAX_INDENT_DEPTH) * INDENT_STEP;
   const colorKey = entry.speaker ?? (entry.alias_id === null ? null : `alias-${entry.alias_id}`);
   const speakerRecord = entry.speaker_key
@@ -53,15 +57,15 @@ export const DialogEntryCard = ({ entry, handlers }: DialogEntryCardProps) => {
             }
             onChange={handlers.speakers.setGender}
           />
-          {entry.addressee && (
+          {addresseeName && (
             <span
               className={styles.addressee}
               title={t('dialogs.gender.addresseeTitle', {
-                name: entry.addressee,
-                gender: t(`dialogs.gender.${entry.addressee_gender}`),
+                name: addresseeName,
+                gender: t(`dialogs.gender.${addresseeGender}`),
               })}
             >
-              {t('dialogs.gender.addressee', { name: entry.addressee })}
+              {t('dialogs.gender.addressee', { name: addresseeName })}
             </span>
           )}
           {entry.depth > 0 && (
