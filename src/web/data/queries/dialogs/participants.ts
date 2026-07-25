@@ -7,7 +7,9 @@
  */
 import {
   effectiveSpeakerGenderSql,
+  isDefiniteGender,
   parseSpeakerGender,
+  playerSpeakerGenderFromVoiceKey,
   resolveDialogLineParticipants,
   type AddresseeKind,
   type DialogLineParticipants,
@@ -22,6 +24,7 @@ export const isPlayerPromptField = (field: string | null | undefined): boolean =
 
 /** Participant columns produced by {@link dialogParticipantsLateralSql}. */
 export type DialogParticipantsRow = {
+  speaker_key: string | null;
   speaker_name: string | null;
   speaker_gender: string | null;
   addressee_kind: string | null;
@@ -31,7 +34,7 @@ export type DialogParticipantsRow = {
 
 /** Columns of {@link dialogParticipantsLateralSql}, for use in a SELECT list. */
 export const DIALOG_PARTICIPANT_COLUMNS =
-  'dp.speaker_name, dp.speaker_gender, dp.addressee_kind, dp.addressee_name, dp.addressee_gender';
+  'dp.speaker_key, dp.speaker_name, dp.speaker_gender, dp.addressee_kind, dp.addressee_name, dp.addressee_gender';
 
 /**
  * Build a `LEFT JOIN LATERAL` body resolving both participants of an INFO row.
@@ -41,6 +44,7 @@ export const DIALOG_PARTICIPANT_COLUMNS =
  */
 export const dialogParticipantsLateralSql = (recordsAlias: string): string => `
     SELECT
+      dn.speaker_key,
       sp.display_name AS speaker_name,
       ${effectiveSpeakerGenderSql('sp')} AS speaker_gender,
       dn.addressee_kind,
@@ -96,8 +100,8 @@ export const parseAddresseeKind = (value: string | null | undefined): AddresseeK
 export const dialogParticipantsFromRow = (
   row: Partial<DialogParticipantsRow>,
   field: string | null | undefined,
-): DialogLineParticipants =>
-  resolveDialogLineParticipants({
+): DialogLineParticipants => {
+  const participants = resolveDialogLineParticipants({
     isPlayerPrompt: isPlayerPromptField(field),
     nodeSpeakerName: row.speaker_name ?? null,
     nodeSpeakerGender: parseSpeakerGender(row.speaker_gender),
@@ -105,3 +109,11 @@ export const dialogParticipantsFromRow = (
     addresseeName: row.addressee_name ?? null,
     addresseeGender: parseSpeakerGender(row.addressee_gender),
   });
+
+  if (!isPlayerPromptField(field)) return participants;
+
+  const playerGender = playerSpeakerGenderFromVoiceKey(row.speaker_key ?? null);
+  if (playerGender == null || !isDefiniteGender(playerGender)) return participants;
+
+  return { ...participants, speakerGender: playerGender };
+};

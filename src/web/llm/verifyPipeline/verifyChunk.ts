@@ -14,6 +14,7 @@ import { isLlmTimeoutError } from '../../../llm/retry';
 import { logVerify } from '../../../logging/loggers';
 import { parseRecordLocation } from '../../../utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../data/queries/dialogs';
+import { buildLlmParticipantPayload } from '../../../llm/dialogParticipants';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
 import { scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
@@ -87,10 +88,7 @@ export const buildVerifyItems = (
       edid: row.edid,
       field,
       context: row.context,
-      speaker: participants.speakerName,
-      speaker_gender: participants.speakerGender,
-      addressee: participants.addresseeName,
-      addressee_gender: participants.addresseeGender,
+      ...buildLlmParticipantPayload(participants),
       reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
         grup,
         field,

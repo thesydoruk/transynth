@@ -5,6 +5,7 @@
  * Ukrainian needs it for every past-tense verb, so the pipeline resolves both
  * participants up front and hands them to the model alongside the text.
  */
+import type { DialogLineParticipants } from '../dialog';
 
 /**
  * Grammatical gender of a dialog participant, as the model sees it.
@@ -37,3 +38,14 @@ export const participantPayloadFields = (item: LlmDialogParticipants): LlmDialog
   ...(item.addressee ? { addressee: item.addressee } : {}),
   ...(hasGender(item.addressee_gender) ? { addressee_gender: item.addressee_gender } : {}),
 });
+
+/** Map resolved dialog participants into the LLM item payload shape. */
+export const buildLlmParticipantPayload = (
+  participants: DialogLineParticipants,
+): LlmDialogParticipants =>
+  participantPayloadFields({
+    speaker: participants.speakerName,
+    speaker_gender: participants.speakerGender,
+    addressee: participants.addresseeName,
+    addressee_gender: participants.addresseeGender,
+  });

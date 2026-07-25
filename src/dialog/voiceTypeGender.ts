@@ -93,6 +93,22 @@ export const genderFromVoiceTypeHeuristic = (name: string | null | undefined): S
   return 'unknown';
 };
 
+/**
+ * Gender-specific player prompt INFO rows use MalePlayer / FemalePlayer voice
+ * folders instead of a generic PlayerVoice folder. When the node resolves to
+ * such a folder, the prompt is allowed to commit to one gender.
+ */
+export const playerSpeakerGenderFromVoiceKey = (
+  speakerKey: string | null | undefined,
+): SpeakerGender | null => {
+  if (!speakerKey?.startsWith('voice:')) return null;
+  const folder = speakerKey.slice('voice:'.length);
+  if (isPlayerVoiceType(folder)) return null;
+  if (/female/i.test(folder) && /player/i.test(folder)) return 'female';
+  if (/male/i.test(folder) && /player/i.test(folder)) return 'male';
+  return null;
+};
+
 /** Explicit name markers first, then creature/robot heuristics. */
 export const resolveGenderFromVoiceTypeName = (name: string | null | undefined): SpeakerGender => {
   const explicit = genderFromVoiceTypeName(name);

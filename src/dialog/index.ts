@@ -20,6 +20,7 @@ export {
   genderFromVoiceTypeHeuristic,
   genderFromVoiceTypeName,
   isPlayerVoiceType,
+  playerSpeakerGenderFromVoiceKey,
   resolveGenderFromVoiceTypeName,
 } from './voiceTypeGender';
 
