@@ -11,9 +11,9 @@
 import type { Tx } from '../../../db';
 import {
   effectiveSpeakerGenderSql,
-  genderFromVoiceTypeName,
   isDefiniteGender,
   parseSpeakerGender,
+  resolveGenderFromVoiceTypeName,
   voiceFolderSpeakerKey,
   type SpeakerGender,
 } from '../../../dialog';
@@ -78,7 +78,7 @@ export const loadVoiceFolderGenders = async (
 
   const result = new Map<string, VoiceFolderGender>();
   for (const [folder, gender] of byFolder) {
-    const folderGender = genderFromVoiceTypeName(folder);
+    const folderGender = resolveGenderFromVoiceTypeName(folder);
     result.set(folder, {
       gender,
       folderGender,

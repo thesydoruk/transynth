@@ -1,4 +1,4 @@
-import { genderFromVoiceTypeName } from '../../../dialog';
+import { genderFromVoiceTypeHeuristic, genderFromVoiceTypeName } from '../../../dialog';
 import type { ActorRecord, VoiceTypeRecord } from '../../../formats/types';
 import { mergeActorIndexes } from '../dialogSpeakers/masterPlugins';
 import {
@@ -42,8 +42,24 @@ describe('genderFromVoiceTypeName', () => {
     expect(genderFromVoiceTypeName('FemaleNPCMisc')).toBe('female');
   });
 
-  it.each(['RobotMrHandy', 'CrSuperMutant', 'DP_RoxyVoice'])('says nothing about %s', (name) => {
-    expect(genderFromVoiceTypeName(name)).toBe('unknown');
+  it('says nothing about a custom voice with no gender hint', () => {
+    expect(genderFromVoiceTypeName('DP_RoxyVoice')).toBe('unknown');
+  });
+});
+
+describe('genderFromVoiceTypeHeuristic', () => {
+  it.each([
+    ['CrFeralGhoul', 'male'],
+    ['CrSuperMutant', 'male'],
+    ['RobotMrHandy', 'male'],
+    ['DLC01RobotRobobrain', 'male'],
+    ['TurretVoice', 'male'],
+  ])('defaults non-human voices to masculine agreement: %s', (name, expected) => {
+    expect(genderFromVoiceTypeHeuristic(name)).toBe(expected);
+  });
+
+  it('treats robot folders as male when only the heuristic runs', () => {
+    expect(genderFromVoiceTypeHeuristic('FemaleRobotTest')).toBe('male');
   });
 });
 
@@ -84,12 +100,28 @@ describe('genderFromVoiceTypeIndex', () => {
     });
   });
 
-  it('stays unknown without a name hint or a flag', () => {
+  it('stays unknown without a name hint, flag, or creature pattern', () => {
     const index = makeIndex([voiceType('DP_EdenVoice', null)]);
 
     expect(genderFromVoiceTypeIndex(index, 'DP_EdenVoice')).toEqual({
       gender: 'unknown',
       source: null,
+    });
+  });
+
+  it('uses creature naming when the plugin has no VTYP record', () => {
+    expect(genderFromVoiceTypeIndex(makeIndex([]), 'CrFeralGhoul')).toEqual({
+      gender: 'male',
+      source: 'voice_type_heuristic',
+    });
+  });
+
+  it('uses creature naming when the VTYP record has no flag', () => {
+    const index = makeIndex([voiceType('CrFeralGhoul', null)]);
+
+    expect(genderFromVoiceTypeIndex(index, 'CrFeralGhoul')).toEqual({
+      gender: 'male',
+      source: 'voice_type_heuristic',
     });
   });
 });

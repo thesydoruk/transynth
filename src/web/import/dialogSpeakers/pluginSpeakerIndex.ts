@@ -5,6 +5,7 @@
  * dialog speaker without re-reading the plugin.
  */
 import {
+  genderFromVoiceTypeHeuristic,
   genderFromVoiceTypeName,
   isPlayerVoiceType,
   type GenderSource,
@@ -57,8 +58,14 @@ const voiceTypeGender = (record: VoiceTypeRecord): VoiceTypeGender => {
   if (named !== 'unknown') {
     return { gender: named, source: isPlayerVoiceType(record.edid) ? 'player' : 'voice_type' };
   }
-  if (record.isFemale == null) return { gender: 'unknown', source: null };
-  return { gender: record.isFemale ? 'female' : 'male', source: 'voice_type_flag' };
+  if (record.isFemale != null) {
+    return { gender: record.isFemale ? 'female' : 'male', source: 'voice_type_flag' };
+  }
+  const heuristic = genderFromVoiceTypeHeuristic(record.edid);
+  if (heuristic !== 'unknown') {
+    return { gender: heuristic, source: 'voice_type_heuristic' };
+  }
+  return { gender: 'unknown', source: null };
 };
 
 /**
@@ -78,8 +85,14 @@ export const genderFromVoiceTypeIndex = (
   if (known && known.gender !== 'unknown') return known;
 
   const named = genderFromVoiceTypeName(trimmed);
-  if (named === 'unknown') return { gender: 'unknown', source: null };
-  return { gender: named, source: isPlayerVoiceType(trimmed) ? 'player' : 'voice_type' };
+  if (named !== 'unknown') {
+    return { gender: named, source: isPlayerVoiceType(trimmed) ? 'player' : 'voice_type' };
+  }
+  const heuristic = genderFromVoiceTypeHeuristic(trimmed);
+  if (heuristic !== 'unknown') {
+    return { gender: heuristic, source: 'voice_type_heuristic' };
+  }
+  return { gender: 'unknown', source: null };
 };
 
 const actorName = (

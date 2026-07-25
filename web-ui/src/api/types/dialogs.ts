@@ -20,7 +20,14 @@ export type DialogSpeaker = {
   is_player: boolean;
   /** Gender resolved from plugin data during import. */
   detected_gender: SpeakerGender;
-  detected_source: 'plugin' | 'voice_type' | 'voice_type_flag' | 'player' | 'manual' | null;
+  detected_source:
+    | 'plugin'
+    | 'voice_type'
+    | 'voice_type_flag'
+    | 'voice_type_heuristic'
+    | 'player'
+    | 'manual'
+    | null;
   /** Gender set by a human, which wins over detection. */
   gender_override: SpeakerGender | null;
   effective_gender: SpeakerGender;

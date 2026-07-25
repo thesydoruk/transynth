@@ -16,7 +16,12 @@ export {
   voiceFolderSpeakerKey,
 } from './gender';
 
-export { genderFromVoiceTypeName, isPlayerVoiceType } from './voiceTypeGender';
+export {
+  genderFromVoiceTypeHeuristic,
+  genderFromVoiceTypeName,
+  isPlayerVoiceType,
+  resolveGenderFromVoiceTypeName,
+} from './voiceTypeGender';
 
 export type { UkGenderConflict, UkGenderMarker } from './ukrainianGender';
 export { detectUkrainianGenderMarkers, findUkrainianGenderConflicts } from './ukrainianGender';

@@ -26,6 +26,8 @@ export type GenderSource =
   | 'voice_type'
   /** Female flag of the VTYP DNAM byte, for names that say nothing. */
   | 'voice_type_flag'
+  /** Creation Kit naming pattern with no explicit gender, e.g. CrFeralGhoul. */
+  | 'voice_type_heuristic'
   /** The player character, whose gender is chosen in-game. */
   | 'player'
   /** Set by a human in the speakers editor. */
