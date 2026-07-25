@@ -86,22 +86,6 @@ export function useEditorActiveRow({
     saveTranslation(activeRow.string_id, draftTranslation);
   }, [cancelAutosave, activeRow, draftTranslation, handleClear, saveTranslation]);
 
-  const handleNextQaIssue = useCallback(
-    (rows: StringRow[]) => {
-      if (!rows.length) return;
-      const current = activeRow ?? focusedRow;
-      const curIdx = current ? rows.findIndex((r) => r.string_id === current.string_id) : -1;
-      for (let i = 1; i <= rows.length; i++) {
-        const idx = (curIdx + i) % rows.length;
-        if (rows[idx].qa_issue_count > 0) {
-          handleRowOpen(rows[idx]);
-          break;
-        }
-      }
-    },
-    [activeRow, focusedRow, handleRowOpen],
-  );
-
   return {
     activeRow,
     setActiveRow,
@@ -121,6 +105,5 @@ export function useEditorActiveRow({
     handleCopySource,
     handleClear,
     handleSave,
-    handleNextQaIssue,
   };
 }

@@ -49,7 +49,6 @@ export interface EditorToolbarProps {
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
-  qaIssueRowCount: number;
   aiJobs: {
     translate: ModAiJobEntry;
     verify: ModAiJobEntry;
@@ -60,14 +59,13 @@ export interface EditorToolbarProps {
   onSrcLangChange: (lang: string) => void;
   onTargetLangChange: (lang: string) => void;
   onSelectedStatusesChange: (statuses: StatusFilterValue[]) => void;
-  onQaOnlyToggle: () => void;
+  onQaOnlyChange: (qaOnly: boolean) => void;
   onClearSameAsSource: () => void;
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
   applyImportedRunning?: boolean;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
-  onNextQaIssue: () => void;
   onPageModeChange: (mode: EditorPageMode) => void;
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
@@ -99,19 +97,17 @@ export const EditorToolbar = ({
   gameId,
   modId,
   hasInnrSignature,
-  qaIssueRowCount,
   aiJobs,
   onSrcLangChange,
   onTargetLangChange,
   onSelectedStatusesChange,
-  onQaOnlyToggle,
+  onQaOnlyChange,
   onClearSameAsSource,
   onSearchReplace,
   onApplyTranslationFromMod,
   applyImportedRunning = false,
   onShortcuts,
   onBatchTranslate,
-  onNextQaIssue,
   onPageModeChange,
   onTranslateTm,
   onTranslateLlm,
@@ -188,15 +184,12 @@ export const EditorToolbar = ({
 
       {pageMode === 'strings' && (
         <>
-          <StatusFilter selected={selectedStatuses} onChange={onSelectedStatusesChange} />
-          <Button
-            onClick={onQaOnlyToggle}
-            variant={qaOnly ? 'primary' : 'secondary'}
-            size="sm"
-            title={t('modEditor.qaOnlyTitle')}
-          >
-            {t('modEditor.qaOnly')}
-          </Button>
+          <StatusFilter
+            selected={selectedStatuses}
+            onChange={onSelectedStatusesChange}
+            qaOnly={qaOnly}
+            onQaOnlyChange={onQaOnlyChange}
+          />
           <Button onClick={onSearchReplace} variant="secondary" size="sm">
             {t('modEditor.searchReplace')}
           </Button>
@@ -231,16 +224,6 @@ export const EditorToolbar = ({
         >
           {t('modEditor.innrEditor')}
         </Link>
-      )}
-      {pageMode === 'strings' && qaIssueRowCount > 0 && (
-        <Button
-          onClick={onNextQaIssue}
-          variant="secondary"
-          size="sm"
-          title={t('modEditor.nextQaIssueTitle')}
-        >
-          {t('modEditor.nextQaIssue', { count: qaIssueRowCount })}
-        </Button>
       )}
       <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>
         ?

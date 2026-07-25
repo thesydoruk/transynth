@@ -91,6 +91,16 @@
   cursor: pointer;
 }
 
+.divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-light);
+}
+
+.qaDot {
+  background: var(--danger);
+}
+
 .actions {
   display: flex;
   gap: 8px;

@@ -21,7 +21,6 @@ export interface EditorKeyboardConfig {
   handleClear: (row: StringRow) => void;
   handleRowOpen: (row: StringRow) => void;
   handleRowSelect: (row: StringRow) => void;
-  handleNextQaIssue: () => void;
   toggleAll: () => void;
   clearSelection: () => void;
 
@@ -114,12 +113,6 @@ export function useEditorKeyboard(config: EditorKeyboardConfig): void {
               ? curIdx - 1
               : rows.length - 1;
         c.handleRowSelect(rows[nextIdx]);
-        return;
-      }
-
-      if (e.key === 'q' && !e.ctrlKey && !e.altKey && !e.shiftKey && c.strings?.rows.length) {
-        e.preventDefault();
-        c.handleNextQaIssue();
         return;
       }
 

@@ -37,7 +37,6 @@ export const ModEditorPage = () => {
     applyImported,
     batchTranslate,
     contextMenu,
-    qaIssueRowCount,
   } = useModEditorPage();
 
   const { mod, strings, stats, sigs, suggestions, qaIssues, history, isLoading } = editorQueries;
@@ -63,7 +62,6 @@ export const ModEditorPage = () => {
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s) => s.signature === 'INNR')}
-        qaIssueRowCount={qaIssueRowCount}
         aiJobs={aiJobs}
         onSrcLangChange={(l) => {
           filter.setSrcLang(l);
@@ -77,8 +75,8 @@ export const ModEditorPage = () => {
           filter.setSelectedStatuses(next);
           selection.clearSelection();
         }}
-        onQaOnlyToggle={() => {
-          filter.setQaOnly((v) => !v);
+        onQaOnlyChange={(qaOnly) => {
+          filter.setQaOnly(qaOnly);
           selection.clearSelection();
         }}
         onClearSameAsSource={() => clearSameAsSourceMut.mutate()}
@@ -87,7 +85,6 @@ export const ModEditorPage = () => {
         applyImportedRunning={applyImported.isRunning}
         onShortcuts={() => modals.setShowShortcuts((v) => !v)}
         onBatchTranslate={batchTranslate.handleBatchTranslate}
-        onNextQaIssue={() => row.handleNextQaIssue(strings?.rows ?? [])}
         pageMode={filter.pageMode}
         onPageModeChange={filter.setPageMode}
         onTranslateTm={() => startModAiTranslateTm(modId, filter.srcLang, filter.targetLang)}

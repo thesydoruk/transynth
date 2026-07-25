@@ -153,9 +153,6 @@ export function useModEditorPage() {
     handleRowSelect: row.handleRowSelect,
   });
 
-  const qaIssueRowCount =
-    editorQueries.strings?.rows.filter((r) => r.qa_issue_count > 0).length ?? 0;
-
   useEditorKeyboard({
     enabled: filter.pageMode === 'strings',
     activeRow: row.activeRow,
@@ -170,7 +167,6 @@ export function useModEditorPage() {
     handleClear: row.handleClear,
     handleRowOpen: row.handleRowOpen,
     handleRowSelect: row.handleRowSelect,
-    handleNextQaIssue: () => row.handleNextQaIssue(editorQueries.strings?.rows ?? []),
     toggleAll: selection.toggleAll,
     clearSelection: selection.clearSelection,
     setActiveRow: row.setActiveRow,
@@ -196,6 +192,5 @@ export function useModEditorPage() {
     applyImported,
     batchTranslate,
     contextMenu,
-    qaIssueRowCount,
   };
 }

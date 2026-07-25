@@ -8,36 +8,47 @@ import styles from './StatusFilter.module.scss';
 export interface StatusFilterProps {
   selected: StatusFilterValue[];
   onChange: (selected: StatusFilterValue[]) => void;
+  qaOnly: boolean;
+  onQaOnlyChange: (qaOnly: boolean) => void;
 }
 
 /**
  * Multi-select dropdown for translation-status filters in the editor toolbar.
  */
-export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
+export const StatusFilter = ({ selected, onChange, qaOnly, onQaOnlyChange }: StatusFilterProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const label =
-    selected.length === 0 ? (
-      t('modEditor.allStatuses')
-    ) : selected.length <= 2 ? (
-      <span className={styles.triggerLabels}>
-        {selected.map((status) => (
-          <span key={status} className={styles.triggerChip}>
-            <span
-              className={styles.statusDot}
-              style={{ '--status-color': statusAccentColor(status) } as React.CSSProperties}
-              aria-hidden
-            />
-            {t(`status.${status}`, { defaultValue: status })}
-          </span>
-        ))}
-      </span>
-    ) : (
-      t('modEditor.statusFilterCount', { count: selected.length })
-    );
+  const hasFilter = selected.length > 0 || qaOnly;
+
+  const label = !hasFilter ? (
+    t('modEditor.allStatuses')
+  ) : selected.length === 0 && qaOnly ? (
+    t('modEditor.qaOnly')
+  ) : selected.length + (qaOnly ? 1 : 0) <= 2 ? (
+    <span className={styles.triggerLabels}>
+      {selected.map((status) => (
+        <span key={status} className={styles.triggerChip}>
+          <span
+            className={styles.statusDot}
+            style={{ '--status-color': statusAccentColor(status) } as React.CSSProperties}
+            aria-hidden
+          />
+          {t(`status.${status}`, { defaultValue: status })}
+        </span>
+      ))}
+      {qaOnly && (
+        <span className={styles.triggerChip}>
+          <span className={`${styles.statusDot} ${styles.qaDot}`} aria-hidden />
+          {t('modEditor.qaOnly')}
+        </span>
+      )}
+    </span>
+  ) : (
+    t('modEditor.statusFilterCount', { count: selected.length + (qaOnly ? 1 : 0) })
+  );
 
   const updateMenuPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -64,7 +75,7 @@ export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPosition();
-  }, [open, updateMenuPosition, selected]);
+  }, [open, updateMenuPosition, selected, qaOnly]);
 
   useEffect(() => {
     if (!open) return;
@@ -104,7 +115,7 @@ export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
       <button
         ref={triggerRef}
         type="button"
-        className={`${styles.trigger}${selected.length > 0 ? ` ${styles.triggerActive}` : ''}`}
+        className={`${styles.trigger}${hasFilter ? ` ${styles.triggerActive}` : ''}`}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -133,8 +144,21 @@ export const StatusFilter = ({ selected, onChange }: StatusFilterProps) => {
                 {t(`status.${status}`, { defaultValue: status })}
               </label>
             ))}
+            <div className={styles.divider} role="separator" />
+            <label className={styles.item} title={t('modEditor.qaOnlyTitle')}>
+              <input type="checkbox" checked={qaOnly} onChange={() => onQaOnlyChange(!qaOnly)} />
+              <span className={`${styles.statusDot} ${styles.qaDot}`} aria-hidden />
+              {t('modEditor.qaOnly')}
+            </label>
             <div className={styles.actions}>
-              <button type="button" className={styles.actionBtn} onClick={() => onChange([])}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => {
+                  onChange([]);
+                  onQaOnlyChange(false);
+                }}
+              >
                 {t('modEditor.allStatuses')}
               </button>
             </div>
