@@ -65,6 +65,7 @@ export const requestModVoiceGenerateStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
+  job.status = 'cancelled';
   return true;
 };
 
@@ -166,8 +167,8 @@ export const runModVoiceGenerateJob = async (
     job.skipped = result.skipped.length;
     job.warningCount = result.warnings.length;
 
-    if (job.cancel) {
-      job.status = 'cancelled';
+    if (job.cancel || job.status === 'cancelled') {
+      if (job.status === 'running') job.status = 'cancelled';
       log.info(`[Voice generate mod #${opts.modId}] job #${jobId} cancelled`, {
         done: job.done,
         total: job.total,

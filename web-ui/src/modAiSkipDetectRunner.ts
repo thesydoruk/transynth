@@ -106,6 +106,7 @@ export const stopModAiSkipDetect = async (modId: number, jobId: number | null): 
     } else {
       await api.llmSkipDetect.stopMod(modId);
     }
+    upsertModAiJob(modId, 'skip-detect', { status: 'cancelled', error: null });
   } catch (err) {
     upsertModAiJob(modId, 'skip-detect', {
       error: err instanceof Error ? err.message : String(err),

@@ -174,6 +174,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
       } else {
         await api.llmVerify.stopMod(modId);
       }
+      setState((prev) => ({ ...prev, status: 'cancelled', error: null }));
     } catch (err) {
       if (isStopNotFoundError(err)) return;
       setState((prev) => ({

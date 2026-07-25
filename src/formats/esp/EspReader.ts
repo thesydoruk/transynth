@@ -35,6 +35,7 @@
 import fs from 'fs';
 import { inflateSync } from 'zlib';
 import { isTranslatableSubrecord } from '../subrecords';
+import { extractInnrWnamRows } from './innrStrings';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { EspActorExtractor } from './EspActorExtractor';
@@ -367,6 +368,13 @@ export class EspReader {
       }
 
       pos = dataEnd;
+    }
+
+    if (recSig === 'INNR') {
+      subRows.length = 0;
+      for (const row of extractInnrWnamRows(recordData, this.info.isLocalized)) {
+        subRows.push(row);
+      }
     }
 
     for (const { path, text } of subRows) {

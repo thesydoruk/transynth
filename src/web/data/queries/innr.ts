@@ -9,7 +9,7 @@ import { CONFIG } from '../../../config';
  * Fallout 4 Instance Naming Rules consist of multiple FormIDs grouped by a
  * shared EDID prefix (e.g. "ArmorMaterialSteel") with a numeric suffix
  * distinguishing individual slots (e.g. "001", "002").  Each slot provides
- * the component text string (FULL subrecord) that the game assembles into the
+ * the component text string (WNAM subrecord) that the game assembles into the
  * final item name.
  */
 export type InnrRow = {
@@ -17,7 +17,7 @@ export type InnrRow = {
   formid_hex: string;
   /** Full EDID including numeric suffix, e.g. "ArmorMaterialSteel001". */
   edid: string | null;
-  /** English source text (FULL subrecord). */
+  /** English source text (WNAM subrecord). */
   source: string;
   translation_id: number | null;
   translation: string | null;

@@ -42,6 +42,7 @@ export const requestLlmVerifyStop = (jobId: number): boolean => {
   // Order matters: flag cancel before aborting so the abort error surfaces as a
   // cancellation (and isn't recorded as a job failure).
   job.cancel = true;
+  job.status = 'cancelled';
   job.abort.abort();
   return true;
 };

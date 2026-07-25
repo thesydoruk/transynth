@@ -10,10 +10,16 @@ describe('non-player-facing records', () => {
   });
 
   it('does not extract excluded Fallout 4 record types', () => {
-    for (const sig of ['REFR', 'KYWD', 'INNR', 'LVLI', 'ARMA'] as const) {
+    for (const sig of ['REFR', 'KYWD', 'LVLI', 'ARMA'] as const) {
       expect(isIgnoredRecord(sig, 'fo4')).toBe(true);
       expect(isTranslatableSubrecord(sig, 'FULL', 'fo4')).toBe(false);
     }
+  });
+
+  it('extracts INNR WNAM while keeping INNR non-player-facing for skip-detect', () => {
+    expect(isIgnoredRecord('INNR', 'fo4')).toBe(false);
+    expect(isTranslatableSubrecord('INNR', 'WNAM', 'fo4')).toBe(true);
+    expect(isNonPlayerFacingRecord('INNR')).toBe(true);
   });
 
   it('still extracts player-facing Fallout 4 records', () => {

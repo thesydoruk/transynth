@@ -36,6 +36,7 @@ export const requestLlmSkipDetectStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
+  job.status = 'cancelled';
   job.abort.abort();
   return true;
 };

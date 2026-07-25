@@ -82,6 +82,7 @@ export const requestLlmTranslateStop = (jobId: number): boolean => {
   // Order matters: flag cancel before aborting so the abort error surfaces as a
   // cancellation (and isn't recorded as a per-string failure).
   job.cancel = true;
+  job.status = 'cancelled';
   job.abort.abort();
   return true;
 };
@@ -280,9 +281,11 @@ export const runLlmTranslateJob = async (
       }
     }
 
-    await awaitPendingQaRefresh();
+    if (!job.cancel && job.status !== 'cancelled') {
+      await awaitPendingQaRefresh();
+    }
 
-    if (job.cancel) {
+    if (job.cancel || job.status === 'cancelled') {
       job.status = 'cancelled';
       logTranslate.info('job cancelled', { jobId, done: job.done, total: job.total });
       onEvent({

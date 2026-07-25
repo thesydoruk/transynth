@@ -118,6 +118,8 @@ const markFailed = async (db: Tx, jobId: number, importedRecords: number, errorM
   );
 };
 
+export const markImportJobFailed = markFailed;
+
 const markPaused = async (db: Tx, jobId: number, importedRecords: number) => {
   await db.query(
     `UPDATE eet_imports SET status = 'paused', imported_records = $1, updated_at = NOW() WHERE id = $2`,
@@ -171,8 +173,11 @@ interface ActiveImport {
 const activeImports = new Map<number, ActiveImport>();
 
 export const isImportRunning = (jobId: number): boolean => {
-  return activeImports.has(jobId);
+  const state = activeImports.get(jobId);
+  return !!state && !state.cancel && !state.pause;
 };
+
+export const hasActiveImport = (jobId: number): boolean => activeImports.has(jobId);
 
 export const requestCancel = (jobId: number) => {
   const state = activeImports.get(jobId);

@@ -17,9 +17,11 @@ import {
   registerCsvFile,
   runCsvImport,
   isCsvImportRunning,
+  hasActiveCsvImport,
   requestCsvCancel,
   requestCsvPause,
   updateCsvJobLanguages,
+  markCsvImportFailed,
   iterCsvRecords,
 } from '../import/csvImport';
 
@@ -224,7 +226,7 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isCsvImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveCsvImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestCsvPause(jobId);
     return { ok: true };
   });
@@ -232,8 +234,10 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isCsvImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveCsvImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestCsvCancel(jobId);
+    const job = await getCsvImportJob(db, jobId);
+    if (job) await markCsvImportFailed(db, jobId, job.imported_records);
     return { ok: true };
   });
 

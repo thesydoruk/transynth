@@ -40,6 +40,12 @@ export {
 } from './discovery';
 export { registerPluginFile, registerArchiveFile } from './registration';
 export { previewModRecords } from './preview';
-export { isModImportRunning, requestModCancel, requestModPause } from './activeJobs';
+export {
+  isModImportRunning,
+  hasActiveModImport,
+  requestModCancel,
+  requestModPause,
+} from './activeJobs';
+export { markFailed, markPaused } from './importJobStatus';
 export { alignmentKeyedStrings } from './alignment';
 export { runModImport } from './runImport';

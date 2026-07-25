@@ -15,11 +15,14 @@ export const endActiveImport = (jobId: number): void => {
   activeImports.delete(jobId);
 };
 
+export const hasActiveModImport = (jobId: number): boolean => activeImports.has(jobId);
+
 /**
  * Return true if this job id currently has a running import loop.
  */
 export const isModImportRunning = (jobId: number): boolean => {
-  return activeImports.has(jobId);
+  const state = activeImports.get(jobId);
+  return !!state && !state.cancel && !state.pause;
 };
 
 /**

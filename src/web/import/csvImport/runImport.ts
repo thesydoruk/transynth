@@ -15,8 +15,11 @@ interface ActiveImport {
 const activeImports = new Map<number, ActiveImport>();
 
 export const isCsvImportRunning = (jobId: number): boolean => {
-  return activeImports.has(jobId);
+  const state = activeImports.get(jobId);
+  return !!state && !state.cancel && !state.pause;
 };
+
+export const hasActiveCsvImport = (jobId: number): boolean => activeImports.has(jobId);
 
 export const requestCsvCancel = (jobId: number) => {
   const state = activeImports.get(jobId);

@@ -17,12 +17,14 @@ import {
   deleteModImportJob,
   runModImport,
   isModImportRunning,
+  hasActiveModImport,
   requestModCancel,
   requestModPause,
   updateModJobLanguages,
   restartModImportJob,
   isArchive,
   isPlugin,
+  markFailed,
 } from '../import/modImport';
 import { CONFIG } from '../../config';
 import { ensureModStorageDir, modUploadTempPath, modUploadedFilePath } from '../../modStorage';
@@ -189,7 +191,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isModImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveModImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestModPause(jobId);
     return { ok: true };
   });
@@ -197,8 +199,10 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isModImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveModImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestModCancel(jobId);
+    const job = await getModImportJob(db, jobId);
+    if (job) await markFailed(db, jobId, job.imported_records);
     return { ok: true };
   });
 

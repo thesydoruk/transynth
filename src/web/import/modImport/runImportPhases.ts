@@ -196,6 +196,7 @@ export const prepareEspImportContext = async (
     setImported: (value) => {
       ctx.imported.value = value;
     },
+    shouldStop: () => ctx.state.cancel || ctx.state.pause,
   });
 
   return {

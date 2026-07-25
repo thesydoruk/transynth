@@ -57,6 +57,7 @@ export const requestTmApplyStop = (jobId: number): boolean => {
   const job = activeJobs.get(jobId);
   if (!job || job.status !== 'running') return false;
   job.cancel = true;
+  job.status = 'cancelled';
   return true;
 };
 
@@ -165,8 +166,8 @@ export const runTmApplyJob = async (
     job.applied = result.applied;
     job.skipped = result.skipped;
 
-    if (job.cancel) {
-      job.status = 'cancelled';
+    if (job.cancel || job.status === 'cancelled') {
+      if (job.status === 'running') job.status = 'cancelled';
       onEvent({
         type: 'cancelled',
         done: job.done,

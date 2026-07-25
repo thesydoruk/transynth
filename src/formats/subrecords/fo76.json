@@ -39,7 +39,7 @@
     "HDPT": { "read": true, "subrecords": { "FULL": true } },
     "INFO": { "read": true, "subrecords": { "NAM1": true, "RNAM": true } },
     "INGR": { "read": true, "subrecords": { "FULL": true, "YNAM": true } },
-    "INNR": { "read": false, "subrecords": {} },
+    "INNR": { "read": true, "subrecords": { "WNAM": true } },
     "KEYM": { "read": true, "subrecords": { "FULL": true } },
     "KYWD": { "read": false, "subrecords": {} },
     "LCTN": { "read": true, "subrecords": { "FULL": true } },

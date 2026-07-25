@@ -31,12 +31,21 @@ export const createModImportBatchWriter = (opts: {
   onProgress?: ProgressCb;
   getImported: () => number;
   setImported: (value: number) => void;
+  shouldStop?: () => boolean;
 }): ModImportBatchWriter => {
   const pendingRows: ModImportBulkRow[] = [];
   let inTx = false;
 
   const flushPendingImportBatch = async (): Promise<void> => {
     if (pendingRows.length === 0) return;
+    if (opts.shouldStop?.()) {
+      pendingRows.length = 0;
+      if (inTx) {
+        await opts.db.query('ROLLBACK');
+        inTx = false;
+      }
+      return;
+    }
     const batch = pendingRows.splice(0, pendingRows.length);
     const maxAttempts = 4;
 
@@ -96,12 +105,21 @@ export const createModImportBatchWriter = (opts: {
   };
 
   const pushImportRow = async (row: ModImportBulkRow): Promise<void> => {
+    if (opts.shouldStop?.()) return;
     if (!inTx) {
       await opts.db.query('BEGIN');
       inTx = true;
     }
     pendingRows.push(row);
     if (pendingRows.length >= opts.importBatchSize) {
+      if (opts.shouldStop?.()) {
+        pendingRows.length = 0;
+        if (inTx) {
+          await opts.db.query('ROLLBACK');
+          inTx = false;
+        }
+        return;
+      }
       await flushPendingImportBatch();
     }
   };

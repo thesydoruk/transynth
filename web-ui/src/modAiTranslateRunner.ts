@@ -164,11 +164,13 @@ export const stopModAiTranslate = async (
       } else {
         await api.tmApply.stopMod(modId);
       }
+      upsertModAiJob(modId, 'translate', { status: 'cancelled', error: null });
       return;
     }
 
     if (resolvedJobId == null) return;
     await api.llmTranslate.stop(resolvedJobId);
+    upsertModAiJob(modId, 'translate', { status: 'cancelled', error: null });
   } catch (err) {
     upsertModAiJob(modId, 'translate', {
       error: err instanceof Error ? err.message : String(err),

@@ -13,4 +13,11 @@ export {
 } from './jobs';
 export { parseCsvRecords, iterCsvRecords } from './parse';
 export { registerCsvFile } from './register';
-export { isCsvImportRunning, requestCsvCancel, requestCsvPause, runCsvImport } from './runImport';
+export {
+  isCsvImportRunning,
+  hasActiveCsvImport,
+  requestCsvCancel,
+  requestCsvPause,
+  runCsvImport,
+} from './runImport';
+export { markFailed as markCsvImportFailed } from './jobs';

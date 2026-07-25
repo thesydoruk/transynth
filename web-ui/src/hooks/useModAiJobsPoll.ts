@@ -74,6 +74,10 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             window.clearTimeout(prevTimer);
             clearTimers.delete(key);
           }
+          const local = listModAiJobEntries().find(
+            (entry) => entry.modId === job.modId && entry.kind === job.kind,
+          );
+          if (local?.status === 'stopping') continue;
           upsertModAiJob(job.modId, job.kind, {
             status: 'running',
             jobId: job.jobId,

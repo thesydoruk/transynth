@@ -131,6 +131,7 @@ export const stopModAiVoice = async (modId: number, jobId: number | null): Promi
     } else {
       await api.voiceGenerate.stopMod(modId);
     }
+    upsertModAiJob(modId, 'voice', { status: 'cancelled', error: null });
   } catch (err) {
     upsertModAiJob(modId, 'voice', {
       error: err instanceof Error ? err.message : String(err),

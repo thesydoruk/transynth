@@ -14,6 +14,7 @@ describe('resolveStringsTableType (fo4)', () => {
 
   it('maps INNR/WNAM to STRINGS', () => {
     expect(resolveStringsTableType(game, 'INNR', 'WNAM')).toBe('STRINGS');
+    expect(resolveStringsTableTypeForRow(game, 'INNR', 'INNR\\WNAM[2]')).toBe('STRINGS');
   });
 
   it('maps generic DESC to DLSTRINGS via fallback', () => {

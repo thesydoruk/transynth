@@ -17,9 +17,11 @@ import {
   registerEetFile,
   runImport,
   isImportRunning,
+  hasActiveImport,
   requestCancel,
   requestPause,
   updateJobLanguages,
+  markImportJobFailed,
 } from '../import/eetImportService';
 import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 
@@ -231,7 +233,7 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestPause(jobId);
     return { ok: true };
   });
@@ -239,8 +241,10 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!isImportRunning(jobId)) return reply.status(400).send({ error: 'Import not running' });
+    if (!hasActiveImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
     requestCancel(jobId);
+    const job = await getImportJob(db, jobId);
+    if (job) await markImportJobFailed(db, jobId, job.imported_records, 'Cancelled by user');
     return { ok: true };
   });
 

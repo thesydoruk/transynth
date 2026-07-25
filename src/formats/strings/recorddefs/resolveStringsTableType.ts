@@ -88,7 +88,8 @@ export const subrecordFieldFromPath = (path: string | null | undefined): string 
   if (!path) return '';
   const normalized = path.replace(/\//g, '\\');
   const parts = normalized.split('\\');
-  return parts[parts.length - 1] ?? path;
+  const field = parts[parts.length - 1] ?? path;
+  return field.replace(/\[\d+\]$/, '');
 };
 
 /**
