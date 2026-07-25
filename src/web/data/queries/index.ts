@@ -2,6 +2,7 @@
 export * from './constants';
 export * from './glossaryHelpers';
 export * from './qaIssues';
+export * from './qaRefreshTargets';
 export * from './mods';
 export * from './stringsFilter';
 export * from './strings';
