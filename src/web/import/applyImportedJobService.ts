@@ -9,7 +9,6 @@ import {
   countApplyImportedTargetStrings,
 } from '../data/queries';
 import { log } from '../../logger';
-import { tryRefreshModLangStats } from '../services/modLangStats';
 
 export type ApplyImportedStats = {
   applied: number;
@@ -180,7 +179,6 @@ export const runApplyImportedJob = async (
     onEvent({ type: 'error', error: message });
   }
 
-  tryRefreshModLangStats(db, opts.targetModId, opts.srcLang, opts.targetLang);
   return toSnapshot(job);
 };
 

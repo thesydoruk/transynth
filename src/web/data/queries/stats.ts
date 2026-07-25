@@ -1,16 +1,16 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { getCachedModDetailStats } from '../../services/modLangStats';
+import { getModDetailStats } from '../../services/modLangStats';
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-/** Editor / API stats — served from {@link mod_lang_stats} (no live full-mod scan). */
+/** Editor / API stats — live aggregation over records/strings/translations. */
 export const getModStats = async (
   db: Tx,
   modId: number,
   srcLang = CONFIG.defaultSrcLang,
   targetLang = CONFIG.defaultTgtLang,
-) => getCachedModDetailStats(db, modId, srcLang, targetLang);
+) => getModDetailStats(db, modId, srcLang, targetLang);
 
 /**
  * Returns translation progress broken down by record signature (GRUP type) for the

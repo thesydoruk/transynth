@@ -6,7 +6,6 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { logVerify } from '../../../logging/loggers';
-import { tryRefreshModLangStats } from '../../services/modLangStats';
 import { runModVerifyPipeline } from '../verifyPipeline/runModVerifyPipeline';
 import { countVerifiableStrings } from './queries';
 import {
@@ -220,6 +219,5 @@ export const runLlmVerifyJob = async (
     onEvent({ type: 'error', error: message });
   }
 
-  tryRefreshModLangStats(db, opts.modId, opts.srcLang, opts.targetLang);
   return toVerifyJobSnapshot(job);
 };

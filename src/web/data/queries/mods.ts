@@ -6,7 +6,7 @@ import {
   withDeferredBulkModWriteIndexes,
   type DeferredBulkWriteIndexContext,
 } from '../../import/modImportIndexes';
-import { refreshModLangStatsForMods, tryRefreshModLangStats } from '../../services/modLangStats';
+import { APPROVED_STATUS_SQL } from '../../services/modLangStats';
 
 // ── Mods ─────────────────────────────────────────────────────────────────────
 
@@ -44,7 +44,6 @@ export const listMods = async (
       translated_count: string;
       approved_count: string;
       fuzzy_count: string;
-      has_stats: boolean;
     }>(
       `SELECT
         m.id,
@@ -60,24 +59,28 @@ export const listMods = async (
         COALESCE(st.string_count, 0)::bigint AS string_count,
         COALESCE(st.translated_count, 0)::bigint AS translated_count,
         COALESCE(st.approved_count, 0)::bigint AS approved_count,
-        COALESCE(st.fuzzy_count, 0)::bigint AS fuzzy_count,
-        (st.mod_id IS NOT NULL) AS has_stats
+        COALESCE(st.fuzzy_count, 0)::bigint AS fuzzy_count
        FROM mods m
-       LEFT JOIN mod_lang_stats st
-         ON st.mod_id = m.id AND st.src_lang = $1 AND st.target_lang = $2
+       LEFT JOIN (
+         SELECT
+           r.mod_id,
+           COUNT(DISTINCT r.id)::bigint AS record_count,
+           COUNT(s.id)::bigint AS string_count,
+           COUNT(t.id)::bigint AS translated_count,
+           COUNT(*) FILTER (WHERE t.status IN ${APPROVED_STATUS_SQL})::bigint AS approved_count,
+           COUNT(*) FILTER (WHERE t.status = 'fuzzy')::bigint AS fuzzy_count
+         FROM records r
+         JOIN strings s ON s.record_id = r.id AND s.lang = $1
+         LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $2
+         GROUP BY r.mod_id
+       ) st ON st.mod_id = m.id
        ${whereClause}
        ORDER BY m.created_at DESC`,
       params,
     );
 
-  let { rows } = await queryMods();
-  const missingIds = rows.filter((row) => !row.has_stats).map((row) => row.id);
-  if (missingIds.length > 0) {
-    await refreshModLangStatsForMods(db, missingIds, srcLang, targetLang);
-    ({ rows } = await queryMods());
-  }
-
-  return rows.map(({ has_stats: _hasStats, ...mod }) => mod);
+  const { rows } = await queryMods();
+  return rows;
 };
 
 export const getMod = async (db: Tx, id: number) => {
@@ -234,12 +237,6 @@ export const deleteModDataForModIds = async (
     (client, indexCtx) => deleteModDataOnClient(client, uniqueModIds, scope, indexCtx),
   );
 
-  if (scope === 'rows') {
-    for (const modId of uniqueModIds) {
-      tryRefreshModLangStats(db, modId, CONFIG.defaultSrcLang, CONFIG.defaultTgtLang);
-    }
-  }
-
   log.info(
     `deleteModData modIds=${uniqueModIds.join(',')} scope=${scope} records=${result.deletedRecords} deferIndexes=${CONFIG.modImportDeferIndexes} ms=${Date.now() - started}`,
   );
@@ -255,8 +252,7 @@ export const deleteModData = async (
 
 /**
  * Languages actually present on a mod (source `strings` + target `translations`).
- * Used by apply-from-mod and editor language pickers — not the cached src/tgt pair in
- * {@link mod_lang_stats}, which only tracks the active editor language pair.
+ * Used by apply-from-mod and editor language pickers.
  */
 export const listModLangs = async (db: Tx, modId: number): Promise<string[]> => {
   const { rows } = await db.query<{ lang: string }>(

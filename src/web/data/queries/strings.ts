@@ -1,10 +1,6 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import {
-  getCachedSignatureCounts,
-  getCachedStatusTotal,
-  hasModSigStatusCache,
-} from '../../services/modLangStats';
+import { computeSignatureCounts, computeStatusTotal } from '../../services/modLangStats';
 import {
   type StringsFilter,
   parseStatusFilter,
@@ -161,24 +157,21 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
 
   const countQuery = buildCountQuery();
   const statuses = parseStatusFilter(f.status);
-  const useCachedTotal =
-    page === 1 &&
-    isStatusOnlyStringsFilter(f) &&
-    statuses.length > 0 &&
-    (await hasModSigStatusCache(db, f.modId, srcLang, targetLang));
-  const cachedTotal = useCachedTotal
-    ? await getCachedStatusTotal(db, f.modId, srcLang, targetLang, statuses)
+  const useLiveStatusTotal =
+    page === 1 && isStatusOnlyStringsFilter(f) && statuses.length > 0;
+  const liveStatusTotal = useLiveStatusTotal
+    ? await computeStatusTotal(db, f.modId, srcLang, targetLang, statuses)
     : null;
 
   const [pageResult, countResult] = await Promise.all([
     db.query(pageSql, allValues),
-    countQuery && cachedTotal === null
+    countQuery && liveStatusTotal === null
       ? db.query(countQuery.sql, countQuery.values)
       : Promise.resolve(null),
   ]);
   const rows = pageResult.rows;
   const total =
-    cachedTotal !== null ? cachedTotal : countResult ? Number(countResult.rows[0].total) : 0;
+    liveStatusTotal !== null ? liveStatusTotal : countResult ? Number(countResult.rows[0].total) : 0;
 
   return { rows, total, page, pageSize };
 };
@@ -204,9 +197,7 @@ export const listSignatures = async (
     f.hideIgnored;
 
   if (isStatusOnlyStringsFilter(f) && statuses.length > 0) {
-    if (await hasModSigStatusCache(db, f.modId, srcLang, targetLang)) {
-      return getCachedSignatureCounts(db, f.modId, srcLang, targetLang, statuses);
-    }
+    return computeSignatureCounts(db, f.modId, srcLang, targetLang, statuses);
   }
 
   if (!hasExtraFilters) {

@@ -22,51 +22,9 @@ ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_mod_id INTEGER;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_name TEXT;
 ALTER TABLE mods ADD COLUMN IF NOT EXISTS nexus_thumbnail TEXT;
 
--- Per-mod translation progress cache for fast mod list / editor stats
--- (refreshed after import / bulk jobs; never live-scanned on page load).
-CREATE TABLE IF NOT EXISTS mod_lang_stats (
-  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  src_lang TEXT NOT NULL,
-  target_lang TEXT NOT NULL,
-  record_count BIGINT NOT NULL DEFAULT 0,
-  string_count BIGINT NOT NULL DEFAULT 0,
-  translated_count BIGINT NOT NULL DEFAULT 0,
-  approved_count BIGINT NOT NULL DEFAULT 0,
-  fuzzy_count BIGINT NOT NULL DEFAULT 0,
-  draft_count BIGINT NOT NULL DEFAULT 0,
-  rejected_count BIGINT NOT NULL DEFAULT 0,
-  tm_count BIGINT NOT NULL DEFAULT 0,
-  auto_count BIGINT NOT NULL DEFAULT 0,
-  skipped_count BIGINT NOT NULL DEFAULT 0,
-  untranslated_count BIGINT NOT NULL DEFAULT 0,
-  reviewed_count BIGINT NOT NULL DEFAULT 0,
-  human_count BIGINT NOT NULL DEFAULT 0,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (mod_id, src_lang, target_lang)
-);
-CREATE INDEX IF NOT EXISTS idx_mod_lang_stats_langs ON mod_lang_stats(src_lang, target_lang);
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS draft_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS rejected_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS tm_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS auto_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS skipped_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS untranslated_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS reviewed_count BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE mod_lang_stats ADD COLUMN IF NOT EXISTS human_count BIGINT NOT NULL DEFAULT 0;
-
--- Per-signature counts by translation status (editor sidebar; avoids full-mod scan on filter).
-CREATE TABLE IF NOT EXISTS mod_sig_status_stats (
-  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  src_lang TEXT NOT NULL,
-  target_lang TEXT NOT NULL,
-  status TEXT NOT NULL,
-  signature TEXT NOT NULL,
-  count BIGINT NOT NULL DEFAULT 0,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (mod_id, src_lang, target_lang, status, signature)
-);
-CREATE INDEX IF NOT EXISTS idx_mod_sig_status_stats_lookup
-  ON mod_sig_status_stats(mod_id, src_lang, target_lang, status);
+-- Migration: drop cached mod stats tables (stats are computed on read).
+DROP TABLE IF EXISTS mod_sig_status_stats;
+DROP TABLE IF EXISTS mod_lang_stats;
 
 CREATE TABLE IF NOT EXISTS records (
   id SERIAL PRIMARY KEY,

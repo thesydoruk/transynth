@@ -1,18 +1,8 @@
 /**
- * Cached per-mod translation counts for listMods and editor stats.
+ * Per-mod translation counts for listMods, editor stats, and status filters.
+ * Computed on read — no cache tables.
  */
-export type { ModLangStatsRow, ModDetailStats } from './types';
-export { ensureModLangStatsColumns } from './schema';
-export {
-  refreshModSigStatusStats,
-  hasModSigStatusCache,
-  getCachedSignatureCounts,
-} from './sigStatus';
-export { getCachedStatusTotal } from './cacheRead';
-export { getCachedModDetailStats } from './detailStats';
-export {
-  refreshModLangStats,
-  refreshModLangStatsForMods,
-  refreshAllModLangStats,
-  tryRefreshModLangStats,
-} from './refresh';
+export type { ModDetailStats } from './types';
+export { APPROVED_STATUS_SQL } from './types';
+export { computeStatusTotal, computeSignatureCounts } from './computeStats';
+export { getModDetailStats } from './detailStats';

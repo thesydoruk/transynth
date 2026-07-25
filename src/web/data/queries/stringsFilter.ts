@@ -47,7 +47,7 @@ export const statusFilterNeedsTranslationJoin = (statuses: string[]): boolean =>
   return !onlySkip && !onlyUntranslated;
 };
 
-/** Status / QA filters only — no column text predicates (cache-safe). */
+/** Status / QA filters only — no column text predicates. */
 export const isStatusOnlyStringsFilter = (
   f: Pick<
     StringsFilter,

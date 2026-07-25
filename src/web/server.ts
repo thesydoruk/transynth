@@ -23,7 +23,6 @@ import { openDb, closeDb } from '../db';
 import { log, closeLogStreams } from '../logger';
 import { CONFIG, UPLOAD_FILE_SIZE_LIMIT_BYTES } from '../config';
 import { ensureDataDirs } from '../paths';
-import { ensureModLangStatsColumns } from './services/modLangStats';
 import { ensureDefaultUser } from './auth/authService';
 import { registerAuthHook } from './auth/authMiddleware';
 import { activityRoutes } from './routes/activity';
@@ -91,7 +90,6 @@ const db = openDb();
 
 syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
 
-await ensureModLangStatsColumns(db);
 await ensureDefaultUser(db);
 await registerAuthHook(app, db);
 await activityRoutes(app, db);

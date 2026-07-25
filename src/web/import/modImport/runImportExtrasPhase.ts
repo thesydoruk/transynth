@@ -13,7 +13,6 @@ import {
   type ModImportBulkRow,
 } from '../modImportBulk';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../../export/pexDecompileService';
-import { tryRefreshModLangStats } from '../../services/modLangStats';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
 import { collectMcmLocalesForModParallel, buildMcmCsvRows } from './mcmLocales';
 import { collectPexStrings, buildPexCsvRows } from './pexStrings';
@@ -222,9 +221,6 @@ export const finalizeModImportJob = async (
   }
 
   await markDone(ctx.db, ctx.job.id, ctx.imported.value);
-  if (ctx.job.mod_id != null) {
-    tryRefreshModLangStats(ctx.db, ctx.job.mod_id, ctx.job.src_lang, ctx.job.tgt_lang);
-  }
   const elapsed = ((Date.now() - ctx.startTime) / 1000).toFixed(1);
   logImport.info(
     `[Mod Import #${ctx.job.id}] Completed: ${ctx.imported.value} records in ${elapsed}s`,
