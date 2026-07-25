@@ -25,6 +25,7 @@ import {
 } from './localeHelpers';
 import { loadNpcReferenceMap } from '../../../formats/subrecords';
 import { buildPluginSpeakerIndex } from '../dialogSpeakers';
+import { buildSpeakerActorIndex, loadPluginPathByBasename } from '../dialogSpeakers/masterPlugins';
 import { resolveEnglishLocaleMap } from './csvHelpers';
 import {
   buildSpeakerFormIdMap,
@@ -164,13 +165,15 @@ export const prepareEspImportContext = async (
     ]);
   }
 
+  const storedByBasename = await loadPluginPathByBasename(ctx.db);
+
   const dialogGraphCtx: DialogGraphImportContext = {
     dialogEdidByFormId,
     speakerMap,
     voiceSpeakerMap,
     voiceFolderMap,
     speakerIndex: buildPluginSpeakerIndex({
-      actorIndex: esp.extractActorIndex(),
+      actorIndex: buildSpeakerActorIndex(esp, ctx.game, storedByBasename),
       englishStrings: resolveEnglishLocaleMap(ctx.localeSources) ?? null,
       npcReferenceNames: loadNpcReferenceMap(ctx.game),
       voiceFolders: voiceFolderMap,

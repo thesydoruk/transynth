@@ -28,6 +28,7 @@ import { log } from '../src/logger';
 import {
   backfillModDialogSpeakers,
   listDialogSpeakerBackfillTargets,
+  loadPluginPathByBasename,
   type DialogSpeakerBackfillTarget,
 } from '../src/web/import/dialogSpeakers';
 
@@ -82,11 +83,17 @@ const run = async (): Promise<void> => {
   }
 
   let failed = 0;
+  const storedByBasename = await loadPluginPathByBasename(db);
+  const backfillOpts = {
+    storedByBasename,
+    resetOverrides: argv.force === true,
+  };
+
   for (const target of targets) {
     log.info(`Backfilling ${describe(target)}`);
     try {
       await db.query('BEGIN');
-      const result = await backfillModDialogSpeakers(db, target);
+      const result = await backfillModDialogSpeakers(db, target, backfillOpts);
       await db.query('COMMIT');
       log.info(
         `  ✓ ${result.keyedNodes} node(s) keyed, ${result.speakers} speaker(s), ` +

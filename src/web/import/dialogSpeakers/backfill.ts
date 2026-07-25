@@ -20,7 +20,15 @@ import { discoverArchiveCandidatesForPlugin } from '../modImport/discovery';
 import { buildVoiceFolderMap } from '../modImport/speakerMaps';
 import { discoverLocaleSources } from '../modImportLocaleStream';
 import { buildPluginSpeakerIndex } from './pluginSpeakerIndex';
+import { buildSpeakerActorIndex, loadPluginPathByBasename } from './masterPlugins';
 import { resolveModDialogSpeakers, type DialogSpeakerResolution } from './persist';
+
+export type DialogSpeakerBackfillOptions = {
+  /** Drop manual gender overrides before recomputing detected values. */
+  resetOverrides?: boolean;
+  /** Cached mod plugin paths, keyed by basename. */
+  storedByBasename?: Map<string, string>;
+};
 
 export type DialogSpeakerBackfillTarget = {
   modId: number;
@@ -137,9 +145,17 @@ const keyNodesFromVoiceFolders = async (
 export const backfillModDialogSpeakers = async (
   db: Tx,
   target: DialogSpeakerBackfillTarget,
+  opts: DialogSpeakerBackfillOptions = {},
 ): Promise<DialogSpeakerBackfillResult> => {
   if (!target.absPath) {
     throw new Error(`Mod ${target.modId} has no stored plugin path`);
+  }
+
+  if (opts.resetOverrides) {
+    await db.query(
+      `UPDATE dialog_speakers SET gender_override = NULL, updated_at = NOW() WHERE mod_id = $1`,
+      [target.modId],
+    );
   }
 
   const pluginPath = resolveModStoredPath(target.absPath);
@@ -148,6 +164,7 @@ export const backfillModDialogSpeakers = async (
   }
 
   const esp = new EspReader(pluginPath, target.game);
+  const storedByBasename = opts.storedByBasename ?? (await loadPluginPathByBasename(db));
   const voiceFolders = buildVoiceFolderMap(pluginPath);
   const localeSources = esp.info.isLocalized
     ? discoverLocaleSources(pluginPath, target.game, discoverArchiveCandidatesForPlugin(pluginPath))
@@ -160,7 +177,7 @@ export const backfillModDialogSpeakers = async (
     db,
     target.modId,
     buildPluginSpeakerIndex({
-      actorIndex: esp.extractActorIndex(),
+      actorIndex: buildSpeakerActorIndex(esp, target.game, storedByBasename),
       englishStrings: resolveEnglishLocaleMap(localeSources) ?? null,
       npcReferenceNames: loadNpcReferenceMap(target.game),
       voiceFolders,

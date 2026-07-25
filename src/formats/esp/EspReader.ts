@@ -83,6 +83,7 @@ const FLAG_LOCALIZED = 0x00000080;
  * traversal and decompression.
  */
 export class EspReader {
+  readonly filePath: string;
   private buf: Buffer;
   private readonly explorer: EspExplorer;
   private readonly sceneExtractor: EspSceneExtractor;
@@ -95,6 +96,7 @@ export class EspReader {
    * @param game     - Set to `'sse'` for Skyrim SE plugins; defaults to `'fo4'`.
    */
   constructor(filePath: string, game: GameType = 'fo4') {
+    this.filePath = filePath;
     log.debug(`ESP: opening ${filePath} (game=${game})`);
     this.game = game;
     this.buf = fs.readFileSync(filePath);

@@ -125,8 +125,9 @@ const updateAddressees = async (
  * addresses.
  *
  * Runs after scenes are imported because scene aliases are what identify the
- * player and the counterpart of a conversation. A human override stored in
- * `dialog_speakers.gender_override` is never touched.
+ * player and the counterpart of a conversation. Manual overrides in
+ * `dialog_speakers.gender_override` are left alone unless a backfill pass
+ * explicitly clears them first.
  */
 export const resolveModDialogSpeakers = async (
   db: Tx,

@@ -1,5 +1,6 @@
 import { genderFromVoiceTypeName } from '../../../dialog';
 import type { ActorRecord, VoiceTypeRecord } from '../../../formats/types';
+import { mergeActorIndexes } from '../dialogSpeakers/masterPlugins';
 import {
   buildPluginSpeakerIndex,
   genderFromVoiceTypeIndex,
@@ -147,5 +148,21 @@ describe('buildDialogSpeakerRows', () => {
       detectedGender: 'female',
       detectedSource: 'plugin',
     });
+  });
+});
+
+describe('mergeActorIndexes', () => {
+  it('pulls voice types from masters while the plugin wins on conflicts', () => {
+    const merged = mergeActorIndexes([
+      { actors: [], voiceTypes: [voiceType('RobotMrHandy', true)] },
+      {
+        actors: [],
+        voiceTypes: [voiceType('RobotMrHandy', false), voiceType('DLC04NPCMGage', false)],
+      },
+    ]);
+
+    const index = makeIndex(merged.voiceTypes);
+    expect(genderFromVoiceTypeIndex(index, 'RobotMrHandy').gender).toBe('male');
+    expect(genderFromVoiceTypeIndex(index, 'DLC04NPCMGage').gender).toBe('male');
   });
 });

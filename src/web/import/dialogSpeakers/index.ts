@@ -14,7 +14,14 @@ export type {
   BuildPluginSpeakerIndexOptions,
   PluginSpeakerIndex,
 } from './pluginSpeakerIndex';
-export { buildPluginSpeakerIndex } from './pluginSpeakerIndex';
+export { buildPluginSpeakerIndex, genderFromVoiceTypeIndex } from './pluginSpeakerIndex';
+
+export {
+  buildSpeakerActorIndex,
+  loadPluginPathByBasename,
+  mergeActorIndexes,
+  resolveMasterPluginPath,
+} from './masterPlugins';
 
 export type { DialogSpeakerRow, SpeakerSourceNode } from './speakerRows';
 export { buildDialogSpeakerRows } from './speakerRows';
