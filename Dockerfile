@@ -5,7 +5,10 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 ENV HUSKY=0
-RUN npm ci --omit=dev --ignore-scripts
+# --ignore-scripts skips postinstall; 7z npm packages ship binaries without +x.
+RUN npm ci --omit=dev --ignore-scripts \
+  && chmod +x node_modules/7zip-bin/linux/x64/7za \
+  && chmod +x node_modules/7z-bin/bin/linux/x64/7zzs
 
 # ── Stage 2: build web-ui (React SPA) ─────────────────────────────────────────
 FROM node:24-slim AS ui-build
