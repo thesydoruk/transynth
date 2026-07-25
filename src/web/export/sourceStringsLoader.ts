@@ -3,7 +3,12 @@ import path from 'node:path';
 import type { GameType } from '../../types';
 import { Ba2Reader } from '../../formats/ba2';
 import { BsaReader } from '../../formats/bsa';
-import { parseStringsBuffer, stringsTypeFromPath, type StringsType } from '../../formats/strings';
+import {
+  parseStringsBuffer,
+  resolveLooseStringsDirForPlugin,
+  stringsTypeFromPath,
+  type StringsType,
+} from '../../formats/strings';
 import { log } from '../../logger';
 import { discoverCompanionBa2 } from './archiveExportPlan';
 
@@ -145,8 +150,8 @@ const loadSourceStringsFromBA2 = (ba2Path: string, srcLang: string): SourceStrin
  * @returns Stable-sorted list of parsed source strings tables.
  */
 const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): SourceStringsFile[] => {
-  const dir = path.join(path.dirname(modPath), 'Strings');
-  if (!fs.existsSync(dir)) return [];
+  const dir = resolveLooseStringsDirForPlugin(modPath);
+  if (!dir) return [];
 
   const files: SourceStringsFile[] = [];
   for (const file of fs.readdirSync(dir)) {

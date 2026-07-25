@@ -10,6 +10,7 @@ import { BsaReader } from '../../formats/bsa';
 import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
 import {
   parseStringsBuffer,
+  resolveLooseStringsDirForPlugin,
   resolveStringsTableTypeForRow,
   stringsTypeFromPath,
   type StringsType,
@@ -53,9 +54,9 @@ const catalogToSources = (catalog: Map<string, LocaleStringsFileRef[]>): LocaleS
     .map(([locale, files]) => ({ locale, files }));
 
 const discoverLooseLocaleSources = (espPath: string): LocaleStringsSource[] => {
-  const dir = path.join(path.dirname(espPath), 'Strings');
+  const dir = resolveLooseStringsDirForPlugin(espPath);
   const catalog = new Map<string, LocaleStringsFileRef[]>();
-  if (!fs.existsSync(dir)) return [];
+  if (!dir) return [];
 
   for (const file of fs.readdirSync(dir)) {
     const locale = localeFromStringsFileName(file);

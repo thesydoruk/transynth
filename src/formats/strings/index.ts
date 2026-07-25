@@ -1,4 +1,5 @@
 export { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer } from './stringsBuffer';
+export { resolveLooseStringsDir, resolveLooseStringsDirForPlugin } from './looseStringsDir';
 export {
   resolveStringsTableType,
   resolveStringsTableTypeForRow,
