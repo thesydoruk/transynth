@@ -59,25 +59,26 @@ const describe = (target: DialogSpeakerBackfillTarget): string =>
   `mod_id=${target.modId} "${target.modName}" — ${target.nodes} node(s), ` +
   `${target.speakers} speaker(s), plugin=${target.absPath ?? 'unknown'}`;
 
-try {
+const run = async (): Promise<void> => {
   const modId = argv['mod-id'];
   const all = await listDialogSpeakerBackfillTargets(db, !argv.force && modId == null);
   const targets = modId == null ? all : all.filter((target) => target.modId === modId);
 
   if (modId != null && targets.length === 0) {
     log.error(`Mod ${modId} has no dialog nodes to backfill`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   if (targets.length === 0) {
     log.info('Every mod with dialog already has a speaker table');
-    process.exit(0);
+    return;
   }
 
   if (argv['dry-run']) {
     log.info(`${targets.length} mod(s) would be backfilled:`);
     for (const target of targets) log.info(`  ${describe(target)}`);
-    process.exit(0);
+    return;
   }
 
   let failed = 0;
@@ -99,7 +100,11 @@ try {
   }
 
   log.info(`Done: ${targets.length - failed}/${targets.length} mod(s) backfilled`);
-  if (failed > 0) process.exit(1);
+  if (failed > 0) process.exitCode = 1;
+};
+
+try {
+  await run();
 } finally {
   await closeDb();
 }
