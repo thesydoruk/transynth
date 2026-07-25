@@ -5,7 +5,6 @@ export function useEditorModals() {
   const [showSearchReplace, setShowSearchReplace] = useState(false);
   const [showApplyTranslationFromMod, setShowApplyTranslationFromMod] = useState(false);
   const [showAiVerify, setShowAiVerify] = useState(false);
-  const [showVoice, setShowVoice] = useState(false);
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -16,8 +15,6 @@ export function useEditorModals() {
     setShowApplyTranslationFromMod,
     showAiVerify,
     setShowAiVerify,
-    showVoice,
-    setShowVoice,
     showBookEditor,
     setShowBookEditor,
     showShortcuts,

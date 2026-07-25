@@ -2,7 +2,7 @@ import { useEffect, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SpeakerGender, VoiceSpeakerGroup } from '../../../../../api';
 import { speakerHue } from '../voiceLineKeys';
-import s from '../VoiceModal.module.scss';
+import s from '../VoiceMode.module.scss';
 
 const GENDER_SYMBOL: Record<SpeakerGender, string> = {
   male: '♂',

@@ -65,7 +65,6 @@ export interface EditorToolbarProps {
   onSearchReplace: () => void;
   onApplyTranslationFromMod: () => void;
   applyImportedRunning?: boolean;
-  onVoice: () => void;
   onShortcuts: () => void;
   onBatchTranslate: () => void;
   onNextQaIssue: () => void;
@@ -110,7 +109,6 @@ export const EditorToolbar = ({
   onSearchReplace,
   onApplyTranslationFromMod,
   applyImportedRunning = false,
-  onVoice,
   onShortcuts,
   onBatchTranslate,
   onNextQaIssue,
@@ -234,14 +232,6 @@ export const EditorToolbar = ({
           {t('modEditor.innrEditor')}
         </Link>
       )}
-      <Button
-        onClick={onVoice}
-        variant="secondary"
-        size="sm"
-        title={t('modEditor.voiceTitleButton')}
-      >
-        {t('modEditor.voice')}
-      </Button>
       {pageMode === 'strings' && qaIssueRowCount > 0 && (
         <Button
           onClick={onNextQaIssue}

@@ -1,18 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import styles from './EditorToolbar.module.scss';
 
-/** The two editing surfaces of the mod editor. */
-export type EditorPageMode = 'strings' | 'dialogs';
+/** The editing surfaces of the mod editor. */
+export type EditorPageMode = 'voice' | 'strings' | 'dialogs';
 
 export interface EditorModeSwitchProps {
   mode: EditorPageMode;
   onChange: (mode: EditorPageMode) => void;
 }
 
-const MODES: EditorPageMode[] = ['strings', 'dialogs'];
+const MODES: EditorPageMode[] = ['strings', 'dialogs', 'voice'];
 
 /**
- * Segmented switch between the strings grid and the dialogs editor.
+ * Segmented switch between voice, strings grid, and dialogs editor.
  *
  * Both options stay visible so the current surface is readable at a glance,
  * unlike a single toggle button whose label only hints at the other side.

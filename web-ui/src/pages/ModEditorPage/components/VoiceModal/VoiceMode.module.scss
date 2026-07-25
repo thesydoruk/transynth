@@ -1,16 +1,24 @@
-@use '../scanModalShared';
-
-.body {
+.root {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  height: 100%;
-  padding: 0 20px 20px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
 }
 
 .intro {
-  margin: 0 0 14px;
+  margin: 0;
   color: var(--text-dim);
   font-size: 14px;
   line-height: 1.5;
@@ -23,8 +31,23 @@
 }
 
 .error {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--danger);
+  font-size: 14px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+}
+
+.empty {
+  margin: auto;
+  color: var(--text-dim);
   font-size: 14px;
 }
 

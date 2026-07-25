@@ -7,6 +7,7 @@ import {
   statusParamFromSelection,
   type StatusFilterValue,
 } from '../statusFilter';
+import type { EditorPageMode } from '../components/EditorToolbar/EditorModeSwitch';
 
 export interface UseEditorFilterStateParams {
   modId: number;
@@ -72,14 +73,15 @@ export function useEditorFilterState({ modId, clearSelection }: UseEditorFilterS
 
   /* The active surface lives in the URL so a reload — or a shared link — reopens
      the dialogs editor instead of falling back to the strings grid. */
-  const pageMode: 'strings' | 'dialogs' =
-    searchParams.get('mode') === 'dialogs' ? 'dialogs' : 'strings';
+  const modeParam = searchParams.get('mode');
+  const pageMode: EditorPageMode =
+    modeParam === 'dialogs' ? 'dialogs' : modeParam === 'voice' ? 'voice' : 'strings';
 
   const setPageMode = useCallback(
-    (mode: 'strings' | 'dialogs') => {
+    (mode: EditorPageMode) => {
       const next = new URLSearchParams(searchParams);
-      if (mode === 'dialogs') next.set('mode', 'dialogs');
-      else next.delete('mode');
+      if (mode === 'strings') next.delete('mode');
+      else next.set('mode', mode);
       setSearchParams(next);
     },
     [searchParams, setSearchParams],

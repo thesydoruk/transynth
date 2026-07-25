@@ -7,6 +7,7 @@ import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
+import { VoiceMode } from './components/VoiceModal';
 import { ModEditorStringsBody } from './components/ModEditorStringsBody';
 import { ModEditorModals } from './components/ModEditorModals';
 import { ContextMenu } from './components/ContextMenu';
@@ -84,7 +85,6 @@ export const ModEditorPage = () => {
         onSearchReplace={() => modals.setShowSearchReplace(true)}
         onApplyTranslationFromMod={() => modals.setShowApplyTranslationFromMod(true)}
         applyImportedRunning={applyImported.isRunning}
-        onVoice={() => modals.setShowVoice(true)}
         onShortcuts={() => modals.setShowShortcuts((v) => !v)}
         onBatchTranslate={batchTranslate.handleBatchTranslate}
         onNextQaIssue={() => row.handleNextQaIssue(strings?.rows ?? [])}
@@ -114,6 +114,8 @@ export const ModEditorPage = () => {
 
       {filter.pageMode === 'dialogs' ? (
         <DialogsMode modId={modId} srcLang={filter.srcLang} targetLang={filter.targetLang} />
+      ) : filter.pageMode === 'voice' ? (
+        <VoiceMode modId={modId} srcLang={filter.srcLang} targetLang={filter.targetLang} />
       ) : (
         <ModEditorStringsBody
           modId={modId}
@@ -185,12 +187,10 @@ export const ModEditorPage = () => {
         showSearchReplace={modals.showSearchReplace}
         showApplyTranslationFromMod={modals.showApplyTranslationFromMod}
         showAiVerify={modals.showAiVerify}
-        showVoice={modals.showVoice}
         showBookEditor={modals.showBookEditor}
         onCloseSearchReplace={() => modals.setShowSearchReplace(false)}
         onCloseApplyTranslationFromMod={() => modals.setShowApplyTranslationFromMod(false)}
         onCloseAiVerify={() => modals.setShowAiVerify(false)}
-        onCloseVoice={() => modals.setShowVoice(false)}
         onCloseBookEditor={() => modals.setShowBookEditor(false)}
         onDraftChange={row.setDraftTranslation}
         onRowOpen={row.handleRowOpen}

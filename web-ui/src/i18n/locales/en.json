@@ -168,6 +168,8 @@
     "qaOnlyTitle": "Show only rows with active QA issues",
     "modeLabel": "Editing surface",
     "mode": {
+      "voice": "Voice",
+      "voiceTitle": "Mod voice lines: speakers, playback, and translation synthesis",
       "strings": "Strings",
       "stringsTitle": "Edit every translatable string as a grid",
       "dialogs": "Dialogs",

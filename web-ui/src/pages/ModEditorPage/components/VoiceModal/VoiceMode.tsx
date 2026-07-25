@@ -2,22 +2,20 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type VoiceLinePreview } from '../../../../api';
-import { ModalShell } from '../../../../components/ModalShell';
 import { VoiceLinesTable } from './components/VoiceLinesTable';
 import { useSelectedSpeaker, VoiceSpeakerList } from './components/VoiceSpeakerList';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
-import s from './VoiceModal.module.scss';
+import s from './VoiceMode.module.scss';
 
-interface VoiceModalProps {
+export interface VoiceModeProps {
   modId: number;
   srcLang: string;
   targetLang: string;
-  onClose: () => void;
 }
 
-/** Modal listing voiced dialogue lines grouped by NPC, with lazy-cached playback. */
-export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalProps) => {
+/** Full-page voice editor: voiced lines grouped by NPC with playback and synthesis. */
+export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [selectedSpeakerKey, setSelectedSpeakerKey] = useState<string | null>(null);
@@ -79,14 +77,8 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
   };
 
   return (
-    <ModalShell
-      title={t('modEditor.voiceTitle')}
-      onClose={onClose}
-      closeAriaLabel={t('common.close')}
-      size="2xl"
-      stretchContent
-    >
-      <div className={s.body}>
+    <div className={s.root}>
+      <header className={s.header}>
         <p className={s.intro}>
           {t('modEditor.voiceIntro', {
             src: srcLang.toUpperCase(),
@@ -94,7 +86,6 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
             count: totalLines,
           })}
         </p>
-
         {isLoading && <p className={s.status}>{t('modEditor.voiceLoading')}</p>}
         {error && (
           <p className={s.error}>
@@ -105,7 +96,9 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
         {playError && <p className={s.error}>{playError}</p>}
         {refError && <p className={s.error}>{refError}</p>}
         {generateError && <p className={s.error}>{generateError}</p>}
+      </header>
 
+      <div className={s.body}>
         {speakers.length > 0 && (
           <div className={s.layout}>
             <VoiceSpeakerList
@@ -131,7 +124,7 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
         )}
 
         {data?.ok && speakers.length === 0 && (
-          <p className={s.status}>{t('modEditor.voiceNoLines')}</p>
+          <p className={s.empty}>{t('modEditor.voiceNoLines')}</p>
         )}
       </div>
 
@@ -149,6 +142,6 @@ export const VoiceModal = ({ modId, srcLang, targetLang, onClose }: VoiceModalPr
           }}
         />
       )}
-    </ModalShell>
+    </div>
   );
 };

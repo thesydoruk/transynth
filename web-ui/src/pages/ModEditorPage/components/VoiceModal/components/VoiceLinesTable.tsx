@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview, VoiceSpeakerGroup } from '../../../../../api';
 import { Button } from '../../../../../components/Button';
 import { lineKey, playTrackKey } from '../voiceLineKeys';
-import s from '../VoiceModal.module.scss';
+import s from '../VoiceMode.module.scss';
 
 type VoiceLinesTableProps = {
   speaker: VoiceSpeakerGroup | null;

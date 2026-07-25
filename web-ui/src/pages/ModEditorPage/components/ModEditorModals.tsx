@@ -5,7 +5,6 @@ import type { StringRow } from '../../../api';
 import { SearchReplaceModal } from './SearchReplaceModal';
 import { ApplyTranslationFromModModal } from './ApplyTranslationFromModModal';
 import { AiVerifyModal } from './AiVerifyModal';
-import { VoiceModal } from './VoiceModal';
 import type { useAiVerify } from '../hooks/useAiVerify';
 import type { useApplyImported } from '../hooks/useApplyImported';
 
@@ -23,12 +22,10 @@ export interface ModEditorModalsProps {
   showSearchReplace: boolean;
   showApplyTranslationFromMod: boolean;
   showAiVerify: boolean;
-  showVoice: boolean;
   showBookEditor: boolean;
   onCloseSearchReplace: () => void;
   onCloseApplyTranslationFromMod: () => void;
   onCloseAiVerify: () => void;
-  onCloseVoice: () => void;
   onCloseBookEditor: () => void;
   onDraftChange: (text: string) => void;
   onRowOpen: (row: StringRow) => void;
@@ -49,12 +46,10 @@ export const ModEditorModals = ({
   showSearchReplace,
   showApplyTranslationFromMod,
   showAiVerify,
-  showVoice,
   showBookEditor,
   onCloseSearchReplace,
   onCloseApplyTranslationFromMod,
   onCloseAiVerify,
-  onCloseVoice,
   onCloseBookEditor,
   onDraftChange,
   onRowOpen,
@@ -115,14 +110,6 @@ export const ModEditorModals = ({
             qc.invalidateQueries({ queryKey: ['strings', modId] });
             void refetchStats();
           }}
-        />
-      )}
-      {showVoice && (
-        <VoiceModal
-          modId={modId}
-          srcLang={srcLang}
-          targetLang={targetLang}
-          onClose={onCloseVoice}
         />
       )}
       {showBookEditor && activeRow && (

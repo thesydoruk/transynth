@@ -1,1 +1,1 @@
-export { VoiceModal } from './VoiceModal';
+export { VoiceMode } from './VoiceMode';
