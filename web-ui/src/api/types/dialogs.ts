@@ -1,5 +1,5 @@
 /** Which kind of dialog container the editor is browsing. */
-export type DialogScope = 'topics' | 'scenes' | 'conversations';
+export type DialogScope = 'topics' | 'branches' | 'scenes' | 'conversations';
 
 /**
  * Grammatical gender of a dialog participant.

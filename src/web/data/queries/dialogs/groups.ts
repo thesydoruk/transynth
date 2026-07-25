@@ -47,6 +47,28 @@ const TOPICS_SQL = `
   GROUP BY dt.id, dt.edid, dt.formid_hex
   ORDER BY label ASC`;
 
+const BRANCHES_SQL = `
+  SELECT
+    db.id::text AS key,
+    COALESCE(NULLIF(db.edid, ''), db.formid_hex) AS label,
+    COALESCE(NULLIF(dq.edid, ''), db.quest_formid_hex) AS sublabel,
+    COUNT(DISTINCT dn.id)::int AS node_count,
+    ${LINE_COUNTS}
+  FROM dialog_branches db
+  LEFT JOIN dialog_quests dq
+    ON dq.mod_id = db.mod_id AND dq.formid_hex = db.quest_formid_hex
+  JOIN dialog_topics dt
+    ON dt.mod_id = db.mod_id
+   AND (
+     dt.branch_formid_hex = db.formid_hex
+     OR dt.formid_hex = db.start_topic_formid_hex
+   )
+  JOIN dialog_nodes dn ON dn.topic_id = dt.id
+  ${LINE_JOINS}
+  WHERE db.mod_id = $1
+  GROUP BY db.id, db.edid, db.formid_hex, dq.edid, db.quest_formid_hex
+  ORDER BY label ASC`;
+
 const SCENES_SQL = `
   SELECT
     ds.id::text AS key,
@@ -63,17 +85,24 @@ const SCENES_SQL = `
   ORDER BY label ASC`;
 
 /*
- * Scenes of one quest form a conversation. A scene without a quest owner is a
- * conversation of its own, keyed by its FormID, so nothing is lost.
+ * Scenes of one quest form a conversation. Labels prefer the QUST EDID/name
+ * when the structure import created a dialog_quests row.
  */
 const CONVERSATIONS_SQL = `
   SELECT
     COALESCE(ds.quest_formid_hex, ds.formid_hex) AS key,
-    COALESCE(NULLIF(MIN(ds.edid), ''), MIN(ds.formid_hex)) AS label,
+    COALESCE(
+      NULLIF(MIN(dq.edid), ''),
+      NULLIF(MIN(dq.name), ''),
+      NULLIF(MIN(ds.edid), ''),
+      MIN(ds.formid_hex)
+    ) AS label,
     MIN(ds.quest_formid_hex) AS sublabel,
     COUNT(DISTINCT dsp.id)::int AS node_count,
     ${LINE_COUNTS}
   FROM dialog_scenes ds
+  LEFT JOIN dialog_quests dq
+    ON dq.mod_id = ds.mod_id AND dq.formid_hex = ds.quest_formid_hex
   LEFT JOIN dialog_scene_phases dsp ON dsp.scene_id = ds.id
   LEFT JOIN dialog_nodes dn ON dn.topic_id = dsp.topic_id
   ${LINE_JOINS}
@@ -83,6 +112,7 @@ const CONVERSATIONS_SQL = `
 
 const SQL_BY_SCOPE: Record<DialogScope, string> = {
   topics: TOPICS_SQL,
+  branches: BRANCHES_SQL,
   scenes: SCENES_SQL,
   conversations: CONVERSATIONS_SQL,
 };
@@ -92,12 +122,6 @@ const SQL_BY_SCOPE: Record<DialogScope, string> = {
  *
  * The whole list is returned in one call: the navigator sorts, filters, and
  * searches it client-side, which keeps typing instant even on large mods.
- *
- * @param db - Database handle.
- * @param modId - Mod id.
- * @param scope - Which kind of group to list.
- * @param srcLang - Source language of the counted strings.
- * @param targetLang - Target language of the counted translations and QA issues.
  */
 export const listDialogGroups = async (
   db: Tx,

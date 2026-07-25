@@ -171,7 +171,7 @@
       "strings": "Strings",
       "stringsTitle": "Edit every translatable string as a grid",
       "dialogs": "Dialogs",
-      "dialogsTitle": "Edit dialog as it plays: topics, scenes, and quest conversations"
+      "dialogsTitle": "Edit dialog as it plays: topics, branches, scenes, and quest conversations"
     },
     "applyTm": "Apply TM",
     "clearSameAsSource": "Clear same as source",
@@ -407,6 +407,7 @@
   "dialogs": {
     "scope": {
       "topics": "Topics",
+      "branches": "Branches",
       "scenes": "Scenes",
       "conversations": "Conversations"
     },
@@ -423,6 +424,7 @@
     "noMatches": "Nothing matches the search.",
     "empty": {
       "topics": "This mod has no dialog topics. Re-import it to build the dialog graph.",
+      "branches": "This mod has no dialog branches. Re-import it to read DLBR records.",
       "scenes": "This mod has no dialog scenes.",
       "conversations": "This mod has no quest conversations."
     },
@@ -452,8 +454,8 @@
     "hiddenEntries": "{{count}} turn(s) hidden by the filter",
     "saveFailed": "Save failed: {{message}} — click to dismiss",
     "voiceFailed": "Playback failed: {{message}} — click to dismiss",
-    "hotkeyHint": "1/2/3 scope · / search · Alt+↑↓ entry · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play voice-over · Esc cancel",
-    "sceneMarker": "Scene: {{label}}",
+    "hotkeyHint": "1/2/3/4 scope · / search · Alt+↑↓ entry · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play voice-over · Esc cancel",
+    "sceneMarker": "{{label}}",
     "unknownSpeaker": "Unknown speaker",
     "playerAlias": "Player",
     "aliasLabel": "Alias {{id}}",

@@ -6,7 +6,7 @@ import type { GroupSort } from '../../hooks/useDialogsState';
 import { DialogGroupRow } from './DialogGroupRow';
 import styles from './DialogNavigator.module.scss';
 
-const SCOPES: DialogScope[] = ['topics', 'scenes', 'conversations'];
+const SCOPES: DialogScope[] = ['topics', 'branches', 'scenes', 'conversations'];
 const SORTS: GroupSort[] = ['label', 'progress', 'size'];
 const ROW_HEIGHT = 50;
 

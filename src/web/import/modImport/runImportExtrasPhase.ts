@@ -14,6 +14,7 @@ import {
 } from '../modImportBulk';
 import { resolveModDialogSpeakers } from '../dialogSpeakers';
 import { importSceneRecords } from './sceneImport';
+import { importDialogStructure } from './structureImport';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../../export/pexDecompileService';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
 import { collectMcmLocalesForModParallel, buildMcmCsvRows } from './mcmLocales';
@@ -174,10 +175,17 @@ export const finalizeModImportJob = async (
       );
     }
     const graph = pruned.dialogGraph;
-    if (graph.deletedNodes > 0 || graph.deletedTopics > 0 || graph.deletedScenes > 0) {
+    if (
+      graph.deletedNodes > 0 ||
+      graph.deletedTopics > 0 ||
+      graph.deletedScenes > 0 ||
+      graph.deletedBranches > 0 ||
+      graph.deletedQuests > 0
+    ) {
       logImport.info(
         `[Mod Import #${ctx.job.id}] Pruned stale dialog graph: ${graph.deletedNodes} node(s), ` +
-          `${graph.deletedEdges} edge(s), ${graph.deletedTopics} topic(s), ${graph.deletedScenes} scene(s)`,
+          `${graph.deletedEdges} edge(s), ${graph.deletedTopics} topic(s), ${graph.deletedScenes} scene(s), ` +
+          `${graph.deletedBranches} branch(es), ${graph.deletedQuests} quest(s)`,
       );
     }
   }
@@ -195,18 +203,43 @@ export const finalizeModImportJob = async (
 
   try {
     const sceneRecords = esp.extractScenes();
+    const structure = esp.extractDialogStructure();
+    const sceneQuestFormIds = sceneRecords
+      .map((scene) => scene.questFormId)
+      .filter((id): id is string => id != null);
+
+    await ctx.db.query('BEGIN');
+    const importedStructure = await importDialogStructure(
+      ctx.db,
+      importModId,
+      structure,
+      sceneQuestFormIds,
+    );
     if (sceneRecords.length > 0) {
-      await ctx.db.query('BEGIN');
       const imported = await importSceneRecords(ctx.db, importModId, sceneRecords, dialogGraphCtx);
-      await ctx.db.query('COMMIT');
       logImport.info(
         `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
           (imported.deletedScenes > 0 ? `; removed ${imported.deletedScenes} stale scene(s)` : ''),
       );
     }
+    await ctx.db.query('COMMIT');
+
+    if (
+      importedStructure.quests > 0 ||
+      importedStructure.branches > 0 ||
+      importedStructure.dialLinks > 0
+    ) {
+      logImport.info(
+        `[Mod Import #${ctx.job.id}] Dialog structure: ${importedStructure.quests} quest(s), ` +
+          `${importedStructure.branches} branch(es), ${importedStructure.dialLinks} dial link(s)` +
+          (importedStructure.deletedQuests > 0 || importedStructure.deletedBranches > 0
+            ? `; removed ${importedStructure.deletedQuests} quest(s), ${importedStructure.deletedBranches} branch(es)`
+            : ''),
+      );
+    }
   } catch (err) {
     logImport.warn(
-      `[Mod Import #${ctx.job.id}] Scene import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      `[Mod Import #${ctx.job.id}] Scene/structure import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
     );
     try {
       await ctx.db.query('ROLLBACK');

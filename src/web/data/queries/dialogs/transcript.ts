@@ -2,6 +2,7 @@ import type { Tx } from '../../../../db';
 import { CONFIG } from '../../../../config';
 import type { DialogScope, DialogTranscriptRow } from './scope';
 import { getTopicTranscript } from './topicTranscript';
+import { getBranchTranscript } from './branchTranscript';
 import { getConversationTranscript, getSceneTranscript } from './sceneTranscript';
 
 /**
@@ -9,13 +10,6 @@ import { getConversationTranscript, getSceneTranscript } from './sceneTranscript
  *
  * Returns `null` when the key does not resolve to a group of this mod, which
  * the route turns into a 404 — the browser can hold a stale deep link.
- *
- * @param db - Database handle.
- * @param modId - Mod that must own the group.
- * @param scope - Kind of group the key belongs to.
- * @param key - Topic id, scene id, or conversation key.
- * @param srcLang - Source language of the resolved strings.
- * @param targetLang - Target language of the joined translations.
  */
 export const getDialogTranscript = async (
   db: Tx,
@@ -32,7 +26,7 @@ export const getDialogTranscript = async (
   const numericKey = Number(key);
   if (!Number.isInteger(numericKey) || numericKey < 1) return null;
 
-  return scope === 'topics'
-    ? getTopicTranscript(db, modId, numericKey, srcLang, targetLang)
-    : getSceneTranscript(db, modId, numericKey, srcLang, targetLang);
+  if (scope === 'topics') return getTopicTranscript(db, modId, numericKey, srcLang, targetLang);
+  if (scope === 'branches') return getBranchTranscript(db, modId, numericKey, srcLang, targetLang);
+  return getSceneTranscript(db, modId, numericKey, srcLang, targetLang);
 };

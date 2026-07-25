@@ -8,7 +8,7 @@ export type TranscriptFilter = 'all' | 'todo' | 'qa';
 /** How the navigator orders its group list. */
 export type GroupSort = 'label' | 'progress' | 'size';
 
-const SCOPES: DialogScope[] = ['topics', 'scenes', 'conversations'];
+const SCOPES: DialogScope[] = ['topics', 'branches', 'scenes', 'conversations'];
 const FILTERS: TranscriptFilter[] = ['all', 'todo', 'qa'];
 const SORTS: GroupSort[] = ['label', 'progress', 'size'];
 

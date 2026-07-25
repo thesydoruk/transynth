@@ -20,8 +20,9 @@ export interface DialogsKeyboardConfig {
 
 const SCOPE_KEYS: Record<string, DialogScope> = {
   '1': 'topics',
-  '2': 'scenes',
-  '3': 'conversations',
+  '2': 'branches',
+  '3': 'scenes',
+  '4': 'conversations',
 };
 
 /**

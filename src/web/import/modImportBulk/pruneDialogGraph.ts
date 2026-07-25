@@ -66,10 +66,44 @@ export const pruneOrphanDialogGraph = async (
     [modId],
   );
 
+  const { rowCount: deletedBranches } = await db.query(
+    `DELETE FROM dialog_branches db
+      WHERE db.mod_id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM dialog_topics dt
+           WHERE dt.mod_id = db.mod_id AND dt.branch_formid_hex = db.formid_hex
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dialog_topics dt
+           WHERE dt.mod_id = db.mod_id AND dt.formid_hex = db.start_topic_formid_hex
+        )`,
+    [modId],
+  );
+
+  const { rowCount: deletedQuests } = await db.query(
+    `DELETE FROM dialog_quests dq
+      WHERE dq.mod_id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM dialog_scenes ds
+           WHERE ds.mod_id = dq.mod_id AND ds.quest_formid_hex = dq.formid_hex
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dialog_branches db
+           WHERE db.mod_id = dq.mod_id AND db.quest_formid_hex = dq.formid_hex
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM dialog_topics dt
+           WHERE dt.mod_id = dq.mod_id AND dt.quest_formid_hex = dq.formid_hex
+        )`,
+    [modId],
+  );
+
   return {
     deletedNodes: deletedNodes ?? 0,
     deletedEdges: deletedEdges ?? 0,
     deletedTopics: deletedTopics ?? 0,
     deletedScenes: deletedScenes ?? 0,
+    deletedBranches: deletedBranches ?? 0,
+    deletedQuests: deletedQuests ?? 0,
   };
 };

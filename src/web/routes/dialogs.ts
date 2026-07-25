@@ -22,11 +22,11 @@ const parseGenderOverride = (value: unknown): SpeakerGender | null | undefined =
 /**
  * API of the dialogs editor.
  *
- * Two endpoints cover all three scopes (topics, scenes, conversations): one
- * lists the selectable groups with their translation progress, the other loads
- * the transcript of a single group. Editing reuses the strings translation API.
- * A third pair exposes the speakers of a mod so a human can correct the gender
- * that import guessed.
+ * Two endpoints cover all four scopes (topics, branches, scenes, conversations):
+ * one lists the selectable groups with their translation progress, the other
+ * loads the transcript of a single group. Editing reuses the strings
+ * translation API. A third pair exposes the speakers of a mod so a human can
+ * correct the gender that import guessed.
  */
 export const dialogsRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/dialogs/groups?modId=&scope=&srcLang=&targetLang=

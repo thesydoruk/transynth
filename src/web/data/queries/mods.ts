@@ -181,6 +181,8 @@ const deleteModDataOnClient = async (
       );
       await client.query(`DELETE FROM dialog_scenes WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
       await client.query(`DELETE FROM dialog_topics WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM dialog_branches WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
+      await client.query(`DELETE FROM dialog_quests WHERE mod_id = ANY($1::int[])`, [uniqueModIds]);
       await client.query(`DELETE FROM mods WHERE id = ANY($1::int[])`, [uniqueModIds]);
     }
 

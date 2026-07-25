@@ -115,6 +115,42 @@ CREATE TABLE IF NOT EXISTS dialog_scene_phases (
   UNIQUE(scene_id, phase_order, topic_id)
 );
 
+-- ── Quest / branch structure (QUST + DLBR ownership of DIAL topics) ─────────
+-- Conversations group by quest; branches are Creation Kit dialog branches
+-- (DLBR) that own one or more DIAL topics via DIAL\BNAM / DIAL\QNAM.
+
+CREATE TABLE IF NOT EXISTS dialog_quests (
+  id SERIAL PRIMARY KEY,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  formid_hex TEXT NOT NULL,
+  edid TEXT,
+  name TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(mod_id, formid_hex)
+);
+
+CREATE TABLE IF NOT EXISTS dialog_quest_stages (
+  id SERIAL PRIMARY KEY,
+  quest_id INTEGER NOT NULL REFERENCES dialog_quests(id) ON DELETE CASCADE,
+  stage_index INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(quest_id, stage_index)
+);
+
+CREATE TABLE IF NOT EXISTS dialog_branches (
+  id SERIAL PRIMARY KEY,
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  formid_hex TEXT NOT NULL,
+  edid TEXT,
+  quest_formid_hex TEXT,
+  start_topic_formid_hex TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(mod_id, formid_hex)
+);
+
+ALTER TABLE dialog_topics ADD COLUMN IF NOT EXISTS quest_formid_hex TEXT;
+ALTER TABLE dialog_topics ADD COLUMN IF NOT EXISTS branch_formid_hex TEXT;
+
 -- ── Dialog speakers (grammatical gender of participants) ────────────────────
 -- Ukrainian marks gender on past-tense verbs and predicative adjectives, so a
 -- line cannot be translated or voiced correctly without knowing the sex of the
@@ -376,6 +412,12 @@ CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id,
 CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_topic ON dialog_scene_phases(topic_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_quests_mod ON dialog_quests(mod_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_quest_stages_quest ON dialog_quest_stages(quest_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_branches_mod ON dialog_branches(mod_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_branches_quest ON dialog_branches(mod_id, quest_formid_hex);
+CREATE INDEX IF NOT EXISTS idx_dialog_topics_quest ON dialog_topics(mod_id, quest_formid_hex);
+CREATE INDEX IF NOT EXISTS idx_dialog_topics_branch ON dialog_topics(mod_id, branch_formid_hex);
 
 -- ── Activity log ────────────────────────────────────────────────────────────
 

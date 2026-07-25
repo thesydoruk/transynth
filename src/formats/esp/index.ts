@@ -1,6 +1,9 @@
 export { EspReader } from './EspReader';
 export type {
   ActorRecord,
+  BranchRecord,
+  DialOwnership,
+  DialogStructureExtract,
   EspActorIndex,
   VoiceTypeRecord,
   EspGrupInfo,
@@ -9,6 +12,7 @@ export type {
   EspRecordView,
   EspStringRow,
   EspSubrecordView,
+  QuestRecord,
   SceneAction,
   SceneRecord,
 } from './EspReader';

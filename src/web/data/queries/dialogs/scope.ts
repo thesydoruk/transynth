@@ -5,12 +5,13 @@ import type { DialogLine } from './lines';
  * A dialog scope selects which kind of container the UI browses:
  *
  * - `topics` — one DIAL topic, rendered as a branching INFO tree.
+ * - `branches` — one DLBR dialog branch: every topic it owns, sectioned.
  * - `scenes` — one SCEN scene, rendered as an ordered phase stream.
  * - `conversations` — every scene of one quest, stitched into a single stream.
  */
-export type DialogScope = 'topics' | 'scenes' | 'conversations';
+export type DialogScope = 'topics' | 'branches' | 'scenes' | 'conversations';
 
-const SCOPES: readonly DialogScope[] = ['topics', 'scenes', 'conversations'];
+const SCOPES: readonly DialogScope[] = ['topics', 'branches', 'scenes', 'conversations'];
 
 /** Narrow an untrusted query-string value to a {@link DialogScope}. */
 export const parseDialogScope = (value: string | undefined): DialogScope | null =>
@@ -18,13 +19,13 @@ export const parseDialogScope = (value: string | undefined): DialogScope | null 
 
 /** One selectable container in the navigator list. */
 export type DialogGroupRow = {
-  /** Stable identifier: topic id, scene id, or conversation key. */
+  /** Stable identifier: topic id, branch id, scene id, or conversation key. */
   key: string;
   /** Primary label — EDID when known, FormID otherwise. */
   label: string;
   /** Secondary label — FormID, quest, or scene count. */
   sublabel: string | null;
-  /** INFO nodes (topics) or phases (scenes / conversations). */
+  /** INFO nodes (topics) or phases / topic trees (other scopes). */
   node_count: number;
   /** Translatable source lines inside the group. */
   line_count: number;
@@ -40,7 +41,7 @@ export type DialogEntryRow = {
   id: string;
   /** Indentation level — only branch points increase it. */
   depth: number;
-  /** Section heading rendered above the entry (scene name in a conversation). */
+  /** Section heading rendered above the entry (scene/topic name). */
   section: string | null;
   speaker: string | null;
   /** Key of the speaker in `dialog_speakers`; null when the node has no ANAM or voice folder. */

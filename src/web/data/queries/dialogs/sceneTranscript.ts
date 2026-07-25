@@ -166,8 +166,15 @@ export const getConversationTranscript = async (
   targetLang: string,
 ): Promise<DialogTranscriptRow | null> => {
   const { rows: headRows } = await db.query(
-    `SELECT COALESCE(NULLIF(MIN(ds.edid), ''), MIN(ds.formid_hex)) AS label
+    `SELECT COALESCE(
+        NULLIF(MIN(dq.edid), ''),
+        NULLIF(MIN(dq.name), ''),
+        NULLIF(MIN(ds.edid), ''),
+        MIN(ds.formid_hex)
+      ) AS label
      FROM dialog_scenes ds
+     LEFT JOIN dialog_quests dq
+       ON dq.mod_id = ds.mod_id AND dq.formid_hex = ds.quest_formid_hex
      WHERE ds.mod_id = $1 AND COALESCE(ds.quest_formid_hex, ds.formid_hex) = $2`,
     [modId, conversationKey],
   );

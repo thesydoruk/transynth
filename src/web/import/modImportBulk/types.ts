@@ -45,6 +45,8 @@ export type PruneDialogGraphResult = {
   deletedEdges: number;
   deletedTopics: number;
   deletedScenes: number;
+  deletedBranches: number;
+  deletedQuests: number;
 };
 
 export type BulkTranslationRow = {

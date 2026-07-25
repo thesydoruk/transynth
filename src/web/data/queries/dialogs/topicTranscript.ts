@@ -9,42 +9,24 @@ import {
   DIALOG_NODE_PARTICIPANT_COLUMNS,
   dialogNodeSpeakerJoinsSql,
 } from './participants';
-import type { DialogTranscriptRow } from './scope';
+import type { DialogEntryRow, DialogTranscriptRow } from './scope';
 import { flattenDialogTree, type TopicEdgeRow, type TopicNodeRow } from './tree';
-
-type TopicHeadRow = { label: string; topic_formid_hex: string };
 
 type TopicNodeQueryRow = TopicNodeRow & { lines: DialogLine[] };
 
 /**
- * Load one DIAL topic as a depth-annotated transcript.
+ * Load the INFO tree of one topic as flat transcript entries.
  *
- * Tree order and indentation are resolved here instead of in the browser so
- * every scope hands the UI the same flat list of entries.
- *
- * @param db - Database handle.
- * @param modId - Mod that must own the topic.
- * @param topicId - Dialog topic id.
- * @param srcLang - Source language of the resolved strings.
- * @param targetLang - Target language of the joined translations.
+ * @param section - Optional heading stamped on the first entry (branch/conversation views).
  */
-export const getTopicTranscript = async (
+export const loadTopicTreeEntries = async (
   db: Tx,
-  modId: number,
   topicId: number,
+  topicFormidHex: string,
   srcLang: string,
   targetLang: string,
-): Promise<DialogTranscriptRow | null> => {
-  const { rows: headRows } = await db.query(
-    `SELECT COALESCE(NULLIF(dt.edid, ''), dt.formid_hex) AS label,
-            dt.formid_hex AS topic_formid_hex
-     FROM dialog_topics dt
-     WHERE dt.id = $1 AND dt.mod_id = $2`,
-    [topicId, modId],
-  );
-  const head = (headRows as TopicHeadRow[])[0];
-  if (!head) return null;
-
+  section: string | null = null,
+): Promise<DialogEntryRow[]> => {
   const { rows: nodeRows } = await db.query(
     `SELECT
        dn.id AS node_id,
@@ -75,14 +57,68 @@ export const getTopicTranscript = async (
     [topicId],
   );
 
+  const entries = flattenDialogTree(
+    nodeRows as TopicNodeQueryRow[],
+    edgeRows as TopicEdgeRow[],
+    topicFormidHex,
+  );
+  if (section && entries.length > 0) {
+    entries[0] = { ...entries[0], section };
+  } else if (section) {
+    // Keep an empty marker so a topic without strings still shows up.
+    return [
+      {
+        id: `topic-section-${topicId}`,
+        depth: 0,
+        section,
+        speaker: null,
+        speaker_key: null,
+        speaker_gender: 'unknown',
+        addressee_kind: 'unknown',
+        addressee: null,
+        addressee_gender: 'unknown',
+        alias_id: null,
+        info_formid_hex: null,
+        topic_formid_hex: topicFormidHex,
+        variant_index: 1,
+        variant_count: 1,
+        lines: [],
+      },
+    ];
+  }
+  return entries;
+};
+
+/**
+ * Load one DIAL topic as a depth-annotated transcript.
+ */
+export const getTopicTranscript = async (
+  db: Tx,
+  modId: number,
+  topicId: number,
+  srcLang: string,
+  targetLang: string,
+): Promise<DialogTranscriptRow | null> => {
+  const { rows: headRows } = await db.query(
+    `SELECT COALESCE(NULLIF(dt.edid, ''), dt.formid_hex) AS label,
+            dt.formid_hex AS topic_formid_hex
+     FROM dialog_topics dt
+     WHERE dt.id = $1 AND dt.mod_id = $2`,
+    [topicId, modId],
+  );
+  const head = (headRows as Array<{ label: string; topic_formid_hex: string }>)[0];
+  if (!head) return null;
+
   return {
     scope: 'topics',
     key: String(topicId),
     label: head.label,
-    entries: flattenDialogTree(
-      nodeRows as TopicNodeQueryRow[],
-      edgeRows as TopicEdgeRow[],
+    entries: await loadTopicTreeEntries(
+      db,
+      topicId,
       head.topic_formid_hex,
+      srcLang,
+      targetLang,
     ),
   };
 };

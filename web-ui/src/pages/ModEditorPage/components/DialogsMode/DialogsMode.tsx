@@ -27,8 +27,8 @@ export interface DialogsModeProps {
 }
 
 /**
- * Dialogs editor: a navigator of topics, scenes, and quest conversations beside
- * the transcript of the selected one.
+ * Dialogs editor: a navigator of topics, branches, scenes, and quest
+ * conversations beside the transcript of the selected one.
  *
  * Everything the user picks lives in the URL, so a reload or a shared link
  * reopens the same line. Editing is keyboard-driven — see `dialogs.hotkeyHint`

@@ -38,6 +38,10 @@ import { isTranslatableSubrecord } from '../subrecords';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { EspActorExtractor } from './EspActorExtractor';
+import {
+  EspDialogStructureExtractor,
+  type DialogStructureExtract,
+} from './EspDialogStructureExtractor';
 import { EspExplorer } from './EspExplorer';
 import { EspSceneExtractor } from './EspSceneExtractor';
 import type {
@@ -51,6 +55,8 @@ import type {
 
 export type {
   ActorRecord,
+  BranchRecord,
+  DialOwnership,
   EspActorIndex,
   EspGrupInfo,
   EspPluginInfo,
@@ -58,10 +64,12 @@ export type {
   EspRecordView,
   EspStringRow,
   EspSubrecordView,
+  QuestRecord,
   SceneAction,
   SceneRecord,
   VoiceTypeRecord,
 } from '../types';
+export type { DialogStructureExtract } from './EspDialogStructureExtractor';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -87,6 +95,7 @@ export class EspReader {
   private buf: Buffer;
   private readonly explorer: EspExplorer;
   private readonly sceneExtractor: EspSceneExtractor;
+  private structureExtractor: EspDialogStructureExtractor | null = null;
   public info!: EspPluginInfo;
   /** Target game — determines which subrecords are extracted. */
   private readonly game: GameType;
@@ -188,6 +197,19 @@ export class EspReader {
    */
   extractScenes(): SceneRecord[] {
     return this.sceneExtractor.extractScenes();
+  }
+
+  /**
+   * Extract QUST / DLBR records and DIAL quest/branch ownership links.
+   *
+   * Used after INFO import so topics can be labelled by quest and dialog
+   * branch, matching how the Creation Kit organises player dialogue.
+   */
+  extractDialogStructure(): DialogStructureExtract {
+    if (!this.structureExtractor) {
+      this.structureExtractor = new EspDialogStructureExtractor(this.buf, this.info.isLocalized);
+    }
+    return this.structureExtractor.extract();
   }
 
   /**

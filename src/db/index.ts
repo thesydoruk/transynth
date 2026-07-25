@@ -10,4 +10,10 @@ export {
   upsertDialogScene,
   upsertDialogScenePhase,
 } from './dialogs';
+export {
+  upsertDialogQuest,
+  replaceDialogQuestStages,
+  upsertDialogBranch,
+  setDialogTopicOwnership,
+} from './dialogStructure';
 export { addTranslation, bestTranslation } from './translations';
