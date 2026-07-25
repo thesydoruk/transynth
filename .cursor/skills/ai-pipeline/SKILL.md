@@ -52,23 +52,28 @@ wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'curl -s http://127.0.0.1:3200
 
 ## Deploy updated code
 
-From the dev machine (repo root), sync source and rebuild:
+**Use `git pull` on the server only.** Do not rsync/scp project source — it skips deletions and can leave stale files that override new modules.
+
+1. Commit and push from the dev machine (`origin/main` or the branch the server tracks).
+2. On ai-pipeline, pull and rebuild:
 
 ```bash
-wsl -e bash -lc "rsync -avz --delete -e 'ssh -o BatchMode=yes' \
-  /mnt/d/Source/fallout4-localization-project/src/ \
-  ai-pipeline:~/Source/transynth/src/"
-
-wsl -e bash -lc "rsync -avz -e 'ssh -o BatchMode=yes' \
-  /mnt/d/Source/fallout4-localization-project/Dockerfile \
-  /mnt/d/Source/fallout4-localization-project/docker-compose.yml \
-  ai-pipeline:~/Source/transynth/"
-
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline \
-  'cd ~/Source/transynth && docker compose build web && docker compose up -d web'"
+  'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web'"
 ```
 
-Adjust the `/mnt/d/Source/fallout4-localization-project/` path if the local repo lives elsewhere.
+3. If `sql/schema.sql` changed, run the idempotent migration:
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline \
+  'cd ~/Source/transynth && docker compose run --rm --no-deps web npm run db:init'"
+```
+
+4. Health check:
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'curl -s http://127.0.0.1:3200/api/health'"
+```
 
 ## One-shot container commands
 
@@ -117,9 +122,10 @@ For DB admin on ai-pipeline: `scripts/killDbSessions.sh`.
 
 1. Use WSL wrapper for every SSH/SCP/rsync command.
 2. `cd ~/Source/transynth` before docker compose (not `fallout4-localization-project`).
-3. Prefer `BatchMode=yes` and `ConnectTimeout=10`.
-4. If a command fails with PowerShell parsing errors, simplify quoting or write a `.sh` script and scp it.
-5. For tool issues, check `data/tools/` presence, then run verify scripts inside a one-shot container.
+3. **Deploy transynth via `git pull` on ai-pipeline** — never rsync source to prod.
+4. Prefer `BatchMode=yes` and `ConnectTimeout=10`.
+5. If a command fails with PowerShell parsing errors, simplify quoting or write a `.sh` script and scp it.
+6. For tool issues, check `data/tools/` presence, then run verify scripts inside a one-shot container.
 
 ## Related files
 

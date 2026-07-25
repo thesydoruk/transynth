@@ -51,16 +51,42 @@ Health check — expect `Gaming-pc`, `valerii`, `/home/valerii`.
 
 | Setting | Value |
 |---------|-------|
-| Role | PostgreSQL / database |
+| Role | PostgreSQL / database + **transynth prod** |
 | User | `root` |
+| Project dir | `~/Source/transynth` |
+| Web port | **3200** → container `3000` |
 
-Typical tasks: `psql`, `pg_dump`, terminate sessions, DB maintenance.
+Typical tasks: `psql`, `pg_dump`, terminate sessions, DB maintenance, **transynth deploy**.
 
 ```bash
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'docker ps'"
 ```
 
 See `scripts/killDbSessions.sh` — runs SQL via `ssh ai-pipeline`.
+
+### transynth deploy (ai-pipeline)
+
+**Deploy only via `git pull` on the server.** Do not rsync or scp source trees — partial sync leaves stale files (e.g. deleted modules) and breaks production.
+
+Prerequisite: changes are **committed and pushed** to the remote the server tracks (usually `origin/main`).
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web'"
+```
+
+If `sql/schema.sql` changed, apply the idempotent schema migration:
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose run --rm --no-deps web npm run db:init'"
+```
+
+Verify:
+
+```bash
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'curl -s http://127.0.0.1:3200/api/health'"
+```
+
+See `.cursor/skills/ai-pipeline/SKILL.md` for logs, one-shot containers, and Wine tools.
 
 ## Agent workflow
 
