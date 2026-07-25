@@ -7,10 +7,5 @@ export const lineKey = (line: VoiceLinePreview): string => `${line.formidLower6}
 export const playTrackKey = (kind: PlayKind, line: VoiceLinePreview): string =>
   `${kind}:${lineKey(line)}`;
 
-export const speakerHue = (key: string): number => {
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) {
-    hash = key.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash) % 360;
-};
+export const speakerDubbedCount = (lines: VoiceLinePreview[]): number =>
+  lines.filter((line) => line.hasTranslationAudio).length;

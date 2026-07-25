@@ -491,6 +491,25 @@
       "saveFailed": "Could not save the gender: {{message}} — click to dismiss"
     }
   },
+  "voice": {
+    "searchPlaceholder": "Search speakers…",
+    "speakerCount": "{{shown}} of {{total}} speakers",
+    "noMatches": "No speakers match the search.",
+    "selectSpeaker": "Select a speaker on the left.",
+    "linesSubtitle": "{{count}} lines",
+    "dubbedProgress": "{{done}} / {{total}} dubbed",
+    "filterLabel": "Line filter",
+    "filter": {
+      "all": "All",
+      "needsTranslation": "No translation",
+      "needsVoice": "Needs dubbing"
+    },
+    "findPlaceholder": "Find in lines…",
+    "hiddenLines": "{{count}} lines hidden by filter",
+    "noLinesMatch": "No lines match the filter.",
+    "regenerateBtn": "Regenerate",
+    "hotkeyHint": "↑↓ in search — switch speakers"
+  },
   "ctx": {
     "clear": "Clear translation",
     "copySource": "Copy source → translation",

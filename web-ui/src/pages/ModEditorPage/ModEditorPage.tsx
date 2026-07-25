@@ -7,7 +7,7 @@ import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
-import { VoiceMode } from './components/VoiceModal';
+import { VoiceMode } from './components/VoiceMode';
 import { ModEditorStringsBody } from './components/ModEditorStringsBody';
 import { ModEditorModals } from './components/ModEditorModals';
 import { ContextMenu } from './components/ContextMenu';

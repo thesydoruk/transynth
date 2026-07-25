@@ -491,6 +491,25 @@
       "saveFailed": "Не вдалося зберегти стать: {{message}} — клацніть, щоб приховати"
     }
   },
+  "voice": {
+    "searchPlaceholder": "Пошук персонажа…",
+    "speakerCount": "показано {{shown}} з {{total}}",
+    "noMatches": "За пошуком нічого не знайдено.",
+    "selectSpeaker": "Виберіть персонажа ліворуч.",
+    "linesSubtitle": "{{count}} реплік",
+    "dubbedProgress": "озвучено {{done}} з {{total}}",
+    "filterLabel": "Фільтр реплік",
+    "filter": {
+      "all": "Усі",
+      "needsTranslation": "Без перекладу",
+      "needsVoice": "Потрібна озвучка"
+    },
+    "findPlaceholder": "Пошук у репліках…",
+    "hiddenLines": "приховано {{count}} реплік фільтром",
+    "noLinesMatch": "За фільтром немає реплік.",
+    "regenerateBtn": "Перегенерувати",
+    "hotkeyHint": "↑↓ у пошуку — перемикання персонажів"
+  },
   "ctx": {
     "clear": "Очистити переклад",
     "copySource": "Копіювати оригінал → переклад",
