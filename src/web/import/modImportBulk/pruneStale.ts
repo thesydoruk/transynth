@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { chunk } from './chunk';
+import { pruneOrphanDialogGraph } from './pruneDialogGraph';
 import { parseModImportRecordKey } from './recordKeys';
 import type { PruneStaleModImportResult } from './types';
 
@@ -39,17 +40,6 @@ export const pruneStaleModImportData = async (
         [part.map((r) => r.signature), part.map((r) => r.path), part.map((r) => r.formId)],
       );
     }
-
-    await db.query(
-      `UPDATE dialog_nodes dn
-          SET response_string_id = NULL
-         FROM strings s
-         JOIN records r ON s.record_id = r.id
-        WHERE dn.response_string_id = s.id
-          AND r.mod_id = $1
-          AND NOT EXISTS (SELECT 1 FROM _import_kept_strings k WHERE k.id = s.id)`,
-      [modId],
-    );
 
     await db.query(
       `DELETE FROM translation_examples te
@@ -117,10 +107,13 @@ export const pruneStaleModImportData = async (
       [modId],
     );
 
+    const dialogGraph = await pruneOrphanDialogGraph(db, modId);
+
     await db.query('COMMIT');
     return {
       deletedStrings: deletedStrings ?? 0,
       deletedRecords: deletedRecords ?? 0,
+      dialogGraph,
     };
   } catch (err) {
     await db.query('ROLLBACK');

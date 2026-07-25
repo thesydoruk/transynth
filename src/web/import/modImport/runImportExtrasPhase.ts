@@ -1,6 +1,5 @@
 import { EspReader } from '../../../formats/esp';
 import { resolveModDirectoryFromPath, resolveMcmLocaleKey } from '../../../formats/mcm';
-import { upsertDialogScene, upsertDialogScenePhase } from '../../../db';
 import { CONFIG } from '../../../config';
 import { logImport } from '../../../logging/loggers';
 import { ensureChampollionInstalled } from '../../../tools/installTools';
@@ -9,9 +8,11 @@ import {
   bulkUpsertImportTranslations,
   pruneStaleModImportData,
   trackModImportBulkResults,
+  type DialogGraphImportContext,
   type ModImportBulkResult,
   type ModImportBulkRow,
 } from '../modImportBulk';
+import { importSceneRecords } from './sceneImport';
 import { decompilePexScriptMap, type DecompiledPexScript } from '../../export/pexDecompileService';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
 import { collectMcmLocalesForModParallel, buildMcmCsvRows } from './mcmLocales';
@@ -154,7 +155,7 @@ export const importPexStringRows = async (
 export const finalizeModImportJob = async (
   ctx: ModImportPhaseContext,
   esp: EspReader,
-  dialogTopicIdCache: Map<string, number>,
+  dialogGraphCtx: DialogGraphImportContext,
 ): Promise<void> => {
   const importModId = ctx.importModId;
   if (importModId == null) throw new Error('Import mod id missing');
@@ -169,6 +170,13 @@ export const finalizeModImportJob = async (
     if (pruned.deletedStrings > 0 || pruned.deletedRecords > 0) {
       logImport.info(
         `[Mod Import #${ctx.job.id}] Pruned stale rows: ${pruned.deletedStrings} string(s), ${pruned.deletedRecords} record(s)`,
+      );
+    }
+    const graph = pruned.dialogGraph;
+    if (graph.deletedNodes > 0 || graph.deletedTopics > 0 || graph.deletedScenes > 0) {
+      logImport.info(
+        `[Mod Import #${ctx.job.id}] Pruned stale dialog graph: ${graph.deletedNodes} node(s), ` +
+          `${graph.deletedEdges} edge(s), ${graph.deletedTopics} topic(s), ${graph.deletedScenes} scene(s)`,
       );
     }
   }
@@ -188,25 +196,11 @@ export const finalizeModImportJob = async (
     const sceneRecords = esp.extractScenes();
     if (sceneRecords.length > 0) {
       await ctx.db.query('BEGIN');
-      let scenesImported = 0;
-      for (const scen of sceneRecords) {
-        const sceneId = await upsertDialogScene(
-          ctx.db,
-          importModId,
-          scen.formId,
-          scen.edid || null,
-          scen.questFormId,
-        );
-        for (const action of scen.actions) {
-          const topicId = dialogTopicIdCache.get(action.topicFormId);
-          if (!topicId) continue;
-          await upsertDialogScenePhase(ctx.db, sceneId, action.startPhase, action.aliasId, topicId);
-        }
-        scenesImported++;
-      }
+      const imported = await importSceneRecords(ctx.db, importModId, sceneRecords, dialogGraphCtx);
       await ctx.db.query('COMMIT');
       logImport.info(
-        `[Mod Import #${ctx.job.id}] Imported ${scenesImported} scene(s) with dialog phases`,
+        `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
+          (imported.deletedScenes > 0 ? `; removed ${imported.deletedScenes} stale scene(s)` : ''),
       );
     }
   } catch (err) {

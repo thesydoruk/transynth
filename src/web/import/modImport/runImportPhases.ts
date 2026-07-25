@@ -54,6 +54,20 @@ const trackImportBatch = (ctx: ModImportPhaseContext, results: ModImportBulkResu
   trackModImportBulkResults(results, ctx.keptImportRecordKeys, ctx.keptImportStringIds);
 };
 
+/**
+ * Seed the topic id cache with topics already stored for the mod.
+ *
+ * A resumed import skips the INFO rows it ingested earlier, so without this the
+ * cache would stay empty and scene phases could not be linked to their topics.
+ */
+const loadDialogTopicIdCache = async (db: Tx, modId: number): Promise<Map<string, number>> => {
+  const { rows } = await db.query<{ id: number; formid_hex: string }>(
+    'SELECT id, formid_hex FROM dialog_topics WHERE mod_id = $1',
+    [modId],
+  );
+  return new Map(rows.map((row) => [row.formid_hex, row.id]));
+};
+
 export const ensureImportModId = async (ctx: ModImportPhaseContext): Promise<number> => {
   if (ctx.importModId != null) return ctx.importModId;
   const modName =
@@ -95,7 +109,7 @@ export const prepareEspImportContext = async (
       dialogEdidByFormId.set(row.formId, row.edid);
     }
   }
-  const dialogTopicIdCache = new Map<string, number>();
+  const dialogTopicIdCache = await loadDialogTopicIdCache(ctx.db, ctx.importModId!);
   const speakerMap = buildSpeakerFormIdMap(espRows);
   const voiceSpeakerMap = buildVoiceSpeakerMap(ctx.espPath);
 

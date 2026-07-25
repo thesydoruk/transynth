@@ -91,9 +91,8 @@ export const getMod = async (db: Tx, id: number) => {
 /**
  * Remove imported data for one or more mods without relying on FK CASCADE.
  *
- * PostgreSQL CASCADE on large mods is slow: each deleted string triggers a
- * per-row SET NULL on dialog_nodes, and translation_examples HNSW updates run
- * row-by-row. Records are removed in DB_CHUNK_SIZE batches; dependents are
+ * PostgreSQL CASCADE on large mods is slow: translation_examples HNSW updates
+ * run row-by-row. Records are removed in DB_CHUNK_SIZE batches; dependents are
  * deleted via preselected string ids (index-friendly) instead of joining the
  * full translations table. Heavy pg_trgm/HASH indexes and the RAG HNSW index
  * are dropped for the purge window when MOD_IMPORT_DEFER_INDEXES is enabled
@@ -113,16 +112,6 @@ const deleteModDataOnClient = async (
 
   await client.query('BEGIN');
   try {
-    await client.query(
-      `UPDATE dialog_nodes dn
-          SET response_string_id = NULL
-         FROM strings s
-         JOIN records r ON s.record_id = r.id
-        WHERE dn.response_string_id = s.id
-          AND r.mod_id = ANY($1::int[])`,
-      [uniqueModIds],
-    );
-
     /*
      * Purge records in batches. A single DELETE … USING strings JOIN records
      * makes PostgreSQL seq-scan all translations (~millions of rows) even when

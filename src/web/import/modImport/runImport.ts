@@ -110,7 +110,7 @@ export const runModImport = async (
 
         if (!state.cancel && !state.pause) {
           try {
-            await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx.topicIdCache);
+            await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx);
           } catch (err) {
             logImport.error(
               `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,

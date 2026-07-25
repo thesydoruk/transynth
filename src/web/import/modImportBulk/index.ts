@@ -7,6 +7,7 @@ export type {
   DialogGraphImportContext,
   DialogInfoImportRow,
   PruneStaleModImportResult,
+  PruneDialogGraphResult,
   BulkTranslationRow,
   SqlConvertImportTranslationsResult,
 } from './types';
@@ -20,6 +21,8 @@ export {
 } from './recordKeys';
 
 export { pruneStaleModImportData } from './pruneStale';
+
+export { pruneOrphanDialogGraph } from './pruneDialogGraph';
 
 export { bulkInsertModImportRows } from './bulkInsert';
 

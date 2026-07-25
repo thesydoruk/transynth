@@ -1,8 +1,6 @@
-import { useState, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type SceneDialogLine } from '../../../../../../api';
-import { StatusBadge } from '../../../../../../components/StatusBadge';
+import { type SceneDialogLine } from '../../../../../../api';
+import { DialogLineEditor } from '../DialogLineEditor';
 import styles from './SceneConversationView.module.scss';
 
 interface SceneLineCardProps {
@@ -22,46 +20,26 @@ const speakerHue = (id: string): number => {
 };
 
 /**
- * A single conversation line within a scene.  Reuses the same speaker-color
- * approach and inline-editing pattern as {@link DialogNodeCard}.
+ * A single conversation turn within a scene.
+ *
+ * A scene phase points at a dialog topic, which may offer several conditioned
+ * INFOs; each of them becomes its own card labelled with its variant number.
  */
 export const SceneLineCard = ({ line, targetLang, queryKey }: SceneLineCardProps) => {
   const { t } = useTranslation();
-  const qc = useQueryClient();
-
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(line.translation ?? '');
-  const [saving, setSaving] = useState(false);
-
-  const stringId = line.string_id;
-
-  const handleSave = useCallback(async () => {
-    if (!stringId) return;
-    setSaving(true);
-    try {
-      await api.strings.saveTranslation(stringId, draft, 'draft', targetLang);
-      await qc.invalidateQueries({ queryKey });
-    } finally {
-      setSaving(false);
-      setEditing(false);
-    }
-  }, [stringId, draft, targetLang, qc, queryKey]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); void handleSave(); }
-    if (e.key === 'Escape') { setDraft(line.translation ?? ''); setEditing(false); }
-  }, [handleSave, line.translation]);
 
   /* Speaker identification:
      - Use speaker_name from the DB (ANAM or voice file lookup)
      - Fall back to alias_id label: -2 → "Player", >= 0 → "Alias N" */
-  const speakerLabel = line.speaker_name
-    ?? (line.alias_id === -2 ? t('dialogs.playerAlias') : t('dialogs.aliasLabel', { id: line.alias_id }));
+  const speakerLabel =
+    line.speaker_name ??
+    (line.alias_id === -2
+      ? t('dialogs.playerAlias')
+      : t('dialogs.aliasLabel', { id: line.alias_id }));
 
   /* Color key: use speaker_name for consistency with DialogNodeCard, else alias_id string */
   const colorKey = line.speaker_name ?? String(line.alias_id);
-  const hue = speakerHue(colorKey);
-  const cardStyle = { '--speaker-hue': hue } as React.CSSProperties;
+  const cardStyle = { '--speaker-hue': speakerHue(colorKey) } as React.CSSProperties;
 
   return (
     <article className={styles.lineCard} style={cardStyle}>
@@ -74,46 +52,29 @@ export const SceneLineCard = ({ line, targetLang, queryKey }: SceneLineCardProps
             {line.info_formid_hex}
           </span>
         )}
-        {line.string_id && (
-          <StatusBadge status={line.status} small />
-        )}
-        {(line.qa_issue_count ?? 0) > 0 && (
-          <span className={styles.qaBadge} title={t('dialogs.qaIssueCount', { count: line.qa_issue_count })}>
-            QA {line.qa_issue_count}
+        {line.variant_count > 1 && (
+          <span className={styles.variantBadge} title={t('dialogs.variantTitle')}>
+            {t('dialogs.variantBadge', {
+              index: line.variant_index,
+              count: line.variant_count,
+            })}
           </span>
         )}
       </header>
 
-      <div className={styles.source}>
-        {line.source ?? <em className={styles.noString}>{t('dialogs.noSourceString')}</em>}
-      </div>
-
-      {editing ? (
-        <div className={styles.editArea}>
-          <textarea
-            className={styles.textarea}
-            value={draft}
-            disabled={saving}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={() => { if (!saving) void handleSave(); }}
-            autoFocus
-            rows={3}
-            placeholder={t('modEditor.enterTranslation')}
-          />
-          <span className={styles.editHint}>{t('dialogs.editHint')}</span>
+      {line.lines.length === 0 ? (
+        <div className={styles.source}>
+          <em className={styles.noString}>{t('dialogs.noSourceString')}</em>
         </div>
       ) : (
-        <div
-          className={`${styles.translation} ${!line.translation ? styles.empty : ''}`}
-          onClick={() => { if (line.string_id) { setDraft(line.translation ?? ''); setEditing(true); } }}
-          title={line.string_id ? t('dialogs.clickToEdit') : t('dialogs.noStringId')}
-          role={line.string_id ? 'button' : undefined}
-          tabIndex={line.string_id ? 0 : undefined}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setDraft(line.translation ?? ''); setEditing(true); } }}
-        >
-          {line.translation ?? <em>{t('dialogs.noTranslation')}</em>}
-        </div>
+        line.lines.map((dialogLine) => (
+          <DialogLineEditor
+            key={dialogLine.string_id}
+            line={dialogLine}
+            targetLang={targetLang}
+            queryKey={queryKey}
+          />
+        ))
       )}
     </article>
   );

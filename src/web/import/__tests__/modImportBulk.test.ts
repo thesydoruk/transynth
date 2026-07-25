@@ -57,35 +57,31 @@ describe('trackModImportBulkResults', () => {
 });
 
 describe('dedupeDialogInfoRowsForImport', () => {
-  it('collapses duplicate INFO rows from multiple locales in one batch', () => {
+  it('merges duplicate INFO rows into one node and keeps every known field', () => {
     const rows = dedupeDialogInfoRowsForImport([
       {
         topicFormId: '0100ABCD',
         infoFormId: '0100EF01',
-        stringId: 10,
         speakerFormId: null,
         speakerName: null,
-        previousInfoFormId: null,
-        locale: 'de',
+        previousInfoFormId: '0100EE00',
       },
       {
         topicFormId: '0100ABCD',
         infoFormId: '0100EF01',
-        stringId: 11,
         speakerFormId: '01009999',
         speakerName: 'Nick',
-        previousInfoFormId: '0100EE00',
-        locale: 'en',
+        previousInfoFormId: null,
       },
     ]);
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      stringId: 11,
+    expect(rows[0]).toEqual({
+      topicFormId: '0100ABCD',
+      infoFormId: '0100EF01',
       speakerFormId: '01009999',
       speakerName: 'Nick',
       previousInfoFormId: '0100EE00',
-      locale: 'en',
     });
   });
 
@@ -94,20 +90,16 @@ describe('dedupeDialogInfoRowsForImport', () => {
       {
         topicFormId: '0100ABCD',
         infoFormId: '0100EF01',
-        stringId: 10,
         speakerFormId: null,
         speakerName: null,
         previousInfoFormId: null,
-        locale: 'en',
       },
       {
         topicFormId: '0100ABCD',
         infoFormId: '0100EF02',
-        stringId: 12,
         speakerFormId: null,
         speakerName: null,
         previousInfoFormId: null,
-        locale: 'en',
       },
     ]);
 

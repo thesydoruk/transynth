@@ -18,6 +18,21 @@ export interface DialogTreeViewProps {
   isLoading: boolean;
 }
 
+/** Collect a node and everything reachable from it. */
+const collectReachable = (
+  startIds: string[],
+  childrenMap: Map<string, string[]>,
+  into: Set<string>,
+): void => {
+  const stack = [...startIds];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (into.has(id)) continue;
+    into.add(id);
+    for (const child of childrenMap.get(id) ?? []) stack.push(child);
+  }
+};
+
 /**
  * Renders the dialog tree for a single DIAL topic as a vertically nested
  * list of {@link DialogNodeCard} cards.
@@ -32,39 +47,62 @@ export interface DialogTreeViewProps {
  * Cycles are detected via a `visited` set and broken to avoid infinite
  * recursion.
  */
-export const DialogTreeView = ({ nodes, edges, targetLang, queryKey, isLoading }: DialogTreeViewProps) => {
+export const DialogTreeView = ({
+  nodes,
+  edges,
+  targetLang,
+  queryKey,
+  isLoading,
+}: DialogTreeViewProps) => {
   const { t } = useTranslation();
 
   /**
    * Derived tree data:
    * - `nodeMap`: infoFormId → node
    * - `childrenMap`: infoFormId → [child infoFormId, ...]
-   * - `rootIds`: infoFormIds with no incoming edge
+   * - `entryIds`: where rendering starts — roots first, then any node that no
+   *   root can reach (a cycle), so no node of the topic stays hidden
    */
-  const { nodeMap, childrenMap, rootIds } = useMemo(() => {
-    const nodeMap = new Map<string, DialogTreeNode>(
-      nodes.map((n) => [n.info_formid_hex, n]),
-    );
+  const { nodeMap, childrenMap, entryIds } = useMemo(() => {
+    const nodeMap = new Map<string, DialogTreeNode>(nodes.map((n) => [n.info_formid_hex, n]));
 
     // childrenMap: from → [to]  (a "from" node precedes its "to" children)
     const childrenMap = new Map<string, string[]>();
-    const hasIncoming = new Set<string>();
+    const hasParent = new Set<string>();
 
     for (const edge of edges) {
       if (edge.edge_kind !== 'previous') continue;
+      /*
+       * Both endpoints must exist in this topic. An edge from an INFO that
+       * lives in another topic (or in a master plugin) is undrawable, and
+       * counting it as a parent would keep its child out of the root list —
+       * the node would then never be rendered at all.
+       */
+      if (!nodeMap.has(edge.from_info_formid_hex) || !nodeMap.has(edge.to_info_formid_hex)) {
+        continue;
+      }
       const children = childrenMap.get(edge.from_info_formid_hex);
       if (children) {
         children.push(edge.to_info_formid_hex);
       } else {
         childrenMap.set(edge.from_info_formid_hex, [edge.to_info_formid_hex]);
       }
-      hasIncoming.add(edge.to_info_formid_hex);
+      hasParent.add(edge.to_info_formid_hex);
     }
 
-    // Root nodes: present in nodeMap but not in hasIncoming
-    const rootIds = [...nodeMap.keys()].filter((id) => !hasIncoming.has(id));
+    const rootIds = [...nodeMap.keys()].filter((id) => !hasParent.has(id));
 
-    return { nodeMap, childrenMap, rootIds };
+    const covered = new Set<string>();
+    collectReachable(rootIds, childrenMap, covered);
+
+    const entryIds = [...rootIds];
+    for (const id of nodeMap.keys()) {
+      if (covered.has(id)) continue;
+      entryIds.push(id);
+      collectReachable([id], childrenMap, covered);
+    }
+
+    return { nodeMap, childrenMap, entryIds };
   }, [nodes, edges]);
 
   if (isLoading) {
@@ -109,8 +147,9 @@ export const DialogTreeView = ({ nodes, edges, targetLang, queryKey, isLoading }
 
     // Children of the last node determine whether the chain branches
     const lastNode = chainNodes[chainNodes.length - 1];
-    const branchChildIds = (childrenMap.get(lastNode.info_formid_hex) ?? [])
-      .filter((cid) => !localVisited.has(cid));
+    const branchChildIds = (childrenMap.get(lastNode.info_formid_hex) ?? []).filter(
+      (cid) => !localVisited.has(cid),
+    );
 
     return (
       <div key={startId} className={styles.branch}>
@@ -131,9 +170,5 @@ export const DialogTreeView = ({ nodes, edges, targetLang, queryKey, isLoading }
     );
   };
 
-  return (
-    <div className={styles.tree}>
-      {rootIds.map((id) => renderChain(id, new Set()))}
-    </div>
-  );
+  return <div className={styles.tree}>{entryIds.map((id) => renderChain(id, new Set()))}</div>;
 };

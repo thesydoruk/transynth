@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS dialog_nodes (
   id SERIAL PRIMARY KEY,
   topic_id INTEGER NOT NULL REFERENCES dialog_topics(id) ON DELETE CASCADE,
   info_formid_hex TEXT NOT NULL,
-  response_string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
   speaker_formid_hex TEXT,
   speaker_name TEXT,
   previous_info_formid_hex TEXT,
@@ -77,6 +76,11 @@ CREATE TABLE IF NOT EXISTS dialog_nodes (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(topic_id, info_formid_hex)
 );
+
+-- Node text is resolved at query time from records/strings (INFO\NAM1 responses
+-- and INFO\RNAM prompts). A single cached string pointer could hold only one of
+-- them and could not represent INFOs with several responses.
+ALTER TABLE dialog_nodes DROP COLUMN IF EXISTS response_string_id;
 
 CREATE TABLE IF NOT EXISTS dialog_edges (
   id SERIAL PRIMARY KEY,
@@ -325,8 +329,8 @@ CREATE INDEX IF NOT EXISTS idx_translations_trgm_text ON translations USING GIN 
 CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);
-CREATE INDEX IF NOT EXISTS idx_dialog_nodes_response_string ON dialog_nodes(response_string_id)
-  WHERE response_string_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_dialog_nodes_info ON dialog_nodes(info_formid_hex);
+DROP INDEX IF EXISTS idx_dialog_nodes_response_string;
 CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id, from_info_formid_hex);
 CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);

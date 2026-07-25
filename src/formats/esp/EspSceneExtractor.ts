@@ -12,12 +12,16 @@
  *
  *   Action blocks are delimited by ANAM subrecords:
  *     ANAM (size=2) : Start of action block, uint16 action type
+ *                     (0 = dialogue, 1 = package, 2 = timer)
  *       ALID (4)   : Actor alias ID (int32)
- *       DATA (4)   : Dialog topic FormID (uint32, primary)
- *       HTID (4)   : Headtracking topic FormID (uint32, fallback if DATA is 0)
+ *       DATA (4)   : Dialog topic FormID (uint32, dialogue actions only)
  *       SNAM (4)   : Start phase index (uint32)
  *       ENAM (4)   : End phase index (uint32)
  *     ANAM (size=0) : End of action block
+ *
+ * Only dialogue actions are kept. Package and timer actions carry no topic, and
+ * HTID is a head-tracking *alias* id rather than a topic FormID, so neither can
+ * stand in for DATA.
  *
  * Actions are sorted by `startPhase` to reconstruct playback order.
  */
@@ -29,6 +33,7 @@ const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
 const SUBRECORD_HEADER_SIZE = 6;
 const FLAG_COMPRESSED = 0x00040000;
+const SCENE_ACTION_DIALOGUE = 0;
 
 /**
  * SCEN-specific extraction from ESP records.
@@ -138,7 +143,7 @@ export class EspSceneExtractor {
 
         // ANAM with size=0 terminates the current action block
       } else if (subSig === 'ANAM' && subSize === 0 && inAction) {
-        if (current?.topicFormId) {
+        if (current?.topicFormId && current.actionType === SCENE_ACTION_DIALOGUE) {
           actions.push({
             actionType: current.actionType,
             aliasId: current.aliasId ?? 0,
@@ -155,9 +160,6 @@ export class EspSceneExtractor {
         if (subSig === 'ALID' && subSize === 4) {
           current.aliasId = recordData.readInt32LE(ds);
         } else if (subSig === 'DATA' && subSize === 4) {
-          const raw = recordData.readUInt32LE(ds);
-          if (raw !== 0) current.topicFormId = raw.toString(16).toUpperCase().padStart(8, '0');
-        } else if (subSig === 'HTID' && subSize === 4 && !current.topicFormId) {
           const raw = recordData.readUInt32LE(ds);
           if (raw !== 0) current.topicFormId = raw.toString(16).toUpperCase().padStart(8, '0');
         } else if (subSig === 'SNAM' && subSize === 4) {

@@ -8,7 +8,7 @@ export interface SceneRecord {
   formId: string;
   /** Editor ID (EDID) of the scene. */
   edid: string;
-  /** Quest FormID that owns this scene (from QNAM, 8-char hex, may be null). */
+  /** Quest FormID that owns this scene (from PNAM, 8-char hex, may be null). */
   questFormId: string | null;
   /** Ordered dialog actions extracted from the scene phases. */
   actions: SceneAction[];

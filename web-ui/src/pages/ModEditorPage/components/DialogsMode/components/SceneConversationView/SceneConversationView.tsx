@@ -49,17 +49,16 @@ export const SceneConversationView = ({
   return (
     <div className={styles.conversation}>
       {lines.map((line, idx) => (
-        <div key={`${line.scene_id}-${line.phase_order}-${line.node_id ?? line.info_formid_hex ?? line.topic_formid_hex}`} className={styles.lineWrap}>
+        <div
+          key={`${line.scene_id}-${line.phase_order}-${line.topic_formid_hex}-${line.node_id ?? line.variant_index}`}
+          className={styles.lineWrap}
+        >
           {showSceneBreaks && (idx === 0 || lines[idx - 1].scene_id !== line.scene_id) && (
             <div className={styles.sceneMarker}>
               {t('dialogs.sceneMarker', { label: line.scene_edid ?? line.scene_formid_hex })}
             </div>
           )}
-          <SceneLineCard
-            line={line}
-            targetLang={targetLang}
-            queryKey={queryKey}
-          />
+          <SceneLineCard line={line} targetLang={targetLang} queryKey={queryKey} />
         </div>
       ))}
     </div>

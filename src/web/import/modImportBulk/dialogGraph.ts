@@ -1,5 +1,4 @@
 import type { Tx } from '../../../db';
-import { CONFIG } from '../../../config';
 import type { DialogGraphImportContext, DialogInfoImportRow, ModImportBulkResult } from './types';
 
 const dialogInfoImportKey = (topicFormId: string, infoFormId: string): string =>
@@ -23,36 +22,20 @@ const mergeDialogInfoImportRow = (
 });
 
 /**
- * One import batch can contain the same INFO from multiple locales (batch spans locale
- * boundaries). PostgreSQL rejects duplicate ON CONFLICT keys in a single INSERT.
+ * One INFO produces several import rows: one per translatable subrecord
+ * (NAM1 response, RNAM prompt, …) and one per imported locale. They all map to
+ * a single dialog node, and PostgreSQL rejects duplicate ON CONFLICT keys in a
+ * single INSERT, so collapse them into one row that keeps every known field.
  */
 export const dedupeDialogInfoRowsForImport = (
   rows: DialogInfoImportRow[],
-  preferredLocale = CONFIG.defaultSrcLang,
 ): DialogInfoImportRow[] => {
   const byKey = new Map<string, DialogInfoImportRow>();
-  const prefer = preferredLocale.trim().toLowerCase();
 
   for (const row of rows) {
     const key = dialogInfoImportKey(row.topicFormId, row.infoFormId);
     const existing = byKey.get(key);
-    if (!existing) {
-      byKey.set(key, row);
-      continue;
-    }
-
-    const existingLocale = existing.locale.trim().toLowerCase();
-    const nextLocale = row.locale.trim().toLowerCase();
-    const existingIsPreferred = existingLocale === prefer;
-    const nextIsPreferred = nextLocale === prefer;
-
-    if (!existingIsPreferred && nextIsPreferred) {
-      byKey.set(key, mergeDialogInfoImportRow(row, existing));
-    } else if (existingIsPreferred && !nextIsPreferred) {
-      byKey.set(key, mergeDialogInfoImportRow(existing, row));
-    } else {
-      byKey.set(key, mergeDialogInfoImportRow(row, existing));
-    }
+    byKey.set(key, existing ? mergeDialogInfoImportRow(existing, row) : row);
   }
 
   return [...byKey.values()];
@@ -76,11 +59,9 @@ export const bulkUpsertDialogGraphForImportBatch = async (
     rawInfoRows.push({
       topicFormId: row.DialogTopicFormID,
       infoFormId: row.FormID,
-      stringId: res.stringId,
       speakerFormId,
       speakerName,
       previousInfoFormId: row.PreviousInfoFormID ?? null,
-      locale: res.row.locale,
     });
   }
 
@@ -110,7 +91,6 @@ export const bulkUpsertDialogGraphForImportBatch = async (
 
   const topicIds: number[] = [];
   const infoFormIds: string[] = [];
-  const stringIds: number[] = [];
   const speakerFormIds: Array<string | null> = [];
   const speakerNames: Array<string | null> = [];
   const previousInfoFormIds: Array<string | null> = [];
@@ -122,7 +102,6 @@ export const bulkUpsertDialogGraphForImportBatch = async (
     }
     topicIds.push(topicId);
     infoFormIds.push(info.infoFormId);
-    stringIds.push(info.stringId);
     speakerFormIds.push(info.speakerFormId);
     speakerNames.push(info.speakerName);
     previousInfoFormIds.push(info.previousInfoFormId);
@@ -130,18 +109,17 @@ export const bulkUpsertDialogGraphForImportBatch = async (
 
   await db.query(
     `INSERT INTO dialog_nodes(
-       topic_id, info_formid_hex, response_string_id, speaker_formid_hex, speaker_name, previous_info_formid_hex
+       topic_id, info_formid_hex, speaker_formid_hex, speaker_name, previous_info_formid_hex
      )
      SELECT * FROM UNNEST(
-       $1::int[], $2::text[], $3::int[], $4::text[], $5::text[], $6::text[]
+       $1::int[], $2::text[], $3::text[], $4::text[], $5::text[]
      )
      ON CONFLICT(topic_id, info_formid_hex) DO UPDATE SET
-       response_string_id = COALESCE(dialog_nodes.response_string_id, EXCLUDED.response_string_id),
        speaker_formid_hex = COALESCE(EXCLUDED.speaker_formid_hex, dialog_nodes.speaker_formid_hex),
        speaker_name = COALESCE(EXCLUDED.speaker_name, dialog_nodes.speaker_name),
        previous_info_formid_hex = COALESCE(EXCLUDED.previous_info_formid_hex, dialog_nodes.previous_info_formid_hex),
        updated_at = NOW()`,
-    [topicIds, infoFormIds, stringIds, speakerFormIds, speakerNames, previousInfoFormIds],
+    [topicIds, infoFormIds, speakerFormIds, speakerNames, previousInfoFormIds],
   );
 
   const edgeTopicIds: number[] = [];

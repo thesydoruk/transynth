@@ -2,7 +2,7 @@
  * One dialog action extracted from a SCEN record.
  */
 export interface SceneAction {
-  /** Action type (0 = dialogue, 6 = player dialogue). */
+  /** Action type (0 = dialogue, 1 = package, 2 = timer); only dialogue is kept. */
   actionType: number;
   /** Quest alias index of the speaking actor (-2 = player). */
   aliasId: number;

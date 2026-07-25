@@ -23,16 +23,22 @@ export type DialogGraphImportContext = {
 export type DialogInfoImportRow = {
   topicFormId: string;
   infoFormId: string;
-  stringId: number;
   speakerFormId: string | null;
   speakerName: string | null;
   previousInfoFormId: string | null;
-  locale: string;
 };
 
 export type PruneStaleModImportResult = {
   deletedStrings: number;
   deletedRecords: number;
+  dialogGraph: PruneDialogGraphResult;
+};
+
+export type PruneDialogGraphResult = {
+  deletedNodes: number;
+  deletedEdges: number;
+  deletedTopics: number;
+  deletedScenes: number;
 };
 
 export type BulkTranslationRow = {

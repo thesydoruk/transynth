@@ -22,22 +22,23 @@ export const upsertDialogTopic = async (
 
 /**
  * Upsert a dialog node (INFO record) under a topic.
+ *
+ * Nodes hold graph structure only; their text is resolved from the `records`
+ * and `strings` tables when a tree or scene is queried.
  */
 export const upsertDialogNode = async (
   db: Tx,
   topicId: number,
   infoFormidHex: string,
-  responseStringId: number,
   speakerFormidHex?: string | null,
   speakerName?: string | null,
   previousInfoFormidHex?: string | null,
 ): Promise<number> => {
   const { rows } = await db.query(
     `INSERT INTO dialog_nodes(
-       topic_id, info_formid_hex, response_string_id, speaker_formid_hex, speaker_name, previous_info_formid_hex
-     ) VALUES ($1, $2, $3, $4, $5, $6)
+       topic_id, info_formid_hex, speaker_formid_hex, speaker_name, previous_info_formid_hex
+     ) VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT(topic_id, info_formid_hex) DO UPDATE SET
-       response_string_id = COALESCE(dialog_nodes.response_string_id, EXCLUDED.response_string_id),
        speaker_formid_hex = COALESCE(EXCLUDED.speaker_formid_hex, dialog_nodes.speaker_formid_hex),
        speaker_name = COALESCE(EXCLUDED.speaker_name, dialog_nodes.speaker_name),
        previous_info_formid_hex = COALESCE(EXCLUDED.previous_info_formid_hex, dialog_nodes.previous_info_formid_hex),
@@ -46,7 +47,6 @@ export const upsertDialogNode = async (
     [
       topicId,
       infoFormidHex,
-      responseStringId,
       speakerFormidHex ?? null,
       speakerName ?? null,
       previousInfoFormidHex ?? null,
