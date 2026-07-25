@@ -146,6 +146,13 @@ export const CONFIG = {
     100_000,
   ),
 
+  /** Max masked source chars per LLM call when splitting long strings (default 3500). */
+  llmTranslateTextChunkMaxChars: parsePositiveInt(
+    process.env.LLM_TRANSLATE_TEXT_CHUNK_MAX_CHARS,
+    3500,
+    50_000,
+  ),
+
   /** Max retry attempts for transient LLM HTTP errors and parse failures (default 5). */
   llmMaxAttempts: (() => {
     const parsed = Number.parseInt(process.env.LLM_MAX_ATTEMPTS ?? '', 10);

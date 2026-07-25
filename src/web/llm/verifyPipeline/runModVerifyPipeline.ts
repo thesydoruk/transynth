@@ -9,6 +9,7 @@ import { requirePgvectorForRag } from '../../../llm/rag';
 import { getAllProjectSettings } from '../../services/projectSettings';
 import { runLlmChunkWorkPoolFromFeed } from '../../../llm/chunkRecovery';
 import { isLlmVerifyMissingIdsError } from '../../../llm/verifyTranslate';
+import { isLlmResponseTruncatedError } from '../../../llm/translate';
 import { isLlmTimeoutError } from '../../../llm/retry';
 import { llmChatPipelineConcurrency } from '../../../llm/requestPool';
 import { logVerify } from '../../../logging/loggers';
@@ -175,7 +176,8 @@ export const runModVerifyPipeline = async (
       }
       await verifyChunkOnce(chunkCtx, [...chunk], ragByStringId, (parts) => enqueueSplit(parts));
     },
-    shouldSplit: (err) => isLlmVerifyMissingIdsError(err) || isLlmTimeoutError(err),
+    shouldSplit: (err) =>
+      isLlmVerifyMissingIdsError(err) || isLlmTimeoutError(err) || isLlmResponseTruncatedError(err),
     onFailure: (failed, message) => emitChunkFailure(chunkCtx, failed, message),
     log: logVerify,
     operation: 'verify',

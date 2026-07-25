@@ -2,7 +2,8 @@
 # docker compose -f docker-compose.ai-translate.yml up -d
 #
 # Ubuntu + RTX 5090 (32 GiB) — vLLM owns the sole GPU (no TEI/audio/face sidecars).
-# Model: cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit + compressed-tensors (override VLLM_GEMMA4_MODEL).
+# Model: louismuk/gemma-4-26B-A4B-heretic-AWQ + compressed-tensors (override VLLM_GEMMA4_MODEL).
+# Decensored Gemma 4 26B A4B (llmfan46 ultra-heretic source); same AWQ recipe as cyankiwi.
 # Image: VLLM_OPENAI_IMAGE (default gemma4-0505-cu130 for Blackwell sm_120). HF_TOKEN if gated.
 #
 # Pool:
@@ -50,21 +51,28 @@ services:
       retries: 8
       start_period: 300s
     command:
-      - ${VLLM_GEMMA4_MODEL:-cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit}
+      - ${VLLM_GEMMA4_MODEL:-louismuk/gemma-4-26B-A4B-heretic-AWQ}
       - --quantization
       - compressed-tensors
+      - --hf-overrides
+      - '{"architectures":["Gemma4ForCausalLM"]}'
       - --served-model-name
       - gemma4:26b-a4b
       - --max-num-batched-tokens
       - '4096'
       - --max-model-len
       - '200000'
+      - --kv-cache-dtype
+      - fp8
+      - --enable-prefix-caching
       - --gpu-memory-utilization
       - '0.94'
       - --max-num-seqs
       - '16'
       - --cpu-offload-gb
       - '0'
+      - --reasoning-parser
+      - gemma4
       - --tool-call-parser
       - gemma4
       - --enable-auto-tool-choice

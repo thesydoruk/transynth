@@ -2,6 +2,8 @@ import type { LlmTranslateOverwriteMode } from '../../data/queries';
 import type { RagRetrievalOptions } from '../../../llm/rag';
 import type { LlmTranslateItem } from '../../../llm/translate';
 import type { DialogParticipantsRow } from '../../data/queries/dialogs';
+import type { Semaphore } from '../../../utils/concurrency';
+import type { Tx } from '../../../db';
 
 export type TranslateBatchResult = {
   stringId: number;
@@ -55,4 +57,21 @@ export type GlossaryEntryWithRe = {
   term: string;
   translation: string | null;
   re: RegExp;
+};
+
+export type ChunkTranslateContext = {
+  db: Tx;
+  opts: Pick<
+    TranslateBatchOptions,
+    'srcLang' | 'targetLang' | 'modGame' | 'modName' | 'signal' | 'shouldCancel'
+  >;
+  rag: RagRetrievalOptions;
+  ragMaxExamples: number;
+  ragMinSimilarity: number;
+  glossaryAll: GlossaryEntryWithRe[];
+  model: string;
+  emitResult: (r: TranslateBatchResult) => void;
+  persistPool: Semaphore;
+  persistJobs: Promise<void>[];
+  persistAutoTranslationRows: (rows: Array<{ stringId: number; text: string }>) => Promise<void>;
 };

@@ -7,6 +7,7 @@ import {
   finalizeVerifyItemResults,
   type LlmVerifyItem,
 } from '../../../llm/verifyTranslate';
+import { isLlmResponseTruncatedError } from '../../../llm/translate';
 import { fetchReferenceExamplesBatch, type RagRetrievalOptions } from '../../../llm/rag';
 import { enqueueSoloChunks } from '../../../llm/chunkRecovery';
 import { withRequestDeadline } from '../../../llm/requestDeadline';
@@ -18,23 +19,35 @@ import { buildLlmParticipantPayload } from '../../../llm/dialogParticipants';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
 import { scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
-import type { RunModVerifyPipelineOpts, VerifyStringRow } from './types';
+import {
+  rowNeedsLongTextVerify,
+  verifyLongTextAfterTruncation,
+  verifyLongTextItem,
+} from './verifyLongText';
+import type { RunModVerifyPipelineOpts, VerifyChunkContext, VerifyStringRow } from './types';
 
 type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
 
-export type VerifyChunkContext = {
-  db: Tx;
-  opts: RunModVerifyPipelineOpts;
-  model: string;
-  glossaryAll: GlossaryEntryWithRe[];
-  ragMaxExamples: number;
-  ragMinSimilarity: number;
-  rag: RagRetrievalOptions;
-  fixSuspicious: boolean;
-  dryRun: boolean;
-  persistCtx: BatchPersistContext;
-  shouldCancel?: () => boolean;
-  collectIssue?: (issue: import('../verifyService/queries').LlmVerifyIssue) => void;
+const verifyLongRows = async (
+  ctx: VerifyChunkContext,
+  rows: VerifyStringRow[],
+  ragByStringId: RagByStringId,
+): Promise<void> => {
+  for (const row of rows) {
+    const item = buildVerifyItems([row], ragByStringId)[0]!;
+    const result = await verifyLongTextItem(ctx, item);
+    scheduleBatchPersist(
+      ctx.persistCtx,
+      buildBatchPersistJob(
+        [row],
+        [result],
+        ctx.opts,
+        ctx.fixSuspicious,
+        ctx.dryRun,
+        ctx.collectIssue,
+      ),
+    );
+  }
 };
 
 export const fetchChunkRag = async (
@@ -103,7 +116,15 @@ export const verifyChunkOnce = async (
   ragByStringId: RagByStringId,
   enqueueSplit: (parts: readonly (readonly VerifyStringRow[])[]) => void,
 ): Promise<void> => {
-  const items = buildVerifyItems(llmChunk, ragByStringId);
+  const longRows = llmChunk.filter((row) => rowNeedsLongTextVerify(row));
+  const normalRows = llmChunk.filter((row) => !rowNeedsLongTextVerify(row));
+
+  if (longRows.length > 0) {
+    await verifyLongRows(ctx, longRows, ragByStringId);
+  }
+  if (normalRows.length === 0) return;
+
+  const items = buildVerifyItems(normalRows, ragByStringId);
 
   try {
     const results = await withRequestDeadline(
@@ -119,7 +140,7 @@ export const verifyChunkOnce = async (
           modName: ctx.opts.modName,
           glossary: relevantGlossaryEntries(
             ctx.glossaryAll,
-            llmChunk.map((row) => row.source),
+            normalRows.map((row) => row.source),
           ),
           signal,
         }),
@@ -128,7 +149,7 @@ export const verifyChunkOnce = async (
     scheduleBatchPersist(
       ctx.persistCtx,
       buildBatchPersistJob(
-        llmChunk,
+        normalRows,
         results,
         ctx.opts,
         ctx.fixSuspicious,
@@ -137,9 +158,28 @@ export const verifyChunkOnce = async (
       ),
     );
   } catch (err) {
+    if (isLlmResponseTruncatedError(err) && normalRows.length === 1) {
+      const row = normalRows[0]!;
+      const item = items[0]!;
+      const merged = await verifyLongTextAfterTruncation(ctx, item);
+      if (merged != null) {
+        scheduleBatchPersist(
+          ctx.persistCtx,
+          buildBatchPersistJob(
+            [row],
+            [merged],
+            ctx.opts,
+            ctx.fixSuspicious,
+            ctx.dryRun,
+            ctx.collectIssue,
+          ),
+        );
+        return;
+      }
+    }
     if (isLlmVerifyMissingIdsError(err)) {
       const missingSet = new Set(err.missingIds);
-      const okRows = llmChunk.filter((row) => !missingSet.has(row.string_id));
+      const okRows = normalRows.filter((row) => !missingSet.has(row.string_id));
       if (err.partialResults.length > 0) {
         const okItems = buildVerifyItems(okRows, ragByStringId);
         scheduleBatchPersist(
@@ -154,8 +194,8 @@ export const verifyChunkOnce = async (
           ),
         );
       }
-      const missingRows = llmChunk.filter((row) => missingSet.has(row.string_id));
-      if (llmChunk.length > 1) {
+      const missingRows = normalRows.filter((row) => missingSet.has(row.string_id));
+      if (normalRows.length > 1) {
         logVerify.warn('partial LLM verify batch — solo retry for missing rows', {
           ok: okRows.length,
           missing: missingRows.map((row) => row.string_id),
@@ -165,12 +205,12 @@ export const verifyChunkOnce = async (
       }
       throw err;
     }
-    if (isLlmTimeoutError(err) && llmChunk.length > 1) {
+    if (isLlmTimeoutError(err) && normalRows.length > 1) {
       logVerify.warn('LLM verify batch timeout — solo retry', {
-        chunkSize: llmChunk.length,
-        stringIds: llmChunk.map((row) => row.string_id),
+        chunkSize: normalRows.length,
+        stringIds: normalRows.map((row) => row.string_id),
       });
-      enqueueSoloChunks(llmChunk, enqueueSplit);
+      enqueueSoloChunks(normalRows, enqueueSplit);
       return;
     }
     throw err;

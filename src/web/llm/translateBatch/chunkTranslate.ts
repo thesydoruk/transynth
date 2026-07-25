@@ -15,7 +15,13 @@ import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../../llm/llmT
 import { normalizeAutoTranslationDashes } from '../../../utils/textNorm';
 import type { GameType } from '../../../types';
 import { relevantGlossaryForChunk } from './glossary';
+import {
+  needsLongTextSplit,
+  translateLongTextAfterTruncation,
+  translateLongTextItem,
+} from './translateLongText';
 import type {
+  ChunkTranslateContext,
   GlossaryEntryWithRe,
   PreparedLlmItem,
   TranslateBatchOptions,
@@ -23,23 +29,6 @@ import type {
 } from './types';
 
 type RagByStringId = Awaited<ReturnType<typeof fetchReferenceExamplesBatch>>;
-
-export type ChunkTranslateContext = {
-  db: Tx;
-  opts: Pick<
-    TranslateBatchOptions,
-    'srcLang' | 'targetLang' | 'modGame' | 'modName' | 'signal' | 'shouldCancel'
-  >;
-  rag: RagRetrievalOptions;
-  ragMaxExamples: number;
-  ragMinSimilarity: number;
-  glossaryAll: GlossaryEntryWithRe[];
-  model: string;
-  emitResult: (r: TranslateBatchResult) => void;
-  persistPool: Semaphore;
-  persistJobs: Promise<void>[];
-  persistAutoTranslationRows: (rows: Array<{ stringId: number; text: string }>) => Promise<void>;
-};
 
 const toRagBatchItems = (entries: PreparedLlmItem[]) =>
   entries.map((entry) => ({
@@ -152,15 +141,40 @@ export const collectValidatedRows = (
   return okRows;
 };
 
+const translateLongEntries = async (
+  ctx: ChunkTranslateContext,
+  entries: PreparedLlmItem[],
+  ragByStringId: RagByStringId,
+): Promise<Array<{ stringId: number; text: string }>> => {
+  const okRows: Array<{ stringId: number; text: string }> = [];
+
+  for (const entry of entries) {
+    const ragExamples = ragByStringId.get(entry.stringId);
+    const maskedTranslation = await translateLongTextItem(ctx, entry, ragExamples);
+    const merged = [{ id: entry.stringId, translation: maskedTranslation }];
+    okRows.push(...collectValidatedRows(ctx, [entry], merged));
+  }
+
+  return okRows;
+};
+
 export const translateChunkOnce = async (
   ctx: ChunkTranslateContext,
   chunk: PreparedLlmItem[],
   ragByStringId: RagByStringId,
   enqueueSplit: (parts: readonly (readonly PreparedLlmItem[])[]) => void,
 ): Promise<void> => {
+  const longEntries = chunk.filter((entry) => needsLongTextSplit(entry.llmItem.source));
+  const normalEntries = chunk.filter((entry) => !needsLongTextSplit(entry.llmItem.source));
+
+  if (longEntries.length > 0) {
+    scheduleChunkPersist(ctx, await translateLongEntries(ctx, longEntries, ragByStringId));
+  }
+  if (normalEntries.length === 0) return;
+
   try {
     const translations = await translateStrings({
-      items: chunk.map((entry) => ({
+      items: normalEntries.map((entry) => ({
         ...entry.llmItem,
         context: maskLlmOptionalText(entry.llmItem.context),
         reference_examples: maskLlmReferenceExamples(ragByStringId.get(entry.stringId)),
@@ -168,24 +182,39 @@ export const translateChunkOnce = async (
       model: ctx.model,
       srcLang: ctx.opts.srcLang,
       targetLang: ctx.opts.targetLang,
-      game: ctx.opts.modGame ?? chunk[0]?.game,
-      modName: ctx.opts.modName ?? chunk[0]?.modName,
+      game: ctx.opts.modGame ?? normalEntries[0]?.game,
+      modName: ctx.opts.modName ?? normalEntries[0]?.modName,
       glossary: relevantGlossaryForChunk(
         ctx.glossaryAll,
-        chunk.map((entry) => entry.sourceText),
+        normalEntries.map((entry) => entry.sourceText),
       ),
       signal: ctx.opts.signal,
     });
-    scheduleChunkPersist(ctx, collectValidatedRows(ctx, chunk, translations));
+    scheduleChunkPersist(ctx, collectValidatedRows(ctx, normalEntries, translations));
   } catch (err) {
+    if (isLlmResponseTruncatedError(err) && normalEntries.length === 1) {
+      const entry = normalEntries[0]!;
+      const merged = await translateLongTextAfterTruncation(
+        ctx,
+        entry,
+        ragByStringId.get(entry.stringId),
+      );
+      if (merged != null) {
+        scheduleChunkPersist(
+          ctx,
+          collectValidatedRows(ctx, [entry], [{ id: entry.stringId, translation: merged }]),
+        );
+        return;
+      }
+    }
     if (isLlmTranslateMissingIdsError(err)) {
       const missingSet = new Set(err.missingIds);
-      const okEntries = chunk.filter((entry) => !missingSet.has(entry.stringId));
+      const okEntries = normalEntries.filter((entry) => !missingSet.has(entry.stringId));
       if (err.partialResults.length > 0) {
         scheduleChunkPersist(ctx, collectValidatedRows(ctx, okEntries, [...err.partialResults]));
       }
-      const missingEntries = chunk.filter((entry) => missingSet.has(entry.stringId));
-      if (chunk.length > 1) {
+      const missingEntries = normalEntries.filter((entry) => missingSet.has(entry.stringId));
+      if (normalEntries.length > 1) {
         logTranslate.warn('partial LLM batch — solo retry for missing rows', {
           ok: okEntries.length,
           missing: missingEntries.map((entry) => entry.stringId),
@@ -195,12 +224,12 @@ export const translateChunkOnce = async (
       }
       throw err;
     }
-    if (isLlmTimeoutError(err) && chunk.length > 1) {
+    if (isLlmTimeoutError(err) && normalEntries.length > 1) {
       logTranslate.warn('LLM translate batch timeout — solo retry', {
-        chunkSize: chunk.length,
-        itemIds: chunk.map((entry) => entry.stringId),
+        chunkSize: normalEntries.length,
+        itemIds: normalEntries.map((entry) => entry.stringId),
       });
-      enqueueSoloChunks(chunk, enqueueSplit);
+      enqueueSoloChunks(normalEntries, enqueueSplit);
       return;
     }
     throw err;

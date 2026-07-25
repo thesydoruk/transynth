@@ -1,5 +1,9 @@
 import type { LlmVerifyItem } from '../../../llm/verifyTranslate';
 import type { LlmVerifyIssue, VerifyLlmWorkUnit } from '../verifyService/queries';
+import type { Tx } from '../../../db';
+import type { RagRetrievalOptions } from '../../../llm/rag';
+import type { GlossaryEntryWithRe } from '../glossaryForLlm';
+import type { BatchPersistContext } from './batchPersist';
 
 export type VerifyStringRow = VerifyLlmWorkUnit['chunk'][number];
 
@@ -54,6 +58,21 @@ export type VerifyPipelineSummary = {
   suspicious: number;
   incorrect: number;
   errors: number;
+};
+
+export type VerifyChunkContext = {
+  db: Tx;
+  opts: RunModVerifyPipelineOpts;
+  model: string;
+  glossaryAll: GlossaryEntryWithRe[];
+  ragMaxExamples: number;
+  ragMinSimilarity: number;
+  rag: RagRetrievalOptions;
+  fixSuspicious: boolean;
+  dryRun: boolean;
+  persistCtx: BatchPersistContext;
+  shouldCancel?: () => boolean;
+  collectIssue?: (issue: LlmVerifyIssue) => void;
 };
 
 export type VerifyBatchPersistJob = {

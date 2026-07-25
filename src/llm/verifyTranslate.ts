@@ -10,8 +10,13 @@ import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
-import { isUkrainianTargetLang, type LlmReferenceExample } from './translate';
+import {
+  isUkrainianTargetLang,
+  type LlmReferenceExample,
+  LlmResponseTruncatedError,
+} from './translate';
 import type { GameType } from '../types';
+import { CONFIG } from '../config';
 import { compareProtectedTokens } from '../utils/placeholders';
 import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
 import {
@@ -351,6 +356,13 @@ export const verifyTranslationsWithLlm = async (
 
   const expectedIds = opts.items.map((item) => item.id);
   const { content: raw, meta } = await callVerifyTranslateLlm(opts, maskedItems);
+
+  if (meta.finishReason === 'length') {
+    throw new LlmResponseTruncatedError(
+      `LLM verify response truncated at ${meta.completionTokens ?? '?'} completion tokens (max ${CONFIG.llmMaxTokens})`,
+    );
+  }
+
   const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta);
   const unmasked = unmaskVerifySuggestions(parsed, mappingById);
   return finalizeVerifyItemResults(opts.items, unmasked, opts.game);
