@@ -11,6 +11,7 @@
     "db:dump": "tsx scripts/dbDump.ts",
     "db:restore": "tsx scripts/dbRestore.ts",
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
+    "backfill:speakers": "tsx scripts/backfillDialogSpeakers.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "tools:install": "tsx scripts/installTools.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
