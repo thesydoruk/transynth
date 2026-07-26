@@ -2,9 +2,12 @@
  * LLM narrator gender detection for BOOK/TERM/NOTE records.
  */
 import { chatWithFallback } from './index';
-import { maskLlmTextFields } from './llmTextMask';
 import { parseLlmJson } from './jsonParse';
 import { buildNarratorGenderDetectResponseFormat } from './responseSchemas';
+import {
+  buildNarratorGenderSystemPrompt,
+  buildNarratorGenderUserPayload,
+} from './prompts/narratorGenderDetect';
 import type { ChatCompletionMeta } from './provider';
 import type { GameType } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
@@ -51,59 +54,17 @@ export type LlmNarratorGenderOptions = {
   signal?: AbortSignal;
 };
 
+export {
+  buildNarratorGenderSystemPrompt,
+  buildNarratorGenderUserPayload,
+} from './prompts/narratorGenderDetect';
+
 const VALID_GENDERS = new Set<NarratorGender>(['male', 'female', 'neutral', 'unknown']);
 
 const clampConfidence = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
 };
-
-export const buildNarratorGenderSystemPrompt = (
-  srcLang: string,
-  game?: GameType | string | null,
-): string => {
-  const title = game ? `${game} / Bethesda` : 'Bethesda';
-  return [
-    `You detect the grammatical gender of the narrator in ${title} source text (${srcLang}).`,
-    'Output is used for Ukrainian translation: first-person verbs and adjectives must agree with narrator gender.',
-    '',
-    '### INPUT:',
-    '- Each item is one record (book page, terminal entry, note) with source_excerpt (may be truncated).',
-    '- grup/edid/field/path give Creation Kit context.',
-    '',
-    '### narrator_gender values:',
-    '- "male": first-person narrator is grammatically male (he/his in source, male diary voice).',
-    '- "female": first-person narrator is grammatically female (she/her, female diary voice).',
-    '- "neutral": third-person only, impersonal, or no gendered first-person (signs, ads, logs).',
-    '- "unknown": ambiguous — do not guess from stereotypes.',
-    '',
-    '### RULES:',
-    '- Judge from source text and edid; English often hides gender — use body references, names, pronouns.',
-    '- Personal diaries in first person ("I", "my") usually need male or female, not neutral.',
-    '- When truly unclear, return "unknown" with low confidence.',
-    '- Output valid JSON only.',
-  ].join('\n');
-};
-
-export const buildNarratorGenderUserPayload = (
-  opts: Omit<LlmNarratorGenderOptions, 'model'>,
-): object => ({
-  task: 'narrator_gender_detect',
-  source_language: opts.srcLang.trim().toLowerCase(),
-  game: opts.game ?? null,
-  mod_name: opts.modName ?? null,
-  items: opts.items.map((item) => {
-    const { masked } = maskLlmTextFields([item.source_excerpt]);
-    return {
-      id: item.id,
-      source_excerpt: masked[0] ?? item.source_excerpt,
-      grup: item.grup,
-      edid: item.edid,
-      field: item.field,
-      path: item.path,
-    };
-  }),
-});
 
 const parseGenderItems = (
   raw: string,
