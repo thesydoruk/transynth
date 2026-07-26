@@ -8,9 +8,7 @@ export type {
 } from './types';
 
 export {
-  LLM_SKIP_DETECT_DB_CHUNK_SIZE,
   SKIP_DETECT_DB_CHUNK_SIZE,
-  SKIP_DETECT_PROCESS_BATCH_SIZE,
   countScannableStrings,
   iterateSkipDetectWorkUnits,
 } from './queries';

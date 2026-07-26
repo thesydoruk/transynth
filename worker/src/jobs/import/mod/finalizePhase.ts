@@ -9,7 +9,7 @@ import {
   type DialogGraphImportContext,
 } from '../../../../../src/import/bulk';
 import { resolveModDialogSpeakers } from '../../../../../src/import/dialogSpeakers';
-import { importDialogStructure } from '../../../../../src/import/dialogStructure/importStructure';
+import { importDialogStructure } from '../../../../../src/import/dialogStructure';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from '../../../../../src/import/mod/localeHelpers';
 import { markDone } from '../../../../../src/import/mod/jobStatus';
 import { importSceneRecords } from './sceneImport';

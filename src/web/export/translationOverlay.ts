@@ -53,24 +53,6 @@ export const getTranslationOverlaysByType = async (
   return overlays;
 };
 
-/**
- * @deprecated Use {@link getTranslationOverlaysByType} and select the target table.
- */
-export const getTranslationOverlay = async (
-  db: Tx,
-  modId: number,
-  srcLang: string,
-  targetLang: string,
-  game: GameType = 'fo4',
-): Promise<Map<number, string>> => {
-  const overlays = await getTranslationOverlaysByType(db, modId, srcLang, targetLang, game);
-  const merged = new Map<number, string>();
-  for (const map of overlays.values()) {
-    for (const [id, text] of map) merged.set(id, text);
-  }
-  return merged;
-};
-
 export const hasTranslationOverlayChanges = (
   sourceMap: Map<number, string>,
   overlay: Map<number, string>,

@@ -6,7 +6,6 @@ import {
   maskVerifyItemForLlm,
   parseLlmVerifyTranslateResponse,
   applyPlaceholderGuardToVerifyResult,
-  VERIFY_TRANSLATE_SYSTEM_PROMPT,
 } from '../verifyTranslate';
 import { buildEnglishVerifySystemPrompt } from '../prompts/en';
 import { buildUkrainianVerifySystemPrompt } from '../prompts/uk';
@@ -162,8 +161,8 @@ describe('parseLlmVerifyTranslateResponse', () => {
     expect(result[1]?.id).toBe(2);
   });
 
-  it('exports a non-empty default system prompt', () => {
-    expect(VERIFY_TRANSLATE_SYSTEM_PROMPT).toContain('suspicious');
+  it('exports a non-empty default English system prompt', () => {
+    expect(buildEnglishVerifySystemPrompt('en', 'de')).toContain('suspicious');
   });
 });
 
@@ -171,7 +170,7 @@ describe('buildVerifySystemPrompt', () => {
   it('uses Ukrainian prompt for uk target', () => {
     const prompt = buildVerifySystemPrompt('en', 'uk', 'fo4');
     expect(prompt).toContain('українською');
-    expect(prompt).not.toBe(VERIFY_TRANSLATE_SYSTEM_PROMPT);
+    expect(prompt).not.toBe(buildEnglishVerifySystemPrompt('en', 'de'));
   });
 
   it('uses default English prompt for non-Ukrainian targets', () => {

@@ -89,23 +89,6 @@ export const IGNORED_RECORDS_BY_GAME: Record<GameType, ReadonlySet<string>> = Ob
   }),
 ) as Record<GameType, ReadonlySet<string>>;
 
-/** Shorthand: translatable subrecords for Fallout 4. */
-export const FO4_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo4;
-/** Shorthand: translatable subrecords for Fallout 76. */
-export const FO76_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo76;
-/** Shorthand: translatable subrecords for Skyrim SE. */
-export const SSE_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.sse;
-/** Shorthand: translatable subrecords for Fallout 3. */
-export const FO3_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fo3;
-/** Shorthand: translatable subrecords for Fallout NV. */
-export const FNV_TRANSLATABLE_SUBRECORDS = TRANSLATABLE_SUBRECORDS_BY_GAME.fnv;
-
-/**
- * Backward-compatible alias - points to the FO4 table.
- * @deprecated Use `getTranslatableSubrecords(game)` instead.
- */
-export const TRANSLATABLE_SUBRECORDS = FO4_TRANSLATABLE_SUBRECORDS;
-
 /**
  * Return the translatable-subrecords map for the given game.
  */

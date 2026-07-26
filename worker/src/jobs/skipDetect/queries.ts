@@ -5,12 +5,6 @@ import type { ScanStringRow, SkipDetectWorkUnit } from './types';
 /** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
 export const SKIP_DETECT_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
-/** @deprecated Use {@link SKIP_DETECT_DB_CHUNK_SIZE}. */
-export const LLM_SKIP_DETECT_DB_CHUNK_SIZE = SKIP_DETECT_DB_CHUNK_SIZE;
-
-/** @deprecated Processing uses full DB pages; kept for CLI compatibility. */
-export const SKIP_DETECT_PROCESS_BATCH_SIZE = SKIP_DETECT_DB_CHUNK_SIZE;
-
 export type { LlmSkipDetectCandidate, ScanStringRow, SkipDetectWorkUnit } from './types';
 
 const scannableFilterSql = (force: boolean): string =>

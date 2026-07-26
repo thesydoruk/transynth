@@ -1,16 +1,16 @@
 /**
  * Persist the dialog structure extracted from a plugin — quests, branches,
  * topics and their ownership — so the UI can show lines in conversation order.
- * Used by the worker's import finalize phase and the structure backfill script.
+ * Used by the worker's import finalize phase.
  */
-import type { Tx } from '../../db';
+import type { Tx } from '../db';
 import {
   replaceDialogQuestStages,
   setDialogTopicOwnership,
   upsertDialogBranch,
   upsertDialogQuest,
-} from '../../db';
-import type { DialogStructureExtract } from '../../formats/esp';
+} from '../db';
+import type { DialogStructureExtract } from '../formats/esp';
 
 export type StructureImportResult = {
   quests: number;

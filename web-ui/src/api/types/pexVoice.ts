@@ -51,17 +51,6 @@ export type VoiceSpeakerRefPick = {
   variant: number;
 };
 
-export type VoiceSpeakerGroup = {
-  key: string;
-  displayName: string;
-  referencePick: VoiceSpeakerRefPick | null;
-  /** Gender of the NPC this folder voices, resolved from the dialog graph. */
-  gender: SpeakerGender;
-  /** True when the folder name implies the opposite gender of the speaker bound to it. */
-  genderMismatch: boolean;
-  lines: VoiceLinePreview[];
-};
-
 /** Speaker row for the voice navigator — counts only, no line payloads. */
 export type VoiceSpeakerSummary = {
   key: string;
@@ -79,11 +68,6 @@ export type VoiceSpeakersResponse =
 
 export type VoiceSpeakerLinesResponse =
   | { ok: true; speakerKey: string; lines: VoiceLinePreview[] }
-  | { ok: false; reason: string; message: string };
-
-/** @deprecated Full mod payload — prefer {@link VoiceSpeakersResponse} + {@link VoiceSpeakerLinesResponse}. */
-export type VoiceLinesResponse =
-  | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
   | { ok: false; reason: string; message: string };
 
 /** Playable voice lines of a mod, listed as `FORMID6:variant` keys. */

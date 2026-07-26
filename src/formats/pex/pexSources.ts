@@ -1,7 +1,7 @@
 /**
  * Discover compiled Papyrus scripts (.pex) next to a mod plugin.
  *
- * Mirrors the import-side scan in modImportService: GNRL BA2 archives first,
+ * Mirrors the import-side PEX scan: GNRL BA2 archives first,
  * then loose `Scripts/*.pex` files (loose wins on name collision).
  */
 import fs from 'node:fs';

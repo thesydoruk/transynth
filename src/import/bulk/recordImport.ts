@@ -38,9 +38,6 @@ export const recordTranslationMeta = (
   confidence: statusByte === 0x63 ? 1.0 : 0.5,
 });
 
-/** @deprecated Use {@link recordTranslationMeta}. */
-export const eetTranslationMeta = recordTranslationMeta;
-
 type RecordTranslationRow = {
   stringId: number;
   text: string;
@@ -218,16 +215,3 @@ export const bulkInsertRecordImportRows = async (
     record,
   }));
 };
-
-/** @deprecated Use {@link bulkInsertRecordImportRows}. */
-export const bulkInsertEetImportRows = async (
-  db: Tx,
-  modId: number,
-  records: RecordImportRow[],
-  srcLang: string,
-  tgtLang: string,
-): Promise<RecordImportBulkResult[]> =>
-  bulkInsertRecordImportRows(db, modId, records, srcLang, tgtLang, {
-    sourceKind: 'eet',
-    provenance: 'eet',
-  });

@@ -6,9 +6,6 @@ export type {
 } from './addressees';
 export { resolveNodeAddressees } from './addressees';
 
-export type { DialogSpeakerBackfillResult, DialogSpeakerBackfillTarget } from './backfill';
-export { backfillModDialogSpeakers, listDialogSpeakerBackfillTargets } from './backfill';
-
 export type {
   ActorSpeakerInfo,
   BuildPluginSpeakerIndexOptions,

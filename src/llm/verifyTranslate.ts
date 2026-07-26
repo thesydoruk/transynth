@@ -172,9 +172,6 @@ export const applyPlaceholderGuardToVerifyResult = (
   return result;
 };
 
-/** @deprecated Use {@link buildEnglishVerifySystemPrompt} or {@link buildVerifySystemPrompt}. */
-export const VERIFY_TRANSLATE_SYSTEM_PROMPT = buildEnglishVerifySystemPrompt('en', 'de');
-
 /** Pick the verify system prompt for the target language. */
 export const buildVerifySystemPrompt = (
   srcLang: string,

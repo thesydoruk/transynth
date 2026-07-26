@@ -189,10 +189,6 @@ export const collectVoiceAssetRoots = (
   return candidates;
 };
 
-/** @deprecated Use {@link collectVoiceAssetRoots}. */
-export const collectGameInstallRoots = (extraRoots: string[] = []): string[] =>
-  collectVoiceAssetRoots(extraRoots).map((item) => item.root);
-
 export const discoverGameVoiceAssets = (
   extraRoots: string[] = [],
   options: DiscoverVoiceAssetsOptions = {},

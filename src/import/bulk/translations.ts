@@ -77,7 +77,7 @@ const bulkUpsertTranslationsCore = async (
 };
 
 /**
- * SQL expression matching {@link alignmentKeyedStrings} in modImportService.
+ * SQL expression matching {@link alignmentKeyedStrings}.
  * Expects `strings` columns: id, record_id, lang, lstring_id.
  */
 export const stringAlignKeySql = (alias = 's'): string => {
