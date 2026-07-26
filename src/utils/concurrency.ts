@@ -58,14 +58,20 @@ export class Semaphore {
   }
 }
 
+export type MapWithConcurrencyOptions = {
+  /** When true, workers stop claiming new items; already in-flight work still finishes. */
+  shouldAbort?: () => boolean;
+};
+
 /**
  * Run an async mapper over items with at most `concurrency` tasks in flight.
- * Result order matches input order.
+ * Result order matches input order. Aborted indices stay unset (`undefined`).
  */
 export const mapWithConcurrency = async <T, R>(
   items: readonly T[],
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>,
+  opts?: MapWithConcurrencyOptions,
 ): Promise<R[]> => {
   if (items.length === 0) return [];
 
@@ -75,6 +81,7 @@ export const mapWithConcurrency = async <T, R>(
 
   const worker = async (): Promise<void> => {
     while (true) {
+      if (opts?.shouldAbort?.()) return;
       const index = nextIndex++;
       if (index >= items.length) return;
       results[index] = await fn(items[index]!, index);

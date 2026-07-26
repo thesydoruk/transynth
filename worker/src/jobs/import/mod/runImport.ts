@@ -19,7 +19,8 @@ import { getModImportJob } from '../../../../../src/import/mod/jobs';
 import { markFailed } from '../../../../../src/import/mod/jobStatus';
 import { ensureImportModId, prepareEspImportContext, type ModImportPhaseContext } from './phases';
 import { importEspStringRows } from './espPhase';
-import { importMcmStringRows, importPexStringRows, finalizeModImportJob } from './extrasPhase';
+import { importMcmStringRows, importPexStringRows } from './extrasPhase';
+import { finalizeModImportJob } from './finalizePhase';
 import type { ModImportJob, ProgressCb } from '../../../../../src/import/mod/types';
 
 const { Pool } = pg;

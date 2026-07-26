@@ -1,12 +1,10 @@
 /**
  * Import phases for strings that live outside the plugin: MCM config
- * translations and Papyrus (PEX) script strings, plus job finalization.
+ * translations and Papyrus (PEX) script strings.
  *
- * Finalization is what makes the mod usable downstream: it prunes rows left
- * over from a previous run, resolves dialog speakers, imports dialog structure
- * and converts same-record strings into translations.
+ * Job finalization (prune, structure, speakers, markDone) lives in
+ * `finalizePhase.ts`.
  */
-import { EspReader } from '../../../../../src/formats/esp';
 import { resolveModDirectoryFromPath, resolveMcmLocaleKey } from '../../../../../src/formats/mcm';
 import { CONFIG } from '../../../../../src/config';
 import { logImport } from '../../../../../src/logging/loggers';
@@ -14,15 +12,10 @@ import { ensureChampollionInstalled } from '../../../../../src/tools/installTool
 import {
   bulkInsertModImportRows,
   bulkUpsertImportTranslations,
-  pruneStaleModImportData,
   trackModImportBulkResults,
-  type DialogGraphImportContext,
   type ModImportBulkResult,
   type ModImportBulkRow,
 } from '../../../../../src/import/bulk';
-import { resolveModDialogSpeakers } from '../../../../../src/import/dialogSpeakers';
-import { importSceneRecords } from './sceneImport';
-import { importDialogStructure } from '../../../../../src/import/dialogStructure/importStructure';
 import {
   decompilePexScriptMap,
   type DecompiledPexScript,
@@ -33,8 +26,7 @@ import {
   buildMcmCsvRows,
 } from '../../../../../src/import/mod/mcmLocales';
 import { collectPexStrings, buildPexCsvRows } from '../../../../../src/import/mod/pexStrings';
-import { convertImportedStringsToTranslations } from './translationConvert';
-import { markDone } from '../../../../../src/import/mod/jobStatus';
+import { commitExtrasStop, extrasStopRequested } from './extrasStop';
 import type { ModImportBatchWriter } from './batchWriter';
 import type { ModImportPhaseContext } from './phases';
 
@@ -81,6 +73,10 @@ export const importMcmStringRows = async (
   }));
 
   for (let i = 0; i < mcmBulkRows.length; i += importBatchSize) {
+    if (extrasStopRequested(ctx)) {
+      await commitExtrasStop(ctx);
+      return;
+    }
     await ctx.db.query('BEGIN');
     const slice = mcmBulkRows.slice(i, i + importBatchSize);
     const results = await bulkInsertModImportRows(ctx.db, importModId, slice);
@@ -98,6 +94,10 @@ export const importMcmStringRows = async (
   }
 
   for (const [locale, mcmMap] of mcmLocales) {
+    if (extrasStopRequested(ctx)) {
+      await commitExtrasStop(ctx);
+      return;
+    }
     if (locale === mcmSourceLocale) continue;
     if (ctx.importSingleLocaleMode.value && locale !== ctx.selectedLocale.value) continue;
     const items: { srcStringId: number; text: string }[] = [];
@@ -123,12 +123,22 @@ export const importPexStringRows = async (
   ctx: ModImportPhaseContext,
   batch: ModImportBatchWriter,
 ): Promise<void> => {
+  if (extrasStopRequested(ctx)) {
+    await commitExtrasStop(ctx);
+    return;
+  }
+
   const importModId = ctx.importModId;
   if (importModId == null) throw new Error('Import mod id missing');
 
   const pexMap = await collectPexStrings(ctx.espPath, ctx.game);
   if (pexMap.size === 0) {
     logImport.debug(`[Mod Import #${ctx.job.id}] No PEX scripts with translatable strings found`);
+    return;
+  }
+
+  if (extrasStopRequested(ctx)) {
+    await commitExtrasStop(ctx);
     return;
   }
 
@@ -149,6 +159,11 @@ export const importPexStringRows = async (
     );
   }
 
+  if (extrasStopRequested(ctx)) {
+    await commitExtrasStop(ctx);
+    return;
+  }
+
   const literalBefore = [...pexMap.values()].reduce((sum, b) => sum + b.literals.length, 0);
   const pexRows = buildPexCsvRows(pexMap, decompiled);
   logImport.info(
@@ -158,6 +173,11 @@ export const importPexStringRows = async (
   if (pexRows.length === 0) return;
 
   for (const { csvRow: r, context } of pexRows) {
+    if (extrasStopRequested(ctx)) {
+      await batch.discardOpenImportBatch();
+      await commitExtrasStop(ctx);
+      return;
+    }
     await batch.pushImportRow({
       csvRow: r,
       locale: ctx.pluginStringLang,
@@ -166,133 +186,4 @@ export const importPexStringRows = async (
     });
   }
   await batch.flushPendingImportBatch();
-};
-
-export const finalizeModImportJob = async (
-  ctx: ModImportPhaseContext,
-  esp: EspReader,
-  dialogGraphCtx: DialogGraphImportContext,
-): Promise<void> => {
-  const importModId = ctx.importModId;
-  if (importModId == null) throw new Error('Import mod id missing');
-
-  if (ctx.pruneStaleImportData) {
-    const pruned = await pruneStaleModImportData(
-      ctx.db,
-      importModId,
-      ctx.keptImportRecordKeys,
-      ctx.keptImportStringIds,
-    );
-    if (pruned.deletedStrings > 0 || pruned.deletedRecords > 0) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Pruned stale rows: ${pruned.deletedStrings} string(s), ${pruned.deletedRecords} record(s)`,
-      );
-    }
-    const graph = pruned.dialogGraph;
-    if (
-      graph.deletedNodes > 0 ||
-      graph.deletedTopics > 0 ||
-      graph.deletedScenes > 0 ||
-      graph.deletedBranches > 0 ||
-      graph.deletedQuests > 0
-    ) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Pruned stale dialog graph: ${graph.deletedNodes} node(s), ` +
-          `${graph.deletedEdges} edge(s), ${graph.deletedTopics} topic(s), ${graph.deletedScenes} scene(s), ` +
-          `${graph.deletedBranches} branch(es), ${graph.deletedQuests} quest(s)`,
-      );
-    }
-  }
-
-  if (ctx.job.is_localized && !ctx.importSingleLocaleMode.value && ctx.localeSources.length > 0) {
-    await convertImportedStringsToTranslations(
-      ctx.db,
-      importModId,
-      MOD_IMPORT_DEFAULT_SOURCE_LOCALE,
-      true,
-    );
-  } else if (!ctx.job.is_localized || ctx.localeSources.length === 0) {
-    await convertImportedStringsToTranslations(ctx.db, importModId, ctx.pluginStringLang, false);
-  }
-
-  try {
-    const sceneRecords = esp.extractScenes();
-    const structure = esp.extractDialogStructure();
-    const sceneQuestFormIds = sceneRecords
-      .map((scene) => scene.questFormId)
-      .filter((id): id is string => id != null);
-
-    await ctx.db.query('BEGIN');
-    const importedStructure = await importDialogStructure(
-      ctx.db,
-      importModId,
-      structure,
-      sceneQuestFormIds,
-    );
-    if (sceneRecords.length > 0) {
-      const imported = await importSceneRecords(ctx.db, importModId, sceneRecords, dialogGraphCtx);
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
-          (imported.deletedScenes > 0 ? `; removed ${imported.deletedScenes} stale scene(s)` : ''),
-      );
-    }
-    await ctx.db.query('COMMIT');
-
-    if (
-      importedStructure.quests > 0 ||
-      importedStructure.branches > 0 ||
-      importedStructure.dialLinks > 0
-    ) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Dialog structure: ${importedStructure.quests} quest(s), ` +
-          `${importedStructure.branches} branch(es), ${importedStructure.dialLinks} dial link(s)` +
-          (importedStructure.deletedQuests > 0 || importedStructure.deletedBranches > 0
-            ? `; removed ${importedStructure.deletedQuests} quest(s), ${importedStructure.deletedBranches} branch(es)`
-            : ''),
-      );
-    }
-  } catch (err) {
-    logImport.warn(
-      `[Mod Import #${ctx.job.id}] Scene/structure import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
-    try {
-      await ctx.db.query('ROLLBACK');
-    } catch {
-      /* ignore */
-    }
-  }
-
-  // Runs last: scene aliases are what identify the player and the counterpart
-  // of a conversation, so speaker gender can only be settled once scenes exist.
-  try {
-    await ctx.db.query('BEGIN');
-    const resolved = await resolveModDialogSpeakers(
-      ctx.db,
-      importModId,
-      dialogGraphCtx.speakerIndex,
-    );
-    await ctx.db.query('COMMIT');
-    if (resolved.speakers > 0) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Resolved ${resolved.speakers} dialog speaker(s), ` +
-          `${resolved.withGender} with a known gender`,
-      );
-    }
-  } catch (err) {
-    logImport.warn(
-      `[Mod Import #${ctx.job.id}] Speaker gender resolution failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
-    try {
-      await ctx.db.query('ROLLBACK');
-    } catch {
-      /* ignore */
-    }
-  }
-
-  await markDone(ctx.db, ctx.job.id, ctx.imported.value);
-  const elapsed = ((Date.now() - ctx.startTime) / 1000).toFixed(1);
-  logImport.info(
-    `[Mod Import #${ctx.job.id}] Completed: ${ctx.imported.value} records in ${elapsed}s`,
-  );
-  ctx.onProgress?.(ctx.imported.value, ctx.job.total_records);
 };

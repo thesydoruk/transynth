@@ -186,9 +186,11 @@ export const localizeVoicePackage = async (
         finishEligibleStep();
         return result;
       },
+      { shouldAbort: options.shouldCancel },
     );
 
     for (const result of results) {
+      if (result == null) continue;
       if (result.kind === 'written') written.push(result.relPath);
       else if (result.kind === 'skipped') skipped.push(result.relPath);
       else warnings.push(result.message);
