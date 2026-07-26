@@ -152,8 +152,6 @@ export interface Logger {
   trace: (...args: unknown[]) => void;
   isDebug: () => boolean;
   isTrace: () => boolean;
-  /** @deprecated Use {@link closeLogStreams} */
-  close?: () => void;
 }
 
 const makeLogger = (subsystem?: string): Logger => ({
@@ -178,4 +176,3 @@ export const closeLogStreams = (): void => {
 
 /** Root logger — prefer {@link createLogger} or `src/logging/loggers.ts` in new code. */
 export const log: Logger = makeLogger('app');
-log.close = closeLogStreams;

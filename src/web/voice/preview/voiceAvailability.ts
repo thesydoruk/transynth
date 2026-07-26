@@ -19,8 +19,8 @@ import type { VoiceAvailabilityResult } from './types';
 /**
  * Which voice lines of a mod can be played, keyed by `FORMID6:variant`.
  *
- * Deliberately thinner than {@link listVoiceLinesForMod}: the dialogs editor
- * only needs to know whether a play button belongs on a line, so this skips
+ * Thinner than the voice editor speaker/line lists: the dialogs editor only
+ * needs to know whether a play button belongs on a line, so this skips
  * resolving speakers, source text, translations, and inherited audio. A mod
  * without any voice assets is not an error here — it simply has no keys.
  */

@@ -4,173 +4,48 @@
  * Request and response payloads are JSON-only.
  */
 import { chatWithFallback } from './index';
-import { participantPayloadFields, type LlmDialogParticipants } from './dialogParticipants';
+import { participantPayloadFields } from './dialogParticipants';
 import { parseLlmJson } from './jsonParse';
 import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
-import {
-  isUkrainianTargetLang,
-  type LlmReferenceExample,
-  LlmResponseTruncatedError,
-} from './translate';
+import { isUkrainianTargetLang, LlmResponseTruncatedError } from './translate';
 import type { GameType } from '../types';
 import { CONFIG } from '../config';
-import { compareProtectedTokens } from '../utils/placeholders';
-import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
+import { parseVerifySuggestionValue } from './verifySuggestionGuards';
 import {
-  reconcileVerifyResult,
-  parseVerifySuggestionValue,
-  applyCorruptedTranslationGuard,
-} from './verifySuggestionGuards';
-import type { LlmGlossaryEntry } from './translate';
+  finalizeVerifyItemResults,
+  maskVerifyItemForLlm,
+  unmaskVerifySuggestions,
+} from './verifyItemFinalize';
+import {
+  LlmVerifyMissingIdsError,
+  parseVerifyItemId,
+  type LlmVerifyItem,
+  type LlmVerifyItemResult,
+  type LlmVerifyOptions,
+  type LlmVerifyVerdict,
+} from './verifyTranslateTypes';
 
-export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
-
-/** One source/translation pair sent to the verifier. */
-export interface LlmVerifyItem extends LlmDialogParticipants {
-  id: number;
-  source: string;
-  translation: string;
-  grup: string | null;
-  edid: string | null;
-  field: string | null;
-  context: string | null;
-  reference_examples?: LlmReferenceExample[];
-}
-
-/** Per-item audit result returned by the LLM. */
-export interface LlmVerifyItemResult {
-  id: number;
-  verdict: LlmVerifyVerdict;
-  reason: string;
-  confidence: number;
-  /** Improved translation when verdict is suspicious or incorrect; null for ok. */
-  suggestion: string | null;
-}
-
-export interface LlmVerifyOptions {
-  items: LlmVerifyItem[];
-  model: string;
-  srcLang: string;
-  targetLang: string;
-  game?: GameType | string | null;
-  modName?: string | null;
-  /** Per-batch glossary terms (same filtering as translate). */
-  glossary?: LlmGlossaryEntry[];
-  /** Aborts the in-flight LLM request when the owning job is stopped. */
-  signal?: AbortSignal;
-}
+export type {
+  LlmVerifyItem,
+  LlmVerifyItemResult,
+  LlmVerifyOptions,
+  LlmVerifyVerdict,
+} from './verifyTranslateTypes';
+export {
+  LlmVerifyMissingIdsError,
+  isLlmVerifyMissingIdsError,
+  parseVerifyItemId,
+} from './verifyTranslateTypes';
+export {
+  applyPlaceholderGuardToVerifyResult,
+  finalizeVerifyItemResults,
+  maskVerifyItemForLlm,
+} from './verifyItemFinalize';
 
 const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect']);
-
-/** Some ids parsed; others missing from the model JSON — caller may persist partial results. */
-export class LlmVerifyMissingIdsError extends Error {
-  readonly missingIds: readonly number[];
-  readonly partialResults: readonly LlmVerifyItemResult[];
-
-  constructor(missingIds: number[], partialResults: LlmVerifyItemResult[]) {
-    super(`LLM verify response missing item id=${missingIds[0]}`);
-    this.name = 'LlmVerifyMissingIdsError';
-    this.missingIds = missingIds;
-    this.partialResults = partialResults;
-  }
-}
-
-export const isLlmVerifyMissingIdsError = (err: unknown): err is LlmVerifyMissingIdsError =>
-  err instanceof LlmVerifyMissingIdsError;
-
-/** Mask text fields sent to the verify LLM; keeps raw items for post-audit guards. */
-export const maskVerifyItemForLlm = (
-  item: LlmVerifyItem,
-): { item: LlmVerifyItem; mapping: Record<string, string> } => {
-  const fields: Array<string | null | undefined> = [item.source, item.translation];
-  for (const ref of item.reference_examples ?? []) {
-    fields.push(ref.source, ref.translation);
-  }
-  if (item.context != null) fields.push(item.context);
-
-  const { masked, mapping } = maskLlmTextFields(fields, { reuseKeysForIdenticalTokens: true });
-  let idx = 0;
-  const take = (): string => masked[idx++] as string;
-
-  return {
-    mapping,
-    item: {
-      ...item,
-      source: take(),
-      translation: take(),
-      reference_examples: item.reference_examples?.map((ref) => ({
-        ...ref,
-        source: take(),
-        translation: take(),
-      })),
-      context: item.context != null ? take() : item.context,
-    },
-  };
-};
-
-const unmaskVerifySuggestions = (
-  results: LlmVerifyItemResult[],
-  mappingById: Map<number, Record<string, string>>,
-): LlmVerifyItemResult[] =>
-  results.map((result) => {
-    if (!result.suggestion) return result;
-    const mapping = mappingById.get(result.id);
-    if (!mapping || Object.keys(mapping).length === 0) return result;
-    return { ...result, suggestion: unmaskLlmText(result.suggestion, mapping) };
-  });
-
-/** Apply placeholder guard and suggestion reconciliation to parsed LLM rows. */
-export const finalizeVerifyItemResults = (
-  items: LlmVerifyItem[],
-  parsed: LlmVerifyItemResult[],
-  game?: GameType | string | null,
-): LlmVerifyItemResult[] => {
-  const itemById = new Map(items.map((item) => [item.id, item]));
-  return parsed.map((result) => {
-    const item = itemById.get(result.id);
-    if (!item) return result;
-    const guarded = applyPlaceholderGuardToVerifyResult(item, result, game);
-    const cleaned = applyCorruptedTranslationGuard(item, guarded);
-    return reconcileVerifyResult(item, cleaned);
-  });
-};
-
-/** Upgrade LLM ok → incorrect only when protected tokens are broken in the translation. */
-export const applyPlaceholderGuardToVerifyResult = (
-  item: LlmVerifyItem,
-  result: LlmVerifyItemResult,
-  game?: GameType | string | null,
-): LlmVerifyItemResult => {
-  const check = compareProtectedTokens(
-    item.source,
-    item.translation,
-    game as GameType | undefined,
-    { grup: item.grup, field: item.field },
-  );
-  if (check.ok) return result;
-
-  if (result.verdict === 'ok') {
-    return {
-      id: result.id,
-      verdict: 'incorrect',
-      reason: check.message,
-      confidence: Math.max(result.confidence, 0.95),
-      suggestion: result.suggestion,
-    };
-  }
-
-  if (!result.reason.includes('Protected token mismatch')) {
-    return {
-      ...result,
-      reason: `${result.reason} ${check.message}`,
-    };
-  }
-
-  return result;
-};
 
 /** Pick the verify system prompt for the target language. */
 export const buildVerifySystemPrompt = (
@@ -220,18 +95,6 @@ const parseVerdict = (value: unknown): LlmVerifyVerdict => {
 
 const parseSuggestion = (value: unknown, verdict: LlmVerifyVerdict): string | null =>
   parseVerifySuggestionValue(value, verdict);
-
-/** Accept integer ids returned as JSON numbers or numeric strings. */
-export const parseVerifyItemId = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isInteger(value)) return value;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!/^\d+$/.test(trimmed)) return null;
-    const parsed = Number.parseInt(trimmed, 10);
-    return Number.isSafeInteger(parsed) ? parsed : null;
-  }
-  return null;
-};
 
 const parseVerifyItemsFromRaw = (
   raw: string,

@@ -1,7 +1,7 @@
 /**
  * Participant gender rules for the composed English prompts.
  *
- * Mirrors the Ukrainian rules in `prompts/genderRules/uk.ts`, but stays generic
+ * Mirrors the Ukrainian rules in `prompts/genderRules.ts`, but stays generic
  * because these prompts serve every non-Ukrainian target language.
  */
 

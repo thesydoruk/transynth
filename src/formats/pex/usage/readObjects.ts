@@ -1,4 +1,4 @@
-import type { PexBinaryReader } from '../utils/pexBinary';
+import type { PexBinaryReader } from '../pexBinary';
 import { resolveString } from './usageTracking';
 import type { PexStringUsage } from './types';
 import {

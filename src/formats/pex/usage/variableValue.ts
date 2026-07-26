@@ -1,4 +1,4 @@
-import type { PexBinaryReader } from '../utils/pexBinary';
+import type { PexBinaryReader } from '../pexBinary';
 import { OPCODE_FIXED_ARG_COUNTS } from './opcodes';
 
 export type VariableValue = {

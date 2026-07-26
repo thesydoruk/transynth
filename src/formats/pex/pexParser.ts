@@ -40,8 +40,8 @@
  *   for user-visible text that might need localisation.
  */
 
-import type { PexEndian } from './utils/pexBinary';
-import { readUInt16, readWString as readWStringRaw } from './utils/pexBinary';
+import type { PexEndian } from './pexBinary';
+import { readUInt16, readWString as readWStringRaw } from './pexBinary';
 import {
   analyzePexStringUsages,
   buildPexUserStringDetails,
@@ -53,7 +53,7 @@ import {
 /** Magic number at offset 0 of every valid PEX file. */
 const PEX_MAGIC = 0xfa57c0de;
 
-export type { PexEndian } from './utils/pexBinary';
+export type { PexEndian } from './pexBinary';
 export type { PexStringUsage, PexUserStringDetail } from './usage';
 
 import path from 'node:path';

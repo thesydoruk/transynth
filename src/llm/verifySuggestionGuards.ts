@@ -8,7 +8,7 @@ import {
   extractProtectedTokens,
   type ProtectedTokenContext,
 } from '../utils/placeholders';
-import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './verifyTranslate';
+import type { LlmVerifyItem, LlmVerifyItemResult, LlmVerifyVerdict } from './verifyTranslateTypes';
 
 const normalizeForCompare = (text: string): string => text.trim().replace(/\s+/g, ' ');
 

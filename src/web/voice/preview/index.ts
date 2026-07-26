@@ -3,8 +3,6 @@ export type {
   VoiceAvailabilityResult,
   VoiceGenerateLineResult,
   VoiceLinePreview,
-  VoiceLinesListResult,
-  VoiceSpeakerGroup,
   VoiceSpeakerLinesResult,
   VoiceSpeakerRefResult,
   VoiceSpeakerSummary,
@@ -14,7 +12,6 @@ export type {
 export { resolveModVoiceContext, resolveVoicePackageContext } from './context';
 export type { VoicePackageContext } from './context';
 
-export { listVoiceLinesForMod } from './listVoiceLines';
 export { listVoiceSpeakersForMod } from './listVoiceSpeakers';
 export { listVoiceLinesForSpeaker } from './listVoiceSpeakerLines';
 export { invalidateVoiceListContext } from './voiceListContext';

@@ -1,5 +1,5 @@
-import type { PexEndian } from '../utils/pexBinary';
-import { PexBinaryReader, readUInt16, readWString } from '../utils/pexBinary';
+import type { PexEndian } from '../pexBinary';
+import { PexBinaryReader, readUInt16, readWString } from '../pexBinary';
 import { isLikelyUserText } from '../pexParser';
 import { readDebugInfo, readObjects } from './readObjects';
 import type { PexStringUsage, PexUserStringDetail } from './types';

@@ -15,17 +15,6 @@ export type VoiceLinePreview = {
   canGenerateVoice: boolean;
 };
 
-export type VoiceSpeakerGroup = {
-  key: string;
-  displayName: string;
-  referencePick: VoiceSpeakerRefPick | null;
-  /** Gender of the NPC this folder voices, resolved from the dialog graph. */
-  gender: SpeakerGender;
-  /** True when the folder name implies the opposite gender, so its clips mislead the TTS. */
-  genderMismatch: boolean;
-  lines: VoiceLinePreview[];
-};
-
 /** Speaker row for the voice navigator — counts only, no line payloads. */
 export type VoiceSpeakerSummary = {
   key: string;
@@ -43,14 +32,6 @@ export type VoiceListErrorReason =
   | 'plugin_missing'
   | 'no_voice_files'
   | 'speaker_not_found';
-
-export type VoiceLinesListResult =
-  | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
-  | {
-      ok: false;
-      reason: VoiceListErrorReason;
-      message: string;
-    };
 
 export type VoiceSpeakersListResult =
   | { ok: true; speakers: VoiceSpeakerSummary[]; totalLines: number }
