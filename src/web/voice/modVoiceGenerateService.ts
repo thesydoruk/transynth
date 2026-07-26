@@ -1,8 +1,7 @@
 /**
- * In-memory mod-wide voice synthesis jobs (Fish Speech → localized `.fuz` in `_localize_{hash}/{lang}/`).
+ * Mod-wide voice synthesis job body (Fish Speech → localized `.fuz`).
  */
 import type { Tx } from '../../db';
-import { CONFIG } from '../../config';
 import { log } from '../../logger';
 import {
   countVoiceLocalizeWork,
@@ -26,55 +25,6 @@ export type ModVoiceGenerateJobSnapshot = {
   error: string | null;
 };
 
-type ActiveModVoiceGenerateJob = ModVoiceGenerateJobSnapshot & {
-  cancel: boolean;
-};
-
-const activeJobs = new Map<number, ActiveModVoiceGenerateJob>();
-let nextJobId = 1;
-
-const toSnapshot = (job: ActiveModVoiceGenerateJob): ModVoiceGenerateJobSnapshot => ({
-  jobId: job.jobId,
-  modId: job.modId,
-  status: job.status,
-  done: job.done,
-  total: job.total,
-  written: job.written,
-  skipped: job.skipped,
-  warningCount: job.warningCount,
-  error: job.error,
-});
-
-export const getModVoiceGenerateJob = (jobId: number): ModVoiceGenerateJobSnapshot | null => {
-  const job = activeJobs.get(jobId);
-  return job ? toSnapshot(job) : null;
-};
-
-export const findRunningModVoiceGenerateJob = (modId: number): number | null => {
-  for (const job of activeJobs.values()) {
-    if (job.modId === modId && job.status === 'running') return job.jobId;
-  }
-  return null;
-};
-
-/** All in-flight voice generation jobs (for status dashboards). */
-export const listRunningModVoiceGenerateJobs = (): ModVoiceGenerateJobSnapshot[] =>
-  [...activeJobs.values()].filter((job) => job.status === 'running').map(toSnapshot);
-
-export const requestModVoiceGenerateStop = (jobId: number): boolean => {
-  const job = activeJobs.get(jobId);
-  if (!job || job.status !== 'running') return false;
-  job.cancel = true;
-  job.status = 'cancelled';
-  return true;
-};
-
-export const requestModVoiceGenerateStopByModId = (modId: number): boolean => {
-  const jobId = findRunningModVoiceGenerateJob(modId);
-  if (jobId == null) return false;
-  return requestModVoiceGenerateStop(jobId);
-};
-
 export type ModVoiceGenerateProgressEvent =
   | { type: 'started'; jobId: number; total: number }
   | { type: 'progress'; done: number; total: number }
@@ -92,28 +42,24 @@ export type ModVoiceGenerateProgressEvent =
 export const runModVoiceGenerateJob = async (
   db: Tx,
   opts: {
+    jobId: number;
     modId: number;
     srcLang: string;
     targetLang: string;
     game: string;
     modName?: string | null;
     scope?: ModVoiceGenerateScope;
+    isCancelled: () => boolean;
   },
   onEvent: (event: ModVoiceGenerateProgressEvent) => void,
 ): Promise<ModVoiceGenerateJobSnapshot> => {
-  const runningJobId = findRunningModVoiceGenerateJob(opts.modId);
-  if (runningJobId != null) {
-    throw new Error(
-      `Voice generation already running for mod ${opts.modId} (job #${runningJobId})`,
-    );
-  }
-
-  const paths = await loadModImportPaths(db, { modId: opts.modId });
+  const { jobId, modId } = opts;
+  const paths = await loadModImportPaths(db, { modId });
   const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
   const scope = opts.scope ?? 'all';
-  const total = await countVoiceLocalizeWork(
+  let total = await countVoiceLocalizeWork(
     db,
-    opts.modId,
+    modId,
     packages,
     opts.srcLang,
     opts.targetLang,
@@ -127,23 +73,27 @@ export const runModVoiceGenerateJob = async (
     );
   }
 
-  const jobId = nextJobId++;
-  const job: ActiveModVoiceGenerateJob = {
+  let done = 0;
+  let written = 0;
+  let skipped = 0;
+  let warningCount = 0;
+  let status: ModVoiceGenerateJobStatus = 'running';
+  let error: string | null = null;
+
+  const snapshot = (): ModVoiceGenerateJobSnapshot => ({
     jobId,
-    modId: opts.modId,
-    status: 'running',
-    done: 0,
+    modId,
+    status,
+    done,
     total,
-    written: 0,
-    skipped: 0,
-    warningCount: 0,
-    error: null,
-    cancel: false,
-  };
-  activeJobs.set(jobId, job);
+    written,
+    skipped,
+    warningCount,
+    error,
+  });
 
   log.info(
-    `[Voice generate mod #${opts.modId}] job #${jobId} started (${total} lines, scope=${scope}, ${opts.srcLang}→${opts.targetLang})`,
+    `[Voice generate mod #${modId}] job #${jobId} started (${total} lines, scope=${scope}, ${opts.srcLang}→${opts.targetLang})`,
   );
   onEvent({ type: 'started', jobId, total });
 
@@ -151,63 +101,44 @@ export const runModVoiceGenerateJob = async (
     const result = await localizeModImportVoice(db, {
       extractDir: paths.extractDir,
       pluginPath: paths.pluginPath,
-      modId: opts.modId,
+      modId,
       srcLang: opts.srcLang,
       tgtLang: opts.targetLang,
-      shouldCancel: () => job.cancel,
+      shouldCancel: opts.isCancelled,
       scope,
-      onProgress: (done, progressTotal) => {
-        job.done = done;
-        job.total = progressTotal;
+      onProgress: (d, progressTotal) => {
+        done = d;
+        total = progressTotal;
         onEvent({ type: 'progress', done, total: progressTotal });
       },
     });
 
-    job.written = result.written.length;
-    job.skipped = result.skipped.length;
-    job.warningCount = result.warnings.length;
+    written = result.written.length;
+    skipped = result.skipped.length;
+    warningCount = result.warnings.length;
 
-    if (job.cancel || job.status === 'cancelled') {
-      if (job.status === 'running') job.status = 'cancelled';
-      log.info(`[Voice generate mod #${opts.modId}] job #${jobId} cancelled`, {
-        done: job.done,
-        total: job.total,
-      });
-      onEvent({ type: 'cancelled', done: job.done, total: job.total });
+    if (opts.isCancelled()) {
+      status = 'cancelled';
+      log.info(`[Voice generate mod #${modId}] job #${jobId} cancelled`, { done, total });
+      onEvent({ type: 'cancelled', done, total });
     } else {
-      job.status = 'completed';
-      log.info(`[Voice generate mod #${opts.modId}] job #${jobId} completed`, {
-        done: job.done,
-        total: job.total,
-        written: job.written,
-        skipped: job.skipped,
-        warnings: job.warningCount,
+      status = 'completed';
+      log.info(`[Voice generate mod #${modId}] job #${jobId} completed`, {
+        done,
+        total,
+        written,
+        skipped,
+        warnings: warningCount,
       });
-      onEvent({
-        type: 'done',
-        done: job.done,
-        total: job.total,
-        written: job.written,
-        skipped: job.skipped,
-        warningCount: job.warningCount,
-      });
+      onEvent({ type: 'done', done, total, written, skipped, warningCount });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    job.status = 'failed';
-    job.error = message;
-    log.error(`[Voice generate mod #${opts.modId}] job #${jobId} failed: ${message}`);
+    status = 'failed';
+    error = message;
+    log.error(`[Voice generate mod #${modId}] job #${jobId} failed: ${message}`);
     onEvent({ type: 'error', error: message });
   }
 
-  return toSnapshot(job);
-};
-
-export const scheduleModVoiceGenerateJobCleanup = (jobId: number, delayMs = 60_000): void => {
-  setTimeout(() => {
-    const job = activeJobs.get(jobId);
-    if (job && job.status !== 'running') {
-      activeJobs.delete(jobId);
-    }
-  }, delayMs);
+  return snapshot();
 };

@@ -15,15 +15,17 @@ import {
   getCsvImportJob,
   deleteCsvImportJob,
   registerCsvFile,
-  runCsvImport,
-  isCsvImportRunning,
-  hasActiveCsvImport,
-  requestCsvCancel,
-  requestCsvPause,
   updateCsvJobLanguages,
   markCsvImportFailed,
   iterCsvRecords,
 } from '../import/csvImport';
+import {
+  cancelQueuedImport,
+  isImportQueued,
+  listQueuedImportIds,
+  pauseQueuedImport,
+} from '../../../worker/src/api/importJobs';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 
 import { PATHS } from '../../paths';
 
@@ -44,10 +46,13 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── List all CSV import jobs ──────────────────────────────────────────────
   app.get('/api/csv', async () => {
-    const jobs = await listCsvImportJobs(db);
+    const [jobs, queuedIds] = await Promise.all([
+      listCsvImportJobs(db),
+      listQueuedImportIds('csv-import'),
+    ]);
     return jobs.map((j) => ({
       ...j,
-      running: isCsvImportRunning(j.id),
+      running: queuedIds.has(j.id),
     }));
   });
 
@@ -157,7 +162,7 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
       const jobId = Number(req.params.id);
       const job = await getCsvImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isCsvImportRunning(jobId))
+      if (await isImportQueued('csv-import', jobId))
         return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
@@ -174,68 +179,32 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
     const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
-    if (isCsvImportRunning(jobId))
+    if (await isImportQueued('csv-import', jobId))
       return reply.status(409).send({ error: 'Import already running' });
 
     const filePath = csvFilePath(job.file_name);
     if (!fs.existsSync(filePath))
       return reply.status(404).send({ error: 'CSV file not found on disk' });
 
-    const text = fs.readFileSync(filePath, 'utf8');
-
-    /* Disable socket timeout — imports can run for minutes on large files. */
-    req.raw.socket.setTimeout(0);
-
-    reply.hijack();
-
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+    await startJobSse(req, reply, {
+      data: { kind: 'csv-import', modId: null, params: { importJobId: jobId } },
+      initialSnapshotData: { importJobId: jobId },
     });
-
-    const send = (data: object) => {
-      try {
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch {
-        /* client disconnected */
-      }
-    };
-
-    (async () => {
-      try {
-        const result = await runCsvImport(db, job, text, (imported, total) => {
-          send({ type: 'progress', imported, total, jobId });
-        });
-        send({ type: 'done', job: { ...result, running: false } });
-      } catch (err: unknown) {
-        log.error(
-          `[CSV SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveCsvImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestCsvPause(jobId);
+    if (!(await pauseQueuedImport('csv-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
   });
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveCsvImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestCsvCancel(jobId);
+    if (!(await cancelQueuedImport('csv-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     const job = await getCsvImportJob(db, jobId);
     if (job) await markCsvImportFailed(db, jobId, job.imported_records);
     return { ok: true };
@@ -246,7 +215,7 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
     const jobId = Number(req.params.id);
     const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isCsvImportRunning(jobId))
+    if (await isImportQueued('csv-import', jobId))
       return reply.status(409).send({ error: 'Cannot delete while running' });
 
     const filePath = csvFilePath(job.file_name);

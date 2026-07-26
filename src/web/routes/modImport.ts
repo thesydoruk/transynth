@@ -15,11 +15,6 @@ import {
   listModImportJobs,
   getModImportJob,
   deleteModImportJob,
-  runModImport,
-  isModImportRunning,
-  hasActiveModImport,
-  requestModCancel,
-  requestModPause,
   updateModJobLanguages,
   restartModImportJob,
   isArchive,
@@ -29,6 +24,13 @@ import {
 import { CONFIG } from '../../config';
 import { ensureModStorageDir, modUploadTempPath, modUploadedFilePath } from '../../modStorage';
 import { registerUploadedModFile } from '../import/registerModUpload';
+import {
+  cancelQueuedImport,
+  isImportQueued,
+  listQueuedImportIds,
+  pauseQueuedImport,
+} from '../../../worker/src/api/importJobs';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
@@ -36,10 +38,13 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── List all mod import jobs ──────────────────────────────────────────────
   app.get('/api/mod-import', async () => {
-    const jobs = await listModImportJobs(db);
+    const [jobs, queuedIds] = await Promise.all([
+      listModImportJobs(db),
+      listQueuedImportIds('mod-import'),
+    ]);
     return jobs.map((j) => ({
       ...j,
-      running: isModImportRunning(j.id),
+      running: queuedIds.has(j.id),
     }));
   });
 
@@ -109,7 +114,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       const jobId = Number(req.params.id);
       const job = await getModImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isModImportRunning(jobId))
+      if (await isImportQueued('mod-import', jobId))
         return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as {
@@ -128,7 +133,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     const jobId = Number(req.params.id);
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isModImportRunning(jobId))
+    if (await isImportQueued('mod-import', jobId))
       return reply.status(409).send({ error: 'Cannot restart while running' });
 
     await restartModImportJob(db, jobId);
@@ -141,66 +146,32 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
-    if (isModImportRunning(jobId))
+    if (await isImportQueued('mod-import', jobId))
       return reply.status(409).send({ error: 'Import already running' });
 
     if (!job.esp_path || !fs.existsSync(job.esp_path)) {
       return reply.status(404).send({ error: 'Plugin file not found on disk' });
     }
 
-    /* Disable socket timeout — imports can run for minutes on large files. */
-    req.raw.socket.setTimeout(0);
-
-    reply.hijack();
-
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+    await startJobSse(req, reply, {
+      data: { kind: 'mod-import', modId: job.mod_id, params: { importJobId: jobId } },
+      initialSnapshotData: { importJobId: jobId },
     });
-
-    const send = (data: object) => {
-      try {
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch {
-        /* client disconnected */
-      }
-    };
-
-    (async () => {
-      try {
-        const result = await runModImport(db, job, (imported, total) => {
-          send({ type: 'progress', imported, total, jobId });
-        });
-        send({ type: 'done', job: { ...result, running: false } });
-      } catch (err: unknown) {
-        log.error(
-          `[Mod SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveModImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestModPause(jobId);
+    if (!(await pauseQueuedImport('mod-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
   });
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveModImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestModCancel(jobId);
+    if (!(await cancelQueuedImport('mod-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     const job = await getModImportJob(db, jobId);
     if (job) await markFailed(db, jobId, job.imported_records);
     return { ok: true };
@@ -218,7 +189,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isModImportRunning(jobId))
+    if (await isImportQueued('mod-import', jobId))
       return reply.status(409).send({ error: 'Cannot delete while running' });
 
     let modAbsPath: string | null = null;

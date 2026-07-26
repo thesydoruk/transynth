@@ -1,15 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
-import { log } from '../../logger';
 import {
-  findRunningModVoiceGenerateJob,
-  getModVoiceGenerateJob,
-  requestModVoiceGenerateStop,
-  requestModVoiceGenerateStopByModId,
-  runModVoiceGenerateJob,
-  scheduleModVoiceGenerateJobCleanup,
-} from '../voice/modVoiceGenerateService';
+  findActiveJobIdForMod,
+  readJobStatus,
+  stopJobForMod,
+  stopJobOfKind,
+} from '../../../worker/src/api/jobStatus';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 
 export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/voice-generate — synthesize localized voice (SSE progress stream)
@@ -26,11 +24,11 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
     const scope = req.body?.scope === 'missing' ? 'missing' : 'all';
 
-    const runningJobId = findRunningModVoiceGenerateJob(modId);
-    if (runningJobId != null) {
+    const running = await findActiveJobIdForMod(['voice-generate'], modId);
+    if (running) {
       return reply
         .code(409)
-        .send({ error: `Voice generation already running (job #${runningJobId})` });
+        .send({ error: `Voice generation already running (job #${running.jobId})` });
     }
 
     const { rows: modRows } = await db.query<{ name: string; game: string }>(
@@ -40,56 +38,14 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = modRows[0];
     if (!mod) return reply.code(404).send({ error: 'Mod not found' });
 
-    req.raw.socket.setTimeout(0);
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'voice-generate',
+        modId,
+        params: { srcLang, targetLang, game: mod.game, modName: mod.name, scope },
+      },
+      initialSnapshotData: { written: 0, skipped: 0, warningCount: 0 },
     });
-
-    const send = (data: object) => {
-      try {
-        if (!reply.raw.writableEnded) {
-          reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-        }
-      } catch {
-        /* client disconnected — job continues */
-      }
-    };
-
-    let finishedJobId: number | null = null;
-
-    void (async () => {
-      try {
-        const snapshot = await runModVoiceGenerateJob(
-          db,
-          {
-            modId,
-            srcLang,
-            targetLang,
-            game: mod.game,
-            modName: mod.name,
-            scope,
-          },
-          send,
-        );
-        finishedJobId = snapshot.jobId;
-      } catch (err: unknown) {
-        log.error(
-          `[Voice generate mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        if (finishedJobId != null) scheduleModVoiceGenerateJobCleanup(finishedJobId);
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   app.post<{ Params: { jobId: string } }>('/api/voice-generate/:jobId/stop', async (req, reply) => {
@@ -97,7 +53,7 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!requestModVoiceGenerateStop(jobId)) {
+    if (!(await stopJobOfKind(jobId, ['voice-generate']))) {
       return reply.code(404).send({ error: 'Running voice generation job not found' });
     }
     return reply.send({ ok: true });
@@ -110,7 +66,7 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid modId' });
       }
-      if (!requestModVoiceGenerateStopByModId(modId)) {
+      if (!(await stopJobForMod(['voice-generate'], modId))) {
         return reply.code(404).send({ error: 'Running voice generation job not found' });
       }
       return reply.send({ ok: true });
@@ -122,7 +78,7 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getModVoiceGenerateJob(jobId);
+    const job = await readJobStatus(jobId, ['voice-generate']);
     if (!job) return reply.code(404).send({ error: 'Voice generation job not found' });
     return reply.send(job);
   });

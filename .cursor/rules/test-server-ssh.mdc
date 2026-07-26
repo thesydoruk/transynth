@@ -71,8 +71,10 @@ See `scripts/killDbSessions.sh` — runs SQL via `ssh ai-pipeline`.
 Prerequisite: changes are **committed and pushed** to the remote the server tracks (usually `origin/main`).
 
 ```bash
-wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web'"
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web worker redis'"
 ```
+
+`web` and `worker` share one image; background jobs (BullMQ) run in `worker` with `redis` as the queue — always restart them together.
 
 If `sql/schema.sql` changed, apply the idempotent schema migration:
 

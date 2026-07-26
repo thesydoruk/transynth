@@ -1,10 +1,13 @@
-# Production stack: PostgreSQL (docker-compose.db.yml) + web API/SPA.
+# Production stack: PostgreSQL (docker-compose.db.yml) + web API/SPA + job worker + Redis.
 # External TTS: http://192.168.50.140:8080 (gaming PC, not in this compose).
 #
 #   docker compose up -d --build
 #   docker compose run --rm web npm run db:init
 #   docker compose --profile tools run --rm cli npm run tools:install
 #   docker compose --profile tools run --rm cli npm run translate -- …
+#
+# Background jobs (LLM translate/verify, imports, voice, …) run in the `worker`
+# service; the BullMQ queue and live progress travel through `redis`.
 #
 # Put TLS/reverse proxy in front of WEB_PORT (defaults to PORT, then 3000). Set strong credentials in .env.
 
@@ -28,12 +31,16 @@ services:
       PORT: ${PORT:-3000}
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
+      REDIS_URL: redis://redis:6379
       WINEARCH: win32
       WINEPREFIX: /app/data/tools/.wine
       WINEPREFIX64: /app/data/tools/.wine64
       WINEDEBUG: -all
     volumes:
       - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
     # depends_on:
     #   db:
     #     condition: service_healthy
@@ -57,6 +64,55 @@ services:
       resources:
         limits:
           memory: ${WEB_MEMORY_LIMIT:-2g}
+
+  # Background job worker — runs all long jobs (LLM translate/verify, TM apply,
+  # skip/gender-detect, voice synthesis, mod/CSV/EET imports, editor batches).
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    init: true
+    command: ['npm', '--prefix', 'worker', 'start']
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
+      REDIS_URL: redis://redis:6379
+      JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
+      WINEDEBUG: -all
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEMORY_LIMIT:-4g}
+
+  # BullMQ queue + job progress/snapshots. AOF keeps queued jobs across restarts.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   # One-shot jobs (translate, scan:mods, …). Not started by `docker compose up`.
   cli:
@@ -84,3 +140,6 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', '--import', 'tsx/esm']
+
+volumes:
+  redis-data:

@@ -14,14 +14,4 @@ export {
   loadVerifyChunk,
 } from './queries';
 
-export {
-  failRunningLlmVerifyJob,
-  findRunningLlmVerifyJob,
-  getLlmVerifyJob,
-  listRunningLlmVerifyJobs,
-  requestLlmVerifyStop,
-  requestLlmVerifyStopByModId,
-  scheduleLlmVerifyJobCleanup,
-} from './jobRegistry';
-
 export { runLlmVerifyJob } from './runLlmVerifyJob';

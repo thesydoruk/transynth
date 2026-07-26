@@ -1,14 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
-import { log } from '../../logger';
-import { findRunningModTranslateJob } from '../services/modTranslateGuard';
+import type { JobKind } from '../../../worker/src/types';
 import {
-  getLlmTranslateJob,
-  requestLlmTranslateStop,
-  runLlmTranslateJob,
-  scheduleLlmTranslateJobCleanup,
-} from '../llm/llmTranslateService';
+  findActiveJobIdForMod,
+  readJobStatus,
+  stopJobOfKind,
+} from '../../../worker/src/api/jobStatus';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
+
+/** A mod may run either TM apply or LLM translate, never both at once. */
+const TRANSLATE_GUARD_KINDS: readonly JobKind[] = ['llm-translate', 'tm-apply'];
 
 export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/llm-translate — start mod-wide translation (SSE progress stream)
@@ -24,9 +26,9 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
 
-    const running = findRunningModTranslateJob(modId);
-    if (running != null) {
-      const label = running.mode === 'tm' ? 'TM apply' : 'Translation';
+    const running = await findActiveJobIdForMod(TRANSLATE_GUARD_KINDS, modId);
+    if (running) {
+      const label = running.kind === 'tm-apply' ? 'TM apply' : 'Translation';
       return reply.code(409).send({ error: `${label} already running (job #${running.jobId})` });
     }
 
@@ -37,55 +39,14 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = modRows[0];
     if (!mod) return reply.code(404).send({ error: 'Mod not found' });
 
-    req.raw.socket.setTimeout(0);
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'llm-translate',
+        modId,
+        params: { srcLang, targetLang, modName: mod.name, game: mod.game },
+      },
+      initialSnapshotData: { rows: [] },
     });
-
-    const send = (data: object) => {
-      try {
-        if (!reply.raw.writableEnded) {
-          reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-        }
-      } catch {
-        /* client disconnected — job continues */
-      }
-    };
-
-    let finishedJobId: number | null = null;
-
-    void (async () => {
-      try {
-        const snapshot = await runLlmTranslateJob(
-          db,
-          {
-            modId,
-            srcLang,
-            targetLang,
-            modName: mod.name,
-            game: mod.game,
-          },
-          send,
-        );
-        finishedJobId = snapshot.jobId;
-      } catch (err: unknown) {
-        log.error(
-          `[LLM Translate mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        if (finishedJobId != null) scheduleLlmTranslateJobCleanup(finishedJobId);
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   app.post<{ Params: { jobId: string } }>('/api/llm-translate/:jobId/stop', async (req, reply) => {
@@ -93,7 +54,7 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!requestLlmTranslateStop(jobId)) {
+    if (!(await stopJobOfKind(jobId, ['llm-translate']))) {
       return reply.code(404).send({ error: 'Running translation job not found' });
     }
     return reply.send({ ok: true });
@@ -104,7 +65,7 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getLlmTranslateJob(jobId);
+    const job = await readJobStatus(jobId, ['llm-translate']);
     if (!job) return reply.code(404).send({ error: 'Translation job not found' });
     return reply.send(job);
   });

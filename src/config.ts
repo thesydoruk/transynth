@@ -204,6 +204,22 @@ export const CONFIG = {
   /** Parallel BA2/PEX/MCM file reads during mod import (default 4). */
   modImportIoParallel: parseMaxParallel(process.env.MOD_IMPORT_IO_PARALLEL, 4, 16),
 
+  // ── Background job worker (BullMQ) ──────────────────────────────────────────
+  // The API enqueues jobs into a BullMQ queue on Redis; the worker container
+  // runs them and streams progress back through BullMQ job events.
+
+  /** Redis connection string — BullMQ queue, job snapshots, cancellation. */
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+
+  /** Jobs the worker runs at the same time (default 8; LLM/TTS pools still cap real load). */
+  jobConcurrency: parseMaxParallel(process.env.JOB_CONCURRENCY, 8, 32),
+
+  /** TTL of the Redis snapshot that backs job status polling (default 2 h). */
+  jobSnapshotTtlSec: parsePositiveInt(process.env.JOB_SNAPSHOT_TTL_SEC, 7200, 86_400),
+
+  /** Rows kept in a job snapshot for reopened modals; the live SSE stream carries all of them. */
+  jobSnapshotMaxRows: parsePositiveInt(process.env.JOB_SNAPSHOT_MAX_ROWS, 2000, 100_000),
+
   // Nexus Mods personal API key (Bearer token).
   // Obtain at: https://www.nexusmods.com/users/myaccount?tab=api
   // Required for NexusMods GraphQL API v2 queries (mod search, translations).

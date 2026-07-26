@@ -39,12 +39,13 @@ Health check — expect `ai-stuff`, user `root`, cwd `/root` or project path.
 ## Common operations
 
 ```bash
-# Status + logs
+# Status + logs (services: web, worker, redis)
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose ps'"
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose logs web --tail 50'"
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose logs worker --tail 50'"
 
-# Rebuild & restart after code changes
-wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose build web && docker compose up -d web'"
+# Rebuild & restart after code changes (web and worker share one image)
+wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'cd ~/Source/transynth && docker compose build web && docker compose up -d web worker redis'"
 
 # Health from server
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'curl -s http://127.0.0.1:3200/api/health'"
@@ -59,8 +60,10 @@ wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline 'curl -s http://127.0.0.1:3200
 
 ```bash
 wsl -e bash -lc "ssh -o BatchMode=yes ai-pipeline \
-  'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web'"
+  'cd ~/Source/transynth && git pull && docker compose build web && docker compose up -d web worker redis'"
 ```
+
+Background jobs run in the `worker` service (BullMQ on `redis`) — restart it together with `web` so both run the same code.
 
 3. If `sql/schema.sql` changed, run the idempotent migration:
 

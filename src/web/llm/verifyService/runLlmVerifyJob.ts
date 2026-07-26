@@ -1,25 +1,23 @@
 /**
- * In-memory LLM translation verification jobs.
- *
- * Jobs are not persisted — they are lost on worker restart by design.
+ * LLM translation verification job body (runs inside the worker).
  */
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { logVerify } from '../../../logging/loggers';
 import { runModVerifyPipeline } from '../verifyPipeline/runModVerifyPipeline';
 import { countVerifiableStrings } from './queries';
-import {
-  allocateVerifyJobId,
-  deleteVerifyJob,
-  findRunningLlmVerifyJob,
-  registerVerifyJob,
-  toVerifyJobSnapshot,
-} from './jobRegistry';
-import type { ActiveLlmVerifyJob, LlmVerifyJobSnapshot, LlmVerifyProgressEvent } from './types';
+import type {
+  LlmVerifyActionLogEntry,
+  LlmVerifyIssue,
+  LlmVerifyJobSnapshot,
+  LlmVerifyJobStatus,
+  LlmVerifyProgressEvent,
+} from './types';
 
 export const runLlmVerifyJob = async (
   db: Tx,
   opts: {
+    jobId: number;
     modId: number;
     srcLang: string;
     targetLang: string;
@@ -31,75 +29,62 @@ export const runLlmVerifyJob = async (
     fixSuspicious?: boolean;
     /** Include reviewed/human translations in the scan. */
     includeConfirmed?: boolean;
+    signal: AbortSignal;
+    isCancelled: () => boolean;
   },
   onEvent: (event: LlmVerifyProgressEvent) => void,
 ): Promise<LlmVerifyJobSnapshot> => {
-  const runningJobId = findRunningLlmVerifyJob(opts.modId);
-  if (runningJobId != null) {
-    throw new Error(`LLM verify already running for mod ${opts.modId} (job #${runningJobId})`);
-  }
-
+  const { jobId, modId } = opts;
   const autoApproveVerified = opts.autoApproveVerified === true;
   const fixSuspicious = opts.fixSuspicious === true;
   const includeConfirmed = opts.includeConfirmed === true;
-  const jobId = allocateVerifyJobId();
-  const job: ActiveLlmVerifyJob = {
-    jobId,
-    modId: opts.modId,
-    status: 'running',
-    done: 0,
-    total: 0,
-    approved: 0,
-    fixed: 0,
-    issues: [],
-    actionLog: [],
-    error: null,
-    cancel: false,
-    srcLang: opts.srcLang,
-    targetLang: opts.targetLang,
-    autoApproveVerified,
-    fixSuspicious,
-    includeConfirmed,
-    abort: new AbortController(),
-  };
-  registerVerifyJob(job);
 
-  // Register early so Stop works during the count / RAG setup phase.
-  // Everything after this must be in try/catch so a PG drop during count
-  // cannot leave the job stuck as `running` (blocking restart with 409).
+  let done = 0;
+  let total = 0;
+  let approved = 0;
+  let fixed = 0;
+  const issues: LlmVerifyIssue[] = [];
+  const actionLog: LlmVerifyActionLogEntry[] = [];
+  let status: LlmVerifyJobStatus = 'running';
+  let error: string | null = null;
+
+  const snapshot = (): LlmVerifyJobSnapshot => ({
+    jobId,
+    modId,
+    status,
+    done,
+    total,
+    approved,
+    fixed,
+    issues,
+    actionLog,
+    error,
+  });
+
   onEvent({ type: 'started', jobId, total: 0 });
 
   try {
-    const total = await countVerifiableStrings(
+    total = await countVerifiableStrings(
       db,
-      opts.modId,
+      modId,
       opts.srcLang,
       opts.targetLang,
       includeConfirmed,
     );
     if (total === 0) {
-      deleteVerifyJob(jobId);
       throw new Error('No strings pending review');
     }
-    job.total = total;
     onEvent({ type: 'progress', done: 0, total, approved: 0, fixed: 0 });
 
-    if (job.cancel || job.status === 'cancelled') {
-      job.status = 'cancelled';
-      onEvent({
-        type: 'cancelled',
-        done: 0,
-        total,
-        approved: 0,
-        fixed: 0,
-        issues: [],
-      });
-      return toVerifyJobSnapshot(job);
+    if (opts.isCancelled()) {
+      status = 'cancelled';
+      onEvent({ type: 'cancelled', done: 0, total, approved: 0, fixed: 0, issues: [] });
+      return snapshot();
     }
 
     logVerify.info('job started', {
       jobId,
-      modId: opts.modId,
+      modId,
       total,
       srcLang: opts.srcLang,
       targetLang: opts.targetLang,
@@ -113,7 +98,7 @@ export const runLlmVerifyJob = async (
     const summary = await runModVerifyPipeline(
       db,
       {
-        modId: opts.modId,
+        modId,
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
         modName: opts.modName,
@@ -122,95 +107,68 @@ export const runLlmVerifyJob = async (
         fixSuspicious,
         force: includeConfirmed,
         knownTotal: total,
-        shouldCancel: () => job.cancel,
-        signal: job.abort.signal,
+        shouldCancel: opts.isCancelled,
+        signal: opts.signal,
       },
       {
         collectIssue: (issue) => {
-          job.issues.push(issue);
+          issues.push(issue);
         },
         onActionLog: (entry) => {
-          job.actionLog.push(entry);
+          actionLog.push(entry);
           onEvent({
             type: 'progress',
-            done: job.done,
-            total: job.total,
-            approved: job.approved,
-            fixed: job.fixed,
+            done,
+            total,
+            approved,
+            fixed,
             action: entry,
           });
         },
         onProgress: (progress) => {
-          job.done = progress.done;
-          job.approved = progress.approved;
-          job.fixed = progress.fixed;
+          done = progress.done;
+          approved = progress.approved;
+          fixed = progress.fixed;
           if (progress.issue) {
             onEvent({
               type: 'progress',
-              done: job.done,
-              total: job.total,
-              approved: job.approved,
-              fixed: job.fixed,
+              done,
+              total,
+              approved,
+              fixed,
               issue: progress.issue,
             });
           } else if (!autoApproveVerified) {
-            onEvent({
-              type: 'progress',
-              done: job.done,
-              total: job.total,
-              approved: job.approved,
-              fixed: job.fixed,
-            });
+            onEvent({ type: 'progress', done, total, approved, fixed });
           }
         },
       },
     );
 
-    job.done = summary.done;
-    job.approved = summary.approved;
-    job.fixed = summary.fixed;
+    done = summary.done;
+    approved = summary.approved;
+    fixed = summary.fixed;
 
-    if (job.cancel) {
-      job.status = 'cancelled';
-      logVerify.info('job cancelled', {
-        jobId,
-        done: job.done,
-        total: job.total,
-        approved: job.approved,
-      });
-      onEvent({
-        type: 'cancelled',
-        done: job.done,
-        total: job.total,
-        approved: job.approved,
-        fixed: job.fixed,
-        issues: job.issues,
-      });
+    if (opts.isCancelled()) {
+      status = 'cancelled';
+      logVerify.info('job cancelled', { jobId, done, total, approved });
+      onEvent({ type: 'cancelled', done, total, approved, fixed, issues });
     } else {
-      job.status = 'completed';
+      status = 'completed';
       logVerify.info('job completed', {
         jobId,
-        done: job.done,
-        total: job.total,
-        approved: job.approved,
-        fixed: job.fixed,
-        issueCount: job.issues.length,
+        done,
+        total,
+        approved,
+        fixed,
+        issueCount: issues.length,
       });
-      onEvent({
-        type: 'done',
-        done: job.done,
-        total: job.total,
-        approved: job.approved,
-        fixed: job.fixed,
-        issues: job.issues,
-      });
+      onEvent({ type: 'done', done, total, approved, fixed, issues });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // Mark terminal so restart is allowed. Empty-mod path may already have
-    // deleted the map entry; status on the local object still drives the snapshot.
-    job.status = 'failed';
-    job.error = message;
+    status = 'failed';
+    error = message;
     logVerify.error('job failed', {
       jobId,
       error: message,
@@ -219,5 +177,5 @@ export const runLlmVerifyJob = async (
     onEvent({ type: 'error', error: message });
   }
 
-  return toVerifyJobSnapshot(job);
+  return snapshot();
 };

@@ -51,6 +51,9 @@ import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
+import { closeJobsQueue } from '../../worker/src/core/queue';
+import { closeJobsQueueEvents } from '../../worker/src/core/queueEvents';
+import { closeSharedRedis } from '../../worker/src/core/connection';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -151,6 +154,9 @@ try {
 const shutdown = async () => {
   log.info('Shutting down...');
   await app.close();
+  await closeJobsQueueEvents();
+  await closeJobsQueue();
+  await closeSharedRedis();
   await closeDb();
   closeLogStreams();
   process.exit(0);

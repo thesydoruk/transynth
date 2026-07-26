@@ -1,16 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
-import { log } from '../../logger';
 import {
-  failRunningLlmVerifyJob,
-  findRunningLlmVerifyJob,
-  getLlmVerifyJob,
-  requestLlmVerifyStop,
-  requestLlmVerifyStopByModId,
-  runLlmVerifyJob,
-  scheduleLlmVerifyJobCleanup,
-} from '../llm/verifyService';
+  findActiveJobIdForMod,
+  readJobStatus,
+  stopJobForMod,
+  stopJobOfKind,
+} from '../../../worker/src/api/jobStatus';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 
 export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/llm-verify — start verification (SSE progress stream)
@@ -35,9 +32,11 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     const fixSuspicious = req.body?.fixSuspicious === true;
     const includeConfirmed = req.body?.includeConfirmed === true;
 
-    const runningJobId = findRunningLlmVerifyJob(modId);
-    if (runningJobId != null) {
-      return reply.code(409).send({ error: `Verification already running (job #${runningJobId})` });
+    const running = await findActiveJobIdForMod(['llm-verify'], modId);
+    if (running) {
+      return reply
+        .code(409)
+        .send({ error: `Verification already running (job #${running.jobId})` });
     }
 
     const { rows: modRows } = await db.query<{ name: string; game: string }>(
@@ -47,61 +46,22 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = modRows[0];
     if (!mod) return reply.code(404).send({ error: 'Mod not found' });
 
-    req.raw.socket.setTimeout(0);
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'llm-verify',
+        modId,
+        params: {
+          srcLang,
+          targetLang,
+          modName: mod.name,
+          game: mod.game,
+          autoApproveVerified,
+          fixSuspicious,
+          includeConfirmed,
+        },
+      },
+      initialSnapshotData: { approved: 0, fixed: 0, issues: [], actionLog: [] },
     });
-
-    const send = (data: object) => {
-      try {
-        if (!reply.raw.writableEnded) {
-          reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-          const raw = reply.raw as typeof reply.raw & { flush?: () => void };
-          raw.flush?.();
-        }
-      } catch {
-        /* client disconnected — job continues */
-      }
-    };
-
-    let finishedJobId: number | null = null;
-
-    void (async () => {
-      try {
-        const snapshot = await runLlmVerifyJob(
-          db,
-          {
-            modId,
-            srcLang,
-            targetLang,
-            modName: mod.name,
-            game: mod.game,
-            autoApproveVerified,
-            fixSuspicious,
-            includeConfirmed,
-          },
-          send,
-        );
-        finishedJobId = snapshot.jobId;
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        log.error(`[LLM Verify mod #${modId}] Stream error: ${message}`);
-        send({ type: 'error', error: message });
-        // Safety net: never leave an in-memory job stuck as `running` after a throw.
-        finishedJobId = failRunningLlmVerifyJob(modId, message) ?? finishedJobId;
-      } finally {
-        if (finishedJobId != null) scheduleLlmVerifyJobCleanup(finishedJobId);
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   // POST /api/llm-verify/:jobId/stop — request cancellation
@@ -110,7 +70,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!requestLlmVerifyStop(jobId)) {
+    if (!(await stopJobOfKind(jobId, ['llm-verify']))) {
       return reply.code(404).send({ error: 'Running verification job not found' });
     }
     return reply.send({ ok: true });
@@ -124,20 +84,20 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid modId' });
       }
-      if (!requestLlmVerifyStopByModId(modId)) {
+      if (!(await stopJobForMod(['llm-verify'], modId))) {
         return reply.code(404).send({ error: 'Running verification job not found' });
       }
       return reply.send({ ok: true });
     },
   );
 
-  // GET /api/llm-verify/:jobId — current in-memory job snapshot (for reopening modal)
+  // GET /api/llm-verify/:jobId — current job snapshot (for reopening modal)
   app.get<{ Params: { jobId: string } }>('/api/llm-verify/:jobId', async (req, reply) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getLlmVerifyJob(jobId);
+    const job = await readJobStatus(jobId, ['llm-verify']);
     if (!job) return reply.code(404).send({ error: 'Verification job not found' });
     return reply.send(job);
   });

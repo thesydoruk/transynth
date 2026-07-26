@@ -28,11 +28,3 @@ export type LlmGenderDetectProgressEvent =
       resolvedCount: number;
     }
   | { type: 'error'; error: string };
-
-export type ActiveLlmGenderDetectJob = LlmGenderDetectJobSnapshot & {
-  cancel: boolean;
-  srcLang: string;
-  useLlm: boolean;
-  force: boolean;
-  abort: AbortController;
-};

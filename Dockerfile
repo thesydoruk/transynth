@@ -45,6 +45,12 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY sql/ ./sql/
 
+# Worker package (own package.json, like web-ui; shares ../src business logic)
+COPY worker/package.json worker/package-lock.json* ./worker/
+RUN cd worker && npm ci --omit=dev --ignore-scripts
+COPY worker/src ./worker/src/
+COPY worker/tsconfig.json ./worker/
+
 # Pre-built React SPA — served by Fastify static middleware
 COPY --from=ui-build /app/web-ui/dist ./web-ui/dist/
 

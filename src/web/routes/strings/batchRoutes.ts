@@ -10,8 +10,8 @@ import {
 import { isValidTranslationStatus } from '../../data/statusMachine';
 import { applyTMToStringIds } from '../../services/tm';
 import { CONFIG } from '../../../config';
-import { translateStringIdsBatch } from '../../llm/translateBatch';
 import { log } from '../../../logger';
+import { startJobSse } from '../../../../worker/src/api/startJobSse';
 
 export const registerBatchRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/strings/clear-translations — batch clear target-language translations
@@ -182,50 +182,21 @@ export const registerBatchRoutes = async (app: FastifyInstance, db: Tx) => {
       log.warn({ insertErr }, 'llm_jobs: failed to insert job row');
     }
 
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
-
-    const send = (data: object) => {
-      if (!reply.raw.writableEnded) {
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      }
-    };
-
-    const results = await translateStringIdsBatch(db, stringIds, {
-      srcLang,
-      targetLang,
-      modGame: resolvedModGame,
-      modName: resolvedModName,
-      overwriteMode: 'force',
-      onProgress: (done, total, result) => {
-        send({ type: 'progress', done, total, result });
+    // The worker runs the batch and finalizes the llm_jobs history row.
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'batch-translate',
+        modId: resolvedModId,
+        params: {
+          stringIds,
+          srcLang,
+          targetLang,
+          modGame: resolvedModGame,
+          modName: resolvedModName,
+          llmJobId,
+        },
       },
     });
-
-    send({ type: 'done', results });
-    reply.raw.end();
-
-    if (llmJobId !== null) {
-      const successCount = results.filter((r) => r.text !== undefined).length;
-      const failed = results.some((r) => r.error !== undefined && r.text === undefined);
-      const finalStatus = failed && successCount === 0 ? 'failed' : 'completed';
-      const firstError = results.find((r) => r.error)?.error ?? null;
-      try {
-        await db.query(
-          `UPDATE llm_jobs
-              SET status = $1, done_count = $2, error = $3, updated_at = NOW()
-            WHERE id = $4`,
-          [finalStatus, successCount, firstError, llmJobId],
-        );
-      } catch (updateErr) {
-        log.warn({ updateErr, llmJobId }, 'llm_jobs: failed to finalize job row');
-      }
-    }
   });
 
   // POST /api/strings/tm-apply — apply translation memory to selected string IDs

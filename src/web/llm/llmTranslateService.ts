@@ -1,10 +1,11 @@
 /**
- * In-memory mod-wide LLM translation jobs.
+ * Mod-wide LLM translation job body (runs inside the worker).
  *
- * Jobs are not persisted — they are lost on worker restart by design.
+ * Cancellation and job id come from the BullMQ JobContext — no process-local
+ * registry. Progress snapshots for reopened modals live in Redis.
  */
 import type { Tx } from '../../db';
-import { CONFIG, DB_CHUNK_SIZE } from '../../config';
+import { DB_CHUNK_SIZE } from '../../config';
 import { llmTranslateEligibilitySql, type LlmTranslateOverwriteMode } from '../data/queries';
 import { translateStringIdsBatch } from './translateBatch';
 import { logTranslate } from '../../logging/loggers';
@@ -37,54 +38,6 @@ export type LlmTranslateJobSnapshot = {
   total: number;
   rows: LlmTranslateRow[];
   error: string | null;
-};
-
-type ActiveLlmTranslateJob = LlmTranslateJobSnapshot & {
-  cancel: boolean;
-  srcLang: string;
-  targetLang: string;
-  /** Aborts in-flight LLM requests the instant Stop is pressed. */
-  abort: AbortController;
-};
-
-const activeJobs = new Map<number, ActiveLlmTranslateJob>();
-let nextJobId = 1;
-
-const toSnapshot = (job: ActiveLlmTranslateJob): LlmTranslateJobSnapshot => ({
-  jobId: job.jobId,
-  modId: job.modId,
-  status: job.status,
-  done: job.done,
-  total: job.total,
-  rows: job.rows,
-  error: job.error,
-});
-
-export const getLlmTranslateJob = (jobId: number): LlmTranslateJobSnapshot | null => {
-  const job = activeJobs.get(jobId);
-  return job ? toSnapshot(job) : null;
-};
-
-export const findRunningLlmTranslateJob = (modId: number): number | null => {
-  for (const job of activeJobs.values()) {
-    if (job.modId === modId && job.status === 'running') return job.jobId;
-  }
-  return null;
-};
-
-/** All in-flight mod-wide translation jobs (for status dashboards). */
-export const listRunningLlmTranslateJobs = (): LlmTranslateJobSnapshot[] =>
-  [...activeJobs.values()].filter((job) => job.status === 'running').map(toSnapshot);
-
-export const requestLlmTranslateStop = (jobId: number): boolean => {
-  const job = activeJobs.get(jobId);
-  if (!job || job.status !== 'running') return false;
-  // Order matters: flag cancel before aborting so the abort error surfaces as a
-  // cancellation (and isn't recorded as a per-string failure).
-  job.cancel = true;
-  job.status = 'cancelled';
-  job.abort.abort();
-  return true;
 };
 
 export type { LlmTranslateOverwriteMode } from '../data/queries';
@@ -167,43 +120,41 @@ export type LlmTranslateProgressEvent =
 export const runLlmTranslateJob = async (
   db: Tx,
   opts: {
+    jobId: number;
     modId: number;
     srcLang: string;
     targetLang: string;
     modName?: string | null;
     game?: string | null;
+    signal: AbortSignal;
+    isCancelled: () => boolean;
   },
   onEvent: (event: LlmTranslateProgressEvent) => void,
 ): Promise<LlmTranslateJobSnapshot> => {
-  const runningJobId = findRunningLlmTranslateJob(opts.modId);
-  if (runningJobId != null) {
-    throw new Error(`LLM translate already running for mod ${opts.modId} (job #${runningJobId})`);
-  }
-
-  const total = await countUntranslatedStrings(db, opts.modId, opts.srcLang, opts.targetLang);
+  const { jobId, modId } = opts;
+  const total = await countUntranslatedStrings(db, modId, opts.srcLang, opts.targetLang);
   if (total === 0) {
     throw new Error('No untranslated strings to translate');
   }
 
-  const jobId = nextJobId++;
-  const job: ActiveLlmTranslateJob = {
+  let done = 0;
+  const rows: LlmTranslateRow[] = [];
+  let status: LlmTranslateJobStatus = 'running';
+  let error: string | null = null;
+
+  const snapshot = (): LlmTranslateJobSnapshot => ({
     jobId,
-    modId: opts.modId,
-    status: 'running',
-    done: 0,
+    modId,
+    status,
+    done,
     total,
-    rows: [],
-    error: null,
-    cancel: false,
-    srcLang: opts.srcLang,
-    targetLang: opts.targetLang,
-    abort: new AbortController(),
-  };
-  activeJobs.set(jobId, job);
+    rows,
+    error,
+  });
 
   logTranslate.info('job started', {
     jobId,
-    modId: opts.modId,
+    modId,
     total,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
@@ -215,10 +166,10 @@ export const runLlmTranslateJob = async (
   let afterStringId = 0;
 
   try {
-    while (!job.cancel) {
+    while (!opts.isCancelled()) {
       const dbChunk = await loadUntranslatedChunk(
         db,
-        opts.modId,
+        modId,
         opts.srcLang,
         opts.targetLang,
         afterStringId,
@@ -237,10 +188,10 @@ export const runLlmTranslateJob = async (
           modGame: opts.game,
           modName: opts.modName,
           overwriteMode: 'default',
-          shouldCancel: () => job.cancel,
-          signal: job.abort.signal,
-          onProgress: (doneInBatch, _batchTotal, result) => {
-            job.done++;
+          shouldCancel: opts.isCancelled,
+          signal: opts.signal,
+          onProgress: (_doneInBatch, _batchTotal, result) => {
+            done++;
             const meta = metaById.get(result.stringId);
             const row: LlmTranslateRow = {
               stringId: result.stringId,
@@ -251,8 +202,8 @@ export const runLlmTranslateJob = async (
               edid: meta?.edid ?? null,
               error: result.error ?? null,
             };
-            job.rows.push(row);
-            onEvent({ type: 'progress', done: job.done, total: job.total, row });
+            rows.push(row);
+            onEvent({ type: 'progress', done, total, row });
           },
         });
       } catch (err) {
@@ -260,11 +211,11 @@ export const runLlmTranslateJob = async (
         logTranslate.error('job chunk failed; continuing with next chunk', {
           err,
           jobId,
-          modId: opts.modId,
+          modId,
           stringIds,
         });
         for (const stringId of stringIds) {
-          job.done++;
+          done++;
           const meta = metaById.get(stringId);
           const row: LlmTranslateRow = {
             stringId,
@@ -275,51 +226,32 @@ export const runLlmTranslateJob = async (
             edid: meta?.edid ?? null,
             error: message,
           };
-          job.rows.push(row);
-          onEvent({ type: 'progress', done: job.done, total: job.total, row });
+          rows.push(row);
+          onEvent({ type: 'progress', done, total, row });
         }
       }
     }
 
-    if (!job.cancel && job.status !== 'cancelled') {
+    if (!opts.isCancelled()) {
       await awaitPendingQaRefresh();
     }
 
-    if (job.cancel || job.status === 'cancelled') {
-      job.status = 'cancelled';
-      logTranslate.info('job cancelled', { jobId, done: job.done, total: job.total });
-      onEvent({
-        type: 'cancelled',
-        done: job.done,
-        total: job.total,
-        rows: job.rows,
-      });
+    if (opts.isCancelled()) {
+      status = 'cancelled';
+      logTranslate.info('job cancelled', { jobId, done, total });
+      onEvent({ type: 'cancelled', done, total, rows });
     } else {
-      job.status = 'completed';
-      logTranslate.info('job completed', { jobId, done: job.done, total: job.total });
-      onEvent({
-        type: 'done',
-        done: job.done,
-        total: job.total,
-        rows: job.rows,
-      });
+      status = 'completed';
+      logTranslate.info('job completed', { jobId, done, total });
+      onEvent({ type: 'done', done, total, rows });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    job.status = 'failed';
-    job.error = message;
+    status = 'failed';
+    error = message;
     logTranslate.error('job failed', { jobId, error: message, err });
     onEvent({ type: 'error', error: message });
   }
 
-  return toSnapshot(job);
-};
-
-export const scheduleLlmTranslateJobCleanup = (jobId: number, delayMs = 60_000): void => {
-  setTimeout(() => {
-    const job = activeJobs.get(jobId);
-    if (job && job.status !== 'running') {
-      activeJobs.delete(jobId);
-    }
-  }, delayMs);
+  return snapshot();
 };

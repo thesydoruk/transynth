@@ -6,7 +6,6 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type pg from 'pg';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
 import {
@@ -15,14 +14,16 @@ import {
   getImportJob,
   deleteImportJob,
   registerEetFile,
-  runImport,
-  isImportRunning,
-  hasActiveImport,
-  requestCancel,
-  requestPause,
   updateJobLanguages,
   markImportJobFailed,
 } from '../import/eetImportService';
+import {
+  cancelQueuedImport,
+  isImportQueued,
+  listQueuedImportIds,
+  pauseQueuedImport,
+} from '../../../worker/src/api/importJobs';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 
 import { PATHS } from '../../paths';
@@ -45,10 +46,13 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── List all import jobs ──────────────────────────────────────────────────
   app.get('/api/eet', async () => {
-    const jobs = await listImportJobs(db);
+    const [jobs, queuedIds] = await Promise.all([
+      listImportJobs(db),
+      listQueuedImportIds('eet-import'),
+    ]);
     return jobs.map((j) => ({
       ...j,
-      running: isImportRunning(j.id),
+      running: queuedIds.has(j.id),
     }));
   });
 
@@ -162,7 +166,7 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
       const jobId = Number(req.params.id);
       const job = await getImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
-      if (isImportRunning(jobId))
+      if (await isImportQueued('eet-import', jobId))
         return reply.status(409).send({ error: 'Cannot update while running' });
 
       const { srcLang, tgtLang } = req.body as { srcLang?: string; tgtLang?: string };
@@ -179,70 +183,32 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
-    if (isImportRunning(jobId)) return reply.status(409).send({ error: 'Import already running' });
+    if (await isImportQueued('eet-import', jobId))
+      return reply.status(409).send({ error: 'Import already running' });
 
     const filePath = eetFilePath(job.file_name);
     if (!fs.existsSync(filePath))
       return reply.status(404).send({ error: 'EET file not found on disk' });
 
-    const buf = fs.readFileSync(filePath);
-
-    /* Hijack the response so Fastify does not try to end/serialise it itself —
-       we manage the raw SSE stream manually. */
-    reply.hijack();
-
-    /* Disable socket timeout — imports can run for minutes on large files. */
-    req.raw.socket.setTimeout(0);
-
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+    await startJobSse(req, reply, {
+      data: { kind: 'eet-import', modId: null, params: { importJobId: jobId } },
+      initialSnapshotData: { importJobId: jobId },
     });
-
-    const send = (data: object) => {
-      try {
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch {
-        /* client disconnected */
-      }
-    };
-
-    // Run import asynchronously — runImport is now async
-    (async () => {
-      try {
-        const result = await runImport(db as pg.Pool, job, buf, (imported, total) => {
-          send({ type: 'progress', imported, total, jobId });
-        });
-        send({ type: 'done', job: { ...result, running: false } });
-      } catch (err: unknown) {
-        log.error(
-          `[EET SSE #${jobId}] Import stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/pause', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestPause(jobId);
+    if (!(await pauseQueuedImport('eet-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
   });
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/cancel', async (req, reply) => {
     const jobId = Number(req.params.id);
-    if (!hasActiveImport(jobId)) return reply.status(400).send({ error: 'Import not running' });
-    requestCancel(jobId);
+    if (!(await cancelQueuedImport('eet-import', jobId)))
+      return reply.status(400).send({ error: 'Import not running' });
     const job = await getImportJob(db, jobId);
     if (job) await markImportJobFailed(db, jobId, job.imported_records, 'Cancelled by user');
     return { ok: true };
@@ -253,7 +219,7 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
     const jobId = Number(req.params.id);
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
-    if (isImportRunning(jobId))
+    if (await isImportQueued('eet-import', jobId))
       return reply.status(409).send({ error: 'Cannot delete while running' });
 
     const filePath = eetFilePath(job.file_name);

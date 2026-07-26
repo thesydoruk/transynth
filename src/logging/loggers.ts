@@ -31,3 +31,6 @@ export const logEmbed = createLogger('embed');
 
 /** HTTP API routes (optional use). */
 export const logApi = createLogger('api');
+
+/** Background job queue and worker lifecycle. */
+export const logJobs = createLogger('jobs');

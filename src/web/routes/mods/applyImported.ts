@@ -1,15 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { applyImportedModStringsAsTranslations } from '../../data/queries';
-import {
-  findRunningApplyImportedJob,
-  getApplyImportedJob,
-  requestApplyImportedStop,
-  runApplyImportedJob,
-  scheduleApplyImportedJobCleanup,
-} from '../../import/applyImportedJobService';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
+import {
+  findActiveJobIdForMod,
+  readJobStatus,
+  stopJobOfKind,
+} from '../../../../worker/src/api/jobStatus';
+import { startJobSse } from '../../../../worker/src/api/startJobSse';
 
 export const registerApplyImportedRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:id/apply-imported?fromModId=&importedLang=&srcLang=
@@ -84,56 +83,26 @@ export const registerApplyImportedRoutes = async (app: FastifyInstance, db: Tx) 
     const targetLang =
       (req.body?.targetLang ?? CONFIG.defaultTgtLang).trim() || CONFIG.defaultTgtLang;
 
-    const runningJobId = findRunningApplyImportedJob(targetModId);
-    if (runningJobId != null) {
+    const running = await findActiveJobIdForMod(['apply-imported'], targetModId);
+    if (running) {
       return reply
         .code(409)
-        .send({ error: `Apply-imported already running (job #${runningJobId})` });
+        .send({ error: `Apply-imported already running (job #${running.jobId})` });
     }
 
-    req.raw.socket.setTimeout(0);
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'apply-imported',
+        modId: targetModId,
+        params: { fromModId, importedLang, srcLang, targetLang },
+      },
+      initialSnapshotData: {
+        targetModId,
+        fromModId,
+        importedLang,
+        stats: { applied: 0, skipped: 0, unmatched: 0, empty: 0 },
+      },
     });
-
-    const send = (data: object) => {
-      try {
-        if (!reply.raw.writableEnded) {
-          reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-        }
-      } catch {
-        /* client disconnected — job continues */
-      }
-    };
-
-    let finishedJobId: number | null = null;
-
-    void (async () => {
-      try {
-        const snapshot = await runApplyImportedJob(
-          db,
-          { targetModId, fromModId, importedLang, srcLang, targetLang },
-          send,
-        );
-        finishedJobId = snapshot.jobId;
-      } catch (err: unknown) {
-        log.error(
-          `[Apply-imported mod #${targetModId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        if (finishedJobId != null) scheduleApplyImportedJobCleanup(finishedJobId);
-        try {
-          reply.raw.end();
-        } catch {
-          /* already closed */
-        }
-      }
-    })();
   });
 
   app.post<{ Params: { jobId: string } }>('/api/apply-imported/:jobId/stop', async (req, reply) => {
@@ -141,7 +110,7 @@ export const registerApplyImportedRoutes = async (app: FastifyInstance, db: Tx) 
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!requestApplyImportedStop(jobId)) {
+    if (!(await stopJobOfKind(jobId, ['apply-imported']))) {
       return reply.code(404).send({ error: 'Running apply-imported job not found' });
     }
     return reply.send({ ok: true });
@@ -152,7 +121,7 @@ export const registerApplyImportedRoutes = async (app: FastifyInstance, db: Tx) 
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getApplyImportedJob(jobId);
+    const job = await readJobStatus(jobId, ['apply-imported']);
     if (!job) return reply.code(404).send({ error: 'Apply-imported job not found' });
     return reply.send(job);
   });

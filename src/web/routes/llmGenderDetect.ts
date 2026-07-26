@@ -1,15 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
-import { log } from '../../logger';
 import {
-  findRunningLlmGenderDetectJob,
-  getLlmGenderDetectJob,
-  requestLlmGenderDetectStop,
-  requestLlmGenderDetectStopByModId,
-  runLlmGenderDetectJob,
-  scheduleLlmGenderDetectJobCleanup,
-} from '../llm/genderDetectService';
+  findActiveJobIdForMod,
+  readJobStatus,
+  stopJobForMod,
+  stopJobOfKind,
+} from '../../../worker/src/api/jobStatus';
+import { startJobSse } from '../../../worker/src/api/startJobSse';
 
 export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
   app.post<{
@@ -25,11 +23,11 @@ export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     const useLlm = req.body?.useLlm !== false;
     const force = req.body?.force === true;
 
-    const runningJobId = findRunningLlmGenderDetectJob(modId);
-    if (runningJobId != null) {
+    const running = await findActiveJobIdForMod(['gender-detect'], modId);
+    if (running) {
       return reply
         .code(409)
-        .send({ error: `Gender-detect already running (job #${runningJobId})` });
+        .send({ error: `Gender-detect already running (job #${running.jobId})` });
     }
 
     const { rows: modRows } = await db.query<{ name: string; game: string }>(
@@ -39,47 +37,14 @@ export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     const mod = modRows[0];
     if (!mod) return reply.code(404).send({ error: 'Mod not found' });
 
-    req.raw.socket.setTimeout(0);
-    reply.hijack();
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
+    await startJobSse(req, reply, {
+      data: {
+        kind: 'gender-detect',
+        modId,
+        params: { srcLang, modName: mod.name, game: mod.game, useLlm, force },
+      },
+      initialSnapshotData: { resolvedCount: 0 },
     });
-
-    const send = (data: object) => {
-      try {
-        if (!reply.raw.writableEnded) reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch {
-        /* disconnected */
-      }
-    };
-
-    let finishedJobId: number | null = null;
-
-    void (async () => {
-      try {
-        const snapshot = await runLlmGenderDetectJob(
-          db,
-          { modId, srcLang, modName: mod.name, game: mod.game, useLlm, force },
-          send,
-        );
-        finishedJobId = snapshot.jobId;
-      } catch (err: unknown) {
-        log.error(
-          `[LLM Gender-detect mod #${modId}] Stream error: ${err instanceof Error ? err.message : String(err)}`,
-        );
-        send({ type: 'error', error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        if (finishedJobId != null) scheduleLlmGenderDetectJobCleanup(finishedJobId);
-        try {
-          reply.raw.end();
-        } catch {
-          /* closed */
-        }
-      }
-    })();
   });
 
   app.post<{ Params: { jobId: string } }>(
@@ -89,7 +54,7 @@ export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(jobId) || jobId < 1) {
         return reply.code(400).send({ error: 'Invalid jobId' });
       }
-      if (!requestLlmGenderDetectStop(jobId)) {
+      if (!(await stopJobOfKind(jobId, ['gender-detect']))) {
         return reply.code(404).send({ error: 'Running gender-detect job not found' });
       }
       return reply.send({ ok: true });
@@ -103,7 +68,7 @@ export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid modId' });
       }
-      if (!requestLlmGenderDetectStopByModId(modId)) {
+      if (!(await stopJobForMod(['gender-detect'], modId))) {
         return reply.code(404).send({ error: 'Running gender-detect job not found' });
       }
       return reply.send({ ok: true });
@@ -115,7 +80,7 @@ export const llmGenderDetectRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    const job = getLlmGenderDetectJob(jobId);
+    const job = await readJobStatus(jobId, ['gender-detect']);
     if (!job) return reply.code(404).send({ error: 'Gender-detect job not found' });
     return reply.send(job);
   });

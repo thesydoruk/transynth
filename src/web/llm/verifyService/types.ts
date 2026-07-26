@@ -91,16 +91,3 @@ export type VerifyLlmWorkUnit = {
   page: number;
   chunk: VerifyStringRow[];
 };
-
-export type ActiveLlmVerifyJob = LlmVerifyJobSnapshot & {
-  cancel: boolean;
-  srcLang: string;
-  targetLang: string;
-  autoApproveVerified: boolean;
-  /** Apply LLM suggestions for suspicious verdicts (incorrect rows are always auto-fixed). */
-  fixSuspicious: boolean;
-  /** Include reviewed/human rows in the scan (CLI `--force`). */
-  includeConfirmed: boolean;
-  /** Aborts in-flight LLM requests the instant Stop is pressed. */
-  abort: AbortController;
-};

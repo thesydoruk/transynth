@@ -62,13 +62,3 @@ export type LlmSkipDetectProgressEvent =
       markedCount: number;
     }
   | { type: 'error'; error: string };
-
-export type ActiveLlmSkipDetectJob = LlmSkipDetectJobSnapshot & {
-  cancel: boolean;
-  srcLang: string;
-  useLlm: boolean;
-  persist: boolean;
-  force: boolean;
-  /** Aborts in-flight LLM requests the instant Stop is pressed. */
-  abort: AbortController;
-};

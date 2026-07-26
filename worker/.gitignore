@@ -1,0 +1,3 @@
+# Worker package — own node_modules (like web-ui). Shared backend code lives in ../src.
+node_modules/
+data/
