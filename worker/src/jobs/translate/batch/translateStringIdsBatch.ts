@@ -5,7 +5,7 @@ import type { Tx } from '../../../../../src/db';
 import { CONFIG, getTranslateModel } from '../../../../../src/config';
 import { requirePgvectorForRag } from '../../../../../src/llm/rag';
 import { getAllProjectSettings } from '../../../../../src/web/services/projectSettings';
-import { bulkUpsertAutoTranslations } from '../../../../../src/web/import/modImportBulk';
+import { bulkUpsertAutoTranslations } from '../../../../../src/import/bulk';
 import { filterStringIdsForLlmTranslate } from '../../../../../src/web/data/queries';
 import {
   DIALOG_PARTICIPANT_COLUMNS,

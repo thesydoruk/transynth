@@ -9,7 +9,7 @@ import {
   type ModVoiceGenerateScope,
 } from '../../../../src/voice';
 import { resolveImportPackages } from '../../../../src/modImport';
-import { loadModImportPaths } from '../../../../src/web/import/resolveModImportPaths';
+import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
 
 export type ModVoiceGenerateJobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 

@@ -9,7 +9,7 @@ import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { deleteModData } from '../data/queries';
-import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../import/modDeleteService';
+import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../../import/mod/deleteMods';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -20,10 +20,10 @@ import {
   isArchive,
   isPlugin,
   markFailed,
-} from '../import/modImport';
+} from '../../import/mod';
 import { CONFIG } from '../../config';
 import { ensureModStorageDir, modUploadTempPath, modUploadedFilePath } from '../../modStorage';
-import { registerUploadedModFile } from '../import/registerModUpload';
+import { registerUploadedModFile } from '../../import/mod/registerUpload';
 import {
   cancelQueuedImport,
   isImportQueued,

@@ -8,7 +8,7 @@ import { parseStringsBuffer } from '../../../formats/strings';
 import { writeStringsBuffer } from '../../../formats/strings';
 import { MOD_IMPORT_MANIFEST_FILE_NAME } from '../../../modImport/archiveManifest';
 import { modStorageRoot } from '../../../modStorage/paths';
-import { extractGameArchivesForImport } from '../../import/modImportExtract';
+import { extractGameArchivesForImport } from '../../../import/mod/extract';
 import { stageFullLocalizedMod } from '../fullModStaging';
 
 const tempArtifacts: string[] = [];

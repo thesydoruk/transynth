@@ -16,7 +16,7 @@ import {
   registerEetFile,
   updateJobLanguages,
   markImportJobFailed,
-} from '../import/eetImportService';
+} from '../../import/eet';
 import {
   cancelQueuedImport,
   isImportQueued,

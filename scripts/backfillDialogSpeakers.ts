@@ -30,7 +30,7 @@ import {
   listDialogSpeakerBackfillTargets,
   loadPluginPathByBasename,
   type DialogSpeakerBackfillTarget,
-} from '../src/web/import/dialogSpeakers';
+} from '../src/import/dialogSpeakers';
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('backfill:speakers')

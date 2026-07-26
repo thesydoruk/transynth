@@ -2,7 +2,7 @@ import type { Tx } from '../../../db';
 import { withTransaction } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
-import { withPinnedModImportWriteLock } from '../../import/modImportLocks';
+import { withPinnedModImportWriteLock } from '../../../import/locks';
 import { APPROVED_STATUS_SQL } from '../../services/modLangStats';
 
 // ── Mods ─────────────────────────────────────────────────────────────────────

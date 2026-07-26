@@ -18,7 +18,7 @@ import {
   updateCsvJobLanguages,
   markCsvImportFailed,
   iterCsvRecords,
-} from '../import/csvImport';
+} from '../../import/csv';
 import {
   cancelQueuedImport,
   isImportQueued,

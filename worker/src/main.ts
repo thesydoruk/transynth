@@ -10,9 +10,9 @@
  *   4. Snapshots land in Redis for status GETs / reopened modals.
  *   5. Cancel/pause arrive on the control pub/sub channel.
  *
- * Job bodies and handlers live under `./jobs` (feature folders). Import engines
- * remain in `../src/web/import` (shared with upload/list routes). This package
- * owns the queue runtime, HTTP helpers that routes call, and job execution.
+ * Job bodies and handlers live under `./jobs` (feature folders), including the
+ * mod/CSV/EET ingestion loops. Their parsing and job-row helpers stay in
+ * `../src/import`, which the upload/list routes also use.
  */
 import { Worker } from 'bullmq';
 import { CONFIG } from '../../src/config';

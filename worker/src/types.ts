@@ -15,9 +15,9 @@
  * Progress travels as `JobEvent`s via `updateProgress`, which `api/` replays
  * to browsers over SSE — the frontend keeps its existing event shapes.
  *
- * Import *engines* (mod/CSV/EET parse + DB write) still live under
- * `src/web/import` because upload/list/preview routes share them; `jobs/import`
- * only wraps `run*Import` for the queue.
+ * `jobs/import/{mod,csv,eet}` own the ingestion loops themselves. What stays in
+ * `src/import` is the part the API also needs: file discovery, registration and
+ * the `*_imports` job rows.
  */
 import type { Tx } from '../../src/db';
 

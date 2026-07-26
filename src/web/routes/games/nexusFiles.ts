@@ -5,8 +5,8 @@ import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import type { Tx } from '../../../db';
 import type { GameType } from '../../../types';
-import { isArchive, isPlugin } from '../../import/modImport';
-import { registerUploadedModFile } from '../../import/registerModUpload';
+import { isArchive, isPlugin } from '../../../import/mod';
+import { registerUploadedModFile } from '../../../import/mod/registerUpload';
 import { SUPPORTED_GAMES } from './catalogue';
 import {
   downloadNexusFileToDisk,

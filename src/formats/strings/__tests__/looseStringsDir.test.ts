@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from '@jest/globals';
 import { resolveLooseStringsDirForPlugin } from '../looseStringsDir';
-import { discoverLocaleSources } from '../../../web/import/modImportLocaleStream';
+import { discoverLocaleSources } from '../../../import/mod/localeSources';
 
 const tempDirs: string[] = [];
 

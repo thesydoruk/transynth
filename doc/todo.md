@@ -15,7 +15,7 @@ Some localized mods ship separate voice BA2 archives per language (e.g. `MyMod -
 **Related code:**
 
 - `src/modImport/extractBethesdaArchives.ts` — in-place BA2/BSA extraction
-- `src/web/import/modImportExtract.ts` — import manifest build
+- `src/import/mod/extract.ts` — import manifest build
 - `src/formats/ba2/creationKitArchiveRules.ts` — `voices` role (compression only today)
 - `src/voice/discoverVoiceFiles.ts` — scans a single `Sound/Voice/<plugin>/` tree on disk
 

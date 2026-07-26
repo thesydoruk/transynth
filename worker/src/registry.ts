@@ -6,12 +6,12 @@
  */
 import { applyImportedHandler } from './jobs/applyImported/handler';
 import { batchTranslateHandler } from './jobs/batchTranslate';
-import { csvImportHandler } from './jobs/import/csv';
-import { eetImportHandler } from './jobs/import/eet';
+import { csvImportHandler } from './jobs/import/csv/handler';
+import { eetImportHandler } from './jobs/import/eet/handler';
 import { genderDetectHandler } from './jobs/genderDetect/handler';
 import { llmTranslateHandler } from './jobs/translate/handler';
 import { llmVerifyHandler } from './jobs/verify/handler';
-import { modImportHandler } from './jobs/import/mod';
+import { modImportHandler } from './jobs/import/mod/handler';
 import { skipDetectHandler } from './jobs/skipDetect/handler';
 import { tmApplyHandler } from './jobs/tmApply/handler';
 import { voiceGenerateHandler } from './jobs/voice/handler';

@@ -79,7 +79,7 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
       is_active?: boolean;
     };
   }>('/api/qa-rules', async (req, reply) => {
-    const body = req.body ?? {} as Record<string, unknown>;
+    const body = req.body ?? ({} as Record<string, unknown>);
     const {
       game = 'fo4',
       rule_type,
@@ -96,26 +96,43 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'rule_type and value are required' });
     }
     if (!(VALID_RULE_TYPES as readonly string[]).includes(rule_type)) {
-      return reply.code(400).send({ error: `rule_type must be one of: ${VALID_RULE_TYPES.join(', ')}` });
+      return reply
+        .code(400)
+        .send({ error: `rule_type must be one of: ${VALID_RULE_TYPES.join(', ')}` });
     }
     if (!(VALID_SEVERITIES as readonly string[]).includes(severity)) {
-      return reply.code(400).send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
+      return reply
+        .code(400)
+        .send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
     }
     // For max_length rules, value must be a positive integer
     if (rule_type === 'max_length') {
       const parsed = parseInt(value, 10);
       if (Number.isNaN(parsed) || parsed <= 0) {
-        return reply.code(400).send({ error: 'For max_length rules, value must be a positive integer' });
+        return reply
+          .code(400)
+          .send({ error: 'For max_length rules, value must be a positive integer' });
       }
     }
 
-    log.info(`POST /api/qa-rules type=${rule_type} sig=${signature ?? '*'} path=${path ?? '*'} value="${value}"`);
+    log.info(
+      `POST /api/qa-rules type=${rule_type} sig=${signature ?? '*'} path=${path ?? '*'} value="${value}"`,
+    );
 
     const { rows } = await db.query(
       `INSERT INTO qa_rules(game, rule_type, signature, path, value, severity, description, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, game, rule_type, signature, path, value, severity, description, is_active, created_at, updated_at`,
-      [game, rule_type, signature || null, path || null, value, severity, description || null, is_active],
+      [
+        game,
+        rule_type,
+        signature || null,
+        path || null,
+        value,
+        severity,
+        description || null,
+        is_active,
+      ],
     );
 
     return reply.code(201).send(rows[0]);
@@ -138,19 +155,31 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid id' });
 
-    const body = req.body ?? {} as Record<string, unknown>;
+    const body = req.body ?? ({} as Record<string, unknown>);
 
     // Validate rule_type if provided
-    if (body.rule_type !== undefined && !(VALID_RULE_TYPES as readonly string[]).includes(body.rule_type)) {
-      return reply.code(400).send({ error: `rule_type must be one of: ${VALID_RULE_TYPES.join(', ')}` });
+    if (
+      body.rule_type !== undefined &&
+      !(VALID_RULE_TYPES as readonly string[]).includes(body.rule_type)
+    ) {
+      return reply
+        .code(400)
+        .send({ error: `rule_type must be one of: ${VALID_RULE_TYPES.join(', ')}` });
     }
-    if (body.severity !== undefined && !(VALID_SEVERITIES as readonly string[]).includes(body.severity)) {
-      return reply.code(400).send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
+    if (
+      body.severity !== undefined &&
+      !(VALID_SEVERITIES as readonly string[]).includes(body.severity)
+    ) {
+      return reply
+        .code(400)
+        .send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
     }
     if (body.rule_type === 'max_length' && body.value !== undefined) {
       const parsed = parseInt(body.value, 10);
       if (Number.isNaN(parsed) || parsed <= 0) {
-        return reply.code(400).send({ error: 'For max_length rules, value must be a positive integer' });
+        return reply
+          .code(400)
+          .send({ error: 'For max_length rules, value must be a positive integer' });
       }
     }
 
@@ -158,14 +187,27 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
-    const allowed = ['game', 'rule_type', 'signature', 'path', 'value', 'severity', 'description', 'is_active'] as const;
+    const allowed = [
+      'game',
+      'rule_type',
+      'signature',
+      'path',
+      'value',
+      'severity',
+      'description',
+      'is_active',
+    ] as const;
 
     for (const key of allowed) {
       if (key in body) {
         fields.push(`${key} = $${idx++}`);
         // Normalize empty string to null for nullable text fields
         const val = body[key as keyof typeof body];
-        params.push((key === 'signature' || key === 'path' || key === 'description') && val === '' ? null : val ?? null);
+        params.push(
+          (key === 'signature' || key === 'path' || key === 'description') && val === ''
+            ? null
+            : (val ?? null),
+        );
       }
     }
 

@@ -6,7 +6,7 @@ import { writeBa2 } from '../../formats/ba2';
 import { writeStringsBuffer } from '../../formats/strings';
 import { MOD_IMPORT_MANIFEST_FILE_NAME, readModImportExtractManifest } from '../archiveManifest';
 import { extractAllBethesdaArchivesInTreeWithManifest } from '../extractBethesdaArchives';
-import { extractGameArchivesForImport } from '../../web/import/modImportExtract';
+import { extractGameArchivesForImport } from '../../import/mod/extract';
 
 const tempArtifacts: string[] = [];
 

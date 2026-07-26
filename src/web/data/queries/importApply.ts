@@ -1,7 +1,7 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
-import { bulkUpsertImportTranslations, type BulkTranslationRow } from '../../import/modImportBulk';
+import { bulkUpsertImportTranslations, type BulkTranslationRow } from '../../../import/bulk';
 import {
   normalizePath,
   normalizeFormId,

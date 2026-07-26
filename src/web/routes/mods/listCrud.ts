@@ -9,7 +9,7 @@ import {
   deleteModData,
 } from '../../data/queries';
 import { getPexSourceSnippetForString } from '../../export/pexDecompileService';
-import { deleteModsCompletely } from '../../import/modDeleteService';
+import { deleteModsCompletely } from '../../../import/mod/deleteMods';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 

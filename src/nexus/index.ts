@@ -8,7 +8,7 @@
  * ### Typical usage (backend route / CLI)
  *
  * ```typescript
- * import { createNexusClient, NexusModsNotFoundError } from '../nexus/index';
+ * import { createNexusClient, NexusModsNotFoundError } from './index';
  *
  * const nexus = createNexusClient();
  *

@@ -28,7 +28,7 @@ import {
   backfillModDialogStructure,
   listDialogStructureBackfillTargets,
   type DialogStructureBackfillTarget,
-} from '../src/web/import/dialogStructure';
+} from '../src/import/dialogStructure';
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('backfill:structure')
