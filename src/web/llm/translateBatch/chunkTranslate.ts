@@ -19,6 +19,7 @@ import {
   needsLongTextSplit,
   translateLongTextAfterTruncation,
   translateLongTextItem,
+  finalizeLongTextTranslation,
 } from './translateLongText';
 import type {
   ChunkTranslateContext,
@@ -150,9 +151,18 @@ const translateLongEntries = async (
 
   for (const entry of entries) {
     const ragExamples = ragByStringId.get(entry.stringId);
-    const maskedTranslation = await translateLongTextItem(ctx, entry, ragExamples);
-    const merged = [{ id: entry.stringId, translation: maskedTranslation }];
-    okRows.push(...collectValidatedRows(ctx, [entry], merged));
+    try {
+      const translated = await translateLongTextItem(ctx, entry, ragExamples);
+      const result = finalizeLongTextTranslation(ctx, entry, translated);
+      if ('error' in result) {
+        ctx.emitResult(result);
+        continue;
+      }
+      okRows.push(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      ctx.emitResult({ stringId: entry.stringId, error: message });
+    }
   }
 
   return okRows;
@@ -164,8 +174,12 @@ export const translateChunkOnce = async (
   ragByStringId: RagByStringId,
   enqueueSplit: (parts: readonly (readonly PreparedLlmItem[])[]) => void,
 ): Promise<void> => {
-  const longEntries = chunk.filter((entry) => needsLongTextSplit(entry.llmItem.source));
-  const normalEntries = chunk.filter((entry) => !needsLongTextSplit(entry.llmItem.source));
+  const longEntries = chunk.filter(
+    (entry) => needsLongTextSplit(entry.sourceText) || needsLongTextSplit(entry.llmItem.source),
+  );
+  const normalEntries = chunk.filter(
+    (entry) => !needsLongTextSplit(entry.sourceText) && !needsLongTextSplit(entry.llmItem.source),
+  );
 
   if (longEntries.length > 0) {
     scheduleChunkPersist(ctx, await translateLongEntries(ctx, longEntries, ragByStringId));
@@ -200,10 +214,12 @@ export const translateChunkOnce = async (
         ragByStringId.get(entry.stringId),
       );
       if (merged != null) {
-        scheduleChunkPersist(
-          ctx,
-          collectValidatedRows(ctx, [entry], [{ id: entry.stringId, translation: merged }]),
-        );
+        const result = finalizeLongTextTranslation(ctx, entry, merged);
+        if ('error' in result) {
+          ctx.emitResult(result);
+        } else {
+          scheduleChunkPersist(ctx, [result]);
+        }
         return;
       }
     }
