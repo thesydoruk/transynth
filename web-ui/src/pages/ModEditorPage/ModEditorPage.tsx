@@ -5,6 +5,7 @@ import {
 } from '../../modAiTranslateRunner';
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
+import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { EditorToolbar } from './components/EditorToolbar';
 import { DialogsMode } from './components/DialogsMode';
 import { VoiceMode } from './components/VoiceMode';
@@ -100,6 +101,8 @@ export const ModEditorPage = () => {
           void startModAiSkipDetect(modId, filter.srcLang, true, aiJobs.skipDetect)
         }
         onSkipDetectStop={() => void stopModAiSkipDetect(modId, aiJobs.skipDetect.jobId)}
+        onGenderDetect={() => toggleModAiGenderDetect(modId, filter.srcLang, aiJobs.genderDetect)}
+        onGenderDetectStop={() => void stopModAiGenderDetect(modId, aiJobs.genderDetect.jobId)}
         onAiVoiceMissing={() =>
           toggleModAiVoice(modId, filter.srcLang, filter.targetLang, aiJobs.voice, 'missing')
         }

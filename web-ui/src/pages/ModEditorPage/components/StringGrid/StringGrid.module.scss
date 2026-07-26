@@ -167,6 +167,12 @@
   color: inherit;
   font-size: 11px;
 }
+.tdGender {
+  composes: td;
+  text-align: center;
+  padding-left: 2px;
+  padding-right: 2px;
+}
 .tdFid {
   composes: td;
   font-family: monospace;

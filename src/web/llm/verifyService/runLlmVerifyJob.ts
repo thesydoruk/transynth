@@ -170,8 +170,8 @@ export const runLlmVerifyJob = async (
     job.approved = summary.approved;
     job.fixed = summary.fixed;
 
-    if (job.cancel || job.status === 'cancelled') {
-      if (job.status === 'running') job.status = 'cancelled';
+    if (job.cancel) {
+      job.status = 'cancelled';
       logVerify.info('job cancelled', {
         jobId,
         done: job.done,

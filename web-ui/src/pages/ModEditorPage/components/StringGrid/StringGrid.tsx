@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
+import { GenderBadge } from '../../../../components/GenderBadge';
 import { useStringGridColumnWidths } from '../../hooks/useStringGridColumnWidths';
 import { rowBg, rowTextColor } from '../../utils';
 import styles from './StringGrid.module.scss';
@@ -159,6 +160,10 @@ export const StringGrid = ({
           {/* Sticky header */}
           <div className={styles.gridHeader}>
             <div className={`${styles.th} ${styles.colCheck}`} />
+            <div className={styles.th} style={colStyle('gender')} title={t('modEditor.genderCol')}>
+              {t('modEditor.genderColShort')}
+              <span className={styles.resizeHandle} onMouseDown={(e) => startResize('gender', e)} />
+            </div>
             {renderSortableHeader('grup', t('modEditor.grup'))}
             {renderSortableHeader('formid', t('modEditor.formId'))}
             {renderSortableHeader('edid', t('modEditor.edid'))}
@@ -188,6 +193,7 @@ export const StringGrid = ({
                 title={t('modEditor.selectAllMatching')}
               />
             </div>
+            <div style={colStyle('gender')} />
             <div style={colStyle('grup')}>
               <input
                 className={styles.filterInput}
@@ -270,6 +276,9 @@ export const StringGrid = ({
                       checked={isRowSelected(row.string_id)}
                       onChange={() => {}}
                     />
+                  </div>
+                  <div className={styles.tdGender} style={colStyle('gender')}>
+                    <GenderBadge gender={row.line_gender} compact />
                   </div>
                   <div className={styles.tdSig} style={colStyle('grup')}>
                     {row.signature}

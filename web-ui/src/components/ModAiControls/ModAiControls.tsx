@@ -13,6 +13,7 @@ export interface ModAiControlsProps {
   translate: ModAiJobEntry;
   verify: ModAiJobEntry;
   skipDetect: ModAiJobEntry;
+  genderDetect: ModAiJobEntry;
   voice: ModAiJobEntry;
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
@@ -21,6 +22,8 @@ export interface ModAiControlsProps {
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
   onSkipDetectStop: () => void;
+  onGenderDetect: () => void;
+  onGenderDetectStop: () => void;
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
   onVoiceStop: () => void;
@@ -232,6 +235,7 @@ export const ModAiControls = ({
   translate,
   verify,
   skipDetect,
+  genderDetect,
   voice,
   onTranslateTm,
   onTranslateLlm,
@@ -240,6 +244,8 @@ export const ModAiControls = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
+  onGenderDetect,
+  onGenderDetectStop,
   onVoiceMissing,
   onVoiceAll,
   onVoiceStop,
@@ -282,6 +288,18 @@ export const ModAiControls = ({
         icon="⊘"
         menuItems={skipDetectMenuItems}
         onStop={onSkipDetectStop}
+        stoppable
+        compact={compact}
+        circular={circular}
+      />
+      <Slot
+        entry={genderDetect}
+        label={t('modEditor.genderDetect')}
+        runningLabel={t('modEditor.genderDetectRunning')}
+        idleHint={t('modAi.hintGenderDetect')}
+        icon="⚧"
+        onClick={onGenderDetect}
+        onStop={onGenderDetectStop}
         stoppable
         compact={compact}
         circular={circular}

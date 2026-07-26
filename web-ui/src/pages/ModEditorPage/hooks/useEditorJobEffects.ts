@@ -41,6 +41,7 @@ export function useEditorJobEffects({
   const prevAiVerifyStatus = useRef(aiVerify.status);
   const prevTranslateStatus = useRef(aiJobs.translate.status);
   const prevSkipDetectStatus = useRef(aiJobs.skipDetect.status);
+  const prevGenderDetectStatus = useRef(aiJobs.genderDetect.status);
 
   useEffect(() => {
     upsertModAiJob(modId, 'verify', {
@@ -122,4 +123,15 @@ export function useEditorJobEffects({
     }
     prevSkipDetectStatus.current = aiJobs.skipDetect.status;
   }, [aiJobs.skipDetect.status, modId, qc, refetchStats]);
+
+  useEffect(() => {
+    if (
+      prevGenderDetectStatus.current === 'running' &&
+      (aiJobs.genderDetect.status === 'completed' || aiJobs.genderDetect.status === 'cancelled')
+    ) {
+      qc.invalidateQueries({ queryKey: ['strings', modId] });
+      void refetchStats();
+    }
+    prevGenderDetectStatus.current = aiJobs.genderDetect.status;
+  }, [aiJobs.genderDetect.status, modId, qc, refetchStats]);
 }

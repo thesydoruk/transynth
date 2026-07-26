@@ -113,6 +113,33 @@ export type LlmSkipDetectStreamEvent =
     }
   | { type: 'error'; error: string };
 
+export type LlmGenderDetectJobSnapshot = {
+  jobId: number;
+  modId: number;
+  status: 'running' | 'completed' | 'cancelled' | 'failed';
+  done: number;
+  total: number;
+  resolvedCount: number;
+  error: string | null;
+};
+
+export type LlmGenderDetectStreamEvent =
+  | { type: 'started'; jobId: number; total: number }
+  | { type: 'progress'; done: number; total: number }
+  | {
+      type: 'done';
+      done: number;
+      total: number;
+      resolvedCount: number;
+    }
+  | {
+      type: 'cancelled';
+      done: number;
+      total: number;
+      resolvedCount: number;
+    }
+  | { type: 'error'; error: string };
+
 export type LlmTranslateRow = {
   stringId: number;
   source: string;
@@ -133,7 +160,7 @@ export type LlmTranslateJobSnapshot = {
   error: string | null;
 };
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
 export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {

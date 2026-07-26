@@ -36,6 +36,8 @@ export type StringRow = DialogParticipantsRow & {
   formid_hex: string | null;
   game: string;
   mod_name: string;
+  /** Effective narrator gender from records (BOOK/TERM/NOTE). */
+  narrator_gender: string | null;
 };
 
 export type PreparedLlmItem = {

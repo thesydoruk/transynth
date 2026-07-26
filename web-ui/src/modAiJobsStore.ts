@@ -3,7 +3,7 @@
  * Synced from the mod editor SSE hooks and polled from the backend on the mods list.
  */
 
-export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'voice';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
 
 export type ModAiJobStatus = 'idle' | 'running' | 'stopping' | 'completed' | 'cancelled' | 'failed';
 
@@ -47,11 +47,12 @@ const idleEntry = (modId: number, kind: ModAiJobKind): ModAiJobEntry => ({
 export const getModAiJob = (modId: number, kind: ModAiJobKind): ModAiJobEntry =>
   jobs.get(jobKey(modId, kind)) ?? idleEntry(modId, kind);
 
-/** All four job kinds for one mod. */
+/** All job kinds for one mod. */
 export const getModAiJobsForMod = (modId: number) => ({
   translate: getModAiJob(modId, 'translate'),
   verify: getModAiJob(modId, 'verify'),
   skipDetect: getModAiJob(modId, 'skip-detect'),
+  genderDetect: getModAiJob(modId, 'gender-detect'),
   voice: getModAiJob(modId, 'voice'),
 });
 

@@ -126,3 +126,39 @@ export const buildSkipDetectResponseFormat = (itemCount: number): LlmJsonSchemaF
     schema: buildSkipDetectResponseSchema(itemCount),
   },
 });
+
+export const buildNarratorGenderDetectResponseSchema = (
+  itemCount: number,
+): Record<string, unknown> => ({
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      ...boundedArray(itemCount),
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          narrator_gender: { type: 'string', enum: ['male', 'female', 'neutral', 'unknown'] },
+          reason: { type: 'string' },
+          confidence: { type: 'number' },
+        },
+        required: ['id', 'narrator_gender', 'reason', 'confidence'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+});
+
+export const buildNarratorGenderDetectResponseFormat = (
+  itemCount: number,
+): LlmJsonSchemaFormat => ({
+  type: 'json_schema',
+  json_schema: {
+    name: 'narrator_gender_detect_batch',
+    strict: true,
+    schema: buildNarratorGenderDetectResponseSchema(itemCount),
+  },
+});

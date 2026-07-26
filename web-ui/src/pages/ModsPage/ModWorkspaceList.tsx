@@ -7,6 +7,7 @@ import {
 } from '../../modAiTranslateRunner';
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
+import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
 
 type ExportAction = {
@@ -99,6 +100,12 @@ export const ModWorkspaceList = ({
         }
         onSkipDetectStop={() =>
           void stopModAiSkipDetect(mod.id, getModAiJob(mod.id, 'skip-detect').jobId)
+        }
+        onGenderDetect={() =>
+          toggleModAiGenderDetect(mod.id, srcLang, getModAiJob(mod.id, 'gender-detect'))
+        }
+        onGenderDetectStop={() =>
+          void stopModAiGenderDetect(mod.id, getModAiJob(mod.id, 'gender-detect').jobId)
         }
         onAiVoiceMissing={() =>
           toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'), 'missing')

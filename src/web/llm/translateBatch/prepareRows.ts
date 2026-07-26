@@ -3,6 +3,7 @@ import { maskLlmOptionalText } from '../../../llm/llmTextMask';
 import { buildLlmParticipantPayload } from '../../../llm/dialogParticipants';
 import { parseRecordLocation } from '../../../utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../data/queries/dialogs';
+import { mergeNarratorGender } from './mergeNarratorGender';
 import type { GameType } from '../../../types';
 import type { PreparedLlmItem, StringRow, TranslateBatchOptions } from './types';
 
@@ -45,8 +46,11 @@ export const prepareLlmItems = (
       continue;
     }
 
-    const participants = dialogParticipantsFromRow(row, field);
-
+    const participants = mergeNarratorGender(
+      dialogParticipantsFromRow(row, field),
+      row.narrator_gender,
+      grup,
+    );
     llmPending.push({
       stringId,
       sourceText,

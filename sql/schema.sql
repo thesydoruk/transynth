@@ -620,3 +620,14 @@ CREATE TABLE IF NOT EXISTS voice_speaker_refs (
 
 CREATE INDEX IF NOT EXISTS idx_voice_speaker_refs_mod
   ON voice_speaker_refs(mod_id);
+
+-- ── Narrator gender (BOOK/TERM/NOTE) ─────────────────────────────────────────
+ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender TEXT;
+ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender_source TEXT;
+ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender_override TEXT;
+ALTER TABLE records ADD COLUMN IF NOT EXISTS gender_detect_scanned_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_records_gender_detect_pending
+  ON records(mod_id)
+  WHERE gender_detect_scanned_at IS NULL
+    AND signature IN ('BOOK', 'TERM', 'NOTE');

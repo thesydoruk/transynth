@@ -16,6 +16,8 @@ export type StringRow = {
   model: string | null;
   updated_at: string | null;
   qa_issue_count: number;
+  /** Resolved speaker/narrator gender for this line. */
+  line_gender?: 'male' | 'female' | 'any' | 'unknown' | 'neutral' | null;
 };
 
 export type StringsResult = {

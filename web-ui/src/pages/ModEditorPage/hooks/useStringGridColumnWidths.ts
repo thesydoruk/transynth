@@ -3,11 +3,20 @@ import { useCallback, useRef, useState, type CSSProperties, type MouseEvent } fr
 export const STRING_GRID_COLUMN_WIDTHS_STORAGE_KEY = 'mod-editor-string-grid-column-widths';
 
 /** Keys identifying each resizable column in the string grid. */
-export type StringGridColKey = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl' | 'act';
+export type StringGridColKey =
+  | 'gender'
+  | 'grup'
+  | 'formid'
+  | 'edid'
+  | 'field'
+  | 'src'
+  | 'transl'
+  | 'act';
 
 export type StringGridColumnWidths = Record<StringGridColKey, number | null>;
 
 export const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
+  gender: 28,
   grup: 52,
   formid: 70,
   edid: 160,
@@ -19,7 +28,16 @@ export const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
 
 const MIN_COLUMN_WIDTH = 30;
 
-const COL_KEYS: StringGridColKey[] = ['grup', 'formid', 'edid', 'field', 'src', 'transl', 'act'];
+const COL_KEYS: StringGridColKey[] = [
+  'gender',
+  'grup',
+  'formid',
+  'edid',
+  'field',
+  'src',
+  'transl',
+  'act',
+];
 
 const readStoredWidths = (): StringGridColumnWidths => {
   try {

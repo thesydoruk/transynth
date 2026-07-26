@@ -11,6 +11,7 @@ import {
   DIALOG_PARTICIPANT_COLUMNS,
   dialogParticipantsLateralSql,
 } from '../../data/queries/dialogs';
+import { effectiveNarratorGenderSql } from '../../../dialog/narratorGender';
 import { scheduleRefreshQAIssuesBatch } from '../../services/qaHooks';
 import { logTranslate } from '../../../logging/loggers';
 import { clampRagMaxExamples } from '../../../llm/ragConstants';
@@ -79,6 +80,7 @@ export const translateStringIdsBatch = async (
   const { rows: loadedRows } = await db.query<StringRow>(
     `SELECT s.id, s.text_raw, s.text_norm, s.text_norm_nopunct, s.context,
             r.signature, r.path, r.edid, r.formid_hex, m.game, m.name AS mod_name,
+            ${effectiveNarratorGenderSql('r')} AS narrator_gender,
             ${DIALOG_PARTICIPANT_COLUMNS}
        FROM strings s
        JOIN records r ON r.id = s.record_id

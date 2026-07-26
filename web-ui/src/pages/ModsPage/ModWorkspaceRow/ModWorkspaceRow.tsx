@@ -36,6 +36,8 @@ export interface ModWorkspaceRowProps {
   onSkipDetectHeuristic?: () => void;
   onSkipDetectWithLlm?: () => void;
   onSkipDetectStop?: () => void;
+  onGenderDetect?: () => void;
+  onGenderDetectStop?: () => void;
   onAiVoiceMissing?: () => void;
   onAiVoiceAll?: () => void;
   onAiVoiceStop?: () => void;
@@ -62,6 +64,8 @@ export const ModWorkspaceRow = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
+  onGenderDetect,
+  onGenderDetectStop,
   onAiVoiceMissing,
   onAiVoiceAll,
   onAiVoiceStop,
@@ -136,6 +140,7 @@ export const ModWorkspaceRow = ({
           onAiVerify ||
           onSkipDetectHeuristic ||
           onSkipDetectWithLlm ||
+          onGenderDetect ||
           onAiVoiceMissing ||
           onAiVoiceAll) && (
           <ModAiControls
@@ -143,6 +148,7 @@ export const ModWorkspaceRow = ({
             translate={aiJobs.translate}
             verify={aiJobs.verify}
             skipDetect={aiJobs.skipDetect}
+            genderDetect={aiJobs.genderDetect}
             voice={aiJobs.voice}
             onTranslateTm={onAiTranslateTm ?? (() => {})}
             onTranslateLlm={onAiTranslateLlm ?? (() => {})}
@@ -151,6 +157,8 @@ export const ModWorkspaceRow = ({
             onSkipDetectHeuristic={onSkipDetectHeuristic ?? (() => {})}
             onSkipDetectWithLlm={onSkipDetectWithLlm ?? (() => {})}
             onSkipDetectStop={onSkipDetectStop ?? (() => {})}
+            onGenderDetect={onGenderDetect ?? (() => {})}
+            onGenderDetectStop={onGenderDetectStop ?? (() => {})}
             onVoiceMissing={onAiVoiceMissing ?? (() => {})}
             onVoiceAll={onAiVoiceAll ?? (() => {})}
             onVoiceStop={onAiVoiceStop ?? (() => {})}

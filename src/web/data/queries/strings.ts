@@ -9,6 +9,8 @@ import {
   isStatusOnlyStringsFilter,
   SORT_COLUMNS,
 } from './stringsFilter';
+import { dialogParticipantsLateralSql } from './dialogs/participants';
+import { stringLineGenderSql } from './stringLineGender';
 
 export type { StringsFilter } from './stringsFilter';
 export { parseStatusFilter } from './stringsFilter';
@@ -76,12 +78,14 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       t.provenance,
       t.model,
       t.updated_at,
-      COALESCE(q.issue_count, 0) AS qa_issue_count
+      COALESCE(q.issue_count, 0) AS qa_issue_count,
+      ${stringLineGenderSql('r', 'dp')} AS line_gender
      FROM page
      JOIN strings s ON s.id = page.string_id
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
+     LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}) dp ON TRUE
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi

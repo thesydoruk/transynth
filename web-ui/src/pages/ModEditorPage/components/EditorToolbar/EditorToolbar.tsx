@@ -53,6 +53,7 @@ export interface EditorToolbarProps {
     translate: ModAiJobEntry;
     verify: ModAiJobEntry;
     skipDetect: ModAiJobEntry;
+    genderDetect: ModAiJobEntry;
     voice: ModAiJobEntry;
   };
 
@@ -74,6 +75,8 @@ export interface EditorToolbarProps {
   onSkipDetectHeuristic: () => void;
   onSkipDetectWithLlm: () => void;
   onSkipDetectStop: () => void;
+  onGenderDetect: () => void;
+  onGenderDetectStop: () => void;
   onAiVoiceMissing: () => void;
   onAiVoiceAll: () => void;
   onAiVoiceStop: () => void;
@@ -116,6 +119,8 @@ export const EditorToolbar = ({
   onSkipDetectHeuristic,
   onSkipDetectWithLlm,
   onSkipDetectStop,
+  onGenderDetect,
+  onGenderDetectStop,
   onAiVoiceMissing,
   onAiVoiceAll,
   onAiVoiceStop,
@@ -130,6 +135,7 @@ export const EditorToolbar = ({
           translate={aiJobs.translate}
           verify={aiJobs.verify}
           skipDetect={aiJobs.skipDetect}
+          genderDetect={aiJobs.genderDetect}
           voice={aiJobs.voice}
           onTranslateTm={onTranslateTm}
           onTranslateLlm={onTranslateLlm}
@@ -138,6 +144,8 @@ export const EditorToolbar = ({
           onSkipDetectHeuristic={onSkipDetectHeuristic}
           onSkipDetectWithLlm={onSkipDetectWithLlm}
           onSkipDetectStop={onSkipDetectStop}
+          onGenderDetect={onGenderDetect}
+          onGenderDetectStop={onGenderDetectStop}
           onVoiceMissing={onAiVoiceMissing}
           onVoiceAll={onAiVoiceAll}
           onVoiceStop={onAiVoiceStop}

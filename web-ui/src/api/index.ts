@@ -22,6 +22,7 @@ import { projectSettingsEndpoints } from './endpoints/projectSettings';
 import { gamesEndpoints } from './endpoints/games';
 import { llmVerifyEndpoints } from './endpoints/llmVerify';
 import { llmSkipDetectEndpoints } from './endpoints/llmSkipDetect';
+import { llmGenderDetectEndpoints } from './endpoints/llmGenderDetect';
 import { tmApplyEndpoints } from './endpoints/tmApply';
 import { llmTranslateEndpoints } from './endpoints/llmTranslate';
 import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
@@ -47,6 +48,7 @@ export const api = {
   games: gamesEndpoints,
   llmVerify: llmVerifyEndpoints,
   llmSkipDetect: llmSkipDetectEndpoints,
+  llmGenderDetect: llmGenderDetectEndpoints,
   tmApply: tmApplyEndpoints,
   llmTranslate: llmTranslateEndpoints,
   voiceGenerate: voiceGenerateEndpoints,
