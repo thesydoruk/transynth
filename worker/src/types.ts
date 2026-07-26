@@ -2,15 +2,22 @@
  * Shared contracts for the worker package (`worker/`).
  *
  * Layout:
- *   types.ts     — this file
- *   core/        — Redis, BullMQ queue, snapshots, control channel
- *   api/         — SSE enqueue/relay, status, stop (used by web routes)
- *   handlers/    — one handler per job kind
- *   main.ts      — process entrypoint (+ processor, registry, runTrackedJob)
+ *   types.ts / main.ts / processor / registry / runTrackedJob
+ *   core/     — Redis, BullMQ queue, snapshots, control channel
+ *   api/      — SSE enqueue/relay, status, stop (used by web routes)
+ *   jobs/     — feature folders: handler + runJob (+ pipeline when needed)
+ *     translate/  verify/  skipDetect/  genderDetect/
+ *     tmApply/  voice/  applyImported/  import/
+ *     shared/   — splitLongText, glossary helpers
+ *     batchTranslate.ts
  *
  * The API enqueues BullMQ jobs; the worker runs the handler for `kind`.
  * Progress travels as `JobEvent`s via `updateProgress`, which `api/` replays
  * to browsers over SSE — the frontend keeps its existing event shapes.
+ *
+ * Import *engines* (mod/CSV/EET parse + DB write) still live under
+ * `src/web/import` because upload/list/preview routes share them; `jobs/import`
+ * only wraps `run*Import` for the queue.
  */
 import type { Tx } from '../../src/db';
 

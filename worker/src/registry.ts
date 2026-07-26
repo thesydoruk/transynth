@@ -4,17 +4,17 @@
  * Do not import this from the API: handlers pull LLM pipelines, Wine tools and
  * importers that belong exclusively in the worker container.
  */
-import { applyImportedHandler } from './handlers/applyImported';
-import { batchTranslateHandler } from './handlers/batchTranslate';
-import { csvImportHandler } from './handlers/csvImport';
-import { eetImportHandler } from './handlers/eetImport';
-import { genderDetectHandler } from './handlers/genderDetect';
-import { llmTranslateHandler } from './handlers/llmTranslate';
-import { llmVerifyHandler } from './handlers/llmVerify';
-import { modImportHandler } from './handlers/modImport';
-import { skipDetectHandler } from './handlers/skipDetect';
-import { tmApplyHandler } from './handlers/tmApply';
-import { voiceGenerateHandler } from './handlers/voiceGenerate';
+import { applyImportedHandler } from './jobs/applyImported/handler';
+import { batchTranslateHandler } from './jobs/batchTranslate';
+import { csvImportHandler } from './jobs/import/csv';
+import { eetImportHandler } from './jobs/import/eet';
+import { genderDetectHandler } from './jobs/genderDetect/handler';
+import { llmTranslateHandler } from './jobs/translate/handler';
+import { llmVerifyHandler } from './jobs/verify/handler';
+import { modImportHandler } from './jobs/import/mod';
+import { skipDetectHandler } from './jobs/skipDetect/handler';
+import { tmApplyHandler } from './jobs/tmApply/handler';
+import { voiceGenerateHandler } from './jobs/voice/handler';
 import type { JobHandler, JobKind } from './types';
 
 const handlers: Record<JobKind, JobHandler> = {

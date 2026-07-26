@@ -1,6 +1,6 @@
 import { inferNarratorGenderHeuristic } from '../narratorGenderHeuristics';
 import { narratorToSpeakerGender, parseNarratorGender } from '../narratorGender';
-import { mergeNarratorGender } from '../../web/llm/translateBatch/mergeNarratorGender';
+import { mergeNarratorGender } from '../../../worker/src/jobs/translate/batch/mergeNarratorGender';
 
 describe('inferNarratorGenderHeuristic', () => {
   it('detects female from body references', () => {

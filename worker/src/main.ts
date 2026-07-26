@@ -10,8 +10,9 @@
  *   4. Snapshots land in Redis for status GETs / reopened modals.
  *   5. Cancel/pause arrive on the control pub/sub channel.
  *
- * Business logic (LLM, imports, voice) still lives under `../src`; this package
- * owns only the queue runtime and the HTTP helpers that routes call.
+ * Job bodies and handlers live under `./jobs` (feature folders). Import engines
+ * remain in `../src/web/import` (shared with upload/list routes). This package
+ * owns the queue runtime, HTTP helpers that routes call, and job execution.
  */
 import { Worker } from 'bullmq';
 import { CONFIG } from '../../src/config';

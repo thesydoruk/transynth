@@ -23,7 +23,7 @@ import { CONFIG, validateConfig } from '../src/config';
 import { openDb, closeDb, type Tx } from '../src/db';
 import { log } from '../src/logger';
 import { countGenderDetectRecords } from '../src/web/data/queries/narratorGender';
-import { runModGenderDetectPipeline } from '../src/web/llm/genderDetectPipeline/runModGenderDetectPipeline';
+import { runModGenderDetectPipeline } from '../worker/src/jobs/genderDetect/pipeline/runPipeline';
 
 type BackfillTarget = {
   modId: number;
