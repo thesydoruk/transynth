@@ -153,6 +153,13 @@ export const CONFIG = {
     50_000,
   ),
 
+  /** Max line breaks per translate chunk — keeps ¤PHn¤ mask keys manageable (default 12). */
+  llmTranslateTextChunkMaxLineBreaks: parsePositiveInt(
+    process.env.LLM_TRANSLATE_TEXT_CHUNK_MAX_LINE_BREAKS,
+    12,
+    100,
+  ),
+
   /** Max retry attempts for transient LLM HTTP errors and parse failures (default 5). */
   llmMaxAttempts: (() => {
     const parsed = Number.parseInt(process.env.LLM_MAX_ATTEMPTS ?? '', 10);

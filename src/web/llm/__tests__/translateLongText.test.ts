@@ -1,5 +1,5 @@
 import { maskPlaceholders } from '../../../utils/placeholders';
-import { splitLongSourceText } from '../splitLongText';
+import { splitLongSourceText, splitLongSourceForTranslate } from '../splitLongText';
 
 describe('long-text chunk remasking', () => {
   it('gives each split part its own PH0 mask keys', () => {
@@ -12,5 +12,15 @@ describe('long-text chunk remasking', () => {
       expect(Object.keys(mapping)).toContain('¤PH0¤');
       expect(masked).not.toMatch(/¤PH10\d+¤/);
     }
+  });
+
+  it('limits line breaks per translate chunk', () => {
+    const source = 'Paragraph.\r\n'.repeat(50);
+    const parts = splitLongSourceForTranslate(source, 2000, 8);
+    expect(parts.length).toBeGreaterThan(3);
+    for (const part of parts) {
+      expect((part.match(/\r\n|\r|\n/g) ?? []).length).toBeLessThanOrEqual(8);
+    }
+    expect(parts.join('')).toBe(source);
   });
 });

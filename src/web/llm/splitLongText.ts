@@ -81,6 +81,50 @@ export const splitLongSourceText = (text: string, maxChars: number): string[] =>
   return parts.filter((part) => part.length > 0);
 };
 
+const countLineBreaks = (text: string): number => (text.match(/\r\n|\r|\n/g) ?? []).length;
+
+const subdivideByLineBreakBudget = (
+  text: string,
+  maxChars: number,
+  maxLineBreaks: number,
+  out: string[],
+): void => {
+  if (text.length === 0) return;
+  if (text.length <= maxChars && countLineBreaks(text) <= maxLineBreaks) {
+    out.push(text);
+    return;
+  }
+  if (text.length <= 80) {
+    out.push(text);
+    return;
+  }
+
+  const cut = findCutPos(
+    text,
+    Math.min(maxChars, Math.ceil(text.length / 2)),
+    maskTokenSpans(text),
+  );
+  const nextStart = Math.max(1, cut);
+  subdivideByLineBreakBudget(text.slice(0, nextStart), maxChars, maxLineBreaks, out);
+  subdivideByLineBreakBudget(text.slice(nextStart), maxChars, maxLineBreaks, out);
+};
+
+/** Split raw source for translate — char limit plus a line-break budget per chunk. */
+export const splitLongSourceForTranslate = (
+  text: string,
+  maxChars = CONFIG.llmTranslateTextChunkMaxChars,
+  maxLineBreaks = CONFIG.llmTranslateTextChunkMaxLineBreaks,
+): string[] => {
+  const limit = Math.max(1, maxChars);
+  if (text.length <= limit && countLineBreaks(text) <= maxLineBreaks) return [text];
+
+  const out: string[] = [];
+  for (const part of splitLongSourceText(text, limit)) {
+    subdivideByLineBreakBudget(part, limit, maxLineBreaks, out);
+  }
+  return out.length > 0 ? out : [text];
+};
+
 export const needsLongTextSplit = (
   text: string,
   maxChars = CONFIG.llmTranslateTextChunkMaxChars,
