@@ -44,6 +44,11 @@
   flex: 1;
 }
 
+.fetching {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
 .chips {
   display: flex;
   gap: 4px;
@@ -123,6 +128,19 @@
   min-height: 0;
   overflow-y: auto;
   padding: 8px 10px;
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+}
+
+.rowSlot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding-bottom: 4px;
 }
 
 .placeholder {

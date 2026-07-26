@@ -1,11 +1,9 @@
-import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import {
   loadVoiceTranslations,
   lookupVoiceTranslation,
   voiceTranslationMapKey,
 } from '../../../voice/loadVoiceTranslations';
-import { resolveLocalizedVoiceAbsPath } from '../../../voice/synthesizeModVoiceLine';
 import { loadVoiceSynthesisVersionMap } from '../../../voice/voiceSynthesisState';
 import {
   isVoiceSynthesisCurrent,
@@ -15,6 +13,7 @@ import { prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
 import { loadImportedMod } from '../../../modImport/importedMod';
 import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
+import { buildTranslationAudioSet, hasTranslationAudio } from './translationAudioIndex';
 import type { VoiceAvailabilityResult } from './types';
 
 /**
@@ -36,6 +35,7 @@ export const listVoiceAvailabilityForMod = async (
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, resolved.targetLang);
   const mod = await loadImportedMod(db, modId);
   const translations = await loadVoiceTranslations(db, modId, mod.srcLang, resolved.targetLang);
+  const translationAudio = buildTranslationAudioSet(resolved.ctx.localizeDir);
   const source: string[] = [];
   const translation: string[] = [];
   const stale: string[] = [];
@@ -44,8 +44,7 @@ export const listVoiceAvailabilityForMod = async (
     const key = voiceTranslationMapKey(entry.formidLower6, entry.variant);
     source.push(key);
 
-    const localized = resolveLocalizedVoiceAbsPath(resolved.ctx.localizeDir, entry);
-    if (!localized || !fs.existsSync(localized)) continue;
+    if (!hasTranslationAudio(translationAudio, entry.formidLower6, entry.variant)) continue;
 
     translation.push(key);
 

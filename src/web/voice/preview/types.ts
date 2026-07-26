@@ -26,11 +26,45 @@ export type VoiceSpeakerGroup = {
   lines: VoiceLinePreview[];
 };
 
+/** Speaker row for the voice navigator — counts only, no line payloads. */
+export type VoiceSpeakerSummary = {
+  key: string;
+  displayName: string;
+  referencePick: VoiceSpeakerRefPick | null;
+  gender: SpeakerGender;
+  genderMismatch: boolean;
+  lineCount: number;
+  dubbedCount: number;
+};
+
+export type VoiceListErrorReason =
+  | 'mod_not_found'
+  | 'no_plugin_path'
+  | 'plugin_missing'
+  | 'no_voice_files'
+  | 'speaker_not_found';
+
 export type VoiceLinesListResult =
   | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
   | {
       ok: false;
-      reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing' | 'no_voice_files';
+      reason: VoiceListErrorReason;
+      message: string;
+    };
+
+export type VoiceSpeakersListResult =
+  | { ok: true; speakers: VoiceSpeakerSummary[]; totalLines: number }
+  | {
+      ok: false;
+      reason: Exclude<VoiceListErrorReason, 'speaker_not_found'>;
+      message: string;
+    };
+
+export type VoiceSpeakerLinesResult =
+  | { ok: true; speakerKey: string; lines: VoiceLinePreview[] }
+  | {
+      ok: false;
+      reason: VoiceListErrorReason;
       message: string;
     };
 

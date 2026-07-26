@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api, type VoiceLinePreview } from '../../../../api';
+import type { VoiceLinePreview } from '../../../../api';
 import { VoiceNavigator } from './components/VoiceNavigator';
 import { VoiceLinesView } from './components/VoiceLinesView';
 import { useVoiceActions } from './hooks/useVoiceActions';
+import { useVoiceData } from './hooks/useVoiceData';
 import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { useVoiceState } from './hooks/useVoiceState';
-import { speakerDubbedCount } from './voiceLineKeys';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
 import styles from './VoiceMode.module.scss';
 
@@ -30,50 +30,50 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
   const { width, isResizing, startResize } = useVoiceNavigatorWidth();
   const [regenerateLine, setRegenerateLine] = useState<VoiceLinePreview | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['voice-lines', modId, srcLang, targetLang],
-    queryFn: () => api.mods.voiceLines(modId, srcLang, targetLang),
+  const data = useVoiceData({
+    modId,
+    speakerKey: state.speakerKey,
+    search: state.search,
+    srcLang,
+    targetLang,
   });
 
   const playback = useVoicePlayback(modId);
-  const actions = useVoiceActions(modId, srcLang, targetLang, (line) =>
-    playback.handlePlay(line, 'translation'),
-  );
-
-  const speakers = data?.ok ? data.speakers : [];
-
-  const visibleSpeakers = useMemo(() => {
-    const query = state.search.trim().toLowerCase();
-    if (!query) return speakers;
-    return speakers.filter((speaker) => speaker.displayName.toLowerCase().includes(query));
-  }, [speakers, state.search]);
+  const actions = useVoiceActions({
+    modId,
+    srcLang,
+    targetLang,
+    speakersQueryKey: data.speakersQueryKey,
+    linesQueryKey: data.linesQueryKey,
+    onGenerateSuccess: (line) => playback.handlePlay(line, 'translation'),
+  });
 
   useEffect(() => {
-    if (visibleSpeakers.length === 0) return;
-    if (!state.speakerKey || !visibleSpeakers.some((speaker) => speaker.key === state.speakerKey)) {
-      state.setSpeakerKey(visibleSpeakers[0]!.key);
+    if (data.visibleSpeakers.length === 0) return;
+    if (
+      !state.speakerKey ||
+      !data.visibleSpeakers.some((speaker) => speaker.key === state.speakerKey)
+    ) {
+      state.setSpeakerKey(data.visibleSpeakers[0]!.key);
     }
-  }, [state.speakerKey, state.setSpeakerKey, visibleSpeakers]);
-
-  const activeSpeaker = speakers.find((speaker) => speaker.key === state.speakerKey) ?? null;
+  }, [state.speakerKey, state.setSpeakerKey, data.visibleSpeakers]);
 
   const lineCounts = useMemo(() => {
-    const lines = activeSpeaker?.lines ?? [];
+    const lines = data.lines;
     return {
       total: lines.length,
       needsTranslation: lines.filter((line) => !line.translation?.trim()).length,
       needsVoice: lines.filter((line) => line.translation?.trim() && !line.hasTranslationAudio)
         .length,
     };
-  }, [activeSpeaker]);
+  }, [data.lines]);
 
   const visibleLines = useMemo(() => {
-    const lines = activeSpeaker?.lines ?? [];
-    let filtered = lines;
+    let filtered = data.lines;
     if (state.filter === 'needsTranslation') {
-      filtered = lines.filter((line) => !line.translation?.trim());
+      filtered = data.lines.filter((line) => !line.translation?.trim());
     } else if (state.filter === 'needsVoice') {
-      filtered = lines.filter((line) => line.translation?.trim() && !line.hasTranslationAudio);
+      filtered = data.lines.filter((line) => line.translation?.trim() && !line.hasTranslationAudio);
     }
     const query = state.find.trim().toLowerCase();
     if (!query) return filtered;
@@ -82,48 +82,51 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         (line.source ?? '').toLowerCase().includes(query) ||
         (line.translation ?? '').toLowerCase().includes(query),
     );
-  }, [activeSpeaker, state.filter, state.find]);
+  }, [data.lines, state.filter, state.find]);
 
-  const hiddenLineCount = (activeSpeaker?.lines.length ?? 0) - visibleLines.length;
-  const dubbed = activeSpeaker ? speakerDubbedCount(activeSpeaker.lines) : 0;
+  const hiddenLineCount = data.lines.length - visibleLines.length;
 
   const stepSpeaker = (delta: number) => {
-    if (visibleSpeakers.length === 0) return;
-    const current = visibleSpeakers.findIndex((speaker) => speaker.key === state.speakerKey);
+    if (data.visibleSpeakers.length === 0) return;
+    const current = data.visibleSpeakers.findIndex((speaker) => speaker.key === data.activeKey);
     const next =
       current < 0
         ? delta > 0
           ? 0
-          : visibleSpeakers.length - 1
-        : Math.min(Math.max(current + delta, 0), visibleSpeakers.length - 1);
-    state.setSpeakerKey(visibleSpeakers[next]!.key);
+          : data.visibleSpeakers.length - 1
+        : Math.min(Math.max(current + delta, 0), data.visibleSpeakers.length - 1);
+    state.setSpeakerKey(data.visibleSpeakers[next]!.key);
   };
 
+  const speakersError = data.speakersQuery.error;
+  const linesError = data.linesQuery.error;
   const loadError =
-    error instanceof Error
-      ? error.message
-      : data && !data.ok
-        ? data.message
-        : isLoading
-          ? null
-          : null;
+    speakersError instanceof Error
+      ? speakersError.message
+      : data.speakersQuery.data && !data.speakersQuery.data.ok
+        ? data.speakersQuery.data.message
+        : linesError instanceof Error
+          ? linesError.message
+          : data.linesQuery.data && !data.linesQuery.data.ok
+            ? data.linesQuery.data.message
+            : null;
 
   const panelError =
     loadError ?? playback.playError ?? actions.refError ?? actions.generateError ?? null;
 
   const emptyMessage =
-    isLoading || !data
+    data.speakersQuery.isLoading || !data.speakersQuery.data
       ? t('modEditor.voiceLoading')
-      : data.ok && speakers.length === 0
+      : data.speakersQuery.data.ok && data.speakers.length === 0
         ? t('modEditor.voiceNoLines')
-        : !activeSpeaker
+        : !data.activeSpeaker
           ? t('voice.selectSpeaker')
           : null;
 
   const handleSetReference = (line: VoiceLinePreview) => {
-    if (!activeSpeaker) return;
+    if (!data.activeSpeaker) return;
     actions.dismissRefError();
-    actions.setReferenceMut.mutate({ speakerKey: activeSpeaker.key, line });
+    actions.setReferenceMut.mutate({ speakerKey: data.activeSpeaker.key, line });
   };
 
   const handleGenerate = (line: VoiceLinePreview) => {
@@ -135,14 +138,14 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
     <div className={styles.root}>
       <div className={styles.navigatorPane} style={{ width }}>
         <VoiceNavigator
-          speakers={visibleSpeakers}
-          totalCount={speakers.length}
-          activeKey={state.speakerKey}
+          speakers={data.visibleSpeakers}
+          totalCount={data.speakers.length}
+          activeKey={data.activeKey}
           search={state.search}
           onSearchChange={state.setSearch}
           onSelect={state.setSpeakerKey}
           onStepSpeaker={stepSpeaker}
-          isLoading={isLoading}
+          isLoading={data.speakersQuery.isLoading}
           searchRef={searchRef}
         />
       </div>
@@ -155,10 +158,10 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
       />
 
       <VoiceLinesView
-        speakerName={activeSpeaker?.displayName ?? ''}
-        dubbed={dubbed}
-        total={activeSpeaker?.lines.length ?? 0}
-        hasReference={Boolean(activeSpeaker?.referencePick)}
+        speakerName={data.activeSpeaker?.displayName ?? ''}
+        dubbed={data.activeSpeaker?.dubbedCount ?? 0}
+        total={data.activeSpeaker?.lineCount ?? 0}
+        hasReference={Boolean(data.activeSpeaker?.referencePick)}
         lines={visibleLines}
         hiddenLineCount={hiddenLineCount}
         filter={state.filter}
@@ -181,6 +184,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         onGenerate={handleGenerate}
         onRegenerate={setRegenerateLine}
         emptyMessage={emptyMessage}
+        isLoadingLines={data.linesQuery.isLoading && data.lines.length === 0}
       />
 
       {regenerateLine && (
@@ -193,7 +197,8 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
           onClose={() => setRegenerateLine(null)}
           onCommitted={async () => {
             setRegenerateLine(null);
-            await qc.invalidateQueries({ queryKey: ['voice-lines', modId, srcLang, targetLang] });
+            await qc.invalidateQueries({ queryKey: data.speakersQueryKey });
+            await qc.invalidateQueries({ queryKey: data.linesQueryKey });
           }}
         />
       )}

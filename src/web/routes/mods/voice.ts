@@ -7,16 +7,18 @@ import {
   generateVoiceTranslationForMod,
   getVoicePreviewWav,
   getVoiceTranslationWav,
+  invalidateVoiceListContext,
   listVoiceAvailabilityForMod,
-  listVoiceLinesForMod,
+  listVoiceLinesForSpeaker,
+  listVoiceSpeakersForMod,
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
 
 export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
-  // GET /api/mods/:id/voice/lines — list voice lines grouped by speaker.
+  // GET /api/mods/:id/voice/lines — speakers (default) or one speaker's lines.
   app.get<{
     Params: { id: string };
-    Querystring: { srcLang?: string; targetLang?: string };
+    Querystring: { srcLang?: string; targetLang?: string; speakerKey?: string };
   }>('/api/mods/:id/voice/lines', async (req, reply) => {
     const modId = Number(req.params.id);
     if (!Number.isInteger(modId) || modId < 1) {
@@ -25,7 +27,23 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const srcLang = req.query.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.query.targetLang?.trim() || CONFIG.defaultTgtLang;
-    const result = await listVoiceLinesForMod(db, modId, srcLang, targetLang);
+    const speakerKey = req.query.speakerKey?.trim();
+
+    if (speakerKey) {
+      const result = await listVoiceLinesForSpeaker(db, modId, speakerKey, srcLang, targetLang);
+      if (!result.ok) {
+        const status =
+          result.reason === 'mod_not_found' || result.reason === 'speaker_not_found'
+            ? 404
+            : result.reason === 'no_voice_files'
+              ? 404
+              : 400;
+        return reply.code(status).send(result);
+      }
+      return reply.send(result);
+    }
+
+    const result = await listVoiceSpeakersForMod(db, modId, srcLang, targetLang);
     if (!result.ok) {
       const status =
         result.reason === 'mod_not_found' ? 404 : result.reason === 'no_voice_files' ? 404 : 400;
@@ -152,6 +170,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
             : 400;
       return reply.code(status).send(result);
     }
+    invalidateVoiceListContext(modId);
     return reply.send(result);
   });
 
@@ -192,6 +211,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
             : 400;
       return reply.code(status).send(result);
     }
+    invalidateVoiceListContext(modId);
     return reply.send(result);
   });
 
@@ -210,6 +230,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
         const status = result.reason === 'mod_not_found' ? 404 : 400;
         return reply.code(status).send(result);
       }
+      invalidateVoiceListContext(modId);
       return reply.send(result);
     },
   );

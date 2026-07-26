@@ -62,6 +62,26 @@ export type VoiceSpeakerGroup = {
   lines: VoiceLinePreview[];
 };
 
+/** Speaker row for the voice navigator — counts only, no line payloads. */
+export type VoiceSpeakerSummary = {
+  key: string;
+  displayName: string;
+  referencePick: VoiceSpeakerRefPick | null;
+  gender: SpeakerGender;
+  genderMismatch: boolean;
+  lineCount: number;
+  dubbedCount: number;
+};
+
+export type VoiceSpeakersResponse =
+  | { ok: true; speakers: VoiceSpeakerSummary[]; totalLines: number }
+  | { ok: false; reason: string; message: string };
+
+export type VoiceSpeakerLinesResponse =
+  | { ok: true; speakerKey: string; lines: VoiceLinePreview[] }
+  | { ok: false; reason: string; message: string };
+
+/** @deprecated Full mod payload — prefer {@link VoiceSpeakersResponse} + {@link VoiceSpeakerLinesResponse}. */
 export type VoiceLinesResponse =
   | { ok: true; speakers: VoiceSpeakerGroup[]; totalLines: number }
   | { ok: false; reason: string; message: string };

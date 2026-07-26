@@ -2,19 +2,34 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type VoiceLinePreview } from '../../../../../api';
 
-export const voiceLinesQueryKey = (modId: number, srcLang: string, targetLang: string) =>
-  ['voice-lines', modId, srcLang, targetLang] as const;
+export const voiceSpeakersQueryKey = (modId: number, srcLang: string, targetLang: string) =>
+  ['voice-speakers', modId, srcLang, targetLang] as const;
+
+export interface UseVoiceActionsParams {
+  modId: number;
+  srcLang: string;
+  targetLang: string;
+  speakersQueryKey: readonly unknown[];
+  linesQueryKey: readonly unknown[];
+  onGenerateSuccess: (line: VoiceLinePreview) => Promise<void>;
+}
 
 /** Mutations for reference picks and one-off voice generation. */
-export const useVoiceActions = (
-  modId: number,
-  srcLang: string,
-  targetLang: string,
-  onGenerateSuccess: (line: VoiceLinePreview) => Promise<void>,
-) => {
+export const useVoiceActions = ({
+  modId,
+  srcLang,
+  targetLang,
+  speakersQueryKey,
+  linesQueryKey,
+  onGenerateSuccess,
+}: UseVoiceActionsParams) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const queryKey = voiceLinesQueryKey(modId, srcLang, targetLang);
+
+  const invalidateVoice = async () => {
+    await qc.invalidateQueries({ queryKey: speakersQueryKey });
+    await qc.invalidateQueries({ queryKey: linesQueryKey });
+  };
 
   const setReferenceMut = useMutation({
     mutationFn: async ({ speakerKey, line }: { speakerKey: string; line: VoiceLinePreview }) => {
@@ -23,14 +38,14 @@ export const useVoiceActions = (
       }
       return api.mods.setVoiceSpeakerRef(modId, speakerKey, line.formidLower6, line.variant);
     },
-    onSuccess: () => void qc.invalidateQueries({ queryKey }),
+    onSuccess: () => void invalidateVoice(),
   });
 
   const generateMut = useMutation({
     mutationFn: (line: VoiceLinePreview) =>
       api.mods.generateVoiceLine(modId, line.formidLower6, line.variant, srcLang, targetLang),
     onSuccess: async (_result, line) => {
-      await qc.invalidateQueries({ queryKey });
+      await invalidateVoice();
       await onGenerateSuccess(line);
     },
   });

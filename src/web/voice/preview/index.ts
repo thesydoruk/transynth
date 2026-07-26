@@ -5,13 +5,19 @@ export type {
   VoiceLinePreview,
   VoiceLinesListResult,
   VoiceSpeakerGroup,
+  VoiceSpeakerLinesResult,
   VoiceSpeakerRefResult,
+  VoiceSpeakerSummary,
+  VoiceSpeakersListResult,
 } from './types';
 
 export { resolveModVoiceContext, resolveVoicePackageContext } from './context';
 export type { VoicePackageContext } from './context';
 
 export { listVoiceLinesForMod } from './listVoiceLines';
+export { listVoiceSpeakersForMod } from './listVoiceSpeakers';
+export { listVoiceLinesForSpeaker } from './listVoiceSpeakerLines';
+export { invalidateVoiceListContext } from './voiceListContext';
 export { listVoiceAvailabilityForMod } from './voiceAvailability';
 export {
   clearVoiceSpeakerReferenceForMod,

@@ -1,8 +1,7 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SpeakerGender, VoiceSpeakerGroup } from '../../../../../../api';
+import type { SpeakerGender, VoiceSpeakerSummary } from '../../../../../../api';
 import { ProgressPill } from '../../../DialogsMode/components/ProgressPill';
-import { speakerDubbedCount } from '../../voiceLineKeys';
 import styles from './VoiceNavigator.module.scss';
 
 const GENDER_SYMBOL: Record<SpeakerGender, string> = {
@@ -13,7 +12,7 @@ const GENDER_SYMBOL: Record<SpeakerGender, string> = {
 };
 
 export interface VoiceSpeakerRowProps {
-  speaker: VoiceSpeakerGroup;
+  speaker: VoiceSpeakerSummary;
   active: boolean;
   onSelect: (key: string) => void;
 }
@@ -21,8 +20,6 @@ export interface VoiceSpeakerRowProps {
 /** One selectable speaker with dubbing progress. */
 export const VoiceSpeakerRow = memo(({ speaker, active, onSelect }: VoiceSpeakerRowProps) => {
   const { t } = useTranslation();
-  const dubbed = speakerDubbedCount(speaker.lines);
-  const total = speaker.lines.length;
 
   return (
     <button
@@ -56,14 +53,17 @@ export const VoiceSpeakerRow = memo(({ speaker, active, onSelect }: VoiceSpeaker
             </span>
           )}
         </span>
-        <span className={styles.rowLines}>{total}</span>
+        <span className={styles.rowLines}>{speaker.lineCount}</span>
       </span>
       <span className={styles.rowBottom}>
         <ProgressPill
-          done={dubbed}
-          total={total}
+          done={speaker.dubbedCount}
+          total={speaker.lineCount}
           showCount
-          title={t('voice.dubbedProgress', { done: dubbed, total })}
+          title={t('voice.dubbedProgress', {
+            done: speaker.dubbedCount,
+            total: speaker.lineCount,
+          })}
         />
       </span>
     </button>

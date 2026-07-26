@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
-import type { VoiceSpeakerGroup } from '../../../../../../api';
+import type { VoiceSpeakerSummary } from '../../../../../../api';
 import { VoiceSpeakerRow } from './VoiceSpeakerRow';
 import styles from './VoiceNavigator.module.scss';
 
 const ROW_HEIGHT = 52;
 
 export interface VoiceNavigatorProps {
-  speakers: VoiceSpeakerGroup[];
+  speakers: VoiceSpeakerSummary[];
   totalCount: number;
   activeKey: string | null;
   search: string;

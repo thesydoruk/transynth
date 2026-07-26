@@ -16,6 +16,7 @@ export interface VoiceLinesHeaderProps {
   hiddenLineCount: number;
   error: string | null;
   onDismissError: () => void;
+  isFetching?: boolean;
 }
 
 /** Sticky context bar for the selected speaker's lines. */
@@ -32,6 +33,7 @@ export const VoiceLinesHeader = ({
   hiddenLineCount,
   error,
   onDismissError,
+  isFetching = false,
 }: VoiceLinesHeaderProps) => {
   const { t } = useTranslation();
 
@@ -47,6 +49,7 @@ export const VoiceLinesHeader = ({
         <h2 className={styles.title}>{speakerName}</h2>
         <span className={styles.subtitle}>{t('voice.linesSubtitle', { count: total })}</span>
         <span className={styles.headerSpacer} />
+        {isFetching && <span className={styles.fetching}>{t('modEditor.voiceLoading')}</span>}
         <ProgressPill
           done={dubbed}
           total={total}
