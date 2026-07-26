@@ -25,6 +25,7 @@ export {
 
 export type { DialogSpeakerRow, SpeakerSourceNode } from './speakerRows';
 export { buildDialogSpeakerRows } from './speakerRows';
+export { buildActorSpeakerRowsFromIndex } from './actorSpeakerRows';
 
 export type { DialogSpeakerResolution } from './persist';
 export { resolveModDialogSpeakers } from './persist';

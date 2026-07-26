@@ -96,7 +96,7 @@ export const computeSignatureCounts = async (
        ${modStringsJoin}
        GROUP BY r.signature
        HAVING COUNT(*) > 0
-       ORDER BY count DESC`,
+       ORDER BY r.signature ASC`,
       [modId, targetLang, srcLang],
     );
     return rows;
@@ -108,7 +108,7 @@ export const computeSignatureCounts = async (
        AND (${EFFECTIVE_STATUS_SQL}) = ANY($4::text[])
      GROUP BY r.signature
      HAVING COUNT(*) > 0
-     ORDER BY count DESC`,
+     ORDER BY r.signature ASC`,
     [modId, targetLang, srcLang, statuses],
   );
   return rows;

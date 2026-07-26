@@ -14,25 +14,39 @@ export type LineGender = SpeakerGender | 'neutral';
 
 export interface GenderBadgeProps {
   gender: LineGender | null | undefined;
+  /** Speaker or NPC name shown in the tooltip together with gender. */
+  speakerName?: string | null;
+  /** When set, overrides the default gender-only tooltip. */
+  title?: string | null;
   /** Compact mode for string grid cells. */
   compact?: boolean;
 }
 
 /** Read-only gender symbol for the string grid. */
-export const GenderBadge = ({ gender, compact = false }: GenderBadgeProps) => {
+export const GenderBadge = ({
+  gender,
+  speakerName,
+  title: titleOverride,
+  compact = false,
+}: GenderBadgeProps) => {
   const { t } = useTranslation();
   const value = (gender ?? 'unknown') as LineGender;
   const symbol = GENDER_SYMBOL[value] ?? '?';
-  const label = t(`dialogs.gender.${value === 'neutral' ? 'neutral' : value}`, {
+  const genderLabel = t(`dialogs.gender.${value === 'neutral' ? 'neutral' : value}`, {
     defaultValue: value,
   });
+  const title =
+    titleOverride ??
+    (speakerName?.trim()
+      ? t('modEditor.genderLineTooltip', { name: speakerName.trim(), gender: genderLabel })
+      : genderLabel);
 
   return (
     <span
       className={`${styles.badge}${compact ? ` ${styles.compact}` : ''}`}
       data-gender={value}
-      title={label}
-      aria-label={label}
+      title={title}
+      aria-label={title}
     >
       {symbol}
     </span>

@@ -5,6 +5,7 @@ import {
   buildPluginSpeakerIndex,
   genderFromVoiceTypeIndex,
 } from '../dialogSpeakers/pluginSpeakerIndex';
+import { buildActorSpeakerRowsFromIndex } from '../dialogSpeakers/actorSpeakerRows';
 import { buildDialogSpeakerRows } from '../dialogSpeakers/speakerRows';
 
 const voiceType = (edid: string, isFemale: boolean | null): VoiceTypeRecord => ({
@@ -179,6 +180,53 @@ describe('buildDialogSpeakerRows', () => {
       displayName: 'Curie',
       detectedGender: 'female',
       detectedSource: 'plugin',
+    });
+  });
+
+  it('buildActorSpeakerRowsFromIndex adds plugin actors not in dialog', () => {
+    const actor: ActorRecord = {
+      formId: '0000BEEF',
+      edid: 'NPCFPiper',
+      isFemale: true,
+      voiceTypeFormId: null,
+      nameLStringId: null,
+      nameText: 'Piper',
+    };
+    const index = buildPluginSpeakerIndex({
+      actorIndex: { actors: [actor], voiceTypes: [] },
+      englishStrings: null,
+      npcReferenceNames: new Map(),
+      voiceFolders: new Map(),
+    });
+
+    const rows = buildActorSpeakerRowsFromIndex(index);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      speakerKey: 'npc:0000BEEF',
+      displayName: 'Piper',
+      detectedGender: 'female',
+    });
+  });
+
+  it('infers actor gender from edid when ACBS is missing', () => {
+    const actor: ActorRecord = {
+      formId: '0000CAFE',
+      edid: 'NPCMPreston',
+      isFemale: null,
+      voiceTypeFormId: null,
+      nameLStringId: null,
+      nameText: 'Preston',
+    };
+    const index = buildPluginSpeakerIndex({
+      actorIndex: { actors: [actor], voiceTypes: [] },
+      englishStrings: null,
+      npcReferenceNames: new Map(),
+      voiceFolders: new Map(),
+    });
+
+    expect(index.actors.get('0000CAFE')).toMatchObject({
+      gender: 'male',
+      source: 'voice_type_heuristic',
     });
   });
 });

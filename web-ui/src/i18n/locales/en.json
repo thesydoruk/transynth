@@ -252,6 +252,7 @@
     "genderDetectCompleted": "Gender detect done: {{done}} / {{total}} records",
     "genderCol": "Speaker / narrator gender",
     "genderColShort": "♀♂",
+    "genderLineTooltip": "{{name}} — {{gender}}",
     "autoTranslate": "Automatic translation",
     "autoTranslateRunning": "LLM translation…",
     "autoTranslateLlmRunning": "LLM translation…",

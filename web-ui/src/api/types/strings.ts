@@ -18,6 +18,10 @@ export type StringRow = {
   qa_issue_count: number;
   /** Resolved speaker/narrator gender for this line. */
   line_gender?: 'male' | 'female' | 'any' | 'unknown' | 'neutral' | null;
+  /** Speaker or NPC name for the gender column tooltip (INFO / NPC_). */
+  line_speaker_name?: string | null;
+  /** Addressee gender for player prompt (INFO\\RNAM) tooltips. */
+  line_addressee_gender?: 'male' | 'female' | 'any' | 'unknown' | null;
 };
 
 export type StringsResult = {

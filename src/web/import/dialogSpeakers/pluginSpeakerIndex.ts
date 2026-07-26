@@ -8,6 +8,7 @@ import {
   genderFromVoiceTypeHeuristic,
   genderFromVoiceTypeName,
   isPlayerVoiceType,
+  resolveGenderFromVoiceTypeName,
   type GenderSource,
   type SpeakerGender,
 } from '../../../dialog';
@@ -149,6 +150,14 @@ export const buildPluginSpeakerIndex = (
     if (isPlayer) {
       gender = 'any';
       source = 'player';
+    }
+
+    if (gender === 'unknown' && actor.edid) {
+      const fromEdid = resolveGenderFromVoiceTypeName(actor.edid);
+      if (fromEdid !== 'unknown') {
+        gender = fromEdid;
+        source = 'voice_type_heuristic';
+      }
     }
 
     actors.set(actor.formId, {

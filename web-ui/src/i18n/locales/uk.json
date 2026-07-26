@@ -252,6 +252,7 @@
     "genderDetectCompleted": "Готово: {{done}} / {{total}} записів",
     "genderCol": "Рід мовця / наратора",
     "genderColShort": "♀♂",
+    "genderLineTooltip": "{{name}} — {{gender}}",
     "autoTranslate": "Автоматичний переклад",
     "autoTranslateRunning": "LLM переклад…",
     "autoTranslateLlmRunning": "LLM переклад…",

@@ -8,6 +8,29 @@ import { useStringGridColumnWidths } from '../../hooks/useStringGridColumnWidths
 import { rowBg, rowTextColor } from '../../utils';
 import styles from './StringGrid.module.scss';
 
+const isPlayerPromptRow = (row: StringRow): boolean =>
+  row.signature === 'INFO' && (row.path?.split('\\').pop() ?? '') === 'RNAM';
+
+const genderBadgeTitle = (
+  row: StringRow,
+  t: ReturnType<typeof useTranslation>['t'],
+): string | undefined => {
+  const name = row.line_speaker_name?.trim();
+  if (!name) return undefined;
+  const gender = row.line_gender ?? 'unknown';
+  const genderLabel = t(`dialogs.gender.${gender === 'neutral' ? 'neutral' : gender}`, {
+    defaultValue: gender,
+  });
+  if (isPlayerPromptRow(row)) {
+    const addresseeGender = row.line_addressee_gender ?? 'unknown';
+    const addresseeGenderLabel = t(`dialogs.gender.${addresseeGender}`, {
+      defaultValue: addresseeGender,
+    });
+    return t('dialogs.gender.addresseeTitle', { name, gender: addresseeGenderLabel });
+  }
+  return t('modEditor.genderLineTooltip', { name, gender: genderLabel });
+};
+
 /** Column keys that support server-side sorting. */
 export type SortCol = 'grup' | 'formid' | 'edid' | 'field' | 'src' | 'transl';
 export type SortDir = 'asc' | 'desc';
@@ -278,7 +301,11 @@ export const StringGrid = ({
                     />
                   </div>
                   <div className={styles.tdGender} style={colStyle('gender')}>
-                    <GenderBadge gender={row.line_gender} compact />
+                    <GenderBadge
+                      gender={row.line_gender}
+                      title={genderBadgeTitle(row, t)}
+                      compact
+                    />
                   </div>
                   <div className={styles.tdSig} style={colStyle('grup')}>
                     {row.signature}

@@ -10,7 +10,11 @@ import {
   SORT_COLUMNS,
 } from './stringsFilter';
 import { dialogParticipantsLateralSql } from './dialogs/participants';
-import { stringLineGenderSql } from './stringLineGender';
+import {
+  npcSpeakerLateralSql,
+  stringLineGenderSql,
+  stringLineSpeakerNameSql,
+} from './stringLineGender';
 
 export type { StringsFilter } from './stringsFilter';
 export { parseStatusFilter } from './stringsFilter';
@@ -79,13 +83,16 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       t.model,
       t.updated_at,
       COALESCE(q.issue_count, 0) AS qa_issue_count,
-      ${stringLineGenderSql('r', 'dp')} AS line_gender
+      ${stringLineGenderSql('r', 'dp', 'npc_sp')} AS line_gender,
+      ${stringLineSpeakerNameSql('r', 'dp', 'npc_sp')} AS line_speaker_name,
+      dp.addressee_gender AS line_addressee_gender
      FROM page
      JOIN strings s ON s.id = page.string_id
      JOIN records r ON s.record_id = r.id
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
      LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}) dp ON TRUE
+     LEFT JOIN LATERAL (${npcSpeakerLateralSql('r')}) npc_sp ON TRUE
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi
@@ -211,7 +218,7 @@ export const listSignatures = async (
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
        GROUP BY r.signature
-       ORDER BY count DESC`,
+       ORDER BY r.signature ASC`,
       [f.modId, srcLang],
     );
     return rows;
@@ -238,7 +245,7 @@ export const listSignatures = async (
        WHERE ${where}${f.qaOnly ? ` AND ${qaExists(targetLangIdx)}` : ''}
        GROUP BY r.signature
        HAVING COUNT(*) > 0
-       ORDER BY count DESC`,
+       ORDER BY r.signature ASC`,
       [...values, targetLang, srcLang],
     );
     return rows;
@@ -260,7 +267,7 @@ export const listSignatures = async (
        WHERE ${countWhere}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}
        GROUP BY r.signature
        HAVING COUNT(*) > 0
-       ORDER BY count DESC`,
+       ORDER BY r.signature ASC`,
       [...countConds, srcLang],
     );
     return rows;
@@ -276,7 +283,7 @@ export const listSignatures = async (
      WHERE ${where}${f.qaOnly ? ` AND ${qaExists(cTgt)}` : ''}
      GROUP BY r.signature
      HAVING COUNT(*) > 0
-     ORDER BY count DESC`,
+     ORDER BY r.signature ASC`,
     countValues,
   );
   return rows;

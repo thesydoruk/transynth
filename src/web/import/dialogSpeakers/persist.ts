@@ -7,6 +7,7 @@ import { DIALOG_RESPONSE_PATH } from '../../data/queries/dialogs';
 import { resolveNodeAddressees, type ScenePhaseRow, type SpeakerNodeRow } from './addressees';
 import type { PluginSpeakerIndex } from './pluginSpeakerIndex';
 import { buildDialogSpeakerRows, type DialogSpeakerRow } from './speakerRows';
+import { buildActorSpeakerRowsFromIndex } from './actorSpeakerRows';
 
 type NodeRow = SpeakerNodeRow & {
   speaker_name: string | null;
@@ -135,14 +136,20 @@ export const resolveModDialogSpeakers = async (
   index: PluginSpeakerIndex,
 ): Promise<DialogSpeakerResolution> => {
   const nodes = await loadNodes(db, modId);
-  if (nodes.length === 0) return { speakers: 0, nodes: 0, withGender: 0 };
+  const phases = nodes.length > 0 ? await loadScenePhases(db, modId) : [];
+  const { addressees, playerSpeakerKeys } =
+    nodes.length > 0
+      ? resolveNodeAddressees(nodes, phases)
+      : { addressees: [], playerSpeakerKeys: new Set<string>() };
 
-  const phases = await loadScenePhases(db, modId);
-  const { addressees, playerSpeakerKeys } = resolveNodeAddressees(nodes, phases);
-  const speakers = buildDialogSpeakerRows({ nodes, index, playerSpeakerKeys });
-  const lineCounts = await loadLineCounts(db, modId);
+  const dialogSpeakers =
+    nodes.length > 0 ? buildDialogSpeakerRows({ nodes, index, playerSpeakerKeys }) : [];
+  const dialogKeys = new Set(dialogSpeakers.map((s) => s.speakerKey));
+  const actorSpeakers = buildActorSpeakerRowsFromIndex(index, dialogKeys);
+  const speakers: DialogSpeakerRow[] = [...dialogSpeakers, ...actorSpeakers];
+  const lineCounts = nodes.length > 0 ? await loadLineCounts(db, modId) : new Map<string, number>();
 
-  await updateAddressees(db, addressees);
+  if (addressees.length > 0) await updateAddressees(db, addressees);
   await upsertSpeakers(db, modId, speakers, lineCounts);
 
   const withGender = speakers.filter((s) => s.detectedGender !== 'unknown').length;
