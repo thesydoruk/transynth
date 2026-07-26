@@ -109,6 +109,9 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
               scheduleClear(entry.modId, entry.kind);
               continue;
             }
+          } else {
+            // SSE has not sent `started` yet — do not mark completed prematurely.
+            continue;
           }
 
           upsertModAiJob(entry.modId, entry.kind, { status: 'completed', error: null });

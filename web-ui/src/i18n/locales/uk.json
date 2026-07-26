@@ -249,6 +249,7 @@
     "skipDetectApplyingAllProgress": "Позначення всіх… {{done}} / {{total}}",
     "genderDetect": "Визначити рід",
     "genderDetectRunning": "Визначення роду…",
+    "genderDetectCompleted": "Готово: {{done}} / {{total}} записів",
     "genderCol": "Рід мовця / наратора",
     "genderColShort": "♀♂",
     "autoTranslate": "Автоматичний переклад",

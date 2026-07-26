@@ -249,6 +249,7 @@
     "skipDetectApplyingAllProgress": "Marking all… {{done}} / {{total}}",
     "genderDetect": "Detect gender",
     "genderDetectRunning": "Detecting gender…",
+    "genderDetectCompleted": "Gender detect done: {{done}} / {{total}} records",
     "genderCol": "Speaker / narrator gender",
     "genderColShort": "♀♂",
     "autoTranslate": "Automatic translation",

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { upsertModAiJob } from '../../../modAiJobsStore';
@@ -35,6 +36,7 @@ export function useEditorJobEffects({
   showTranslateResultToast,
   setShowAiVerify,
 }: UseEditorJobEffectsParams) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const prevApplyImportedStatus = useRef(applyImported.status);
@@ -125,13 +127,30 @@ export function useEditorJobEffects({
   }, [aiJobs.skipDetect.status, modId, qc, refetchStats]);
 
   useEffect(() => {
-    if (
-      prevGenderDetectStatus.current === 'running' &&
-      (aiJobs.genderDetect.status === 'completed' || aiJobs.genderDetect.status === 'cancelled')
-    ) {
+    const wasRunning = prevGenderDetectStatus.current === 'running';
+
+    if (wasRunning && aiJobs.genderDetect.status === 'completed') {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
       void refetchStats();
+      toast.success(
+        t('modEditor.genderDetectCompleted', {
+          done: aiJobs.genderDetect.done,
+          total: aiJobs.genderDetect.total,
+        }),
+      );
+    }
+    if (wasRunning && aiJobs.genderDetect.status === 'failed' && aiJobs.genderDetect.error) {
+      toast.error(aiJobs.genderDetect.error);
     }
     prevGenderDetectStatus.current = aiJobs.genderDetect.status;
-  }, [aiJobs.genderDetect.status, modId, qc, refetchStats]);
+  }, [
+    aiJobs.genderDetect.status,
+    aiJobs.genderDetect.done,
+    aiJobs.genderDetect.total,
+    aiJobs.genderDetect.error,
+    modId,
+    qc,
+    refetchStats,
+    t,
+  ]);
 }
