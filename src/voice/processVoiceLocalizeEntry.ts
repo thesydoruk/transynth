@@ -3,12 +3,11 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { toDiskPath, writeIfChanged } from '../modImport';
-import { synthesizeXttsWav, type TtsBackend } from '../tts/xttsClient';
-import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
+import { synthesizeWav } from '../tts/ttsClient';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
 import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslations';
-import { lookupVoiceSource } from './loadVoiceTranslations';
+import { lookupVoiceSource, voiceTranslationMapKey } from './loadVoiceTranslations';
 import {
   resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
@@ -18,6 +17,11 @@ import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceAsteriskBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { upsertVoiceSynthesisState } from './voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from './voiceTtsPayloadVersion';
 import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import type { GameType } from '../types';
 
@@ -36,15 +40,14 @@ export type ProcessVoiceLocalizeEntryOptions = {
   prefix: string;
   tempRoot: string;
   game: GameType;
-  xttsBaseUrl: string;
-  backend: TtsBackend;
+  ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
-  synthesis: XttsSynthesisParams;
   tgtLang: string;
   force: boolean;
   voiceSources: Map<string, VoiceSourceRow>;
   speakerRefCache: Map<string, SpeakerRefCacheEntry>;
   getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
+  storedVersions: Map<string, string>;
 };
 
 export type ProcessVoiceLocalizeEntryResult =
@@ -77,15 +80,14 @@ export const processVoiceLocalizeEntry = async (
     prefix,
     tempRoot,
     game,
-    xttsBaseUrl,
-    backend,
+    ttsBaseUrl,
     referenceMode,
-    synthesis,
     tgtLang,
     force,
     voiceSources,
     speakerRefCache,
     getSiblingEntries,
+    storedVersions,
   } = options;
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
@@ -137,13 +139,18 @@ export const processVoiceLocalizeEntry = async (
     }
 
     const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang, speakerText);
+    const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    const storedVersion = storedVersions.get(versionKey);
 
-    const ttsWav = await synthesizeXttsWav(prepared.text, finalReferenceWav, {
-      baseUrl: xttsBaseUrl,
-      backend,
+    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
+      return { kind: 'skipped', relPath: prefix + fuzRel };
+    }
+
+    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
+      baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(tgtLang),
       speakerText,
-      synthesis,
     });
 
     const fuzData = await buildVoicedFuzFromTtsWav(
@@ -156,12 +163,28 @@ export const processVoiceLocalizeEntry = async (
 
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
     if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
+      await upsertVoiceSynthesisState(db, {
+        modId,
+        formidLower6: entry.formidLower6,
+        variant: entry.variant,
+        targetLang: tgtLang,
+        ttsTextVersion: payloadVersion,
+      });
+      storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);
       return { kind: 'written', relPath: prefix + fuzRel };
     }
     if (force) {
       ensureDir(path.dirname(fuzDest));
       fs.writeFileSync(fuzDest, fuzData);
+      await upsertVoiceSynthesisState(db, {
+        modId,
+        formidLower6: entry.formidLower6,
+        variant: entry.variant,
+        targetLang: tgtLang,
+        ttsTextVersion: payloadVersion,
+      });
+      storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);
       return { kind: 'written', relPath: prefix + fuzRel };
     }

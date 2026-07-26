@@ -68,19 +68,11 @@ export type VoiceLinesResponse =
 
 /** Playable voice lines of a mod, listed as `FORMID6:variant` keys. */
 export type VoiceAvailabilityResponse =
-  | { ok: true; targetLang: string; source: string[]; translation: string[] }
+  | { ok: true; targetLang: string; source: string[]; translation: string[]; stale: string[] }
   | { ok: false; reason: string; message: string };
 
 export type VoiceRegenerateParams = {
-  backend: 'xtts' | 'fish-speech';
   line_reference: boolean;
-  speed: number;
-  length_penalty: number;
-  temperature: number;
-  repetition_penalty: number;
-  top_p: number;
-  top_k: number;
-  enable_text_splitting: boolean;
 };
 
 export type VoiceRegeneratePreview = {

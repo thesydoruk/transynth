@@ -37,27 +37,9 @@ export type ProjectSettingKey =
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
   | 'llm.rag_min_similarity'
-  /** When true, each voiced line uses its own English audio as the XTTS reference clip. */
+  /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
-  /** TTS model backend sent as `backend` on POST /v1/synthesize. */
-  | 'voice.backend'
-  /** XTTS synthesis speed multiplier. */
-  | 'voice.speed'
-  /** XTTS length penalty — higher values shorten utterances. */
-  | 'voice.length_penalty'
-  /** XTTS sampling temperature. */
-  | 'voice.temperature'
-  /** XTTS repetition penalty. */
-  | 'voice.repetition_penalty'
-  /** XTTS nucleus sampling top-p (0–1). */
-  | 'voice.top_p'
-  /** XTTS top-k sampling. */
-  | 'voice.top_k'
-  /** When true, XTTS may split long text into multiple utterances. */
-  | 'voice.enable_text_splitting'
-  /** Max concurrent TTS HTTP requests when the active backend is XTTS (1–32). */
-  | 'voice.tts_max_parallel_xtts'
-  /** Max concurrent TTS HTTP requests when the active backend is Fish Speech (1–32). */
+  /** Max concurrent Fish Speech TTS HTTP requests (1–32). */
   | 'voice.tts_max_parallel_fish_speech';
 
 /** Typed shape of all project settings. */
@@ -71,15 +53,6 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
-  'voice.backend': 'xtts' | 'fish-speech';
-  'voice.speed': number;
-  'voice.length_penalty': number;
-  'voice.temperature': number;
-  'voice.repetition_penalty': number;
-  'voice.top_p': number;
-  'voice.top_k': number;
-  'voice.enable_text_splitting': boolean;
-  'voice.tts_max_parallel_xtts': number;
   'voice.tts_max_parallel_fish_speech': number;
 };
 
@@ -105,15 +78,6 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
-  'voice.backend': 'xtts',
-  'voice.speed': 1.0,
-  'voice.length_penalty': 2,
-  'voice.temperature': 0.65,
-  'voice.repetition_penalty': 1.2,
-  'voice.top_p': 0.8,
-  'voice.top_k': 50,
-  'voice.enable_text_splitting': false,
-  'voice.tts_max_parallel_xtts': 1,
   'voice.tts_max_parallel_fish_speech': 1,
 };
 
@@ -137,9 +101,6 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     }
   }
   result['llm.rag_max_examples'] = clampRagMaxExamples(result['llm.rag_max_examples']);
-  result['voice.tts_max_parallel_xtts'] = clampTtsMaxParallel(
-    result['voice.tts_max_parallel_xtts'],
-  );
   result['voice.tts_max_parallel_fish_speech'] = clampTtsMaxParallel(
     result['voice.tts_max_parallel_fish_speech'],
   );
@@ -181,7 +142,7 @@ export const setProjectSetting = async (
   value: ProjectSettings[ProjectSettingKey],
 ): Promise<void> => {
   let stored: ProjectSettings[ProjectSettingKey] = value;
-  if (key === 'voice.tts_max_parallel_xtts' || key === 'voice.tts_max_parallel_fish_speech') {
+  if (key === 'voice.tts_max_parallel_fish_speech') {
     stored = clampTtsMaxParallel(value as number) as ProjectSettings[ProjectSettingKey];
   }
 

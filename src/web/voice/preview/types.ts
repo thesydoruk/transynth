@@ -43,6 +43,8 @@ export type VoiceAvailabilityResult =
       source: string[];
       /** Subset of {@link source} that also has a generated translation take. */
       translation: string[];
+      /** Subset of {@link translation} whose TTS text version is stale. */
+      stale: string[];
     }
   | {
       ok: false;

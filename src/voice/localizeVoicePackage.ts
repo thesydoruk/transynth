@@ -4,9 +4,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { pluginRelPath, toDiskPath, type ImportPackageContext } from '../modImport';
-import type { TtsBackend } from '../tts/xttsClient';
 import { ttsPipelineConcurrency } from '../tts/ttsRequestPool';
-import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
 import { mapWithConcurrency } from '../utils/concurrency';
 import type { TtsReferenceMode } from './voiceToolPaths';
 import {
@@ -19,6 +17,7 @@ import {
   loadVoiceSources,
   loadVoiceTranslations,
   lookupVoiceTranslation,
+  voiceTranslationMapKey,
   type VoiceTranslationRow,
 } from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
@@ -29,6 +28,11 @@ import {
   type PrepareVoiceTtsTextResult,
 } from './prepareVoiceTtsText';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { loadVoiceSynthesisVersionMap } from './voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from './voiceTtsPayloadVersion';
 import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameType } from '../types';
@@ -48,13 +52,11 @@ export const localizeVoicePackage = async (
   tgtLang: string,
   options: {
     game: GameType;
-    xttsBaseUrl: string;
-    backend: TtsBackend;
+    ttsBaseUrl: string;
     dryRun: boolean;
     force: boolean;
     scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
-    synthesis: XttsSynthesisParams;
     limit?: number;
     shouldCancel?: () => boolean;
     onEligibleStep?: () => void;
@@ -68,6 +70,9 @@ export const localizeVoicePackage = async (
   const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
   const voiceSources = await loadVoiceSources(db, modId, srcLang);
   const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
+  const storedVersions = options.dryRun
+    ? new Map<string, string>()
+    : await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
 
   if (voiceFiles.length === 0) {
     log.info(`No voice files under ${prefix}${resolveVoiceRootRel(pluginRel)}`);
@@ -115,10 +120,6 @@ export const localizeVoicePackage = async (
       const fuzRel = outputLocalizedFuzRelPath(entry);
       const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
 
-      if (options.scope === 'missing' && fs.existsSync(fuzDest)) {
-        continue;
-      }
-
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
@@ -129,6 +130,18 @@ export const localizeVoicePackage = async (
         skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
         eligibleSeen += 1;
         finishEligibleStep();
+        continue;
+      }
+
+      const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
+      const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+      const storedVersion = storedVersions.get(versionKey);
+
+      if (
+        !options.force &&
+        options.scope === 'missing' &&
+        isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))
+      ) {
         continue;
       }
 
@@ -155,20 +168,19 @@ export const localizeVoicePackage = async (
       prefix,
       tempRoot,
       game: options.game,
-      xttsBaseUrl: options.xttsBaseUrl,
-      backend: options.backend,
+      ttsBaseUrl: options.ttsBaseUrl,
       referenceMode: options.referenceMode,
-      synthesis: options.synthesis,
       tgtLang,
       force: options.force,
       voiceSources,
       speakerRefCache,
       getSiblingEntries,
+      storedVersions,
     };
 
     const results = await mapWithConcurrency(
       workItems,
-      ttsPipelineConcurrency(options.backend),
+      ttsPipelineConcurrency(),
       async ({ entry, row, prepared }) => {
         const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
         finishEligibleStep();

@@ -65,3 +65,20 @@ export {
   type PrepareVoiceTtsTextResult,
   type VoiceTtsSkipReason,
 } from './prepareVoiceTtsText';
+export {
+  clearGeneratedVoice,
+  clearGeneratedVoiceFiles,
+  type ClearGeneratedVoiceResult,
+} from './clearGeneratedVoice';
+export {
+  computeVoiceTtsPayloadVersion,
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+  type VoiceTtsPayload,
+} from './voiceTtsPayloadVersion';
+export {
+  clearAllVoiceSynthesisState,
+  loadVoiceSynthesisVersion,
+  loadVoiceSynthesisVersionMap,
+  upsertVoiceSynthesisState,
+} from './voiceSynthesisState';

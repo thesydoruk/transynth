@@ -1,0 +1,37 @@
+import crypto from 'node:crypto';
+import type { PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
+import { resolveTtsLanguage } from './voiceToolPaths';
+
+/** Fields sent to Fish Speech (`POST /v1/synthesize`). */
+export type VoiceTtsPayload = {
+  text: string;
+  speakerText?: string;
+  language: string;
+};
+
+/** Stable SHA-256 of the TTS request text fields (order-independent JSON). */
+export const computeVoiceTtsPayloadVersion = (payload: VoiceTtsPayload): string => {
+  const canonical = JSON.stringify({
+    language: payload.language,
+    speakerText: payload.speakerText?.trim() ?? '',
+    text: payload.text.trim(),
+  });
+  return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
+};
+
+export const voiceTtsPayloadVersionFromPrepared = (
+  prepared: Extract<PrepareVoiceTtsTextResult, { action: 'synthesize' }>,
+  tgtLang: string,
+  speakerText?: string | null,
+): string =>
+  computeVoiceTtsPayloadVersion({
+    text: prepared.text,
+    speakerText: speakerText ?? prepared.speakerText,
+    language: resolveTtsLanguage(tgtLang),
+  });
+
+export const isVoiceSynthesisCurrent = (
+  storedVersion: string | null | undefined,
+  payloadVersion: string,
+  fuzExists: boolean,
+): boolean => storedVersion === payloadVersion && fuzExists;

@@ -19,7 +19,7 @@
     "tools:install": "tsx scripts/installTools.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
-    "detect:locale": "tsx scripts/detectModLocale.ts",
+    "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

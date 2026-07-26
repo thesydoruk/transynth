@@ -3,12 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../db';
 import type { GameType } from '../types';
-import type { TtsBackend } from '../tts/xttsClient';
-import type { XttsSynthesisParams } from '../tts/xttsSynthesisParams';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
 import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
-import { checkXttsHealth, synthesizeXttsWav } from '../tts/xttsClient';
+import { checkTtsHealth, synthesizeWav } from '../tts/ttsClient';
 import {
   dedupeVoiceFiles,
   discoverVoiceFiles,
@@ -31,6 +29,11 @@ import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { loadVoiceSynthesisVersion, upsertVoiceSynthesisState } from './voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from './voiceTtsPayloadVersion';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 
@@ -51,14 +54,12 @@ export type SynthesizeModVoiceLineOptions = {
   srcLang: string;
   tgtLang: string;
   game?: GameType;
-  backend?: TtsBackend;
   referenceMode?: TtsReferenceMode;
-  xttsBaseUrl?: string;
-  synthesis?: Partial<XttsSynthesisParams>;
+  ttsBaseUrl?: string;
 };
 
 export type SynthesizeModVoiceLineBuffersResult =
-  | { ok: true; ttsWav: Buffer; fuzData: Buffer; fuzRel: string }
+  | { ok: true; ttsWav: Buffer; fuzData: Buffer; fuzRel: string; payloadVersion: string }
   | { ok: false; reason: string; message: string };
 
 /** Resolve absolute path to a localized `.fuz` under the mod localize tree. */
@@ -100,9 +101,7 @@ export const synthesizeModVoiceLineBuffers = async (
 
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
-  const backend = opts.backend ?? voiceConfig.backend;
-  const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
-  const xttsBaseUrl = opts.xttsBaseUrl ?? resolveTtsBaseUrl();
+  const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
 
@@ -114,7 +113,7 @@ export const synthesizeModVoiceLineBuffers = async (
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
 
   try {
-    await checkXttsHealth(xttsBaseUrl);
+    await checkTtsHealth(ttsBaseUrl);
 
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
@@ -165,7 +164,6 @@ export const synthesizeModVoiceLineBuffers = async (
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
 
-    // Skip non-speech / interject stubs; strip *...* from translation and speaker_text.
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
@@ -180,12 +178,16 @@ export const synthesizeModVoiceLineBuffers = async (
       };
     }
 
-    const ttsWav = await synthesizeXttsWav(prepared.text, finalReferenceWav, {
-      baseUrl: xttsBaseUrl,
-      backend,
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(
+      prepared,
+      opts.tgtLang,
+      prepared.speakerText,
+    );
+
+    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
+      baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(opts.tgtLang),
       speakerText: prepared.speakerText,
-      synthesis,
     });
 
     const fuzData = await buildVoicedFuzFromTtsWav(
@@ -196,7 +198,7 @@ export const synthesizeModVoiceLineBuffers = async (
       prepared.text,
     );
 
-    return { ok: true, ttsWav, fuzData, fuzRel };
+    return { ok: true, ttsWav, fuzData, fuzRel, payloadVersion };
   } catch (err) {
     return {
       ok: false,
@@ -237,13 +239,41 @@ export const synthesizeModVoiceLine = async (
   }
 
   const fuzDest = toDiskPath(opts.localizeDir, built.fuzRel);
+  const storedVersion = await loadVoiceSynthesisVersion(
+    db,
+    opts.modId,
+    opts.formidLower6,
+    opts.variant,
+    opts.tgtLang,
+  );
+  if (
+    !opts.force &&
+    isVoiceSynthesisCurrent(storedVersion, built.payloadVersion, fs.existsSync(fuzDest))
+  ) {
+    return { ok: true, relPath: built.fuzRel, skipped: true };
+  }
+
   const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
   if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
+    await upsertVoiceSynthesisState(db, {
+      modId: opts.modId,
+      formidLower6: opts.formidLower6,
+      variant: opts.variant,
+      targetLang: opts.tgtLang,
+      ttsTextVersion: built.payloadVersion,
+    });
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }
   if (opts.force) {
     ensureDir(path.dirname(fuzDest));
     fs.writeFileSync(fuzDest, built.fuzData);
+    await upsertVoiceSynthesisState(db, {
+      modId: opts.modId,
+      formidLower6: opts.formidLower6,
+      variant: opts.variant,
+      targetLang: opts.tgtLang,
+      ttsTextVersion: built.payloadVersion,
+    });
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }
   return { ok: true, relPath: built.fuzRel, skipped: true };

@@ -35,10 +35,9 @@ export const resolveFfmpegPath = (): string => {
 };
 
 export const resolveTtsBaseUrl = (): string => {
-  const explicit = process.env.TTS_BASE_URL?.trim() || process.env.XTTS_UK_BASE_URL?.trim();
+  const explicit = process.env.TTS_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, '');
-  const port = process.env.XTTS_UK_PORT?.trim() || '8020';
-  return `http://localhost:${port}`;
+  return 'http://localhost:8080';
 };
 
 /** Map mod target locale to the TTS API `language` field. */
@@ -48,11 +47,11 @@ export const resolveTtsLanguage = (targetLang: string): string => {
   return lang === 'ua' ? 'uk' : lang;
 };
 
-/** How XTTS picks the English reference clip sent with each synthesis request. */
+/** How Fish Speech picks the English reference clip sent with each synthesis request. */
 export type TtsReferenceMode = 'speaker' | 'line';
 
 /**
- * Default XTTS reference mode when project settings are unavailable (CLI).
+ * Default TTS reference mode when project settings are unavailable (CLI).
  *
  * - `line` — always the same voiced line's original English audio (per row).
  * - `speaker` — one shared clip per NPC folder (auto / DB pick / `_reference.wav`).

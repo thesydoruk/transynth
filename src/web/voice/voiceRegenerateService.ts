@@ -6,12 +6,11 @@ import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 import { toDiskPath, resolveImportPackages } from '../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
-import type { TtsBackend } from '../../tts/xttsClient';
 import {
   synthesizeModVoiceLineBuffers,
   type SynthesizeModVoiceLineOptions,
 } from '../../voice/synthesizeModVoiceLine';
-import { voiceBackendFromProjectSettings } from '../../voice/voiceProjectSettings';
+import { upsertVoiceSynthesisState } from '../../voice/voiceSynthesisState';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { resolveModVoiceContext } from './preview';
 
@@ -21,15 +20,7 @@ export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
-  backend: TtsBackend;
   line_reference: boolean;
-  speed: number;
-  length_penalty: number;
-  temperature: number;
-  repetition_penalty: number;
-  top_p: number;
-  top_k: number;
-  enable_text_splitting: boolean;
 };
 
 type VoiceRegeneratePreviewMeta = {
@@ -37,6 +28,7 @@ type VoiceRegeneratePreviewMeta = {
   attempt: number;
   createdAt: string;
   fuzRel: string;
+  payloadVersion: string;
   params: VoiceRegenerateParams;
 };
 
@@ -97,29 +89,9 @@ export const voiceRegenerateParamsFromProjectSettings = async (
 ): Promise<VoiceRegenerateParams> => {
   const settings = await getAllProjectSettings(db);
   return {
-    backend: voiceBackendFromProjectSettings(settings),
     line_reference: settings['voice.line_reference'],
-    speed: settings['voice.speed'],
-    length_penalty: settings['voice.length_penalty'],
-    temperature: settings['voice.temperature'],
-    repetition_penalty: settings['voice.repetition_penalty'],
-    top_p: settings['voice.top_p'],
-    top_k: settings['voice.top_k'],
-    enable_text_splitting: settings['voice.enable_text_splitting'],
   };
 };
-
-const synthesisFromRegenerateParams = (
-  params: VoiceRegenerateParams,
-): SynthesizeModVoiceLineOptions['synthesis'] => ({
-  speed: params.speed,
-  lengthPenalty: params.length_penalty,
-  temperature: params.temperature,
-  repetitionPenalty: params.repetition_penalty,
-  topP: params.top_p,
-  topK: params.top_k,
-  enableTextSplitting: params.enable_text_splitting,
-});
 
 /** Create a new regeneration session for one voice line. */
 export const initVoiceRegenerateSession = async (
@@ -206,10 +178,8 @@ export const generateVoiceRegeneratePreview = async (
     variant,
     srcLang,
     tgtLang: targetLang,
-    backend: params.backend,
     referenceMode: params.line_reference ? 'line' : 'speaker',
-    synthesis: synthesisFromRegenerateParams(params),
-  });
+  } satisfies SynthesizeModVoiceLineOptions);
 
   if (!built.ok) return built;
 
@@ -225,6 +195,7 @@ export const generateVoiceRegeneratePreview = async (
     attempt,
     createdAt: new Date().toISOString(),
     fuzRel: built.fuzRel,
+    payloadVersion: built.payloadVersion,
     params,
   };
   meta.previews.push(previewMeta);
@@ -311,6 +282,14 @@ export const commitVoiceRegenerateSession = async (
   const fuzDest = toDiskPath(localizeDir, preview.fuzRel);
   ensureDir(path.dirname(fuzDest));
   fs.writeFileSync(fuzDest, fs.readFileSync(fuzPath));
+
+  await upsertVoiceSynthesisState(db, {
+    modId,
+    formidLower6: meta.formidLower6,
+    variant: meta.variant,
+    targetLang: meta.targetLang,
+    ttsTextVersion: preview.payloadVersion,
+  });
 
   const relPath = preview.fuzRel;
   discardVoiceRegenerateSession(modId, sessionId);

@@ -1,5 +1,5 @@
 /**
- * In-memory mod-wide voice synthesis jobs (XTTS → localized `.fuz` in `_localize_{hash}/{lang}/`).
+ * In-memory mod-wide voice synthesis jobs (Fish Speech → localized `.fuz` in `_localize_{hash}/{lang}/`).
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
@@ -122,7 +122,7 @@ export const runModVoiceGenerateJob = async (
   if (total === 0) {
     throw new Error(
       scope === 'missing'
-        ? 'No missing voice lines to synthesize (every translated line already has audio)'
+        ? 'No missing or stale voice lines to synthesize'
         : 'No voiced lines with translations to synthesize',
     );
   }

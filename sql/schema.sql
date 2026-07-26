@@ -604,8 +604,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
 
 DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;
 
--- ── Per-speaker XTTS reference picks ────────────────────────────────────────
--- Stores which voiced line (formid + variant) is used as the XTTS speaker_wav
+-- ── Per-speaker TTS reference picks ───────────────────────────────────────────
+-- Stores which voiced line (formid + variant) is used as the speaker_wav
 -- reference for each NPC voice folder. Auto-selected on first localize run;
 -- editable from the editor voice modal.
 CREATE TABLE IF NOT EXISTS voice_speaker_refs (
@@ -620,6 +620,22 @@ CREATE TABLE IF NOT EXISTS voice_speaker_refs (
 
 CREATE INDEX IF NOT EXISTS idx_voice_speaker_refs_mod
   ON voice_speaker_refs(mod_id);
+
+-- ── Voice synthesis text versioning ───────────────────────────────────────────
+-- Tracks a hash of the text fields sent to Fish Speech so stale `.fuz` files
+-- are regenerated when translation or speaker_text changes.
+CREATE TABLE IF NOT EXISTS voice_synthesis_state (
+  mod_id           INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  formid_lower6    TEXT NOT NULL,
+  variant          INTEGER NOT NULL CHECK (variant >= 1),
+  target_lang      TEXT NOT NULL,
+  tts_text_version TEXT NOT NULL,
+  synthesized_at   TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (mod_id, formid_lower6, variant, target_lang)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
+  ON voice_synthesis_state(mod_id, target_lang);
 
 -- ── Narrator gender (BOOK/TERM/NOTE) ─────────────────────────────────────────
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender TEXT;

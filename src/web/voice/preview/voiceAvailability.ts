@@ -1,7 +1,18 @@
 import fs from 'node:fs';
 import type { Tx } from '../../../db';
-import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
+import {
+  loadVoiceTranslations,
+  lookupVoiceTranslation,
+  voiceTranslationMapKey,
+} from '../../../voice/loadVoiceTranslations';
 import { resolveLocalizedVoiceAbsPath } from '../../../voice/synthesizeModVoiceLine';
+import { loadVoiceSynthesisVersionMap } from '../../../voice/voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from '../../../voice/voiceTtsPayloadVersion';
+import { prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
+import { loadImportedMod } from '../../../modImport/importedMod';
 import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
 import type { VoiceAvailabilityResult } from './types';
@@ -22,16 +33,37 @@ export const listVoiceAvailabilityForMod = async (
   const resolved = await resolveModVoiceContext(db, modId, targetLang);
   if (!resolved.ok) return resolved;
 
+  const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, resolved.targetLang);
+  const mod = await loadImportedMod(db, modId);
+  const translations = await loadVoiceTranslations(db, modId, mod.srcLang, resolved.targetLang);
   const source: string[] = [];
   const translation: string[] = [];
+  const stale: string[] = [];
 
   for (const entry of discoverVoiceEntries(resolved.ctx)) {
     const key = voiceTranslationMapKey(entry.formidLower6, entry.variant);
     source.push(key);
 
     const localized = resolveLocalizedVoiceAbsPath(resolved.ctx.localizeDir, entry);
-    if (localized && fs.existsSync(localized)) translation.push(key);
+    if (!localized || !fs.existsSync(localized)) continue;
+
+    translation.push(key);
+
+    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+    if (!row) continue;
+    const prepared = prepareVoiceTtsText({
+      lineSource: row.source,
+      translation: row.translation,
+      speakerSource: row.source,
+      edid: row.edid,
+    });
+    if (prepared.action !== 'synthesize') continue;
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, resolved.targetLang);
+    const storedVersion = storedVersions.get(key);
+    if (!isVoiceSynthesisCurrent(storedVersion, payloadVersion, true)) {
+      stale.push(key);
+    }
   }
 
-  return { ok: true, targetLang: resolved.targetLang, source, translation };
+  return { ok: true, targetLang: resolved.targetLang, source, translation, stale };
 };

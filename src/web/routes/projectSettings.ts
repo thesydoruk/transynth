@@ -56,7 +56,7 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
 
     log.info(`Project setting updated: ${key} = ${JSON.stringify(value)}`);
     await setProjectSetting(db, key, value as ProjectSettings[ProjectSettingKey]);
-    if (key === 'voice.tts_max_parallel_xtts' || key === 'voice.tts_max_parallel_fish_speech') {
+    if (key === 'voice.tts_max_parallel_fish_speech') {
       syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
     }
     return reply.send({ key, value });

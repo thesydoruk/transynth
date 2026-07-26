@@ -12,16 +12,25 @@ import {
   type ImportPackageContext,
 } from '../modImport';
 import { ensureDir } from '../utils/file';
-import { checkXttsHealth } from '../tts/xttsClient';
+import { checkTtsHealth } from '../tts/ttsClient';
 import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
-import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
-import { canSynthesizeVoiceLine } from './prepareVoiceTtsText';
+import {
+  loadVoiceTranslations,
+  lookupVoiceTranslation,
+  voiceTranslationMapKey,
+} from './loadVoiceTranslations';
+import { canSynthesizeVoiceLine, prepareVoiceTtsText } from './prepareVoiceTtsText';
 import { localizeVoicePackage } from './localizeVoicePackage';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { loadVoiceSynthesisVersionMap } from './voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from './voiceTtsPayloadVersion';
 
-/** Whether mod-wide voice jobs synthesize every translated line or only lines without a localized `.fuz`. */
+/** Whether mod-wide voice jobs synthesize every translated line or only stale/missing audio. */
 export type ModVoiceGenerateScope = 'all' | 'missing';
 
 export type LocalizeModImportVoiceOptions = {
@@ -30,7 +39,7 @@ export type LocalizeModImportVoiceOptions = {
   modId: number;
   srcLang?: string;
   tgtLang?: string;
-  xttsBaseUrl?: string;
+  ttsBaseUrl?: string;
   limit?: number;
   dryRun?: boolean;
   force?: boolean;
@@ -54,7 +63,7 @@ const resolveReferenceMode = (
   projectReferenceMode: TtsReferenceMode,
 ): TtsReferenceMode => options.referenceMode ?? projectReferenceMode;
 
-/** Count voice files that have a target translation and can be synthesized. */
+/** Count voice files that have a target translation and need synthesis. */
 export const countVoiceLocalizeWork = async (
   db: Tx,
   modId: number,
@@ -63,6 +72,7 @@ export const countVoiceLocalizeWork = async (
   tgtLang: string,
   scope: ModVoiceGenerateScope = 'all',
 ): Promise<number> => {
+  const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
   let total = 0;
   for (const pkg of packages) {
     const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
@@ -74,8 +84,21 @@ export const countVoiceLocalizeWork = async (
         continue;
       }
       if (scope === 'missing') {
+        const prepared = prepareVoiceTtsText({
+          lineSource: row.source,
+          translation: row.translation,
+          speakerSource: row.source,
+          edid: row.edid,
+        });
+        if (prepared.action !== 'synthesize') continue;
+        const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
         const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
-        if (fs.existsSync(fuzDest)) continue;
+        const storedVersion = storedVersions.get(
+          voiceTranslationMapKey(entry.formidLower6, entry.variant),
+        );
+        if (isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
+          continue;
+        }
       }
       total += 1;
     }
@@ -91,13 +114,13 @@ export const localizeModImportVoice = async (
   const extractDir = path.resolve(options.extractDir);
 
   if (!options.dryRun) {
-    await checkXttsHealth(options.xttsBaseUrl);
+    await checkTtsHealth(options.ttsBaseUrl);
   }
 
   const mod = await loadImportedMod(db, options.modId);
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
-  const xttsBaseUrl = options.xttsBaseUrl ?? resolveTtsBaseUrl();
+  const ttsBaseUrl = options.ttsBaseUrl ?? resolveTtsBaseUrl();
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
 
@@ -121,7 +144,7 @@ export const localizeModImportVoice = async (
   };
 
   log.info(
-    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, XTTS=${xttsBaseUrl}, refMode=${referenceMode})`,
+    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode})`,
   );
 
   for (const pkg of packages) {
@@ -134,13 +157,11 @@ export const localizeModImportVoice = async (
       tgtLang,
       {
         game: mod.game,
-        xttsBaseUrl,
-        backend: voiceConfig.backend,
+        ttsBaseUrl,
         dryRun: options.dryRun ?? false,
         force: options.force ?? false,
         scope,
         referenceMode,
-        synthesis: voiceConfig.synthesis,
         limit: options.limit,
         shouldCancel: options.shouldCancel,
         onEligibleStep: options.onProgress ? bumpProgress : undefined,
