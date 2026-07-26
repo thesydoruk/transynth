@@ -36,7 +36,7 @@ export const runLlmGenderDetectJob = async (
   }
 
   const useLlm = opts.useLlm !== false;
-  const force = opts.force === true;
+  let force = opts.force === true;
 
   const jobId = allocateGenderDetectJobId();
   const job: ActiveLlmGenderDetectJob = {
@@ -61,7 +61,20 @@ export const runLlmGenderDetectJob = async (
       logTranslate.info('gender-detect force reset', { modId: opts.modId, reset });
     }
 
-    const total = await countGenderDetectRecords(db, opts.modId, opts.srcLang, force);
+    let total = await countGenderDetectRecords(db, opts.modId, opts.srcLang, force);
+    if (total === 0 && !force) {
+      force = true;
+      total = await countGenderDetectRecords(db, opts.modId, opts.srcLang, true);
+      if (total > 0) {
+        const reset = await resetModGenderDetectState(db, opts.modId);
+        logTranslate.info('gender-detect auto force reset (no pending records)', {
+          modId: opts.modId,
+          reset,
+        });
+      }
+    }
+    job.force = force;
+
     if (total === 0) {
       deleteGenderDetectJob(jobId);
       throw new Error(

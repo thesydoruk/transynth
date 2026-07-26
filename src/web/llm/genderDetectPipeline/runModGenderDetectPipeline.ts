@@ -78,8 +78,11 @@ export const runModGenderDetectPipeline = async (
           resolvedCount += definite.length;
         }
 
-        await markGenderDetectScanned(db, job.scannedIds);
-        done += job.scannedIds.length;
+        const scannedIds = definite.map((r) => r.recordId);
+        if (scannedIds.length > 0) {
+          await markGenderDetectScanned(db, scannedIds);
+          done += scannedIds.length;
+        }
 
         emitProgress({
           resolvedBatch: job.results.filter((r) => r.llmResult).map((r) => r.llmResult!),
@@ -116,7 +119,7 @@ export const runModGenderDetectPipeline = async (
     runOnce: async (chunk, { enqueueSplit }) => {
       if (shouldCancel?.()) return;
       const results = await processGenderDetectChunk(chunk, opts, enqueueSplit);
-      scheduleChunkPersist({ scannedIds: chunk.map((r) => r.record_id), results });
+      scheduleChunkPersist({ results });
     },
     onFailure: (failed, message) => {
       logTranslate.error('gender-detect chunk failed; continuing', {
@@ -124,10 +127,7 @@ export const runModGenderDetectPipeline = async (
         error: message,
         recordIds: failed.map((r) => r.record_id),
       });
-      scheduleChunkPersist({
-        scannedIds: failed.map((r) => r.record_id),
-        results: [],
-      });
+      scheduleChunkPersist({ results: [] });
     },
     log: logTranslate,
     operation: 'gender-detect',

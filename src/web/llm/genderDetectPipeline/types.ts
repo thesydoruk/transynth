@@ -39,7 +39,6 @@ export type GenderDetectChunkResult = {
 };
 
 export type ChunkPersistJob = {
-  scannedIds: number[];
   results: GenderDetectChunkResult[];
 };
 

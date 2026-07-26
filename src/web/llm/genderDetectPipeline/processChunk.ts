@@ -27,7 +27,11 @@ const toLlmItems = (rows: readonly GenderDetectRecordRow[]): LlmNarratorGenderIt
 const heuristicResults = (chunk: readonly GenderDetectRecordRow[]): GenderDetectChunkResult[] => {
   const out: GenderDetectChunkResult[] = [];
   for (const row of chunk) {
-    const hit = inferNarratorGenderHeuristic({ source: row.source_excerpt, edid: row.edid });
+    const hit = inferNarratorGenderHeuristic({
+      source: row.source_excerpt,
+      edid: row.edid,
+      signature: row.signature,
+    });
     if (!hit || hit.confidence < 0.7) continue;
     out.push({
       recordId: row.record_id,
@@ -70,6 +74,12 @@ export const processGenderDetectChunk = async (
 
   const needsLlm = chunk.filter((row) => !resolvedIds.has(row.record_id));
   if (!useLlm || needsLlm.length === 0) return heuristicHits;
+
+  logTranslate.info('gender-detect LLM batch', {
+    modId: opts.modId,
+    count: needsLlm.length,
+    recordIds: needsLlm.map((row) => row.record_id),
+  });
 
   try {
     const llmHits = await llmForRows(opts, needsLlm);

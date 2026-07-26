@@ -11,18 +11,20 @@ describe('inferNarratorGenderHeuristic', () => {
     expect(hit?.gender).toBe('female');
   });
 
-  it('detects female from edid', () => {
+  it('defers first-person diary entries to LLM', () => {
     const hit = inferNarratorGenderHeuristic({
       source: 'I had no idea what I was getting into.',
       edid: 'DP_RoxyDiaryTerminal',
+      signature: 'BOOK',
     });
-    expect(hit?.gender).toBe('female');
+    expect(hit).toBeNull();
   });
 
-  it('returns neutral without first person', () => {
+  it('returns neutral for impersonal TERM entries', () => {
     const hit = inferNarratorGenderHeuristic({
       source: 'The Commonwealth is a dangerous place.',
       edid: 'SomeBook',
+      signature: 'TERM',
     });
     expect(hit?.gender).toBe('neutral');
   });

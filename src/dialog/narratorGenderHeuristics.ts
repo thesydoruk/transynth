@@ -7,18 +7,6 @@ const FEMALE_BODY_RE =
   /\b(my breasts?|my vagina|my pussy|i was pregnant|my womb|my clit(?:oris)?|my nipples?)\b/i;
 const MALE_BODY_RE = /\b(my penis|my cock|my balls|my testicles|my dick)\b/i;
 
-const FEMALE_EDID_HINTS = [
-  /female/i,
-  /woman/i,
-  /girl/i,
-  /lady/i,
-  /roxy/i,
-  /nora/i,
-  /piper/i,
-  /curie/i,
-];
-const MALE_EDID_HINTS = [/male/i, /\bnate\b/i, /preston/i, /danse/i, /nick/i, /deacon/i];
-
 const FIRST_PERSON_RE = /\b(I|I'm|I've|I'd|I'll|my|me)\b/;
 
 type HeuristicHit = { gender: NarratorGender; confidence: number; reason: string };
@@ -45,21 +33,11 @@ const scoreBody = (text: string): HeuristicHit | null => {
   return null;
 };
 
-const scoreEdid = (edid: string | null): HeuristicHit | null => {
-  if (!edid) return null;
-  if (FEMALE_EDID_HINTS.some((re) => re.test(edid))) {
-    return { gender: 'female', confidence: 0.7, reason: 'female hint in edid' };
-  }
-  if (MALE_EDID_HINTS.some((re) => re.test(edid))) {
-    return { gender: 'male', confidence: 0.7, reason: 'male hint in edid' };
-  }
-  return null;
-};
-
-/** Fast gender guess from source excerpt and edid; null when inconclusive. */
+/** Fast gender guess from source excerpt; null when LLM should decide. */
 export const inferNarratorGenderHeuristic = (opts: {
   source: string;
-  edid: string | null;
+  edid?: string | null;
+  signature?: string | null;
 }): HeuristicHit | null => {
   const excerpt = opts.source.slice(0, 4000);
   const body = scoreBody(excerpt);
@@ -68,10 +46,8 @@ export const inferNarratorGenderHeuristic = (opts: {
   const pronouns = scorePronouns(excerpt);
   if (pronouns) return pronouns;
 
-  const edid = scoreEdid(opts.edid);
-  if (edid) return edid;
-
-  if (!FIRST_PERSON_RE.test(excerpt)) {
+  // Lore terminals without a diary voice — safe to skip LLM.
+  if (opts.signature === 'TERM' && !FIRST_PERSON_RE.test(excerpt)) {
     return { gender: 'neutral', confidence: 0.75, reason: 'no first-person markers' };
   }
 
