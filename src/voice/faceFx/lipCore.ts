@@ -20,6 +20,9 @@ export type FaceFxLipResult = {
   summary: string;
 };
 
+/** Max wall time for one FaceFXWrapper run (Wine on Linux can hang indefinitely). */
+export const FACEFX_TIMEOUT_MS = 120_000;
+
 const faceFxGameType = (game: string): string => {
   switch (game) {
     case 'fo4':
@@ -71,7 +74,9 @@ export const runFaceFxLip = async (request: FaceFxLipRequest): Promise<FaceFxLip
     if (process.platform !== 'win32') {
       await convertToFaceFxWav(wavPath, resampledPath);
     }
-    ({ stdout, stderr } = await execVoiceToolAsync(faceFxExe, faceFxArgs));
+    ({ stdout, stderr } = await execVoiceToolAsync(faceFxExe, faceFxArgs, {
+      timeoutMs: FACEFX_TIMEOUT_MS,
+    }));
   } catch (err) {
     stderr = err instanceof Error ? err.message : String(err);
   }

@@ -5,7 +5,12 @@ import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
-import { runFaceFxLip, type FaceFxLipRequest, type FaceFxLipResult } from './lipCore';
+import {
+  FACEFX_TIMEOUT_MS,
+  runFaceFxLip,
+  type FaceFxLipRequest,
+  type FaceFxLipResult,
+} from './lipCore';
 
 const tsxCliPath = (): string => path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
@@ -36,14 +41,21 @@ const spawnFaceFxRunner = (request: FaceFxLipRequest): Promise<FaceFxLipResult> 
 
     let stdout = '';
     let stderr = '';
+    const timeout = setTimeout(() => {
+      child.kill('SIGTERM');
+    }, FACEFX_TIMEOUT_MS);
     child.stdout?.on('data', (chunk: Buffer) => {
       stdout += chunk.toString();
     });
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString();
     });
-    child.on('error', reject);
+    child.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
     child.on('close', (code) => {
+      clearTimeout(timeout);
       const line = stdout.trim().split(/\r?\n/).find(Boolean);
       if (line) {
         try {
