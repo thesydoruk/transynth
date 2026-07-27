@@ -96,7 +96,8 @@ export const localizeVoicePackage = async (
     );
   };
 
-  if (options.referenceMode === 'speaker' && !options.dryRun) {
+  // Speaker refs may be auto-picked in line mode when a phrase is too short.
+  if (!options.dryRun) {
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
   }
 

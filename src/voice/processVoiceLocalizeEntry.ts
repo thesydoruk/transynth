@@ -13,6 +13,7 @@ import {
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
 } from './speakerReference';
+import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceAsteriskBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
@@ -98,13 +99,19 @@ export const processVoiceLocalizeEntry = async (
     ensureDir(workDir);
 
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
+    const referenceDecision = decideVoiceReferenceSource(
+      referenceMode,
+      isLineReferenceSuitable(lineEnglishWav),
+    );
+
     let referenceWav: string | undefined;
     let referenceText: string | null =
-      referenceMode === 'line'
+      referenceDecision.kind === 'line'
         ? row.source
         : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    if (referenceMode === 'speaker' && speakerKey) {
+    if (referenceDecision.kind === 'speaker' && speakerKey) {
       const cached = speakerRefCache.get(speakerKey);
       if (cached) {
         referenceWav = cached.wavPath;
@@ -130,9 +137,7 @@ export const processVoiceLocalizeEntry = async (
       }
     }
 
-    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const finalReferenceWav =
-      referenceMode === 'line' ? lineEnglishWav : (referenceWav ?? lineEnglishWav);
+    const finalReferenceWav = referenceWav ?? lineEnglishWav;
     if (!referenceText) {
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }

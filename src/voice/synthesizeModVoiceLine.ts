@@ -25,6 +25,7 @@ import {
   resolveSpeakerReferenceForSpeaker,
   voiceSpeakerKey,
 } from './speakerReference';
+import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
@@ -105,9 +106,8 @@ export const synthesizeModVoiceLineBuffers = async (
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
 
-  if (referenceMode === 'speaker') {
-    await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
-  }
+  // Line mode may auto-pick a speaker ref when the line clip is too short.
+  await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
@@ -121,14 +121,19 @@ export const synthesizeModVoiceLineBuffers = async (
     const voiceRootRel = resolveVoiceRootRel(pluginRel);
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
+    const referenceDecision = decideVoiceReferenceSource(
+      referenceMode,
+      isLineReferenceSuitable(lineEnglishWav),
+    );
 
     let referenceWav: string | undefined;
     let referenceText: string | null =
-      referenceMode === 'line'
+      referenceDecision.kind === 'line'
         ? row.source
         : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    if (referenceMode === 'speaker' && speakerKey) {
+    if (referenceDecision.kind === 'speaker' && speakerKey) {
       const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
         .get(speakerKey)
         ?.filter(
@@ -156,9 +161,7 @@ export const synthesizeModVoiceLineBuffers = async (
       }
     }
 
-    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const finalReferenceWav =
-      referenceMode === 'line' ? lineEnglishWav : (referenceWav ?? lineEnglishWav);
+    const finalReferenceWav = referenceWav ?? lineEnglishWav;
     if (!referenceText) {
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }

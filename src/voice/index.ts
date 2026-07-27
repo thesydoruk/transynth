@@ -66,6 +66,11 @@ export {
   type VoiceTtsSkipReason,
 } from './prepareVoiceTtsText';
 export {
+  decideVoiceReferenceSource,
+  isLineReferenceSuitable,
+  type VoiceReferenceSourceDecision,
+} from './decideVoiceReferenceSource';
+export {
   clearGeneratedVoice,
   clearGeneratedVoiceFiles,
   type ClearGeneratedVoiceResult,
