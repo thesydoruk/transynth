@@ -156,10 +156,9 @@ export const synthesizeModVoiceLineBuffers = async (
       }
     }
 
+    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
     const finalReferenceWav =
-      referenceMode === 'line'
-        ? await prepareReferenceAudio(entry, workDir)
-        : (referenceWav ?? (await prepareReferenceAudio(entry, workDir)));
+      referenceMode === 'line' ? lineEnglishWav : (referenceWav ?? lineEnglishWav);
     if (!referenceText) {
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
@@ -190,15 +189,22 @@ export const synthesizeModVoiceLineBuffers = async (
       speakerText: prepared.speakerText,
     });
 
-    const fuzData = await buildVoicedFuzFromTtsWav(
+    const built = await buildVoicedFuzFromTtsWav(
       game,
       ttsWav,
       workDir,
       entry.fileName,
       prepared.text,
+      lineEnglishWav,
     );
 
-    return { ok: true, ttsWav, fuzData, fuzRel, payloadVersion };
+    return {
+      ok: true,
+      ttsWav: built.previewWav,
+      fuzData: built.fuzData,
+      fuzRel,
+      payloadVersion,
+    };
   } catch (err) {
     return {
       ok: false,

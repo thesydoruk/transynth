@@ -1,7 +1,7 @@
 import { computeVoiceTtsPayloadVersion, isVoiceSynthesisCurrent } from '../voiceTtsPayloadVersion';
 
 describe('computeVoiceTtsPayloadVersion', () => {
-  it('hashes text, speaker_text, and language', () => {
+  it('hashes text, speaker_text, language, and audio post version', () => {
     const a = computeVoiceTtsPayloadVersion({
       text: 'Привіт.',
       speakerText: 'Hello.',

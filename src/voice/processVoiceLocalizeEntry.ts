@@ -130,10 +130,9 @@ export const processVoiceLocalizeEntry = async (
       }
     }
 
+    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
     const finalReferenceWav =
-      referenceMode === 'line'
-        ? await prepareReferenceAudio(entry, workDir)
-        : (referenceWav ?? (await prepareReferenceAudio(entry, workDir)));
+      referenceMode === 'line' ? lineEnglishWav : (referenceWav ?? lineEnglishWav);
     if (!referenceText) {
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
@@ -153,12 +152,13 @@ export const processVoiceLocalizeEntry = async (
       speakerText,
     });
 
-    const fuzData = await buildVoicedFuzFromTtsWav(
+    const { fuzData } = await buildVoicedFuzFromTtsWav(
       game,
       ttsWav,
       workDir,
       entry.fileName,
       prepared.text,
+      lineEnglishWav,
     );
 
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;

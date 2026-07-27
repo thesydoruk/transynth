@@ -2,7 +2,13 @@ import crypto from 'node:crypto';
 import type { PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { resolveTtsLanguage } from './voiceToolPaths';
 
-/** Fields sent to Fish Speech (`POST /v1/synthesize`). */
+/**
+ * Bump when post-TTS audio processing changes so stored `.fuz` files regenerate.
+ * `en-peak-v1` — flatten speech envelope + match peak to English line.
+ */
+export const VOICE_AUDIO_POST_VERSION = 'en-peak-v1';
+
+/** Fields sent to Fish Speech (`POST /v1/synthesize`) plus post-process stamp. */
 export type VoiceTtsPayload = {
   text: string;
   speakerText?: string;
@@ -12,6 +18,7 @@ export type VoiceTtsPayload = {
 /** Stable SHA-256 of the TTS request text fields (order-independent JSON). */
 export const computeVoiceTtsPayloadVersion = (payload: VoiceTtsPayload): string => {
   const canonical = JSON.stringify({
+    audioPost: VOICE_AUDIO_POST_VERSION,
     language: payload.language,
     speakerText: payload.speakerText?.trim() ?? '',
     text: payload.text.trim(),

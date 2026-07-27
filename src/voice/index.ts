@@ -74,6 +74,7 @@ export {
   computeVoiceTtsPayloadVersion,
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
+  VOICE_AUDIO_POST_VERSION,
   type VoiceTtsPayload,
 } from './voiceTtsPayloadVersion';
 export {
