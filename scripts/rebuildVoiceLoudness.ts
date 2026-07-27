@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx tsx scripts/rebuildVoiceLoudness.ts --mod-id 1
- *   npx tsx scripts/rebuildVoiceLoudness.ts --mod-id 1 --concurrency 3 --limit 50
+ *   npx tsx scripts/rebuildVoiceLoudness.ts --mod-id 1 --concurrency 8 --limit 50
  *   npx tsx scripts/rebuildVoiceLoudness.ts --mod-id 1 --force
  */
 import yargs from 'yargs';
@@ -13,12 +13,25 @@ import { hideBin } from 'yargs/helpers';
 import '../src/loadEnv';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
-import { rebuildModVoiceLoudness } from '../src/voice/rebuildModVoiceLoudness';
+import {
+  REBUILD_VOICE_LOUDNESS_CONCURRENCY,
+  REBUILD_VOICE_LOUDNESS_TIMEOUT_MS,
+  rebuildModVoiceLoudness,
+} from '../src/voice/rebuildModVoiceLoudness';
 
 const argv = await yargs(hideBin(process.argv))
   .option('mod-id', { type: 'number', demandOption: true, describe: 'Mod id' })
   .option('tgt-lang', { type: 'string', describe: 'Target language (default: project/uk)' })
-  .option('concurrency', { type: 'number', default: 2, describe: 'Parallel rebuild workers' })
+  .option('concurrency', {
+    type: 'number',
+    default: REBUILD_VOICE_LOUDNESS_CONCURRENCY,
+    describe: 'Parallel rebuild workers',
+  })
+  .option('timeout-ms', {
+    type: 'number',
+    default: REBUILD_VOICE_LOUDNESS_TIMEOUT_MS,
+    describe: 'Per-file timeout in milliseconds',
+  })
   .option('limit', { type: 'number', describe: 'Max files to process' })
   .option('force', { type: 'boolean', default: false, describe: 'Rebuild even if version current' })
   .option('dry-run', { type: 'boolean', default: false, describe: 'Count work only' })
@@ -32,6 +45,7 @@ try {
     modId: argv.modId,
     tgtLang: argv.tgtLang,
     concurrency: argv.concurrency,
+    timeoutMs: argv.timeoutMs,
     limit: argv.limit,
     force: argv.force,
     dryRun: argv.dryRun,

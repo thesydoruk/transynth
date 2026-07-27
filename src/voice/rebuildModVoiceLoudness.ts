@@ -37,8 +37,10 @@ import type { GameType } from '../types';
 export type RebuildModVoiceLoudnessOptions = {
   modId: number;
   tgtLang?: string;
-  /** Parallel FaceFX/ffmpeg workers (default 2). */
+  /** Parallel FaceFX/ffmpeg workers (default 8). */
   concurrency?: number;
+  /** Per-file timeout in ms (default 2 minutes). */
+  timeoutMs?: number;
   limit?: number;
   dryRun?: boolean;
   /** Rebuild even when synthesis version already matches. */
@@ -52,6 +54,33 @@ export type RebuildModVoiceLoudnessResult = {
   skipped: number;
   failed: number;
   warnings: string[];
+};
+
+/** Default parallel workers for loudness rebuild. */
+export const REBUILD_VOICE_LOUDNESS_CONCURRENCY = 8;
+
+/** Default per-file budget (FaceFX + encode). */
+export const REBUILD_VOICE_LOUDNESS_TIMEOUT_MS = 120_000;
+
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label}: timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 };
 
 const ukFuzToWavBytes = async (fuzPath: string, workDir: string): Promise<Buffer> => {
@@ -127,31 +156,38 @@ const rebuildOne = async (
   tgtLang: string,
   item: WorkItem,
   dryRun: boolean,
+  timeoutMs: number,
 ): Promise<'rebuilt' | 'skipped' | 'failed'> => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'voice-loud-rebuild-'));
   try {
-    const workDir = path.join(tempRoot, `${item.entry.formidLower6}_${item.entry.variant}`);
-    ensureDir(workDir);
-    const ukWav = await ukFuzToWavBytes(item.fuzDest, workDir);
-    const englishRef = await prepareReferenceAudio(item.entry, workDir);
-    if (dryRun) return 'rebuilt';
+    await withTimeout(
+      (async () => {
+        const workDir = path.join(tempRoot, `${item.entry.formidLower6}_${item.entry.variant}`);
+        ensureDir(workDir);
+        const ukWav = await ukFuzToWavBytes(item.fuzDest, workDir);
+        const englishRef = await prepareReferenceAudio(item.entry, workDir);
+        if (dryRun) return;
 
-    const { fuzData } = await buildVoicedFuzFromTtsWav(
-      game,
-      ukWav,
-      workDir,
+        const { fuzData } = await buildVoicedFuzFromTtsWav(
+          game,
+          ukWav,
+          workDir,
+          item.entry.fileName,
+          item.translation,
+          englishRef,
+        );
+        writeIfChanged(item.fuzDest, fuzData, item.fuzDest);
+        await upsertVoiceSynthesisState(db, {
+          modId,
+          formidLower6: item.entry.formidLower6,
+          variant: item.entry.variant,
+          targetLang: tgtLang,
+          ttsTextVersion: item.payloadVersion,
+        });
+      })(),
+      timeoutMs,
       item.entry.fileName,
-      item.translation,
-      englishRef,
     );
-    writeIfChanged(item.fuzDest, fuzData, item.fuzDest);
-    await upsertVoiceSynthesisState(db, {
-      modId,
-      formidLower6: item.entry.formidLower6,
-      variant: item.entry.variant,
-      targetLang: tgtLang,
-      ttsTextVersion: item.payloadVersion,
-    });
     return 'rebuilt';
   } catch (err) {
     log.warn(
@@ -177,7 +213,8 @@ export const rebuildModVoiceLoudness = async (
   const packages = resolveImportPackages(paths.extractDir, tgtLang, paths.pluginPath);
   const force = options.force ?? false;
   const dryRun = options.dryRun ?? false;
-  const concurrency = Math.max(1, options.concurrency ?? 2);
+  const concurrency = Math.max(1, options.concurrency ?? REBUILD_VOICE_LOUDNESS_CONCURRENCY);
+  const timeoutMs = Math.max(1_000, options.timeoutMs ?? REBUILD_VOICE_LOUDNESS_TIMEOUT_MS);
 
   const items = await collectWork(
     db,
@@ -190,7 +227,7 @@ export const rebuildModVoiceLoudness = async (
   );
 
   log.info(
-    `Voice loudness rebuild "${mod.modName}" id=${mod.modId}: ${items.length} file(s), concurrency=${concurrency}${dryRun ? ' (dry-run)' : ''}`,
+    `Voice loudness rebuild "${mod.modName}" id=${mod.modId}: ${items.length} file(s), concurrency=${concurrency}, timeout=${timeoutMs}ms${dryRun ? ' (dry-run)' : ''}`,
   );
 
   let rebuilt = 0;
@@ -200,7 +237,7 @@ export const rebuildModVoiceLoudness = async (
   let done = 0;
 
   await mapWithConcurrency(items, concurrency, async (item) => {
-    const result = await rebuildOne(db, mod.modId, mod.game, tgtLang, item, dryRun);
+    const result = await rebuildOne(db, mod.modId, mod.game, tgtLang, item, dryRun, timeoutMs);
     done += 1;
     if (result === 'rebuilt') rebuilt += 1;
     else if (result === 'failed') {
