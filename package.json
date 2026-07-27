@@ -17,6 +17,7 @@
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
+    "voice:rebuild-loudness": "tsx scripts/rebuildVoiceLoudness.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

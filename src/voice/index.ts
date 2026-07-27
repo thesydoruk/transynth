@@ -71,6 +71,11 @@ export {
   type VoiceReferenceSourceDecision,
 } from './decideVoiceReferenceSource';
 export {
+  rebuildModVoiceLoudness,
+  type RebuildModVoiceLoudnessOptions,
+  type RebuildModVoiceLoudnessResult,
+} from './rebuildModVoiceLoudness';
+export {
   clearGeneratedVoice,
   clearGeneratedVoiceFiles,
   type ClearGeneratedVoiceResult,
