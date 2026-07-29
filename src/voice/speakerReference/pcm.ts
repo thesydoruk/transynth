@@ -5,6 +5,33 @@ export type ReferencePcm = {
   sampleRate: number;
 };
 
+/** Canonical WAV header size — a file this small carries no audio. */
+const WAV_HEADER_BYTES = 44;
+
+/**
+ * True when the file holds decodable WAV audio.
+ *
+ * ffmpeg can leave behind an empty or header-only file when decoding fails, and
+ * such a file must never be reused from the reference cache: the TTS request
+ * would fail for every line of that speaker until the cache is cleared by hand.
+ */
+export const isUsableWavFile = (wavPath: string): boolean => {
+  try {
+    if (fs.statSync(wavPath).size <= WAV_HEADER_BYTES) return false;
+  } catch {
+    return false;
+  }
+
+  const header = Buffer.alloc(4);
+  const fd = fs.openSync(wavPath, 'r');
+  try {
+    fs.readSync(fd, header, 0, header.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return header.toString('ascii') === 'RIFF';
+};
+
 /** Read mono PCM from a standard 16-bit WAV file. */
 export const readPcmFromWav = (wavPath: string): ReferencePcm => {
   const buf = fs.readFileSync(wavPath);

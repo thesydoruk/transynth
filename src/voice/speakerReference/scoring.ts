@@ -1,9 +1,11 @@
 import type { AnalysisFrame } from './analysisFrames';
 import { analyzeFrames } from './analysisFrames';
+import { MAX_REFERENCE_DURATION_SEC, MIN_REFERENCE_DURATION_SEC } from './constants';
 import { readPcmFromWav } from './pcm';
 
 const scoreDuration = (durationSec: number): number => {
-  if (durationSec < 1 || durationSec > 14) return 0;
+  if (durationSec < MIN_REFERENCE_DURATION_SEC || durationSec > MAX_REFERENCE_DURATION_SEC)
+    return 0;
   const peak = 5;
   const spread = 2.5;
   return Math.exp(-((durationSec - peak) ** 2) / (2 * spread ** 2));
@@ -42,7 +44,9 @@ export const scoreReferencePcm = (samples: Int16Array, sampleRate: number): numb
   if (samples.length === 0) return Number.NEGATIVE_INFINITY;
 
   const durationSec = samples.length / sampleRate;
-  if (durationSec < 0.8 || durationSec > 14) return Number.NEGATIVE_INFINITY;
+  if (durationSec < MIN_REFERENCE_DURATION_SEC || durationSec > MAX_REFERENCE_DURATION_SEC) {
+    return Number.NEGATIVE_INFINITY;
+  }
 
   const frames = analyzeFrames(samples, sampleRate);
   if (frames.length === 0) return Number.NEGATIVE_INFINITY;

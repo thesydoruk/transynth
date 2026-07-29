@@ -5,6 +5,7 @@ import { ensureDir } from '../../utils/file';
 import { decodeAudioToReferenceWav } from '../ffmpegAudio';
 import { extractXwmFromFuzFile } from '../../formats/fuz';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
+import { isUsableWavFile } from './pcm';
 
 export const sourceDigest = (sourcePath: string): string => {
   const stat = fs.statSync(sourcePath);
@@ -30,12 +31,16 @@ export const getOrDecodeEntryReferenceWav = async (
   const outPath = path.join(entryCacheDir, `${base}.wav`);
   const markerPath = path.join(entryCacheDir, `${base}.source`);
   const digest = sourceDigest(entry.absolutePath);
-  if (fs.existsSync(outPath) && readCacheMarker(markerPath) === digest) {
+  if (readCacheMarker(markerPath) === digest && isUsableWavFile(outPath)) {
     return outPath;
   }
 
   ensureDir(entryCacheDir);
   await decodeEntryToReferenceWav(entry, outPath, workDir);
+  if (!isUsableWavFile(outPath)) {
+    fs.rmSync(outPath, { force: true });
+    throw new Error(`Decoded reference audio has no audio data: ${entry.relPath}`);
+  }
   writeCacheMarker(markerPath, digest);
   return outPath;
 };
@@ -49,11 +54,14 @@ export const getOrReuseSpeakerReferenceWav = async (
   const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
   const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
   const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
-  if (fs.existsSync(outPath) && readCacheMarker(markerPath) === marker) {
+  if (readCacheMarker(markerPath) === marker && isUsableWavFile(outPath)) {
     return outPath;
   }
 
   const decodedPath = await produceWav();
+  if (!isUsableWavFile(decodedPath)) {
+    throw new Error(`Speaker reference has no audio data: ${decodedPath}`);
+  }
   ensureDir(speakerCacheDir);
   fs.copyFileSync(decodedPath, outPath);
   writeCacheMarker(markerPath, marker);
@@ -67,7 +75,7 @@ export const tryCachedSpeakerReference = (
   const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
   const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
   const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
-  if (!fs.existsSync(outPath) || !readCacheMarker(markerPath)) return null;
+  if (!readCacheMarker(markerPath) || !isUsableWavFile(outPath)) return null;
   return outPath;
 };
 

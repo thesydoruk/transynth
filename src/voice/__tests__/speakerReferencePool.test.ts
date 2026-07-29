@@ -94,6 +94,14 @@ describe('scoreReferencePcm', () => {
     expect(scoreReferencePcm(shortClip, SAMPLE_RATE)).toBe(Number.NEGATIVE_INFINITY);
   });
 
+  it('rejects clips the TTS backend considers under a second', () => {
+    for (const durationSec of [0.8, 0.9, 1]) {
+      expect(scoreReferencePcm(makeSpeechLike(durationSec), SAMPLE_RATE)).toBe(
+        Number.NEGATIVE_INFINITY,
+      );
+    }
+  });
+
   it('prefers medium-length speech over very short active clips', () => {
     const medium = makeSpeechLike(5);
     const short = makeSpeechLike(1.2);
