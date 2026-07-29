@@ -4,7 +4,11 @@ import { resolveTtsLanguage } from './voiceToolPaths';
 
 /**
  * Bump when post-TTS audio processing changes so stored `.fuz` files regenerate.
- * `en-peak-v1` — flatten speech envelope + match peak to English line.
+ *
+ * Deliberately left at `en-peak-v1` after post-processing moved from peak to
+ * speech-RMS matching: the already generated lines keep their audio instead of
+ * being invalidated in bulk, so only lines regenerated for another reason pick
+ * up the new level.
  */
 export const VOICE_AUDIO_POST_VERSION = 'en-peak-v1';
 
