@@ -20,6 +20,7 @@ export interface VoiceSpeakerRowProps {
 /** One selectable speaker with dubbing progress. */
 export const VoiceSpeakerRow = memo(({ speaker, active, onSelect }: VoiceSpeakerRowProps) => {
   const { t } = useTranslation();
+  const dubbableCount = speaker.lineCount - speaker.orphanCount;
 
   return (
     <button
@@ -58,12 +59,19 @@ export const VoiceSpeakerRow = memo(({ speaker, active, onSelect }: VoiceSpeaker
       <span className={styles.rowBottom}>
         <ProgressPill
           done={speaker.dubbedCount}
-          total={speaker.lineCount}
+          total={dubbableCount}
           showCount
-          title={t('voice.dubbedProgress', {
-            done: speaker.dubbedCount,
-            total: speaker.lineCount,
-          })}
+          title={
+            speaker.orphanCount > 0
+              ? `${t('voice.dubbedProgress', {
+                  done: speaker.dubbedCount,
+                  total: dubbableCount,
+                })} · ${t('voice.orphanLines', { count: speaker.orphanCount })}`
+              : t('voice.dubbedProgress', {
+                  done: speaker.dubbedCount,
+                  total: dubbableCount,
+                })
+          }
         />
       </span>
     </button>

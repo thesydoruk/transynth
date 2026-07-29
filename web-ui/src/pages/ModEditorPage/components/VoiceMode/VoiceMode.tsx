@@ -18,6 +18,10 @@ export interface VoiceModeProps {
   targetLang: string;
 }
 
+/** Orphan audio has no dialogue record, so it is not translation work. */
+const needsTranslation = (line: VoiceLinePreview): boolean =>
+  !line.isOrphanAudio && !line.translation?.trim();
+
 /**
  * Voice editor: speakers in a navigator beside the dubbed lines of the selected one.
  * Layout and interaction patterns mirror {@link DialogsMode}.
@@ -62,7 +66,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
     const lines = data.lines;
     return {
       total: lines.length,
-      needsTranslation: lines.filter((line) => !line.translation?.trim()).length,
+      needsTranslation: lines.filter(needsTranslation).length,
       needsVoice: lines.filter((line) => line.translation?.trim() && !line.hasTranslationAudio)
         .length,
     };
@@ -71,7 +75,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
   const visibleLines = useMemo(() => {
     let filtered = data.lines;
     if (state.filter === 'needsTranslation') {
-      filtered = data.lines.filter((line) => !line.translation?.trim());
+      filtered = data.lines.filter(needsTranslation);
     } else if (state.filter === 'needsVoice') {
       filtered = data.lines.filter((line) => line.translation?.trim() && !line.hasTranslationAudio);
     }
@@ -161,6 +165,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         speakerName={data.activeSpeaker?.displayName ?? ''}
         dubbed={data.activeSpeaker?.dubbedCount ?? 0}
         total={data.activeSpeaker?.lineCount ?? 0}
+        orphans={data.activeSpeaker?.orphanCount ?? 0}
         hasReference={Boolean(data.activeSpeaker?.referencePick)}
         lines={visibleLines}
         hiddenLineCount={hiddenLineCount}

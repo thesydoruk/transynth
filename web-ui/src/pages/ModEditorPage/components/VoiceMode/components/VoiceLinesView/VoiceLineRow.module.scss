@@ -54,6 +54,13 @@
   cursor: help;
 }
 
+.orphanBadge {
+  composes: badge;
+  color: var(--text-muted);
+  background: hsl(0 0% 50% / 0.22);
+  cursor: help;
+}
+
 .voice {
   display: flex;
   gap: 4px;

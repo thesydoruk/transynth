@@ -42,6 +42,8 @@ export type VoiceLinePreview = {
   isReference: boolean;
   isInheritedAudio: boolean;
   inheritedFrom: string | null;
+  /** Audio whose FormID has no INFO record anywhere — cut line left in the archives. */
+  isOrphanAudio: boolean;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
 };
@@ -60,6 +62,8 @@ export type VoiceSpeakerSummary = {
   genderMismatch: boolean;
   lineCount: number;
   dubbedCount: number;
+  /** Subset of {@link lineCount} with no dialogue record, so never dubbable. */
+  orphanCount: number;
 };
 
 export type VoiceSpeakersResponse =

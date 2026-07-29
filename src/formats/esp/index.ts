@@ -17,3 +17,4 @@ export type {
   SceneRecord,
 } from './EspReader';
 export { patchEsp, patchStringsMap } from './espPatcher';
+export { readPluginMasterNames } from './pluginHeader';

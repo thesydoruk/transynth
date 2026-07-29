@@ -17,9 +17,7 @@ export const listVoiceLinesForSpeaker = async (
     return { ok: false, reason: 'speaker_not_found', message: 'Speaker not found' };
   }
 
-  const loaded = await getVoiceListContext(db, modId, srcLang, targetLang, {
-    loadInherited: true,
-  });
+  const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 
   const { voiceFiles, voiceRootRel } = loaded.data;

@@ -401,6 +401,8 @@
     "voiceRefBadge": "reference",
     "voiceInheritedBadge": "inherited",
     "voiceInheritedTitle": "Inherited audio from {{source}}",
+    "voiceOrphanBadge": "no record",
+    "voiceOrphanTitle": "Audio without a dialogue record — the line was cut after the voice archives were built, so there is nothing to translate or dub.",
     "voiceRefHint": "The selected line is used as the XTTS reference for all lines of this character.",
     "voiceRefHintEmpty": "Pick one line as the TTS reference — otherwise the system auto-selects when it hits a line too short for same-line reference.",
     "voiceRefSaving": "…",
@@ -506,6 +508,7 @@
     "noMatches": "No speakers match the search.",
     "selectSpeaker": "Select a speaker on the left.",
     "linesSubtitle": "{{count}} lines",
+    "orphanLines": "{{count}} without a record",
     "dubbedProgress": "{{done}} / {{total}} dubbed",
     "filterLabel": "Line filter",
     "filter": {

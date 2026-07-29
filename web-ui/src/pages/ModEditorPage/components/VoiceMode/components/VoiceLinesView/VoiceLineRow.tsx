@@ -73,6 +73,11 @@ export const VoiceLineRow = ({
             {t('modEditor.voiceInheritedBadge')}
           </span>
         )}
+        {line.isOrphanAudio && (
+          <span className={styles.orphanBadge} title={t('modEditor.voiceOrphanTitle')}>
+            {t('modEditor.voiceOrphanBadge')}
+          </span>
+        )}
         <div className={styles.voice}>
           {voiceButton('source', t('dialogs.playSource'), t('modEditor.voicePlayTitle'), true)}
           {voiceButton(

@@ -401,6 +401,8 @@
     "voiceRefBadge": "референс",
     "voiceInheritedBadge": "успадковане",
     "voiceInheritedTitle": "Успадковане аудіо з {{source}}",
+    "voiceOrphanBadge": "немає запису",
+    "voiceOrphanTitle": "Аудіо без запису діалогу — репліку вирізали вже після збирання архівів озвучки, тож перекладати й озвучувати нічого.",
     "voiceRefHint": "Обрана репліка використовується як референс Fish Speech для всіх реплік цього персонажа.",
     "voiceRefHintEmpty": "Оберіть одну репліку як референс для озвучки — інакше система вибере автоматично, коли трапиться надто коротка репліка.",
     "voiceRefSaving": "…",
@@ -506,6 +508,7 @@
     "noMatches": "За пошуком нічого не знайдено.",
     "selectSpeaker": "Виберіть персонажа ліворуч.",
     "linesSubtitle": "{{count}} реплік",
+    "orphanLines": "{{count}} без запису",
     "dubbedProgress": "озвучено {{done}} з {{total}}",
     "filterLabel": "Фільтр реплік",
     "filter": {

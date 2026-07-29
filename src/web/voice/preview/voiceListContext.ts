@@ -1,5 +1,4 @@
 import type { Tx } from '../../../db';
-import type { GameType } from '../../../types';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
@@ -35,6 +34,12 @@ export type VoiceListContext = {
   sources: Awaited<ReturnType<typeof loadVoiceSourcesDetailed>>;
   translations: Map<string, VoiceTranslationRow>;
   inheritedLookup: InheritedVoiceLookup | null;
+  /**
+   * Lower-6 FormIDs that have NAM1 text somewhere — in this mod or in an
+   * imported master. Audio whose FormID is missing here has no dialogue record
+   * at all (cut lines left in the shipped archives), so it can never be dubbed.
+   */
+  sourceFormids: Set<string>;
   dbSpeakerNames: Map<string, string>;
   speakerRefs: VoiceSpeakerRefMap;
   folderGenders: Map<string, VoiceFolderGender>;
@@ -46,19 +51,39 @@ export type VoiceListContextResult = VoiceListContextError | { ok: true; data: V
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { loadedAt: number; result: Promise<VoiceListContextResult> }>();
 
-const cacheKey = (modId: number, srcLang: string, targetLang: string, inherited: boolean): string =>
-  `${modId}:${srcLang}:${targetLang}:${inherited ? '1' : '0'}`;
+const cacheKey = (modId: number, srcLang: string, targetLang: string): string =>
+  `${modId}:${srcLang}:${targetLang}`;
+
+/** FormID part of a `FORMID6:variant` voice key. */
+const keyFormid = (key: string): string => key.split(':')[0] ?? '';
+
+/** FormIDs with NAM1 text, from local rows plus every imported master. */
+export const collectVoiceSourceFormids = (
+  sources: Map<string, unknown>,
+  translations: Map<string, unknown>,
+  inherited: InheritedVoiceLookup | null,
+): Set<string> => {
+  const formids = new Set<string>();
+  const add = (keys: Iterable<string>): void => {
+    for (const key of keys) formids.add(keyFormid(key));
+  };
+
+  add(sources.keys());
+  add(translations.keys());
+  for (const map of inherited?.sourcesByMod.values() ?? []) add(map.keys());
+  for (const map of inherited?.translationsByMod.values() ?? []) add(map.keys());
+  return formids;
+};
 
 const loadVoiceListContext = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-  opts: { loadInherited: boolean },
 ): Promise<VoiceListContextResult> => {
   const resolvedTargetLang = targetLang || CONFIG.defaultTgtLang;
-  const { rows } = await db.query<{ name: string; abs_path: string | null; game: GameType }>(
-    `SELECT name, abs_path, game FROM mods WHERE id = $1`,
+  const { rows } = await db.query<{ name: string; abs_path: string | null }>(
+    `SELECT name, abs_path FROM mods WHERE id = $1`,
     [modId],
   );
   const mod = rows[0];
@@ -87,16 +112,14 @@ const loadVoiceListContext = async (
     await Promise.all([
       loadVoiceSourcesDetailed(db, modId, srcLang),
       loadVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
-      opts.loadInherited
-        ? findImportedMasterMods(db, pluginPath, modId, mod.game ?? 'fo4')
-        : Promise.resolve([]),
+      findImportedMasterMods(db, pluginPath, modId),
       loadSpeakerNamesFromDb(db, modId),
       loadVoiceSpeakerRefs(db, modId),
       loadVoiceFolderGenders(db, modId),
     ]);
 
   let inheritedLookup: InheritedVoiceLookup | null = null;
-  if (opts.loadInherited && masterMods.length > 0) {
+  if (masterMods.length > 0) {
     inheritedLookup = await loadInheritedVoiceLookup(db, masterMods, srcLang, resolvedTargetLang);
     log.debug(
       `Voice list mod=${modId}: inherited lookup from ${masterMods.map((m) => m.pluginName).join(', ')}`,
@@ -113,6 +136,7 @@ const loadVoiceListContext = async (
       sources,
       translations,
       inheritedLookup,
+      sourceFormids: collectVoiceSourceFormids(sources, translations, inheritedLookup),
       dbSpeakerNames,
       speakerRefs,
       folderGenders,
@@ -127,13 +151,12 @@ export const getVoiceListContext = (
   modId: number,
   srcLang: string,
   targetLang: string,
-  opts: { loadInherited: boolean },
 ): Promise<VoiceListContextResult> => {
-  const key = cacheKey(modId, srcLang, targetLang, opts.loadInherited);
+  const key = cacheKey(modId, srcLang, targetLang);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.loadedAt < CACHE_TTL_MS) return hit.result;
 
-  const result = loadVoiceListContext(db, modId, srcLang, targetLang, opts);
+  const result = loadVoiceListContext(db, modId, srcLang, targetLang);
   cache.set(key, { loadedAt: Date.now(), result });
   return result;
 };

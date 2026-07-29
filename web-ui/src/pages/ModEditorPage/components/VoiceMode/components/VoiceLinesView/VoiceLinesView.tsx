@@ -14,6 +14,8 @@ export interface VoiceLinesViewProps {
   speakerName: string;
   dubbed: number;
   total: number;
+  /** Lines of {@link total} that have no dialogue record and cannot be dubbed. */
+  orphans: number;
   hasReference: boolean;
   lines: VoiceLinePreview[];
   hiddenLineCount: number;
@@ -42,6 +44,7 @@ export const VoiceLinesView = ({
   speakerName,
   dubbed,
   total,
+  orphans,
   hasReference,
   lines,
   hiddenLineCount,
@@ -88,6 +91,7 @@ export const VoiceLinesView = ({
         speakerName={speakerName}
         dubbed={dubbed}
         total={total}
+        orphans={orphans}
         hasReference={hasReference}
         filter={filter}
         onFilterChange={onFilterChange}

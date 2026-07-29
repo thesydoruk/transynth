@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
-import { EspReader } from '../formats/esp';
-import type { GameType } from '../types';
+import { readPluginMasterNames } from '../formats/esp';
 import {
   loadVoiceSourcesDetailed,
   loadVoiceTranslations,
@@ -33,10 +32,9 @@ export type InheritedVoiceLookup = {
 };
 
 /** Master plugins from the TES4 header, most specific dependency first. */
-export const readMasterPluginNames = (pluginPath: string, game: GameType = 'fo4'): string[] => {
+export const readMasterPluginNames = (pluginPath: string): string[] => {
   if (!fs.existsSync(pluginPath)) return [];
-  const esp = new EspReader(pluginPath, game);
-  return [...esp.info.masterFiles].reverse();
+  return readPluginMasterNames(pluginPath).reverse();
 };
 
 /** Match imported mods by plugin basename (e.g. `AA FusionCityRising.esp`). */
@@ -44,9 +42,8 @@ export const findImportedMasterMods = async (
   db: Tx,
   pluginPath: string,
   excludeModId: number,
-  game: GameType = 'fo4',
 ): Promise<MasterModRef[]> => {
-  const masterNames = readMasterPluginNames(pluginPath, game);
+  const masterNames = readMasterPluginNames(pluginPath);
   if (masterNames.length === 0) return [];
 
   const { rows } = await db.query<{ id: number; name: string; abs_path: string }>(

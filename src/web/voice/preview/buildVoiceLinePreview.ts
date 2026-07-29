@@ -25,6 +25,16 @@ export const resolveSpeakerDisplayName = (
   dbSpeakerNames: Map<string, string>,
 ): string => dbSpeakerNames.get(formidLower6.toUpperCase()) || formatVoiceSpeakerLabel(speakerKey);
 
+/**
+ * True when no INFO record carries this FormID — neither in the mod nor in an
+ * imported master. Bethesda ships such audio for lines cut after the voice
+ * archives were built, so there is nothing to translate or dub.
+ *
+ * @param sourceFormids - {@link VoiceListContext.sourceFormids}
+ */
+export const isOrphanVoiceEntry = (sourceFormids: Set<string>, entry: VoiceFileEntry): boolean =>
+  !sourceFormids.has(entry.formidLower6.toUpperCase());
+
 export const buildVoiceLinePreview = (
   context: VoiceListContext,
   entry: VoiceFileEntry,
@@ -76,6 +86,7 @@ export const buildVoiceLinePreview = (
       : false,
     isInheritedAudio,
     inheritedFrom,
+    isOrphanAudio: isOrphanVoiceEntry(context.sourceFormids, entry),
     hasTranslationAudio: hasAudio,
     canGenerateVoice:
       canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid) && !hasAudio,

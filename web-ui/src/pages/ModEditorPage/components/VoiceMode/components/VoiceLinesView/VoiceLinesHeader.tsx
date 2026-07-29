@@ -7,6 +7,8 @@ export interface VoiceLinesHeaderProps {
   speakerName: string;
   dubbed: number;
   total: number;
+  /** Lines of {@link total} that have no dialogue record and cannot be dubbed. */
+  orphans: number;
   hasReference: boolean;
   filter: VoiceLineFilter;
   onFilterChange: (filter: VoiceLineFilter) => void;
@@ -24,6 +26,7 @@ export const VoiceLinesHeader = ({
   speakerName,
   dubbed,
   total,
+  orphans,
   hasReference,
   filter,
   onFilterChange,
@@ -36,6 +39,7 @@ export const VoiceLinesHeader = ({
   isFetching = false,
 }: VoiceLinesHeaderProps) => {
   const { t } = useTranslation();
+  const dubbable = total - orphans;
 
   const chips: Array<{ value: VoiceLineFilter; count: number }> = [
     { value: 'all', count: counts.total },
@@ -48,13 +52,18 @@ export const VoiceLinesHeader = ({
       <div className={styles.titleRow}>
         <h2 className={styles.title}>{speakerName}</h2>
         <span className={styles.subtitle}>{t('voice.linesSubtitle', { count: total })}</span>
+        {orphans > 0 && (
+          <span className={styles.subtitle} title={t('modEditor.voiceOrphanTitle')}>
+            {t('voice.orphanLines', { count: orphans })}
+          </span>
+        )}
         <span className={styles.headerSpacer} />
         {isFetching && <span className={styles.fetching}>{t('modEditor.voiceLoading')}</span>}
         <ProgressPill
           done={dubbed}
-          total={total}
+          total={dubbable}
           showCount
-          title={t('voice.dubbedProgress', { done: dubbed, total })}
+          title={t('voice.dubbedProgress', { done: dubbed, total: dubbable })}
         />
       </div>
 

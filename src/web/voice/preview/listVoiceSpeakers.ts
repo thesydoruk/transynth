@@ -2,6 +2,7 @@ import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { getVoiceListContext } from './voiceListContext';
 import {
+  isOrphanVoiceEntry,
   resolveSpeakerDisplayName,
   resolveSpeakerKey,
   sortSpeakers,
@@ -16,19 +17,25 @@ export const listVoiceSpeakersForMod = async (
   srcLang: string,
   targetLang: string,
 ): Promise<VoiceSpeakersListResult> => {
-  const loaded = await getVoiceListContext(db, modId, srcLang, targetLang, {
-    loadInherited: false,
-  });
+  const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 
-  const { voiceFiles, voiceRootRel, dbSpeakerNames, speakerRefs, folderGenders, translationAudio } =
-    loaded.data;
+  const {
+    voiceFiles,
+    voiceRootRel,
+    dbSpeakerNames,
+    speakerRefs,
+    folderGenders,
+    translationAudio,
+    sourceFormids,
+  } = loaded.data;
   const groups = new Map<
     string,
     {
       displayName: string;
       lineCount: number;
       dubbedCount: number;
+      orphanCount: number;
     }
   >();
 
@@ -40,10 +47,12 @@ export const listVoiceSpeakersForMod = async (
         displayName: resolveSpeakerDisplayName(speakerKey, entry.formidLower6, dbSpeakerNames),
         lineCount: 0,
         dubbedCount: 0,
+        orphanCount: 0,
       };
       groups.set(speakerKey, group);
     }
     group.lineCount += 1;
+    if (isOrphanVoiceEntry(sourceFormids, entry)) group.orphanCount += 1;
     if (hasTranslationAudio(translationAudio, entry.formidLower6, entry.variant)) {
       group.dubbedCount += 1;
     }
@@ -60,6 +69,7 @@ export const listVoiceSpeakersForMod = async (
         genderMismatch: folderGender?.mismatch ?? false,
         lineCount: group.lineCount,
         dubbedCount: group.dubbedCount,
+        orphanCount: group.orphanCount,
       };
     }),
   );
