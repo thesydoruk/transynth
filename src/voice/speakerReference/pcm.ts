@@ -32,6 +32,16 @@ export const isUsableWavFile = (wavPath: string): boolean => {
   return header.toString('ascii') === 'RIFF';
 };
 
+/** Playable length of a WAV file, or 0 when it cannot be read. */
+export const wavDurationSec = (wavPath: string): number => {
+  try {
+    const { samples, sampleRate } = readPcmFromWav(wavPath);
+    return sampleRate > 0 ? samples.length / sampleRate : 0;
+  } catch {
+    return 0;
+  }
+};
+
 /** Read mono PCM from a standard 16-bit WAV file. */
 export const readPcmFromWav = (wavPath: string): ReferencePcm => {
   const buf = fs.readFileSync(wavPath);

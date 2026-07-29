@@ -4,7 +4,7 @@
  * Fallout dialogue strings mix speakable lines with stage directions and sound
  * effects. XTTS clones timbre from the reference `.fuz` but still tries to
  * speak the target text, so non-speech markers must be filtered out and
- * inline *...* blocks stripped from both payload fields:
+ * inline *...* / [...] blocks stripped from both payload fields:
  *
  *   text        — Ukrainian translation (POST /v1/synthesize "text")
  *   speakerText — English transcript of the reference clip ("speaker_text")
@@ -19,10 +19,16 @@
  *
  *   Animal sound — (Whine) / *скавчить* → skip (non_speech_marker)
  *   Human SFX    — *Sigh* / *зітхає* → skip (non_speech_marker)
+ *   Tone tag     — Sarcastic / [Сарказм] → skip (non_speech_marker)
  *   Interject stub — "Cait interjects", EDID CA_Interject_Stub_Cait → skip (interject_stub)
  *   Prefix strip — "*chuckle* This troublemaker…" → synth (dialogue only)
+ *   Prefix strip — "[Сарказм] Ну звісно…" → synth (dialogue only)
  *   Suffix strip — "…take your time *groan*" → synth (without *groan*)
  *   Multi-block  — "*Gasping* *Coughing*" → skip (empty_after_strip)
+ *
+ * Bracketed [...] blocks are tone tags and UI tokens ([Сарказм], [Click]).
+ * They are never spoken, and FaceFXWrapper hangs on non-ASCII text inside
+ * brackets, so they are stripped exactly like *...* blocks.
  *
  * Parentheses (...) count as non-speech only when the entire line matches.
  * Mid-line parens are left untouched. Vanilla FO4: animals use (Bark!), (Growl);
@@ -32,8 +38,14 @@
 /** Inline stage direction / sound-effect block: `*chuckle*`, `*groan*`, … */
 const ASTERISK_BLOCK_RE = /\*[^*]+\*/g;
 
+/** Inline tone tag / UI token: `[Сарказм]`, `[Click]`, … */
+const BRACKET_BLOCK_RE = /\[[^[\]]*\]/g;
+
 /** Whole line is one asterisk block, e.g. `*Sigh*`, `*heavy breathing*`. */
 const FULL_ASTERISK_LINE_RE = /^\*[^*]+\*$/;
+
+/** Whole line is one bracketed tag, e.g. `[Сарказм]`, `[Brotherhood]`. */
+const FULL_BRACKET_LINE_RE = /^\[[^[\]]+\]$/;
 
 /** Whole line is one parenthesized sound label, e.g. `(Whine)`, `(Bark!)`. */
 const FULL_PAREN_LINE_RE = /^\([^)]+\)$/;
@@ -51,16 +63,18 @@ export type PrepareVoiceTtsTextResult =
 const normalizeLine = (text: string | null | undefined): string => text?.trim() ?? '';
 
 /**
- * Remove all `*...*` blocks anywhere in the string and collapse whitespace.
+ * Remove all `*...*` and `[...]` blocks anywhere in the string and collapse
+ * whitespace.
  *
- * @example stripVoiceAsteriskBlocks('*ahem* Now, was there anything?')
+ * @example stripVoiceNonSpeechBlocks('*ahem* Now, was there anything?')
  *          → 'Now, was there anything?'
- * @example stripVoiceAsteriskBlocks('Yeah, just take your time... *groan*')
+ * @example stripVoiceNonSpeechBlocks('Yeah, just take your time... *groan*')
  *          → 'Yeah, just take your time...'
- * @example stripVoiceAsteriskBlocks('*Gasping* *Coughing*') → ''
+ * @example stripVoiceNonSpeechBlocks('[Сарказм] Ну звісно.') → 'Ну звісно.'
+ * @example stripVoiceNonSpeechBlocks('*Gasping* *Coughing*') → ''
  */
-export const stripVoiceAsteriskBlocks = (text: string): string =>
-  text.replace(ASTERISK_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
+export const stripVoiceNonSpeechBlocks = (text: string): string =>
+  text.replace(ASTERISK_BLOCK_RE, ' ').replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
 
 /**
  * True when the INFO record is a companion interject engine stub.
@@ -84,17 +98,22 @@ export const isInterjectStubEdid = (edid?: string | null): boolean => {
  *
  * Does **not** match dialogue that merely contains a marker:
  * `*chuckle* Hello` and `Hello *chuckle*` return false here (those go through
- * {@link stripVoiceAsteriskBlocks} instead).
+ * {@link stripVoiceNonSpeechBlocks} instead).
  *
  * @example isFullNonSpeechMarkerLine('*Sigh*') → true
  * @example isFullNonSpeechMarkerLine('(Whine)') → true
  * @example isFullNonSpeechMarkerLine('(Growl)') → true
+ * @example isFullNonSpeechMarkerLine('[Сарказм]') → true
  * @example isFullNonSpeechMarkerLine('*chuckle* Hello there') → false
  */
 export const isFullNonSpeechMarkerLine = (text: string): boolean => {
   const line = text.trim();
   if (!line) return false;
-  return FULL_ASTERISK_LINE_RE.test(line) || FULL_PAREN_LINE_RE.test(line);
+  return (
+    FULL_ASTERISK_LINE_RE.test(line) ||
+    FULL_PAREN_LINE_RE.test(line) ||
+    FULL_BRACKET_LINE_RE.test(line)
+  );
 };
 
 /** Human-readable skip reason for logs and batch `skipped[]` messages. */
@@ -115,8 +134,8 @@ export const voiceTtsSkipMessage = (reason: VoiceTtsSkipReason): string => {
  *
  * Skip if **any** of:
  * - `edid` matches `CA_Interject_Stub_*`
- * - entire `lineSource` is `*...*` or `(...)`
- * - entire `translation` is `*...*` or `(...)`
+ * - entire `lineSource` is `*...*`, `(...)` or `[...]`
+ * - entire `translation` is `*...*`, `(...)` or `[...]`
  *
  * @example detectVoiceTtsSkipReason('(Whine)', '*скавчить*') → 'non_speech_marker'
  * @example detectVoiceTtsSkipReason('Cait interjects', '*…*', 'CA_Interject_Stub_Cait')
@@ -151,7 +170,7 @@ export const canSynthesizeVoiceLine = (
   edid?: string | null,
 ): boolean => {
   if (detectVoiceTtsSkipReason(lineSource, translation, edid)) return false;
-  return stripVoiceAsteriskBlocks(translation).length > 0;
+  return stripVoiceNonSpeechBlocks(translation).length > 0;
 };
 
 /**
@@ -162,7 +181,7 @@ export const canSynthesizeVoiceLine = (
  * @param input.translation — Ukrainian text → `text` field after stripping.
  * @param input.speakerSource — English transcript of the reference `.fuz`
  *   (line mode: same as `lineSource`; speaker mode: text of the picked ref
- *   line). Also stripped of `*...*` before `speaker_text` is sent.
+ *   line). Also stripped of `*...*` / `[...]` before `speaker_text` is sent.
  * @param input.edid — INFO record EDID from `records.edid` (needed for
  *   interject stub detection).
  *
@@ -191,11 +210,11 @@ export const prepareVoiceTtsText = (input: {
   const skipReason = detectVoiceTtsSkipReason(input.lineSource, input.translation, input.edid);
   if (skipReason) return { action: 'skip', reason: skipReason };
 
-  const text = stripVoiceAsteriskBlocks(input.translation);
+  const text = stripVoiceNonSpeechBlocks(input.translation);
   if (!text) return { action: 'skip', reason: 'empty_after_strip' };
 
   const speakerRaw = normalizeLine(input.speakerSource) || normalizeLine(input.lineSource);
-  const speakerText = speakerRaw ? stripVoiceAsteriskBlocks(speakerRaw) : '';
+  const speakerText = speakerRaw ? stripVoiceNonSpeechBlocks(speakerRaw) : '';
 
   return {
     action: 'synthesize',

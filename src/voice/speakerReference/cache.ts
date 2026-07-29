@@ -5,7 +5,16 @@ import { ensureDir } from '../../utils/file';
 import { decodeAudioToReferenceWav } from '../ffmpegAudio';
 import { extractXwmFromFuzFile } from '../../formats/fuz';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
-import { isUsableWavFile } from './pcm';
+import { MIN_REFERENCE_DURATION_SEC } from './constants';
+import { isUsableWavFile, wavDurationSec } from './pcm';
+
+/**
+ * A speaker reference stays cached across runs, so a clip picked under an older
+ * (shorter) duration floor would keep failing every line of that speaker. Check
+ * the current floor on reuse instead of trusting the cache marker alone.
+ */
+const isReusableSpeakerReference = (wavPath: string): boolean =>
+  isUsableWavFile(wavPath) && wavDurationSec(wavPath) >= MIN_REFERENCE_DURATION_SEC;
 
 export const sourceDigest = (sourcePath: string): string => {
   const stat = fs.statSync(sourcePath);
@@ -54,13 +63,19 @@ export const getOrReuseSpeakerReferenceWav = async (
   const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
   const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
   const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
-  if (readCacheMarker(markerPath) === marker && isUsableWavFile(outPath)) {
+  if (readCacheMarker(markerPath) === marker && isReusableSpeakerReference(outPath)) {
     return outPath;
   }
 
   const decodedPath = await produceWav();
   if (!isUsableWavFile(decodedPath)) {
     throw new Error(`Speaker reference has no audio data: ${decodedPath}`);
+  }
+  const durationSec = wavDurationSec(decodedPath);
+  if (durationSec < MIN_REFERENCE_DURATION_SEC) {
+    throw new Error(
+      `Speaker reference too short (${durationSec.toFixed(2)}s < ${MIN_REFERENCE_DURATION_SEC}s): ${decodedPath}`,
+    );
   }
   ensureDir(speakerCacheDir);
   fs.copyFileSync(decodedPath, outPath);
@@ -75,7 +90,7 @@ export const tryCachedSpeakerReference = (
   const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
   const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
   const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
-  if (!readCacheMarker(markerPath) || !isUsableWavFile(outPath)) return null;
+  if (!readCacheMarker(markerPath) || !isReusableSpeakerReference(outPath)) return null;
   return outPath;
 };
 

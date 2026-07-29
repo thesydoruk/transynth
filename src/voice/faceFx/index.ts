@@ -1,3 +1,3 @@
 export { generateLipFile } from './generateLip';
 export { runFaceFxLip, summarizeFaceFxOutput, type FaceFxLipResult } from './lipCore';
-export { encodeFaceFxDialogueText } from './text';
+export { encodeFaceFxDialogueText, sanitizeFaceFxDialogueText } from './text';

@@ -1,7 +1,27 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { encodeFaceFxDialogueText, summarizeFaceFxOutput } from '../faceFx';
+import {
+  encodeFaceFxDialogueText,
+  sanitizeFaceFxDialogueText,
+  summarizeFaceFxOutput,
+} from '../faceFx';
+
+describe('sanitizeFaceFxDialogueText', () => {
+  it('removes bracketed tags that hang the wrapper', () => {
+    expect(sanitizeFaceFxDialogueText('[Сарказм] Який розпач.')).toBe('Який розпач.');
+
+    expect(sanitizeFaceFxDialogueText('Ну [Сарказм] звісно')).toBe('Ну звісно');
+  });
+
+  it('drops unbalanced brackets and keeps plain dialogue intact', () => {
+    expect(sanitizeFaceFxDialogueText('Що це за [ штука?')).toBe('Що це за штука?');
+
+    expect(sanitizeFaceFxDialogueText('Привіт, мешканцю Убезпечища.')).toBe(
+      'Привіт, мешканцю Убезпечища.',
+    );
+  });
+});
 
 describe('encodeFaceFxDialogueText', () => {
   it('preserves UTF-8 bytes for Cyrillic dialogue', () => {

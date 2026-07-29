@@ -3,24 +3,36 @@ import {
   isFullNonSpeechMarkerLine,
   isInterjectStubEdid,
   prepareVoiceTtsText,
-  stripVoiceAsteriskBlocks,
+  stripVoiceNonSpeechBlocks,
 } from '../prepareVoiceTtsText';
 
-describe('stripVoiceAsteriskBlocks', () => {
+describe('stripVoiceNonSpeechBlocks', () => {
   it('removes prefix, suffix, and mid blocks', () => {
-    expect(stripVoiceAsteriskBlocks('*chuckle* Hello there')).toBe('Hello there');
+    expect(stripVoiceNonSpeechBlocks('*chuckle* Hello there')).toBe('Hello there');
 
-    expect(stripVoiceAsteriskBlocks('Yeah... *groan*')).toBe('Yeah...');
+    expect(stripVoiceNonSpeechBlocks('Yeah... *groan*')).toBe('Yeah...');
 
-    expect(stripVoiceAsteriskBlocks('Hey *chuckle*')).toBe('Hey');
+    expect(stripVoiceNonSpeechBlocks('Hey *chuckle*')).toBe('Hey');
   });
 
   it('strips multiple blocks in one line', () => {
-    expect(stripVoiceAsteriskBlocks('*Gasping* *Coughing*')).toBe('');
+    expect(stripVoiceNonSpeechBlocks('*Gasping* *Coughing*')).toBe('');
 
-    expect(stripVoiceAsteriskBlocks('*ahem* Now, was there anything?')).toBe(
+    expect(stripVoiceNonSpeechBlocks('*ahem* Now, was there anything?')).toBe(
       'Now, was there anything?',
     );
+  });
+
+  it('strips bracketed tone tags and UI tokens', () => {
+    expect(stripVoiceNonSpeechBlocks('[Сарказм] Ну звісно, це геніальний план.')).toBe(
+      'Ну звісно, це геніальний план.',
+    );
+
+    expect(stripVoiceNonSpeechBlocks('Натисни [Activate], щоб увійти.')).toBe(
+      'Натисни , щоб увійти.',
+    );
+
+    expect(stripVoiceNonSpeechBlocks('[Сарказм]')).toBe('');
   });
 });
 
@@ -29,6 +41,14 @@ describe('isFullNonSpeechMarkerLine', () => {
     expect(isFullNonSpeechMarkerLine('*Sigh*')).toBe(true);
 
     expect(isFullNonSpeechMarkerLine('(Whine)')).toBe(true);
+  });
+
+  it('matches a line that is only a bracketed tag', () => {
+    expect(isFullNonSpeechMarkerLine('[Сарказм]')).toBe(true);
+
+    expect(isFullNonSpeechMarkerLine('[Brotherhood of Steel]')).toBe(true);
+
+    expect(isFullNonSpeechMarkerLine('[Сарказм] Ну звісно.')).toBe(false);
   });
 
   it('does not match dialogue with markers', () => {
@@ -106,6 +126,36 @@ describe('prepareVoiceTtsText', () => {
       text: 'Цей негідник колись завдавав нам справжнього клопоту.',
 
       speakerText: 'This troublemaker here used to be a real headache.',
+    });
+  });
+
+  it('skips lines that are only a tone tag', () => {
+    expect(
+      prepareVoiceTtsText({
+        lineSource: 'Sarcastic',
+
+        translation: '[Сарказм]',
+
+        speakerSource: 'Sarcastic',
+      }),
+    ).toEqual({ action: 'skip', reason: 'non_speech_marker' });
+  });
+
+  it('strips a leading tone tag from dialogue', () => {
+    expect(
+      prepareVoiceTtsText({
+        lineSource: 'Sarcastic. Oh, what a shame. Pity it came to this.',
+
+        translation: '[Сарказм] Який розпач. Шкода, що все до цього дійшло.',
+
+        speakerSource: 'Oh, what a shame. Pity it came to this.',
+      }),
+    ).toEqual({
+      action: 'synthesize',
+
+      text: 'Який розпач. Шкода, що все до цього дійшло.',
+
+      speakerText: 'Oh, what a shame. Pity it came to this.',
     });
   });
 

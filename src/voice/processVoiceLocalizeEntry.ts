@@ -15,7 +15,7 @@ import {
 } from './speakerReference';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
-import { stripVoiceAsteriskBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
+import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -151,7 +151,7 @@ export const processVoiceLocalizeEntry = async (
 
     // TTS may use a different reference transcript than the line source; version
     // stamp stays on prepared text so it matches count/availability/rebuild.
-    const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
+    const speakerText = stripVoiceNonSpeechBlocks(referenceText ?? row.source) || undefined;
 
     const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
       baseUrl: ttsBaseUrl,

@@ -25,7 +25,11 @@ export const execFileAsync = (
       (err, stdout, stderr) => {
         if (err) {
           const detail = String(stderr || stdout || err.message).trim();
-          reject(new Error(`${command} failed: ${detail || err.message}`));
+          // A timeout kill usually leaves no output, so name it before the noisy
+          // "Command failed: …" text that `execFile` puts in `err.message`.
+          const timedOut = Boolean(err.killed) && options.timeoutMs !== undefined;
+          const reason = timedOut ? `timed out after ${options.timeoutMs}ms: ${detail}` : detail;
+          reject(new Error(`${command} failed: ${reason || err.message}`));
           return;
         }
         resolve({ stdout: String(stdout), stderr: String(stderr) });

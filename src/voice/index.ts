@@ -61,7 +61,7 @@ export {
   isFullNonSpeechMarkerLine,
   isInterjectStubEdid,
   prepareVoiceTtsText,
-  stripVoiceAsteriskBlocks,
+  stripVoiceNonSpeechBlocks,
   voiceTtsSkipMessage,
   type PrepareVoiceTtsTextResult,
   type VoiceTtsSkipReason,
