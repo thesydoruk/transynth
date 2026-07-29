@@ -3,8 +3,7 @@ import { isTranslatableSubrecord, isIgnoredRecord } from '../knownStrings';
 import { isNonPlayerFacingRecord } from '../nonPlayerFacing';
 
 describe('non-player-facing records', () => {
-  it('identifies INNR and ARMA', () => {
-    expect(isNonPlayerFacingRecord('INNR')).toBe(true);
+  it('identifies ARMA', () => {
     expect(isNonPlayerFacingRecord('ARMA')).toBe(true);
     expect(isNonPlayerFacingRecord('WEAP')).toBe(false);
   });
@@ -16,10 +15,12 @@ describe('non-player-facing records', () => {
     }
   });
 
-  it('extracts INNR WNAM while keeping INNR non-player-facing for skip-detect', () => {
-    expect(isIgnoredRecord('INNR', 'fo4')).toBe(false);
-    expect(isTranslatableSubrecord('INNR', 'WNAM', 'fo4')).toBe(true);
-    expect(isNonPlayerFacingRecord('INNR')).toBe(true);
+  it('extracts INNR WNAM — item name fragments the player reads', () => {
+    for (const game of ['fo4', 'fo76'] as const) {
+      expect(isIgnoredRecord('INNR', game)).toBe(false);
+      expect(isTranslatableSubrecord('INNR', 'WNAM', game)).toBe(true);
+    }
+    expect(isNonPlayerFacingRecord('INNR')).toBe(false);
   });
 
   it('still extracts player-facing Fallout 4 records', () => {

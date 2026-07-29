@@ -95,11 +95,8 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('Textures\\Effects\\Smoke.dds')?.reason).toMatch(/path/i);
   });
 
-  it('flags non-player-facing record types (INNR, ARMA)', () => {
+  it('flags non-player-facing record types (ARMA)', () => {
     expect(detectSkipHeuristic('ArmorAddon', { signature: 'ARMA' })?.reason).toMatch(
-      /not player-facing/i,
-    );
-    expect(detectSkipHeuristic('InheritNode', { signature: 'INNR' })?.reason).toMatch(
       /not player-facing/i,
     );
   });
@@ -132,6 +129,18 @@ describe('detectSkipHeuristic', () => {
         edid: 'LL_Weapon_Tessa',
       }),
     ).toBeNull();
+  });
+
+  it('keeps INNR name fragments', () => {
+    for (const source of ['Violent', "Junkie's", 'Sniper Rifle']) {
+      expect(
+        detectSkipHeuristic(source, {
+          signature: 'INNR',
+          path: 'INNR\\WNAM[0]',
+          edid: 'dn_HasLegendary',
+        }),
+      ).toBeNull();
+    }
   });
 
   it('keeps real place names on ACTI even when grup is ACTI', () => {
