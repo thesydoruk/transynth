@@ -4,7 +4,7 @@
  *
  * Routes stay thin: validate params, call one of these, return JSON.
  */
-import { findUnfinishedJobForMod, getQueueJob, requestJobStop } from '../core/queue';
+import { findUnfinishedJobForMod, fromBullJobId, getQueueJob, requestJobStop } from '../core/queue';
 import { readJobSnapshot } from '../core/snapshots';
 import type { JobKind } from '../types';
 
@@ -40,7 +40,8 @@ export const stopJobOfKind = async (jobId: number, kinds: readonly JobKind[]): P
 export const stopJobForMod = async (kinds: readonly JobKind[], modId: number): Promise<boolean> => {
   const job = await findUnfinishedJobForMod(kinds, modId);
   if (job?.id == null) return false;
-  return requestJobStop(Number(job.id));
+  const id = fromBullJobId(job.id);
+  return id != null ? requestJobStop(id) : false;
 };
 
 /** 409-guard: an unfinished job of these kinds for this mod, if any. */
@@ -49,5 +50,7 @@ export const findActiveJobIdForMod = async (
   modId: number,
 ): Promise<{ jobId: number; kind: JobKind } | null> => {
   const job = await findUnfinishedJobForMod(kinds, modId);
-  return job?.id != null ? { jobId: Number(job.id), kind: job.data.kind } : null;
+  if (job?.id == null) return null;
+  const jobId = fromBullJobId(job.id);
+  return jobId != null ? { jobId, kind: job.data.kind } : null;
 };

@@ -4,7 +4,7 @@
  * Maps BullMQ kinds onto the compact UI labels (`translate` / `verify` / …)
  * and merges live counters from the Redis snapshot when available.
  */
-import { listUnfinishedJobs } from '../core/queue';
+import { fromBullJobId, listUnfinishedJobs } from '../core/queue';
 import { readJobSnapshot } from '../core/snapshots';
 import type { JobKind } from '../types';
 
@@ -39,10 +39,11 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
   const active = await Promise.all(
     jobs.map(async (job): Promise<ActiveModAiJob | null> => {
       const mapping = UI_KIND[job.data.kind];
-      if (!mapping || job.data.modId == null || job.id == null) return null;
-      const snapshot = await readJobSnapshot(Number(job.id));
+      const jobId = fromBullJobId(job.id);
+      if (!mapping || job.data.modId == null || jobId == null) return null;
+      const snapshot = await readJobSnapshot(jobId);
       return {
-        jobId: Number(job.id),
+        jobId,
         modId: job.data.modId,
         kind: mapping.kind,
         done: snapshot?.done ?? 0,

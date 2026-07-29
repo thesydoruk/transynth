@@ -12,7 +12,7 @@
  * browser does not stop the job.
  */
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { allocateJobId, enqueueJob } from '../core/queue';
+import { allocateJobId, enqueueJob, toBullJobId } from '../core/queue';
 import { getJobsQueueEvents } from '../core/queueEvents';
 import { writeJobSnapshot } from '../core/snapshots';
 import type { JobData } from '../types';
@@ -21,7 +21,7 @@ import { openSseStream, type SseStream } from './sse';
 /** Forward one job's BullMQ progress/completed/failed/removed into an SSE stream. */
 export const relayJobToSse = (jobId: number, stream: SseStream): void => {
   const events = getJobsQueueEvents();
-  const id = String(jobId);
+  const id = toBullJobId(jobId);
 
   const onProgress = (args: { jobId: string; data: unknown }): void => {
     if (args.jobId !== id) return;

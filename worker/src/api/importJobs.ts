@@ -8,7 +8,7 @@
  */
 import type { Job } from 'bullmq';
 import { publishJobControl } from '../core/controlChannel';
-import { listUnfinishedJobs, requestJobStop } from '../core/queue';
+import { fromBullJobId, listUnfinishedJobs, requestJobStop } from '../core/queue';
 import type { JobData, JobKind } from '../types';
 
 export type ImportJobKind = Extract<JobKind, 'mod-import' | 'csv-import' | 'eet-import'>;
@@ -45,7 +45,8 @@ export const cancelQueuedImport = async (
 ): Promise<boolean> => {
   const job = await findQueuedImportJob(kind, importJobId);
   if (job?.id == null) return false;
-  return requestJobStop(Number(job.id));
+  const id = fromBullJobId(job.id);
+  return id != null ? requestJobStop(id) : false;
 };
 
 /** Pause is only meaningful once the worker is already running the import. */
@@ -55,6 +56,8 @@ export const pauseQueuedImport = async (
 ): Promise<boolean> => {
   const job = await findQueuedImportJob(kind, importJobId);
   if (job?.id == null) return false;
-  await publishJobControl(Number(job.id), 'pause');
+  const id = fromBullJobId(job.id);
+  if (id == null) return false;
+  await publishJobControl(id, 'pause');
   return true;
 };

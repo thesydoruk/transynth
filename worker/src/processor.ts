@@ -9,6 +9,7 @@
 import type { Job } from 'bullmq';
 import type { Tx } from '../../src/db';
 import { logJobs } from '../../src/logging/loggers';
+import { fromBullJobId } from './core/queue';
 import { writeJobSnapshot } from './core/snapshots';
 import { getJobHandler } from './registry';
 import type { JobContext, JobData, JobResult } from './types';
@@ -35,7 +36,10 @@ export const cancelAllActiveRuns = (): void => {
 };
 
 export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
-  const jobId = Number(job.id);
+  const jobId = fromBullJobId(job.id);
+  if (jobId == null) {
+    throw new Error(`Invalid BullMQ job id: ${job.id ?? '(missing)'}`);
+  }
   const { kind, modId } = job.data;
   const handler = getJobHandler(kind);
 

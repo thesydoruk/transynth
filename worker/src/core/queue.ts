@@ -12,7 +12,10 @@ import { logJobs } from '../../../src/logging/loggers';
 import type { JobData, JobKind } from '../types';
 import { publishJobControl } from './controlChannel';
 import { getSharedRedis } from './connection';
+import { fromBullJobId, toBullJobId } from './jobId';
 import { writeJobSnapshot } from './snapshots';
+
+export { fromBullJobId, toBullJobId } from './jobId';
 
 export const JOBS_QUEUE_NAME = 'transynth-jobs';
 
@@ -21,7 +24,7 @@ const UNFINISHED_STATES: JobType[] = ['active', 'waiting', 'delayed', 'prioritiz
 
 const JOB_ID_SEQ_KEY = 'transynth:jobs:id-seq';
 
-/** Next numeric job id (also becomes the BullMQ job id string). */
+/** Next numeric job id (API / snapshots / control channel). */
 export const allocateJobId = async (): Promise<number> => getSharedRedis().incr(JOB_ID_SEQ_KEY);
 
 let queue: Queue<JobData> | null = null;
@@ -50,7 +53,7 @@ export const closeJobsQueue = async (): Promise<void> => {
 };
 
 export const getQueueJob = async (jobId: number): Promise<Job<JobData> | undefined> =>
-  getJobsQueue().getJob(String(jobId));
+  getJobsQueue().getJob(toBullJobId(jobId));
 
 export const listUnfinishedJobs = async (kinds?: readonly JobKind[]): Promise<Job<JobData>[]> => {
   const jobs = await getJobsQueue().getJobs(UNFINISHED_STATES);
@@ -67,7 +70,7 @@ export const findUnfinishedJobForMod = async (
 
 /** Enqueue under a pre-allocated id (see `allocateJobId`). */
 export const enqueueJob = async (data: JobData, jobId: number): Promise<void> => {
-  await getJobsQueue().add(data.kind, data, { jobId: String(jobId) });
+  await getJobsQueue().add(data.kind, data, { jobId: toBullJobId(jobId) });
   logJobs.info('enqueued', { jobId, kind: data.kind, modId: data.modId });
 };
 
@@ -111,5 +114,6 @@ export const requestJobStopForMod = async (
 ): Promise<number | null> => {
   const job = await findUnfinishedJobForMod(kinds, modId);
   if (job?.id == null) return null;
-  return (await requestJobStop(Number(job.id))) ? Number(job.id) : null;
+  const id = fromBullJobId(job.id);
+  return id != null && (await requestJobStop(id)) ? id : null;
 };
