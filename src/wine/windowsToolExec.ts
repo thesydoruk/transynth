@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PATHS } from '../paths';
+import { PATHS, resolveDir } from '../paths';
 import { execFileAsync, type ExecFileResult } from '../utils/execFile';
 
 export type WineArch = 'win32' | 'win64';
@@ -62,9 +62,9 @@ export const wineServerCommand = (): string => process.env.WINESERVER_PATH?.trim
 /** 32-bit prefix for voice tools; override with `WINEPREFIX`. */
 export const resolveWinePrefix = (arch: WineArch = 'win32'): string => {
   if (arch === 'win64') {
-    return path.resolve(process.env.WINEPREFIX64?.trim() || path.join(PATHS.toolsDir, '.wine64'));
+    return resolveDir(process.env.WINEPREFIX64?.trim() || path.join(PATHS.toolsDir, '.wine64'));
   }
-  return path.resolve(process.env.WINEPREFIX?.trim() || path.join(PATHS.toolsDir, '.wine'));
+  return resolveDir(process.env.WINEPREFIX?.trim() || path.join(PATHS.toolsDir, '.wine'));
 };
 
 export const wineProcessEnv = (arch: WineArch): NodeJS.ProcessEnv => {

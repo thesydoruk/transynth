@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { PATHS } from '../paths';
+import { PATHS, resolveDir } from '../paths';
 import { isWineAvailable, isWineExePath } from './voiceExec';
 
 export const voiceToolsDir = (): string =>
-  path.resolve(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.toolsDir, 'voice'));
+  resolveDir(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.toolsDir, 'voice'));
 
 export const resolveFaceFxWrapperPath = (): string => {
   const configured = process.env.FACEFX_WRAPPER_PATH?.trim();
