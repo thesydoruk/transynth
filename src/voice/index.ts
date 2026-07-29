@@ -54,6 +54,7 @@ export {
   type LocalizeModImportVoiceResult,
   type ModVoiceGenerateScope,
 } from './localizeModImportVoice';
+export { summarizeVoiceWarnings, type VoiceWarningGroup } from './voiceWarningSummary';
 export {
   canSynthesizeVoiceLine,
   detectVoiceTtsSkipReason,

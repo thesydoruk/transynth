@@ -197,9 +197,8 @@ export const processVoiceLocalizeEntry = async (
     }
     return { kind: 'skipped', relPath: prefix + fuzRel };
   } catch (err) {
-    return {
-      kind: 'warning',
-      message: `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`,
-    };
+    const message = `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
+    log.warn(`Voice synthesis failed ${message}`);
+    return { kind: 'warning', message };
   }
 };

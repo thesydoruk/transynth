@@ -6,6 +6,7 @@ import { log } from '../../../../src/logger';
 import {
   countVoiceLocalizeWork,
   localizeModImportVoice,
+  summarizeVoiceWarnings,
   type ModVoiceGenerateScope,
 } from '../../../../src/voice';
 import { resolveImportPackages } from '../../../../src/modImport';
@@ -116,6 +117,13 @@ export const runModVoiceGenerateJob = async (
     written = result.written.length;
     skipped = result.skipped.length;
     warningCount = result.warnings.length;
+
+    for (const group of summarizeVoiceWarnings(result.warnings)) {
+      log.warn(
+        `[Voice generate mod #${modId}] job #${jobId} ${group.count} lines failed: ${group.reason}`,
+        { example: group.example },
+      );
+    }
 
     if (opts.isCancelled()) {
       status = 'cancelled';
