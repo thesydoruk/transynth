@@ -94,21 +94,30 @@ export const stringAlignKeySql = (alias = 's'): string => {
   END`;
 };
 
+/** Null-tolerant record filter, so callers can narrow a mod to a subset of records. */
+const recordScopeSql = (param: string): string =>
+  `(${param}::int[] IS NULL OR s.record_id = ANY(${param}::int[]))`;
+
 /**
  * Build translations from imported locale strings via SQL alignment join.
  * Avoids loading all strings into Node for large multi-locale mods.
+ *
+ * `recordIds` narrows every statement — including the delete of previously
+ * created translations — to a subset of the mod's records. A backfill of newly
+ * discovered records passes those ids so existing translations stay untouched.
  */
 export const sqlConvertImportedStringsToTranslations = async (
   db: Tx,
   modId: number,
   resolvedSourceLocale: string,
+  recordIds: number[] | null = null,
 ): Promise<SqlConvertImportTranslationsResult> => {
   const localesResult = await db.query<{ lang: string }>(
     `SELECT DISTINCT s.lang
      FROM strings s
      JOIN records r ON r.id = s.record_id
-     WHERE r.mod_id = $1 AND s.lang IS NOT NULL`,
-    [modId],
+     WHERE r.mod_id = $1 AND s.lang IS NOT NULL AND ${recordScopeSql('$2')}`,
+    [modId, recordIds],
   );
   const locales = localesResult.rows.map((r) => r.lang).filter(Boolean);
   if (locales.length === 0) {
@@ -124,7 +133,7 @@ export const sqlConvertImportedStringsToTranslations = async (
       ${alignKey} AS align_key
     FROM strings s
     INNER JOIN records r ON r.id = s.record_id
-    WHERE r.mod_id = $1
+    WHERE r.mod_id = $1 AND ${recordScopeSql('$3')}
   )`;
 
   const skippedResult = await db.query<{ count: string }>(
@@ -138,7 +147,7 @@ export const sqlConvertImportedStringsToTranslations = async (
        AND NOT EXISTS (
          SELECT 1 FROM source_keys sk WHERE sk.align_key = tgt.align_key
        )`,
-    [modId, resolvedSourceLocale],
+    [modId, resolvedSourceLocale, recordIds],
   );
   const skippedWithoutSource = Number.parseInt(skippedResult.rows[0]?.count ?? '0', 10);
 
@@ -146,8 +155,8 @@ export const sqlConvertImportedStringsToTranslations = async (
     `SELECT COUNT(*)::text AS count
      FROM strings s
      JOIN records r ON r.id = s.record_id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
-    [modId, resolvedSourceLocale],
+     WHERE r.mod_id = $1 AND s.lang = $2 AND ${recordScopeSql('$3')}`,
+    [modId, resolvedSourceLocale, recordIds],
   );
   const sourceStringCount = Number.parseInt(sourceCountResult.rows[0]?.count ?? '0', 10);
   if (sourceStringCount === 0) {
@@ -160,8 +169,9 @@ export const sqlConvertImportedStringsToTranslations = async (
      JOIN records r ON r.id = s.record_id
      WHERE t.src_string_id = s.id
        AND r.mod_id = $1
-       AND s.lang = $2`,
-    [modId, resolvedSourceLocale],
+       AND s.lang = $2
+       AND ${recordScopeSql('$3')}`,
+    [modId, resolvedSourceLocale, recordIds],
   );
 
   const { rowCount } = await db.query(
@@ -184,7 +194,7 @@ export const sqlConvertImportedStringsToTranslations = async (
        NOW()
      FROM source_strings src
      INNER JOIN mod_strings tgt ON tgt.align_key = src.align_key`,
-    [modId, resolvedSourceLocale],
+    [modId, resolvedSourceLocale, recordIds],
   );
 
   return {
