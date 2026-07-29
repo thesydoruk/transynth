@@ -95,17 +95,11 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('Textures\\Effects\\Smoke.dds')?.reason).toMatch(/path/i);
   });
 
-  it('flags non-player-facing record types (KYWD, ARMA, …)', () => {
-    expect(detectSkipHeuristic('KeywordFoo', { signature: 'KYWD' })?.reason).toMatch(
-      /not player-facing/i,
-    );
+  it('flags non-player-facing record types (INNR, ARMA)', () => {
     expect(detectSkipHeuristic('ArmorAddon', { signature: 'ARMA' })?.reason).toMatch(
       /not player-facing/i,
     );
     expect(detectSkipHeuristic('InheritNode', { signature: 'INNR' })?.reason).toMatch(
-      /not player-facing/i,
-    );
-    expect(detectSkipHeuristic('ListOverride', { signature: 'LVLI' })?.reason).toMatch(
       /not player-facing/i,
     );
   });
@@ -116,6 +110,26 @@ describe('detectSkipHeuristic', () => {
         signature: 'REFR',
         path: 'REFR\\FULL',
         edid: 'RedRocketTruckStopMapMarker',
+      }),
+    ).toBeNull();
+  });
+
+  it('keeps KYWD workshop menu categories', () => {
+    expect(
+      detectSkipHeuristic('Railings & Stairs', {
+        signature: 'KYWD',
+        path: 'KYWD\\FULL',
+        edid: 'WorkshopMenuRailingsStairs',
+      }),
+    ).toBeNull();
+  });
+
+  it('keeps LVLI unique item name overrides', () => {
+    expect(
+      detectSkipHeuristic("Tessa's Fist", {
+        signature: 'LVLI',
+        path: 'LVLI\\ONAM',
+        edid: 'LL_Weapon_Tessa',
       }),
     ).toBeNull();
   });

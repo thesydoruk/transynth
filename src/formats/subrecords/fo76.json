@@ -38,14 +38,14 @@
     "HAZD": { "read": true, "subrecords": { "FULL": true } },
     "HDPT": { "read": true, "subrecords": { "FULL": true } },
     "INFO": { "read": true, "subrecords": { "NAM1": true, "RNAM": true } },
-    "INGR": { "read": true, "subrecords": { "FULL": true, "YNAM": true } },
+    "INGR": { "read": true, "subrecords": { "FULL": true } },
     "INNR": { "read": true, "subrecords": { "WNAM": true } },
     "KEYM": { "read": true, "subrecords": { "FULL": true } },
-    "KYWD": { "read": false, "subrecords": {} },
+    "KYWD": { "read": true, "subrecords": { "FULL": true } },
     "LCTN": { "read": true, "subrecords": { "FULL": true } },
     "LIGH": { "read": true, "subrecords": { "FULL": true } },
     "LSCR": { "read": true, "subrecords": { "DESC": true } },
-    "LVLI": { "read": false, "subrecords": {} },
+    "LVLI": { "read": true, "subrecords": { "ONAM": true } },
     "MESG": {
       "read": true,
       "subrecords": { "FULL": true, "DESC": true, "ITXT": true, "NNAM": true }

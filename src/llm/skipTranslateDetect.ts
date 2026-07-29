@@ -67,7 +67,7 @@ export const buildSkipDetectSystemPrompt = (
     'Skip marks are global: a flagged row must stay as source text in every localized output, regardless of target language.',
     '',
     '### SECOND PASS (read first):',
-    '- Every input row already passed a fast heuristic scan. Obvious non-translatable rows were removed upstream: empty/placeholder-only text, markup-only strings, KYWD/INNR/LVLI/ARMA records, FormID-like hex, file paths, MPS/LightNode internal names, pure numbers/symbols, editor-ID duplicates, short stat codes, and many PEX debug literals.',
+    '- Every input row already passed a fast heuristic scan. Obvious non-translatable rows were removed upstream: empty/placeholder-only text, markup-only strings, INNR/ARMA records, FormID-like hex, file paths, MPS/LightNode internal names, pure numbers/symbols, editor-ID duplicates, short stat codes, and many PEX debug literals.',
     '- You only see borderline rows the heuristics could not decide confidently.',
     '- Use verdict "skip" ONLY when you are clearly certain the string must never be translated in any language.',
     '- False "skip" is worse than false "keep": wrongly skipping hides real player text from translators.',
