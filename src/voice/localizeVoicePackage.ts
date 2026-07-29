@@ -140,7 +140,6 @@ export const localizeVoicePackage = async (
 
       if (
         !options.force &&
-        options.scope === 'missing' &&
         isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))
       ) {
         continue;

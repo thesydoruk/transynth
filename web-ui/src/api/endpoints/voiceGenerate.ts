@@ -13,7 +13,7 @@ export const voiceGenerateEndpoints = {
     targetLang = getTgtLang(),
     onEvent?: (e: ModVoiceGenerateStreamEvent) => void,
     signal?: AbortSignal,
-    scope: ModVoiceGenerateScope = 'all',
+    scope: ModVoiceGenerateScope = 'missing',
   ): Promise<ModVoiceGenerateJobSnapshot | null> {
     const response = await fetch(`${BASE}/api/mods/${modId}/voice-generate`, {
       credentials: 'include',

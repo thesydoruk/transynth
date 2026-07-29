@@ -30,7 +30,11 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from './voiceTtsPayloadVersion';
 
-/** Whether mod-wide voice jobs synthesize every translated line or only stale/missing audio. */
+/**
+ * Mod-wide voice job scope:
+ * - `missing` — only absent or stale `.fuz` (default)
+ * - `all` — force-regenerate every synthesizable line
+ */
 export type ModVoiceGenerateScope = 'all' | 'missing';
 
 export type LocalizeModImportVoiceOptions = {
@@ -70,9 +74,10 @@ export const countVoiceLocalizeWork = async (
   packages: ImportPackageContext[],
   srcLang: string,
   tgtLang: string,
-  scope: ModVoiceGenerateScope = 'all',
+  scope: ModVoiceGenerateScope = 'missing',
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
+  const forceAll = scope === 'all';
   let total = 0;
   for (const pkg of packages) {
     const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
@@ -83,14 +88,14 @@ export const countVoiceLocalizeWork = async (
       if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) {
         continue;
       }
-      if (scope === 'missing') {
-        const prepared = prepareVoiceTtsText({
-          lineSource: row.source,
-          translation: row.translation,
-          speakerSource: row.source,
-          edid: row.edid,
-        });
-        if (prepared.action !== 'synthesize') continue;
+      const prepared = prepareVoiceTtsText({
+        lineSource: row.source,
+        translation: row.translation,
+        speakerSource: row.source,
+        edid: row.edid,
+      });
+      if (prepared.action !== 'synthesize') continue;
+      if (!forceAll) {
         const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
         const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
         const storedVersion = storedVersions.get(
@@ -127,7 +132,9 @@ export const localizeModImportVoice = async (
   const packages = resolveImportPackages(extractDir, tgtLang, options.pluginPath);
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   ensureDir(localizeDir);
-  const scope = options.scope ?? 'all';
+  const scope = options.scope ?? 'missing';
+  // `all` always force-regenerates; explicit `force` still wins for either scope.
+  const force = options.force ?? scope === 'all';
 
   const written: string[] = [];
   const skipped: string[] = [];
@@ -144,7 +151,7 @@ export const localizeModImportVoice = async (
   };
 
   log.info(
-    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode})`,
+    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode}, scope=${scope}, force=${force})`,
   );
 
   for (const pkg of packages) {
@@ -159,7 +166,7 @@ export const localizeModImportVoice = async (
         game: mod.game,
         ttsBaseUrl,
         dryRun: options.dryRun ?? false,
-        force: options.force ?? false,
+        force,
         scope,
         referenceMode,
         limit: options.limit,

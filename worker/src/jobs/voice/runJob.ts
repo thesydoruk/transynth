@@ -56,7 +56,7 @@ export const runModVoiceGenerateJob = async (
   const { jobId, modId } = opts;
   const paths = await loadModImportPaths(db, { modId });
   const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
-  const scope = opts.scope ?? 'all';
+  const scope = opts.scope ?? 'missing';
   let total = await countVoiceLocalizeWork(
     db,
     modId,

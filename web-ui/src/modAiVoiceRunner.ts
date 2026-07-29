@@ -33,7 +33,7 @@ export const startModAiVoice = async (
   modId: number,
   srcLang: string,
   targetLang: string,
-  scope: ModVoiceGenerateScope = 'all',
+  scope: ModVoiceGenerateScope = 'missing',
 ): Promise<void> => {
   const entry = getModAiJob(modId, 'voice');
   if (isModVoiceJobActive(entry)) return;
@@ -145,7 +145,7 @@ export const toggleModAiVoice = (
   srcLang: string,
   targetLang: string,
   entry: ModAiJobEntry = getModAiJob(modId, 'voice'),
-  scope: ModVoiceGenerateScope = 'all',
+  scope: ModVoiceGenerateScope = 'missing',
 ): void => {
   if (isModVoiceJobActive(entry)) {
     void stopModAiVoice(modId, entry.jobId);

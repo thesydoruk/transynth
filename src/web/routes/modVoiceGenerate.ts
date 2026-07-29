@@ -22,7 +22,7 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
 
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
-    const scope = req.body?.scope === 'missing' ? 'missing' : 'all';
+    const scope = req.body?.scope === 'all' ? 'all' : 'missing';
 
     const running = await findActiveJobIdForMod(['voice-generate'], modId);
     if (running) {

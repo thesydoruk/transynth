@@ -95,6 +95,13 @@ export const processVoiceLocalizeEntry = async (
   const fuzDest = toDiskPath(localizeDir, fuzRel);
 
   try {
+    const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
+    const storedVersion = storedVersions.get(versionKey);
+    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
+      return { kind: 'skipped', relPath: prefix + fuzRel };
+    }
+
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
@@ -142,16 +149,9 @@ export const processVoiceLocalizeEntry = async (
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
 
-    // TTS may use a different reference transcript than the line source, but the
-    // stored version must match count/availability/rebuild (prepared.speakerText).
+    // TTS may use a different reference transcript than the line source; version
+    // stamp stays on prepared text so it matches count/availability/rebuild.
     const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-    const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
-    const storedVersion = storedVersions.get(versionKey);
-
-    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
-      return { kind: 'skipped', relPath: prefix + fuzRel };
-    }
 
     const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
       baseUrl: ttsBaseUrl,
