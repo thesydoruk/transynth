@@ -28,7 +28,7 @@ describe('lookupInheritedVoiceLine', () => {
           new Map([
             [
               voiceTranslationMapKey('0067F7', 1),
-              { source: 'Parent line', infoFormidHex: '030067F7' },
+              { source: 'Parent line', infoFormidHex: '030067F7', stringId: 101 },
             ],
           ]),
         ],
@@ -44,6 +44,7 @@ describe('lookupInheritedVoiceLine', () => {
     expect(hit?.source).toBe('Parent line');
     expect(hit?.master.modId).toBe(masterA.modId);
     expect(hit?.infoFormidHex).toBe('030067F7');
+    expect(hit?.stringId).toBe(101);
   });
 
   it('falls back to the next master when the first has no match', () => {
@@ -56,7 +57,7 @@ describe('lookupInheritedVoiceLine', () => {
           new Map([
             [
               voiceTranslationMapKey('008EC5', 1),
-              { source: 'Vanilla line', infoFormidHex: '00008EC5' },
+              { source: 'Vanilla line', infoFormidHex: '00008EC5', stringId: 202 },
             ],
           ]),
         ],
@@ -77,7 +78,10 @@ describe('lookupInheritedVoiceLine', () => {
         [
           masterA.modId,
           new Map([
-            [voiceTranslationMapKey('002CBA', 1), { source: 'Hello', infoFormidHex: '03002CBA' }],
+            [
+              voiceTranslationMapKey('002CBA', 1),
+              { source: 'Hello', infoFormidHex: '03002CBA', stringId: 303 },
+            ],
           ]),
         ],
       ]),
@@ -91,6 +95,9 @@ describe('lookupInheritedVoiceLine', () => {
                 formidLower6: '002CBA',
                 infoFormidHex: '03002CBA',
                 voiceVariant: 1,
+                stringId: 303,
+                translationId: 9001,
+                status: 'draft',
                 source: 'Hello',
                 translation: 'Привіт',
                 edid: null,

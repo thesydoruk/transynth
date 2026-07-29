@@ -520,7 +520,7 @@
     "hiddenLines": "{{count}} lines hidden by filter",
     "noLinesMatch": "No lines match the filter.",
     "regenerateBtn": "Regenerate",
-    "hotkeyHint": "↑↓ in search — switch speakers"
+    "hotkeyHint": "↑↓ in search — switch speakers · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play · Esc cancel"
   },
   "ctx": {
     "clear": "Clear translation",

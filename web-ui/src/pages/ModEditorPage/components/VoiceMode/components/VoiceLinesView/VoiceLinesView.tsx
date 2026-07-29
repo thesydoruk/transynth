@@ -4,11 +4,22 @@ import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../../../api';
 import type { PlayKind } from '../../voiceLineKeys';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
+import type { CommitAdvance } from './VoiceLineRow';
 import { VoiceLineRow } from './VoiceLineRow';
 import { VoiceLinesHeader } from './VoiceLinesHeader';
 import styles from './VoiceLinesView.module.scss';
 
 const ROW_ESTIMATE = 96;
+
+export type VoiceLineHandlers = {
+  focusedId: number | null;
+  editingId: number | null;
+  pendingIds: ReadonlySet<number>;
+  onFocus: (line: VoiceLinePreview) => void;
+  onEdit: (line: VoiceLinePreview) => void;
+  onCancel: () => void;
+  onCommit: (line: VoiceLinePreview, text: string, advance: CommitAdvance) => void;
+};
 
 export interface VoiceLinesViewProps {
   speakerName: string;
@@ -35,6 +46,7 @@ export interface VoiceLinesViewProps {
   onSetReference: (line: VoiceLinePreview) => void;
   onGenerate: (line: VoiceLinePreview) => void;
   onRegenerate: (line: VoiceLinePreview) => void;
+  lineHandlers: VoiceLineHandlers;
   emptyMessage: string | null;
   isLoadingLines?: boolean;
 }
@@ -64,6 +76,7 @@ export const VoiceLinesView = ({
   onSetReference,
   onGenerate,
   onRegenerate,
+  lineHandlers,
   emptyMessage,
   isLoadingLines = false,
 }: VoiceLinesViewProps) => {
@@ -123,6 +136,9 @@ export const VoiceLinesView = ({
                 >
                   <VoiceLineRow
                     line={line}
+                    focused={line.stringId != null && lineHandlers.focusedId === line.stringId}
+                    editing={line.stringId != null && lineHandlers.editingId === line.stringId}
+                    saving={line.stringId != null && lineHandlers.pendingIds.has(line.stringId)}
                     playingTrack={playingTrack}
                     loadingTrack={loadingTrack}
                     setReferencePending={setReferencePending}
@@ -131,6 +147,10 @@ export const VoiceLinesView = ({
                       regenerateLine?.formidLower6 === line.formidLower6 &&
                       regenerateLine.variant === line.variant
                     }
+                    onFocus={() => lineHandlers.onFocus(line)}
+                    onEdit={() => lineHandlers.onEdit(line)}
+                    onCancel={lineHandlers.onCancel}
+                    onCommit={(text, advance) => lineHandlers.onCommit(line, text, advance)}
                     onPlay={onPlay}
                     onSetReference={onSetReference}
                     onGenerate={onGenerate}

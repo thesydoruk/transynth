@@ -22,6 +22,9 @@ export type InheritedVoiceLine = {
   source: string;
   translation: string | null;
   infoFormidHex: string;
+  stringId: number;
+  translationId: number | null;
+  status: string | null;
   master: MasterModRef;
 };
 
@@ -112,6 +115,9 @@ export const lookupInheritedVoiceLine = (
       source,
       translation: normalizeVoiceText(translationRow?.translation),
       infoFormidHex: sourceRow?.infoFormidHex ?? translationRow?.infoFormidHex ?? '',
+      stringId: sourceRow?.stringId ?? translationRow?.stringId ?? 0,
+      translationId: translationRow?.translationId ?? null,
+      status: translationRow?.status ?? null,
       master,
     };
   }

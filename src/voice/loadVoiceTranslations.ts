@@ -4,6 +4,9 @@ export type VoiceTranslationRow = {
   formidLower6: string;
   infoFormidHex: string;
   voiceVariant: number;
+  stringId: number;
+  translationId: number | null;
+  status: string | null;
   translation: string;
   source: string;
   /** INFO EDID from `records.edid` — used e.g. for `CA_Interject_Stub_*` TTS skip. */
@@ -65,6 +68,9 @@ export const loadVoiceTranslations = async (
     formid_lower6: string;
     info_formid_hex: string;
     voice_variant: number;
+    string_id: number;
+    translation_id: number | null;
+    status: string | null;
     translation: string;
     source: string;
     edid: string | null;
@@ -85,8 +91,11 @@ export const loadVoiceTranslations = async (
      SELECT v.formid_lower6,
             v.info_formid_hex,
             v.voice_variant,
+            v.string_id,
             v.edid,
             v.source,
+            t.id AS translation_id,
+            t.status,
             t.text AS translation
      FROM voiced v
      JOIN translations t
@@ -102,6 +111,9 @@ export const loadVoiceTranslations = async (
       formidLower6: row.formid_lower6,
       infoFormidHex: row.info_formid_hex,
       voiceVariant: row.voice_variant,
+      stringId: row.string_id,
+      translationId: row.translation_id,
+      status: row.status,
       translation: row.translation,
       source: row.source,
       edid: row.edid,
@@ -116,6 +128,7 @@ export type VoiceSourceRow = {
 
 export type VoiceSourceDetailRow = VoiceSourceRow & {
   infoFormidHex: string;
+  stringId: number;
 };
 
 /** Trim voice text; whitespace-only values are treated as missing. */
@@ -134,12 +147,14 @@ export const loadVoiceSourcesDetailed = async (
     formid_lower6: string;
     info_formid_hex: string;
     voice_variant: number;
+    string_id: number;
     source: string;
   }>(
     `WITH voiced AS (
        SELECT
          UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
          r.formid_hex AS info_formid_hex,
+         s.id AS string_id,
          s.text_raw AS source,
          ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_variant
        FROM records r
@@ -147,7 +162,7 @@ export const loadVoiceSourcesDetailed = async (
        WHERE r.mod_id = $1
          AND ${infoNam1RecordsSql('r', '$3')}
      )
-     SELECT formid_lower6, info_formid_hex, voice_variant, source
+     SELECT formid_lower6, info_formid_hex, voice_variant, string_id, source
      FROM voiced
      ORDER BY formid_lower6, voice_variant`,
     [modId, srcLang, [...INFO_NAM1_RECORD_PATHS]],
@@ -160,6 +175,7 @@ export const loadVoiceSourcesDetailed = async (
     map.set(voiceTranslationMapKey(row.formid_lower6, row.voice_variant), {
       source,
       infoFormidHex: row.info_formid_hex,
+      stringId: row.string_id,
     });
   }
   return map;

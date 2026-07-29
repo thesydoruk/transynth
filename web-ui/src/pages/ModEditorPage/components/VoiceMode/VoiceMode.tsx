@@ -2,10 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../api';
+import type { CommitAdvance } from '../DialogsMode/components/DialogLineRow/DialogLineRow';
+import type { VoiceLineHandlers } from './components/VoiceLinesView/VoiceLinesView';
 import { VoiceNavigator } from './components/VoiceNavigator';
 import { VoiceLinesView } from './components/VoiceLinesView';
 import { useVoiceActions } from './hooks/useVoiceActions';
 import { useVoiceData } from './hooks/useVoiceData';
+import { useVoiceKeyboard } from './hooks/useVoiceKeyboard';
+import { useVoiceLineCursor } from './hooks/useVoiceLineCursor';
+import { useVoiceLineSave } from './hooks/useVoiceLineSave';
+import { useVoiceLineView } from './hooks/useVoiceLineView';
 import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { useVoiceState } from './hooks/useVoiceState';
@@ -50,6 +56,48 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
     speakersQueryKey: data.speakersQueryKey,
     linesQueryKey: data.linesQueryKey,
     onGenerateSuccess: (line) => playback.handlePlay(line, 'translation'),
+  });
+
+  const lineView = useVoiceLineView(data.lines);
+  const cursor = useVoiceLineCursor(lineView.lineIds, lineView.lineById);
+  const save = useVoiceLineSave({
+    linesQueryKey: data.linesQueryKey,
+    targetLang,
+  });
+
+  const commitLine = (line: VoiceLinePreview, text: string, advance: CommitAdvance) => {
+    void save.saveLine(line, text);
+    if (advance === 'next') cursor.step(1, true);
+    else if (advance === 'nextTodo') cursor.goToNextTodo(true);
+    else cursor.closeEditor();
+  };
+
+  const lineHandlers: VoiceLineHandlers = {
+    focusedId: cursor.focusedId,
+    editingId: cursor.editingId,
+    pendingIds: save.pendingIds,
+    onFocus: (line) => {
+      if (line.stringId != null) cursor.focus(line.stringId);
+    },
+    onEdit: (line) => {
+      if (line.stringId != null) cursor.edit(line.stringId);
+    },
+    onCancel: cursor.closeEditor,
+    onCommit: commitLine,
+  };
+
+  useVoiceKeyboard({
+    stepLine: (delta) => cursor.step(delta),
+    goToNextTodo: () => cursor.goToNextTodo(),
+    edit: () => cursor.edit(),
+    playVoice: () => {
+      if (cursor.focusedId === null) return;
+      const line = lineView.lineById.get(cursor.focusedId);
+      if (!line) return;
+      void playback.handlePlay(line, line.hasTranslationAudio ? 'translation' : 'source');
+    },
+    clearFocus: () => cursor.focus(null),
+    isEditing: cursor.editingId !== null,
   });
 
   useEffect(() => {
@@ -116,7 +164,12 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
             : null;
 
   const panelError =
-    loadError ?? playback.playError ?? actions.refError ?? actions.generateError ?? null;
+    loadError ??
+    playback.playError ??
+    actions.refError ??
+    actions.generateError ??
+    save.error ??
+    null;
 
   const emptyMessage =
     data.speakersQuery.isLoading || !data.speakersQuery.data
@@ -183,11 +236,13 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         onDismissError={() => {
           actions.dismissRefError();
           actions.dismissGenerateError();
+          save.dismissError();
         }}
         onPlay={playback.handlePlay}
         onSetReference={handleSetReference}
         onGenerate={handleGenerate}
         onRegenerate={setRegenerateLine}
+        lineHandlers={lineHandlers}
         emptyMessage={emptyMessage}
         isLoadingLines={data.linesQuery.isLoading && data.lines.length === 0}
       />

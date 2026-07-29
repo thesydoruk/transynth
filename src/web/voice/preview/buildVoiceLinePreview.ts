@@ -58,6 +58,9 @@ export const buildVoiceLinePreview = (
   let infoFormidHex = sourceRow?.infoFormidHex ?? translationRow?.infoFormidHex ?? null;
   let isInheritedAudio = false;
   let inheritedFrom: string | null = null;
+  let stringId = sourceRow?.stringId ?? translationRow?.stringId ?? null;
+  let translationId = translationRow?.translationId ?? null;
+  let status = translationRow?.status ?? null;
 
   if (!source && context.inheritedLookup) {
     const inherited = lookupInheritedVoiceLine(
@@ -69,16 +72,24 @@ export const buildVoiceLinePreview = (
       source = inherited.source;
       translation = translation ?? inherited.translation;
       infoFormidHex = inherited.infoFormidHex || infoFormidHex;
+      stringId = stringId ?? inherited.stringId;
+      translationId = translationId ?? inherited.translationId;
+      status = status ?? inherited.status;
       isInheritedAudio = true;
       inheritedFrom = formatInheritedFromLabel(inherited.master);
     }
   }
+
+  const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
 
   return {
     formidLower6: entry.formidLower6,
     infoFormidHex,
     variant: entry.variant,
     fileName: entry.fileName,
+    stringId: isOrphanAudio ? null : stringId,
+    translationId,
+    status,
     source,
     translation,
     isReference: referencePick
@@ -86,7 +97,7 @@ export const buildVoiceLinePreview = (
       : false,
     isInheritedAudio,
     inheritedFrom,
-    isOrphanAudio: isOrphanVoiceEntry(context.sourceFormids, entry),
+    isOrphanAudio,
     hasTranslationAudio: hasAudio,
     canGenerateVoice:
       canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid) && !hasAudio,

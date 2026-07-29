@@ -20,6 +20,24 @@
   border-left-color: hsl(45 70% 45% / 0.55);
 }
 
+.focused {
+  background: var(--bg-raised);
+  border-left-color: var(--accent);
+
+  .actions {
+    opacity: 1;
+  }
+}
+
+.saving {
+  opacity: 0.75;
+}
+
+.savingTag {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
 .meta {
   display: flex;
   align-items: center;
@@ -145,16 +163,67 @@
 }
 
 .translation {
+  width: 100%;
   margin: 0;
+  padding: 4px 6px;
+  font: inherit;
   font-size: 13px;
   line-height: 1.45;
+  text-align: left;
   color: var(--success-strong);
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  cursor: text;
   white-space: pre-wrap;
   word-break: break-word;
+
+  &:hover {
+    border-color: var(--border-input);
+  }
+}
+
+.translationReadOnly {
+  composes: translation;
+  cursor: default;
+  border-color: transparent;
+
+  &:hover {
+    border-color: transparent;
+  }
+}
+
+.empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-bright);
+  background: var(--transl-area-bg);
+  border: 1px solid var(--transl-area-border);
+  border-radius: 3px;
+  resize: none;
+  overflow: hidden;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
 }
 
 .emptyTranslation {
-  composes: translation;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--text-faint);
   font-style: italic;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

@@ -6,6 +6,10 @@ export type VoiceLinePreview = {
   infoFormidHex: string | null;
   variant: number;
   fileName: string;
+  /** Source string row id — null for orphan audio with no dialogue record. */
+  stringId: number | null;
+  translationId: number | null;
+  status: string | null;
   source: string | null;
   translation: string | null;
   isReference: boolean;
