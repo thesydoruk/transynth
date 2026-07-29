@@ -142,8 +142,10 @@ export const processVoiceLocalizeEntry = async (
       referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
 
+    // TTS may use a different reference transcript than the line source, but the
+    // stored version must match count/availability/rebuild (prepared.speakerText).
     const speakerText = stripVoiceAsteriskBlocks(referenceText ?? row.source) || undefined;
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang, speakerText);
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
     const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
     const storedVersion = storedVersions.get(versionKey);
 
