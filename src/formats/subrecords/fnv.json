@@ -60,7 +60,7 @@
     "RACE": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
     "RCCT": { "read": true, "subrecords": { "FULL": true } },
     "RCPE": { "read": true, "subrecords": { "FULL": true } },
-    "REFR": { "read": false, "subrecords": {} },
+    "REFR": { "read": true, "subrecords": { "FULL": true, "XATO": true } },
     "REGN": { "read": true, "subrecords": { "RDMP": true } },
     "REPU": { "read": true, "subrecords": { "FULL": true } },
     "SCPT": { "read": true, "subrecords": { "SCTX": true } },

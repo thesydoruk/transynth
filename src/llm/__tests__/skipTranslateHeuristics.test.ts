@@ -95,10 +95,7 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('Textures\\Effects\\Smoke.dds')?.reason).toMatch(/path/i);
   });
 
-  it('flags non-player-facing record types (REFR, KYWD, ARMA, …)', () => {
-    expect(detectSkipHeuristic('Some Label', { signature: 'REFR' })?.reason).toMatch(
-      /not player-facing/i,
-    );
+  it('flags non-player-facing record types (KYWD, ARMA, …)', () => {
     expect(detectSkipHeuristic('KeywordFoo', { signature: 'KYWD' })?.reason).toMatch(
       /not player-facing/i,
     );
@@ -111,6 +108,16 @@ describe('detectSkipHeuristic', () => {
     expect(detectSkipHeuristic('ListOverride', { signature: 'LVLI' })?.reason).toMatch(
       /not player-facing/i,
     );
+  });
+
+  it('keeps REFR map marker labels', () => {
+    expect(
+      detectSkipHeuristic('Red Rocket Truck Stop', {
+        signature: 'REFR',
+        path: 'REFR\\FULL',
+        edid: 'RedRocketTruckStopMapMarker',
+      }),
+    ).toBeNull();
   });
 
   it('keeps real place names on ACTI even when grup is ACTI', () => {

@@ -224,7 +224,7 @@ export const detectSkipHeuristic = (
 
   if (isNonPlayerFacingRecord(signature)) {
     return {
-      reason: `Record type ${signature} is not player-facing (REFR/KYWD/INNR/LVLI/ARMA).`,
+      reason: `Record type ${signature} is not player-facing (KYWD/INNR/LVLI/ARMA).`,
       method: 'heuristic',
     };
   }

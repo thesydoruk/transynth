@@ -39,7 +39,7 @@
       "subrecords": { "FULL": true, "NNAM": true, "CNAM": true, "SCTX": true }
     },
     "RACE": { "read": true, "subrecords": { "FULL": true, "DESC": true } },
-    "REFR": { "read": false, "subrecords": {} },
+    "REFR": { "read": true, "subrecords": { "FULL": true } },
     "REGN": { "read": true, "subrecords": { "RDMP": true } },
     "SCPT": { "read": true, "subrecords": { "SCTX": true } },
     "SGST": { "read": true, "subrecords": { "FULL": true } },

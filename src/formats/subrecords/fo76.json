@@ -78,7 +78,7 @@
         "SNAM": true
       }
     },
-    "REFR": { "read": false, "subrecords": {} },
+    "REFR": { "read": true, "subrecords": { "FULL": true } },
     "REGN": { "read": true, "subrecords": { "RDMP": true } },
     "SCEN": { "read": false, "subrecords": {} },
     "SCOL": { "read": true, "subrecords": { "FULL": true } },
