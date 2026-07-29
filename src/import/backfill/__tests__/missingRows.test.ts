@@ -1,11 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import type { EspStringRow } from '../../../formats/esp';
+import type { CsvRow } from '../../../types';
 import { modImportRecordKey } from '../../bulk';
-import {
-  countMissingRecordsBySignature,
-  espRowRecordPath,
-  selectMissingEspRows,
-} from '../missingRows';
+import { countRecordsBySignature, espRowRecordPath, selectMissingEspRows } from '../missingRows';
 
 const row = (signature: string, path: string, formId: string, text = 'text'): EspStringRow => ({
   formId,
@@ -48,14 +45,20 @@ describe('backfill record diff', () => {
   });
 
   it('counts distinct records per signature, not strings', () => {
+    const csvRow = (signature: string, path: string, formId: string): CsvRow => ({
+      FormID: formId,
+      Signature: signature,
+      Path: `${signature}\\${path}`,
+      Source: 'text',
+    });
     const rows = [
-      row('REFR', 'FULL', '00000001'),
-      row('REFR', 'FULL', '00000002'),
-      row('INFO', 'NAM1', '00000003'),
-      row('INFO', 'NAM1', '00000003'),
+      csvRow('REFR', 'FULL', '00000001'),
+      csvRow('REFR', 'FULL', '00000002'),
+      csvRow('INFO', 'NAM1', '00000003'),
+      csvRow('INFO', 'NAM1', '00000003'),
     ];
 
-    expect(countMissingRecordsBySignature(rows)).toEqual([
+    expect(countRecordsBySignature(rows)).toEqual([
       { signature: 'REFR', records: 2 },
       { signature: 'INFO', records: 1 },
     ]);

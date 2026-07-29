@@ -7,6 +7,7 @@
  */
 import type { Tx } from '../../db';
 import type { EspStringRow } from '../../formats/esp';
+import type { CsvRow } from '../../types';
 import { modImportRecordKey } from '../bulk';
 
 /** Stored `records.path` for an extracted plugin row (e.g. `REFR\FULL`). */
@@ -32,17 +33,23 @@ export const selectMissingEspRows = (
   existingKeys: ReadonlySet<string>,
 ): EspStringRow[] => espRows.filter((row) => !existingKeys.has(espRowRecordKey(row)));
 
-/** Distinct record count per signature, for reporting what a backfill would add. */
-export const countMissingRecordsBySignature = (
-  missingRows: EspStringRow[],
+/**
+ * Distinct record count per signature over the rows a backfill would write.
+ *
+ * Takes generated rows rather than raw plugin rows: a record whose lstring id
+ * resolves to no text (a numeric `GMST\DATA`, for example) never reaches the
+ * database and must not be reported as an addition.
+ */
+export const countRecordsBySignature = (
+  rows: CsvRow[],
 ): Array<{ signature: string; records: number }> => {
   const seen = new Set<string>();
   const bySignature = new Map<string, number>();
-  for (const row of missingRows) {
-    const key = espRowRecordKey(row);
+  for (const row of rows) {
+    const key = modImportRecordKey(row.Signature, row.Path, row.FormID || '');
     if (seen.has(key)) continue;
     seen.add(key);
-    bySignature.set(row.signature, (bySignature.get(row.signature) ?? 0) + 1);
+    bySignature.set(row.Signature, (bySignature.get(row.Signature) ?? 0) + 1);
   }
   return [...bySignature.entries()]
     .map(([signature, records]) => ({ signature, records }))

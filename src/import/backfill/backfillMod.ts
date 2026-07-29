@@ -20,12 +20,14 @@ import {
   generateImportCsvRows,
   loadLocaleStringsByType,
   resolveEnglishLocaleMaps,
+  resolveEnglishLocaleSource,
+  type LocaleStringsMaps,
 } from '../mod/localeRows';
 import { localeSourcesByLocale } from '../mod/localeSources';
 import { buildNpcNameMap, buildSpeakerFormIdMap } from '../mod/speakerMaps';
-import { resolveBackfillLocalePlan } from './localePlan';
+import { resolveBackfillLocalePlan, type BackfillLocalePlan } from './localePlan';
 import {
-  countMissingRecordsBySignature,
+  countRecordsBySignature,
   loadExistingRecordKeys,
   selectMissingEspRows,
 } from './missingRows';
@@ -45,6 +47,13 @@ export type BackfillModResult = {
   insertedStrings: number;
   insertedTranslations: number;
   locales: string[];
+};
+
+/** Locale used to decide which missing records actually carry text. */
+const countingLocale = (plan: BackfillLocalePlan): string | null => {
+  if (plan.locales.length === 0) return null;
+  const english = resolveEnglishLocaleSource(plan.localeSources)?.locale;
+  return plan.locales.find((locale) => locale === english) ?? plan.locales[0]!;
 };
 
 const buildContextResolver = (
@@ -80,7 +89,17 @@ export const backfillModStrings = async (
   const espRows = esp.extractStrings();
   const existingKeys = await loadExistingRecordKeys(db, target.modId);
   const missingRows = selectMissingEspRows(espRows, existingKeys);
-  const bySignature = countMissingRecordsBySignature(missingRows);
+  const plan = resolveBackfillLocalePlan(esp, target.espPath, target.game, target.srcLang);
+  const catalog = localeSourcesByLocale(plan.localeSources);
+
+  const anchorLocale = countingLocale(plan);
+  const anchorMaps: LocaleStringsMaps | null =
+    anchorLocale && missingRows.length > 0
+      ? loadLocaleStringsByType(catalog.get(anchorLocale)!)
+      : null;
+  const bySignature = countRecordsBySignature([
+    ...generateImportCsvRows(missingRows, anchorMaps, target.game),
+  ]);
 
   const result: BackfillModResult = {
     modId: target.modId,
@@ -95,12 +114,10 @@ export const backfillModStrings = async (
     locales: [],
   };
 
-  if (missingRows.length === 0 || opts.dryRun) return result;
+  if (result.missingRecords === 0 || opts.dryRun) return result;
 
-  const plan = resolveBackfillLocalePlan(esp, target.espPath, target.game, target.srcLang);
   result.locales = plan.locales.length > 0 ? plan.locales : [plan.pluginStringLang];
   const resolveContext = buildContextResolver(espRows, missingRows, target, plan.localeSources);
-  const catalog = localeSourcesByLocale(plan.localeSources);
   const recordIds = new Set<number>();
 
   const writeRows = async (rows: ModImportBulkRow[]): Promise<void> => {
@@ -111,7 +128,7 @@ export const backfillModStrings = async (
     }
   };
 
-  const rowsForLocale = (locale: string, maps: ReturnType<typeof loadLocaleStringsByType> | null) =>
+  const rowsForLocale = (locale: string, maps: LocaleStringsMaps | null) =>
     [...generateImportCsvRows(missingRows, maps, target.game)].map(
       (csvRow): ModImportBulkRow => ({
         csvRow,
@@ -125,7 +142,9 @@ export const backfillModStrings = async (
   try {
     if (plan.locales.length > 0) {
       for (const locale of plan.locales) {
-        await writeRows(rowsForLocale(locale, loadLocaleStringsByType(catalog.get(locale)!)));
+        const maps =
+          locale === anchorLocale ? anchorMaps : loadLocaleStringsByType(catalog.get(locale)!);
+        await writeRows(rowsForLocale(locale, maps));
       }
     } else {
       await writeRows(rowsForLocale(plan.pluginStringLang, null));

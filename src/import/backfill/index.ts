@@ -8,7 +8,7 @@
 export { backfillModStrings, type BackfillModResult } from './backfillMod';
 export { listBackfillTargets, type BackfillTarget, type BackfillSkip } from './targets';
 export {
-  countMissingRecordsBySignature,
+  countRecordsBySignature,
   espRowRecordPath,
   loadExistingRecordKeys,
   selectMissingEspRows,
