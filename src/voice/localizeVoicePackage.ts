@@ -57,6 +57,8 @@ export const localizeVoicePackage = async (
     force: boolean;
     scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
+    /** When set, only these `FORMID6:variant` keys are synthesized. */
+    onlyKeys?: ReadonlySet<string>;
     limit?: number;
     shouldCancel?: () => boolean;
     onEligibleStep?: () => void;
@@ -112,6 +114,9 @@ export const localizeVoicePackage = async (
       if (options.shouldCancel?.()) break;
       if (options.limit != null && eligibleSeen >= options.limit) break;
 
+      const entryKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+      if (options.onlyKeys && !options.onlyKeys.has(entryKey)) continue;
+
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
       if (!row) {
         skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
@@ -135,8 +140,7 @@ export const localizeVoicePackage = async (
       }
 
       const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-      const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
-      const storedVersion = storedVersions.get(versionKey);
+      const storedVersion = storedVersions.get(entryKey);
 
       if (
         !options.force &&

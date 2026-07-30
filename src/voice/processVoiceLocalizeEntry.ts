@@ -9,7 +9,9 @@ import type { VoiceFileEntry } from './discoverVoiceFiles';
 import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslations';
 import { lookupVoiceSource, voiceTranslationMapKey } from './loadVoiceTranslations';
 import {
+  isManualVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
+  voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
 } from './speakerReference';
@@ -60,7 +62,7 @@ const referenceTextForPick = (
   sources: Map<string, VoiceSourceRow>,
   pick: ResolvedSpeakerReference['pick'],
 ): string | null => {
-  if (pick.formidLower6.toUpperCase() === 'MANUAL') return null;
+  if (isManualVoiceReferencePick(pick)) return null;
   return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
 };
 
@@ -124,15 +126,16 @@ export const processVoiceLocalizeEntry = async (
         referenceWav = cached.wavPath;
         referenceText = cached.referenceText;
       } else {
-        const resolved = await resolveSpeakerReferenceForSpeaker(
+        const resolved = await resolveSpeakerReferenceForSpeaker({
           db,
           modId,
           speakerKey,
-          entry,
-          () => getSiblingEntries(speakerKey, entry),
+          preferredEntry: entry,
+          getFallbackEntries: () => getSiblingEntries(speakerKey, entry),
           packageDir,
-          pluginRel,
-        );
+          pluginRelPath: pluginRel,
+          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+        });
         if (resolved) {
           referenceWav = resolved.wavPath;
           referenceText = referenceTextForPick(voiceSources, resolved.pick);

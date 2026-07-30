@@ -36,7 +36,14 @@ export const useVoiceActions = ({
       if (line.isReference) {
         return api.mods.clearVoiceSpeakerRef(modId, speakerKey);
       }
-      return api.mods.setVoiceSpeakerRef(modId, speakerKey, line.formidLower6, line.variant);
+      return api.mods.setVoiceSpeakerRef(
+        modId,
+        speakerKey,
+        line.formidLower6,
+        line.variant,
+        srcLang,
+        targetLang,
+      );
     },
     onSuccess: () => void invalidateVoice(),
   });

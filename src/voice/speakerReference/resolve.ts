@@ -22,6 +22,12 @@ import {
   sourceDigest,
   tryCachedSpeakerReference,
 } from './cache';
+import {
+  MANUAL_REFERENCE_FORMID,
+  anyVoiceReferenceEligible,
+  isVoiceReferencePickEligible,
+  type VoiceReferenceEligibility,
+} from './eligibility';
 import { scoreReferenceWav } from './scoring';
 
 export type ResolvedSpeakerReference = {
@@ -29,6 +35,25 @@ export type ResolvedSpeakerReference = {
   pick: VoiceSpeakerRefPick;
   source: 'manual' | 'saved' | 'auto';
   score?: number;
+};
+
+export type ResolveSpeakerReferenceInput = {
+  db: Tx;
+  modId: number;
+  speakerKey: string;
+  /** Line being synthesized — scored first so siblings are scanned only when needed. */
+  preferredEntry: VoiceFileEntry;
+  getFallbackEntries: () => VoiceFileEntry[];
+  packageDir: string;
+  pluginRelPath: string;
+  /** Keeps clips without a known transcript (orphan audio) out of the pool. */
+  isEligible?: VoiceReferenceEligibility;
+};
+
+type CacheDirs = {
+  speaker: string;
+  entry: string;
+  work: string;
 };
 
 const findPickedEntry = (
@@ -57,11 +82,10 @@ type ScoredEntry = {
 
 const scoreEntryReference = async (
   entry: VoiceFileEntry,
-  entryCacheDir: string,
-  workDir: string,
+  dirs: CacheDirs,
 ): Promise<ScoredEntry | null> => {
   try {
-    const wavPath = await getOrDecodeEntryReferenceWav(entry, entryCacheDir, workDir);
+    const wavPath = await getOrDecodeEntryReferenceWav(entry, dirs.entry, dirs.work);
     const score = scoreReferenceWav(wavPath);
     return { entry, wavPath, score };
   } catch (err) {
@@ -76,7 +100,7 @@ const finalizeAutoReference = async (
   db: Tx,
   modId: number,
   speakerKey: string,
-  speakerCacheDir: string,
+  dirs: CacheDirs,
   scored: ScoredEntry,
 ): Promise<ResolvedSpeakerReference> => {
   const pick: VoiceSpeakerRefPick = {
@@ -88,7 +112,7 @@ const finalizeAutoReference = async (
   const autoMarker = `auto:${scored.entry.formidLower6}_${scored.entry.variant}:${sourceDigest(scored.entry.absolutePath)}`;
   const outPath = await getOrReuseSpeakerReferenceWav(
     speakerKey,
-    speakerCacheDir,
+    dirs.speaker,
     autoMarker,
     async () => scored.wavPath,
   );
@@ -99,99 +123,85 @@ const finalizeAutoReference = async (
   return { wavPath: outPath, pick, source: 'auto', score: scored.score };
 };
 
-/**
- * Resolve one speaker's XTTS reference clip when synthesizing a voice line.
- * Uses cache / saved DB pick / manual override when available.
- * Auto-select tries `preferredEntry` first and only scans sibling lines on demand.
- */
-export const resolveSpeakerReferenceForSpeaker = async (
-  db: Tx,
-  modId: number,
+const resolveManualReference = async (
   speakerKey: string,
-  preferredEntry: VoiceFileEntry,
-  getFallbackEntries: () => VoiceFileEntry[],
-  packageDir: string,
-  pluginRelPath: string,
+  manualPath: string,
+  dirs: CacheDirs,
+): Promise<ResolvedSpeakerReference> => {
+  const manualMarker = `manual:${sourceDigest(manualPath)}`;
+  const outPath = await getOrReuseSpeakerReferenceWav(
+    speakerKey,
+    dirs.speaker,
+    manualMarker,
+    async () => {
+      const decodedPath = path.join(dirs.work, MANUAL_REFERENCE_NAME);
+      await decodeAudioToReferenceWav(manualPath, decodedPath);
+      return decodedPath;
+    },
+  );
+  log.info(`Speaker ref "${speakerKey}": manual ${MANUAL_REFERENCE_NAME}`);
+  return {
+    wavPath: outPath,
+    pick: { formidLower6: MANUAL_REFERENCE_FORMID, variant: 1 },
+    source: 'manual',
+  };
+};
+
+const resolveSavedReference = async (
+  speakerKey: string,
+  savedPick: VoiceSpeakerRefPick,
+  input: ResolveSpeakerReferenceInput,
+  dirs: CacheDirs,
 ): Promise<ResolvedSpeakerReference | null> => {
-  const voiceRootRel = resolveVoiceRootRel(pluginRelPath);
-  const voiceRootAbs = path.join(packageDir, ...voiceRootRel.split('/'));
-  const speakerCacheDir = speakerReferenceCacheRoot(modId);
-  const entryCacheDir = entryReferenceCacheRoot(modId);
-  const workDir = path.join(speakerCacheDir, '.work', speakerKey.replace(/[^\w.-]+/g, '_'));
-  ensureDir(workDir);
-
-  const cachedWav = tryCachedSpeakerReference(speakerKey, speakerCacheDir);
+  // The cached WAV is only trustworthy while the pick that produced it stands.
+  const cachedWav = tryCachedSpeakerReference(speakerKey, dirs.speaker);
   if (cachedWav) {
-    const cachedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
     log.debug(`Speaker ref "${speakerKey}": cache hit`);
-    return {
-      wavPath: cachedWav,
-      pick: cachedPick ?? {
-        formidLower6: preferredEntry.formidLower6,
-        variant: preferredEntry.variant,
-      },
-      source: cachedPick ? 'saved' : 'auto',
-    };
+    return { wavPath: cachedWav, pick: savedPick, source: 'saved' };
   }
 
-  const manualPath = path.join(voiceRootAbs, speakerKey, MANUAL_REFERENCE_NAME);
-  if (fs.existsSync(manualPath)) {
-    const manualMarker = `manual:${sourceDigest(manualPath)}`;
-    const outPath = await getOrReuseSpeakerReferenceWav(
-      speakerKey,
-      speakerCacheDir,
-      manualMarker,
-      async () => {
-        const decodedPath = path.join(workDir, MANUAL_REFERENCE_NAME);
-        await decodeAudioToReferenceWav(manualPath, decodedPath);
-        return decodedPath;
-      },
+  const pickedEntry = findPickedEntry(savedPick, input.preferredEntry, input.getFallbackEntries);
+  if (!pickedEntry) {
+    log.warn(
+      `Speaker ref "${speakerKey}": saved pick ${savedPick.formidLower6}_${savedPick.variant} not found on disk`,
     );
-    log.info(`Speaker ref "${speakerKey}": manual ${MANUAL_REFERENCE_NAME}`);
-    return {
-      wavPath: outPath,
-      pick: { formidLower6: 'MANUAL', variant: 1 },
-      source: 'manual',
-    };
+    return null;
   }
 
-  const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
-  if (savedPick) {
-    const pickedEntry = findPickedEntry(savedPick, preferredEntry, getFallbackEntries);
-    if (pickedEntry) {
-      try {
-        const entryDigest = sourceDigest(pickedEntry.absolutePath);
-        const savedMarker = `saved:${pickedEntry.formidLower6}_${pickedEntry.variant}:${entryDigest}`;
-        const outPath = await getOrReuseSpeakerReferenceWav(
-          speakerKey,
-          speakerCacheDir,
-          savedMarker,
-          () => getOrDecodeEntryReferenceWav(pickedEntry, entryCacheDir, workDir),
-        );
-        log.info(`Speaker ref "${speakerKey}": saved ${pickedEntry.fileName}`);
-        return { wavPath: outPath, pick: savedPick, source: 'saved' };
-      } catch (err) {
-        log.warn(
-          `Speaker ref "${speakerKey}": saved pick ${pickedEntry.fileName} failed: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      }
-    } else {
-      log.warn(
-        `Speaker ref "${speakerKey}": saved pick ${savedPick.formidLower6}_${savedPick.variant} not found on disk`,
-      );
-    }
+  try {
+    const savedMarker = `saved:${pickedEntry.formidLower6}_${pickedEntry.variant}:${sourceDigest(pickedEntry.absolutePath)}`;
+    const outPath = await getOrReuseSpeakerReferenceWav(speakerKey, dirs.speaker, savedMarker, () =>
+      getOrDecodeEntryReferenceWav(pickedEntry, dirs.entry, dirs.work),
+    );
+    log.info(`Speaker ref "${speakerKey}": saved ${pickedEntry.fileName}`);
+    return { wavPath: outPath, pick: savedPick, source: 'saved' };
+  } catch (err) {
+    log.warn(
+      `Speaker ref "${speakerKey}": saved pick ${pickedEntry.fileName} failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return null;
   }
+};
 
-  const preferredScored = await scoreEntryReference(preferredEntry, entryCacheDir, workDir);
+const autoSelectReference = async (
+  input: ResolveSpeakerReferenceInput,
+  dirs: CacheDirs,
+  isEligible: VoiceReferenceEligibility,
+): Promise<ResolvedSpeakerReference | null> => {
+  const { db, modId, speakerKey, preferredEntry } = input;
+  const preferredScored = isEligible(preferredEntry.formidLower6, preferredEntry.variant)
+    ? await scoreEntryReference(preferredEntry, dirs)
+    : null;
   if (preferredScored && preferredScored.score > Number.NEGATIVE_INFINITY) {
-    return finalizeAutoReference(db, modId, speakerKey, speakerCacheDir, preferredScored);
+    return finalizeAutoReference(db, modId, speakerKey, dirs, preferredScored);
   }
 
   let best: ScoredEntry | null = preferredScored;
-  for (const entry of getFallbackEntries()) {
-    const scored = await scoreEntryReference(entry, entryCacheDir, workDir);
+  for (const entry of input.getFallbackEntries()) {
+    if (!isEligible(entry.formidLower6, entry.variant)) continue;
+    const scored = await scoreEntryReference(entry, dirs);
     if (!scored) continue;
     if (!best || scored.score > best.score) {
       best = scored;
@@ -206,5 +216,43 @@ export const resolveSpeakerReferenceForSpeaker = async (
     return null;
   }
 
-  return finalizeAutoReference(db, modId, speakerKey, speakerCacheDir, best);
+  return finalizeAutoReference(db, modId, speakerKey, dirs, best);
+};
+
+/**
+ * Resolve one speaker's TTS reference clip when synthesizing a voice line.
+ * Prefers a hand-placed WAV, then the saved pick, then auto-selection.
+ * Auto-select tries `preferredEntry` first and only scans sibling lines on demand.
+ */
+export const resolveSpeakerReferenceForSpeaker = async (
+  input: ResolveSpeakerReferenceInput,
+): Promise<ResolvedSpeakerReference | null> => {
+  const { db, modId, speakerKey } = input;
+  const isEligible = input.isEligible ?? anyVoiceReferenceEligible;
+  const voiceRootRel = resolveVoiceRootRel(input.pluginRelPath);
+  const voiceRootAbs = path.join(input.packageDir, ...voiceRootRel.split('/'));
+  const speakerCacheDir = speakerReferenceCacheRoot(modId);
+  const dirs: CacheDirs = {
+    speaker: speakerCacheDir,
+    entry: entryReferenceCacheRoot(modId),
+    work: path.join(speakerCacheDir, '.work', speakerKey.replace(/[^\w.-]+/g, '_')),
+  };
+  ensureDir(dirs.work);
+
+  const manualPath = path.join(voiceRootAbs, speakerKey, MANUAL_REFERENCE_NAME);
+  if (fs.existsSync(manualPath)) {
+    return resolveManualReference(speakerKey, manualPath, dirs);
+  }
+
+  const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
+  if (savedPick && !isVoiceReferencePickEligible(savedPick, isEligible)) {
+    log.warn(
+      `Speaker ref "${speakerKey}": dropping pick ${savedPick.formidLower6}_${savedPick.variant} — no dialogue text for that clip`,
+    );
+  } else if (savedPick) {
+    const resolved = await resolveSavedReference(speakerKey, savedPick, input, dirs);
+    if (resolved) return resolved;
+  }
+
+  return autoSelectReference(input, dirs, isEligible);
 };

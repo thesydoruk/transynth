@@ -22,7 +22,9 @@ import {
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   groupVoiceFilesBySpeaker,
+  isManualVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
+  voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
 } from './speakerReference';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
@@ -140,18 +142,19 @@ export const synthesizeModVoiceLineBuffers = async (
           (candidate) =>
             candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
         );
-      const resolved = await resolveSpeakerReferenceForSpeaker(
+      const resolved = await resolveSpeakerReferenceForSpeaker({
         db,
-        opts.modId,
+        modId: opts.modId,
         speakerKey,
-        entry,
-        () => siblings ?? [],
-        opts.packageDir,
-        pluginRel,
-      );
+        preferredEntry: entry,
+        getFallbackEntries: () => siblings ?? [],
+        packageDir: opts.packageDir,
+        pluginRelPath: pluginRel,
+        isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+      });
       if (resolved) {
         referenceWav = resolved.wavPath;
-        if (resolved.pick.formidLower6.toUpperCase() !== 'MANUAL') {
+        if (!isManualVoiceReferencePick(resolved.pick)) {
           referenceText = lookupVoiceSource(
             voiceSources,
             resolved.pick.formidLower6,

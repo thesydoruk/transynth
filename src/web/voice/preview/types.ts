@@ -117,6 +117,8 @@ export type VoiceSpeakerRefResult =
         | 'plugin_missing'
         | 'speaker_not_found'
         | 'line_not_found'
-        | 'line_not_in_speaker';
+        | 'line_not_in_speaker'
+        /** Orphan audio: no dialogue record, so no transcript to condition TTS on. */
+        | 'line_no_record';
       message: string;
     };

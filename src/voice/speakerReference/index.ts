@@ -3,5 +3,12 @@ export type { ReferencePcm } from './pcm';
 export { readPcmFromWav } from './pcm';
 export { computeHesitationPenalty, scoreReferencePcm, scoreReferenceWav } from './scoring';
 export { voiceSpeakerKey, groupVoiceFilesBySpeaker } from './grouping';
-export type { ResolvedSpeakerReference } from './resolve';
+export type { VoiceReferenceEligibility } from './eligibility';
+export {
+  MANUAL_REFERENCE_FORMID,
+  isManualVoiceReferencePick,
+  isVoiceReferencePickEligible,
+  voiceReferenceEligibilityFromSources,
+} from './eligibility';
+export type { ResolveSpeakerReferenceInput, ResolvedSpeakerReference } from './resolve';
 export { resolveSpeakerReferenceForSpeaker } from './resolve';

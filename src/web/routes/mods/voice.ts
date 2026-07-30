@@ -177,6 +177,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // PUT /api/mods/:id/voice/speaker-ref — set TTS reference line for one speaker.
   app.put<{
     Params: { id: string };
+    Querystring: { srcLang?: string; targetLang?: string };
     Body: { speakerKey?: string; formidLower6?: string; variant?: number };
   }>('/api/mods/:id/voice/speaker-ref', async (req, reply) => {
     const modId = Number(req.params.id);
@@ -201,6 +202,8 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       speakerKey,
       formidLower6,
       variant,
+      req.query.srcLang?.trim() || CONFIG.defaultSrcLang,
+      req.query.targetLang?.trim() || CONFIG.defaultTgtLang,
     );
     if (!result.ok) {
       const status =

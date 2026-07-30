@@ -49,6 +49,8 @@ export type LocalizeModImportVoiceOptions = {
   force?: boolean;
   scope?: ModVoiceGenerateScope;
   referenceMode?: TtsReferenceMode;
+  /** Restrict synthesis to these `FORMID6:variant` keys. */
+  onlyKeys?: ReadonlySet<string>;
   onProgress?: (done: number, total: number) => void;
   shouldCancel?: () => boolean;
 };
@@ -75,6 +77,7 @@ export const countVoiceLocalizeWork = async (
   srcLang: string,
   tgtLang: string,
   scope: ModVoiceGenerateScope = 'missing',
+  onlyKeys?: ReadonlySet<string>,
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
   const forceAll = scope === 'all';
@@ -84,6 +87,9 @@ export const countVoiceLocalizeWork = async (
     const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
     const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
     for (const entry of voiceFiles) {
+      if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
+        continue;
+      }
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
       if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) {
         continue;
@@ -143,7 +149,15 @@ export const localizeModImportVoice = async (
   const total =
     options.dryRun || options.onProgress == null
       ? 0
-      : await countVoiceLocalizeWork(db, mod.modId, packages, srcLang, tgtLang, scope);
+      : await countVoiceLocalizeWork(
+          db,
+          mod.modId,
+          packages,
+          srcLang,
+          tgtLang,
+          scope,
+          options.onlyKeys,
+        );
   let progressDone = 0;
   const bumpProgress = () => {
     progressDone += 1;
@@ -169,6 +183,7 @@ export const localizeModImportVoice = async (
         force,
         scope,
         referenceMode,
+        onlyKeys: options.onlyKeys,
         limit: options.limit,
         shouldCancel: options.shouldCancel,
         onEligibleStep: options.onProgress ? bumpProgress : undefined,

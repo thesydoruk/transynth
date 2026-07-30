@@ -51,11 +51,23 @@ export const modsEndpoints = {
     req<VoiceAvailabilityResponse>(
       `/api/mods/${modId}/voice/availability?targetLang=${encodeURIComponent(targetLang)}`,
     ),
-  setVoiceSpeakerRef: (modId: number, speakerKey: string, formidLower6: string, variant: number) =>
-    req<{ ok: true; referencePick: VoiceSpeakerRefPick }>(`/api/mods/${modId}/voice/speaker-ref`, {
-      method: 'PUT',
-      body: JSON.stringify({ speakerKey, formidLower6, variant }),
-    }),
+  setVoiceSpeakerRef: (
+    modId: number,
+    speakerKey: string,
+    formidLower6: string,
+    variant: number,
+    srcLang = getSrcLang(),
+    targetLang = getTgtLang(),
+  ) => {
+    const params = new URLSearchParams({ srcLang, targetLang });
+    return req<{ ok: true; referencePick: VoiceSpeakerRefPick }>(
+      `/api/mods/${modId}/voice/speaker-ref?${params}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ speakerKey, formidLower6, variant }),
+      },
+    );
+  },
   clearVoiceSpeakerRef: (modId: number, speakerKey: string) =>
     req<{ ok: true; referencePick: null }>(
       `/api/mods/${modId}/voice/speaker-ref/${encodeURIComponent(speakerKey)}`,

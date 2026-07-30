@@ -1,13 +1,15 @@
 import type { Tx } from '../../../db';
-import { resolveVoiceRootRel } from '../../../voice/discoverVoiceFiles';
+import { CONFIG } from '../../../config';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import {
   clearVoiceSpeakerRef,
   setVoiceSpeakerRef,
   type VoiceSpeakerRefPick,
 } from '../../../voice/voiceSpeakerRefs';
+import { isOrphanVoiceEntry } from './buildVoiceLinePreview';
 import { resolveModVoiceContext } from './context';
-import { discoverVoiceEntries, findVoiceEntry } from './voiceEntries';
+import { getVoiceListContext } from './voiceListContext';
+import { findVoiceEntry } from './voiceEntries';
 import type { VoiceSpeakerRefResult } from './types';
 
 /** Set or replace the TTS reference line for one speaker. */
@@ -17,27 +19,41 @@ export const setVoiceSpeakerReferenceForMod = async (
   speakerKey: string,
   formidLower6: string,
   variant: number,
+  srcLang: string = CONFIG.defaultSrcLang,
+  targetLang: string = CONFIG.defaultTgtLang,
 ): Promise<VoiceSpeakerRefResult> => {
-  const resolved = await resolveModVoiceContext(db, modId);
-  if (!resolved.ok) return resolved;
-
   const trimmedSpeaker = speakerKey.trim();
   if (!trimmedSpeaker) {
     return { ok: false, reason: 'speaker_not_found', message: 'Speaker key is required' };
   }
 
-  const voiceRootRel = resolveVoiceRootRel(resolved.ctx.pluginRel);
-  const entry = findVoiceEntry(discoverVoiceEntries(resolved.ctx), formidLower6, variant);
+  const context = await getVoiceListContext(db, modId, srcLang, targetLang);
+  if (!context.ok) {
+    if (context.reason === 'no_voice_files') {
+      return { ok: false, reason: 'line_not_found', message: context.message };
+    }
+    return { ok: false, reason: context.reason, message: context.message };
+  }
+
+  const entry = findVoiceEntry(context.data.voiceFiles, formidLower6, variant);
   if (!entry) {
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
-  const entrySpeaker = voiceSpeakerKey(entry, voiceRootRel);
-  if (entrySpeaker !== trimmedSpeaker) {
+  if (voiceSpeakerKey(entry, context.data.voiceRootRel) !== trimmedSpeaker) {
     return {
       ok: false,
       reason: 'line_not_in_speaker',
       message: 'Voice line does not belong to this speaker',
+    };
+  }
+
+  // TTS is conditioned on the reference transcript, which orphan audio lacks.
+  if (isOrphanVoiceEntry(context.data.sourceFormids, entry)) {
+    return {
+      ok: false,
+      reason: 'line_no_record',
+      message: 'Voice line has no dialogue record, so it cannot be used as a reference',
     };
   }
 

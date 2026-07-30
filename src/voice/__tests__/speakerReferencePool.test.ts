@@ -207,24 +207,24 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     const entry = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(5));
     const db = createMockDb() as unknown as import('../../db').Tx;
 
-    const first = await resolveSpeakerReferenceForSpeaker(
+    const first = await resolveSpeakerReferenceForSpeaker({
       db,
       modId,
-      speaker,
-      entry,
-      () => [],
-      tmpDir,
-      'Data/Mod.esp',
-    );
-    const second = await resolveSpeakerReferenceForSpeaker(
+      speakerKey: speaker,
+      preferredEntry: entry,
+      getFallbackEntries: () => [],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
+    const second = await resolveSpeakerReferenceForSpeaker({
       db,
       modId,
-      speaker,
-      entry,
-      () => [],
-      tmpDir,
-      'Data/Mod.esp',
-    );
+      speakerKey: speaker,
+      preferredEntry: entry,
+      getFallbackEntries: () => [],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
 
     expect(first?.wavPath).toBe(second?.wavPath);
     expect(first?.source).toBe('auto');
@@ -238,18 +238,18 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     let fallbackCalled = false;
     const db = createMockDb() as unknown as import('../../db').Tx;
 
-    const result = await resolveSpeakerReferenceForSpeaker(
+    const result = await resolveSpeakerReferenceForSpeaker({
       db,
       modId,
-      speaker,
-      preferred,
-      () => {
+      speakerKey: speaker,
+      preferredEntry: preferred,
+      getFallbackEntries: () => {
         fallbackCalled = true;
         return [sibling];
       },
-      tmpDir,
-      'Data/Mod.esp',
-    );
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
 
     expect(result?.source).toBe('auto');
     expect(result?.pick).toEqual({ formidLower6: '00002CBA', variant: 1 });
@@ -263,22 +263,73 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     let fallbackCalled = false;
     const db = createMockDb() as unknown as import('../../db').Tx;
 
-    const result = await resolveSpeakerReferenceForSpeaker(
+    const result = await resolveSpeakerReferenceForSpeaker({
       db,
       modId,
-      speaker,
-      preferred,
-      () => {
+      speakerKey: speaker,
+      preferredEntry: preferred,
+      getFallbackEntries: () => {
         fallbackCalled = true;
         return [sibling];
       },
-      tmpDir,
-      'Data/Mod.esp',
-    );
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
 
     expect(result?.source).toBe('auto');
     expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
     expect(fallbackCalled).toBe(true);
+  });
+
+  it('never picks a clip that has no dialogue text', async () => {
+    const speaker = 'AlexanderBrown';
+    const orphan = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(5));
+    const withText = makeEntry(tmpDir, speaker, '00002CBB', 1, makeSpeechLike(5));
+    const db = createMockDb() as unknown as import('../../db').Tx;
+
+    const result = await resolveSpeakerReferenceForSpeaker({
+      db,
+      modId,
+      speakerKey: speaker,
+      preferredEntry: orphan,
+      getFallbackEntries: () => [withText],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+      isEligible: (formidLower6) => formidLower6 !== '00002CBA',
+    });
+
+    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+  });
+
+  it('drops a saved pick that lost its dialogue text', async () => {
+    const speaker = 'AlexanderBrown';
+    const orphan = makeEntry(tmpDir, speaker, '00002CBA', 1, makeSpeechLike(5));
+    const withText = makeEntry(tmpDir, speaker, '00002CBB', 1, makeSpeechLike(5));
+    const db = createMockDb() as unknown as import('../../db').Tx;
+
+    const saved = await resolveSpeakerReferenceForSpeaker({
+      db,
+      modId,
+      speakerKey: speaker,
+      preferredEntry: orphan,
+      getFallbackEntries: () => [withText],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+    });
+    expect(saved?.pick.formidLower6).toBe('00002CBA');
+
+    const reresolved = await resolveSpeakerReferenceForSpeaker({
+      db,
+      modId,
+      speakerKey: speaker,
+      preferredEntry: orphan,
+      getFallbackEntries: () => [withText],
+      packageDir: tmpDir,
+      pluginRelPath: 'Data/Mod.esp',
+      isEligible: (formidLower6) => formidLower6 !== '00002CBA',
+    });
+
+    expect(reresolved?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
   });
 
   it('stops auto-select early once a clip is good enough', () => {

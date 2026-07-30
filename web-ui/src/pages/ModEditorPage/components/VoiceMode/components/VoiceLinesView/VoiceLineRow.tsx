@@ -55,6 +55,8 @@ export const VoiceLineRow = ({
   const [draft, setDraft] = useState(line.translation ?? '');
 
   const editable = line.stringId != null && !line.isOrphanAudio;
+  // Orphan audio has no transcript to condition TTS on; keep the button only to unset a stale pick.
+  const canBeReference = !line.isOrphanAudio || line.isReference;
   const sourceTrack = playTrackKey('source', line);
   const translationTrack = playTrackKey('translation', line);
   const canGenerate = line.canGenerateVoice ?? Boolean(line.translation?.trim());
@@ -192,21 +194,25 @@ export const VoiceLineRow = ({
               {generatePending ? t('modEditor.voiceGenerating') : t('modEditor.voiceGenerateBtn')}
             </button>
           )}
-          <button
-            type="button"
-            className={`${styles.action} ${line.isReference ? styles.actionActive : ''}`}
-            onClick={() => onSetReference(line)}
-            disabled={setReferencePending}
-            title={
-              line.isReference ? t('modEditor.voiceRefClearTitle') : t('modEditor.voiceRefSetTitle')
-            }
-          >
-            {setReferencePending
-              ? t('modEditor.voiceRefSaving')
-              : line.isReference
-                ? t('modEditor.voiceRefClear')
-                : t('modEditor.voiceRefSet')}
-          </button>
+          {canBeReference && (
+            <button
+              type="button"
+              className={`${styles.action} ${line.isReference ? styles.actionActive : ''}`}
+              onClick={() => onSetReference(line)}
+              disabled={setReferencePending}
+              title={
+                line.isReference
+                  ? t('modEditor.voiceRefClearTitle')
+                  : t('modEditor.voiceRefSetTitle')
+              }
+            >
+              {setReferencePending
+                ? t('modEditor.voiceRefSaving')
+                : line.isReference
+                  ? t('modEditor.voiceRefClear')
+                  : t('modEditor.voiceRefSet')}
+            </button>
+          )}
         </div>
       </div>
 

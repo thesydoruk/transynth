@@ -54,15 +54,32 @@ export const getOrDecodeEntryReferenceWav = async (
   return outPath;
 };
 
+/** Cached reference WAV plus its marker file for one speaker. */
+export const speakerReferenceCacheFiles = (
+  speakerKey: string,
+  speakerCacheDir: string,
+): { wavPath: string; markerPath: string } => {
+  const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
+  return {
+    wavPath: path.join(speakerCacheDir, `${safeKey}.wav`),
+    markerPath: path.join(speakerCacheDir, `${safeKey}.source`),
+  };
+};
+
+/** Drop a speaker's cached reference WAV so the next resolve re-decodes it. */
+export const clearCachedSpeakerReference = (speakerKey: string, speakerCacheDir: string): void => {
+  const { wavPath, markerPath } = speakerReferenceCacheFiles(speakerKey, speakerCacheDir);
+  fs.rmSync(wavPath, { force: true });
+  fs.rmSync(markerPath, { force: true });
+};
+
 export const getOrReuseSpeakerReferenceWav = async (
   speakerKey: string,
   speakerCacheDir: string,
   marker: string,
   produceWav: () => Promise<string>,
 ): Promise<string> => {
-  const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
-  const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
-  const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
+  const { wavPath: outPath, markerPath } = speakerReferenceCacheFiles(speakerKey, speakerCacheDir);
   if (readCacheMarker(markerPath) === marker && isReusableSpeakerReference(outPath)) {
     return outPath;
   }
@@ -87,11 +104,9 @@ export const tryCachedSpeakerReference = (
   speakerKey: string,
   speakerCacheDir: string,
 ): string | null => {
-  const safeKey = speakerKey.replace(/[^\w.-]+/g, '_');
-  const outPath = path.join(speakerCacheDir, `${safeKey}.wav`);
-  const markerPath = path.join(speakerCacheDir, `${safeKey}.source`);
-  if (!readCacheMarker(markerPath) || !isReusableSpeakerReference(outPath)) return null;
-  return outPath;
+  const { wavPath, markerPath } = speakerReferenceCacheFiles(speakerKey, speakerCacheDir);
+  if (!readCacheMarker(markerPath) || !isReusableSpeakerReference(wavPath)) return null;
+  return wavPath;
 };
 
 const decodeEntryToReferenceWav = async (

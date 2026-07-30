@@ -1,8 +1,8 @@
 import type { VoiceFileEntry } from '../../../../voice/discoverVoiceFiles';
 import type { InheritedVoiceLookup, MasterModRef } from '../../../../voice/inheritedVoiceText';
 import { voiceTranslationMapKey } from '../../../../voice/loadVoiceTranslations';
+import { collectVoiceSourceFormids } from '../../../../voice/voiceSourceFormids';
 import { isOrphanVoiceEntry } from '../buildVoiceLinePreview';
-import { collectVoiceSourceFormids } from '../voiceListContext';
 
 const entry = (formidLower6: string, variant: number): VoiceFileEntry => ({
   relPath: `Sound/Voice/Mod.esp/Speaker/00${formidLower6}_${variant}.fuz`,
