@@ -4,6 +4,7 @@ import type { GameType } from '../../../types';
 import { getMod } from '../../data/queries';
 import { exportFullModZip, exportLangpackZip } from '../../export';
 import { CONFIG } from '../../../config';
+import { resolveModStoredPath } from '../../../modStorage';
 
 const sendModExportZip = async (
   db: Tx,
@@ -50,16 +51,8 @@ export const registerExportRoutes = async (app: FastifyInstance, db: Tx) => {
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       const game = (mod.game ?? 'fo4') as GameType;
-      return sendModExportZip(
-        db,
-        reply,
-        id,
-        mod.abs_path,
-        srcLang,
-        targetLang,
-        game,
-        exportLangpackZip,
-      );
+      const modPath = resolveModStoredPath(mod.abs_path);
+      return sendModExportZip(db, reply, id, modPath, srcLang, targetLang, game, exportLangpackZip);
     },
   );
 
@@ -79,16 +72,8 @@ export const registerExportRoutes = async (app: FastifyInstance, db: Tx) => {
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
       const game = (mod.game ?? 'fo4') as GameType;
-      return sendModExportZip(
-        db,
-        reply,
-        id,
-        mod.abs_path,
-        srcLang,
-        targetLang,
-        game,
-        exportFullModZip,
-      );
+      const modPath = resolveModStoredPath(mod.abs_path);
+      return sendModExportZip(db, reply, id, modPath, srcLang, targetLang, game, exportFullModZip);
     },
   );
 };
