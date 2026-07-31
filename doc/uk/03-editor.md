@@ -228,7 +228,7 @@ QA, залишається джерелом істини для перевірк
 - **max_length**: translation перевищує конфігуроване max length для цього record type або path
 - **glossary_violation**: source містить glossary term, але у перекладі немає потрібного варіанта
 - **gender_mismatch**: український переклад вживає родову форму, що суперечить статі мовця або адресата репліки
-- **duplicate_inconsistency**: той самий normalized source text інакше перекладений в іншому місці
+- **duplicate_inconsistency**: той самий точний source text інакше перекладений в іншому місці
 
 Про всю QA-систему дивіться [Контроль якості](07-qa.md).
 

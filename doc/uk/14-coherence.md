@@ -40,7 +40,7 @@
 
 ## Як читати результати
 
-Coherence checker виводить **source strings, для яких існує більше одного distinct translation** у базі.
+Coherence checker виводить **точні source strings (`text_raw`), для яких існує більше одного distinct translation** у базі. Рядки, що відрізняються лише числами чи плейсхолдерами, не зліплюються через `text_norm`.
 
 У верхній частині сторінки є dropdown **Language**, щоб вибрати target language для перевірки. Після зміни мови список перезавантажується автоматично.
 
@@ -74,7 +74,7 @@ Coherence checker виводить **source strings, для яких існує 
 3. Вирішіть, який переклад має стати канонічним.
 4. Натисніть **Apply to All** на потрібному варіанті.
 
-Ця дія викликає `POST /api/coherence/resolve` із вибраним `translation` і груповим ключем `text_norm`.
+Ця дія викликає `POST /api/coherence/resolve` із вибраним `translation` і груповим ключем `sourceText` (точний source text).
 Сервер оновлює всі рядки групи, які використовують інший переклад.
 
 Що стається після успішного resolve:

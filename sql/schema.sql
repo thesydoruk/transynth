@@ -371,6 +371,9 @@ CREATE INDEX IF NOT EXISTS idx_strings_record ON strings(record_id);
 CREATE INDEX IF NOT EXISTS idx_strings_lang ON strings(lang);
 CREATE INDEX IF NOT EXISTS idx_strings_lstring_lang ON strings(lang, lstring_id);
 CREATE INDEX IF NOT EXISTS idx_strings_text_norm ON strings USING HASH(text_norm);
+-- Exact source-text equality (coherence / duplicate_inconsistency QA).
+-- HASH avoids the PG btree row-size limit that long plugin strings hit.
+CREATE INDEX IF NOT EXISTS idx_strings_text_raw ON strings USING HASH(text_raw);
 -- B-tree (lang, text_norm) exceeds PG btree row limit (~2704 B) for long EET/plugin strings.
 -- Equality on text_norm uses idx_strings_text_norm (HASH); lang is filtered separately.
 DROP INDEX IF EXISTS idx_strings_lang_text_norm;

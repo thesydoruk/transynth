@@ -20,7 +20,7 @@ const PAGE_SIZE = 30;
 /**
  * Coherence checking page.
  *
- * Shows all source strings that share the same normalised text but are
+ * Shows all source strings that share the same exact source text but are
  * translated inconsistently across mods.  The user can review each conflict
  * group and apply a single chosen translation to every string in the group
  * with one click.
@@ -59,8 +59,8 @@ export const CoherencePage = () => {
    * Invalidates the coherence query so the group disappears once resolved.
    */
   const resolveMut = useMutation({
-    mutationFn: ({ textNorm, translation }: { textNorm: string; translation: string }) =>
-      api.coherence.resolve(textNorm, translation, targetLang),
+    mutationFn: ({ sourceText, translation }: { sourceText: string; translation: string }) =>
+      api.coherence.resolve(sourceText, translation, targetLang),
     onSuccess: () => {
       // Re-fetch coherence data and also invalidate QA issue counts in the editor
       qc.invalidateQueries({ queryKey: ['coherence'] });
@@ -69,8 +69,8 @@ export const CoherencePage = () => {
     },
   });
 
-  const handleResolve = (textNorm: string, translation: string) => {
-    resolveMut.mutate({ textNorm, translation });
+  const handleResolve = (sourceText: string, translation: string) => {
+    resolveMut.mutate({ sourceText, translation });
   };
 
   // ── Resolve-all mutation ─────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export const CoherencePage = () => {
       {!isLoading &&
         (data?.groups ?? []).map((group) => (
           <GroupCard
-            key={group.text_norm}
+            key={group.source_text}
             group={group}
             onResolve={handleResolve}
             isResolving={resolveMut.isPending}

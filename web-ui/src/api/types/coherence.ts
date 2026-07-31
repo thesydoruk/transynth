@@ -5,7 +5,6 @@
 export type CoherenceEntry = {
   string_id: number;
   source_text: string;
-  text_norm: string;
   edid: string | null;
   signature: string;
   path_simplified: string;
@@ -20,12 +19,11 @@ export type CoherenceEntry = {
 };
 
 /**
- * A coherence group — all source strings sharing the same normalised text
+ * A coherence group — all source strings sharing the same exact source text
  * that are currently translated inconsistently.
  */
 export type CoherenceGroup = {
-  text_norm: string;
-  /** Representative raw source text for display. */
+  /** Exact source text that identifies this group. */
   source_text: string;
   /** Number of distinct translation variants in this group. */
   variant_count: number;

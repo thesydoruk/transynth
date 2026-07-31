@@ -5,7 +5,7 @@ import s from './GroupCard.module.scss';
 
 interface GroupCardProps {
   group: CoherenceGroup;
-  onResolve: (textNorm: string, translation: string) => void;
+  onResolve: (sourceText: string, translation: string) => void;
   isResolving: boolean;
 }
 
@@ -41,7 +41,9 @@ export const GroupCard = ({ group, onResolve, isResolving }: GroupCardProps) => 
     <div className={s.group}>
       <div className={s.groupHeader} onClick={() => setExpanded((value) => !value)}>
         <span className={s.groupToggle}>{expanded ? '▼' : '▶'}</span>
-        <span className={s.groupSource} title={group.source_text}>{group.source_text}</span>
+        <span className={s.groupSource} title={group.source_text}>
+          {group.source_text}
+        </span>
         <span className={s.groupBadge}>{group.variant_count}</span>
       </div>
       {expanded && (
@@ -51,7 +53,7 @@ export const GroupCard = ({ group, onResolve, isResolving }: GroupCardProps) => 
               key={variant.translation}
               translation={variant.translation}
               strings={variant.strings}
-              onApply={(translation) => onResolve(group.text_norm, translation)}
+              onApply={(translation) => onResolve(group.source_text, translation)}
               isApplying={isResolving}
             />
           ))}

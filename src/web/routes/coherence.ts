@@ -11,25 +11,17 @@ import { CONFIG } from '../../config';
 /**
  * Coherence-checking routes.
  *
- * "Coherence" means that all source strings with the same normalised text
- * should be translated the same way everywhere.  These endpoints expose a
- * paginated report of inconsistencies and an action to resolve them.
+ * "Coherence" means that all source strings with the same exact text should be
+ * translated the same way everywhere. These endpoints expose a paginated
+ * report of inconsistencies and an action to resolve them.
  *
  * Routes:
  *   GET  /api/coherence           — paginated list of inconsistency groups
  *   POST /api/coherence/resolve   — propagate a chosen translation to all
  *                                   strings in a group
+ *   POST /api/coherence/resolve-all — auto-resolve every group by plurality
  */
 export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
-  // ── GET /api/coherence ────────────────────────────────────────────────────
-  // Returns a paginated coherence report for the requested target language.
-  // Each group in the response represents a set of source strings that share
-  // the same normalised text but have at least two different translations.
-  //
-  // Query parameters:
-  //   targetLang  — ISO language code to check (default: 'uk')
-  //   limit       — items per page (default: 50, max: 200)
-  //   offset      — page offset (default: 0)
   app.get<{
     Querystring: { targetLang?: string; limit?: string; offset?: string };
   }>('/api/coherence', async (req, reply) => {
@@ -43,44 +35,33 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send(result);
   });
 
-  // ── POST /api/coherence/resolve ───────────────────────────────────────────
-  // Applies a single chosen translation to all strings in a coherence group
-  // (i.e. all strings sharing the given text_norm) that currently carry a
-  // *different* translation.  Strings that already use the chosen translation
-  // are left untouched.
-  //
-  // Body (JSON):
-  //   textNorm    — the normalised source text that identifies the group
-  //   targetLang  — language code to update (default: 'uk')
-  //   translation — the translation text to propagate to all strings in the group
+  // Body:
+  //   sourceText  — exact source text that identifies the group
+  //   targetLang  — language code to update (default: CONFIG.defaultTgtLang)
+  //   translation — the translation text to propagate
+  // Legacy alias: textNorm is accepted as sourceText for older clients.
   app.post<{
-    Body: { textNorm: string; targetLang?: string; translation: string };
+    Body: { sourceText?: string; textNorm?: string; targetLang?: string; translation: string };
   }>('/api/coherence/resolve', async (req, reply) => {
-    const { textNorm, translation } = req.body ?? {};
+    const sourceText = req.body?.sourceText ?? req.body?.textNorm;
+    const { translation } = req.body ?? {};
     const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
 
-    if (!textNorm || typeof textNorm !== 'string') {
-      return reply.code(400).send({ error: 'textNorm is required' });
+    if (!sourceText || typeof sourceText !== 'string') {
+      return reply.code(400).send({ error: 'sourceText is required' });
     }
     if (!translation || typeof translation !== 'string') {
       return reply.code(400).send({ error: 'translation is required' });
     }
 
     log.info(
-      `POST /api/coherence/resolve targetLang=${targetLang} textNorm="${textNorm.slice(0, 60)}"`,
+      `POST /api/coherence/resolve targetLang=${targetLang} sourceText="${sourceText.slice(0, 60)}"`,
     );
 
-    const result = await resolveCoherenceGroup(db, textNorm, targetLang, translation);
+    const result = await resolveCoherenceGroup(db, sourceText, targetLang, translation);
     return reply.send(result);
   });
 
-  // ── POST /api/coherence/resolve-all ───────────────────────────────────────
-  // Auto-resolves all inconsistency groups for the target language in one
-  // pass by choosing the plurality-winner translation per group (the
-  // translation used by the most strings; ties broken by status quality).
-  //
-  // Body (JSON):
-  //   targetLang — language code to resolve (default: CONFIG.defaultTgtLang)
   app.post<{ Body: { targetLang?: string } }>('/api/coherence/resolve-all', async (req, reply) => {
     const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
     log.info(`POST /api/coherence/resolve-all targetLang=${targetLang}`);

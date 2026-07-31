@@ -43,8 +43,10 @@ If no inconsistency groups are found, the page provides direct actions instead o
 
 ## Reading the Results
 
-The coherence checker lists **source strings that have more than one distinct
-translation** across the database.
+The coherence checker lists **exact source strings (`text_raw`) that have more
+than one distinct translation** across the database. Strings that differ only
+by numbers or placeholders are treated as separate groups (they are not
+collapsed via `text_norm`).
 
 Use the **Language** dropdown at the top to select which target language to
 check. The page reloads automatically on language change.
@@ -80,7 +82,7 @@ Click the header to expand the group. Inside you will see one
 4. Click **Apply to All** on the desired variant.
 
 The **Apply to All** action calls `POST /api/coherence/resolve` with the
-chosen `translation` and the group's `text_norm` key. The server updates
+chosen `translation` and the group's exact `sourceText` key. The server updates
 every string in that group that uses a _different_ translation —
 strings that already use the chosen variant are left untouched. The
 mutation is applied with the best-quality-available status for each
