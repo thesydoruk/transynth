@@ -133,6 +133,7 @@
     "deleteAllBatchSuccess": "Видалено {{count}} модів.",
     "aiWorkflowTitle": "ШІ-завдання",
     "exportLangpack": "Експорт перекладу",
+    "exportInterface": "Патч Interface",
     "exportFullMod": "Повний локалізований мод"
   },
   "modAi": {

@@ -18,5 +18,6 @@ export {
 } from './exportArchives';
 export { exportPatchedEsp } from './exportEsp';
 export { exportPatchedPexFiles } from './exportPex';
-export { exportFullModZip, exportLangpackZip } from './zipExport';
+export { exportFullModZip, exportLangpackZip, exportInterfacePatchZip } from './zipExport';
+export { collectInterfacePatchEntries, exportInterfaceTranslateFile } from './exportInterfacePatch';
 export { exportModRelease, listModExportTargets } from './modReleaseExport';

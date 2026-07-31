@@ -19,7 +19,11 @@ import { getModImportJob } from '../../../../../src/import/mod/jobs';
 import { markFailed } from '../../../../../src/import/mod/jobStatus';
 import { ensureImportModId, prepareEspImportContext, type ModImportPhaseContext } from './phases';
 import { importEspStringRows } from './espPhase';
-import { importMcmStringRows, importPexStringRows } from './extrasPhase';
+import {
+  importInterfaceTranslateRows,
+  importMcmStringRows,
+  importPexStringRows,
+} from './extrasPhase';
 import { finalizeModImportJob } from './finalizePhase';
 import type { ModImportJob, ProgressCb } from '../../../../../src/import/mod/types';
 
@@ -90,6 +94,11 @@ export const runModImport = async (
 
       if (!state.cancel && !state.pause) {
         await importMcmStringRows(ctx, prep.batch);
+        imported = ctx.imported.value;
+      }
+
+      if (!state.cancel && !state.pause) {
+        await importInterfaceTranslateRows(ctx, prep.batch);
         imported = ctx.imported.value;
       }
 

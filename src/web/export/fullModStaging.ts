@@ -29,6 +29,7 @@ import {
   exportPatchedPexFiles,
   type ExportedStringsFile,
 } from './index';
+import { applyInterfaceLocalizeAssets, exportInterfaceTranslateFile } from './exportInterfacePatch';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const SKIP_STAGING_NAMES = new Set(['import-manifest.json', 'localize']);
@@ -170,6 +171,30 @@ const applyLocalizationToPackage = async (
     }
   } catch {
     log.info(`Full mod export: no patched PEX scripts for mod ${modId}`);
+  }
+
+  try {
+    const iface = await exportInterfaceTranslateFile(
+      db,
+      modId,
+      pkg.pluginPath,
+      srcLang,
+      targetLang,
+      game,
+    );
+    if (iface) {
+      writeBufferToPackage(
+        packageDir,
+        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, iface.archivePath),
+        iface.buffer,
+      );
+    }
+    const assetCount = applyInterfaceLocalizeAssets(pkg.pluginPath, targetLang, packageDir);
+    if (assetCount > 0) {
+      log.info(`Full mod export: merged ${assetCount} Interface asset(s) from localize overlay`);
+    }
+  } catch (ifaceErr) {
+    log.info(`Full mod export: Interface patch skipped for mod ${modId}: ${ifaceErr}`);
   }
 };
 
