@@ -106,7 +106,7 @@ export const LOCALIZED_EXPORT_GOLDEN_CORPUS: LocalizedExportGoldenCorpus = {
   ],
   expectedFiles: [
     {
-      fileName: 'GoldenWorkshop_uk.STRINGS',
+      fileName: 'GoldenWorkshop_en.STRINGS',
       type: 'STRINGS',
       entries: [
         { id: 101, text: 'Натисніть <Activate>, щоб відкрити майстерню.' },
@@ -114,7 +114,15 @@ export const LOCALIZED_EXPORT_GOLDEN_CORPUS: LocalizedExportGoldenCorpus = {
       ],
     },
     {
-      fileName: 'GoldenWorkshop_uk.DLSTRINGS',
+      fileName: 'GoldenWorkshop_ru.STRINGS',
+      type: 'STRINGS',
+      entries: [
+        { id: 101, text: 'Натисніть <Activate>, щоб відкрити майстерню.' },
+        { id: 102, text: 'Power required' },
+      ],
+    },
+    {
+      fileName: 'GoldenWorkshop_en.DLSTRINGS',
       type: 'DLSTRINGS',
       entries: [
         { id: 201, text: 'Війна. Війна ніколи не змінюється.' },
@@ -122,7 +130,23 @@ export const LOCALIZED_EXPORT_GOLDEN_CORPUS: LocalizedExportGoldenCorpus = {
       ],
     },
     {
-      fileName: 'GoldenWorkshop_uk.ILSTRINGS',
+      fileName: 'GoldenWorkshop_ru.DLSTRINGS',
+      type: 'DLSTRINGS',
+      entries: [
+        { id: 201, text: 'Війна. Війна ніколи не змінюється.' },
+        { id: 202, text: 'Another settlement needs your help.' },
+      ],
+    },
+    {
+      fileName: 'GoldenWorkshop_en.ILSTRINGS',
+      type: 'ILSTRINGS',
+      entries: [
+        { id: 301, text: 'Quest added.' },
+        { id: 302, text: 'UTF-8 переклад: Привіт, Співдружність.' },
+      ],
+    },
+    {
+      fileName: 'GoldenWorkshop_ru.ILSTRINGS',
       type: 'ILSTRINGS',
       entries: [
         { id: 301, text: 'Quest added.' },

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
 import {
-  interfaceTranslateArchivePath,
+  interfaceTranslateArchivePathForSlot,
+  interfaceTranslateExportSlots,
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateRecordPrefix,
   readInterfaceTranslateEntries,
@@ -78,7 +79,7 @@ export type InterfaceTranslateExportResult = {
   changedCount: number;
 };
 
-/** Build a patched `Interface/Translate_*.txt` from DB translations. */
+/** Build patched `Interface/Translate_*.txt` file(s) from DB translations. */
 export const exportInterfaceTranslateFile = async (
   db: Tx,
   modId: number,
@@ -87,7 +88,7 @@ export const exportInterfaceTranslateFile = async (
   targetLang: string,
   game: GameType = 'fo4',
   sourceLocale = 'en',
-): Promise<InterfaceTranslateExportResult | null> => {
+): Promise<InterfaceTranslateExportResult[] | null> => {
   const sourceBuf = readSourceInterfaceTranslateBuffer(modPath, sourceLocale, game);
   if (!sourceBuf) return null;
 
@@ -111,12 +112,12 @@ export const exportInterfaceTranslateFile = async (
 
   if (changedCount === 0) return null;
 
-  const archivePath = interfaceTranslateArchivePath(targetLang, game);
-  return {
-    archivePath,
-    buffer: writeInterfaceTranslateBuffer(exportEntries),
+  const buffer = writeInterfaceTranslateBuffer(exportEntries);
+  return interfaceTranslateExportSlots(targetLang, game).map((slot) => ({
+    archivePath: interfaceTranslateArchivePathForSlot(slot),
+    buffer,
     changedCount,
-  };
+  }));
 };
 
 const walkInterfaceFiles = (
@@ -223,12 +224,14 @@ export const collectInterfacePatchEntries = async (
       game,
     );
     if (translated) {
-      entries.push({
-        name: translated.archivePath.replace(/\\/g, '/'),
-        data: translated.buffer,
-      });
+      for (const file of translated) {
+        entries.push({
+          name: file.archivePath.replace(/\\/g, '/'),
+          data: file.buffer,
+        });
+      }
       log.info(
-        `Interface export: ${translated.changedCount} changed line(s) in ${translated.archivePath}`,
+        `Interface export: ${translated[0]!.changedCount} changed line(s) in ${translated.length} Translate file(s)`,
       );
     }
   } catch (err) {

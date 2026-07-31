@@ -183,11 +183,13 @@ const applyLocalizationToPackage = async (
       game,
     );
     if (iface) {
-      writeBufferToPackage(
-        packageDir,
-        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, iface.archivePath),
-        iface.buffer,
-      );
+      for (const file of iface) {
+        writeBufferToPackage(
+          packageDir,
+          pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, file.archivePath),
+          file.buffer,
+        );
+      }
     }
     const assetCount = applyInterfaceLocalizeAssets(pkg.pluginPath, targetLang, packageDir);
     if (assetCount > 0) {

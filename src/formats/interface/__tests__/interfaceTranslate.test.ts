@@ -1,6 +1,6 @@
 import {
-  interfaceTranslateArchivePath,
-  interfaceTranslateExportSlot,
+  interfaceTranslateArchivePathForSlot,
+  interfaceTranslateExportSlots,
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,
   parseInterfaceTranslateBuffer,
@@ -24,9 +24,10 @@ describe('interfaceTranslate', () => {
     expect(interfaceTranslateLocaleFromPath('MCM_en.txt')).toBeNull();
   });
 
-  it('maps Ukrainian exports to Translate_en.txt for FO4', () => {
-    expect(interfaceTranslateExportSlot('uk', 'fo4')).toBe('en');
-    expect(interfaceTranslateArchivePath('uk', 'fo4')).toBe('Interface\\Translate_en.txt');
+  it('maps unofficial FO4 targets to en and ru Translate files', () => {
+    expect(interfaceTranslateExportSlots('uk', 'fo4')).toEqual(['en', 'ru']);
+    expect(interfaceTranslateArchivePathForSlot('en')).toBe('Interface\\Translate_en.txt');
+    expect(interfaceTranslateArchivePathForSlot('ru')).toBe('Interface\\Translate_ru.txt');
   });
 
   it('extracts UI keys from record paths', () => {

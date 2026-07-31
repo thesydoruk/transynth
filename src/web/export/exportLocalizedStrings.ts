@@ -2,6 +2,7 @@ import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { patchStringsMap } from '../../formats/esp';
 import { writeStringsBuffer } from '../../formats/strings';
+import { exportLocaleSlots } from '../../locale/exportSlots';
 import type { ExportedStringsFile } from './exportTypes';
 import { loadSourceStringsFiles } from './sourceStringsLoader';
 import { getTranslationOverlaysByType } from './translationOverlay';
@@ -41,14 +42,21 @@ export const exportLocalizedStringsFiles = async (
     throw new Error(`No localized string IDs found for mod ${modId} and locale ${srcLang}`);
   }
 
-  return sourceFiles.map((sourceFile) => {
+  const slots = exportLocaleSlots(targetLang, game);
+  const exported: ExportedStringsFile[] = [];
+
+  for (const sourceFile of sourceFiles) {
     const overlay = overlays.get(sourceFile.type) ?? new Map();
     const patched = patchStringsMap(sourceFile.sourceMap, overlay);
     const buf = writeStringsBuffer(patched, sourceFile.type);
-    return {
-      fileName: `${sourceFile.nameStem}_${targetLang.toLowerCase()}.${sourceFile.type}`,
-      size: buf.length,
-      contentBase64: buf.toString('base64'),
-    };
-  });
+    for (const slot of slots) {
+      exported.push({
+        fileName: `${sourceFile.nameStem}_${slot}.${sourceFile.type}`,
+        size: buf.length,
+        contentBase64: buf.toString('base64'),
+      });
+    }
+  }
+
+  return exported;
 };

@@ -16,6 +16,7 @@
     "tools:install": "tsx scripts/installTools.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
+    "backfill:interface": "tsx scripts/backfillInterfaceTranslate.ts",
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:rebuild-loudness": "tsx scripts/rebuildVoiceLoudness.ts",
     "voice:fix-orphan-refs": "tsx scripts/regenerateOrphanReferenceVoice.ts",

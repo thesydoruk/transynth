@@ -29,7 +29,16 @@ const makeDb = (): Tx =>
         };
       }
       if (sql.includes('s.lstring_id IS NOT NULL')) {
-        return { rows: [{ lstring_id: 1, export_text: 'Привіт' }] };
+        return {
+          rows: [
+            {
+              lstring_id: 1,
+              signature: 'MESG',
+              path: 'MESG\\FULL',
+              export_text: 'Привіт',
+            },
+          ],
+        };
       }
       return { rows: [] };
     },
@@ -71,10 +80,12 @@ describe('stageFullLocalizedMod', () => {
       fs.writeFileSync(ba2Path, ba2File!.data);
       const reader = new Ba2Reader(ba2Path);
       try {
-        const stringsBuf = reader.extractByName('Strings\\Demo_uk.STRINGS');
+        const stringsBuf = reader.extractByName('Strings\\Demo_en.STRINGS');
         expect(stringsBuf).toBeDefined();
         const parsed = parseStringsBuffer(stringsBuf!, 'STRINGS');
         expect(parsed.get(1)).toBe('Привіт');
+        expect(reader.extractByName('Strings\\Demo_ru.STRINGS')).toEqual(stringsBuf);
+        expect(reader.extractByName('Strings\\Demo_uk.STRINGS')).toBeNull();
         expect(reader.extractByName('Meshes\\Armor.nif')).toEqual(meshesBuf);
       } finally {
         reader.close();

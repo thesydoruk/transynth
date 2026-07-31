@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { Tx } from '../../../db';
 import {
-  interfaceTranslateArchivePath,
+  interfaceTranslateArchivePathForSlot,
   writeInterfaceTranslateBuffer,
 } from '../../../formats/interface';
 import { exportInterfaceTranslateFile } from '../exportInterfacePatch';
@@ -25,7 +25,7 @@ describe('exportInterfaceTranslateFile', () => {
     if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('writes changed Translate_en.txt entries for FO4 Ukrainian export', async () => {
+  it('writes changed Translate files for en and ru when exporting Ukrainian FO4 UI', async () => {
     const modPath = path.join(tmpDir, 'Fallout4.esm');
     fs.writeFileSync(modPath, Buffer.from('plugin'));
     fs.mkdirSync(path.join(tmpDir, 'Interface'), { recursive: true });
@@ -40,10 +40,14 @@ describe('exportInterfaceTranslateFile', () => {
     const db = makeOverlayDb([{ path: 'Interface\\Translate_en\\$10 Mins', export_text: '10 хв' }]);
     const result = await exportInterfaceTranslateFile(db, 1, modPath, 'en', 'uk', 'fo4');
 
-    expect(result?.archivePath).toBe(interfaceTranslateArchivePath('uk', 'fo4'));
-    expect(result?.changedCount).toBe(1);
-    const text = result!.buffer.toString('utf16le');
+    expect(result?.map((file) => file.archivePath)).toEqual([
+      interfaceTranslateArchivePathForSlot('en'),
+      interfaceTranslateArchivePathForSlot('ru'),
+    ]);
+    expect(result?.[0]?.changedCount).toBe(1);
+    const text = result![0]!.buffer.toString('utf16le');
     expect(text).toContain('10 хв');
     expect(text).toContain('ABORT');
+    expect(result![0]!.buffer.equals(result![1]!.buffer)).toBe(true);
   });
 });

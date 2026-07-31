@@ -1,6 +1,8 @@
 export {
   interfaceTranslateArchivePath,
+  interfaceTranslateArchivePathForSlot,
   interfaceTranslateExportSlot,
+  interfaceTranslateExportSlots,
   interfaceTranslateFileName,
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,

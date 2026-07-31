@@ -1,6 +1,19 @@
 import type { GameType } from '../../types';
 import { parseMcmBuffer } from '../mcm/mcmTranslations';
 import type { InterfaceTranslateEntry } from './types/InterfaceTranslateEntry';
+import {
+  interfaceTranslateArchivePathForSlot,
+  interfaceTranslateExportSlot,
+  interfaceTranslateExportSlots,
+  interfaceTranslateFileName,
+} from './interfaceTranslateSlots';
+
+export {
+  interfaceTranslateArchivePathForSlot,
+  interfaceTranslateExportSlot,
+  interfaceTranslateExportSlots,
+  interfaceTranslateFileName,
+};
 
 const UTF16_LE_BOM = Buffer.from([0xff, 0xfe]);
 
@@ -18,21 +31,9 @@ export const interfaceTranslateLocaleFromPath = (filePath: string): string | nul
 export const isInterfaceTranslatePath = (filePath: string): boolean =>
   interfaceTranslateLocaleFromPath(filePath) != null;
 
-/**
- * Fallout 4/76 Ukrainian releases ship UI text in `Translate_en.txt`
- * while the game language stays English.
- */
-export const interfaceTranslateExportSlot = (targetLang: string, game: GameType): string => {
-  const lang = targetLang.trim().toLowerCase();
-  if ((game === 'fo4' || game === 'fo76') && lang === 'uk') return 'en';
-  return lang;
-};
-
-export const interfaceTranslateFileName = (targetLang: string, game: GameType): string =>
-  `Translate_${interfaceTranslateExportSlot(targetLang, game)}.txt`;
-
+/** @deprecated Use {@link interfaceTranslateArchivePathForSlot} with {@link interfaceTranslateExportSlots}. */
 export const interfaceTranslateArchivePath = (targetLang: string, game: GameType): string =>
-  `Interface\\${interfaceTranslateFileName(targetLang, game)}`;
+  interfaceTranslateArchivePathForSlot(interfaceTranslateExportSlot(targetLang, game));
 
 /** Record path prefix for imported Interface translate keys. */
 export const interfaceTranslateRecordPrefix = (sourceLocale: string): string =>

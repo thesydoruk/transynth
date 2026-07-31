@@ -8,6 +8,7 @@ import { patchStringsMap } from '../../formats/esp';
 import { patchPexBuffer, collectModPexSources } from '../../formats/pex';
 import { writeStringsBuffer } from '../../formats/strings';
 import { log } from '../../logger';
+import { exportLocaleSlots } from '../../locale/exportSlots';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
 import { exportGameArchives } from './exportArchives';
 import { exportPatchedEsp } from './exportEsp';
@@ -70,15 +71,18 @@ export const exportLangpackZip = async (
   try {
     const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
     const overlays = await getTranslationOverlaysByType(db, modId, srcLang, targetLang, game);
+    const slots = exportLocaleSlots(targetLang, game);
     let stringsCount = 0;
     for (const sourceFile of sourceFiles) {
       const overlay = overlays.get(sourceFile.type) ?? new Map();
       if (!hasTranslationOverlayChanges(sourceFile.sourceMap, overlay)) continue;
       const patched = patchStringsMap(sourceFile.sourceMap, overlay);
       const buf = writeStringsBuffer(patched, sourceFile.type);
-      const fileName = `${sourceFile.nameStem}_${targetLang.toLowerCase()}.${sourceFile.type}`;
-      files.push({ name: `Strings/${fileName}`, data: buf });
-      stringsCount++;
+      for (const slot of slots) {
+        const fileName = `${sourceFile.nameStem}_${slot}.${sourceFile.type}`;
+        files.push({ name: `Strings/${fileName}`, data: buf });
+        stringsCount++;
+      }
     }
     if (stringsCount > 0) {
       log.info(
