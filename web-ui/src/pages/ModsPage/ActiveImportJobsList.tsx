@@ -4,7 +4,7 @@ import type { LiveProgress } from './modsShared';
 import type { UnifiedJob } from './modsPageTypes';
 
 type ExportAction = {
-  key: 'langpack' | 'fullMod';
+  key: 'langpack' | 'interface' | 'fullMod';
   icon: string;
   title: string;
   disabled?: boolean;

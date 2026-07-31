@@ -13,7 +13,7 @@ import type { PendingModUpload, UnifiedJob } from './modsPageTypes';
 import s from './ModsPage.module.scss';
 
 type ExportAction = {
-  key: 'langpack' | 'fullMod';
+  key: 'langpack' | 'interface' | 'fullMod';
   icon: string;
   title: string;
   disabled?: boolean;

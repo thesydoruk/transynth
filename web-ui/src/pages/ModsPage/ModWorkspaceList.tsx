@@ -11,7 +11,7 @@ import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGende
 import { ModWorkspaceRow } from './ModWorkspaceRow';
 
 type ExportAction = {
-  key: 'langpack' | 'fullMod';
+  key: 'langpack' | 'interface' | 'fullMod';
   icon: string;
   title: string;
   disabled?: boolean;
