@@ -90,9 +90,10 @@ differs.
 
 Because numbers are replaced during normalisation, two strings whose only
 difference is numeric values share the same `text_norm` and therefore match.
-Auto-apply reuses the existing translation verbatim; it does **not** transplant
-the changed numbers (that approximate behaviour now lives only in the
-RAG Examples tab).
+Auto-apply then **transplants numbers** from the current source into the matched
+translation (`numeric` method, confidence `0.72`). If transplant is unsafe
+(different number counts, or numbers missing from the translation), the match
+is skipped instead of copying the wrong numbers.
 
 ---
 
@@ -168,7 +169,8 @@ translations for the same string — only the latest save is kept.
 Because multiple strings can share the same `text_norm`, saving one string's
 translation can automatically propagate to all other strings with the same
 normalized source text that do not yet have a `draft`, `reviewed`, or `human`
-translation. This propagation assigns status **`tm`** to the filled strings.
+translation. Numeric-only differences transplant numbers into the propagated
+text; unsafe candidates are skipped. This propagation assigns status **`tm`**.
 
 **CSV imports** use the same `upsertTranslation` path, so they respect the
 same one-per-string rule and also trigger propagation.

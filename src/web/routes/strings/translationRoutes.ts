@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
-import { upsertTranslation, deleteTranslation, getStringTextNorm } from '../../data/queries';
+import { upsertTranslation, deleteTranslation, getStringPropagationKeys } from '../../data/queries';
 import { getAllProjectSettings } from '../../services/projectSettings';
 import { propagateTranslation } from '../../services/tm';
 import { CONFIG } from '../../../config';
@@ -51,9 +51,9 @@ export const registerTranslationRoutes = async (app: FastifyInstance, db: Tx) =>
 
     // Propagate to all strings with the same normalised source text (unless disabled).
     if (projectSettings['workflow.propagate_to_identical']) {
-      const textNorm = await getStringTextNorm(db, stringId);
-      if (textNorm) {
-        await propagateTranslation(db, textNorm, text, targetLang, stringId);
+      const keys = await getStringPropagationKeys(db, stringId);
+      if (keys) {
+        await propagateTranslation(db, keys.textNorm, keys.textRaw, text, targetLang, stringId);
       }
     }
 

@@ -10,11 +10,13 @@ import {
   bulkRecordTranslationRevisions,
   tmRevisionNoteForProvenance,
 } from '../data/translationRevisions';
+import { adaptTmTranslation } from './tmAdapt';
 
-export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm';
+export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric';
 
 export type TmUntranslatedRow = {
   id: number;
+  text_raw: string;
   text_norm: string;
   formid_hex: string | null;
   path: string;
@@ -42,6 +44,7 @@ const METHOD_META: Record<TmMatchMethod, { rank: number; confidence: number; pro
     anchor: { rank: 1, confidence: 0.95, provenance: 'tm_auto_anchor' },
     edid: { rank: 2, confidence: 0.85, provenance: 'tm_auto_edid' },
     text_norm: { rank: 3, confidence: 0.75, provenance: 'tm_auto_text_norm' },
+    numeric: { rank: 4, confidence: 0.72, provenance: 'tm_auto_numeric' },
   };
 
 export const tmProvenanceForMethod = (method: TmMatchMethod): string =>
@@ -56,9 +59,19 @@ const chunk = <T>(items: T[], size: number): T[][] => {
   return out;
 };
 
+const emptyByMethod = (): Record<TmMatchMethod, number> => ({
+  anchor: 0,
+  edid: 0,
+  text_norm: 0,
+  numeric: 0,
+});
+
 /**
  * Find best TM match per untranslated string using anchor → edid → text_norm priority.
  * One SQL round-trip per batch (replaces up to 3×N per-row lookups).
+ *
+ * When the matched source differs from the target only by numbers, the translation
+ * is adapted via number transplant. Unsafe adaptations are skipped.
  */
 export const bulkFindTmMatches = async (
   db: Tx,
@@ -74,22 +87,26 @@ export const bulkFindTmMatches = async (
   const paths = rows.map((r) => r.path);
   const edids = rows.map((r) => r.edid ?? '');
   const textNorms = rows.map((r) => r.text_norm);
+  const textRaws = rows.map((r) => r.text_raw);
+  const targetById = new Map(rows.map((r) => [r.id, r]));
 
   const { rows: matchRows } = await db.query<{
     target_id: number;
     text: string;
-    method: TmMatchMethod;
+    match_source: string;
+    method: 'anchor' | 'edid' | 'text_norm';
   }>(
     `WITH targets AS (
        SELECT *
-       FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[])
-         AS u(id, formid_hex, path, edid, text_norm)
+       FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
+         AS u(id, formid_hex, path, edid, text_norm, text_raw)
      ),
      candidates AS (
-       SELECT t.id AS target_id, tr.text, 1 AS method_rank,
+       SELECT t.id AS target_id, tr.text, s.text_raw AS match_source, 1 AS method_rank,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
-           ORDER BY ${TM_TRANSLATION_STATUS_ORDER},
+           ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
+                    ${TM_TRANSLATION_STATUS_ORDER},
                     COALESCE(tr.confidence, 0) DESC,
                     tr.updated_at DESC
          ) AS rn
@@ -97,46 +114,49 @@ export const bulkFindTmMatches = async (
        JOIN records r
          ON r.formid_hex = t.formid_hex
         AND r.path = t.path
-        AND r.mod_id != $6
-       JOIN strings s ON s.record_id = r.id AND s.lang = $8
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $7
+        AND r.mod_id != $7
+       JOIN strings s ON s.record_id = r.id AND s.lang = $9
+       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
        WHERE NULLIF(t.formid_hex, '') IS NOT NULL
 
        UNION ALL
 
-       SELECT t.id, tr.text, 2,
+       SELECT t.id, tr.text, s.text_raw, 2,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
-           ORDER BY ${TM_TRANSLATION_STATUS_ORDER},
+           ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
+                    ${TM_TRANSLATION_STATUS_ORDER},
                     COALESCE(tr.confidence, 0) DESC,
                     tr.updated_at DESC
          ) AS rn
        FROM targets t
-       JOIN records r ON r.edid = t.edid AND r.mod_id != $6
-       JOIN strings s ON s.record_id = r.id AND s.lang = $8
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $7
+       JOIN records r ON r.edid = t.edid AND r.mod_id != $7
+       JOIN strings s ON s.record_id = r.id AND s.lang = $9
+       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
        WHERE NULLIF(t.edid, '') IS NOT NULL
 
        UNION ALL
 
-       SELECT t.id, tr.text, 3,
+       SELECT t.id, tr.text, s.text_raw, 3,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
-           ORDER BY ${TM_TRANSLATION_STATUS_ORDER},
+           ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
+                    ${TM_TRANSLATION_STATUS_ORDER},
                     COALESCE(tr.confidence, 0) DESC,
                     tr.updated_at DESC
          ) AS rn
        FROM targets t
-       JOIN strings s ON s.text_norm = t.text_norm AND s.lang = $8
-       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $7
+       JOIN strings s ON s.text_norm = t.text_norm AND s.lang = $9
+       JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
+       WHERE NULLIF(t.text_norm, '') IS NOT NULL
      ),
      best_per_method AS (
-       SELECT target_id, text, method_rank
+       SELECT target_id, text, match_source, method_rank
        FROM candidates
        WHERE rn = 1
      )
      SELECT DISTINCT ON (b.target_id)
-       b.target_id, b.text,
+       b.target_id, b.text, b.match_source,
        CASE b.method_rank
          WHEN 1 THEN 'anchor'
          WHEN 2 THEN 'edid'
@@ -144,18 +164,28 @@ export const bulkFindTmMatches = async (
        END AS method
      FROM best_per_method b
      ORDER BY b.target_id, b.method_rank`,
-    [ids, formIds, paths, edids, textNorms, modId, targetLang, srcLang],
+    [ids, formIds, paths, edids, textNorms, textRaws, modId, targetLang, srcLang],
   );
 
-  return matchRows.map((row) => {
-    const method = row.method;
-    return {
+  const adapted: TmBulkMatch[] = [];
+  for (const row of matchRows) {
+    const target = targetById.get(row.target_id);
+    if (!target) continue;
+
+    const text = adaptTmTranslation(row.text, row.match_source, target.text_raw);
+    if (text === null) continue;
+
+    const method: TmMatchMethod =
+      row.method === 'text_norm' && row.match_source !== target.text_raw ? 'numeric' : row.method;
+
+    adapted.push({
       stringId: row.target_id,
-      text: row.text,
+      text,
       method,
       confidence: tmConfidenceForMethod(method),
-    };
-  });
+    });
+  }
+  return adapted;
 };
 
 export type TmBulkWriteRow = {
@@ -227,7 +257,7 @@ export const bulkApplyTmBatch = async (
   targetLang: string,
   srcLang: string,
 ): Promise<{ applied: number; byMethod: Record<TmMatchMethod, number> }> => {
-  const byMethod: Record<TmMatchMethod, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  const byMethod = emptyByMethod();
   if (rows.length === 0) return { applied: 0, byMethod };
 
   const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang);

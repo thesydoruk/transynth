@@ -6,11 +6,11 @@
  * This module provides two related features:
  * - **TM auto-apply**: populate missing translations for a mod by searching the
  *   existing database for exact/anchor matches (formid+path, EDID, or identical
- *   normalised source text). Approximate heuristics were removed in favour of
- *   the LLM + RAG pipeline; TM now only does lossless reuse of identical text.
+ *   normalised source text). Numeric-only source differences reuse a match via
+ *   number transplant; unsafe adaptations are skipped.
  * - **Propagation**: when a user saves a translation for one string, optionally
  *   copy it to other strings with the same normalised source text that do not
- *   yet have a strong manual translation.
+ *   yet have a strong manual translation (with number transplant when needed).
  *
  * The TM logic intentionally prefers high-quality translations first (reviewed
  * > human > tm > auto > draft) and records provenance for auditability.
@@ -24,9 +24,11 @@ import { mapWithConcurrency } from '../../utils/concurrency';
 import {
   bulkApplyTmBatch,
   bulkUpsertTmTranslations,
+  type TmBulkWriteRow,
   type TmMatchMethod,
   type TmUntranslatedRow,
 } from './tmBulk';
+import { adaptTmTranslation } from './tmAdapt';
 
 // ── TM Auto-apply ─────────────────────────────────────────────────────────────
 
@@ -63,7 +65,7 @@ const fetchUntranslatedChunk = async (
   afterStringId: number,
 ): Promise<TmUntranslatedRow[]> => {
   const { rows } = await db.query<TmUntranslatedRow>(
-    `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
+    `SELECT s.id, s.text_raw, s.text_norm, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE ${untranslatedWhereSql}
@@ -90,7 +92,7 @@ const mergeByMethod = (
   target: Record<TmMatchMethod, number>,
   partial: Record<TmMatchMethod, number>,
 ): void => {
-  for (const method of ['anchor', 'edid', 'text_norm'] as const) {
+  for (const method of ['anchor', 'edid', 'text_norm', 'numeric'] as const) {
     target[method] += partial[method] ?? 0;
   }
 };
@@ -161,7 +163,12 @@ export const applyTMToMod = async (
 
   let applied = 0;
   let processed = 0;
-  const byMethod: Record<TmMatchMethod, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  const byMethod: Record<TmMatchMethod, number> = {
+    anchor: 0,
+    edid: 0,
+    text_norm: 0,
+    numeric: 0,
+  };
   let afterStringId = 0;
 
   while (true) {
@@ -216,11 +223,15 @@ export const applyTMToStringIds = async (
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{ applied: number; skipped: number; byMethod: Record<TmMatchMethod, number> }> => {
   if (stringIds.length === 0) {
-    return { applied: 0, skipped: 0, byMethod: { anchor: 0, edid: 0, text_norm: 0 } };
+    return {
+      applied: 0,
+      skipped: 0,
+      byMethod: { anchor: 0, edid: 0, text_norm: 0, numeric: 0 },
+    };
   }
 
   const { rows } = await db.query<TmUntranslatedRow>(
-    `SELECT s.id, s.text_norm, r.formid_hex, r.path, r.edid
+    `SELECT s.id, s.text_raw, s.text_norm, r.formid_hex, r.path, r.edid
      FROM strings s
      JOIN records r ON s.record_id = r.id
      WHERE s.id = ANY($1::int[])
@@ -234,7 +245,12 @@ export const applyTMToStringIds = async (
     [stringIds, modId, targetLang, srcLang],
   );
 
-  const byMethod: Record<TmMatchMethod, number> = { anchor: 0, edid: 0, text_norm: 0 };
+  const byMethod: Record<TmMatchMethod, number> = {
+    anchor: 0,
+    edid: 0,
+    text_norm: 0,
+    numeric: 0,
+  };
   const workers = CONFIG.tmApplyWorkers;
   let applied = 0;
 
@@ -251,18 +267,20 @@ export const applyTMToStringIds = async (
 /**
  * Propagate a newly saved translation to other strings with the same `text_norm`.
  *
- * Uses bulk upsert when multiple candidates match (no per-row QA/RAG during propagation).
+ * Exact source copies reuse the translation as-is; numeric-only differences
+ * transplant numbers. Candidates that cannot be adapted safely are skipped.
  */
 export const propagateTranslation = async (
   db: Tx,
   textNorm: string,
+  sourceText: string,
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<number> => {
-  const { rows: candidates } = await db.query<{ id: number }>(
-    `SELECT s.id FROM strings s
+  const { rows: candidates } = await db.query<{ id: number; text_raw: string }>(
+    `SELECT s.id, s.text_raw FROM strings s
      WHERE s.text_norm = $1 AND s.lang = $4 AND s.id != $2
        AND s.is_ignored = FALSE
        AND NOT EXISTS (
@@ -272,19 +290,26 @@ export const propagateTranslation = async (
     [textNorm, excludeStringId, targetLang, srcLang],
   );
 
-  if (candidates.length === 0) return 0;
-  log.info(`TM propagation: ${candidates.length} candidates for text_norm propagation`);
+  const writeRows: TmBulkWriteRow[] = [];
+  for (const candidate of candidates) {
+    const text = adaptTmTranslation(translatedText, sourceText, candidate.text_raw);
+    if (text === null) continue;
+    writeRows.push({
+      stringId: candidate.id,
+      text,
+      provenance: 'propagation',
+      confidence: 1.0,
+    });
+  }
 
-  const writeRows = candidates.map((c) => ({
-    stringId: c.id,
-    text: translatedText,
-    provenance: 'propagation',
-    confidence: 1.0,
-  }));
+  if (writeRows.length === 0) return 0;
+  log.info(
+    `TM propagation: ${writeRows.length}/${candidates.length} candidates adapted for text_norm propagation`,
+  );
 
   await withTransaction(db as pg.Pool, async (client) => {
     await bulkUpsertTmTranslations(client, writeRows, targetLang);
   });
 
-  return candidates.length;
+  return writeRows.length;
 };

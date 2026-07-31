@@ -47,10 +47,24 @@ export const getRagSuggestions = async (
   }
 };
 
-// Returns text_norm for a string ID (used by propagation)
-export const getStringTextNorm = async (db: Tx, stringId: number): Promise<string | null> => {
-  const { rows } = await db.query(`SELECT text_norm FROM strings WHERE id = $1`, [stringId]);
-  return rows[0]?.text_norm ?? null;
+/** Source keys used when propagating a saved translation to text_norm siblings. */
+export type StringPropagationKeys = {
+  textRaw: string;
+  textNorm: string;
+};
+
+// Returns text_raw + text_norm for a string ID (used by propagation)
+export const getStringPropagationKeys = async (
+  db: Tx,
+  stringId: number,
+): Promise<StringPropagationKeys | null> => {
+  const { rows } = await db.query<{ text_raw: string; text_norm: string | null }>(
+    `SELECT text_raw, text_norm FROM strings WHERE id = $1`,
+    [stringId],
+  );
+  const row = rows[0];
+  if (!row?.text_norm) return null;
+  return { textRaw: row.text_raw, textNorm: row.text_norm };
 };
 
 export const getTranslationHistory = async (

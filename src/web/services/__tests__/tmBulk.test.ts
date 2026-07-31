@@ -5,6 +5,7 @@ describe('tmProvenanceForMethod', () => {
     expect(tmProvenanceForMethod('anchor')).toBe('tm_auto_anchor');
     expect(tmProvenanceForMethod('edid')).toBe('tm_auto_edid');
     expect(tmProvenanceForMethod('text_norm')).toBe('tm_auto_text_norm');
+    expect(tmProvenanceForMethod('numeric')).toBe('tm_auto_numeric');
   });
 });
 
@@ -13,5 +14,6 @@ describe('tmConfidenceForMethod', () => {
     expect(tmConfidenceForMethod('anchor')).toBe(0.95);
     expect(tmConfidenceForMethod('edid')).toBe(0.85);
     expect(tmConfidenceForMethod('text_norm')).toBe(0.75);
+    expect(tmConfidenceForMethod('numeric')).toBe(0.72);
   });
 });
