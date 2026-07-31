@@ -8,18 +8,13 @@ import rowS from '../UnifiedJobRow/UnifiedJobRow.module.scss';
 import { ModDataMenuItems } from '../ModDataMenuItems';
 import { ModAiControls } from '../../../components/ModAiControls';
 import { useModAiJobsForMod } from '../../../hooks/useModAiJobsForMod';
+import type { ModExportAction } from '../modsShared';
 import s from './ModWorkspaceRow.module.scss';
 
 export interface ModWorkspaceRowProps {
   mod: Mod;
   importJob?: ModImportJob | null;
-  exportActions: Array<{
-    key: 'langpack' | 'fullMod';
-    icon: string;
-    title: string;
-    disabled?: boolean;
-    onClick: () => void;
-  }>;
+  exportActions: ModExportAction[];
   clearingRows?: boolean;
   deletingAll?: boolean;
   selected?: boolean;

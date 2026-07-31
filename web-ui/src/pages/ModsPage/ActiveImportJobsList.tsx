@@ -1,15 +1,7 @@
 import { api, type ModImportJob } from '../../api';
 import { UnifiedJobRow } from './UnifiedJobRow';
-import type { LiveProgress } from './modsShared';
+import type { LiveProgress, ModExportAction } from './modsShared';
 import type { UnifiedJob } from './modsPageTypes';
-
-type ExportAction = {
-  key: 'langpack' | 'interface' | 'fullMod';
-  icon: string;
-  title: string;
-  disabled?: boolean;
-  onClick: () => void;
-};
 
 type ActiveImportJobsListProps = {
   jobs: UnifiedJob[];
@@ -25,7 +17,7 @@ type ActiveImportJobsListProps = {
     exportSrcLang: string,
     exportTgtLang: string,
     busyPrefix: string,
-  ) => ExportAction[];
+  ) => ModExportAction[];
   onStart: (job: UnifiedJob) => void;
   onDeleteModJob: (job: ModImportJob) => void;
   onDeleteSimpleJob: (kind: 'eet' | 'csv', name: string, id: number) => void;

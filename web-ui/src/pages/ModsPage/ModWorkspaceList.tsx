@@ -9,14 +9,7 @@ import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
-
-type ExportAction = {
-  key: 'langpack' | 'interface' | 'fullMod';
-  icon: string;
-  title: string;
-  disabled?: boolean;
-  onClick: () => void;
-};
+import type { ModExportAction } from './modsShared';
 
 type ModWorkspaceListProps = {
   mods: Mod[];
@@ -33,7 +26,7 @@ type ModWorkspaceListProps = {
     exportSrcLang: string,
     exportTgtLang: string,
     busyPrefix: string,
-  ) => ExportAction[];
+  ) => ModExportAction[];
   selectedModsForDelete: () => Array<{ id: number; name: string }>;
   onOpenMod: (modId: number) => void;
   onOpenAiPanel: (modId: number) => void;

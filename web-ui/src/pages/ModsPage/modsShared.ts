@@ -4,6 +4,14 @@ import { getContentLanguageOptions } from '../../langDefaults';
 /** Live SSE progress for a running import. */
 export type LiveProgress = { imported: number; total: number };
 
+export type ModExportAction = {
+  key: 'langpack' | 'interface' | 'fullMod';
+  icon: string;
+  title: string;
+  disabled?: boolean;
+  onClick: () => void;
+};
+
 /** Minimal import job fields shared by EET / CSV / mod list rows. */
 export type ImportJobLike = {
   status: string;
@@ -131,13 +139,7 @@ export interface UnifiedJobRowProps {
   job: EetImportJob | CsvImportJob | ModImportJob;
   live?: LiveProgress;
   isRunning: boolean;
-  exportActions?: Array<{
-    key: 'langpack' | 'fullMod';
-    icon: string;
-    title: string;
-    disabled?: boolean;
-    onClick: () => void;
-  }>;
+  exportActions?: ModExportAction[];
   modDataMenu?: {
     clearingRows?: boolean;
     deletingAll?: boolean;

@@ -8,17 +8,9 @@ import { LlmJobRow } from './LlmJobRow';
 import { ModListHeader } from './ModListHeader';
 import { ActiveImportJobsList } from './ActiveImportJobsList';
 import { ModWorkspaceList } from './ModWorkspaceList';
-import type { LiveProgress } from './modsShared';
 import type { PendingModUpload, UnifiedJob } from './modsPageTypes';
+import type { LiveProgress, ModExportAction } from './modsShared';
 import s from './ModsPage.module.scss';
-
-type ExportAction = {
-  key: 'langpack' | 'interface' | 'fullMod';
-  icon: string;
-  title: string;
-  disabled?: boolean;
-  onClick: () => void;
-};
 
 type ModsPageJobListProps = {
   pendingModUploads: PendingModUpload[];
@@ -47,7 +39,7 @@ type ModsPageJobListProps = {
     exportSrcLang: string,
     exportTgtLang: string,
     busyPrefix: string,
-  ) => ExportAction[];
+  ) => ModExportAction[];
   selectedModsForDelete: () => Array<{ id: number; name: string }>;
   onToggleSelectAll: () => void;
   onClearSelection: () => void;
