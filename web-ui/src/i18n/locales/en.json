@@ -804,7 +804,7 @@
   },
   "coherence": {
     "title": "Translation Consistency",
-    "description": "Sometimes the same source text is translated differently across mods or string records. This page lists all such inconsistencies and lets you resolve them with a single click.",
+    "description": "The same source text within one record signature is sometimes translated differently. UI and dialog lines are compared separately. Resolve inconsistencies here with one click.",
     "targetLang": "Language",
     "totalGroups": "{{count}} inconsistency groups",
     "loading": "Loading…",

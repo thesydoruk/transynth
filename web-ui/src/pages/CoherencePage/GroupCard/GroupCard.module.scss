@@ -42,6 +42,19 @@
   font-family: monospace;
 }
 
+/** Record signature (GRUP) scope for this conflict group. */
+.sigBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: monospace;
+}
+
 /** Pill badge showing the number of distinct translation variants. */
 .groupBadge {
   flex-shrink: 0;

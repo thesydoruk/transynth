@@ -10,11 +10,11 @@ import { upsertTranslation } from './translationsUpsert';
 /**
  * A single string entry within a coherence group.
  * Represents one source string whose translation differs from at least one
- * other string that shares the same exact source text.
+ * other string that shares the same exact source text and record signature.
  */
 export type CoherenceEntry = {
   string_id: number;
-  /** Exact source text — also the group key. */
+  /** Exact source text — part of the group key. */
   source_text: string;
   edid: string | null;
   signature: string;
@@ -30,12 +30,14 @@ export type CoherenceEntry = {
 };
 
 /**
- * A coherence group — all strings sharing the same exact source text
- * that are currently translated inconsistently.
+ * A coherence group — strings sharing the same exact source text and
+ * record signature that are currently translated inconsistently.
  */
 export type CoherenceGroup = {
   /** Exact source text that identifies this group. */
   source_text: string;
+  /** Record signature (GRUP) scoped with source_text — e.g. INFO, UI, ARMO. */
+  signature: string;
   /** Number of distinct translation variants across all strings in this group. */
   variant_count: number;
   /** All string entries belonging to this group. */
@@ -63,12 +65,13 @@ const bestTranslationCte = `
     WHERE target_lang = $1
   )`;
 
+const groupKey = (sourceText: string, signature: string): string =>
+  `${sourceText}\0${signature}`;
+
 /**
  * Returns a paginated coherence report — groups of source strings that share
- * the same exact `text_raw` but have been translated inconsistently.
- *
- * Groups by exact source text (not `text_norm`) so numbers and placeholders
- * that differ in the raw string are not collapsed into false conflicts.
+ * the same exact `text_raw` and record `signature` but have inconsistent
+ * translations. UI vs dialog (and other GRUPs) are separate groups.
  */
 export const getCoherenceGroups = async (
   db: Tx,
@@ -81,12 +84,13 @@ export const getCoherenceGroups = async (
     `WITH ${bestTranslationCte}
      SELECT COUNT(*) AS n
      FROM (
-       SELECT s.text_raw
+       SELECT s.text_raw, COALESCE(r.signature, '') AS signature
        FROM   strings s
        JOIN   bt ON bt.src_string_id = s.id
+       JOIN   records r ON r.id = s.record_id
        WHERE  s.lang = $2
          AND  s.text_raw <> ''
-       GROUP  BY s.text_raw
+       GROUP  BY s.text_raw, COALESCE(r.signature, '')
        HAVING COUNT(DISTINCT bt.translation) > 1
      ) x`,
     [targetLang, srcLang],
@@ -97,18 +101,21 @@ export const getCoherenceGroups = async (
 
   const { rows: groupRows } = await db.query<{
     source_text: string;
+    signature: string;
     variant_count: string;
   }>(
     `WITH ${bestTranslationCte}
      SELECT s.text_raw                         AS source_text,
+            COALESCE(r.signature, '')          AS signature,
             COUNT(DISTINCT bt.translation)     AS variant_count
      FROM   strings s
      JOIN   bt ON bt.src_string_id = s.id
+     JOIN   records r ON r.id = s.record_id
      WHERE  s.lang = $2
        AND  s.text_raw <> ''
-     GROUP  BY s.text_raw
+     GROUP  BY s.text_raw, COALESCE(r.signature, '')
      HAVING COUNT(DISTINCT bt.translation) > 1
-     ORDER  BY variant_count DESC, s.text_raw
+     ORDER  BY variant_count DESC, s.text_raw, COALESCE(r.signature, '')
      LIMIT  $3 OFFSET $4`,
     [targetLang, srcLang, limit, offset],
   );
@@ -116,12 +123,13 @@ export const getCoherenceGroups = async (
   if (groupRows.length === 0) return { groups: [], total };
 
   const sourceTexts = groupRows.map((r) => r.source_text);
+  const signatures = groupRows.map((r) => r.signature);
   const { rows: entryRows } = await db.query<CoherenceEntry>(
     `WITH ${bestTranslationCte}
      SELECT s.id             AS string_id,
             s.text_raw       AS source_text,
             r.edid,
-            r.signature,
+            COALESCE(r.signature, '') AS signature,
             r.path_simplified,
             m.id             AS mod_id,
             m.name           AS mod_name,
@@ -133,45 +141,56 @@ export const getCoherenceGroups = async (
      JOIN   bt       ON bt.src_string_id = s.id
      JOIN   records  r ON r.id = s.record_id
      JOIN   mods     m ON m.id = r.mod_id
+     JOIN   UNNEST($3::text[], $4::text[]) AS g(source_text, signature)
+       ON   s.text_raw = g.source_text
+      AND   COALESCE(r.signature, '') = g.signature
      WHERE  s.lang = $2
-       AND  s.text_raw = ANY($3)
-     ORDER  BY s.text_raw, bt.translation, m.name`,
-    [targetLang, srcLang, sourceTexts],
+     ORDER  BY s.text_raw, COALESCE(r.signature, ''), bt.translation, m.name`,
+    [targetLang, srcLang, sourceTexts, signatures],
   );
 
   const groupMeta = new Map(
-    groupRows.map((r) => [r.source_text, Number(r.variant_count)]),
+    groupRows.map((r) => [
+      groupKey(r.source_text, r.signature),
+      { source_text: r.source_text, signature: r.signature, variant_count: Number(r.variant_count) },
+    ]),
   );
 
   const groupMap = new Map<string, CoherenceEntry[]>();
   for (const entry of entryRows) {
-    let list = groupMap.get(entry.source_text);
+    const key = groupKey(entry.source_text, entry.signature);
+    let list = groupMap.get(key);
     if (!list) {
       list = [];
-      groupMap.set(entry.source_text, list);
+      groupMap.set(key, list);
     }
     list.push(entry);
   }
 
   const groups: CoherenceGroup[] = groupRows
-    .filter((r) => groupMap.has(r.source_text))
-    .map((r) => ({
-      source_text: r.source_text,
-      variant_count: groupMeta.get(r.source_text) ?? 0,
-      entries: groupMap.get(r.source_text) ?? [],
-    }));
+    .map((r) => groupKey(r.source_text, r.signature))
+    .filter((key) => groupMap.has(key))
+    .map((key) => {
+      const meta = groupMeta.get(key)!;
+      return {
+        source_text: meta.source_text,
+        signature: meta.signature,
+        variant_count: meta.variant_count,
+        entries: groupMap.get(key) ?? [],
+      };
+    });
 
   return { groups, total };
 };
 
 /**
- * Resolves all inconsistencies within a coherence group by applying a single
- * chosen translation to every string that shares the exact source text and
- * currently carries a different translation.
+ * Resolves inconsistencies within one coherence group (same exact source text
+ * and record signature) by applying a chosen translation to differing strings.
  */
 export const resolveCoherenceGroup = async (
   db: Tx,
   sourceText: string,
+  signature: string,
   targetLang: string,
   chosenTranslation: string,
   srcLang = CONFIG.defaultSrcLang,
@@ -179,11 +198,13 @@ export const resolveCoherenceGroup = async (
   const { rows } = await db.query<{ string_id: number }>(
     `SELECT s.id AS string_id
      FROM   strings s
+     JOIN   records r ON r.id = s.record_id
      JOIN   translations t ON t.src_string_id = s.id AND t.target_lang = $1
-     WHERE  s.lang = $4
+     WHERE  s.lang = $5
        AND  s.text_raw = $2
-       AND  t.text <> $3`,
-    [targetLang, sourceText, chosenTranslation, srcLang],
+       AND  COALESCE(r.signature, '') = $3
+       AND  t.text <> $4`,
+    [targetLang, sourceText, signature, chosenTranslation, srcLang],
   );
 
   if (rows.length === 0) return { updated: 0 };
@@ -220,7 +241,11 @@ export const resolveAllCoherenceGroups = async (
 ): Promise<{ resolved: number; updated: number }> => {
   const statusWeight = `CASE status WHEN 'human' THEN 6 WHEN 'reviewed' THEN 5 WHEN 'tm' THEN 4 WHEN 'fuzzy' THEN 3 WHEN 'auto' THEN 2 ELSE 1 END`;
 
-  const { rows: winners } = await db.query<{ source_text: string; translation: string }>(
+  const { rows: winners } = await db.query<{
+    source_text: string;
+    signature: string;
+    translation: string;
+  }>(
     `WITH bt AS (
        SELECT
          src_string_id,
@@ -230,31 +255,35 @@ export const resolveAllCoherenceGroups = async (
        WHERE target_lang = $1
      ),
      group_variants AS (
-       SELECT s.text_raw         AS source_text,
+       SELECT s.text_raw                    AS source_text,
+              COALESCE(r.signature, '')     AS signature,
               bt.translation,
-              COUNT(*)::int      AS usage_count,
-              MAX(bt.quality)::int AS best_quality
+              COUNT(*)::int                 AS usage_count,
+              MAX(bt.quality)::int          AS best_quality
        FROM strings s
        JOIN bt ON bt.src_string_id = s.id
+       JOIN records r ON r.id = s.record_id
        WHERE s.lang = $2
          AND s.text_raw <> ''
-       GROUP BY s.text_raw, bt.translation
+       GROUP BY s.text_raw, COALESCE(r.signature, ''), bt.translation
      ),
      conflicted AS (
-       SELECT source_text
+       SELECT source_text, signature
        FROM group_variants
-       GROUP BY source_text
+       GROUP BY source_text, signature
        HAVING COUNT(DISTINCT translation) > 1
      ),
      page_winners AS (
-       SELECT DISTINCT ON (gv.source_text)
+       SELECT DISTINCT ON (gv.source_text, gv.signature)
          gv.source_text,
+         gv.signature,
          gv.translation
        FROM group_variants gv
-       JOIN conflicted c ON c.source_text = gv.source_text
-       ORDER BY gv.source_text, gv.usage_count DESC, gv.best_quality DESC, gv.translation
+       JOIN conflicted c
+         ON c.source_text = gv.source_text AND c.signature = gv.signature
+       ORDER BY gv.source_text, gv.signature, gv.usage_count DESC, gv.best_quality DESC, gv.translation
      )
-     SELECT source_text, translation FROM page_winners`,
+     SELECT source_text, signature, translation FROM page_winners`,
     [targetLang, srcLang],
   );
 
@@ -263,6 +292,7 @@ export const resolveAllCoherenceGroups = async (
     const result = await resolveCoherenceGroup(
       db,
       winner.source_text,
+      winner.signature,
       targetLang,
       winner.translation,
     );

@@ -63,10 +63,14 @@ export const refreshQAIssuesBatch = async (
     const { rows: duplicateRows } = await db.query<{ string_id: number; alt_text: string }>(
       `SELECT s1.id AS string_id, t2.text AS alt_text
        FROM strings s1
+       JOIN records r1 ON r1.id = s1.record_id
        JOIN translations t1 ON t1.src_string_id = s1.id AND t1.target_lang = $2
        JOIN strings s2
          ON s2.text_raw = s1.text_raw AND s2.lang = s1.lang AND s2.id <> s1.id
         AND s1.text_raw <> ''
+       JOIN records r2
+         ON r2.id = s2.record_id
+        AND COALESCE(r2.signature, '') = COALESCE(r1.signature, '')
        JOIN translations t2 ON t2.src_string_id = s2.id AND t2.target_lang = $2
        WHERE s1.id = ANY($1::int[])
          AND t2.text <> t1.text`,

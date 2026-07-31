@@ -19,12 +19,14 @@ export type CoherenceEntry = {
 };
 
 /**
- * A coherence group — all source strings sharing the same exact source text
- * that are currently translated inconsistently.
+ * A coherence group — source strings sharing the same exact source text and
+ * record signature that are currently translated inconsistently.
  */
 export type CoherenceGroup = {
   /** Exact source text that identifies this group. */
   source_text: string;
+  /** Record signature (GRUP) scoped with source_text — e.g. INFO, UI, ARMO. */
+  signature: string;
   /** Number of distinct translation variants in this group. */
   variant_count: number;
   entries: CoherenceEntry[];

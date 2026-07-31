@@ -16,12 +16,17 @@ export const coherenceEndpoints = {
   },
   /**
    * Resolves a coherence group by propagating a single chosen translation
-   * to all strings with the same exact source text that currently differ.
+   * to all strings with the same exact source text and record signature.
    */
-  resolve: (sourceText: string, translation: string, targetLang = getTgtLang()) =>
+  resolve: (
+    sourceText: string,
+    signature: string,
+    translation: string,
+    targetLang = getTgtLang(),
+  ) =>
     req<{ updated: number }>('/api/coherence/resolve', {
       method: 'POST',
-      body: JSON.stringify({ sourceText, translation, targetLang }),
+      body: JSON.stringify({ sourceText, signature, translation, targetLang }),
     }),
   /**
    * Auto-resolves all inconsistency groups for the target language in one pass.

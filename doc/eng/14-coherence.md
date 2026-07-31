@@ -17,8 +17,10 @@ in multiple different ways.
 
 ## What is Coherence?
 
-A translation is **coherent** when the same source phrase always produces
-the same translation throughout the mod (and ideally across all mods).
+A translation is **coherent** when the same source phrase within the same
+record signature always produces the same translation. The same wording on
+UI vs in dialogue may use different translations — that is not treated as an
+inconsistency.
 
 Incoherence looks like:
 
@@ -43,10 +45,10 @@ If no inconsistency groups are found, the page provides direct actions instead o
 
 ## Reading the Results
 
-The coherence checker lists **exact source strings (`text_raw`) that have more
-than one distinct translation** across the database. Strings that differ only
-by numbers or placeholders are treated as separate groups (they are not
-collapsed via `text_norm`).
+The coherence checker lists **`(text_raw, signature)` pairs that have more
+than one distinct translation**. UI and dialog lines (different GRUPs) are
+not merged into one group. Strings that differ only by numbers or placeholders
+are treated as separate groups (they are not collapsed via `text_norm`).
 
 Use the **Language** dropdown at the top to select which target language to
 check. The page reloads automatically on language change.
@@ -57,6 +59,7 @@ source strings appear first.
 
 Each card header shows:
 
+- A **signature** badge (GRUP), e.g. `INFO` or `UI`
 - The **source text** of the conflicting string
 - A badge indicating **how many distinct translations** exist for it
   (e.g. `2 variants`)
@@ -82,7 +85,7 @@ Click the header to expand the group. Inside you will see one
 4. Click **Apply to All** on the desired variant.
 
 The **Apply to All** action calls `POST /api/coherence/resolve` with the
-chosen `translation` and the group's exact `sourceText` key. The server updates
+chosen `translation` and the group's `sourceText` + `signature` keys. The server updates
 every string in that group that uses a _different_ translation —
 strings that already use the chosen variant are left untouched. The
 mutation is applied with the best-quality-available status for each

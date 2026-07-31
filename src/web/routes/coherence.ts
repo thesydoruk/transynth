@@ -11,15 +11,10 @@ import { CONFIG } from '../../config';
 /**
  * Coherence-checking routes.
  *
- * "Coherence" means that all source strings with the same exact text should be
- * translated the same way everywhere. These endpoints expose a paginated
- * report of inconsistencies and an action to resolve them.
- *
- * Routes:
- *   GET  /api/coherence           — paginated list of inconsistency groups
- *   POST /api/coherence/resolve   — propagate a chosen translation to all
- *                                   strings in a group
- *   POST /api/coherence/resolve-all — auto-resolve every group by plurality
+ * "Coherence" means that all source strings with the same exact text and
+ * record signature should be translated the same way. UI vs dialog (and other
+ * GRUPs) are separate groups. Endpoints expose a paginated report and resolve
+ * actions.
  */
 export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
   app.get<{
@@ -37,28 +32,39 @@ export const coherenceRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // Body:
   //   sourceText  — exact source text that identifies the group
+  //   signature   — record signature (GRUP) scoped with sourceText
   //   targetLang  — language code to update (default: CONFIG.defaultTgtLang)
   //   translation — the translation text to propagate
   // Legacy alias: textNorm is accepted as sourceText for older clients.
   app.post<{
-    Body: { sourceText?: string; textNorm?: string; targetLang?: string; translation: string };
+    Body: {
+      sourceText?: string;
+      textNorm?: string;
+      signature?: string;
+      targetLang?: string;
+      translation: string;
+    };
   }>('/api/coherence/resolve', async (req, reply) => {
     const sourceText = req.body?.sourceText ?? req.body?.textNorm;
     const { translation } = req.body ?? {};
+    const signature = req.body?.signature;
     const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
 
     if (!sourceText || typeof sourceText !== 'string') {
       return reply.code(400).send({ error: 'sourceText is required' });
+    }
+    if (typeof signature !== 'string') {
+      return reply.code(400).send({ error: 'signature is required' });
     }
     if (!translation || typeof translation !== 'string') {
       return reply.code(400).send({ error: 'translation is required' });
     }
 
     log.info(
-      `POST /api/coherence/resolve targetLang=${targetLang} sourceText="${sourceText.slice(0, 60)}"`,
+      `POST /api/coherence/resolve targetLang=${targetLang} signature=${signature} sourceText="${sourceText.slice(0, 60)}"`,
     );
 
-    const result = await resolveCoherenceGroup(db, sourceText, targetLang, translation);
+    const result = await resolveCoherenceGroup(db, sourceText, signature, targetLang, translation);
     return reply.send(result);
   });
 

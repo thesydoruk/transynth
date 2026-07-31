@@ -20,10 +20,10 @@ const PAGE_SIZE = 30;
 /**
  * Coherence checking page.
  *
- * Shows all source strings that share the same exact source text but are
- * translated inconsistently across mods.  The user can review each conflict
- * group and apply a single chosen translation to every string in the group
- * with one click.
+ * Shows source strings that share the same exact source text and record
+ * signature but are translated inconsistently. UI vs dialog (and other GRUPs)
+ * are separate groups. The user can review each conflict and apply one chosen
+ * translation to every string in the group with one click.
  *
  * Layout:
  *   - Language selector + total count
@@ -59,8 +59,15 @@ export const CoherencePage = () => {
    * Invalidates the coherence query so the group disappears once resolved.
    */
   const resolveMut = useMutation({
-    mutationFn: ({ sourceText, translation }: { sourceText: string; translation: string }) =>
-      api.coherence.resolve(sourceText, translation, targetLang),
+    mutationFn: ({
+      sourceText,
+      signature,
+      translation,
+    }: {
+      sourceText: string;
+      signature: string;
+      translation: string;
+    }) => api.coherence.resolve(sourceText, signature, translation, targetLang),
     onSuccess: () => {
       // Re-fetch coherence data and also invalidate QA issue counts in the editor
       qc.invalidateQueries({ queryKey: ['coherence'] });
@@ -69,8 +76,8 @@ export const CoherencePage = () => {
     },
   });
 
-  const handleResolve = (sourceText: string, translation: string) => {
-    resolveMut.mutate({ sourceText, translation });
+  const handleResolve = (sourceText: string, signature: string, translation: string) => {
+    resolveMut.mutate({ sourceText, signature, translation });
   };
 
   // ── Resolve-all mutation ─────────────────────────────────────────────────
@@ -149,7 +156,7 @@ export const CoherencePage = () => {
       {!isLoading &&
         (data?.groups ?? []).map((group) => (
           <GroupCard
-            key={group.source_text}
+            key={`${group.source_text}\0${group.signature}`}
             group={group}
             onResolve={handleResolve}
             isResolving={resolveMut.isPending}
