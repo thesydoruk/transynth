@@ -251,31 +251,3 @@ export const exportFullModZip = async (
   log.info(`Full mod export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
   return { zipBuffer, zipFileName };
 };
-
-/**
- * Builds an Interface-only patch ZIP (Translate_*.txt + localize overlay assets).
- *
- * Matches the layout used by Fallout 4 UI localization mods: files under `Interface\`.
- */
-export const exportInterfacePatchZip = async (
-  db: Tx,
-  modId: number,
-  modPath: string,
-  srcLang: string,
-  targetLang: string,
-  game: GameType = 'fo4',
-): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
-  const stem = path.basename(modPath, path.extname(modPath));
-  const zipFileName = `${stem}_${targetLang}_interface.zip`;
-  const files = await collectInterfacePatchEntries(db, modId, modPath, srcLang, targetLang, game);
-
-  if (files.length === 0) {
-    throw new Error(
-      'No exportable Interface content found — translate Interface/Translate_*.txt in the editor or add assets under _localize/{lang}/Interface/.',
-    );
-  }
-
-  const zipBuffer = await packFilesToZip(files);
-  log.info(`Interface export: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
-  return { zipBuffer, zipFileName };
-};

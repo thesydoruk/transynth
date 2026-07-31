@@ -133,7 +133,6 @@
     "deleteAllBatchSuccess": "Deleted {{count}} mods.",
     "aiWorkflowTitle": "AI tasks",
     "exportLangpack": "Export translation",
-    "exportInterface": "Interface patch",
     "exportFullMod": "Full localized mod"
   },
   "modAi": {

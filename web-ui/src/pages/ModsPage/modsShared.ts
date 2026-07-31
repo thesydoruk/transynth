@@ -5,7 +5,7 @@ import { getContentLanguageOptions } from '../../langDefaults';
 export type LiveProgress = { imported: number; total: number };
 
 export type ModExportAction = {
-  key: 'langpack' | 'interface' | 'fullMod';
+  key: 'langpack' | 'fullMod';
   icon: string;
   title: string;
   disabled?: boolean;

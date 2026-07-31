@@ -13,7 +13,7 @@ export const useModExport = () => {
       exportSrcLang: string,
       exportTgtLang: string,
       labelName: string,
-      type: 'langpack' | 'fullMod' | 'interface',
+      type: 'langpack' | 'fullMod',
       busyKey: string,
     ) => {
       const appJobId = `export-${modId}-${type}-${Date.now()}`;
@@ -21,9 +21,7 @@ export const useModExport = () => {
       const label =
         type === 'langpack'
           ? `${labelName} · ${t('mods.exportLangpack')}`
-          : type === 'interface'
-            ? `${labelName} · ${t('mods.exportInterface')}`
-            : `${labelName} · ${t('mods.exportFullMod')}`;
+          : `${labelName} · ${t('mods.exportFullMod')}`;
       upsertAppJob({
         id: appJobId,
         kind: 'export',
@@ -37,8 +35,6 @@ export const useModExport = () => {
       try {
         if (type === 'langpack') {
           await api.mods.exportLangpack(modId, exportSrcLang, exportTgtLang);
-        } else if (type === 'interface') {
-          await api.mods.exportInterface(modId, exportSrcLang, exportTgtLang);
         } else {
           await api.mods.exportFullMod(modId, exportSrcLang, exportTgtLang);
         }
@@ -92,22 +88,6 @@ export const useModExport = () => {
               labelName,
               'langpack',
               `${busyPrefix}:langpack`,
-            );
-          },
-          disabled: isBusy,
-        },
-        {
-          key: 'interface' as const,
-          icon: '🖥',
-          title: t('mods.exportInterface'),
-          onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'interface',
-              `${busyPrefix}:interface`,
             );
           },
           disabled: isBusy,

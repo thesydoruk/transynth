@@ -169,11 +169,6 @@ export const modsEndpoints = {
       `/api/mods/${modId}/export/full-mod?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
       `mod_${modId}_${targetLang}.zip`,
     ),
-  exportInterface: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
-    downloadBinary(
-      `/api/mods/${modId}/export/interface?srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`,
-      `mod_${modId}_${targetLang}_interface.zip`,
-    ),
   /** Copy translations from an older mod version into a newer one */
   carryOver: (newModId: number, fromModId: number, targetLang = getTgtLang()) =>
     req<CarryOverResult>(
