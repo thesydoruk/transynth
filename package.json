@@ -14,6 +14,7 @@
     "qa:refresh": "tsx scripts/refreshQaIssues.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "tools:install": "tsx scripts/installTools.ts",
+    "fonts:check": "tsx scripts/checkFontGlyphs.ts",
     "scan:mods": "tsx scripts/scanMods.ts",
     "scan:strings": "tsx scripts/scanStrings.ts",
     "backfill:interface": "tsx scripts/backfillInterfaceTranslate.ts",
