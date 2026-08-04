@@ -16,6 +16,7 @@
 import { inflateSync, deflateSync } from 'zlib';
 import { log } from '../../logger';
 import type { EspPatch } from '../types';
+import { buildRecordPatchPlan, groupPatchesBySig, type SubrecordSlot } from './espPatchPlan';
 
 const RECORD_HEADER_SIZE = 24;
 const GRUP_HEADER_SIZE = 24;
@@ -55,24 +56,27 @@ export const patchStringsMap = (
 // Non-localized ESP binary patcher
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Internal: mapping of `FormID → (subrecordSig → newText)` used for fast lookup. */
-type PatchMap = Map<string, Map<string, string>>;
+/** Internal: mapping of `FormID → patches targeting that record`. */
+type PatchMap = Map<string, EspPatch[]>;
 
 /**
- * Group a flat list of ESP patches by FormID and subrecord signature.
+ * Group a flat list of ESP patches by FormID.
  *
- * The returned nested map makes it cheap to decide, for each record, whether
- * any of its subrecords need to be rewritten.
+ * The returned map makes it cheap to decide, for each record, whether any of its
+ * subrecords need to be rewritten. Patches for repeated subrecords of one record
+ * are kept as a list; {@link buildRecordPatchPlan} binds each one to a specific
+ * occurrence later.
  *
  * @param patches - Flat list of patch descriptors requested by the caller.
- * @returns Nested lookup structure keyed by canonicalised FormID and subrecord.
+ * @returns Lookup structure keyed by canonicalised FormID.
  */
 const buildPatchMap = (patches: EspPatch[]): PatchMap => {
   const map: PatchMap = new Map();
   for (const p of patches) {
     const key = p.formId.toUpperCase().padStart(8, '0');
-    if (!map.has(key)) map.set(key, new Map());
-    map.get(key)!.set(p.subrecord.toUpperCase(), p.newText);
+    const list = map.get(key);
+    if (list) list.push(p);
+    else map.set(key, [p]);
   }
   return map;
 };
@@ -155,9 +159,9 @@ const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMa
       const recordEnd = pos + RECORD_HEADER_SIZE + dataSize;
 
       const recPatches = patchMap.get(formIdHex);
-      if (recPatches && recPatches.size > 0) {
+      if (recPatches && recPatches.length > 0) {
         const originalData = buf.subarray(pos + RECORD_HEADER_SIZE, recordEnd);
-        const { newData, newFlags } = rebuildRecordData(originalData, flags, recPatches);
+        const { newData, newFlags } = rebuildRecordData(originalData, flags, recPatches, formIdHex);
 
         const recHeader = Buffer.from(buf.subarray(pos, pos + RECORD_HEADER_SIZE));
         recHeader.writeUInt32LE(newData.length, 4);
@@ -174,6 +178,42 @@ const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMa
   return Buffer.concat(chunks);
 };
 
+/** Internal: subrecord boundaries of one record, in file order. */
+type SubrecordBounds = { start: number; end: number; sig: string };
+
+/**
+ * Walk a record payload, collecting subrecord boundaries and — for the signatures
+ * that have patches — the current text of each occurrence.
+ */
+const scanSubrecords = (
+  recordBuf: Buffer,
+  patchedSigs: Set<string>,
+): { bounds: SubrecordBounds[]; slots: SubrecordSlot[] } => {
+  const bounds: SubrecordBounds[] = [];
+  const slots: SubrecordSlot[] = [];
+  let pos = 0;
+
+  while (pos + SUB_HEADER_SIZE <= recordBuf.length) {
+    const sig = recordBuf.toString('ascii', pos, pos + 4);
+    const subSize = recordBuf.readUInt16LE(pos + 4);
+    const dataStart = pos + SUB_HEADER_SIZE;
+    const end = dataStart + subSize;
+    const key = sig.toUpperCase();
+
+    if (patchedSigs.has(key)) {
+      slots.push({
+        position: bounds.length,
+        sig: key,
+        text: recordBuf.toString('utf8', dataStart, end).replace(/\0/g, ''),
+      });
+    }
+    bounds.push({ start: pos, end, sig });
+    pos = end;
+  }
+
+  return { bounds, slots };
+};
+
 /**
  * Rebuild a single record's data segment, applying subrecord-level patches.
  *
@@ -187,13 +227,15 @@ const rebuildRange = (buf: Buffer, start: number, end: number, patchMap: PatchMa
  *
  * @param data - Original record data payload (excluding the 24-byte record header).
  * @param flags - Record flags controlling compression.
- * @param patches - Map of `subrecordSig → newText` for this specific record.
+ * @param patches - Patches targeting this specific record.
+ * @param formIdHex - Record FormID, for diagnostics only.
  * @returns Object containing the rebuilt data buffer and updated flags.
  */
 const rebuildRecordData = (
   data: Buffer,
   flags: number,
-  patches: Map<string, string>,
+  patches: EspPatch[],
+  formIdHex: string,
 ): { newData: Buffer; newFlags: number } => {
   const isCompressed = (flags & FLAG_COMPRESSED) !== 0;
 
@@ -208,25 +250,30 @@ const rebuildRecordData = (
     }
   }
 
+  const patchesBySig = groupPatchesBySig(patches);
+  const { bounds, slots } = scanSubrecords(recordBuf, new Set(patchesBySig.keys()));
+  const { byPosition, unplaced } = buildRecordPatchPlan(slots, patchesBySig);
+
+  if (unplaced.length > 0) {
+    const fields = [...new Set(unplaced.map((p) => p.subrecord.toUpperCase()))].join(', ');
+    log.warn(
+      `ESP patcher: record ${formIdHex} has fewer ${fields} subrecords than translations; ` +
+        `${unplaced.length} patch(es) skipped`,
+    );
+  }
+
   const subChunks: Buffer[] = [];
-  let pos = 0;
-
-  while (pos + SUB_HEADER_SIZE <= recordBuf.length) {
-    const subSig = recordBuf.toString('ascii', pos, pos + 4);
-    const subSize = recordBuf.readUInt16LE(pos + 4);
-    const dataEnd = pos + SUB_HEADER_SIZE + subSize;
-
-    const newText = patches.get(subSig.toUpperCase());
-    if (newText !== undefined) {
-      const newBuf = Buffer.from(newText + '\0', 'utf8');
-      const newHeader = Buffer.allocUnsafe(SUB_HEADER_SIZE);
-      newHeader.write(subSig, 0, 'ascii');
-      newHeader.writeUInt16LE(newBuf.length, 4);
-      subChunks.push(newHeader, newBuf);
-    } else {
-      subChunks.push(recordBuf.subarray(pos, dataEnd));
+  for (const [position, { start, end, sig }] of bounds.entries()) {
+    const newText = byPosition.get(position);
+    if (newText === undefined) {
+      subChunks.push(recordBuf.subarray(start, end));
+      continue;
     }
-    pos = dataEnd;
+    const newBuf = Buffer.from(newText + '\0', 'utf8');
+    const newHeader = Buffer.allocUnsafe(SUB_HEADER_SIZE);
+    newHeader.write(sig, 0, 'ascii');
+    newHeader.writeUInt16LE(newBuf.length, 4);
+    subChunks.push(newHeader, newBuf);
   }
 
   const rebuilt = Buffer.concat(subChunks);

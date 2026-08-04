@@ -18,3 +18,5 @@ export type {
 } from './EspReader';
 export { patchEsp, patchStringsMap } from './espPatcher';
 export { readPluginMasterNames } from './pluginHeader';
+export { parseSubrecordPath } from './subrecordPath';
+export type { SubrecordRef } from './subrecordPath';
