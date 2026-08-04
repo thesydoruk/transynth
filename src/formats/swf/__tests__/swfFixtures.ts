@@ -121,8 +121,19 @@ export const YI = 0x0457;
 export const IE = 0x0454;
 export const GHE_UPTURN = 0x0491;
 
-/** Code points the sample library draws as one shared box, as vanilla fonts do. */
-export const BOXED_CODE_POINTS = [UKRAINIAN_I, YI, IE, GHE_UPTURN, 0x2020, 0x0402];
+/**
+ * Code points the sample library draws as one shared box, as vanilla fonts do.
+ *
+ * Large enough to read as a placeholder group rather than a look-alike cluster.
+ */
+export const BOXED_CODE_POINTS = [
+  UKRAINIAN_I,
+  YI,
+  IE,
+  GHE_UPTURN,
+  0x2020,
+  ...Array.from({ length: 15 }, (_, i) => 0x0400 + i), // Ѐ, Ђ, Ѓ, …
+];
 
 export const BOX_OUTLINE = outline(rect(0, 500, -900));
 

@@ -51,7 +51,14 @@ describe('missingGlyphs', () => {
 
 describe('placeholderGlyphs', () => {
   const box = Buffer.from([0x01, 0x02, 0x03, 0x04]);
-  const boxedCodePoints = [0x0456, 0x0457, 0x0454, 0x0491, 0x2020];
+  const boxedCodePoints = [
+    0x0456,
+    0x0457,
+    0x0454,
+    0x0491,
+    0x2020,
+    ...Array.from({ length: 15 }, (_, i) => 0x0400 + i),
+  ];
 
   /** A font that lists Ukrainian letters but draws one shared box for them. */
   const fontWithBoxes = () =>
@@ -75,18 +82,19 @@ describe('placeholderGlyphs', () => {
     expect(found[0]!.sharedWith).toBe(boxedCodePoints.length - 1);
   });
 
-  it('accepts outlines shared by only a couple of look-alike characters', () => {
+  it('accepts an outline shared by a cluster of look-alike characters', () => {
     const shared = Buffer.from([0x2a, 0x2b]);
+    // Cyrillic І, Latin I, Greek Ι, the Roman numeral and the fullwidth form.
+    const lookAlikes = [0x0406, 0x0049, 0x0399, 0x2160, 0xff29];
     const swf = buildSwf([
       tag(
         75,
-        defineFont3(1, 'Look-alikes', [0x0069, 0x0456, 0x0410], {
-          shapeFor: (cp, index) =>
-            cp === 0x0069 || cp === 0x0456 ? shared : Buffer.from([0x0f, index]),
+        defineFont3(1, 'Look-alikes', [...lookAlikes, 0x0410, 0x0411], {
+          shapeFor: (cp, index) => (lookAlikes.includes(cp) ? shared : Buffer.from([0x0f, index])),
         }),
       ),
     ]);
 
-    expect(placeholderGlyphs(readSwfFonts(swf)[0]!, 'і')).toEqual([]);
+    expect(placeholderGlyphs(readSwfFonts(swf)[0]!, 'І')).toEqual([]);
   });
 });

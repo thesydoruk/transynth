@@ -105,8 +105,14 @@ export const missingGlyphs = (font: SwfFont, text: string): string[] =>
 /**
  * Group size at which a shared outline is taken to be a placeholder rather than a
  * deliberately reused shape.
+ *
+ * Look-alike clusters are real and can be several code points wide: a well-built font
+ * draws Cyrillic «І» with the same outline as Latin «I», Greek «Ι», the Roman numeral
+ * and the fullwidth form. A `.notdef` box, on the other hand, is reused across dozens
+ * — Bethesda's terminal font shares one across 192 — so the line sits well above any
+ * plausible cluster.
  */
-export const PLACEHOLDER_MIN_SHARED = 5;
+export const PLACEHOLDER_MIN_SHARED = 16;
 
 export type PlaceholderGlyph = {
   char: string;
