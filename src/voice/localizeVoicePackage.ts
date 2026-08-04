@@ -134,8 +134,6 @@ export const localizeVoicePackage = async (
       });
       if (prepared.action === 'skip') {
         skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
-        eligibleSeen += 1;
-        finishEligibleStep();
         continue;
       }
 
