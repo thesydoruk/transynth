@@ -165,6 +165,21 @@ export const SAMPLE_CODE_POINTS = [
   ...BOXED_CODE_POINTS,
 ];
 
+/** A library of plain fonts, each drawing a distinct outline per code point. */
+export const fontLibrary = (families: { name: string; chars: string }[]): Buffer =>
+  buildSwf(
+    families.map((family, i) =>
+      tag(
+        TAG_DEFINE_FONT3,
+        defineFont3(
+          i + 1,
+          family.name,
+          [...family.chars].map((char) => char.codePointAt(0)!),
+        ),
+      ),
+    ),
+  );
+
 /**
  * A stand-in for Bethesda's terminal font: real Latin and Russian letters, one shared
  * box for the Ukrainian ones, and the half-width advance those boxes carry.

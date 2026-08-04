@@ -1,75 +1,121 @@
 /**
- * Repair the glyphs of a mod's own font libraries on export.
+ * Make a mod's own interface fonts usable by a language the game never shipped.
  *
- * A language the game never shipped has to borrow someone else's locale slots, and the
- * fonts of those slots only draw the letters their own language needs: Bethesda's
- * terminal font lists «і/ї/є/ґ» but points them at a placeholder box. So when the
- * target language is unofficial, every font library belonging to a slot the export
- * replaces is rebuilt to draw its letters.
+ * Such a language has to borrow someone else's locale slots, and the fonts of those slots
+ * only draw the letters their own language needs: Bethesda's terminal font lists
+ * «і/ї/є/ґ» but points them at a placeholder box, while its handwriting font and Arial
+ * carry no Cyrillic at all. So for every slot the export replaces, the font library gets
+ * its glyphs rebuilt, and `FontConfig.txt` is then adapted to what those libraries can
+ * actually draw.
  *
- * Only libraries the mod itself ships are touched. Vanilla game files are left alone,
- * and a mod without fonts simply exports as before.
+ * Only files the mod itself ships are touched. Vanilla game files are left alone, and a
+ * mod without interface fonts exports as before.
  */
-import { log } from '../../logger';
+import { glyphOpsForLanguage, patchFontGlyphs } from '../../formats/swf';
 import { exportLocaleSlots, isOfficialBethesdaLocale } from '../../locale';
-import { glyphOpsForLanguage, patchFontGlyphs } from '../../formats/swf/swfFontPatch';
+import { log } from '../../logger';
 import type { GameType } from '../../types';
+import { patchFontConfigForLanguage } from './exportFontConfig';
 import { readModInterfaceFile } from './modInterfaceFiles';
 
-export type PatchedFontLibrary = {
+export type PatchedFontFile = {
   /** Path inside the mod, e.g. `Interface/fonts_en.swf`. */
   archivePath: string;
   buffer: Buffer;
-  /** Letters that were rebuilt, for logging. */
-  repaired: string[];
+  /** What changed, for logging. */
+  summary: string;
 };
 
-/**
- * Rebuild the target language's letters in the font libraries of replaced locales.
- *
- * @param modPath - Path to the mod's plugin file.
- * @param targetLang - Language being exported, e.g. `uk`.
- * @param game - Game the mod targets.
- * @returns One entry per patched library; empty when nothing needed or could be fixed.
- */
-export const exportPatchedFontLibraries = (
+const FONT_CONFIG_NAMES = ['FontConfig.txt'];
+
+const patchLibraries = (
   modPath: string,
   targetLang: string,
-  game: GameType = 'fo4',
-): PatchedFontLibrary[] => {
-  // Official languages already have fonts drawing their alphabet.
-  if (isOfficialBethesdaLocale(targetLang, game)) return [];
-
+  game: GameType,
+): { files: PatchedFontFile[]; libraries: Map<string, Buffer> } => {
   const ops = glyphOpsForLanguage(targetLang);
-  if (ops.length === 0) return [];
-
-  const patched: PatchedFontLibrary[] = [];
+  const files: PatchedFontFile[] = [];
+  const libraries = new Map<string, Buffer>();
 
   for (const slot of exportLocaleSlots(targetLang, game)) {
     const fileName = `fonts_${slot}.swf`;
-    const archivePath = `Interface/${fileName}`;
+    const source = readModInterfaceFile(modPath, fileName, game);
+    if (!source) continue;
+
+    libraries.set(fileName.toLowerCase(), source);
+    if (ops.length === 0) continue;
 
     try {
-      const source = readModInterfaceFile(modPath, fileName, game);
-      if (!source) continue;
-
       const { buffer, results, appliedCount } = patchFontGlyphs(source, ops);
-      if (appliedCount === 0) {
-        log.info(`Font export: nothing to repair in ${fileName}`);
-        continue;
-      }
+      if (appliedCount === 0) continue;
 
+      libraries.set(fileName.toLowerCase(), buffer);
       const repaired = [...new Set(results.filter((r) => r.applied).map((r) => r.op.to))];
-      patched.push({ archivePath, buffer, repaired });
-      log.info(
-        `Font export: repaired ${appliedCount} glyph(s) in ${fileName} (${repaired.join(' ')})`,
-      );
+      files.push({
+        archivePath: `Interface/${fileName}`,
+        buffer,
+        summary: `rebuilt ${appliedCount} glyph(s): ${repaired.join(' ')}`,
+      });
     } catch (err) {
       log.info(
-        `Font export: ${fileName} skipped (${err instanceof Error ? err.message : String(err)})`,
+        `Font export: ${fileName} left as is (${err instanceof Error ? err.message : String(err)})`,
       );
     }
   }
 
-  return patched;
+  return { files, libraries };
+};
+
+/**
+ * Rebuild the interface font files of every locale slot the target language replaces.
+ *
+ * @param modPath - Path to the mod's plugin file.
+ * @param targetLang - Language being exported, e.g. `uk`.
+ * @param game - Game the mod targets.
+ * @returns One entry per patched file; empty when nothing needed or could be fixed.
+ */
+export const exportPatchedFontFiles = (
+  modPath: string,
+  targetLang: string,
+  game: GameType = 'fo4',
+): PatchedFontFile[] => {
+  // Official languages already have fonts drawing their alphabet.
+  if (isOfficialBethesdaLocale(targetLang, game)) return [];
+
+  const { files, libraries } = patchLibraries(modPath, targetLang, game);
+
+  for (const configName of FONT_CONFIG_NAMES) {
+    const source = readModInterfaceFile(modPath, configName, game);
+    if (!source) continue;
+
+    try {
+      // The config also loads libraries of its own, such as the console fonts.
+      const patched = patchFontConfigForLanguage(
+        source,
+        (name) => libraries.get(name.toLowerCase()) ?? readModInterfaceFile(modPath, name, game),
+        targetLang,
+      );
+      if (!patched) continue;
+
+      const remaps = patched.remapped.map((r) => `${r.name}: ${r.from} → ${r.to}`);
+      files.push({
+        archivePath: `Interface/${configName}`,
+        buffer: patched.buffer,
+        summary: [
+          remaps.length > 0 ? `remapped ${remaps.join(', ')}` : '',
+          patched.allowedAdded.length > 0 ? `allowed ${patched.allowedAdded.length} char(s)` : '',
+        ]
+          .filter(Boolean)
+          .join('; '),
+      });
+    } catch (err) {
+      log.info(
+        `Font export: ${configName} left as is (${err instanceof Error ? err.message : String(err)})`,
+      );
+    }
+  }
+
+  for (const file of files) log.info(`Font export: ${file.archivePath} — ${file.summary}`);
+
+  return files;
 };

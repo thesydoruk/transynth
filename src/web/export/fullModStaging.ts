@@ -29,7 +29,7 @@ import {
   exportPatchedPexFiles,
   type ExportedStringsFile,
 } from './index';
-import { exportPatchedFontLibraries } from './exportFontPatch';
+import { exportPatchedFontFiles } from './exportFontPatch';
 import { applyInterfaceLocalizeAssets, exportInterfaceTranslateFile } from './exportInterfacePatch';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
@@ -196,7 +196,7 @@ const applyLocalizationToPackage = async (
     if (assetCount > 0) {
       log.info(`Full mod export: merged ${assetCount} Interface asset(s) from localize overlay`);
     }
-    for (const font of exportPatchedFontLibraries(pkg.pluginPath, targetLang, game)) {
+    for (const font of exportPatchedFontFiles(pkg.pluginPath, targetLang, game)) {
       writeBufferToPackage(
         packageDir,
         pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, font.archivePath),

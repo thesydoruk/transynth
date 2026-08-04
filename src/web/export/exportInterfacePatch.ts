@@ -17,7 +17,7 @@ import {
 } from '../../modStorage/paths';
 import { pluginSiblingRelPath } from '../../modImport/packages';
 import type { GameType } from '../../types';
-import { exportPatchedFontLibraries } from './exportFontPatch';
+import { exportPatchedFontFiles } from './exportFontPatch';
 import type { ZipPackEntry } from './exportTypes';
 import { readModInterfaceFile } from './modInterfaceFiles';
 
@@ -226,7 +226,7 @@ export const collectInterfacePatchEntries = async (
 
   const packageDir = path.dirname(modPath);
   const taken = new Set(entries.map((entry) => entry.name.toLowerCase()));
-  for (const font of exportPatchedFontLibraries(modPath, targetLang, game)) {
+  for (const font of exportPatchedFontFiles(modPath, targetLang, game)) {
     const name = pluginSiblingRelPath(packageDir, modPath, font.archivePath).replace(/\\/g, '/');
     // A library already delivered through the localize overlay wins.
     if (taken.has(name.toLowerCase())) continue;
