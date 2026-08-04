@@ -9,10 +9,7 @@ import {
   readInterfaceTranslateEntries,
   writeInterfaceTranslateBuffer,
 } from '../../formats/interface';
-import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
 import { log } from '../../logger';
-import { resolveModDirectoryFromPath } from '../../formats/mcm';
-import { listCompanionGnrlBa2ForPlugin } from '../../import/mod/discovery';
 import {
   modImportLocalizeDir,
   resolveModImportExtractRoot,
@@ -20,32 +17,15 @@ import {
 } from '../../modStorage/paths';
 import { pluginSiblingRelPath } from '../../modImport/packages';
 import type { GameType } from '../../types';
+import { exportPatchedFontLibraries } from './exportFontPatch';
 import type { ZipPackEntry } from './exportTypes';
+import { readModInterfaceFile } from './modInterfaceFiles';
 
 const readSourceInterfaceTranslateBuffer = (
   modPath: string,
   sourceLocale: string,
   game: GameType,
-): Buffer | null => {
-  const modDir = resolveModDirectoryFromPath(modPath);
-  const loosePath = path.join(modDir, 'Interface', `Translate_${sourceLocale}.txt`);
-  if (fs.existsSync(loosePath)) return fs.readFileSync(loosePath);
-
-  for (const ba2Path of listCompanionGnrlBa2ForPlugin(modPath, game)) {
-    if (!isBa2GnrArchive(ba2Path)) continue;
-    try {
-      const reader = getBa2Reader(ba2Path);
-      const entry = reader
-        .listByExt('txt')
-        .find((item) => item.name.replace(/\\/g, '/').endsWith(`Translate_${sourceLocale}.txt`));
-      if (entry) return reader.extractEntry(entry);
-    } catch {
-      // Try next archive.
-    }
-  }
-
-  return null;
-};
+): Buffer | null => readModInterfaceFile(modPath, `Translate_${sourceLocale}.txt`, game);
 
 const getInterfaceTranslationOverlay = async (
   db: Tx,
@@ -242,6 +222,15 @@ export const collectInterfacePatchEntries = async (
 
   for (const asset of collectInterfaceLocalizeAssets(modPath, targetLang, packageFolder)) {
     entries.push(asset);
+  }
+
+  const packageDir = path.dirname(modPath);
+  const taken = new Set(entries.map((entry) => entry.name.toLowerCase()));
+  for (const font of exportPatchedFontLibraries(modPath, targetLang, game)) {
+    const name = pluginSiblingRelPath(packageDir, modPath, font.archivePath).replace(/\\/g, '/');
+    // A library already delivered through the localize overlay wins.
+    if (taken.has(name.toLowerCase())) continue;
+    entries.push({ name, data: font.buffer });
   }
 
   if (entries.length > 0) {

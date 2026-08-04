@@ -181,3 +181,13 @@ export const UKRAINIAN_GLYPH_OPS: GlyphOp[] = [
   { kind: 'upturn', from: 'г', to: 'ґ' },
   { kind: 'upturn', from: 'Г', to: 'Ґ' },
 ];
+
+const OPS_BY_LANGUAGE: Record<string, GlyphOp[]> = { uk: UKRAINIAN_GLYPH_OPS };
+
+/**
+ * Glyph repairs known for a language, empty when none are.
+ *
+ * @param lang - Language tag; the region is ignored, so `uk-UA` matches `uk`.
+ */
+export const glyphOpsForLanguage = (lang: string): GlyphOp[] =>
+  OPS_BY_LANGUAGE[lang.trim().toLowerCase().split(/[-_]/)[0]!] ?? [];

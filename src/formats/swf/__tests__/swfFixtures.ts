@@ -5,6 +5,7 @@
  * these in is checking the code against the format rather than against itself.
  */
 import { deflateSync } from 'zlib';
+import { encodeGlyphShape, type GlyphShape } from '../glyphShape';
 
 const FLAG_WIDE_CODES = 0x04;
 const FLAG_HAS_LAYOUT = 0x80;
@@ -100,3 +101,75 @@ export const buildSwf = (tags: Buffer[], compress = false): Buffer => {
 
 export const TAG_DEFINE_FONT3 = 75;
 export const TAG_DEFINE_FONT_NAME = 88;
+
+const outline = (records: GlyphShape['records']): Buffer =>
+  encodeGlyphShape({ fillBits: 1, lineBits: 0, records });
+
+const rect = (x: number, width: number, top: number): GlyphShape['records'] => [
+  { kind: 'style', move: { x, y: top }, fill1: 1 },
+  { kind: 'line', dx: width, dy: 0 },
+  { kind: 'line', dx: 0, dy: -top },
+  { kind: 'line', dx: -width, dy: 0 },
+];
+
+export const LATIN_I = 0x0069;
+export const LATIN_I_DIAERESIS = 0x00ef;
+export const RUSSIAN_E = 0x044d;
+export const GHE = 0x0433;
+export const UKRAINIAN_I = 0x0456;
+export const YI = 0x0457;
+export const IE = 0x0454;
+export const GHE_UPTURN = 0x0491;
+
+/** Code points the sample library draws as one shared box, as vanilla fonts do. */
+export const BOXED_CODE_POINTS = [UKRAINIAN_I, YI, IE, GHE_UPTURN, 0x2020, 0x0402];
+
+export const BOX_OUTLINE = outline(rect(0, 500, -900));
+
+/** Outlines the sample library really draws, keyed by code point. */
+export const REAL_OUTLINES: Record<number, Buffer> = {
+  [LATIN_I]: outline(rect(100, 200, -700)),
+  [LATIN_I_DIAERESIS]: outline(rect(100, 200, -900)),
+  [RUSSIAN_E]: outline([
+    { kind: 'style', move: { x: 100, y: -700 }, fill1: 1 },
+    { kind: 'line', dx: 500, dy: 0 },
+    { kind: 'curve', cdx: 200, cdy: 350, adx: -200, ady: 350 },
+    { kind: 'line', dx: -500, dy: 0 },
+  ]),
+  [GHE]: outline([
+    { kind: 'style', move: { x: 0, y: -1000 }, fill1: 1 },
+    { kind: 'line', dx: 600, dy: 0 },
+    { kind: 'line', dx: 0, dy: 150 },
+    { kind: 'line', dx: -450, dy: 0 },
+    { kind: 'line', dx: 0, dy: 850 },
+    { kind: 'line', dx: -150, dy: 0 },
+  ]),
+};
+
+export const SAMPLE_CODE_POINTS = [
+  LATIN_I,
+  LATIN_I_DIAERESIS,
+  RUSSIAN_E,
+  GHE,
+  ...BOXED_CODE_POINTS,
+];
+
+/**
+ * A stand-in for Bethesda's terminal font: real Latin and Russian letters, one shared
+ * box for the Ukrainian ones, and the half-width advance those boxes carry.
+ */
+export const placeholderFontLibrary = (
+  name = 'Share-TechMono Regular',
+  extraTags: Buffer[] = [],
+): Buffer =>
+  buildSwf([
+    tag(
+      TAG_DEFINE_FONT3,
+      defineFont3(1, name, SAMPLE_CODE_POINTS, {
+        shapeFor: (cp) => REAL_OUTLINES[cp] ?? BOX_OUTLINE,
+        advances: SAMPLE_CODE_POINTS.map((cp) => (BOXED_CODE_POINTS.includes(cp) ? 512 : 1100)),
+        ascent: 1750,
+      }),
+    ),
+    ...extraTags,
+  ]);
