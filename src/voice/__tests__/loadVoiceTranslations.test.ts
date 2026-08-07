@@ -44,7 +44,7 @@ describe('lookupVoiceTranslation', () => {
     expect(lookupVoiceTranslation(rows, '002cba', 1)?.translation).toBe('Привіт');
   });
 
-  it('falls back to closest variant for the same formid', () => {
-    expect(lookupVoiceTranslation(rows, '002CBA', 4)?.translation).toBe('Привіт');
+  it('does not fall back to a sibling variant', () => {
+    expect(lookupVoiceTranslation(rows, '002CBA', 4)).toBeUndefined();
   });
 });

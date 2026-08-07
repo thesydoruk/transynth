@@ -18,6 +18,32 @@ export const normalizeForHash = (s: string): string => {
 export const normalizeAutoTranslationDashes = (text: string): string =>
   text.replace(/\u2013|\u2014/g, '-');
 
+const LETTER_RE = /\p{L}/u;
+
+/**
+ * True when the source has at least one letter and every letter is uppercase
+ * (digits/punctuation/whitespace ignored). Used to force matching ALL CAPS in
+ * auto-translations.
+ */
+export const isSourceAllCaps = (source: string): boolean => {
+  const letters = source.match(/\p{L}/gu);
+  if (!letters || letters.length === 0) return false;
+  return letters.every((ch) => ch === ch.toLocaleUpperCase('en-US'));
+};
+
+/**
+ * If source is entirely ALL CAPS, uppercase the translation (Ukrainian locale
+ * so і/ї/є/ґ map correctly). Otherwise return translation unchanged.
+ */
+export const matchSourceCapitalization = (source: string, translation: string): string => {
+  if (!isSourceAllCaps(source)) return translation;
+  return translation.toLocaleUpperCase('uk-UA');
+};
+
+/** Dash + capitalization post-process for LLM / auto translations. */
+export const normalizeAutoTranslation = (source: string, translation: string): string =>
+  matchSourceCapitalization(source, normalizeAutoTranslationDashes(translation));
+
 export const normalizeNoPunct = (s: string): string => {
   let t = normalizeForHash(s);
   t = t.replace(/[^\w¤ ]/g, '');

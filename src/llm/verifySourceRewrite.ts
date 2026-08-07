@@ -2,7 +2,7 @@
  * Full-mismatch verify fix — re-translate source only (wrong long translation attached).
  */
 import type { GameType } from '../types';
-import { normalizeAutoTranslationDashes } from '../utils/textNorm';
+import { normalizeAutoTranslation } from '../utils/textNorm';
 import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
@@ -81,7 +81,8 @@ export const rewriteVerifyTranslationsFromSource = async (
     const masks = maskedById.get(row.id);
     if (!item || !masks) continue;
 
-    const text = normalizeAutoTranslationDashes(
+    const text = normalizeAutoTranslation(
+      item.source,
       unmask(unmask(row.translation, masks.functionKeywordMap), masks.placeholderMap),
     );
     const check = validateRewrittenTranslation(item, text, opts.game);

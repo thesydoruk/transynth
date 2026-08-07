@@ -10,7 +10,7 @@ import {
   validateMaskedTranslation,
 } from '../../../../../src/utils/placeholders';
 import type { GameType } from '../../../../../src/types';
-import { normalizeAutoTranslationDashes } from '../../../../../src/utils/textNorm';
+import { normalizeAutoTranslation } from '../../../../../src/utils/textNorm';
 import { relevantGlossaryForChunk } from './glossary';
 import {
   splitLongSourceForTranslate,
@@ -141,7 +141,7 @@ export const finalizeLongTextTranslation = (
   }
   return {
     stringId: entry.stringId,
-    text: normalizeAutoTranslationDashes(translated),
+    text: normalizeAutoTranslation(entry.sourceText, translated),
   };
 };
 

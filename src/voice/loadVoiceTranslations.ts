@@ -29,28 +29,13 @@ export const infoNam1RecordsSql = (recordAlias: string, pathParam: string): stri
 export const voiceTranslationMapKey = (formidLower6: string, variant: number): string =>
   `${formidLower6.toUpperCase()}:${variant}`;
 
-/** Resolve a translated voice row; falls back to the closest variant for the same FormID. */
+/** Resolve a translated voice row for an exact FormID + variant (no sibling fallback). */
 export const lookupVoiceTranslation = (
   translations: Map<string, VoiceTranslationRow>,
   formidLower6: string,
   variant: number,
-): VoiceTranslationRow | undefined => {
-  const exact = translations.get(voiceTranslationMapKey(formidLower6, variant));
-  if (exact) return exact;
-
-  const formid = formidLower6.toUpperCase();
-  let best: VoiceTranslationRow | undefined;
-  let bestDistance = Infinity;
-  for (const row of translations.values()) {
-    if (row.formidLower6.toUpperCase() !== formid) continue;
-    const distance = Math.abs(row.voiceVariant - variant);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = row;
-    }
-  }
-  return best;
-};
+): VoiceTranslationRow | undefined =>
+  translations.get(voiceTranslationMapKey(formidLower6, variant));
 
 /**
  * Load translated INFO NAM1 lines keyed by lower-6 FormID + voice variant.

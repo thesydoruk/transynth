@@ -12,7 +12,7 @@ import { logTranslate } from '../../../../../src/logging/loggers';
 import { Semaphore } from '../../../../../src/utils/concurrency';
 import { unmask, validateTranslationPlaceholders } from '../../../../../src/utils/placeholders';
 import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../../../../src/llm/llmTextMask';
-import { normalizeAutoTranslationDashes } from '../../../../../src/utils/textNorm';
+import { normalizeAutoTranslation } from '../../../../../src/utils/textNorm';
 import type { GameType } from '../../../../../src/types';
 import { relevantGlossaryForChunk } from './glossary';
 import {
@@ -133,7 +133,8 @@ export const collectValidatedRows = (
       continue;
     }
 
-    const translated = normalizeAutoTranslationDashes(
+    const translated = normalizeAutoTranslation(
+      entry.sourceText,
       unmask(unmask(maskedTranslation, entry.functionKeywordMap), entry.placeholderMap),
     );
     okRows.push({ stringId: entry.stringId, text: translated });

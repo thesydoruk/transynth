@@ -1,6 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   normalizeAutoTranslationDashes,
+  normalizeAutoTranslation,
+  isSourceAllCaps,
+  matchSourceCapitalization,
   normalizeForHash,
   normalizeNoPunct,
   extractNumbers,
@@ -18,6 +21,44 @@ describe('normalizeAutoTranslationDashes', () => {
 
   it('leaves ASCII hyphen unchanged', () => {
     expect(normalizeAutoTranslationDashes('Ammo - Ballistic')).toBe('Ammo - Ballistic');
+  });
+});
+
+describe('isSourceAllCaps', () => {
+  it('is true for ALL CAPS with punctuation', () => {
+    expect(isSourceAllCaps('HELP!')).toBe(true);
+    expect(isSourceAllCaps('ERROR: <<NO REF LOCATION>>')).toBe(true);
+  });
+
+  it('is false for mixed or sentence case', () => {
+    expect(isSourceAllCaps('Hello')).toBe(false);
+    expect(isSourceAllCaps('FAVORITES Menu')).toBe(false);
+  });
+
+  it('is false when there are no letters', () => {
+    expect(isSourceAllCaps('123...')).toBe(false);
+    expect(isSourceAllCaps('===')).toBe(false);
+  });
+});
+
+describe('matchSourceCapitalization', () => {
+  it('uppercases Ukrainian translation when source is ALL CAPS', () => {
+    expect(matchSourceCapitalization('FAVORITES', 'Вибране')).toBe('ВИБРАНЕ');
+    expect(matchSourceCapitalization('HEALING', 'Лікування')).toBe('ЛІКУВАННЯ');
+  });
+
+  it('leaves translation when source is not ALL CAPS', () => {
+    expect(matchSourceCapitalization('Favorites', 'Вибране')).toBe('Вибране');
+  });
+});
+
+describe('normalizeAutoTranslation', () => {
+  it('applies dashes then ALL CAPS when source requires it', () => {
+    expect(normalizeAutoTranslation('LOOKOUT DUTY', 'Чергова — варта')).toBe('ЧЕРГОВА - ВАРТА');
+  });
+
+  it('only normalizes dashes when source is not ALL CAPS', () => {
+    expect(normalizeAutoTranslation('Lookout duty', 'Чергова — варта')).toBe('Чергова - варта');
   });
 });
 
