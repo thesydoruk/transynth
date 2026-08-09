@@ -28,10 +28,10 @@ const audioSrc = (value: unknown): string | null => {
 
 const fetchWithRetry = async (url: string, dataset: string): Promise<Response> => {
   let delayMs = 5_000;
-  for (let attempt = 1; attempt <= 8; attempt += 1) {
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
     const res = await fetch(url);
     if (res.ok) return res;
-    if (res.status !== 429 && res.status !== 503) {
+    if (res.status !== 429 && res.status !== 502 && res.status !== 503) {
       throw new Error(`HF rows ${dataset}: HTTP ${res.status}`);
     }
     const retryAfter = Number(res.headers.get('retry-after'));
@@ -39,7 +39,7 @@ const fetchWithRetry = async (url: string, dataset: string): Promise<Response> =
     await sleep(waitMs);
     delayMs = Math.min(delayMs * 2, 120_000);
   }
-  throw new Error(`HF rows ${dataset}: HTTP 429/503 after retries`);
+  throw new Error(`HF rows ${dataset}: HTTP 429/502/503 after retries`);
 };
 
 export const fetchHfDatasetRows = async (

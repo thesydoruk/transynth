@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { upsertUkVoiceLibraryRow } from '../db';
@@ -16,10 +17,22 @@ const PAGE = 100;
 const MIN_ROW_GAP = 80;
 
 export type ImportCommonVoiceOptions = {
-  /** Max unique clips to keep (default 400). */
+  /** Max unique clips to keep (default 700). */
   maxVoices?: number;
-  /** Max HF rows to scan (default 40_000). */
+  /** Max HF rows to scan (default 80_000). */
   maxScanRows?: number;
+};
+
+const loadExistingCvRowIdx = async (db: Tx): Promise<number[]> => {
+  const { rows } = await db.query<{ id: string }>(
+    `SELECT id FROM uk_voice_library WHERE source = 'common_voice'`,
+  );
+  const idxs: number[] = [];
+  for (const row of rows) {
+    const match = /^cv:(\d+)$/.exec(row.id);
+    if (match) idxs.push(Number(match[1]));
+  }
+  return idxs.sort((a, b) => a - b);
 };
 
 /** Import sparsely sampled Common Voice UA clips as distinct library voices. */
@@ -31,10 +44,18 @@ export const importCommonVoiceVoices = async (
   const maxScanRows = options.maxScanRows ?? 80_000;
   ukVoiceSourceDir('common_voice');
 
-  let offset = 0;
+  const existingIdx = await loadExistingCvRowIdx(db);
+  let imported = existingIdx.length;
+  let lastKeptRow = existingIdx.length > 0 ? existingIdx[existingIdx.length - 1]! : -MIN_ROW_GAP;
+  let offset = Math.max(0, lastKeptRow - (lastKeptRow % PAGE));
   let total = Number.POSITIVE_INFINITY;
-  let lastKeptRow = -MIN_ROW_GAP;
-  let imported = 0;
+
+  if (imported >= maxVoices) {
+    log.info(`common_voice: already have ${imported} clip(s)`);
+    return imported;
+  }
+
+  log.info(`common_voice: resuming with ${imported}/${maxVoices} (offset=${offset})`);
 
   while (imported < maxVoices && offset < maxScanRows && offset < total) {
     const page = await fetchHfDatasetRows(CV_DATASET, offset, PAGE);
@@ -52,10 +73,14 @@ export const importCommonVoiceVoices = async (
       const abs = ukVoiceAudioAbsPath(rel);
 
       try {
-        await downloadAndNormalizeReferenceClip(row.audioUrl, abs);
+        if (!fs.existsSync(abs)) {
+          await downloadAndNormalizeReferenceClip(row.audioUrl, abs);
+        }
       } catch (err) {
         log.warn(
-          `common_voice: skip row ${row.rowIdx}: ${err instanceof Error ? err.message : String(err)}`,
+          `common_voice: skip row ${row.rowIdx}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         );
         continue;
       }
@@ -81,8 +106,7 @@ export const importCommonVoiceVoices = async (
     }
 
     offset += PAGE;
-    // Soften HF datasets-server rate limits between pages.
-    await new Promise((resolve) => setTimeout(resolve, 1_250));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
   }
 
   log.info(`common_voice: imported ${imported} clip(s)`);
