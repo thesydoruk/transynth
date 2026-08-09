@@ -68,9 +68,11 @@ export const CompareTrackList = ({
               <span className={s.compareTitle}>{title}</span>
               {track.kind === 'preview' && (
                 <span className={s.compareMeta}>
-                  {track.preview.params.line_reference
-                    ? t('modEditor.voiceRegenerateRefLine')
-                    : t('modEditor.voiceRegenerateRefSpeaker')}
+                  {track.preview.params.character_reference === false
+                    ? t('modEditor.voiceRegenerateRefNone')
+                    : track.preview.params.line_reference
+                      ? t('modEditor.voiceRegenerateRefLine')
+                      : t('modEditor.voiceRegenerateRefSpeaker')}
                 </span>
               )}
             </div>

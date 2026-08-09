@@ -21,6 +21,8 @@ export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
+  /** When false, skip UK library / speaker refs — use only this line's EN clip. */
+  character_reference: boolean;
 };
 
 type VoiceRegeneratePreviewMeta = {
@@ -90,6 +92,8 @@ export const voiceRegenerateParamsFromProjectSettings = async (
   const settings = await getAllProjectSettings(db);
   return {
     line_reference: settings['voice.line_reference'],
+    // Regen-only: default on so existing sessions keep character/UK library refs.
+    character_reference: true,
   };
 };
 
@@ -170,6 +174,10 @@ export const generateVoiceRegeneratePreview = async (
     };
   }
 
+  const normalizedParams: VoiceRegenerateParams = {
+    line_reference: Boolean(params.line_reference),
+    character_reference: params.character_reference !== false,
+  };
   const built = await synthesizeModVoiceLineBuffers(db, {
     modId,
     packageDir: resolved.ctx.packageDir,
@@ -178,7 +186,8 @@ export const generateVoiceRegeneratePreview = async (
     variant,
     srcLang,
     tgtLang: targetLang,
-    referenceMode: params.line_reference ? 'line' : 'speaker',
+    referenceMode: normalizedParams.line_reference ? 'line' : 'speaker',
+    useCharacterReference: normalizedParams.character_reference,
   } satisfies SynthesizeModVoiceLineOptions);
 
   if (!built.ok) return built;
@@ -196,7 +205,7 @@ export const generateVoiceRegeneratePreview = async (
     createdAt: new Date().toISOString(),
     fuzRel: built.fuzRel,
     payloadVersion: built.payloadVersion,
-    params,
+    params: normalizedParams,
   };
   meta.previews.push(previewMeta);
   writeSessionMeta(modId, sessionId, meta);
@@ -206,7 +215,7 @@ export const generateVoiceRegeneratePreview = async (
     previewId,
     attempt,
     audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${previewId}.wav`,
-    params,
+    params: normalizedParams,
   };
 };
 

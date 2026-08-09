@@ -60,6 +60,12 @@ export type SynthesizeModVoiceLineOptions = {
   tgtLang: string;
   game?: GameType;
   referenceMode?: TtsReferenceMode;
+  /**
+   * When false, skip UK library + speaker-folder references and use only this
+   * line's English clip (regen dialog "character reference" toggle).
+   * Default true.
+   */
+  useCharacterReference?: boolean;
   ttsBaseUrl?: string;
 };
 
@@ -105,13 +111,18 @@ export const synthesizeModVoiceLineBuffers = async (
   }
 
   const voiceConfig = await loadVoiceProjectSettings(db);
-  const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
+  const useCharacterReference = opts.useCharacterReference !== false;
+  const referenceMode = useCharacterReference
+    ? (opts.referenceMode ?? voiceConfig.referenceMode)
+    : 'line';
   const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
 
   // Line mode may auto-pick a speaker ref when the line clip is too short.
-  await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
+  if (useCharacterReference) {
+    await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
+  }
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
@@ -126,10 +137,10 @@ export const synthesizeModVoiceLineBuffers = async (
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const referenceDecision = decideVoiceReferenceSource(
-      referenceMode,
-      isLineReferenceSuitable(lineEnglishWav),
-    );
+    // When character refs are disabled, never fall back to speaker even if the line clip is short.
+    const referenceDecision = useCharacterReference
+      ? decideVoiceReferenceSource(referenceMode, isLineReferenceSuitable(lineEnglishWav))
+      : ({ kind: 'line' } as const);
 
     let referenceWav: string | undefined;
     let referenceText: string | null =
@@ -137,38 +148,40 @@ export const synthesizeModVoiceLineBuffers = async (
         ? row.source
         : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    // Global Ukrainian library link wins for the character across all mods.
-    const ukLibrary = speakerKey ? await resolveUkLibraryReference(db, speakerKey) : null;
-    if (ukLibrary) {
-      referenceWav = ukLibrary.wavPath;
-      referenceText = ukLibrary.transcript;
-    } else if (referenceDecision.kind === 'speaker' && speakerKey) {
-      const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
-        .get(speakerKey)
-        ?.filter(
-          (candidate) =>
-            candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
-        );
-      const resolved = await resolveSpeakerReferenceForSpeaker({
-        db,
-        modId: opts.modId,
-        speakerKey,
-        preferredEntry: entry,
-        getFallbackEntries: () => siblings ?? [],
-        packageDir: opts.packageDir,
-        pluginRelPath: pluginRel,
-        isEligible: voiceReferenceEligibilityFromSources(voiceSources),
-      });
-      if (resolved) {
-        referenceWav = resolved.wavPath;
-        if (isUkLibraryVoiceReferencePick(resolved.pick)) {
-          referenceText = resolved.speakerText ?? null;
-        } else if (!isManualVoiceReferencePick(resolved.pick)) {
-          referenceText = lookupVoiceSource(
-            voiceSources,
-            resolved.pick.formidLower6,
-            resolved.pick.variant,
+    if (useCharacterReference) {
+      // Global Ukrainian library link wins for the character across all mods.
+      const ukLibrary = speakerKey ? await resolveUkLibraryReference(db, speakerKey) : null;
+      if (ukLibrary) {
+        referenceWav = ukLibrary.wavPath;
+        referenceText = ukLibrary.transcript;
+      } else if (referenceDecision.kind === 'speaker' && speakerKey) {
+        const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
+          .get(speakerKey)
+          ?.filter(
+            (candidate) =>
+              candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
           );
+        const resolved = await resolveSpeakerReferenceForSpeaker({
+          db,
+          modId: opts.modId,
+          speakerKey,
+          preferredEntry: entry,
+          getFallbackEntries: () => siblings ?? [],
+          packageDir: opts.packageDir,
+          pluginRelPath: pluginRel,
+          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+        });
+        if (resolved) {
+          referenceWav = resolved.wavPath;
+          if (isUkLibraryVoiceReferencePick(resolved.pick)) {
+            referenceText = resolved.speakerText ?? null;
+          } else if (!isManualVoiceReferencePick(resolved.pick)) {
+            referenceText = lookupVoiceSource(
+              voiceSources,
+              resolved.pick.formidLower6,
+              resolved.pick.variant,
+            );
+          }
         }
       }
     }

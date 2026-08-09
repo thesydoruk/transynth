@@ -85,6 +85,8 @@ export type VoiceAvailabilityResponse =
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
+  /** When false, skip character / UK-library reference audio. */
+  character_reference: boolean;
 };
 
 export type VoiceRegeneratePreview = {
