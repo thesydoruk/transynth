@@ -15,8 +15,10 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
   ukVoiceSourceDir('opentts');
   let imported = 0;
 
+  // Full parquet download+extract per voice; run incomplete voices in parallel.
+  await Promise.all(OPENTTS_VOICES.map((voice) => cacheOpenttsVoice(voice.slug, voice.dataset)));
+
   for (const voice of OPENTTS_VOICES) {
-    await cacheOpenttsVoice(voice.slug, voice.dataset);
     const clips = listCachedOpenttsClips(voice.slug);
     const candidates: ClipCandidate[] = clips
       .filter((clip) => isUsableTranscript(clip.transcription))
