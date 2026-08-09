@@ -23,10 +23,12 @@ import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   groupVoiceFilesBySpeaker,
   isManualVoiceReferencePick,
+  isUkLibraryVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
   voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
 } from './speakerReference';
+import { resolveUkLibraryReference } from './ukLibrary';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
@@ -135,7 +137,12 @@ export const synthesizeModVoiceLineBuffers = async (
         ? row.source
         : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    if (referenceDecision.kind === 'speaker' && speakerKey) {
+    // Global Ukrainian library link wins for the character across all mods.
+    const ukLibrary = speakerKey ? await resolveUkLibraryReference(db, speakerKey) : null;
+    if (ukLibrary) {
+      referenceWav = ukLibrary.wavPath;
+      referenceText = ukLibrary.transcript;
+    } else if (referenceDecision.kind === 'speaker' && speakerKey) {
       const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
         .get(speakerKey)
         ?.filter(
@@ -154,7 +161,9 @@ export const synthesizeModVoiceLineBuffers = async (
       });
       if (resolved) {
         referenceWav = resolved.wavPath;
-        if (!isManualVoiceReferencePick(resolved.pick)) {
+        if (isUkLibraryVoiceReferencePick(resolved.pick)) {
+          referenceText = resolved.speakerText ?? null;
+        } else if (!isManualVoiceReferencePick(resolved.pick)) {
           referenceText = lookupVoiceSource(
             voiceSources,
             resolved.pick.formidLower6,

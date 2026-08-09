@@ -27,6 +27,7 @@ import { tmApplyEndpoints } from './endpoints/tmApply';
 import { llmTranslateEndpoints } from './endpoints/llmTranslate';
 import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
 import { modAiJobsEndpoints } from './endpoints/modAiJobs';
+import { ukVoicesEndpoints } from './endpoints/ukVoices';
 
 export const api = {
   mods: modsEndpoints,
@@ -53,4 +54,8 @@ export const api = {
   llmTranslate: llmTranslateEndpoints,
   voiceGenerate: voiceGenerateEndpoints,
   modAiJobs: modAiJobsEndpoints,
+  ukVoices: ukVoicesEndpoints,
 };
+
+export { ukVoiceAudioUrl } from './endpoints/ukVoices';
+export type { UkVoiceCharacter, UkVoiceLibraryItem } from './endpoints/ukVoices';

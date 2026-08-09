@@ -10,11 +10,13 @@ import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslation
 import { lookupVoiceSource, voiceTranslationMapKey } from './loadVoiceTranslations';
 import {
   isManualVoiceReferencePick,
+  isUkLibraryVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
   voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
 } from './speakerReference';
+import { resolveUkLibraryReference } from './ukLibrary';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
@@ -31,6 +33,8 @@ import type { GameType } from '../types';
 export type SpeakerRefCacheEntry = {
   wavPath: string;
   referenceText: string | null;
+  /** Global UK library links apply in both line and speaker reference modes. */
+  source: 'uk_library' | 'speaker';
 };
 
 export type ProcessVoiceLocalizeEntryOptions = {
@@ -60,10 +64,11 @@ export type ProcessVoiceLocalizeEntryResult =
 
 const referenceTextForPick = (
   sources: Map<string, VoiceSourceRow>,
-  pick: ResolvedSpeakerReference['pick'],
+  resolved: ResolvedSpeakerReference,
 ): string | null => {
-  if (isManualVoiceReferencePick(pick)) return null;
-  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
+  if (isUkLibraryVoiceReferencePick(resolved.pick)) return resolved.speakerText ?? null;
+  if (isManualVoiceReferencePick(resolved.pick)) return null;
+  return lookupVoiceSource(sources, resolved.pick.formidLower6, resolved.pick.variant);
 };
 
 /** Synthesize one voice file entry into a localized `.fuz` under the mod tree. */
@@ -120,29 +125,44 @@ export const processVoiceLocalizeEntry = async (
         ? row.source
         : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    if (referenceDecision.kind === 'speaker' && speakerKey) {
+    if (speakerKey) {
       const cached = speakerRefCache.get(speakerKey);
-      if (cached) {
+      if (cached?.source === 'uk_library') {
         referenceWav = cached.wavPath;
         referenceText = cached.referenceText;
-      } else {
-        const resolved = await resolveSpeakerReferenceForSpeaker({
-          db,
-          modId,
-          speakerKey,
-          preferredEntry: entry,
-          getFallbackEntries: () => getSiblingEntries(speakerKey, entry),
-          packageDir,
-          pluginRelPath: pluginRel,
-          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
-        });
-        if (resolved) {
-          referenceWav = resolved.wavPath;
-          referenceText = referenceTextForPick(voiceSources, resolved.pick);
+      } else if (cached && referenceDecision.kind === 'speaker') {
+        referenceWav = cached.wavPath;
+        referenceText = cached.referenceText;
+      } else if (!cached) {
+        const ukLibrary = await resolveUkLibraryReference(db, speakerKey);
+        if (ukLibrary) {
+          referenceWav = ukLibrary.wavPath;
+          referenceText = ukLibrary.transcript;
           speakerRefCache.set(speakerKey, {
-            wavPath: resolved.wavPath,
-            referenceText,
+            wavPath: ukLibrary.wavPath,
+            referenceText: ukLibrary.transcript,
+            source: 'uk_library',
           });
+        } else if (referenceDecision.kind === 'speaker') {
+          const resolved = await resolveSpeakerReferenceForSpeaker({
+            db,
+            modId,
+            speakerKey,
+            preferredEntry: entry,
+            getFallbackEntries: () => getSiblingEntries(speakerKey, entry),
+            packageDir,
+            pluginRelPath: pluginRel,
+            isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+          });
+          if (resolved) {
+            referenceWav = resolved.wavPath;
+            referenceText = referenceTextForPick(voiceSources, resolved);
+            speakerRefCache.set(speakerKey, {
+              wavPath: resolved.wavPath,
+              referenceText,
+              source: 'speaker',
+            });
+          }
         }
       }
     }

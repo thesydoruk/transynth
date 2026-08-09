@@ -650,3 +650,38 @@ CREATE INDEX IF NOT EXISTS idx_records_gender_detect_pending
   ON records(mod_id)
   WHERE gender_detect_scanned_at IS NULL
     AND signature IN ('BOOK', 'TERM', 'NOTE');
+
+-- ── Ukrainian TTS reference voice library ─────────────────────────────────────
+-- Curated clips from opentts (Apache-2.0) and Common Voice UA mirrors (CC0).
+-- Linked globally to voice-folder characters; not overridden per mod.
+CREATE TABLE IF NOT EXISTS uk_voice_library (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL CHECK (source IN ('opentts', 'common_voice')),
+  display_name TEXT NOT NULL,
+  description TEXT,
+  gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'unknown')),
+  audio_rel_path TEXT NOT NULL,
+  transcript TEXT NOT NULL,
+  license TEXT NOT NULL,
+  duration_sec DOUBLE PRECISION,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_uk_voice_library_gender
+  ON uk_voice_library(gender);
+
+CREATE INDEX IF NOT EXISTS idx_uk_voice_library_source
+  ON uk_voice_library(source);
+
+-- Global voice-folder → Ukrainian library voice (shared across all mods).
+CREATE TABLE IF NOT EXISTS character_uk_voices (
+  character_key TEXT PRIMARY KEY,
+  voice_id TEXT NOT NULL REFERENCES uk_voice_library(id) ON DELETE RESTRICT,
+  assign_reason TEXT,
+  assigned_by TEXT NOT NULL DEFAULT 'manual',
+  assigned_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_character_uk_voices_voice
+  ON character_uk_voices(voice_id);

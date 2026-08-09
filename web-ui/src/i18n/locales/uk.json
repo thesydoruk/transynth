@@ -934,10 +934,36 @@
       "general": "Загальні",
       "llm": "LLM / Авто-переклад",
       "voice": "Озвучка",
+      "ukVoices": "Українські голоси",
       "qaRules": "Правила QA",
       "workflow": "Workflow",
       "activity": "Активність",
       "data": "Дані"
+    },
+    "ukVoices": {
+      "libraryTitle": "Бібліотека референсів",
+      "libraryDesc": "Відкриті українські голоси для Fish Speech: opentts (Apache-2.0) та Common Voice UA (CC0). Голос персонажа задається глобально для всіх модів.",
+      "importLibrary": "Завантажити бібліотеку",
+      "importing": "Завантаження…",
+      "importDone": "Імпортовано: opentts {{opentts}}, Common Voice {{commonVoice}}",
+      "emptyLibrary": "Бібліотека порожня. Натисніть «Завантажити бібліотеку» або виконайте npm run voice:import-uk-library.",
+      "charactersTitle": "Персонажі (voice folders)",
+      "charactersDesc": "Глобальний UK-голос опційний: якщо вибрано — він використовується для всіх модів; якщо «як зараз» — лишається звичайний pipeline (референс з репліки, а для короткої — авто-референс персонажа). Роботів теж можна прив’язати вручну.",
+      "emptyCharacters": "Немає персонажів у dialog_speakers. Спочатку імпортуйте моди з діалогами.",
+      "noVoice": "— як зараз (репліка / авто-референс) —",
+      "colName": "Голос",
+      "colSource": "Джерело",
+      "colGender": "Стать",
+      "colLicense": "Ліцензія",
+      "colPreview": "Прослухати",
+      "colCharacter": "Персонаж",
+      "colMods": "Моди / рядки",
+      "colVoice": "Голос",
+      "gender": {
+        "male": "чоловіча",
+        "female": "жіноча",
+        "unknown": "невідома"
+      }
     },
     "general": {
       "languagesTitle": "Типові мови",

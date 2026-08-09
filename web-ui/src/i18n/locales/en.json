@@ -934,10 +934,36 @@
       "general": "General",
       "llm": "LLM / Auto-translate",
       "voice": "Voice",
+      "ukVoices": "Ukrainian voices",
       "qaRules": "QA Rules",
       "workflow": "Workflow",
       "activity": "Activity",
       "data": "Data"
+    },
+    "ukVoices": {
+      "libraryTitle": "Reference library",
+      "libraryDesc": "Open Ukrainian voices for Fish Speech: opentts (Apache-2.0) and Common Voice UA (CC0). Character voice is global across all mods.",
+      "importLibrary": "Import library",
+      "importing": "Importing…",
+      "importDone": "Imported: opentts {{opentts}}, Common Voice {{commonVoice}}",
+      "emptyLibrary": "Library is empty. Click “Import library” or run npm run voice:import-uk-library.",
+      "charactersTitle": "Characters (voice folders)",
+      "charactersDesc": "A global UK voice is optional: when set it applies across all mods; when “default pipeline” is selected, synthesis keeps the usual behaviour (line reference, or auto speaker reference for short lines). Robots can be linked manually too.",
+      "emptyCharacters": "No characters in dialog_speakers yet. Import mods with dialogs first.",
+      "noVoice": "— default pipeline (line / auto ref) —",
+      "colName": "Voice",
+      "colSource": "Source",
+      "colGender": "Gender",
+      "colLicense": "License",
+      "colPreview": "Preview",
+      "colCharacter": "Character",
+      "colMods": "Mods / lines",
+      "colVoice": "Voice",
+      "gender": {
+        "male": "male",
+        "female": "female",
+        "unknown": "unknown"
+      }
     },
     "general": {
       "languagesTitle": "Default Languages",

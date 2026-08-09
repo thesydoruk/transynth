@@ -43,6 +43,10 @@ export const PATHS = {
   voiceRegenerate: resolveDir(
     process.env.VOICE_REGENERATE_DIR ?? path.join(dataDir, 'cache', 'voice-regenerate'),
   ),
+  /** Ukrainian reference voice library (opentts + Common Voice clips). */
+  ukVoiceLibrary: resolveDir(
+    process.env.UK_VOICE_LIBRARY_DIR ?? path.join(dataDir, 'uk-voice-library'),
+  ),
   /** Champollion CLI installed by `npm run tools:install`. */
   champollion: resolveDir(
     process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(toolsDir, 'champollion'),
@@ -63,6 +67,7 @@ export const ensureDataDirs = (): void => {
     PATHS.pexDecompile,
     PATHS.voicePreview,
     PATHS.voiceRegenerate,
+    PATHS.ukVoiceLibrary,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

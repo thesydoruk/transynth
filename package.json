@@ -22,6 +22,8 @@
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:rebuild-loudness": "tsx scripts/rebuildVoiceLoudness.ts",
     "voice:fix-orphan-refs": "tsx scripts/regenerateOrphanReferenceVoice.ts",
+    "voice:import-uk-library": "tsx scripts/importUkVoiceLibrary.ts",
+    "voice:apply-uk-mapping": "tsx scripts/applyUkVoiceMapping.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -6,7 +6,9 @@ export { voiceSpeakerKey, groupVoiceFilesBySpeaker } from './grouping';
 export type { VoiceReferenceEligibility } from './eligibility';
 export {
   MANUAL_REFERENCE_FORMID,
+  UK_LIBRARY_REFERENCE_FORMID,
   isManualVoiceReferencePick,
+  isUkLibraryVoiceReferencePick,
   isVoiceReferencePickEligible,
   voiceReferenceEligibilityFromSources,
 } from './eligibility';
