@@ -33,6 +33,7 @@ export { isRobotVoiceFolder } from './robotFolders';
 export { analyzeUkVoiceLibrary } from './analyzeLibrary';
 export type { AnalyzeUkVoiceLibraryResult } from './analyzeLibrary';
 export { analyzeUkVoiceWav, scoreUkVoiceQuality } from './analyzeClip';
+export { estimateReverbAmount, reverbQualityPenalty } from './reverbAmount';
 export { analyzeCharacterVoiceF0 } from './analyzeCharacterF0';
 export type { AnalyzeCharacterF0Result } from './analyzeCharacterF0';
 export { f0Distance } from './f0Distance';

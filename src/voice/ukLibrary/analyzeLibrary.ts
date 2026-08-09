@@ -37,7 +37,8 @@ export const analyzeUkVoiceLibrary = async (db: Tx): Promise<AnalyzeUkVoiceLibra
           JSON.stringify({
             f0GenderHint: result.gender,
             genderConfidence: result.genderConfidence,
-            analysis: 'f0_autocorr_v1',
+            reverbAmount: result.reverbAmount,
+            analysis: 'f0_autocorr_v2_reverb',
           }),
         ],
       );

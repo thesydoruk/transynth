@@ -1,5 +1,6 @@
-import { analyzeFrames } from '../speakerReference/analysisFrames';
+import { analyzeFrames, type AnalysisFrame } from '../speakerReference/analysisFrames';
 import { readPcmFromWav } from '../speakerReference/pcm';
+import { estimateReverbAmount, reverbQualityPenalty } from './reverbAmount';
 import type { UkVoiceGender } from './types';
 
 const SILENCE_RMS = 800;
@@ -14,6 +15,8 @@ export type UkVoiceClipAnalysis = {
   meanF0Hz: number | null;
   /** 0–100 reference suitability / production quality heuristic. */
   qualityScore: number;
+  /** Estimated room reverb amount in \[0, 1\] (used for quality penalty). */
+  reverbAmount: number;
 };
 
 const median = (values: number[]): number | null => {
@@ -77,14 +80,18 @@ const detectGenderFromF0 = (
 
 /**
  * Quality 0–100 for Fish Speech reference use: duration fit, speech activity,
- * loudness, clipping and hesitation penalties (same family as speaker-ref scoring).
+ * loudness, clipping — and a heavy penalty for room reverb (unsuitable for game VO).
  */
-export const scoreUkVoiceQuality = (samples: Int16Array, sampleRate: number): number => {
+export const scoreUkVoiceQuality = (
+  samples: Int16Array,
+  sampleRate: number,
+  precomputedFrames?: AnalysisFrame[],
+): number => {
   if (samples.length === 0 || sampleRate <= 0) return 0;
   const durationSec = samples.length / sampleRate;
   if (durationSec < 1.2 || durationSec > 14) return 5;
 
-  const frames = analyzeFrames(samples, sampleRate);
+  const frames = precomputedFrames ?? analyzeFrames(samples, sampleRate);
   if (frames.length === 0) return 0;
 
   const active = frames.filter((f) => f.rms > SILENCE_RMS);
@@ -100,10 +107,11 @@ export const scoreUkVoiceQuality = (samples: Int16Array, sampleRate: number): nu
   const activityScore = Math.min(1, activityRatio / 0.7);
   const snrScore = Math.max(0, Math.min(1, (snrDb - 6) / 24));
   const clipPenalty = Math.min(1, clipRatio * 8);
+  const reverbPenalty = reverbQualityPenalty(estimateReverbAmount(frames, SILENCE_RMS));
 
   const raw =
     durationScore * 30 + activityScore * 30 + snrScore * 30 + Math.min(10, Math.log10(meanRms)) * 1;
-  return Math.max(0, Math.min(100, Math.round(raw - clipPenalty * 25)));
+  return Math.max(0, Math.min(100, Math.round(raw - clipPenalty * 25 - reverbPenalty)));
 };
 
 /** Analyze one normalized mono WAV for gender (F0) and reference quality. */
@@ -120,10 +128,13 @@ export const analyzeUkVoiceWav = (wavPath: string): UkVoiceClipAnalysis => {
 
   const meanF0Hz = median(f0s);
   const { gender, confidence } = detectGenderFromF0(meanF0Hz);
+  const frames = analyzeFrames(samples, sampleRate);
+  const reverbAmount = estimateReverbAmount(frames, SILENCE_RMS);
   return {
     gender,
     genderConfidence: confidence,
     meanF0Hz: meanF0Hz == null ? null : Math.round(meanF0Hz * 10) / 10,
-    qualityScore: scoreUkVoiceQuality(samples, sampleRate),
+    qualityScore: scoreUkVoiceQuality(samples, sampleRate, frames),
+    reverbAmount,
   };
 };
