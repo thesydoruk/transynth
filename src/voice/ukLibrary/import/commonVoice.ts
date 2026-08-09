@@ -58,7 +58,18 @@ export const importCommonVoiceVoices = async (
   log.info(`common_voice: resuming with ${imported}/${maxVoices} (offset=${offset})`);
 
   while (imported < maxVoices && offset < maxScanRows && offset < total) {
-    const page = await fetchHfDatasetRows(CV_DATASET, offset, PAGE);
+    let page: Awaited<ReturnType<typeof fetchHfDatasetRows>>;
+    try {
+      page = await fetchHfDatasetRows(CV_DATASET, offset, PAGE);
+    } catch (err) {
+      log.warn(
+        `common_voice: page offset=${offset} failed, retrying later: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
+      continue;
+    }
     total = page.total;
     if (page.rows.length === 0) break;
 

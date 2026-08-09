@@ -18,6 +18,8 @@ type HfRowsResponse = {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+
 const audioSrc = (value: unknown): string | null => {
   if (!Array.isArray(value) || value.length === 0) return null;
   const first = value[0];
@@ -27,19 +29,25 @@ const audioSrc = (value: unknown): string | null => {
 };
 
 const fetchWithRetry = async (url: string, dataset: string): Promise<Response> => {
-  let delayMs = 5_000;
-  for (let attempt = 1; attempt <= 12; attempt += 1) {
-    const res = await fetch(url);
-    if (res.ok) return res;
-    if (res.status !== 429 && res.status !== 502 && res.status !== 503) {
-      throw new Error(`HF rows ${dataset}: HTTP ${res.status}`);
+  let delayMs = 8_000;
+  for (let attempt = 1; attempt <= 16; attempt += 1) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      if (!RETRYABLE.has(res.status)) {
+        throw new Error(`HF rows ${dataset}: HTTP ${res.status}`);
+      }
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+      await sleep(waitMs);
+      delayMs = Math.min(delayMs * 2, 180_000);
+    } catch (err) {
+      if (attempt >= 16) throw err;
+      await sleep(delayMs);
+      delayMs = Math.min(delayMs * 2, 180_000);
     }
-    const retryAfter = Number(res.headers.get('retry-after'));
-    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
-    await sleep(waitMs);
-    delayMs = Math.min(delayMs * 2, 120_000);
   }
-  throw new Error(`HF rows ${dataset}: HTTP 429/502/503 after retries`);
+  throw new Error(`HF rows ${dataset}: exhausted retries`);
 };
 
 export const fetchHfDatasetRows = async (
