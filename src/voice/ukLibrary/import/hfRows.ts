@@ -16,12 +16,30 @@ type HfRowsResponse = {
   num_rows_total?: number;
 };
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 const audioSrc = (value: unknown): string | null => {
   if (!Array.isArray(value) || value.length === 0) return null;
   const first = value[0];
   if (!first || typeof first !== 'object') return null;
   const src = (first as { src?: unknown }).src;
   return typeof src === 'string' && src ? src : null;
+};
+
+const fetchWithRetry = async (url: string, dataset: string): Promise<Response> => {
+  let delayMs = 5_000;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+    if (res.status !== 429 && res.status !== 503) {
+      throw new Error(`HF rows ${dataset}: HTTP ${res.status}`);
+    }
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+    await sleep(waitMs);
+    delayMs = Math.min(delayMs * 2, 120_000);
+  }
+  throw new Error(`HF rows ${dataset}: HTTP 429/503 after retries`);
 };
 
 export const fetchHfDatasetRows = async (
@@ -39,10 +57,7 @@ export const fetchHfDatasetRows = async (
     `&split=${encodeURIComponent(split)}` +
     `&offset=${offset}&length=${length}`;
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`HF rows ${dataset}: HTTP ${res.status}`);
-  }
+  const res = await fetchWithRetry(url, dataset);
   const body = (await res.json()) as HfRowsResponse;
   const rows: HfAudioRow[] = [];
   for (const entry of body.rows ?? []) {

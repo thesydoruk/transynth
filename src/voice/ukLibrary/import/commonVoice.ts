@@ -81,6 +81,8 @@ export const importCommonVoiceVoices = async (
     }
 
     offset += PAGE;
+    // Soften HF datasets-server rate limits between pages.
+    await new Promise((resolve) => setTimeout(resolve, 1_250));
   }
 
   log.info(`common_voice: imported ${imported} clip(s)`);
