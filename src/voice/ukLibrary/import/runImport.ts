@@ -6,15 +6,18 @@ import {
   clearAllCharacterUkVoiceLinks,
   deleteUkVoicesNotIn,
   deleteUkVoicesWithBadTranscripts,
+  listUkVoiceLibrary,
 } from '../db';
 import { importCommonVoiceVoices, type ImportCommonVoiceOptions } from './commonVoice';
 import { importOpenttsVoices } from './opentts';
+import { pruneOrphanUkVoiceLibraryFiles } from './pruneLibraryFiles';
 
 export type UkVoiceLibraryImportResult = {
   opentts: number;
   commonVoice: number;
   removedObsolete: number;
   removedBadTranscripts: number;
+  prunedOrphanFiles: number;
 };
 
 /**
@@ -37,13 +40,16 @@ export const runUkVoiceLibraryImport = async (
 
   const keepIds = [...openttsResult.ids, ...commonVoiceResult.ids];
   const removedObsolete = await deleteUkVoicesNotIn(db, keepIds);
+  const keepRels = (await listUkVoiceLibrary(db)).map((voice) => voice.audioRelPath);
+  const prunedOrphanFiles = pruneOrphanUkVoiceLibraryFiles(keepRels);
   log.info(
-    `UK library import done: opentts=${openttsResult.count}, commonVoice=${commonVoiceResult.count}, removedObsolete=${removedObsolete}, removedBadTranscripts=${removedBadTranscripts}`,
+    `UK library import done: opentts=${openttsResult.count}, commonVoice=${commonVoiceResult.count}, removedObsolete=${removedObsolete}, removedBadTranscripts=${removedBadTranscripts}, prunedOrphanFiles=${prunedOrphanFiles}`,
   );
   return {
     opentts: openttsResult.count,
     commonVoice: commonVoiceResult.count,
     removedObsolete,
     removedBadTranscripts,
+    prunedOrphanFiles,
   };
 };
