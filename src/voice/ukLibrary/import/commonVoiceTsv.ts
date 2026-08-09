@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseCvAge, type UkVoiceAge } from '../ageBand';
 import { parseCvGender } from './clientId';
+import { isUsableTranscript } from './transcriptQuality';
 
 export type CvTsvClip = {
   clientId: string;
@@ -39,7 +40,7 @@ export const parseValidatedTsv = (tsvPath: string): CvTsvClip[] => {
     const clientId = cols[iClient]?.trim();
     const clipPath = cols[iPath]?.trim();
     const sentence = cols[iSentence]?.trim();
-    if (!clientId || !clipPath || !sentence) continue;
+    if (!clientId || !clipPath || !isUsableTranscript(sentence)) continue;
     clips.push({
       clientId,
       path: clipPath,

@@ -2,7 +2,12 @@ import type { Tx } from '../../../db';
 import { log } from '../../../logger';
 import { ensureDir } from '../../../utils/file';
 import { PATHS } from '../../../paths';
-import { clearAllCharacterUkVoiceLinks, deleteUkVoicesNotIn, listUkVoiceLibrary } from '../db';
+import {
+  clearAllCharacterUkVoiceLinks,
+  deleteUkVoicesNotIn,
+  deleteUkVoicesWithBadTranscripts,
+  listUkVoiceLibrary,
+} from '../db';
 import { importCommonVoiceVoices, type ImportCommonVoiceOptions } from './commonVoice';
 import { importOpenttsVoices } from './opentts';
 
@@ -10,6 +15,7 @@ export type UkVoiceLibraryImportResult = {
   opentts: number;
   commonVoice: number;
   removedObsolete: number;
+  removedBadTranscripts: number;
 };
 
 /**
@@ -25,6 +31,7 @@ export const runUkVoiceLibraryImport = async (
   log.info(`Selecting UK voice library winners → ${PATHS.ukVoiceLibrary}`);
 
   await clearAllCharacterUkVoiceLinks(db);
+  const removedBadTranscripts = await deleteUkVoicesWithBadTranscripts(db);
 
   const opentts = await importOpenttsVoices(db);
   const commonVoice = await importCommonVoiceVoices(db, options);
@@ -32,7 +39,7 @@ export const runUkVoiceLibraryImport = async (
   const keepIds = (await listUkVoiceLibrary(db)).map((voice) => voice.id);
   const removedObsolete = await deleteUkVoicesNotIn(db, keepIds);
   log.info(
-    `UK library import done: opentts=${opentts}, commonVoice=${commonVoice}, removed=${removedObsolete}`,
+    `UK library import done: opentts=${opentts}, commonVoice=${commonVoice}, removedObsolete=${removedObsolete}, removedBadTranscripts=${removedBadTranscripts}`,
   );
-  return { opentts, commonVoice, removedObsolete };
+  return { opentts, commonVoice, removedObsolete, removedBadTranscripts };
 };

@@ -8,6 +8,7 @@ import { cachedOpenttsClipPath, cacheOpenttsVoice, listCachedOpenttsClips } from
 import { normalizeLocalReferenceClip } from './normalizeLocal';
 import { OPENTTS_VOICES } from './openttsVoices';
 import { selectBestClip, type ClipCandidate } from './selectBestClip';
+import { isUsableTranscript } from './transcriptQuality';
 
 /** Pick the best cached clip per opentts studio voice and write library winners. */
 export const importOpenttsVoices = async (db: Tx): Promise<number> => {
@@ -17,12 +18,14 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
   for (const voice of OPENTTS_VOICES) {
     await cacheOpenttsVoice(voice.slug, voice.dataset);
     const clips = listCachedOpenttsClips(voice.slug);
-    const candidates: ClipCandidate[] = clips.map((clip) => ({
-      id: String(clip.rowIdx),
-      audioPath: cachedOpenttsClipPath(voice.slug, clip.fileName),
-      durationSec: clip.duration,
-      transcript: clip.transcription,
-    }));
+    const candidates: ClipCandidate[] = clips
+      .filter((clip) => isUsableTranscript(clip.transcription))
+      .map((clip) => ({
+        id: String(clip.rowIdx),
+        audioPath: cachedOpenttsClipPath(voice.slug, clip.fileName),
+        durationSec: clip.duration,
+        transcript: clip.transcription,
+      }));
 
     const best = await selectBestClip(candidates);
     if (!best) {

@@ -14,6 +14,7 @@ export {
   clearAllCharacterUkVoiceLinks,
   clearCharacterUkVoiceLink,
   deleteUkVoicesNotIn,
+  deleteUkVoicesWithBadTranscripts,
   getCharacterUkVoiceLink,
   getUkVoiceById,
   listCharacterUkVoiceLinks,

@@ -120,6 +120,28 @@ export const upsertUkVoiceLibraryRow = async (db: Tx, row: UkVoiceLibraryRow): P
   );
 };
 
+/** Delete library rows with unusable reference transcripts (and their character links). */
+export const deleteUkVoicesWithBadTranscripts = async (db: Tx): Promise<number> => {
+  await db.query(
+    `DELETE FROM character_uk_voices
+     WHERE voice_id IN (
+       SELECT id FROM uk_voice_library
+       WHERE transcript IS NULL
+          OR btrim(transcript) = ''
+          OR btrim(transcript) IN ('-', '—', '–')
+          OR length(btrim(transcript)) < 8
+     )`,
+  );
+  const result = await db.query(
+    `DELETE FROM uk_voice_library
+     WHERE transcript IS NULL
+        OR btrim(transcript) = ''
+        OR btrim(transcript) IN ('-', '—', '–')
+        OR length(btrim(transcript)) < 8`,
+  );
+  return result.rowCount ?? 0;
+};
+
 /** Remove library voices whose ids are not in `keepIds` (after clearing character links). */
 export const deleteUkVoicesNotIn = async (db: Tx, keepIds: string[]): Promise<number> => {
   if (keepIds.length === 0) {

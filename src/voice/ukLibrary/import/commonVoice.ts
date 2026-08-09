@@ -12,6 +12,7 @@ import { cacheCommonVoice26Uk, findValidatedTsv, isCommonVoiceCacheReady } from 
 import { normalizeLocalReferenceClip } from './normalizeLocal';
 import { probeAudioDurationSec } from './probeDuration';
 import { selectBestClip, type ClipCandidate } from './selectBestClip';
+import { isUsableTranscript } from './transcriptQuality';
 
 export type ImportCommonVoiceOptions = {
   /** Max speakers to import (default: all). */
@@ -67,7 +68,10 @@ export const importCommonVoiceVoices = async (
 
   for (const speaker of speakers.slice(0, limit)) {
     const voiceId = cvSpeakerVoiceId(speaker.clientId);
-    const topClips = [...speaker.clips].sort((a, b) => b.upVotes - a.upVotes).slice(0, 40);
+    const topClips = [...speaker.clips]
+      .filter((clip) => isUsableTranscript(clip.sentence))
+      .sort((a, b) => b.upVotes - a.upVotes || b.sentence.length - a.sentence.length)
+      .slice(0, 40);
 
     const candidates: ClipCandidate[] = [];
     for (const clip of topClips) {
