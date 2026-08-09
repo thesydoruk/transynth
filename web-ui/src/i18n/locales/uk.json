@@ -957,6 +957,7 @@
       "colName": "Голос",
       "colSource": "Джерело",
       "colGender": "Стать",
+      "colAge": "Вік",
       "colQuality": "Якість",
       "colF0": "F0",
       "colTranscript": "Транскрипт",
@@ -969,6 +970,18 @@
         "male": "чоловіча",
         "female": "жіноча",
         "unknown": "невідома"
+      },
+      "age": {
+        "teens": "підлітки",
+        "twenties": "20+",
+        "thirties": "30+",
+        "fourties": "40+",
+        "fifties": "50+",
+        "sixties": "60+",
+        "seventies": "70+",
+        "eighties": "80+",
+        "nineties": "90+",
+        "unknown": "невідомий"
       },
       "genderSource": {
         "curated": "кураторська",

@@ -24,6 +24,7 @@ export const CharacterLinksTable = ({ characters, voices, onLink, onUnlink, busy
           <tr>
             <th>{t('settings.ukVoices.colCharacter')}</th>
             <th>{t('settings.ukVoices.colGender')}</th>
+            <th>{t('settings.ukVoices.colAge')}</th>
             <th>{t('settings.ukVoices.colMods')}</th>
             <th>{t('settings.ukVoices.colVoice')}</th>
           </tr>
@@ -38,6 +39,7 @@ export const CharacterLinksTable = ({ characters, voices, onLink, onUnlink, busy
                 ) : null}
               </td>
               <td>{t(`settings.ukVoices.gender.${character.gender}`)}</td>
+              <td>{t(`settings.ukVoices.age.${character.age ?? 'unknown'}`)}</td>
               <td className={s.muted}>
                 {character.modCount} / {character.lineCount}
               </td>
@@ -58,9 +60,11 @@ export const CharacterLinksTable = ({ characters, voices, onLink, onUnlink, busy
                       voice.qualityScore != null && Number.isFinite(voice.qualityScore)
                         ? ` · Q${Math.round(voice.qualityScore)}`
                         : '';
+                    const age = voice.age && voice.age !== 'unknown' ? ` · ${voice.age}` : '';
                     return (
                       <option key={voice.id} value={voice.id}>
                         {voice.displayName} ({voice.gender}
+                        {age}
                         {q})
                       </option>
                     );

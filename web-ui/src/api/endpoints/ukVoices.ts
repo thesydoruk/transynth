@@ -2,6 +2,17 @@ import { BASE, req } from '../client';
 
 export type UkVoiceGender = 'male' | 'female' | 'unknown';
 export type UkVoiceSource = 'opentts' | 'common_voice';
+export type UkVoiceAge =
+  | 'teens'
+  | 'twenties'
+  | 'thirties'
+  | 'fourties'
+  | 'fifties'
+  | 'sixties'
+  | 'seventies'
+  | 'eighties'
+  | 'nineties'
+  | 'unknown';
 
 export type UkVoiceLibraryItem = {
   id: string;
@@ -9,6 +20,7 @@ export type UkVoiceLibraryItem = {
   displayName: string;
   description: string | null;
   gender: UkVoiceGender;
+  age: UkVoiceAge;
   transcript: string;
   license: string;
   durationSec: number | null;
@@ -22,6 +34,7 @@ export type UkVoiceCharacter = {
   characterKey: string;
   displayName: string | null;
   gender: UkVoiceGender;
+  age: UkVoiceAge;
   modCount: number;
   lineCount: number;
   linkedVoiceId: string | null;

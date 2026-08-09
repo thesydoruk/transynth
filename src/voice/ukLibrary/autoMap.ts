@@ -1,3 +1,4 @@
+import { ageDistance } from './ageBand';
 import type {
   UkVoiceAutoMapProposal,
   UkVoiceCharacter,
@@ -19,7 +20,6 @@ const sortCharacters = (characters: UkVoiceCharacter[]): UkVoiceCharacter[] =>
 
 const sortVoices = (voices: UkVoiceLibraryRow[]): UkVoiceLibraryRow[] =>
   [...voices].sort((a, b) => {
-    // Prefer studio opentts, then higher quality, then definite gender, then name.
     const src = (a.source === 'opentts' ? 0 : 1) - (b.source === 'opentts' ? 0 : 1);
     if (src !== 0) return src;
     const qa = a.qualityScore ?? -1;
@@ -30,24 +30,42 @@ const sortVoices = (voices: UkVoiceLibraryRow[]): UkVoiceLibraryRow[] =>
     return a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id);
   });
 
+/** Prefer gender match, then closer age band, then higher quality. */
 const takeMatchingVoice = (
   pool: UkVoiceLibraryRow[],
-  gender: UkVoiceGender,
+  character: UkVoiceCharacter,
 ): UkVoiceLibraryRow | undefined => {
-  if (gender === 'male' || gender === 'female') {
-    const exact = pool.findIndex((voice) => voice.gender === gender);
-    if (exact >= 0) return pool.splice(exact, 1)[0];
+  if (pool.length === 0) return undefined;
+  let bestIdx = 0;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < pool.length; i += 1) {
+    const voice = pool[i]!;
+    const genderPenalty =
+      character.gender === 'male' || character.gender === 'female'
+        ? voice.gender === character.gender
+          ? 0
+          : voice.gender === 'unknown'
+            ? 8
+            : 20
+        : voice.gender === 'unknown'
+          ? 1
+          : 0;
+    const agePenalty = ageDistance(character.age, voice.age);
+    const qualityBonus = (voice.qualityScore ?? 0) / 100;
+    const score = genderPenalty * 100 + agePenalty * 10 - qualityBonus;
+    if (score < bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
   }
-  const unknown = pool.findIndex((voice) => voice.gender === 'unknown');
-  if (unknown >= 0) return pool.splice(unknown, 1)[0];
-  // Last resort: opposite/any remaining voice so uniqueness is preserved.
-  return pool.shift();
+  return pool.splice(bestIdx, 1)[0];
 };
 
 const reasonFor = (
   character: UkVoiceCharacter,
   voice: UkVoiceLibraryRow,
   genderMatched: boolean,
+  ageMatched: boolean,
 ): string => {
   const parts: string[] = [];
   if (voice.source === 'opentts') {
@@ -66,6 +84,12 @@ const reasonFor = (
       `no unused ${character.gender} library voice — reused opposite-gender pool to keep voices unique`,
     );
   }
+  if (ageMatched) {
+    parts.push(`age match (${character.age})`);
+  } else {
+    parts.push(`age ${character.age} → voice ${voice.age}`);
+  }
+  if (voice.qualityScore != null) parts.push(`Q=${Math.round(voice.qualityScore)}`);
   if (character.lineCount > 0) {
     parts.push(
       `priority by ${character.lineCount} dialog lines across ${character.modCount} mod(s)`,
@@ -94,26 +118,27 @@ export const buildUkVoiceAutoMap = (
   const proposals: UkVoiceAutoMapProposal[] = [];
 
   for (const character of sortCharacters(characters)) {
-    const beforeIds = new Set(pool.map((voice) => voice.id));
-    const voice = takeMatchingVoice(pool, character.gender);
+    const voice = takeMatchingVoice(pool, character);
     if (!voice) {
       throw new Error(`Voice pool exhausted while assigning "${character.characterKey}"`);
     }
-    beforeIds.delete(voice.id);
     const genderMatched =
       (character.gender === 'male' || character.gender === 'female') &&
       voice.gender === character.gender;
+    const ageMatched = ageDistance(character.age, voice.age) === 0;
 
     proposals.push({
       characterKey: character.characterKey,
       characterGender: character.gender,
+      characterAge: character.age,
       displayName: character.displayName,
       modCount: character.modCount,
       voiceId: voice.id,
       voiceName: voice.displayName,
       voiceGender: voice.gender,
+      voiceAge: voice.age,
       voiceSource: voice.source,
-      reason: reasonFor(character, voice, genderMatched),
+      reason: reasonFor(character, voice, genderMatched, ageMatched),
     });
   }
 

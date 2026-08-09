@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { parseCvAge, type UkVoiceAge } from '../ageBand';
 import { parseCvGender } from './clientId';
 
 export type CvTsvClip = {
@@ -8,6 +9,7 @@ export type CvTsvClip = {
   sentence: string;
   upVotes: number;
   gender: 'male' | 'female' | 'unknown';
+  age: UkVoiceAge;
 };
 
 const splitTsvLine = (line: string): string[] => line.split('\t');
@@ -26,6 +28,7 @@ export const parseValidatedTsv = (tsvPath: string): CvTsvClip[] => {
   const iSentence = idx('sentence');
   const iUp = idx('up_votes');
   const iGender = idx('gender');
+  const iAge = idx('age');
   if (iClient < 0 || iPath < 0 || iSentence < 0) {
     throw new Error(`validated.tsv missing required columns: ${header.join(',')}`);
   }
@@ -43,6 +46,7 @@ export const parseValidatedTsv = (tsvPath: string): CvTsvClip[] => {
       sentence,
       upVotes: iUp >= 0 ? Number(cols[iUp] ?? 0) || 0 : 0,
       gender: parseCvGender(iGender >= 0 ? cols[iGender] : null),
+      age: parseCvAge(iAge >= 0 ? cols[iAge] : null),
     });
   }
   return clips;

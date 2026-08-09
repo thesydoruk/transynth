@@ -24,6 +24,7 @@ export const VoiceLibraryTable = ({ voices }: Props) => {
             <th>{t('settings.ukVoices.colName')}</th>
             <th>{t('settings.ukVoices.colSource')}</th>
             <th>{t('settings.ukVoices.colGender')}</th>
+            <th>{t('settings.ukVoices.colAge')}</th>
             <th>{t('settings.ukVoices.colQuality')}</th>
             <th>{t('settings.ukVoices.colF0')}</th>
             <th>{t('settings.ukVoices.colTranscript')}</th>
@@ -59,6 +60,7 @@ export const VoiceLibraryTable = ({ voices }: Props) => {
                     </div>
                   ) : null}
                 </td>
+                <td>{t(`settings.ukVoices.age.${voice.age ?? 'unknown'}`)}</td>
                 <td className={qualityClass}>{formatQuality(quality)}</td>
                 <td className={s.muted}>{voice.meanF0Hz != null ? `${voice.meanF0Hz} Hz` : '—'}</td>
                 <td>

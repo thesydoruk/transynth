@@ -73,13 +73,15 @@ try {
     handProposals.push({
       characterKey: character.characterKey,
       characterGender: character.gender,
+      characterAge: character.age,
       displayName: character.displayName,
       modCount: character.modCount,
       voiceId: voice.id,
       voiceName: voice.displayName,
       voiceGender: voice.gender,
+      voiceAge: voice.age,
       voiceSource: voice.source,
-      reason: `${pick.reason}; Q=${voice.qualityScore ?? '?'}; ${character.lineCount} lines / ${character.modCount} mods`,
+      reason: `${pick.reason}; age ${character.age}→${voice.age}; Q=${voice.qualityScore ?? '?'}; ${character.lineCount} lines / ${character.modCount} mods`,
     });
   }
 
@@ -105,7 +107,7 @@ try {
     `- Generated: ${payload.generatedAt}`,
     `- Skipped robots: ${robots.length}`,
     `- Hand-picked opentts: ${handProposals.length}`,
-    `- Auto (quality + gender): ${auto.length}`,
+    `- Auto (quality + gender + age): ${auto.length}`,
     '',
     '## Hand-picked opentts',
     '',

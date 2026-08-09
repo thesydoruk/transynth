@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import type { Tx } from '../../db';
 import { withTransaction } from '../../db';
+import type { UkVoiceAge } from './ageBand';
 import type {
   CharacterUkVoiceLink,
   UkVoiceGender,
@@ -14,6 +15,7 @@ type LibraryDbRow = {
   display_name: string;
   description: string | null;
   gender: string;
+  age: string | null;
   audio_rel_path: string;
   transcript: string;
   license: string;
@@ -40,6 +42,7 @@ const mapLibraryRow = (row: LibraryDbRow): UkVoiceLibraryRow => ({
   displayName: row.display_name,
   description: row.description,
   gender: row.gender as UkVoiceGender,
+  age: (row.age as UkVoiceAge | null) ?? 'unknown',
   audioRelPath: row.audio_rel_path,
   transcript: row.transcript,
   license: row.license,
@@ -52,7 +55,7 @@ const mapLibraryRow = (row: LibraryDbRow): UkVoiceLibraryRow => ({
   meta: row.meta ?? {},
 });
 
-const LIBRARY_SELECT = `SELECT id, source, display_name, description, gender, audio_rel_path,
+const LIBRARY_SELECT = `SELECT id, source, display_name, description, gender, age, audio_rel_path,
             transcript, license, duration_sec, quality_score, gender_source, mean_f0_hz,
             analyzed_at, speaker_key, meta
      FROM uk_voice_library`;
@@ -76,15 +79,16 @@ export const getUkVoiceById = async (
 export const upsertUkVoiceLibraryRow = async (db: Tx, row: UkVoiceLibraryRow): Promise<void> => {
   await db.query(
     `INSERT INTO uk_voice_library(
-       id, source, display_name, description, gender, audio_rel_path,
+       id, source, display_name, description, gender, age, audio_rel_path,
        transcript, license, duration_sec, quality_score, gender_source, mean_f0_hz,
        analyzed_at, speaker_key, meta
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)
      ON CONFLICT (id) DO UPDATE SET
        source = EXCLUDED.source,
        display_name = EXCLUDED.display_name,
        description = EXCLUDED.description,
        gender = EXCLUDED.gender,
+       age = EXCLUDED.age,
        audio_rel_path = EXCLUDED.audio_rel_path,
        transcript = EXCLUDED.transcript,
        license = EXCLUDED.license,
@@ -101,6 +105,7 @@ export const upsertUkVoiceLibraryRow = async (db: Tx, row: UkVoiceLibraryRow): P
       row.displayName,
       row.description,
       row.gender,
+      row.age,
       row.audioRelPath,
       row.transcript,
       row.license,

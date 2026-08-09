@@ -1,5 +1,9 @@
+import type { UkVoiceAge } from './ageBand';
+
 /** Gender label stored for library voices and character matching. */
 export type UkVoiceGender = 'male' | 'female' | 'unknown';
+
+export type { UkVoiceAge };
 
 /** Upstream corpus that supplied a library clip. */
 export type UkVoiceSource = 'opentts' | 'common_voice';
@@ -10,6 +14,8 @@ export type UkVoiceLibraryRow = {
   displayName: string;
   description: string | null;
   gender: UkVoiceGender;
+  /** CV demographic age bucket (teens…nineties) or unknown. */
+  age: UkVoiceAge;
   audioRelPath: string;
   transcript: string;
   license: string;
@@ -36,6 +42,8 @@ export type UkVoiceCharacter = {
   characterKey: string;
   displayName: string | null;
   gender: UkVoiceGender;
+  /** Inferred age band for mapping (from folder name heuristics). */
+  age: UkVoiceAge;
   modCount: number;
   lineCount: number;
   linkedVoiceId: string | null;
@@ -45,11 +53,13 @@ export type UkVoiceCharacter = {
 export type UkVoiceAutoMapProposal = {
   characterKey: string;
   characterGender: UkVoiceGender;
+  characterAge: UkVoiceAge;
   displayName: string | null;
   modCount: number;
   voiceId: string;
   voiceName: string;
   voiceGender: UkVoiceGender;
+  voiceAge: UkVoiceAge;
   voiceSource: UkVoiceSource;
   reason: string;
 };

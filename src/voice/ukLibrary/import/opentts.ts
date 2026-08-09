@@ -42,6 +42,7 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
       displayName: voice.displayName,
       description: voice.description,
       gender: voice.gender,
+      age: 'thirties',
       audioRelPath: rel,
       transcript: best.candidate.transcript,
       license: voice.slug === 'kateryna' ? 'CC-BY-NC-4.0' : 'Apache-2.0',

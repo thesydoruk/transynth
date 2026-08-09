@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { modeAge, type UkVoiceAge } from '../ageBand';
 import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
 import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../paths';
@@ -20,7 +21,7 @@ export type ImportCommonVoiceOptions = {
 type SpeakerBucket = {
   clientId: string;
   gender: 'male' | 'female' | 'unknown';
-  clips: Array<{ path: string; sentence: string; upVotes: number }>;
+  clips: Array<{ path: string; sentence: string; upVotes: number; age: UkVoiceAge }>;
 };
 
 /** Import one best-reference clip per Common Voice client_id from the full local cache. */
@@ -46,7 +47,12 @@ export const importCommonVoiceVoices = async (
       bySpeaker.set(row.clientId, bucket);
     }
     if (bucket.gender === 'unknown' && row.gender !== 'unknown') bucket.gender = row.gender;
-    bucket.clips.push({ path: row.path, sentence: row.sentence, upVotes: row.upVotes });
+    bucket.clips.push({
+      path: row.path,
+      sentence: row.sentence,
+      upVotes: row.upVotes,
+      age: row.age,
+    });
   }
 
   const speakers = [...bySpeaker.values()].sort((a, b) => b.clips.length - a.clips.length);
@@ -92,6 +98,8 @@ export const importCommonVoiceVoices = async (
         : analysis.gender === 'unknown'
           ? 'detected_uncertain'
           : 'detected';
+    const winnerClip = speaker.clips.find((clip) => clip.path === best.candidate.id);
+    const age = modeAge([...speaker.clips.map((clip) => clip.age), winnerClip?.age ?? 'unknown']);
 
     const libraryRow: UkVoiceLibraryRow = {
       id: voiceId,
@@ -99,6 +107,7 @@ export const importCommonVoiceVoices = async (
       displayName: `CV ${voiceId.slice(3, 11)}`,
       description: 'Mozilla Common Voice Ukrainian speaker (CC0), best clip selected.',
       gender,
+      age,
       audioRelPath: rel,
       transcript: best.candidate.transcript,
       license: 'CC0',
@@ -113,6 +122,7 @@ export const importCommonVoiceVoices = async (
         clipPath: best.candidate.id,
         candidatesScored: best.candidatesScored,
         clipCount: speaker.clips.length,
+        age,
       },
     };
     await upsertUkVoiceLibraryRow(db, libraryRow);

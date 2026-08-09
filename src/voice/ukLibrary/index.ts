@@ -1,11 +1,13 @@
 export type {
   CharacterUkVoiceLink,
+  UkVoiceAge,
   UkVoiceAutoMapProposal,
   UkVoiceCharacter,
   UkVoiceGender,
   UkVoiceLibraryRow,
   UkVoiceSource,
 } from './types';
+export { ageDistance, inferCharacterAge, parseCvAge } from './ageBand';
 export { buildUkVoiceAutoMap } from './autoMap';
 export { listUkVoiceCharacters } from './characters';
 export {

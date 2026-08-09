@@ -6,6 +6,7 @@ import {
   voiceFolderSpeakerKey,
   type SpeakerGender,
 } from '../../dialog';
+import { inferCharacterAge } from './ageBand';
 import type { UkVoiceCharacter, UkVoiceGender } from './types';
 
 type CharacterAggRow = {
@@ -63,6 +64,7 @@ export const listUkVoiceCharacters = async (db: Tx): Promise<UkVoiceCharacter[]>
       characterKey: row.character_key,
       displayName: row.display_name,
       gender,
+      age: inferCharacterAge(row.character_key, row.display_name),
       modCount: row.mod_count,
       lineCount: row.line_count,
       linkedVoiceId: row.linked_voice_id,

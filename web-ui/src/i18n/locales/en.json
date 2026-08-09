@@ -957,6 +957,7 @@
       "colName": "Voice",
       "colSource": "Source",
       "colGender": "Gender",
+      "colAge": "Age",
       "colQuality": "Quality",
       "colF0": "F0",
       "colTranscript": "Transcript",
@@ -968,6 +969,18 @@
       "gender": {
         "male": "male",
         "female": "female",
+        "unknown": "unknown"
+      },
+      "age": {
+        "teens": "teens",
+        "twenties": "20s",
+        "thirties": "30s",
+        "fourties": "40s",
+        "fifties": "50s",
+        "sixties": "60s",
+        "seventies": "70s",
+        "eighties": "80s",
+        "nineties": "90s",
         "unknown": "unknown"
       },
       "genderSource": {
