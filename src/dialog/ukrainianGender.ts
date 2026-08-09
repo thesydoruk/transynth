@@ -40,10 +40,14 @@ const FILLERS = new Set([
   'напевно',
   'би',
   'б',
+  'ж',
+  'же',
+  'й',
 ]);
 
 const FIRST_PERSON_ANCHORS = new Set(['я']);
-const SECOND_PERSON_ANCHORS = new Set(['ти', 'тебе', 'тобі']);
+/** Only nominative «ти» — «тебе/тобі» are objects, so nearby verbs agree with the speaker. */
+const SECOND_PERSON_ANCHORS = new Set(['ти']);
 
 const MASCULINE_PREDICATIVES = new Set([
   'готовий',
@@ -132,6 +136,10 @@ const NOT_MASCULINE_VERBS = new Set([
   'архів',
   'мотив',
   'масив',
+  'справ',
+  'кооператив',
+  'детектив',
+  'довкола',
 ]);
 
 /** Nouns that end in «ла» and would trip the past-tense rule. */
@@ -147,9 +155,23 @@ const NOT_FEMININE_VERBS = new Set([
   'акула',
   'пила',
   'скала',
+  'діла',
+  'правила',
+  'тіла',
+  'крісла',
 ]);
 
+/**
+ * Genitive-plural nouns ending in «-ів/-їв» that sit before «я» in game text
+ * («через синтів я…») and must not be read as inverted past-tense verbs.
+ * Real inverted «Хотів я…» is rare enough in dialog to ignore.
+ */
+const looksLikeGenitivePlural = (token: string): boolean =>
+  token.length >= 4 && (token.endsWith('ів') || token.endsWith('їв'));
+
 const WORD_RE = /[а-яіїєґёa-z'’]+/gi;
+/** Split so we can see punctuation between a candidate verb and its pronoun. */
+const TOKEN_RE = /[а-яіїєґёa-z'’]+|[^а-яіїєґёa-z'’\s]+/gi;
 
 /** One gendered form found next to a participant pronoun. */
 export type UkGenderMarker = {
@@ -185,8 +207,21 @@ const anchorPerson = (token: string): 1 | 2 | null => {
  * «я вже сказала» is inspected while «я на острів» is not: the preposition
  * ends the scan before the noun can be mistaken for a past-tense verb.
  */
+const isWordToken = (value: string): boolean => /^[а-яіїєґёa-z'’]+$/i.test(value);
+
 export const detectUkrainianGenderMarkers = (text: string): UkGenderMarker[] => {
-  const tokens = text.toLowerCase().match(WORD_RE) ?? [];
+  const raw = text.toLowerCase().match(TOKEN_RE) ?? [];
+  type Piece = { kind: 'word' | 'other'; value: string };
+  const pieces: Piece[] = raw.map((value) => ({
+    kind: isWordToken(value) ? 'word' : 'other',
+    value,
+  }));
+
+  const wordIdx: number[] = [];
+  for (let i = 0; i < pieces.length; i++) {
+    if (pieces[i]!.kind === 'word') wordIdx.push(i);
+  }
+
   const markers: UkGenderMarker[] = [];
   const seen = new Set<string>();
 
@@ -197,22 +232,42 @@ export const detectUkrainianGenderMarkers = (text: string): UkGenderMarker[] => 
     markers.push({ person, gender, form });
   };
 
-  for (let i = 0; i < tokens.length; i++) {
-    const person = anchorPerson(tokens[i]!);
-    if (person == null) continue;
+  const wordAt = (k: number): string => pieces[wordIdx[k]!]!.value;
 
-    for (let j = i + 1; j < tokens.length; j++) {
-      const token = tokens[j]!;
+  const punctBetween = (pieceA: number, pieceB: number): boolean => {
+    const lo = Math.min(pieceA, pieceB);
+    const hi = Math.max(pieceA, pieceB);
+    for (let i = lo + 1; i < hi; i++) {
+      if (pieces[i]!.kind === 'other' && /[.!?…,;:]/.test(pieces[i]!.value)) return true;
+    }
+    return false;
+  };
+
+  for (let k = 0; k < wordIdx.length; k++) {
+    const person = anchorPerson(wordAt(k));
+    if (person == null) continue;
+    const anchorPiece = wordIdx[k]!;
+
+    for (let j = k + 1; j < wordIdx.length; j++) {
+      if (punctBetween(anchorPiece, wordIdx[j]!)) break;
+      const token = wordAt(j);
       if (FILLERS.has(token)) continue;
       const gender = classifyForm(token);
       if (gender) push(person, gender, token);
       break;
     }
 
-    const previous = i > 0 ? tokens[i - 1]! : null;
-    if (previous && anchorPerson(previous) == null) {
-      const gender = classifyForm(previous);
-      if (gender) push(person, gender, previous);
+    if (k > 0) {
+      const prevPiece = wordIdx[k - 1]!;
+      const previous = wordAt(k - 1);
+      if (
+        anchorPerson(previous) == null &&
+        !punctBetween(prevPiece, anchorPiece) &&
+        !looksLikeGenitivePlural(previous)
+      ) {
+        const gender = classifyForm(previous);
+        if (gender) push(person, gender, previous);
+      }
     }
   }
 

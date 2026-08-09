@@ -46,6 +46,26 @@ describe('detectUkrainianGenderMarkers', () => {
       { person: 1, gender: 'female', form: 'прийшла' },
     ]);
   });
+
+  it('does not treat genitive plurals before «я» as inverted verbs', () => {
+    expect(detectUkrainianGenderMarkers('Через синтів я часто почуваюся застарілою.')).toEqual([]);
+    expect(detectUkrainianGenderMarkers('Скільки разів я маю це повторювати?')).toEqual([]);
+  });
+
+  it('does not attach a verb across punctuation to «я»', () => {
+    expect(
+      detectUkrainianGenderMarkers(
+        'Через те, що мати постійно кричала, я майже нічого не чую цим вухом.',
+      ),
+    ).toEqual([]);
+  });
+
+  it('does not read verbs next to «тобі/тебе» as addressee agreement', () => {
+    expect(detectUkrainianGenderMarkers('Я ж казала тобі не називати мене так!')).toEqual([
+      { person: 1, gender: 'female', form: 'казала' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Рада тебе бачити.')).toEqual([]);
+  });
 });
 
 describe('findUkrainianGenderConflicts', () => {
