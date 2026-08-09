@@ -6,7 +6,7 @@ import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
 import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../paths';
 import type { UkVoiceLibraryRow } from '../types';
-import { cvSpeakerVoiceId } from './clientId';
+import { cvSpeakerVoiceId, modeCvGender } from './clientId';
 import { parseValidatedTsv, resolveCvClipPath } from './commonVoiceTsv';
 import { cacheCommonVoice26Uk, findValidatedTsv, isCommonVoiceCacheReady } from './mdcDownload';
 import { normalizeLocalReferenceClip } from './normalizeLocal';
@@ -20,8 +20,13 @@ export type ImportCommonVoiceOptions = {
 
 type SpeakerBucket = {
   clientId: string;
-  gender: 'male' | 'female' | 'unknown';
-  clips: Array<{ path: string; sentence: string; upVotes: number; age: UkVoiceAge }>;
+  clips: Array<{
+    path: string;
+    sentence: string;
+    upVotes: number;
+    age: UkVoiceAge;
+    gender: 'male' | 'female' | 'unknown';
+  }>;
 };
 
 /** Import one best-reference clip per Common Voice client_id from the full local cache. */
@@ -43,15 +48,15 @@ export const importCommonVoiceVoices = async (
   for (const row of rows) {
     let bucket = bySpeaker.get(row.clientId);
     if (!bucket) {
-      bucket = { clientId: row.clientId, gender: row.gender, clips: [] };
+      bucket = { clientId: row.clientId, clips: [] };
       bySpeaker.set(row.clientId, bucket);
     }
-    if (bucket.gender === 'unknown' && row.gender !== 'unknown') bucket.gender = row.gender;
     bucket.clips.push({
       path: row.path,
       sentence: row.sentence,
       upVotes: row.upVotes,
       age: row.age,
+      gender: row.gender,
     });
   }
 
@@ -90,22 +95,15 @@ export const importCommonVoiceVoices = async (
     await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
     const analysis = analyzeUkVoiceWav(libraryAbs);
 
-    const tsvGender = speaker.gender;
-    const gender = tsvGender !== 'unknown' ? tsvGender : analysis.gender;
-    const genderSource =
-      tsvGender !== 'unknown'
-        ? 'cv_tsv'
-        : analysis.gender === 'unknown'
-          ? 'detected_uncertain'
-          : 'detected';
-    const winnerClip = speaker.clips.find((clip) => clip.path === best.candidate.id);
-    const age = modeAge([...speaker.clips.map((clip) => clip.age), winnerClip?.age ?? 'unknown']);
+    // Gender/age come only from CV validated.tsv metadata — never from F0 detection.
+    const gender = modeCvGender(speaker.clips.map((clip) => clip.gender));
+    const age = modeAge(speaker.clips.map((clip) => clip.age));
 
     const libraryRow: UkVoiceLibraryRow = {
       id: voiceId,
       source: 'common_voice',
       displayName: `CV ${voiceId.slice(3, 11)}`,
-      description: 'Mozilla Common Voice Ukrainian speaker (CC0), best clip selected.',
+      description: null,
       gender,
       age,
       audioRelPath: rel,
@@ -113,7 +111,7 @@ export const importCommonVoiceVoices = async (
       license: 'CC0',
       durationSec: best.candidate.durationSec,
       qualityScore: analysis.qualityScore,
-      genderSource,
+      genderSource: gender === 'unknown' ? null : 'cv_tsv',
       meanF0Hz: analysis.meanF0Hz,
       analyzedAt: new Date().toISOString(),
       speakerKey: speaker.clientId,
@@ -123,6 +121,7 @@ export const importCommonVoiceVoices = async (
         candidatesScored: best.candidatesScored,
         clipCount: speaker.clips.length,
         age,
+        gender,
       },
     };
     await upsertUkVoiceLibraryRow(db, libraryRow);

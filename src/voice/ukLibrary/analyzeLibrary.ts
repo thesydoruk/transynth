@@ -11,45 +11,31 @@ export type AnalyzeUkVoiceLibraryResult = {
 };
 
 /**
- * Measure quality + detect gender (F0) for every library clip.
- * Preserves curated opentts genders; fills/overrides only non-curated rows.
+ * Re-score quality + F0 for library clips.
+ * Does not change gender — gender comes from curated/CV metadata at import time.
  */
 export const analyzeUkVoiceLibrary = async (db: Tx): Promise<AnalyzeUkVoiceLibraryResult> => {
   const voices = await listUkVoiceLibrary(db);
   let analyzed = 0;
-  let genderUpdated = 0;
   let failed = 0;
 
   for (const voice of voices) {
     const abs = ukVoiceAudioAbsPath(voice.audioRelPath);
     try {
       const result = analyzeUkVoiceWav(abs);
-      const preserveGender = voice.genderSource === 'curated' || voice.source === 'opentts';
-      const nextGender = preserveGender ? voice.gender : result.gender;
-      const nextGenderSource = preserveGender
-        ? (voice.genderSource ?? 'curated')
-        : result.gender === 'unknown'
-          ? 'detected_uncertain'
-          : 'detected';
-
-      if (!preserveGender && nextGender !== voice.gender) genderUpdated += 1;
-
       await db.query(
         `UPDATE uk_voice_library
-         SET gender = $2,
-             quality_score = $3,
-             gender_source = $4,
-             mean_f0_hz = $5,
+         SET quality_score = $2,
+             mean_f0_hz = $3,
              analyzed_at = NOW(),
-             meta = COALESCE(meta, '{}'::jsonb) || $6::jsonb
+             meta = COALESCE(meta, '{}'::jsonb) || $4::jsonb
          WHERE id = $1`,
         [
           voice.id,
-          nextGender,
           result.qualityScore,
-          nextGenderSource,
           result.meanF0Hz,
           JSON.stringify({
+            f0GenderHint: result.gender,
             genderConfidence: result.genderConfidence,
             analysis: 'f0_autocorr_v1',
           }),
@@ -67,8 +53,6 @@ export const analyzeUkVoiceLibrary = async (db: Tx): Promise<AnalyzeUkVoiceLibra
     }
   }
 
-  log.info(
-    `uk voice analyze done: analyzed=${analyzed}, genderUpdated=${genderUpdated}, failed=${failed}`,
-  );
-  return { analyzed, genderUpdated, failed };
+  log.info(`uk voice analyze done: analyzed=${analyzed}, failed=${failed}`);
+  return { analyzed, genderUpdated: 0, failed };
 };

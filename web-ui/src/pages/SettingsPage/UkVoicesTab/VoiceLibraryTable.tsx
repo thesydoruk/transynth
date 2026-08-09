@@ -22,13 +22,11 @@ export const VoiceLibraryTable = ({ voices }: Props) => {
         <thead>
           <tr>
             <th>{t('settings.ukVoices.colName')}</th>
-            <th>{t('settings.ukVoices.colSource')}</th>
             <th>{t('settings.ukVoices.colGender')}</th>
             <th>{t('settings.ukVoices.colAge')}</th>
             <th>{t('settings.ukVoices.colQuality')}</th>
             <th>{t('settings.ukVoices.colF0')}</th>
             <th>{t('settings.ukVoices.colTranscript')}</th>
-            <th>{t('settings.ukVoices.colLicense')}</th>
             <th>{t('settings.ukVoices.colPreview')}</th>
           </tr>
         </thead>
@@ -45,21 +43,8 @@ export const VoiceLibraryTable = ({ voices }: Props) => {
                     : s.qualityLow;
             return (
               <tr key={voice.id}>
-                <td>
-                  <div>{voice.displayName}</div>
-                  {voice.description ? <div className={s.desc}>{voice.description}</div> : null}
-                </td>
-                <td className={s.muted}>{voice.source}</td>
-                <td>
-                  <div>{t(`settings.ukVoices.gender.${voice.gender}`)}</div>
-                  {voice.genderSource ? (
-                    <div className={s.muted}>
-                      {t(`settings.ukVoices.genderSource.${voice.genderSource}`, {
-                        defaultValue: voice.genderSource,
-                      })}
-                    </div>
-                  ) : null}
-                </td>
+                <td>{voice.displayName}</td>
+                <td>{t(`settings.ukVoices.gender.${voice.gender}`)}</td>
                 <td>{t(`settings.ukVoices.age.${voice.age ?? 'unknown'}`)}</td>
                 <td className={qualityClass}>{formatQuality(quality)}</td>
                 <td className={s.muted}>{voice.meanF0Hz != null ? `${voice.meanF0Hz} Hz` : '—'}</td>
@@ -72,7 +57,6 @@ export const VoiceLibraryTable = ({ voices }: Props) => {
                     <span className={s.muted}>—</span>
                   )}
                 </td>
-                <td className={s.muted}>{voice.license}</td>
                 <td>
                   <audio
                     className={s.audio}

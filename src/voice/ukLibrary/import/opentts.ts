@@ -40,7 +40,7 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
       id: voice.id,
       source: 'opentts',
       displayName: voice.displayName,
-      description: voice.description,
+      description: null,
       gender: voice.gender,
       age: 'thirties',
       audioRelPath: rel,

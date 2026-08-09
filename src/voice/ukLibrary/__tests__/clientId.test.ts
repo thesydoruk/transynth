@@ -1,4 +1,4 @@
-import { cvSpeakerVoiceId, parseCvGender } from '../import/clientId';
+import { cvSpeakerVoiceId, modeCvGender, parseCvGender } from '../import/clientId';
 
 describe('cvSpeakerVoiceId', () => {
   it('is stable and prefixed', () => {
@@ -15,5 +15,12 @@ describe('parseCvGender', () => {
     expect(parseCvGender('male_masculine')).toBe('male');
     expect(parseCvGender('female_feminine')).toBe('female');
     expect(parseCvGender('')).toBe('unknown');
+  });
+});
+
+describe('modeCvGender', () => {
+  it('uses metadata majority and stays unknown without labels', () => {
+    expect(modeCvGender(['male', 'male', 'unknown'])).toBe('male');
+    expect(modeCvGender(['unknown', 'unknown'])).toBe('unknown');
   });
 });
