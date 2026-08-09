@@ -26,6 +26,7 @@
     "voice:import-uk-library": "tsx scripts/importUkVoiceLibrary.ts",
     "voice:apply-uk-mapping": "tsx scripts/applyUkVoiceMapping.ts",
     "voice:analyze-uk-library": "tsx scripts/analyzeUkVoiceLibrary.ts",
+    "voice:analyze-character-f0": "tsx scripts/analyzeCharacterVoiceF0.ts",
     "voice:build-uk-mapping": "tsx scripts/buildUkVoiceMapping.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",

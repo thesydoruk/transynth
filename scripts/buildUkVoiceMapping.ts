@@ -81,7 +81,7 @@ try {
       voiceGender: voice.gender,
       voiceAge: voice.age,
       voiceSource: voice.source,
-      reason: `${pick.reason}; age ${character.age}→${voice.age}; Q=${voice.qualityScore ?? '?'}; ${character.lineCount} lines / ${character.modCount} mods`,
+      reason: `${pick.reason}; F0 ${character.meanF0Hz != null ? `${Math.round(character.meanF0Hz)}Hz` : '?'}→${voice.meanF0Hz != null ? `${Math.round(voice.meanF0Hz)}Hz` : '?'}; age ${character.age}→${voice.age}; Q=${voice.qualityScore ?? '?'}; ${character.lineCount} lines / ${character.modCount} mods`,
     });
   }
 
@@ -107,7 +107,7 @@ try {
     `- Generated: ${payload.generatedAt}`,
     `- Skipped robots: ${robots.length}`,
     `- Hand-picked opentts: ${handProposals.length}`,
-    `- Auto (quality + gender + age): ${auto.length}`,
+    `- Auto (gender + F0 + age + quality): ${auto.length}`,
     '',
     '## Hand-picked opentts',
     '',

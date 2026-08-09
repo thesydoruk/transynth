@@ -698,3 +698,12 @@ CREATE TABLE IF NOT EXISTS character_uk_voices (
 
 CREATE INDEX IF NOT EXISTS idx_character_uk_voices_voice
   ON character_uk_voices(voice_id);
+
+-- Per voice-folder pitch profile (from game EN clips), used for UK library mapping.
+CREATE TABLE IF NOT EXISTS character_voice_profiles (
+  character_key TEXT PRIMARY KEY,
+  mean_f0_hz DOUBLE PRECISION,
+  sample_count INTEGER NOT NULL DEFAULT 0,
+  analyzed_at TIMESTAMPTZ,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb
+);

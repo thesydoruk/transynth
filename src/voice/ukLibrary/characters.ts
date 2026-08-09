@@ -16,6 +16,7 @@ type CharacterAggRow = {
   mod_count: number;
   line_count: number;
   linked_voice_id: string | null;
+  mean_f0_hz: number | null;
 };
 
 const toUkGender = (gender: SpeakerGender): UkVoiceGender => {
@@ -47,11 +48,13 @@ export const listUkVoiceCharacters = async (db: Tx): Promise<UkVoiceCharacter[]>
        MODE() WITHIN GROUP (ORDER BY f.effective_gender) AS gender_votes,
        COUNT(DISTINCT f.mod_id)::int AS mod_count,
        COALESCE(SUM(f.line_count), 0)::int AS line_count,
-       link.voice_id AS linked_voice_id
+       link.voice_id AS linked_voice_id,
+       profile.mean_f0_hz
      FROM folders f
      LEFT JOIN character_uk_voices link ON link.character_key = f.character_key
+     LEFT JOIN character_voice_profiles profile ON profile.character_key = f.character_key
      WHERE f.character_key IS NOT NULL AND f.character_key <> ''
-     GROUP BY f.character_key, link.voice_id
+     GROUP BY f.character_key, link.voice_id, profile.mean_f0_hz
      ORDER BY f.character_key`,
     // Pass an int: substring(str FROM text) is regex in Postgres and drops voice:* keys.
     [voicePrefix + '%', voicePrefix.length + 1],
@@ -66,6 +69,7 @@ export const listUkVoiceCharacters = async (db: Tx): Promise<UkVoiceCharacter[]>
       displayName: row.display_name,
       gender,
       age: inferCharacterAge(row.character_key, row.display_name),
+      meanF0Hz: row.mean_f0_hz,
       modCount: row.mod_count,
       lineCount: row.line_count,
       linkedVoiceId: row.linked_voice_id,

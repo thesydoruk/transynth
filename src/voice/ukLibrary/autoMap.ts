@@ -1,4 +1,5 @@
 import { ageDistance } from './ageBand';
+import { f0Distance } from './f0Distance';
 import type {
   UkVoiceAutoMapProposal,
   UkVoiceCharacter,
@@ -30,7 +31,7 @@ const sortVoices = (voices: UkVoiceLibraryRow[]): UkVoiceLibraryRow[] =>
     return a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id);
   });
 
-/** Prefer gender match, then closer age band, then higher quality. */
+/** Prefer gender match, then closer F0, then age band, then higher quality. */
 const takeMatchingVoice = (
   pool: UkVoiceLibraryRow[],
   character: UkVoiceCharacter,
@@ -50,9 +51,11 @@ const takeMatchingVoice = (
         : voice.gender === 'unknown'
           ? 1
           : 0;
+    const pitchPenalty = f0Distance(character.meanF0Hz, voice.meanF0Hz);
     const agePenalty = ageDistance(character.age, voice.age);
     const qualityBonus = (voice.qualityScore ?? 0) / 100;
-    const score = genderPenalty * 100 + agePenalty * 10 - qualityBonus;
+    // Gender dominates; within gender, F0 (Hz) is the main differentiator.
+    const score = genderPenalty * 100 + pitchPenalty + agePenalty * 5 - qualityBonus;
     if (score < bestScore) {
       bestScore = score;
       bestIdx = i;
@@ -60,6 +63,9 @@ const takeMatchingVoice = (
   }
   return pool.splice(bestIdx, 1)[0];
 };
+
+const formatF0 = (hz: number | null | undefined): string =>
+  hz == null || !Number.isFinite(hz) ? '?' : `${Math.round(hz)}Hz`;
 
 const reasonFor = (
   character: UkVoiceCharacter,
@@ -84,6 +90,7 @@ const reasonFor = (
       `no unused ${character.gender} library voice — reused opposite-gender pool to keep voices unique`,
     );
   }
+  parts.push(`F0 ${formatF0(character.meanF0Hz)}→${formatF0(voice.meanF0Hz)}`);
   if (ageMatched) {
     parts.push(`age match (${character.age})`);
   } else {

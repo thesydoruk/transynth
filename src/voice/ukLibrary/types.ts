@@ -44,6 +44,8 @@ export type UkVoiceCharacter = {
   gender: UkVoiceGender;
   /** Inferred age band for mapping (from folder name heuristics). */
   age: UkVoiceAge;
+  /** Median F0 from sampled EN game clips (`character_voice_profiles`). */
+  meanF0Hz: number | null;
   modCount: number;
   lineCount: number;
   linkedVoiceId: string | null;

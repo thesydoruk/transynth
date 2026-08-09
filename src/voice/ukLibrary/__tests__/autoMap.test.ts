@@ -7,6 +7,7 @@ const voice = (
   age: UkVoiceLibraryRow['age'] = 'thirties',
   source: UkVoiceLibraryRow['source'] = 'common_voice',
   qualityScore: number | null = 70,
+  meanF0Hz: number | null = null,
 ): UkVoiceLibraryRow => ({
   id,
   source,
@@ -20,7 +21,7 @@ const voice = (
   durationSec: 5,
   qualityScore,
   genderSource: null,
-  meanF0Hz: null,
+  meanF0Hz,
   analyzedAt: null,
   speakerKey: id,
   meta: {},
@@ -31,11 +32,13 @@ const character = (
   gender: UkVoiceCharacter['gender'],
   age: UkVoiceCharacter['age'] = 'thirties',
   lineCount = 1,
+  meanF0Hz: number | null = null,
 ): UkVoiceCharacter => ({
   characterKey: key,
   displayName: key,
   gender,
   age,
+  meanF0Hz,
   modCount: 1,
   lineCount,
   linkedVoiceId: null,
@@ -60,5 +63,17 @@ describe('buildUkVoiceAutoMap', () => {
     expect(byKey.FemaleBoston.reason).toContain('gender match');
     expect(byKey.MaleChild.voiceId).toBe('cv-m-teen');
     expect(byKey.MaleChild.reason).toContain('age match');
+  });
+
+  it('prefers closer F0 within the same gender', () => {
+    const proposals = buildUkVoiceAutoMap(
+      [character('MaleBoston', 'male', 'thirties', 50, 110)],
+      [
+        voice('cv-low', 'male', 'thirties', 'common_voice', 70, 105),
+        voice('cv-high', 'male', 'thirties', 'common_voice', 90, 160),
+      ],
+    );
+    expect(proposals[0]?.voiceId).toBe('cv-low');
+    expect(proposals[0]?.reason).toContain('F0 110Hz→105Hz');
   });
 });
