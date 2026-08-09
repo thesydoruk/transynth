@@ -21,6 +21,8 @@ export type ImportCommonVoiceOptions = {
   maxVoices?: number;
 };
 
+export type ImportCommonVoiceResult = { count: number; ids: string[] };
+
 type SpeakerBucket = {
   clientId: string;
   clips: Array<{
@@ -36,7 +38,7 @@ type SpeakerBucket = {
 export const importCommonVoiceVoices = async (
   db: Tx,
   options: ImportCommonVoiceOptions = {},
-): Promise<number> => {
+): Promise<ImportCommonVoiceResult> => {
   ukVoiceSourceDir('common_voice');
 
   if (!isCommonVoiceCacheReady()) {
@@ -73,78 +75,84 @@ export const importCommonVoiceVoices = async (
   );
 
   let imported = 0;
-  await mapWithConcurrency(speakers.slice(0, limit), concurrency, async (speaker) => {
-    const voiceId = cvSpeakerVoiceId(speaker.clientId);
-    const topClips = [...speaker.clips]
-      .filter((clip) => isUsableTranscript(clip.sentence))
-      .sort((a, b) => b.upVotes - a.upVotes || b.sentence.length - a.sentence.length)
-      .slice(0, 40);
+  const results = await mapWithConcurrency(
+    speakers.slice(0, limit),
+    concurrency,
+    async (speaker) => {
+      const voiceId = cvSpeakerVoiceId(speaker.clientId);
+      const topClips = [...speaker.clips]
+        .filter((clip) => isUsableTranscript(clip.sentence))
+        .sort((a, b) => b.upVotes - a.upVotes || b.sentence.length - a.sentence.length)
+        .slice(0, 40);
 
-    const probed = await mapWithConcurrency(topClips, concurrency, async (clip) => {
-      const abs = resolveCvClipPath(tsvPath, clip.path);
-      if (!fs.existsSync(abs)) return null;
-      const durationSec = await semaphore.run(() => probeAudioDurationSec(abs));
-      const candidate: ClipCandidate = {
-        id: clip.path,
-        audioPath: abs,
-        durationSec,
-        transcript: clip.sentence,
-        upVotes: clip.upVotes,
-      };
-      return candidate;
-    });
-    const candidates = probed.filter((c): c is ClipCandidate => c != null);
+      const probed = await mapWithConcurrency(topClips, concurrency, async (clip) => {
+        const abs = resolveCvClipPath(tsvPath, clip.path);
+        if (!fs.existsSync(abs)) return null;
+        const durationSec = await semaphore.run(() => probeAudioDurationSec(abs));
+        const candidate: ClipCandidate = {
+          id: clip.path,
+          audioPath: abs,
+          durationSec,
+          transcript: clip.sentence,
+          upVotes: clip.upVotes,
+        };
+        return candidate;
+      });
+      const candidates = probed.filter((c): c is ClipCandidate => c != null);
 
-    const best = await selectBestClip(candidates, { semaphore });
-    if (!best) {
-      log.warn(`common_voice: no usable clip for ${voiceId}`);
-      return;
-    }
+      const best = await selectBestClip(candidates, { semaphore });
+      if (!best) {
+        log.warn(`common_voice: no usable clip for ${voiceId}`);
+        return null;
+      }
 
-    const fileName = `${voiceId.replace('cv:', 'cv_')}.wav`;
-    const rel = ukVoiceAudioRelPath('common_voice', fileName);
-    const libraryAbs = ukVoiceAudioAbsPath(rel);
-    await semaphore.run(async () => {
-      await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
-    });
-    const analysis = analyzeUkVoiceWav(libraryAbs);
+      const fileName = `${voiceId.replace('cv:', 'cv_')}.wav`;
+      const rel = ukVoiceAudioRelPath('common_voice', fileName);
+      const libraryAbs = ukVoiceAudioAbsPath(rel);
+      await semaphore.run(async () => {
+        await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
+      });
+      const analysis = analyzeUkVoiceWav(libraryAbs);
 
-    // Gender/age come only from CV validated.tsv metadata — never from F0 detection.
-    const gender = modeCvGender(speaker.clips.map((clip) => clip.gender));
-    const age = modeAge(speaker.clips.map((clip) => clip.age));
+      // Gender/age come only from CV validated.tsv metadata — never from F0 detection.
+      const gender = modeCvGender(speaker.clips.map((clip) => clip.gender));
+      const age = modeAge(speaker.clips.map((clip) => clip.age));
 
-    const libraryRow: UkVoiceLibraryRow = {
-      id: voiceId,
-      source: 'common_voice',
-      displayName: `CV ${voiceId.slice(3, 11)}`,
-      description: null,
-      gender,
-      age,
-      audioRelPath: rel,
-      transcript: best.candidate.transcript,
-      license: 'CC0',
-      durationSec: best.candidate.durationSec,
-      qualityScore: analysis.qualityScore,
-      genderSource: gender === 'unknown' ? null : 'cv_tsv',
-      meanF0Hz: analysis.meanF0Hz,
-      analyzedAt: new Date().toISOString(),
-      speakerKey: speaker.clientId,
-      meta: {
-        clientId: speaker.clientId,
-        clipPath: best.candidate.id,
-        candidatesScored: best.candidatesScored,
-        clipCount: speaker.clips.length,
-        age,
+      const libraryRow: UkVoiceLibraryRow = {
+        id: voiceId,
+        source: 'common_voice',
+        displayName: `CV ${voiceId.slice(3, 11)}`,
+        description: null,
         gender,
-      },
-    };
-    await upsertUkVoiceLibraryRow(db, libraryRow);
-    imported += 1;
-    if (imported % 25 === 0) {
-      log.info(`common_voice: imported ${imported}/${Math.min(limit, speakers.length)}`);
-    }
-  });
+        age,
+        audioRelPath: rel,
+        transcript: best.candidate.transcript,
+        license: 'CC0',
+        durationSec: best.candidate.durationSec,
+        qualityScore: analysis.qualityScore,
+        genderSource: gender === 'unknown' ? null : 'cv_tsv',
+        meanF0Hz: analysis.meanF0Hz,
+        analyzedAt: new Date().toISOString(),
+        speakerKey: speaker.clientId,
+        meta: {
+          clientId: speaker.clientId,
+          clipPath: best.candidate.id,
+          candidatesScored: best.candidatesScored,
+          clipCount: speaker.clips.length,
+          age,
+          gender,
+        },
+      };
+      await upsertUkVoiceLibraryRow(db, libraryRow);
+      imported += 1;
+      if (imported % 25 === 0) {
+        log.info(`common_voice: imported ${imported}/${Math.min(limit, speakers.length)}`);
+      }
+      return voiceId;
+    },
+  );
 
-  log.info(`common_voice: imported ${imported} speaker(s) from ${speakers.length}`);
-  return imported;
+  const ids = results.filter((id): id is string => id != null);
+  log.info(`common_voice: imported ${ids.length} speaker(s) from ${speakers.length}`);
+  return { count: ids.length, ids };
 };

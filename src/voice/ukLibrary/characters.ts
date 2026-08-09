@@ -30,7 +30,7 @@ export const listUkVoiceCharacters = async (db: Tx): Promise<UkVoiceCharacter[]>
     `WITH folders AS (
        SELECT
          CASE
-           WHEN sp.speaker_key LIKE $1 THEN substring(sp.speaker_key FROM $2)
+           WHEN sp.speaker_key LIKE $1 THEN substring(sp.speaker_key FROM ($2)::int)
            WHEN COALESCE(sp.voice_type, '') <> '' THEN sp.voice_type
            ELSE NULL
          END AS character_key,
@@ -53,7 +53,8 @@ export const listUkVoiceCharacters = async (db: Tx): Promise<UkVoiceCharacter[]>
      WHERE f.character_key IS NOT NULL AND f.character_key <> ''
      GROUP BY f.character_key, link.voice_id
      ORDER BY f.character_key`,
-    [voicePrefix + '%', String(voicePrefix.length + 1)],
+    // Pass an int: substring(str FROM text) is regex in Postgres and drops voice:* keys.
+    [voicePrefix + '%', voicePrefix.length + 1],
   );
 
   return rows.map((row) => {

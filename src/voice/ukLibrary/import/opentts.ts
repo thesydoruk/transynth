@@ -12,8 +12,10 @@ import { OPENTTS_VOICES } from './openttsVoices';
 import { selectBestClip, type ClipCandidate } from './selectBestClip';
 import { isUsableTranscript } from './transcriptQuality';
 
+export type ImportOpenttsResult = { count: number; ids: string[] };
+
 /** Pick the best cached clip per opentts studio voice and write library winners. */
-export const importOpenttsVoices = async (db: Tx): Promise<number> => {
+export const importOpenttsVoices = async (db: Tx): Promise<ImportOpenttsResult> => {
   ukVoiceSourceDir('opentts');
 
   // Full parquet download+extract per voice; run incomplete voices in parallel.
@@ -35,7 +37,7 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
     const best = await selectBestClip(candidates, { semaphore });
     if (!best) {
       log.warn(`opentts: no usable clip for ${voice.displayName}`);
-      return 0;
+      return null;
     }
 
     const fileName = `${voice.slug}.wav`;
@@ -70,8 +72,9 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
     };
     await upsertUkVoiceLibraryRow(db, libraryRow);
     log.info(`opentts: ${voice.displayName} → row ${best.candidate.id} Q=${analysis.qualityScore}`);
-    return 1;
+    return voice.id;
   });
 
-  return results.reduce((sum, n) => sum + (n ?? 0), 0);
+  const ids = results.filter((id): id is string => id != null);
+  return { count: ids.length, ids };
 };

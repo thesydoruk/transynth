@@ -6,7 +6,6 @@ import {
   clearAllCharacterUkVoiceLinks,
   deleteUkVoicesNotIn,
   deleteUkVoicesWithBadTranscripts,
-  listUkVoiceLibrary,
 } from '../db';
 import { importCommonVoiceVoices, type ImportCommonVoiceOptions } from './commonVoice';
 import { importOpenttsVoices } from './opentts';
@@ -20,7 +19,7 @@ export type UkVoiceLibraryImportResult = {
 
 /**
  * Select best-reference winners from the full corpus cache into uk_voice_library.
- * Clears character links and drops obsolete library rows (old cv:rowIdx ids).
+ * Clears character links and drops obsolete library rows not written this run.
  */
 export const runUkVoiceLibraryImport = async (
   db: Tx,
@@ -33,13 +32,18 @@ export const runUkVoiceLibraryImport = async (
   await clearAllCharacterUkVoiceLinks(db);
   const removedBadTranscripts = await deleteUkVoicesWithBadTranscripts(db);
 
-  const opentts = await importOpenttsVoices(db);
-  const commonVoice = await importCommonVoiceVoices(db, options);
+  const openttsResult = await importOpenttsVoices(db);
+  const commonVoiceResult = await importCommonVoiceVoices(db, options);
 
-  const keepIds = (await listUkVoiceLibrary(db)).map((voice) => voice.id);
+  const keepIds = [...openttsResult.ids, ...commonVoiceResult.ids];
   const removedObsolete = await deleteUkVoicesNotIn(db, keepIds);
   log.info(
-    `UK library import done: opentts=${opentts}, commonVoice=${commonVoice}, removedObsolete=${removedObsolete}, removedBadTranscripts=${removedBadTranscripts}`,
+    `UK library import done: opentts=${openttsResult.count}, commonVoice=${commonVoiceResult.count}, removedObsolete=${removedObsolete}, removedBadTranscripts=${removedBadTranscripts}`,
   );
-  return { opentts, commonVoice, removedObsolete, removedBadTranscripts };
+  return {
+    opentts: openttsResult.count,
+    commonVoice: commonVoiceResult.count,
+    removedObsolete,
+    removedBadTranscripts,
+  };
 };
