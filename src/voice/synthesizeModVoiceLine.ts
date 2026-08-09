@@ -32,6 +32,11 @@ import { resolveUkLibraryReference } from './ukLibrary';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
+import {
+  mergeTtsReferenceClips,
+  speakerTextsFromClips,
+  type TtsReferenceClip,
+} from './mergeTtsReferenceClips';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersion, upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -133,6 +138,21 @@ export const synthesizeModVoiceLineBuffers = async (
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
+    // Match batch localize: prepare speakable text from the line first (skip rules).
+    const prepared = prepareVoiceTtsText({
+      lineSource: row.source,
+      translation: row.translation,
+      speakerSource: row.source,
+      edid: row.edid,
+    });
+    if (prepared.action === 'skip') {
+      return {
+        ok: false,
+        reason: 'non_speech',
+        message: voiceTtsSkipMessage(prepared.reason),
+      };
+    }
+
     const voiceRootRel = resolveVoiceRootRel(pluginRel);
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
@@ -142,19 +162,19 @@ export const synthesizeModVoiceLineBuffers = async (
       ? decideVoiceReferenceSource(referenceMode, isLineReferenceSuitable(lineEnglishWav))
       : ({ kind: 'line' } as const);
 
-    let referenceWav: string | undefined;
-    let referenceText: string | null =
-      referenceDecision.kind === 'line'
-        ? row.source
-        : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
+    let ukClip: TtsReferenceClip | null = null;
+    let localClip: TtsReferenceClip = {
+      wavPath: lineEnglishWav,
+      speakerText: row.source,
+    };
 
     if (useCharacterReference) {
-      // Global Ukrainian library link wins for the character across all mods.
       const ukLibrary = speakerKey ? await resolveUkLibraryReference(db, speakerKey) : null;
       if (ukLibrary) {
-        referenceWav = ukLibrary.wavPath;
-        referenceText = ukLibrary.transcript;
-      } else if (referenceDecision.kind === 'speaker' && speakerKey) {
+        ukClip = { wavPath: ukLibrary.wavPath, speakerText: ukLibrary.transcript };
+      }
+
+      if (referenceDecision.kind === 'speaker' && speakerKey) {
         const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
           .get(speakerKey)
           ?.filter(
@@ -172,49 +192,32 @@ export const synthesizeModVoiceLineBuffers = async (
           isEligible: voiceReferenceEligibilityFromSources(voiceSources),
         });
         if (resolved) {
-          referenceWav = resolved.wavPath;
+          let speakerText: string | undefined;
           if (isUkLibraryVoiceReferencePick(resolved.pick)) {
-            referenceText = resolved.speakerText ?? null;
+            speakerText = resolved.speakerText ?? undefined;
           } else if (!isManualVoiceReferencePick(resolved.pick)) {
-            referenceText = lookupVoiceSource(
-              voiceSources,
-              resolved.pick.formidLower6,
-              resolved.pick.variant,
-            );
+            speakerText =
+              lookupVoiceSource(voiceSources, resolved.pick.formidLower6, resolved.pick.variant) ??
+              undefined;
           }
+          localClip = { wavPath: resolved.wavPath, speakerText };
+        } else {
+          localClip = {
+            wavPath: lineEnglishWav,
+            speakerText:
+              lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant) ?? row.source,
+          };
         }
       }
     }
 
-    const finalReferenceWav = referenceWav ?? lineEnglishWav;
-    if (!referenceText) {
-      referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-    }
+    const clips = mergeTtsReferenceClips(ukClip, localClip);
+    const speakerTexts = speakerTextsFromClips(clips);
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, opts.tgtLang, speakerTexts);
 
-    const prepared = prepareVoiceTtsText({
-      lineSource: row.source,
-      translation: row.translation,
-      speakerSource: referenceText,
-      edid: row.edid,
-    });
-    if (prepared.action === 'skip') {
-      return {
-        ok: false,
-        reason: 'non_speech',
-        message: voiceTtsSkipMessage(prepared.reason),
-      };
-    }
-
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(
-      prepared,
-      opts.tgtLang,
-      prepared.speakerText,
-    );
-
-    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
+    const ttsWav = await synthesizeWav(prepared.text, clips, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(opts.tgtLang),
-      speakerText: prepared.speakerText,
     });
 
     const built = await buildVoicedFuzFromTtsWav(

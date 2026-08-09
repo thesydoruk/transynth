@@ -12,6 +12,7 @@ import {
 } from '../../voice/synthesizeModVoiceLine';
 import { upsertVoiceSynthesisState } from '../../voice/voiceSynthesisState';
 import { getAllProjectSettings } from '../services/projectSettings';
+import { convertAudioToPreviewWav } from './preview/audioCache';
 import { resolveModVoiceContext } from './preview';
 
 export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
@@ -196,8 +197,20 @@ export const generateVoiceRegeneratePreview = async (
   const attempt = meta.previews.length + 1;
   const dir = sessionDir(modId, sessionId);
   ensureDir(dir);
-  fs.writeFileSync(path.join(dir, `${previewId}.wav`), built.ttsWav);
-  fs.writeFileSync(path.join(dir, `${previewId}.fuz`), built.fuzData);
+  const fuzPath = path.join(dir, `${previewId}.fuz`);
+  const wavPath = path.join(dir, `${previewId}.wav`);
+  fs.writeFileSync(fuzPath, built.fuzData);
+  // Decode preview from the packed FUZ (same path as "current" translation playback),
+  // not from the pre-xWMA fo4 WAV — otherwise A/B always sounds different.
+  try {
+    await convertAudioToPreviewWav(fuzPath, wavPath);
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'preview_convert_failed',
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
 
   const previewMeta: VoiceRegeneratePreviewMeta = {
     id: previewId,
