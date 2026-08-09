@@ -1,10 +1,12 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { mapWithConcurrency } from '../../../utils/concurrency';
 import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
 import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../paths';
 import type { UkVoiceLibraryRow } from '../types';
 import { cachedOpenttsClipPath, cacheOpenttsVoice, listCachedOpenttsClips } from './cacheOpentts';
+import { createUkVoiceImportSemaphore, ukVoiceImportConcurrency } from './importConcurrency';
 import { normalizeLocalReferenceClip } from './normalizeLocal';
 import { OPENTTS_VOICES } from './openttsVoices';
 import { selectBestClip, type ClipCandidate } from './selectBestClip';
@@ -13,12 +15,13 @@ import { isUsableTranscript } from './transcriptQuality';
 /** Pick the best cached clip per opentts studio voice and write library winners. */
 export const importOpenttsVoices = async (db: Tx): Promise<number> => {
   ukVoiceSourceDir('opentts');
-  let imported = 0;
 
   // Full parquet download+extract per voice; run incomplete voices in parallel.
   await Promise.all(OPENTTS_VOICES.map((voice) => cacheOpenttsVoice(voice.slug, voice.dataset)));
 
-  for (const voice of OPENTTS_VOICES) {
+  const concurrency = ukVoiceImportConcurrency();
+  const semaphore = createUkVoiceImportSemaphore();
+  const results = await mapWithConcurrency(OPENTTS_VOICES, concurrency, async (voice) => {
     const clips = listCachedOpenttsClips(voice.slug);
     const candidates: ClipCandidate[] = clips
       .filter((clip) => isUsableTranscript(clip.transcription))
@@ -29,16 +32,18 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
         transcript: clip.transcription,
       }));
 
-    const best = await selectBestClip(candidates);
+    const best = await selectBestClip(candidates, { semaphore });
     if (!best) {
       log.warn(`opentts: no usable clip for ${voice.displayName}`);
-      continue;
+      return 0;
     }
 
     const fileName = `${voice.slug}.wav`;
     const rel = ukVoiceAudioRelPath('opentts', fileName);
     const abs = ukVoiceAudioAbsPath(rel);
-    await normalizeLocalReferenceClip(best.candidate.audioPath, abs);
+    await semaphore.run(async () => {
+      await normalizeLocalReferenceClip(best.candidate.audioPath, abs);
+    });
     const analysis = analyzeUkVoiceWav(abs);
 
     const libraryRow: UkVoiceLibraryRow = {
@@ -64,9 +69,9 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
       },
     };
     await upsertUkVoiceLibraryRow(db, libraryRow);
-    imported += 1;
     log.info(`opentts: ${voice.displayName} → row ${best.candidate.id} Q=${analysis.qualityScore}`);
-  }
+    return 1;
+  });
 
-  return imported;
+  return results.reduce((sum, n) => sum + (n ?? 0), 0);
 };

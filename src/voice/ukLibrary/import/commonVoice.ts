@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { mapWithConcurrency } from '../../../utils/concurrency';
 import { modeAge, type UkVoiceAge } from '../ageBand';
 import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
@@ -8,6 +9,7 @@ import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../p
 import type { UkVoiceLibraryRow } from '../types';
 import { cvSpeakerVoiceId, modeCvGender } from './clientId';
 import { parseValidatedTsv, resolveCvClipPath } from './commonVoiceTsv';
+import { createUkVoiceImportSemaphore, ukVoiceImportConcurrency } from './importConcurrency';
 import { cacheCommonVoice26Uk, findValidatedTsv, isCommonVoiceCacheReady } from './mdcDownload';
 import { normalizeLocalReferenceClip } from './normalizeLocal';
 import { probeAudioDurationSec } from './probeDuration';
@@ -64,39 +66,47 @@ export const importCommonVoiceVoices = async (
   const speakers = [...bySpeaker.values()].sort((a, b) => b.clips.length - a.clips.length);
   const limit =
     options.maxVoices != null && options.maxVoices > 0 ? options.maxVoices : speakers.length;
-  let imported = 0;
+  const concurrency = ukVoiceImportConcurrency();
+  const semaphore = createUkVoiceImportSemaphore();
+  log.info(
+    `common_voice: importing ${Math.min(limit, speakers.length)} speaker(s) concurrency=${concurrency}`,
+  );
 
-  for (const speaker of speakers.slice(0, limit)) {
+  let imported = 0;
+  await mapWithConcurrency(speakers.slice(0, limit), concurrency, async (speaker) => {
     const voiceId = cvSpeakerVoiceId(speaker.clientId);
     const topClips = [...speaker.clips]
       .filter((clip) => isUsableTranscript(clip.sentence))
       .sort((a, b) => b.upVotes - a.upVotes || b.sentence.length - a.sentence.length)
       .slice(0, 40);
 
-    const candidates: ClipCandidate[] = [];
-    for (const clip of topClips) {
+    const probed = await mapWithConcurrency(topClips, concurrency, async (clip) => {
       const abs = resolveCvClipPath(tsvPath, clip.path);
-      if (!fs.existsSync(abs)) continue;
-      const durationSec = await probeAudioDurationSec(abs);
-      candidates.push({
+      if (!fs.existsSync(abs)) return null;
+      const durationSec = await semaphore.run(() => probeAudioDurationSec(abs));
+      const candidate: ClipCandidate = {
         id: clip.path,
         audioPath: abs,
         durationSec,
         transcript: clip.sentence,
         upVotes: clip.upVotes,
-      });
-    }
+      };
+      return candidate;
+    });
+    const candidates = probed.filter((c): c is ClipCandidate => c != null);
 
-    const best = await selectBestClip(candidates);
+    const best = await selectBestClip(candidates, { semaphore });
     if (!best) {
       log.warn(`common_voice: no usable clip for ${voiceId}`);
-      continue;
+      return;
     }
 
     const fileName = `${voiceId.replace('cv:', 'cv_')}.wav`;
     const rel = ukVoiceAudioRelPath('common_voice', fileName);
     const libraryAbs = ukVoiceAudioAbsPath(rel);
-    await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
+    await semaphore.run(async () => {
+      await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
+    });
     const analysis = analyzeUkVoiceWav(libraryAbs);
 
     // Gender/age come only from CV validated.tsv metadata — never from F0 detection.
@@ -133,7 +143,7 @@ export const importCommonVoiceVoices = async (
     if (imported % 25 === 0) {
       log.info(`common_voice: imported ${imported}/${Math.min(limit, speakers.length)}`);
     }
-  }
+  });
 
   log.info(`common_voice: imported ${imported} speaker(s) from ${speakers.length}`);
   return imported;
