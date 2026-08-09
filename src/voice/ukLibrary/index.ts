@@ -9,7 +9,9 @@ export type {
 export { buildUkVoiceAutoMap } from './autoMap';
 export { listUkVoiceCharacters } from './characters';
 export {
+  clearAllCharacterUkVoiceLinks,
   clearCharacterUkVoiceLink,
+  deleteUkVoicesNotIn,
   getCharacterUkVoiceLink,
   getUkVoiceById,
   listCharacterUkVoiceLinks,
@@ -22,4 +24,9 @@ export { ukVoiceAudioAbsPath } from './paths';
 export { resolveUkLibraryReference } from './resolve';
 export type { ResolvedUkLibraryReference } from './resolve';
 export { runUkVoiceLibraryImport } from './import/runImport';
+export { cacheUkVoiceDatasets } from './import/cacheDatasets';
+export type { CacheUkVoiceDatasetsResult } from './import/cacheDatasets';
 export { isRobotVoiceFolder } from './robotFolders';
+export { analyzeUkVoiceLibrary } from './analyzeLibrary';
+export type { AnalyzeUkVoiceLibraryResult } from './analyzeLibrary';
+export { analyzeUkVoiceWav, scoreUkVoiceQuality } from './analyzeClip';

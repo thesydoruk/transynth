@@ -668,6 +668,15 @@ CREATE TABLE IF NOT EXISTS uk_voice_library (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE uk_voice_library ADD COLUMN IF NOT EXISTS quality_score DOUBLE PRECISION;
+ALTER TABLE uk_voice_library ADD COLUMN IF NOT EXISTS gender_source TEXT;
+ALTER TABLE uk_voice_library ADD COLUMN IF NOT EXISTS mean_f0_hz DOUBLE PRECISION;
+ALTER TABLE uk_voice_library ADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMPTZ;
+ALTER TABLE uk_voice_library ADD COLUMN IF NOT EXISTS speaker_key TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_uk_voice_library_speaker_key
+  ON uk_voice_library(speaker_key);
+
 CREATE INDEX IF NOT EXISTS idx_uk_voice_library_gender
   ON uk_voice_library(gender);
 

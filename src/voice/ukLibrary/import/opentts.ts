@@ -1,81 +1,40 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
 import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../paths';
-import type { UkVoiceGender, UkVoiceLibraryRow } from '../types';
-import { downloadAndNormalizeReferenceClip } from './downloadClip';
-import { fetchHfDatasetRows } from './hfRows';
+import type { UkVoiceLibraryRow } from '../types';
+import { cachedOpenttsClipPath, cacheOpenttsVoice, listCachedOpenttsClips } from './cacheOpentts';
+import { normalizeLocalReferenceClip } from './normalizeLocal';
+import { OPENTTS_VOICES } from './openttsVoices';
+import { selectBestClip, type ClipCandidate } from './selectBestClip';
 
-type OpenttsVoice = {
-  id: string;
-  dataset: string;
-  displayName: string;
-  gender: UkVoiceGender;
-  description: string;
-};
-
-const OPENTTS_VOICES: OpenttsVoice[] = [
-  {
-    id: 'opentts:lada',
-    dataset: 'speech-uk/opentts-lada',
-    displayName: 'Lada',
-    gender: 'female',
-    description: 'High-quality studio female voice (opentts-uk, ~10h).',
-  },
-  {
-    id: 'opentts:tetiana',
-    dataset: 'speech-uk/opentts-tetiana',
-    displayName: 'Tetiana',
-    gender: 'female',
-    description: 'High-quality studio female voice (opentts-uk, ~8h).',
-  },
-  {
-    id: 'opentts:kateryna',
-    dataset: 'speech-uk/opentts-kateryna',
-    displayName: 'Kateryna',
-    gender: 'female',
-    description: 'High-quality studio female voice (opentts-uk, ~2.5h).',
-  },
-  {
-    id: 'opentts:mykyta',
-    dataset: 'speech-uk/opentts-mykyta',
-    displayName: 'Mykyta',
-    gender: 'male',
-    description: 'High-quality studio male voice (opentts-uk, ~8h).',
-  },
-  {
-    id: 'opentts:oleksa',
-    dataset: 'speech-uk/opentts-oleksa',
-    displayName: 'Oleksa',
-    gender: 'male',
-    description: 'High-quality studio male voice (opentts-uk, ~6h).',
-  },
-];
-
-const pickReferenceRow = async (dataset: string) => {
-  const { rows } = await fetchHfDatasetRows(dataset, 0, 40);
-  const scored = rows
-    .filter((row) => row.duration != null && row.duration >= 3.5 && row.duration <= 10)
-    .sort((a, b) => Math.abs((a.duration ?? 0) - 6) - Math.abs((b.duration ?? 0) - 6));
-  return scored[0] ?? rows.find((row) => (row.duration ?? 0) >= 2) ?? rows[0];
-};
-
-/** Import one representative clip per opentts studio voice. */
+/** Pick the best cached clip per opentts studio voice and write library winners. */
 export const importOpenttsVoices = async (db: Tx): Promise<number> => {
   ukVoiceSourceDir('opentts');
   let imported = 0;
 
   for (const voice of OPENTTS_VOICES) {
-    const row = await pickReferenceRow(voice.dataset);
-    if (!row) {
+    await cacheOpenttsVoice(voice.slug, voice.dataset);
+    const clips = listCachedOpenttsClips(voice.slug);
+    const candidates: ClipCandidate[] = clips.map((clip) => ({
+      id: String(clip.rowIdx),
+      audioPath: cachedOpenttsClipPath(voice.slug, clip.fileName),
+      durationSec: clip.duration,
+      transcript: clip.transcription,
+    }));
+
+    const best = await selectBestClip(candidates);
+    if (!best) {
       log.warn(`opentts: no usable clip for ${voice.displayName}`);
       continue;
     }
 
-    const fileName = `${voice.id.replace('opentts:', '')}.wav`;
+    const fileName = `${voice.slug}.wav`;
     const rel = ukVoiceAudioRelPath('opentts', fileName);
     const abs = ukVoiceAudioAbsPath(rel);
-    await downloadAndNormalizeReferenceClip(row.audioUrl, abs);
+    await normalizeLocalReferenceClip(best.candidate.audioPath, abs);
+    const analysis = analyzeUkVoiceWav(abs);
 
     const libraryRow: UkVoiceLibraryRow = {
       id: voice.id,
@@ -84,14 +43,23 @@ export const importOpenttsVoices = async (db: Tx): Promise<number> => {
       description: voice.description,
       gender: voice.gender,
       audioRelPath: rel,
-      transcript: row.transcription,
-      license: 'Apache-2.0',
-      durationSec: row.duration,
-      meta: { dataset: voice.dataset, rowIdx: row.rowIdx },
+      transcript: best.candidate.transcript,
+      license: voice.slug === 'kateryna' ? 'CC-BY-NC-4.0' : 'Apache-2.0',
+      durationSec: best.candidate.durationSec,
+      qualityScore: analysis.qualityScore,
+      genderSource: 'curated',
+      meanF0Hz: analysis.meanF0Hz,
+      analyzedAt: new Date().toISOString(),
+      speakerKey: voice.id,
+      meta: {
+        dataset: voice.dataset,
+        rowIdx: Number(best.candidate.id),
+        candidatesScored: best.candidatesScored,
+      },
     };
     await upsertUkVoiceLibraryRow(db, libraryRow);
     imported += 1;
-    log.info(`opentts: imported ${voice.displayName} (${row.duration?.toFixed(1) ?? '?'}s)`);
+    log.info(`opentts: ${voice.displayName} → row ${best.candidate.id} Q=${analysis.qualityScore}`);
   }
 
   return imported;

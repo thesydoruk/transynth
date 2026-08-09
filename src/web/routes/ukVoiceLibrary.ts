@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import {
+  analyzeUkVoiceLibrary,
   clearCharacterUkVoiceLink,
   getUkVoiceById,
   listUkVoiceCharacters,
@@ -58,6 +59,17 @@ export const ukVoiceLibraryRoutes = async (app: FastifyInstance, db: pg.Pool): P
           ? Math.min(Math.floor(req.body.maxVoices), 2000)
           : undefined;
       const result = await runUkVoiceLibraryImport(db, { maxVoices });
+      return { ok: true, ...result };
+    } catch (err) {
+      return reply.code(500).send({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  app.post('/api/uk-voices/analyze', async (_req, reply) => {
+    try {
+      const result = await analyzeUkVoiceLibrary(db);
       return { ok: true, ...result };
     } catch (err) {
       return reply.code(500).send({

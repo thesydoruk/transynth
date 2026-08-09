@@ -15,6 +15,11 @@ const voice = (
   transcript: 'тест',
   license: source === 'opentts' ? 'Apache-2.0' : 'CC0',
   durationSec: 5,
+  qualityScore: null,
+  genderSource: null,
+  meanF0Hz: null,
+  analyzedAt: null,
+  speakerKey: id,
   meta: {},
 });
 

@@ -19,9 +19,12 @@ const sortCharacters = (characters: UkVoiceCharacter[]): UkVoiceCharacter[] =>
 
 const sortVoices = (voices: UkVoiceLibraryRow[]): UkVoiceLibraryRow[] =>
   [...voices].sort((a, b) => {
-    // Prefer studio opentts voices, then definite gender, then name.
+    // Prefer studio opentts, then higher quality, then definite gender, then name.
     const src = (a.source === 'opentts' ? 0 : 1) - (b.source === 'opentts' ? 0 : 1);
     if (src !== 0) return src;
+    const qa = a.qualityScore ?? -1;
+    const qb = b.qualityScore ?? -1;
+    if (qb !== qa) return qb - qa;
     const g = genderRank(a.gender) - genderRank(b.gender);
     if (g !== 0) return g;
     return a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id);

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Download Ukrainian reference voices (opentts + Common Voice UA) into the local library.
+ * Select best-reference clips from the full UK voice cache into uk_voice_library.
  *
  * Usage:
  *   npm run voice:import-uk-library
@@ -18,8 +18,7 @@ const argv = await yargs(hideBin(process.argv))
   .scriptName('voice:import-uk-library')
   .option('max-voices', {
     type: 'number',
-    default: 700,
-    describe: 'Max Common Voice clips to import (opentts always imports all 5)',
+    describe: 'Max Common Voice speakers to import (default: all cached speakers)',
   })
   .help()
   .parse();
@@ -28,9 +27,11 @@ ensureDataDirs();
 const db = openDb();
 
 try {
-  const result = await runUkVoiceLibraryImport(db, { maxVoices: argv['max-voices'] });
+  const result = await runUkVoiceLibraryImport(db, {
+    maxVoices: argv['max-voices'],
+  });
   log.info(
-    `Ukrainian voice library import done: opentts=${result.opentts}, commonVoice=${result.commonVoice}`,
+    `Ukrainian voice library import done: opentts=${result.opentts}, commonVoice=${result.commonVoice}, removed=${result.removedObsolete}`,
   );
 } catch (err) {
   log.error(err, 'Ukrainian voice library import failed');

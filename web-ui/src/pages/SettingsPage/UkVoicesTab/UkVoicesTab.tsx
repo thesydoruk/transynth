@@ -31,6 +31,10 @@ export const UkVoicesTab = () => {
     mutationFn: () => api.ukVoices.importLibrary(),
     onSuccess: invalidate,
   });
+  const analyzeMutation = useMutation({
+    mutationFn: () => api.ukVoices.analyzeLibrary(),
+    onSuccess: invalidate,
+  });
   const linkMutation = useMutation({
     mutationFn: ({ characterKey, voiceId }: { characterKey: string; voiceId: string }) =>
       api.ukVoices.link(characterKey, voiceId),
@@ -67,12 +71,22 @@ export const UkVoicesTab = () => {
           <button
             type="button"
             className={s.button}
-            disabled={importMutation.isPending}
+            disabled={importMutation.isPending || analyzeMutation.isPending}
             onClick={() => importMutation.mutate()}
           >
             {importMutation.isPending
               ? t('settings.ukVoices.importing')
               : t('settings.ukVoices.importLibrary')}
+          </button>
+          <button
+            type="button"
+            className={s.button}
+            disabled={importMutation.isPending || analyzeMutation.isPending || voices.length === 0}
+            onClick={() => analyzeMutation.mutate()}
+          >
+            {analyzeMutation.isPending
+              ? t('settings.ukVoices.analyzing')
+              : t('settings.ukVoices.analyzeLibrary')}
           </button>
         </div>
         {importMutation.isSuccess ? (
@@ -83,8 +97,20 @@ export const UkVoicesTab = () => {
             })}
           </p>
         ) : null}
+        {analyzeMutation.isSuccess ? (
+          <p className={s.hint}>
+            {t('settings.ukVoices.analyzeDone', {
+              analyzed: analyzeMutation.data.analyzed,
+              genderUpdated: analyzeMutation.data.genderUpdated,
+              failed: analyzeMutation.data.failed,
+            })}
+          </p>
+        ) : null}
         {importMutation.error ? (
           <p className={`${s.hint} ${s.error}`}>{String(importMutation.error)}</p>
+        ) : null}
+        {analyzeMutation.error ? (
+          <p className={`${s.hint} ${s.error}`}>{String(analyzeMutation.error)}</p>
         ) : null}
         <VoiceLibraryTable voices={voices} />
       </div>

@@ -53,11 +53,18 @@ export const CharacterLinksTable = ({ characters, voices, onLink, onUnlink, busy
                   }}
                 >
                   <option value="">{t('settings.ukVoices.noVoice')}</option>
-                  {voices.map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.displayName} ({voice.gender})
-                    </option>
-                  ))}
+                  {voices.map((voice) => {
+                    const q =
+                      voice.qualityScore != null && Number.isFinite(voice.qualityScore)
+                        ? ` · Q${Math.round(voice.qualityScore)}`
+                        : '';
+                    return (
+                      <option key={voice.id} value={voice.id}>
+                        {voice.displayName} ({voice.gender}
+                        {q})
+                      </option>
+                    );
+                  })}
                 </select>
               </td>
             </tr>

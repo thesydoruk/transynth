@@ -12,6 +12,10 @@ export type UkVoiceLibraryItem = {
   transcript: string;
   license: string;
   durationSec: number | null;
+  qualityScore: number | null;
+  genderSource: string | null;
+  meanF0Hz: number | null;
+  analyzedAt: string | null;
 };
 
 export type UkVoiceCharacter = {
@@ -44,4 +48,9 @@ export const ukVoicesEndpoints = {
       method: 'POST',
       body: JSON.stringify(maxVoices != null ? { maxVoices } : {}),
     }),
+  analyzeLibrary: () =>
+    req<{ ok: boolean; analyzed: number; genderUpdated: number; failed: number }>(
+      '/api/uk-voices/analyze',
+      { method: 'POST', body: '{}' },
+    ),
 };

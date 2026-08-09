@@ -1,125 +1,127 @@
 import fs from 'node:fs';
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { analyzeUkVoiceWav } from '../analyzeClip';
 import { upsertUkVoiceLibraryRow } from '../db';
 import { ukVoiceAudioAbsPath, ukVoiceAudioRelPath, ukVoiceSourceDir } from '../paths';
 import type { UkVoiceLibraryRow } from '../types';
-import { downloadAndNormalizeReferenceClip } from './downloadClip';
-import { fetchHfDatasetRows } from './hfRows';
-
-/** speech-uk mirror of Common Voice 22 Ukrainian validated clips (CC0). */
-const CV_DATASET = 'speech-uk/cv22-opus';
-
-const MIN_DUR = 3.5;
-const MAX_DUR = 10;
-const PAGE = 100;
-/** Skip nearby rows — mirror has no speaker_id, so spacing reduces same-speaker collisions. */
-const MIN_ROW_GAP = 80;
+import { cvSpeakerVoiceId } from './clientId';
+import { parseValidatedTsv, resolveCvClipPath } from './commonVoiceTsv';
+import { cacheCommonVoice26Uk, findValidatedTsv, isCommonVoiceCacheReady } from './mdcDownload';
+import { normalizeLocalReferenceClip } from './normalizeLocal';
+import { probeAudioDurationSec } from './probeDuration';
+import { selectBestClip, type ClipCandidate } from './selectBestClip';
 
 export type ImportCommonVoiceOptions = {
-  /** Max unique clips to keep (default 700). */
+  /** Max speakers to import (default: all). */
   maxVoices?: number;
-  /** Max HF rows to scan (default 80_000). */
-  maxScanRows?: number;
 };
 
-const loadExistingCvRowIdx = async (db: Tx): Promise<number[]> => {
-  const { rows } = await db.query<{ id: string }>(
-    `SELECT id FROM uk_voice_library WHERE source = 'common_voice'`,
-  );
-  const idxs: number[] = [];
-  for (const row of rows) {
-    const match = /^cv:(\d+)$/.exec(row.id);
-    if (match) idxs.push(Number(match[1]));
-  }
-  return idxs.sort((a, b) => a - b);
+type SpeakerBucket = {
+  clientId: string;
+  gender: 'male' | 'female' | 'unknown';
+  clips: Array<{ path: string; sentence: string; upVotes: number }>;
 };
 
-/** Import sparsely sampled Common Voice UA clips as distinct library voices. */
+/** Import one best-reference clip per Common Voice client_id from the full local cache. */
 export const importCommonVoiceVoices = async (
   db: Tx,
   options: ImportCommonVoiceOptions = {},
 ): Promise<number> => {
-  const maxVoices = options.maxVoices ?? 700;
-  const maxScanRows = options.maxScanRows ?? 80_000;
   ukVoiceSourceDir('common_voice');
 
-  const existingIdx = await loadExistingCvRowIdx(db);
-  let imported = existingIdx.length;
-  let lastKeptRow = existingIdx.length > 0 ? existingIdx[existingIdx.length - 1]! : -MIN_ROW_GAP;
-  let offset = Math.max(0, lastKeptRow - (lastKeptRow % PAGE));
-  let total = Number.POSITIVE_INFINITY;
+  if (!isCommonVoiceCacheReady()) {
+    await cacheCommonVoice26Uk();
+  }
+  const cacheDir = await cacheCommonVoice26Uk();
+  const tsvPath = findValidatedTsv(cacheDir);
+  if (!tsvPath) throw new Error(`validated.tsv not found under ${cacheDir}`);
 
-  if (imported >= maxVoices) {
-    log.info(`common_voice: already have ${imported} clip(s)`);
-    return imported;
+  const rows = parseValidatedTsv(tsvPath);
+  const bySpeaker = new Map<string, SpeakerBucket>();
+  for (const row of rows) {
+    let bucket = bySpeaker.get(row.clientId);
+    if (!bucket) {
+      bucket = { clientId: row.clientId, gender: row.gender, clips: [] };
+      bySpeaker.set(row.clientId, bucket);
+    }
+    if (bucket.gender === 'unknown' && row.gender !== 'unknown') bucket.gender = row.gender;
+    bucket.clips.push({ path: row.path, sentence: row.sentence, upVotes: row.upVotes });
   }
 
-  log.info(`common_voice: resuming with ${imported}/${maxVoices} (offset=${offset})`);
+  const speakers = [...bySpeaker.values()].sort((a, b) => b.clips.length - a.clips.length);
+  const limit =
+    options.maxVoices != null && options.maxVoices > 0 ? options.maxVoices : speakers.length;
+  let imported = 0;
 
-  while (imported < maxVoices && offset < maxScanRows && offset < total) {
-    let page: Awaited<ReturnType<typeof fetchHfDatasetRows>>;
-    try {
-      page = await fetchHfDatasetRows(CV_DATASET, offset, PAGE);
-    } catch (err) {
-      log.warn(
-        `common_voice: page offset=${offset} failed, retrying later: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 30_000));
+  for (const speaker of speakers.slice(0, limit)) {
+    const voiceId = cvSpeakerVoiceId(speaker.clientId);
+    const topClips = [...speaker.clips].sort((a, b) => b.upVotes - a.upVotes).slice(0, 40);
+
+    const candidates: ClipCandidate[] = [];
+    for (const clip of topClips) {
+      const abs = resolveCvClipPath(tsvPath, clip.path);
+      if (!fs.existsSync(abs)) continue;
+      const durationSec = await probeAudioDurationSec(abs);
+      candidates.push({
+        id: clip.path,
+        audioPath: abs,
+        durationSec,
+        transcript: clip.sentence,
+        upVotes: clip.upVotes,
+      });
+    }
+
+    const best = await selectBestClip(candidates);
+    if (!best) {
+      log.warn(`common_voice: no usable clip for ${voiceId}`);
       continue;
     }
-    total = page.total;
-    if (page.rows.length === 0) break;
 
-    for (const row of page.rows) {
-      if (imported >= maxVoices) break;
-      if (row.duration == null || row.duration < MIN_DUR || row.duration > MAX_DUR) continue;
-      if (row.rowIdx - lastKeptRow < MIN_ROW_GAP) continue;
+    const fileName = `${voiceId.replace('cv:', 'cv_')}.wav`;
+    const rel = ukVoiceAudioRelPath('common_voice', fileName);
+    const libraryAbs = ukVoiceAudioAbsPath(rel);
+    await normalizeLocalReferenceClip(best.candidate.audioPath, libraryAbs);
+    const analysis = analyzeUkVoiceWav(libraryAbs);
 
-      const id = `cv:${row.rowIdx}`;
-      const fileName = `cv_${row.rowIdx}.wav`;
-      const rel = ukVoiceAudioRelPath('common_voice', fileName);
-      const abs = ukVoiceAudioAbsPath(rel);
+    const tsvGender = speaker.gender;
+    const gender = tsvGender !== 'unknown' ? tsvGender : analysis.gender;
+    const genderSource =
+      tsvGender !== 'unknown'
+        ? 'cv_tsv'
+        : analysis.gender === 'unknown'
+          ? 'detected_uncertain'
+          : 'detected';
 
-      try {
-        if (!fs.existsSync(abs)) {
-          await downloadAndNormalizeReferenceClip(row.audioUrl, abs);
-        }
-      } catch (err) {
-        log.warn(
-          `common_voice: skip row ${row.rowIdx}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-        continue;
-      }
-
-      const libraryRow: UkVoiceLibraryRow = {
-        id,
-        source: 'common_voice',
-        displayName: `CV #${row.rowIdx}`,
-        description: 'Mozilla Common Voice Ukrainian (validated, CC0) via speech-uk/cv22-opus.',
-        gender: 'unknown',
-        audioRelPath: rel,
-        transcript: row.transcription,
-        license: 'CC0',
-        durationSec: row.duration,
-        meta: { dataset: CV_DATASET, rowIdx: row.rowIdx },
-      };
-      await upsertUkVoiceLibraryRow(db, libraryRow);
-      lastKeptRow = row.rowIdx;
-      imported += 1;
-      if (imported % 25 === 0) {
-        log.info(`common_voice: imported ${imported}/${maxVoices}`);
-      }
+    const libraryRow: UkVoiceLibraryRow = {
+      id: voiceId,
+      source: 'common_voice',
+      displayName: `CV ${voiceId.slice(3, 11)}`,
+      description: 'Mozilla Common Voice Ukrainian speaker (CC0), best clip selected.',
+      gender,
+      audioRelPath: rel,
+      transcript: best.candidate.transcript,
+      license: 'CC0',
+      durationSec: best.candidate.durationSec,
+      qualityScore: analysis.qualityScore,
+      genderSource,
+      meanF0Hz: analysis.meanF0Hz,
+      analyzedAt: new Date().toISOString(),
+      speakerKey: speaker.clientId,
+      meta: {
+        clientId: speaker.clientId,
+        clipPath: best.candidate.id,
+        candidatesScored: best.candidatesScored,
+        clipCount: speaker.clips.length,
+      },
+    };
+    await upsertUkVoiceLibraryRow(db, libraryRow);
+    imported += 1;
+    if (imported % 25 === 0) {
+      log.info(`common_voice: imported ${imported}/${Math.min(limit, speakers.length)}`);
     }
-
-    offset += PAGE;
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
   }
 
-  log.info(`common_voice: imported ${imported} clip(s)`);
+  log.info(`common_voice: imported ${imported} speaker(s) from ${speakers.length}`);
   return imported;
 };

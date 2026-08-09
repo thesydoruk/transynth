@@ -946,6 +946,9 @@
       "importLibrary": "Завантажити бібліотеку",
       "importing": "Завантаження…",
       "importDone": "Імпортовано: opentts {{opentts}}, Common Voice {{commonVoice}}",
+      "analyzeLibrary": "Визначити стать і якість",
+      "analyzing": "Аналіз…",
+      "analyzeDone": "Проаналізовано {{analyzed}} голосів (стать оновлено: {{genderUpdated}}, помилок: {{failed}})",
       "emptyLibrary": "Бібліотека порожня. Натисніть «Завантажити бібліотеку» або виконайте npm run voice:import-uk-library.",
       "charactersTitle": "Персонажі (voice folders)",
       "charactersDesc": "Глобальний UK-голос опційний: якщо вибрано — він використовується для всіх модів; якщо «як зараз» — лишається звичайний pipeline (референс з репліки, а для короткої — авто-референс персонажа). Роботів теж можна прив’язати вручну.",
@@ -954,6 +957,9 @@
       "colName": "Голос",
       "colSource": "Джерело",
       "colGender": "Стать",
+      "colQuality": "Якість",
+      "colF0": "F0",
+      "colTranscript": "Транскрипт",
       "colLicense": "Ліцензія",
       "colPreview": "Прослухати",
       "colCharacter": "Персонаж",
@@ -963,6 +969,12 @@
         "male": "чоловіча",
         "female": "жіноча",
         "unknown": "невідома"
+      },
+      "genderSource": {
+        "curated": "кураторська",
+        "detected": "визначена",
+        "detected_uncertain": "непевна",
+        "cv_tsv": "метадані CV"
       }
     },
     "general": {

@@ -14,6 +14,12 @@ export type UkVoiceLibraryRow = {
   transcript: string;
   license: string;
   durationSec: number | null;
+  qualityScore: number | null;
+  genderSource: string | null;
+  meanF0Hz: number | null;
+  analyzedAt: string | null;
+  /** Stable speaker key (opentts id or CV client_id). */
+  speakerKey: string | null;
   meta: Record<string, unknown>;
 };
 

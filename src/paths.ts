@@ -47,6 +47,8 @@ export const PATHS = {
   ukVoiceLibrary: resolveDir(
     process.env.UK_VOICE_LIBRARY_DIR ?? path.join(dataDir, 'uk-voice-library'),
   ),
+  /** Full Ukrainian voice corpora cache (multi-GB). */
+  ukVoiceCache: resolveDir(process.env.UK_VOICE_CACHE_DIR ?? path.join(dataDir, 'uk-voice-cache')),
   /** Champollion CLI installed by `npm run tools:install`. */
   champollion: resolveDir(
     process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(toolsDir, 'champollion'),
@@ -68,6 +70,7 @@ export const ensureDataDirs = (): void => {
     PATHS.voicePreview,
     PATHS.voiceRegenerate,
     PATHS.ukVoiceLibrary,
+    PATHS.ukVoiceCache,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

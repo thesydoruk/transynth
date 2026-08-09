@@ -946,6 +946,9 @@
       "importLibrary": "Import library",
       "importing": "Importing…",
       "importDone": "Imported: opentts {{opentts}}, Common Voice {{commonVoice}}",
+      "analyzeLibrary": "Detect gender & quality",
+      "analyzing": "Analyzing…",
+      "analyzeDone": "Analyzed {{analyzed}} voices (gender updated: {{genderUpdated}}, failed: {{failed}})",
       "emptyLibrary": "Library is empty. Click “Import library” or run npm run voice:import-uk-library.",
       "charactersTitle": "Characters (voice folders)",
       "charactersDesc": "A global UK voice is optional: when set it applies across all mods; when “default pipeline” is selected, synthesis keeps the usual behaviour (line reference, or auto speaker reference for short lines). Robots can be linked manually too.",
@@ -954,6 +957,9 @@
       "colName": "Voice",
       "colSource": "Source",
       "colGender": "Gender",
+      "colQuality": "Quality",
+      "colF0": "F0",
+      "colTranscript": "Transcript",
       "colLicense": "License",
       "colPreview": "Preview",
       "colCharacter": "Character",
@@ -963,6 +969,12 @@
         "male": "male",
         "female": "female",
         "unknown": "unknown"
+      },
+      "genderSource": {
+        "curated": "curated",
+        "detected": "detected",
+        "detected_uncertain": "uncertain",
+        "cv_tsv": "CV metadata"
       }
     },
     "general": {

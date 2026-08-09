@@ -100,6 +100,17 @@
   line-height: 1.35;
 }
 
+.transcript {
+  max-width: 320px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .reason {
   max-width: 360px;
   font-size: 12px;
@@ -121,4 +132,22 @@
 .audio {
   width: 160px;
   height: 32px;
+}
+
+.qualityGood {
+  color: var(--success, #2a8f4c);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.qualityOk {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.qualityLow {
+  color: var(--warning, #b8860b);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
