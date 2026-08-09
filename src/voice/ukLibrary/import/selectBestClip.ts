@@ -7,6 +7,7 @@ import type { UkVoiceGender } from '../types';
 import { pickAnalyzeCandidates, type ClipCandidate } from './clipCandidates';
 import { createUkVoiceImportSemaphore, ukVoiceImportConcurrency } from './importConcurrency';
 import { normalizeLocalReferenceClip } from './normalizeLocal';
+import { blendUkReferenceScore } from './ukPhonemeCoverage';
 
 export type { ClipCandidate } from './clipCandidates';
 export {
@@ -32,7 +33,8 @@ export type SelectBestClipOptions = {
 };
 
 /**
- * Decode + score candidates; return the highest qualityScore winner.
+ * Decode + score candidates; return the best blend of acoustic quality and
+ * Ukrainian phoneme coverage (capped bonus — quality still dominates).
  * Uses a temp WAV so the corpus cache stays in original format.
  */
 export const selectBestClip = async (
@@ -68,9 +70,14 @@ export const selectBestClip = async (
     });
 
     let best: BestClipResult | null = null;
+    let bestBlend = -Infinity;
     for (const row of scored) {
       if (!row) continue;
-      if (!best || row.qualityScore > best.qualityScore) best = row;
+      const blend = blendUkReferenceScore(row.qualityScore, row.candidate.transcript);
+      if (!best || blend > bestBlend) {
+        best = row;
+        bestBlend = blend;
+      }
     }
     return best;
   } finally {
