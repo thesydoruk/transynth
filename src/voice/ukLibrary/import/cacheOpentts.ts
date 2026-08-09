@@ -105,7 +105,8 @@ const extractParquetShards = async (
   for (const shard of shards) {
     log.info(`opentts cache ${voiceSlug}: extracting ${path.basename(shard)}`);
     const file = await asyncBufferFromFile(shard);
-    const rows = await parquetReadObjects({ file, compressors });
+    // utf8:false keeps audio BYTE_ARRAY as raw bytes (default utf8 corrupts Ogg/Opus).
+    const rows = await parquetReadObjects({ file, compressors, utf8: false });
     for (const row of rows) {
       const rec = row as Record<string, unknown>;
       const bytes = audioBytes(rec.audio);
