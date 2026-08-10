@@ -42,12 +42,24 @@ const idleEntry = (modId: number, kind: ModAiJobKind): ModAiJobEntry => ({
   done: 0,
   total: 0,
   error: null,
-  updatedAt: Date.now(),
+  updatedAt: 0,
 });
 
-/** Returns the stored job entry or an idle placeholder. */
+/** Cached idle placeholders so `getSnapshot` stays referentially stable. */
+const idleCache = new Map<string, ModAiJobEntry>();
+
+const getIdleEntry = (modId: number, kind: ModAiJobKind): ModAiJobEntry => {
+  const key = jobKey(modId, kind);
+  const cached = idleCache.get(key);
+  if (cached) return cached;
+  const created = idleEntry(modId, kind);
+  idleCache.set(key, created);
+  return created;
+};
+
+/** Returns the stored job entry or a stable idle placeholder. */
 export const getModAiJob = (modId: number, kind: ModAiJobKind): ModAiJobEntry =>
-  jobs.get(jobKey(modId, kind)) ?? idleEntry(modId, kind);
+  jobs.get(jobKey(modId, kind)) ?? getIdleEntry(modId, kind);
 
 /** All job kinds for one mod. */
 export const getModAiJobsForMod = (modId: number) => ({
@@ -77,7 +89,7 @@ export type UpsertModAiJobPatch = Partial<
 /** Insert or merge a job entry and notify subscribers. */
 export const upsertModAiJob = (modId: number, kind: ModAiJobKind, patch: UpsertModAiJobPatch) => {
   const key = jobKey(modId, kind);
-  const prev = jobs.get(key) ?? idleEntry(modId, kind);
+  const prev = jobs.get(key) ?? getIdleEntry(modId, kind);
   jobs.set(key, {
     ...prev,
     ...patch,

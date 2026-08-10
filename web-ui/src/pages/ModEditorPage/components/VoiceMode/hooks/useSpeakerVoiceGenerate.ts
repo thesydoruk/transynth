@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ModVoiceGenerateScope } from '../../../../../api';
 import { getModAiJob, subscribeModAiJobs } from '../../../../../modAiJobsStore';
@@ -18,11 +18,13 @@ export const useSpeakerVoiceGenerate = (
   targetLang: string,
 ) => {
   const qc = useQueryClient();
-  const job = useSyncExternalStore(
-    subscribeModAiJobs,
-    () => getModAiJob(modId, 'voice'),
-    () => getModAiJob(modId, 'voice'),
-  );
+  const [job, setJob] = useState(() => getModAiJob(modId, 'voice'));
+
+  useEffect(() => {
+    const refresh = () => setJob(getModAiJob(modId, 'voice'));
+    refresh();
+    return subscribeModAiJobs(refresh);
+  }, [modId]);
 
   const prevStatus = useRef(job.status);
   useEffect(() => {
