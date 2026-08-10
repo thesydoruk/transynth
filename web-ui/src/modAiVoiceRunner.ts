@@ -23,22 +23,25 @@ const syncRunningVoiceJobFromServer = async (modId: number): Promise<boolean> =>
     jobId: existing.jobId,
     done: existing.done,
     total: existing.total,
+    speakerKey: existing.speakerKey ?? null,
     error: null,
   });
   return true;
 };
 
-/** Start mod-wide voice synthesis and stream progress into the shared job store. */
+/** Start mod-wide or character-scoped voice synthesis; progress goes to the shared job store. */
 export const startModAiVoice = async (
   modId: number,
   srcLang: string,
   targetLang: string,
   scope: ModVoiceGenerateScope = 'missing',
+  speakerKey?: string,
 ): Promise<void> => {
   const entry = getModAiJob(modId, 'voice');
   if (isModVoiceJobActive(entry)) return;
   if (inFlight.has(modId)) return;
 
+  const scopedSpeaker = speakerKey?.trim() || null;
   inFlight.add(modId);
   jobIdByMod.delete(modId);
 
@@ -50,6 +53,7 @@ export const startModAiVoice = async (
       jobId: null,
       done: 0,
       total: 0,
+      speakerKey: scopedSpeaker,
       error: null,
     });
 
@@ -65,6 +69,7 @@ export const startModAiVoice = async (
             jobId: event.jobId,
             total: event.total,
             done: 0,
+            speakerKey: scopedSpeaker,
             error: null,
           });
         }
@@ -73,6 +78,7 @@ export const startModAiVoice = async (
             status: 'running',
             done: event.done,
             total: event.total,
+            speakerKey: scopedSpeaker,
           });
         }
         if (event.type === 'done') {
@@ -80,6 +86,7 @@ export const startModAiVoice = async (
             status: 'completed',
             done: event.done,
             total: event.total,
+            speakerKey: scopedSpeaker,
             error: null,
           });
         }
@@ -88,11 +95,13 @@ export const startModAiVoice = async (
             status: 'cancelled',
             done: event.done,
             total: event.total,
+            speakerKey: scopedSpeaker,
           });
         }
       },
       undefined,
       scope,
+      scopedSpeaker ?? undefined,
     );
 
     if (snapshot) {
@@ -102,6 +111,7 @@ export const startModAiVoice = async (
         jobId: snapshot.jobId,
         done: snapshot.done,
         total: snapshot.total,
+        speakerKey: scopedSpeaker,
         error: snapshot.error,
       });
     }
@@ -111,6 +121,7 @@ export const startModAiVoice = async (
     }
     upsertModAiJob(modId, 'voice', {
       status: 'failed',
+      speakerKey: scopedSpeaker,
       error: err instanceof Error ? err.message : String(err),
     });
   } finally {
@@ -146,10 +157,11 @@ export const toggleModAiVoice = (
   targetLang: string,
   entry: ModAiJobEntry = getModAiJob(modId, 'voice'),
   scope: ModVoiceGenerateScope = 'missing',
+  speakerKey?: string,
 ): void => {
   if (isModVoiceJobActive(entry)) {
     void stopModAiVoice(modId, entry.jobId);
     return;
   }
-  void startModAiVoice(modId, srcLang, targetLang, scope);
+  void startModAiVoice(modId, srcLang, targetLang, scope, speakerKey);
 };

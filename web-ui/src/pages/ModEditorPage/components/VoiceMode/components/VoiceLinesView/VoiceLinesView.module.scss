@@ -49,6 +49,33 @@
   color: var(--text-faint);
 }
 
+.voiceStatus {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.jobProgress {
+  height: 3px;
+  margin: 0 -14px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+.jobProgressFill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.jobProgressDone {
+  background: var(--success, #3d9a6a);
+}
+
+.jobProgressFailed {
+  background: var(--danger, #c44);
+}
+
 .chips {
   display: flex;
   gap: 4px;

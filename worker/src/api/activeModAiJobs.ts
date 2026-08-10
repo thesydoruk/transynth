@@ -19,6 +19,8 @@ export type ActiveModAiJob = {
   total: number;
   status: 'running';
   translateMode?: ModTranslateMode;
+  /** Present for character-scoped voice jobs. */
+  speakerKey?: string | null;
 };
 
 /** Queue kinds that appear on the AI-jobs dashboard (imports are separate). */
@@ -42,6 +44,11 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
       const jobId = fromBullJobId(job.id);
       if (!mapping || job.data.modId == null || jobId == null) return null;
       const snapshot = await readJobSnapshot(jobId);
+      const params = job.data.params as { speakerKey?: unknown } | undefined;
+      const speakerKey =
+        typeof params?.speakerKey === 'string' && params.speakerKey.trim()
+          ? params.speakerKey.trim()
+          : null;
       return {
         jobId,
         modId: job.data.modId,
@@ -50,6 +57,7 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
         total: snapshot?.total ?? 0,
         status: 'running',
         translateMode: mapping.translateMode,
+        ...(mapping.kind === 'voice' ? { speakerKey } : {}),
       };
     }),
   );

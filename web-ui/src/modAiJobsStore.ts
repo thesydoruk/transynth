@@ -18,6 +18,8 @@ export type ModAiJobEntry = {
   total: number;
   error: string | null;
   translateMode?: ModTranslateMode;
+  /** Character folder key when voice job is scoped to one NPC; null = whole mod. */
+  speakerKey?: string | null;
   updatedAt: number;
 };
 
@@ -66,7 +68,10 @@ export const subscribeModAiJobs = (listener: Listener) => {
 };
 
 export type UpsertModAiJobPatch = Partial<
-  Pick<ModAiJobEntry, 'status' | 'jobId' | 'done' | 'total' | 'error' | 'translateMode'>
+  Pick<
+    ModAiJobEntry,
+    'status' | 'jobId' | 'done' | 'total' | 'error' | 'translateMode' | 'speakerKey'
+  >
 >;
 
 /** Insert or merge a job entry and notify subscribers. */

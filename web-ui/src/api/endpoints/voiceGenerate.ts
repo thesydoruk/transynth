@@ -14,12 +14,18 @@ export const voiceGenerateEndpoints = {
     onEvent?: (e: ModVoiceGenerateStreamEvent) => void,
     signal?: AbortSignal,
     scope: ModVoiceGenerateScope = 'missing',
+    speakerKey?: string,
   ): Promise<ModVoiceGenerateJobSnapshot | null> {
     const response = await fetch(`${BASE}/api/mods/${modId}/voice-generate`, {
       credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ srcLang, targetLang, scope }),
+      body: JSON.stringify({
+        srcLang,
+        targetLang,
+        scope,
+        ...(speakerKey?.trim() ? { speakerKey: speakerKey.trim() } : {}),
+      }),
       signal,
     });
     if (!response.ok || !response.body) {

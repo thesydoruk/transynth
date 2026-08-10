@@ -88,6 +88,7 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             done: job.done,
             total: job.total,
             translateMode: job.translateMode,
+            ...(job.kind === 'voice' ? { speakerKey: job.speakerKey ?? null } : {}),
             error: null,
           });
         }

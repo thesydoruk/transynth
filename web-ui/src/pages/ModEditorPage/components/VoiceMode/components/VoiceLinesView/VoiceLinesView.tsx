@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../../../api';
+import type { ModAiJobEntry } from '../../../../../../modAiJobsStore';
 import type { PlayKind } from '../../voiceLineKeys';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
 import type { CommitAdvance } from './VoiceLineRow';
@@ -49,6 +50,12 @@ export interface VoiceLinesViewProps {
   lineHandlers: VoiceLineHandlers;
   emptyMessage: string | null;
   isLoadingLines?: boolean;
+  voiceJob: ModAiJobEntry;
+  voiceProgress: number | null;
+  showVoiceProgress: boolean;
+  onVoiceMissing: () => void;
+  onVoiceAll: () => void;
+  onVoiceStop: () => void;
 }
 
 /** Right column: header filters and the stream of voice lines. */
@@ -79,6 +86,12 @@ export const VoiceLinesView = ({
   lineHandlers,
   emptyMessage,
   isLoadingLines = false,
+  voiceJob,
+  voiceProgress,
+  showVoiceProgress,
+  onVoiceMissing,
+  onVoiceAll,
+  onVoiceStop,
 }: VoiceLinesViewProps) => {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -115,6 +128,12 @@ export const VoiceLinesView = ({
         error={error}
         onDismissError={onDismissError}
         isFetching={isLoadingLines}
+        voiceJob={voiceJob}
+        voiceProgress={voiceProgress}
+        showVoiceProgress={showVoiceProgress}
+        onVoiceMissing={onVoiceMissing}
+        onVoiceAll={onVoiceAll}
+        onVoiceStop={onVoiceStop}
       />
 
       <div ref={scrollRef} className={styles.stream}>

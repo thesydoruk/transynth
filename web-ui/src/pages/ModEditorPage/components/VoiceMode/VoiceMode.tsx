@@ -14,6 +14,7 @@ import { useVoiceLineSave } from './hooks/useVoiceLineSave';
 import { useVoiceLineView } from './hooks/useVoiceLineView';
 import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
+import { useSpeakerVoiceGenerate } from './hooks/useSpeakerVoiceGenerate';
 import { useVoiceState } from './hooks/useVoiceState';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
 import styles from './VoiceMode.module.scss';
@@ -49,6 +50,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
   });
 
   const playback = useVoicePlayback(modId);
+  const speakerVoice = useSpeakerVoiceGenerate(modId, data.activeKey, srcLang, targetLang);
   const actions = useVoiceActions({
     modId,
     srcLang,
@@ -245,6 +247,12 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         lineHandlers={lineHandlers}
         emptyMessage={emptyMessage}
         isLoadingLines={data.linesQuery.isLoading && data.lines.length === 0}
+        voiceJob={speakerVoice.job}
+        voiceProgress={speakerVoice.pct}
+        showVoiceProgress={speakerVoice.showBar}
+        onVoiceMissing={speakerVoice.startMissing}
+        onVoiceAll={speakerVoice.startAll}
+        onVoiceStop={speakerVoice.stop}
       />
 
       {regenerateLine && (

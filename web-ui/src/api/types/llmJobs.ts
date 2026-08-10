@@ -171,6 +171,8 @@ export type ActiveModAiJob = {
   total: number;
   status: 'running';
   translateMode?: ModTranslateMode;
+  /** Present for character-scoped voice jobs. */
+  speakerKey?: string | null;
 };
 
 export type ModVoiceGenerateScope = 'all' | 'missing';
