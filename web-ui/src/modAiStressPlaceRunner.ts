@@ -1,4 +1,5 @@
 import { api, type ModStressPlaceScope } from './api';
+import { finalizeModAiJobStop, isModAiJobActive } from './modAiJobStop';
 import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStore';
 
 const inFlight = new Set<number>();
@@ -6,6 +7,30 @@ const jobIdByMod = new Map<number, number>();
 
 const shouldForceRescan = (entry: ModAiJobEntry): boolean =>
   entry.status === 'completed' || entry.status === 'cancelled' || entry.status === 'failed';
+
+const isStressAlreadyRunningError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes('already running') || err.message.includes('HTTP 409');
+};
+
+const syncRunningStressPlaceFromServer = async (
+  modId: number,
+  speakerKey: string | null,
+): Promise<boolean> => {
+  const active = await api.modAiJobs.listActive();
+  const existing = active.find((job) => job.modId === modId && job.kind === 'stress-place');
+  if (!existing) return false;
+
+  upsertModAiJob(modId, 'stress-place', {
+    status: 'running',
+    jobId: existing.jobId,
+    done: existing.done,
+    total: existing.total,
+    speakerKey: existing.speakerKey ?? speakerKey,
+    error: null,
+  });
+  return true;
+};
 
 /** Start mod-wide or character-scoped Ukrainian stress placement. */
 export const startModAiStressPlace = async (
@@ -16,21 +41,25 @@ export const startModAiStressPlace = async (
   speakerKey?: string,
   entry: ModAiJobEntry = getModAiJob(modId, 'stress-place'),
 ): Promise<void> => {
+  const scopedSpeaker = speakerKey?.trim() || null;
+  if (isModAiJobActive(entry)) return;
   if (inFlight.has(modId)) return;
+
   inFlight.add(modId);
   jobIdByMod.delete(modId);
 
-  const scopedSpeaker = speakerKey?.trim() || null;
-  upsertModAiJob(modId, 'stress-place', {
-    status: 'running',
-    jobId: null,
-    done: 0,
-    total: 0,
-    speakerKey: scopedSpeaker,
-    error: null,
-  });
-
   try {
+    if (await syncRunningStressPlaceFromServer(modId, scopedSpeaker)) return;
+
+    upsertModAiJob(modId, 'stress-place', {
+      status: 'running',
+      jobId: null,
+      done: 0,
+      total: 0,
+      speakerKey: scopedSpeaker,
+      error: null,
+    });
+
     const snapshot = await api.llmStressPlace.start(modId, srcLang, targetLang, {
       scope,
       speakerKey: scopedSpeaker ?? undefined,
@@ -94,6 +123,12 @@ export const startModAiStressPlace = async (
       });
     }
   } catch (err) {
+    if (
+      isStressAlreadyRunningError(err) &&
+      (await syncRunningStressPlaceFromServer(modId, scopedSpeaker))
+    ) {
+      return;
+    }
     upsertModAiJob(modId, 'stress-place', {
       status: 'failed',
       speakerKey: scopedSpeaker,
@@ -105,17 +140,30 @@ export const startModAiStressPlace = async (
   }
 };
 
-export const stopModAiStressPlace = async (modId: number, jobId: number | null): Promise<void> => {
+export const stopModAiStressPlace = async (
+  modId: number,
+  jobId: number | null,
+  speakerKey?: string | null,
+): Promise<void> => {
   const resolvedJobId = jobId ?? jobIdByMod.get(modId) ?? null;
-  upsertModAiJob(modId, 'stress-place', { status: 'stopping', error: null });
+  const keepSpeaker = speakerKey ?? getModAiJob(modId, 'stress-place').speakerKey ?? null;
+
+  upsertModAiJob(modId, 'stress-place', {
+    status: 'stopping',
+    error: null,
+    speakerKey: keepSpeaker,
+  });
+
   try {
-    if (resolvedJobId != null) await api.llmStressPlace.stop(resolvedJobId);
-    else await api.llmStressPlace.stopMod(modId);
-    upsertModAiJob(modId, 'stress-place', { status: 'cancelled', error: null });
-  } catch (err) {
-    upsertModAiJob(modId, 'stress-place', {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    if (resolvedJobId != null) {
+      await api.llmStressPlace.stop(resolvedJobId);
+    } else {
+      await api.llmStressPlace.stopMod(modId);
+    }
+  } catch {
+    /* queue row may already be gone — reconcile from snapshot below */
+  } finally {
+    await finalizeModAiJobStop(modId, 'stress-place', resolvedJobId, keepSpeaker);
   }
 };
 
@@ -127,9 +175,8 @@ export const toggleModAiStressPlace = (
   scope: ModStressPlaceScope = 'missing',
   speakerKey?: string,
 ): void => {
-  const isRunning = entry.status === 'running' || entry.status === 'stopping';
-  if (isRunning) {
-    void stopModAiStressPlace(modId, entry.jobId);
+  if (isModAiJobActive(entry)) {
+    void stopModAiStressPlace(modId, entry.jobId, entry.speakerKey);
     return;
   }
   void startModAiStressPlace(modId, srcLang, targetLang, scope, speakerKey, entry);

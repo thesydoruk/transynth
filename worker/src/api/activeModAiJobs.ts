@@ -6,7 +6,32 @@
  */
 import { fromBullJobId, listUnfinishedJobs } from '../core/queue';
 import { readJobSnapshot } from '../core/snapshots';
-import type { JobKind } from '../types';
+import type { JobKind, JobSnapshotStatus } from '../types';
+import type { Job } from 'bullmq';
+import type { JobData } from '../types';
+
+const TERMINAL_SNAPSHOT: ReadonlySet<JobSnapshotStatus> = new Set([
+  'completed',
+  'cancelled',
+  'failed',
+]);
+
+/** Drop queue rows left behind after the worker already wrote a terminal snapshot. */
+const cleanupZombieQueueJob = async (job: Job<JobData>): Promise<void> => {
+  try {
+    const state = await job.getState();
+    if (
+      state === 'waiting' ||
+      state === 'delayed' ||
+      state === 'prioritized' ||
+      state === 'waiting-children'
+    ) {
+      await job.remove();
+    }
+  } catch {
+    /* best effort — UI already hides the job */
+  }
+};
 
 export type ModAiJobKind =
   | 'translate'
@@ -51,6 +76,10 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
       const jobId = fromBullJobId(job.id);
       if (!mapping || job.data.modId == null || jobId == null) return null;
       const snapshot = await readJobSnapshot(jobId);
+      if (snapshot && TERMINAL_SNAPSHOT.has(snapshot.status)) {
+        void cleanupZombieQueueJob(job);
+        return null;
+      }
       const params = job.data.params as { speakerKey?: unknown } | undefined;
       const speakerKey =
         typeof params?.speakerKey === 'string' && params.speakerKey.trim()

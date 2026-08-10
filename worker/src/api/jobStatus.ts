@@ -32,16 +32,25 @@ export const readJobStatus = async (
 /** Stop by job id; refuse ids that belong to a different job family. */
 export const stopJobOfKind = async (jobId: number, kinds: readonly JobKind[]): Promise<boolean> => {
   const job = await getQueueJob(jobId);
-  if (!job || !kinds.includes(job.data.kind)) return false;
+  if (!job) {
+    const snapshot = await readJobSnapshot(jobId);
+    return snapshot != null && kinds.includes(snapshot.kind);
+  }
+  if (!kinds.includes(job.data.kind)) return false;
+  const state = await job.getState();
+  if (state === 'completed' || state === 'failed') return true;
   return requestJobStop(jobId);
 };
 
 /** Stop by mod when the client does not know the job id yet (early Stop click). */
 export const stopJobForMod = async (kinds: readonly JobKind[], modId: number): Promise<boolean> => {
   const job = await findUnfinishedJobForMod(kinds, modId);
-  if (job?.id == null) return false;
+  if (job?.id == null) {
+    return false;
+  }
   const id = fromBullJobId(job.id);
-  return id != null ? requestJobStop(id) : false;
+  if (id == null) return false;
+  return stopJobOfKind(id, kinds);
 };
 
 /** 409-guard: an unfinished job of these kinds for this mod, if any. */
@@ -52,5 +61,8 @@ export const findActiveJobIdForMod = async (
   const job = await findUnfinishedJobForMod(kinds, modId);
   if (job?.id == null) return null;
   const jobId = fromBullJobId(job.id);
-  return jobId != null ? { jobId, kind: job.data.kind } : null;
+  if (jobId == null) return null;
+  const snapshot = await readJobSnapshot(jobId);
+  if (snapshot && snapshot.status !== 'running') return null;
+  return { jobId, kind: job.data.kind };
 };

@@ -85,7 +85,27 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
           const local = listModAiJobEntries().find(
             (entry) => entry.modId === job.modId && entry.kind === job.kind,
           );
+
+          const terminal = await fetchTerminalStatus(job.kind, job.jobId, job.translateMode);
+          if (cancelled) return;
+          if (terminal) {
+            upsertModAiJob(job.modId, job.kind, {
+              status: terminal,
+              jobId: job.jobId,
+              done: job.done,
+              total: job.total,
+              translateMode: job.translateMode,
+              ...(job.kind === 'voice' || job.kind === 'stress-place'
+                ? { speakerKey: job.speakerKey ?? null }
+                : {}),
+              error: null,
+            });
+            scheduleClear(job.modId, job.kind);
+            continue;
+          }
+
           if (local?.status === 'stopping') continue;
+
           upsertModAiJob(job.modId, job.kind, {
             status: 'running',
             jobId: job.jobId,
@@ -116,8 +136,18 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
               scheduleClear(entry.modId, entry.kind);
               continue;
             }
+          } else if (entry.status === 'stopping') {
+            upsertModAiJob(entry.modId, entry.kind, { status: 'cancelled', error: null });
+            scheduleClear(entry.modId, entry.kind);
+            continue;
           } else {
             // SSE has not sent `started` yet — do not mark completed prematurely.
+            continue;
+          }
+
+          if (entry.status === 'stopping') {
+            upsertModAiJob(entry.modId, entry.kind, { status: 'cancelled', error: null });
+            scheduleClear(entry.modId, entry.kind);
             continue;
           }
 
