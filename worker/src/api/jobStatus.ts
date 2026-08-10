@@ -40,12 +40,14 @@ export const readJobStatus = async (
 
 /** Stop by job id; refuse ids that belong to a different job family. */
 export const stopJobOfKind = async (jobId: number, kinds: readonly JobKind[]): Promise<boolean> => {
+  const snapshot = await readJobSnapshot(jobId);
+  if (snapshot != null && kinds.includes(snapshot.kind)) {
+    await markSnapshotCancelled(snapshot);
+  }
+
   const job = await getQueueJob(jobId);
   if (!job) {
-    const snapshot = await readJobSnapshot(jobId);
-    if (snapshot == null || !kinds.includes(snapshot.kind)) return false;
-    await markSnapshotCancelled(snapshot);
-    return true;
+    return snapshot != null && kinds.includes(snapshot.kind);
   }
   if (!kinds.includes(job.data.kind)) return false;
   const state = await job.getState();
