@@ -22,7 +22,7 @@ export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
-  /** When false, skip UK library / speaker refs — use only this line's EN clip. */
+  /** When false, skip global + selected-line local refs — only this line's game audio. */
   character_reference: boolean;
 };
 

@@ -20,7 +20,7 @@ export const voiceTtsMaxParallelFromProjectSettings = (
   settings: Awaited<ReturnType<typeof getAllProjectSettings>>,
 ): number => settings['voice.tts_max_parallel_fish_speech'];
 
-/** Whether global Ukrainian library references are enabled. */
+/** Whether the global voice reference (open UA library) is enabled. */
 export const voiceUkLibraryFromProjectSettings = (
   settings: Awaited<ReturnType<typeof getAllProjectSettings>>,
 ): boolean => settings['voice.uk_library'] !== false;

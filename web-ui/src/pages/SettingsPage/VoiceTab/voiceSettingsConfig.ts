@@ -1,6 +1,7 @@
 export type VoiceRegenerateParams = {
+  /** Local voice reference from the same line (else selected-line local). */
   line_reference: boolean;
-  /** When false, skip character / UK-library reference audio. */
+  /** Allow global + selected-line local refs (off → only this line's game audio). */
   character_reference: boolean;
 };
 

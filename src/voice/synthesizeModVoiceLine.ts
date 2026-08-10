@@ -66,14 +66,13 @@ export type SynthesizeModVoiceLineOptions = {
   game?: GameType;
   referenceMode?: TtsReferenceMode;
   /**
-   * When false, skip UK library + speaker-folder references and use only this
-   * line's English clip (regen dialog "character reference" toggle).
-   * Default true.
+   * When false, skip global + selected-line local references; use only this
+   * line's game audio (regen “local + global reference” toggle). Default true.
    */
   useCharacterReference?: boolean;
   /**
-   * When false, skip the global Ukrainian library voice even if character
-   * references are enabled. Defaults to the `voice.uk_library` project setting.
+   * When false, skip the global voice reference even if character references
+   * are enabled. Defaults to the `voice.uk_library` project setting.
    */
   useUkLibrary?: boolean;
   ttsBaseUrl?: string;

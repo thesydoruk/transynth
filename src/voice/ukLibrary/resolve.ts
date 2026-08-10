@@ -11,10 +11,10 @@ export type ResolvedUkLibraryReference = {
 };
 
 /**
- * Resolve a global Ukrainian library reference for a voice-folder character.
+ * Resolve the global voice reference (open UA library) for a voice-folder character.
  *
- * Returns null when the character has no link — callers then keep the normal
- * pipeline (line reference, or auto speaker reference when the line is short).
+ * Returns null when the character has no link — callers then use only the local
+ * voice reference (same-line game audio, or a selected-line clip when short).
  * Robots are not special-cased: a link works the same as for any folder.
  */
 export const resolveUkLibraryReference = async (

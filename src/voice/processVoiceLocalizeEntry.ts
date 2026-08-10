@@ -53,7 +53,7 @@ export type ProcessVoiceLocalizeEntryOptions = {
   game: GameType;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
-  /** When false, skip global Ukrainian library references. */
+  /** When false, skip the global voice reference (open UA library). */
   useUkLibrary: boolean;
   tgtLang: string;
   force: boolean;

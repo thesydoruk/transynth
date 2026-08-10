@@ -12,8 +12,9 @@ const normalizeClip = (clip: TtsReferenceClip): TtsReferenceClip => ({
 });
 
 /**
- * Build the Fish Speech reference list: global UK library (timbre) first, then
- * the normal line / speaker clip (prosody). Drops a duplicate when paths match.
+ * Build the Fish Speech reference list: global voice reference first
+ * (open-library UA pronunciation), then local voice reference (in-game
+ * same-line or selected-line clip). Drops a duplicate when paths match.
  */
 export const mergeTtsReferenceClips = (
   ukLibrary: TtsReferenceClip | null | undefined,
