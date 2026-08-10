@@ -56,7 +56,11 @@ services:
       - --quantization
       - compressed-tensors
       - --hf-overrides
-      - '{"architectures":["Gemma4ForCausalLM"]}'
+      - '{"architectures":["Gemma4ForConditionalGeneration"]}'
+      - --limit-mm-per-prompt
+      - '{"image": 5, "audio": 0}'
+      - --mm-processor-kwargs
+      - '{"max_soft_tokens": 280}'
       - --served-model-name
       - gemma4:26b-a4b-heretic
       - --max-num-batched-tokens
@@ -67,7 +71,7 @@ services:
       - fp8
       - --enable-prefix-caching
       - --gpu-memory-utilization
-      - '0.94'
+      - '0.90'
       - --max-num-seqs
       - '16'
       - --cpu-offload-gb
