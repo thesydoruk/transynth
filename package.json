@@ -24,6 +24,7 @@
     "voice:fix-orphan-refs": "tsx scripts/regenerateOrphanReferenceVoice.ts",
     "stress:requeue-incorrect": "tsx scripts/requeueIncorrectStress.ts",
     "stress:clear-drifted": "tsx scripts/clearDriftedStress.ts",
+    "stress:enqueue-missing": "tsx scripts/enqueueMissingStressPlace.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
