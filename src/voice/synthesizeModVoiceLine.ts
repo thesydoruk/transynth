@@ -71,6 +71,11 @@ export type SynthesizeModVoiceLineOptions = {
    * Default true.
    */
   useCharacterReference?: boolean;
+  /**
+   * When false, skip the global Ukrainian library voice even if character
+   * references are enabled. Defaults to the `voice.uk_library` project setting.
+   */
+  useUkLibrary?: boolean;
   ttsBaseUrl?: string;
 };
 
@@ -117,6 +122,7 @@ export const synthesizeModVoiceLineBuffers = async (
 
   const voiceConfig = await loadVoiceProjectSettings(db);
   const useCharacterReference = opts.useCharacterReference !== false;
+  const useUkLibrary = useCharacterReference && (opts.useUkLibrary ?? voiceConfig.useUkLibrary);
   const referenceMode = useCharacterReference
     ? (opts.referenceMode ?? voiceConfig.referenceMode)
     : 'line';
@@ -169,9 +175,11 @@ export const synthesizeModVoiceLineBuffers = async (
     };
 
     if (useCharacterReference) {
-      const ukLibrary = speakerKey ? await resolveUkLibraryReference(db, speakerKey) : null;
-      if (ukLibrary) {
-        ukClip = { wavPath: ukLibrary.wavPath, speakerText: ukLibrary.transcript };
+      if (useUkLibrary && speakerKey) {
+        const ukLibrary = await resolveUkLibraryReference(db, speakerKey);
+        if (ukLibrary) {
+          ukClip = { wavPath: ukLibrary.wavPath, speakerText: ukLibrary.transcript };
+        }
       }
 
       if (referenceDecision.kind === 'speaker' && speakerKey) {

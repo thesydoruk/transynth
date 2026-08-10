@@ -53,6 +53,8 @@ export type ProcessVoiceLocalizeEntryOptions = {
   game: GameType;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
+  /** When false, skip global Ukrainian library references. */
+  useUkLibrary: boolean;
   tgtLang: string;
   force: boolean;
   voiceSources: Map<string, VoiceSourceRow>;
@@ -129,6 +131,7 @@ export const processVoiceLocalizeEntry = async (
     game,
     ttsBaseUrl,
     referenceMode,
+    useUkLibrary,
     tgtLang,
     force,
     voiceSources,
@@ -155,7 +158,7 @@ export const processVoiceLocalizeEntry = async (
       : ({} as SpeakerRefCacheEntry);
     if (speakerKey) speakerRefCache.set(speakerKey, cache);
 
-    const ukClip = speakerKey ? await resolveUkClip(db, speakerKey, cache) : null;
+    const ukClip = useUkLibrary && speakerKey ? await resolveUkClip(db, speakerKey, cache) : null;
 
     let localClip: TtsReferenceClip = {
       wavPath: lineEnglishWav,

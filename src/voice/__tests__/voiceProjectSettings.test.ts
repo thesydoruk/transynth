@@ -2,6 +2,7 @@ import { SETTING_DEFAULTS } from '../../web/services/projectSettings';
 import {
   voiceReferenceModeFromProjectSettings,
   voiceTtsMaxParallelFromProjectSettings,
+  voiceUkLibraryFromProjectSettings,
 } from '../voiceProjectSettings';
 import { resolveTtsReferenceMode } from '../voiceToolPaths';
 
@@ -24,6 +25,16 @@ describe('voiceProjectSettings', () => {
         'voice.tts_max_parallel_fish_speech': 4,
       }),
     ).toBe(4);
+  });
+
+  it('maps UK library toggle from project settings', () => {
+    expect(voiceUkLibraryFromProjectSettings(SETTING_DEFAULTS)).toBe(true);
+    expect(
+      voiceUkLibraryFromProjectSettings({
+        ...SETTING_DEFAULTS,
+        'voice.uk_library': false,
+      }),
+    ).toBe(false);
   });
 });
 

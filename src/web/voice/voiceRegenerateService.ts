@@ -93,7 +93,7 @@ export const voiceRegenerateParamsFromProjectSettings = async (
   const settings = await getAllProjectSettings(db);
   return {
     line_reference: settings['voice.line_reference'],
-    // Regen-only: default on so existing sessions keep character/UK library refs.
+    // Character/speaker refs default on; UK library follows `voice.uk_library`.
     character_reference: true,
   };
 };

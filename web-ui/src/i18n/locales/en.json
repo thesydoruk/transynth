@@ -518,6 +518,8 @@
       "needsVoice": "Needs dubbing"
     },
     "findPlaceholder": "Find in lines…",
+    "ukLibrary": "Library voice",
+    "ukLibraryDesc": "On: TTS also uses the character's global Ukrainian library voice when linked. Off: only the in-game line/speaker reference.",
     "hiddenLines": "{{count}} lines hidden by filter",
     "noLinesMatch": "No lines match the filter.",
     "regenerateBtn": "Regenerate",

@@ -83,6 +83,73 @@
   opacity: 0.75;
 }
 
+.libraryToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.libraryToggleLabel {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  input[type='checkbox']:checked + .toggleTrack {
+    background: var(--accent);
+
+    &::after {
+      left: 19px;
+      background: var(--accent-on);
+    }
+  }
+
+  input[type='checkbox']:disabled + .toggleTrack {
+    opacity: 0.55;
+  }
+}
+
+.toggleTrack {
+  display: block;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--border);
+  transition: background 0.2s;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition:
+      left 0.2s,
+      background 0.2s;
+  }
+}
+
 .find {
   flex: 1;
   min-width: 120px;

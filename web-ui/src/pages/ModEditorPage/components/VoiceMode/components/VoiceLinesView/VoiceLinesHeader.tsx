@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../../../../../api';
 import { ProgressPill } from '../../../DialogsMode/components/ProgressPill';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
 import styles from './VoiceLinesView.module.scss';
@@ -39,7 +41,22 @@ export const VoiceLinesHeader = ({
   isFetching = false,
 }: VoiceLinesHeaderProps) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const dubbable = total - orphans;
+
+  const { data: projectSettings } = useQuery({
+    queryKey: ['projectSettings'],
+    queryFn: () => api.projectSettings.getAll() as Promise<{ 'voice.uk_library'?: boolean }>,
+    staleTime: 30_000,
+  });
+  const ukLibraryOn = projectSettings?.['voice.uk_library'] !== false;
+
+  const { mutate: updateUkLibrary, isPending: ukLibraryPending } = useMutation({
+    mutationFn: (value: boolean) => api.projectSettings.update('voice.uk_library', value),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['projectSettings'] });
+    },
+  });
 
   const chips: Array<{ value: VoiceLineFilter; count: number }> = [
     { value: 'all', count: counts.total },
@@ -81,6 +98,20 @@ export const VoiceLinesHeader = ({
             </button>
           ))}
         </div>
+
+        <label className={styles.libraryToggle} title={t('voice.ukLibraryDesc')}>
+          <span className={styles.libraryToggleLabel}>{t('voice.ukLibrary')}</span>
+          <span className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={ukLibraryOn}
+              disabled={ukLibraryPending}
+              onChange={() => updateUkLibrary(!ukLibraryOn)}
+              aria-label={t('voice.ukLibrary')}
+            />
+            <span className={styles.toggleTrack} />
+          </span>
+        </label>
 
         <input
           className={styles.find}
