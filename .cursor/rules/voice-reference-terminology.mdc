@@ -30,6 +30,7 @@ Audio taken from **the game’s own voice files** for that character.
 |---|---|
 | Global reference | Open-library Ukrainian clip (pronunciation) |
 | Local reference | In-game character clip (identity / prosody) |
-| Character reference (regen UI) | Broader toggle: allow character-level refs (global + selected-line local); off → only this line’s EN audio |
+
+Regen dialog exposes independent **global** and **local** toggles (`global_reference` / `local_reference`). When both are off, synthesis still falls back to this line’s EN audio so Fish Speech receives a speaker clip.
 
 When writing new UI strings, label toggles as **global** / **local** reference, not “library voice” / “character voice”, unless space forces a short label — then keep the tooltip explicit.

@@ -1,7 +1,12 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Button } from '../../../../../components/Button';
-import { VOICE_REGENERATE_KEEP_CURRENT_ID } from '../../../../SettingsPage/VoiceTab/voiceSettingsConfig';
+import {
+  normalizeVoiceRegenerateParams,
+  VOICE_REGENERATE_KEEP_CURRENT_ID,
+  type VoiceRegenerateParams,
+} from '../../../../SettingsPage/VoiceTab/voiceSettingsConfig';
 import { compareTrackKey, type CompareTrack } from '../compareTrack';
 import s from '../VoiceRegenerateModal.module.scss';
 
@@ -13,6 +18,26 @@ type CompareTrackListProps = {
   loadingTrack: string | null;
   committing: boolean;
   onPlay: (track: CompareTrack) => void;
+};
+
+const formatRegenRefMeta = (
+  params:
+    | VoiceRegenerateParams
+    | (Partial<VoiceRegenerateParams> & { character_reference?: boolean }),
+  t: TFunction,
+): string => {
+  const p = normalizeVoiceRegenerateParams(params);
+  const parts: string[] = [];
+  if (p.global_reference) parts.push(t('modEditor.voiceRegenerateRefGlobal'));
+  if (p.local_reference) {
+    parts.push(
+      p.line_reference
+        ? t('modEditor.voiceRegenerateRefLine')
+        : t('modEditor.voiceRegenerateRefSpeaker'),
+    );
+  }
+  if (parts.length === 0) return t('modEditor.voiceRegenerateRefNone');
+  return parts.join(' · ');
 };
 
 export const CompareTrackList = ({
@@ -67,13 +92,7 @@ export const CompareTrackList = ({
             <div className={s.compareLabel}>
               <span className={s.compareTitle}>{title}</span>
               {track.kind === 'preview' && (
-                <span className={s.compareMeta}>
-                  {track.preview.params.character_reference === false
-                    ? t('modEditor.voiceRegenerateRefNone')
-                    : track.preview.params.line_reference
-                      ? t('modEditor.voiceRegenerateRefLine')
-                      : t('modEditor.voiceRegenerateRefSpeaker')}
-                </span>
+                <span className={s.compareMeta}>{formatRegenRefMeta(track.preview.params, t)}</span>
               )}
             </div>
             <Button

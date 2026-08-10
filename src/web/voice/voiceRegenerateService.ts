@@ -21,9 +21,31 @@ export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
+  /** Global voice reference (open UA library). */
+  global_reference: boolean;
+  /** Local voice reference (in-game same-line or selected-line). */
+  local_reference: boolean;
+  /** When local is on: same-line local (else selected-line local). */
   line_reference: boolean;
-  /** When false, skip global + selected-line local refs — only this line's game audio. */
-  character_reference: boolean;
+};
+
+/** Normalize API params; migrates legacy `character_reference`. */
+export const normalizeVoiceRegenerateParams = (
+  params: Partial<VoiceRegenerateParams> & { character_reference?: boolean },
+): VoiceRegenerateParams => {
+  if ('global_reference' in params || 'local_reference' in params) {
+    return {
+      global_reference: params.global_reference !== false,
+      local_reference: params.local_reference !== false,
+      line_reference: Boolean(params.line_reference),
+    };
+  }
+  const characterOn = params.character_reference !== false;
+  return {
+    global_reference: characterOn,
+    local_reference: characterOn,
+    line_reference: Boolean(params.line_reference),
+  };
 };
 
 type VoiceRegeneratePreviewMeta = {
@@ -92,9 +114,9 @@ export const voiceRegenerateParamsFromProjectSettings = async (
 ): Promise<VoiceRegenerateParams> => {
   const settings = await getAllProjectSettings(db);
   return {
+    global_reference: settings['voice.uk_library'] !== false,
+    local_reference: true,
     line_reference: settings['voice.line_reference'],
-    // Character/speaker refs default on; UK library follows `voice.uk_library`.
-    character_reference: true,
   };
 };
 
@@ -175,10 +197,7 @@ export const generateVoiceRegeneratePreview = async (
     };
   }
 
-  const normalizedParams: VoiceRegenerateParams = {
-    line_reference: Boolean(params.line_reference),
-    character_reference: params.character_reference !== false,
-  };
+  const normalizedParams = normalizeVoiceRegenerateParams(params);
   const built = await synthesizeModVoiceLineBuffers(db, {
     modId,
     packageDir: resolved.ctx.packageDir,
@@ -188,7 +207,8 @@ export const generateVoiceRegeneratePreview = async (
     srcLang,
     tgtLang: targetLang,
     referenceMode: normalizedParams.line_reference ? 'line' : 'speaker',
-    useCharacterReference: normalizedParams.character_reference,
+    useLocalReference: normalizedParams.local_reference,
+    useUkLibrary: normalizedParams.global_reference,
   } satisfies SynthesizeModVoiceLineOptions);
 
   if (!built.ok) return built;

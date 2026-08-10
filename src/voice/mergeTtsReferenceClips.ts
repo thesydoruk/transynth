@@ -14,17 +14,18 @@ const normalizeClip = (clip: TtsReferenceClip): TtsReferenceClip => ({
 /**
  * Build the Fish Speech reference list: global voice reference first
  * (open-library UA pronunciation), then local voice reference (in-game
- * same-line or selected-line clip). Drops a duplicate when paths match.
+ * same-line or selected-line clip). Either side may be omitted.
+ * Drops a duplicate when paths match.
  */
 export const mergeTtsReferenceClips = (
-  ukLibrary: TtsReferenceClip | null | undefined,
-  local: TtsReferenceClip,
+  globalRef: TtsReferenceClip | null | undefined,
+  local: TtsReferenceClip | null | undefined,
 ): TtsReferenceClip[] => {
   const clips: TtsReferenceClip[] = [];
-  if (ukLibrary?.wavPath) {
-    clips.push(normalizeClip(ukLibrary));
+  if (globalRef?.wavPath) {
+    clips.push(normalizeClip(globalRef));
   }
-  if (!ukLibrary?.wavPath || !sameWavPath(local.wavPath, ukLibrary.wavPath)) {
+  if (local?.wavPath && (!globalRef?.wavPath || !sameWavPath(local.wavPath, globalRef.wavPath))) {
     clips.push(normalizeClip(local));
   }
   return clips;

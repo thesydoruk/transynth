@@ -28,4 +28,13 @@ describe('mergeTtsReferenceClips', () => {
     expect(clips).toHaveLength(1);
     expect(clips[0]?.speakerText).toBe('A.');
   });
+
+  it('returns only the global clip when local is omitted', () => {
+    const clips = mergeTtsReferenceClips({ wavPath: '/lib/uk.wav', speakerText: 'УА.' }, null);
+    expect(clips).toEqual([{ wavPath: '/lib/uk.wav', speakerText: 'УА.' }]);
+  });
+
+  it('returns an empty list when both sides are omitted', () => {
+    expect(mergeTtsReferenceClips(null, null)).toEqual([]);
+  });
 });
