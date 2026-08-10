@@ -161,3 +161,5 @@ try {
   await closeJobsQueue();
   await closeDb();
 }
+// docker compose run otherwise can hang on open handles
+process.exit(0);
