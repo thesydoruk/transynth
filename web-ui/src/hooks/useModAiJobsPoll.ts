@@ -5,11 +5,20 @@ import {
   listModAiJobEntries,
   upsertModAiJob,
   type ModAiJobKind,
+  type ModAiJobStatus,
 } from '../modAiJobsStore';
 import type { ActiveModAiJob } from '../api';
 
 const TERMINAL_TTL_MS = 20_000;
 const clearTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Local stop intent — poll must not resurrect these as running from a stale queue row. */
+const HELD_LOCAL_STATUSES = new Set<ModAiJobStatus>([
+  'stopping',
+  'cancelled',
+  'completed',
+  'failed',
+]);
 
 const scheduleClear = (modId: number, kind: ModAiJobKind) => {
   const key = `${modId}:${kind}`;
@@ -104,7 +113,7 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             continue;
           }
 
-          if (local?.status === 'stopping') continue;
+          if (local && HELD_LOCAL_STATUSES.has(local.status)) continue;
 
           upsertModAiJob(job.modId, job.kind, {
             status: 'running',
@@ -122,7 +131,6 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
         for (const entry of listModAiJobEntries()) {
           const key = `${entry.modId}:${entry.kind}`;
           if (entry.status !== 'running' && entry.status !== 'stopping') continue;
-          if (activeKeys.has(key)) continue;
 
           if (entry.jobId != null) {
             const terminal = await fetchTerminalStatus(
@@ -136,18 +144,20 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
               scheduleClear(entry.modId, entry.kind);
               continue;
             }
-          } else if (entry.status === 'stopping') {
-            upsertModAiJob(entry.modId, entry.kind, { status: 'cancelled', error: null });
-            scheduleClear(entry.modId, entry.kind);
-            continue;
-          } else {
-            // SSE has not sent `started` yet — do not mark completed prematurely.
+          }
+
+          if (activeKeys.has(key)) {
+            if (entry.status === 'stopping') continue;
             continue;
           }
 
           if (entry.status === 'stopping') {
             upsertModAiJob(entry.modId, entry.kind, { status: 'cancelled', error: null });
             scheduleClear(entry.modId, entry.kind);
+            continue;
+          }
+
+          if (entry.jobId == null) {
             continue;
           }
 

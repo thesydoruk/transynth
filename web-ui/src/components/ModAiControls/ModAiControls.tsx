@@ -171,7 +171,7 @@ const Slot = ({
       ariaLabel: label,
       title: tooltip,
       size: buttonSize as 'sm' | 'md',
-      disabled: entry.status === 'stopping',
+      disabled: false,
     };
 
     const button =

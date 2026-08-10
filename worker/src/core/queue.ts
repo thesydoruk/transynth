@@ -13,7 +13,7 @@ import type { JobData, JobKind } from '../types';
 import { publishJobControl } from './controlChannel';
 import { getSharedRedis } from './connection';
 import { fromBullJobId, toBullJobId } from './jobId';
-import { writeJobSnapshot } from './snapshots';
+import { readJobSnapshot, writeJobSnapshot } from './snapshots';
 
 export { fromBullJobId, toBullJobId } from './jobId';
 
@@ -74,35 +74,64 @@ export const enqueueJob = async (data: JobData, jobId: number): Promise<void> =>
   logJobs.info('enqueued', { jobId, kind: data.kind, modId: data.modId });
 };
 
+const writeCancelledSnapshot = async (job: Job<JobData>, jobId: number): Promise<void> => {
+  const existing = await readJobSnapshot(jobId);
+  await writeJobSnapshot({
+    jobId,
+    kind: job.data.kind,
+    modId: job.data.modId,
+    status: 'cancelled',
+    done: existing?.done ?? 0,
+    total: existing?.total ?? 0,
+    error: null,
+    data: existing?.data ?? {},
+  });
+};
+
+const forceFailActiveJob = async (job: Job<JobData>, jobId: number): Promise<void> => {
+  try {
+    await job.moveToFailed(new Error('cancelled by user'), '0');
+    return;
+  } catch (err) {
+    logJobs.warn('moveToFailed without worker lock failed', {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+  try {
+    await job.remove();
+  } catch (err) {
+    logJobs.warn('remove active job failed', {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
+
 /**
  * Stop a job wherever it is:
  *   • still queued → remove from Redis + write a cancelled snapshot
- *   • already active → publish cancel on the control channel
+ *   • already active → publish cancel, mark snapshot cancelled, force-fail if orphaned
  */
 export const requestJobStop = async (jobId: number): Promise<boolean> => {
   const job = await getQueueJob(jobId);
   if (!job) return false;
   const state = await job.getState();
   if (state === 'completed' || state === 'failed' || state === 'unknown') return false;
+
+  await writeCancelledSnapshot(job, jobId);
+
   if (state === 'active') {
     await publishJobControl(jobId, 'cancel');
+    await forceFailActiveJob(job, jobId);
     return true;
   }
+
   try {
     await job.remove();
-    await writeJobSnapshot({
-      jobId,
-      kind: job.data.kind,
-      modId: job.data.modId,
-      status: 'cancelled',
-      done: 0,
-      total: 0,
-      error: null,
-      data: {},
-    });
   } catch {
-    // Lost the race with the worker picking it up — cancel the running copy.
     await publishJobControl(jobId, 'cancel');
+    await forceFailActiveJob(job, jobId);
   }
   return true;
 };

@@ -1,5 +1,10 @@
 import { api } from './api';
-import { upsertModAiJob, type ModAiJobEntry, type ModAiJobKind } from './modAiJobsStore';
+import {
+  clearModAiJob,
+  upsertModAiJob,
+  type ModAiJobEntry,
+  type ModAiJobKind,
+} from './modAiJobsStore';
 
 type TerminalStatus = 'completed' | 'cancelled' | 'failed';
 
@@ -57,6 +62,7 @@ export const reconcileModAiJobFromSnapshot = async (
     error: snap.error,
     ...(keepSpeakerKey !== undefined ? { speakerKey: keepSpeakerKey } : {}),
   });
+  clearModAiJob(modId, kind);
   return snap.status;
 };
 
@@ -76,6 +82,7 @@ export const finalizeModAiJobStop = async (
     error: null,
     ...(keepSpeakerKey !== undefined ? { speakerKey: keepSpeakerKey } : {}),
   });
+  clearModAiJob(modId, kind);
 };
 
 export const isModAiJobActive = (entry: ModAiJobEntry): boolean =>
