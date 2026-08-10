@@ -91,8 +91,7 @@ export const runModStressPlacePipeline = async (
       persistJobs.push(
         persistPool.run(async () => {
           if (results.length > 0) {
-            await persistStressPlacementResults(db, results);
-            placedCount += results.length;
+            placedCount += await persistStressPlacementResults(db, results);
           }
           done += chunk.length;
           handlers.onProgress?.(done, placedCount);

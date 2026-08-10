@@ -10,6 +10,10 @@ import {
 } from '../../../voice/loadVoiceTranslations';
 import { canSynthesizeVoiceLine } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
+import {
+  isStressedTranslationCurrent,
+  stressedMatchesSource,
+} from '../../../voice/stressedTranslation';
 
 export type StressPlaceRow = {
   translation_id: number;
@@ -25,11 +29,12 @@ export type StressPlaceRow = {
 
 export type ModStressPlaceScope = 'missing' | 'all';
 
-const isStressPending = (row: VoiceTranslationRow): boolean => {
-  const stressed = row.textStressed?.trim();
-  if (!stressed) return true;
-  return row.stressSrcText !== row.translation;
-};
+const isStressPending = (row: VoiceTranslationRow): boolean =>
+  !isStressedTranslationCurrent({
+    translation: row.translation,
+    textStressed: row.textStressed,
+    stressSrcText: row.stressSrcText,
+  });
 
 const toStressPlaceRow = (row: VoiceTranslationRow): StressPlaceRow | null => {
   if (row.translationId == null) return null;
@@ -136,9 +141,10 @@ export async function* iterateStressPlaceWorkUnits(
 export const persistStressPlacementResults = async (
   db: Tx,
   rows: ReadonlyArray<{ translationId: number; textStressed: string; srcText: string }>,
-): Promise<void> => {
-  if (rows.length === 0) return;
+): Promise<number> => {
+  let saved = 0;
   for (const row of rows) {
+    if (!stressedMatchesSource(row.textStressed, row.srcText)) continue;
     await withPgRetry(
       () =>
         db.query(
@@ -152,7 +158,9 @@ export const persistStressPlacementResults = async (
         ),
       { label: 'persistStressPlacement' },
     );
+    saved += 1;
   }
+  return saved;
 };
 
 export const resetModStressPlaceState = async (
@@ -195,6 +203,17 @@ export const saveStressedTranslation = async (
       [translationId],
     );
     return { textStressed: null };
+  }
+  const { rows: currentRows } = await db.query<{ text: string }>(
+    `SELECT text FROM translations WHERE id = $1`,
+    [translationId],
+  );
+  const current = currentRows[0]?.text;
+  if (current == null) {
+    throw new Error(`Translation ${translationId} not found`);
+  }
+  if (!stressedMatchesSource(trimmed, current)) {
+    throw new Error('Stressed text must match translation letters (only U+0301 marks allowed)');
   }
   const { rows } = await db.query<{ text_stressed: string | null }>(
     `UPDATE translations t

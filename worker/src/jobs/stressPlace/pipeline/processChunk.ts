@@ -5,6 +5,8 @@ import {
 } from '../../../../../src/llm/stressPlacement';
 import { enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
 import type { StressPlaceRow } from '../../../../../src/web/data/queries/stressPlacement';
+import { stressedMatchesSource } from '../../../../../src/voice/stressedTranslation';
+import { logTranslate } from '../../../../../src/logging/loggers';
 import type { RunModStressPlacePipelineOpts } from './runPipeline';
 
 export type StressPlaceChunkResult = {
@@ -26,11 +28,32 @@ export const processStressPlaceChunk = async (
       signal: opts.signal,
     });
     const byId = new Map(llmResults.map((r) => [r.id, r.text_stressed]));
-    return chunk.flatMap((row) => {
+    const accepted: StressPlaceChunkResult[] = [];
+    const drifted: StressPlaceRow[] = [];
+    for (const row of chunk) {
       const textStressed = byId.get(row.translation_id);
-      if (!textStressed) return [];
-      return [{ translationId: row.translation_id, textStressed, srcText: row.translation }];
-    });
+      if (!textStressed) continue;
+      if (!stressedMatchesSource(textStressed, row.translation)) {
+        drifted.push(row);
+        continue;
+      }
+      accepted.push({
+        translationId: row.translation_id,
+        textStressed,
+        srcText: row.translation,
+      });
+    }
+    if (drifted.length > 0) {
+      if (chunk.length > 1 && enqueueSplit) {
+        enqueueSoloChunks(drifted, enqueueSplit);
+      } else {
+        logTranslate.warn('stress-place rejected drifted LLM output', {
+          modId: opts.modId,
+          translationIds: drifted.map((row) => row.translation_id),
+        });
+      }
+    }
+    return accepted;
   } catch (err) {
     if (!isLlmStressPlacementMissingIdsError(err) || chunk.length <= 1 || !enqueueSplit) {
       throw err;

@@ -243,9 +243,17 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     if (!rows[0]) return reply.code(404).send({ error: 'Translation not found' });
 
-    const result = await saveStressedTranslation(db, translationId, req.body?.textStressed ?? '');
-    invalidateVoiceListContext(modId);
-    return reply.send({ ok: true, textStressed: result.textStressed });
+    try {
+      const result = await saveStressedTranslation(db, translationId, req.body?.textStressed ?? '');
+      invalidateVoiceListContext(modId);
+      return reply.send({ ok: true, textStressed: result.textStressed });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('Stressed text must match')) {
+        return reply.code(400).send({ error: message });
+      }
+      throw err;
+    }
   });
 
   // DELETE /api/mods/:id/voice/speaker-ref/:speakerKey — clear saved TTS reference.

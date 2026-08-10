@@ -18,8 +18,7 @@ import { closeDb, openDb } from '../src/db';
 import { log } from '../src/logger';
 import { allocateJobId, closeJobsQueue, enqueueJob } from '../worker/src/core/queue';
 import { writeJobSnapshot } from '../worker/src/core/snapshots';
-
-const COMBINING_ACUTE = '\u0301';
+import { STRESS_COMBINING_ACUTE, stripStressMarks } from '../src/voice/stressedTranslation';
 
 type StressedRow = {
   id: number;
@@ -28,7 +27,7 @@ type StressedRow = {
   mod_id: number;
 };
 
-const stripStress = (text: string): string => text.normalize('NFC').replace(/\u0301/g, '');
+const stripStress = stripStressMarks;
 
 const extractWords = (text: string): string[] => {
   const out: string[] = [];
@@ -70,7 +69,7 @@ const rowHasWrongStress = (
   for (let i = 0; i < baseWords.length; i++) {
     const plain = stripStress(stressedWords[i]);
     const got = stressedWords[i];
-    if (!isLetterWord(plain) || !got.includes(COMBINING_ACUTE)) continue;
+    if (!isLetterWord(plain) || !got.includes(STRESS_COMBINING_ACUTE)) continue;
     const full = trie.lookupFull(plain) ?? trie.lookupFull(plain.toLocaleLowerCase('uk-UA'));
     if (!full) continue;
     if (full.uncertain && full.type === 'heteronym') continue;
