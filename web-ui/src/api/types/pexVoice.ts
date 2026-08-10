@@ -85,6 +85,9 @@ export type VoiceAvailabilityResponse =
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
+  temperature: number;
+  repetition_penalty: number;
+  top_p: number;
 };
 
 export type VoiceRegeneratePreview = {

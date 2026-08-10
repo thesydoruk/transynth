@@ -13,7 +13,12 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:modId/voice-generate — synthesize localized voice (SSE progress stream)
   app.post<{
     Params: { modId: string };
-    Body: { srcLang?: string; targetLang?: string; scope?: 'all' | 'missing' };
+    Body: {
+      srcLang?: string;
+      targetLang?: string;
+      scope?: 'all' | 'missing';
+      speakerKey?: string;
+    };
   }>('/api/mods/:modId/voice-generate', async (req, reply) => {
     const modId = Number(req.params.modId);
     if (!Number.isInteger(modId) || modId < 1) {
@@ -23,6 +28,7 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
     const srcLang = req.body?.srcLang?.trim() || CONFIG.defaultSrcLang;
     const targetLang = req.body?.targetLang?.trim() || CONFIG.defaultTgtLang;
     const scope = req.body?.scope === 'all' ? 'all' : 'missing';
+    const speakerKey = req.body?.speakerKey?.trim() || undefined;
 
     const running = await findActiveJobIdForMod(['voice-generate'], modId);
     if (running) {
@@ -42,7 +48,14 @@ export const modVoiceGenerateRoutes = async (app: FastifyInstance, db: Tx) => {
       data: {
         kind: 'voice-generate',
         modId,
-        params: { srcLang, targetLang, game: mod.game, modName: mod.name, scope },
+        params: {
+          srcLang,
+          targetLang,
+          game: mod.game,
+          modName: mod.name,
+          scope,
+          ...(speakerKey ? { speakerKey } : {}),
+        },
       },
       initialSnapshotData: { written: 0, skipped: 0, warningCount: 0 },
     });

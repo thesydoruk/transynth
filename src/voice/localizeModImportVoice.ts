@@ -15,7 +15,7 @@ import { ensureDir } from '../utils/file';
 import { checkTtsHealth } from '../tts/ttsClient';
 import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
-import { dedupeVoiceFiles, discoverVoiceFiles } from './discoverVoiceFiles';
+import { dedupeVoiceFiles, discoverVoiceFiles, resolveVoiceRootRel } from './discoverVoiceFiles';
 import {
   loadVoiceTranslations,
   lookupVoiceTranslation,
@@ -23,6 +23,7 @@ import {
 } from './loadVoiceTranslations';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from './prepareVoiceTtsText';
 import { localizeVoicePackage } from './localizeVoicePackage';
+import { voiceSpeakerKey } from './speakerReference';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersionMap } from './voiceSynthesisState';
 import {
@@ -51,6 +52,8 @@ export type LocalizeModImportVoiceOptions = {
   referenceMode?: TtsReferenceMode;
   /** Restrict synthesis to these `FORMID6:variant` keys. */
   onlyKeys?: ReadonlySet<string>;
+  /** Restrict synthesis to one NPC voice folder (`Sound/Voice/.../<speakerKey>/`). */
+  speakerKey?: string;
   onProgress?: (done: number, total: number) => void;
   shouldCancel?: () => boolean;
 };
@@ -78,16 +81,22 @@ export const countVoiceLocalizeWork = async (
   tgtLang: string,
   scope: ModVoiceGenerateScope = 'missing',
   onlyKeys?: ReadonlySet<string>,
+  speakerKey?: string,
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
   const forceAll = scope === 'all';
+  const speakerFilter = speakerKey?.trim() || '';
   let total = 0;
   for (const pkg of packages) {
     const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
+    const voiceRootRel = resolveVoiceRootRel(pluginRel);
     const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
     const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
     for (const entry of voiceFiles) {
       if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
+        continue;
+      }
+      if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) {
         continue;
       }
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
@@ -134,6 +143,7 @@ export const localizeModImportVoice = async (
   const ttsBaseUrl = options.ttsBaseUrl ?? resolveTtsBaseUrl();
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
+  const synthesis = voiceConfig.synthesis;
 
   const packages = resolveImportPackages(extractDir, tgtLang, options.pluginPath);
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
@@ -146,6 +156,7 @@ export const localizeModImportVoice = async (
   const skipped: string[] = [];
   const warnings: string[] = [];
 
+  const speakerKey = options.speakerKey?.trim() || undefined;
   const total =
     options.dryRun || options.onProgress == null
       ? 0
@@ -157,6 +168,7 @@ export const localizeModImportVoice = async (
           tgtLang,
           scope,
           options.onlyKeys,
+          speakerKey,
         );
   let progressDone = 0;
   const bumpProgress = () => {
@@ -165,7 +177,7 @@ export const localizeModImportVoice = async (
   };
 
   log.info(
-    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode}, scope=${scope}, force=${force})`,
+    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode}, scope=${scope}, force=${force}${speakerKey ? `, speaker=${speakerKey}` : ''})`,
   );
 
   for (const pkg of packages) {
@@ -183,7 +195,9 @@ export const localizeModImportVoice = async (
         force,
         scope,
         referenceMode,
+        synthesis,
         onlyKeys: options.onlyKeys,
+        speakerKey,
         limit: options.limit,
         shouldCancel: options.shouldCancel,
         onEligibleStep: options.onProgress ? bumpProgress : undefined,

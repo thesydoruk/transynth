@@ -39,6 +39,12 @@ export type ProjectSettingKey =
   | 'llm.rag_min_similarity'
   /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
+  /** Fish Speech sampling temperature. */
+  | 'voice.temperature'
+  /** Fish Speech repetition penalty. */
+  | 'voice.repetition_penalty'
+  /** Fish Speech nucleus sampling top-p (0–1). */
+  | 'voice.top_p'
   /** Max concurrent Fish Speech TTS HTTP requests (1–32). */
   | 'voice.tts_max_parallel_fish_speech';
 
@@ -53,6 +59,9 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
+  'voice.temperature': number;
+  'voice.repetition_penalty': number;
+  'voice.top_p': number;
   'voice.tts_max_parallel_fish_speech': number;
 };
 
@@ -78,6 +87,9 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
+  'voice.temperature': 0.65,
+  'voice.repetition_penalty': 1.2,
+  'voice.top_p': 0.8,
   'voice.tts_max_parallel_fish_speech': 1,
 };
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { toDiskPath, writeIfChanged } from '../modImport';
-import { synthesizeWav } from '../tts/ttsClient';
+import { synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
 import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslations';
@@ -45,6 +45,7 @@ export type ProcessVoiceLocalizeEntryOptions = {
   game: GameType;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
+  synthesis: TtsSynthesisParams;
   tgtLang: string;
   force: boolean;
   voiceSources: Map<string, VoiceSourceRow>;
@@ -85,6 +86,7 @@ export const processVoiceLocalizeEntry = async (
     game,
     ttsBaseUrl,
     referenceMode,
+    synthesis,
     tgtLang,
     force,
     voiceSources,
@@ -160,6 +162,7 @@ export const processVoiceLocalizeEntry = async (
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(tgtLang),
       speakerText,
+      synthesis,
     });
 
     const { fuzData } = await buildVoicedFuzFromTtsWav(

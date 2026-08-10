@@ -6,7 +6,7 @@ import type { GameType } from '../types';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
 import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
-import { checkTtsHealth, synthesizeWav } from '../tts/ttsClient';
+import { checkTtsHealth, synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import {
   dedupeVoiceFiles,
   discoverVoiceFiles,
@@ -59,6 +59,7 @@ export type SynthesizeModVoiceLineOptions = {
   game?: GameType;
   referenceMode?: TtsReferenceMode;
   ttsBaseUrl?: string;
+  synthesis?: Partial<TtsSynthesisParams>;
 };
 
 export type SynthesizeModVoiceLineBuffersResult =
@@ -104,6 +105,7 @@ export const synthesizeModVoiceLineBuffers = async (
 
   const voiceConfig = await loadVoiceProjectSettings(db);
   const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
+  const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
   const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
@@ -193,6 +195,7 @@ export const synthesizeModVoiceLineBuffers = async (
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(opts.tgtLang),
       speakerText: prepared.speakerText,
+      synthesis,
     });
 
     const built = await buildVoicedFuzFromTtsWav(

@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { pluginRelPath, toDiskPath, type ImportPackageContext } from '../modImport';
+import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
 import { ttsPipelineConcurrency } from '../tts/ttsRequestPool';
 import { mapWithConcurrency } from '../utils/concurrency';
 import type { TtsReferenceMode } from './voiceToolPaths';
@@ -21,7 +22,7 @@ import {
   type VoiceTranslationRow,
 } from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
-import { groupVoiceFilesBySpeaker } from './speakerReference';
+import { groupVoiceFilesBySpeaker, voiceSpeakerKey } from './speakerReference';
 import {
   prepareVoiceTtsText,
   voiceTtsSkipMessage,
@@ -57,8 +58,11 @@ export const localizeVoicePackage = async (
     force: boolean;
     scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
+    synthesis: TtsSynthesisParams;
     /** When set, only these `FORMID6:variant` keys are synthesized. */
     onlyKeys?: ReadonlySet<string>;
+    /** When set, only voice files under this NPC folder are synthesized. */
+    speakerKey?: string;
     limit?: number;
     shouldCancel?: () => boolean;
     onEligibleStep?: () => void;
@@ -85,14 +89,15 @@ export const localizeVoicePackage = async (
   let eligibleSeen = 0;
 
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
+  const speakerFilter = options.speakerKey?.trim() || '';
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
   let voiceFilesBySpeaker: Map<string, VoiceFileEntry[]> | undefined;
 
-  const getSiblingEntries = (speakerKey: string, current: VoiceFileEntry): VoiceFileEntry[] => {
+  const getSiblingEntries = (speaker: string, current: VoiceFileEntry): VoiceFileEntry[] => {
     if (!voiceFilesBySpeaker) {
       voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
     }
-    return (voiceFilesBySpeaker.get(speakerKey) ?? []).filter(
+    return (voiceFilesBySpeaker.get(speaker) ?? []).filter(
       (candidate) =>
         candidate.formidLower6 !== current.formidLower6 || candidate.variant !== current.variant,
     );
@@ -116,6 +121,7 @@ export const localizeVoicePackage = async (
 
       const entryKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
       if (options.onlyKeys && !options.onlyKeys.has(entryKey)) continue;
+      if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) continue;
 
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
       if (!row) {
@@ -172,6 +178,7 @@ export const localizeVoicePackage = async (
       game: options.game,
       ttsBaseUrl: options.ttsBaseUrl,
       referenceMode: options.referenceMode,
+      synthesis: options.synthesis,
       tgtLang,
       force: options.force,
       voiceSources,

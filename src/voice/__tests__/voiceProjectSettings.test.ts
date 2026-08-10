@@ -1,6 +1,7 @@
 import { SETTING_DEFAULTS } from '../../web/services/projectSettings';
 import {
   voiceReferenceModeFromProjectSettings,
+  voiceSynthesisFromProjectSettings,
   voiceTtsMaxParallelFromProjectSettings,
 } from '../voiceProjectSettings';
 import { resolveTtsReferenceMode } from '../voiceToolPaths';
@@ -14,6 +15,26 @@ describe('voiceProjectSettings', () => {
         'voice.line_reference': false,
       }),
     ).toBe('speaker');
+  });
+
+  it('maps Fish Speech sampling params from project settings', () => {
+    expect(voiceSynthesisFromProjectSettings(SETTING_DEFAULTS)).toEqual({
+      temperature: 0.65,
+      repetitionPenalty: 1.2,
+      topP: 0.8,
+    });
+    expect(
+      voiceSynthesisFromProjectSettings({
+        ...SETTING_DEFAULTS,
+        'voice.temperature': 0.5,
+        'voice.repetition_penalty': 2.5,
+        'voice.top_p': 0.9,
+      }),
+    ).toEqual({
+      temperature: 0.5,
+      repetitionPenalty: 2.5,
+      topP: 0.9,
+    });
   });
 
   it('maps Fish Speech concurrency from project settings', () => {

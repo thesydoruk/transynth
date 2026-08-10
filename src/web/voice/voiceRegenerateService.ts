@@ -22,6 +22,9 @@ export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
+  temperature: number;
+  repetition_penalty: number;
+  top_p: number;
 };
 
 type VoiceRegeneratePreviewMeta = {
@@ -91,8 +94,19 @@ export const voiceRegenerateParamsFromProjectSettings = async (
   const settings = await getAllProjectSettings(db);
   return {
     line_reference: settings['voice.line_reference'],
+    temperature: settings['voice.temperature'],
+    repetition_penalty: settings['voice.repetition_penalty'],
+    top_p: settings['voice.top_p'],
   };
 };
+
+const synthesisFromRegenerateParams = (
+  params: VoiceRegenerateParams,
+): SynthesizeModVoiceLineOptions['synthesis'] => ({
+  temperature: params.temperature,
+  repetitionPenalty: params.repetition_penalty,
+  topP: params.top_p,
+});
 
 /** Create a new regeneration session for one voice line. */
 export const initVoiceRegenerateSession = async (
@@ -180,6 +194,7 @@ export const generateVoiceRegeneratePreview = async (
     srcLang,
     tgtLang: targetLang,
     referenceMode: params.line_reference ? 'line' : 'speaker',
+    synthesis: synthesisFromRegenerateParams(params),
   } satisfies SynthesizeModVoiceLineOptions);
 
   if (!built.ok) return built;

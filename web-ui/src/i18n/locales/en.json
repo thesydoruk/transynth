@@ -520,6 +520,8 @@
     "hiddenLines": "{{count}} lines hidden by filter",
     "noLinesMatch": "No lines match the filter.",
     "regenerateBtn": "Regenerate",
+    "generateSpeaker": "Generate speaker voice",
+    "generateSpeakerTitle": "Generate voice for this character (same job as the mod voice control)",
     "hotkeyHint": "↑↓ in search — switch speakers · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play · Esc cancel"
   },
   "ctx": {
@@ -1017,7 +1019,7 @@
       "lineReference": "Use the same line as reference",
       "lineReferenceDesc": "On: each line uses its own original English audio — best when every line has distinct delivery. If a line is too short to use as a reference, the system auto-picks a character clip once, saves it, and reuses it until you change it in the voice editor. Off: one shared clip per NPC (auto-picked, manually set in the editor, or Sound/Voice/.../_reference.wav) — more consistent character voice, but less line-specific nuance.",
       "sectionSynthesis": "Synthesis",
-      "sectionSynthesisDesc": "Model and hyperparameters sent to POST /v1/synthesize. They affect pacing, stability, and length of generated speech. Changes apply to the next voice generation job.",
+      "sectionSynthesisDesc": "Sampling hyperparameters sent to POST /v1/synthesize. They affect stability and variation of generated speech. Changes apply to the next voice generation job.",
       "backend": "Model backend",
       "backendXtts": "XTTS v2",
       "backendXttsDesc": "Coqui XTTS v2 — use the fine-tuned Ukrainian checkpoint configured on the TTS server (xtts.use_finetuned: true).",

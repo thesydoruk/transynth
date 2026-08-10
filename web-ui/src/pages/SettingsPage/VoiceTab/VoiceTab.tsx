@@ -5,18 +5,32 @@ import parentS from '../SettingsPage.module.scss';
 import controlS from '../WorkflowTab/WorkflowTab.module.scss';
 import s from './VoiceTab.module.scss';
 import { VoiceSlider } from './VoiceSlider';
+import { VOICE_SETTINGS_DEFAULTS, VOICE_SYNTHESIS_SLIDERS } from './voiceSettingsConfig';
 
 type ProjectSettings = {
   'voice.line_reference': boolean;
+  'voice.temperature': number;
+  'voice.repetition_penalty': number;
+  'voice.top_p': number;
   'voice.tts_max_parallel_fish_speech': number;
 };
 
+type NumericProjectKey = Exclude<
+  {
+    [K in keyof ProjectSettings]: ProjectSettings[K] extends number ? K : never;
+  }[keyof ProjectSettings],
+  never
+>;
+
 const DEFAULTS: ProjectSettings = {
-  'voice.line_reference': true,
+  'voice.line_reference': VOICE_SETTINGS_DEFAULTS.line_reference,
+  'voice.temperature': VOICE_SETTINGS_DEFAULTS.temperature,
+  'voice.repetition_penalty': VOICE_SETTINGS_DEFAULTS.repetition_penalty,
+  'voice.top_p': VOICE_SETTINGS_DEFAULTS.top_p,
   'voice.tts_max_parallel_fish_speech': 1,
 };
 
-/** Fish Speech synthesis settings — server URL read-only, reference mode editable. */
+/** Fish Speech synthesis settings — server URL read-only, sampling params editable. */
 export const VoiceTab = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -49,6 +63,10 @@ export const VoiceTab = () => {
 
   const handleToggle = (key: keyof ProjectSettings) => {
     update({ key, value: !settings[key] });
+  };
+
+  const handleNumber = (key: NumericProjectKey, value: number) => {
+    update({ key, value });
   };
 
   if (isLoading || runtimeLoading) return <div className={s.center}>{t('common.loading')}</div>;
@@ -106,6 +124,28 @@ export const VoiceTab = () => {
               <span className={controlS.toggleTrack} />
             </label>
           </div>
+        </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionSynthesis')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionSynthesisDesc')}</p>
+        <div className={controlS.settingsList}>
+          {VOICE_SYNTHESIS_SLIDERS.map(({ key, labelKey, descKey, min, max, step }) => {
+            const projectKey = `voice.${key}` as NumericProjectKey;
+            return (
+              <VoiceSlider
+                key={key}
+                label={t(labelKey)}
+                description={t(descKey)}
+                value={settings[projectKey]}
+                min={min}
+                max={max}
+                step={step}
+                onCommit={(value) => handleNumber(projectKey, value)}
+              />
+            );
+          })}
         </div>
       </div>
     </>

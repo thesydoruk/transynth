@@ -17,6 +17,8 @@ export type VoiceGenerateJobParams = {
   game: string;
   modName?: string | null;
   scope?: ModVoiceGenerateScope;
+  /** When set, synthesize only this NPC voice folder. */
+  speakerKey?: string;
 };
 
 export const voiceGenerateHandler: JobHandler = async (db, ctx) => {

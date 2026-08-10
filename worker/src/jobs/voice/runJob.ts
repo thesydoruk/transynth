@@ -50,6 +50,7 @@ export const runModVoiceGenerateJob = async (
     game: string;
     modName?: string | null;
     scope?: ModVoiceGenerateScope;
+    speakerKey?: string;
     isCancelled: () => boolean;
   },
   onEvent: (event: ModVoiceGenerateProgressEvent) => void,
@@ -58,6 +59,7 @@ export const runModVoiceGenerateJob = async (
   const paths = await loadModImportPaths(db, { modId });
   const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
   const scope = opts.scope ?? 'missing';
+  const speakerKey = opts.speakerKey?.trim() || undefined;
   let total = await countVoiceLocalizeWork(
     db,
     modId,
@@ -65,12 +67,18 @@ export const runModVoiceGenerateJob = async (
     opts.srcLang,
     opts.targetLang,
     scope,
+    undefined,
+    speakerKey,
   );
   if (total === 0) {
     throw new Error(
-      scope === 'missing'
-        ? 'No missing or stale voice lines to synthesize'
-        : 'No voiced lines with translations to synthesize',
+      speakerKey
+        ? scope === 'missing'
+          ? `No missing or stale voice lines to synthesize for ${speakerKey}`
+          : `No voiced lines with translations to synthesize for ${speakerKey}`
+        : scope === 'missing'
+          ? 'No missing or stale voice lines to synthesize'
+          : 'No voiced lines with translations to synthesize',
     );
   }
 
@@ -94,7 +102,7 @@ export const runModVoiceGenerateJob = async (
   });
 
   log.info(
-    `[Voice generate mod #${modId}] job #${jobId} started (${total} lines, scope=${scope}, ${opts.srcLang}→${opts.targetLang})`,
+    `[Voice generate mod #${modId}] job #${jobId} started (${total} lines, scope=${scope}${speakerKey ? `, speaker=${speakerKey}` : ''}, ${opts.srcLang}→${opts.targetLang})`,
   );
   onEvent({ type: 'started', jobId, total });
 
@@ -107,6 +115,7 @@ export const runModVoiceGenerateJob = async (
       tgtLang: opts.targetLang,
       shouldCancel: opts.isCancelled,
       scope,
+      speakerKey,
       onProgress: (d, progressTotal) => {
         done = d;
         total = progressTotal;

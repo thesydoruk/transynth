@@ -1,6 +1,14 @@
 import fs from 'node:fs';
 import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
 import { ttsPool } from './ttsRequestPool';
+import {
+  appendTtsSynthesisFormFields,
+  resolveTtsSynthesisParams,
+  type TtsSynthesisParams,
+} from './ttsSynthesisParams';
+
+export type { TtsSynthesisParams } from './ttsSynthesisParams';
+export { resolveTtsSynthesisParams, TTS_SYNTHESIS_DEFAULTS } from './ttsSynthesisParams';
 
 export type TtsSynthesizeOptions = {
   baseUrl?: string;
@@ -8,6 +16,7 @@ export type TtsSynthesizeOptions = {
   /** English transcript of `speaker_wav` (Fish Speech `speaker_text`). */
   speakerText?: string;
   timeoutMs?: number;
+  synthesis?: Partial<TtsSynthesisParams>;
 };
 
 /** Build multipart body for Fish Speech (`POST /v1/synthesize`). */
@@ -27,6 +36,7 @@ export const buildSynthesisForm = (
   if (options.language) form.append('language', options.language);
   const speakerText = options.speakerText?.trim();
   if (speakerText) form.append('speaker_text', speakerText);
+  appendTtsSynthesisFormFields(form, resolveTtsSynthesisParams(options.synthesis));
   return form;
 };
 

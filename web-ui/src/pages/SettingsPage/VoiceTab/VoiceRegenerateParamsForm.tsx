@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import parentS from '../../SettingsPage/SettingsPage.module.scss';
 import controlS from '../WorkflowTab/WorkflowTab.module.scss';
-import type { VoiceRegenerateParams } from './voiceSettingsConfig';
+import { VoiceSlider } from './VoiceSlider';
+import { VOICE_SYNTHESIS_SLIDERS, type VoiceRegenerateParams } from './voiceSettingsConfig';
 
 type VoiceRegenerateParamsFormProps = {
   params: VoiceRegenerateParams;
@@ -9,7 +10,7 @@ type VoiceRegenerateParamsFormProps = {
   disabled?: boolean;
 };
 
-/** Local-only voice reference mode toggle for regeneration previews. */
+/** Local-only voice synthesis parameter form (same fields as Settings → Voice). */
 export const VoiceRegenerateParamsForm = ({
   params,
   onChange,
@@ -34,6 +35,20 @@ export const VoiceRegenerateParamsForm = ({
           <span className={controlS.toggleTrack} />
         </label>
       </div>
+
+      {VOICE_SYNTHESIS_SLIDERS.map(({ key, labelKey, descKey, min, max, step }) => (
+        <VoiceSlider
+          key={key}
+          label={t(labelKey)}
+          description={t(descKey)}
+          value={params[key]}
+          min={min}
+          max={max}
+          step={step}
+          onCommit={(value) => onChange({ ...params, [key]: value })}
+          disabled={disabled}
+        />
+      ))}
     </div>
   );
 };
