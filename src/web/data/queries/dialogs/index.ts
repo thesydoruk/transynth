@@ -1,4 +1,5 @@
 export type { DialogLine } from './lines';
+export { remapDialogLineVoiceVariants } from './lines';
 export { DIALOG_RESPONSE_PATH, DIALOG_PROMPT_PATH } from './lines';
 
 export type {

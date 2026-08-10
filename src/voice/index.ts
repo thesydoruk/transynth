@@ -15,6 +15,12 @@ export {
   type MasterModRef,
 } from './inheritedVoiceText';
 export {
+  loadInfoVoiceResponseNumbers,
+  loadModInfoVoiceResponseNumbers,
+  voiceVariantFromOrdinal,
+  type InfoVoiceResponseMap,
+} from './infoResponseNumbers';
+export {
   INFO_NAM1_RECORD_PATHS,
   loadVoiceSources,
   loadVoiceSourcesDetailed,

@@ -1,8 +1,10 @@
 import type { Tx } from '../../../../db';
+import { loadModInfoVoiceResponseNumbers } from '../../../../voice/infoResponseNumbers';
 import {
   DIALOG_PROMPT_PATH,
   DIALOG_RESPONSE_PATH,
   dialogLinesLateralSql,
+  remapDialogLineVoiceVariants,
   type DialogLine,
 } from './lines';
 import {
@@ -27,6 +29,15 @@ export const loadTopicTreeEntries = async (
   targetLang: string,
   section: string | null = null,
 ): Promise<DialogEntryRow[]> => {
+  const { rows: topicMeta } = await db.query<{ mod_id: number }>(
+    `SELECT mod_id FROM dialog_topics WHERE id = $1`,
+    [topicId],
+  );
+  const responseMap =
+    topicMeta[0] != null
+      ? await loadModInfoVoiceResponseNumbers(db, topicMeta[0].mod_id)
+      : null;
+
   const { rows: nodeRows } = await db.query(
     `SELECT
        dn.id AS node_id,
@@ -57,11 +68,11 @@ export const loadTopicTreeEntries = async (
     [topicId],
   );
 
-  const entries = flattenDialogTree(
-    nodeRows as TopicNodeQueryRow[],
-    edgeRows as TopicEdgeRow[],
-    topicFormidHex,
-  );
+  const nodes = (nodeRows as TopicNodeQueryRow[]).map((node) => ({
+    ...node,
+    lines: remapDialogLineVoiceVariants(node.info_formid_hex, node.lines ?? [], responseMap),
+  }));
+  const entries = flattenDialogTree(nodes, edgeRows as TopicEdgeRow[], topicFormidHex);
   if (section && entries.length > 0) {
     entries[0] = { ...entries[0], section };
   } else if (section) {

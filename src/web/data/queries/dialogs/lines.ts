@@ -5,6 +5,10 @@
  * `strings` and is resolved per query, which keeps spoken responses (NAM1) and
  * player prompts (RNAM) apart and supports INFOs that hold several responses.
  */
+import {
+  voiceVariantFromOrdinal,
+  type InfoVoiceResponseMap,
+} from '../../../../voice/infoResponseNumbers';
 
 /** `records.path_simplified` of a spoken INFO response. */
 export const DIALOG_RESPONSE_PATH = 'INFO\\NAM1';
@@ -27,11 +31,28 @@ export type DialogLine = {
   updated_at: string | null;
   qa_issue_count: number;
   /**
-   * Position of this response among the NAM1 lines of its INFO record, or null
-   * for prompts. Voice assets are named `<FormID>_<variant>.fuz`, so this is
-   * the half of the audio key that the transcript alone cannot reconstruct.
+   * Voice-file response number for `<FormID>_<N>.fuz`, or null for prompts.
+   *
+   * SQL emits the NAM1 ordinal (`ROW_NUMBER`); callers remap via
+   * {@link remapDialogLineVoiceVariants} using FO4 `TRDA` response numbers.
    */
   voice_variant: number | null;
+};
+
+/** Remap dialog `voice_variant` from NAM1 ordinal to TRDA / `.fuz` response#. */
+export const remapDialogLineVoiceVariants = (
+  infoFormidHex: string | null | undefined,
+  lines: DialogLine[],
+  responseMap: InfoVoiceResponseMap | null | undefined,
+): DialogLine[] => {
+  if (!responseMap || !infoFormidHex || lines.length === 0) return lines;
+  const responses = responseMap.get(infoFormidHex.toUpperCase());
+  if (!responses?.length) return lines;
+  return lines.map((line) => {
+    if (line.kind !== 'response' || line.voice_variant == null) return line;
+    const voice_variant = voiceVariantFromOrdinal(line.voice_variant, responses);
+    return voice_variant === line.voice_variant ? line : { ...line, voice_variant };
+  });
 };
 
 /**

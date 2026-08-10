@@ -1,4 +1,9 @@
 import type { Tx } from '../db';
+import {
+  loadModInfoVoiceResponseNumbers,
+  voiceVariantFromOrdinal,
+  type InfoVoiceResponseMap,
+} from './infoResponseNumbers';
 
 export type VoiceTranslationRow = {
   formidLower6: string;
@@ -37,11 +42,17 @@ export const lookupVoiceTranslation = (
 ): VoiceTranslationRow | undefined =>
   translations.get(voiceTranslationMapKey(formidLower6, variant));
 
+const resolveVoiceVariant = (
+  ordinal: number,
+  infoFormidHex: string,
+  responseMap: InfoVoiceResponseMap,
+): number => voiceVariantFromOrdinal(ordinal, responseMap.get(infoFormidHex.toUpperCase()));
+
 /**
- * Load translated INFO NAM1 lines keyed by lower-6 FormID + voice variant.
+ * Load translated INFO NAM1 lines keyed by lower-6 FormID + voice-file variant.
  *
- * Multi-line INFO records share one `records` row but have several `strings` rows
- * (import order matches ESP NAM1 order). Voice assets use `<FormID>_<variant>.fuz`.
+ * SQL still numbers NAM1 rows with `ROW_NUMBER` (import order). Keys are then
+ * remapped to FO4 `TRDA` response numbers so they match `<FormID>_<N>.fuz`.
  */
 export const loadVoiceTranslations = async (
   db: Tx,
@@ -49,10 +60,11 @@ export const loadVoiceTranslations = async (
   srcLang: string,
   tgtLang: string,
 ): Promise<Map<string, VoiceTranslationRow>> => {
+  const responseMap = await loadModInfoVoiceResponseNumbers(db, modId);
   const { rows } = await db.query<{
     formid_lower6: string;
     info_formid_hex: string;
-    voice_variant: number;
+    voice_ordinal: number;
     string_id: number;
     translation_id: number | null;
     status: string | null;
@@ -67,7 +79,7 @@ export const loadVoiceTranslations = async (
          r.edid,
          s.id AS string_id,
          s.text_raw AS source,
-         ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_variant
+         ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_ordinal
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
@@ -75,7 +87,7 @@ export const loadVoiceTranslations = async (
      )
      SELECT v.formid_lower6,
             v.info_formid_hex,
-            v.voice_variant,
+            v.voice_ordinal,
             v.string_id,
             v.edid,
             v.source,
@@ -86,16 +98,17 @@ export const loadVoiceTranslations = async (
      JOIN translations t
        ON t.src_string_id = v.string_id AND t.target_lang = $3
      WHERE t.text IS NOT NULL AND BTRIM(t.text) <> ''
-     ORDER BY v.formid_lower6, v.voice_variant`,
+     ORDER BY v.formid_lower6, v.voice_ordinal`,
     [modId, srcLang, tgtLang, [...INFO_NAM1_RECORD_PATHS]],
   );
 
   const map = new Map<string, VoiceTranslationRow>();
   for (const row of rows) {
-    map.set(voiceTranslationMapKey(row.formid_lower6, row.voice_variant), {
+    const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
+    map.set(voiceTranslationMapKey(row.formid_lower6, voiceVariant), {
       formidLower6: row.formid_lower6,
       infoFormidHex: row.info_formid_hex,
-      voiceVariant: row.voice_variant,
+      voiceVariant,
       stringId: row.string_id,
       translationId: row.translation_id,
       status: row.status,
@@ -122,16 +135,17 @@ export const normalizeVoiceText = (text: string | null | undefined): string | nu
   return trimmed.length > 0 ? trimmed : null;
 };
 
-/** Load INFO NAM1 source lines keyed by formid lower-6 + voice variant. */
+/** Load INFO NAM1 source lines keyed by formid lower-6 + voice-file variant. */
 export const loadVoiceSourcesDetailed = async (
   db: Tx,
   modId: number,
   srcLang: string,
 ): Promise<Map<string, VoiceSourceDetailRow>> => {
+  const responseMap = await loadModInfoVoiceResponseNumbers(db, modId);
   const { rows } = await db.query<{
     formid_lower6: string;
     info_formid_hex: string;
-    voice_variant: number;
+    voice_ordinal: number;
     string_id: number;
     source: string;
   }>(
@@ -141,15 +155,15 @@ export const loadVoiceSourcesDetailed = async (
          r.formid_hex AS info_formid_hex,
          s.id AS string_id,
          s.text_raw AS source,
-         ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_variant
+         ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_ordinal
        FROM records r
        JOIN strings s ON s.record_id = r.id AND s.lang = $2
        WHERE r.mod_id = $1
          AND ${infoNam1RecordsSql('r', '$3')}
      )
-     SELECT formid_lower6, info_formid_hex, voice_variant, string_id, source
+     SELECT formid_lower6, info_formid_hex, voice_ordinal, string_id, source
      FROM voiced
-     ORDER BY formid_lower6, voice_variant`,
+     ORDER BY formid_lower6, voice_ordinal`,
     [modId, srcLang, [...INFO_NAM1_RECORD_PATHS]],
   );
 
@@ -157,7 +171,8 @@ export const loadVoiceSourcesDetailed = async (
   for (const row of rows) {
     const source = normalizeVoiceText(row.source);
     if (!source) continue;
-    map.set(voiceTranslationMapKey(row.formid_lower6, row.voice_variant), {
+    const voiceVariant = resolveVoiceVariant(row.voice_ordinal, row.info_formid_hex, responseMap);
+    map.set(voiceTranslationMapKey(row.formid_lower6, voiceVariant), {
       source,
       infoFormidHex: row.info_formid_hex,
       stringId: row.string_id,

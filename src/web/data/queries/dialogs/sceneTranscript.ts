@@ -6,9 +6,14 @@ import {
   parseAddresseeKind,
 } from './participants';
 import {
+  loadModInfoVoiceResponseNumbers,
+  type InfoVoiceResponseMap,
+} from '../../../../voice/infoResponseNumbers';
+import {
   DIALOG_PROMPT_PATH,
   DIALOG_RESPONSE_PATH,
   dialogLinesLateralSql,
+  remapDialogLineVoiceVariants,
   type DialogLine,
 } from './lines';
 import type { DialogEntryRow, DialogScope, DialogTranscriptRow } from './scope';
@@ -90,7 +95,11 @@ const phaseLinesSql = (opts: {
   ORDER BY ${opts.order}`;
 
 /** Turn phase rows into transcript entries, heading each new scene when asked. */
-const toEntries = (rows: PhaseRow[], withSections: boolean): DialogEntryRow[] => {
+const toEntries = (
+  rows: PhaseRow[],
+  withSections: boolean,
+  responseMap: InfoVoiceResponseMap | null,
+): DialogEntryRow[] => {
   let previousSceneId: number | null = null;
   return rows.map((row) => {
     const startsScene = row.scene_id !== previousSceneId;
@@ -110,7 +119,7 @@ const toEntries = (rows: PhaseRow[], withSections: boolean): DialogEntryRow[] =>
       topic_formid_hex: row.topic_formid_hex,
       variant_index: row.variant_index,
       variant_count: row.variant_count,
-      lines: row.lines,
+      lines: remapDialogLineVoiceVariants(row.info_formid_hex, row.lines ?? [], responseMap),
     };
   });
 };
@@ -143,12 +152,13 @@ export const getSceneTranscript = async (
     }),
     [sceneId, srcLang, targetLang, DIALOG_RESPONSE_PATH, DIALOG_PROMPT_PATH],
   );
+  const responseMap = await loadModInfoVoiceResponseNumbers(db, modId);
 
   return {
     scope: 'scenes' as DialogScope,
     key: String(sceneId),
     label: head.label,
-    entries: toEntries(rows as PhaseRow[], false),
+    entries: toEntries(rows as PhaseRow[], false, responseMap),
   };
 };
 
@@ -192,11 +202,12 @@ export const getConversationTranscript = async (
     }),
     [modId, conversationKey, srcLang, targetLang, DIALOG_RESPONSE_PATH, DIALOG_PROMPT_PATH],
   );
+  const responseMap = await loadModInfoVoiceResponseNumbers(db, modId);
 
   return {
     scope: 'conversations' as DialogScope,
     key: conversationKey,
     label: head.label,
-    entries: toEntries(rows as PhaseRow[], true),
+    entries: toEntries(rows as PhaseRow[], true, responseMap),
   };
 };
