@@ -5,8 +5,17 @@
  * Routes stay thin: validate params, call one of these, return JSON.
  */
 import { findUnfinishedJobForMod, fromBullJobId, getQueueJob, requestJobStop } from '../core/queue';
-import { readJobSnapshot } from '../core/snapshots';
-import type { JobKind } from '../types';
+import { readJobSnapshot, writeJobSnapshot } from '../core/snapshots';
+import type { JobKind, JobSnapshot } from '../types';
+
+const markSnapshotCancelled = async (snapshot: JobSnapshot): Promise<void> => {
+  if (snapshot.status !== 'running') return;
+  await writeJobSnapshot({
+    ...snapshot,
+    status: 'cancelled',
+    error: null,
+  });
+};
 
 /**
  * Flatten a Redis snapshot into the JSON shape the frontend has always used:
@@ -34,7 +43,9 @@ export const stopJobOfKind = async (jobId: number, kinds: readonly JobKind[]): P
   const job = await getQueueJob(jobId);
   if (!job) {
     const snapshot = await readJobSnapshot(jobId);
-    return snapshot != null && kinds.includes(snapshot.kind);
+    if (snapshot == null || !kinds.includes(snapshot.kind)) return false;
+    await markSnapshotCancelled(snapshot);
+    return true;
   }
   if (!kinds.includes(job.data.kind)) return false;
   const state = await job.getState();
