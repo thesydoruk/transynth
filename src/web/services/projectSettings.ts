@@ -37,10 +37,8 @@ export type ProjectSettingKey =
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
   | 'llm.rag_min_similarity'
-  /** When true, local voice reference prefers the same line's game audio (else selected-line). */
+  /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
-  /** When true, send the global voice reference from the open UA library (when linked). */
-  | 'voice.uk_library'
   /** Max concurrent Fish Speech TTS HTTP requests (1–32). */
   | 'voice.tts_max_parallel_fish_speech';
 
@@ -55,7 +53,6 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
-  'voice.uk_library': boolean;
   'voice.tts_max_parallel_fish_speech': number;
 };
 
@@ -81,7 +78,6 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
-  'voice.uk_library': true,
   'voice.tts_max_parallel_fish_speech': 1,
 };
 

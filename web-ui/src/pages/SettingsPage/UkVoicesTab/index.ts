@@ -1,1 +1,0 @@
-export { UkVoicesTab } from './UkVoicesTab';

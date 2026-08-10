@@ -22,10 +22,8 @@ import {
   sourceDigest,
   tryCachedSpeakerReference,
 } from './cache';
-import { resolveUkLibraryReference } from '../ukLibrary';
 import {
   MANUAL_REFERENCE_FORMID,
-  UK_LIBRARY_REFERENCE_FORMID,
   anyVoiceReferenceEligible,
   isVoiceReferencePickEligible,
   type VoiceReferenceEligibility,
@@ -35,10 +33,8 @@ import { scoreReferenceWav } from './scoring';
 export type ResolvedSpeakerReference = {
   wavPath: string;
   pick: VoiceSpeakerRefPick;
-  source: 'manual' | 'saved' | 'auto' | 'uk_library';
+  source: 'manual' | 'saved' | 'auto';
   score?: number;
-  /** Transcript of the reference clip (set for Ukrainian library voices). */
-  speakerText?: string;
 };
 
 export type ResolveSpeakerReferenceInput = {
@@ -225,8 +221,8 @@ const autoSelectReference = async (
 
 /**
  * Resolve one speaker's TTS reference clip when synthesizing a voice line.
- * Prefers a global Ukrainian library link, then a hand-placed WAV, saved pick,
- * then auto-selection.
+ * Prefers a hand-placed WAV, then the saved pick, then auto-selection.
+ * Auto-select tries `preferredEntry` first and only scans sibling lines on demand.
  */
 export const resolveSpeakerReferenceForSpeaker = async (
   input: ResolveSpeakerReferenceInput,
@@ -242,19 +238,6 @@ export const resolveSpeakerReferenceForSpeaker = async (
     work: path.join(speakerCacheDir, '.work', speakerKey.replace(/[^\w.-]+/g, '_')),
   };
   ensureDir(dirs.work);
-
-  const ukLibrary = await resolveUkLibraryReference(db, speakerKey);
-  if (ukLibrary) {
-    log.info(
-      `Speaker ref "${speakerKey}": uk library ${ukLibrary.displayName} (${ukLibrary.voiceId})`,
-    );
-    return {
-      wavPath: ukLibrary.wavPath,
-      pick: { formidLower6: UK_LIBRARY_REFERENCE_FORMID, variant: 1 },
-      source: 'uk_library',
-      speakerText: ukLibrary.transcript,
-    };
-  }
 
   const manualPath = path.join(voiceRootAbs, speakerKey, MANUAL_REFERENCE_NAME);
   if (fs.existsSync(manualPath)) {

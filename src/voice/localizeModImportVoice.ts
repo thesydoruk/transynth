@@ -183,7 +183,6 @@ export const localizeModImportVoice = async (
         force,
         scope,
         referenceMode,
-        useUkLibrary: voiceConfig.useUkLibrary,
         onlyKeys: options.onlyKeys,
         limit: options.limit,
         shouldCancel: options.shouldCancel,

@@ -23,20 +23,13 @@ import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
 import {
   groupVoiceFilesBySpeaker,
   isManualVoiceReferencePick,
-  isUkLibraryVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
   voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
 } from './speakerReference';
-import { resolveUkLibraryReference } from './ukLibrary';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
-import {
-  mergeTtsReferenceClips,
-  speakerTextsFromClips,
-  type TtsReferenceClip,
-} from './mergeTtsReferenceClips';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersion, upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -65,17 +58,6 @@ export type SynthesizeModVoiceLineOptions = {
   tgtLang: string;
   game?: GameType;
   referenceMode?: TtsReferenceMode;
-  /**
-   * When false, skip the local voice reference (in-game same-line / selected-line).
-   * Default true. If both local and global are off, falls back to this line's game audio
-   * so Fish Speech still receives a speaker clip.
-   */
-  useLocalReference?: boolean;
-  /**
-   * When false, skip the global voice reference (open UA library).
-   * Defaults to the `voice.uk_library` project setting.
-   */
-  useUkLibrary?: boolean;
   ttsBaseUrl?: string;
 };
 
@@ -121,19 +103,13 @@ export const synthesizeModVoiceLineBuffers = async (
   }
 
   const voiceConfig = await loadVoiceProjectSettings(db);
-  const useLocalReference = opts.useLocalReference !== false;
-  const useUkLibrary = opts.useUkLibrary ?? voiceConfig.useUkLibrary;
-  const referenceMode = useLocalReference
-    ? (opts.referenceMode ?? voiceConfig.referenceMode)
-    : 'line';
+  const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
   const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
 
-  // Line mode may auto-pick a selected-line local ref when the line clip is too short.
-  if (useLocalReference) {
-    await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
-  }
+  // Line mode may auto-pick a speaker ref when the line clip is too short.
+  await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
@@ -144,11 +120,59 @@ export const synthesizeModVoiceLineBuffers = async (
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
-    // Match batch localize: prepare speakable text from the line first (skip rules).
+    const voiceRootRel = resolveVoiceRootRel(pluginRel);
+    const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
+    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
+    const referenceDecision = decideVoiceReferenceSource(
+      referenceMode,
+      isLineReferenceSuitable(lineEnglishWav),
+    );
+
+    let referenceWav: string | undefined;
+    let referenceText: string | null =
+      referenceDecision.kind === 'line'
+        ? row.source
+        : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
+
+    if (referenceDecision.kind === 'speaker' && speakerKey) {
+      const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
+        .get(speakerKey)
+        ?.filter(
+          (candidate) =>
+            candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
+        );
+      const resolved = await resolveSpeakerReferenceForSpeaker({
+        db,
+        modId: opts.modId,
+        speakerKey,
+        preferredEntry: entry,
+        getFallbackEntries: () => siblings ?? [],
+        packageDir: opts.packageDir,
+        pluginRelPath: pluginRel,
+        isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+      });
+      if (resolved) {
+        referenceWav = resolved.wavPath;
+        if (!isManualVoiceReferencePick(resolved.pick)) {
+          referenceText = lookupVoiceSource(
+            voiceSources,
+            resolved.pick.formidLower6,
+            resolved.pick.variant,
+          );
+        }
+      }
+    }
+
+    const finalReferenceWav = referenceWav ?? lineEnglishWav;
+    if (!referenceText) {
+      referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
+    }
+
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
-      speakerSource: row.source,
+      speakerSource: referenceText,
       edid: row.edid,
     });
     if (prepared.action === 'skip') {
@@ -159,78 +183,16 @@ export const synthesizeModVoiceLineBuffers = async (
       };
     }
 
-    const voiceRootRel = resolveVoiceRootRel(pluginRel);
-    const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
-    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-    const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    // When local refs are disabled, never fall back to a selected-line clip.
-    const referenceDecision = useLocalReference
-      ? decideVoiceReferenceSource(referenceMode, isLineReferenceSuitable(lineEnglishWav))
-      : ({ kind: 'line' } as const);
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(
+      prepared,
+      opts.tgtLang,
+      prepared.speakerText,
+    );
 
-    let globalClip: TtsReferenceClip | null = null;
-    let localClip: TtsReferenceClip | null = null;
-
-    if (useUkLibrary && speakerKey) {
-      const ukLibrary = await resolveUkLibraryReference(db, speakerKey);
-      if (ukLibrary) {
-        globalClip = { wavPath: ukLibrary.wavPath, speakerText: ukLibrary.transcript };
-      }
-    }
-
-    if (useLocalReference) {
-      localClip = {
-        wavPath: lineEnglishWav,
-        speakerText: row.source,
-      };
-      if (referenceDecision.kind === 'speaker' && speakerKey) {
-        const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
-          .get(speakerKey)
-          ?.filter(
-            (candidate) =>
-              candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
-          );
-        const resolved = await resolveSpeakerReferenceForSpeaker({
-          db,
-          modId: opts.modId,
-          speakerKey,
-          preferredEntry: entry,
-          getFallbackEntries: () => siblings ?? [],
-          packageDir: opts.packageDir,
-          pluginRelPath: pluginRel,
-          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
-        });
-        if (resolved) {
-          let speakerText: string | undefined;
-          if (isUkLibraryVoiceReferencePick(resolved.pick)) {
-            speakerText = resolved.speakerText ?? undefined;
-          } else if (!isManualVoiceReferencePick(resolved.pick)) {
-            speakerText =
-              lookupVoiceSource(voiceSources, resolved.pick.formidLower6, resolved.pick.variant) ??
-              undefined;
-          }
-          localClip = { wavPath: resolved.wavPath, speakerText };
-        } else {
-          localClip = {
-            wavPath: lineEnglishWav,
-            speakerText:
-              lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant) ?? row.source,
-          };
-        }
-      }
-    }
-
-    // Fish Speech requires at least one speaker clip; same-line game audio is the floor.
-    let clips = mergeTtsReferenceClips(globalClip, localClip);
-    if (clips.length === 0) {
-      clips = [{ wavPath: lineEnglishWav, speakerText: row.source }];
-    }
-    const speakerTexts = speakerTextsFromClips(clips);
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, opts.tgtLang, speakerTexts);
-
-    const ttsWav = await synthesizeWav(prepared.text, clips, {
+    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(opts.tgtLang),
+      speakerText: prepared.speakerText,
     });
 
     const built = await buildVoicedFuzFromTtsWav(

@@ -10,21 +10,14 @@ import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslation
 import { lookupVoiceSource, voiceTranslationMapKey } from './loadVoiceTranslations';
 import {
   isManualVoiceReferencePick,
-  isUkLibraryVoiceReferencePick,
   resolveSpeakerReferenceForSpeaker,
   voiceReferenceEligibilityFromSources,
   voiceSpeakerKey,
   type ResolvedSpeakerReference,
 } from './speakerReference';
-import { resolveUkLibraryReference } from './ukLibrary';
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
-import type { PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
-import {
-  mergeTtsReferenceClips,
-  speakerTextsFromClips,
-  type TtsReferenceClip,
-} from './mergeTtsReferenceClips';
+import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -36,9 +29,8 @@ import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import type { GameType } from '../types';
 
 export type SpeakerRefCacheEntry = {
-  /** `null` means looked up with no link; omitted means not resolved yet. */
-  ukLibrary?: TtsReferenceClip | null;
-  speaker?: TtsReferenceClip;
+  wavPath: string;
+  referenceText: string | null;
 };
 
 export type ProcessVoiceLocalizeEntryOptions = {
@@ -53,8 +45,6 @@ export type ProcessVoiceLocalizeEntryOptions = {
   game: GameType;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
-  /** When false, skip the global voice reference (open UA library). */
-  useUkLibrary: boolean;
   tgtLang: string;
   force: boolean;
   voiceSources: Map<string, VoiceSourceRow>;
@@ -70,49 +60,10 @@ export type ProcessVoiceLocalizeEntryResult =
 
 const referenceTextForPick = (
   sources: Map<string, VoiceSourceRow>,
-  resolved: ResolvedSpeakerReference,
+  pick: ResolvedSpeakerReference['pick'],
 ): string | null => {
-  if (isUkLibraryVoiceReferencePick(resolved.pick)) return resolved.speakerText ?? null;
-  if (isManualVoiceReferencePick(resolved.pick)) return null;
-  return lookupVoiceSource(sources, resolved.pick.formidLower6, resolved.pick.variant);
-};
-
-const resolveUkClip = async (
-  db: Tx,
-  speakerKey: string,
-  cache: SpeakerRefCacheEntry,
-): Promise<TtsReferenceClip | null> => {
-  if (cache.ukLibrary !== undefined) return cache.ukLibrary;
-  const ukLibrary = await resolveUkLibraryReference(db, speakerKey);
-  cache.ukLibrary = ukLibrary
-    ? { wavPath: ukLibrary.wavPath, speakerText: ukLibrary.transcript }
-    : null;
-  return cache.ukLibrary;
-};
-
-const resolveSpeakerClip = async (
-  entry: VoiceFileEntry,
-  speakerKey: string,
-  options: ProcessVoiceLocalizeEntryOptions,
-  cache: SpeakerRefCacheEntry,
-): Promise<TtsReferenceClip | undefined> => {
-  if (cache.speaker) return cache.speaker;
-  const resolved = await resolveSpeakerReferenceForSpeaker({
-    db: options.db,
-    modId: options.modId,
-    speakerKey,
-    preferredEntry: entry,
-    getFallbackEntries: () => options.getSiblingEntries(speakerKey, entry),
-    packageDir: options.packageDir,
-    pluginRelPath: options.pluginRel,
-    isEligible: voiceReferenceEligibilityFromSources(options.voiceSources),
-  });
-  if (!resolved) return undefined;
-  cache.speaker = {
-    wavPath: resolved.wavPath,
-    speakerText: referenceTextForPick(options.voiceSources, resolved) ?? undefined,
-  };
-  return cache.speaker;
+  if (isManualVoiceReferencePick(pick)) return null;
+  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
 };
 
 /** Synthesize one voice file entry into a localized `.fuz` under the mod tree. */
@@ -124,6 +75,9 @@ export const processVoiceLocalizeEntry = async (
 ): Promise<ProcessVoiceLocalizeEntryResult> => {
   const {
     db,
+    modId,
+    packageDir,
+    pluginRel,
     voiceRootRel,
     localizeDir,
     prefix,
@@ -131,11 +85,11 @@ export const processVoiceLocalizeEntry = async (
     game,
     ttsBaseUrl,
     referenceMode,
-    useUkLibrary,
     tgtLang,
     force,
     voiceSources,
     speakerRefCache,
+    getSiblingEntries,
     storedVersions,
   } = options;
 
@@ -143,6 +97,13 @@ export const processVoiceLocalizeEntry = async (
   const fuzDest = toDiskPath(localizeDir, fuzRel);
 
   try {
+    const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
+    const storedVersion = storedVersions.get(versionKey);
+    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
+      return { kind: 'skipped', relPath: prefix + fuzRel };
+    }
+
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
@@ -153,42 +114,52 @@ export const processVoiceLocalizeEntry = async (
       isLineReferenceSuitable(lineEnglishWav),
     );
 
-    const cache = speakerKey
-      ? (speakerRefCache.get(speakerKey) ?? {})
-      : ({} as SpeakerRefCacheEntry);
-    if (speakerKey) speakerRefCache.set(speakerKey, cache);
+    let referenceWav: string | undefined;
+    let referenceText: string | null =
+      referenceDecision.kind === 'line'
+        ? row.source
+        : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
 
-    const ukClip = useUkLibrary && speakerKey ? await resolveUkClip(db, speakerKey, cache) : null;
-
-    let localClip: TtsReferenceClip = {
-      wavPath: lineEnglishWav,
-      speakerText: row.source,
-    };
     if (referenceDecision.kind === 'speaker' && speakerKey) {
-      const speakerClip = await resolveSpeakerClip(entry, speakerKey, options, cache);
-      if (speakerClip) {
-        localClip = speakerClip;
+      const cached = speakerRefCache.get(speakerKey);
+      if (cached) {
+        referenceWav = cached.wavPath;
+        referenceText = cached.referenceText;
       } else {
-        localClip = {
-          wavPath: lineEnglishWav,
-          speakerText:
-            lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant) ?? row.source,
-        };
+        const resolved = await resolveSpeakerReferenceForSpeaker({
+          db,
+          modId,
+          speakerKey,
+          preferredEntry: entry,
+          getFallbackEntries: () => getSiblingEntries(speakerKey, entry),
+          packageDir,
+          pluginRelPath: pluginRel,
+          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
+        });
+        if (resolved) {
+          referenceWav = resolved.wavPath;
+          referenceText = referenceTextForPick(voiceSources, resolved.pick);
+          speakerRefCache.set(speakerKey, {
+            wavPath: resolved.wavPath,
+            referenceText,
+          });
+        }
       }
     }
 
-    const clips = mergeTtsReferenceClips(ukClip, localClip);
-    const speakerTexts = speakerTextsFromClips(clips);
-    const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
-    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang, speakerTexts);
-    const storedVersion = storedVersions.get(versionKey);
-    if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
-      return { kind: 'skipped', relPath: prefix + fuzRel };
+    const finalReferenceWav = referenceWav ?? lineEnglishWav;
+    if (!referenceText) {
+      referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
     }
 
-    const ttsWav = await synthesizeWav(prepared.text, clips, {
+    // TTS may use a different reference transcript than the line source; version
+    // stamp stays on prepared text so it matches count/availability/rebuild.
+    const speakerText = stripVoiceNonSpeechBlocks(referenceText ?? row.source) || undefined;
+
+    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(tgtLang),
+      speakerText,
     });
 
     const { fuzData } = await buildVoicedFuzFromTtsWav(
@@ -203,7 +174,7 @@ export const processVoiceLocalizeEntry = async (
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
     if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
       await upsertVoiceSynthesisState(db, {
-        modId: options.modId,
+        modId,
         formidLower6: entry.formidLower6,
         variant: entry.variant,
         targetLang: tgtLang,
@@ -217,7 +188,7 @@ export const processVoiceLocalizeEntry = async (
       ensureDir(path.dirname(fuzDest));
       fs.writeFileSync(fuzDest, fuzData);
       await upsertVoiceSynthesisState(db, {
-        modId: options.modId,
+        modId,
         formidLower6: entry.formidLower6,
         variant: entry.variant,
         targetLang: tgtLang,

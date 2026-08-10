@@ -20,24 +20,17 @@ export const voiceTtsMaxParallelFromProjectSettings = (
   settings: Awaited<ReturnType<typeof getAllProjectSettings>>,
 ): number => settings['voice.tts_max_parallel_fish_speech'];
 
-/** Whether the global voice reference (open UA library) is enabled. */
-export const voiceUkLibraryFromProjectSettings = (
-  settings: Awaited<ReturnType<typeof getAllProjectSettings>>,
-): boolean => settings['voice.uk_library'] !== false;
-
 /** Load voice synthesis settings from project_settings. */
 export const loadVoiceProjectSettings = async (
   db: Tx,
 ): Promise<{
   referenceMode: TtsReferenceMode;
-  useUkLibrary: boolean;
   ttsMaxParallel: number;
 }> => {
   const settings = await getAllProjectSettings(db);
   syncTtsPoolFromProjectSettings(settings);
   return {
     referenceMode: voiceReferenceModeFromProjectSettings(settings),
-    useUkLibrary: voiceUkLibraryFromProjectSettings(settings),
     ttsMaxParallel: settings['voice.tts_max_parallel_fish_speech'],
   };
 };

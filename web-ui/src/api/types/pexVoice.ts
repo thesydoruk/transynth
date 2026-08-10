@@ -84,11 +84,6 @@ export type VoiceAvailabilityResponse =
   | { ok: false; reason: string; message: string };
 
 export type VoiceRegenerateParams = {
-  /** Global voice reference (open UA library). */
-  global_reference: boolean;
-  /** Local voice reference (in-game same-line or selected-line). */
-  local_reference: boolean;
-  /** When local is on: same-line local (else selected-line local). */
   line_reference: boolean;
 };
 

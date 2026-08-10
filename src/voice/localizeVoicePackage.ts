@@ -57,8 +57,6 @@ export const localizeVoicePackage = async (
     force: boolean;
     scope: ModVoiceGenerateScope;
     referenceMode: TtsReferenceMode;
-    /** When false, skip the global voice reference (open UA library). */
-    useUkLibrary: boolean;
     /** When set, only these `FORMID6:variant` keys are synthesized. */
     onlyKeys?: ReadonlySet<string>;
     limit?: number;
@@ -174,7 +172,6 @@ export const localizeVoicePackage = async (
       game: options.game,
       ttsBaseUrl: options.ttsBaseUrl,
       referenceMode: options.referenceMode,
-      useUkLibrary: options.useUkLibrary,
       tgtLang,
       force: options.force,
       voiceSources,

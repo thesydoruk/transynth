@@ -21,31 +21,7 @@ export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
 
 export type VoiceRegenerateParams = {
-  /** Global voice reference (open UA library). */
-  global_reference: boolean;
-  /** Local voice reference (in-game same-line or selected-line). */
-  local_reference: boolean;
-  /** When local is on: same-line local (else selected-line local). */
   line_reference: boolean;
-};
-
-/** Normalize API params; migrates legacy `character_reference`. */
-export const normalizeVoiceRegenerateParams = (
-  params: Partial<VoiceRegenerateParams> & { character_reference?: boolean },
-): VoiceRegenerateParams => {
-  if ('global_reference' in params || 'local_reference' in params) {
-    return {
-      global_reference: params.global_reference !== false,
-      local_reference: params.local_reference !== false,
-      line_reference: Boolean(params.line_reference),
-    };
-  }
-  const characterOn = params.character_reference !== false;
-  return {
-    global_reference: characterOn,
-    local_reference: characterOn,
-    line_reference: Boolean(params.line_reference),
-  };
 };
 
 type VoiceRegeneratePreviewMeta = {
@@ -114,8 +90,6 @@ export const voiceRegenerateParamsFromProjectSettings = async (
 ): Promise<VoiceRegenerateParams> => {
   const settings = await getAllProjectSettings(db);
   return {
-    global_reference: settings['voice.uk_library'] !== false,
-    local_reference: true,
     line_reference: settings['voice.line_reference'],
   };
 };
@@ -197,7 +171,6 @@ export const generateVoiceRegeneratePreview = async (
     };
   }
 
-  const normalizedParams = normalizeVoiceRegenerateParams(params);
   const built = await synthesizeModVoiceLineBuffers(db, {
     modId,
     packageDir: resolved.ctx.packageDir,
@@ -206,9 +179,7 @@ export const generateVoiceRegeneratePreview = async (
     variant,
     srcLang,
     tgtLang: targetLang,
-    referenceMode: normalizedParams.line_reference ? 'line' : 'speaker',
-    useLocalReference: normalizedParams.local_reference,
-    useUkLibrary: normalizedParams.global_reference,
+    referenceMode: params.line_reference ? 'line' : 'speaker',
   } satisfies SynthesizeModVoiceLineOptions);
 
   if (!built.ok) return built;
@@ -238,7 +209,7 @@ export const generateVoiceRegeneratePreview = async (
     createdAt: new Date().toISOString(),
     fuzRel: built.fuzRel,
     payloadVersion: built.payloadVersion,
-    params: normalizedParams,
+    params,
   };
   meta.previews.push(previewMeta);
   writeSessionMeta(modId, sessionId, meta);
@@ -248,7 +219,7 @@ export const generateVoiceRegeneratePreview = async (
     previewId,
     attempt,
     audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${previewId}.wav`,
-    params: normalizedParams,
+    params,
   };
 };
 

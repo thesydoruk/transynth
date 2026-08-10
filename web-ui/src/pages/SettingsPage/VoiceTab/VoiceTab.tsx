@@ -8,13 +8,11 @@ import { VoiceSlider } from './VoiceSlider';
 
 type ProjectSettings = {
   'voice.line_reference': boolean;
-  'voice.uk_library': boolean;
   'voice.tts_max_parallel_fish_speech': number;
 };
 
 const DEFAULTS: ProjectSettings = {
   'voice.line_reference': true,
-  'voice.uk_library': true,
   'voice.tts_max_parallel_fish_speech': 1,
 };
 
@@ -104,20 +102,6 @@ export const VoiceTab = () => {
                 type="checkbox"
                 checked={settings['voice.line_reference']}
                 onChange={() => handleToggle('voice.line_reference')}
-              />
-              <span className={controlS.toggleTrack} />
-            </label>
-          </div>
-          <div className={controlS.settingRow}>
-            <div className={controlS.settingInfo}>
-              <span className={controlS.settingLabel}>{t('voice.ukLibrary')}</span>
-              <span className={parentS.fieldNote}>{t('voice.ukLibraryDesc')}</span>
-            </div>
-            <label className={controlS.toggle}>
-              <input
-                type="checkbox"
-                checked={settings['voice.uk_library']}
-                onChange={() => handleToggle('voice.uk_library')}
               />
               <span className={controlS.toggleTrack} />
             </label>

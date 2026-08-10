@@ -4,9 +4,6 @@ import type { VoiceSpeakerRefPick } from '../voiceSpeakerRefs';
 /** Pick FormID used for a hand-placed `_reference.wav`, which has no dialogue record. */
 export const MANUAL_REFERENCE_FORMID = 'MANUAL';
 
-/** Pick FormID used when the reference comes from the global Ukrainian voice library. */
-export const UK_LIBRARY_REFERENCE_FORMID = 'UKLIB';
-
 /** Answers whether one voice clip may be used as a speaker's TTS reference. */
 export type VoiceReferenceEligibility = (formidLower6: string, variant: number) => boolean;
 
@@ -25,13 +22,7 @@ export const voiceReferenceEligibilityFromSources =
 export const isManualVoiceReferencePick = (pick: VoiceSpeakerRefPick): boolean =>
   pick.formidLower6.toUpperCase() === MANUAL_REFERENCE_FORMID;
 
-export const isUkLibraryVoiceReferencePick = (pick: VoiceSpeakerRefPick): boolean =>
-  pick.formidLower6.toUpperCase() === UK_LIBRARY_REFERENCE_FORMID;
-
 export const isVoiceReferencePickEligible = (
   pick: VoiceSpeakerRefPick,
   isEligible: VoiceReferenceEligibility,
-): boolean =>
-  isManualVoiceReferencePick(pick) ||
-  isUkLibraryVoiceReferencePick(pick) ||
-  isEligible(pick.formidLower6, pick.variant);
+): boolean => isManualVoiceReferencePick(pick) || isEligible(pick.formidLower6, pick.variant);

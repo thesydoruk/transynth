@@ -1,7 +1,7 @@
 import { computeVoiceTtsPayloadVersion, isVoiceSynthesisCurrent } from '../voiceTtsPayloadVersion';
 
 describe('computeVoiceTtsPayloadVersion', () => {
-  it('hashes text, speakerTexts, language, and audio post version', () => {
+  it('hashes text, speaker_text, language, and audio post version', () => {
     const a = computeVoiceTtsPayloadVersion({
       text: 'Привіт.',
       speakerText: 'Hello.',
@@ -9,7 +9,7 @@ describe('computeVoiceTtsPayloadVersion', () => {
     });
     const b = computeVoiceTtsPayloadVersion({
       text: 'Привіт.',
-      speakerTexts: ['Hello.'],
+      speakerText: 'Hello.',
       language: 'uk',
     });
     const c = computeVoiceTtsPayloadVersion({
@@ -17,15 +17,9 @@ describe('computeVoiceTtsPayloadVersion', () => {
       speakerText: 'Hello.',
       language: 'uk',
     });
-    const multi = computeVoiceTtsPayloadVersion({
-      text: 'Привіт.',
-      speakerTexts: ['UK.', 'Hello.'],
-      language: 'uk',
-    });
 
     expect(a).toBe(b);
     expect(a).not.toBe(c);
-    expect(a).not.toBe(multi);
   });
 
   it('treats missing speaker_text as empty', () => {

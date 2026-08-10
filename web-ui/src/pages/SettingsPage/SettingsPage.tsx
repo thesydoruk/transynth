@@ -8,7 +8,6 @@
  *   General      — default source / target languages, UI language, theme.
  *   LLM          — read-only display of the active LLM runtime config.
  *   Voice        — TTS server URL (read-only) and synthesis hyperparameters.
- *   UK Voices    — Ukrainian reference library and global character links.
  *   QA Rules     — forbidden characters, length limits, and custom checks.
  *   Workflow     — project-level workflow and QA toggles.
  *   Activity     — paginated audit log of actions.
@@ -28,19 +27,10 @@ import { DataTab } from './DataTab';
 import { GeneralTab } from './GeneralTab';
 import { LlmTab } from './LlmTab';
 import { VoiceTab } from './VoiceTab';
-import { UkVoicesTab } from './UkVoicesTab';
 import { WorkflowTab } from './WorkflowTab';
 import s from './SettingsPage.module.scss';
 
-type TabId =
-  | 'general'
-  | 'llm'
-  | 'voice'
-  | 'ukVoices'
-  | 'qaRules'
-  | 'activity'
-  | 'data'
-  | 'workflow';
+type TabId = 'general' | 'llm' | 'voice' | 'qaRules' | 'activity' | 'data' | 'workflow';
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
@@ -51,7 +41,6 @@ export const SettingsPage = () => {
     value === 'general' ||
     value === 'llm' ||
     value === 'voice' ||
-    value === 'ukVoices' ||
     value === 'qaRules' ||
     value === 'activity' ||
     value === 'data' ||
@@ -66,7 +55,6 @@ export const SettingsPage = () => {
     { id: 'general', label: t('settings.tabs.general') },
     { id: 'llm', label: t('settings.tabs.llm') },
     { id: 'voice', label: t('settings.tabs.voice') },
-    { id: 'ukVoices', label: t('settings.tabs.ukVoices') },
     { id: 'qaRules', label: t('settings.tabs.qaRules') },
   ];
 
@@ -121,7 +109,6 @@ export const SettingsPage = () => {
           {tab === 'general' && <GeneralTab />}
           {tab === 'llm' && <LlmTab />}
           {tab === 'voice' && <VoiceTab />}
-          {tab === 'ukVoices' && <UkVoicesTab />}
           {tab === 'qaRules' && <QARulesPage embedded />}
           {tab === 'workflow' && <WorkflowTab />}
           {tab === 'activity' && <ActivityPage embedded />}
