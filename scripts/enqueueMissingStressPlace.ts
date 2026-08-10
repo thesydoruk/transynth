@@ -1,9 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Enqueue stress-place (scope: missing) for mods that still have pending voiced lines.
+ * Enqueue stress-place for mods with voiced lines.
  *
  * Usage:
  *   npx tsx scripts/enqueueMissingStressPlace.ts [--dry-run] [--shard 0/6] [--mod-id N]
+ *   npx tsx scripts/enqueueMissingStressPlace.ts --scope all --shard 0/6
  */
 import '../src/loadEnv';
 import yargs from 'yargs';
@@ -13,7 +14,10 @@ import { closeDb, openDb } from '../src/db';
 import { log } from '../src/logger';
 import { loadModImportPaths } from '../src/import/mod/resolvePaths';
 import { resolveImportPackages } from '../src/modImport';
-import { countStressPlaceWork } from '../src/web/data/queries/stressPlacement';
+import {
+  countStressPlaceWork,
+  type ModStressPlaceScope,
+} from '../src/web/data/queries/stressPlacement';
 import { allocateJobId, closeJobsQueue, enqueueJob } from '../worker/src/core/queue';
 import { writeJobSnapshot } from '../worker/src/core/snapshots';
 import { findActiveJobIdForMod } from '../worker/src/api/jobStatus';
@@ -22,6 +26,12 @@ const argv = await yargs(hideBin(process.argv))
   .scriptName('stress:enqueue-missing')
   .option('dry-run', { type: 'boolean', default: false })
   .option('mod-id', { type: 'number' })
+  .option('scope', {
+    type: 'string',
+    choices: ['missing', 'all'] as const,
+    default: 'missing' as const,
+    describe: 'missing = pending only; all = re-stress every voiced line',
+  })
   .option('shard', {
     type: 'string',
     describe: 'Process only mods where modId % N === i, format i/N (e.g. 0/6)',
@@ -55,6 +65,7 @@ const shard = parseShard(argv.shard as string | undefined);
 const srcLang = String(argv['src-lang']).trim();
 const targetLang = String(argv['target-lang']).trim().toLowerCase();
 const onlyModId = argv['mod-id'] as number | undefined;
+const scope = argv.scope as ModStressPlaceScope;
 
 const enqueueStressPlace = async (modId: number): Promise<number> => {
   const jobId = await allocateJobId();
@@ -72,7 +83,7 @@ const enqueueStressPlace = async (modId: number): Promise<number> => {
     {
       kind: 'stress-place',
       modId,
-      params: { srcLang, targetLang, scope: 'missing' },
+      params: { srcLang, targetLang, scope },
     },
     jobId,
   );
@@ -114,28 +125,25 @@ const run = async (): Promise<void> => {
         continue;
       }
 
-      const pending = await countStressPlaceWork(
-        db,
-        mod.id,
-        packages,
-        srcLang,
-        targetLang,
-        'missing',
-      );
-      if (pending <= 0) {
+      const work = await countStressPlaceWork(db, mod.id, packages, srcLang, targetLang, scope);
+      if (work <= 0) {
         skippedNoWork += 1;
         continue;
       }
 
       if (argv['dry-run']) {
-        log.info(`[dry-run] would enqueue mod_id=${mod.id} pending=${pending} (${mod.name})`);
+        log.info(
+          `[dry-run] would enqueue mod_id=${mod.id} scope=${scope} work=${work} (${mod.name})`,
+        );
         enqueued += 1;
         continue;
       }
 
       const jobId = await enqueueStressPlace(mod.id);
       enqueued += 1;
-      log.info(`Enqueued stress-place #${jobId} mod_id=${mod.id} pending=${pending} (${mod.name})`);
+      log.info(
+        `Enqueued stress-place #${jobId} mod_id=${mod.id} scope=${scope} work=${work} (${mod.name})`,
+      );
     } catch (err) {
       failed += 1;
       log.warn(`mod_id=${mod.id} failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -143,7 +151,7 @@ const run = async (): Promise<void> => {
   }
 
   log.info(
-    `Done shard=${argv.shard ?? 'all'} enqueued=${enqueued} noWork=${skippedNoWork} busy=${skippedBusy} otherShard=${skippedShard} failed=${failed}`,
+    `Done shard=${argv.shard ?? 'all'} scope=${scope} enqueued=${enqueued} noWork=${skippedNoWork} busy=${skippedBusy} otherShard=${skippedShard} failed=${failed}`,
   );
 };
 
