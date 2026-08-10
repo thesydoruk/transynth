@@ -37,6 +37,8 @@ export type ProjectSettingKey =
   | 'llm.rag_max_examples'
   /** Minimum cosine similarity for embedding-based RAG retrieval (0–1). */
   | 'llm.rag_min_similarity'
+  /** When true, stress_place LLM calls enable model thinking (vLLM Gemma chat_template_kwargs). */
+  | 'llm.stress_place_thinking'
   /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
   /** Fish Speech sampling temperature. */
@@ -58,6 +60,7 @@ export type ProjectSettings = {
   'import.skip_tes4': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
+  'llm.stress_place_thinking': boolean;
   'voice.line_reference': boolean;
   'voice.temperature': number;
   'voice.repetition_penalty': number;
@@ -86,6 +89,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'import.skip_tes4': false,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
+  'llm.stress_place_thinking': true,
   'voice.line_reference': true,
   'voice.temperature': 0.65,
   'voice.repetition_penalty': 1.2,

@@ -27,6 +27,7 @@ export const vllmChatCompletion = async (
       temperature: opts.temperature ?? 0,
       max_tokens: opts.maxTokens ?? CONFIG.llmMaxTokens,
       ...(opts.responseFormat && { response_format: opts.responseFormat }),
+      ...(opts.extraBody ?? {}),
     },
     opts.signal ? { signal: opts.signal } : undefined,
   );

@@ -37,6 +37,11 @@ export interface ChatOptions {
   signal?: AbortSignal;
   /** Override completion token budget (defaults to {@link CONFIG.llmMaxTokens}). */
   maxTokens?: number;
+  /**
+   * Extra JSON fields merged into the vLLM chat-completions body
+   * (e.g. `chat_template_kwargs` for Gemma thinking). Ignored by OpenAI.
+   */
+  extraBody?: Record<string, unknown>;
   /** @internal Injected by multi-server vLLM chat pool. */
   _vllmHttpClient?: import('openai').default;
   logMeta?: {

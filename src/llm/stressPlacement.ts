@@ -39,7 +39,14 @@ export type LlmStressPlacementOptions = {
   model: string;
   targetLang: string;
   signal?: AbortSignal;
+  /** When true, ask vLLM/Gemma to run thinking mode for this call. */
+  enableThinking?: boolean;
 };
+
+/** vLLM Gemma4 body fields that activate reasoning for a single request. */
+export const stressPlaceThinkingExtraBody = {
+  chat_template_kwargs: { enable_thinking: true },
+} as const;
 
 const parseItems = (
   raw: string,
@@ -77,6 +84,8 @@ export const detectStressPlacementWithLlm = async (
     ],
     responseFormat: buildStressPlaceResponseFormat(expectedIds.length),
     signal: opts.signal,
+    ...(opts.enableThinking ? { extraBody: { ...stressPlaceThinkingExtraBody } } : {}),
+    logMeta: { operation: 'stress_place' },
   });
 
   const byId = parseItems(content, expectedIds, meta);

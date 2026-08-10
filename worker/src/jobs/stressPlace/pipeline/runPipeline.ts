@@ -11,6 +11,7 @@ import { runLlmChunkWorkPoolFromFeed } from '../../../../../src/llm/chunkRecover
 import { llmChatPipelineConcurrency } from '../../../../../src/llm/requestPool';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import { Semaphore } from '../../../../../src/utils/concurrency';
+import { getProjectSetting } from '../../../../../src/web/services/projectSettings';
 import { STRESS_PLACE_LLM_BATCH_SIZE } from './constants';
 import { processStressPlaceChunk } from './processChunk';
 
@@ -25,6 +26,8 @@ export type RunModStressPlacePipelineOpts = {
   shouldCancel?: () => boolean;
   signal?: AbortSignal;
   workers?: number;
+  /** Override project setting `llm.stress_place_thinking` for this run. */
+  enableThinking?: boolean;
 };
 
 export type StressPlacePipelineSummary = {
@@ -59,6 +62,9 @@ export const runModStressPlacePipeline = async (
   const persistJobs: Promise<void>[] = [];
   let done = 0;
   let placedCount = 0;
+  const enableThinking =
+    opts.enableThinking ?? (await getProjectSetting(db, 'llm.stress_place_thinking'));
+  const pipelineOpts: RunModStressPlacePipelineOpts = { ...opts, enableThinking };
 
   async function* chunkFeed() {
     for await (const chunk of iterateStressPlaceWorkUnits(db, {
@@ -79,6 +85,7 @@ export const runModStressPlacePipeline = async (
     total,
     scope: opts.scope,
     workers,
+    enableThinking,
   });
 
   await runLlmChunkWorkPoolFromFeed(chunkFeed(), {
@@ -87,7 +94,7 @@ export const runModStressPlacePipeline = async (
     shouldAbort: shouldCancel,
     runOnce: async (chunk, { enqueueSplit }) => {
       if (shouldCancel?.()) return;
-      const results = await processStressPlaceChunk(chunk, opts, enqueueSplit);
+      const results = await processStressPlaceChunk(chunk, pipelineOpts, enqueueSplit);
       persistJobs.push(
         persistPool.run(async () => {
           if (results.length > 0) {

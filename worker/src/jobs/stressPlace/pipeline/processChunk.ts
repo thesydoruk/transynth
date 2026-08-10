@@ -26,6 +26,7 @@ export const processStressPlaceChunk = async (
       model: getTranslateModel(),
       targetLang: opts.targetLang,
       signal: opts.signal,
+      enableThinking: opts.enableThinking,
     });
     const byId = new Map(llmResults.map((r) => [r.id, r.text_stressed]));
     const accepted: StressPlaceChunkResult[] = [];

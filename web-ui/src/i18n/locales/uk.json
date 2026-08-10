@@ -1073,7 +1073,9 @@
       "ragMaxExamples": "Макс. прикладів",
       "ragMaxExamplesDesc": "Скільки схожих перекладів включати для одного рядка (1–10).",
       "ragMinSimilarity": "Мін. similarity embeddings",
-      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу."
+      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу.",
+      "stressPlaceThinking": "Thinking для розстановки наголосів",
+      "stressPlaceThinkingDesc": "Увімкнути reasoning/thinking у LLM лише для stress_place (повільніше, але точніше; потрібен vLLM з reasoning-parser)."
     },
     "data": {
       "title": "Конфігурація даних",

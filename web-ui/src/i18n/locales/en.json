@@ -1073,7 +1073,9 @@
       "ragMaxExamples": "Max reference examples",
       "ragMaxExamplesDesc": "How many similar translations to include per string (1–10).",
       "ragMinSimilarity": "Min embedding similarity",
-      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold."
+      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold.",
+      "stressPlaceThinking": "Thinking for stress placement",
+      "stressPlaceThinkingDesc": "Enable LLM reasoning/thinking only for stress_place (slower, more accurate; requires vLLM with a reasoning parser)."
     },
     "data": {
       "title": "Data Configuration",

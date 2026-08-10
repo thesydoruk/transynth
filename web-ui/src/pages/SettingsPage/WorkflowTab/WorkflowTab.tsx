@@ -22,6 +22,7 @@ type ProjectSettings = {
   'import.skip_tes4': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
+  'llm.stress_place_thinking': boolean;
 };
 
 const DEFAULTS: ProjectSettings = {
@@ -33,6 +34,7 @@ const DEFAULTS: ProjectSettings = {
   'import.skip_tes4': false,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
+  'llm.stress_place_thinking': true,
 };
 
 /** WorkflowTab root component. */
@@ -206,6 +208,23 @@ export const WorkflowTab = () => {
               value={settings['llm.rag_min_similarity']}
               onChange={(e) => handleNumber('llm.rag_min_similarity', e.target.value)}
             />
+          </div>
+
+          <div className={s.settingRow}>
+            <div className={s.settingInfo}>
+              <span className={s.settingLabel}>{t('settings.workflow.stressPlaceThinking')}</span>
+              <span className={parentS.fieldNote}>
+                {t('settings.workflow.stressPlaceThinkingDesc')}
+              </span>
+            </div>
+            <label className={s.toggle}>
+              <input
+                type="checkbox"
+                checked={settings['llm.stress_place_thinking']}
+                onChange={() => handleToggle('llm.stress_place_thinking')}
+              />
+              <span className={s.toggleTrack} />
+            </label>
           </div>
         </div>
       </div>
