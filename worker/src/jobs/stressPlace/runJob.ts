@@ -1,14 +1,7 @@
 import type { Tx } from '../../../../src/db';
 import { logTranslate } from '../../../../src/logging/loggers';
 import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
-import { resolveImportPackages, pluginRelPath } from '../../../../src/modImport';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-} from '../../../../src/voice/discoverVoiceFiles';
-import { voiceSpeakerKey } from '../../../../src/voice/speakerReference';
-import { voiceTranslationMapKey } from '../../../../src/voice/loadVoiceTranslations';
+import { resolveImportPackages } from '../../../../src/modImport';
 import type { ModStressPlaceScope } from '../../../../src/web/data/queries/stressPlacement';
 import {
   countStressPlaceWork,
@@ -20,26 +13,6 @@ import type {
   LlmStressPlaceJobStatus,
   LlmStressPlaceProgressEvent,
 } from './types';
-
-const buildSpeakerAllowedKeys = async (
-  db: Tx,
-  opts: { modId: number; targetLang: string; speakerKey: string },
-): Promise<ReadonlySet<string>> => {
-  const paths = await loadModImportPaths(db, { modId: opts.modId });
-  const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
-  const speakerFilter = opts.speakerKey.trim();
-  const keys = new Set<string>();
-  for (const pkg of packages) {
-    const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-    const voiceRootRel = resolveVoiceRootRel(pluginRel);
-    const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
-    for (const entry of voiceFiles) {
-      if (voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) continue;
-      keys.add(voiceTranslationMapKey(entry.formidLower6, entry.variant));
-    }
-  }
-  return keys;
-};
 
 export const runLlmStressPlaceJob = async (
   db: Tx,
@@ -77,13 +50,8 @@ export const runLlmStressPlaceJob = async (
 
   try {
     const speakerKey = opts.speakerKey?.trim() || undefined;
-    const allowedKeys = speakerKey
-      ? await buildSpeakerAllowedKeys(db, {
-          modId,
-          targetLang: opts.targetLang,
-          speakerKey,
-        })
-      : undefined;
+    const paths = await loadModImportPaths(db, { modId });
+    const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
 
     if (force) {
       const reset = await resetModStressPlaceState(db, modId, opts.targetLang);
@@ -93,20 +61,22 @@ export const runLlmStressPlaceJob = async (
     total = await countStressPlaceWork(
       db,
       modId,
+      packages,
       opts.srcLang,
       opts.targetLang,
       scope,
-      allowedKeys,
+      speakerKey,
     );
     if (total === 0 && !force && scope === 'missing') {
       force = true;
       total = await countStressPlaceWork(
         db,
         modId,
+        packages,
         opts.srcLang,
         opts.targetLang,
         'all',
-        allowedKeys,
+        speakerKey,
       );
       if (total > 0) {
         await resetModStressPlaceState(db, modId, opts.targetLang);
@@ -126,10 +96,11 @@ export const runLlmStressPlaceJob = async (
       db,
       {
         modId,
+        packages,
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
         scope: force ? 'all' : scope,
-        allowedKeys,
+        speakerKey,
         knownTotal: total,
         shouldCancel: opts.isCancelled,
         signal: opts.signal,

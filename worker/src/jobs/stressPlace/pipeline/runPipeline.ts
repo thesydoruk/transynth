@@ -1,10 +1,12 @@
 import type { Tx } from '../../../../../src/db';
 import { CONFIG } from '../../../../../src/config';
+import type { ImportPackageContext } from '../../../../../src/modImport';
 import {
   countStressPlaceWork,
   iterateStressPlaceWorkUnits,
   persistStressPlacementResults,
 } from '../../../../../src/web/data/queries/stressPlacement';
+import type { ModStressPlaceScope } from '../../../../../src/web/data/queries/stressPlacement';
 import { runLlmChunkWorkPoolFromFeed } from '../../../../../src/llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../../../../../src/llm/requestPool';
 import { logTranslate } from '../../../../../src/logging/loggers';
@@ -14,10 +16,11 @@ import { processStressPlaceChunk } from './processChunk';
 
 export type RunModStressPlacePipelineOpts = {
   modId: number;
+  packages: readonly ImportPackageContext[];
   srcLang: string;
   targetLang: string;
-  scope: import('../../../../../src/web/data/queries/stressPlacement').ModStressPlaceScope;
-  allowedKeys?: ReadonlySet<string>;
+  scope: ModStressPlaceScope;
+  speakerKey?: string;
   knownTotal?: number;
   shouldCancel?: () => boolean;
   signal?: AbortSignal;
@@ -42,10 +45,11 @@ export const runModStressPlacePipeline = async (
     (await countStressPlaceWork(
       db,
       opts.modId,
+      opts.packages,
       opts.srcLang,
       opts.targetLang,
       opts.scope,
-      opts.allowedKeys,
+      opts.speakerKey,
     ));
   if (total === 0) {
     throw new Error('No voice lines need stress placement');
@@ -59,10 +63,11 @@ export const runModStressPlacePipeline = async (
   async function* chunkFeed() {
     for await (const chunk of iterateStressPlaceWorkUnits(db, {
       modId: opts.modId,
+      packages: opts.packages,
       srcLang: opts.srcLang,
       tgtLang: opts.targetLang,
       scope: opts.scope,
-      allowedKeys: opts.allowedKeys,
+      speakerKey: opts.speakerKey,
       batchSize: STRESS_PLACE_LLM_BATCH_SIZE,
     })) {
       yield chunk;
