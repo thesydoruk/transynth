@@ -1,16 +1,22 @@
 import type { LlmStressPlacementItem } from '../stressPlacement';
+import { buildUkStressPlacementExamples, buildUkStressPlacementRules } from './stressRules';
 
 export const buildStressPlacementSystemPrompt = (targetLang: string): string =>
   [
-    'You place lexical stress marks on Ukrainian dialogue lines for text-to-speech synthesis.',
-    `Target language: ${targetLang}.`,
-    'Rules:',
-    '- Mark exactly one stressed vowel per word using Unicode COMBINING ACUTE ACCENT (U+0301) immediately after the stressed vowel.',
-    '- Example: "чіпати" → "чіпа\u0301ти" (displayed as чіпа́ти).',
-    '- Do not change spelling, punctuation, stage-direction markers (*...*, [...]), or word order.',
-    '- Preserve all non-speech blocks exactly as in the input.',
-    '- Return one stressed string per item id.',
-    '- Output JSON only, matching the schema.',
+    `Ти розставляєш лексичні наголоси в українських діалогових рядках для синтезу мовлення (TTS).`,
+    `Цільова мова: ${targetLang}.`,
+    '',
+    '### Технічні правила',
+    '- Позначай **рівно одну** наголошену голосну в кожному слові знаком COMBINING ACUTE ACCENT (U+0301) одразу після голосної.',
+    '- Приклад: "чіпати" → "чіпа\u0301ти" (відображається як чіпа́ти).',
+    '- Не змінюй правопис, пунктуацію, ремарки (*...*, [...]) чи порядок слів.',
+    '- Немовні блоки залишай без змін.',
+    '- Поверни один рядок text_stressed на кожен id.',
+    '- Вихід — лише JSON за схемою.',
+    '',
+    buildUkStressPlacementRules(),
+    '',
+    buildUkStressPlacementExamples(),
   ].join('\n');
 
 export const buildStressPlacementUserPayload = (items: readonly LlmStressPlacementItem[]): string =>

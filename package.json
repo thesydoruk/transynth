@@ -22,6 +22,7 @@
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:rebuild-loudness": "tsx scripts/rebuildVoiceLoudness.ts",
     "voice:fix-orphan-refs": "tsx scripts/regenerateOrphanReferenceVoice.ts",
+    "stress:requeue-incorrect": "tsx scripts/requeueIncorrectStress.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
