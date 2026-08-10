@@ -82,6 +82,7 @@ export const buildVoiceLinePreview = (
   }
 
   const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
+  const synthesizable = canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid);
 
   const stressedTranslation =
     translationRow != null
@@ -110,8 +111,8 @@ export const buildVoiceLinePreview = (
     inheritedFrom,
     isOrphanAudio,
     hasTranslationAudio: hasAudio,
-    canGenerateVoice:
-      canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid) && !hasAudio,
+    canGenerateVoice: synthesizable && !hasAudio,
+    canPlaceStress: synthesizable && Boolean(translation?.trim()) && !isOrphanAudio,
   };
 };
 

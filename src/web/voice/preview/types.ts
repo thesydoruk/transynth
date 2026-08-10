@@ -21,6 +21,8 @@ export type VoiceLinePreview = {
   isOrphanAudio: boolean;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
+  /** Dubbable line with a translation — stress row shown even when already dubbed. */
+  canPlaceStress: boolean;
 };
 
 /** Speaker row for the voice navigator — counts only, no line payloads. */

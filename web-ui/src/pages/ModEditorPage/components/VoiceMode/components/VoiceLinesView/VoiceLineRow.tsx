@@ -96,7 +96,8 @@ export const VoiceLineRow = ({
     setEditingStress(false);
   };
 
-  const showStressRow = editable && canGenerate && Boolean(line.translation?.trim());
+  const showStressRow =
+    editable && line.translationId != null && (line.canPlaceStress ?? canGenerate);
 
   useEffect(() => {
     const area = areaRef.current;

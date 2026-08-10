@@ -51,6 +51,7 @@ export type VoiceLinePreview = {
   isOrphanAudio: boolean;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
+  canPlaceStress: boolean;
 };
 
 export type VoiceSpeakerRefPick = {
