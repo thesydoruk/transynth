@@ -6,6 +6,7 @@ import {
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
+import { toggleModAiStressPlace, stopModAiStressPlace } from '../../modAiStressPlaceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
@@ -107,6 +108,27 @@ export const ModWorkspaceList = ({
           toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'), 'all')
         }
         onAiVoiceStop={() => void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)}
+        onStressPlaceMissing={() =>
+          toggleModAiStressPlace(
+            mod.id,
+            srcLang,
+            targetLang,
+            getModAiJob(mod.id, 'stress-place'),
+            'missing',
+          )
+        }
+        onStressPlaceAll={() =>
+          toggleModAiStressPlace(
+            mod.id,
+            srcLang,
+            targetLang,
+            getModAiJob(mod.id, 'stress-place'),
+            'all',
+          )
+        }
+        onStressPlaceStop={() =>
+          void stopModAiStressPlace(mod.id, getModAiJob(mod.id, 'stress-place').jobId)
+        }
         onClearRows={() => onClearRows(mod.id, mod.name)}
         onDeleteAll={() =>
           onDeleteAll(

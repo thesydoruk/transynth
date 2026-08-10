@@ -10,6 +10,7 @@ import {
 } from '../../../voice/inheritedVoiceText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import { canSynthesizeVoiceLine } from '../../../voice/prepareVoiceTtsText';
+import { effectiveStressedTranslation } from '../../../voice/stressedTranslation';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { formatVoiceSpeakerLabel } from './voiceEntries';
 import { hasTranslationAudio } from './translationAudioIndex';
@@ -82,6 +83,15 @@ export const buildVoiceLinePreview = (
 
   const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
 
+  const stressedTranslation =
+    translationRow != null
+      ? effectiveStressedTranslation({
+          translation: translationText,
+          textStressed: translationRow.textStressed,
+          stressSrcText: translationRow.stressSrcText,
+        })
+      : null;
+
   return {
     formidLower6: entry.formidLower6,
     infoFormidHex,
@@ -92,6 +102,7 @@ export const buildVoiceLinePreview = (
     status,
     source,
     translation,
+    stressedTranslation,
     isReference: referencePick
       ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
       : false,

@@ -406,6 +406,11 @@ CREATE INDEX IF NOT EXISTS idx_records_trgm_path ON records USING GIN (path gin_
 CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_raw ON strings USING GIN (text_raw gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_translations_trgm_text ON translations USING GIN (text gin_trgm_ops);
 
+-- Ukrainian TTS stress marks (combining acute U+0301), stored separately from `text`.
+ALTER TABLE translations ADD COLUMN IF NOT EXISTS text_stressed TEXT;
+ALTER TABLE translations ADD COLUMN IF NOT EXISTS stress_src_text TEXT;
+ALTER TABLE translations ADD COLUMN IF NOT EXISTS stress_source TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic_info ON dialog_nodes(topic_id, info_formid_hex);

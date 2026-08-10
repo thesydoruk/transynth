@@ -30,6 +30,7 @@ import {
 import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
+import { effectiveStressedTranslation } from './stressedTranslation';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersion, upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -174,6 +175,7 @@ export const synthesizeModVoiceLineBuffers = async (
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
+      stressedTranslation: effectiveStressedTranslation(row),
       speakerSource: referenceText,
       edid: row.edid,
     });

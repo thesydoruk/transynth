@@ -32,6 +32,12 @@ export interface VoiceLinesHeaderProps {
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
   onVoiceStop: () => void;
+  stressJob: ModAiJobEntry;
+  stressProgress: number | null;
+  showStressProgress: boolean;
+  onStressMissing: () => void;
+  onStressAll: () => void;
+  onStressStop: () => void;
 }
 
 const resolveTone = (entry: ModAiJobEntry): CircularProgressButtonTone => {
@@ -69,12 +75,21 @@ export const VoiceLinesHeader = ({
   onVoiceMissing,
   onVoiceAll,
   onVoiceStop,
+  stressJob,
+  stressProgress,
+  showStressProgress,
+  onStressMissing,
+  onStressAll,
+  onStressStop,
 }: VoiceLinesHeaderProps) => {
   const { t } = useTranslation();
   const dubbable = total - orphans;
-  const isRunning = voiceJob.status === 'running' || voiceJob.status === 'stopping';
-  const ringProgress =
+  const isVoiceRunning = voiceJob.status === 'running' || voiceJob.status === 'stopping';
+  const isStressRunning = stressJob.status === 'running' || stressJob.status === 'stopping';
+  const voiceRingProgress =
     voiceJob.status === 'completed' ? 100 : voiceProgress != null ? voiceProgress : null;
+  const stressRingProgress =
+    stressJob.status === 'completed' ? 100 : stressProgress != null ? stressProgress : null;
 
   const chips: Array<{ value: VoiceLineFilter; count: number }> = [
     { value: 'all', count: counts.total },
@@ -87,16 +102,33 @@ export const VoiceLinesHeader = ({
     { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
   ];
 
+  const stressMenuItems: CircularProgressButtonMenuItem[] = [
+    { label: t('modEditor.aiStressPlaceMissing'), onClick: onStressMissing },
+    { label: t('modEditor.aiStressPlaceAll'), onClick: onStressAll },
+  ];
+
   let voiceStatus: string | null = null;
   if (voiceJob.status === 'stopping') {
     voiceStatus = t('modAi.statusStopping');
-  } else if (isRunning) {
+  } else if (isVoiceRunning) {
     voiceStatus =
       voiceJob.total > 0
         ? t('modAi.progressShort', { done: voiceJob.done, total: voiceJob.total })
         : t('modEditor.aiVoiceGenerateRunning');
   } else if (voiceJob.status === 'failed' && voiceJob.error) {
     voiceStatus = voiceJob.error;
+  }
+
+  let stressStatus: string | null = null;
+  if (stressJob.status === 'stopping') {
+    stressStatus = t('modAi.statusStopping');
+  } else if (isStressRunning) {
+    stressStatus =
+      stressJob.total > 0
+        ? t('modAi.progressShort', { done: stressJob.done, total: stressJob.total })
+        : t('modEditor.aiStressPlaceRunning');
+  } else if (stressJob.status === 'failed' && stressJob.error) {
+    stressStatus = stressJob.error;
   }
 
   return (
@@ -112,10 +144,10 @@ export const VoiceLinesHeader = ({
         <span className={styles.headerSpacer} />
         {isFetching && <span className={styles.fetching}>{t('modEditor.voiceLoading')}</span>}
         {voiceStatus && <span className={styles.voiceStatus}>{voiceStatus}</span>}
-        {isRunning ? (
+        {isVoiceRunning ? (
           <CircularProgressButton
             icon="♫"
-            progress={ringProgress}
+            progress={voiceRingProgress}
             tone={resolveTone(voiceJob)}
             state={resolveState(voiceJob)}
             ariaLabel={t('voice.generateSpeaker')}
@@ -127,13 +159,38 @@ export const VoiceLinesHeader = ({
         ) : (
           <CircularProgressButton
             icon="♫"
-            progress={ringProgress}
+            progress={voiceRingProgress}
             tone={resolveTone(voiceJob)}
             state={resolveState(voiceJob)}
             ariaLabel={t('voice.generateSpeaker')}
             title={t('voice.generateSpeakerTitle')}
             size="sm"
             menuItems={voiceMenuItems}
+          />
+        )}
+        {stressStatus && <span className={styles.voiceStatus}>{stressStatus}</span>}
+        {isStressRunning ? (
+          <CircularProgressButton
+            icon="´"
+            progress={stressRingProgress}
+            tone={resolveTone(stressJob)}
+            state={resolveState(stressJob)}
+            ariaLabel={t('voice.stressSpeaker')}
+            title={t('modEditor.aiStressPlaceRunning')}
+            size="sm"
+            disabled={stressJob.status === 'stopping'}
+            onClick={onStressStop}
+          />
+        ) : (
+          <CircularProgressButton
+            icon="´"
+            progress={stressRingProgress}
+            tone={resolveTone(stressJob)}
+            state={resolveState(stressJob)}
+            ariaLabel={t('voice.stressSpeaker')}
+            title={t('voice.stressSpeakerTitle')}
+            size="sm"
+            menuItems={stressMenuItems}
           />
         )}
         <ProgressPill
@@ -150,12 +207,28 @@ export const VoiceLinesHeader = ({
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={ringProgress ?? 0}
+          aria-valuenow={voiceRingProgress ?? 0}
           aria-label={t('voice.generateSpeaker')}
         >
           <div
             className={`${styles.jobProgressFill}${voiceJob.status === 'failed' ? ` ${styles.jobProgressFailed}` : ''}${voiceJob.status === 'completed' ? ` ${styles.jobProgressDone}` : ''}`}
-            style={{ width: `${ringProgress ?? (isRunning ? 8 : 0)}%` }}
+            style={{ width: `${voiceRingProgress ?? (isVoiceRunning ? 8 : 0)}%` }}
+          />
+        </div>
+      )}
+
+      {showStressProgress && (
+        <div
+          className={styles.jobProgress}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={stressRingProgress ?? 0}
+          aria-label={t('voice.stressSpeaker')}
+        >
+          <div
+            className={`${styles.jobProgressFill}${stressJob.status === 'failed' ? ` ${styles.jobProgressFailed}` : ''}${stressJob.status === 'completed' ? ` ${styles.jobProgressDone}` : ''}`}
+            style={{ width: `${stressRingProgress ?? (isStressRunning ? 8 : 0)}%` }}
           />
         </div>
       )}

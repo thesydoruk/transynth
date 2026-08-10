@@ -12,6 +12,8 @@ export type VoiceLinePreview = {
   status: string | null;
   source: string | null;
   translation: string | null;
+  /** Stressed TTS text — voice page only; null when absent or stale. */
+  stressedTranslation: string | null;
   isReference: boolean;
   isInheritedAudio: boolean;
   inheritedFrom: string | null;

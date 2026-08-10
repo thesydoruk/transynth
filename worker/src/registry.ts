@@ -14,6 +14,7 @@ import { llmVerifyHandler } from './jobs/verify/handler';
 import { modImportHandler } from './jobs/import/mod/handler';
 import { skipDetectHandler } from './jobs/skipDetect/handler';
 import { tmApplyHandler } from './jobs/tmApply/handler';
+import { stressPlaceHandler } from './jobs/stressPlace/handler';
 import { voiceGenerateHandler } from './jobs/voice/handler';
 import type { JobHandler, JobKind } from './types';
 
@@ -23,6 +24,7 @@ const handlers: Record<JobKind, JobHandler> = {
   'llm-verify': llmVerifyHandler,
   'skip-detect': skipDetectHandler,
   'gender-detect': genderDetectHandler,
+  'stress-place': stressPlaceHandler,
   'voice-generate': voiceGenerateHandler,
   'batch-translate': batchTranslateHandler,
   'apply-imported': applyImportedHandler,

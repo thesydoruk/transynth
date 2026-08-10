@@ -27,6 +27,7 @@ export const JOB_KINDS = [
   'llm-verify',
   'skip-detect',
   'gender-detect',
+  'stress-place',
   'voice-generate',
   'batch-translate',
   'apply-imported',

@@ -25,6 +25,7 @@ import {
   voiceTranslationMapKey,
 } from './loadVoiceTranslations';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from './prepareVoiceTtsText';
+import { effectiveStressedTranslation } from './stressedTranslation';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersionMap, upsertVoiceSynthesisState } from './voiceSynthesisState';
@@ -124,6 +125,7 @@ const collectWork = async (
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
+        stressedTranslation: effectiveStressedTranslation(row),
         speakerSource: row.source,
         edid: row.edid,
       });

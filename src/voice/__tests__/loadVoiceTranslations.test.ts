@@ -35,6 +35,8 @@ describe('lookupVoiceTranslation', () => {
         status: 'draft',
         translation: 'Привіт',
         source: 'Hello',
+        textStressed: null,
+        stressSrcText: null,
         edid: null,
       },
     ],

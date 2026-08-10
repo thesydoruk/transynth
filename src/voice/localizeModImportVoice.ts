@@ -22,6 +22,7 @@ import {
   voiceTranslationMapKey,
 } from './loadVoiceTranslations';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from './prepareVoiceTtsText';
+import { effectiveStressedTranslation } from './stressedTranslation';
 import { localizeVoicePackage } from './localizeVoicePackage';
 import { voiceSpeakerKey } from './speakerReference';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
@@ -106,6 +107,7 @@ export const countVoiceLocalizeWork = async (
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
+        stressedTranslation: effectiveStressedTranslation(row),
         speakerSource: row.source,
         edid: row.edid,
       });

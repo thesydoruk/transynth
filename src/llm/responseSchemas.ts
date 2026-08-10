@@ -162,3 +162,34 @@ export const buildNarratorGenderDetectResponseFormat = (
     schema: buildNarratorGenderDetectResponseSchema(itemCount),
   },
 });
+
+/** JSON Schema for {@link detectStressPlacementWithLlm} batch responses. */
+export const buildStressPlaceResponseSchema = (itemCount: number): Record<string, unknown> => ({
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      ...boundedArray(itemCount),
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          text_stressed: { type: 'string' },
+        },
+        required: ['id', 'text_stressed'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+});
+
+export const buildStressPlaceResponseFormat = (itemCount: number): LlmJsonSchemaFormat => ({
+  type: 'json_schema',
+  json_schema: {
+    name: 'stress_place_batch',
+    strict: true,
+    schema: buildStressPlaceResponseSchema(itemCount),
+  },
+});

@@ -13,6 +13,7 @@ import {
   listVoiceSpeakersForMod,
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
+import { saveStressedTranslation } from '../../data/queries/stressPlacement';
 
 export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods/:id/voice/lines — speakers (default) or one speaker's lines.
@@ -216,6 +217,35 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     }
     invalidateVoiceListContext(modId);
     return reply.send(result);
+  });
+
+  // PUT /api/mods/:id/voice/stressed/:translationId — save manual stress marks (voice page only).
+  app.put<{
+    Params: { id: string; translationId: string };
+    Body: { textStressed?: string };
+  }>('/api/mods/:id/voice/stressed/:translationId', async (req, reply) => {
+    const modId = Number(req.params.id);
+    const translationId = Number(req.params.translationId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+    if (!Number.isInteger(translationId) || translationId < 1) {
+      return reply.code(400).send({ error: 'Invalid translation id' });
+    }
+
+    const { rows } = await db.query<{ id: number }>(
+      `SELECT t.id
+         FROM translations t
+         JOIN strings s ON s.id = t.src_string_id
+         JOIN records r ON r.id = s.record_id
+        WHERE t.id = $1 AND r.mod_id = $2`,
+      [translationId, modId],
+    );
+    if (!rows[0]) return reply.code(404).send({ error: 'Translation not found' });
+
+    const result = await saveStressedTranslation(db, translationId, req.body?.textStressed ?? '');
+    invalidateVoiceListContext(modId);
+    return reply.send({ ok: true, textStressed: result.textStressed });
   });
 
   // DELETE /api/mods/:id/voice/speaker-ref/:speakerKey — clear saved TTS reference.

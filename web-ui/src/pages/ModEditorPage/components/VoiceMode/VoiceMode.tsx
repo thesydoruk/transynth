@@ -15,6 +15,7 @@ import { useVoiceLineView } from './hooks/useVoiceLineView';
 import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { useSpeakerVoiceGenerate } from './hooks/useSpeakerVoiceGenerate';
+import { useSpeakerStressPlace } from './hooks/useSpeakerStressPlace';
 import { useVoiceState } from './hooks/useVoiceState';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
 import styles from './VoiceMode.module.scss';
@@ -51,6 +52,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
 
   const playback = useVoicePlayback(modId);
   const speakerVoice = useSpeakerVoiceGenerate(modId, data.activeKey, srcLang, targetLang);
+  const speakerStress = useSpeakerStressPlace(modId, data.activeKey, srcLang, targetLang);
   const actions = useVoiceActions({
     modId,
     srcLang,
@@ -63,6 +65,7 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
   const lineView = useVoiceLineView(data.lines);
   const cursor = useVoiceLineCursor(lineView.lineIds, lineView.lineById);
   const save = useVoiceLineSave({
+    modId,
     linesQueryKey: data.linesQueryKey,
     targetLang,
   });
@@ -253,6 +256,13 @@ export const VoiceMode = ({ modId, srcLang, targetLang }: VoiceModeProps) => {
         onVoiceMissing={speakerVoice.startMissing}
         onVoiceAll={speakerVoice.startAll}
         onVoiceStop={speakerVoice.stop}
+        stressJob={speakerStress.job}
+        stressProgress={speakerStress.pct}
+        showStressProgress={speakerStress.showBar}
+        onStressMissing={speakerStress.startMissing}
+        onStressAll={speakerStress.startAll}
+        onStressStop={speakerStress.stop}
+        onSaveStressed={(line, text) => void save.saveStressedLine(line, text)}
       />
 
       {regenerateLine && (
