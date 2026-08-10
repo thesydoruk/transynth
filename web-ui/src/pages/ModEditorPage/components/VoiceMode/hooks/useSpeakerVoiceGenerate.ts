@@ -23,7 +23,10 @@ export const useSpeakerVoiceGenerate = (
   useEffect(() => {
     const refresh = () => setJob(getModAiJob(modId, 'voice'));
     refresh();
-    return subscribeModAiJobs(refresh);
+    const unsubscribe = subscribeModAiJobs(refresh);
+    return () => {
+      unsubscribe();
+    };
   }, [modId]);
 
   const prevStatus = useRef(job.status);
