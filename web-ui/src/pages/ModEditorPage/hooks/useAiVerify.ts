@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   api,
   type LlmVerifyActionLogEntry,
@@ -30,37 +30,108 @@ const initialState: AiVerifyState = {
   error: null,
 };
 
+const POLL_MS = 2000;
+
 const isStopNotFoundError = (err: unknown): boolean => {
   if (!(err instanceof Error)) return false;
   return /not found/i.test(err.message) || /\b404\b/.test(err.message);
 };
 
-/** Manages LLM translation verification — survives modal close while the stream runs. */
+const snapshotToState = (
+  snapshot: LlmVerifyJobSnapshot,
+  preserveStopping: boolean,
+): AiVerifyState => ({
+  status:
+    snapshot.status === 'running' ? (preserveStopping ? 'stopping' : 'running') : snapshot.status,
+  jobId: snapshot.jobId,
+  done: snapshot.done,
+  total: snapshot.total,
+  approved: snapshot.approved,
+  fixed: snapshot.fixed,
+  issues: snapshot.issues ?? [],
+  actionLog: snapshot.actionLog ?? [],
+  error: snapshot.error,
+});
+
+/** Manages LLM translation verification — survives modal close and page reload. */
 export const useAiVerify = (modId: number, srcLang: string, targetLang: string) => {
   const [state, setState] = useState<AiVerifyState>(initialState);
   const inFlight = useRef(false);
   /** Updated synchronously on SSE `started` so Stop works before the next render. */
   const jobIdRef = useRef<number | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const statusRef = useRef(state.status);
+  statusRef.current = state.status;
 
   const applySnapshot = useCallback((snapshot: LlmVerifyJobSnapshot) => {
     jobIdRef.current = snapshot.jobId;
-    setState({
-      status: snapshot.status === 'running' ? 'running' : snapshot.status,
-      jobId: snapshot.jobId,
-      done: snapshot.done,
-      total: snapshot.total,
-      approved: snapshot.approved,
-      fixed: snapshot.fixed,
-      issues: snapshot.issues,
-      actionLog: snapshot.actionLog ?? [],
-      error: snapshot.error,
-    });
+    setState((prev) =>
+      snapshotToState(snapshot, prev.status === 'stopping' && snapshot.status === 'running'),
+    );
   }, []);
+
+  const attachToJob = useCallback(
+    async (jobId: number) => {
+      const snapshot = await api.llmVerify.status(jobId);
+      applySnapshot(snapshot);
+    },
+    [applySnapshot],
+  );
+
+  // Reattach to a verify job that is still running after a page reload.
+  useEffect(() => {
+    let cancelled = false;
+
+    const restore = async () => {
+      try {
+        const active = await api.modAiJobs.listActive();
+        if (cancelled) return;
+        const job = active.find((entry) => entry.modId === modId && entry.kind === 'verify');
+        if (!job) return;
+        if (inFlight.current) return;
+        await attachToJob(job.jobId);
+      } catch {
+        /* network blip — leave idle until the user starts/reopens */
+      }
+    };
+
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [attachToJob, modId]);
+
+  // Poll snapshot while detached from the original SSE stream (e.g. after reload).
+  useEffect(() => {
+    const jobId = state.jobId;
+    if (jobId == null) return;
+    if (state.status !== 'running' && state.status !== 'stopping') return;
+
+    let cancelled = false;
+    const tick = async () => {
+      // Live SSE owns updates while start() is in flight.
+      if (inFlight.current) return;
+      try {
+        const snapshot = await api.llmVerify.status(jobId);
+        if (cancelled || inFlight.current) return;
+        applySnapshot(snapshot);
+      } catch {
+        /* keep last known state */
+      }
+    };
+
+    void tick();
+    const timer = window.setInterval(() => void tick(), POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [applySnapshot, state.jobId, state.status]);
 
   const start = useCallback(
     async (autoApproveVerified = false, fixSuspicious = false, includeConfirmed = false) => {
       if (inFlight.current) return;
+      if (statusRef.current === 'running' || statusRef.current === 'stopping') return;
       inFlight.current = true;
       streamAbortRef.current?.abort();
       const streamAbort = new AbortController();
@@ -148,10 +219,20 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
         if (snapshot) applySnapshot(snapshot);
       } catch (err) {
         if (streamAbort.signal.aborted) return;
+        const message = err instanceof Error ? err.message : String(err);
+        const alreadyRunning = /already running \(job #(\d+)\)/i.exec(message);
+        if (alreadyRunning) {
+          try {
+            await attachToJob(Number(alreadyRunning[1]));
+            return;
+          } catch {
+            /* fall through to failed */
+          }
+        }
         setState((prev) => ({
           ...prev,
           status: prev.status === 'stopping' ? 'cancelled' : 'failed',
-          error: err instanceof Error ? err.message : String(err),
+          error: message,
         }));
       } finally {
         inFlight.current = false;
@@ -160,11 +241,11 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
         }
       }
     },
-    [applySnapshot, modId, srcLang, targetLang],
+    [applySnapshot, attachToJob, modId, srcLang, targetLang],
   );
 
   const stop = useCallback(async () => {
-    if (state.status !== 'running' && state.status !== 'stopping') return;
+    if (statusRef.current !== 'running' && statusRef.current !== 'stopping') return;
     setState((prev) => ({ ...prev, status: 'stopping', error: null }));
 
     try {
@@ -182,13 +263,13 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
         error: err instanceof Error ? err.message : String(err),
       }));
     }
-  }, [modId, state.status]);
+  }, [modId]);
 
   const reset = useCallback(() => {
-    if (state.status === 'running' || state.status === 'stopping') return;
+    if (statusRef.current === 'running' || statusRef.current === 'stopping') return;
     jobIdRef.current = null;
     setState(initialState);
-  }, [state.status]);
+  }, []);
 
   return {
     ...state,

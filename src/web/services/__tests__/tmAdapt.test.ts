@@ -28,4 +28,19 @@ describe('adaptTmTranslation', () => {
   it('returns null when number counts differ', () => {
     expect(adaptTmTranslation('Рівень 5', 'Level 5', 'Level 5 of 10')).toBeNull();
   });
+
+  it('uppercases translation when target source is ALL CAPS', () => {
+    expect(adaptTmTranslation('Вибране', 'Favorites', 'FAVORITES')).toBe('ВИБРАНЕ');
+    expect(adaptTmTranslation('Вибране', 'FAVORITES', 'FAVORITES')).toBe('ВИБРАНЕ');
+  });
+
+  it('normalizes typographic dashes like LLM auto-translations', () => {
+    expect(adaptTmTranslation('Броня — легка', 'Light armor', 'Light armor')).toBe('Броня - легка');
+  });
+
+  it('applies ALL CAPS after numeric transplant', () => {
+    expect(
+      adaptTmTranslation('Комбінезон Сховища 88', 'Vault 88 Jumpsuit', 'VAULT 111 JUMPSUIT'),
+    ).toBe('КОМБІНЕЗОН СХОВИЩА 111');
+  });
 });

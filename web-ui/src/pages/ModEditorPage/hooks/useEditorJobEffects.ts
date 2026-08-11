@@ -46,6 +46,9 @@ export function useEditorJobEffects({
   const prevGenderDetectStatus = useRef(aiJobs.genderDetect.status);
 
   useEffect(() => {
+    // Skip idle: after reload the poll may restore a running job before useAiVerify
+    // reattaches, and writing idle here would wipe that progress.
+    if (aiVerify.status === 'idle') return;
     upsertModAiJob(modId, 'verify', {
       status: aiVerify.status,
       jobId: aiVerify.jobId,
