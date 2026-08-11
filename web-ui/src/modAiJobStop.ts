@@ -34,10 +34,6 @@ const fetchJobSnapshot = async (
       const snap = await api.llmGenderDetect.status(jobId);
       return snap;
     }
-    if (kind === 'stress-place') {
-      const snap = await api.llmStressPlace.status(jobId);
-      return snap;
-    }
     const snap = await api.llmSkipDetect.status(jobId);
     return snap;
   } catch {

@@ -157,7 +157,6 @@
     "hintGenderDetect": "Визначити рід наратора для книг, терміналів і записок перед перекладом. Під час роботи — зупинка.",
     "hintTranslate": "Переклад усього мода. Меню: TM або LLM (обидва — фонові завдання з прогресом).",
     "hintVerify": "ШІ-перевірка перекладів. Натисніть, щоб відкрити діалог перевірки.",
-    "hintStressPlace": "Розстановка українських наголосів для TTS. Меню: лише відсутні/застарілі, або повторно для всіх рядків, що озвучуються. Під час роботи — зупинка.",
     "hintVoice": "Озвучення мода. Меню: лише відсутні/застарілі, або примусова перегенерація всіх реплік з перекладом. Під час роботи — зупинка."
   },
   "modEditor": {
@@ -264,10 +263,6 @@
     "aiVoiceGenerateRunning": "Озвучка…",
     "aiVoiceGenerateMissing": "Без озвучки",
     "aiVoiceGenerateAll": "Перегенерувати всі",
-    "aiStressPlace": "Наголоси",
-    "aiStressPlaceRunning": "Розстановка наголосів…",
-    "aiStressPlaceMissing": "Без наголосів",
-    "aiStressPlaceAll": "Переробити всі",
     "applyTranslationFromModTitle": "Застосувати переклад з іншого мода",
     "applyTranslationFromModIntro": "Оберіть мод-джерело та локаль його рядків, щоб скопіювати їх у цей мод як переклади для поточної цільової мови.",
     "applyTranslationSourceMod": "Мод-джерело",
@@ -527,12 +522,6 @@
     "regenerateBtn": "Перегенерувати",
     "generateSpeaker": "Озвучити персонажа",
     "generateSpeakerTitle": "Згенерувати озвучку для цього персонажа (та сама черга, що й у панелі мода)",
-    "stressSpeaker": "Наголоси",
-    "stressSpeakerTitle": "Розставити наголоси для цього персонажа (та сама черга, що й у панелі мода)",
-    "stressedLineLabel": "Наголоси",
-    "stressedLinePlaceholder": "Український текст із наголосами (напр. чіпа́ти)…",
-    "stressedLineEditTitle": "Натисніть, щоб редагувати наголоси",
-    "stressedLineEmpty": "Немає наголосів — запустіть розстановку або відредагуйте вручну",
     "hotkeyHint": "↑↓ у пошуку — перемикання персонажів · ↑↓ репліка · Enter редагувати · Ctrl+Enter зберегти й далі · Ctrl+Shift+Enter зберегти й до неперекладеної · N наступна без перекладу · P прослухати · Esc скасувати"
   },
   "ctx": {
@@ -1073,9 +1062,7 @@
       "ragMaxExamples": "Макс. прикладів",
       "ragMaxExamplesDesc": "Скільки схожих перекладів включати для одного рядка (1–10).",
       "ragMinSimilarity": "Мін. similarity embeddings",
-      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу.",
-      "stressPlaceThinking": "Thinking для розстановки наголосів",
-      "stressPlaceThinkingDesc": "Увімкнути reasoning/thinking у LLM лише для stress_place (повільніше, але точніше; потрібен vLLM з reasoning-parser)."
+      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу."
     },
     "data": {
       "title": "Конфігурація даних",

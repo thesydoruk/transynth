@@ -13,9 +13,6 @@ export type VoiceTranslationRow = {
   translationId: number | null;
   status: string | null;
   translation: string;
-  /** Valid stressed text for TTS when present and matching {@link translation}. */
-  textStressed: string | null;
-  stressSrcText: string | null;
   source: string;
   /** INFO EDID from `records.edid` — used e.g. for `CA_Interject_Stub_*` TTS skip. */
   edid: string | null;
@@ -72,8 +69,6 @@ export const loadVoiceTranslations = async (
     translation_id: number | null;
     status: string | null;
     translation: string;
-    text_stressed: string | null;
-    stress_src_text: string | null;
     source: string;
     edid: string | null;
   }>(
@@ -98,9 +93,7 @@ export const loadVoiceTranslations = async (
             v.source,
             t.id AS translation_id,
             t.status,
-            t.text AS translation,
-            t.text_stressed,
-            t.stress_src_text
+            t.text AS translation
      FROM voiced v
      JOIN translations t
        ON t.src_string_id = v.string_id AND t.target_lang = $3
@@ -120,8 +113,6 @@ export const loadVoiceTranslations = async (
       translationId: row.translation_id,
       status: row.status,
       translation: row.translation,
-      textStressed: row.text_stressed,
-      stressSrcText: row.stress_src_text,
       source: row.source,
       edid: row.edid,
     });

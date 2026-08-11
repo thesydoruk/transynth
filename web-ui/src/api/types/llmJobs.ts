@@ -140,25 +140,6 @@ export type LlmGenderDetectStreamEvent =
     }
   | { type: 'error'; error: string };
 
-export type ModStressPlaceScope = 'all' | 'missing';
-
-export type LlmStressPlaceJobSnapshot = {
-  jobId: number;
-  modId: number;
-  status: 'running' | 'completed' | 'cancelled' | 'failed';
-  done: number;
-  total: number;
-  placedCount: number;
-  error: string | null;
-};
-
-export type LlmStressPlaceStreamEvent =
-  | { type: 'started'; jobId: number; total: number }
-  | { type: 'progress'; done: number; total: number }
-  | { type: 'done'; done: number; total: number; placedCount: number }
-  | { type: 'cancelled'; done: number; total: number; placedCount: number }
-  | { type: 'error'; error: string };
-
 export type LlmTranslateRow = {
   stringId: number;
   source: string;
@@ -179,13 +160,7 @@ export type LlmTranslateJobSnapshot = {
   error: string | null;
 };
 
-export type ModAiJobKind =
-  | 'translate'
-  | 'verify'
-  | 'skip-detect'
-  | 'gender-detect'
-  | 'stress-place'
-  | 'voice';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
 export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {

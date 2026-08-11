@@ -28,7 +28,6 @@ import {
   voiceTtsSkipMessage,
   type PrepareVoiceTtsTextResult,
 } from './prepareVoiceTtsText';
-import { effectiveStressedTranslation } from './stressedTranslation';
 import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import { loadVoiceSynthesisVersionMap } from './voiceSynthesisState';
 import {
@@ -136,7 +135,6 @@ export const localizeVoicePackage = async (
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
-        stressedTranslation: effectiveStressedTranslation(row),
         speakerSource: row.source,
         edid: row.edid,
       });

@@ -10,7 +10,6 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from '../../../voice/voiceTtsPayloadVersion';
 import { prepareVoiceTtsText } from '../../../voice/prepareVoiceTtsText';
-import { effectiveStressedTranslation } from '../../../voice/stressedTranslation';
 import { loadImportedMod } from '../../../modImport/importedMod';
 import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
@@ -54,7 +53,6 @@ export const listVoiceAvailabilityForMod = async (
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
-      stressedTranslation: effectiveStressedTranslation(row),
       speakerSource: row.source,
       edid: row.edid,
     });

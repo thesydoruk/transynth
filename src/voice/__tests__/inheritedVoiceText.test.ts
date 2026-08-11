@@ -100,8 +100,6 @@ describe('lookupInheritedVoiceLine', () => {
                 status: 'draft',
                 source: 'Hello',
                 translation: 'Привіт',
-                textStressed: null,
-                stressSrcText: null,
                 edid: null,
               },
             ],

@@ -4,7 +4,6 @@ import {
   stopModAiTranslate,
 } from '../../modAiTranslateRunner';
 import { toggleModAiVoice, stopModAiVoice } from '../../modAiVoiceRunner';
-import { toggleModAiStressPlace, stopModAiStressPlace } from '../../modAiStressPlaceRunner';
 import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetectRunner';
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { EditorToolbar } from './components/EditorToolbar';
@@ -111,25 +110,6 @@ export const ModEditorPage = () => {
           toggleModAiVoice(modId, filter.srcLang, filter.targetLang, aiJobs.voice, 'all')
         }
         onAiVoiceStop={() => void stopModAiVoice(modId, aiJobs.voice.jobId)}
-        onStressPlaceMissing={() =>
-          toggleModAiStressPlace(
-            modId,
-            filter.srcLang,
-            filter.targetLang,
-            aiJobs.stressPlace,
-            'missing',
-          )
-        }
-        onStressPlaceAll={() =>
-          toggleModAiStressPlace(
-            modId,
-            filter.srcLang,
-            filter.targetLang,
-            aiJobs.stressPlace,
-            'all',
-          )
-        }
-        onStressPlaceStop={() => void stopModAiStressPlace(modId, aiJobs.stressPlace.jobId)}
       />
 
       {filter.pageMode === 'dialogs' ? (

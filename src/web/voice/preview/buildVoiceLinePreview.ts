@@ -10,7 +10,6 @@ import {
 } from '../../../voice/inheritedVoiceText';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import { canSynthesizeVoiceLine } from '../../../voice/prepareVoiceTtsText';
-import { effectiveStressedTranslation } from '../../../voice/stressedTranslation';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { formatVoiceSpeakerLabel } from './voiceEntries';
 import { hasTranslationAudio } from './translationAudioIndex';
@@ -84,15 +83,6 @@ export const buildVoiceLinePreview = (
   const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
   const synthesizable = canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid);
 
-  const stressedTranslation =
-    translationRow != null
-      ? effectiveStressedTranslation({
-          translation: translationText,
-          textStressed: translationRow.textStressed,
-          stressSrcText: translationRow.stressSrcText,
-        })
-      : null;
-
   return {
     formidLower6: entry.formidLower6,
     infoFormidHex,
@@ -103,7 +93,6 @@ export const buildVoiceLinePreview = (
     status,
     source,
     translation,
-    stressedTranslation,
     isReference: referencePick
       ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
       : false,
@@ -112,7 +101,6 @@ export const buildVoiceLinePreview = (
     isOrphanAudio,
     hasTranslationAudio: hasAudio,
     canGenerateVoice: synthesizable && !hasAudio,
-    canPlaceStress: synthesizable && Boolean(translation?.trim()) && !isOrphanAudio,
   };
 };
 

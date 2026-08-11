@@ -23,7 +23,6 @@
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:rebuild-loudness": "tsx scripts/rebuildVoiceLoudness.ts",
     "voice:fix-orphan-refs": "tsx scripts/regenerateOrphanReferenceVoice.ts",
-    "stress:enqueue": "tsx scripts/enqueueStressPlace.ts",
     "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -59,7 +58,6 @@
     "openai": "^4.55.0",
     "pg": "^8.20.0",
     "tsx": "^4.21.0",
-    "ua-word-stress": "^1.2.2",
     "undici": "^6.19.8",
     "yargs": "^17.7.2"
   },

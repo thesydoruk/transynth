@@ -406,10 +406,10 @@ CREATE INDEX IF NOT EXISTS idx_records_trgm_path ON records USING GIN (path gin_
 CREATE INDEX IF NOT EXISTS idx_strings_trgm_text_raw ON strings USING GIN (text_raw gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_translations_trgm_text ON translations USING GIN (text gin_trgm_ops);
 
--- Ukrainian TTS stress marks (combining acute U+0301), stored separately from `text`.
-ALTER TABLE translations ADD COLUMN IF NOT EXISTS text_stressed TEXT;
-ALTER TABLE translations ADD COLUMN IF NOT EXISTS stress_src_text TEXT;
-ALTER TABLE translations ADD COLUMN IF NOT EXISTS stress_source TEXT;
+-- Stress placement moved to the TTS server — drop legacy columns.
+ALTER TABLE translations DROP COLUMN IF EXISTS text_stressed;
+ALTER TABLE translations DROP COLUMN IF EXISTS stress_src_text;
+ALTER TABLE translations DROP COLUMN IF EXISTS stress_source;
 
 CREATE INDEX IF NOT EXISTS idx_dialog_topics_mod ON dialog_topics(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_nodes_topic ON dialog_nodes(topic_id);
@@ -497,6 +497,9 @@ INSERT INTO project_settings(key, value) VALUES
   ('llm.rag_max_examples',             '5'),
   ('llm.rag_min_similarity',           '0.5')
 ON CONFLICT(key) DO NOTHING;
+
+-- Stress placement moved to the TTS server.
+DELETE FROM project_settings WHERE key = 'llm.stress_place_thinking';
 
 -- ── Translation RAG index (pgvector) ────────────────────────────────────────
 -- Stores embeddings of reviewed/human translations for few-shot LLM context.

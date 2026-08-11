@@ -157,7 +157,6 @@
     "hintGenderDetect": "Detect narrator gender for books, terminals, and notes before translation. Click while running to stop.",
     "hintTranslate": "Translate the whole mod. Menu: TM or LLM (both run as background jobs with progress).",
     "hintVerify": "AI review of translations. Click to open the review dialog.",
-    "hintStressPlace": "Place Ukrainian stress marks for TTS. Menu: missing/stale lines only, or re-run every synthesizable line. Click while running to stop.",
     "hintVoice": "Generate voice for the mod. Menu: missing/stale lines only, or force-regenerate every translated line. Click while running to stop."
   },
   "modEditor": {
@@ -264,10 +263,6 @@
     "aiVoiceGenerateRunning": "Voice synthesis…",
     "aiVoiceGenerateMissing": "Missing only",
     "aiVoiceGenerateAll": "Regenerate all",
-    "aiStressPlace": "Stress marks",
-    "aiStressPlaceRunning": "Stress placement…",
-    "aiStressPlaceMissing": "Missing only",
-    "aiStressPlaceAll": "Re-run all",
     "applyTranslationFromModTitle": "Apply translation from another mod",
     "applyTranslationFromModIntro": "Pick a source mod and the locale of its strings to copy into this mod as translations for the current target language.",
     "applyTranslationSourceMod": "Source mod",
@@ -527,12 +522,6 @@
     "regenerateBtn": "Regenerate",
     "generateSpeaker": "Generate speaker voice",
     "generateSpeakerTitle": "Generate voice for this character (same job as the mod voice control)",
-    "stressSpeaker": "Stress marks",
-    "stressSpeakerTitle": "Place Ukrainian stress marks for this character (same job as the mod stress control)",
-    "stressedLineLabel": "Stress marks",
-    "stressedLinePlaceholder": "Ukrainian text with combining acute accents (e.g. чіпа́ти)…",
-    "stressedLineEditTitle": "Click to edit stress marks",
-    "stressedLineEmpty": "No stress marks — run stress placement or edit manually",
     "hotkeyHint": "↑↓ in search — switch speakers · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play · Esc cancel"
   },
   "ctx": {
@@ -1073,9 +1062,7 @@
       "ragMaxExamples": "Max reference examples",
       "ragMaxExamplesDesc": "How many similar translations to include per string (1–10).",
       "ragMinSimilarity": "Min embedding similarity",
-      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold.",
-      "stressPlaceThinking": "Thinking for stress placement",
-      "stressPlaceThinkingDesc": "Enable LLM reasoning/thinking only for stress_place (slower, more accurate; requires vLLM with a reasoning parser)."
+      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold."
     },
     "data": {
       "title": "Data Configuration",

@@ -26,7 +26,6 @@ export interface VoiceLineRowProps {
   onSetReference: (line: VoiceLinePreview) => void;
   onGenerate: (line: VoiceLinePreview) => void;
   onRegenerate: (line: VoiceLinePreview) => void;
-  onSaveStressed: (line: VoiceLinePreview, text: string) => void;
 }
 
 /** One voiced line: source text, inline-editable translation, playback, and synthesis. */
@@ -48,17 +47,12 @@ export const VoiceLineRow = ({
   onSetReference,
   onGenerate,
   onRegenerate,
-  onSaveStressed,
 }: VoiceLineRowProps) => {
   const { t } = useTranslation();
   const rowRef = useRef<HTMLElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
-  const stressAreaRef = useRef<HTMLTextAreaElement>(null);
   const cancelledRef = useRef(false);
-  const stressCancelledRef = useRef(false);
   const [draft, setDraft] = useState(line.translation ?? '');
-  const [stressDraft, setStressDraft] = useState(line.stressedTranslation ?? '');
-  const [editingStress, setEditingStress] = useState(false);
 
   const editable = line.stringId != null && !line.isOrphanAudio;
   // Orphan audio has no transcript to condition TTS on; keep the button only to unset a stale pick.
@@ -76,28 +70,8 @@ export const VoiceLineRow = ({
   }, [editing, line.translation]);
 
   useEffect(() => {
-    if (!editingStress) setStressDraft(line.stressedTranslation ?? '');
-  }, [editingStress, line.stressedTranslation]);
-
-  useEffect(() => {
     if (focused) rowRef.current?.scrollIntoView({ block: 'nearest' });
   }, [focused]);
-
-  useEffect(() => {
-    const area = stressAreaRef.current;
-    if (!editingStress || !area) return;
-    area.style.height = 'auto';
-    area.style.height = `${area.scrollHeight}px`;
-  }, [editingStress, stressDraft]);
-
-  const commitStress = () => {
-    stressCancelledRef.current = false;
-    onSaveStressed(line, stressDraft);
-    setEditingStress(false);
-  };
-
-  const showStressRow =
-    editable && line.translationId != null && (line.canPlaceStress ?? canGenerate);
 
   useEffect(() => {
     const area = areaRef.current;
@@ -272,47 +246,6 @@ export const VoiceLineRow = ({
         <p className={line.translation ? styles.translationReadOnly : styles.emptyTranslation}>
           {line.translation || t('dialogs.noTranslation')}
         </p>
-      )}
-
-      {showStressRow && (
-        <div className={styles.stressBlock}>
-          <span className={styles.stressLabel}>{t('voice.stressedLineLabel')}</span>
-          {editingStress ? (
-            <textarea
-              ref={stressAreaRef}
-              className={styles.stressTextarea}
-              value={stressDraft}
-              disabled={saving}
-              autoFocus
-              rows={1}
-              placeholder={t('voice.stressedLinePlaceholder')}
-              onChange={(event) => setStressDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  stressCancelledRef.current = true;
-                  setEditingStress(false);
-                  setStressDraft(line.stressedTranslation ?? '');
-                }
-              }}
-              onBlur={() => {
-                if (!stressCancelledRef.current) commitStress();
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className={`${styles.stressedLine} ${line.stressedTranslation ? '' : styles.empty}`}
-              onClick={() => {
-                stressCancelledRef.current = false;
-                setEditingStress(true);
-              }}
-              title={t('voice.stressedLineEditTitle')}
-            >
-              {line.stressedTranslation || t('voice.stressedLineEmpty')}
-            </button>
-          )}
-        </div>
       )}
     </article>
   );

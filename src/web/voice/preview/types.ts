@@ -12,8 +12,6 @@ export type VoiceLinePreview = {
   status: string | null;
   source: string | null;
   translation: string | null;
-  /** Stressed TTS text — voice page only; null when absent or stale. */
-  stressedTranslation: string | null;
   isReference: boolean;
   isInheritedAudio: boolean;
   inheritedFrom: string | null;
@@ -21,8 +19,6 @@ export type VoiceLinePreview = {
   isOrphanAudio: boolean;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
-  /** Dubbable line with a translation — stress row shown even when already dubbed. */
-  canPlaceStress: boolean;
 };
 
 /** Speaker row for the voice navigator — counts only, no line payloads. */

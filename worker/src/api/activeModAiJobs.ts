@@ -33,13 +33,7 @@ const cleanupZombieQueueJob = async (job: Job<JobData>): Promise<void> => {
   }
 };
 
-export type ModAiJobKind =
-  | 'translate'
-  | 'verify'
-  | 'skip-detect'
-  | 'gender-detect'
-  | 'stress-place'
-  | 'voice';
+export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
 export type ModTranslateMode = 'tm' | 'llm';
 
 export type ActiveModAiJob = {
@@ -62,7 +56,6 @@ const UI_KIND: Partial<Record<JobKind, { kind: ModAiJobKind; translateMode?: Mod
     'llm-verify': { kind: 'verify' },
     'skip-detect': { kind: 'skip-detect' },
     'gender-detect': { kind: 'gender-detect' },
-    'stress-place': { kind: 'stress-place' },
     'voice-generate': { kind: 'voice' },
   };
 
@@ -93,7 +86,7 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
         total: snapshot?.total ?? 0,
         status: 'running',
         translateMode: mapping.translateMode,
-        ...(mapping.kind === 'voice' || mapping.kind === 'stress-place' ? { speakerKey } : {}),
+        ...(mapping.kind === 'voice' ? { speakerKey } : {}),
       };
     }),
   );

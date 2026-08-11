@@ -56,13 +56,6 @@ export interface VoiceLinesViewProps {
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
   onVoiceStop: () => void;
-  stressJob: ModAiJobEntry;
-  stressProgress: number | null;
-  showStressProgress: boolean;
-  onStressMissing: () => void;
-  onStressAll: () => void;
-  onStressStop: () => void;
-  onSaveStressed: (line: VoiceLinePreview, text: string) => void;
 }
 
 /** Right column: header filters and the stream of voice lines. */
@@ -99,13 +92,6 @@ export const VoiceLinesView = ({
   onVoiceMissing,
   onVoiceAll,
   onVoiceStop,
-  stressJob,
-  stressProgress,
-  showStressProgress,
-  onStressMissing,
-  onStressAll,
-  onStressStop,
-  onSaveStressed,
 }: VoiceLinesViewProps) => {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -148,12 +134,6 @@ export const VoiceLinesView = ({
         onVoiceMissing={onVoiceMissing}
         onVoiceAll={onVoiceAll}
         onVoiceStop={onVoiceStop}
-        stressJob={stressJob}
-        stressProgress={stressProgress}
-        showStressProgress={showStressProgress}
-        onStressMissing={onStressMissing}
-        onStressAll={onStressAll}
-        onStressStop={onStressStop}
       />
 
       <div ref={scrollRef} className={styles.stream}>
@@ -194,7 +174,6 @@ export const VoiceLinesView = ({
                     onSetReference={onSetReference}
                     onGenerate={onGenerate}
                     onRegenerate={onRegenerate}
-                    onSaveStressed={onSaveStressed}
                   />
                 </div>
               );

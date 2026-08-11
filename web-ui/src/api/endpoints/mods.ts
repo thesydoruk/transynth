@@ -73,11 +73,6 @@ export const modsEndpoints = {
       `/api/mods/${modId}/voice/speaker-ref/${encodeURIComponent(speakerKey)}`,
       { method: 'DELETE' },
     ),
-  saveVoiceStressedText: (modId: number, translationId: number, textStressed: string) =>
-    req<{ ok: true; textStressed: string | null }>(
-      `/api/mods/${modId}/voice/stressed/${translationId}`,
-      { method: 'PUT', body: JSON.stringify({ textStressed }) },
-    ),
   generateVoiceLine: (
     modId: number,
     formidLower6: string,

@@ -43,7 +43,6 @@ export type VoiceLinePreview = {
   status: string | null;
   source: string | null;
   translation: string | null;
-  stressedTranslation: string | null;
   isReference: boolean;
   isInheritedAudio: boolean;
   inheritedFrom: string | null;
@@ -51,7 +50,6 @@ export type VoiceLinePreview = {
   isOrphanAudio: boolean;
   hasTranslationAudio: boolean;
   canGenerateVoice: boolean;
-  canPlaceStress: boolean;
 };
 
 export type VoiceSpeakerRefPick = {

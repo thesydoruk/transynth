@@ -14,7 +14,6 @@ export interface ModAiControlsProps {
   verify: ModAiJobEntry;
   skipDetect: ModAiJobEntry;
   genderDetect: ModAiJobEntry;
-  stressPlace: ModAiJobEntry;
   voice: ModAiJobEntry;
   onTranslateTm: () => void;
   onTranslateLlm: () => void;
@@ -25,9 +24,6 @@ export interface ModAiControlsProps {
   onSkipDetectStop: () => void;
   onGenderDetect: () => void;
   onGenderDetectStop: () => void;
-  onStressPlaceMissing: () => void;
-  onStressPlaceAll: () => void;
-  onStressPlaceStop: () => void;
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
   onVoiceStop: () => void;
@@ -167,7 +163,6 @@ export const ModAiControls = ({
   verify,
   skipDetect,
   genderDetect,
-  stressPlace,
   voice,
   onTranslateTm,
   onTranslateLlm,
@@ -178,9 +173,6 @@ export const ModAiControls = ({
   onSkipDetectStop,
   onGenderDetect,
   onGenderDetectStop,
-  onStressPlaceMissing,
-  onStressPlaceAll,
-  onStressPlaceStop,
   onVoiceMissing,
   onVoiceAll,
   onVoiceStop,
@@ -203,11 +195,6 @@ export const ModAiControls = ({
   const voiceMenuItems: CircularProgressButtonMenuItem[] = [
     { label: t('modEditor.aiVoiceGenerateMissing'), onClick: onVoiceMissing },
     { label: t('modEditor.aiVoiceGenerateAll'), onClick: onVoiceAll },
-  ];
-
-  const stressMenuItems: CircularProgressButtonMenuItem[] = [
-    { label: t('modEditor.aiStressPlaceMissing'), onClick: onStressPlaceMissing },
-    { label: t('modEditor.aiStressPlaceAll'), onClick: onStressPlaceAll },
   ];
 
   const translateRunningLabel =
@@ -260,17 +247,6 @@ export const ModAiControls = ({
         idleHint={t('modAi.hintVerify')}
         icon="✓"
         onClick={onVerify}
-        circular={circular}
-      />
-      <Slot
-        entry={stressPlace}
-        label={t('modEditor.aiStressPlace')}
-        runningLabel={t('modEditor.aiStressPlaceRunning')}
-        idleHint={t('modAi.hintStressPlace')}
-        icon="´"
-        menuItems={stressMenuItems}
-        onStop={onStressPlaceStop}
-        stoppable
         circular={circular}
       />
       <Slot

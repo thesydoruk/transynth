@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, type VoiceLinePreview, type VoiceSpeakerLinesResponse } from '../../../../../api';
 
 export interface UseVoiceLineSaveParams {
-  modId: number;
   linesQueryKey: readonly unknown[];
   targetLang: string;
 }
@@ -14,7 +13,7 @@ export interface UseVoiceLineSaveParams {
  * Mirrors {@link useDialogLineSave}: the list position and open editor stay put
  * after each blur save instead of jumping on refetch.
  */
-export const useVoiceLineSave = ({ modId, linesQueryKey, targetLang }: UseVoiceLineSaveParams) => {
+export const useVoiceLineSave = ({ linesQueryKey, targetLang }: UseVoiceLineSaveParams) => {
   const qc = useQueryClient();
   const [pendingIds, setPendingIds] = useState<ReadonlySet<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +65,6 @@ export const useVoiceLineSave = ({ modId, linesQueryKey, targetLang }: UseVoiceL
             translation: null,
             translationId: null,
             status: null,
-            stressedTranslation: null,
             canGenerateVoice: false,
           });
           return;
@@ -76,7 +74,6 @@ export const useVoiceLineSave = ({ modId, linesQueryKey, targetLang }: UseVoiceL
           translation: saved.text,
           translationId: saved.id,
           status: 'draft',
-          stressedTranslation: null,
           canGenerateVoice: Boolean(saved.text.trim()) && !line.hasTranslationAudio,
         });
       });
@@ -84,26 +81,8 @@ export const useVoiceLineSave = ({ modId, linesQueryKey, targetLang }: UseVoiceL
     [run, targetLang, patchLine],
   );
 
-  const saveStressedLine = useCallback(
-    (line: VoiceLinePreview, text: string) => {
-      const stringId = line.stringId;
-      const translationId = line.translationId;
-      if (stringId == null || translationId == null) return Promise.resolve();
-
-      const trimmed = text.trim();
-      if (trimmed === (line.stressedTranslation ?? '').trim()) return Promise.resolve();
-
-      return run(stringId, async () => {
-        const saved = await api.mods.saveVoiceStressedText(modId, translationId, trimmed);
-        patchLine(stringId, { stressedTranslation: saved.textStressed });
-      });
-    },
-    [modId, run, patchLine],
-  );
-
   return {
     saveLine,
-    saveStressedLine,
     pendingIds,
     error,
     dismissError: () => setError(null),

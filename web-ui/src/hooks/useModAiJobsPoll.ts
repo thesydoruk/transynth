@@ -59,10 +59,6 @@ const fetchTerminalStatus = async (
       const snap = await api.llmGenderDetect.status(jobId);
       return snap.status === 'running' ? null : snap.status;
     }
-    if (kind === 'stress-place') {
-      const snap = await api.llmStressPlace.status(jobId);
-      return snap.status === 'running' ? null : snap.status;
-    }
     const snap = await api.llmSkipDetect.status(jobId);
     return snap.status === 'running' ? null : snap.status;
   } catch {
@@ -104,9 +100,7 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
               done: job.done,
               total: job.total,
               translateMode: job.translateMode,
-              ...(job.kind === 'voice' || job.kind === 'stress-place'
-                ? { speakerKey: job.speakerKey ?? null }
-                : {}),
+              ...(job.kind === 'voice' ? { speakerKey: job.speakerKey ?? null } : {}),
               error: null,
             });
             scheduleClear(job.modId, job.kind);
@@ -121,9 +115,7 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             done: job.done,
             total: job.total,
             translateMode: job.translateMode,
-            ...(job.kind === 'voice' || job.kind === 'stress-place'
-              ? { speakerKey: job.speakerKey ?? null }
-              : {}),
+            ...(job.kind === 'voice' ? { speakerKey: job.speakerKey ?? null } : {}),
             error: null,
           });
         }

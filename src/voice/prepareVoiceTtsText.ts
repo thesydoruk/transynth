@@ -204,16 +204,13 @@ export const canSynthesizeVoiceLine = (
 export const prepareVoiceTtsText = (input: {
   lineSource: string | null | undefined;
   translation: string;
-  /** When valid, used for TTS `text` instead of {@link translation}. */
-  stressedTranslation?: string | null;
   speakerSource: string | null | undefined;
   edid?: string | null;
 }): PrepareVoiceTtsTextResult => {
   const skipReason = detectVoiceTtsSkipReason(input.lineSource, input.translation, input.edid);
   if (skipReason) return { action: 'skip', reason: skipReason };
 
-  const ttsSource = input.stressedTranslation?.trim() || input.translation;
-  const text = stripVoiceNonSpeechBlocks(ttsSource);
+  const text = stripVoiceNonSpeechBlocks(input.translation);
   if (!text) return { action: 'skip', reason: 'empty_after_strip' };
 
   const speakerRaw = normalizeLine(input.speakerSource) || normalizeLine(input.lineSource);
