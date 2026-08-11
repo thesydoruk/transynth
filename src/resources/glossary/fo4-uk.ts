@@ -698,6 +698,20 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
     translation: 'Синт',
   },
   {
+    // Lowercase so glossary QA / enforce match dialogue "synth" (mixed-case
+    // "Synth" is treated as a proper noun and only matches that exact casing).
+    term: 'synth',
+    translation: 'синт',
+  },
+  {
+    term: 'Synths',
+    translation: 'Синти',
+  },
+  {
+    term: 'synths',
+    translation: 'синти',
+  },
+  {
     term: 'Synth Refugee',
     translation: 'Синт-втікач',
   },

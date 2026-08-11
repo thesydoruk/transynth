@@ -2682,6 +2682,18 @@ export const FO76_UK_GLOSSARY: GlossaryEntry[] = [
     translation: 'Синт',
   },
   {
+    term: 'synth',
+    translation: 'синт',
+  },
+  {
+    term: 'Synths',
+    translation: 'Синти',
+  },
+  {
+    term: 'synths',
+    translation: 'синти',
+  },
+  {
     term: 'Synth Refugee',
     translation: 'Синт-втікач',
   },
