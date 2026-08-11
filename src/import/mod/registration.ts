@@ -3,11 +3,7 @@ import { extractArchive } from '../../tools/archiveUtils';
 import type { Tx } from '../../db';
 import { sha1HexFile } from '../../utils/hash';
 import { EspReader } from '../../formats/esp';
-import {
-  hasMcmTranslationFiles,
-  findFirstMcmTranslationFile,
-  resolveModDirectoryFromPath,
-} from '../../formats/mcm';
+import { resolveModDirectoryFromPath } from '../../formats/mcm';
 import type { GameType } from '../../types';
 import { discoverLocaleSources } from './localeSources';
 import { estimateLocalizedImportTotal } from './localeRows';
@@ -17,7 +13,8 @@ import {
   resolveModImportExtractRoot,
 } from './extract';
 import { getModImportJobByFileHash } from './jobs';
-import { discoverModFiles, discoverArchiveCandidatesForPlugin } from './discovery';
+import { discoverArchiveCandidatesForPlugin } from './discovery';
+import { selectArchiveImportAnchor } from './importAnchor';
 import { countMcmTranslationRecords } from './mcmLocales';
 import type { ModImportJob, ModScanContext } from './types';
 
@@ -149,8 +146,9 @@ export const registerPluginFile = async (
 /**
  * Register an archive upload as a mod import job.
  *
- * The archive is extracted into `extractDir`, then the first discovered plugin
- * is used as the import target. If no plugin is found, an error is thrown.
+ * The archive is extracted into `extractDir`, then a primary plugin (if any) or
+ * an MCM translation file is used as the import anchor. Optional/fomod plugins
+ * alone do not block MCM-only packages.
  *
  * This does not ingest strings — call {@link runModImport} to perform the import.
  */
@@ -180,14 +178,9 @@ export const registerArchiveFile = async (
     scopeDirs: [extractDir],
   });
 
-  const { plugins } = discoverModFiles(extractDir);
+  const { anchorPath, isPlugin } = selectArchiveImportAnchor(extractDir);
 
-  if (plugins.length === 0) {
-    if (!hasMcmTranslationFiles(extractDir)) {
-      throw new Error('No ESP/ESM/ESL plugin or MCM translation files found in archive');
-    }
-
-    const anchorPath = findFirstMcmTranslationFile(extractDir)!;
+  if (!isPlugin) {
     const modDir = resolveModDirectoryFromPath(anchorPath);
     const totalRecords = countMcmTranslationRecords(modDir, anchorPath);
 
@@ -205,17 +198,16 @@ export const registerArchiveFile = async (
     });
   }
 
-  const pluginPath = plugins[0];
-  const esp = new EspReader(pluginPath, game);
+  const esp = new EspReader(anchorPath, game);
   const espRows = esp.extractStrings();
   const isLocalized = esp.info.isLocalized ? 1 : 0;
 
   let totalRecords = espRows.length;
   if (isLocalized) {
     const localeSources = discoverLocaleSources(
-      pluginPath,
+      anchorPath,
       game,
-      discoverArchiveCandidatesForPlugin(pluginPath),
+      discoverArchiveCandidatesForPlugin(anchorPath),
     );
     if (localeSources.length > 0) {
       totalRecords = estimateLocalizedImportTotal(
@@ -235,7 +227,7 @@ export const registerArchiveFile = async (
     tgtLang,
     isLocalized,
     game,
-    espPath: pluginPath,
+    espPath: anchorPath,
     extractDir: manifest.extractRoot,
     scan,
   });

@@ -66,6 +66,20 @@ describe('MCM-only translation patches', () => {
 
     fs.rmSync(modDir, { recursive: true, force: true });
   });
+
+  it('resolves package root from Optional plugin via sibling content folder', () => {
+    const extract = fs.mkdtempSync(path.join(os.tmpdir(), 'mcm-optional-'));
+    const pkg = path.join(extract, 'FallUI - Inventory');
+    const optionalEsp = path.join(extract, 'Optional', 'Helper.esp');
+    fs.mkdirSync(path.join(pkg, 'MCM', 'Config', 'FallUI'), { recursive: true });
+    fs.mkdirSync(path.join(pkg, 'Interface'), { recursive: true });
+    fs.mkdirSync(path.dirname(optionalEsp), { recursive: true });
+    fs.writeFileSync(optionalEsp, Buffer.from('TES4'));
+
+    expect(resolveModDirectoryFromPath(optionalEsp)).toBe(pkg);
+
+    fs.rmSync(extract, { recursive: true, force: true });
+  });
 });
 
 describe('resolveMcmLocaleKey', () => {

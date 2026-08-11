@@ -1,4 +1,4 @@
-export { mcmLocaleFromPath, parseMcmBuffer } from './mcmTranslations';
+export { mcmLocaleFromPath, parseMcmBuffer, writeMcmBuffer } from './mcmTranslations';
 export {
   extractMcmStringsFromConfigJson,
   findMcmConfigJsonFiles,

@@ -19,8 +19,8 @@ import type { ModImportPhaseContext } from './phases';
 
 export const finalizeModImportJob = async (
   ctx: ModImportPhaseContext,
-  esp: EspReader,
-  dialogGraphCtx: DialogGraphImportContext,
+  esp: EspReader | null,
+  dialogGraphCtx: DialogGraphImportContext | null,
 ): Promise<void> => {
   if (extrasStopRequested(ctx)) {
     await commitExtrasStop(ctx);
@@ -79,81 +79,90 @@ export const finalizeModImportJob = async (
     return;
   }
 
-  try {
-    const sceneRecords = esp.extractScenes();
-    const structure = esp.extractDialogStructure();
-    const sceneQuestFormIds = sceneRecords
-      .map((scene) => scene.questFormId)
-      .filter((id): id is string => id != null);
-
-    await ctx.db.query('BEGIN');
-    const importedStructure = await importDialogStructure(
-      ctx.db,
-      importModId,
-      structure,
-      sceneQuestFormIds,
-    );
-    if (sceneRecords.length > 0) {
-      const imported = await importSceneRecords(ctx.db, importModId, sceneRecords, dialogGraphCtx);
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
-          (imported.deletedScenes > 0 ? `; removed ${imported.deletedScenes} stale scene(s)` : ''),
-      );
-    }
-    await ctx.db.query('COMMIT');
-
-    if (
-      importedStructure.quests > 0 ||
-      importedStructure.branches > 0 ||
-      importedStructure.dialLinks > 0
-    ) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Dialog structure: ${importedStructure.quests} quest(s), ` +
-          `${importedStructure.branches} branch(es), ${importedStructure.dialLinks} dial link(s)` +
-          (importedStructure.deletedQuests > 0 || importedStructure.deletedBranches > 0
-            ? `; removed ${importedStructure.deletedQuests} quest(s), ${importedStructure.deletedBranches} branch(es)`
-            : ''),
-      );
-    }
-  } catch (err) {
-    logImport.warn(
-      `[Mod Import #${ctx.job.id}] Scene/structure import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
+  if (esp && dialogGraphCtx) {
     try {
-      await ctx.db.query('ROLLBACK');
-    } catch {
-      /* ignore */
-    }
-  }
+      const sceneRecords = esp.extractScenes();
+      const structure = esp.extractDialogStructure();
+      const sceneQuestFormIds = sceneRecords
+        .map((scene) => scene.questFormId)
+        .filter((id): id is string => id != null);
 
-  // Runs last: scene aliases identify the player and conversation counterpart.
-  if (extrasStopRequested(ctx)) {
-    await commitExtrasStop(ctx);
-    return;
-  }
-
-  try {
-    await ctx.db.query('BEGIN');
-    const resolved = await resolveModDialogSpeakers(
-      ctx.db,
-      importModId,
-      dialogGraphCtx.speakerIndex,
-    );
-    await ctx.db.query('COMMIT');
-    if (resolved.speakers > 0) {
-      logImport.info(
-        `[Mod Import #${ctx.job.id}] Resolved ${resolved.speakers} dialog speaker(s), ` +
-          `${resolved.withGender} with a known gender`,
+      await ctx.db.query('BEGIN');
+      const importedStructure = await importDialogStructure(
+        ctx.db,
+        importModId,
+        structure,
+        sceneQuestFormIds,
       );
+      if (sceneRecords.length > 0) {
+        const imported = await importSceneRecords(
+          ctx.db,
+          importModId,
+          sceneRecords,
+          dialogGraphCtx,
+        );
+        logImport.info(
+          `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
+            (imported.deletedScenes > 0
+              ? `; removed ${imported.deletedScenes} stale scene(s)`
+              : ''),
+        );
+      }
+      await ctx.db.query('COMMIT');
+
+      if (
+        importedStructure.quests > 0 ||
+        importedStructure.branches > 0 ||
+        importedStructure.dialLinks > 0
+      ) {
+        logImport.info(
+          `[Mod Import #${ctx.job.id}] Dialog structure: ${importedStructure.quests} quest(s), ` +
+            `${importedStructure.branches} branch(es), ${importedStructure.dialLinks} dial link(s)` +
+            (importedStructure.deletedQuests > 0 || importedStructure.deletedBranches > 0
+              ? `; removed ${importedStructure.deletedQuests} quest(s), ${importedStructure.deletedBranches} branch(es)`
+              : ''),
+        );
+      }
+    } catch (err) {
+      logImport.warn(
+        `[Mod Import #${ctx.job.id}] Scene/structure import failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      );
+      try {
+        await ctx.db.query('ROLLBACK');
+      } catch {
+        /* ignore */
+      }
     }
-  } catch (err) {
-    logImport.warn(
-      `[Mod Import #${ctx.job.id}] Speaker gender resolution failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
-    );
+
+    // Runs last: scene aliases identify the player and conversation counterpart.
+    if (extrasStopRequested(ctx)) {
+      await commitExtrasStop(ctx);
+      return;
+    }
+
     try {
-      await ctx.db.query('ROLLBACK');
-    } catch {
-      /* ignore */
+      await ctx.db.query('BEGIN');
+      const resolved = await resolveModDialogSpeakers(
+        ctx.db,
+        importModId,
+        dialogGraphCtx.speakerIndex,
+      );
+      await ctx.db.query('COMMIT');
+      if (resolved.speakers > 0) {
+        logImport.info(
+          `[Mod Import #${ctx.job.id}] Resolved ${resolved.speakers} dialog speaker(s), ` +
+            `${resolved.withGender} with a known gender`,
+        );
+      }
+    } catch (err) {
+      logImport.warn(
+        `[Mod Import #${ctx.job.id}] Speaker gender resolution failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      );
+      try {
+        await ctx.db.query('ROLLBACK');
+      } catch {
+        /* ignore */
+      }
     }
   }
 

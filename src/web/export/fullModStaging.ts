@@ -2,19 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../../db';
+import { isPluginPath } from '../../import/mod/discovery';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
-import { copyFileSafe, ensureDir } from '../../utils/file';
 import type { ArchiveManifestEntry, ModImportArchiveRecord } from '../../modImport/archiveManifest';
 import { readModImportExtractManifest } from '../../modImport/archiveManifest';
 import { isBethesdaArchiveFile, normalizeArchivePath } from '../../modImport/bethesdaArchivePaths';
-import {
-  pluginRelPath,
-  pluginSiblingRelPath,
-  resolveImportPackages,
-  toDiskPath,
-  type ImportPackageContext,
-} from '../../modImport/packages';
 import { loadImportedMod } from '../../modImport/importedMod';
 import {
   manifestArchivedPaths,
@@ -22,23 +14,14 @@ import {
   resolvePackageArchives,
   type PackedBethesdaArchive,
 } from '../../modImport/packBethesdaArchives';
+import { pluginRelPath, resolveImportPackages, toDiskPath } from '../../modImport/packages';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
-import {
-  exportLocalizedStringsFiles,
-  exportPatchedEsp,
-  exportPatchedPexFiles,
-  type ExportedStringsFile,
-} from './index';
-import { exportPatchedFontFiles } from './exportFontPatch';
-import { applyInterfaceLocalizeAssets, exportInterfaceTranslateFile } from './exportInterfacePatch';
+import type { GameType } from '../../types';
+import { copyFileSafe, ensureDir } from '../../utils/file';
+import { applyLocalizationToPackage } from './fullModLocalization';
 
 const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
 const SKIP_STAGING_NAMES = new Set(['import-manifest.json', 'localize']);
-
-const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
-
-const exportedFileToBuffer = (file: ExportedStringsFile): Buffer =>
-  Buffer.from(file.contentBase64, 'base64');
 
 const isPluginFile = (fileName: string): boolean =>
   PLUGIN_EXTS.has(path.extname(fileName).toLowerCase());
@@ -98,114 +81,6 @@ const mergeLocalizeOverlay = (localizeDir: string, packageDir: string): void => 
   };
 
   walk(localizeDir);
-};
-
-const applyLocalizationToPackage = async (
-  db: Tx,
-  modId: number,
-  pkg: ImportPackageContext,
-  packageDir: string,
-  srcLang: string,
-  targetLang: string,
-  game: GameType,
-  isLocalized: boolean,
-): Promise<void> => {
-  const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-
-  if (isLocalized) {
-    try {
-      const stringsFiles = await exportLocalizedStringsFiles(
-        db,
-        modId,
-        pkg.pluginPath,
-        srcLang,
-        targetLang,
-        game,
-      );
-      for (const file of stringsFiles) {
-        writeBufferToPackage(
-          packageDir,
-          pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, path.join('Strings', file.fileName)),
-          exportedFileToBuffer(file),
-        );
-      }
-    } catch {
-      log.info(`Full mod export: no localized STRINGS for mod ${modId}`);
-    }
-    return;
-  }
-
-  try {
-    const esp = await exportPatchedEsp(db, modId, pkg.pluginPath, srcLang, targetLang);
-    writeBufferToPackage(packageDir, pluginRel, exportedFileToBuffer(esp));
-  } catch (espErr) {
-    log.info(`Full mod export: ESP patch skipped for mod ${modId}: ${espErr}`);
-    try {
-      const stringsFiles = await exportLocalizedStringsFiles(
-        db,
-        modId,
-        pkg.pluginPath,
-        srcLang,
-        targetLang,
-        game,
-      );
-      for (const file of stringsFiles) {
-        writeBufferToPackage(
-          packageDir,
-          pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, path.join('Strings', file.fileName)),
-          exportedFileToBuffer(file),
-        );
-      }
-    } catch {
-      log.info(`Full mod export: STRINGS fallback unavailable for mod ${modId}`);
-    }
-  }
-
-  try {
-    const pexFiles = await exportPatchedPexFiles(db, modId, pkg.pluginPath, srcLang, targetLang);
-    for (const pex of pexFiles) {
-      writeBufferToPackage(
-        packageDir,
-        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, pex.fileName),
-        exportedFileToBuffer(pex),
-      );
-    }
-  } catch {
-    log.info(`Full mod export: no patched PEX scripts for mod ${modId}`);
-  }
-
-  try {
-    const iface = await exportInterfaceTranslateFile(
-      db,
-      modId,
-      pkg.pluginPath,
-      srcLang,
-      targetLang,
-      game,
-    );
-    if (iface) {
-      for (const file of iface) {
-        writeBufferToPackage(
-          packageDir,
-          pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, file.archivePath),
-          file.buffer,
-        );
-      }
-    }
-    const assetCount = applyInterfaceLocalizeAssets(pkg.pluginPath, targetLang, packageDir);
-    if (assetCount > 0) {
-      log.info(`Full mod export: merged ${assetCount} Interface asset(s) from localize overlay`);
-    }
-    for (const font of exportPatchedFontFiles(pkg.pluginPath, targetLang, game)) {
-      writeBufferToPackage(
-        packageDir,
-        pluginSiblingRelPath(pkg.packageDir, pkg.pluginPath, font.archivePath),
-        font.buffer,
-      );
-    }
-  } catch (ifaceErr) {
-    log.info(`Full mod export: Interface patch skipped for mod ${modId}: ${ifaceErr}`);
-  }
 };
 
 const copyLooseFiles = (
@@ -313,7 +188,9 @@ export const stageFullLocalizedMod = async (
   const manifest = readModImportExtractManifest(extractRoot);
   const manifestArchives = manifest?.archives ?? [];
   const packageArchives = resolvePackageArchivesFromManifest(pkg.folder, manifestArchives);
-  const pluginFiles = [pluginRelPath(pkg.packageDir, pkg.pluginPath)];
+  const pluginFiles = isPluginPath(pkg.pluginPath)
+    ? [pluginRelPath(pkg.packageDir, pkg.pluginPath)]
+    : [];
 
   const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'full-mod-export-'));
   const effectiveDir = path.join(workRoot, 'effective');

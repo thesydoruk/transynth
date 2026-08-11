@@ -14,6 +14,7 @@ import { CONFIG } from '../../../../../src/config';
 import { logImport } from '../../../../../src/logging/loggers';
 import type { GameType } from '../../../../../src/types';
 import { withModImportWriteLock } from '../../../../../src/import/locks';
+import { isPluginPath } from '../../../../../src/import/mod/discovery';
 import { beginActiveImport, endActiveImport, isModImportRunning } from './activeJobs';
 import { getModImportJob } from '../../../../../src/import/mod/jobs';
 import { markFailed } from '../../../../../src/import/mod/jobStatus';
@@ -24,6 +25,7 @@ import {
   importMcmStringRows,
   importPexStringRows,
 } from './extrasPhase';
+import { prepareExtrasOnlyImportContext } from './extrasOnlyPrep';
 import { finalizeModImportJob } from './finalizePhase';
 import type { ModImportJob, ProgressCb } from '../../../../../src/import/mod/types';
 
@@ -38,7 +40,7 @@ export const runModImport = async (
   if (isModImportRunning(job.id)) throw new Error(`Mod Import #${job.id} is already running`);
 
   const espPath = job.esp_path;
-  if (!espPath || !fs.existsSync(espPath)) throw new Error('Plugin file not found');
+  if (!espPath || !fs.existsSync(espPath)) throw new Error('Import anchor file not found');
 
   const state = beginActiveImport(job.id);
   const startTime = Date.now();
@@ -83,14 +85,49 @@ export const runModImport = async (
       ctx.importModId = await ensureImportModId(ctx);
       imported = ctx.imported.value;
 
-      const prep = await prepareEspImportContext(ctx);
-      imported = ctx.imported.value;
+      if (isPluginPath(ctx.espPath)) {
+        const prep = await prepareEspImportContext(ctx);
+        imported = ctx.imported.value;
 
-      const espOk = await importEspStringRows(ctx, prep);
-      imported = ctx.imported.value;
-      if (!espOk) return;
+        const espOk = await importEspStringRows(ctx, prep);
+        imported = ctx.imported.value;
+        if (!espOk) return;
 
-      await prep.batch.commitOpenTx();
+        await prep.batch.commitOpenTx();
+
+        if (!state.cancel && !state.pause) {
+          await importMcmStringRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+        }
+
+        if (!state.cancel && !state.pause) {
+          await importInterfaceTranslateRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+        }
+
+        if (!state.cancel && !state.pause) {
+          await importPexStringRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+          await prep.batch.commitOpenTx();
+        }
+
+        if (!state.cancel && !state.pause) {
+          try {
+            await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx);
+          } catch (err) {
+            logImport.error(
+              `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            throw err;
+          }
+        }
+        return;
+      }
+
+      logImport.info(
+        `[Mod Import #${job.id}] No plugin anchor — importing MCM/Interface extras only`,
+      );
+      const prep = prepareExtrasOnlyImportContext(ctx);
 
       if (!state.cancel && !state.pause) {
         await importMcmStringRows(ctx, prep.batch);
@@ -110,7 +147,7 @@ export const runModImport = async (
 
       if (!state.cancel && !state.pause) {
         try {
-          await finalizeModImportJob(ctx, prep.esp, prep.dialogGraphCtx);
+          await finalizeModImportJob(ctx, null, null);
         } catch (err) {
           logImport.error(
             `[Mod Import #${job.id}] Failed to convert strings to translations: ${err instanceof Error ? err.message : String(err)}`,

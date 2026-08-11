@@ -112,6 +112,62 @@ export const resolveMcmModPrefix = (modDir: string, espPath: string): string => 
   return espStem;
 };
 
+/** Exact child directory name (case-sensitive even on Windows). */
+const hasExactChildDir = (parent: string, name: string): boolean => {
+  try {
+    return fs
+      .readdirSync(parent, { withFileTypes: true })
+      .some((entry) => entry.isDirectory() && entry.name === name);
+  } catch {
+    return false;
+  }
+};
+
+const looksLikeModPackageRoot = (dir: string): boolean =>
+  hasExactChildDir(dir, 'MCM') ||
+  hasExactChildDir(dir, 'Interface') ||
+  hasExactChildDir(dir, 'interface') ||
+  hasExactChildDir(dir, 'Data');
+
+/** Child folder names that are never the main content package. */
+const NON_PACKAGE_DIR_NAMES = new Set([
+  'optional',
+  'fomod',
+  'docs',
+  'documentation',
+  'readmes',
+  'settings',
+  '.git',
+  'node_modules',
+  '.transynth-extracted',
+]);
+
+const isExtractRootDir = (dir: string): boolean =>
+  path.basename(dir).toLowerCase().startsWith('_extracted_');
+
+/** Prefer a sibling/content folder that actually holds MCM or Interface assets. */
+const findPackageRootNearby = (startDir: string): string | null => {
+  const bases = [startDir];
+  if (!isExtractRootDir(startDir)) bases.push(path.dirname(startDir));
+
+  for (const base of bases) {
+    if (looksLikeModPackageRoot(base)) return base;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(base, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || NON_PACKAGE_DIR_NAMES.has(entry.name.toLowerCase())) continue;
+      if (entry.name.startsWith('_')) continue;
+      const child = path.join(base, entry.name);
+      if (looksLikeModPackageRoot(child)) return child;
+    }
+  }
+  return null;
+};
+
 /**
  * Resolve the mod root directory from a plugin path, translation txt, or folder.
  */
@@ -120,23 +176,21 @@ export const resolveModDirectoryFromPath = (filePath: string): string => {
     throw new Error(`Path not found: ${filePath}`);
   }
 
-  let dir = fs.statSync(filePath).isDirectory() ? filePath : path.dirname(filePath);
+  const startDir = fs.statSync(filePath).isDirectory() ? filePath : path.dirname(filePath);
+  let dir = startDir;
 
   for (let depth = 0; depth < 8; depth++) {
-    if (
-      fs.existsSync(path.join(dir, 'MCM', 'Config')) ||
-      fs.existsSync(path.join(dir, 'Interface')) ||
-      fs.existsSync(path.join(dir, 'interface')) ||
-      fs.existsSync(path.join(dir, 'Data'))
-    ) {
-      return dir;
-    }
+    if (looksLikeModPackageRoot(dir)) return dir;
+    if (isExtractRootDir(dir)) break;
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
 
-  dir = fs.statSync(filePath).isDirectory() ? filePath : path.dirname(filePath);
+  const nearby = findPackageRootNearby(isExtractRootDir(dir) ? dir : startDir);
+  if (nearby) return nearby;
+
+  dir = startDir;
   while (isTranslationDirName(path.basename(dir))) {
     const parent = path.dirname(dir);
     if (parent === dir) break;

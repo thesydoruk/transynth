@@ -1,0 +1,41 @@
+---
+description: Inspect mod archives and extracts on ai-pipeline, not on the local machine
+alwaysApply: true
+---
+
+# Mod uploads live on ai-pipeline
+
+When the user names a Nexus/Vortex mod folder or archive (e.g. `FallUI - Inventory-48758-2-2-1-1666954336`), **inspect it on the production host** — do not search the local Windows workspace.
+
+## Where
+
+| Path | Contents |
+|------|----------|
+| `/root/Source/transynth/data/uploads/mod/` | Uploaded `.esp/.esm/.esl/.zip/.7z/.rar` |
+| `_extracted_{hash}/` under that dir | Unpacked tree for an import |
+| `_localize_{hash}/{lang}/` | Localized deltas after export |
+| Inside container | same tree at `/app/data/uploads/mod/` |
+
+Host: **ai-pipeline** (SSH via WSL). Prefer absolute `/root/...` — `~` can expand wrong depending on shell.
+
+## How to inspect
+
+```bash
+# List / find by name or Nexus id
+wsl -e bash -lc "ssh -o BatchMode=yes -o ConnectTimeout=10 ai-pipeline 'ls /root/Source/transynth/data/uploads/mod | grep -i FallUI'"
+
+# Archive listing (cd first — spaces in filenames break remote argv)
+wsl -e bash -lc 'ssh -o BatchMode=yes -o ConnectTimeout=10 ai-pipeline "cd /root/Source/transynth/data/uploads/mod && 7z l FallUI*.rar"'
+```
+
+If PowerShell eats nested quotes, put the remote commands in a small `.sh`, copy it, and run that (see `.cursor/skills/ai-pipeline/SKILL.md`).
+
+## What to expect
+
+- Many UI/MCM mods have **no** `.esp/.esm/.esl` — only BA2, Interface/MCM translation txt, SWF, etc. Those still belong in this pipeline (MCM / Interface / BA2 paths).
+- Code that assumes a plugin always exists is incomplete; check `registerArchiveFile` and MCM/Interface discovery before concluding “not a mod”.
+
+## Do not
+
+- Recurse the local `C:\Users\...` disk for Vortex-style folder names.
+- Assume the archive is missing because it is not in the git checkout.

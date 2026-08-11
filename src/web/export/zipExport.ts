@@ -15,6 +15,7 @@ import { exportPatchedEsp } from './exportEsp';
 import { getPexTranslationOverlays } from './exportPex';
 import { collectLocalizedVoiceFiles } from './exportVoiceFiles';
 import { collectInterfacePatchEntries } from './exportInterfacePatch';
+import { collectMcmPatchEntries } from './exportMcmPatch';
 import type { ZipPackEntry } from './exportTypes';
 import { loadSourceStringsFiles } from './sourceStringsLoader';
 import { getTranslationOverlaysByType, hasTranslationOverlayChanges } from './translationOverlay';
@@ -171,9 +172,20 @@ export const exportLangpackZip = async (
     );
   }
 
+  try {
+    const mcmFiles = await collectMcmPatchEntries(db, modId, modPath, srcLang, targetLang, game);
+    files.push(...mcmFiles);
+  } catch (err) {
+    log.info(
+      `Langpack export: no MCM patch files for mod ${modId} (${
+        err instanceof Error ? err.message : String(err)
+      })`,
+    );
+  }
+
   if (files.length === 0) {
     throw new Error(
-      'No exportable langpack content found — no translated STRINGS, PEX scripts, voice files, or ESP patches available.',
+      'No exportable langpack content found — no translated STRINGS, PEX, MCM, Interface, voice, or ESP patches available.',
     );
   }
 

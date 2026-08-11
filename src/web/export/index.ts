@@ -20,5 +20,6 @@ export { exportPatchedEsp } from './exportEsp';
 export { exportPatchedPexFiles } from './exportPex';
 export { exportFullModZip, exportLangpackZip } from './zipExport';
 export { collectInterfacePatchEntries, exportInterfaceTranslateFile } from './exportInterfacePatch';
+export { collectMcmPatchEntries, exportMcmTranslationFiles } from './exportMcmPatch';
 export { exportPatchedFontFiles } from './exportFontPatch';
 export { exportModRelease, listModExportTargets } from './modReleaseExport';

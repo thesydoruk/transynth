@@ -133,5 +133,6 @@ For DB admin on ai-pipeline: `scripts/killDbSessions.sh`.
 ## Related files
 
 - `.cursor/rules/test-server-ssh.mdc` — both hosts (ai-pipeline + windows-ssh)
+- `.cursor/rules/mod-uploads-on-server.mdc` — inspect mod archives under `data/uploads/mod` on ai-pipeline
 - `docker-compose.yml` — production stack
 - `scripts/verifyXwma.mjs`, `scripts/verifyFaceFx.mjs`, `scripts/verifyChampollion.mjs` — remote smoke tests

@@ -104,3 +104,11 @@ export const mcmLocaleFromPath = (filePath: string): string | null => {
   const match = base.match(/_([a-z]+)\.txt$/i);
   return match ? match[1].toLowerCase() : null;
 };
+
+const UTF16_LE_BOM = Buffer.from([0xff, 0xfe]);
+
+/** Serialize MCM key/value pairs as UTF-16 LE with BOM (Bethesda convention). */
+export const writeMcmBuffer = (entries: Array<{ key: string; text: string }>): Buffer => {
+  const lines = entries.map(({ key, text }) => `${key}\t${text}`).join('\r\n');
+  return Buffer.concat([UTF16_LE_BOM, Buffer.from(lines, 'utf16le')]);
+};

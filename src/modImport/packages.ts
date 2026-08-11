@@ -1,14 +1,36 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  findFirstMcmTranslationFile,
+  hasMcmTranslationFiles,
+  resolveModDirectoryFromPath,
+} from '../formats/mcm';
+import { filterPrimaryPlugins } from '../import/mod/importAnchor';
+import { discoverModFiles } from '../import/mod';
 import { modImportLocalizeDir } from '../modStorage';
 import { ensureDir } from '../utils/file';
-import { discoverModFiles } from '../import/mod';
 
 export type ImportPackageContext = {
   folder: string;
   packageDir: string;
   pluginPath: string;
   localizeDir: string;
+};
+
+const packageContextForAnchor = (
+  extractDir: string,
+  localizeRoot: string,
+  anchorPath: string,
+): ImportPackageContext => {
+  const packageDir = resolveModDirectoryFromPath(anchorPath);
+  const folder = path.relative(extractDir, packageDir);
+  const normalizedFolder = folder === '.' ? '' : folder.replace(/\\/g, '/');
+  return {
+    folder: normalizedFolder,
+    packageDir,
+    pluginPath: path.resolve(anchorPath),
+    localizeDir: normalizedFolder ? path.join(localizeRoot, normalizedFolder) : localizeRoot,
+  };
 };
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
@@ -67,35 +89,27 @@ export const resolveImportPackages = (
   }
 
   if (primaryPluginPath) {
-    const pluginPath = path.resolve(primaryPluginPath);
-    const folder = path.relative(resolvedExtractDir, path.dirname(pluginPath));
-    const normalizedFolder = folder === '.' ? '' : folder.replace(/\\/g, '/');
-    return [
-      {
-        folder: normalizedFolder,
-        packageDir: path.dirname(pluginPath),
-        pluginPath,
-        localizeDir: normalizedFolder ? path.join(localizeRoot, normalizedFolder) : localizeRoot,
-      },
-    ];
+    return [packageContextForAnchor(resolvedExtractDir, localizeRoot, primaryPluginPath)];
   }
 
-  const plugins = discoverModFiles(resolvedExtractDir).plugins;
+  const plugins = filterPrimaryPlugins(discoverModFiles(resolvedExtractDir).plugins);
   if (plugins.length === 0) {
-    throw new Error(`No plugins found under ${resolvedExtractDir}`);
+    if (hasMcmTranslationFiles(resolvedExtractDir)) {
+      const anchor = findFirstMcmTranslationFile(resolvedExtractDir);
+      if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
+    }
+    throw new Error(`No plugins or MCM translation files found under ${resolvedExtractDir}`);
   }
 
-  const pluginDirs = new Map<string, string>();
+  const packageDirs = new Map<string, string>();
   for (const plugin of plugins) {
-    const relDir = path.relative(resolvedExtractDir, path.dirname(plugin));
+    const packageDir = resolveModDirectoryFromPath(plugin);
+    const relDir = path.relative(resolvedExtractDir, packageDir);
     const folder = relDir === '.' ? '' : relDir.replace(/\\/g, '/');
-    if (!pluginDirs.has(folder)) pluginDirs.set(folder, plugin);
+    if (!packageDirs.has(folder)) packageDirs.set(folder, plugin);
   }
 
-  return [...pluginDirs.entries()].map(([folder, pluginPath]) => ({
-    folder,
-    packageDir: folder ? path.join(resolvedExtractDir, folder) : resolvedExtractDir,
-    pluginPath,
-    localizeDir: folder ? path.join(localizeRoot, folder) : localizeRoot,
-  }));
+  return [...packageDirs.values()].map((pluginPath) =>
+    packageContextForAnchor(resolvedExtractDir, localizeRoot, pluginPath),
+  );
 };
