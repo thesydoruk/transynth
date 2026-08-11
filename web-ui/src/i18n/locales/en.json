@@ -995,6 +995,8 @@
       "vllmPoolSave": "Save pool",
       "vllmPoolSaving": "Saving…",
       "vllmPoolEmptyError": "Add at least one server with a host URL.",
+      "vllmHealthy": "healthy",
+      "vllmUnhealthy": "unhealthy",
       "vllmApiKeyOptional": "optional",
       "vllmSection": "vLLM models",
       "vllmServer": "Server {{index}}",

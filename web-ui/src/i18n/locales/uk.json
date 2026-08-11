@@ -995,6 +995,8 @@
       "vllmPoolSave": "Зберегти пул",
       "vllmPoolSaving": "Збереження…",
       "vllmPoolEmptyError": "Додайте хоча б один сервер з URL.",
+      "vllmHealthy": "доступний",
+      "vllmUnhealthy": "недоступний",
       "vllmApiKeyOptional": "необов'язково",
       "vllmSection": "Моделі vLLM",
       "vllmServer": "Сервер {{index}}",

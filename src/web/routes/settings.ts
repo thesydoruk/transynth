@@ -14,6 +14,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { CONFIG } from '../../config';
+import { llmChatPool } from '../../llm/requestPool';
 import { resolveTtsBaseUrl } from '../../voice/voiceToolPaths';
 
 /* ── Response type ──────────────────────────────────────────────────────── */
@@ -30,11 +31,12 @@ export interface SettingsPayload {
   llmFallback: string;
   /** vLLM / OpenAI-compatible server base URL (legacy single-server display). */
   vllmBaseUrl: string;
-  /** Configured vLLM chat servers (host + per-server concurrency). */
+  /** Configured vLLM chat servers (host + per-server concurrency + live health). */
   vllmServers: Array<{
     host: string;
     maxParallel: number;
     apiKeyConfigured: boolean;
+    healthy: boolean;
   }>;
   /** True when multi-endpoint chat routing is active (settings or env). */
   vllmMultiServer: boolean;
@@ -167,11 +169,17 @@ export const settingsRoutes = async (app: FastifyInstance): Promise<void> => {
       llmProvider: CONFIG.llmProvider,
       llmFallback: CONFIG.llmFallback,
       vllmBaseUrl: CONFIG.vllmBaseUrl,
-      vllmServers: CONFIG.vllmServers.map((s) => ({
-        host: s.host,
-        maxParallel: s.maxParallel,
-        apiKeyConfigured: Boolean(s.apiKey),
-      })),
+      vllmServers: CONFIG.vllmServers.map((s, index) => {
+        const live = llmChatPool.stats.servers?.find(
+          (row) => row.index === index || row.host === s.host,
+        );
+        return {
+          host: s.host,
+          maxParallel: s.maxParallel,
+          apiKeyConfigured: Boolean(s.apiKey),
+          healthy: live?.healthy ?? true,
+        };
+      }),
       vllmMultiServer: CONFIG.vllmMultiServer,
       vllmModel: CONFIG.vllmModel,
       vllmEmbedModel: CONFIG.vllmEmbedModel || CONFIG.vllmModel,

@@ -149,6 +149,7 @@ export const LlmTab = () => {
       <VllmPoolEditor
         savedServers={savedServers}
         fallbackServers={fallbackServers}
+        liveServers={data.vllmServers}
         totalParallel={data.llmMaxParallel}
       />
 

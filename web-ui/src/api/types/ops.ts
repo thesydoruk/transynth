@@ -34,8 +34,10 @@ export type SettingsPayload = {
     host: string;
     maxParallel: number;
     apiKeyConfigured: boolean;
+    /** Live chat-pool health probe result (false = skipped for routing). */
+    healthy: boolean;
   }>;
-  /** True when `VLLM_SERVERS` JSON is set. */
+  /** True when multi-endpoint chat routing is active. */
   vllmMultiServer: boolean;
   /** vLLM model used for translation. */
   vllmModel: string;

@@ -12,10 +12,16 @@ export type VllmServerDraft = {
   apiKey: string;
 };
 
+type LiveServerHealth = {
+  host: string;
+  healthy: boolean;
+};
+
 type VllmPoolEditorProps = {
   savedServers: VllmServerDraft[];
   /** Effective runtime servers when the project setting is still empty (env fallback). */
   fallbackServers: VllmServerDraft[];
+  liveServers: LiveServerHealth[];
   totalParallel: number;
 };
 
@@ -28,6 +34,7 @@ const cloneServers = (servers: VllmServerDraft[]): VllmServerDraft[] =>
 export const VllmPoolEditor = ({
   savedServers,
   fallbackServers,
+  liveServers,
   totalParallel,
 }: VllmPoolEditorProps) => {
   const { t } = useTranslation();
@@ -86,59 +93,66 @@ export const VllmPoolEditor = ({
         <div className={s.readonlyNote}>ℹ️ {t('settings.llm.vllmPoolFallback')}</div>
       )}
 
-      {draft.map((server, index) => (
-        <div key={index} className={s.serverEditBlock}>
-          <div className={s.serverEditHeader}>
-            <span className={parentS.fieldLabel}>
-              {t('settings.llm.vllmServer', { index: index + 1 })}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={draft.length <= 1 || isPending}
-              onClick={() => setDraft((prev) => prev.filter((_, i) => i !== index))}
-            >
-              {t('settings.llm.vllmPoolRemove')}
-            </Button>
+      {draft.map((server, index) => {
+        const live = liveServers.find((row) => row.host === server.host.trim());
+        const healthy = live?.healthy ?? true;
+        return (
+          <div key={index} className={s.serverEditBlock}>
+            <div className={s.serverEditHeader}>
+              <span className={parentS.fieldLabel}>
+                {t('settings.llm.vllmServer', { index: index + 1 })}{' '}
+                <span className={healthy ? s.badgeOk : s.badgeError}>
+                  {healthy ? t('settings.llm.vllmHealthy') : t('settings.llm.vllmUnhealthy')}
+                </span>
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={draft.length <= 1 || isPending}
+                onClick={() => setDraft((prev) => prev.filter((_, i) => i !== index))}
+              >
+                {t('settings.llm.vllmPoolRemove')}
+              </Button>
+            </div>
+            <div className={s.serverEditGrid}>
+              <label className={s.editField}>
+                <span className={s.subLabel}>{t('settings.llm.vllmUrl')}</span>
+                <input
+                  className={s.input}
+                  value={server.host}
+                  onChange={(e) => updateRow(index, { host: e.target.value })}
+                  placeholder="http://192.168.50.161:8011"
+                  disabled={isPending}
+                />
+              </label>
+              <label className={s.editField}>
+                <span className={s.subLabel}>{t('settings.llm.vllmMaxParallel')}</span>
+                <input
+                  className={s.input}
+                  type="number"
+                  min={1}
+                  max={32}
+                  value={server.maxParallel}
+                  onChange={(e) => updateRow(index, { maxParallel: Number(e.target.value) })}
+                  disabled={isPending}
+                />
+              </label>
+              <label className={s.editField}>
+                <span className={s.subLabel}>{t('settings.llm.vllmApiKey')}</span>
+                <input
+                  className={s.input}
+                  type="password"
+                  value={server.apiKey}
+                  onChange={(e) => updateRow(index, { apiKey: e.target.value })}
+                  placeholder={t('settings.llm.vllmApiKeyOptional')}
+                  disabled={isPending}
+                  autoComplete="off"
+                />
+              </label>
+            </div>
           </div>
-          <div className={s.serverEditGrid}>
-            <label className={s.editField}>
-              <span className={s.subLabel}>{t('settings.llm.vllmUrl')}</span>
-              <input
-                className={s.input}
-                value={server.host}
-                onChange={(e) => updateRow(index, { host: e.target.value })}
-                placeholder="http://192.168.50.161:8011"
-                disabled={isPending}
-              />
-            </label>
-            <label className={s.editField}>
-              <span className={s.subLabel}>{t('settings.llm.vllmMaxParallel')}</span>
-              <input
-                className={s.input}
-                type="number"
-                min={1}
-                max={32}
-                value={server.maxParallel}
-                onChange={(e) => updateRow(index, { maxParallel: Number(e.target.value) })}
-                disabled={isPending}
-              />
-            </label>
-            <label className={s.editField}>
-              <span className={s.subLabel}>{t('settings.llm.vllmApiKey')}</span>
-              <input
-                className={s.input}
-                type="password"
-                value={server.apiKey}
-                onChange={(e) => updateRow(index, { apiKey: e.target.value })}
-                placeholder={t('settings.llm.vllmApiKeyOptional')}
-                disabled={isPending}
-                autoComplete="off"
-              />
-            </label>
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className={s.poolActions}>
         <Button

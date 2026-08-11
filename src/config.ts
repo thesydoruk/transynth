@@ -175,6 +175,12 @@ export const CONFIG = {
   /** OpenAI SDK HTTP timeout per request in ms (env: LLM_REQUEST_TIMEOUT_SEC). */
   llmRequestTimeoutMs: parseLlmRequestTimeoutMs(process.env.LLM_REQUEST_TIMEOUT_SEC),
 
+  /** How often to probe each vLLM chat-pool host (env: VLLM_HEALTH_INTERVAL_SEC, default 15). */
+  vllmHealthIntervalMs: parsePositiveInt(process.env.VLLM_HEALTH_INTERVAL_SEC, 15, 3600) * 1000,
+
+  /** Per-host health probe timeout (env: VLLM_HEALTH_TIMEOUT_SEC, default 5). */
+  vllmHealthTimeoutMs: parsePositiveInt(process.env.VLLM_HEALTH_TIMEOUT_SEC, 5, 120) * 1000,
+
   /** Max concurrent chat/translate LLM HTTP requests (sum of per-server limits). */
   llmMaxParallel: vllmMultiServer
     ? totalVllmChatParallel(vllmServersFromEnv)

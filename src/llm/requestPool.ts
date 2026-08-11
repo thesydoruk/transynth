@@ -16,12 +16,16 @@ export type RequestPoolStats = {
   inFlight: number;
   queued: number;
   max: number;
+  healthyMax?: number;
   servers?: Array<{
     index: number;
     host: string;
     inFlight: number;
     queued: number;
     max: number;
+    healthy?: boolean;
+    lastHealthCheckAt?: number | null;
+    lastHealthError?: string | null;
   }>;
 };
 
@@ -48,6 +52,7 @@ export class RequestPool {
 
 type ChatPool = {
   stats: RequestPoolStats;
+  dispose?: () => void;
   run<T>(fn: () => Promise<T>): Promise<T>;
   runWithClient?<T>(
     fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>,
@@ -62,6 +67,7 @@ const buildChatPool = (servers: readonly VllmServerEntry[], multi: boolean): Cha
       get stats(): RequestPoolStats {
         return CONFIG.llmProvider === 'vllm' ? multiPool.stats : openaiPool.stats;
       },
+      dispose: () => multiPool.dispose(),
       run: <T>(fn: () => Promise<T>) => openaiPool.run(fn),
       runWithClient: <T>(
         fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>,
@@ -96,6 +102,7 @@ export const llmChatPool: ChatPool = {
 
 /** Rebuild the chat pool after project-settings / env server list changes. */
 export const syncLlmChatPool = (servers: readonly VllmServerEntry[], multi: boolean): void => {
+  chatPoolImpl.dispose?.();
   chatPoolImpl = buildChatPool(servers, multi);
 };
 
