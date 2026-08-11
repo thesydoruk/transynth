@@ -7,13 +7,14 @@ import {
 } from './prompts/stressPlacement';
 import type { ChatCompletionMeta } from './provider';
 import { parseVerifyItemId } from './verifyTranslate';
+import { stripStressMarks } from '../voice/stressedTranslation';
 
 export class LlmStressPlacementMissingIdsError extends Error {
   readonly missingIds: readonly number[];
-  readonly partialResults: readonly LlmStressPlacementResult[];
+  readonly partialResults: readonly LlmStressWordResult[];
 
-  constructor(missingIds: number[], partialResults: LlmStressPlacementResult[]) {
-    super(`LLM stress-place response missing item id=${missingIds[0]}`);
+  constructor(missingIds: number[], partialResults: LlmStressWordResult[]) {
+    super(`LLM stress-place response missing word id=${missingIds[0]}`);
     this.name = 'LlmStressPlacementMissingIdsError';
     this.missingIds = missingIds;
     this.partialResults = partialResults;
@@ -24,22 +25,26 @@ export const isLlmStressPlacementMissingIdsError = (
   err: unknown,
 ): err is LlmStressPlacementMissingIdsError => err instanceof LlmStressPlacementMissingIdsError;
 
-export type LlmStressPlacementItem = {
+/** One word that dictionary could not resolve (OOV / heteronym). */
+export type LlmStressWordItem = {
   id: number;
-  text: string;
+  word: string;
+  /** Full dialogue line for disambiguation. */
+  context: string;
+  /** 0-based letter-token index in `context`. */
+  wordIndex: number;
 };
 
-export type LlmStressPlacementResult = {
+export type LlmStressWordResult = {
   id: number;
-  text_stressed: string;
+  word_stressed: string;
 };
 
 export type LlmStressPlacementOptions = {
-  items: LlmStressPlacementItem[];
+  words: LlmStressWordItem[];
   model: string;
   targetLang: string;
   signal?: AbortSignal;
-  /** When true, ask vLLM/Gemma to run thinking mode for this call. */
   enableThinking?: boolean;
 };
 
@@ -51,8 +56,9 @@ export const stressPlaceThinkingExtraBody = {
 const parseItems = (
   raw: string,
   expectedIds: number[],
+  expectedById: ReadonlyMap<number, LlmStressWordItem>,
   completionMeta?: ChatCompletionMeta,
-): Map<number, LlmStressPlacementResult> => {
+): Map<number, LlmStressWordResult> => {
   const parsed = parseLlmJson(raw, {
     operation: 'stress_place',
     itemIds: expectedIds,
@@ -61,26 +67,34 @@ const parseItems = (
     completionTokens: completionMeta?.completionTokens,
   }) as { items?: unknown };
   const items = Array.isArray(parsed.items) ? parsed.items : [];
-  const out = new Map<number, LlmStressPlacementResult>();
+  const out = new Map<number, LlmStressWordResult>();
   for (const entry of items) {
     if (!entry || typeof entry !== 'object') continue;
     const id = parseVerifyItemId((entry as { id?: unknown }).id);
-    const text = (entry as { text_stressed?: unknown }).text_stressed;
+    const text = (entry as { word_stressed?: unknown }).word_stressed;
     if (id == null || typeof text !== 'string' || !text.trim()) continue;
-    out.set(id, { id, text_stressed: text.trim() });
+    const expected = expectedById.get(id);
+    if (!expected) continue;
+    const stressed = text.trim().normalize('NFC');
+    if (stripStressMarks(stressed) !== expected.word.normalize('NFC')) continue;
+    if (!stressed.includes('\u0301')) continue;
+    out.set(id, { id, word_stressed: stressed });
   }
   return out;
 };
 
-export const detectStressPlacementWithLlm = async (
+/** Ask the LLM to stress only unresolved words (dictionary OOV / heteronyms). */
+export const detectUnresolvedWordStressWithLlm = async (
   opts: LlmStressPlacementOptions,
-): Promise<LlmStressPlacementResult[]> => {
-  const expectedIds = opts.items.map((item) => item.id);
+): Promise<LlmStressWordResult[]> => {
+  if (opts.words.length === 0) return [];
+  const expectedIds = opts.words.map((item) => item.id);
+  const expectedById = new Map(opts.words.map((item) => [item.id, item]));
   const { content, meta } = await chatWithFallback({
     model: opts.model,
     messages: [
       { role: 'system', content: buildStressPlacementSystemPrompt(opts.targetLang) },
-      { role: 'user', content: buildStressPlacementUserPayload(opts.items) },
+      { role: 'user', content: buildStressPlacementUserPayload(opts.words) },
     ],
     responseFormat: buildStressPlaceResponseFormat(expectedIds.length),
     signal: opts.signal,
@@ -88,8 +102,8 @@ export const detectStressPlacementWithLlm = async (
     logMeta: { operation: 'stress_place' },
   });
 
-  const byId = parseItems(content, expectedIds, meta);
-  const results: LlmStressPlacementResult[] = [];
+  const byId = parseItems(content, expectedIds, expectedById, meta);
+  const results: LlmStressWordResult[] = [];
   const missing: number[] = [];
   for (const id of expectedIds) {
     const hit = byId.get(id);

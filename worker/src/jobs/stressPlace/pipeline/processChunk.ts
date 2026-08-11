@@ -1,11 +1,19 @@
 import { getTranslateModel } from '../../../../../src/config';
 import {
-  detectStressPlacementWithLlm,
+  detectUnresolvedWordStressWithLlm,
   isLlmStressPlacementMissingIdsError,
+  type LlmStressWordItem,
+  type LlmStressWordResult,
 } from '../../../../../src/llm/stressPlacement';
 import { enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
 import type { StressPlaceRow } from '../../../../../src/web/data/queries/stressPlacement';
 import { stressedMatchesSource } from '../../../../../src/voice/stressedTranslation';
+import { getUkStressDictionary } from '../../../../../src/voice/ukStress/dictionary';
+import {
+  mergeLlmWordStress,
+  placeLineWithDictionary,
+  type UnresolvedStressWord,
+} from '../../../../../src/voice/ukStress/placeLine';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import type { RunModStressPlacePipelineOpts } from './runPipeline';
 
@@ -15,51 +23,107 @@ export type StressPlaceChunkResult = {
   srcText: string;
 };
 
+type LinePrep = {
+  row: StressPlaceRow;
+  partialStressed: string;
+  unresolved: UnresolvedStressWord[];
+};
+
+const applyLlmResults = (
+  results: readonly LlmStressWordResult[],
+  llmMeta: ReadonlyMap<number, { lineIndex: number; tokenIndex: number }>,
+  stressedByLine: Map<number, string>[],
+): void => {
+  for (const result of results) {
+    const meta = llmMeta.get(result.id);
+    if (!meta) continue;
+    stressedByLine[meta.lineIndex].set(meta.tokenIndex, result.word_stressed);
+  }
+};
+
 export const processStressPlaceChunk = async (
   chunk: readonly StressPlaceRow[],
   opts: RunModStressPlacePipelineOpts,
   enqueueSplit?: (parts: readonly (readonly StressPlaceRow[])[]) => void,
 ): Promise<StressPlaceChunkResult[]> => {
-  try {
-    const llmResults = await detectStressPlacementWithLlm({
-      items: chunk.map((row) => ({ id: row.translation_id, text: row.translation })),
-      model: getTranslateModel(),
-      targetLang: opts.targetLang,
-      signal: opts.signal,
-      enableThinking: opts.enableThinking,
-    });
-    const byId = new Map(llmResults.map((r) => [r.id, r.text_stressed]));
-    const accepted: StressPlaceChunkResult[] = [];
-    const drifted: StressPlaceRow[] = [];
-    for (const row of chunk) {
-      const textStressed = byId.get(row.translation_id);
-      if (!textStressed) continue;
-      if (!stressedMatchesSource(textStressed, row.translation)) {
-        drifted.push(row);
-        continue;
+  const dict = await getUkStressDictionary();
+  const prepared: LinePrep[] = chunk.map((row) => {
+    const placed = placeLineWithDictionary(dict, row.translation);
+    return {
+      row,
+      partialStressed: placed.partialStressed,
+      unresolved: placed.unresolved,
+    };
+  });
+
+  const llmWords: LlmStressWordItem[] = [];
+  const llmMeta = new Map<number, { lineIndex: number; tokenIndex: number }>();
+  let nextId = 1;
+  for (let lineIndex = 0; lineIndex < prepared.length; lineIndex++) {
+    const prep = prepared[lineIndex];
+    for (const word of prep.unresolved) {
+      const id = nextId++;
+      llmWords.push({
+        id,
+        word: word.word,
+        context: prep.row.translation,
+        wordIndex: word.tokenIndex,
+      });
+      llmMeta.set(id, { lineIndex, tokenIndex: word.tokenIndex });
+    }
+  }
+
+  const stressedByLine = prepared.map(() => new Map<number, string>());
+
+  if (llmWords.length > 0) {
+    try {
+      const llmResults = await detectUnresolvedWordStressWithLlm({
+        words: llmWords,
+        model: getTranslateModel(),
+        targetLang: opts.targetLang,
+        signal: opts.signal,
+        enableThinking: opts.enableThinking,
+      });
+      applyLlmResults(llmResults, llmMeta, stressedByLine);
+    } catch (err) {
+      if (isLlmStressPlacementMissingIdsError(err)) {
+        if (chunk.length > 1 && enqueueSplit) {
+          enqueueSoloChunks(chunk, enqueueSplit);
+          return [];
+        }
+        applyLlmResults(err.partialResults, llmMeta, stressedByLine);
+      } else {
+        throw err;
       }
-      accepted.push({
-        translationId: row.translation_id,
-        textStressed,
-        srcText: row.translation,
+    }
+  }
+
+  const accepted: StressPlaceChunkResult[] = [];
+  const drifted: StressPlaceRow[] = [];
+  for (let i = 0; i < prepared.length; i++) {
+    const prep = prepared[i];
+    const textStressed = mergeLlmWordStress(prep.partialStressed, stressedByLine[i]);
+    if (!stressedMatchesSource(textStressed, prep.row.translation)) {
+      drifted.push(prep.row);
+      continue;
+    }
+    accepted.push({
+      translationId: prep.row.translation_id,
+      textStressed,
+      srcText: prep.row.translation,
+    });
+  }
+
+  if (drifted.length > 0) {
+    if (chunk.length > 1 && enqueueSplit) {
+      enqueueSoloChunks(drifted, enqueueSplit);
+    } else {
+      logTranslate.warn('stress-place rejected drifted hybrid output', {
+        modId: opts.modId,
+        translationIds: drifted.map((row) => row.translation_id),
       });
     }
-    if (drifted.length > 0) {
-      if (chunk.length > 1 && enqueueSplit) {
-        enqueueSoloChunks(drifted, enqueueSplit);
-      } else {
-        logTranslate.warn('stress-place rejected drifted LLM output', {
-          modId: opts.modId,
-          translationIds: drifted.map((row) => row.translation_id),
-        });
-      }
-    }
-    return accepted;
-  } catch (err) {
-    if (!isLlmStressPlacementMissingIdsError(err) || chunk.length <= 1 || !enqueueSplit) {
-      throw err;
-    }
-    enqueueSoloChunks(chunk, enqueueSplit);
-    return [];
   }
+
+  return accepted;
 };

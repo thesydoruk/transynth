@@ -1,18 +1,16 @@
-import type { LlmStressPlacementItem } from '../stressPlacement';
+import type { LlmStressWordItem } from '../stressPlacement';
 import { buildUkStressPlacementExamples, buildUkStressPlacementRules } from './stressRules';
 
 export const buildStressPlacementSystemPrompt = (targetLang: string): string =>
   [
-    `Ти розставляєш лексичні наголоси в українських діалогових рядках для синтезу мовлення (TTS).`,
+    'Ти розставляєш лексичні наголоси на окремих українських словах для TTS.',
     `Цільова мова: ${targetLang}.`,
+    'Словник уже позначив однозначні слова; тобі лишаються лише OOV та омографи.',
     '',
     '### Технічні правила',
-    '- Позначай **рівно одну** наголошену голосну в кожному слові знаком COMBINING ACUTE ACCENT (U+0301) одразу після голосної.',
-    '- Приклад: "чіпати" → "чіпа\u0301ти" (відображається як чіпа́ти).',
-    '- Не змінюй правопис, пунктуацію, пробіли, ремарки (*...*, [...]) чи порядок слів.',
-    '- Після зняття U+0301 рядок має **байт-в-байт** збігатися з вхідним text (інакше результат відхилять).',
-    '- Немовні блоки залишай без змін.',
-    '- Поверни один рядок text_stressed на кожен id.',
+    '- Поверни `word_stressed` з COMBINING ACUTE ACCENT (U+0301) для кожного `id`.',
+    '- Приклад: "чіпати" → "чіпа\u0301ти" (чіпа́ти).',
+    '- Не повертай цілий рядок — лише наголошену форму слова.',
     '- Вихід — лише JSON за схемою.',
     '',
     buildUkStressPlacementRules(),
@@ -20,10 +18,12 @@ export const buildStressPlacementSystemPrompt = (targetLang: string): string =>
     buildUkStressPlacementExamples(),
   ].join('\n');
 
-export const buildStressPlacementUserPayload = (items: readonly LlmStressPlacementItem[]): string =>
+export const buildStressPlacementUserPayload = (words: readonly LlmStressWordItem[]): string =>
   JSON.stringify({
-    items: items.map((item) => ({
+    words: words.map((item) => ({
       id: item.id,
-      text: item.text,
+      word: item.word,
+      context: item.context,
+      word_index: item.wordIndex,
     })),
   });

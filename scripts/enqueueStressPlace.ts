@@ -1,10 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Enqueue stress-place for mods with voiced lines.
+ * Enqueue stress-place jobs for mods with voiced lines.
  *
- * Usage:
- *   npx tsx scripts/enqueueMissingStressPlace.ts [--dry-run] [--shard 0/6] [--mod-id N]
- *   npx tsx scripts/enqueueMissingStressPlace.ts --scope all --shard 0/6
+ *   npx tsx scripts/enqueueStressPlace.ts [--dry-run] [--scope missing|all] [--mod-id N]
  */
 import '../src/loadEnv';
 import yargs from 'yargs';
@@ -23,45 +21,21 @@ import { writeJobSnapshot } from '../worker/src/core/snapshots';
 import { findActiveJobIdForMod } from '../worker/src/api/jobStatus';
 
 const argv = await yargs(hideBin(process.argv))
-  .scriptName('stress:enqueue-missing')
+  .scriptName('stress:enqueue')
   .option('dry-run', { type: 'boolean', default: false })
   .option('mod-id', { type: 'number' })
   .option('scope', {
     type: 'string',
     choices: ['missing', 'all'] as const,
     default: 'missing' as const,
-    describe: 'missing = pending only; all = re-stress every voiced line',
-  })
-  .option('shard', {
-    type: 'string',
-    describe: 'Process only mods where modId % N === i, format i/N (e.g. 0/6)',
   })
   .option('target-lang', { type: 'string', default: CONFIG.defaultTgtLang })
   .option('src-lang', { type: 'string', default: CONFIG.defaultSrcLang })
   .help()
   .parse();
 
-const parseShard = (raw: string | undefined): { index: number; total: number } | null => {
-  if (!raw?.trim()) return null;
-  const m = /^(\d+)\s*\/\s*(\d+)$/.exec(raw.trim());
-  if (!m) throw new Error(`Invalid --shard ${raw}; expected i/N`);
-  const index = Number(m[1]);
-  const total = Number(m[2]);
-  if (
-    !Number.isInteger(index) ||
-    !Number.isInteger(total) ||
-    total < 1 ||
-    index < 0 ||
-    index >= total
-  ) {
-    throw new Error(`Invalid --shard ${raw}; need 0 <= i < N`);
-  }
-  return { index, total };
-};
-
 validateConfig();
 const db = openDb();
-const shard = parseShard(argv.shard as string | undefined);
 const srcLang = String(argv['src-lang']).trim();
 const targetLang = String(argv['target-lang']).trim().toLowerCase();
 const onlyModId = argv['mod-id'] as number | undefined;
@@ -92,45 +66,42 @@ const enqueueStressPlace = async (modId: number): Promise<number> => {
 
 const run = async (): Promise<void> => {
   const { rows: mods } = await db.query<{ id: number; name: string }>(
-    `SELECT id, name FROM mods
-      WHERE ($1::int IS NULL OR id = $1)
-      ORDER BY id`,
-    [onlyModId ?? null],
+    onlyModId != null
+      ? `SELECT id, name FROM mods WHERE id = $1`
+      : `SELECT DISTINCT m.id, m.name
+           FROM mods m
+           JOIN records r ON r.mod_id = m.id
+           JOIN strings s ON s.record_id = r.id
+           JOIN translations t ON t.src_string_id = s.id
+          WHERE t.target_lang = $1
+          ORDER BY m.id`,
+    onlyModId != null ? [onlyModId] : [targetLang],
   );
 
   let enqueued = 0;
-  let skippedNoWork = 0;
-  let skippedBusy = 0;
-  let skippedShard = 0;
+  let noWork = 0;
+  let busy = 0;
   let failed = 0;
 
   for (const mod of mods) {
-    if (shard && mod.id % shard.total !== shard.index) {
-      skippedShard += 1;
-      continue;
-    }
-
     try {
       const active = await findActiveJobIdForMod(['stress-place'], mod.id);
       if (active) {
-        skippedBusy += 1;
-        log.info(`skip mod_id=${mod.id} — stress-place already active job #${active.jobId}`);
+        busy += 1;
+        log.info(`skip mod_id=${mod.id} busy job #${active.jobId}`);
         continue;
       }
-
       const paths = await loadModImportPaths(db, { modId: mod.id });
       const packages = resolveImportPackages(paths.extractDir, targetLang, paths.pluginPath);
       if (packages.length === 0) {
-        skippedNoWork += 1;
+        noWork += 1;
         continue;
       }
-
       const work = await countStressPlaceWork(db, mod.id, packages, srcLang, targetLang, scope);
-      if (work <= 0) {
-        skippedNoWork += 1;
+      if (work === 0) {
+        noWork += 1;
         continue;
       }
-
       if (argv['dry-run']) {
         log.info(
           `[dry-run] would enqueue mod_id=${mod.id} scope=${scope} work=${work} (${mod.name})`,
@@ -138,20 +109,17 @@ const run = async (): Promise<void> => {
         enqueued += 1;
         continue;
       }
-
       const jobId = await enqueueStressPlace(mod.id);
       enqueued += 1;
-      log.info(
-        `Enqueued stress-place #${jobId} mod_id=${mod.id} scope=${scope} work=${work} (${mod.name})`,
-      );
+      log.info(`enqueued job #${jobId} mod_id=${mod.id} scope=${scope} work=${work} (${mod.name})`);
     } catch (err) {
       failed += 1;
-      log.warn(`mod_id=${mod.id} failed: ${err instanceof Error ? err.message : String(err)}`);
+      log.error(`mod_id=${mod.id} failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   log.info(
-    `Done shard=${argv.shard ?? 'all'} scope=${scope} enqueued=${enqueued} noWork=${skippedNoWork} busy=${skippedBusy} otherShard=${skippedShard} failed=${failed}`,
+    `Done scope=${scope} enqueued=${enqueued} noWork=${noWork} busy=${busy} failed=${failed}`,
   );
 };
 
@@ -160,6 +128,6 @@ try {
 } finally {
   await closeJobsQueue();
   await closeDb();
+  // One-shot CLI — don't leave open handles (Redis) blocking docker compose run.
+  process.exit(0);
 }
-// docker compose run otherwise can hang on open handles
-process.exit(0);

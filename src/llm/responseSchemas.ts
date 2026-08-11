@@ -163,7 +163,7 @@ export const buildNarratorGenderDetectResponseFormat = (
   },
 });
 
-/** JSON Schema for {@link detectStressPlacementWithLlm} batch responses. */
+/** JSON Schema for {@link detectUnresolvedWordStressWithLlm} word-batch responses. */
 export const buildStressPlaceResponseSchema = (itemCount: number): Record<string, unknown> => ({
   type: 'object',
   properties: {
@@ -174,9 +174,9 @@ export const buildStressPlaceResponseSchema = (itemCount: number): Record<string
         type: 'object',
         properties: {
           id: { type: 'integer' },
-          text_stressed: { type: 'string' },
+          word_stressed: { type: 'string' },
         },
-        required: ['id', 'text_stressed'],
+        required: ['id', 'word_stressed'],
         additionalProperties: false,
       },
     },
@@ -188,7 +188,7 @@ export const buildStressPlaceResponseSchema = (itemCount: number): Record<string
 export const buildStressPlaceResponseFormat = (itemCount: number): LlmJsonSchemaFormat => ({
   type: 'json_schema',
   json_schema: {
-    name: 'stress_place_batch',
+    name: 'stress_place_words_batch',
     strict: true,
     schema: buildStressPlaceResponseSchema(itemCount),
   },
