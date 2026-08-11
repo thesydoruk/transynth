@@ -47,7 +47,6 @@ type SlotProps = {
   menuItems?: CircularProgressButtonMenuItem[];
   onStop?: () => void;
   stoppable?: boolean;
-  compact?: boolean;
   circular?: boolean;
 };
 
@@ -133,105 +132,33 @@ const Slot = ({
   menuItems,
   onStop,
   stoppable = false,
-  compact,
   circular,
 }: SlotProps) => {
   const { t } = useTranslation();
   const isRunning = entry.status === 'running' || entry.status === 'stopping';
-  const isFailed = entry.status === 'failed';
-  const isDone =
-    entry.status === 'completed' || entry.status === 'cancelled' || entry.status === 'failed';
   const pct = progressPct(entry.done, entry.total);
   const tooltip = buildAiJobTooltip(t, label, idleHint, runningLabel, entry, stoppable);
-  const useProgressButton = circular || menuItems != null;
   const buttonSize = circular ? 'md' : 'sm';
 
-  let statusText: string | null = null;
-  if (entry.status === 'stopping') {
-    statusText = t('modAi.statusStopping');
-  } else if (isRunning) {
-    statusText =
-      entry.total > 0
-        ? t('modAi.progressShort', { done: entry.done, total: entry.total })
-        : runningLabel;
-  } else if (entry.status === 'completed') {
-    statusText = t('modAi.statusCompleted');
-  } else if (entry.status === 'cancelled') {
-    statusText = t('modAi.statusCancelled');
-  } else if (entry.status === 'failed') {
-    statusText = entry.error ?? t('modAi.statusFailed');
-  }
+  const sharedProps = {
+    icon,
+    progress: resolveCircularProgress(entry, pct),
+    tone: resolveCircularTone(entry),
+    state: resolveCircularState(entry),
+    ariaLabel: label,
+    title: tooltip,
+    size: buttonSize as 'sm' | 'md',
+    disabled: false,
+  };
 
-  if (useProgressButton) {
-    const sharedProps = {
-      icon,
-      progress: resolveCircularProgress(entry, pct),
-      tone: resolveCircularTone(entry),
-      state: resolveCircularState(entry),
-      ariaLabel: label,
-      title: tooltip,
-      size: buttonSize as 'sm' | 'md',
-      disabled: false,
-    };
+  const button =
+    menuItems && !isRunning ? (
+      <CircularProgressButton {...sharedProps} menuItems={menuItems} />
+    ) : (
+      <CircularProgressButton {...sharedProps} onClick={onStop ?? onClick ?? (() => {})} />
+    );
 
-    const button =
-      menuItems && !isRunning ? (
-        <CircularProgressButton {...sharedProps} menuItems={menuItems} />
-      ) : (
-        <CircularProgressButton {...sharedProps} onClick={onStop ?? onClick ?? (() => {})} />
-      );
-
-    return <div className={circular ? s.circularItem : s.menuItem}>{button}</div>;
-  }
-
-  let btnClass = s.btn;
-  if (isRunning) btnClass += ` ${s.btnRunning}`;
-  else if (isFailed) btnClass += ` ${s.btnFailed}`;
-  else if (entry.status === 'completed') btnClass += ` ${s.btnCompleted}`;
-
-  return (
-    <div className={s.item}>
-      <button
-        type="button"
-        className={btnClass}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.();
-        }}
-        title={tooltip}
-        aria-label={label}
-      >
-        <span className={s.icon} aria-hidden>
-          {icon}
-        </span>
-        <span className={s.label}>
-          {entry.status === 'stopping'
-            ? t('modAi.statusStopping')
-            : isRunning
-              ? runningLabel
-              : label}
-        </span>
-      </button>
-      {isRunning && pct != null && (
-        <>
-          <div className={s.progressTrack}>
-            <div className={s.progressFill} style={{ width: `${pct}%` }} />
-          </div>
-          {!compact && statusText && <span className={s.statusChip}>{statusText}</span>}
-        </>
-      )}
-      {!isRunning && isDone && statusText && !compact && (
-        <span className={`${s.statusChip}${isFailed ? ` ${s.statusChipError}` : ''}`}>
-          {statusText}
-        </span>
-      )}
-      {compact && statusText && (
-        <span className={`${s.progressLabel}${isFailed ? ` ${s.statusChipError}` : ''}`}>
-          {statusText}
-        </span>
-      )}
-    </div>
-  );
+  return <div className={circular ? s.circularItem : s.menuItem}>{button}</div>;
 };
 
 /** Per-mod controls for skip-detect, auto-translate, auto-verify, and voice generation with live status. */
@@ -302,7 +229,6 @@ export const ModAiControls = ({
         menuItems={skipDetectMenuItems}
         onStop={onSkipDetectStop}
         stoppable
-        compact={compact}
         circular={circular}
       />
       <Slot
@@ -314,7 +240,6 @@ export const ModAiControls = ({
         onClick={onGenderDetect}
         onStop={onGenderDetectStop}
         stoppable
-        compact={compact}
         circular={circular}
       />
       <Slot
@@ -326,7 +251,6 @@ export const ModAiControls = ({
         menuItems={translateMenuItems}
         onStop={onTranslateStop}
         stoppable
-        compact={compact}
         circular={circular}
       />
       <Slot
@@ -336,7 +260,6 @@ export const ModAiControls = ({
         idleHint={t('modAi.hintVerify')}
         icon="✓"
         onClick={onVerify}
-        compact={compact}
         circular={circular}
       />
       <Slot
@@ -348,7 +271,6 @@ export const ModAiControls = ({
         menuItems={stressMenuItems}
         onStop={onStressPlaceStop}
         stoppable
-        compact={compact}
         circular={circular}
       />
       <Slot
@@ -360,7 +282,6 @@ export const ModAiControls = ({
         menuItems={voiceMenuItems}
         onStop={onVoiceStop}
         stoppable
-        compact={compact}
         circular={circular}
       />
     </div>
