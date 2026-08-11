@@ -5,9 +5,6 @@ import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStor
 const inFlight = new Set<number>();
 const jobIdByMod = new Map<number, number>();
 
-const shouldForceRescan = (entry: ModAiJobEntry): boolean =>
-  entry.status === 'completed' || entry.status === 'cancelled' || entry.status === 'failed';
-
 const isStressAlreadyRunningError = (err: unknown): boolean => {
   if (!(err instanceof Error)) return false;
   return err.message.includes('already running') || err.message.includes('HTTP 409');
@@ -63,7 +60,8 @@ export const startModAiStressPlace = async (
     const snapshot = await api.llmStressPlace.start(modId, srcLang, targetLang, {
       scope,
       speakerKey: scopedSpeaker ?? undefined,
-      force: shouldForceRescan(entry),
+      // Never force-wipe: scope=missing must keep existing marks; scope=all overwrites in place.
+      force: false,
       onEvent: (event) => {
         if (event.type === 'started') {
           jobIdByMod.set(modId, event.jobId);

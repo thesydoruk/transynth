@@ -3,10 +3,7 @@ import { logTranslate } from '../../../../src/logging/loggers';
 import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
 import { resolveImportPackages } from '../../../../src/modImport';
 import type { ModStressPlaceScope } from '../../../../src/web/data/queries/stressPlacement';
-import {
-  countStressPlaceWork,
-  resetModStressPlaceState,
-} from '../../../../src/web/data/queries/stressPlacement';
+import { countStressPlaceWork } from '../../../../src/web/data/queries/stressPlacement';
 import { runModStressPlacePipeline } from './pipeline/runPipeline';
 import type {
   LlmStressPlaceJobSnapshot,
@@ -23,6 +20,7 @@ export const runLlmStressPlaceJob = async (
     targetLang: string;
     scope?: ModStressPlaceScope;
     speakerKey?: string;
+    /** @deprecated Ignored — never wipe existing stresses; use scope=all to recompute. */
     force?: boolean;
     isCancelled: () => boolean;
     signal: AbortSignal;
@@ -30,8 +28,8 @@ export const runLlmStressPlaceJob = async (
   onEvent: (event: LlmStressPlaceProgressEvent) => void,
 ): Promise<LlmStressPlaceJobSnapshot> => {
   const { jobId, modId } = opts;
-  const scope = opts.scope ?? 'missing';
-  let force = opts.force === true;
+  // Treat legacy force as scope=all without clearing text_stressed first.
+  const scope: ModStressPlaceScope = opts.force === true ? 'all' : (opts.scope ?? 'missing');
   let done = 0;
   let total = 0;
   let placedCount = 0;
@@ -53,9 +51,8 @@ export const runLlmStressPlaceJob = async (
     const paths = await loadModImportPaths(db, { modId });
     const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
 
-    if (force) {
-      const reset = await resetModStressPlaceState(db, modId, opts.targetLang);
-      logTranslate.info('stress-place force reset', { modId, reset });
+    if (opts.force === true) {
+      logTranslate.info('stress-place force ignored (no wipe); using scope=all', { modId });
     }
 
     total = await countStressPlaceWork(
@@ -67,21 +64,6 @@ export const runLlmStressPlaceJob = async (
       scope,
       speakerKey,
     );
-    if (total === 0 && !force && scope === 'missing') {
-      force = true;
-      total = await countStressPlaceWork(
-        db,
-        modId,
-        packages,
-        opts.srcLang,
-        opts.targetLang,
-        'all',
-        speakerKey,
-      );
-      if (total > 0) {
-        await resetModStressPlaceState(db, modId, opts.targetLang);
-      }
-    }
     if (total === 0) {
       throw new Error(
         speakerKey
@@ -99,7 +81,7 @@ export const runLlmStressPlaceJob = async (
         packages,
         srcLang: opts.srcLang,
         targetLang: opts.targetLang,
-        scope: force ? 'all' : scope,
+        scope,
         speakerKey,
         knownTotal: total,
         shouldCancel: opts.isCancelled,
