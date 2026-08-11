@@ -56,12 +56,18 @@ const castleCue = (ctx: string): boolean => {
   );
 };
 
+/** True when «Замок» is the Minutemen fort / place name (capitalized in source). */
+const castlePlaceName = (ctx: string): boolean =>
+  /(?:^|[^\p{L}\p{M}])Замк/u.test(ctx.normalize('NFC'));
+
 const lockCue = (ctx: string): boolean => {
   const t = ctx.toLocaleLowerCase('uk-UA');
+  // Avoid «відкрити вогонь» — that is artillery, not lockpicking.
+  if (has(t, new RegExp(`${BOUND}відкрити${BOUND_END}\\s+вогонь`, 'u'))) return false;
   return has(
     t,
     new RegExp(
-      `${BOUND}(відчин|відкри|замкн|ключ|двер|скринь|защіпк|відмик|термінал|злам|аналіз|обійти|шпильк|складн)`,
+      `${BOUND}(відчинит|відчиня|відкривати|відкриває|відкрий|відкритт|відімкн|замкн|ключ|двер|скринь|защіпк|відмик|термінал|злам|аналіз|обійти|шпильк|складн)`,
       'u',
     ),
   );
@@ -100,6 +106,12 @@ export const correctHeteronymIndex = (
     }
   }
   if (/^замк/u.test(plainLower)) {
+    if (castlePlaceName(context)) {
+      if (chosenIdx === 1 && stresses.includes(0)) {
+        return { correctIdx: 0, reason: 'замок: топонім Замок' };
+      }
+      return null;
+    }
     if (lockCue(context) && chosenIdx === 0 && stresses.includes(1)) {
       return { correctIdx: 1, reason: 'замок: механізм/ключ' };
     }
