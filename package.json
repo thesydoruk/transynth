@@ -13,6 +13,7 @@
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "qa:refresh": "tsx scripts/refreshQaIssues.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
+    "rag:index-missing": "tsx scripts/indexMissingRag.ts",
     "tools:install": "tsx scripts/installTools.ts",
     "fonts:check": "tsx scripts/checkFontGlyphs.ts",
     "fonts:patch": "tsx scripts/patchFontGlyphs.ts",
