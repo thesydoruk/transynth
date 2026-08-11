@@ -2,17 +2,12 @@ import { mergeLlmWordStress, placeLineWithDictionary, restoreWordCase } from '..
 import type { UkStressDictionary } from '../dictionary';
 
 const mockDict = (
-  entries: Record<string, { mark: string; type: 'unique' | 'variative' | 'heteronym' }>,
+  entries: Record<string, { stress: number; type: 'unique' | 'variative' | 'heteronym' }>,
 ): UkStressDictionary => ({
   lookupFull: (word) => {
     const hit = entries[word.toLocaleLowerCase('uk-UA')];
     if (!hit) return null;
-    return { stress: 0, type: hit.type };
-  },
-  mark: (word) => {
-    const hit = entries[word.toLocaleLowerCase('uk-UA')];
-    if (!hit || hit.type === 'heteronym') return null;
-    return hit.mark;
+    return { stress: hit.stress, type: hit.type };
   },
 });
 
@@ -28,10 +23,10 @@ describe('restoreWordCase', () => {
 
 describe('placeLineWithDictionary', () => {
   const dict = mockDict({
-    можу: { mark: 'мо\u0301жу', type: 'unique' },
-    було: { mark: 'було\u0301', type: 'unique' },
-    замок: { mark: 'за\u0301мок', type: 'heteronym' },
-    помилка: { mark: 'по\u0301милка', type: 'variative' },
+    можу: { stress: 0, type: 'unique' },
+    було: { stress: 1, type: 'unique' },
+    замок: { stress: 0, type: 'heteronym' },
+    помилка: { stress: 0, type: 'variative' },
   });
 
   it('marks unique and variative words; leaves heteronym/OOV for LLM', () => {
@@ -48,6 +43,18 @@ describe('placeLineWithDictionary', () => {
     const placed = placeLineWithDictionary(dict, '*важке* Можу...');
     expect(placed.partialStressed.startsWith('*важке*')).toBe(true);
     expect(placed.partialStressed).toContain('Мо\u0301жу');
+  });
+
+  it('preserves source apostrophe characters', () => {
+    const word = '\u043F\u0430\u043C\u0027\u044F\u0442\u0456'; // пам'яті
+    const dictAp = mockDict({ [word]: { stress: 0, type: 'unique' } });
+    const placed = placeLineWithDictionary(
+      dictAp,
+      `\u041F\u0435\u0440\u0435\u0432\u0456\u0440\u043A\u0430 ${word}`,
+    );
+    expect(placed.partialStressed).toBe(
+      `\u041F\u0435\u0440\u0435\u0432\u0456\u0440\u043A\u0430 \u043F\u0430\u0301\u043C\u0027\u044F\u0442\u0456`,
+    );
   });
 });
 

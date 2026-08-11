@@ -1,7 +1,9 @@
+import { applyStressMark } from 'ua-word-stress';
 import { STRESS_COMBINING_ACUTE, stripStressMarks } from '../stressedTranslation';
 import type { UkStressDictionary } from './dictionary';
 
-const WORD_RE = /[\p{L}\p{M}]+/gu;
+/** Letter runs, keeping Ukrainian apostrophe variants inside the word (пам'ять). */
+const WORD_RE = /[\p{L}\p{M}]+(?:['\u2019\u02BC\u2018][\p{L}\p{M}]+)*/gu;
 const HAS_UA_VOWEL = /[аеєиіїоуюяАЕЄИІЇОУЮЯ]/u;
 
 export type UnresolvedStressWord = {
@@ -46,16 +48,12 @@ export const restoreWordCase = (plain: string, marked: string): string => {
   return out;
 };
 
-const markKnownWord = (dict: UkStressDictionary, plain: string): string | null => {
-  const lower = plain.toLocaleLowerCase('uk-UA');
-  const marked = dict.mark(lower) ?? dict.mark(plain);
-  if (!marked) return null;
-  return restoreWordCase(plain, marked);
-};
-
 /**
  * Apply dictionary stress to every unambiguous / variative word.
  * Heteronyms and OOV words are left unmarked and listed in `unresolved`.
+ *
+ * Stress is applied onto the **original** spelling via vowel index (not
+ * `trie.mark()`), so apostrophes / casing never drift from the source line.
  */
 export const placeLineWithDictionary = (
   dict: UkStressDictionary,
@@ -97,10 +95,12 @@ export const placeLineWithDictionary = (
       continue;
     }
 
-    const marked = markKnownWord(dict, plain);
-    out += marked ?? plain;
-    if (!marked) {
+    const marked = applyStressMark(plain, full.stress);
+    if (stripStressMarks(marked) !== plain) {
       unresolved.push({ tokenIndex, word: plain, reason: 'oov' });
+      out += plain;
+    } else {
+      out += marked;
     }
     tokenIndex += 1;
   }

@@ -41,6 +41,28 @@ const applyLlmResults = (
   }
 };
 
+const toAccepted = (
+  prepared: readonly LinePrep[],
+  stressedByLine: readonly Map<number, string>[],
+): { accepted: StressPlaceChunkResult[]; drifted: StressPlaceRow[] } => {
+  const accepted: StressPlaceChunkResult[] = [];
+  const drifted: StressPlaceRow[] = [];
+  for (let i = 0; i < prepared.length; i++) {
+    const prep = prepared[i];
+    const textStressed = mergeLlmWordStress(prep.partialStressed, stressedByLine[i]);
+    if (!stressedMatchesSource(textStressed, prep.row.translation)) {
+      drifted.push(prep.row);
+      continue;
+    }
+    accepted.push({
+      translationId: prep.row.translation_id,
+      textStressed,
+      srcText: prep.row.translation,
+    });
+  }
+  return { accepted, drifted };
+};
+
 export const processStressPlaceChunk = async (
   chunk: readonly StressPlaceRow[],
   opts: RunModStressPlacePipelineOpts,
@@ -74,6 +96,7 @@ export const processStressPlaceChunk = async (
   }
 
   const stressedByLine = prepared.map(() => new Map<number, string>());
+  let splitForLlmRetry = false;
 
   if (llmWords.length > 0) {
     try {
@@ -87,33 +110,46 @@ export const processStressPlaceChunk = async (
       applyLlmResults(llmResults, llmMeta, stressedByLine);
     } catch (err) {
       if (isLlmStressPlacementMissingIdsError(err)) {
-        if (chunk.length > 1 && enqueueSplit) {
-          enqueueSoloChunks(chunk, enqueueSplit);
-          return [];
-        }
         applyLlmResults(err.partialResults, llmMeta, stressedByLine);
+        if (chunk.length > 1 && enqueueSplit) {
+          splitForLlmRetry = true;
+        }
       } else {
-        throw err;
+        logTranslate.warn('stress-place LLM failed; keeping dictionary marks', {
+          modId: opts.modId,
+          error: err instanceof Error ? err.message : String(err),
+          wordCount: llmWords.length,
+        });
+        if (chunk.length > 1 && enqueueSplit) {
+          splitForLlmRetry = true;
+        }
       }
     }
   }
 
-  const accepted: StressPlaceChunkResult[] = [];
-  const drifted: StressPlaceRow[] = [];
-  for (let i = 0; i < prepared.length; i++) {
-    const prep = prepared[i];
-    const textStressed = mergeLlmWordStress(prep.partialStressed, stressedByLine[i]);
-    if (!stressedMatchesSource(textStressed, prep.row.translation)) {
-      drifted.push(prep.row);
-      continue;
+  if (splitForLlmRetry && enqueueSplit) {
+    // Save dictionary-only lines now; retry only rows that still need LLM words.
+    const dictOnly: LinePrep[] = [];
+    const needsLlm: StressPlaceRow[] = [];
+    for (const prep of prepared) {
+      if (prep.unresolved.length === 0) dictOnly.push(prep);
+      else needsLlm.push(prep.row);
     }
-    accepted.push({
-      translationId: prep.row.translation_id,
-      textStressed,
-      srcText: prep.row.translation,
-    });
+    if (needsLlm.length > 0) enqueueSoloChunks(needsLlm, enqueueSplit);
+    const { accepted, drifted } = toAccepted(
+      dictOnly,
+      dictOnly.map(() => new Map()),
+    );
+    if (drifted.length > 0) {
+      logTranslate.warn('stress-place rejected drifted dictionary output', {
+        modId: opts.modId,
+        translationIds: drifted.map((row) => row.translation_id),
+      });
+    }
+    return accepted;
   }
 
+  const { accepted, drifted } = toAccepted(prepared, stressedByLine);
   if (drifted.length > 0) {
     if (chunk.length > 1 && enqueueSplit) {
       enqueueSoloChunks(drifted, enqueueSplit);
@@ -124,6 +160,5 @@ export const processStressPlaceChunk = async (
       });
     }
   }
-
   return accepted;
 };

@@ -9,7 +9,6 @@ export type UkStressDictionary = {
     stress: number;
     type: 'unique' | 'variative' | 'heteronym';
   } | null;
-  mark: (word: string) => string | null;
 };
 
 let triePromise: Promise<UkStressDictionary> | null = null;
