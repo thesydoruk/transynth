@@ -12,6 +12,7 @@
 
 import type { Tx } from '../../db';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
+import { normalizeVllmServerEntries, type VllmServerEntry } from '../../llm/vllmServerConfig';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
 
@@ -46,7 +47,12 @@ export type ProjectSettingKey =
   /** Fish Speech nucleus sampling top-p (0–1). */
   | 'voice.top_p'
   /** Max concurrent Fish Speech TTS HTTP requests (1–32). */
-  | 'voice.tts_max_parallel_fish_speech';
+  | 'voice.tts_max_parallel_fish_speech'
+  /**
+   * vLLM chat pool (`[{host, maxParallel, apiKey}, …]`).
+   * Empty = fall back to env `VLLM_SERVERS` / `VLLM_BASE_URL`.
+   */
+  | 'llm.vllm_servers';
 
 /** Typed shape of all project settings. */
 export type ProjectSettings = {
@@ -63,6 +69,7 @@ export type ProjectSettings = {
   'voice.repetition_penalty': number;
   'voice.top_p': number;
   'voice.tts_max_parallel_fish_speech': number;
+  'llm.vllm_servers': VllmServerEntry[];
 };
 
 /** Clamp TTS parallel request limits to 1–32. */
@@ -91,6 +98,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'voice.repetition_penalty': 1.2,
   'voice.top_p': 0.8,
   'voice.tts_max_parallel_fish_speech': 1,
+  'llm.vllm_servers': [],
 };
 
 /* ── DB helpers ─────────────────────────────────────────────────────────── */
@@ -116,6 +124,7 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
   result['voice.tts_max_parallel_fish_speech'] = clampTtsMaxParallel(
     result['voice.tts_max_parallel_fish_speech'],
   );
+  result['llm.vllm_servers'] = normalizeVllmServerEntries(result['llm.vllm_servers']);
   return result;
 };
 
@@ -156,6 +165,9 @@ export const setProjectSetting = async (
   let stored: ProjectSettings[ProjectSettingKey] = value;
   if (key === 'voice.tts_max_parallel_fish_speech') {
     stored = clampTtsMaxParallel(value as number) as ProjectSettings[ProjectSettingKey];
+  }
+  if (key === 'llm.vllm_servers') {
+    stored = normalizeVllmServerEntries(value) as ProjectSettings[ProjectSettingKey];
   }
 
   await db.query(

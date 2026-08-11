@@ -1,12 +1,15 @@
 /**
  * Independent global pools for LLM chat and embedding HTTP requests.
  *
- * Chat uses per-server limits when `VLLM_SERVERS` is configured; otherwise a single
- * global semaphore (`LLM_MAX_PARALLEL`). Embed pool is separate (`EMBED_MAX_PARALLEL`).
+ * Chat uses per-server limits when multi-server routing is active; otherwise a
+ * single global semaphore. Embed pool is separate (`EMBED_MAX_PARALLEL`).
+ * Chat servers/limits are refreshed from project settings via {@link syncLlmChatPool}.
  */
 import { CONFIG } from '../config';
 import { Semaphore } from '../utils/concurrency';
 import { MultiServerChatPool } from './multiServerChatPool';
+import type { VllmServerEntry } from './vllmServerConfig';
+import { totalVllmChatParallel } from './vllmServerConfig';
 import type OpenAI from 'openai';
 
 export type RequestPoolStats = {
@@ -34,6 +37,10 @@ export class RequestPool {
     };
   }
 
+  syncLimit(maxParallel: number): void {
+    this.semaphore.setMaxConcurrency(maxParallel);
+  }
+
   run<T>(fn: () => Promise<T>): Promise<T> {
     return this.semaphore.run(fn);
   }
@@ -47,18 +54,18 @@ type ChatPool = {
   ): Promise<T>;
 };
 
-const buildChatPool = (): ChatPool => {
-  if (CONFIG.vllmMultiServer) {
-    const multi = new MultiServerChatPool(CONFIG.vllmServers);
-    const openaiPool = new RequestPool(new Semaphore(CONFIG.llmMaxParallel));
+const buildChatPool = (servers: readonly VllmServerEntry[], multi: boolean): ChatPool => {
+  if (multi) {
+    const multiPool = new MultiServerChatPool(servers);
+    const openaiPool = new RequestPool(new Semaphore(totalVllmChatParallel(servers)));
     return {
       get stats(): RequestPoolStats {
-        return CONFIG.llmProvider === 'vllm' ? multi.stats : openaiPool.stats;
+        return CONFIG.llmProvider === 'vllm' ? multiPool.stats : openaiPool.stats;
       },
       run: <T>(fn: () => Promise<T>) => openaiPool.run(fn),
       runWithClient: <T>(
         fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>,
-      ) => multi.run(fn),
+      ) => multiPool.run(fn),
     };
   }
 
@@ -71,8 +78,26 @@ const buildChatPool = (): ChatPool => {
   };
 };
 
+let chatPoolImpl: ChatPool = buildChatPool(CONFIG.vllmServers, CONFIG.vllmMultiServer);
+
 /** Chat/completion requests (translate, verify, skip-detect, locale detect). */
-export const llmChatPool: ChatPool = buildChatPool();
+export const llmChatPool: ChatPool = {
+  get stats(): RequestPoolStats {
+    return chatPoolImpl.stats;
+  },
+  run: <T>(fn: () => Promise<T>) => chatPoolImpl.run(fn),
+  runWithClient: <T>(fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>) => {
+    if (!chatPoolImpl.runWithClient) {
+      throw new Error('Multi-server chat pool is not active');
+    }
+    return chatPoolImpl.runWithClient(fn);
+  },
+};
+
+/** Rebuild the chat pool after project-settings / env server list changes. */
+export const syncLlmChatPool = (servers: readonly VllmServerEntry[], multi: boolean): void => {
+  chatPoolImpl = buildChatPool(servers, multi);
+};
 
 /** Embedding requests (RAG indexing and retrieval). */
 export const embedPool = new RequestPool(new Semaphore(CONFIG.embedMaxParallel));

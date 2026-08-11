@@ -50,6 +50,7 @@ import { tmApplyRoutes } from './routes/tmApply';
 import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
 import { getAllProjectSettings } from './services/projectSettings';
+import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
 import { closeJobsQueue } from '../../worker/src/core/queue';
 import { closeJobsQueueEvents } from '../../worker/src/core/queueEvents';
@@ -92,7 +93,11 @@ try {
 
 const db = openDb();
 
-syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
+{
+  const projectSettings = await getAllProjectSettings(db);
+  syncTtsPoolFromProjectSettings(projectSettings);
+  syncLlmPoolFromProjectSettings(projectSettings);
+}
 
 await ensureDefaultUser(db);
 await registerAuthHook(app, db);

@@ -8,7 +8,10 @@
  */
 import type { Job } from 'bullmq';
 import type { Tx } from '../../src/db';
+import { syncLlmPoolFromProjectSettings } from '../../src/llm/llmProjectSettings';
 import { logJobs } from '../../src/logging/loggers';
+import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSettings';
+import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { fromBullJobId } from './core/queue';
 import { writeJobSnapshot } from './core/snapshots';
 import { getJobHandler } from './registry';
@@ -42,6 +45,13 @@ export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
   }
   const { kind, modId } = job.data;
   const handler = getJobHandler(kind);
+
+  // Pick up Settings → LLM/Voice pool changes without restarting the worker.
+  {
+    const projectSettings = await getAllProjectSettings(db);
+    syncTtsPoolFromProjectSettings(projectSettings);
+    syncLlmPoolFromProjectSettings(projectSettings);
+  }
 
   const abort = new AbortController();
   let cancelled = false;

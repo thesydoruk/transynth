@@ -36,7 +36,7 @@ export interface SettingsPayload {
     maxParallel: number;
     apiKeyConfigured: boolean;
   }>;
-  /** True when `VLLM_SERVERS` JSON defines multiple endpoints. */
+  /** True when multi-endpoint chat routing is active (settings or env). */
   vllmMultiServer: boolean;
   /** vLLM model used for translation. */
   vllmModel: string;

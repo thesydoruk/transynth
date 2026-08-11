@@ -953,7 +953,7 @@
       "themeLight": "Перемкнути на світлу"
     },
     "llm": {
-      "readonlyNote": "Ці налаштування доступні лише для читання — вони задаються у файлі .env і потребують перезапуску сервера.",
+      "readonlyNote": "Провайдер і назви моделей беруться з .env на сервері. Пул vLLM нижче зберігається в налаштуваннях проєкту і застосовується без перезапуску.",
       "readinessSection": "Готовність",
       "readiness": {
         "ok": "готово",
@@ -987,7 +987,16 @@
       "provider": "Активний провайдер",
       "fallback": "Резервний провайдер",
       "batchSize": "Розмір пакету",
-      "vllmSection": "vLLM / OpenAI-compatible",
+      "vllmPoolSection": "Пул vLLM (chat)",
+      "vllmPoolDesc": "Хости та ліміт паралельних запитів на сервер для перекладу/перевірки. Зміни застосовуються до нових джобів одразу.",
+      "vllmPoolFallback": "Налаштування проєкту порожнє — показано активний fallback з .env. Збережіть, щоб записати пул у settings.",
+      "vllmPoolAdd": "Додати сервер",
+      "vllmPoolRemove": "Видалити",
+      "vllmPoolSave": "Зберегти пул",
+      "vllmPoolSaving": "Збереження…",
+      "vllmPoolEmptyError": "Додайте хоча б один сервер з URL.",
+      "vllmApiKeyOptional": "необов'язково",
+      "vllmSection": "Моделі vLLM",
       "vllmServer": "Сервер {{index}}",
       "vllmUrl": "Хост",
       "vllmMaxParallel": "Одночасних запитів",

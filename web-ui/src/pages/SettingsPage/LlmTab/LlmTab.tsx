@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api';
 import parentS from '../SettingsPage.module.scss';
 import s from './LlmTab.module.scss';
+import { VllmPoolEditor, type VllmServerDraft } from './VllmPoolEditor';
 
 const ISSUE_KEY_BY_CODE: Record<string, string> = {
   primary_openai_key_missing: 'settings.llm.issues.primaryOpenAiKeyMissing',
@@ -16,7 +17,11 @@ const ISSUE_KEY_BY_CODE: Record<string, string> = {
   embed_model_missing_vllm: 'settings.llm.issues.embedModelMissingVllm',
 };
 
-/** Read-only LLM configuration tab sourced from server settings. */
+type ProjectLlmSettings = {
+  'llm.vllm_servers': VllmServerDraft[];
+};
+
+/** LLM configuration — pool is editable; provider/models remain env-backed. */
 export const LlmTab = () => {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
@@ -24,12 +29,21 @@ export const LlmTab = () => {
     queryFn: api.settings.get,
     staleTime: 60_000,
   });
+  const {
+    data: projectSettings,
+    isLoading: projectLoading,
+    error: projectError,
+  } = useQuery({
+    queryKey: ['projectSettings'],
+    queryFn: () => api.projectSettings.getAll() as Promise<ProjectLlmSettings>,
+    staleTime: 30_000,
+  });
 
-  if (isLoading) return <div className={s.center}>{t('common.loading')}</div>;
-  if (error || !data) {
+  if (isLoading || projectLoading) return <div className={s.center}>{t('common.loading')}</div>;
+  if (error || projectError || !data) {
     return (
       <div className={`${s.center} ${s.error}`}>
-        {t('common.error', { message: String(error) })}
+        {t('common.error', { message: String(error ?? projectError) })}
       </div>
     );
   }
@@ -47,6 +61,16 @@ export const LlmTab = () => {
       : data.llmReadiness.level === 'warn'
         ? 'settings.llm.readiness.warn'
         : 'settings.llm.readiness.error';
+
+  const savedServers = projectSettings?.['llm.vllm_servers'] ?? [];
+  const fallbackServers: VllmServerDraft[] =
+    data.vllmServers.length > 0
+      ? data.vllmServers.map((server) => ({
+          host: server.host,
+          maxParallel: server.maxParallel,
+          apiKey: '',
+        }))
+      : [{ host: data.vllmBaseUrl, maxParallel: data.llmMaxParallel || 2, apiKey: '' }];
 
   return (
     <>
@@ -121,45 +145,16 @@ export const LlmTab = () => {
           <span className={s.fieldValue}>{data.batchSize}</span>
         </div>
       </div>
+
+      <VllmPoolEditor
+        savedServers={savedServers}
+        fallbackServers={fallbackServers}
+        totalParallel={data.llmMaxParallel}
+      />
+
       <div className={parentS.section}>
         <h2 className={parentS.sectionTitle}>{t('settings.llm.vllmSection')}</h2>
         <div className={parentS.fieldGrid}>
-          {data.vllmServers.length > 0 ? (
-            data.vllmServers.map((server, index) => (
-              <div key={`${server.host}-${index}`} className={s.serverBlock}>
-                <span className={parentS.fieldLabel}>
-                  {t('settings.llm.vllmServer', { index: index + 1 })}
-                </span>
-                <div className={s.serverFields}>
-                  <div>
-                    <span className={s.subLabel}>{t('settings.llm.vllmUrl')}</span>
-                    <span className={s.fieldValue}>{server.host}</span>
-                  </div>
-                  <div>
-                    <span className={s.subLabel}>{t('settings.llm.vllmMaxParallel')}</span>
-                    <span className={s.fieldValue}>{server.maxParallel}</span>
-                  </div>
-                  <div>
-                    <span className={s.subLabel}>{t('settings.llm.vllmApiKey')}</span>
-                    <span className={s.fieldValue}>
-                      <span className={server.apiKeyConfigured ? s.badgeOk : s.badgeWarn}>
-                        {server.apiKeyConfigured
-                          ? t('settings.llm.keySet')
-                          : t('settings.llm.keyNotSet')}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <>
-              <span className={parentS.fieldLabel}>{t('settings.llm.vllmUrl')}</span>
-              <span className={s.fieldValue}>{data.vllmBaseUrl}</span>
-            </>
-          )}
-          <span className={parentS.fieldLabel}>{t('settings.llm.llmMaxParallelTotal')}</span>
-          <span className={s.fieldValue}>{data.llmMaxParallel}</span>
           <span className={parentS.fieldLabel}>{t('settings.llm.vllmModel')}</span>
           <span className={s.fieldValue}>{data.vllmModel || '—'}</span>
           <span className={parentS.fieldLabel}>{t('settings.llm.vllmEmbedModel')}</span>

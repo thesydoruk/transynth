@@ -495,7 +495,8 @@ INSERT INTO project_settings(key, value) VALUES
   ('qa.min_word_count',                '1'),
   ('import.skip_tes4',                 'false'),
   ('llm.rag_max_examples',             '5'),
-  ('llm.rag_min_similarity',           '0.5')
+  ('llm.rag_min_similarity',           '0.5'),
+  ('llm.vllm_servers',                 '[]')
 ON CONFLICT(key) DO NOTHING;
 
 -- Stress placement moved to the TTS server.

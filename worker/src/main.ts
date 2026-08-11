@@ -20,6 +20,7 @@ import { closeDb, openDb } from '../../src/db';
 import { closeLogStreams } from '../../src/logger';
 import { logJobs } from '../../src/logging/loggers';
 import { ensureDataDirs } from '../../src/paths';
+import { syncLlmPoolFromProjectSettings } from '../../src/llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSettings';
 import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
@@ -31,8 +32,12 @@ import { cancelAllActiveRuns, controlActiveRun, processJob } from './processor';
 ensureDataDirs();
 const db = openDb();
 
-// TTS pool limits come from project_settings — refresh once at boot.
-syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
+// TTS / LLM pool limits come from project_settings — refresh once at boot.
+{
+  const projectSettings = await getAllProjectSettings(db);
+  syncTtsPoolFromProjectSettings(projectSettings);
+  syncLlmPoolFromProjectSettings(projectSettings);
+}
 
 const worker = new Worker<JobData>(JOBS_QUEUE_NAME, (job) => processJob(db, job), {
   connection: createRedisConnection('worker'),

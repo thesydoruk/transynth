@@ -1,11 +1,25 @@
 import { describe, it, expect } from '@jest/globals';
 import {
+  normalizeVllmServerEntries,
   parseVllmServersJson,
   resolveVllmServers,
   totalVllmChatParallel,
 } from '../vllmServerConfig';
 
 describe('vllmServerConfig', () => {
+  it('normalizes project-settings server arrays', () => {
+    expect(
+      normalizeVllmServerEntries([
+        { host: 'http://a:8000', maxParallel: 4, apiKey: 'k' },
+        { url: 'http://b:8001', requests: 2 },
+        { host: '' },
+      ]),
+    ).toEqual([
+      { host: 'http://a:8000', maxParallel: 4, apiKey: 'k' },
+      { host: 'http://b:8001', maxParallel: 2, apiKey: '' },
+    ]);
+  });
+
   it('parses VLLM_SERVERS JSON', () => {
     const servers = parseVllmServersJson(
       '[{"host":"http://a:8000","maxParallel":3,"apiKey":"k1"},{"host":"http://b:8001","maxParallel":2,"apiKey":""}]',

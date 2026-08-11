@@ -103,9 +103,12 @@ export const CONFIG = {
   vllmBaseUrl: process.env.VLLM_BASE_URL || 'http://localhost:8000',
   vllmApiKey: process.env.VLLM_API_KEY || '',
   vllmModel: process.env.VLLM_MODEL || '',
-  /** Chat endpoints — from `VLLM_SERVERS` JSON or legacy single `VLLM_BASE_URL`. */
+  /**
+   * Chat endpoints — bootstrapped from env; overridden at runtime by
+   * project setting `llm.vllm_servers` (see syncLlmPoolFromProjectSettings).
+   */
   vllmServers: vllmServersFromEnv as VllmServerEntry[],
-  /** True when `VLLM_SERVERS` JSON is set (multi-endpoint routing). */
+  /** True when multi-endpoint routing is active (settings or `VLLM_SERVERS`). */
   vllmMultiServer,
   /** Embeddings may run on a separate OpenAI-compatible server (defaults to first chat host). */
   vllmEmbedBaseUrl:

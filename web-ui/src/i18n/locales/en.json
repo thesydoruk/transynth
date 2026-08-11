@@ -953,7 +953,7 @@
       "themeLight": "Switch to light"
     },
     "llm": {
-      "readonlyNote": "These settings are read-only — they are defined in the .env file and require a server restart to change.",
+      "readonlyNote": "Provider and model names come from the server .env file. The vLLM chat pool below is stored in project settings and applies without a restart.",
       "readinessSection": "Readiness",
       "readiness": {
         "ok": "ready",
@@ -987,7 +987,16 @@
       "provider": "Active provider",
       "fallback": "Fallback provider",
       "batchSize": "Batch size",
-      "vllmSection": "vLLM / OpenAI-compatible",
+      "vllmPoolSection": "vLLM chat pool",
+      "vllmPoolDesc": "Hosts and per-server concurrency for translation/verify chat requests. Changes apply to new jobs immediately.",
+      "vllmPoolFallback": "Project setting is empty — showing the active env fallback. Save to store the pool in settings.",
+      "vllmPoolAdd": "Add server",
+      "vllmPoolRemove": "Remove",
+      "vllmPoolSave": "Save pool",
+      "vllmPoolSaving": "Saving…",
+      "vllmPoolEmptyError": "Add at least one server with a host URL.",
+      "vllmApiKeyOptional": "optional",
+      "vllmSection": "vLLM models",
       "vllmServer": "Server {{index}}",
       "vllmUrl": "Host",
       "vllmMaxParallel": "Concurrent requests",

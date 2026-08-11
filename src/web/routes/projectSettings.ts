@@ -17,6 +17,8 @@ import {
   SETTING_DEFAULTS,
 } from '../services/projectSettings';
 import type { ProjectSettingKey, ProjectSettings } from '../services/projectSettings';
+import { syncLlmPoolFromProjectSettings } from '../../llm/llmProjectSettings';
+import { normalizeVllmServerEntries } from '../../llm/vllmServerConfig';
 import { syncTtsPoolFromProjectSettings } from '../../voice/voiceProjectSettings';
 import { log } from '../../logger';
 
@@ -44,6 +46,21 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
     const { value } = req.body ?? {};
     if (value === undefined || value === null) {
       return reply.code(400).send({ error: 'value is required' });
+    }
+
+    if (key === 'llm.vllm_servers') {
+      if (!Array.isArray(value)) {
+        return reply.code(400).send({ error: 'Expected array for key "llm.vllm_servers"' });
+      }
+      const normalized = normalizeVllmServerEntries(value);
+      if (value.length > 0 && normalized.length === 0) {
+        return reply.code(400).send({ error: 'No valid vLLM servers in the list' });
+      }
+      log.info(`Project setting updated: ${key} = ${JSON.stringify(normalized)}`);
+      await setProjectSetting(db, key, normalized);
+      const settings = await getAllProjectSettings(db);
+      syncLlmPoolFromProjectSettings(settings);
+      return reply.send({ key, value: normalized });
     }
 
     // Validate that the incoming type matches the default type for this key.

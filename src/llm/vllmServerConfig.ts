@@ -26,6 +26,28 @@ const readApiKey = (raw: Record<string, unknown>): string => {
 const readMaxParallel = (raw: Record<string, unknown>): number =>
   clampMaxParallel(raw.maxParallel ?? raw.max_parallel ?? raw.concurrency ?? raw.requests);
 
+/** Normalize a JSON/DB server list; drops invalid entries. */
+export const normalizeVllmServerEntries = (raw: unknown): VllmServerEntry[] => {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+
+  const servers: VllmServerEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const record = item as Record<string, unknown>;
+    const host = readHost(record);
+    if (!host) {
+      log.warn('vLLM server entry skipped: missing host/url');
+      continue;
+    }
+    servers.push({
+      host,
+      maxParallel: readMaxParallel(record),
+      apiKey: readApiKey(record),
+    });
+  }
+  return servers;
+};
+
 /** Parse `VLLM_SERVERS` JSON array. Returns `null` when unset or invalid. */
 export const parseVllmServersJson = (raw: string | undefined): VllmServerEntry[] | null => {
   const trimmed = raw?.trim();
@@ -44,22 +66,7 @@ export const parseVllmServersJson = (raw: string | undefined): VllmServerEntry[]
     return null;
   }
 
-  const servers: VllmServerEntry[] = [];
-  for (const item of parsed) {
-    if (!item || typeof item !== 'object') continue;
-    const record = item as Record<string, unknown>;
-    const host = readHost(record);
-    if (!host) {
-      log.warn('VLLM_SERVERS entry skipped: missing host/url');
-      continue;
-    }
-    servers.push({
-      host,
-      maxParallel: readMaxParallel(record),
-      apiKey: readApiKey(record),
-    });
-  }
-
+  const servers = normalizeVllmServerEntries(parsed);
   return servers.length > 0 ? servers : null;
 };
 
