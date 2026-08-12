@@ -8,11 +8,39 @@ import {
   discoLangFolderNameForLocale,
   discoverDiscoLangFolders,
   listPoFilesInDir,
+  parsePoBuffer,
+  poEntryKey,
   writePoWithOverlays,
 } from '../../formats/po';
 import { log } from '../../logger';
 import { resolveDiscoExtractRoot } from '../../import/mod/discoPoLocales';
+import { hashDiscoMsgid, isHashedDiscoEntryKey } from '../../import/mod/discoPoPath';
 import type { ZipPackEntry } from './exportTypes';
+
+/**
+ * Map hashed DB overlay keys (`msgctxt::#sha1`) back to full gettext entry keys
+ * so `writePoWithOverlays` can match source `.po` entries.
+ */
+const expandHashedDiscoOverlays = (
+  sourcePo: Buffer,
+  overlays: Map<string, string>,
+): Map<string, string> => {
+  const out = new Map<string, string>();
+  let hasHashed = false;
+  for (const [key, text] of overlays) {
+    if (isHashedDiscoEntryKey(key)) hasHashed = true;
+    else out.set(key, text);
+  }
+  if (!hasHashed) return out;
+
+  for (const entry of parsePoBuffer(sourcePo)) {
+    const fullKey = poEntryKey(entry.msgctxt, entry.msgid);
+    const hashedKey = poEntryKey(entry.msgctxt, `#${hashDiscoMsgid(entry.msgid)}`);
+    const text = overlays.get(fullKey) ?? overlays.get(hashedKey);
+    if (text != null) out.set(fullKey, text);
+  }
+  return out;
+};
 
 /** Parse `PO\\relPo\\msgctxt::msgid` into file + entry key. */
 const parseDiscoPoRecordPath = (recordPath: string): { relPo: string; entryKey: string } | null => {
@@ -102,7 +130,7 @@ export const collectDiscoPoPatchEntries = async (
     if (!overlay || overlay.size === 0) continue;
 
     const sourceBuf = fs.readFileSync(poPath);
-    const compiled = writePoWithOverlays(sourceBuf, overlay);
+    const compiled = writePoWithOverlays(sourceBuf, expandHashedDiscoOverlays(sourceBuf, overlay));
     entries.push({
       name: `${outFolder}/${relPo}`,
       data: compiled,

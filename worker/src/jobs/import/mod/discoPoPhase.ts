@@ -69,19 +69,28 @@ export const importDiscoPoStringRows = async (
       await commitExtrasStop(ctx);
       return;
     }
-    await ctx.db.query('BEGIN');
     const slice = bulkRows.slice(i, i + importBatchSize);
-    const results = await bulkInsertModImportRows(ctx.db, importModId, slice);
-    trackImportBatch(ctx, results);
-    for (const res of results) {
-      sourceStringIdByKey.set(overlayKeyFromPath(res.row.csvRow.Path), res.stringId);
+    try {
+      await ctx.db.query('BEGIN');
+      const results = await bulkInsertModImportRows(ctx.db, importModId, slice);
+      trackImportBatch(ctx, results);
+      for (const res of results) {
+        sourceStringIdByKey.set(overlayKeyFromPath(res.row.csvRow.Path), res.stringId);
+      }
+      ctx.imported.value += results.length;
+      await ctx.db.query(
+        `UPDATE mod_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
+        [ctx.imported.value, ctx.job.id],
+      );
+      await ctx.db.query('COMMIT');
+    } catch (err) {
+      try {
+        await ctx.db.query('ROLLBACK');
+      } catch {
+        /* ignore */
+      }
+      throw err;
     }
-    ctx.imported.value += results.length;
-    await ctx.db.query(
-      `UPDATE mod_imports SET imported_records = $1, status = 'in_progress', updated_at = NOW() WHERE id = $2`,
-      [ctx.imported.value, ctx.job.id],
-    );
-    await ctx.db.query('COMMIT');
     ctx.onProgress?.(ctx.imported.value, ctx.imported.value);
   }
 

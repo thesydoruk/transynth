@@ -13,6 +13,7 @@ import {
   type PoEntry,
 } from '../../formats/po';
 import type { CsvRow } from '../../types';
+import { discoPoEntryStorageKey } from './discoPoPath';
 
 export type DiscoPoLocaleBundle = {
   folder: DiscoLangFolder;
@@ -71,7 +72,8 @@ const loadDiscoPoLocale = (folder: DiscoLangFolder): DiscoPoLocaleBundle => {
     for (const entry of parsed) {
       const text = sourceTextOf(entry);
       if (!text.trim()) continue;
-      entries.set(`${rel}\\${entry.key}`, text);
+      const storageKey = discoPoEntryStorageKey(rel, entry.msgctxt, entry.msgid);
+      entries.set(`${rel}\\${storageKey}`, text);
     }
   }
   return { folder, entries, wavStems };
@@ -118,7 +120,7 @@ export const countDiscoPoTranslationRecords = (extractRoot: string): number => {
 
 /**
  * Build CsvRows from a source locale map.
- * Path: `PO\\{relPo}\\{msgctxt}::{msgid}`
+ * Path: `PO\\{relPo}\\{storageKey}` where storageKey may hash a long msgid.
  */
 export const buildDiscoPoCsvRows = (
   entries: Map<string, string>,
@@ -131,9 +133,8 @@ export const buildDiscoPoCsvRows = (
     const entryKey = sep >= 0 ? compositeKey.slice(sep + 1) : compositeKey;
     const ctxSep = entryKey.indexOf('::');
     const msgctxt = ctxSep >= 0 ? entryKey.slice(0, ctxSep) : '';
-    const msgid = ctxSep >= 0 ? entryKey.slice(ctxSep + 2) : entryKey;
     const pathKey = `PO\\${relPo}\\${entryKey}`;
-    const edid = resolveEdid({ msgctxt, msgid, msgstr: text, key: entryKey }, wavStems);
+    const edid = resolveEdid({ msgctxt, msgid: text, msgstr: text, key: entryKey }, wavStems);
     rows.push({
       FormID: '',
       Signature: 'PO',
