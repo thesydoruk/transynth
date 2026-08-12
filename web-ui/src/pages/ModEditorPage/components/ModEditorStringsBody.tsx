@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { RefObject } from 'react';
 import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../api';
+import { editorCapabilities, type EditorCapabilities } from '../editorCapabilities';
 import { SignaturePanel, type SigCount } from './SignaturePanel';
 import { StringGrid, type SortCol, type SortDir, type ColumnFilters } from './StringGrid';
 import { DetailPanel, type BottomTab } from './DetailPanel';
@@ -56,6 +57,7 @@ export interface ModEditorStringsBodyProps {
   onCopySource: () => void;
   onTabChange: (tab: BottomTab) => void;
   onOpenBookEditor: () => void;
+  capabilities?: EditorCapabilities;
 }
 
 /** Strings-mode body: signature sidebar, grid, and resizable detail panel. */
@@ -109,19 +111,23 @@ export const ModEditorStringsBody = ({
   onCopySource,
   onTabChange,
   onOpenBookEditor,
+  capabilities: capabilitiesProp,
 }: ModEditorStringsBodyProps) => {
   const { t } = useTranslation();
+  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
 
   return (
     <div className={styles.body}>
-      <SignaturePanel
-        sigCounts={sigCounts}
-        activeSignature={signature}
-        totalFiltered={stringsTotal}
-        statusFilterActive={selectedStatusesLength > 0}
-        modTotal={statsTotal}
-        onSelect={onSignatureChange}
-      />
+      {capabilities.showSignaturePanel && (
+        <SignaturePanel
+          sigCounts={sigCounts}
+          activeSignature={signature}
+          totalFiltered={stringsTotal}
+          statusFilterActive={selectedStatusesLength > 0}
+          modTotal={statsTotal}
+          onSelect={onSignatureChange}
+        />
+      )}
 
       <div className={styles.centerCol} ref={centerColRef}>
         <div className={styles.gridArea}>
@@ -142,6 +148,7 @@ export const ModEditorStringsBody = ({
             sortCol={sortCol}
             sortDir={sortDir}
             columnFilters={columnFilters}
+            capabilities={capabilities}
             onRowSelect={onRowSelect}
             onRowOpen={onRowOpen}
             onToggleRow={onToggleRow}
@@ -183,6 +190,7 @@ export const ModEditorStringsBody = ({
                 qaIssues={qaIssues}
                 history={history}
                 translAreaRef={translAreaRef}
+                capabilities={capabilities}
                 onDraftChange={onDraftChange}
                 onSave={onSave}
                 onCopySource={onCopySource}

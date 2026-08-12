@@ -14,6 +14,7 @@ import { ModEditorModals } from './components/ModEditorModals';
 import { ContextMenu } from './components/ContextMenu';
 import { ShortcutsOverlay } from './components/ShortcutsOverlay';
 import { EditorStatusBar } from './components/EditorStatusBar';
+import { clampEditorPageMode, editorCapabilities } from './editorCapabilities';
 import { useModEditorPage } from './hooks/useModEditorPage';
 import styles from './ModEditorPage.module.scss';
 
@@ -42,6 +43,8 @@ export const ModEditorPage = () => {
 
   const { mod, strings, stats, sigs, suggestions, qaIssues, history, isLoading } = editorQueries;
   const total = strings?.total ?? 0;
+  const capabilities = editorCapabilities(mod?.game ?? gameId);
+  const pageMode = clampEditorPageMode(filter.pageMode, capabilities);
 
   return (
     <div className={styles.root}>
@@ -63,6 +66,7 @@ export const ModEditorPage = () => {
         gameId={gameId}
         modId={modId}
         hasInnrSignature={!!sigs?.some((s) => s.signature === 'INNR')}
+        capabilities={capabilities}
         aiJobs={aiJobs}
         onSrcLangChange={(l) => {
           filter.setSrcLang(l);
@@ -86,7 +90,7 @@ export const ModEditorPage = () => {
         applyImportedRunning={applyImported.isRunning}
         onShortcuts={() => modals.setShowShortcuts((v) => !v)}
         onBatchTranslate={batchTranslate.handleBatchTranslate}
-        pageMode={filter.pageMode}
+        pageMode={pageMode}
         onPageModeChange={filter.setPageMode}
         onTranslateTm={() => startModAiTranslateTm(modId, filter.srcLang, filter.targetLang)}
         onTranslateLlm={() =>
@@ -112,9 +116,9 @@ export const ModEditorPage = () => {
         onAiVoiceStop={() => void stopModAiVoice(modId, aiJobs.voice.jobId)}
       />
 
-      {filter.pageMode === 'dialogs' ? (
+      {pageMode === 'dialogs' ? (
         <DialogsMode modId={modId} srcLang={filter.srcLang} targetLang={filter.targetLang} />
-      ) : filter.pageMode === 'voice' ? (
+      ) : pageMode === 'voice' ? (
         <VoiceMode modId={modId} srcLang={filter.srcLang} targetLang={filter.targetLang} />
       ) : (
         <ModEditorStringsBody
@@ -145,6 +149,7 @@ export const ModEditorPage = () => {
           sortCol={filter.sortCol}
           sortDir={filter.sortDir}
           columnFilters={filter.columnFilters}
+          capabilities={capabilities}
           detailPanelHeight={row.detailPanelHeight}
           isResizing={row.isResizing}
           startDetailPanelResize={row.startDetailPanelResize}
@@ -219,6 +224,7 @@ export const ModEditorPage = () => {
         selectedCount={selection.selectedCount}
         activeRow={row.focusedRow ?? row.activeRow}
         stats={stats}
+        capabilities={capabilities}
       />
     </div>
   );

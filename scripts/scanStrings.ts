@@ -37,7 +37,7 @@ import type { GameType } from '../src/types';
 import { resolveDirectoryInput } from '../src/utils/file';
 import { discoverStringsPacks, importStringsPack } from '../src/import/stringsPack';
 
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
+const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'] as const;
 
 const isGameType = (value: string): value is GameType => {
   return (GAME_CHOICES as readonly string[]).includes(value);

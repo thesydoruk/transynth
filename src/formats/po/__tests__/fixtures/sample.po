@@ -1,0 +1,15 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgctxt "Kim Kitsuragi-YARD-1"
+msgid "This is the RCM."
+msgstr "This is the RCM."
+
+msgid "Thought Cabinet"
+msgstr "Thought Cabinet"
+
+msgctxt "UI"
+msgid "Save"
+msgstr "Save"

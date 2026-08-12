@@ -5,6 +5,7 @@ import archiver from 'archiver';
 import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { patchStringsMap } from '../../formats/esp';
+import { discoLangFolderNameForLocale } from '../../formats/po';
 import { patchPexBuffer, collectModPexSources } from '../../formats/pex';
 import { writeStringsBuffer } from '../../formats/strings';
 import { log } from '../../logger';
@@ -16,9 +17,76 @@ import { getPexTranslationOverlays } from './exportPex';
 import { collectLocalizedVoiceFiles } from './exportVoiceFiles';
 import { collectInterfacePatchEntries } from './exportInterfacePatch';
 import { collectMcmPatchEntries } from './exportMcmPatch';
+import { collectDiscoPoPatchEntries } from './exportDiscoPoPatch';
 import type { ZipPackEntry } from './exportTypes';
 import { loadSourceStringsFiles } from './sourceStringsLoader';
 import { getTranslationOverlaysByType, hasTranslationOverlayChanges } from './translationOverlay';
+
+/** Final Cut langpack: `.po` folder + localized `.wav` under Audio/. */
+const exportDiscoLangpackZip = async (
+  db: Tx,
+  modId: number,
+  modPath: string,
+  srcLang: string,
+  targetLang: string,
+  zipFileName: string,
+): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
+  const files: ZipPackEntry[] = [];
+  const extractRoot = resolveModImportExtractRoot(modPath);
+  const langFolder = discoLangFolderNameForLocale(targetLang);
+
+  try {
+    const poFiles = await collectDiscoPoPatchEntries(
+      db,
+      modId,
+      modPath,
+      srcLang,
+      targetLang,
+      extractRoot,
+    );
+    files.push(...poFiles);
+  } catch (err) {
+    log.info(
+      `Disco langpack: PO export failed for mod ${modId} (${
+        err instanceof Error ? err.message : String(err)
+      })`,
+    );
+  }
+
+  try {
+    const voiceFiles = collectLocalizedVoiceFiles(modPath, targetLang, {
+      extensions: ['.wav'],
+      zipPathTransform: (relPath) => {
+        const cleaned = relPath.replace(/^Audio\//i, '');
+        return `${langFolder}/Audio/${cleaned}`;
+      },
+    });
+    for (const voiceFile of voiceFiles) {
+      files.push({ name: voiceFile.name, absPath: voiceFile.absPath });
+    }
+    if (voiceFiles.length > 0) {
+      log.info(
+        `Disco langpack: included ${voiceFiles.length} localized .wav file(s) for mod ${modId}`,
+      );
+    }
+  } catch (err) {
+    log.info(
+      `Disco langpack: no localized voice for mod ${modId} (${
+        err instanceof Error ? err.message : String(err)
+      })`,
+    );
+  }
+
+  if (files.length === 0) {
+    throw new Error(
+      'No exportable Disco langpack content — no translated .po or localized .wav files available.',
+    );
+  }
+
+  const zipBuffer = await packFilesToZip(files);
+  log.info(`Disco langpack: ZIP ready — ${files.length} file(s), ${zipBuffer.length} bytes`);
+  return { zipBuffer, zipFileName };
+};
 
 export const packFilesToZip = async (files: ZipPackEntry[]): Promise<Buffer> =>
   new Promise<Buffer>((resolve, reject) => {
@@ -67,6 +135,11 @@ export const exportLangpackZip = async (
 ): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
   const stem = path.basename(modPath, path.extname(modPath));
   const zipFileName = `${stem}_${targetLang}_langpack.zip`;
+
+  if (game === 'disco') {
+    return exportDiscoLangpackZip(db, modId, modPath, srcLang, targetLang, zipFileName);
+  }
+
   const files: ZipPackEntry[] = [];
 
   try {
@@ -208,6 +281,11 @@ export const exportFullModZip = async (
   targetLang: string,
   game: GameType = 'fo4',
 ): Promise<{ zipBuffer: Buffer; zipFileName: string }> => {
+  if (game === 'disco') {
+    // Final Cut packs are language folders — same payload as the langpack zip.
+    return exportLangpackZip(db, modId, modPath, srcLang, targetLang, game);
+  }
+
   const stem = path.basename(modPath, path.extname(modPath));
   const zipFileName = `${stem}_${targetLang}.zip`;
 

@@ -20,7 +20,7 @@ export const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
   grup: 52,
   formid: 70,
   edid: 160,
-  field: 50,
+  field: 160,
   src: null,
   transl: null,
   act: 170,

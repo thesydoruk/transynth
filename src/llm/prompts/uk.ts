@@ -14,6 +14,8 @@ import { OB_UK_VERIFY_PROMPT } from './games/ob/verify';
 import { resolveGameType } from './resolveGame';
 import { SSE_UK_TRANSLATE_PROMPT } from './games/sse/translate';
 import { SSE_UK_VERIFY_PROMPT } from './games/sse/verify';
+import { DISCO_UK_TRANSLATE_PROMPT } from './games/disco/translate';
+import { DISCO_UK_VERIFY_PROMPT } from './games/disco/verify';
 
 const UK_TRANSLATE_PROMPTS: Record<GameType, string> = {
   fo4: FO4_UK_TRANSLATE_PROMPT,
@@ -24,6 +26,7 @@ const UK_TRANSLATE_PROMPTS: Record<GameType, string> = {
   mw: MW_UK_TRANSLATE_PROMPT,
   sse: SSE_UK_TRANSLATE_PROMPT,
   sle: SSE_UK_TRANSLATE_PROMPT,
+  disco: DISCO_UK_TRANSLATE_PROMPT,
 };
 
 const UK_VERIFY_PROMPTS: Record<GameType, string> = {
@@ -35,6 +38,7 @@ const UK_VERIFY_PROMPTS: Record<GameType, string> = {
   mw: MW_UK_VERIFY_PROMPT,
   sse: SSE_UK_VERIFY_PROMPT,
   sle: SSE_UK_VERIFY_PROMPT,
+  disco: DISCO_UK_VERIFY_PROMPT,
 };
 
 /** System prompt for Ukrainian game localization (per-game standalone prompts). */

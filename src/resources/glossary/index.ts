@@ -7,6 +7,7 @@ import { FNV_UK_GLOSSARY } from './fnv-uk';
 import { MW_UK_GLOSSARY } from './mw-uk';
 import { OB_UK_GLOSSARY } from './ob-uk';
 import { SSE_UK_GLOSSARY } from './sse-uk';
+import { DISCO_UK_GLOSSARY } from './disco-uk';
 
 export type { GlossaryEntry } from './types';
 
@@ -20,6 +21,7 @@ export const GAME_UK_GLOSSARIES: Record<GameType, GlossaryEntry[]> = {
   mw: MW_UK_GLOSSARY,
   sse: SSE_UK_GLOSSARY,
   sle: SSE_UK_GLOSSARY,
+  disco: DISCO_UK_GLOSSARY,
 };
 
 export const getGameUkGlossary = (game: GameType): GlossaryEntry[] => GAME_UK_GLOSSARIES[game];

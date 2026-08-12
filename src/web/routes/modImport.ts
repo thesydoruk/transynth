@@ -63,7 +63,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
         req.query.game === 'fo3' ||
         req.query.game === 'fnv' ||
         req.query.game === 'ob' ||
-        req.query.game === 'mw'
+        req.query.game === 'mw' ||
+        req.query.game === 'disco'
           ? req.query.game
           : 'fo4';
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;

@@ -18,6 +18,7 @@ import obConfigJson from './ob.json' with { type: 'json' };
 import mwConfigJson from './mw.json' with { type: 'json' };
 import sseConfigJson from './sse.json' with { type: 'json' };
 import sleConfigJson from './sle.json' with { type: 'json' };
+import discoConfigJson from './disco.json' with { type: 'json' };
 
 /** Map from subrecord signature to enabled/disabled toggle. */
 type SubrecordToggleMap = Record<string, boolean>;
@@ -44,6 +45,7 @@ export const GAME_SUBRECORDS_CONFIG_BY_GAME: Record<GameType, GameSubrecordsConf
   mw: mwConfigJson as GameSubrecordsConfig,
   sse: sseConfigJson as GameSubrecordsConfig,
   sle: sleConfigJson as GameSubrecordsConfig,
+  disco: discoConfigJson as GameSubrecordsConfig,
 };
 
 /**

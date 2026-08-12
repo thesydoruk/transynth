@@ -12,7 +12,7 @@ import { buildEnglishTranslationRules, buildEnglishVerifyTranslationRules } from
 import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } from '../../en';
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
 
-const ALL_GAMES: GameType[] = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'];
+const ALL_GAMES: GameType[] = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'];
 
 describe('canonical terminology', () => {
   it('every game has a non-empty UK glossary', () => {

@@ -8,6 +8,7 @@ import { mwRules } from './mw';
 import { obRules } from './ob';
 import { sleRules } from './sle';
 import { sseRules } from './sse';
+import { discoRules } from './disco';
 
 export const GAME_RULES: Record<GameType, GameRules> = {
   fo4: fo4Rules,
@@ -18,4 +19,5 @@ export const GAME_RULES: Record<GameType, GameRules> = {
   mw: mwRules,
   sse: sseRules,
   sle: sleRules,
+  disco: discoRules,
 };

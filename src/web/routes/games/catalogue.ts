@@ -124,6 +124,16 @@ export const SUPPORTED_GAMES: GameInfo[] = [
     engine: 'Gamebryo/Creation Engine',
     localized: true,
   },
+  {
+    id: 'disco',
+    name: 'Disco Elysium',
+    developer: 'ZA/UM',
+    releaseYear: 2019,
+    nexusId: 3027,
+    domainName: 'discoelysium',
+    engine: 'Unity',
+    localized: false,
+  },
 ];
 
 /** Stable ETag for the static games catalogue payload. */

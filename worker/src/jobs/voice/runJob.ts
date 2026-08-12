@@ -69,6 +69,8 @@ export const runModVoiceGenerateJob = async (
     scope,
     undefined,
     speakerKey,
+    opts.game,
+    paths.extractDir,
   );
   if (total === 0) {
     throw new Error(

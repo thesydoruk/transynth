@@ -25,6 +25,7 @@ import {
   importMcmStringRows,
   importPexStringRows,
 } from './extrasPhase';
+import { importDiscoPoStringRows } from './discoPoPhase';
 import { prepareExtrasOnlyImportContext } from './extrasOnlyPrep';
 import { finalizeModImportJob } from './finalizePhase';
 import type { ModImportJob, ProgressCb } from '../../../../../src/import/mod/types';
@@ -125,24 +126,33 @@ export const runModImport = async (
       }
 
       logImport.info(
-        `[Mod Import #${job.id}] No plugin anchor — importing MCM/Interface extras only`,
+        `[Mod Import #${job.id}] No plugin anchor — importing extras only` +
+          (game === 'disco' ? ' (Disco Final Cut .po)' : ' (MCM/Interface/PEX)'),
       );
       const prep = prepareExtrasOnlyImportContext(ctx);
 
-      if (!state.cancel && !state.pause) {
-        await importMcmStringRows(ctx, prep.batch);
-        imported = ctx.imported.value;
-      }
+      if (game === 'disco') {
+        if (!state.cancel && !state.pause) {
+          await importDiscoPoStringRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+          await prep.batch.commitOpenTx();
+        }
+      } else {
+        if (!state.cancel && !state.pause) {
+          await importMcmStringRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+        }
 
-      if (!state.cancel && !state.pause) {
-        await importInterfaceTranslateRows(ctx, prep.batch);
-        imported = ctx.imported.value;
-      }
+        if (!state.cancel && !state.pause) {
+          await importInterfaceTranslateRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+        }
 
-      if (!state.cancel && !state.pause) {
-        await importPexStringRows(ctx, prep.batch);
-        imported = ctx.imported.value;
-        await prep.batch.commitOpenTx();
+        if (!state.cancel && !state.pause) {
+          await importPexStringRows(ctx, prep.batch);
+          imported = ctx.imported.value;
+          await prep.batch.commitOpenTx();
+        }
       }
 
       if (!state.cancel && !state.pause) {

@@ -9,7 +9,7 @@ export type ModImportJob = {
   src_lang: string;
   tgt_lang: string;
   is_localized: number;
-  game: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
+  game: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle' | 'disco';
   esp_path: string | null;
   created_at: string;
   updated_at: string;

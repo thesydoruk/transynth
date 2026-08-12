@@ -52,6 +52,7 @@
     "fast-glob": "^3.3.2",
     "fast-xml-parser": "^5.5.9",
     "fastify": "^5.8.4",
+    "gettext-parser": "^9.1.1",
     "ioredis": "^5.11.1",
     "lz4js": "^0.2.0",
     "node-7z": "^3.0.0",
@@ -62,6 +63,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/gettext-parser": "^9.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.14.0",
     "@types/node-7z": "^2.1.11",

@@ -9,6 +9,7 @@ const GAME_LABELS: Record<GameType, string> = {
   mw: 'The Elder Scrolls III: Morrowind',
   sse: 'Skyrim Special Edition',
   sle: 'Skyrim Legendary Edition',
+  disco: 'Disco Elysium',
 };
 
 const isGameType = (value: string | null | undefined): value is GameType => {

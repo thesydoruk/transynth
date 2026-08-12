@@ -1,5 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
+import {
+  editorCapabilities,
+  formatDiscoPoKey,
+  type EditorCapabilities,
+} from '../../editorCapabilities';
 import { resolvePexScriptContext } from '../DetailPanel/utils';
 import styles from './EditorStatusBar.module.scss';
 
@@ -24,24 +29,39 @@ export interface EditorStatusBarProps {
   activeRow: StringRow | null;
   /** Aggregated translation statistics for the mod. */
   stats: ModStats | undefined;
+  capabilities?: EditorCapabilities;
 }
+
+const activeRowDetail = (activeRow: StringRow, caps: EditorCapabilities): string => {
+  if (caps.isDisco) {
+    const key = formatDiscoPoKey(activeRow.path) || '—';
+    const audio = activeRow.edid?.trim() ? activeRow.edid : '—';
+    return `${activeRow.signature} · ${key} · ${audio}`;
+  }
+  if (activeRow.signature === 'PEX') {
+    return `${activeRow.signature} · ${resolvePexScriptContext(activeRow) ?? activeRow.path?.split('\\').pop() ?? '—'}`;
+  }
+  return `${activeRow.signature} · ${activeRow.formid_hex} · ${activeRow.edid ?? '—'}`;
+};
 
 /**
  * Thin status bar rendered at the very bottom of the editor page.
  * Shows selection count, active-row metadata, and per-status totals.
  */
-export const EditorStatusBar = ({ selectedCount, activeRow, stats }: EditorStatusBarProps) => {
+export const EditorStatusBar = ({
+  selectedCount,
+  activeRow,
+  stats,
+  capabilities: capabilitiesProp,
+}: EditorStatusBarProps) => {
   const { t } = useTranslation();
+  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
 
   return (
     <div className={styles.statusBar}>
       <span>{t('modEditor.selectedRows', { count: selectedCount })}</span>
       {activeRow && (
-        <span className={styles.detail}>
-          {activeRow.signature === 'PEX'
-            ? `${activeRow.signature} · ${resolvePexScriptContext(activeRow) ?? activeRow.path?.split('\\').pop() ?? '—'}`
-            : `${activeRow.signature} · ${activeRow.formid_hex} · ${activeRow.edid ?? '—'}`}
-        </span>
+        <span className={styles.detail}>{activeRowDetail(activeRow, capabilities)}</span>
       )}
       {stats && (
         <span className={styles.stats}>

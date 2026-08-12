@@ -15,6 +15,7 @@ import {
 import { getModImportJobByFileHash } from './jobs';
 import { discoverArchiveCandidatesForPlugin } from './discovery';
 import { selectArchiveImportAnchor } from './importAnchor';
+import { countDiscoPoTranslationRecords } from './discoPoLocales';
 import { countMcmTranslationRecords } from './mcmLocales';
 import type { ModImportJob, ModScanContext } from './types';
 
@@ -178,11 +179,14 @@ export const registerArchiveFile = async (
     scopeDirs: [extractDir],
   });
 
-  const { anchorPath, isPlugin } = selectArchiveImportAnchor(extractDir);
+  const { anchorPath, isPlugin } = selectArchiveImportAnchor(extractDir, game);
 
   if (!isPlugin) {
     const modDir = resolveModDirectoryFromPath(anchorPath);
-    const totalRecords = countMcmTranslationRecords(modDir, anchorPath);
+    const isDiscoPo = anchorPath.toLowerCase().endsWith('.po') || game === 'disco';
+    const totalRecords = isDiscoPo
+      ? countDiscoPoTranslationRecords(extractDir)
+      : countMcmTranslationRecords(modDir, anchorPath);
 
     return insertModImportJob(db, {
       fileName,

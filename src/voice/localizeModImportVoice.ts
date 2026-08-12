@@ -30,6 +30,7 @@ import {
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
 } from './voiceTtsPayloadVersion';
+import { countDiscoVoiceLocalizeWork, localizeDiscoVoicePackage } from './disco/localizeDiscoVoice';
 
 /**
  * Mod-wide voice job scope:
@@ -82,7 +83,26 @@ export const countVoiceLocalizeWork = async (
   scope: ModVoiceGenerateScope = 'missing',
   onlyKeys?: ReadonlySet<string>,
   speakerKey?: string,
+  game?: string,
+  extractDir?: string,
 ): Promise<number> => {
+  if (game === 'disco') {
+    const root =
+      extractDir ??
+      (packages[0]?.localizeDir ? path.dirname(path.dirname(packages[0].localizeDir)) : null);
+    if (!root) return 0;
+    return countDiscoVoiceLocalizeWork(
+      db,
+      modId,
+      root,
+      srcLang,
+      tgtLang,
+      scope,
+      onlyKeys,
+      speakerKey,
+    );
+  }
+
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
   const forceAll = scope === 'all';
   const speakerFilter = speakerKey?.trim() || '';
@@ -169,6 +189,8 @@ export const localizeModImportVoice = async (
           scope,
           options.onlyKeys,
           speakerKey,
+          mod.game,
+          extractDir,
         );
   let progressDone = 0;
   const bumpProgress = () => {
@@ -180,25 +202,24 @@ export const localizeModImportVoice = async (
     `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode}, scope=${scope}, force=${force}${speakerKey ? `, speaker=${speakerKey}` : ''})`,
   );
 
-  for (const pkg of packages) {
-    if (options.shouldCancel?.()) break;
-    await localizeVoicePackage(
+  if (mod.game === 'disco') {
+    await localizeDiscoVoicePackage(
       db,
-      mod.modId,
-      pkg,
-      srcLang,
-      tgtLang,
       {
+        extractDir,
+        modId: mod.modId,
         game: mod.game,
+        srcLang,
+        tgtLang,
         ttsBaseUrl,
-        dryRun: options.dryRun ?? false,
+        synthesis,
+        referenceMode,
         force,
         scope,
-        referenceMode,
-        synthesis,
         onlyKeys: options.onlyKeys,
         speakerKey,
         limit: options.limit,
+        dryRun: options.dryRun ?? false,
         shouldCancel: options.shouldCancel,
         onEligibleStep: options.onProgress ? bumpProgress : undefined,
       },
@@ -206,6 +227,34 @@ export const localizeModImportVoice = async (
       skipped,
       warnings,
     );
+  } else {
+    for (const pkg of packages) {
+      if (options.shouldCancel?.()) break;
+      await localizeVoicePackage(
+        db,
+        mod.modId,
+        pkg,
+        srcLang,
+        tgtLang,
+        {
+          game: mod.game,
+          ttsBaseUrl,
+          dryRun: options.dryRun ?? false,
+          force,
+          scope,
+          referenceMode,
+          synthesis,
+          onlyKeys: options.onlyKeys,
+          speakerKey,
+          limit: options.limit,
+          shouldCancel: options.shouldCancel,
+          onEligibleStep: options.onProgress ? bumpProgress : undefined,
+        },
+        written,
+        skipped,
+        warnings,
+      );
+    }
   }
 
   return {

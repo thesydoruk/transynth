@@ -31,6 +31,10 @@ export interface ModAiControlsProps {
   compact?: boolean;
   /** Circular icon buttons with progress ring (mod editor strip). */
   variant?: 'bar' | 'circular';
+  /** Hide NPC gender-detect control (e.g. Disco Elysium). */
+  showGenderDetect?: boolean;
+  /** Hide voice synthesis control. */
+  showVoice?: boolean;
 }
 
 type SlotProps = {
@@ -178,6 +182,8 @@ export const ModAiControls = ({
   onVoiceStop,
   compact = false,
   variant = 'bar',
+  showGenderDetect = true,
+  showVoice = true,
 }: ModAiControlsProps) => {
   const { t } = useTranslation();
   const circular = variant === 'circular';
@@ -218,17 +224,19 @@ export const ModAiControls = ({
         stoppable
         circular={circular}
       />
-      <Slot
-        entry={genderDetect}
-        label={t('modEditor.genderDetect')}
-        runningLabel={t('modEditor.genderDetectRunning')}
-        idleHint={t('modAi.hintGenderDetect')}
-        icon="⚧"
-        onClick={onGenderDetect}
-        onStop={onGenderDetectStop}
-        stoppable
-        circular={circular}
-      />
+      {showGenderDetect && (
+        <Slot
+          entry={genderDetect}
+          label={t('modEditor.genderDetect')}
+          runningLabel={t('modEditor.genderDetectRunning')}
+          idleHint={t('modAi.hintGenderDetect')}
+          icon="⚧"
+          onClick={onGenderDetect}
+          onStop={onGenderDetectStop}
+          stoppable
+          circular={circular}
+        />
+      )}
       <Slot
         entry={translate}
         label={t('modEditor.autoTranslate')}
@@ -249,17 +257,19 @@ export const ModAiControls = ({
         onClick={onVerify}
         circular={circular}
       />
-      <Slot
-        entry={voice}
-        label={t('modEditor.aiVoiceGenerate')}
-        runningLabel={t('modEditor.aiVoiceGenerateRunning')}
-        idleHint={t('modAi.hintVoice')}
-        icon="🔊"
-        menuItems={voiceMenuItems}
-        onStop={onVoiceStop}
-        stoppable
-        circular={circular}
-      />
+      {showVoice && (
+        <Slot
+          entry={voice}
+          label={t('modEditor.aiVoiceGenerate')}
+          runningLabel={t('modEditor.aiVoiceGenerateRunning')}
+          idleHint={t('modAi.hintVoice')}
+          icon="🔊"
+          menuItems={voiceMenuItems}
+          onStop={onVoiceStop}
+          stoppable
+          circular={circular}
+        />
+      )}
     </div>
   );
 };

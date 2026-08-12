@@ -5,6 +5,7 @@ import {
   hasMcmTranslationFiles,
   resolveModDirectoryFromPath,
 } from '../formats/mcm';
+import { findFirstDiscoPoFile, hasDiscoPoPack } from '../formats/po';
 import { filterPrimaryPlugins } from '../import/mod/importAnchor';
 import { discoverModFiles } from '../import/mod';
 import { modImportLocalizeDir } from '../modStorage';
@@ -22,6 +23,17 @@ const packageContextForAnchor = (
   localizeRoot: string,
   anchorPath: string,
 ): ImportPackageContext => {
+  // Disco Final Cut packs: keep the whole extract tree as the package root so
+  // Audio/ and language folders resolve consistently for voice + export.
+  if (anchorPath.toLowerCase().endsWith('.po')) {
+    return {
+      folder: '',
+      packageDir: extractDir,
+      pluginPath: path.resolve(anchorPath),
+      localizeDir: localizeRoot,
+    };
+  }
+
   const packageDir = resolveModDirectoryFromPath(anchorPath);
   const folder = path.relative(extractDir, packageDir);
   const normalizedFolder = folder === '.' ? '' : folder.replace(/\\/g, '/');
@@ -98,7 +110,13 @@ export const resolveImportPackages = (
       const anchor = findFirstMcmTranslationFile(resolvedExtractDir);
       if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
     }
-    throw new Error(`No plugins or MCM translation files found under ${resolvedExtractDir}`);
+    if (hasDiscoPoPack(resolvedExtractDir)) {
+      const anchor = findFirstDiscoPoFile(resolvedExtractDir);
+      if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
+    }
+    throw new Error(
+      `No plugins, MCM translation files, or Disco .po pack found under ${resolvedExtractDir}`,
+    );
   }
 
   const packageDirs = new Map<string, string>();

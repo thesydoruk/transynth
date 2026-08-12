@@ -3,8 +3,12 @@
  *
  * Primary plugins win. Secondary copies under Optional/fomod are ignored so
  * MCM/Interface-only packages (e.g. FallUI Inventory) use a translation txt.
+ * Disco Final Cut packs (`.po` language folders) are accepted when neither
+ * plugin nor MCM is present.
  */
 import { findFirstMcmTranslationFile, hasMcmTranslationFiles } from '../../formats/mcm';
+import { findFirstDiscoPoFile, hasDiscoPoPack } from '../../formats/po';
+import type { GameType } from '../../types';
 import { discoverModFiles, isPluginPath } from './discovery';
 
 /** Path segments that mark optional / installer-only plugin copies. */
@@ -35,9 +39,19 @@ export type ArchiveImportAnchor = {
 /**
  * Resolve what to store as `mod_imports.esp_path` for an extracted archive.
  *
- * Prefers a primary plugin; otherwise the first MCM Helper translation txt.
+ * Prefers a primary plugin; otherwise the first MCM Helper translation txt;
+ * otherwise a Disco Final Cut `.po` file.
  */
-export const selectArchiveImportAnchor = (extractDir: string): ArchiveImportAnchor => {
+export const selectArchiveImportAnchor = (
+  extractDir: string,
+  game?: GameType,
+): ArchiveImportAnchor => {
+  // Disco uploads are Final Cut packs — prefer `.po` before Bethesda heuristics.
+  if (game === 'disco' && hasDiscoPoPack(extractDir)) {
+    const anchorPath = findFirstDiscoPoFile(extractDir);
+    if (anchorPath) return { anchorPath, isPlugin: false };
+  }
+
   const primaryPlugins = filterPrimaryPlugins(discoverModFiles(extractDir).plugins);
   if (primaryPlugins.length > 0) {
     const anchorPath = primaryPlugins[0]!;
@@ -49,5 +63,12 @@ export const selectArchiveImportAnchor = (extractDir: string): ArchiveImportAnch
     if (anchorPath) return { anchorPath, isPlugin: false };
   }
 
-  throw new Error('No ESP/ESM/ESL plugin or MCM translation files found in archive');
+  if (hasDiscoPoPack(extractDir)) {
+    const anchorPath = findFirstDiscoPoFile(extractDir);
+    if (anchorPath) return { anchorPath, isPlugin: false };
+  }
+
+  throw new Error(
+    'No ESP/ESM/ESL plugin, MCM translation files, or Disco Final Cut .po pack found in archive',
+  );
 };

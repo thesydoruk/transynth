@@ -2,6 +2,11 @@ import { useMemo, useRef, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
 import { Button } from '../../../../components/Button';
+import {
+  editorCapabilities,
+  formatDiscoPoKey,
+  type EditorCapabilities,
+} from '../../editorCapabilities';
 import { SuggestionsPanel } from '../SuggestionsPanel';
 import { QAPanel } from '../QAPanel';
 import { HistoryPanel } from '../HistoryPanel';
@@ -45,6 +50,7 @@ export interface DetailPanelProps {
   onCopySource: () => void;
   onTabChange: (tab: BottomTab) => void;
   onOpenBookEditor: () => void;
+  capabilities?: EditorCapabilities;
 }
 
 /**
@@ -73,8 +79,10 @@ export const DetailPanel = ({
   onCopySource,
   onTabChange,
   onOpenBookEditor,
+  capabilities: capabilitiesProp,
 }: DetailPanelProps) => {
   const { t } = useTranslation();
+  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const { tabContentHeight, isResizing, startTabContentResize } =
     useTabContentHeight(detailPanelRef);
@@ -92,7 +100,9 @@ export const DetailPanel = ({
     overlay.scrollLeft = e.currentTarget.scrollLeft;
   };
 
-  const isPex = activeRow.signature === 'PEX';
+  const isPex = !capabilities.isDisco && activeRow.signature === 'PEX';
+  const showBookEditor =
+    !capabilities.isDisco && (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
 
   return (
     <div ref={detailPanelRef} className={styles.detailPanel}>
@@ -109,7 +119,16 @@ export const DetailPanel = ({
               <PexSourcePanel modId={modId} activeRow={activeRow} />
             ) : (
               <>
-                {activeRow.context && (
+                {capabilities.isDisco && (
+                  <div className={styles.speakerContext} title={activeRow.path ?? undefined}>
+                    {t('modEditor.discoKeyLabel')}
+                    {formatDiscoPoKey(activeRow.path) || '—'}
+                    {activeRow.edid?.trim()
+                      ? ` · ${t('modEditor.discoAudioLabel')}${activeRow.edid}`
+                      : ''}
+                  </div>
+                )}
+                {!capabilities.isDisco && activeRow.context && (
                   <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
                     {t('modEditor.speakerContextLabel')}
                     {activeRow.context}
@@ -132,7 +151,7 @@ export const DetailPanel = ({
         <div className={styles.textPanel}>
           <div className={styles.panelLabel}>
             {t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}
-            {(activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source)) && (
+            {showBookEditor && (
               <button
                 className={styles.btnSec}
                 style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: '12px' }}

@@ -7,6 +7,7 @@ import { ModAiControls } from '../../../../components/ModAiControls';
 import type { ModAiJobEntry } from '../../../../modAiJobsStore';
 import { StatusFilter } from '../StatusFilter';
 import { type StatusFilterValue } from '../../statusFilter';
+import type { EditorCapabilities } from '../../editorCapabilities';
 import { EditorModeSwitch, type EditorPageMode } from './EditorModeSwitch';
 import styles from './EditorToolbar.module.scss';
 
@@ -49,6 +50,7 @@ export interface EditorToolbarProps {
   gameId: string | undefined;
   modId: number;
   hasInnrSignature: boolean;
+  capabilities: EditorCapabilities;
   aiJobs: {
     translate: ModAiJobEntry;
     verify: ModAiJobEntry;
@@ -100,6 +102,7 @@ export const EditorToolbar = ({
   gameId,
   modId,
   hasInnrSignature,
+  capabilities,
   aiJobs,
   onSrcLangChange,
   onTargetLangChange,
@@ -149,6 +152,8 @@ export const EditorToolbar = ({
           onVoiceMissing={onAiVoiceMissing}
           onVoiceAll={onAiVoiceAll}
           onVoiceStop={onAiVoiceStop}
+          showGenderDetect={capabilities.showGenderDetect}
+          showVoice={capabilities.showVoiceMode}
           variant="circular"
         />
       </div>
@@ -186,7 +191,7 @@ export const EditorToolbar = ({
 
       <div className={styles.sep} />
 
-      <EditorModeSwitch mode={pageMode} onChange={onPageModeChange} />
+      <EditorModeSwitch mode={pageMode} onChange={onPageModeChange} modes={capabilities.modes} />
 
       <div className={styles.sep} />
 
@@ -224,7 +229,7 @@ export const EditorToolbar = ({
           },
         ]}
       />
-      {hasInnrSignature && (
+      {capabilities.showInnrLink && hasInnrSignature && (
         <Link
           to={`/games/${gameId}/mods/${modId}/innr`}
           className={styles.btnSec}

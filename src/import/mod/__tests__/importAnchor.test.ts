@@ -32,4 +32,21 @@ describe('importAnchor', () => {
 
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it('selects Disco Final Cut .po when game is disco', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'disco-anchor-'));
+    const lang = path.join(root, 'English_English_en');
+    fs.mkdirSync(lang, { recursive: true });
+    fs.writeFileSync(
+      path.join(lang, 'Dialogues.po'),
+      'msgid ""\nmsgstr ""\n\nmsgid "Hello"\nmsgstr "Hello"\n',
+      'utf8',
+    );
+
+    const anchor = selectArchiveImportAnchor(root, 'disco');
+    expect(anchor.isPlugin).toBe(false);
+    expect(path.basename(anchor.anchorPath)).toBe('Dialogues.po');
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

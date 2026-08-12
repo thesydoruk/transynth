@@ -1,7 +1,16 @@
 /** File extensions accepted by the unified mod workspace upload input. */
 export const ACCEPTED_UPLOAD_EXTENSIONS = '.eet,.csv,.esp,.esm,.esl,.zip,.7z,.rar';
 
-export type SupportedGameId = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
+export type SupportedGameId =
+  | 'fo4'
+  | 'fo76'
+  | 'fo3'
+  | 'fnv'
+  | 'ob'
+  | 'mw'
+  | 'sse'
+  | 'sle'
+  | 'disco';
 
 export type UploadKind = 'eet' | 'csv' | 'mod';
 
@@ -15,7 +24,7 @@ export const kindFromExt = (name: string): UploadKind | null => {
 };
 
 export const isSupportedGameId = (value: string): value is SupportedGameId =>
-  ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'].includes(value);
+  ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'].includes(value);
 
 /** Mod import jobs that are still in-flight or not represented by a mod row. */
 export const isActiveModImportJob = (

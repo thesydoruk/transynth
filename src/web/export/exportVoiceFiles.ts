@@ -9,16 +9,30 @@ export type LocalizedVoiceExportEntry = {
   absPath: string;
 };
 
+export type CollectLocalizedVoiceOptions = {
+  /** File extensions to include (default: `.fuz` only). */
+  extensions?: string[];
+  /** Rewrite the zip-relative path after the package folder prefix. */
+  zipPathTransform?: (relPath: string) => string;
+};
+
 const normalizeZipPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-/** Collect synthesized localized `.fuz` files from `_localize_{hash}/{lang}/`. */
+const matchesExtension = (fileName: string, extensions: string[]): boolean => {
+  const lower = fileName.toLowerCase();
+  return extensions.some((ext) => lower.endsWith(ext.toLowerCase()));
+};
+
+/** Collect synthesized localized voice files from `_localize_{hash}/{lang}/`. */
 export const collectLocalizedVoiceFiles = (
   modPath: string,
   targetLang: string,
+  options: CollectLocalizedVoiceOptions = {},
 ): LocalizedVoiceExportEntry[] => {
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (!extractRoot) return [];
 
+  const extensions = options.extensions ?? ['.fuz'];
   const packages = resolveImportPackages(extractRoot, targetLang, modPath);
   const files: LocalizedVoiceExportEntry[] = [];
 
@@ -34,9 +48,12 @@ export const collectLocalizedVoiceFiles = (
           walk(full, relPath);
           continue;
         }
-        if (!entry.name.toLowerCase().endsWith('.fuz')) continue;
+        if (!matchesExtension(entry.name, extensions)) continue;
+        const transformed = options.zipPathTransform
+          ? options.zipPathTransform(normalizeZipPath(relPath))
+          : normalizeZipPath(`${zipPrefix}${relPath}`);
         files.push({
-          name: normalizeZipPath(`${zipPrefix}${relPath}`),
+          name: normalizeZipPath(transformed),
           absPath: full,
         });
       }

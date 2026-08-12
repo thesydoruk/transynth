@@ -26,7 +26,7 @@ Get Transynth (TSN) running on your machine for the first time.
 
 ## Supported Games
 
-Transynth supports the following Bethesda titles:
+Transynth supports the following titles:
 
 - Fallout 4 (`fo4`)
 - Fallout 76 (`fo76`)
@@ -36,11 +36,32 @@ Transynth supports the following Bethesda titles:
 - The Elder Scrolls III: Morrowind (`mw`)
 - Skyrim Special Edition (`sse`)
 - Skyrim Legendary Edition (`sle`)
+- Disco Elysium Final Cut (`disco`)
 
 Archive/export behavior depends on the selected game profile:
 
 - FO4 / FO76: BA2 workflow
 - FO3 / FNV / OB / MW / SSE / SLE: BSA workflow
+- Disco Elysium: Disco Translator Final Cut language packs (`.po` text + `.wav` voice)
+
+### Disco Elysium (Final Cut)
+
+Runtime loader: [Disco Translator Final Cut](https://github.com/Gianxs/DiscoTranslatorFinalCut) (BepInEx il2cpp).
+
+1. Install BepInEx + Disco Translator Final Cut in the game folder.
+2. From the main menu, press **c** to dump English `.po` files and **a** for reference `.wav` audio.
+3. Zip a Final Cut language folder and upload it in Transynth with game = `disco`:
+
+```text
+English_English_en/
+  Dialogues.po
+  General.po
+  Audio/
+    **/*.wav
+```
+
+4. Translate in the UI, optionally synthesize voice (TTS → localized `.wav`).
+5. Export a langpack ZIP shaped as `Ukrainian_Ukrainian_uk/*.po` (+ `Audio/*.wav`). Drop that folder next to other Final Cut languages and select it in-game.
 
 ---
 

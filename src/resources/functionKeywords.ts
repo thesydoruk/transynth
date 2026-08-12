@@ -14,6 +14,7 @@ const FUNCTION_KEYWORDS_BY_GAME: Record<GameType, readonly string[]> = {
   mw: fo3Keywords,
   sse: sseKeywords,
   sle: sleKeywords,
+  disco: [],
 };
 
 /**

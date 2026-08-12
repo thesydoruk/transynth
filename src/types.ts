@@ -8,8 +8,9 @@
  * - `mw`   — The Elder Scrolls III: Morrowind (uses BSA archives)
  * - `sse`  — Skyrim Special Edition (uses BSA archives, BSA\0 magic, version 105)
  * - `sle`  — Skyrim Legendary Edition / Original (uses BSA archives, version 104)
+ * - `disco` — Disco Elysium Final Cut (Unity; Final Cut .po + .wav packs)
  */
-export type GameType = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle';
+export type GameType = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle' | 'disco';
 
 /**
  * A single row from a Transynth CSV export or import file.

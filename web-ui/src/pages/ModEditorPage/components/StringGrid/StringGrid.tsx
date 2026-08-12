@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { GenderBadge } from '../../../../components/GenderBadge';
+import {
+  editorCapabilities,
+  formatDiscoPoKey,
+  type EditorCapabilities,
+} from '../../editorCapabilities';
 import { useStringGridColumnWidths } from '../../hooks/useStringGridColumnWidths';
 import { rowBg, rowTextColor } from '../../utils';
 import styles from './StringGrid.module.scss';
@@ -82,6 +87,8 @@ export interface StringGridProps {
   onContextMenu: (e: React.MouseEvent, row: StringRow) => void;
   onClear: (row: StringRow) => void;
   onCopySource: (row: StringRow) => void;
+  /** Per-game column layout (defaults to Bethesda). */
+  capabilities?: EditorCapabilities;
 }
 
 /**
@@ -117,9 +124,16 @@ export const StringGrid = ({
   onContextMenu,
   onClear,
   onCopySource,
+  capabilities: capabilitiesProp,
 }: StringGridProps) => {
   const { t } = useTranslation();
   const { colStyle, startResize } = useStringGridColumnWidths();
+  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
+  const showGender = capabilities.showGenderColumn;
+  const showFormId = capabilities.showFormIdColumn;
+  const sigLabel = t(`modEditor.${capabilities.labels.signature}`);
+  const edidLabel = t(`modEditor.${capabilities.labels.edid}`);
+  const fieldLabel = t(`modEditor.${capabilities.labels.field}`);
 
   /** Helper — renders a sortable column header with a resize handle. */
   const renderSortableHeader = (col: SortCol, label: string) => (
@@ -183,14 +197,23 @@ export const StringGrid = ({
           {/* Sticky header */}
           <div className={styles.gridHeader}>
             <div className={`${styles.th} ${styles.colCheck}`} />
-            <div className={styles.th} style={colStyle('gender')} title={t('modEditor.genderCol')}>
-              {t('modEditor.genderColShort')}
-              <span className={styles.resizeHandle} onMouseDown={(e) => startResize('gender', e)} />
-            </div>
-            {renderSortableHeader('grup', t('modEditor.grup'))}
-            {renderSortableHeader('formid', t('modEditor.formId'))}
-            {renderSortableHeader('edid', t('modEditor.edid'))}
-            {renderSortableHeader('field', t('modEditor.field'))}
+            {showGender && (
+              <div
+                className={styles.th}
+                style={colStyle('gender')}
+                title={t('modEditor.genderCol')}
+              >
+                {t('modEditor.genderColShort')}
+                <span
+                  className={styles.resizeHandle}
+                  onMouseDown={(e) => startResize('gender', e)}
+                />
+              </div>
+            )}
+            {renderSortableHeader('grup', sigLabel)}
+            {showFormId && renderSortableHeader('formid', t('modEditor.formId'))}
+            {renderSortableHeader('edid', edidLabel)}
+            {renderSortableHeader('field', fieldLabel)}
             {renderSortableHeader(
               'src',
               t('modEditor.sourceText', { lang: srcLang.toUpperCase() }),
@@ -216,27 +239,29 @@ export const StringGrid = ({
                 title={t('modEditor.selectAllMatching')}
               />
             </div>
-            <div style={colStyle('gender')} />
+            {showGender && <div style={colStyle('gender')} />}
             <div style={colStyle('grup')}>
               <input
                 className={styles.filterInput}
-                placeholder={t('modEditor.grup')}
+                placeholder={sigLabel}
                 value={columnFilters.grup}
                 onChange={(e) => onColumnFilterChange('grup', e.target.value)}
               />
             </div>
-            <div style={colStyle('formid')}>
-              <input
-                className={styles.filterInput}
-                placeholder={t('modEditor.formId')}
-                value={columnFilters.formid}
-                onChange={(e) => onColumnFilterChange('formid', e.target.value)}
-              />
-            </div>
+            {showFormId && (
+              <div style={colStyle('formid')}>
+                <input
+                  className={styles.filterInput}
+                  placeholder={t('modEditor.formId')}
+                  value={columnFilters.formid}
+                  onChange={(e) => onColumnFilterChange('formid', e.target.value)}
+                />
+              </div>
+            )}
             <div style={colStyle('edid')}>
               <input
                 className={styles.filterInput}
-                placeholder={t('modEditor.edid')}
+                placeholder={edidLabel}
                 value={columnFilters.edid}
                 onChange={(e) => onColumnFilterChange('edid', e.target.value)}
               />
@@ -244,7 +269,7 @@ export const StringGrid = ({
             <div style={colStyle('field')}>
               <input
                 className={styles.filterInput}
-                placeholder={t('modEditor.field')}
+                placeholder={fieldLabel}
                 value={columnFilters.field}
                 onChange={(e) => onColumnFilterChange('field', e.target.value)}
               />
@@ -300,19 +325,23 @@ export const StringGrid = ({
                       onChange={() => {}}
                     />
                   </div>
-                  <div className={styles.tdGender} style={colStyle('gender')}>
-                    <GenderBadge
-                      gender={row.line_gender}
-                      title={genderBadgeTitle(row, t)}
-                      compact
-                    />
-                  </div>
+                  {showGender && (
+                    <div className={styles.tdGender} style={colStyle('gender')}>
+                      <GenderBadge
+                        gender={row.line_gender}
+                        title={genderBadgeTitle(row, t)}
+                        compact
+                      />
+                    </div>
+                  )}
                   <div className={styles.tdSig} style={colStyle('grup')}>
                     {row.signature}
                   </div>
-                  <div className={styles.tdFid} style={colStyle('formid')}>
-                    {row.formid_hex}
-                  </div>
+                  {showFormId && (
+                    <div className={styles.tdFid} style={colStyle('formid')}>
+                      {row.formid_hex}
+                    </div>
+                  )}
                   <div
                     className={styles.tdEdidCell}
                     style={colStyle('edid')}
@@ -320,8 +349,16 @@ export const StringGrid = ({
                   >
                     {row.edid ?? ''}
                   </div>
-                  <div className={styles.tdField} style={colStyle('field')}>
-                    {row.path?.split('\\').pop() ?? ''}
+                  <div
+                    className={styles.tdField}
+                    style={colStyle('field')}
+                    title={
+                      capabilities.isDisco ? (row.path ?? '') : (row.path?.split('\\').pop() ?? '')
+                    }
+                  >
+                    {capabilities.isDisco
+                      ? formatDiscoPoKey(row.path)
+                      : (row.path?.split('\\').pop() ?? '')}
                   </div>
                   <div className={styles.tdText} style={colStyle('src')} title={row.source}>
                     {row.source}

@@ -55,7 +55,7 @@ import {
 } from '../src/import/mod';
 import { runModImport } from '../worker/src/jobs/import/mod/runImport';
 
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
+const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'] as const;
 
 const isGameType = (value: string): value is GameType => {
   return (GAME_CHOICES as readonly string[]).includes(value);
