@@ -9,8 +9,11 @@ const CACHE_DIR = PATHS.gamesCache;
 
 /** Browser cache TTL for game covers (7 days). */
 const COVER_CACHE_SECONDS = 60 * 60 * 24 * 7;
-/** Browser cache TTL for games catalogue JSON (1 hour). */
-const GAMES_CACHE_SECONDS = 60 * 60;
+/**
+ * Catalogue JSON must revalidate on every request after deploys add/remove games.
+ * ETag still allows cheap 304s; max-age would hide new titles for up to an hour.
+ */
+const GAMES_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 
 /** NexusMods 4:3 tile art base URL. */
 const NM_TILE_BASE = 'https://staticdelivery.nexusmods.com/Images/games/4_3/tile_';
@@ -156,7 +159,7 @@ export const registerCatalogueRoutes = async (app: FastifyInstance) => {
       return reply.code(304).send();
     }
 
-    reply.header('Cache-Control', `public, max-age=${GAMES_CACHE_SECONDS}`);
+    reply.header('Cache-Control', GAMES_CACHE_CONTROL);
     reply.header('ETag', GAMES_ETAG);
     return reply.send(SUPPORTED_GAMES);
   });

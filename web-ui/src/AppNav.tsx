@@ -38,8 +38,7 @@ export const AppNav = () => {
   const { data: games } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60_000,
   });
 
   const currentGame = games?.find((game) => game.id === currentGameId) ?? null;

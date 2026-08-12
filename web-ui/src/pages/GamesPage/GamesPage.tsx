@@ -36,8 +36,8 @@ export const GamesPage = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60_000,
+    refetchOnMount: 'always',
   });
 
   if (isLoading) {

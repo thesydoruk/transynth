@@ -17,8 +17,7 @@ export const useGameModDetailsQueries = (gameId: string, numericModId: number) =
   } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60_000,
   });
 
   const game: GameInfo | undefined = useMemo(

@@ -58,8 +58,7 @@ export const GameModsPage = () => {
   } = useQuery({
     queryKey: ['games'],
     queryFn: api.games.list,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60_000,
   });
 
   /** Selected game resolved from route param. */
