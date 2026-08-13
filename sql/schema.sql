@@ -543,6 +543,11 @@ CREATE TABLE IF NOT EXISTS translation_examples (
 CREATE INDEX IF NOT EXISTS idx_translation_examples_langs
   ON translation_examples(src_lang, target_lang);
 
+-- CASCADE from strings(id) looks up this key; without it a mod purge seq-scans
+-- the HNSW table (~millions of vectors) and DELETE appears to hang.
+CREATE INDEX IF NOT EXISTS idx_translation_examples_src_string
+  ON translation_examples(src_string_id);
+
 CREATE INDEX IF NOT EXISTS idx_translation_examples_hnsw
   ON translation_examples USING hnsw (embedding vector_cosine_ops);
 
