@@ -3,14 +3,10 @@ import type { PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { resolveTtsLanguage } from './voiceToolPaths';
 
 /**
- * Bump when post-TTS audio processing changes so stored `.fuz` files regenerate.
- *
- * Deliberately left at `en-peak-v1` after post-processing moved from peak to
- * speech-RMS matching: the already generated lines keep their audio instead of
- * being invalidated in bulk, so only lines regenerated for another reason pick
- * up the new level.
+ * Bump when TTS-server loudness/fade post-process changes so existing `.fuz`
+ * files are treated as stale and re-synthesized.
  */
-export const VOICE_AUDIO_POST_VERSION = 'en-peak-v1';
+export const VOICE_AUDIO_POST_VERSION = 'tts-server-loudness-v1';
 
 /** Fields sent to Fish Speech (`POST /v1/synthesize`) plus post-process stamp. */
 export type VoiceTtsPayload = {
