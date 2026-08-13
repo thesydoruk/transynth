@@ -171,7 +171,6 @@ export const processVoiceLocalizeEntry = async (
       workDir,
       entry.fileName,
       prepared.text,
-      lineEnglishWav,
     );
 
     const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;

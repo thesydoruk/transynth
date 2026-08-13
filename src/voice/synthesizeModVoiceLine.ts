@@ -204,7 +204,6 @@ export const synthesizeModVoiceLineBuffers = async (
       workDir,
       entry.fileName,
       prepared.text,
-      lineEnglishWav,
     );
 
     return {

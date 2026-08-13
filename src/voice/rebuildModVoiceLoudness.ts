@@ -17,7 +17,6 @@ import { mapWithConcurrency } from '../utils/concurrency';
 import { ensureDir } from '../utils/file';
 import { extractXwmFromFuzFile } from '../formats/fuz';
 import { convertToFo4Wav } from './ffmpegAudio';
-import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { dedupeVoiceFiles, discoverVoiceFiles, type VoiceFileEntry } from './discoverVoiceFiles';
 import {
   loadVoiceTranslations,
@@ -165,7 +164,6 @@ const rebuildOne = async (
         const workDir = path.join(tempRoot, `${item.entry.formidLower6}_${item.entry.variant}`);
         ensureDir(workDir);
         const ukWav = await ukFuzToWavBytes(item.fuzDest, workDir);
-        const englishRef = await prepareReferenceAudio(item.entry, workDir);
         if (dryRun) return;
 
         const { fuzData } = await buildVoicedFuzFromTtsWav(
@@ -174,7 +172,6 @@ const rebuildOne = async (
           workDir,
           item.entry.fileName,
           item.translation,
-          englishRef,
         );
         writeIfChanged(item.fuzDest, fuzData, item.fuzDest);
         await upsertVoiceSynthesisState(db, {
@@ -200,8 +197,8 @@ const rebuildOne = async (
 };
 
 /**
- * Re-apply envelope + English peak match and regenerate LIP/XWM for existing UK `.fuz`
- * files — no TTS calls.
+ * Regenerate LIP/XWM for existing UK `.fuz` files — no TTS calls.
+ * Loudness is applied by the TTS server on synthesize; re-synth to change level.
  */
 export const rebuildModVoiceLoudness = async (
   db: Tx,

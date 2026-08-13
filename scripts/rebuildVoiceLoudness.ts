@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Re-apply loudness match + regenerate LIP/XWM for existing localized voice `.fuz`
- * files (no TTS). Skips lines already stamped with the current audio-post version.
+ * Regenerate LIP/XWM for existing localized voice `.fuz` files (no TTS).
+ * Loudness matching now happens on the TTS server against the first speaker_wav.
  *
  * Usage:
  *   npx tsx scripts/rebuildVoiceLoudness.ts --mod-id 1
