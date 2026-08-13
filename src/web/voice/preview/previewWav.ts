@@ -3,10 +3,10 @@ import path from 'node:path';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { resolveModStoredPath } from '../../../modStorage';
-import { resolveLocalizedVoiceAbsPath } from '../../../voice/synthesizeModVoiceLine';
 import { PATHS } from '../../../paths';
 import { getOrCreateCachedPreviewWav } from './audioCache';
 import { resolveLocalizeDir, resolveModVoiceContext, resolveVoicePackageContext } from './context';
+import { findLocalizedVoiceAbsPath } from './translationAudioIndex';
 import { discoverVoiceEntries, findVoiceEntry } from './voiceEntries';
 import type { VoiceAudioResult } from './types';
 
@@ -70,9 +70,10 @@ export const getVoiceTranslationWav = async (
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
-  const localizeDir = resolveLocalizeDir(resolved.ctx, resolved.targetLang);
-  const sourcePath = localizeDir ? resolveLocalizedVoiceAbsPath(localizeDir, entry) : null;
-  if (!sourcePath || !fs.existsSync(sourcePath)) {
+  const localizeDir =
+    resolved.ctx.localizeDir ?? resolveLocalizeDir(resolved.ctx, resolved.targetLang);
+  const sourcePath = findLocalizedVoiceAbsPath(localizeDir, formidLower6, variant);
+  if (!sourcePath) {
     return {
       ok: false,
       reason: 'translation_not_generated',
