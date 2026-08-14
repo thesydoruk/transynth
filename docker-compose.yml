@@ -99,7 +99,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${WORKER_MEMORY_LIMIT:-4g}
+          memory: ${WORKER_MEMORY_LIMIT:-8g}
 
   # BullMQ queue + job progress/snapshots. AOF keeps queued jobs across restarts.
   redis:
