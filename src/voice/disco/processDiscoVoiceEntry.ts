@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
 import { toDiskPath, writeIfChanged } from '../../modImport';
+import { isDependencyUnavailableError } from '../../pipeline/errors';
 import { synthesizeWav, type TtsSynthesisParams } from '../../tts/ttsClient';
 import type { GameType } from '../../types';
 import { ensureDir } from '../../utils/file';
@@ -111,6 +112,7 @@ export const processDiscoVoiceEntry = async (
     }
     return { kind: 'skipped', relPath: wavRel };
   } catch (err) {
+    if (isDependencyUnavailableError(err)) throw err;
     const message = `${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
     log.warn(`Disco voice synthesis failed ${message}`);
     return { kind: 'warning', message };

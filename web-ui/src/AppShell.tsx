@@ -15,6 +15,7 @@ import {
   OpsPage,
   QARulesPage,
   SettingsPage,
+  SystemLogPage,
 } from './pages';
 import { AppNav } from './AppNav';
 import nav from './App.module.scss';
@@ -49,6 +50,7 @@ export const AppShell = () => {
           <Route path="/coherence" element={<CoherencePage />} />
           <Route path="/ops" element={<OpsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/system-log" element={<SystemLogPage />} />
         </Routes>
       </main>
     </>

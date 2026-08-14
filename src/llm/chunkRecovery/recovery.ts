@@ -1,4 +1,5 @@
 import { CONFIG } from '../../config';
+import { isDependencyUnavailableError } from '../../pipeline/errors';
 import { isAbortError, isLlmTimeoutError } from '../retry';
 import { isLlmSkipDetectMissingIdsError } from '../skipTranslateDetect';
 import { isLlmTranslateMissingIdsError } from '../translate';
@@ -44,6 +45,7 @@ export const runLlmChunkWithRecovery = async <T>(
     await runOnce(chunk, { enqueueSplit: opts.enqueueSplit ?? (() => {}) });
     return;
   } catch (err) {
+    if (isDependencyUnavailableError(err)) throw err;
     if (shouldAbort?.() || isAbortError(err)) return;
 
     const message = err instanceof Error ? err.message : String(err);

@@ -6,6 +6,9 @@ import type { GameType } from '../types';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
 import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
+import { isDependencyUnavailableError } from '../pipeline/errors';
+import { getJobRuntime } from '../pipeline/jobRuntime';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { checkTtsHealth, synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import {
   dedupeVoiceFiles,
@@ -117,7 +120,8 @@ export const synthesizeModVoiceLineBuffers = async (
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-line-'));
 
   try {
-    await checkTtsHealth(ttsBaseUrl);
+    if (getJobRuntime()) await ensureDependencyHealthy('tts');
+    else await checkTtsHealth(ttsBaseUrl);
 
     const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
@@ -214,6 +218,7 @@ export const synthesizeModVoiceLineBuffers = async (
       payloadVersion,
     };
   } catch (err) {
+    if (isDependencyUnavailableError(err)) throw err;
     return {
       ok: false,
       reason: 'tts_failed',

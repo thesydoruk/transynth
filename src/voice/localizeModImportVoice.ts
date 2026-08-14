@@ -12,6 +12,8 @@ import {
   type ImportPackageContext,
 } from '../modImport';
 import { ensureDir } from '../utils/file';
+import { getJobRuntime } from '../pipeline/jobRuntime';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { checkTtsHealth } from '../tts/ttsClient';
 import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
@@ -154,7 +156,8 @@ export const localizeModImportVoice = async (
   const extractDir = path.resolve(options.extractDir);
 
   if (!options.dryRun) {
-    await checkTtsHealth(options.ttsBaseUrl);
+    if (getJobRuntime()) await ensureDependencyHealthy('tts');
+    else await checkTtsHealth(options.ttsBaseUrl);
   }
 
   const mod = await loadImportedMod(db, options.modId);

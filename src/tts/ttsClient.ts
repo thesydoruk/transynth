@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
 import { ttsPool } from './ttsRequestPool';
 import {
@@ -7,6 +8,7 @@ import {
   type TtsSynthesisParams,
 } from './ttsSynthesisParams';
 
+export { checkTtsHealth, probeTtsHealth } from './ttsHealth';
 export type { TtsSynthesisParams } from './ttsSynthesisParams';
 export { resolveTtsSynthesisParams, TTS_SYNTHESIS_DEFAULTS } from './ttsSynthesisParams';
 
@@ -75,27 +77,7 @@ export const synthesizeWav = async (
   text: string,
   referenceWavPath: string,
   options: TtsSynthesizeOptions = {},
-): Promise<Buffer> => ttsPool.run(() => synthesizeWavHttp(text, referenceWavPath, options));
-
-export const checkTtsHealth = async (baseUrl?: string): Promise<void> => {
-  const root = (baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
-  const response = await fetch(`${root}/health`).catch(() => null);
-  if (!response?.ok) {
-    throw new Error('TTS health check failed');
-  }
-
-  const body = (await response.json().catch(() => null)) as {
-    model_ready?: boolean;
-    model_loaded?: boolean;
-    status?: string;
-  } | null;
-  if (!body) return;
-
-  const status = body.status?.toLowerCase();
-  if (status === 'ok' || status === 'ready') return;
-
-  const modelReady = body.model_ready ?? body.model_loaded;
-  if (modelReady === false) {
-    throw new Error(`TTS is not ready (status=${body.status ?? 'unknown'})`);
-  }
+): Promise<Buffer> => {
+  await ensureDependencyHealthy('tts');
+  return ttsPool.run(() => synthesizeWavHttp(text, referenceWavPath, options));
 };

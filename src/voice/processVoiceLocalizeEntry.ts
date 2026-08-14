@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { log } from '../logger';
 import { toDiskPath, writeIfChanged } from '../modImport';
+import { isDependencyUnavailableError } from '../pipeline/errors';
 import { synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
@@ -202,6 +203,7 @@ export const processVoiceLocalizeEntry = async (
     }
     return { kind: 'skipped', relPath: prefix + fuzRel };
   } catch (err) {
+    if (isDependencyUnavailableError(err)) throw err;
     const message = `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
     log.warn(`Voice synthesis failed ${message}`);
     return { kind: 'warning', message };

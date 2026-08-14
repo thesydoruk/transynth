@@ -40,6 +40,7 @@
     "themeLight": "Switch to light theme",
     "ops": "Health",
     "settings": "Settings",
+    "systemLog": "System log",
     "games": "Games",
     "currentGame": "Game",
     "contentLang": "Content",
@@ -760,6 +761,30 @@
     "details": "Details",
     "entries": "{{total}} entries"
   },
+  "systemLog": {
+    "title": "System log",
+    "subtitle": "Health-check failures, job errors, and other operational messages.",
+    "allLevels": "All levels",
+    "allSources": "All sources",
+    "time": "Time",
+    "levelLabel": "Level",
+    "sourceLabel": "Source",
+    "message": "Message",
+    "job": "Job",
+    "empty": "No system messages yet.",
+    "entries": "{{total}} entries",
+    "level": {
+      "error": "error",
+      "warning": "warning",
+      "info": "info"
+    },
+    "source": {
+      "llm": "LLM",
+      "tts": "TTS",
+      "job": "Job",
+      "system": "System"
+    }
+  },
   "languages": {
     "en": "English",
     "uk": "Ukrainian",
@@ -1078,7 +1103,12 @@
       "ragMaxExamples": "Max reference examples",
       "ragMaxExamplesDesc": "How many similar translations to include per string (1–10).",
       "ragMinSimilarity": "Min embedding similarity",
-      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold."
+      "ragMinSimilarityDesc": "Minimum cosine similarity for embedding-based retrieval (0–1). TM matches ignore this threshold.",
+      "sectionPipeline": "Pipeline availability",
+      "dependencyWaitTimeout": "Wait for LLM / TTS (seconds)",
+      "dependencyWaitTimeoutDesc": "If the LLM or synthesis server is down, jobs probe health and wait this long before failing. Default 600 (10 minutes).",
+      "healthCheckInterval": "Health-check interval (seconds)",
+      "healthCheckIntervalDesc": "Pause between failed health probes. The real request is sent only after a probe succeeds. Default 10."
     },
     "data": {
       "title": "Data Configuration",

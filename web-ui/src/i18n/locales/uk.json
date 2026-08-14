@@ -40,6 +40,7 @@
     "themeLight": "Перемкнути на світлу тему",
     "ops": "Стан",
     "settings": "Налаштування",
+    "systemLog": "Системний лог",
     "games": "Ігри",
     "currentGame": "Гра",
     "contentLang": "Мови",
@@ -760,6 +761,30 @@
     "details": "Деталі",
     "entries": "{{total}} записів"
   },
+  "systemLog": {
+    "title": "Системний лог",
+    "subtitle": "Невдалі health-check, помилки джоб та інші службові повідомлення.",
+    "allLevels": "Усі рівні",
+    "allSources": "Усі джерела",
+    "time": "Час",
+    "levelLabel": "Рівень",
+    "sourceLabel": "Джерело",
+    "message": "Повідомлення",
+    "job": "Джоба",
+    "empty": "Системних повідомлень ще немає.",
+    "entries": "{{total}} записів",
+    "level": {
+      "error": "помилка",
+      "warning": "попередження",
+      "info": "інфо"
+    },
+    "source": {
+      "llm": "LLM",
+      "tts": "TTS",
+      "job": "Джоба",
+      "system": "Система"
+    }
+  },
   "languages": {
     "en": "Англійська",
     "uk": "Українська",
@@ -1078,7 +1103,12 @@
       "ragMaxExamples": "Макс. прикладів",
       "ragMaxExamplesDesc": "Скільки схожих перекладів включати для одного рядка (1–10).",
       "ragMinSimilarity": "Мін. similarity embeddings",
-      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу."
+      "ragMinSimilarityDesc": "Мінімальна косинусна схожість для retrieval через embeddings (0–1). Збіги TM не залежать від цього порогу.",
+      "sectionPipeline": "Доступність пайплайну",
+      "dependencyWaitTimeout": "Очікування LLM / TTS (секунди)",
+      "dependencyWaitTimeoutDesc": "Якщо сервер LLM або синтезу недоступний, джоби перевіряють health і чекають стільки часу, перш ніж завершитися з помилкою. Типово 600 (10 хвилин).",
+      "healthCheckInterval": "Інтервал health-check (секунди)",
+      "healthCheckIntervalDesc": "Пауза між невдалими health-перевірками. Запит надсилається лише після успішного probe. Типово 10."
     },
     "data": {
       "title": "Конфігурація даних",

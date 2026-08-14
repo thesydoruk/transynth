@@ -14,6 +14,7 @@ import { eetEndpoints } from './endpoints/eet';
 import { csvEndpoints } from './endpoints/csv';
 import { modImportEndpoints } from './endpoints/modImport';
 import { activityEndpoints } from './endpoints/activity';
+import { systemLogEndpoints } from './endpoints/systemLog';
 import { qaRulesEndpoints } from './endpoints/qaRules';
 import { coherenceEndpoints } from './endpoints/coherence';
 import { innrEndpoints } from './endpoints/innr';
@@ -40,6 +41,7 @@ export const api = {
   csv: csvEndpoints,
   modImport: modImportEndpoints,
   activity: activityEndpoints,
+  systemLog: systemLogEndpoints,
   qaRules: qaRulesEndpoints,
   coherence: coherenceEndpoints,
   innr: innrEndpoints,

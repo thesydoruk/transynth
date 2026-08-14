@@ -2,6 +2,8 @@
 import type { LLMProvider, ChatOptions, ChatResult, EmbedOptions } from './provider';
 import { CONFIG, type LLMProviderName } from '../config';
 import { isAbortError, isRetryableLlmError, isLlmTimeoutError } from './retry';
+import { isDependencyUnavailableError } from '../pipeline/errors';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { embedPool, llmChatPool } from './requestPool';
 import { VllmProvider } from './vllmProvider';
 import { OpenAIProvider } from './openaiProvider';
@@ -160,9 +162,10 @@ export const chatWithFallback = async (opts: ChatOptions): Promise<ChatResult> =
     };
 
     try {
+      await ensureDependencyHealthy('llm');
       return await callProvider(primary);
     } catch (err) {
-      if (isAbortError(err)) throw err;
+      if (isAbortError(err) || isDependencyUnavailableError(err)) throw err;
       lastErr = err;
 
       if (fallback && isAvailabilityError(err)) {
@@ -253,8 +256,10 @@ export const embedWithFallback = async (
   };
 
   try {
+    await ensureDependencyHealthy('llm');
     return await embedPool.run(() => runEmbed(primary));
   } catch (err) {
+    if (isDependencyUnavailableError(err)) throw err;
     const fallback = makeFallback();
     if (!fallback || !isAvailabilityError(err)) throw err;
     logEmbed.warn(`${operation} primary unavailable, using fallback`, {

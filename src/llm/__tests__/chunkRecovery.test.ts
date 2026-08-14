@@ -1,4 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { DependencyUnavailableError } from '../../pipeline/errors';
 import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../chunkRecovery';
 import { LlmVerifyMissingIdsError } from '../verifyTranslate';
 import type { Logger } from '../../logger';
@@ -131,5 +132,42 @@ describe('runLlmChunkWithRecovery', () => {
 
     expect(order.indexOf('ok-2')).toBeLessThan(order.lastIndexOf('fail-1'));
     expect(runOnce).toHaveBeenCalledTimes(3);
+  });
+
+  it('rethrows DependencyUnavailableError instead of marking rows failed', async () => {
+    const onFailure = jest.fn<(failed: readonly { id: number }[], message: string) => void>();
+    await expect(
+      runLlmChunkWithRecovery({
+        chunk: [{ id: 1 }, { id: 2 }],
+        runOnce: async () => {
+          throw new DependencyUnavailableError('llm', 3, 'down');
+        },
+        maxAttempts: 3,
+        onFailure,
+        log: silentLog,
+        operation: 'test',
+      }),
+    ).rejects.toBeInstanceOf(DependencyUnavailableError);
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it('stops the work pool when a chunk hits DependencyUnavailableError', async () => {
+    async function* feed() {
+      yield [{ id: 1 }];
+      yield [{ id: 2 }];
+    }
+
+    await expect(
+      runLlmChunkWorkPoolFromFeed(feed(), {
+        concurrency: 1,
+        runOnce: async () => {
+          throw new DependencyUnavailableError('llm', 2, 'down');
+        },
+        maxAttempts: 1,
+        onFailure: () => {},
+        log: silentLog,
+        operation: 'test',
+      }),
+    ).rejects.toBeInstanceOf(DependencyUnavailableError);
   });
 });

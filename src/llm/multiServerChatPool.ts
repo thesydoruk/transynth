@@ -69,6 +69,7 @@ export class MultiServerChatPool {
   private readonly probe: typeof probeVllmServerHealth;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private probeInFlight = false;
+  private probeWaiters: Array<() => void> = [];
   private disposed = false;
 
   constructor(servers: readonly VllmServerEntry[], opts: MultiServerChatPoolOptions = {}) {
@@ -166,9 +167,13 @@ export class MultiServerChatPool {
     }
   }
 
-  /** Probe every host; used by the interval and tests. */
+  /** Probe every host; used by the interval, job wait, and tests. */
   async runHealthChecks(): Promise<void> {
-    if (this.disposed || this.probeInFlight) return;
+    if (this.disposed) return;
+    if (this.probeInFlight) {
+      await new Promise<void>((resolve) => this.probeWaiters.push(resolve));
+      return;
+    }
     this.probeInFlight = true;
     try {
       await Promise.all(
@@ -180,6 +185,9 @@ export class MultiServerChatPool {
       );
     } finally {
       this.probeInFlight = false;
+      const waiters = this.probeWaiters;
+      this.probeWaiters = [];
+      for (const wake of waiters) wake();
     }
   }
 

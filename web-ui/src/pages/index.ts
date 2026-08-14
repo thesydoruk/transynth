@@ -14,3 +14,4 @@ export { ModsPage } from './ModsPage';
 export { OpsPage } from './OpsPage';
 export { QARulesPage } from './QARulesPage';
 export { SettingsPage } from './SettingsPage';
+export { SystemLogPage } from './SystemLogPage';

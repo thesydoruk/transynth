@@ -1,3 +1,4 @@
+import { isDependencyUnavailableError } from '../../pipeline/errors';
 import { createWorkPoolState, makeEnqueueRetry } from './workPoolState';
 import { runLlmChunkWithRecovery } from './recovery';
 import type {
@@ -14,8 +15,11 @@ const runLlmChunkWorkPoolCore = async <T>(
 ): Promise<void> => {
   const { seedQueue, concurrency, shouldAbort, awaitBufferSpace, ...recoveryOpts } = opts;
 
+  let fatalError: unknown = null;
+  const shouldStop = (): boolean => Boolean(fatalError) || Boolean(shouldAbort?.());
+
   await new Promise<void>((resolve) => {
-    const state = createWorkPoolState<T>(resolve, shouldAbort);
+    const state = createWorkPoolState<T>(resolve, shouldStop);
     state.queue = seedQueue.map((work) => ({ ...work, chunk: [...work.chunk] }));
 
     const enqueueSplit = (parts: readonly (readonly T[])[]): void => {
@@ -27,21 +31,28 @@ const runLlmChunkWorkPoolCore = async <T>(
 
     state.pump = (): void => {
       while (state.queue.length > 0 && state.inFlight < concurrency) {
-        if (shouldAbort?.()) break;
+        if (shouldStop()) break;
         const work = state.queue.shift()!;
         state.inFlight++;
         void runLlmChunkWithRecovery({
           ...recoveryOpts,
           chunk: work.chunk,
           attempt: work.attempt,
-          shouldAbort,
+          shouldAbort: shouldStop,
           enqueueSplit,
           enqueueRetry,
-        }).finally(() => {
-          state.inFlight--;
-          state.pump();
-          state.maybeDone();
-        });
+        })
+          .catch((err) => {
+            if (isDependencyUnavailableError(err)) {
+              fatalError = err;
+              state.queue.length = 0;
+            }
+          })
+          .finally(() => {
+            state.inFlight--;
+            state.pump();
+            state.maybeDone();
+          });
       }
       state.maybeDone();
     };
@@ -57,6 +68,8 @@ const runLlmChunkWorkPoolCore = async <T>(
       })();
     }
   });
+
+  if (fatalError) throw fatalError;
 };
 
 /**
@@ -95,11 +108,13 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
 
   let state!: WorkPoolState<T>;
   let feedPromise!: Promise<void>;
+  let fatalError: unknown = null;
+  const shouldStop = (): boolean => Boolean(fatalError) || Boolean(shouldAbort?.());
 
   await new Promise<void>((resolve) => {
     state = createWorkPoolState<T>(() => {
       if (feedDone) resolve();
-    }, shouldAbort);
+    }, shouldStop);
 
     const enqueueSplit = (parts: readonly (readonly T[])[]): void => {
       for (const part of parts) state.queue.push({ chunk: [...part], attempt: 0 });
@@ -111,7 +126,7 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
 
     state.pump = (): void => {
       while (state.queue.length > 0 && state.inFlight < concurrency) {
-        if (shouldAbort?.()) break;
+        if (shouldStop()) break;
         const work = state.queue.shift()!;
         notifyBufferWaiters();
         state.inFlight++;
@@ -119,14 +134,22 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
           ...recoveryOpts,
           chunk: work.chunk,
           attempt: work.attempt,
-          shouldAbort,
+          shouldAbort: shouldStop,
           enqueueSplit,
           enqueueRetry,
-        }).finally(() => {
-          state.inFlight--;
-          state.pump();
-          state.maybeDone();
-        });
+        })
+          .catch((err) => {
+            if (isDependencyUnavailableError(err)) {
+              fatalError = err;
+              state.queue.length = 0;
+              notifyBufferWaiters();
+            }
+          })
+          .finally(() => {
+            state.inFlight--;
+            state.pump();
+            state.maybeDone();
+          });
       }
       state.maybeDone();
     };
@@ -136,11 +159,11 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
     feedPromise = (async () => {
       try {
         for await (const chunk of feed) {
-          if (shouldAbort?.()) break;
-          while (state.queue.length >= bufferLimit && !shouldAbort?.()) {
+          if (shouldStop()) break;
+          while (state.queue.length >= bufferLimit && !shouldStop()) {
             await new Promise<void>((resolve) => bufferWaiters.push(resolve));
           }
-          if (shouldAbort?.()) break;
+          if (shouldStop()) break;
           state.queue.push({ chunk: [...chunk], attempt: 0 });
           notifyBufferWaiters();
           state.pump();
@@ -156,5 +179,6 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
   });
 
   await feedPromise;
+  if (fatalError) throw fatalError;
   if (feedError) throw feedError;
 };

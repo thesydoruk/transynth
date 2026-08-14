@@ -42,6 +42,7 @@ import { opsRoutes } from './routes/ops';
 import { settingsRoutes } from './routes/settings';
 import { gamesRoutes } from './routes/games';
 import { projectSettingsRoutes } from './routes/projectSettings';
+import { systemLogRoutes } from './routes/systemLog';
 import { llmVerifyRoutes } from './routes/llmVerify';
 import { llmTranslateRoutes } from './routes/llmTranslate';
 import { llmSkipDetectRoutes } from './routes/llmSkipDetect';
@@ -102,6 +103,7 @@ const db = openDb();
 await ensureDefaultUser(db);
 await registerAuthHook(app, db);
 await activityRoutes(app, db);
+await systemLogRoutes(app, db);
 
 // Domain routes
 await modsRoutes(app, db);

@@ -218,7 +218,7 @@ export const opsRoutes = async (app: FastifyInstance, db: Tx) => {
              'mods','records','strings','translations',
              'translation_revisions','qa_issues','glossary',
              'eet_imports','csv_imports',
-             'mod_imports','users','activity_log','translation_examples'
+             'mod_imports','users','activity_log','system_log','translation_examples'
            )
          ORDER BY c.reltuples DESC`,
       ),

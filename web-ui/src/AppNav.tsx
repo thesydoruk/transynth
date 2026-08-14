@@ -91,8 +91,17 @@ export const AppNav = () => {
       </button>
 
       <Link
+        to="/system-log"
+        className={loc.pathname === '/system-log' ? nav.iconBtnActive : nav.iconBtn}
+        title={t('nav.systemLog')}
+        aria-label={t('nav.systemLog')}
+      >
+        {'\uD83D\uDCCB'}
+      </Link>
+
+      <Link
         to="/settings"
-        className={nav.iconBtn}
+        className={loc.pathname === '/settings' ? nav.iconBtnActive : nav.iconBtn}
         title={t('nav.settings')}
         aria-label={t('nav.settings')}
       >

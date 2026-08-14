@@ -13,6 +13,12 @@
 import type { Tx } from '../../db';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import { normalizeVllmServerEntries, type VllmServerEntry } from '../../llm/vllmServerConfig';
+import {
+  clampDependencyWaitTimeoutSec,
+  clampHealthCheckIntervalSec,
+  DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
+  DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
+} from '../../pipeline/settings';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
 
@@ -52,7 +58,11 @@ export type ProjectSettingKey =
    * vLLM chat pool (`[{host, maxParallel, apiKey}, …]`).
    * Empty = fall back to env `VLLM_SERVERS` / `VLLM_BASE_URL`.
    */
-  | 'llm.vllm_servers';
+  | 'llm.vllm_servers'
+  /** How long jobs wait for LLM/TTS health before failing (seconds). */
+  | 'pipeline.dependency_wait_timeout_sec'
+  /** Pause between failed LLM/TTS health probes (seconds). */
+  | 'pipeline.health_check_interval_sec';
 
 /** Typed shape of all project settings. */
 export type ProjectSettings = {
@@ -70,6 +80,8 @@ export type ProjectSettings = {
   'voice.top_p': number;
   'voice.tts_max_parallel_fish_speech': number;
   'llm.vllm_servers': VllmServerEntry[];
+  'pipeline.dependency_wait_timeout_sec': number;
+  'pipeline.health_check_interval_sec': number;
 };
 
 /** Clamp TTS parallel request limits to 1–32. */
@@ -99,6 +111,8 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'voice.top_p': 0.8,
   'voice.tts_max_parallel_fish_speech': 1,
   'llm.vllm_servers': [],
+  'pipeline.dependency_wait_timeout_sec': DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
+  'pipeline.health_check_interval_sec': DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
 };
 
 /* ── DB helpers ─────────────────────────────────────────────────────────── */
@@ -125,6 +139,12 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     result['voice.tts_max_parallel_fish_speech'],
   );
   result['llm.vllm_servers'] = normalizeVllmServerEntries(result['llm.vllm_servers']);
+  result['pipeline.dependency_wait_timeout_sec'] = clampDependencyWaitTimeoutSec(
+    result['pipeline.dependency_wait_timeout_sec'],
+  );
+  result['pipeline.health_check_interval_sec'] = clampHealthCheckIntervalSec(
+    result['pipeline.health_check_interval_sec'],
+  );
   return result;
 };
 
@@ -168,6 +188,12 @@ export const setProjectSetting = async (
   }
   if (key === 'llm.vllm_servers') {
     stored = normalizeVllmServerEntries(value) as ProjectSettings[ProjectSettingKey];
+  }
+  if (key === 'pipeline.dependency_wait_timeout_sec') {
+    stored = clampDependencyWaitTimeoutSec(value as number);
+  }
+  if (key === 'pipeline.health_check_interval_sec') {
+    stored = clampHealthCheckIntervalSec(value as number);
   }
 
   await db.query(

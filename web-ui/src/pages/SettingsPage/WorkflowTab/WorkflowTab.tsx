@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../api';
 import parentS from '../SettingsPage.module.scss';
+import { PipelineSection } from './PipelineSection';
 import s from './WorkflowTab.module.scss';
 
 /** Shape of all project settings as returned by GET /api/project-settings. */
@@ -22,6 +23,8 @@ type ProjectSettings = {
   'import.skip_tes4': boolean;
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
+  'pipeline.dependency_wait_timeout_sec': number;
+  'pipeline.health_check_interval_sec': number;
 };
 
 const DEFAULTS: ProjectSettings = {
@@ -33,6 +36,8 @@ const DEFAULTS: ProjectSettings = {
   'import.skip_tes4': false,
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
+  'pipeline.dependency_wait_timeout_sec': 600,
+  'pipeline.health_check_interval_sec': 10,
 };
 
 /** WorkflowTab root component. */
@@ -66,6 +71,14 @@ export const WorkflowTab = () => {
       if (!Number.isNaN(n) && n >= 0 && n <= 1) update({ key, value: n });
       return;
     }
+    if (
+      key === 'pipeline.dependency_wait_timeout_sec' ||
+      key === 'pipeline.health_check_interval_sec'
+    ) {
+      const n = parseInt(raw, 10);
+      if (!Number.isNaN(n) && n >= 1) update({ key, value: n });
+      return;
+    }
     const n = parseInt(raw, 10);
     if (!Number.isNaN(n) && n >= 0) update({ key, value: n });
   };
@@ -81,6 +94,8 @@ export const WorkflowTab = () => {
 
   return (
     <>
+      <PipelineSection settings={settings} onNumber={handleNumber} />
+
       {/* ── Workflow section ────────────────────────────────────────────── */}
       <div className={parentS.section}>
         <h2 className={parentS.sectionTitle}>{t('settings.workflow.sectionWorkflow')}</h2>

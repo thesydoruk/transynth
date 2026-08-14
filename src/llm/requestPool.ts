@@ -10,6 +10,7 @@ import { Semaphore } from '../utils/concurrency';
 import { MultiServerChatPool } from './multiServerChatPool';
 import type { VllmServerEntry } from './vllmServerConfig';
 import { totalVllmChatParallel } from './vllmServerConfig';
+import { probeVllmServerHealth } from './vllmServerHealth';
 import type OpenAI from 'openai';
 
 export type RequestPoolStats = {
@@ -50,13 +51,25 @@ export class RequestPool {
   }
 }
 
+type HealthProbeResult = { ok: true } | { ok: false; error: string };
+
 type ChatPool = {
   stats: RequestPoolStats;
   dispose?: () => void;
+  probeHealth?: () => Promise<HealthProbeResult>;
   run<T>(fn: () => Promise<T>): Promise<T>;
   runWithClient?<T>(
     fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>,
   ): Promise<T>;
+};
+
+const probeSingleVllmHost = async (): Promise<HealthProbeResult> => {
+  if (CONFIG.llmProvider !== 'vllm') return { ok: true };
+  const server = CONFIG.vllmServers[0];
+  const host = server?.host ?? CONFIG.vllmBaseUrl;
+  const apiKey = server?.apiKey ?? CONFIG.vllmApiKey;
+  const ok = await probeVllmServerHealth(host, apiKey, CONFIG.vllmHealthTimeoutMs);
+  return ok ? { ok: true } : { ok: false, error: `vLLM health check failed (${host})` };
 };
 
 const buildChatPool = (servers: readonly VllmServerEntry[], multi: boolean): ChatPool => {
@@ -68,6 +81,13 @@ const buildChatPool = (servers: readonly VllmServerEntry[], multi: boolean): Cha
         return CONFIG.llmProvider === 'vllm' ? multiPool.stats : openaiPool.stats;
       },
       dispose: () => multiPool.dispose(),
+      probeHealth: async () => {
+        if (CONFIG.llmProvider !== 'vllm') return { ok: true };
+        await multiPool.runHealthChecks();
+        if (multiPool.stats.healthyMax > 0) return { ok: true };
+        const hosts = multiPool.slots.map((slot) => slot.host).join(', ');
+        return { ok: false, error: `No healthy vLLM servers (${hosts || 'none'})` };
+      },
       run: <T>(fn: () => Promise<T>) => openaiPool.run(fn),
       runWithClient: <T>(
         fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>,
@@ -80,6 +100,7 @@ const buildChatPool = (servers: readonly VllmServerEntry[], multi: boolean): Cha
     get stats(): RequestPoolStats {
       return single.stats;
     },
+    probeHealth: probeSingleVllmHost,
     run: <T>(fn: () => Promise<T>) => single.run(fn),
   };
 };
@@ -91,6 +112,8 @@ export const llmChatPool: ChatPool = {
   get stats(): RequestPoolStats {
     return chatPoolImpl.stats;
   },
+  probeHealth: () =>
+    chatPoolImpl.probeHealth ? chatPoolImpl.probeHealth() : Promise.resolve({ ok: true }),
   run: <T>(fn: () => Promise<T>) => chatPoolImpl.run(fn),
   runWithClient: <T>(fn: (client: OpenAI, meta: { host: string; index: number }) => Promise<T>) => {
     if (!chatPoolImpl.runWithClient) {

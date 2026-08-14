@@ -448,6 +448,22 @@ DROP TABLE IF EXISTS translation_cache CASCADE;
 CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action, created_at DESC);
 
+-- ── System log (job/health errors, recoveries) ──────────────────────────────
+CREATE TABLE IF NOT EXISTS system_log (
+  id         BIGSERIAL PRIMARY KEY,
+  level      TEXT NOT NULL,
+  source     TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  job_id     INTEGER,
+  job_kind   TEXT,
+  mod_id     INTEGER,
+  details    JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_log_created ON system_log(created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_system_log_level ON system_log(level, created_at DESC);
+
 -- ── LLM batch translate jobs ─────────────────────────────────────────────────
 -- Tracks lifecycle of each batch-translate operation so job history survives
 -- page reloads. One row per batch: inserted when the request starts, updated
@@ -496,7 +512,9 @@ INSERT INTO project_settings(key, value) VALUES
   ('import.skip_tes4',                 'false'),
   ('llm.rag_max_examples',             '5'),
   ('llm.rag_min_similarity',           '0.5'),
-  ('llm.vllm_servers',                 '[]')
+  ('llm.vllm_servers',                 '[]'),
+  ('pipeline.dependency_wait_timeout_sec', '600'),
+  ('pipeline.health_check_interval_sec',   '10')
 ON CONFLICT(key) DO NOTHING;
 
 -- Stress placement moved to the TTS server.

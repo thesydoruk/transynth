@@ -10,8 +10,14 @@ import type { Job } from 'bullmq';
 import type { Tx } from '../../src/db';
 import { syncLlmPoolFromProjectSettings } from '../../src/llm/llmProjectSettings';
 import { logJobs } from '../../src/logging/loggers';
+import { runWithJobRuntime } from '../../src/pipeline/jobRuntime';
+import {
+  clampDependencyWaitTimeoutSec,
+  clampHealthCheckIntervalSec,
+} from '../../src/pipeline/settings';
 import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSettings';
 import { getAllProjectSettings } from '../../src/web/services/projectSettings';
+import { writeSystemLog } from '../../src/web/services/systemLog';
 import { fromBullJobId } from './core/queue';
 import { writeJobSnapshot } from './core/snapshots';
 import { getJobHandler } from './registry';
@@ -46,12 +52,9 @@ export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
   const { kind, modId } = job.data;
   const handler = getJobHandler(kind);
 
-  // Pick up Settings → LLM/Voice pool changes without restarting the worker.
-  {
-    const projectSettings = await getAllProjectSettings(db);
-    syncTtsPoolFromProjectSettings(projectSettings);
-    syncLlmPoolFromProjectSettings(projectSettings);
-  }
+  const projectSettings = await getAllProjectSettings(db);
+  syncTtsPoolFromProjectSettings(projectSettings);
+  syncLlmPoolFromProjectSettings(projectSettings);
 
   const abort = new AbortController();
   let cancelled = false;
@@ -118,14 +121,51 @@ export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
   pushSnapshot('running', null);
 
   try {
-    const result = await handler(db, ctx);
+    const result = await runWithJobRuntime(
+      {
+        db,
+        jobId,
+        kind,
+        modId,
+        emit: ctx.emit,
+        mergeSnapshot: ctx.mergeSnapshot,
+        signal: abort.signal,
+        waitTimeoutMs:
+          clampDependencyWaitTimeoutSec(projectSettings['pipeline.dependency_wait_timeout_sec']) *
+          1000,
+        healthIntervalMs:
+          clampHealthCheckIntervalSec(projectSettings['pipeline.health_check_interval_sec']) * 1000,
+        inflightWaits: new Map(),
+      },
+      () => handler(db, ctx),
+    );
     if (result.done != null) done = result.done;
     if (result.total != null) total = result.total;
     pushSnapshot(result.status, result.error ?? null);
+    if (result.status === 'failed' && result.error) {
+      await writeSystemLog(db, {
+        level: 'error',
+        source: 'job',
+        message: `Job ${kind} #${jobId} failed: ${result.error}`,
+        jobId,
+        jobKind: kind,
+        modId,
+      });
+    }
     logJobs.info('job finished', { jobId, kind, modId, status: result.status, done, total });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     pushSnapshot(cancelled ? 'cancelled' : 'failed', message);
+    if (!cancelled) {
+      await writeSystemLog(db, {
+        level: 'error',
+        source: 'job',
+        message: `Job ${kind} #${jobId} failed: ${message}`,
+        jobId,
+        jobKind: kind,
+        modId,
+      });
+    }
     logJobs.error('job failed', { jobId, kind, modId, error: message });
     // Rethrow so BullMQ marks the job failed and the SSE relay reports it.
     throw err;
