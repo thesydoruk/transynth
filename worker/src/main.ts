@@ -26,6 +26,10 @@ import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
 import { subscribeJobControl } from './core/controlChannel';
 import { JOBS_QUEUE_NAME } from './core/queue';
+import {
+  recoverOrphanedVoiceGenerateJobs,
+  requeueStalledVoiceGenerate,
+} from './core/recoverVoiceJobs';
 import type { JobData } from './types';
 import { cancelAllActiveRuns, controlActiveRun, processJob } from './processor';
 
@@ -39,20 +43,23 @@ const db = openDb();
   syncLlmPoolFromProjectSettings(projectSettings);
 }
 
+await recoverOrphanedVoiceGenerateJobs();
+
 const worker = new Worker<JobData>(JOBS_QUEUE_NAME, (job) => processJob(db, job), {
   connection: createRedisConnection('worker'),
   concurrency: CONFIG.jobConcurrency,
   // ESP parsing can block the event loop long enough to miss lock renewal.
-  // A 5-minute lock + no stalled re-queue avoids double-running a job after a
-  // crash (services already retry their own LLM/HTTP errors).
+  // A 5-minute lock + no stalled re-queue avoids double-running LLM/import
+  // jobs. voice-generate is re-queued separately (scope=missing is safe).
   lockDuration: 300_000,
   maxStalledCount: 0,
 });
 
 worker.on('error', (err) => logJobs.warn(`worker error: ${err.message}`));
-worker.on('failed', (job, err) =>
-  logJobs.error('job failed', { jobId: job?.id, kind: job?.data.kind, error: err.message }),
-);
+worker.on('failed', (job, err) => {
+  logJobs.error('job failed', { jobId: job?.id, kind: job?.data.kind, error: err.message });
+  if (job) void requeueStalledVoiceGenerate(job, err);
+});
 
 // Separate Redis connection that listens for Stop / Pause from the API.
 const unsubscribeControl = await subscribeJobControl(controlActiveRun);
