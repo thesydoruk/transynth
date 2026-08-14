@@ -68,4 +68,42 @@ describe('translationRules', () => {
     expect(skyrimVerify).toContain('Лексика Fallout');
     expect(skyrimVerify).not.toContain('силової броні');
   });
+
+  it('uses a Disco-specific Ukrainian prompt, not Bethesda rules', () => {
+    const translate = buildUkrainianTranslateSystemPrompt('en', 'disco');
+    const verify = buildUkrainianVerifySystemPrompt('en', 'disco');
+    expect(translate).toContain('### 1. ТЕХНІЧНИЙ ФОРМАТ');
+    expect(translate).toContain('### 4. УЗГОДЖЕНІСТЬ, ТЕРМІНОЛОГІЯ ТА МЕТАДАНІ');
+    expect(translate).toContain('### 5. СПЕЦИФІЧНІ ПРАВИЛА ЛОКАЛІЗАЦІЇ (DISCO ELYSIUM)');
+    expect(translate).toContain('### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ');
+    expect(translate).toContain('reference_examples');
+    expect(translate).toContain('Disco Elysium');
+    expect(translate).toContain('Напівсвітло');
+    expect(translate).toContain('Навіювання');
+    expect(translate).toContain('Зцілити Волю [1]');
+    expect(translate).not.toContain('ESP/ESM');
+    expect(translate).not.toContain('кришок');
+    expect(translate).not.toContain('Піп-боя');
+    expect(verify).toContain('### 6. СПЕЦИФІЧНІ ПРАВИЛА ЛОКАЛІЗАЦІЇ (DISCO ELYSIUM)');
+    expect(verify).toContain('голоси навичок');
+    expect(verify).toContain('reference_examples');
+    expect(verify).not.toContain('ESP/ESM');
+    expect(verify).not.toContain('addressee_gender: "any"');
+    expect(verify).not.toContain('Піп-боя');
+  });
+
+  it('keeps English Disco prompts free of Creation Kit and Fallout gear', () => {
+    const translate = buildEnglishTranslateSystemPrompt('en', 'de', 'disco');
+    const verify = buildEnglishVerifySystemPrompt('en', 'de', 'disco');
+    const rules = buildEnglishTranslationRules('de', 'disco');
+    expect(rules).toContain('Inland Empire');
+    expect(rules).toContain('Half Light');
+    expect(rules).not.toContain('Stealth Boy');
+    expect(translate).toContain('Disco Translator Final Cut');
+    expect(translate).not.toContain('ESP/ESM');
+    expect(translate).not.toContain('Brotherhood of Steel');
+    expect(verify).toContain('gettext .po');
+    expect(verify).not.toContain('Operators Light Arm Armor');
+    expect(verify).not.toContain('Pip-Boy');
+  });
 });

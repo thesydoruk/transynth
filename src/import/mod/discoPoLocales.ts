@@ -14,6 +14,7 @@ import {
 } from '../../formats/po';
 import type { CsvRow } from '../../types';
 import { discoPoEntryStorageKey } from './discoPoPath';
+import { discoPoLocaleText } from './discoPoText';
 
 export type DiscoPoLocaleBundle = {
   folder: DiscoLangFolder;
@@ -26,13 +27,6 @@ export type DiscoPoLocaleBundle = {
 /** Relative path of a `.po` file inside its language folder (forward slashes). */
 const relPoName = (langFolder: string, poPath: string): string =>
   path.relative(langFolder, poPath).split(path.sep).join('/');
-
-/** Prefer English msgid text; fall back to msgstr when msgid is empty. */
-const sourceTextOf = (entry: PoEntry): string => {
-  const fromMsgid = entry.msgid.trim();
-  if (fromMsgid) return entry.msgid;
-  return entry.msgstr;
-};
 
 /** Index wav basenames under Audio/ for EDID hints. */
 const collectWavStems = (langFolderAbs: string): Set<string> => {
@@ -70,7 +64,7 @@ const loadDiscoPoLocale = (folder: DiscoLangFolder): DiscoPoLocaleBundle => {
     const rel = relPoName(folder.absPath, poPath);
     const parsed = parsePoBuffer(fs.readFileSync(poPath));
     for (const entry of parsed) {
-      const text = sourceTextOf(entry);
+      const text = discoPoLocaleText(entry);
       if (!text.trim()) continue;
       const storageKey = discoPoEntryStorageKey(rel, entry.msgctxt, entry.msgid);
       entries.set(`${rel}\\${storageKey}`, text);

@@ -19,3 +19,7 @@ export const resolveGameType = (game?: GameType | string | null): GameType => {
   }
   return 'fo4';
 };
+
+/** Disco Elysium Final Cut (.po) — not a Bethesda / Creation Kit title. */
+export const isDiscoGame = (game?: GameType | string | null): boolean =>
+  resolveGameType(game) === 'disco';

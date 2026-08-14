@@ -1,6 +1,7 @@
 import type { GameType } from '../../../../types';
 import { GAME_UK_GLOSSARIES } from '../../../../resources/glossary';
 import { FO4_UK_GLOSSARY } from '../../../../resources/glossary/fo4-uk';
+import { DISCO_UK_GLOSSARY } from '../../../../resources/glossary/disco-uk';
 import {
   canonicalEnHeader,
   canonicalUkHeader,
@@ -64,6 +65,18 @@ describe('canonical terminology', () => {
     }
   });
 
+  it('every Disco glossary entry appears in Ukrainian translate and verify prompts as JSON', () => {
+    const translate = buildUkrainianTranslateSystemPrompt('en', 'disco');
+    const verify = buildUkrainianVerifySystemPrompt('en', 'disco');
+
+    for (const { term, translation } of DISCO_UK_GLOSSARY) {
+      expect(translate).toContain(`"term": "${term}"`);
+      expect(translate).toContain(`"translation": "${translation}"`);
+      expect(verify).toContain(`"term": "${term}"`);
+      expect(verify).toContain(`"translation": "${translation}"`);
+    }
+  });
+
   it('every game injects canonical rules into English translate and verify prompts', () => {
     for (const game of ALL_GAMES) {
       const rules = buildEnglishTranslationRules('pl', game);
@@ -72,7 +85,12 @@ describe('canonical terminology', () => {
       const verify = buildEnglishVerifySystemPrompt('en', 'pl', game);
       expect(translate).toContain(rules);
       expect(verify).toContain(verifyRules);
-      expect(verify).toContain('TEMPLATE CONSISTENCY (VERIFY)');
+      if (game !== 'disco') {
+        expect(verify).toContain('TEMPLATE CONSISTENCY (VERIFY)');
+      } else {
+        expect(verify).not.toContain('ESP/ESM');
+        expect(verify).toContain('Disco Elysium');
+      }
     }
   });
 

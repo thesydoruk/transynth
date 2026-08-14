@@ -1,7 +1,7 @@
 import type { GameType } from '../../../types';
 import { englishCommonRules, englishVerifyCommonRules } from './common/en';
 import { GAME_RULES } from './games';
-import { resolveGameType } from '../resolveGame';
+import { isDiscoGame, resolveGameType } from '../resolveGame';
 
 export { resolveGameType } from '../resolveGame';
 export type { GameRules } from './types';
@@ -13,6 +13,7 @@ export const buildEnglishTranslationRules = (
 ): string => {
   const resolved = resolveGameType(game);
   const gameRules = GAME_RULES[resolved].en(targetLang);
+  if (isDiscoGame(resolved)) return gameRules.join('\n');
   return [...englishCommonRules(targetLang), '', ...gameRules].join('\n');
 };
 
@@ -23,6 +24,7 @@ export const buildEnglishVerifyTranslationRules = (
 ): string => {
   const resolved = resolveGameType(game);
   const gameRules = GAME_RULES[resolved].en(targetLang);
+  if (isDiscoGame(resolved)) return gameRules.join('\n');
   return [...englishVerifyCommonRules(targetLang), '', ...gameRules].join('\n');
 };
 
