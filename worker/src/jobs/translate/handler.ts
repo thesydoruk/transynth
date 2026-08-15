@@ -11,6 +11,8 @@ import {
   type LlmTranslateProgressEvent,
   type LlmTranslateRow,
 } from './runJob';
+import { CONFIG } from '../../../../src/config';
+import { pushCapped, trimCappedArray } from '../../core/cappedArray';
 import type { JobHandler } from '../../types';
 import { runTrackedJob } from '../../runTrackedJob';
 
@@ -41,10 +43,14 @@ export const llmTranslateHandler: JobHandler = (db, ctx) => {
       ),
     (event) => {
       if (event.type === 'progress' && event.row) {
-        rows.push(event.row);
+        pushCapped(rows, event.row, CONFIG.jobSnapshotMaxRows);
         ctx.mergeSnapshot({ rows, done: event.done, total: event.total });
       } else if (event.type === 'started') {
+        rows.length = 0;
         ctx.mergeSnapshot({ rows: [], done: 0, total: event.total });
+      } else if (event.type === 'done' || event.type === 'cancelled') {
+        trimCappedArray(rows, CONFIG.jobSnapshotMaxRows);
+        ctx.mergeSnapshot({ rows, done: event.done, total: event.total });
       }
     },
   );

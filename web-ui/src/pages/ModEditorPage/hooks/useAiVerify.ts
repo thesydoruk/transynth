@@ -189,7 +189,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 total: event.total,
                 approved: event.approved,
                 fixed: event.fixed,
-                issues: event.issues,
+                issues: event.issues ?? prev.issues,
               }));
             }
             if (event.type === 'cancelled') {
@@ -200,7 +200,7 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
                 total: event.total,
                 approved: event.approved,
                 fixed: event.fixed,
-                issues: event.issues,
+                issues: event.issues ?? prev.issues,
               }));
             }
             if (event.type === 'error') {

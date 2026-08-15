@@ -101,12 +101,14 @@ export const runPoolOverAsyncIterable = async <T>(
   items: AsyncIterable<T>,
   concurrency: number,
   fn: (item: T) => Promise<void>,
+  opts?: MapWithConcurrencyOptions,
 ): Promise<void> => {
   const limit = Math.max(1, concurrency);
   const iterator = items[Symbol.asyncIterator]();
 
   const worker = async (): Promise<void> => {
     while (true) {
+      if (opts?.shouldAbort?.()) return;
       const next = await iterator.next();
       if (next.done) return;
       await fn(next.value);

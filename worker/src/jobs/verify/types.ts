@@ -63,7 +63,6 @@ export type LlmVerifyProgressEvent =
       total: number;
       approved: number;
       fixed: number;
-      issues: LlmVerifyIssue[];
     }
   | {
       type: 'cancelled';
@@ -71,7 +70,6 @@ export type LlmVerifyProgressEvent =
       total: number;
       approved: number;
       fixed: number;
-      issues: LlmVerifyIssue[];
     }
   | { type: 'error'; error: string };
 

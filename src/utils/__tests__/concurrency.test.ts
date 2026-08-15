@@ -40,4 +40,22 @@ describe('runPoolOverAsyncIterable', () => {
     expect(order).toEqual([1, 3, 2]);
     expect(Date.now() - started).toBeLessThan(150);
   });
+
+  it('stops claiming new items when shouldAbort flips', async () => {
+    let abort = false;
+    const started: number[] = [];
+
+    await runPoolOverAsyncIterable(
+      allAtOnce([1, 2, 3, 4, 5, 6]),
+      2,
+      async (item) => {
+        started.push(item);
+        if (item === 2) abort = true;
+        await new Promise((r) => setTimeout(r, 20));
+      },
+      { shouldAbort: () => abort },
+    );
+
+    expect(started.length).toBeLessThan(6);
+  });
 });

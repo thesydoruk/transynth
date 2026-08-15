@@ -118,6 +118,7 @@ export const runModVoiceGenerateJob = async (
       shouldCancel: opts.isCancelled,
       scope,
       speakerKey,
+      knownTotal: total,
       onProgress: (d, progressTotal) => {
         done = d;
         total = progressTotal;

@@ -53,7 +53,7 @@ export type LlmVerifyStreamEvent =
       total: number;
       approved: number;
       fixed: number;
-      issues: LlmVerifyIssue[];
+      issues?: LlmVerifyIssue[];
     }
   | {
       type: 'cancelled';
@@ -61,7 +61,7 @@ export type LlmVerifyStreamEvent =
       total: number;
       approved: number;
       fixed: number;
-      issues: LlmVerifyIssue[];
+      issues?: LlmVerifyIssue[];
     }
   | { type: 'error'; error: string };
 
@@ -101,14 +101,14 @@ export type LlmSkipDetectStreamEvent =
       type: 'done';
       done: number;
       total: number;
-      candidates: LlmSkipDetectCandidate[];
+      candidates?: LlmSkipDetectCandidate[];
       markedCount?: number;
     }
   | {
       type: 'cancelled';
       done: number;
       total: number;
-      candidates: LlmSkipDetectCandidate[];
+      candidates?: LlmSkipDetectCandidate[];
       markedCount?: number;
     }
   | { type: 'error'; error: string };
@@ -206,6 +206,6 @@ export type ModVoiceGenerateStreamEvent =
 export type LlmTranslateStreamEvent =
   | { type: 'started'; jobId: number; total: number }
   | { type: 'progress'; done: number; total: number; row?: LlmTranslateRow }
-  | { type: 'done'; done: number; total: number; rows: LlmTranslateRow[] }
-  | { type: 'cancelled'; done: number; total: number; rows: LlmTranslateRow[] }
+  | { type: 'done'; done: number; total: number; rows?: LlmTranslateRow[] }
+  | { type: 'cancelled'; done: number; total: number; rows?: LlmTranslateRow[] }
   | { type: 'error'; error: string };

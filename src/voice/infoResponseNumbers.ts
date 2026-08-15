@@ -19,6 +19,8 @@ const GRUP_HEADER = 24;
 const FLAG_COMPRESSED = 0x0004_0000;
 /** Sane FO4 dialogue response index range (filters corrupt / misaligned reads). */
 const MAX_RESPONSE_NUMBER = 64;
+/** Distinct plugin paths kept in memory (LRU). */
+const MAX_CACHED_PLUGINS = 8;
 
 type CacheEntry = {
   mtimeMs: number;
@@ -122,7 +124,11 @@ export const loadInfoVoiceResponseNumbers = (pluginAbsPath: string): InfoVoiceRe
   }
 
   const hit = cache.get(abs);
-  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.map;
+  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) {
+    cache.delete(abs);
+    cache.set(abs, hit);
+    return hit.map;
+  }
 
   const buf = fs.readFileSync(abs);
   if (buf.length < RECORD_HEADER + 4) return new Map();
@@ -130,6 +136,11 @@ export const loadInfoVoiceResponseNumbers = (pluginAbsPath: string): InfoVoiceRe
   const tes4Size = buf.readUInt32LE(4);
   walkPlugin(buf, RECORD_HEADER + tes4Size, buf.length, map);
   cache.set(abs, { mtimeMs: st.mtimeMs, size: st.size, map });
+  while (cache.size > MAX_CACHED_PLUGINS) {
+    const oldest = cache.keys().next().value;
+    if (oldest == null) break;
+    cache.delete(oldest);
+  }
   return map;
 };
 
@@ -166,3 +177,6 @@ export const voiceVariantFromOrdinal = (
 export const _resetInfoVoiceResponseCacheForTests = (): void => {
   cache.clear();
 };
+
+/** @internal test helper */
+export const _infoVoiceResponseCacheSizeForTests = (): number => cache.size;

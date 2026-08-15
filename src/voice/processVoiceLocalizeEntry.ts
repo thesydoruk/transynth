@@ -98,6 +98,7 @@ export const processVoiceLocalizeEntry = async (
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
   const fuzDest = toDiskPath(localizeDir, fuzRel);
+  let workDir: string | undefined;
 
   try {
     const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
@@ -107,7 +108,7 @@ export const processVoiceLocalizeEntry = async (
       return { kind: 'skipped', relPath: prefix + fuzRel };
     }
 
-    const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
+    workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
@@ -207,5 +208,7 @@ export const processVoiceLocalizeEntry = async (
     const message = `${prefix}${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
     log.warn(`Voice synthesis failed ${message}`);
     return { kind: 'warning', message };
+  } finally {
+    if (workDir) fs.rmSync(workDir, { recursive: true, force: true });
   }
 };

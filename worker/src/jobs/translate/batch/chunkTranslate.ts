@@ -73,10 +73,10 @@ export const prefetchChunkRag = async (
   }
 };
 
-export const scheduleChunkPersist = (
+export const scheduleChunkPersist = async (
   ctx: ChunkTranslateContext,
   okRows: Array<{ stringId: number; text: string }>,
-): void => {
+): Promise<void> => {
   if (okRows.length === 0) return;
   ctx.persistJobs.push(
     ctx.persistPool.run(async () => {
@@ -97,6 +97,10 @@ export const scheduleChunkPersist = (
       }
     }),
   );
+  const backpressure = Math.max(4, ctx.persistPool.maxConcurrency * 2);
+  if (ctx.persistJobs.length >= backpressure) {
+    await drainPersistJobs(ctx.persistJobs);
+  }
 };
 
 export const collectValidatedRows = (
@@ -183,7 +187,7 @@ export const translateChunkOnce = async (
   );
 
   if (longEntries.length > 0) {
-    scheduleChunkPersist(ctx, await translateLongEntries(ctx, longEntries, ragByStringId));
+    await scheduleChunkPersist(ctx, await translateLongEntries(ctx, longEntries, ragByStringId));
   }
   if (normalEntries.length === 0) return;
 
@@ -205,7 +209,7 @@ export const translateChunkOnce = async (
       ),
       signal: ctx.opts.signal,
     });
-    scheduleChunkPersist(ctx, collectValidatedRows(ctx, normalEntries, translations));
+    await scheduleChunkPersist(ctx, collectValidatedRows(ctx, normalEntries, translations));
   } catch (err) {
     if (isLlmResponseTruncatedError(err) && normalEntries.length === 1) {
       const entry = normalEntries[0]!;
@@ -219,7 +223,7 @@ export const translateChunkOnce = async (
         if ('error' in result) {
           ctx.emitResult(result);
         } else {
-          scheduleChunkPersist(ctx, [result]);
+          await scheduleChunkPersist(ctx, [result]);
         }
         return;
       }
@@ -228,7 +232,10 @@ export const translateChunkOnce = async (
       const missingSet = new Set(err.missingIds);
       const okEntries = normalEntries.filter((entry) => !missingSet.has(entry.stringId));
       if (err.partialResults.length > 0) {
-        scheduleChunkPersist(ctx, collectValidatedRows(ctx, okEntries, [...err.partialResults]));
+        await scheduleChunkPersist(
+          ctx,
+          collectValidatedRows(ctx, okEntries, [...err.partialResults]),
+        );
       }
       const missingEntries = normalEntries.filter((entry) => missingSet.has(entry.stringId));
       if (normalEntries.length > 1) {
@@ -288,6 +295,7 @@ export const createPersistPool = (): { pool: Semaphore; jobs: Promise<void>[] } 
 
 export const drainPersistJobs = async (persistJobs: Promise<void>[]): Promise<void> => {
   if (persistJobs.length === 0) return;
-  logTranslate.debug('draining async persist queue', { jobs: persistJobs.length });
-  await Promise.all(persistJobs);
+  const batch = persistJobs.splice(0, persistJobs.length);
+  logTranslate.debug('draining async persist queue', { jobs: batch.length });
+  await Promise.all(batch);
 };

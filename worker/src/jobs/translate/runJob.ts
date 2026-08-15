@@ -5,7 +5,8 @@
  * registry. Progress snapshots for reopened modals live in Redis.
  */
 import type { Tx } from '../../../../src/db';
-import { DB_CHUNK_SIZE } from '../../../../src/config';
+import { CONFIG, DB_CHUNK_SIZE } from '../../../../src/config';
+import { pushCapped, trimCappedArray } from '../../core/cappedArray';
 import {
   llmTranslateEligibilitySql,
   type LlmTranslateOverwriteMode,
@@ -116,8 +117,8 @@ export const loadUntranslatedChunk = async (
 export type LlmTranslateProgressEvent =
   | { type: 'started'; jobId: number; total: number }
   | { type: 'progress'; done: number; total: number; row?: LlmTranslateRow }
-  | { type: 'done'; done: number; total: number; rows: LlmTranslateRow[] }
-  | { type: 'cancelled'; done: number; total: number; rows: LlmTranslateRow[] }
+  | { type: 'done'; done: number; total: number }
+  | { type: 'cancelled'; done: number; total: number }
   | { type: 'error'; error: string };
 
 export const runLlmTranslateJob = async (
@@ -205,7 +206,7 @@ export const runLlmTranslateJob = async (
               edid: meta?.edid ?? null,
               error: result.error ?? null,
             };
-            rows.push(row);
+            pushCapped(rows, row, CONFIG.jobSnapshotMaxRows);
             onEvent({ type: 'progress', done, total, row });
           },
         });
@@ -229,7 +230,7 @@ export const runLlmTranslateJob = async (
             edid: meta?.edid ?? null,
             error: message,
           };
-          rows.push(row);
+          pushCapped(rows, row, CONFIG.jobSnapshotMaxRows);
           onEvent({ type: 'progress', done, total, row });
         }
       }
@@ -239,14 +240,16 @@ export const runLlmTranslateJob = async (
       await awaitPendingQaRefresh();
     }
 
+    trimCappedArray(rows, CONFIG.jobSnapshotMaxRows);
+
     if (opts.isCancelled()) {
       status = 'cancelled';
       logTranslate.info('job cancelled', { jobId, done, total });
-      onEvent({ type: 'cancelled', done, total, rows });
+      onEvent({ type: 'cancelled', done, total });
     } else {
       status = 'completed';
       logTranslate.info('job completed', { jobId, done, total });
-      onEvent({ type: 'done', done, total, rows });
+      onEvent({ type: 'done', done, total });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

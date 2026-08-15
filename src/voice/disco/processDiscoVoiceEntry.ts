@@ -61,6 +61,7 @@ export const processDiscoVoiceEntry = async (
 
   const wavRel = outputLocalizedWavRelPath(entry);
   const wavDest = toDiskPath(localizeDir, wavRel);
+  let workDir: string | undefined;
 
   try {
     const versionKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
@@ -70,7 +71,7 @@ export const processDiscoVoiceEntry = async (
       return { kind: 'skipped', relPath: wavRel };
     }
 
-    const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
+    workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
     ensureDir(workDir);
 
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
@@ -116,5 +117,7 @@ export const processDiscoVoiceEntry = async (
     const message = `${entry.relPath}: ${err instanceof Error ? err.message : String(err)}`;
     log.warn(`Disco voice synthesis failed ${message}`);
     return { kind: 'warning', message };
+  } finally {
+    if (workDir) fs.rmSync(workDir, { recursive: true, force: true });
   }
 };

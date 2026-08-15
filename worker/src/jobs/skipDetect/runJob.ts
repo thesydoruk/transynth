@@ -4,6 +4,7 @@
 import type { Tx } from '../../../../src/db';
 import { CONFIG } from '../../../../src/config';
 import { logVerify } from '../../../../src/logging/loggers';
+import { pushCapped, trimCappedArray } from '../../core/cappedArray';
 import { resetModSkipDetectState } from '../../../../src/web/data/queries';
 import { runModSkipDetectPipeline } from './pipeline/runPipeline';
 import type { LlmSkipDetectCandidate } from './queries';
@@ -101,7 +102,7 @@ export const runLlmSkipDetectJob = async (
       },
       {
         collectCandidate: (candidate: LlmSkipDetectCandidate) => {
-          candidates.push(candidate);
+          pushCapped(candidates, candidate, CONFIG.jobSnapshotMaxRows);
         },
         onProgress: (progress: SkipDetectPipelineProgress) => {
           done = progress.done;
@@ -121,12 +122,14 @@ export const runLlmSkipDetectJob = async (
     done = summary.done;
     markedCount = summary.markedCount;
 
+    trimCappedArray(candidates, CONFIG.jobSnapshotMaxRows);
+
     if (opts.isCancelled()) {
       status = 'cancelled';
-      onEvent({ type: 'cancelled', done, total, candidates, markedCount });
+      onEvent({ type: 'cancelled', done, total, markedCount });
     } else {
       status = 'completed';
-      onEvent({ type: 'done', done, total, candidates, markedCount });
+      onEvent({ type: 'done', done, total, markedCount });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

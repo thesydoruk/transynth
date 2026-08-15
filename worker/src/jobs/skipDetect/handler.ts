@@ -10,6 +10,8 @@ import {
   type LlmSkipDetectJobSnapshot,
   type LlmSkipDetectProgressEvent,
 } from './index';
+import { CONFIG } from '../../../../src/config';
+import { pushAllCapped, pushCapped, trimCappedArray } from '../../core/cappedArray';
 import type { JobHandler } from '../../types';
 import { runTrackedJob } from '../../runTrackedJob';
 
@@ -42,11 +44,17 @@ export const skipDetectHandler: JobHandler = (db, ctx) => {
       ),
     (event) => {
       if (event.type === 'progress') {
-        if (event.candidatesBatch?.length) candidates.push(...event.candidatesBatch);
-        if (event.candidate) candidates.push(event.candidate);
+        if (event.candidatesBatch?.length) {
+          pushAllCapped(candidates, event.candidatesBatch, CONFIG.jobSnapshotMaxRows);
+        }
+        if (event.candidate) pushCapped(candidates, event.candidate, CONFIG.jobSnapshotMaxRows);
         ctx.mergeSnapshot({ candidates, done: event.done, total: event.total });
       } else if (event.type === 'started') {
+        candidates.length = 0;
         ctx.mergeSnapshot({ candidates: [], markedCount: 0, done: 0, total: event.total });
+      } else if (event.type === 'done' || event.type === 'cancelled') {
+        trimCappedArray(candidates, CONFIG.jobSnapshotMaxRows);
+        ctx.mergeSnapshot({ candidates, done: event.done, total: event.total });
       }
     },
   );

@@ -72,7 +72,7 @@ export const llmSkipDetectEndpoints = {
               status: 'completed',
               done: event.done,
               total: event.total,
-              candidates: event.candidates,
+              candidates: event.candidates ?? snapshot.candidates,
             };
           }
           if (event.type === 'cancelled' && snapshot) {
@@ -81,7 +81,7 @@ export const llmSkipDetectEndpoints = {
               status: 'cancelled',
               done: event.done,
               total: event.total,
-              candidates: event.candidates,
+              candidates: event.candidates ?? snapshot.candidates,
             };
           }
           if (event.type === 'error') {

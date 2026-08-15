@@ -6,7 +6,7 @@ import { log } from '../logger';
 import { pluginRelPath, toDiskPath, type ImportPackageContext } from '../modImport';
 import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
 import { ttsPipelineConcurrency } from '../tts/ttsRequestPool';
-import { mapWithConcurrency } from '../utils/concurrency';
+import { runPoolOverAsyncIterable } from '../utils/concurrency';
 import type { TtsReferenceMode } from './voiceToolPaths';
 import {
   dedupeVoiceFiles,
@@ -112,60 +112,62 @@ export const localizeVoicePackage = async (
     options.onEligibleStep?.();
   };
 
-  const workItems: VoiceLocalizeWorkItem[] = [];
+  const takeNextWorkItem = (entry: VoiceFileEntry): VoiceLocalizeWorkItem | 'stop' | null => {
+    if (options.limit != null && eligibleSeen >= options.limit) return 'stop';
 
-  try {
-    for (const entry of voiceFiles) {
-      if (options.shouldCancel?.()) break;
-      if (options.limit != null && eligibleSeen >= options.limit) break;
+    const entryKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    if (options.onlyKeys && !options.onlyKeys.has(entryKey)) return null;
+    if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) return null;
 
-      const entryKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
-      if (options.onlyKeys && !options.onlyKeys.has(entryKey)) continue;
-      if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) continue;
-
-      const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-      if (!row) {
-        skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
-        continue;
-      }
-
-      const fuzRel = outputLocalizedFuzRelPath(entry);
-      const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
-
-      const prepared = prepareVoiceTtsText({
-        lineSource: row.source,
-        translation: row.translation,
-        speakerSource: row.source,
-        edid: row.edid,
-      });
-      if (prepared.action === 'skip') {
-        skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
-        continue;
-      }
-
-      const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-      const storedVersion = storedVersions.get(entryKey);
-
-      if (
-        !options.force &&
-        isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))
-      ) {
-        continue;
-      }
-
-      if (options.dryRun) {
-        log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
-        eligibleSeen += 1;
-        finishEligibleStep();
-        continue;
-      }
-
-      workItems.push({ entry, row, prepared });
-      eligibleSeen += 1;
+    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+    if (!row) {
+      skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
+      return null;
     }
 
-    if (workItems.length === 0 || options.shouldCancel?.()) return;
+    const fuzRel = outputLocalizedFuzRelPath(entry);
+    const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
+    const prepared = prepareVoiceTtsText({
+      lineSource: row.source,
+      translation: row.translation,
+      speakerSource: row.source,
+      edid: row.edid,
+    });
+    if (prepared.action === 'skip') {
+      skipped.push(`${prefix}${entry.relPath} (${voiceTtsSkipMessage(prepared.reason)})`);
+      return null;
+    }
 
+    const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
+    const storedVersion = storedVersions.get(entryKey);
+    if (
+      !options.force &&
+      isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))
+    ) {
+      return null;
+    }
+
+    if (options.dryRun) {
+      log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
+      eligibleSeen += 1;
+      finishEligibleStep();
+      return null;
+    }
+
+    eligibleSeen += 1;
+    return { entry, row, prepared };
+  };
+
+  async function* workItems(): AsyncGenerator<VoiceLocalizeWorkItem> {
+    for (const entry of voiceFiles) {
+      if (options.shouldCancel?.()) return;
+      const next = takeNextWorkItem(entry);
+      if (next === 'stop') return;
+      if (next) yield next;
+    }
+  }
+
+  try {
     const entryOptions = {
       db,
       modId,
@@ -187,23 +189,18 @@ export const localizeVoicePackage = async (
       storedVersions,
     };
 
-    const results = await mapWithConcurrency(
-      workItems,
+    await runPoolOverAsyncIterable(
+      workItems(),
       ttsPipelineConcurrency(),
       async ({ entry, row, prepared }) => {
         const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
         finishEligibleStep();
-        return result;
+        if (result.kind === 'written') written.push(result.relPath);
+        else if (result.kind === 'skipped') skipped.push(result.relPath);
+        else warnings.push(result.message);
       },
       { shouldAbort: options.shouldCancel },
     );
-
-    for (const result of results) {
-      if (result == null) continue;
-      if (result.kind === 'written') written.push(result.relPath);
-      else if (result.kind === 'skipped') skipped.push(result.relPath);
-      else warnings.push(result.message);
-    }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

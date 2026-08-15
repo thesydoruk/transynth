@@ -208,7 +208,12 @@ export const synthesizeModVoiceLineBuffers = async (
       workDir,
       entry.fileName,
       prepared.text,
+      { includePreviewWav: true },
     );
+
+    if (!built.previewWav) {
+      return { ok: false, reason: 'tts_failed', message: 'TTS preview WAV was not built' };
+    }
 
     return {
       ok: true,

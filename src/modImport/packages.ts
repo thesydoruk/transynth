@@ -78,8 +78,11 @@ export const writeIfChanged = (
   baselinePath: string | null,
 ): boolean => {
   if (baselinePath && fs.existsSync(baselinePath)) {
-    const baseline = fs.readFileSync(baselinePath);
-    if (baseline.equals(data)) return false;
+    const { size } = fs.statSync(baselinePath);
+    if (size === data.length) {
+      const baseline = fs.readFileSync(baselinePath);
+      if (baseline.equals(data)) return false;
+    }
   }
 
   ensureDir(path.dirname(destPath));

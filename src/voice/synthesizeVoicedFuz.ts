@@ -10,8 +10,8 @@ const voiceStem = (fileName: string): string => fileName.replace(/\.(fuz|wav|xwm
 
 export type BuiltVoicedFuz = {
   fuzData: Buffer;
-  /** FO4 WAV used for encode (browser preview). Loudness is applied by TTS. */
-  previewWav: Buffer;
+  /** FO4 WAV used for encode (browser preview). Omitted when not requested. */
+  previewWav?: Buffer;
 };
 
 /**
@@ -24,6 +24,7 @@ export const buildVoicedFuzFromTtsWav = async (
   workDir: string,
   fileName: string,
   translation: string,
+  options?: { includePreviewWav?: boolean },
 ): Promise<BuiltVoicedFuz> => {
   const stem = voiceStem(fileName);
   const rawWav = path.join(workDir, `${stem}.raw.wav`);
@@ -39,6 +40,6 @@ export const buildVoicedFuzFromTtsWav = async (
 
   return {
     fuzData: writeFuz(fs.readFileSync(lipPath), fs.readFileSync(xwmPath)),
-    previewWav: fs.readFileSync(fo4Wav),
+    ...(options?.includePreviewWav ? { previewWav: fs.readFileSync(fo4Wav) } : {}),
   };
 };

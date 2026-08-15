@@ -4,6 +4,7 @@
 import type { Tx } from '../../../../src/db';
 import { CONFIG } from '../../../../src/config';
 import { logVerify } from '../../../../src/logging/loggers';
+import { pushCapped, trimCappedArray } from '../../core/cappedArray';
 import { runModVerifyPipeline } from './pipeline/runPipeline';
 import { countVerifiableStrings } from './queries';
 import type {
@@ -43,6 +44,7 @@ export const runLlmVerifyJob = async (
   let total = 0;
   let approved = 0;
   let fixed = 0;
+  let issueCount = 0;
   const issues: LlmVerifyIssue[] = [];
   const actionLog: LlmVerifyActionLogEntry[] = [];
   let status: LlmVerifyJobStatus = 'running';
@@ -78,7 +80,7 @@ export const runLlmVerifyJob = async (
 
     if (opts.isCancelled()) {
       status = 'cancelled';
-      onEvent({ type: 'cancelled', done: 0, total, approved: 0, fixed: 0, issues: [] });
+      onEvent({ type: 'cancelled', done: 0, total, approved: 0, fixed: 0 });
       return snapshot();
     }
 
@@ -112,10 +114,11 @@ export const runLlmVerifyJob = async (
       },
       {
         collectIssue: (issue) => {
-          issues.push(issue);
+          issueCount += 1;
+          pushCapped(issues, issue, CONFIG.jobSnapshotMaxRows);
         },
         onActionLog: (entry) => {
-          actionLog.push(entry);
+          pushCapped(actionLog, entry, CONFIG.jobSnapshotMaxRows);
           onEvent({
             type: 'progress',
             done,
@@ -149,10 +152,13 @@ export const runLlmVerifyJob = async (
     approved = summary.approved;
     fixed = summary.fixed;
 
+    trimCappedArray(issues, CONFIG.jobSnapshotMaxRows);
+    trimCappedArray(actionLog, CONFIG.jobSnapshotMaxRows);
+
     if (opts.isCancelled()) {
       status = 'cancelled';
       logVerify.info('job cancelled', { jobId, done, total, approved });
-      onEvent({ type: 'cancelled', done, total, approved, fixed, issues });
+      onEvent({ type: 'cancelled', done, total, approved, fixed });
     } else {
       status = 'completed';
       logVerify.info('job completed', {
@@ -161,9 +167,9 @@ export const runLlmVerifyJob = async (
         total,
         approved,
         fixed,
-        issueCount: issues.length,
+        issueCount,
       });
-      onEvent({ type: 'done', done, total, approved, fixed, issues });
+      onEvent({ type: 'done', done, total, approved, fixed });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

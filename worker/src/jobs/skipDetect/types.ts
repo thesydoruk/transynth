@@ -51,14 +51,12 @@ export type LlmSkipDetectProgressEvent =
       type: 'done';
       done: number;
       total: number;
-      candidates: LlmSkipDetectCandidate[];
       markedCount: number;
     }
   | {
       type: 'cancelled';
       done: number;
       total: number;
-      candidates: LlmSkipDetectCandidate[];
       markedCount: number;
     }
   | { type: 'error'; error: string };

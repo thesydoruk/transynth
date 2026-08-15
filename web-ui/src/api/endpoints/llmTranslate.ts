@@ -63,7 +63,7 @@ export const llmTranslateEndpoints = {
               status: 'completed',
               done: event.done,
               total: event.total,
-              rows: event.rows,
+              rows: event.rows ?? snapshot.rows,
             };
           }
           if (event.type === 'cancelled' && snapshot) {
@@ -72,7 +72,7 @@ export const llmTranslateEndpoints = {
               status: 'cancelled',
               done: event.done,
               total: event.total,
-              rows: event.rows,
+              rows: event.rows ?? snapshot.rows,
             };
           }
           if (event.type === 'error') {

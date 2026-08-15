@@ -81,7 +81,7 @@ export const llmVerifyEndpoints = {
               total: event.total,
               approved: event.approved,
               fixed: event.fixed,
-              issues: event.issues,
+              issues: event.issues ?? snapshot.issues,
               actionLog: snapshot.actionLog,
             };
           }
@@ -93,7 +93,7 @@ export const llmVerifyEndpoints = {
               total: event.total,
               approved: event.approved,
               fixed: event.fixed,
-              issues: event.issues,
+              issues: event.issues ?? snapshot.issues,
               actionLog: snapshot.actionLog,
             };
           }

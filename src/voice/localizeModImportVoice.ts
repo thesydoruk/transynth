@@ -57,6 +57,8 @@ export type LocalizeModImportVoiceOptions = {
   onlyKeys?: ReadonlySet<string>;
   /** Restrict synthesis to one NPC voice folder (`Sound/Voice/.../<speakerKey>/`). */
   speakerKey?: string;
+  /** When set, skip the pre-pass count (caller already knows `total`). */
+  knownTotal?: number;
   onProgress?: (done: number, total: number) => void;
   shouldCancel?: () => boolean;
 };
@@ -181,7 +183,8 @@ export const localizeModImportVoice = async (
 
   const speakerKey = options.speakerKey?.trim() || undefined;
   const total =
-    options.dryRun || options.onProgress == null
+    options.knownTotal ??
+    (options.dryRun || options.onProgress == null
       ? 0
       : await countVoiceLocalizeWork(
           db,
@@ -194,7 +197,7 @@ export const localizeModImportVoice = async (
           speakerKey,
           mod.game,
           extractDir,
-        );
+        ));
   let progressDone = 0;
   const bumpProgress = () => {
     progressDone += 1;
