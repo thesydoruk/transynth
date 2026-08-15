@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS, resolveDir } from '../paths';
 import { execFileAsync, type ExecFileResult } from '../utils/execFile';
+import { ensureWinePrefixOwnedByCurrentUser } from './ensureWinePrefixOwner';
 
 export type WineArch = 'win32' | 'win64';
 
@@ -15,10 +16,28 @@ const resetWinePrefix = (prefix: string): void => {
   fs.mkdirSync(prefix, { recursive: true });
 };
 
+const killWineServer = (arch: WineArch): void => {
+  try {
+    execFileSync(wineServerCommand(), ['-k'], {
+      timeout: 10_000,
+      stdio: 'ignore',
+      env: wineProcessEnv(arch),
+    });
+  } catch {
+    // No wineserver for this prefix.
+  }
+};
+
 const ensureWineReady = (arch: WineArch): void => {
   if (process.platform === 'win32') return;
 
   const prefix = resolveWinePrefix(arch);
+  if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
+  if (ensureWinePrefixOwnedByCurrentUser(prefix)) {
+    killWineServer(arch);
+    wineReady.delete(arch);
+  }
+
   const marker = wineArchMarkerPath(prefix);
   const markedArch = fs.existsSync(marker) ? fs.readFileSync(marker, 'utf8').trim() : null;
   if (markedArch && markedArch !== arch) {
@@ -33,7 +52,6 @@ const ensureWineReady = (arch: WineArch): void => {
   if (wineReady.has(arch)) return;
   wineReady.add(arch);
 
-  if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
   const env = wineProcessEnv(arch);
   try {
     execFileSync(wineCommand(), ['wineboot', '--init'], {
