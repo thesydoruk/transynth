@@ -16,9 +16,18 @@ import {
 import { collectVoiceSourceFormids } from '../../../voice/voiceSourceFormids';
 import { resolveModStoredPath } from '../../../modStorage';
 import { loadVoiceSpeakerRefs, type VoiceSpeakerRefMap } from '../../../voice/voiceSpeakerRefs';
+import { loadDiscoVoiceSources } from '../../../voice/disco/loadDiscoVoiceSources';
+import { loadDiscoVoiceTranslations } from '../../../voice/disco/loadDiscoVoiceTranslations';
+import { persistDiscoSpeakers } from '../../../import/mod/discoSpeakers';
+import path from 'node:path';
 import { resolveVoicePackageContext, type VoicePackageContext } from './context';
 import { loadVoiceFolderGenders, type VoiceFolderGender } from './speakerGender';
 import { discoverVoiceEntries, loadSpeakerNamesFromDb } from './voiceEntries';
+import {
+  discoverDiscoVoiceEntries,
+  loadDiscoSpeakerGenders,
+  loadDiscoSpeakerNames,
+} from './discoVoiceList';
 import { buildTranslationAudioSet } from './translationAudioIndex';
 
 export type VoiceListContextError = {
@@ -29,6 +38,7 @@ export type VoiceListContextError = {
 
 export type VoiceListContext = {
   modId: number;
+  isDisco: boolean;
   ctx: VoicePackageContext;
   voiceRootRel: string;
   voiceFiles: VoiceFileEntry[];
@@ -36,9 +46,7 @@ export type VoiceListContext = {
   translations: Map<string, VoiceTranslationRow>;
   inheritedLookup: InheritedVoiceLookup | null;
   /**
-   * Lower-6 FormIDs that have NAM1 text somewhere — in this mod or in an
-   * imported master. Audio whose FormID is missing here has no dialogue record
-   * at all (cut lines left in the shipped archives), so it can never be dubbed.
+   * FormIDs that have source text — audio missing here is orphan (no line to dub).
    */
   sourceFormids: Set<string>;
   dbSpeakerNames: Map<string, string>;
@@ -62,8 +70,8 @@ const loadVoiceListContext = async (
   targetLang: string,
 ): Promise<VoiceListContextResult> => {
   const resolvedTargetLang = targetLang || CONFIG.defaultTgtLang;
-  const { rows } = await db.query<{ name: string; abs_path: string | null }>(
-    `SELECT name, abs_path FROM mods WHERE id = $1`,
+  const { rows } = await db.query<{ name: string; abs_path: string | null; game: string | null }>(
+    `SELECT name, abs_path, game FROM mods WHERE id = $1`,
     [modId],
   );
   const mod = rows[0];
@@ -74,19 +82,65 @@ const loadVoiceListContext = async (
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
   }
 
+  const isDisco = (mod.game ?? '').toLowerCase() === 'disco';
   const pluginPath = resolveModStoredPath(mod.abs_path);
   const ctx = resolveVoicePackageContext(pluginPath, resolvedTargetLang);
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
 
-  const voiceFiles = discoverVoiceEntries(ctx);
+  const voiceFiles = isDisco ? discoverDiscoVoiceEntries(pluginPath) : discoverVoiceEntries(ctx);
   if (voiceFiles.length === 0) {
     return { ok: false, reason: 'no_voice_files', message: 'No voice files found for this mod' };
   }
 
-  const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
-  const translationAudio = buildTranslationAudioSet(ctx.localizeDir);
+  const voiceRootRel = isDisco ? 'Audio' : resolveVoiceRootRel(ctx.pluginRel);
+  const translationAudio = buildTranslationAudioSet(ctx.localizeDir, { disco: isDisco });
+
+  if (isDisco) {
+    const stemList = voiceFiles.map((entry) =>
+      path.basename(entry.fileName, path.extname(entry.fileName)),
+    );
+    const { rows: speakerCountRows } = await db.query<{ n: string }>(
+      `SELECT COUNT(*)::text AS n FROM dialog_speakers WHERE mod_id = $1`,
+      [modId],
+    );
+    if (Number(speakerCountRows[0]?.n ?? 0) === 0 && stemList.length > 0) {
+      await persistDiscoSpeakers(db, modId, stemList);
+    }
+
+    const [sources, translations, dbSpeakerNames, speakerRefs, folderGenders] = await Promise.all([
+      loadDiscoVoiceSources(db, modId, srcLang),
+      loadDiscoVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
+      loadDiscoSpeakerNames(db, modId),
+      loadVoiceSpeakerRefs(db, modId),
+      loadDiscoSpeakerGenders(db, modId),
+    ]);
+
+    const sourceFormids = new Set<string>();
+    for (const key of sources.keys()) {
+      sourceFormids.add(key.split(':')[0]!.toUpperCase());
+    }
+
+    return {
+      ok: true,
+      data: {
+        modId,
+        isDisco: true,
+        ctx,
+        voiceRootRel,
+        voiceFiles,
+        sources,
+        translations,
+        inheritedLookup: null,
+        sourceFormids,
+        dbSpeakerNames,
+        speakerRefs,
+        folderGenders,
+        translationAudio,
+      },
+    };
+  }
 
   const [sources, translations, masterMods, dbSpeakerNames, speakerRefs, folderGenders] =
     await Promise.all([
@@ -110,6 +164,7 @@ const loadVoiceListContext = async (
     ok: true,
     data: {
       modId,
+      isDisco: false,
       ctx,
       voiceRootRel,
       voiceFiles,

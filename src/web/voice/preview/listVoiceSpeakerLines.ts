@@ -20,10 +20,10 @@ export const listVoiceLinesForSpeaker = async (
   const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 
-  const { voiceFiles, voiceRootRel } = loaded.data;
+  const { voiceFiles, voiceRootRel, isDisco } = loaded.data;
   const lines = sortVoiceLines(
     voiceFiles
-      .filter((entry) => resolveSpeakerKey(entry, voiceRootRel) === normalizedKey)
+      .filter((entry) => resolveSpeakerKey(entry, voiceRootRel, isDisco) === normalizedKey)
       .map((entry) => buildVoiceLinePreview(loaded.data, entry, normalizedKey)),
   );
 

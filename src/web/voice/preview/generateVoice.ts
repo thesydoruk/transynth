@@ -1,4 +1,6 @@
 import type { Tx } from '../../../db';
+import { loadImportedMod } from '../../../modImport/importedMod';
+import { synthesizeDiscoVoiceLine } from '../../../voice/disco/synthesizeDiscoVoiceLine';
 import { synthesizeModVoiceLine } from '../../../voice/synthesizeModVoiceLine';
 import { resolveLocalizeDir, resolveModVoiceContext } from './context';
 import type { VoiceGenerateLineResult } from './types';
@@ -22,6 +24,20 @@ export const generateVoiceTranslationForMod = async (
       reason: 'no_localize_dir',
       message: 'Mod import localize directory not found',
     };
+  }
+
+  const mod = await loadImportedMod(db, modId);
+  if (mod.game === 'disco') {
+    return synthesizeDiscoVoiceLine(db, {
+      modId,
+      pluginPath: resolved.ctx.pluginPath,
+      localizeDir,
+      formidLower6,
+      variant,
+      srcLang,
+      tgtLang: targetLang,
+      force: true,
+    });
   }
 
   return synthesizeModVoiceLine(db, {

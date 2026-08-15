@@ -39,6 +39,8 @@ describe('collectDiscoPoLocales', () => {
 
     expect(effect?.Source).toBe(' Heal Volition [1]');
     expect(effect?.Path).toContain('::N/A');
+    expect(effect?.Signature).toBe('FX');
     expect(line?.Source).toBe('This is the RCM.');
+    expect(line?.Signature).toBe('DLG');
   });
 });

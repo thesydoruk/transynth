@@ -2,8 +2,11 @@
  * Discover Disco Final Cut reference `.wav` files under language-folder Audio/.
  */
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { discoAudioDir, discoverDiscoLangFolders, listWavFilesRecursive } from '../../formats/po';
+import { resolveDiscoExtractRoot } from '../../import/mod/discoPoLocales';
+import { resolveModImportExtractRoot } from '../../modStorage';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
@@ -16,6 +19,14 @@ export const discoVoiceFormidLower6 = (stem: string): string =>
 export const discoSpeakerKeyFromStem = (stem: string): string => {
   const cut = stem.split(/[-_/]/)[0]?.trim();
   return cut && cut.length > 0 ? cut : 'Unknown';
+};
+
+/** Pack root for Disco Audio/ + language folders. */
+export const resolveDiscoVoiceExtractRoot = (pluginPath: string): string | null => {
+  const fromStorage = resolveModImportExtractRoot(pluginPath);
+  if (fromStorage) return fromStorage;
+  if (!pluginPath || !fs.existsSync(pluginPath)) return null;
+  return resolveDiscoExtractRoot(pluginPath);
 };
 
 /** Prefer English language folder Audio/, else first folder that has wavs. */

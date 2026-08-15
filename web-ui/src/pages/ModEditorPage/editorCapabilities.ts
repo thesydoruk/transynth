@@ -36,7 +36,7 @@ export const editorCapabilities = (gameId: string | undefined | null): EditorCap
       modes: DISCO_MODES,
       showDialogsMode: false,
       showVoiceMode: true,
-      showSignaturePanel: false,
+      showSignaturePanel: true,
       showFormIdColumn: false,
       showGenderColumn: false,
       showGenderDetect: false,

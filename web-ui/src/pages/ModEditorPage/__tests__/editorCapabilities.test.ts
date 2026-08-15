@@ -9,7 +9,7 @@ describe('editorCapabilities', () => {
     expect(caps.showDialogsMode).toBe(false);
     expect(caps.showFormIdColumn).toBe(false);
     expect(caps.showGenderColumn).toBe(false);
-    expect(caps.showSignaturePanel).toBe(false);
+    expect(caps.showSignaturePanel).toBe(true);
     expect(caps.showGenderDetect).toBe(false);
     expect(caps.showInnrLink).toBe(false);
   });

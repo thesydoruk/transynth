@@ -1,12 +1,13 @@
 /**
- * Load Disco PO translations keyed like Bethesda voice maps (`FORMID6:variant`).
+ * Join `records.edid` (audio stem / msgctxt) to translated PO strings.
  */
 import type { Tx } from '../../db';
+import { discoPoSignatureSqlValues } from '../../import/mod/discoPoSignature';
 import { voiceTranslationMapKey, type VoiceTranslationRow } from '../loadVoiceTranslations';
 import { discoVoiceFormidLower6 } from './discoverDiscoVoiceFiles';
 
 /**
- * Join `records.edid` (audio stem / msgctxt) to translated PO strings.
+ * Load Disco PO translations keyed by audio-stem FormID (`FORMID6:variant`).
  */
 export const loadDiscoVoiceTranslations = async (
   db: Tx,
@@ -33,12 +34,12 @@ export const loadDiscoVoiceTranslations = async (
      JOIN strings s ON s.record_id = r.id AND s.lang = $2
      JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
      WHERE r.mod_id = $1
-       AND r.signature = 'PO'
+       AND r.signature = ANY($4::text[])
        AND r.edid IS NOT NULL
        AND BTRIM(r.edid) <> ''
        AND t.text IS NOT NULL
        AND BTRIM(t.text) <> ''`,
-    [modId, srcLang, tgtLang],
+    [modId, srcLang, tgtLang, discoPoSignatureSqlValues()],
   );
 
   const out = new Map<string, VoiceTranslationRow>();

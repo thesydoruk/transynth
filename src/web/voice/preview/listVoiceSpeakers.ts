@@ -23,6 +23,7 @@ export const listVoiceSpeakersForMod = async (
   const {
     voiceFiles,
     voiceRootRel,
+    isDisco,
     dbSpeakerNames,
     speakerRefs,
     folderGenders,
@@ -40,11 +41,16 @@ export const listVoiceSpeakersForMod = async (
   >();
 
   for (const entry of voiceFiles) {
-    const speakerKey = resolveSpeakerKey(entry, voiceRootRel);
+    const speakerKey = resolveSpeakerKey(entry, voiceRootRel, isDisco);
     let group = groups.get(speakerKey);
     if (!group) {
       group = {
-        displayName: resolveSpeakerDisplayName(speakerKey, entry.formidLower6, dbSpeakerNames),
+        displayName: resolveSpeakerDisplayName(
+          speakerKey,
+          entry.formidLower6,
+          dbSpeakerNames,
+          isDisco,
+        ),
         lineCount: 0,
         dubbedCount: 0,
         orphanCount: 0,

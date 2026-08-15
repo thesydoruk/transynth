@@ -15,6 +15,7 @@ import {
 import { log } from '../../logger';
 import { resolveDiscoExtractRoot } from '../../import/mod/discoPoLocales';
 import { hashDiscoMsgid, isHashedDiscoEntryKey } from '../../import/mod/discoPoPath';
+import { discoPoSignatureSqlValues } from '../../import/mod/discoPoSignature';
 import type { ZipPackEntry } from './exportTypes';
 
 /**
@@ -67,8 +68,8 @@ const getDiscoPoOverlaysByFile = async (
      FROM records r
      JOIN strings s ON s.record_id = r.id AND s.lang = $2
      LEFT JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
-     WHERE r.mod_id = $1 AND r.signature = 'PO'`,
-    [modId, srcLang, targetLang],
+     WHERE r.mod_id = $1 AND r.signature = ANY($4::text[])`,
+    [modId, srcLang, targetLang, discoPoSignatureSqlValues()],
   );
 
   const byFile = new Map<string, Map<string, string>>();

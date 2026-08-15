@@ -1,15 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { discoVoiceFormidLower6 } from '../../../voice/disco/discoverDiscoVoiceFiles';
 import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
 
 const LOCALIZED_VOICE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav)$/i;
 
+export type TranslationAudioIndexOptions = {
+  /** Index Disco Audio/*.wav by stem SHA1 FormID (variant 1). */
+  disco?: boolean;
+};
+
 /**
- * Index every synthesized `.fuz` under the mod localize tree in one directory walk.
+ * Index every synthesized `.fuz`/`.wav` under the mod localize tree in one directory walk.
  *
  * Replaces thousands of per-line `fs.existsSync` calls when listing voice lines.
  */
-export const buildTranslationAudioSet = (localizeDir: string | null): Set<string> => {
+export const buildTranslationAudioSet = (
+  localizeDir: string | null,
+  options: TranslationAudioIndexOptions = {},
+): Set<string> => {
   const keys = new Set<string>();
   if (!localizeDir || !fs.existsSync(localizeDir)) return keys;
 
@@ -21,8 +30,14 @@ export const buildTranslationAudioSet = (localizeDir: string | null): Set<string
         continue;
       }
       const match = entry.name.match(LOCALIZED_VOICE_RE);
-      if (!match) continue;
-      keys.add(voiceTranslationMapKey(match[1]!.substring(2), Number.parseInt(match[2]!, 10)));
+      if (match) {
+        keys.add(voiceTranslationMapKey(match[1]!.substring(2), Number.parseInt(match[2]!, 10)));
+        continue;
+      }
+      if (options.disco && /\.wav$/i.test(entry.name)) {
+        const stem = path.basename(entry.name, path.extname(entry.name));
+        keys.add(voiceTranslationMapKey(discoVoiceFormidLower6(stem), 1));
+      }
     }
   };
 
@@ -37,15 +52,13 @@ export const hasTranslationAudio = (
 ): boolean => translationAudio.has(voiceTranslationMapKey(formidLower6, variant));
 
 /**
- * Find a localized `.fuz`/`.wav` by FormID + variant anywhere under the localize
- * tree. Playback cannot join `localizeDir` + the source `Sound/Voice` rel-path:
- * import packages and the preview context disagree on whether `Data/` is part
- * of the package root, so that join misses files the availability walk finds.
+ * Find a localized `.fuz`/`.wav` by FormID + variant anywhere under the localize tree.
  */
 export const findLocalizedVoiceAbsPath = (
   localizeDir: string | null,
   formidLower6: string,
   variant: number,
+  options: TranslationAudioIndexOptions = {},
 ): string | null => {
   if (!localizeDir || !fs.existsSync(localizeDir)) return null;
 
@@ -59,11 +72,18 @@ export const findLocalizedVoiceAbsPath = (
         continue;
       }
       const match = entry.name.match(LOCALIZED_VOICE_RE);
-      if (!match) continue;
-      if (match[1]!.substring(2).toUpperCase() !== want) continue;
-      if (Number.parseInt(match[2]!, 10) !== variant) continue;
-      found = fullPath;
-      return true;
+      if (match) {
+        if (match[1]!.substring(2).toUpperCase() !== want) continue;
+        if (Number.parseInt(match[2]!, 10) !== variant) continue;
+        found = fullPath;
+        return true;
+      }
+      if (options.disco && variant === 1 && /\.wav$/i.test(entry.name)) {
+        const stem = path.basename(entry.name, path.extname(entry.name));
+        if (discoVoiceFormidLower6(stem).toUpperCase() !== want) continue;
+        found = fullPath;
+        return true;
+      }
     }
     return false;
   };

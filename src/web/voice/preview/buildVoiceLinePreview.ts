@@ -12,18 +12,31 @@ import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import { canSynthesizeVoiceLine } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { formatVoiceSpeakerLabel } from './voiceEntries';
+import { discoVoiceSpeakerKey } from './discoVoiceList';
 import { hasTranslationAudio } from './translationAudioIndex';
 import type { VoiceListContext } from './voiceListContext';
 import type { VoiceLinePreview, VoiceSpeakerSummary } from './types';
 
-export const resolveSpeakerKey = (entry: VoiceFileEntry, voiceRootRel: string): string =>
-  voiceSpeakerKey(entry, voiceRootRel) || 'Unknown';
+export const resolveSpeakerKey = (
+  entry: VoiceFileEntry,
+  voiceRootRel: string,
+  isDisco = false,
+): string => {
+  if (isDisco) return discoVoiceSpeakerKey(entry);
+  return voiceSpeakerKey(entry, voiceRootRel) || 'Unknown';
+};
 
 export const resolveSpeakerDisplayName = (
   speakerKey: string,
   formidLower6: string,
   dbSpeakerNames: Map<string, string>,
-): string => dbSpeakerNames.get(formidLower6.toUpperCase()) || formatVoiceSpeakerLabel(speakerKey);
+  isDisco = false,
+): string => {
+  if (isDisco) {
+    return dbSpeakerNames.get(speakerKey) || speakerKey;
+  }
+  return dbSpeakerNames.get(formidLower6.toUpperCase()) || formatVoiceSpeakerLabel(speakerKey);
+};
 
 /**
  * True when no INFO record carries this FormID — neither in the mod nor in an

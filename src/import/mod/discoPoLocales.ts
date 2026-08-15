@@ -14,6 +14,7 @@ import {
 } from '../../formats/po';
 import type { CsvRow } from '../../types';
 import { discoPoEntryStorageKey } from './discoPoPath';
+import { classifyDiscoPoSignature } from './discoPoSignature';
 import { discoPoLocaleText } from './discoPoText';
 
 export type DiscoPoLocaleBundle = {
@@ -131,7 +132,7 @@ export const buildDiscoPoCsvRows = (
     const edid = resolveEdid({ msgctxt, msgid: text, msgstr: text, key: entryKey }, wavStems);
     rows.push({
       FormID: '',
-      Signature: 'PO',
+      Signature: classifyDiscoPoSignature(relPo, msgctxt),
       Path: pathKey,
       PathSimplified: pathKey,
       Source: text,

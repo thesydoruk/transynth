@@ -1,12 +1,11 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import {
   clearVoiceSpeakerRef,
   setVoiceSpeakerRef,
   type VoiceSpeakerRefPick,
 } from '../../../voice/voiceSpeakerRefs';
-import { isOrphanVoiceEntry } from './buildVoiceLinePreview';
+import { isOrphanVoiceEntry, resolveSpeakerKey } from './buildVoiceLinePreview';
 import { resolveModVoiceContext } from './context';
 import { getVoiceListContext } from './voiceListContext';
 import { findVoiceEntry } from './voiceEntries';
@@ -40,7 +39,9 @@ export const setVoiceSpeakerReferenceForMod = async (
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
-  if (voiceSpeakerKey(entry, context.data.voiceRootRel) !== trimmedSpeaker) {
+  if (
+    resolveSpeakerKey(entry, context.data.voiceRootRel, context.data.isDisco) !== trimmedSpeaker
+  ) {
     return {
       ok: false,
       reason: 'line_not_in_speaker',
