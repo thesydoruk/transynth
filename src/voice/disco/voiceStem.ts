@@ -17,9 +17,23 @@ export type DiscoWavStemParts = {
   mainStem: string;
 };
 
-/** Collapse punctuation/spaces so PO Title and wav conversation names match. */
+/**
+ * Collapse punctuation/spaces/accents so PO Title/Actor match wav names
+ * (`Call Me Mañana` → `Call Me Manana`, `René` → `Rene`).
+ */
 export const crushDiscoVoiceToken = (value: string): string =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  value
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+/** Prefer ASCII wav twins over accented or replacement-char duplicate filenames. */
+export const discoWavStemAsciiScore = (stem: string): number => {
+  if (stem.includes('\uFFFD')) return 0;
+  if (/[^\u0000-\u007F]/.test(stem)) return 1;
+  return 2;
+};
 
 /** `WHIRLING F2 / TEQUILA DOOR` → `WHIRLING F2  TEQUILA DOOR` (wav conversation form). */
 export const discoConversationFromTitle = (title: string): string =>

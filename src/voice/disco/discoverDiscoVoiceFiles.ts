@@ -8,7 +8,7 @@ import { discoAudioDir, discoverDiscoLangFolders, listWavFilesRecursive } from '
 import { resolveDiscoExtractRoot } from '../../import/mod/discoPoLocales';
 import { resolveModImportExtractRoot } from '../../modStorage';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
-import { discoSpeakerKeyFromStem } from './voiceStem';
+import { crushDiscoVoiceToken, discoSpeakerKeyFromStem, discoWavStemAsciiScore } from './voiceStem';
 
 export { discoSpeakerKeyFromStem } from './voiceStem';
 
@@ -91,18 +91,27 @@ export const discoverDiscoVoiceFiles = (extractRoot: string): VoiceFileEntry[] =
     const wavs = listWavFilesRecursive(audioDir);
     if (wavs.length === 0) continue;
 
-    const entries: VoiceFileEntry[] = wavs.map((absPath) => {
+    const byStemKey = new Map<string, VoiceFileEntry>();
+    for (const absPath of wavs) {
       const stem = path.basename(absPath, path.extname(absPath));
+      if (stem.includes('\uFFFD')) continue;
       const relUnderAudio = path.relative(audioDir, absPath).split(path.sep).join('/');
-      return {
+      const entry: VoiceFileEntry = {
         relPath: normalizeRelPath(`Audio/${relUnderAudio}`),
         absolutePath: absPath,
         fileName: path.basename(absPath),
         formidLower6: discoVoiceFormidLower6(stem),
         variant: 1,
-        ext: 'wav' as const,
+        ext: 'wav',
       };
-    });
+      const key = crushDiscoVoiceToken(stem);
+      const prev = byStemKey.get(key);
+      const prevStem = prev ? path.basename(prev.fileName, path.extname(prev.fileName)) : '';
+      if (!prev || discoWavStemAsciiScore(stem) > discoWavStemAsciiScore(prevStem)) {
+        byStemKey.set(key, entry);
+      }
+    }
+    const entries = [...byStemKey.values()];
     entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
     return entries;
   }

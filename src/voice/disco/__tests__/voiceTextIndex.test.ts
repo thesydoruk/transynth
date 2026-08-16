@@ -2,7 +2,7 @@ import { describe, expect, it, afterEach } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { discoSpeakerKeyFromStem, parseDiscoWavStem } from '../voiceStem';
+import { crushDiscoVoiceToken, discoSpeakerKeyFromStem, parseDiscoWavStem } from '../voiceStem';
 import {
   buildDiscoVoiceTextIndex,
   getDiscoVoiceTextIndex,
@@ -41,6 +41,14 @@ const writePack = (files: { rel: string; contents?: string }[]): string => {
   }
   return root;
 };
+
+describe('crushDiscoVoiceToken', () => {
+  it('treats accented PO names as the ASCII wav spelling', () => {
+    expect(crushDiscoVoiceToken('Call Me Mañana')).toBe(crushDiscoVoiceToken('Call Me Manana'));
+    expect(crushDiscoVoiceToken('René Arnoux')).toBe(crushDiscoVoiceToken('Rene Arnoux'));
+    expect(crushDiscoVoiceToken('Gorący Kubek')).toBe(crushDiscoVoiceToken('Goracy Kubek'));
+  });
+});
 
 describe('parseDiscoWavStem', () => {
   it('splits actor, conversation, and entry id', () => {
@@ -99,6 +107,42 @@ describe('buildDiscoVoiceTextIndex', () => {
       field: 'Alternate1',
       articyId: '0x0100000000000001',
     });
+  });
+
+  it('pairs Call Me Mañana lockit rows with Call Me Manana wavs', () => {
+    const po = `msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\\n"
+
+#  Title = GATES / MANANA
+#  Actor = Call Me Mañana
+msgctxt "Dialogue Text/0x010000140000089D"
+msgid "First line."
+msgstr "First line."
+
+#  Title = GATES / MANANA
+#  Actor = Call Me Mañana
+msgctxt "Dialogue Text/0x010000140000089E"
+msgid "Second line."
+msgstr "Second line."
+`;
+    root = writePack([
+      { rel: 'English_English_en/DialoguesLockitEnglish.po', contents: po },
+      { rel: 'English_English_en/Audio/Call Me Manana-GATES  MANANA-10.wav' },
+      { rel: 'English_English_en/Audio/Call Me Manana-GATES  MANANA-20.wav' },
+      { rel: 'English_English_en/Audio/Call Me Mañana-GATES  MANANA-10.wav' },
+    ]);
+
+    const index = buildDiscoVoiceTextIndex(root);
+    expect(index.get('Call Me Manana-GATES  MANANA-10')).toMatchObject({
+      field: 'Dialogue Text',
+      articyId: '0x010000140000089d',
+    });
+    expect(index.get('Call Me Manana-GATES  MANANA-20')).toMatchObject({
+      field: 'Dialogue Text',
+      articyId: '0x010000140000089e',
+    });
+    expect(index.has('Call Me Mañana-GATES  MANANA-10')).toBe(false);
   });
 
   it('does not guess when Dialogue Text count and main wav count differ', () => {

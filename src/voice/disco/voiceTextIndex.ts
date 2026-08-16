@@ -15,7 +15,12 @@ import {
 } from '../../formats/po';
 import { discoDialogueMsgctxtKey } from '../../import/mod/discoPoPath';
 import { scanDiscoPoSpokenLines, type DiscoPoSpokenLine } from './poVoiceMeta';
-import { crushDiscoVoiceToken, parseDiscoWavStem, type DiscoWavStemParts } from './voiceStem';
+import {
+  crushDiscoVoiceToken,
+  discoWavStemAsciiScore,
+  parseDiscoWavStem,
+  type DiscoWavStemParts,
+} from './voiceStem';
 
 export type DiscoVoiceTextRef = {
   field: string;
@@ -103,6 +108,22 @@ const loadOptionalClipLibrary = (
   return out;
 };
 
+const wavEntryDedupeKey = (wav: DiscoWavStemParts): string =>
+  `${crushDiscoVoiceToken(wav.actor)}\0${crushDiscoVoiceToken(wav.conversation)}\0${wav.entryId}\0${wav.alternativeIndex ?? ''}`;
+
+/** One clip per actor+conversation+entry (ASCII filename wins over Mañana/latin-1 twins). */
+const dedupeWavsByEntry = (wavs: DiscoWavStemParts[]): DiscoWavStemParts[] => {
+  const best = new Map<string, DiscoWavStemParts>();
+  for (const wav of wavs) {
+    const key = wavEntryDedupeKey(wav);
+    const prev = best.get(key);
+    if (!prev || discoWavStemAsciiScore(wav.stem) > discoWavStemAsciiScore(prev.stem)) {
+      best.set(key, wav);
+    }
+  }
+  return [...best.values()];
+};
+
 const zipEqualCount = (
   spoken: DiscoPoSpokenLine[],
   wavs: DiscoWavStemParts[],
@@ -183,12 +204,13 @@ export const buildDiscoVoiceTextIndex = (extractRoot: string): Map<string, Disco
   const wavs: DiscoWavStemParts[] = [];
   for (const abs of listWavFilesRecursive(audioDir)) {
     const stem = path.basename(abs, path.extname(abs));
+    if (stem.includes('\uFFFD')) continue;
     const parsed = parseDiscoWavStem(stem, conversations);
     if (parsed) wavs.push(parsed);
   }
 
   const spokenBy = groupByActorConv(spoken, (s) => actorConvKey(s.actorKey, s.conversationKey));
-  const wavBy = groupByActorConv(wavs, (w) =>
+  const wavBy = groupByActorConv(dedupeWavsByEntry(wavs), (w) =>
     actorConvKey(crushDiscoVoiceToken(w.actor), crushDiscoVoiceToken(w.conversation)),
   );
 
