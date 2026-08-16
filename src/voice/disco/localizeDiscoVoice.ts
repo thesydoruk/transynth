@@ -84,12 +84,13 @@ export const countDiscoVoiceLocalizeWork = async (
     }
     if (speakerFilter && discoSpeakerKeyFromStem(stem) !== speakerFilter) continue;
     const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-    if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) continue;
+    if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
       speakerSource: row.source,
       edid: row.edid,
+      markup: 'disco',
     });
     if (prepared.action !== 'synthesize') continue;
     if (!forceAll) {
@@ -174,13 +175,14 @@ export const localizeDiscoVoicePackage = async (
       if (speakerFilter && discoSpeakerKeyFromStem(stem) !== speakerFilter) continue;
 
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) continue;
+      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
 
       const prepared = prepareVoiceTtsText({
         lineSource: row.source,
         translation: row.translation,
         speakerSource: row.source,
         edid: row.edid,
+        markup: 'disco',
       });
       if (prepared.action !== 'synthesize') {
         warnings.push(`${entry.relPath}: skipped (${prepared.action})`);

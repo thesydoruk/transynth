@@ -102,7 +102,8 @@ export const processDiscoVoiceEntry = async (
       getSiblingEntries: (key) => getSiblingEntries(key, entry),
       speakerRefCache,
     });
-    const speakerText = stripVoiceNonSpeechBlocks(picked.referenceText ?? row.source) || undefined;
+    const speakerText =
+      stripVoiceNonSpeechBlocks(picked.referenceText ?? row.source, 'disco') || undefined;
 
     const ttsWav = await synthesizeWav(prepared.text, picked.wavPath, {
       baseUrl: ttsBaseUrl,

@@ -65,7 +65,7 @@ export const synthesizeDiscoVoiceLine = async (
   if (!row?.translation?.trim()) {
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
-  if (!canSynthesizeVoiceLine(row.source, row.translation, row.edid)) {
+  if (!canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) {
     return { ok: false, reason: 'non_speech', message: 'Line is not synthesizable' };
   }
 
@@ -74,6 +74,7 @@ export const synthesizeDiscoVoiceLine = async (
     translation: row.translation,
     speakerSource: row.source,
     edid: row.edid,
+    markup: 'disco',
   });
   if (prepared.action !== 'synthesize') {
     return { ok: false, reason: 'non_speech', message: 'Line is not synthesizable' };

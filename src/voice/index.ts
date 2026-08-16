@@ -70,6 +70,7 @@ export {
   stripVoiceNonSpeechBlocks,
   voiceTtsSkipMessage,
   type PrepareVoiceTtsTextResult,
+  type VoiceTtsMarkupStyle,
   type VoiceTtsSkipReason,
 } from './prepareVoiceTtsText';
 export {

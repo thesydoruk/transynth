@@ -26,14 +26,22 @@
  *   Suffix strip — "…take your time *groan*" → synth (without *groan*)
  *   Multi-block  — "*Gasping* *Coughing*" → skip (empty_after_strip)
  *
+ * Disco Elysium uses *...* as italics, not stage directions. With
+ * `markup: 'disco'`, asterisks are dropped and the inner words are spoken
+ * (`*такі фрази*` → `такі фрази`); a line that is only emphasized text is
+ * still synthesizable.
+ *
  * Bracketed [...] blocks are tone tags and UI tokens ([Сарказм], [Click]).
  * They are never spoken, and FaceFXWrapper hangs on non-ASCII text inside
- * brackets, so they are stripped exactly like *...* blocks.
+ * brackets, so they are stripped exactly like Fallout *...* blocks.
  *
  * Parentheses (...) count as non-speech only when the entire line matches.
  * Mid-line parens are left untouched. Vanilla FO4: animals use (Bark!), (Growl);
  * human grunts use *Sigh*, *gasp*.
  */
+
+/** How `*...*` is treated before TTS. Fallout strips the block; Disco unwraps it. */
+export type VoiceTtsMarkupStyle = 'fallout' | 'disco';
 
 /** Inline stage direction / sound-effect block: `*chuckle*`, `*groan*`, … */
 const ASTERISK_BLOCK_RE = /\*[^*]+\*/g;
@@ -62,9 +70,12 @@ export type PrepareVoiceTtsTextResult =
 
 const normalizeLine = (text: string | null | undefined): string => text?.trim() ?? '';
 
+const dropAsterisks = (text: string, markup: VoiceTtsMarkupStyle): string =>
+  markup === 'disco' ? text.replace(/\*/g, '') : text.replace(ASTERISK_BLOCK_RE, ' ');
+
 /**
- * Remove all `*...*` and `[...]` blocks anywhere in the string and collapse
- * whitespace.
+ * Remove Fallout `*...*` / `[...]` stage-direction blocks, or (Disco) unwrap
+ * italic `*...*` to plain words and still drop `[...]` tags.
  *
  * @example stripVoiceNonSpeechBlocks('*ahem* Now, was there anything?')
  *          → 'Now, was there anything?'
@@ -72,9 +83,12 @@ const normalizeLine = (text: string | null | undefined): string => text?.trim() 
  *          → 'Yeah, just take your time...'
  * @example stripVoiceNonSpeechBlocks('[Сарказм] Ну звісно.') → 'Ну звісно.'
  * @example stripVoiceNonSpeechBlocks('*Gasping* *Coughing*') → ''
+ * @example stripVoiceNonSpeechBlocks('Це *такі фрази*.', 'disco') → 'Це такі фрази.'
  */
-export const stripVoiceNonSpeechBlocks = (text: string): string =>
-  text.replace(ASTERISK_BLOCK_RE, ' ').replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
+export const stripVoiceNonSpeechBlocks = (
+  text: string,
+  markup: VoiceTtsMarkupStyle = 'fallout',
+): string => dropAsterisks(text, markup).replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
 
 /**
  * True when the INFO record is a companion interject engine stub.
@@ -106,14 +120,14 @@ export const isInterjectStubEdid = (edid?: string | null): boolean => {
  * @example isFullNonSpeechMarkerLine('[Сарказм]') → true
  * @example isFullNonSpeechMarkerLine('*chuckle* Hello there') → false
  */
-export const isFullNonSpeechMarkerLine = (text: string): boolean => {
+export const isFullNonSpeechMarkerLine = (
+  text: string,
+  markup: VoiceTtsMarkupStyle = 'fallout',
+): boolean => {
   const line = text.trim();
   if (!line) return false;
-  return (
-    FULL_ASTERISK_LINE_RE.test(line) ||
-    FULL_PAREN_LINE_RE.test(line) ||
-    FULL_BRACKET_LINE_RE.test(line)
-  );
+  if (markup !== 'disco' && FULL_ASTERISK_LINE_RE.test(line)) return true;
+  return FULL_PAREN_LINE_RE.test(line) || FULL_BRACKET_LINE_RE.test(line);
 };
 
 /** Human-readable skip reason for logs and batch `skipped[]` messages. */
@@ -146,12 +160,13 @@ export const detectVoiceTtsSkipReason = (
   lineSource: string | null | undefined,
   translation: string,
   edid?: string | null,
+  markup: VoiceTtsMarkupStyle = 'fallout',
 ): VoiceTtsSkipReason | null => {
   if (isInterjectStubEdid(edid)) return 'interject_stub';
 
   const source = normalizeLine(lineSource);
   const target = normalizeLine(translation);
-  if (isFullNonSpeechMarkerLine(source) || isFullNonSpeechMarkerLine(target)) {
+  if (isFullNonSpeechMarkerLine(source, markup) || isFullNonSpeechMarkerLine(target, markup)) {
     return 'non_speech_marker';
   }
   return null;
@@ -168,9 +183,10 @@ export const canSynthesizeVoiceLine = (
   lineSource: string | null | undefined,
   translation: string,
   edid?: string | null,
+  markup: VoiceTtsMarkupStyle = 'fallout',
 ): boolean => {
-  if (detectVoiceTtsSkipReason(lineSource, translation, edid)) return false;
-  return stripVoiceNonSpeechBlocks(translation).length > 0;
+  if (detectVoiceTtsSkipReason(lineSource, translation, edid, markup)) return false;
+  return stripVoiceNonSpeechBlocks(translation, markup).length > 0;
 };
 
 /**
@@ -206,15 +222,22 @@ export const prepareVoiceTtsText = (input: {
   translation: string;
   speakerSource: string | null | undefined;
   edid?: string | null;
+  markup?: VoiceTtsMarkupStyle;
 }): PrepareVoiceTtsTextResult => {
-  const skipReason = detectVoiceTtsSkipReason(input.lineSource, input.translation, input.edid);
+  const markup = input.markup ?? 'fallout';
+  const skipReason = detectVoiceTtsSkipReason(
+    input.lineSource,
+    input.translation,
+    input.edid,
+    markup,
+  );
   if (skipReason) return { action: 'skip', reason: skipReason };
 
-  const text = stripVoiceNonSpeechBlocks(input.translation);
+  const text = stripVoiceNonSpeechBlocks(input.translation, markup);
   if (!text) return { action: 'skip', reason: 'empty_after_strip' };
 
   const speakerRaw = normalizeLine(input.speakerSource) || normalizeLine(input.lineSource);
-  const speakerText = speakerRaw ? stripVoiceNonSpeechBlocks(speakerRaw) : '';
+  const speakerText = speakerRaw ? stripVoiceNonSpeechBlocks(speakerRaw, markup) : '';
 
   return {
     action: 'synthesize',

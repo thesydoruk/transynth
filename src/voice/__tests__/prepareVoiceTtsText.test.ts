@@ -207,3 +207,47 @@ describe('canSynthesizeVoiceLine', () => {
     ).toBe(false);
   });
 });
+
+describe('Disco italic markup', () => {
+  it('keeps emphasized words and drops only the asterisks', () => {
+    expect(stripVoiceNonSpeechBlocks('Це просто *такі фрази*, нічого більше.', 'disco')).toBe(
+      'Це просто такі фрази, нічого більше.',
+    );
+    expect(stripVoiceNonSpeechBlocks('*такі фрази*', 'disco')).toBe('такі фрази');
+  });
+
+  it('still strips bracket tags', () => {
+    expect(stripVoiceNonSpeechBlocks('[Click] Look at *this*.', 'disco')).toBe('Look at this.');
+  });
+
+  it('synthesizes a line that is only italic emphasis', () => {
+    expect(canSynthesizeVoiceLine('*Such a waste.*', '*Така втрата.*', null, 'disco')).toBe(true);
+    expect(
+      prepareVoiceTtsText({
+        lineSource: '*Such a waste.*',
+        translation: '*Така втрата.*',
+        speakerSource: '*Such a waste.*',
+        markup: 'disco',
+      }),
+    ).toEqual({
+      action: 'synthesize',
+      text: 'Така втрата.',
+      speakerText: 'Such a waste.',
+    });
+  });
+
+  it('does not skip Fallout-style *chuckle* prefixes — the words stay in the line', () => {
+    expect(
+      prepareVoiceTtsText({
+        lineSource: '*chuckle* This troublemaker here.',
+        translation: '*смішок* Цей негідник.',
+        speakerSource: '*chuckle* This troublemaker here.',
+        markup: 'disco',
+      }),
+    ).toEqual({
+      action: 'synthesize',
+      text: 'смішок Цей негідник.',
+      speakerText: 'chuckle This troublemaker here.',
+    });
+  });
+});

@@ -193,7 +193,7 @@ export const listDiscoVoiceLinesForSpeaker = async (
     const translation = normalizeVoiceText(row.translation);
     const isOrphanAudio = row.record_id == null;
     const hasAudio = hasTranslationAudio(translationAudio, formidLower6, 1);
-    const synthesizable = canSynthesizeVoiceLine(source, translation ?? '', row.wav_stem);
+    const synthesizable = canSynthesizeVoiceLine(source, translation ?? '', row.wav_stem, 'disco');
     return {
       formidLower6,
       infoFormidHex: formidLower6.padStart(8, '0'),
