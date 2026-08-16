@@ -12,11 +12,17 @@ import { checkTtsHealth } from '../../tts/ttsClient';
 import { ensureDir } from '../../utils/file';
 import { lookupVoiceTranslation } from '../loadVoiceTranslations';
 import { canSynthesizeVoiceLine, prepareVoiceTtsText } from '../prepareVoiceTtsText';
+import type { SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
 import type { SynthesizeModVoiceLineResult } from '../synthesizeModVoiceLine';
 import { loadVoiceProjectSettings } from '../voiceProjectSettings';
 import { loadVoiceSynthesisVersionMap } from '../voiceSynthesisState';
 import { resolveTtsBaseUrl } from '../voiceToolPaths';
-import { discoverDiscoVoiceFiles, resolveDiscoVoiceExtractRoot } from './discoverDiscoVoiceFiles';
+import {
+  discoverDiscoVoiceFiles,
+  groupDiscoVoiceFilesBySpeaker,
+  resolveDiscoVoiceExtractRoot,
+} from './discoverDiscoVoiceFiles';
+import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
 
@@ -41,7 +47,8 @@ export const synthesizeDiscoVoiceLine = async (
     return { ok: false, reason: 'line_not_found', message: 'Disco pack root not found' };
   }
 
-  const entry = discoverDiscoVoiceFiles(extractRoot).find(
+  const voiceFiles = discoverDiscoVoiceFiles(extractRoot);
+  const entry = voiceFiles.find(
     (e) =>
       e.formidLower6.toUpperCase() === opts.formidLower6.toUpperCase() &&
       e.variant === opts.variant,
@@ -50,7 +57,13 @@ export const synthesizeDiscoVoiceLine = async (
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
-  const translations = await loadDiscoVoiceTranslations(db, opts.modId, opts.srcLang, opts.tgtLang);
+  const translations = await loadDiscoVoiceTranslations(
+    db,
+    opts.modId,
+    opts.srcLang,
+    opts.tgtLang,
+    extractRoot,
+  );
   const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
   if (!row?.translation?.trim()) {
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
@@ -72,6 +85,9 @@ export const synthesizeDiscoVoiceLine = async (
   const voiceConfig = await loadVoiceProjectSettings(db);
   const ttsBaseUrl = resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
+  const voiceSources = await loadDiscoVoiceSources(db, opts.modId, opts.srcLang, extractRoot);
+  const bySpeaker = groupDiscoVoiceFilesBySpeaker(voiceFiles);
+  const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
   if (getJobRuntime()) await ensureDependencyHealthy('tts');
   else await checkTtsHealth(ttsBaseUrl);
 
@@ -83,13 +99,23 @@ export const synthesizeDiscoVoiceLine = async (
     const result = await processDiscoVoiceEntry(entry, row, prepared, {
       db,
       modId: opts.modId,
+      extractDir: extractRoot,
       localizeDir: opts.localizeDir,
       tempRoot,
       game: mod.game,
       ttsBaseUrl,
+      referenceMode: voiceConfig.referenceMode,
       synthesis: voiceConfig.synthesis,
       tgtLang: opts.tgtLang,
       force: opts.force ?? true,
+      voiceSources,
+      speakerRefCache,
+      getSiblingEntries: (key, current) =>
+        (bySpeaker.get(key) ?? []).filter(
+          (candidate) =>
+            candidate.formidLower6 !== current.formidLower6 ||
+            candidate.variant !== current.variant,
+        ),
       storedVersions,
     });
 

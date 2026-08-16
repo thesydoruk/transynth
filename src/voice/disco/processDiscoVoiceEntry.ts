@@ -11,8 +11,9 @@ import { synthesizeWav, type TtsSynthesisParams } from '../../tts/ttsClient';
 import type { GameType } from '../../types';
 import { ensureDir } from '../../utils/file';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
-import type { VoiceTranslationRow } from '../loadVoiceTranslations';
+import type { VoiceSourceRow, VoiceTranslationRow } from '../loadVoiceTranslations';
 import { voiceTranslationMapKey } from '../loadVoiceTranslations';
+import { pickVoiceTtsReference, type SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
 import { prepareReferenceAudio } from '../prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from '../prepareVoiceTtsText';
 import { upsertVoiceSynthesisState } from '../voiceSynthesisState';
@@ -20,19 +21,25 @@ import {
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
 } from '../voiceTtsPayloadVersion';
-import { resolveTtsLanguage } from '../voiceToolPaths';
+import { resolveTtsLanguage, type TtsReferenceMode } from '../voiceToolPaths';
+import { discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
 import { outputLocalizedWavRelPath } from './voicePaths';
 
 export type ProcessDiscoVoiceEntryOptions = {
   db: Tx;
   modId: number;
+  extractDir: string;
   localizeDir: string;
   tempRoot: string;
   game: GameType;
   ttsBaseUrl: string;
+  referenceMode: TtsReferenceMode;
   synthesis: TtsSynthesisParams;
   tgtLang: string;
   force: boolean;
+  voiceSources: Map<string, VoiceSourceRow>;
+  speakerRefCache: Map<string, SpeakerRefCacheEntry>;
+  getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
   storedVersions: Map<string, string>;
 };
 
@@ -50,12 +57,17 @@ export const processDiscoVoiceEntry = async (
   const {
     db,
     modId,
+    extractDir,
     localizeDir,
     tempRoot,
     ttsBaseUrl,
+    referenceMode,
     synthesis,
     tgtLang,
     force,
+    voiceSources,
+    speakerRefCache,
+    getSiblingEntries,
     storedVersions,
   } = options;
 
@@ -75,9 +87,24 @@ export const processDiscoVoiceEntry = async (
     ensureDir(workDir);
 
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const speakerText = stripVoiceNonSpeechBlocks(row.source) || undefined;
+    const speakerKey = discoVoiceSpeakerKey(entry);
+    const picked = await pickVoiceTtsReference({
+      db,
+      modId,
+      packageDir: extractDir,
+      pluginRelPath: 'disco.po',
+      speakerKey,
+      entry,
+      lineEnglishWav,
+      lineSource: row.source,
+      referenceMode,
+      voiceSources,
+      getSiblingEntries: (key) => getSiblingEntries(key, entry),
+      speakerRefCache,
+    });
+    const speakerText = stripVoiceNonSpeechBlocks(picked.referenceText ?? row.source) || undefined;
 
-    const ttsWav = await synthesizeWav(prepared.text, lineEnglishWav, {
+    const ttsWav = await synthesizeWav(prepared.text, picked.wavPath, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(tgtLang),
       speakerText,

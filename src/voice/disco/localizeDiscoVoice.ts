@@ -20,7 +20,13 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from '../voiceTtsPayloadVersion';
 import type { TtsReferenceMode } from '../voiceToolPaths';
-import { discoSpeakerKeyFromStem, discoverDiscoVoiceFiles } from './discoverDiscoVoiceFiles';
+import type { SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
+import {
+  discoSpeakerKeyFromStem,
+  discoverDiscoVoiceFiles,
+  groupDiscoVoiceFilesBySpeaker,
+} from './discoverDiscoVoiceFiles';
+import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
 import { outputLocalizedWavRelPath } from './voicePaths';
@@ -55,7 +61,7 @@ export const countDiscoVoiceLocalizeWork = async (
   speakerKey?: string,
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
-  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang);
+  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang, extractDir);
   const voiceFiles = discoverDiscoVoiceFiles(extractDir);
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   const forceAll = scope === 'all';
@@ -107,6 +113,7 @@ export const localizeDiscoVoicePackage = async (
     tgtLang,
     ttsBaseUrl,
     synthesis,
+    referenceMode,
     force,
     onlyKeys,
     speakerKey,
@@ -118,8 +125,11 @@ export const localizeDiscoVoicePackage = async (
 
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   ensureDir(localizeDir);
-  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang);
+  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang, extractDir);
+  const voiceSources = await loadDiscoVoiceSources(db, modId, srcLang, extractDir);
   const voiceFiles = discoverDiscoVoiceFiles(extractDir);
+  const bySpeaker = groupDiscoVoiceFilesBySpeaker(voiceFiles);
+  const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
   const speakerFilter = speakerKey?.trim() || '';
   const tempRoot = path.join(os.tmpdir(), `disco-voice-${modId}-${Date.now()}`);
@@ -166,13 +176,23 @@ export const localizeDiscoVoicePackage = async (
       const result = await processDiscoVoiceEntry(entry, row, prepared, {
         db,
         modId,
+        extractDir,
         localizeDir,
         tempRoot,
         game,
         ttsBaseUrl,
+        referenceMode,
         synthesis,
         tgtLang,
         force,
+        voiceSources,
+        speakerRefCache,
+        getSiblingEntries: (key, current) =>
+          (bySpeaker.get(key) ?? []).filter(
+            (candidate) =>
+              candidate.formidLower6 !== current.formidLower6 ||
+              candidate.variant !== current.variant,
+          ),
         storedVersions,
       });
       if (result.kind === 'written') written.push(result.relPath);
