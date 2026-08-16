@@ -1,13 +1,26 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { log } from '../logger';
 import { PATHS, resolveDir } from '../paths';
 import { execFileAsync, type ExecFileResult } from '../utils/execFile';
+import { hintProcessGc } from '../utils/processGc';
 import { ensureWinePrefixOwnedByCurrentUser } from './ensureWinePrefixOwner';
 
 export type WineArch = 'win32' | 'win64';
 
+/** FaceFX/xWMA rarely print more than a few KB; the default 64MB buffer inflates RSS. */
+const WINE_TOOL_MAX_BUFFER = 1 * 1024 * 1024;
+
+/** Restart wineserver after this many tool runs so persistent mode cannot grow forever. */
+const parsedRecycleEvery = Number.parseInt(process.env.WINE_RECYCLE_EVERY_USES ?? '2000', 10);
+const WINE_RECYCLE_EVERY_USES =
+  Number.isFinite(parsedRecycleEvery) && parsedRecycleEvery > 0 ? parsedRecycleEvery : 2000;
+
 const wineReady = new Set<WineArch>();
+let wineJobDepth = 0;
+let wineInFlight = 0;
+let wineUsesSinceRecycle = 0;
 
 const wineArchMarkerPath = (prefix: string): string => path.join(prefix, '.transynth-wine-arch');
 
@@ -65,11 +78,57 @@ const ensureWineReady = (arch: WineArch): void => {
   }
 
   try {
-    // Without infinite persistence the server exits between tool runs and leaves its
-    // service processes (services.exe, winedevice.exe, …) orphaned on every call.
+    // Persist during a job so services.exe is not re-spawned (and orphaned) per .exe.
+    // `shutdownWine` / recycle drop it again so RSS does not stick after synthesis.
     execFileSync(wineServerCommand(), ['-p'], { timeout: 30_000, stdio: 'ignore', env });
   } catch {
     // Older Wine builds without `wineserver -p` still work, just with more churn.
+  }
+};
+
+/** Kill both prefixes and forget the in-process "ready" flag. */
+export const shutdownWine = (): void => {
+  if (process.platform === 'win32') return;
+  killWineServer('win32');
+  killWineServer('win64');
+  wineReady.clear();
+  wineInFlight = 0;
+  wineUsesSinceRecycle = 0;
+};
+
+const maybeRecycleIdleWine = (): void => {
+  if (wineInFlight !== 0) return;
+  if (wineUsesSinceRecycle < WINE_RECYCLE_EVERY_USES) return;
+  log.info(`Recycling Wine after ${wineUsesSinceRecycle} tool runs`);
+  shutdownWine();
+};
+
+const beginWineUse = (arch: WineArch): void => {
+  maybeRecycleIdleWine();
+  ensureWineReady(arch);
+  wineInFlight += 1;
+};
+
+const endWineUse = (): void => {
+  wineInFlight = Math.max(0, wineInFlight - 1);
+  wineUsesSinceRecycle += 1;
+  maybeRecycleIdleWine();
+};
+
+/**
+ * Keep wineserver alive for nested Wine work, then kill it and hint GC when
+ * the outermost job finishes (safe with concurrent voice jobs).
+ */
+export const withWineJob = async <T>(fn: () => Promise<T>): Promise<T> => {
+  wineJobDepth += 1;
+  try {
+    return await fn();
+  } finally {
+    wineJobDepth -= 1;
+    if (wineJobDepth === 0) {
+      shutdownWine();
+      hintProcessGc();
+    }
   }
 };
 
@@ -151,7 +210,15 @@ export const execWindowsToolAsync = async (
   const { command, argsPrefix } = resolveWindowsExecutable(toolPath);
   const useWine = isWineExePath(toolPath) && process.platform !== 'win32';
   const env = useWine ? wineProcessEnv(arch) : undefined;
-  if (useWine) ensureWineReady(arch);
+  if (useWine) beginWineUse(arch);
   const execArgs = useWine ? wineifyArgs(args, env!) : args;
-  return execFileAsync(command, [...argsPrefix, ...execArgs], { ...options, env });
+  try {
+    return await execFileAsync(command, [...argsPrefix, ...execArgs], {
+      ...options,
+      env,
+      maxBuffer: WINE_TOOL_MAX_BUFFER,
+    });
+  } finally {
+    if (useWine) endWineUse();
+  }
 };

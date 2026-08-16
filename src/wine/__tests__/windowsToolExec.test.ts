@@ -1,4 +1,10 @@
-import { looksLikeUnixPathArg, resolveWinePrefix, wineifyArgs } from '../windowsToolExec';
+import {
+  looksLikeUnixPathArg,
+  resolveWinePrefix,
+  wineifyArgs,
+  withWineJob,
+} from '../windowsToolExec';
+import { hintProcessGc } from '../../utils/processGc';
 
 describe('resolveWinePrefix', () => {
   const originalPrefix = process.env.WINEPREFIX;
@@ -43,5 +49,18 @@ describe('wineifyArgs', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
     const args = ['-b', '48000', '/tmp/a.wav', '/tmp/a.xwm'];
     expect(wineifyArgs(args, {})).toEqual(args);
+  });
+});
+
+describe('withWineJob', () => {
+  it('returns the inner result and allows nesting', async () => {
+    const nested = await withWineJob(async () => withWineJob(async () => 21));
+    expect(nested).toBe(21);
+  });
+});
+
+describe('hintProcessGc', () => {
+  it('does not throw when gc is unavailable', () => {
+    expect(() => hintProcessGc()).not.toThrow();
   });
 });

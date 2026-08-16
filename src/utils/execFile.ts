@@ -9,7 +9,12 @@ export type ExecFileResult = {
 export const execFileAsync = (
   command: string,
   args: string[],
-  options: { cwd?: string; timeoutMs?: number; env?: NodeJS.ProcessEnv } = {},
+  options: {
+    cwd?: string;
+    timeoutMs?: number;
+    env?: NodeJS.ProcessEnv;
+    maxBuffer?: number;
+  } = {},
 ): Promise<ExecFileResult> =>
   new Promise((resolve, reject) => {
     nodeExecFile(
@@ -20,7 +25,7 @@ export const execFileAsync = (
         env: options.env,
         windowsHide: true,
         timeout: options.timeoutMs,
-        maxBuffer: 64 * 1024 * 1024,
+        maxBuffer: options.maxBuffer ?? 64 * 1024 * 1024,
       },
       (err, stdout, stderr) => {
         if (err) {

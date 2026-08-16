@@ -85,6 +85,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000}
       REDIS_URL: redis://redis:6379
       JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
+      NODE_OPTIONS: ${NODE_OPTIONS:---expose-gc}
       WINEARCH: win32
       WINEPREFIX: /app/data/tools/.wine
       WINEPREFIX64: /app/data/tools/.wine64

@@ -7,6 +7,7 @@
 import type { ModVoiceGenerateScope } from '../../../../src/voice';
 import { syncTtsPoolFromProjectSettings } from '../../../../src/voice/voiceProjectSettings';
 import { getAllProjectSettings } from '../../../../src/web/services/projectSettings';
+import { withWineJob } from '../../../../src/wine/windowsToolExec';
 import { runModVoiceGenerateJob } from './runJob';
 import type { JobHandler } from '../../types';
 import { runTrackedJob } from '../../runTrackedJob';
@@ -25,11 +26,13 @@ export const voiceGenerateHandler: JobHandler = async (db, ctx) => {
   const params = ctx.data.params as VoiceGenerateJobParams;
   const modId = ctx.data.modId!;
   syncTtsPoolFromProjectSettings(await getAllProjectSettings(db));
-  return runTrackedJob(ctx, (onEvent) =>
-    runModVoiceGenerateJob(
-      db,
-      { jobId: ctx.jobId, modId, ...params, isCancelled: ctx.isCancelled },
-      onEvent,
+  return withWineJob(() =>
+    runTrackedJob(ctx, (onEvent) =>
+      runModVoiceGenerateJob(
+        db,
+        { jobId: ctx.jobId, modId, ...params, isCancelled: ctx.isCancelled },
+        onEvent,
+      ),
     ),
   );
 };
