@@ -18,6 +18,7 @@ import { resolveModStoredPath } from '../../../modStorage';
 import { loadVoiceSpeakerRefs, type VoiceSpeakerRefMap } from '../../../voice/voiceSpeakerRefs';
 import { loadDiscoVoiceSources } from '../../../voice/disco/loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from '../../../voice/disco/loadDiscoVoiceTranslations';
+import { resolveDiscoVoiceExtractRoot } from '../../../voice/disco/discoverDiscoVoiceFiles';
 import { persistDiscoSpeakers } from '../../../import/mod/discoSpeakers';
 import path from 'node:path';
 import { resolveVoicePackageContext, type VoicePackageContext } from './context';
@@ -109,9 +110,10 @@ const loadVoiceListContext = async (
       await persistDiscoSpeakers(db, modId, stemList);
     }
 
+    const extractRoot = resolveDiscoVoiceExtractRoot(pluginPath);
     const [sources, translations, dbSpeakerNames, speakerRefs, folderGenders] = await Promise.all([
-      loadDiscoVoiceSources(db, modId, srcLang),
-      loadDiscoVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
+      loadDiscoVoiceSources(db, modId, srcLang, extractRoot),
+      loadDiscoVoiceTranslations(db, modId, srcLang, resolvedTargetLang, extractRoot),
       loadDiscoSpeakerNames(db, modId),
       loadVoiceSpeakerRefs(db, modId),
       loadDiscoSpeakerGenders(db, modId),

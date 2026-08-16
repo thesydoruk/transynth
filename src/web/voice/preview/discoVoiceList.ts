@@ -1,12 +1,11 @@
 /**
  * Disco Final Cut helpers for the voice editor preview API.
  */
-import path from 'node:path';
 import type { Tx } from '../../../db';
 import { effectiveSpeakerGenderSql, parseSpeakerGender, type SpeakerGender } from '../../../dialog';
 import {
-  discoSpeakerKeyFromStem,
   discoVoiceFormidLower6,
+  discoVoiceSpeakerKey,
   discoverDiscoVoiceFiles,
   resolveDiscoVoiceExtractRoot,
 } from '../../../voice/disco/discoverDiscoVoiceFiles';
@@ -19,10 +18,7 @@ export const discoverDiscoVoiceEntries = (pluginPath: string): VoiceFileEntry[] 
   return discoverDiscoVoiceFiles(extractRoot);
 };
 
-export const discoVoiceSpeakerKey = (entry: VoiceFileEntry): string => {
-  const stem = path.basename(entry.fileName, path.extname(entry.fileName));
-  return discoSpeakerKeyFromStem(stem);
-};
+export { discoVoiceSpeakerKey };
 
 /** Gender keyed by Disco speaker name (`Kim Kitsuragi`), from `dialog_speakers`. */
 export const loadDiscoSpeakerGenders = async (

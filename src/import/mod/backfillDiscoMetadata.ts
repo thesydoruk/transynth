@@ -9,6 +9,7 @@ import {
   discoverDiscoVoiceFiles,
   resolveDiscoVoiceExtractRoot,
 } from '../../voice/disco/discoverDiscoVoiceFiles';
+import { parseDiscoPoPathForSignature } from './discoPoPath';
 import {
   classifyDiscoPoSignature,
   discoPoSignatureSqlValues,
@@ -16,6 +17,8 @@ import {
 } from './discoPoSignature';
 import { buildDiscoSpeakerRowsFromStems, persistDiscoSpeakers } from './discoSpeakers';
 import { listDiscoModsWithExtract, type DiscoNaSourceTarget } from './repairDiscoNaSource';
+
+export { parseDiscoPoPathForSignature };
 
 export type BackfillDiscoMetadataResult = {
   modId: number;
@@ -30,24 +33,6 @@ const resolveExtractDir = (extractDir: string): string => {
   const mapped = extractDir.replace(/^[/\\]app[/\\]data(?=[/\\]|$)/, PATHS.dataDir);
   if (mapped !== extractDir && fs.existsSync(mapped)) return mapped;
   return extractDir;
-};
-
-/** Parse `PO\relPo\msgctxt::…` into file + msgctxt for classification. */
-export const parseDiscoPoPathForSignature = (
-  recordPath: string,
-): { relPo: string; msgctxt: string } | null => {
-  // Import always writes `PO\relPo\entryKey`; msgctxt may contain `/`.
-  if (!recordPath.toUpperCase().startsWith('PO\\') && !recordPath.toUpperCase().startsWith('PO/')) {
-    return null;
-  }
-  const rest = recordPath.slice(3);
-  const sep = rest.indexOf('\\');
-  if (sep < 0) return null;
-  const relPo = rest.slice(0, sep).replace(/\\/g, '/');
-  const entryKey = rest.slice(sep + 1);
-  const ctxSep = entryKey.indexOf('::');
-  const msgctxt = ctxSep >= 0 ? entryKey.slice(0, ctxSep) : entryKey;
-  return { relPo, msgctxt };
 };
 
 export const listDiscoModsForMetadataBackfill = listDiscoModsWithExtract;

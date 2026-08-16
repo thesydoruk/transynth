@@ -52,8 +52,6 @@ const resolveEdid = (entry: PoEntry, wavStems: Set<string>): string | undefined 
   for (const c of candidates) {
     if (wavStems.has(c)) return c;
   }
-  // Common Final Cut pattern: msgctxt is the audio asset name.
-  if (entry.msgctxt && entry.msgctxt.length <= 180) return entry.msgctxt;
   return undefined;
 };
 

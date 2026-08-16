@@ -37,3 +37,38 @@ export const discoPoEntryStorageKey = (relPo: string, msgctxt: string, msgid: st
 /** Full `records.path` for a Disco PO entry. */
 export const discoPoRecordPath = (relPo: string, msgctxt: string, msgid: string): string =>
   `PO\\${relPo}\\${discoPoEntryStorageKey(relPo, msgctxt, msgid)}`;
+
+/** Parse `PO\relPo\msgctxt::…` into file + msgctxt. */
+export const parseDiscoPoPathForSignature = (
+  recordPath: string,
+): { relPo: string; msgctxt: string } | null => {
+  if (!recordPath.toUpperCase().startsWith('PO\\') && !recordPath.toUpperCase().startsWith('PO/')) {
+    return null;
+  }
+  const rest = recordPath.slice(3);
+  const sep = rest.indexOf('\\');
+  if (sep < 0) return null;
+  const relPo = rest.slice(0, sep).replace(/\\/g, '/');
+  const entryKey = rest.slice(sep + 1);
+  const ctxSep = entryKey.indexOf('::');
+  const msgctxt = ctxSep >= 0 ? entryKey.slice(0, ctxSep) : entryKey;
+  return { relPo, msgctxt };
+};
+
+const DIALOGUE_MSGCTXT_RE = /^(Dialogue Text|Alternate(\d+))\/(0x[0-9A-Fa-f]+)$/i;
+
+/** Spoken lockit field + Articy id (`Dialogue Text/0x…`, `Alternate1/0x…`). */
+export const parseDiscoDialogueMsgctxt = (
+  msgctxt: string,
+): { field: string; articyId: string; alternateIndex: number | null } | null => {
+  const m = DIALOGUE_MSGCTXT_RE.exec(msgctxt.trim());
+  if (!m) return null;
+  const field = m[1]!;
+  const articyId = m[3]!.toLowerCase();
+  if (m[2] != null) return { field, articyId, alternateIndex: Number.parseInt(m[2], 10) };
+  return { field, articyId, alternateIndex: null };
+};
+
+/** Lookup key for a spoken PO row (`dialoguetext/0x…`). */
+export const discoDialogueMsgctxtKey = (field: string, articyId: string): string =>
+  `${field.toLowerCase()}/${articyId.toLowerCase()}`;

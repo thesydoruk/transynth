@@ -8,17 +8,35 @@ import { discoAudioDir, discoverDiscoLangFolders, listWavFilesRecursive } from '
 import { resolveDiscoExtractRoot } from '../../import/mod/discoPoLocales';
 import { resolveModImportExtractRoot } from '../../modStorage';
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
+import { discoSpeakerKeyFromStem } from './voiceStem';
+
+export { discoSpeakerKeyFromStem } from './voiceStem';
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-/** Stable 6-hex id derived from wav stem (fits voice_synthesis_state keys). */
+/**
+ * Stable id from wav stem. 12 hex (48 bits) avoids the 6-hex collisions that
+ * mixed unrelated Disco lines in the voice editor.
+ */
 export const discoVoiceFormidLower6 = (stem: string): string =>
-  crypto.createHash('sha1').update(stem.toLowerCase()).digest('hex').slice(0, 6).toUpperCase();
+  crypto.createHash('sha1').update(stem.toLowerCase()).digest('hex').slice(0, 12).toUpperCase();
 
-/** Speaker folder token from asset name (`Kim Kitsuragi-YARD-1` → `Kim Kitsuragi`). */
-export const discoSpeakerKeyFromStem = (stem: string): string => {
-  const cut = stem.split(/[-_/]/)[0]?.trim();
-  return cut && cut.length > 0 ? cut : 'Unknown';
+/** Speaker key for a Disco voice file (`Kim Kitsuragi-YARD-1.wav` → `Kim Kitsuragi`). */
+export const discoVoiceSpeakerKey = (entry: VoiceFileEntry): string =>
+  discoSpeakerKeyFromStem(path.basename(entry.fileName, path.extname(entry.fileName)));
+
+/** Group Disco wavs by the speaker token in the stem. */
+export const groupDiscoVoiceFilesBySpeaker = (
+  entries: VoiceFileEntry[],
+): Map<string, VoiceFileEntry[]> => {
+  const bySpeaker = new Map<string, VoiceFileEntry[]>();
+  for (const entry of entries) {
+    const speaker = discoVoiceSpeakerKey(entry);
+    const list = bySpeaker.get(speaker) ?? [];
+    list.push(entry);
+    bySpeaker.set(speaker, list);
+  }
+  return bySpeaker;
 };
 
 /** Pack root for Disco Audio/ + language folders. */
