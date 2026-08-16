@@ -17,14 +17,14 @@ import type { SynthesizeModVoiceLineResult } from '../synthesizeModVoiceLine';
 import { loadVoiceProjectSettings } from '../voiceProjectSettings';
 import { loadVoiceSynthesisVersionMap } from '../voiceSynthesisState';
 import { resolveTtsBaseUrl } from '../voiceToolPaths';
-import {
-  discoverDiscoVoiceFiles,
-  groupDiscoVoiceFilesBySpeaker,
-  resolveDiscoVoiceExtractRoot,
-} from './discoverDiscoVoiceFiles';
+import { resolveDiscoVoiceExtractRoot } from './discoverDiscoVoiceFiles';
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
+import {
+  resolveDiscoClipEntriesForSpeaker,
+  resolveDiscoClipEntryByFormid,
+} from './resolveClipEntry';
 
 export type SynthesizeDiscoVoiceLineOptions = {
   modId: number;
@@ -47,15 +47,11 @@ export const synthesizeDiscoVoiceLine = async (
     return { ok: false, reason: 'line_not_found', message: 'Disco pack root not found' };
   }
 
-  const voiceFiles = discoverDiscoVoiceFiles(extractRoot);
-  const entry = voiceFiles.find(
-    (e) =>
-      e.formidLower6.toUpperCase() === opts.formidLower6.toUpperCase() &&
-      e.variant === opts.variant,
-  );
-  if (!entry) {
+  const found = await resolveDiscoClipEntryByFormid(db, opts.modId, extractRoot, opts.formidLower6);
+  if (!found || found.entry.variant !== opts.variant) {
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
+  const { clip, entry } = found;
 
   const translations = await loadDiscoVoiceTranslations(
     db,
@@ -63,6 +59,7 @@ export const synthesizeDiscoVoiceLine = async (
     opts.srcLang,
     opts.tgtLang,
     extractRoot,
+    { formidLower12: clip.formidLower12 },
   );
   const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
   if (!row?.translation?.trim()) {
@@ -85,8 +82,15 @@ export const synthesizeDiscoVoiceLine = async (
   const ttsBaseUrl = resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const voiceConfig = await loadVoiceProjectSettings(db, mod.game);
-  const voiceSources = await loadDiscoVoiceSources(db, opts.modId, opts.srcLang, extractRoot);
-  const bySpeaker = groupDiscoVoiceFilesBySpeaker(voiceFiles);
+  const voiceSources = await loadDiscoVoiceSources(db, opts.modId, opts.srcLang, extractRoot, {
+    speakerKey: clip.speakerKey,
+  });
+  const speakerEntries = await resolveDiscoClipEntriesForSpeaker(
+    db,
+    opts.modId,
+    extractRoot,
+    clip.speakerKey,
+  );
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
   if (getJobRuntime()) await ensureDependencyHealthy('tts');
   else await checkTtsHealth(ttsBaseUrl);
@@ -110,8 +114,8 @@ export const synthesizeDiscoVoiceLine = async (
       force: opts.force ?? true,
       voiceSources,
       speakerRefCache,
-      getSiblingEntries: (key, current) =>
-        (bySpeaker.get(key) ?? []).filter(
+      getSiblingEntries: (_key, current) =>
+        speakerEntries.filter(
           (candidate) =>
             candidate.formidLower6 !== current.formidLower6 ||
             candidate.variant !== current.variant,

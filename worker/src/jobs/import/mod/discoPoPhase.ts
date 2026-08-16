@@ -17,6 +17,7 @@ import {
   resolveDiscoPoSourceLocale,
 } from '../../../../../src/import/mod/discoPoLocales';
 import { persistDiscoSpeakers } from '../../../../../src/import/mod/discoSpeakers';
+import { persistDiscoVoiceClips } from '../../../../../src/voice/disco/persistVoiceClips';
 import { commitExtrasStop, extrasStopRequested } from './extrasStop';
 import type { ModImportBatchWriter } from './batchWriter';
 import type { ModImportPhaseContext } from './phases';
@@ -97,6 +98,8 @@ export const importDiscoPoStringRows = async (
 
   const speakerCount = await persistDiscoSpeakers(ctx.db, importModId, sourceBundle.wavStems);
   logImport.info(`[Mod Import #${ctx.job.id}] Disco speakers: ${speakerCount} from Audio/ stems`);
+  const clipCount = await persistDiscoVoiceClips(ctx.db, importModId, extractRoot);
+  logImport.info(`[Mod Import #${ctx.job.id}] Disco voice clips: ${clipCount} wav↔lockit rows`);
 
   for (const [locale, bundle] of locales) {
     if (extrasStopRequested(ctx)) {

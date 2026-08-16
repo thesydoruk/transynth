@@ -3,7 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { discoSpeakerKeyFromStem, parseDiscoWavStem } from '../voiceStem';
-import { buildDiscoVoiceTextIndex } from '../voiceTextIndex';
+import {
+  buildDiscoVoiceTextIndex,
+  getDiscoVoiceTextIndex,
+  invalidateDiscoVoiceTextIndex,
+} from '../voiceTextIndex';
 
 const DIALOGUE_PO = `msgid ""
 msgstr ""
@@ -68,7 +72,10 @@ describe('buildDiscoVoiceTextIndex', () => {
   let root = '';
 
   afterEach(() => {
-    if (root) fs.rmSync(root, { recursive: true, force: true });
+    if (root) {
+      invalidateDiscoVoiceTextIndex(root);
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('pairs equal-count Dialogue Text rows with wavs and Alternate takes', () => {
@@ -131,5 +138,17 @@ describe('buildDiscoVoiceTextIndex', () => {
       articyId: '0x0100002b00060b58',
     });
     expect(index.get('alternative-0-Empathy-KINEEMA  SYLVIE-198-0')?.field).toBe('Alternate1');
+  });
+
+  it('reuses a cached zip index for the same extract root', () => {
+    root = writePack([
+      { rel: 'English_English_en/DialoguesLockitEnglish.po', contents: DIALOGUE_PO },
+      { rel: 'English_English_en/Audio/Kim Kitsuragi-YARD  HANGED MAN-10.wav' },
+      { rel: 'English_English_en/Audio/Kim Kitsuragi-YARD  HANGED MAN-20.wav' },
+    ]);
+    const first = getDiscoVoiceTextIndex(root);
+    const second = getDiscoVoiceTextIndex(root);
+    expect(second).toBe(first);
+    expect(first.size).toBe(2);
   });
 });

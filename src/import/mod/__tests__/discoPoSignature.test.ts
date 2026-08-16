@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { classifyDiscoPoSignature } from '../discoPoSignature';
+import { classifyDiscoPoSignature, discoSpokenSignatureSqlValues } from '../discoPoSignature';
 
 describe('classifyDiscoPoSignature', () => {
   it('marks effect msgctxt as FX even inside DialoguesEffects files', () => {
@@ -25,5 +25,9 @@ describe('classifyDiscoPoSignature', () => {
 
   it('falls back to PO for unknown packs', () => {
     expect(classifyDiscoPoSignature('Misc.po', 'plain')).toBe('PO');
+  });
+
+  it('limits spoken wav joins to DLG and legacy PO', () => {
+    expect(discoSpokenSignatureSqlValues()).toEqual(['DLG', 'PO']);
   });
 });

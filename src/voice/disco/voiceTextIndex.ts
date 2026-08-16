@@ -141,6 +141,28 @@ const zipEqualCount = (
   }
 };
 
+const INDEX_TTL_MS = 5 * 60_000;
+const indexCache = new Map<string, { builtAt: number; index: Map<string, DiscoVoiceTextRef> }>();
+
+/** Wav stem → spoken PO field + Articy id. Cached a few minutes per extract root. */
+export const getDiscoVoiceTextIndex = (extractRoot: string): Map<string, DiscoVoiceTextRef> => {
+  const key = path.resolve(extractRoot);
+  const hit = indexCache.get(key);
+  if (hit && Date.now() - hit.builtAt < INDEX_TTL_MS) return hit.index;
+  const index = buildDiscoVoiceTextIndex(extractRoot);
+  indexCache.set(key, { builtAt: Date.now(), index });
+  return index;
+};
+
+/** Drop cached zip indexes (tests / after pack changes). */
+export const invalidateDiscoVoiceTextIndex = (extractRoot?: string): void => {
+  if (!extractRoot) {
+    indexCache.clear();
+    return;
+  }
+  indexCache.delete(path.resolve(extractRoot));
+};
+
 /** Wav stem → spoken PO field + Articy id. */
 export const buildDiscoVoiceTextIndex = (extractRoot: string): Map<string, DiscoVoiceTextRef> => {
   const folders = discoverDiscoLangFolders(extractRoot);

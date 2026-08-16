@@ -6,10 +6,13 @@ import { resolveModStoredPath } from '../../../modStorage';
 import { PATHS } from '../../../paths';
 import { getOrCreateCachedPreviewWav } from './audioCache';
 import { resolveLocalizeDir, resolveModVoiceContext, resolveVoicePackageContext } from './context';
-import { discoverDiscoVoiceEntries } from './discoVoiceList';
 import { findLocalizedVoiceAbsPath } from './translationAudioIndex';
 import { discoverVoiceEntries, findVoiceEntry } from './voiceEntries';
+import { resolveDiscoVoiceExtractRoot } from '../../../voice/disco/discoverDiscoVoiceFiles';
+import { resolveDiscoClipEntryByFormid } from '../../../voice/disco/resolveClipEntry';
+import { outputLocalizedWavRelPath } from '../../../voice/disco/voicePaths';
 import type { VoiceAudioResult } from './types';
+import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
 
 const loadModVoiceMeta = async (
   db: Tx,
@@ -36,6 +39,39 @@ const loadModVoiceMeta = async (
   };
 };
 
+const resolveVoiceEntry = async (
+  db: Tx,
+  modId: number,
+  meta: { absPath: string; isDisco: boolean },
+  formidLower6: string,
+  variant: number,
+): Promise<
+  | { ok: true; entry: VoiceFileEntry }
+  | { ok: false; reason: 'plugin_missing' | 'line_not_found'; message: string }
+> => {
+  if (meta.isDisco) {
+    const extractRoot = resolveDiscoVoiceExtractRoot(meta.absPath);
+    if (!extractRoot) {
+      return { ok: false, reason: 'plugin_missing', message: 'Disco pack root not found' };
+    }
+    const found = await resolveDiscoClipEntryByFormid(db, modId, extractRoot, formidLower6);
+    if (!found || found.entry.variant !== variant) {
+      return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
+    }
+    return { ok: true, entry: found.entry };
+  }
+
+  const ctx = resolveVoicePackageContext(meta.absPath, CONFIG.defaultTgtLang);
+  if (!ctx) {
+    return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
+  }
+  const entry = findVoiceEntry(discoverVoiceEntries(ctx), formidLower6, variant);
+  if (!entry) {
+    return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
+  }
+  return { ok: true, entry };
+};
+
 /** Resolve or create a cached browser-playable WAV for one voice line. */
 export const getVoicePreviewWav = async (
   db: Tx,
@@ -46,18 +82,9 @@ export const getVoicePreviewWav = async (
   const meta = await loadModVoiceMeta(db, modId);
   if (!meta.ok) return meta;
 
-  const ctx = resolveVoicePackageContext(meta.absPath, CONFIG.defaultTgtLang);
-  if (!ctx) {
-    return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
-  }
-
-  const entries = meta.isDisco
-    ? discoverDiscoVoiceEntries(meta.absPath)
-    : discoverVoiceEntries(ctx);
-  const entry = findVoiceEntry(entries, formidLower6, variant);
-  if (!entry) {
-    return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
-  }
+  const resolved = await resolveVoiceEntry(db, modId, meta, formidLower6, variant);
+  if (!resolved.ok) return resolved;
+  const entry = resolved.entry;
   if (!fs.existsSync(entry.absolutePath)) {
     return { ok: false, reason: 'source_missing', message: 'Voice source file is missing' };
   }
@@ -87,19 +114,21 @@ export const getVoiceTranslationWav = async (
   const resolved = await resolveModVoiceContext(db, modId);
   if (!resolved.ok) return resolved;
 
-  const entries = meta.isDisco
-    ? discoverDiscoVoiceEntries(meta.absPath)
-    : discoverVoiceEntries(resolved.ctx);
-  const entry = findVoiceEntry(entries, formidLower6, variant);
-  if (!entry) {
-    return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
-  }
+  const found = await resolveVoiceEntry(db, modId, meta, formidLower6, variant);
+  if (!found.ok) return found;
+  const entry = found.entry;
 
   const localizeDir =
     resolved.ctx.localizeDir ?? resolveLocalizeDir(resolved.ctx, resolved.targetLang);
-  const sourcePath = findLocalizedVoiceAbsPath(localizeDir, formidLower6, variant, {
-    disco: meta.isDisco,
-  });
+  const discoLocalized = meta.isDisco
+    ? path.join(localizeDir ?? '', outputLocalizedWavRelPath(entry))
+    : null;
+  const sourcePath =
+    discoLocalized && fs.existsSync(discoLocalized)
+      ? discoLocalized
+      : findLocalizedVoiceAbsPath(localizeDir, formidLower6, variant, {
+          disco: meta.isDisco,
+        });
   if (!sourcePath) {
     return {
       ok: false,

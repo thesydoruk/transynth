@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { isDiscoMod, listDiscoVoiceSpeakersForMod } from './listDiscoVoice';
 import { getVoiceListContext } from './voiceListContext';
 import {
   isOrphanVoiceEntry,
@@ -17,6 +18,10 @@ export const listVoiceSpeakersForMod = async (
   srcLang: string,
   targetLang: string,
 ): Promise<VoiceSpeakersListResult> => {
+  if (await isDiscoMod(db, modId)) {
+    return listDiscoVoiceSpeakersForMod(db, modId, targetLang);
+  }
+
   const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 

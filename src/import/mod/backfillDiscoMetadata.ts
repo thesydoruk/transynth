@@ -16,6 +16,7 @@ import {
   type DiscoPoSignature,
 } from './discoPoSignature';
 import { buildDiscoSpeakerRowsFromStems, persistDiscoSpeakers } from './discoSpeakers';
+import { persistDiscoVoiceClips } from '../../voice/disco/persistVoiceClips';
 import { listDiscoModsWithExtract, type DiscoNaSourceTarget } from './repairDiscoNaSource';
 
 export { parseDiscoPoPathForSignature };
@@ -26,6 +27,7 @@ export type BackfillDiscoMetadataResult = {
   scanned: number;
   signaturesUpdated: number;
   speakers: number;
+  clips: number;
 };
 
 const resolveExtractDir = (extractDir: string): string => {
@@ -53,7 +55,7 @@ const collectWavStems = (extractRoot: string, absPath: string | null): string[] 
   return [...stems];
 };
 
-/** Reclassify `records.signature` and rebuild `dialog_speakers` from Audio stems. */
+/** Reclassify `records.signature`, rebuild `dialog_speakers`, and persist wav clips. */
 export const backfillDiscoMetadataForMod = async (
   db: Tx,
   target: DiscoNaSourceTarget,
@@ -93,6 +95,7 @@ export const backfillDiscoMetadataForMod = async (
   const stems = collectWavStems(extractDir, modPathRows[0]?.abs_path ?? null);
   const speakerCount = buildDiscoSpeakerRowsFromStems(stems).speakers.length;
 
+  let clipCount = stems.length;
   if (!opts.dryRun) {
     for (const [signature, ids] of updates) {
       for (let i = 0; i < ids.length; i += 500) {
@@ -104,6 +107,7 @@ export const backfillDiscoMetadataForMod = async (
       }
     }
     await persistDiscoSpeakers(db, target.id, stems);
+    clipCount = await persistDiscoVoiceClips(db, target.id, extractDir);
   }
 
   return {
@@ -112,5 +116,6 @@ export const backfillDiscoMetadataForMod = async (
     scanned: pathRows.length,
     signaturesUpdated,
     speakers: speakerCount,
+    clips: clipCount,
   };
 };

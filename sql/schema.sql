@@ -675,6 +675,31 @@ CREATE TABLE IF NOT EXISTS voice_synthesis_state (
 CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
   ON voice_synthesis_state(mod_id, target_lang);
 
+-- ── Disco wav stem → lockit record (built once at import) ─────────────────────
+-- Audio files are AssetName stems (`Kim Kitsuragi-YARD-324`); PO rows are
+-- Articy msgctxt (`Dialogue Text/0x…`). The voice editor used to zip those
+-- on every page open. Persist the join so speakers/lines are SQL.
+CREATE TABLE IF NOT EXISTS disco_voice_clips (
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  wav_stem TEXT NOT NULL,
+  formid_lower12 TEXT NOT NULL,
+  speaker_key TEXT NOT NULL,
+  record_id INTEGER REFERENCES records(id) ON DELETE SET NULL,
+  msgctxt_key TEXT,
+  articy_id TEXT,
+  field TEXT,
+  rel_path TEXT NOT NULL,
+  PRIMARY KEY (mod_id, wav_stem)
+);
+
+CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_mod_speaker
+  ON disco_voice_clips(mod_id, speaker_key);
+CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_mod_formid
+  ON disco_voice_clips(mod_id, formid_lower12);
+CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_record
+  ON disco_voice_clips(record_id)
+  WHERE record_id IS NOT NULL;
+
 -- ── Narrator gender (BOOK/TERM/NOTE) ─────────────────────────────────────────
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender TEXT;
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender_source TEXT;

@@ -13,6 +13,11 @@ export type DiscoPoSignature = (typeof DISCO_PO_SIGNATURES)[number];
 /** SQL-ready list for `signature = ANY($n::text[])`. */
 export const discoPoSignatureSqlValues = (): string[] => [...DISCO_PO_SIGNATURES];
 
+/** Spoken dialogue rows (skip GEN/FX when joining wav stems). */
+export const DISCO_SPOKEN_SIGNATURES: DiscoPoSignature[] = ['DLG', 'PO'];
+
+export const discoSpokenSignatureSqlValues = (): string[] => [...DISCO_SPOKEN_SIGNATURES];
+
 /**
  * Pick DLG / GEN / FX from the `.po` file name and msgctxt.
  * Falls back to `PO` when the pack layout is unfamiliar.

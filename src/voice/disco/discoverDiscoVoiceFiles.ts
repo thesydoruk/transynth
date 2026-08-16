@@ -47,6 +47,34 @@ export const resolveDiscoVoiceExtractRoot = (pluginPath: string): string | null 
   return resolveDiscoExtractRoot(pluginPath);
 };
 
+/** Preferred Final Cut language folder (English, else first with .po files). */
+export const resolveDiscoPreferredLangFolder = (extractRoot: string): string | null => {
+  const folders = discoverDiscoLangFolders(extractRoot);
+  if (folders.length === 0) return null;
+  const preferred =
+    folders.find((f) => f.locale === 'en') ??
+    folders.find((f) => /english/i.test(f.folderName)) ??
+    folders[0]!;
+  return preferred.absPath;
+};
+
+/** Build a voice-file entry from a persisted clip + language-folder root. */
+export const discoVoiceFileEntryFromClip = (
+  langFolder: string,
+  clip: { relPath: string; formidLower12: string; wavStem: string },
+): VoiceFileEntry => {
+  const relPath = normalizeRelPath(clip.relPath);
+  const fileName = path.basename(relPath) || `${clip.wavStem}.wav`;
+  return {
+    relPath,
+    absolutePath: path.join(langFolder, relPath),
+    fileName,
+    formidLower6: clip.formidLower12.toUpperCase(),
+    variant: 1,
+    ext: 'wav',
+  };
+};
+
 /** Prefer English language folder Audio/, else first folder that has wavs. */
 export const discoverDiscoVoiceFiles = (extractRoot: string): VoiceFileEntry[] => {
   const folders = discoverDiscoLangFolders(extractRoot);

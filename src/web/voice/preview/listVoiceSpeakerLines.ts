@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
+import { isDiscoMod, listDiscoVoiceLinesForSpeaker } from './listDiscoVoice';
 import { getVoiceListContext } from './voiceListContext';
 import { buildVoiceLinePreview, resolveSpeakerKey, sortVoiceLines } from './buildVoiceLinePreview';
 import type { VoiceSpeakerLinesResult } from './types';
@@ -15,6 +16,10 @@ export const listVoiceLinesForSpeaker = async (
   const normalizedKey = speakerKey.trim();
   if (!normalizedKey) {
     return { ok: false, reason: 'speaker_not_found', message: 'Speaker not found' };
+  }
+
+  if (await isDiscoMod(db, modId)) {
+    return listDiscoVoiceLinesForSpeaker(db, modId, normalizedKey, srcLang, targetLang);
   }
 
   const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);

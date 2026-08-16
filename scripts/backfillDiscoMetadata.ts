@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Backfill Disco signatures (DLG/GEN/FX) and speakers for already-imported mods.
+ * Backfill Disco signatures (DLG/GEN/FX), speakers, and wav↔lockit clips.
  *
  * Usage:
  *   npm run backfill:disco-metadata -- [options]
@@ -40,7 +40,7 @@ try {
     try {
       const result = await backfillDiscoMetadataForMod(db, target, { dryRun: argv['dry-run'] });
       log.info(
-        `Mod ${result.modId} (${result.name}): scanned=${result.scanned} signatures=${result.signaturesUpdated} speakers=${result.speakers}${argv['dry-run'] ? ' [dry-run]' : ''}`,
+        `Mod ${result.modId} (${result.name}): scanned=${result.scanned} signatures=${result.signaturesUpdated} speakers=${result.speakers} clips=${result.clips}${argv['dry-run'] ? ' [dry-run]' : ''}`,
       );
     } catch (err) {
       failed += 1;
@@ -53,5 +53,5 @@ try {
   if (failed > 0) process.exit(1);
   log.info(`Done: ${targets.length - failed}/${targets.length} mod(s)`);
 } finally {
-  await closeDb(db);
+  await closeDb();
 }

@@ -21,14 +21,11 @@ import {
 } from '../voiceTtsPayloadVersion';
 import type { TtsReferenceMode } from '../voiceToolPaths';
 import type { SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
-import {
-  discoSpeakerKeyFromStem,
-  discoverDiscoVoiceFiles,
-  groupDiscoVoiceFilesBySpeaker,
-} from './discoverDiscoVoiceFiles';
+import { discoSpeakerKeyFromStem, groupDiscoVoiceFilesBySpeaker } from './discoverDiscoVoiceFiles';
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
+import { resolveDiscoVoiceFilesFromClips } from './resolveClipEntry';
 import { outputLocalizedWavRelPath } from './voicePaths';
 
 export type LocalizeDiscoVoiceOptions = {
@@ -61,11 +58,23 @@ export const countDiscoVoiceLocalizeWork = async (
   speakerKey?: string,
 ): Promise<number> => {
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
-  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang, extractDir);
-  const voiceFiles = discoverDiscoVoiceFiles(extractDir);
+  const speakerFilter = speakerKey?.trim() || '';
+  const translations = await loadDiscoVoiceTranslations(
+    db,
+    modId,
+    srcLang,
+    tgtLang,
+    extractDir,
+    speakerFilter ? { speakerKey: speakerFilter } : {},
+  );
+  const voiceFiles = await resolveDiscoVoiceFilesFromClips(
+    db,
+    modId,
+    extractDir,
+    speakerFilter || undefined,
+  );
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   const forceAll = scope === 'all';
-  const speakerFilter = speakerKey?.trim() || '';
   let total = 0;
 
   for (const entry of voiceFiles) {
@@ -125,13 +134,26 @@ export const localizeDiscoVoicePackage = async (
 
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
   ensureDir(localizeDir);
-  const translations = await loadDiscoVoiceTranslations(db, modId, srcLang, tgtLang, extractDir);
-  const voiceSources = await loadDiscoVoiceSources(db, modId, srcLang, extractDir);
-  const voiceFiles = discoverDiscoVoiceFiles(extractDir);
+  const speakerFilter = speakerKey?.trim() || '';
+  const loadFilter = speakerFilter ? { speakerKey: speakerFilter } : {};
+  const translations = await loadDiscoVoiceTranslations(
+    db,
+    modId,
+    srcLang,
+    tgtLang,
+    extractDir,
+    loadFilter,
+  );
+  const voiceSources = await loadDiscoVoiceSources(db, modId, srcLang, extractDir, loadFilter);
+  const voiceFiles = await resolveDiscoVoiceFilesFromClips(
+    db,
+    modId,
+    extractDir,
+    speakerFilter || undefined,
+  );
   const bySpeaker = groupDiscoVoiceFilesBySpeaker(voiceFiles);
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
-  const speakerFilter = speakerKey?.trim() || '';
   const tempRoot = path.join(os.tmpdir(), `disco-voice-${modId}-${Date.now()}`);
   ensureDir(tempRoot);
 
