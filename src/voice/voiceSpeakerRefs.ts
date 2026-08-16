@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../db';
 import { PATHS } from '../paths';
+import { isVoiceFormidKey } from './voiceFormidKey';
 
 export type VoiceSpeakerRefPick = {
   formidLower6: string;
@@ -26,7 +27,7 @@ const parseJsonSpeakerRefs = (raw: unknown): VoiceSpeakerRefMap => {
     if (!speakerKey.trim() || !value || typeof value !== 'object' || Array.isArray(value)) continue;
     const formidLower6 = (value as { formidLower6?: unknown }).formidLower6;
     const variant = (value as { variant?: unknown }).variant;
-    if (typeof formidLower6 !== 'string' || !/^[0-9A-Fa-f]{6}$/.test(formidLower6)) continue;
+    if (typeof formidLower6 !== 'string' || !isVoiceFormidKey(formidLower6)) continue;
     if (!Number.isInteger(variant) || (variant as number) < 1) continue;
     out[speakerKey] = normalizeVoiceSpeakerRefPick({ formidLower6, variant: variant as number });
   }

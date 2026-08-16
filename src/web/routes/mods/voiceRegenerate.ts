@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
+import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
 import {
   commitVoiceRegenerateSession,
   discardVoiceRegenerateSession,
@@ -25,7 +26,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+    if (!isVoiceFormidKey(formidLower6)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -105,7 +106,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!formidLower6 || !/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+    if (!formidLower6 || !isVoiceFormidKey(formidLower6)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant! < 1) {

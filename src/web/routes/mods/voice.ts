@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
+import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
 import {
   clearVoiceSpeakerReferenceForMod,
   generateVoiceTranslationForMod,
@@ -79,7 +80,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
-      if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+      if (!isVoiceFormidKey(formidLower6)) {
         return reply.code(400).send({ error: 'Invalid formid' });
       }
       if (!Number.isInteger(variant) || variant < 1) {
@@ -111,7 +112,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
-      if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+      if (!isVoiceFormidKey(formidLower6)) {
         return reply.code(400).send({ error: 'Invalid formid' });
       }
       if (!Number.isInteger(variant) || variant < 1) {
@@ -144,7 +145,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+    if (!isVoiceFormidKey(formidLower6)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -189,7 +190,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     const formidLower6 = req.body?.formidLower6?.trim() ?? '';
     const variant = Number(req.body?.variant);
     if (!speakerKey) return reply.code(400).send({ error: 'speakerKey is required' });
-    if (!/^[0-9A-Fa-f]{6}$/.test(formidLower6)) {
+    if (!isVoiceFormidKey(formidLower6)) {
       return reply.code(400).send({ error: 'Invalid formidLower6' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
