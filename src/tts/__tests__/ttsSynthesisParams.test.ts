@@ -10,6 +10,8 @@ describe('resolveTtsSynthesisParams', () => {
       temperature: 0.5,
       repetitionPenalty: 1.2,
       topP: 0.8,
+      matchLoudness: true,
+      matchTiming: true,
     });
   });
 
@@ -19,11 +21,15 @@ describe('resolveTtsSynthesisParams', () => {
         temperature: 0.7,
         repetitionPenalty: 2.5,
         topP: 0.9,
+        matchLoudness: false,
+        matchTiming: false,
       }),
     ).toEqual({
       temperature: 0.7,
       repetitionPenalty: 2.5,
       topP: 0.9,
+      matchLoudness: false,
+      matchTiming: false,
     });
   });
 });

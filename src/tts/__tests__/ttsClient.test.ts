@@ -29,15 +29,25 @@ describe('buildSynthesisForm', () => {
     expect(form.get('temperature')).toBe('0.65');
     expect(form.get('repetition_penalty')).toBe('1.2');
     expect(form.get('top_p')).toBe('0.8');
+    expect(form.get('match_loudness')).toBe('true');
+    expect(form.get('match_timing')).toBe('true');
   });
 
   it('applies synthesis overrides', () => {
     const form = buildSynthesisForm('Привіт.', Buffer.from('RIFF'), {
-      synthesis: { temperature: 0.5, repetitionPenalty: 2, topP: 0.9 },
+      synthesis: {
+        temperature: 0.5,
+        repetitionPenalty: 2,
+        topP: 0.9,
+        matchLoudness: false,
+        matchTiming: false,
+      },
     });
 
     expect(form.get('temperature')).toBe('0.5');
     expect(form.get('repetition_penalty')).toBe('2');
     expect(form.get('top_p')).toBe('0.9');
+    expect(form.get('match_loudness')).toBe('false');
+    expect(form.get('match_timing')).toBe('false');
   });
 });

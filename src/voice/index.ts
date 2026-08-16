@@ -75,6 +75,7 @@ export {
 export {
   decideVoiceReferenceSource,
   isLineReferenceSuitable,
+  isLineReferenceTooLong,
   type VoiceReferenceSourceDecision,
 } from './decideVoiceReferenceSource';
 export {

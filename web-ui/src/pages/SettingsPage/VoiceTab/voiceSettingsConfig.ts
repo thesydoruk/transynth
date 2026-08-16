@@ -5,10 +5,15 @@ export type VoiceRegenerateParams = {
   top_p: number;
 };
 
-export type VoiceProjectSettings = VoiceRegenerateParams;
+export type VoiceProjectSettings = VoiceRegenerateParams & {
+  match_loudness: boolean;
+  match_timing: boolean;
+};
 
 export const VOICE_SETTINGS_DEFAULTS: VoiceProjectSettings = {
   line_reference: true,
+  match_loudness: true,
+  match_timing: true,
   temperature: 0.65,
   repetition_penalty: 1.2,
   top_p: 0.8,
@@ -56,3 +61,20 @@ export const VOICE_SYNTHESIS_SLIDERS: Array<{
 ];
 
 export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
+
+export const VOICE_MATCH_TOGGLES: Array<{
+  key: 'voice.match_loudness' | 'voice.match_timing';
+  labelKey: string;
+  descKey: string;
+}> = [
+  {
+    key: 'voice.match_loudness',
+    labelKey: 'settings.voice.matchLoudness',
+    descKey: 'settings.voice.matchLoudnessDesc',
+  },
+  {
+    key: 'voice.match_timing',
+    labelKey: 'settings.voice.matchTiming',
+    descKey: 'settings.voice.matchTimingDesc',
+  },
+];

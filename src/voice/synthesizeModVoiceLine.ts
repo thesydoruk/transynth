@@ -19,18 +19,11 @@ import {
 import {
   loadVoiceSources,
   loadVoiceTranslations,
-  lookupVoiceSource,
   lookupVoiceTranslation,
 } from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
-import {
-  groupVoiceFilesBySpeaker,
-  isManualVoiceReferencePick,
-  resolveSpeakerReferenceForSpeaker,
-  voiceReferenceEligibilityFromSources,
-  voiceSpeakerKey,
-} from './speakerReference';
-import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
+import { groupVoiceFilesBySpeaker, voiceSpeakerKey } from './speakerReference';
+import { pickVoiceTtsReference } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { prepareVoiceTtsText, voiceTtsSkipMessage } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
@@ -113,7 +106,7 @@ export const synthesizeModVoiceLineBuffers = async (
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
 
-  // Line mode may auto-pick a speaker ref when the line clip is too short.
+  // Line mode may auto-pick a speaker ref when the line clip is too short or too long.
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);
 
   const fuzRel = outputLocalizedFuzRelPath(entry);
@@ -130,55 +123,32 @@ export const synthesizeModVoiceLineBuffers = async (
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const referenceDecision = decideVoiceReferenceSource(
+    const siblings = speakerKey
+      ? (groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
+          .get(speakerKey)
+          ?.filter(
+            (candidate) =>
+              candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
+          ) ?? [])
+      : [];
+    const picked = await pickVoiceTtsReference({
+      db,
+      modId: opts.modId,
+      packageDir: opts.packageDir,
+      pluginRelPath: pluginRel,
+      speakerKey: speakerKey || null,
+      entry,
+      lineEnglishWav,
+      lineSource: row.source,
       referenceMode,
-      isLineReferenceSuitable(lineEnglishWav),
-    );
-
-    let referenceWav: string | undefined;
-    let referenceText: string | null =
-      referenceDecision.kind === 'line'
-        ? row.source
-        : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-
-    if (referenceDecision.kind === 'speaker' && speakerKey) {
-      const siblings = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
-        .get(speakerKey)
-        ?.filter(
-          (candidate) =>
-            candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
-        );
-      const resolved = await resolveSpeakerReferenceForSpeaker({
-        db,
-        modId: opts.modId,
-        speakerKey,
-        preferredEntry: entry,
-        getFallbackEntries: () => siblings ?? [],
-        packageDir: opts.packageDir,
-        pluginRelPath: pluginRel,
-        isEligible: voiceReferenceEligibilityFromSources(voiceSources),
-      });
-      if (resolved) {
-        referenceWav = resolved.wavPath;
-        if (!isManualVoiceReferencePick(resolved.pick)) {
-          referenceText = lookupVoiceSource(
-            voiceSources,
-            resolved.pick.formidLower6,
-            resolved.pick.variant,
-          );
-        }
-      }
-    }
-
-    const finalReferenceWav = referenceWav ?? lineEnglishWav;
-    if (!referenceText) {
-      referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-    }
+      voiceSources,
+      getSiblingEntries: () => siblings,
+    });
 
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
-      speakerSource: referenceText,
+      speakerSource: picked.referenceText,
       edid: row.edid,
     });
     if (prepared.action === 'skip') {
@@ -195,7 +165,7 @@ export const synthesizeModVoiceLineBuffers = async (
       prepared.speakerText,
     );
 
-    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
+    const ttsWav = await synthesizeWav(prepared.text, picked.wavPath, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(opts.tgtLang),
       speakerText: prepared.speakerText,

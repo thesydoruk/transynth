@@ -8,15 +8,9 @@ import { synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
 import { ensureDir } from '../utils/file';
 import type { VoiceFileEntry } from './discoverVoiceFiles';
 import type { VoiceSourceRow, VoiceTranslationRow } from './loadVoiceTranslations';
-import { lookupVoiceSource, voiceTranslationMapKey } from './loadVoiceTranslations';
-import {
-  isManualVoiceReferencePick,
-  resolveSpeakerReferenceForSpeaker,
-  voiceReferenceEligibilityFromSources,
-  voiceSpeakerKey,
-  type ResolvedSpeakerReference,
-} from './speakerReference';
-import { decideVoiceReferenceSource, isLineReferenceSuitable } from './decideVoiceReferenceSource';
+import { voiceTranslationMapKey } from './loadVoiceTranslations';
+import { voiceSpeakerKey } from './speakerReference';
+import { pickVoiceTtsReference, type SpeakerRefCacheEntry } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import { stripVoiceNonSpeechBlocks, type PrepareVoiceTtsTextResult } from './prepareVoiceTtsText';
 import { buildVoicedFuzFromTtsWav } from './synthesizeVoicedFuz';
@@ -29,10 +23,7 @@ import {
 import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import type { GameType } from '../types';
 
-export type SpeakerRefCacheEntry = {
-  wavPath: string;
-  referenceText: string | null;
-};
+export type { SpeakerRefCacheEntry } from './pickVoiceTtsReference';
 
 export type ProcessVoiceLocalizeEntryOptions = {
   db: Tx;
@@ -59,14 +50,6 @@ export type ProcessVoiceLocalizeEntryResult =
   | { kind: 'written'; relPath: string }
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
-
-const referenceTextForPick = (
-  sources: Map<string, VoiceSourceRow>,
-  pick: ResolvedSpeakerReference['pick'],
-): string | null => {
-  if (isManualVoiceReferencePick(pick)) return null;
-  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
-};
 
 /** Synthesize one voice file entry into a localized `.fuz` under the mod tree. */
 export const processVoiceLocalizeEntry = async (
@@ -113,54 +96,26 @@ export const processVoiceLocalizeEntry = async (
 
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
-    const referenceDecision = decideVoiceReferenceSource(
+    const picked = await pickVoiceTtsReference({
+      db,
+      modId,
+      packageDir,
+      pluginRelPath: pluginRel,
+      speakerKey: speakerKey || null,
+      entry,
+      lineEnglishWav,
+      lineSource: row.source,
       referenceMode,
-      isLineReferenceSuitable(lineEnglishWav),
-    );
-
-    let referenceWav: string | undefined;
-    let referenceText: string | null =
-      referenceDecision.kind === 'line'
-        ? row.source
-        : lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-
-    if (referenceDecision.kind === 'speaker' && speakerKey) {
-      const cached = speakerRefCache.get(speakerKey);
-      if (cached) {
-        referenceWav = cached.wavPath;
-        referenceText = cached.referenceText;
-      } else {
-        const resolved = await resolveSpeakerReferenceForSpeaker({
-          db,
-          modId,
-          speakerKey,
-          preferredEntry: entry,
-          getFallbackEntries: () => getSiblingEntries(speakerKey, entry),
-          packageDir,
-          pluginRelPath: pluginRel,
-          isEligible: voiceReferenceEligibilityFromSources(voiceSources),
-        });
-        if (resolved) {
-          referenceWav = resolved.wavPath;
-          referenceText = referenceTextForPick(voiceSources, resolved.pick);
-          speakerRefCache.set(speakerKey, {
-            wavPath: resolved.wavPath,
-            referenceText,
-          });
-        }
-      }
-    }
-
-    const finalReferenceWav = referenceWav ?? lineEnglishWav;
-    if (!referenceText) {
-      referenceText = lookupVoiceSource(voiceSources, entry.formidLower6, entry.variant);
-    }
+      voiceSources,
+      getSiblingEntries: (key) => getSiblingEntries(key, entry),
+      speakerRefCache,
+    });
 
     // TTS may use a different reference transcript than the line source; version
     // stamp stays on prepared text so it matches count/availability/rebuild.
-    const speakerText = stripVoiceNonSpeechBlocks(referenceText ?? row.source) || undefined;
+    const speakerText = stripVoiceNonSpeechBlocks(picked.referenceText ?? row.source) || undefined;
 
-    const ttsWav = await synthesizeWav(prepared.text, finalReferenceWav, {
+    const ttsWav = await synthesizeWav(prepared.text, picked.wavPath, {
       baseUrl: ttsBaseUrl,
       language: resolveTtsLanguage(tgtLang),
       speakerText,

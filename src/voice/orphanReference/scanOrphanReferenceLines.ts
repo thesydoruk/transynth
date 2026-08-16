@@ -6,7 +6,11 @@ import { loadModImportPaths } from '../../import/mod/resolvePaths';
 import { loadImportedMod, pluginRelPath, resolveImportPackages, toDiskPath } from '../../modImport';
 import { mapWithConcurrency } from '../../utils/concurrency';
 import { ensureDir } from '../../utils/file';
-import { decideVoiceReferenceSource, isLineReferenceSuitable } from '../decideVoiceReferenceSource';
+import {
+  decideVoiceReferenceSource,
+  isLineReferenceSuitable,
+  isLineReferenceTooLong,
+} from '../decideVoiceReferenceSource';
 import {
   dedupeVoiceFiles,
   discoverVoiceFiles,
@@ -72,7 +76,11 @@ const usedSpeakerReference = async (
       entryReferenceCacheRoot(modId),
       workDir,
     );
-    const decision = decideVoiceReferenceSource(referenceMode, isLineReferenceSuitable(wavPath));
+    const decision = decideVoiceReferenceSource(
+      referenceMode,
+      isLineReferenceSuitable(wavPath),
+      isLineReferenceTooLong(wavPath),
+    );
     return decision.kind === 'speaker';
   } catch (err) {
     log.warn(

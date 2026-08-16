@@ -46,6 +46,10 @@ export type ProjectSettingKey =
   | 'llm.rag_min_similarity'
   /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
+  /** xtts-engine: remaster then match speech level to the first speaker_wav. */
+  | 'voice.match_loudness'
+  /** xtts-engine: fit synthesized duration to the first speaker_wav slot. */
+  | 'voice.match_timing'
   /** Fish Speech sampling temperature. */
   | 'voice.temperature'
   /** Fish Speech repetition penalty. */
@@ -75,6 +79,8 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
+  'voice.match_loudness': boolean;
+  'voice.match_timing': boolean;
   'voice.temperature': number;
   'voice.repetition_penalty': number;
   'voice.top_p': number;
@@ -106,6 +112,8 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
+  'voice.match_loudness': true,
+  'voice.match_timing': true,
   'voice.temperature': 0.65,
   'voice.repetition_penalty': 1.2,
   'voice.top_p': 0.8,
