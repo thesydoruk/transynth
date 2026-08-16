@@ -19,6 +19,7 @@ import {
 import type { ProjectSettingKey, ProjectSettings } from '../services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../../llm/llmProjectSettings';
 import { normalizeVllmServerEntries } from '../../llm/vllmServerConfig';
+import { normalizeGameTtsSettings } from '../../voice/gameTtsSettings';
 import { syncTtsPoolFromProjectSettings } from '../../voice/voiceProjectSettings';
 import { log } from '../../logger';
 
@@ -60,6 +61,16 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
       await setProjectSetting(db, key, normalized);
       const settings = await getAllProjectSettings(db);
       syncLlmPoolFromProjectSettings(settings);
+      return reply.send({ key, value: normalized });
+    }
+
+    if (key === 'voice.game_tts') {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return reply.code(400).send({ error: 'Expected object for key "voice.game_tts"' });
+      }
+      const normalized = normalizeGameTtsSettings(value);
+      log.info(`Project setting updated: ${key} = ${JSON.stringify(normalized)}`);
+      await setProjectSetting(db, key, normalized);
       return reply.send({ key, value: normalized });
     }
 

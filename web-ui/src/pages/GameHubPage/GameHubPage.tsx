@@ -21,6 +21,7 @@ import { ProgressBar } from '../../components/StatusBadge';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { modListQueryKey } from '../../langDefaults';
 import { modProgress } from '../../utils/modProgress';
+import { GameVoiceTtsSection } from './GameVoiceTtsSection';
 import s from './GameHubPage.module.scss';
 
 /**
@@ -153,6 +154,8 @@ export const GameHubPage = () => {
           <code className={s.gameId}>{game.id}</code>
         </div>
       </div>
+
+      <GameVoiceTtsSection gameId={game.id} gameName={game.name} />
 
       {/* Aggregate stats */}
       {stats && stats.modCount > 0 && (

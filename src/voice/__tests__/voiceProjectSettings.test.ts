@@ -18,7 +18,7 @@ describe('voiceProjectSettings', () => {
   });
 
   it('maps Fish Speech sampling params from project settings', () => {
-    expect(voiceSynthesisFromProjectSettings(SETTING_DEFAULTS)).toEqual({
+    expect(voiceSynthesisFromProjectSettings(SETTING_DEFAULTS, 'fo4')).toEqual({
       temperature: 0.65,
       repetitionPenalty: 1.2,
       topP: 0.8,
@@ -26,20 +26,37 @@ describe('voiceProjectSettings', () => {
       matchTiming: true,
     });
     expect(
-      voiceSynthesisFromProjectSettings({
-        ...SETTING_DEFAULTS,
-        'voice.temperature': 0.5,
-        'voice.repetition_penalty': 2.5,
-        'voice.top_p': 0.9,
-        'voice.match_loudness': false,
-        'voice.match_timing': false,
-      }),
+      voiceSynthesisFromProjectSettings(
+        {
+          ...SETTING_DEFAULTS,
+          'voice.temperature': 0.5,
+          'voice.repetition_penalty': 2.5,
+          'voice.top_p': 0.9,
+          'voice.game_tts': { fo4: { matchLoudness: false, matchTiming: false } },
+        },
+        'fo4',
+      ),
     ).toEqual({
       temperature: 0.5,
       repetitionPenalty: 2.5,
       topP: 0.9,
       matchLoudness: false,
       matchTiming: false,
+    });
+    expect(
+      voiceSynthesisFromProjectSettings(
+        {
+          ...SETTING_DEFAULTS,
+          'voice.game_tts': { fo4: { matchLoudness: false, matchTiming: false } },
+        },
+        'disco',
+      ),
+    ).toEqual({
+      temperature: 0.65,
+      repetitionPenalty: 1.2,
+      topP: 0.8,
+      matchLoudness: true,
+      matchTiming: true,
     });
   });
 

@@ -99,12 +99,12 @@ export const synthesizeModVoiceLineBuffers = async (
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
 
-  const voiceConfig = await loadVoiceProjectSettings(db);
-  const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
-  const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
   const ttsBaseUrl = opts.ttsBaseUrl ?? resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
   const game = opts.game ?? mod.game;
+  const voiceConfig = await loadVoiceProjectSettings(db, game);
+  const referenceMode = opts.referenceMode ?? voiceConfig.referenceMode;
+  const synthesis = { ...voiceConfig.synthesis, ...opts.synthesis };
 
   // Line mode may auto-pick a speaker ref when the line clip is too short or too long.
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, opts.modId);

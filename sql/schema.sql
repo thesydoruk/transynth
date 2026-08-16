@@ -520,6 +520,9 @@ ON CONFLICT(key) DO NOTHING;
 -- Stress placement moved to the TTS server.
 DELETE FROM project_settings WHERE key = 'llm.stress_place_thinking';
 
+-- xtts-engine match flags moved from global booleans to per-game `voice.game_tts`.
+DELETE FROM project_settings WHERE key IN ('voice.match_loudness', 'voice.match_timing');
+
 -- ── Translation RAG index (pgvector) ────────────────────────────────────────
 -- Stores embeddings of reviewed/human translations for few-shot LLM context.
 -- Indexed rows are synced on translation save/status change (see src/llm/rag/sync.ts).

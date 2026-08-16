@@ -19,6 +19,7 @@ import {
   DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
   DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
 } from '../../pipeline/settings';
+import { normalizeGameTtsSettings, type GameTtsSettingsMap } from '../../voice/gameTtsSettings';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
 
@@ -46,10 +47,8 @@ export type ProjectSettingKey =
   | 'llm.rag_min_similarity'
   /** When true, each voiced line uses its own English audio as the TTS reference clip. */
   | 'voice.line_reference'
-  /** xtts-engine: remaster then match speech level to the first speaker_wav. */
-  | 'voice.match_loudness'
-  /** xtts-engine: fit synthesized duration to the first speaker_wav slot. */
-  | 'voice.match_timing'
+  /** Per-game xtts-engine match_loudness / match_timing (`{ fo4: { matchLoudness, matchTiming }, … }`). */
+  | 'voice.game_tts'
   /** Fish Speech sampling temperature. */
   | 'voice.temperature'
   /** Fish Speech repetition penalty. */
@@ -79,8 +78,7 @@ export type ProjectSettings = {
   'llm.rag_max_examples': number;
   'llm.rag_min_similarity': number;
   'voice.line_reference': boolean;
-  'voice.match_loudness': boolean;
-  'voice.match_timing': boolean;
+  'voice.game_tts': GameTtsSettingsMap;
   'voice.temperature': number;
   'voice.repetition_penalty': number;
   'voice.top_p': number;
@@ -112,8 +110,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'llm.rag_max_examples': 5,
   'llm.rag_min_similarity': 0.5,
   'voice.line_reference': true,
-  'voice.match_loudness': true,
-  'voice.match_timing': true,
+  'voice.game_tts': {},
   'voice.temperature': 0.65,
   'voice.repetition_penalty': 1.2,
   'voice.top_p': 0.8,
@@ -147,6 +144,7 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     result['voice.tts_max_parallel_fish_speech'],
   );
   result['llm.vllm_servers'] = normalizeVllmServerEntries(result['llm.vllm_servers']);
+  result['voice.game_tts'] = normalizeGameTtsSettings(result['voice.game_tts']);
   result['pipeline.dependency_wait_timeout_sec'] = clampDependencyWaitTimeoutSec(
     result['pipeline.dependency_wait_timeout_sec'],
   );
@@ -172,6 +170,9 @@ export const getProjectSetting = async <K extends ProjectSettingKey>(
     [key],
   );
   if (rows.length === 0) return SETTING_DEFAULTS[key];
+  if (key === 'voice.game_tts') {
+    return normalizeGameTtsSettings(rows[0].value) as ProjectSettings[K];
+  }
   return rows[0].value as ProjectSettings[K];
 };
 
@@ -196,6 +197,9 @@ export const setProjectSetting = async (
   }
   if (key === 'llm.vllm_servers') {
     stored = normalizeVllmServerEntries(value) as ProjectSettings[ProjectSettingKey];
+  }
+  if (key === 'voice.game_tts') {
+    stored = normalizeGameTtsSettings(value) as ProjectSettings[ProjectSettingKey];
   }
   if (key === 'pipeline.dependency_wait_timeout_sec') {
     stored = clampDependencyWaitTimeoutSec(value as number);

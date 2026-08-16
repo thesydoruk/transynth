@@ -82,9 +82,9 @@ export const synthesizeDiscoVoiceLine = async (
     return { ok: false, reason: 'non_speech', message: 'Line is not synthesizable' };
   }
 
-  const voiceConfig = await loadVoiceProjectSettings(db);
   const ttsBaseUrl = resolveTtsBaseUrl();
   const mod = await loadImportedMod(db, opts.modId);
+  const voiceConfig = await loadVoiceProjectSettings(db, mod.game);
   const voiceSources = await loadDiscoVoiceSources(db, opts.modId, opts.srcLang, extractRoot);
   const bySpeaker = groupDiscoVoiceFilesBySpeaker(voiceFiles);
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();

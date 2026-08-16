@@ -2,6 +2,7 @@ import type { Tx } from '../db';
 import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
 import { syncTtsPoolLimit } from '../tts/ttsRequestPool';
 import { getAllProjectSettings, type ProjectSettings } from '../web/services/projectSettings';
+import { gameTtsMatchFor } from './gameTtsSettings';
 import type { TtsReferenceMode } from './voiceToolPaths';
 
 /** Map persisted project settings to TTS reference clip mode. */
@@ -9,16 +10,20 @@ export const voiceReferenceModeFromProjectSettings = (
   settings: ProjectSettings,
 ): TtsReferenceMode => (settings['voice.line_reference'] ? 'line' : 'speaker');
 
-/** Map persisted project settings to Fish Speech sampling + xtts-engine match flags. */
+/** Map persisted project settings to Fish Speech sampling + per-game xtts-engine match flags. */
 export const voiceSynthesisFromProjectSettings = (
   settings: ProjectSettings,
-): TtsSynthesisParams => ({
-  temperature: settings['voice.temperature'],
-  repetitionPenalty: settings['voice.repetition_penalty'],
-  topP: settings['voice.top_p'],
-  matchLoudness: settings['voice.match_loudness'],
-  matchTiming: settings['voice.match_timing'],
-});
+  game?: string | null,
+): TtsSynthesisParams => {
+  const match = gameTtsMatchFor(settings['voice.game_tts'], game);
+  return {
+    temperature: settings['voice.temperature'],
+    repetitionPenalty: settings['voice.repetition_penalty'],
+    topP: settings['voice.top_p'],
+    matchLoudness: match.matchLoudness,
+    matchTiming: match.matchTiming,
+  };
+};
 
 /** Push Fish Speech concurrency limit from project settings into the global pool. */
 export const syncTtsPoolFromProjectSettings = (settings: ProjectSettings): void => {
@@ -29,9 +34,10 @@ export const syncTtsPoolFromProjectSettings = (settings: ProjectSettings): void 
 export const voiceTtsMaxParallelFromProjectSettings = (settings: ProjectSettings): number =>
   settings['voice.tts_max_parallel_fish_speech'];
 
-/** Load voice synthesis settings from project_settings. */
+/** Load voice synthesis settings from project_settings (match flags for `game`). */
 export const loadVoiceProjectSettings = async (
   db: Tx,
+  game?: string | null,
 ): Promise<{
   referenceMode: TtsReferenceMode;
   synthesis: TtsSynthesisParams;
@@ -41,7 +47,7 @@ export const loadVoiceProjectSettings = async (
   syncTtsPoolFromProjectSettings(settings);
   return {
     referenceMode: voiceReferenceModeFromProjectSettings(settings),
-    synthesis: voiceSynthesisFromProjectSettings(settings),
+    synthesis: voiceSynthesisFromProjectSettings(settings, game),
     ttsMaxParallel: settings['voice.tts_max_parallel_fish_speech'],
   };
 };

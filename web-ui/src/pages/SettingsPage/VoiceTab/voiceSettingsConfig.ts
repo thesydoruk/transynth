@@ -5,19 +5,43 @@ export type VoiceRegenerateParams = {
   top_p: number;
 };
 
-export type VoiceProjectSettings = VoiceRegenerateParams & {
-  match_loudness: boolean;
-  match_timing: boolean;
-};
+export type VoiceProjectSettings = VoiceRegenerateParams;
 
 export const VOICE_SETTINGS_DEFAULTS: VoiceProjectSettings = {
   line_reference: true,
-  match_loudness: true,
-  match_timing: true,
   temperature: 0.65,
   repetition_penalty: 1.2,
   top_p: 0.8,
 };
+
+export type GameTtsMatchSettings = {
+  matchLoudness: boolean;
+  matchTiming: boolean;
+};
+
+export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
+
+export const GAME_TTS_MATCH_DEFAULTS: GameTtsMatchSettings = {
+  matchLoudness: true,
+  matchTiming: true,
+};
+
+export const gameTtsMatchFor = (
+  map: GameTtsSettingsMap | undefined,
+  gameId: string,
+): GameTtsMatchSettings => ({
+  ...GAME_TTS_MATCH_DEFAULTS,
+  ...(map?.[gameId] ?? {}),
+});
+
+export const patchGameTtsMap = (
+  map: GameTtsSettingsMap | undefined,
+  gameId: string,
+  patch: Partial<GameTtsMatchSettings>,
+): GameTtsSettingsMap => ({
+  ...(map ?? {}),
+  [gameId]: { ...gameTtsMatchFor(map, gameId), ...patch },
+});
 
 export type NumericVoiceKey = Exclude<
   {
@@ -62,18 +86,18 @@ export const VOICE_SYNTHESIS_SLIDERS: Array<{
 
 export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 
-export const VOICE_MATCH_TOGGLES: Array<{
-  key: 'voice.match_loudness' | 'voice.match_timing';
+export const GAME_TTS_MATCH_TOGGLES: Array<{
+  field: keyof GameTtsMatchSettings;
   labelKey: string;
   descKey: string;
 }> = [
   {
-    key: 'voice.match_loudness',
+    field: 'matchLoudness',
     labelKey: 'settings.voice.matchLoudness',
     descKey: 'settings.voice.matchLoudnessDesc',
   },
   {
-    key: 'voice.match_timing',
+    field: 'matchTiming',
     labelKey: 'settings.voice.matchTiming',
     descKey: 'settings.voice.matchTimingDesc',
   },

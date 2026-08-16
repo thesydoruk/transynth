@@ -66,3 +66,36 @@
     outline-offset: 4px;
   }
 }
+
+.gameList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gameBlock {
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.gameHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.gameName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.gameCode {
+  font-size: 11px;
+  color: var(--text-dim);
+}

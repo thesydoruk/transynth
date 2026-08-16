@@ -166,7 +166,7 @@ export const localizeModImportVoice = async (
   const srcLang = options.srcLang?.trim() || mod.srcLang;
   const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
   const ttsBaseUrl = options.ttsBaseUrl ?? resolveTtsBaseUrl();
-  const voiceConfig = await loadVoiceProjectSettings(db);
+  const voiceConfig = await loadVoiceProjectSettings(db, mod.game);
   const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
   const synthesis = voiceConfig.synthesis;
 

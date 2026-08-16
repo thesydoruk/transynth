@@ -4,17 +4,12 @@ import { api } from '../../../api';
 import parentS from '../SettingsPage.module.scss';
 import controlS from '../WorkflowTab/WorkflowTab.module.scss';
 import s from './VoiceTab.module.scss';
+import { GameTtsSettingsList } from './GameTtsSettingsList';
 import { VoiceSlider } from './VoiceSlider';
-import {
-  VOICE_MATCH_TOGGLES,
-  VOICE_SETTINGS_DEFAULTS,
-  VOICE_SYNTHESIS_SLIDERS,
-} from './voiceSettingsConfig';
+import { VOICE_SETTINGS_DEFAULTS, VOICE_SYNTHESIS_SLIDERS } from './voiceSettingsConfig';
 
 type ProjectSettings = {
   'voice.line_reference': boolean;
-  'voice.match_loudness': boolean;
-  'voice.match_timing': boolean;
   'voice.temperature': number;
   'voice.repetition_penalty': number;
   'voice.top_p': number;
@@ -30,8 +25,6 @@ type NumericProjectKey = Exclude<
 
 const DEFAULTS: ProjectSettings = {
   'voice.line_reference': VOICE_SETTINGS_DEFAULTS.line_reference,
-  'voice.match_loudness': VOICE_SETTINGS_DEFAULTS.match_loudness,
-  'voice.match_timing': VOICE_SETTINGS_DEFAULTS.match_timing,
   'voice.temperature': VOICE_SETTINGS_DEFAULTS.temperature,
   'voice.repetition_penalty': VOICE_SETTINGS_DEFAULTS.repetition_penalty,
   'voice.top_p': VOICE_SETTINGS_DEFAULTS.top_p,
@@ -69,7 +62,7 @@ export const VoiceTab = () => {
 
   const settings: ProjectSettings = { ...DEFAULTS, ...(data ?? {}) };
 
-  const handleToggle = (key: keyof ProjectSettings) => {
+  const handleToggle = (key: 'voice.line_reference') => {
     update({ key, value: !settings[key] });
   };
 
@@ -132,19 +125,13 @@ export const VoiceTab = () => {
               <span className={controlS.toggleTrack} />
             </label>
           </div>
-          {VOICE_MATCH_TOGGLES.map(({ key, labelKey, descKey }) => (
-            <div key={key} className={controlS.settingRow}>
-              <div className={controlS.settingInfo}>
-                <span className={controlS.settingLabel}>{t(labelKey)}</span>
-                <span className={parentS.fieldNote}>{t(descKey)}</span>
-              </div>
-              <label className={controlS.toggle}>
-                <input type="checkbox" checked={settings[key]} onChange={() => handleToggle(key)} />
-                <span className={controlS.toggleTrack} />
-              </label>
-            </div>
-          ))}
         </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionGameTts')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionGameTtsDesc')}</p>
+        <GameTtsSettingsList />
       </div>
 
       <div className={parentS.section}>
