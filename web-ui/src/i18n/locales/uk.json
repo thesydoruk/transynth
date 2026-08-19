@@ -84,7 +84,8 @@
     "interrupted": "Перервано",
     "running": "Виконується",
     "failed": "Помилка",
-    "completed": "Завершено"
+    "completed": "Завершено",
+    "cancelled": "Скасовано"
   },
   "progressBar": {
     "approved": "Підтверджено: {{count}}",
@@ -135,6 +136,10 @@
     "aiWorkflowTitle": "ШІ-завдання",
     "exportLangpack": "Експорт перекладу",
     "exportingLangpack": "Експорт…",
+    "exportStarted": "Експорт запущено у фоні. Архів з’явиться в списку, коли буде готовий.",
+    "exportDownload": "Завантажити",
+    "exportDelete": "Видалити",
+    "exportDeleting": "Видалення…",
     "exportFullMod": "Повний локалізований мод"
   },
   "modAi": {

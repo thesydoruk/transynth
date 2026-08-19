@@ -24,6 +24,7 @@ import {
   useModUpload,
   useModSelection,
   useModExport,
+  useExportArchives,
   useModDeleteActions,
 } from './hooks';
 import s from './ModsPage.module.scss';
@@ -81,7 +82,10 @@ export const ModsPage = () => {
     clearModSelection: selection.clearModSelection,
   });
 
-  const { buildExportActions, runBatchLangpackExport, exportingBatchLangpack } = useModExport();
+  const exportArchives = useExportArchives(gameId);
+  const { buildExportActions, runBatchLangpackExport, exportingBatchLangpack } = useModExport(
+    exportArchives.refresh,
+  );
 
   const upload = useModUpload({
     gameId,
@@ -118,7 +122,8 @@ export const ModsPage = () => {
     visibleNexusDownloads.length === 0 &&
     visibleAppJobs.length === 0 &&
     visibleLlmJobs.length === 0 &&
-    upload.pendingModUploads.length === 0;
+    upload.pendingModUploads.length === 0 &&
+    exportArchives.archives.length === 0;
 
   if (modsError) {
     return (
@@ -151,6 +156,10 @@ export const ModsPage = () => {
           pendingModUploads={upload.pendingModUploads}
           nexusDownloads={visibleNexusDownloads}
           appJobs={visibleAppJobs}
+          exportArchives={exportArchives.archives}
+          deletingExportId={exportArchives.deletingId}
+          onDownloadExport={(archive) => void exportArchives.download(archive)}
+          onDeleteExport={(archive) => void exportArchives.remove(archive)}
           llmJobs={visibleLlmJobs}
           activeImportJobs={activeImportJobs}
           sortedMods={sortedMods}

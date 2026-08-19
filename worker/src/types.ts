@@ -33,6 +33,7 @@ export const JOB_KINDS = [
   'mod-import',
   'csv-import',
   'eet-import',
+  'langpack-export',
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

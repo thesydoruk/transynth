@@ -20,3 +20,4 @@ export * from './stats';
 export * from './glossaryEnforce';
 export * from './coherence';
 export * from './innr';
+export * from './exportArchives';

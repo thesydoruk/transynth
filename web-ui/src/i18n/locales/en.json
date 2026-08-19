@@ -84,7 +84,8 @@
     "interrupted": "Interrupted",
     "running": "Running",
     "failed": "Failed",
-    "completed": "Completed"
+    "completed": "Completed",
+    "cancelled": "Cancelled"
   },
   "progressBar": {
     "approved": "Approved: {{count}}",
@@ -135,6 +136,10 @@
     "aiWorkflowTitle": "AI tasks",
     "exportLangpack": "Export translation",
     "exportingLangpack": "Exporting…",
+    "exportStarted": "Export started in the background. The archive will appear in the list when it is ready.",
+    "exportDownload": "Download",
+    "exportDelete": "Delete",
+    "exportDeleting": "Deleting…",
     "exportFullMod": "Full localized mod"
   },
   "modAi": {

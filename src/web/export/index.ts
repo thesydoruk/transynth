@@ -19,7 +19,11 @@ export {
 export { exportPatchedEsp } from './exportEsp';
 export { exportPatchedPexFiles } from './exportPex';
 export { exportFullModZip, exportLangpackZip } from './zipExport';
-export { exportLangpackZipBatch, type LangpackBatchMod } from './batchLangpack';
+export {
+  exportLangpackZipBatch,
+  exportLangpackZipToPath,
+  type LangpackBatchMod,
+} from './batchLangpack';
 export { collectInterfacePatchEntries, exportInterfaceTranslateFile } from './exportInterfacePatch';
 export { collectMcmPatchEntries, exportMcmTranslationFiles } from './exportMcmPatch';
 export { exportPatchedFontFiles } from './exportFontPatch';

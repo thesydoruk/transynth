@@ -2,26 +2,35 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { upsertAppJob } from '../../../appJobsQueue';
 import { api } from '../../../api';
+import { useToast } from '../../../components/Toast';
 
-export const useModExport = () => {
+export const useModExport = (onLangpackStarted?: () => void) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [exportBusy, setExportBusy] = useState<string | null>(null);
 
-  const runModExport = useCallback(
-    async (
-      modId: number,
-      exportSrcLang: string,
-      exportTgtLang: string,
-      labelName: string,
-      type: 'langpack' | 'fullMod',
-      busyKey: string,
-    ) => {
-      const appJobId = `export-${modId}-${type}-${Date.now()}`;
+  const startLangpackJob = useCallback(
+    async (modIds: number[], exportSrcLang: string, exportTgtLang: string, busyKey: string) => {
+      if (modIds.length === 0) return;
+      setExportBusy(busyKey);
+      try {
+        await api.exports.startLangpack(modIds, exportSrcLang, exportTgtLang);
+        showToast(t('mods.exportStarted'), 'success');
+        onLangpackStarted?.();
+      } catch (err) {
+        showToast(t('common.error', { message: String(err) }), 'error');
+      } finally {
+        setExportBusy(null);
+      }
+    },
+    [onLangpackStarted, showToast, t],
+  );
+
+  const runFullModExport = useCallback(
+    async (modId: number, exportSrcLang: string, exportTgtLang: string, labelName: string) => {
+      const appJobId = `export-${modId}-fullMod-${Date.now()}`;
       const now = Date.now();
-      const label =
-        type === 'langpack'
-          ? `${labelName} · ${t('mods.exportLangpack')}`
-          : `${labelName} · ${t('mods.exportFullMod')}`;
+      const label = `${labelName} · ${t('mods.exportFullMod')}`;
       upsertAppJob({
         id: appJobId,
         kind: 'export',
@@ -31,13 +40,9 @@ export const useModExport = () => {
         createdAt: now,
         updatedAt: now,
       });
-      setExportBusy(busyKey);
+      setExportBusy(`mod-${modId}:fullMod`);
       try {
-        if (type === 'langpack') {
-          await api.mods.exportLangpack(modId, exportSrcLang, exportTgtLang);
-        } else {
-          await api.mods.exportFullMod(modId, exportSrcLang, exportTgtLang);
-        }
+        await api.mods.exportFullMod(modId, exportSrcLang, exportTgtLang);
         upsertAppJob({
           id: appJobId,
           kind: 'export',
@@ -81,14 +86,7 @@ export const useModExport = () => {
           icon: '📄',
           title: t('mods.exportLangpack'),
           onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'langpack',
-              `${busyPrefix}:langpack`,
-            );
+            void startLangpackJob([modId], exportSrcLang, exportTgtLang, `${busyPrefix}:langpack`);
           },
           disabled: isBusy,
         },
@@ -97,66 +95,20 @@ export const useModExport = () => {
           icon: '📦',
           title: t('mods.exportFullMod'),
           onClick: () => {
-            void runModExport(
-              modId,
-              exportSrcLang,
-              exportTgtLang,
-              labelName,
-              'fullMod',
-              `${busyPrefix}:fullMod`,
-            );
+            void runFullModExport(modId, exportSrcLang, exportTgtLang, labelName);
           },
           disabled: isBusy,
         },
       ];
     },
-    [exportBusy, runModExport, t],
+    [exportBusy, runFullModExport, startLangpackJob, t],
   );
 
   const runBatchLangpackExport = useCallback(
     async (modIds: number[], exportSrcLang: string, exportTgtLang: string) => {
-      if (modIds.length === 0) return;
-      const appJobId = `export-batch-langpack-${Date.now()}`;
-      const now = Date.now();
-      const label = `${t('mods.exportLangpack')} · ${t('mods.selectedCount', { count: modIds.length })}`;
-      upsertAppJob({
-        id: appJobId,
-        kind: 'export',
-        label,
-        status: 'running',
-        progress: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-      setExportBusy('batch:langpack');
-      try {
-        await api.mods.exportLangpackBatch(modIds, exportSrcLang, exportTgtLang);
-        upsertAppJob({
-          id: appJobId,
-          kind: 'export',
-          label,
-          status: 'completed',
-          progress: 100,
-          createdAt: now,
-          updatedAt: Date.now(),
-        });
-      } catch (err) {
-        upsertAppJob({
-          id: appJobId,
-          kind: 'export',
-          label,
-          status: 'failed',
-          progress: null,
-          error: String(err),
-          createdAt: now,
-          updatedAt: Date.now(),
-        });
-        window.alert(String(err));
-      } finally {
-        setExportBusy(null);
-      }
+      await startLangpackJob(modIds, exportSrcLang, exportTgtLang, 'batch:langpack');
     },
-    [t],
+    [startLangpackJob],
   );
 
   return {

@@ -49,6 +49,8 @@ export const PATHS = {
   ),
   backups: resolveDir(process.env.BACKUP_DIR ?? path.join(dataDir, 'backups')),
   postgres: resolveDir(process.env.POSTGRES_DATA_DIR ?? path.join(dataDir, 'postgres')),
+  /** Background langpack ZIPs written by the worker (`{id}/{fileName}`). */
+  exports: resolveDir(process.env.EXPORTS_DIR ?? path.join(dataDir, 'exports')),
 };
 
 /** Create standard data subdirectories if they do not exist yet. */
@@ -63,6 +65,7 @@ export const ensureDataDirs = (): void => {
     PATHS.pexDecompile,
     PATHS.voicePreview,
     PATHS.voiceRegenerate,
+    PATHS.exports,
     PATHS.backups,
   ]) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

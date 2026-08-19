@@ -10,6 +10,7 @@ import {
 } from '../../../testdata/exportGoldenCorpus';
 import {
   exportLangpackZipBatch,
+  exportLangpackZipToPath,
   mergeLangpackEntries,
   normalizeLangpackZipPath,
 } from '../batchLangpack';
@@ -107,5 +108,32 @@ describe('exportLangpackZipBatch', () => {
     expect(zipText).not.toContain('PluginTwo/Strings/');
     expect(zipText).not.toContain('mod-1/');
     expect(zipText).not.toContain('mod-2/');
+  }, 30_000);
+
+  it('writes the archive to disk without a per-mod folder', async () => {
+    const firstPath = createLooseStringsMod('PluginOne.esp');
+    const secondPath = createLooseStringsMod('PluginTwo.esp');
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'langpack-path-'));
+    tempDirs.push(outDir);
+    const destPath = path.join(outDir, 'fo4_uk_langpack.zip');
+
+    const result = await exportLangpackZipToPath(
+      db,
+      [
+        { modId: 1, modPath: firstPath, game: 'fo4' },
+        { modId: 2, modPath: secondPath, game: 'fo4' },
+      ],
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+      destPath,
+    );
+
+    expect(result.byteSize).toBeGreaterThan(0);
+    expect(fs.existsSync(destPath)).toBe(true);
+    const zipText = fs.readFileSync(destPath).toString('latin1');
+    expect(zipText).toContain('Strings/PluginOne_en.STRINGS');
+    expect(zipText).toContain('Strings/PluginTwo_en.STRINGS');
+    expect(fs.existsSync(`${destPath}.staging`)).toBe(false);
   }, 30_000);
 });

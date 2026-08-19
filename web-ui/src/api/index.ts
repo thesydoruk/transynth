@@ -28,6 +28,7 @@ import { tmApplyEndpoints } from './endpoints/tmApply';
 import { llmTranslateEndpoints } from './endpoints/llmTranslate';
 import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
 import { modAiJobsEndpoints } from './endpoints/modAiJobs';
+import { exportsEndpoints } from './endpoints/exports';
 
 export const api = {
   mods: modsEndpoints,
@@ -55,4 +56,5 @@ export const api = {
   llmTranslate: llmTranslateEndpoints,
   voiceGenerate: voiceGenerateEndpoints,
   modAiJobs: modAiJobsEndpoints,
+  exports: exportsEndpoints,
 };

@@ -1,9 +1,10 @@
-import type { OpsLlmJob, Mod, ModImportJob } from '../../api';
+import type { ExportArchive, OpsLlmJob, Mod, ModImportJob } from '../../api';
 import type { AppJob } from '../../appJobsQueue';
 import type { NexusDownloadJob } from '../../nexusDownloadQueue';
 import { NexusDownloadRow } from './NexusDownloadRow';
 import { PendingUploadRow } from './PendingUploadRow';
 import { AppJobRow } from './AppJobRow';
+import { ExportArchiveRow } from './ExportArchiveRow';
 import { LlmJobRow } from './LlmJobRow';
 import { ModListHeader } from './ModListHeader';
 import { ActiveImportJobsList } from './ActiveImportJobsList';
@@ -16,6 +17,10 @@ type ModsPageJobListProps = {
   pendingModUploads: PendingModUpload[];
   nexusDownloads: NexusDownloadJob[];
   appJobs: AppJob[];
+  exportArchives: ExportArchive[];
+  deletingExportId: number | null;
+  onDownloadExport: (archive: ExportArchive) => void;
+  onDeleteExport: (archive: ExportArchive) => void;
   llmJobs: OpsLlmJob[];
   activeImportJobs: UnifiedJob[];
   sortedMods: Mod[];
@@ -63,6 +68,10 @@ export const ModsPageJobList = ({
   pendingModUploads,
   nexusDownloads,
   appJobs,
+  exportArchives,
+  deletingExportId,
+  onDownloadExport,
+  onDeleteExport,
   llmJobs,
   activeImportJobs,
   sortedMods,
@@ -110,6 +119,16 @@ export const ModsPageJobList = ({
 
     {appJobs.map((job) => (
       <AppJobRow key={job.id} job={job} />
+    ))}
+
+    {exportArchives.map((archive) => (
+      <ExportArchiveRow
+        key={`export-${archive.id}`}
+        archive={archive}
+        deleting={deletingExportId === archive.id}
+        onDownload={() => onDownloadExport(archive)}
+        onDelete={() => onDeleteExport(archive)}
+      />
     ))}
 
     {llmJobs.map((job) => (

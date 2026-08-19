@@ -50,6 +50,7 @@ import { llmGenderDetectRoutes } from './routes/llmGenderDetect';
 import { tmApplyRoutes } from './routes/tmApply';
 import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
+import { exportArchivesRoutes } from './routes/exportArchives';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
@@ -129,6 +130,7 @@ await llmGenderDetectRoutes(app, db);
 await tmApplyRoutes(app, db);
 await modAiJobsRoutes(app);
 await modVoiceGenerateRoutes(app, db);
+await exportArchivesRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {

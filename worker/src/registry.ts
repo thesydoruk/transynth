@@ -15,6 +15,7 @@ import { modImportHandler } from './jobs/import/mod/handler';
 import { skipDetectHandler } from './jobs/skipDetect/handler';
 import { tmApplyHandler } from './jobs/tmApply/handler';
 import { voiceGenerateHandler } from './jobs/voice/handler';
+import { langpackExportHandler } from './jobs/langpackExport/handler';
 import type { JobHandler, JobKind } from './types';
 
 const handlers: Record<JobKind, JobHandler> = {
@@ -29,6 +30,7 @@ const handlers: Record<JobKind, JobHandler> = {
   'mod-import': modImportHandler,
   'csv-import': csvImportHandler,
   'eet-import': eetImportHandler,
+  'langpack-export': langpackExportHandler,
 };
 
 export const getJobHandler = (kind: JobKind): JobHandler => {

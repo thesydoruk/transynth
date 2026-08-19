@@ -5,4 +5,5 @@ export { useImportJobRunner } from './useImportJobRunner';
 export { useModUpload } from './useModUpload';
 export { useModSelection } from './useModSelection';
 export { useModExport } from './useModExport';
+export { useExportArchives } from './useExportArchives';
 export { useModDeleteActions } from './useModDeleteActions';

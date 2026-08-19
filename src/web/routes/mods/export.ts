@@ -1,16 +1,11 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Tx } from '../../../db';
 import type { GameType } from '../../../types';
-import { getMod, getModsByIds } from '../../data/queries';
-import {
-  exportFullModZip,
-  exportLangpackZip,
-  exportLangpackZipBatch,
-  type LangpackBatchMod,
-} from '../../export';
+import { getMod } from '../../data/queries';
+import { exportFullModZip, exportLangpackZip } from '../../export';
 import { CONFIG } from '../../../config';
 import { resolveModStoredPath } from '../../../modStorage';
-import { log } from '../../../logger';
+import { startLangpackExport } from '../../services/startLangpackExport';
 
 const sendModExportZip = async (
   db: Tx,
@@ -83,60 +78,16 @@ export const registerExportRoutes = async (app: FastifyInstance, db: Tx) => {
     },
   );
 
-  // POST /api/mods/batch-export/langpack — one Vortex-installable ZIP for many mods
+  // POST /api/mods/batch-export/langpack — start a background ZIP job (no RAM buffer)
   app.post<{
     Body: { modIds?: number[]; srcLang?: string; targetLang?: string };
   }>('/api/mods/batch-export/langpack', async (req, reply) => {
-    const parsed = parseModIdList(req.body?.modIds);
-    if ('error' in parsed) return reply.code(400).send({ error: parsed.error });
-
-    const srcLang = req.body?.srcLang ?? CONFIG.defaultSrcLang;
-    const targetLang = req.body?.targetLang ?? CONFIG.defaultTgtLang;
-    const rows = await getModsByIds(db, parsed.modIds);
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    const targets: LangpackBatchMod[] = [];
-    for (const id of parsed.modIds) {
-      const mod = byId.get(id);
-      if (!mod?.abs_path) continue;
-      targets.push({
-        modId: id,
-        modPath: resolveModStoredPath(mod.abs_path),
-        game: (mod.game ?? 'fo4') as GameType,
-      });
-    }
-    if (targets.length === 0) {
-      return reply.code(400).send({ error: 'No exportable mods in selection' });
-    }
-
-    try {
-      const { zipBuffer, zipFileName } = await exportLangpackZipBatch(
-        db,
-        targets,
-        srcLang,
-        targetLang,
-      );
-      log.info(
-        `POST /api/mods/batch-export/langpack mods=${targets.length} bytes=${zipBuffer.length}`,
-      );
-      return reply
-        .header('Content-Type', 'application/zip')
-        .header('Content-Disposition', `attachment; filename="${zipFileName}"`)
-        .send(zipBuffer);
-    } catch (err) {
-      return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
-    }
+    const result = await startLangpackExport(db, {
+      modIds: req.body?.modIds ?? [],
+      srcLang: req.body?.srcLang,
+      targetLang: req.body?.targetLang,
+    });
+    if (!result.ok) return reply.code(result.status).send({ error: result.error });
+    return reply.send({ ok: true, archive: result.archive, jobId: result.jobId });
   });
-};
-
-const parseModIdList = (modIds: number[] | undefined): { modIds: number[] } | { error: string } => {
-  if (!Array.isArray(modIds) || modIds.length === 0) {
-    return { error: 'modIds must be a non-empty array' };
-  }
-  if (modIds.length > 100) {
-    return { error: 'Too many mods in one batch (max 100)' };
-  }
-  if (!modIds.every((id) => Number.isInteger(id) && id > 0)) {
-    return { error: 'Invalid mod id in modIds' };
-  }
-  return { modIds };
 };
