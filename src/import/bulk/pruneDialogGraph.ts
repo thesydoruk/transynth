@@ -55,14 +55,16 @@ export const pruneOrphanDialogGraph = async (
     `DELETE FROM dialog_topics dt
       WHERE dt.mod_id = $1
         AND NOT EXISTS (SELECT 1 FROM dialog_nodes dn WHERE dn.topic_id = dt.id)
-        AND NOT EXISTS (SELECT 1 FROM dialog_scene_phases dsp WHERE dsp.topic_id = dt.id)`,
+        AND NOT EXISTS (SELECT 1 FROM dialog_scene_phases dsp WHERE dsp.topic_id = dt.id)
+        AND NOT EXISTS (SELECT 1 FROM dialog_scene_actions dsa WHERE dsa.topic_id = dt.id)`,
     [modId],
   );
 
   const { rowCount: deletedScenes } = await db.query(
     `DELETE FROM dialog_scenes ds
       WHERE ds.mod_id = $1
-        AND NOT EXISTS (SELECT 1 FROM dialog_scene_phases dsp WHERE dsp.scene_id = ds.id)`,
+        AND NOT EXISTS (SELECT 1 FROM dialog_scene_phases dsp WHERE dsp.scene_id = ds.id)
+        AND NOT EXISTS (SELECT 1 FROM dialog_scene_actions dsa WHERE dsa.scene_id = ds.id)`,
     [modId],
   );
 

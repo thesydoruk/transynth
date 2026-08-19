@@ -453,6 +453,8 @@
     "nodeCountTitle": "Dialog records inside this entry",
     "progressTitle": "{{done}} of {{total}} lines translated",
     "qaIssueCount": "{{count}} QA issue(s)",
+    "timingSensitive": "timing",
+    "timingSensitiveTitle": "This scene has a timer, package, start-scene, or looping action — spoken length is not enough",
     "selectGroup": "Pick an entry on the left to open its dialog.",
     "loadingTranscript": "Loading dialog…",
     "noLines": "No lines match the current filter.",

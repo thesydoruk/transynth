@@ -453,6 +453,8 @@
     "nodeCountTitle": "Кількість діалогових записів у цьому пункті",
     "progressTitle": "перекладено {{done}} з {{total}} реплік",
     "qaIssueCount": "QA проблем: {{count}}",
+    "timingSensitive": "таймінг",
+    "timingSensitiveTitle": "У сцені є таймер, package, start-scene або loop — довжина .fuz сама не керує фазою",
     "selectGroup": "Виберіть пункт ліворуч, щоб відкрити діалог.",
     "loadingTranscript": "Завантаження діалогу…",
     "noLines": "Немає реплік за поточним фільтром.",

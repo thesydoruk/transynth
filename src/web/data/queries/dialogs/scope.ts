@@ -33,6 +33,11 @@ export type DialogGroupRow = {
   translated_count: number;
   /** Lines with at least one active QA issue. */
   qa_count: number;
+  /**
+   * Scene has a timer, package, start-scene, radio, or looping action whose
+   * duration is not the spoken `.fuz`. False for topic/branch groups.
+   */
+  timing_sensitive: boolean;
 };
 
 /** One speaker turn of a transcript. */
@@ -67,5 +72,7 @@ export type DialogTranscriptRow = {
   scope: DialogScope;
   key: string;
   label: string;
+  /** Scene/conversation has authored timing that ignores `.fuz` length. */
+  timing_sensitive: boolean;
   entries: DialogEntryRow[];
 };

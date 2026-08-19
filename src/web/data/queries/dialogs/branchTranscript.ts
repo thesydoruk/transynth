@@ -73,6 +73,7 @@ export const getBranchTranscript = async (
     scope: 'branches' as DialogScope,
     key: String(branchId),
     label: head.label,
+    timing_sensitive: false,
     entries,
   };
 };

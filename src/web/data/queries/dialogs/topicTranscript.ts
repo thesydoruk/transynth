@@ -124,6 +124,7 @@ export const getTopicTranscript = async (
     scope: 'topics',
     key: String(topicId),
     label: head.label,
+    timing_sensitive: false,
     entries: await loadTopicTreeEntries(
       db,
       topicId,

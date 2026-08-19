@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS dialog_scenes (
   UNIQUE(mod_id, formid_hex)
 );
 
+ALTER TABLE dialog_scenes ADD COLUMN IF NOT EXISTS timing_sensitive BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS dialog_scene_phases (
   id SERIAL PRIMARY KEY,
   scene_id INTEGER NOT NULL REFERENCES dialog_scenes(id) ON DELETE CASCADE,
@@ -113,6 +115,24 @@ CREATE TABLE IF NOT EXISTS dialog_scene_phases (
   topic_id INTEGER NOT NULL REFERENCES dialog_topics(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(scene_id, phase_order, topic_id)
+);
+
+-- Every recognized SCEN action (dialogue, timer, package, FO4 extras).
+CREATE TABLE IF NOT EXISTS dialog_scene_actions (
+  id SERIAL PRIMARY KEY,
+  scene_id INTEGER NOT NULL REFERENCES dialog_scenes(id) ON DELETE CASCADE,
+  action_type TEXT NOT NULL,
+  alias_id INTEGER NOT NULL DEFAULT 0,
+  topic_id INTEGER REFERENCES dialog_topics(id) ON DELETE SET NULL,
+  start_phase INTEGER NOT NULL,
+  end_phase INTEGER NOT NULL,
+  timer_min_seconds REAL,
+  timer_max_seconds REAL,
+  loop_min REAL,
+  loop_max REAL,
+  flags INTEGER NOT NULL DEFAULT 0,
+  start_scene_formid_hex TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── Quest / branch structure (QUST + DLBR ownership of DIAL topics) ─────────
@@ -420,6 +440,8 @@ CREATE INDEX IF NOT EXISTS idx_dialog_edges_topic_from ON dialog_edges(topic_id,
 CREATE INDEX IF NOT EXISTS idx_dialog_scenes_mod ON dialog_scenes(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_scene ON dialog_scene_phases(scene_id, phase_order);
 CREATE INDEX IF NOT EXISTS idx_dialog_scene_phases_topic ON dialog_scene_phases(topic_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_scene_actions_scene ON dialog_scene_actions(scene_id);
+CREATE INDEX IF NOT EXISTS idx_dialog_scenes_timing ON dialog_scenes(mod_id, timing_sensitive);
 CREATE INDEX IF NOT EXISTS idx_dialog_quests_mod ON dialog_quests(mod_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_quest_stages_quest ON dialog_quest_stages(quest_id);
 CREATE INDEX IF NOT EXISTS idx_dialog_branches_mod ON dialog_branches(mod_id);

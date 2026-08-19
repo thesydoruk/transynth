@@ -37,6 +37,11 @@ export const DialogGroupRow = memo(({ group, active, onSelect }: DialogGroupRowP
             total: group.line_count,
           })}
         />
+        {group.timing_sensitive && (
+          <span className={styles.rowTiming} title={t('dialogs.timingSensitiveTitle')}>
+            {t('dialogs.timingSensitive')}
+          </span>
+        )}
         {group.qa_count > 0 && (
           <span
             className={styles.rowQa}

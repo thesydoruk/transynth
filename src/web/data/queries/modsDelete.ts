@@ -62,6 +62,12 @@ const deleteTranslationDependents = async (
 export const deleteModGraphAndRow = async (client: Tx, uniqueModIds: number[]): Promise<void> => {
   await withBatchTx(client, async () => {
     await client.query(
+      `DELETE FROM dialog_scene_actions dsa
+        WHERE dsa.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = ANY($1::int[]))
+           OR dsa.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = ANY($1::int[]))`,
+      [uniqueModIds],
+    );
+    await client.query(
       `DELETE FROM dialog_scene_phases dsp
         WHERE dsp.scene_id IN (SELECT id FROM dialog_scenes WHERE mod_id = ANY($1::int[]))
            OR dsp.topic_id IN (SELECT id FROM dialog_topics WHERE mod_id = ANY($1::int[]))`,

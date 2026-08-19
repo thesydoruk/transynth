@@ -133,12 +133,13 @@ export const getSceneTranscript = async (
   targetLang: string,
 ): Promise<DialogTranscriptRow | null> => {
   const { rows: headRows } = await db.query(
-    `SELECT COALESCE(NULLIF(ds.edid, ''), ds.formid_hex) AS label
+    `SELECT COALESCE(NULLIF(ds.edid, ''), ds.formid_hex) AS label,
+            ds.timing_sensitive
      FROM dialog_scenes ds
      WHERE ds.id = $1 AND ds.mod_id = $2`,
     [sceneId, modId],
   );
-  const head = (headRows as Array<{ label: string }>)[0];
+  const head = (headRows as Array<{ label: string; timing_sensitive: boolean }>)[0];
   if (!head) return null;
 
   const { rows } = await db.query(
@@ -158,6 +159,7 @@ export const getSceneTranscript = async (
     scope: 'scenes' as DialogScope,
     key: String(sceneId),
     label: head.label,
+    timing_sensitive: head.timing_sensitive === true,
     entries: toEntries(rows as PhaseRow[], false, responseMap),
   };
 };
@@ -181,14 +183,15 @@ export const getConversationTranscript = async (
         NULLIF(MIN(dq.name), ''),
         NULLIF(MIN(ds.edid), ''),
         MIN(ds.formid_hex)
-      ) AS label
+      ) AS label,
+      BOOL_OR(ds.timing_sensitive) AS timing_sensitive
      FROM dialog_scenes ds
      LEFT JOIN dialog_quests dq
        ON dq.mod_id = ds.mod_id AND dq.formid_hex = ds.quest_formid_hex
      WHERE ds.mod_id = $1 AND COALESCE(ds.quest_formid_hex, ds.formid_hex) = $2`,
     [modId, conversationKey],
   );
-  const head = (headRows as Array<{ label: string | null }>)[0];
+  const head = (headRows as Array<{ label: string | null; timing_sensitive: boolean | null }>)[0];
   if (!head?.label) return null;
 
   const { rows } = await db.query(
@@ -208,6 +211,7 @@ export const getConversationTranscript = async (
     scope: 'conversations' as DialogScope,
     key: conversationKey,
     label: head.label,
+    timing_sensitive: head.timing_sensitive === true,
     entries: toEntries(rows as PhaseRow[], true, responseMap),
   };
 };

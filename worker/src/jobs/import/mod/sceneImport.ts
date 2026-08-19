@@ -1,19 +1,27 @@
 /**
  * Persist SCEN records so dialog lines can be traced back to the scene and
- * phase they belong to — the context the translation UI shows around a line.
+ * phase they belong to — and so timer/package/start-scene actions mark scenes
+ * whose timing is independent of `.fuz` length.
  */
 import type { Tx } from '../../../../../src/db';
 import {
+  insertDialogSceneAction,
   upsertDialogScene,
   upsertDialogScenePhase,
   upsertDialogTopic,
 } from '../../../../../src/db';
-import type { SceneRecord } from '../../../../../src/formats/esp';
+import {
+  sceneHasTimingConstraint,
+  type SceneAction,
+  type SceneRecord,
+} from '../../../../../src/formats/esp';
 import type { DialogGraphImportContext } from '../../../../../src/import/bulk';
 
 export type SceneImportResult = {
   scenes: number;
   phases: number;
+  actions: number;
+  timingSensitive: number;
   deletedScenes: number;
 };
 
@@ -44,12 +52,37 @@ const resolveSceneTopicId = async (
   return topicId;
 };
 
+const persistAction = async (
+  db: Tx,
+  modId: number,
+  sceneId: number,
+  action: SceneAction,
+  ctx: DialogGraphImportContext,
+): Promise<void> => {
+  const primaryTopic = action.topicFormId ?? action.topicFormIds[0] ?? null;
+  const topicId =
+    primaryTopic != null ? await resolveSceneTopicId(db, modId, primaryTopic, ctx) : null;
+  await insertDialogSceneAction(db, sceneId, {
+    actionType: action.actionType,
+    aliasId: action.aliasId,
+    topicId,
+    startPhase: action.startPhase,
+    endPhase: action.endPhase,
+    timerMinSeconds: action.timerMinSeconds,
+    timerMaxSeconds: action.timerMaxSeconds,
+    loopMin: action.loopMin,
+    loopMax: action.loopMax,
+    flags: action.flags,
+    startSceneFormidHex: action.startSceneFormId,
+  });
+  return topicId;
+};
+
 /**
  * Store SCEN records as scenes with phase-ordered dialog topic references.
  *
- * The plugin is the source of truth: phases are replaced per scene and scenes
- * the plugin no longer contains are dropped, so nothing stale survives a
- * re-import.
+ * The plugin is the source of truth: phases and actions are replaced per scene
+ * and scenes the plugin no longer contains are dropped.
  */
 export const importSceneRecords = async (
   db: Tx,
@@ -58,22 +91,32 @@ export const importSceneRecords = async (
   ctx: DialogGraphImportContext,
 ): Promise<SceneImportResult> => {
   let phases = 0;
+  let actions = 0;
+  let timingSensitive = 0;
 
   for (const scene of scenes) {
+    const sensitive = sceneHasTimingConstraint(scene.actions);
+    if (sensitive) timingSensitive++;
     const sceneId = await upsertDialogScene(
       db,
       modId,
       scene.formId,
       scene.edid || null,
       scene.questFormId,
+      sensitive,
     );
 
+    await db.query('DELETE FROM dialog_scene_actions WHERE scene_id = $1', [sceneId]);
     await db.query('DELETE FROM dialog_scene_phases WHERE scene_id = $1', [sceneId]);
 
     for (const action of scene.actions) {
-      const topicId = await resolveSceneTopicId(db, modId, action.topicFormId, ctx);
-      await upsertDialogScenePhase(db, sceneId, action.startPhase, action.aliasId, topicId);
-      phases++;
+      await persistAction(db, modId, sceneId, action, ctx);
+      actions++;
+      for (const topicFormId of action.topicFormIds) {
+        const topicId = await resolveSceneTopicId(db, modId, topicFormId, ctx);
+        await upsertDialogScenePhase(db, sceneId, action.startPhase, action.aliasId, topicId);
+        phases++;
+      }
     }
   }
 
@@ -82,5 +125,11 @@ export const importSceneRecords = async (
     [modId, scenes.map((scene) => scene.formId)],
   );
 
-  return { scenes: scenes.length, phases, deletedScenes: deletedScenes ?? 0 };
+  return {
+    scenes: scenes.length,
+    phases,
+    actions,
+    timingSensitive,
+    deletedScenes: deletedScenes ?? 0,
+  };
 };

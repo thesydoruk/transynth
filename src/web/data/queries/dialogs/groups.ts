@@ -39,7 +39,8 @@ const TOPICS_SQL = `
     COALESCE(NULLIF(dt.edid, ''), dt.formid_hex) AS label,
     NULLIF(dt.formid_hex, COALESCE(NULLIF(dt.edid, ''), dt.formid_hex)) AS sublabel,
     COUNT(DISTINCT dn.id)::int AS node_count,
-    ${LINE_COUNTS}
+    ${LINE_COUNTS},
+    FALSE AS timing_sensitive
   FROM dialog_topics dt
   JOIN dialog_nodes dn ON dn.topic_id = dt.id
   ${LINE_JOINS}
@@ -53,7 +54,8 @@ const BRANCHES_SQL = `
     COALESCE(NULLIF(db.edid, ''), db.formid_hex) AS label,
     COALESCE(NULLIF(dq.edid, ''), db.quest_formid_hex) AS sublabel,
     COUNT(DISTINCT dn.id)::int AS node_count,
-    ${LINE_COUNTS}
+    ${LINE_COUNTS},
+    FALSE AS timing_sensitive
   FROM dialog_branches db
   LEFT JOIN dialog_quests dq
     ON dq.mod_id = db.mod_id AND dq.formid_hex = db.quest_formid_hex
@@ -75,7 +77,8 @@ const SCENES_SQL = `
     COALESCE(NULLIF(ds.edid, ''), ds.formid_hex) AS label,
     NULLIF(ds.formid_hex, COALESCE(NULLIF(ds.edid, ''), ds.formid_hex)) AS sublabel,
     COUNT(DISTINCT dsp.id)::int AS node_count,
-    ${LINE_COUNTS}
+    ${LINE_COUNTS},
+    BOOL_OR(ds.timing_sensitive) AS timing_sensitive
   FROM dialog_scenes ds
   LEFT JOIN dialog_scene_phases dsp ON dsp.scene_id = ds.id
   LEFT JOIN dialog_nodes dn ON dn.topic_id = dsp.topic_id
@@ -99,7 +102,8 @@ const CONVERSATIONS_SQL = `
     ) AS label,
     MIN(ds.quest_formid_hex) AS sublabel,
     COUNT(DISTINCT dsp.id)::int AS node_count,
-    ${LINE_COUNTS}
+    ${LINE_COUNTS},
+    BOOL_OR(ds.timing_sensitive) AS timing_sensitive
   FROM dialog_scenes ds
   LEFT JOIN dialog_quests dq
     ON dq.mod_id = ds.mod_id AND dq.formid_hex = ds.quest_formid_hex
@@ -137,5 +141,8 @@ export const listDialogGroups = async (
     DIALOG_RESPONSE_PATH,
     DIALOG_PROMPT_PATH,
   ]);
-  return rows as DialogGroupRow[];
+  return (rows as DialogGroupRow[]).map((row) => ({
+    ...row,
+    timing_sensitive: row.timing_sensitive === true,
+  }));
 };

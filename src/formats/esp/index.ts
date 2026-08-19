@@ -1,4 +1,5 @@
 export { EspReader } from './EspReader';
+export { isTimingSensitiveAction, sceneHasTimingConstraint } from './scene/actionTypes';
 export type {
   ActorRecord,
   BranchRecord,
@@ -14,6 +15,7 @@ export type {
   EspSubrecordView,
   QuestRecord,
   SceneAction,
+  SceneActionKind,
   SceneRecord,
 } from './EspReader';
 export { patchEsp, patchStringsMap } from './espPatcher';

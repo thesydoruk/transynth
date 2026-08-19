@@ -9,7 +9,7 @@ export type { EspRecordsPage } from './EspRecordsPage';
 export type { EspRecordView } from './EspRecordView';
 export type { EspStringRow } from './EspStringRow';
 export type { EspSubrecordView } from './EspSubrecordView';
-export type { SceneAction } from './SceneAction';
+export type { SceneAction, SceneActionKind } from './SceneAction';
 export type { SceneRecord } from './SceneRecord';
 export type { QuestRecord } from './QuestRecord';
 export type { BranchRecord } from './BranchRecord';

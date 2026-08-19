@@ -102,7 +102,8 @@ export const finalizeModImportJob = async (
           dialogGraphCtx,
         );
         logImport.info(
-          `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s)` +
+          `[Mod Import #${ctx.job.id}] Imported ${imported.scenes} scene(s) with ${imported.phases} dialog phase(s), ` +
+            `${imported.actions} action(s), ${imported.timingSensitive} timing-sensitive` +
             (imported.deletedScenes > 0
               ? `; removed ${imported.deletedScenes} stale scene(s)`
               : ''),

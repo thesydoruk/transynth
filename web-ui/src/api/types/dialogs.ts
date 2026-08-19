@@ -80,6 +80,8 @@ export type DialogGroup = {
   line_count: number;
   translated_count: number;
   qa_count: number;
+  /** Scene (or conversation) has authored timing that ignores `.fuz` length. */
+  timing_sensitive?: boolean;
 };
 
 /** One speaker turn of a transcript. */
@@ -111,5 +113,6 @@ export type DialogTranscript = {
   scope: DialogScope;
   key: string;
   label: string;
+  timing_sensitive?: boolean;
   entries: DialogEntry[];
 };

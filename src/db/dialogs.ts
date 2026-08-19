@@ -86,15 +86,17 @@ export const upsertDialogScene = async (
   formidHex: string,
   edid: string | null,
   questFormidHex: string | null,
+  timingSensitive = false,
 ): Promise<number> => {
   const { rows } = await db.query(
-    `INSERT INTO dialog_scenes(mod_id, formid_hex, edid, quest_formid_hex)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO dialog_scenes(mod_id, formid_hex, edid, quest_formid_hex, timing_sensitive)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT(mod_id, formid_hex) DO UPDATE SET
        edid = COALESCE(EXCLUDED.edid, dialog_scenes.edid),
-       quest_formid_hex = COALESCE(EXCLUDED.quest_formid_hex, dialog_scenes.quest_formid_hex)
+       quest_formid_hex = COALESCE(EXCLUDED.quest_formid_hex, dialog_scenes.quest_formid_hex),
+       timing_sensitive = EXCLUDED.timing_sensitive
      RETURNING id`,
-    [modId, formidHex, edid, questFormidHex],
+    [modId, formidHex, edid, questFormidHex, timingSensitive],
   );
   return rows[0].id;
 };
@@ -116,6 +118,51 @@ export const upsertDialogScenePhase = async (
        alias_id = EXCLUDED.alias_id
      RETURNING id`,
     [sceneId, phaseOrder, aliasId, topicId],
+  );
+  return rows[0].id;
+};
+
+export type DialogSceneActionInsert = {
+  actionType: string;
+  aliasId: number;
+  topicId: number | null;
+  startPhase: number;
+  endPhase: number;
+  timerMinSeconds: number | null;
+  timerMaxSeconds: number | null;
+  loopMin: number | null;
+  loopMax: number | null;
+  flags: number;
+  startSceneFormidHex: string | null;
+};
+
+/** Insert one extracted SCEN action (dialogue, timer, package, or FO4 extra). */
+export const insertDialogSceneAction = async (
+  db: Tx,
+  sceneId: number,
+  action: DialogSceneActionInsert,
+): Promise<number> => {
+  const { rows } = await db.query(
+    `INSERT INTO dialog_scene_actions(
+       scene_id, action_type, alias_id, topic_id, start_phase, end_phase,
+       timer_min_seconds, timer_max_seconds, loop_min, loop_max, flags,
+       start_scene_formid_hex
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id`,
+    [
+      sceneId,
+      action.actionType,
+      action.aliasId,
+      action.topicId,
+      action.startPhase,
+      action.endPhase,
+      action.timerMinSeconds,
+      action.timerMaxSeconds,
+      action.loopMin,
+      action.loopMax,
+      action.flags,
+      action.startSceneFormidHex,
+    ],
   );
   return rows[0].id;
 };

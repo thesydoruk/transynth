@@ -1,7 +1,7 @@
 import type { SceneAction } from './SceneAction';
 
 /**
- * Parsed SCEN record containing an ordered sequence of dialog actions.
+ * Parsed SCEN record: dialogue plus timing/choreography actions.
  */
 export interface SceneRecord {
   /** FormID of the SCEN record (8-char hex). */
@@ -10,6 +10,6 @@ export interface SceneRecord {
   edid: string;
   /** Quest FormID that owns this scene (from PNAM, 8-char hex, may be null). */
   questFormId: string | null;
-  /** Ordered dialog actions extracted from the scene phases. */
+  /** Actions in start-phase order (dialogue, timer, package, FO4 extras). */
   actions: SceneAction[];
 }

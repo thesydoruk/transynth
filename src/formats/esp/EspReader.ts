@@ -67,6 +67,7 @@ export type {
   EspSubrecordView,
   QuestRecord,
   SceneAction,
+  SceneActionKind,
   SceneRecord,
   VoiceTypeRecord,
 } from '../types';
@@ -187,14 +188,13 @@ export class EspReader {
   }
 
   /**
-   * Extract all SCEN records that contain dialog actions.
+   * Extract SCEN records that contain at least one recognized action.
    *
-   * Walks the entire plugin file, collecting scene records where at least one
-   * action references a DIAL topic (via the DATA subrecord inside an action
-   * block).  Actions are ordered by their start phase, so the resulting array
-   * reflects the in-game dialog sequence.
+   * Dialogue, package, timer, and FO4 player-dialogue / start-scene / radio
+   * actions are kept. Topic-bearing actions still drive the transcript; the
+   * others mark scenes whose timing is authored independently of `.fuz` length.
    *
-   * @returns Array of {@link SceneRecord} values (only scenes with dialog).
+   * @returns Array of {@link SceneRecord} values.
    */
   extractScenes(): SceneRecord[] {
     return this.sceneExtractor.extractScenes();

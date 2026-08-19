@@ -9,7 +9,9 @@ export {
   upsertDialogEdge,
   upsertDialogScene,
   upsertDialogScenePhase,
+  insertDialogSceneAction,
 } from './dialogs';
+export type { DialogSceneActionInsert } from './dialogs';
 export {
   upsertDialogQuest,
   replaceDialogQuestStages,
