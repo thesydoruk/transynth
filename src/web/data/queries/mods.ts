@@ -82,6 +82,17 @@ export const getMod = async (db: Tx, id: number) => {
   return rows[0];
 };
 
+export const getModsByIds = async (db: Tx, ids: number[]) => {
+  if (ids.length === 0) return [];
+  const { rows } = await db.query<{
+    id: number;
+    name: string;
+    abs_path: string | null;
+    game: string | null;
+  }>(`SELECT id, name, abs_path, game FROM mods WHERE id = ANY($1::int[])`, [ids]);
+  return rows;
+};
+
 /**
  * Languages actually present on a mod (source `strings` + target `translations`).
  * Used by apply-from-mod and editor language pickers.

@@ -46,6 +46,8 @@ type ModsPageJobListProps = {
   onToggleBatchMenu: (e: React.MouseEvent) => void;
   onCloseBatchMenu: () => void;
   onBatchDeleteAll: () => void;
+  onBatchExportLangpack: () => void;
+  exportingLangpack: boolean;
   onImportStart: (job: UnifiedJob) => void;
   onDeleteModJob: (job: ModImportJob) => void;
   onDeleteSimpleJob: (kind: 'eet' | 'csv', name: string, id: number) => void;
@@ -85,6 +87,8 @@ export const ModsPageJobList = ({
   onToggleBatchMenu,
   onCloseBatchMenu,
   onBatchDeleteAll,
+  onBatchExportLangpack,
+  exportingLangpack,
   onImportStart,
   onDeleteModJob,
   onDeleteSimpleJob,
@@ -141,7 +145,9 @@ export const ModsPageJobList = ({
         onClearSelection={onClearSelection}
         onToggleBatchMenu={onToggleBatchMenu}
         onBatchDeleteAll={onBatchDeleteAll}
+        onBatchExportLangpack={onBatchExportLangpack}
         onCloseBatchMenu={onCloseBatchMenu}
+        exportingLangpack={exportingLangpack}
       />
     )}
 
@@ -162,6 +168,8 @@ export const ModsPageJobList = ({
       onClearRows={onClearRows}
       onDeleteAll={onDeleteAll}
       onDeleteImport={onDeleteImport}
+      onExportLangpack={onBatchExportLangpack}
+      exportingLangpack={exportingLangpack}
     />
   </div>
 );

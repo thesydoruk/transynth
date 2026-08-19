@@ -4,10 +4,12 @@ import rowS from './UnifiedJobRow/UnifiedJobRow.module.scss';
 export interface ModDataMenuItemsProps {
   clearingRows?: boolean;
   deletingAll?: boolean;
-  /** When true, only batch-capable actions are shown (currently delete all). */
+  exportingLangpack?: boolean;
+  /** When true, only batch-capable actions are shown (export + delete). */
   batchOnly?: boolean;
   onClearRows: () => void;
   onDeleteAll: () => void;
+  onExportLangpack?: () => void;
   onAfterAction?: () => void;
 }
 
@@ -15,16 +17,32 @@ export interface ModDataMenuItemsProps {
 export const ModDataMenuItems = ({
   clearingRows,
   deletingAll,
+  exportingLangpack,
   batchOnly,
   onClearRows,
   onDeleteAll,
+  onExportLangpack,
   onAfterAction,
 }: ModDataMenuItemsProps) => {
   const { t } = useTranslation();
-  const busy = clearingRows || deletingAll;
+  const busy = clearingRows || deletingAll || exportingLangpack;
 
   return (
     <>
+      {batchOnly && onExportLangpack && (
+        <button
+          type="button"
+          onClick={() => {
+            onExportLangpack();
+            onAfterAction?.();
+          }}
+          className={rowS.menuItem}
+          disabled={busy}
+        >
+          <span className={rowS.menuIcon}>📄</span>
+          <span>{exportingLangpack ? t('mods.exportingLangpack') : t('mods.exportLangpack')}</span>
+        </button>
+      )}
       {!batchOnly && (
         <button
           type="button"

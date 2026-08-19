@@ -81,7 +81,7 @@ export const ModsPage = () => {
     clearModSelection: selection.clearModSelection,
   });
 
-  const { buildExportActions } = useModExport();
+  const { buildExportActions, runBatchLangpackExport, exportingBatchLangpack } = useModExport();
 
   const upload = useModUpload({
     gameId,
@@ -180,6 +180,11 @@ export const ModsPage = () => {
           onBatchDeleteAll={() =>
             deleteActions.requestDeleteMods(selection.selectedModsForDelete())
           }
+          onBatchExportLangpack={() => {
+            const modIds = selection.selectedModsForDelete().map((mod) => mod.id);
+            void runBatchLangpackExport(modIds, srcLang, targetLang);
+          }}
+          exportingLangpack={exportingBatchLangpack}
           onImportStart={handleImportStart}
           onDeleteModJob={deleteActions.setDeleteModalJob}
           onDeleteSimpleJob={(kind, name, id) =>

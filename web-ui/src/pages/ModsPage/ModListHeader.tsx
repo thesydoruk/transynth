@@ -15,7 +15,9 @@ type ModListHeaderProps = {
   onClearSelection: () => void;
   onToggleBatchMenu: (e: React.MouseEvent) => void;
   onBatchDeleteAll: () => void;
+  onBatchExportLangpack: () => void;
   onCloseBatchMenu: () => void;
+  exportingLangpack: boolean;
 };
 
 export const ModListHeader = ({
@@ -30,7 +32,9 @@ export const ModListHeader = ({
   onClearSelection,
   onToggleBatchMenu,
   onBatchDeleteAll,
+  onBatchExportLangpack,
   onCloseBatchMenu,
+  exportingLangpack,
 }: ModListHeaderProps) => {
   const { t } = useTranslation();
 
@@ -42,7 +46,7 @@ export const ModListHeader = ({
           type="checkbox"
           checked={allModsSelected}
           onChange={onToggleSelectAll}
-          disabled={deletingAll}
+          disabled={deletingAll || exportingLangpack}
         />
         {selectedModCount > 0
           ? t('mods.selectedCount', { count: selectedModCount })
@@ -54,7 +58,7 @@ export const ModListHeader = ({
             type="button"
             className={s.selectionBtn}
             onClick={onClearSelection}
-            disabled={deletingAll}
+            disabled={deletingAll || exportingLangpack}
           >
             {t('mods.clearSelection')}
           </button>
@@ -63,7 +67,7 @@ export const ModListHeader = ({
               <button
                 type="button"
                 className={s.selectionBtn}
-                disabled={deletingAll}
+                disabled={deletingAll || exportingLangpack}
                 onClick={onToggleBatchMenu}
               >
                 {t('mods.batchActions')} ⋯
@@ -72,12 +76,14 @@ export const ModListHeader = ({
                 <div className={rowS.menuList}>
                   <ModDataMenuItems
                     deletingAll={deletingAll}
+                    exportingLangpack={exportingLangpack}
                     batchOnly
                     onClearRows={() => {}}
                     onDeleteAll={() => {
                       onBatchDeleteAll();
                       onCloseBatchMenu();
                     }}
+                    onExportLangpack={onBatchExportLangpack}
                     onAfterAction={onCloseBatchMenu}
                   />
                 </div>

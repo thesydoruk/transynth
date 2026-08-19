@@ -34,6 +34,8 @@ type ModWorkspaceListProps = {
   onClearRows: (modId: number, name: string) => void;
   onDeleteAll: (mods: Array<{ id: number; name: string }>) => void;
   onDeleteImport: (job: ModImportJob) => void;
+  onExportLangpack?: () => void;
+  exportingLangpack?: boolean;
 };
 
 export const ModWorkspaceList = ({
@@ -53,6 +55,8 @@ export const ModWorkspaceList = ({
   onClearRows,
   onDeleteAll,
   onDeleteImport,
+  onExportLangpack,
+  exportingLangpack,
 }: ModWorkspaceListProps) =>
   mods.map((mod) => {
     const importJob = importJobByModId.get(mod.id) ?? null;
@@ -116,6 +120,8 @@ export const ModWorkspaceList = ({
           )
         }
         onDeleteImport={importJob ? () => onDeleteImport(importJob) : undefined}
+        onExportLangpack={onExportLangpack}
+        exportingLangpack={exportingLangpack}
       />
     );
   });

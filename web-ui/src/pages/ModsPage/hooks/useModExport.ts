@@ -113,5 +113,55 @@ export const useModExport = () => {
     [exportBusy, runModExport, t],
   );
 
-  return { buildExportActions };
+  const runBatchLangpackExport = useCallback(
+    async (modIds: number[], exportSrcLang: string, exportTgtLang: string) => {
+      if (modIds.length === 0) return;
+      const appJobId = `export-batch-langpack-${Date.now()}`;
+      const now = Date.now();
+      const label = `${t('mods.exportLangpack')} · ${t('mods.selectedCount', { count: modIds.length })}`;
+      upsertAppJob({
+        id: appJobId,
+        kind: 'export',
+        label,
+        status: 'running',
+        progress: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      setExportBusy('batch:langpack');
+      try {
+        await api.mods.exportLangpackBatch(modIds, exportSrcLang, exportTgtLang);
+        upsertAppJob({
+          id: appJobId,
+          kind: 'export',
+          label,
+          status: 'completed',
+          progress: 100,
+          createdAt: now,
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        upsertAppJob({
+          id: appJobId,
+          kind: 'export',
+          label,
+          status: 'failed',
+          progress: null,
+          error: String(err),
+          createdAt: now,
+          updatedAt: Date.now(),
+        });
+        window.alert(String(err));
+      } finally {
+        setExportBusy(null);
+      }
+    },
+    [t],
+  );
+
+  return {
+    buildExportActions,
+    runBatchLangpackExport,
+    exportingBatchLangpack: exportBusy === 'batch:langpack',
+  };
 };

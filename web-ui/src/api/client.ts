@@ -29,8 +29,20 @@ export const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
  * @param path - API endpoint path
  * @param fallbackName - Filename to use if the server doesn't provide one
  */
-export const downloadBinary = async (path: string, fallbackName: string): Promise<void> => {
-  const res = await fetch(`${BASE}${path}`, { credentials: 'include' });
+export const downloadBinary = async (
+  path: string,
+  fallbackName: string,
+  init?: RequestInit,
+): Promise<void> => {
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) ?? {}) };
+  if (init?.body) {
+    headers['Content-Type'] ??= 'application/json';
+  }
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    ...init,
+    headers,
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);

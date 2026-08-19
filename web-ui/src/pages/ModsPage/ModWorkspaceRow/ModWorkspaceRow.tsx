@@ -24,6 +24,8 @@ export interface ModWorkspaceRowProps {
   onClearRows: () => void;
   onDeleteAll: () => void;
   onDeleteImport?: () => void;
+  onExportLangpack?: () => void;
+  exportingLangpack?: boolean;
   onAiTranslateTm?: () => void;
   onAiTranslateLlm?: () => void;
   onAiTranslateStop?: () => void;
@@ -52,6 +54,8 @@ export const ModWorkspaceRow = ({
   onClearRows,
   onDeleteAll,
   onDeleteImport,
+  onExportLangpack,
+  exportingLangpack,
   onAiTranslateTm,
   onAiTranslateLlm,
   onAiTranslateStop,
@@ -203,9 +207,11 @@ export const ModWorkspaceRow = ({
                 <ModDataMenuItems
                   clearingRows={clearingRows}
                   deletingAll={deletingAll}
+                  exportingLangpack={exportingLangpack}
                   batchOnly={multiSelectActive}
                   onClearRows={onClearRows}
                   onDeleteAll={onDeleteAll}
+                  onExportLangpack={onExportLangpack}
                   onAfterAction={() => setMenuOpen(false)}
                 />
                 {!multiSelectActive && onDeleteImport && (
