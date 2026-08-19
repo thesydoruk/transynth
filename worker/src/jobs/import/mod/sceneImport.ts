@@ -75,7 +75,6 @@ const persistAction = async (
     flags: action.flags,
     startSceneFormidHex: action.startSceneFormId,
   });
-  return topicId;
 };
 
 /**
