@@ -1,0 +1,378 @@
+[
+  {
+    "formId": "002261A4",
+    "term": "Gen 2 Synth"
+  },
+  {
+    "formId": "000A96BF",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001A6D64",
+    "term": "Workshop Turret"
+  },
+  {
+    "formId": "00166729",
+    "term": "Human"
+  },
+  {
+    "formId": "0011EB96",
+    "term": "Human"
+  },
+  {
+    "formId": "0011D83F",
+    "term": "Human"
+  },
+  {
+    "formId": "0010BD65",
+    "term": "Gen 2 Synth"
+  },
+  {
+    "formId": "00108019",
+    "term": "Liberty Prime"
+  },
+  {
+    "formId": "000E12A6",
+    "term": "Mirelurk Queen"
+  },
+  {
+    "formId": "000EAFB6",
+    "term": "Ghoul"
+  },
+  {
+    "formId": "000E8D09",
+    "term": "Gen 1 Synth"
+  },
+  {
+    "formId": "000DFB33",
+    "term": "Protectron"
+  },
+  {
+    "formId": "000D9804",
+    "term": "Gorilla"
+  },
+  {
+    "formId": "000D8417",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "000D77E3",
+    "term": "Vertibird"
+  },
+  {
+    "formId": "000C9ACF",
+    "term": "Cat"
+  },
+  {
+    "formId": "000BB7D9",
+    "term": "Behemoth"
+  },
+  {
+    "formId": "000B7F91",
+    "term": "MirelurkKing"
+  },
+  {
+    "formId": "000B28D3",
+    "term": "Bubble Turret"
+  },
+  {
+    "formId": "000B1F08",
+    "term": "Tripod Turret"
+  },
+  {
+    "formId": "000AE0B7",
+    "term": "SentryBot"
+  },
+  {
+    "formId": "000A563A",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "000A0F2F",
+    "term": "Yao Guai"
+  },
+  {
+    "formId": "00090C33",
+    "term": "Molerat"
+  },
+  {
+    "formId": "00064C60",
+    "term": "MirelurkHunter"
+  },
+  {
+    "formId": "0007ED1D",
+    "term": "Radstag"
+  },
+  {
+    "formId": "0006B4EC",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "000636AB",
+    "term": "RadScorpion"
+  },
+  {
+    "formId": "0005FBB1",
+    "term": "Stingwing"
+  },
+  {
+    "formId": "00029463",
+    "term": "Bloatfly"
+  },
+  {
+    "formId": "0002047E",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "0004716C",
+    "term": "RadRoach"
+  },
+  {
+    "formId": "0001D810",
+    "term": "Molerat"
+  },
+  {
+    "formId": "0001D31E",
+    "term": "PowerArmor"
+  },
+  {
+    "formId": "00013746",
+    "term": "Human"
+  },
+  {
+    "formId": "00000019",
+    "term": "Default"
+  },
+  {
+    "formId": "0001DB4A",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0002456D",
+    "term": "Bloodbug"
+  },
+  {
+    "formId": "00023FFC",
+    "term": "Mirelurk"
+  },
+  {
+    "formId": "000359F4",
+    "term": "MrHandy"
+  },
+  {
+    "formId": "0100EA09",
+    "term": "PowerArmor"
+  },
+  {
+    "formId": "0100D5FB",
+    "term": "MrHandy"
+  },
+  {
+    "formId": "01003DEB",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "01002804",
+    "term": "Spotlight"
+  },
+  {
+    "formId": "010027B9",
+    "term": "MrHandy"
+  },
+  {
+    "formId": "01001F14",
+    "term": "Default"
+  },
+  {
+    "formId": "01001129",
+    "term": "Robobrain"
+  },
+  {
+    "formId": "01000C05",
+    "term": "MrHandy"
+  },
+  {
+    "formId": "01000BF7",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "01000A8E",
+    "term": "MirelurkKing"
+  },
+  {
+    "formId": "01000A8D",
+    "term": "MirelurkHunter"
+  },
+  {
+    "formId": "01000A64",
+    "term": "Stingwing"
+  },
+  {
+    "formId": "01000A63",
+    "term": "RadRoach"
+  },
+  {
+    "formId": "01000A62",
+    "term": "Bloodbug"
+  },
+  {
+    "formId": "01000A61",
+    "term": "Bloatfly"
+  },
+  {
+    "formId": "01000A5F",
+    "term": "Yao Guai"
+  },
+  {
+    "formId": "01000A5D",
+    "term": "Radstag"
+  },
+  {
+    "formId": "01000A5C",
+    "term": "RadScorpion"
+  },
+  {
+    "formId": "01000A5B",
+    "term": "Mirelurk"
+  },
+  {
+    "formId": "01000A56",
+    "term": "Gorilla"
+  },
+  {
+    "formId": "01000A54",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "01000A52",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "01000CD0",
+    "term": "Human"
+  },
+  {
+    "formId": "01000C82",
+    "term": "Molerat"
+  },
+  {
+    "formId": "01000C7F",
+    "term": "Molerat"
+  },
+  {
+    "formId": "01000C79",
+    "term": "Cat"
+  },
+  {
+    "formId": "01000C78",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0104E28E",
+    "term": "Gulper"
+  },
+  {
+    "formId": "01042EBB",
+    "term": "Gen 2 Synth"
+  },
+  {
+    "formId": "0103CF1E",
+    "term": "Stingwing"
+  },
+  {
+    "formId": "01033E79",
+    "term": "RoboBrain"
+  },
+  {
+    "formId": "0102E010",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0102BEE6",
+    "term": "PowerArmor"
+  },
+  {
+    "formId": "010247C1",
+    "term": "Gulper"
+  },
+  {
+    "formId": "0100FEEA",
+    "term": "Angler"
+  },
+  {
+    "formId": "0100C6A7",
+    "term": "Human"
+  },
+  {
+    "formId": "01009591",
+    "term": "Bubble Turret"
+  },
+  {
+    "formId": "01000AC9",
+    "term": "Human"
+  },
+  {
+    "formId": "010008AB",
+    "term": "Human"
+  },
+  {
+    "formId": "0104CBCE",
+    "term": "Gorilla"
+  },
+  {
+    "formId": "0103E565",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0103E562",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0103637A",
+    "term": "Gatorclaw"
+  },
+  {
+    "formId": "01033169",
+    "term": "Stingwing"
+  },
+  {
+    "formId": "01023435",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "0101A283",
+    "term": "PowerArmor"
+  },
+  {
+    "formId": "01019126",
+    "term": "Bubble Turret"
+  },
+  {
+    "formId": "0100EFF4",
+    "term": "Human"
+  },
+  {
+    "formId": "0100D329",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0100CE5E",
+    "term": "Ant"
+  },
+  {
+    "formId": "0100C606",
+    "term": "Rad-Rat"
+  },
+  {
+    "formId": "0100B028",
+    "term": "Swarm"
+  },
+  {
+    "formId": "0100AAFE",
+    "term": "Cave Cricket"
+  },
+  {
+    "formId": "0100A1A6",
+    "term": "Bloodworm"
+  }
+]

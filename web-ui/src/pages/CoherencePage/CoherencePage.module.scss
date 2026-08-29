@@ -1,0 +1,153 @@
+/* ── CoherencePage — SCSS Module ─────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.title {
+  color: var(--text-bright);
+  margin: 0;
+}
+
+.description {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.langLabel {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.totalBadge {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.resolveAllBtn {
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Empty / loading state ───────────────────────────────────────────────── */
+
+.empty {
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+.emptyState {
+  padding: 24px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyText {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyBtn {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+  }
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.pageInfo {
+  font-size: 13px;
+  color: var(--text-dim);
+}

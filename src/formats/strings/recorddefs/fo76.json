@@ -1,0 +1,20 @@
+{
+  "extends": "fo4",
+  "explicit": [
+    ["RACE", "SNAM", "STRINGS"],
+    ["ENTM", "NNAM", "STRINGS"],
+    ["COBJ", "HNAM", "STRINGS"],
+    ["QUST", "NAM1", "STRINGS"],
+    ["CNCY", "SNAM", "STRINGS"],
+    ["LVLN", "ONAM", "STRINGS"],
+    ["COEN", "NNAM", "STRINGS"],
+    ["LSCR", "LSST", "STRINGS"],
+    ["QUST", "PEWR", "STRINGS"],
+    ["QUST", "QRWT", "STRINGS"],
+    ["QUST", "PBLT", "STRINGS"],
+    ["QUST", "PBRT", "STRINGS"],
+    ["CHAL", "MNAM", "STRINGS"],
+    ["LOUT", "NAM0", "STRINGS"],
+    ["QMDL", "QMOT", "STRINGS"]
+  ]
+}

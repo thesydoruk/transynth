@@ -1,0 +1,1 @@
+export { GameModDetailsPage } from './GameModDetailsPage';

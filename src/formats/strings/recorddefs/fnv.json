@@ -1,0 +1,27 @@
+{
+  "explicit": [
+    ["INFO", "NAM1", "ILSTRINGS"],
+    ["QUST", "CNAM", "DLSTRINGS"],
+    ["QUST", "NNAM", "STRINGS"],
+    ["MESG", "ITXT", "STRINGS"],
+    ["REGN", "RDMP", "STRINGS"],
+    ["PERK", "EPF2", "STRINGS"],
+    ["FLOR", "RNAM", "STRINGS"],
+    ["INFO", "RNAM", "STRINGS"],
+    ["BPTD", "BPTN", "STRINGS"],
+    ["FACT", "MNAM", "STRINGS"],
+    ["FACT", "FNAM", "STRINGS"],
+    ["AMMO", "ONAM", "STRINGS"],
+    ["ACTI", "XATO", "STRINGS"],
+    ["REFR", "XATO", "STRINGS"],
+    ["TERM", "ITXT", "STRINGS"],
+    ["TERM", "RNAM", "STRINGS"],
+    ["AVIF", "ANAM", "STRINGS"],
+    ["GMST", "DATA", "STRINGS"],
+    ["PERK", "EPFD", "STRINGS"]
+  ],
+  "fallbacks": [
+    ["FULL", "STRINGS"],
+    ["DESC", "DLSTRINGS"]
+  ]
+}

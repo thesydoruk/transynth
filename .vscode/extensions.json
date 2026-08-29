@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker",
+    "ckolkman.vscode-postgres",
+    "vitest.explorer",
+    "github.copilot",
+    "github.copilot-chat",
+    "eamodio.gitlens",
+    "bradlc.vscode-tailwindcss"
+  ]
+}

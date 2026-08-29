@@ -1,0 +1,286 @@
+import { useMemo, useRef, type UIEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
+import { Button } from '../../../../components/Button';
+import {
+  editorCapabilities,
+  formatDiscoPoKey,
+  type EditorCapabilities,
+} from '../../editorCapabilities';
+import { SuggestionsPanel } from '../SuggestionsPanel';
+import { QAPanel } from '../QAPanel';
+import { HistoryPanel } from '../HistoryPanel';
+import { getPlaceholderParts } from './utils';
+import { PexSourcePanel } from './PexSourcePanel';
+import { useTabContentHeight } from '../../hooks/useTabContentHeight';
+import styles from './DetailPanel.module.scss';
+
+/** Bottom-panel tab identifiers. */
+export type BottomTab = 'suggestions' | 'qa' | 'history';
+
+/** Props for the detail editing panel below the string grid. */
+export interface DetailPanelProps {
+  modId: number;
+  /** The row currently being edited. */
+  activeRow: StringRow;
+  /** Working copy of the translation text. */
+  draftTranslation: string;
+  srcLang: string;
+  targetLang: string;
+  /** Currently selected sub-tab (suggestions / qa / history). */
+  activeTab: BottomTab;
+  /** Visual indicator for the save button. */
+  saveIndicator: 'idle' | 'saving' | 'saved';
+  savePending: boolean;
+  /** Maximum character length rule (if any) for the active row. */
+  activeMaxLength: number | null;
+
+  /** RAG reference examples for the active row. */
+  suggestions: RagSuggestion[];
+  /** QA issues for the active row. */
+  qaIssues: QAIssue[];
+  /** Edit history for the active row. */
+  history: TranslationHistoryEntry[];
+
+  /** Ref attached to the translation textarea (for external focus). */
+  translAreaRef: React.RefObject<HTMLTextAreaElement | null>;
+
+  onDraftChange: (text: string) => void;
+  onSave: () => void;
+  onCopySource: () => void;
+  onTabChange: (tab: BottomTab) => void;
+  onOpenBookEditor: () => void;
+  capabilities?: EditorCapabilities;
+}
+
+/**
+ * Bottom detail panel shown when a grid row is active.
+ *
+ * Contains two side-by-side text areas (source / translation), action
+ * buttons, a character count / max-length indicator, and a tabbed
+ * sub-panel for TM suggestions, QA issues, and edit history.
+ */
+export const DetailPanel = ({
+  modId,
+  activeRow,
+  draftTranslation,
+  srcLang,
+  targetLang,
+  activeTab,
+  saveIndicator,
+  savePending,
+  activeMaxLength,
+  suggestions,
+  qaIssues,
+  history,
+  translAreaRef,
+  onDraftChange,
+  onSave,
+  onCopySource,
+  onTabChange,
+  onOpenBookEditor,
+  capabilities: capabilitiesProp,
+}: DetailPanelProps) => {
+  const { t } = useTranslation();
+  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const { tabContentHeight, isResizing, startTabContentResize } =
+    useTabContentHeight(detailPanelRef);
+  const placeholderParts = useMemo(() => getPlaceholderParts(draftTranslation), [draftTranslation]);
+
+  const maxLengthRemaining =
+    activeMaxLength != null ? activeMaxLength - draftTranslation.length : null;
+  const maxLengthExceeded = maxLengthRemaining != null && maxLengthRemaining < 0;
+  const maxLengthNear =
+    maxLengthRemaining != null && maxLengthRemaining >= 0 && maxLengthRemaining <= 20;
+  const syncOverlayScroll = (e: UIEvent<HTMLTextAreaElement>) => {
+    const overlay = e.currentTarget.previousElementSibling;
+    if (!(overlay instanceof HTMLDivElement)) return;
+    overlay.scrollTop = e.currentTarget.scrollTop;
+    overlay.scrollLeft = e.currentTarget.scrollLeft;
+  };
+
+  const isPex = !capabilities.isDisco && activeRow.signature === 'PEX';
+  const showBookEditor =
+    !capabilities.isDisco && (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
+
+  return (
+    <div ref={detailPanelRef} className={styles.detailPanel}>
+      <div className={styles.detailPanels}>
+        {/* Source text — PEX rows show decompiled script instead of a duplicate source field */}
+        <div className={styles.textPanel}>
+          <div className={styles.panelLabel}>
+            {isPex
+              ? t('modEditor.pexSourceTitle')
+              : t('modEditor.sourceTextLabel', { lang: srcLang.toUpperCase() })}
+          </div>
+          <div className={styles.textPanelBody}>
+            {isPex ? (
+              <PexSourcePanel modId={modId} activeRow={activeRow} />
+            ) : (
+              <>
+                {capabilities.isDisco && (
+                  <div className={styles.speakerContext} title={activeRow.path ?? undefined}>
+                    {t('modEditor.discoKeyLabel')}
+                    {formatDiscoPoKey(activeRow.path) || '—'}
+                    {activeRow.edid?.trim()
+                      ? ` · ${t('modEditor.discoAudioLabel')}${activeRow.edid}`
+                      : ''}
+                  </div>
+                )}
+                {!capabilities.isDisco && activeRow.context && (
+                  <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
+                    {t('modEditor.speakerContextLabel')}
+                    {activeRow.context}
+                  </div>
+                )}
+                <textarea readOnly value={activeRow.source} className={styles.sourceArea} />
+              </>
+            )}
+          </div>
+          <div className={styles.textPanelFooter}>
+            {!isPex && (
+              <div className={styles.charCount}>
+                {t('modEditor.charCount', { count: activeRow.source.length })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Translation text */}
+        <div className={styles.textPanel}>
+          <div className={styles.panelLabel}>
+            {t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}
+            {showBookEditor && (
+              <button
+                className={styles.btnSec}
+                style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: '12px' }}
+                onClick={onOpenBookEditor}
+                title={t('bookEditor.openBtn')}
+              >
+                📖 {t('bookEditor.openBtn')}
+              </button>
+            )}
+          </div>
+          <div className={styles.textPanelBody}>
+            <div className={styles.translAreaWrap}>
+              <div className={styles.translAreaOverlay} aria-hidden="true">
+                <div className={styles.translAreaOverlayContent}>
+                  {draftTranslation.length === 0 ? (
+                    <span className={styles.translPlaceholder}>
+                      {t('modEditor.enterTranslation')}
+                    </span>
+                  ) : (
+                    placeholderParts.map((part, index) => (
+                      <span
+                        key={`${part.isPlaceholder ? 'ph' : 'txt'}-${index}`}
+                        className={part.isPlaceholder ? styles.placeholderToken : undefined}
+                      >
+                        {part.text}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              <textarea
+                ref={translAreaRef}
+                value={draftTranslation}
+                onChange={(e) => onDraftChange(e.target.value)}
+                className={styles.translArea}
+                onScroll={syncOverlayScroll}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSave();
+                }}
+                placeholder={t('modEditor.enterTranslation')}
+              />
+            </div>
+          </div>
+          <div className={styles.textPanelFooter}>
+            <div className={styles.detailBtnBar}>
+              <div className={styles.charInfo}>
+                <div className={styles.charCount}>
+                  {t('modEditor.charCount', { count: draftTranslation.length })}
+                </div>
+                {activeMaxLength != null && (
+                  <div
+                    className={`${styles.maxLengthHint} ${maxLengthExceeded ? styles.maxLengthHintError : maxLengthNear ? styles.maxLengthHintWarn : styles.maxLengthHintOk}`}
+                  >
+                    {t('modEditor.maxLength', { max: activeMaxLength })}
+                    {' · '}
+                    {maxLengthExceeded
+                      ? t('modEditor.maxLengthExceeded', {
+                          count: Math.abs(maxLengthRemaining ?? 0),
+                        })
+                      : t('modEditor.maxLengthRemaining', { count: maxLengthRemaining ?? 0 })}
+                  </div>
+                )}
+              </div>
+              <div className={styles.detailSaveRow}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onCopySource}
+                  title={t('modEditor.copySourceToTranslation')}
+                >
+                  {t('modEditor.copySrc')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onSave}
+                  disabled={savePending}
+                  title="Ctrl+Enter"
+                >
+                  {savePending
+                    ? t('modEditor.saving')
+                    : saveIndicator === 'saved'
+                      ? t('modEditor.saved')
+                      : t('common.save')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={`${styles.tabContentResizeHandle} ${isResizing ? styles.tabContentResizeHandleActive : ''}`}
+        onMouseDown={startTabContentResize}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={t('modEditor.resizeTabContent')}
+        aria-valuenow={tabContentHeight}
+        aria-valuemin={80}
+      />
+
+      {/* Bottom tabs */}
+      <div className={styles.tabs}>
+        {(['suggestions', 'qa', 'history'] as BottomTab[]).map((tab) => (
+          <button
+            key={tab}
+            className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
+            onClick={() => onTabChange(tab)}
+          >
+            {tab === 'suggestions'
+              ? t('modEditor.tabSuggestions')
+              : tab === 'qa'
+                ? t('modEditor.tabQa')
+                : t('modEditor.tabHistory')}
+          </button>
+        ))}
+      </div>
+      <div className={styles.tabContent} style={{ height: tabContentHeight }}>
+        <div className={styles.tabContentScroll}>
+          {activeTab === 'suggestions' && (
+            <SuggestionsPanel
+              suggestions={suggestions ?? []}
+              onApply={(text) => onDraftChange(text)}
+            />
+          )}
+          {activeTab === 'qa' && <QAPanel issues={qaIssues ?? []} />}
+          {activeTab === 'history' && <HistoryPanel items={history ?? []} />}
+        </div>
+      </div>
+    </div>
+  );
+};

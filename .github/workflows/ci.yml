@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web-ui/package-lock.json
+            worker/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Install web-ui dependencies
+        run: npm --prefix web-ui ci
+
+      - name: Install worker dependencies
+        run: npm --prefix worker ci
+        env:
+          HUSKY: '0'
+
+      - name: Prettier
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+      - name: web-ui tests
+        run: npm --prefix web-ui test
+
+      - name: web-ui build
+        run: npm run web:build

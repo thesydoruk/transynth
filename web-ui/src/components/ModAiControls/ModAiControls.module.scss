@@ -1,0 +1,24 @@
+.bar {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.compact {
+  gap: 4px;
+}
+
+.circularBar {
+  align-items: center;
+  gap: 8px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circularItem {
+  composes: menuItem;
+}

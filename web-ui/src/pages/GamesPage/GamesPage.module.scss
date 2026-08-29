@@ -1,0 +1,110 @@
+/**
+ * GamesPage styles — supported games tile grid.
+ *
+ * Layout overview:
+ *   .page        — centered outer wrapper with standard page padding
+ *   .title       — page heading
+ *   .subtitle    — short descriptive line under the heading
+ *   .grid        — auto-filling CSS grid of game tiles
+ *   .tileLink    — invisible anchor wrapper around each GameTile
+ *
+ * Tile-internal styles live in GameTile/GameTile.module.scss.
+ */
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+}
+
+.error {
+  color: var(--danger);
+  padding: 32px;
+  text-align: center;
+}
+
+.emptyState {
+  padding: 28px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--text-bright);
+  font-size: 18px;
+}
+
+.emptyText {
+  max-width: 720px;
+  margin: 10px auto 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
+/* ── Tile grid ────────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+/** Invisible anchor that wraps each GameTile card in the grid. */
+.tileLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}

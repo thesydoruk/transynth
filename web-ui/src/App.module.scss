@@ -1,0 +1,204 @@
+/* ── App.tsx — navigation bar SCSS Module ───────────────────────────────── */
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px;
+  height: 48px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--accent);
+  margin-right: 12px;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.activeLink {
+  color: var(--text-bright);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.contextStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contextBadge,
+.contextPlain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.contextBadge:hover {
+  border-color: var(--border-heavy);
+  color: var(--text-bright);
+}
+
+.contextLabel {
+  color: var(--text-dim);
+}
+
+.contextValue {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.userInfo {
+  color: var(--text-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roleBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.logoutBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border-heavy);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* Language selector in the nav bar */
+.langSwitch {
+  padding: 3px 6px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/** Theme toggle button in nav bar — compact icon button. */
+.themeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
+/** Settings icon button in nav bar — same visual style as theme toggle. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid var(--border-input);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
+.iconBtnActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid var(--border-heavy);
+  border-radius: 3px;
+  color: var(--text-bright);
+  cursor: pointer;
+  line-height: 1;
+  text-decoration: none;
+}
+
+/** Main content area — fills the viewport below the 48px nav bar. */
+.main {
+  min-height: calc(100vh - 48px);
+}
+
+.main:focus {
+  outline: none;
+}
+
+.skipLink {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 200;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  color: var(--text-bright);
+  border: 1px solid var(--border-heavy);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}

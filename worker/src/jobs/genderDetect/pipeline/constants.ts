@@ -1,0 +1,1 @@
+export const GENDER_DETECT_LLM_BATCH_SIZE = 12;

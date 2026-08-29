@@ -1,0 +1,622 @@
+[
+  {
+    "formId": "00109C7C",
+    "term": "Fox"
+  },
+  {
+    "formId": "00108272",
+    "term": "Breton"
+  },
+  {
+    "formId": "0010760A",
+    "term": "Nord"
+  },
+  {
+    "formId": "00106C10",
+    "term": "Wolf"
+  },
+  {
+    "formId": "001052A3",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "00104F45",
+    "term": "Deer"
+  },
+  {
+    "formId": "000F905F",
+    "term": "Dog"
+  },
+  {
+    "formId": "000F71DC",
+    "term": "Draugr"
+  },
+  {
+    "formId": "000F3903",
+    "term": "Spriggan"
+  },
+  {
+    "formId": "000EBE18",
+    "term": "Dragon Priest"
+  },
+  {
+    "formId": "000EB872",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "000F1AC4",
+    "term": "Dog"
+  },
+  {
+    "formId": "000F1182",
+    "term": "Wisp"
+  },
+  {
+    "formId": "000DE505",
+    "term": "Horse"
+  },
+  {
+    "formId": "000CD657",
+    "term": "Dog"
+  },
+  {
+    "formId": "000B6F95",
+    "term": "Essence of Magicka"
+  },
+  {
+    "formId": "000A919D",
+    "term": "Rabbit"
+  },
+  {
+    "formId": "00097A3D",
+    "term": "Breton"
+  },
+  {
+    "formId": "0007EAF3",
+    "term": "Nord"
+  },
+  {
+    "formId": "0006DC99",
+    "term": "Rabbit"
+  },
+  {
+    "formId": "000E7713",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "000CF89B",
+    "term": "Deer"
+  },
+  {
+    "formId": "000CDD84",
+    "term": "Werewolf"
+  },
+  {
+    "formId": "000CAE13",
+    "term": "Giant"
+  },
+  {
+    "formId": "000C3EDF",
+    "term": "Skeever"
+  },
+  {
+    "formId": "000B9FD7",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "000A82BA",
+    "term": "Old People Race"
+  },
+  {
+    "formId": "000A82B9",
+    "term": "Orc"
+  },
+  {
+    "formId": "00088884",
+    "term": "Wood Elf"
+  },
+  {
+    "formId": "00088846",
+    "term": "Redguard"
+  },
+  {
+    "formId": "00088845",
+    "term": "Khajiit"
+  },
+  {
+    "formId": "00088844",
+    "term": "Imperial"
+  },
+  {
+    "formId": "00088840",
+    "term": "High Elf"
+  },
+  {
+    "formId": "0008883D",
+    "term": "Dark Elf"
+  },
+  {
+    "formId": "0008883C",
+    "term": "Breton"
+  },
+  {
+    "formId": "0008883A",
+    "term": "Argonian"
+  },
+  {
+    "formId": "00088794",
+    "term": "Nord"
+  },
+  {
+    "formId": "000BA545",
+    "term": "MudCrab"
+  },
+  {
+    "formId": "000B7998",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "000A5601",
+    "term": "Chaurus"
+  },
+  {
+    "formId": "0009AA44",
+    "term": "Witchlight"
+  },
+  {
+    "formId": "0009AA3C",
+    "term": "Witchlight"
+  },
+  {
+    "formId": "00071E6A",
+    "term": "Invisible Race"
+  },
+  {
+    "formId": "0006FC4A",
+    "term": "Goat"
+  },
+  {
+    "formId": "00067CD8",
+    "term": "Old People Race"
+  },
+  {
+    "formId": "00053477",
+    "term": "Frostbite Spider"
+  },
+  {
+    "formId": "0004E785",
+    "term": "HighlandCow"
+  },
+  {
+    "formId": "0004E507",
+    "term": "Frostbite Spider"
+  },
+  {
+    "formId": "0002C65C",
+    "term": "Breton"
+  },
+  {
+    "formId": "0002C65B",
+    "term": "Nord"
+  },
+  {
+    "formId": "0002C65A",
+    "term": "Redguard"
+  },
+  {
+    "formId": "0002C659",
+    "term": "Imperial"
+  },
+  {
+    "formId": "00013749",
+    "term": "Wood Elf"
+  },
+  {
+    "formId": "00013748",
+    "term": "Redguard"
+  },
+  {
+    "formId": "00013747",
+    "term": "Orc"
+  },
+  {
+    "formId": "00013746",
+    "term": "Nord"
+  },
+  {
+    "formId": "00013745",
+    "term": "Khajiit"
+  },
+  {
+    "formId": "00013744",
+    "term": "Imperial"
+  },
+  {
+    "formId": "00013743",
+    "term": "High Elf"
+  },
+  {
+    "formId": "00013742",
+    "term": "Dark Elf"
+  },
+  {
+    "formId": "00013741",
+    "term": "Breton"
+  },
+  {
+    "formId": "00013740",
+    "term": "Argonian"
+  },
+  {
+    "formId": "0001320A",
+    "term": "Wolf"
+  },
+  {
+    "formId": "00013209",
+    "term": "Witchlight"
+  },
+  {
+    "formId": "00013208",
+    "term": "Wisp"
+  },
+  {
+    "formId": "00013206",
+    "term": "Snow Troll"
+  },
+  {
+    "formId": "00013205",
+    "term": "Troll"
+  },
+  {
+    "formId": "00013204",
+    "term": "Spriggan"
+  },
+  {
+    "formId": "00013203",
+    "term": "Slaughterfish"
+  },
+  {
+    "formId": "00013202",
+    "term": "Snowy Sabre Cat"
+  },
+  {
+    "formId": "00013201",
+    "term": "Skeever"
+  },
+  {
+    "formId": "00013200",
+    "term": "Sabre Cat"
+  },
+  {
+    "formId": "000131FF",
+    "term": "Mammoth"
+  },
+  {
+    "formId": "000131FE",
+    "term": "Ice Wraith"
+  },
+  {
+    "formId": "000131FD",
+    "term": "Horse"
+  },
+  {
+    "formId": "000131FC",
+    "term": "Horker"
+  },
+  {
+    "formId": "000131FB",
+    "term": "Hagraven"
+  },
+  {
+    "formId": "000131FA",
+    "term": "Goat"
+  },
+  {
+    "formId": "000131F9",
+    "term": "Giant"
+  },
+  {
+    "formId": "000131F8",
+    "term": "Frostbite Spider"
+  },
+  {
+    "formId": "000131F7",
+    "term": "Storm Atronach"
+  },
+  {
+    "formId": "000131F6",
+    "term": "Frost Atronach"
+  },
+  {
+    "formId": "000131F5",
+    "term": "Flame Atronach"
+  },
+  {
+    "formId": "000131F4",
+    "term": "Falmer"
+  },
+  {
+    "formId": "000131F3",
+    "term": "Dwarven Spider"
+  },
+  {
+    "formId": "000131F2",
+    "term": "Dwarven Sphere"
+  },
+  {
+    "formId": "000131F1",
+    "term": "Dwarven Centurion"
+  },
+  {
+    "formId": "000131F0",
+    "term": "Dremora"
+  },
+  {
+    "formId": "000131EF",
+    "term": "Dragon Priest"
+  },
+  {
+    "formId": "000131EE",
+    "term": "Dog"
+  },
+  {
+    "formId": "000131ED",
+    "term": "Deer"
+  },
+  {
+    "formId": "000131EB",
+    "term": "Chaurus"
+  },
+  {
+    "formId": "000131E9",
+    "term": "Snow Bear"
+  },
+  {
+    "formId": "000131E8",
+    "term": "Cave Bear"
+  },
+  {
+    "formId": "000131E7",
+    "term": "Bear"
+  },
+  {
+    "formId": "00012E82",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "00000D53",
+    "term": "Draugr"
+  },
+  {
+    "formId": "00000019",
+    "term": "Default Race"
+  },
+  {
+    "formId": "020122B7",
+    "term": "Dog"
+  },
+  {
+    "formId": "02010D00",
+    "term": "Gargoyle"
+  },
+  {
+    "formId": "0200E88A",
+    "term": "Nord"
+  },
+  {
+    "formId": "02003D02",
+    "term": "Deathhound"
+  },
+  {
+    "formId": "02003D01",
+    "term": "Dog"
+  },
+  {
+    "formId": "02002AE0",
+    "term": "Witchlight"
+  },
+  {
+    "formId": "0201AACC",
+    "term": "Falmer"
+  },
+  {
+    "formId": "02019FD3",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "02019D86",
+    "term": "Gargoyle"
+  },
+  {
+    "formId": "02018B36",
+    "term": "Dog"
+  },
+  {
+    "formId": "02018B33",
+    "term": "Dog"
+  },
+  {
+    "formId": "02015C34",
+    "term": "The Forgemaster"
+  },
+  {
+    "formId": "02015136",
+    "term": "Chaurus"
+  },
+  {
+    "formId": "02013B77",
+    "term": "Spriggan"
+  },
+  {
+    "formId": "020117F5",
+    "term": "Troll"
+  },
+  {
+    "formId": "020117F4",
+    "term": "Snow Troll"
+  },
+  {
+    "formId": "020117DE",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "0200D0B6",
+    "term": "Sabre Cat"
+  },
+  {
+    "formId": "0200D0B2",
+    "term": "Deer"
+  },
+  {
+    "formId": "0200C5F0",
+    "term": "Dog"
+  },
+  {
+    "formId": "0200A94B",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "0200A2C6",
+    "term": "Gargoyle"
+  },
+  {
+    "formId": "0200894D",
+    "term": "Draugr"
+  },
+  {
+    "formId": "02007AF3",
+    "term": "Draugr"
+  },
+  {
+    "formId": "02006AFA",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "020051FB",
+    "term": "Chaurusflyer"
+  },
+  {
+    "formId": "02004D31",
+    "term": "Nord"
+  },
+  {
+    "formId": "0200483B",
+    "term": "Draugr"
+  },
+  {
+    "formId": "0200377D",
+    "term": "High Elf"
+  },
+  {
+    "formId": "0200283A",
+    "term": "Vampire Lord"
+  },
+  {
+    "formId": "020023E2",
+    "term": "Draugr"
+  },
+  {
+    "formId": "0203CECB",
+    "term": "Skeleton"
+  },
+  {
+    "formId": "0203CA97",
+    "term": "Nord"
+  },
+  {
+    "formId": "0203911A",
+    "term": "Dragon Priest"
+  },
+  {
+    "formId": "02035538",
+    "term": "Dremora"
+  },
+  {
+    "formId": "0202C88C",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "0202C88B",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "0202B014",
+    "term": "Dwarven Sphere"
+  },
+  {
+    "formId": "0202A6FD",
+    "term": "Draugr"
+  },
+  {
+    "formId": "02029EFC",
+    "term": "Witchlight"
+  },
+  {
+    "formId": "02029EE7",
+    "term": "Ice Wraith"
+  },
+  {
+    "formId": "02028580",
+    "term": "Netch"
+  },
+  {
+    "formId": "02027BFC",
+    "term": "Storm Atronach"
+  },
+  {
+    "formId": "02027483",
+    "term": "Frostbite Spider"
+  },
+  {
+    "formId": "0201FEB8",
+    "term": "Netch"
+  },
+  {
+    "formId": "0201F98F",
+    "term": "Spectral Dragon"
+  },
+  {
+    "formId": "0201E17B",
+    "term": "Werewolf"
+  },
+  {
+    "formId": "0201DCB9",
+    "term": "HMDaedra"
+  },
+  {
+    "formId": "0201CAD8",
+    "term": "Ghost Giant"
+  },
+  {
+    "formId": "0201B658",
+    "term": "Scrib"
+  },
+  {
+    "formId": "0201B647",
+    "term": "MudCrab"
+  },
+  {
+    "formId": "0201B644",
+    "term": "Spriggan"
+  },
+  {
+    "formId": "0201B637",
+    "term": "Draugr"
+  },
+  {
+    "formId": "02014495",
+    "term": "Giant"
+  },
+  {
+    "formId": "02014449",
+    "term": "Frostbite Spider"
+  },
+  {
+    "formId": "030117DE",
+    "term": "Dragon Race"
+  },
+  {
+    "formId": "0303911A",
+    "term": "Dragon Priest"
+  }
+]

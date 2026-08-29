@@ -1,0 +1,158 @@
+# Default stack: embedded Postgres (profile `embedded-db`) + web + worker + Redis.
+# Copy `.env.example` (sets COMPOSE_PROFILES=embedded-db) then:
+#
+#   docker compose up -d --build
+#   docker compose run --rm web npm run db:init
+#   docker compose --profile tools run --rm cli npm run tools:install
+#
+# External Postgres (production): omit COMPOSE_PROFILES and DOCKER_DATABASE_URL.
+# Point DATABASE_URL at your server. Start only app services:
+#
+#   docker compose up -d web worker redis
+#
+# External TTS: set TTS_BASE_URL in .env (not in this compose).
+# Optional Gemma chat / RAG embed: add `embedded-vllm` and/or `embedded-embed`
+# (docker/compose.vllm.yml, docker/compose.embed.yml). External pools omit both.
+# Put TLS/reverse proxy in front of WEB_PORT. See SECURITY.md.
+
+include:
+  - docker/compose.db.yml
+  - docker/compose.vllm.yml
+  - docker/compose.embed.yml
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    init: true
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      PORT: ${PORT:-3000}
+      # Container must listen on all interfaces so `ports:` can reach it.
+      # Host `.env` HOST is for local `npm`/`tsx` (default 127.0.0.1).
+      HOST: '0.0.0.0'
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
+      VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
+      REDIS_URL: redis://redis:6379
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
+      WINEDEBUG: -all
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORT:-${PORT:-3000}}:${PORT:-3000}'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: ${WEB_MEMORY_LIMIT:-2g}
+
+  # Background job worker — three BullMQ queues in one process: general
+  # (imports / TM apply), serial LLM, and serial voice synthesis.
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    init: true
+    command: ['npm', '--prefix', 'worker', 'start']
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
+      VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
+      REDIS_URL: redis://redis:6379
+      JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
+      NODE_OPTIONS: ${NODE_OPTIONS:---expose-gc}
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
+      WINEDEBUG: -all
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEMORY_LIMIT:-8g}
+
+  # BullMQ queue + job progress/snapshots. AOF keeps queued jobs across restarts.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # One-shot jobs (translate, scan:mods, …). Not started by `docker compose up`.
+  cli:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: transynth:${IMAGE_TAG:-latest}
+    init: true
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+      VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
+      VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
+      WINEARCH: win32
+      WINEPREFIX: /app/data/tools/.wine
+      WINEPREFIX64: /app/data/tools/.wine64
+      WINEDEBUG: -all
+    volumes:
+      - ./data:/app/data
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', '--import', 'tsx/esm']
+
+volumes:
+  redis-data:

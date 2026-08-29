@@ -1,0 +1,128 @@
+/**
+ * Canonical Fallout 3 English → Ukrainian glossary.
+ *
+ * Loaded by `scripts/seedGlossary.ts` (`npm run db:seed:glossary`).
+ */
+
+import type { GlossaryEntry } from './types';
+
+export type { GlossaryEntry } from './types';
+
+export const FO3_UK_GLOSSARY: GlossaryEntry[] = [
+  {
+    term: 'caps',
+    translation: 'кришки',
+  },
+  {
+    term: 'rads',
+    translation: 'радіація',
+  },
+  {
+    term: 'Stimpak',
+    translation: 'Стимулятор',
+  },
+  {
+    term: 'Power Armor',
+    translation: 'Силова броня',
+  },
+  {
+    term: 'Pip-Boy',
+    translation: 'Піп-бой',
+  },
+  {
+    term: 'Vault',
+    translation: 'Сховище',
+  },
+  {
+    term: 'Holotape',
+    translation: 'Голозапис',
+  },
+  {
+    term: 'RadAway',
+    translation: 'Антирадин',
+  },
+  {
+    term: 'Rad-X',
+    translation: 'Рад-Х',
+  },
+  {
+    term: 'Brotherhood of Steel',
+    translation: 'Братерство сталі',
+  },
+  {
+    term: 'Enclave',
+    translation: 'Анклав',
+  },
+  {
+    term: 'Talon Company',
+    translation: 'Компанія «Пазур»',
+  },
+  {
+    term: 'Rivet City',
+    translation: 'Місто «Заклепка»',
+  },
+  {
+    term: 'Raiders',
+    translation: 'Рейдери',
+  },
+  {
+    term: 'Megaton',
+    translation: 'Мегатон',
+  },
+  {
+    term: 'Tenpenny Tower',
+    translation: 'Вежа Тенпенні',
+  },
+  {
+    term: 'Galaxy News Radio',
+    translation: 'Галактичне радіо новин',
+  },
+  {
+    term: 'Jefferson Memorial',
+    translation: 'Меморіал Джефферсона',
+  },
+  {
+    term: 'Vault 101',
+    translation: 'Сховище 101',
+  },
+  {
+    term: 'Project Purity',
+    translation: 'Проєкт Чистоти',
+  },
+  {
+    term: 'Deathclaw',
+    translation: 'Кіготь смерті',
+  },
+  {
+    term: 'Super Mutant',
+    translation: 'Супермутант',
+  },
+  {
+    term: 'Feral Ghoul',
+    translation: 'Дикий гуль',
+  },
+  {
+    term: 'Mirelurk',
+    translation: 'Болотник',
+  },
+  {
+    term: 'Yao Guai',
+    translation: 'Яо-гай',
+  },
+  {
+    term: 'Brahmin',
+    translation: 'Брамін',
+  },
+  {
+    term: 'Protectron',
+    translation: 'Протектрон',
+  },
+  {
+    term: 'Mr. Handy',
+    translation: 'Містер Помічник',
+  },
+  {
+    term: 'Sentry Bot',
+    translation: 'Робот-охоронець',
+  },
+];

@@ -1,0 +1,1 @@
+export { ModInfoSection } from './ModInfoSection';

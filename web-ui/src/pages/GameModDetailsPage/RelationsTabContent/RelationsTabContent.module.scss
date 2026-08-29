@@ -1,0 +1,52 @@
+/* ── RelationsTabContent ─────────────────────────────────────────────────── */
+
+/** Styled list container for required/reverse-dependency mod items. */
+.relationList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.relationListItem {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.relationListItem:first-child {
+  border-top: 0;
+}
+
+.relationRowMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.relationTitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-bright);
+}
+
+.relationNotes {
+  margin: 6px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/** External link to the mod on NexusMods. */
+.openLink {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

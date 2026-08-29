@@ -1,0 +1,132 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type { Tx } from '../db';
+import { readPluginMasterNames } from '../formats/esp';
+import {
+  loadVoiceSourcesDetailed,
+  loadVoiceTranslations,
+  lookupVoiceTranslation,
+  normalizeVoiceText,
+  voiceTranslationMapKey,
+  type VoiceSourceDetailRow,
+  type VoiceTranslationRow,
+} from './loadVoiceTranslations';
+
+export type MasterModRef = {
+  modId: number;
+  modName: string;
+  pluginName: string;
+};
+
+export type InheritedVoiceLine = {
+  source: string;
+  translation: string | null;
+  infoFormidHex: string;
+  stringId: number;
+  translationId: number | null;
+  status: string | null;
+  master: MasterModRef;
+};
+
+export type InheritedVoiceLookup = {
+  masters: MasterModRef[];
+  sourcesByMod: Map<number, Map<string, VoiceSourceDetailRow>>;
+  translationsByMod: Map<number, Map<string, VoiceTranslationRow>>;
+};
+
+/** Master plugins from the TES4 header, most specific dependency first. */
+export const readMasterPluginNames = (pluginPath: string): string[] => {
+  if (!fs.existsSync(pluginPath)) return [];
+  try {
+    return readPluginMasterNames(pluginPath).reverse();
+  } catch {
+    return [];
+  }
+};
+
+/** Match imported mods by plugin basename (e.g. `AA FusionCityRising.esp`). */
+export const findImportedMasterMods = async (
+  db: Tx,
+  pluginPath: string,
+  excludeModId: number,
+): Promise<MasterModRef[]> => {
+  const masterNames = readMasterPluginNames(pluginPath);
+  if (masterNames.length === 0) return [];
+
+  const { rows } = await db.query<{ id: number; name: string; abs_path: string }>(
+    `SELECT id, name, abs_path
+     FROM mods
+     WHERE abs_path IS NOT NULL
+       AND id <> $1`,
+    [excludeModId],
+  );
+
+  const byBasename = new Map<string, { id: number; name: string }>();
+  for (const row of rows) {
+    const base = path.basename(row.abs_path).toLowerCase();
+    if (!byBasename.has(base)) {
+      byBasename.set(base, { id: row.id, name: row.name });
+    }
+  }
+
+  const refs: MasterModRef[] = [];
+  for (const pluginName of masterNames) {
+    const hit = byBasename.get(pluginName.toLowerCase());
+    if (hit) {
+      refs.push({ modId: hit.id, modName: hit.name, pluginName });
+    }
+  }
+  return refs;
+};
+
+export const loadInheritedVoiceLookup = async (
+  db: Tx,
+  masters: MasterModRef[],
+  srcLang: string,
+  tgtLang: string,
+): Promise<InheritedVoiceLookup> => {
+  const sourcesByMod = new Map<number, Map<string, VoiceSourceDetailRow>>();
+  const translationsByMod = new Map<number, Map<string, VoiceTranslationRow>>();
+
+  for (const master of masters) {
+    sourcesByMod.set(master.modId, await loadVoiceSourcesDetailed(db, master.modId, srcLang));
+    translationsByMod.set(
+      master.modId,
+      await loadVoiceTranslations(db, master.modId, srcLang, tgtLang),
+    );
+  }
+
+  return { masters, sourcesByMod, translationsByMod };
+};
+
+/** Resolve voice line text from master plugins when the current mod has no local NAM1. */
+export const lookupInheritedVoiceLine = (
+  lookup: InheritedVoiceLookup,
+  formidLower6: string,
+  variant: number,
+): InheritedVoiceLine | null => {
+  for (const master of lookup.masters) {
+    const sources = lookup.sourcesByMod.get(master.modId);
+    const translations = lookup.translationsByMod.get(master.modId);
+    const mapKey = voiceTranslationMapKey(formidLower6, variant);
+    const sourceRow = sources?.get(mapKey);
+    const translationRow = lookupVoiceTranslation(translations ?? new Map(), formidLower6, variant);
+    const source =
+      normalizeVoiceText(sourceRow?.source) ?? normalizeVoiceText(translationRow?.source);
+    if (!source) continue;
+
+    return {
+      source,
+      translation: normalizeVoiceText(translationRow?.translation),
+      infoFormidHex: sourceRow?.infoFormidHex ?? translationRow?.infoFormidHex ?? '',
+      stringId: sourceRow?.stringId ?? translationRow?.stringId ?? 0,
+      translationId: translationRow?.translationId ?? null,
+      status: translationRow?.status ?? null,
+      master,
+    };
+  }
+  return null;
+};
+
+export const formatInheritedFromLabel = (master: MasterModRef): string =>
+  `${master.modName} (${master.pluginName})`;

@@ -1,0 +1,63 @@
+/* ── StatusBadge & ProgressBar component styles ─────────────────────────── */
+
+/**
+ * Status badge — colored pill label for a translation string's status.
+ * The background color is injected at runtime via the --badge-bg CSS custom
+ * property so all layout/typography stays in SCSS while the color stays dynamic.
+ */
+.badge {
+  background: var(--badge-bg, var(--text-dim));
+  color: var(--primary-on);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/** Small variant — used in compact table cells. */
+.small {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+/* ── Progress bar ───────────────────────────────────────────────────────── */
+
+/** Outer flex row: segmented bar + percentage label. */
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/** The segmented color track. */
+.track {
+  flex: 1;
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 8px;
+  background: var(--progress-track);
+}
+
+/**
+ * A single colored segment inside the track.
+ * Width and background-color are set via inline style (dynamic, per-segment).
+ */
+.segment {
+  height: 8px;
+  display: inline-block;
+}
+
+/** Shown when a mod has no strings at all. */
+.noStrings {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/** Percentage label to the right of the bar. */
+.percentLabel {
+  font-size: 12px;
+  color: var(--text);
+  min-width: 36px;
+}

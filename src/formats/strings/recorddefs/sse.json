@@ -1,0 +1,28 @@
+{
+  "explicit": [
+    ["MGEF", "DNAM", "STRINGS"],
+    ["INFO", "NAM1", "ILSTRINGS"],
+    ["NPC_", "SHRT", "STRINGS"],
+    ["QUST", "CNAM", "DLSTRINGS"],
+    ["BOOK", "CNAM", "DLSTRINGS"],
+    ["WOOP", "TNAM", "STRINGS"],
+    ["QUST", "NNAM", "STRINGS"],
+    ["MESG", "NNAM", "STRINGS"],
+    ["MESG", "ITXT", "STRINGS"],
+    ["REGN", "RDMP", "STRINGS"],
+    ["ACTI", "RNAM", "STRINGS"],
+    ["FLOR", "RNAM", "STRINGS"],
+    ["INFO", "RNAM", "STRINGS"],
+    ["BPTD", "BPTN", "STRINGS"],
+    ["FACT", "MNAM", "STRINGS"],
+    ["FACT", "FNAM", "STRINGS"],
+    ["LSCR", "DESC", "STRINGS"],
+    ["GMST", "DATA", "STRINGS"],
+    ["PERK", "EPFD", "STRINGS"],
+    ["PERK", "EPF2", "STRINGS"]
+  ],
+  "fallbacks": [
+    ["FULL", "STRINGS"],
+    ["DESC", "DLSTRINGS"]
+  ]
+}

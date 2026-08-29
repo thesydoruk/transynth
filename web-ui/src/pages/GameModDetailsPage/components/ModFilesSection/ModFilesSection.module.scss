@@ -1,0 +1,133 @@
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.h2 {
+  margin: 0 0 10px;
+  color: var(--text-bright);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.error {
+  text-align: center;
+  color: var(--danger);
+  padding: 16px;
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.filesTableWrap {
+  overflow: auto;
+}
+
+.filesTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--text-bright);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.fileNameCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fileActionButton {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-bright);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.primaryBadge {
+  font-size: 10px;
+  color: var(--success-strong);
+  border: 1px solid var(--success-soft-border);
+  background: var(--success-soft-bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.fileProgressRow {
+  td {
+    border-top: none;
+  }
+}
+
+.fileProgressCell {
+  padding: 2px 6px 10px !important;
+}
+
+.fileProgressTrack {
+  height: 3px;
+  background: var(--overlay-white-08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.fileProgressFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.55s ease;
+}
+
+.fileProgressFailed {
+  background: var(--danger);
+}
+
+.fileProgressLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}

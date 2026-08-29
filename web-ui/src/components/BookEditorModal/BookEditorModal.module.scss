@@ -1,0 +1,200 @@
+/*
+ * BookEditorModal — split-pane HTML/WYSIWYG editor for in-game book records.
+ *
+ * Two side-by-side panels:
+ *   Left  — source text (read-only), toggle between raw markup and iframe preview.
+ *   Right — translation textarea (editable), same toggle.
+ *
+ * The preview iframe is sandboxed (allow-same-origin only, no scripts/forms).
+ */
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.headerIcon {
+  font-size: 22px;
+  line-height: 1;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin: 0 0 3px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+/* ── Split panels ──────────────────────────────────────────────────────────── */
+
+.panels {
+  display: flex;
+  gap: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+/* ── Per-panel header ──────────────────────────────────────────────────────── */
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.panelTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.previewToggle {
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.1s,
+    color 0.1s;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.previewToggleActive {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ── Raw textarea ──────────────────────────────────────────────────────────── */
+
+.textarea {
+  flex: 1 1 0;
+  resize: none;
+  background: var(--bg-card);
+  color: var(--text);
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 0;
+
+  &:read-only {
+    color: var(--text-dim);
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+/* ── Preview iframe ────────────────────────────────────────────────────────── */
+
+.previewFrame {
+  flex: 1 1 0;
+  border: none;
+  background: var(--bg-surface);
+  min-height: 0;
+}
+
+/* ── Helper info bar ───────────────────────────────────────────────────────── */
+
+.infoBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 16px;
+  background: var(--bg-input);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.infoText {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.charCount {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}

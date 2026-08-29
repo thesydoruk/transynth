@@ -1,0 +1,177 @@
+/* LlmTab — readiness, env-backed fields, and the editable vLLM pool. */
+
+/* ── Loading / error states ───────────────────────────────────────────────── */
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* ── Read-only banner ─────────────────────────────────────────────────────── */
+
+/** Informational banner shown at the top of the LLM tab explaining that
+ *  settings are server-controlled and cannot be edited from the UI. */
+.readonlyNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.readinessHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.readinessHint {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.checksGrid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  row-gap: 10px;
+  column-gap: 10px;
+}
+
+.issueList {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* ── Monospace field value ─────────────────────────────────────────────────── */
+
+.serverBlock {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+.serverFields {
+  display: grid;
+  gap: 8px;
+}
+
+.serverEditBlock {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.serverEditHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.serverEditGrid {
+  display: grid;
+  grid-template-columns: 2fr 120px 1fr;
+  gap: 10px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.poolActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.subLabel {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+/** Displays a configuration value with monospace font for model names, URLs. */
+.fieldValue {
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  font-family: monospace;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+
+/** Base pill badge for status indicators (active / configured / enabled). */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/** Green badge — used for active providers and configured keys. */
+.badgeOk {
+  composes: badge;
+  background: color-mix(in srgb, var(--ok) 20%, transparent);
+  color: var(--ok);
+}
+
+/** Amber badge — used for missing keys or disabled features. */
+.badgeWarn {
+  composes: badge;
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+/** Red badge — used for blocking readiness issues. */
+.badgeError {
+  composes: badge;
+  background: var(--bg-card);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}

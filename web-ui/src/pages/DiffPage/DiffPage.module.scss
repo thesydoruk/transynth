@@ -1,0 +1,288 @@
+/* ── DiffPage — SCSS Module ──────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.title {
+  color: var(--text-bright);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.fieldCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 220px;
+}
+
+.btnCompare {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnCarryOver {
+  composes: btnCompare;
+  background: var(--success-dark);
+}
+
+/** Link-styled button that opens the new mod in editor filtered to drafts */
+.btnOpenEditor {
+  composes: btnCompare;
+  background: var(--accent);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.carryRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.filterBtn {
+  background: var(--border);
+  color: var(--text-muted);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filterBtnActive {
+  composes: filterBtn;
+  background: var(--primary);
+  color: var(--primary-on);
+  border-color: var(--primary);
+}
+
+.empty {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 32px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyText {
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyBtn {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-bright);
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.td {
+  padding: 8px;
+  vertical-align: top;
+  color: var(--text);
+  border-bottom: 1px solid var(--bg-card);
+}
+
+.tdChange {
+  composes: td;
+  font-weight: 700;
+}
+
+.tdFormId {
+  composes: td;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.tdSig {
+  composes: td;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tdText {
+  composes: td;
+  max-width: 300px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.tdTransl {
+  composes: tdText;
+  color: var(--text);
+}
+
+.noTransl {
+  color: var(--text-ghost);
+  font-style: italic;
+}
+
+.error {
+  color: var(--danger);
+  margin-top: 12px;
+}
+
+.carryInfo {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.carryError {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/** Wide column headers (source text, translation). */
+.thWide {
+  composes: th;
+  min-width: 220px;
+}
+
+/** Carry-over result highlighted counts. */
+.carryGreen {
+  color: var(--success);
+}
+.carryOrange {
+  color: var(--warning);
+}
+.carryGrey {
+  color: var(--text-dim);
+}
+
+/** Table row background per change type. */
+.rowAdded {
+  background: var(--diff-added-bg);
+}
+.rowRemoved {
+  background: var(--diff-removed-bg);
+}
+.rowChanged {
+  background: var(--diff-changed-bg);
+}
+
+/** Change-type text color for the first column. */
+.changeAdded {
+  color: var(--success);
+}
+.changeRemoved {
+  color: var(--danger);
+}
+.changeChanged {
+  color: var(--warning);
+}

@@ -1,0 +1,240 @@
+import { describe, it, expect } from '@jest/globals';
+import {
+  buildVerifySystemPrompt,
+  buildVerifyTranslateUserPayload,
+  LlmVerifyMissingIdsError,
+  maskVerifyItemForLlm,
+  parseLlmVerifyTranslateResponse,
+  applyPlaceholderGuardToVerifyResult,
+} from '../verifyTranslate';
+import { buildEnglishVerifySystemPrompt } from '../prompts/en';
+import { buildUkrainianVerifySystemPrompt } from '../prompts/uk';
+
+describe('maskVerifyItemForLlm', () => {
+  it('masks source, translation, and reference examples with shared keys', () => {
+    const tag = "<font color='#<Global=SS2_Instance_ResourceManager_ComponentFontColor05>'>";
+    const { item, mapping } = maskVerifyItemForLlm({
+      id: 1,
+      source: `${tag}Scrap`,
+      translation: `${tag}Брухт`,
+      grup: 'WEAP',
+      field: 'FULL',
+      edid: null,
+      context: null,
+      reference_examples: [
+        {
+          source: '<Alias=Player> left',
+          translation: '<Alias=Player> пішов',
+          grup: 'INFO',
+          edid: null,
+          field: 'NAM1',
+          match_method: 'exact',
+          similarity: 1,
+        },
+      ],
+    });
+
+    expect(item.source).toBe('¤PH0¤Scrap');
+    expect(item.translation).toBe('¤PH0¤Брухт');
+    expect(item.reference_examples?.[0]?.source).toBe('¤PH1¤ left');
+    expect(mapping['¤PH0¤']).toBe(tag);
+    expect(mapping['¤PH1¤']).toBe('<Alias=Player>');
+  });
+});
+
+describe('buildVerifyTranslateUserPayload', () => {
+  it('builds JSON audit payload', () => {
+    const payload = buildVerifyTranslateUserPayload({
+      srcLang: 'en',
+      targetLang: 'uk',
+      game: 'fo4',
+      modName: 'TestMod.esp',
+      items: [
+        {
+          id: 7,
+          source: 'Hello',
+          translation: 'Привіт',
+          grup: 'WEAP',
+          field: 'FULL',
+          edid: 'MyGun',
+          context: null,
+          reference_examples: [
+            {
+              source: 'Goodbye',
+              translation: 'Бувай',
+              grup: 'INFO',
+              edid: 'Line01',
+              field: 'NAM1',
+              match_method: 'exact',
+              similarity: 1,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(payload).toMatchObject({
+      task: 'translation_quality_audit',
+      source_language: 'en',
+      target_language: 'uk',
+      items: [
+        {
+          id: 7,
+          source: 'Hello',
+          translation: 'Привіт',
+          grup: 'WEAP',
+          field: 'FULL',
+          reference_examples: [{ source: 'Goodbye', translation: 'Бувай' }],
+        },
+      ],
+    });
+  });
+});
+
+describe('parseLlmVerifyTranslateResponse', () => {
+  const itemIds = [1, 2];
+
+  it('parses valid JSON response', () => {
+    const raw = JSON.stringify({
+      items: [
+        { id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.95, suggestion: null },
+        {
+          id: 2,
+          verdict: 'incorrect',
+          reason: 'Wrong meaning.',
+          confidence: 0.88,
+          suggestion: 'Fixed text.',
+        },
+      ],
+    });
+
+    const result = parseLlmVerifyTranslateResponse(raw, itemIds);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 1, verdict: 'ok', suggestion: null });
+    expect(result[1]).toMatchObject({
+      id: 2,
+      verdict: 'incorrect',
+      reason: 'Wrong meaning.',
+      suggestion: 'Fixed text.',
+    });
+  });
+
+  it('ignores suggestion for ok verdict', () => {
+    const raw = JSON.stringify({
+      items: [{ id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.95, suggestion: 'Ignored.' }],
+    });
+    expect(parseLlmVerifyTranslateResponse(raw, [1])[0]?.suggestion).toBeNull();
+  });
+
+  it('throws LlmVerifyMissingIdsError when an item id is missing', () => {
+    const raw = JSON.stringify({
+      items: [{ id: 1, verdict: 'ok', reason: 'Good.', confidence: 0.9 }],
+    });
+    expect(() => parseLlmVerifyTranslateResponse(raw, itemIds)).toThrow(LlmVerifyMissingIdsError);
+    try {
+      parseLlmVerifyTranslateResponse(raw, itemIds);
+    } catch (err) {
+      expect(err).toMatchObject({
+        missingIds: [2],
+        partialResults: [{ id: 1, verdict: 'ok', suggestion: null }],
+      });
+    }
+  });
+
+  it('accepts string item ids from the LLM', () => {
+    const raw = JSON.stringify({
+      items: [
+        { id: '1', verdict: 'ok', reason: 'Good.', confidence: 0.9, suggestion: null },
+        {
+          id: '2',
+          verdict: 'incorrect',
+          reason: 'Wrong meaning.',
+          confidence: 0.88,
+          suggestion: 'Fixed text.',
+        },
+      ],
+    });
+
+    const result = parseLlmVerifyTranslateResponse(raw, itemIds);
+    expect(result).toHaveLength(2);
+    expect(result[0]?.id).toBe(1);
+    expect(result[1]?.id).toBe(2);
+  });
+
+  it('exports a non-empty default English system prompt', () => {
+    expect(buildEnglishVerifySystemPrompt('en', 'de')).toContain('suspicious');
+  });
+});
+
+describe('buildVerifySystemPrompt', () => {
+  it('uses Ukrainian prompt for uk target', () => {
+    const prompt = buildVerifySystemPrompt('en', 'uk', 'fo4');
+    expect(prompt).toContain('українською');
+    expect(prompt).not.toBe(buildEnglishVerifySystemPrompt('en', 'de'));
+  });
+
+  it('uses default English prompt for non-Ukrainian targets', () => {
+    expect(buildVerifySystemPrompt('en', 'de', 'fo4')).toBe(
+      buildEnglishVerifySystemPrompt('en', 'de', 'fo4'),
+    );
+  });
+
+  it('English verify prompt mentions reference examples', () => {
+    expect(buildEnglishVerifySystemPrompt('en', 'de', 'fo4')).toContain('reference_examples');
+  });
+
+  it('Ukrainian verify prompt mentions reference examples', () => {
+    expect(buildUkrainianVerifySystemPrompt('en', 'fo4')).toContain('reference_examples');
+  });
+});
+
+describe('applyPlaceholderGuardToVerifyResult', () => {
+  const item = {
+    id: 1,
+    source: 'You have %d caps',
+    translation: 'У тебе %s кришок',
+    grup: 'INFO',
+    field: 'NAM1',
+    edid: null,
+    context: null,
+  };
+
+  it('upgrades ok verdict to incorrect on token mismatch', () => {
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      item,
+      { id: 1, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('incorrect');
+    expect(guarded.reason).toContain('Protected token mismatch');
+  });
+
+  it('leaves ok verdict when tokens match', () => {
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      { ...item, translation: 'У тебе %d кришок' },
+      { id: 1, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('ok');
+  });
+
+  it('does not flag BOOK journal prose with As/If or paragraph breaks', () => {
+    const bookItem = {
+      id: 2,
+      source:
+        "Try as we might, we can't bypass this lock.\r\nAs a result, officers returned.\r\nIf needed, more follow.",
+      translation:
+        'Спробувавши, ми не змогли обійти замок.\nЧерез це офіцери повернулися.\nЗа потреби підуть ще.',
+      grup: 'BOOK',
+      field: 'DESC',
+      edid: null,
+      context: null,
+    };
+    const guarded = applyPlaceholderGuardToVerifyResult(
+      bookItem,
+      { id: 2, verdict: 'ok', reason: 'Fine.', confidence: 0.9, suggestion: null },
+      'fo4',
+    );
+    expect(guarded.verdict).toBe('ok');
+  });
+});

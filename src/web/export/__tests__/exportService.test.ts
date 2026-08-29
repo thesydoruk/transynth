@@ -1,0 +1,218 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from '@jest/globals';
+import type { Tx } from '../../../db';
+import { Ba2Reader } from '../../../formats/ba2';
+import { parseStringsBuffer, writeStringsBuffer } from '../../../formats/strings';
+import {
+  LOCALIZED_EXPORT_GOLDEN_CORPUS,
+  goldenFixtureToMap,
+} from '../../../testdata/exportGoldenCorpus';
+import { modImportLocalizeDir, modStorageRoot } from '../../../modStorage';
+import { exportBa2Archive, exportLangpackZip, exportLocalizedStringsFiles } from '../index';
+
+const writeFakeDx10Ba2 = (filePath: string): void => {
+  const header = Buffer.alloc(24);
+  header.write('BTDX', 0, 4, 'ascii');
+  header.writeUInt32LE(1, 4);
+  header.write('DX10', 8, 4, 'ascii');
+  fs.writeFileSync(filePath, header);
+};
+
+const makeVoiceRow = (formidLower6: string, source: string, translation: string) => ({
+  formid_lower6: formidLower6,
+  info_formid_hex: `00${formidLower6}`,
+  voice_ordinal: 1,
+  string_id: 1,
+  translation_id: 1,
+  status: 'ok',
+  source,
+  translation,
+  edid: null,
+});
+
+const makeOverlayDb = (
+  rows: Array<{ lstring_id: number; signature: string; path: string; export_text: string }>,
+  voiceRows: Array<ReturnType<typeof makeVoiceRow>> = [],
+): Tx => {
+  return {
+    query: async (sql: string) => {
+      if (sql.includes('formid_lower6') || sql.includes('voice_ordinal')) {
+        return { rows: voiceRows };
+      }
+      if (sql.includes('FROM mods')) {
+        return { rows: [] };
+      }
+      return { rows };
+    },
+  } as unknown as Tx;
+};
+
+const createLooseStringsMod = (): string => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'golden-export-'));
+  const pluginPath = path.join(root, LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName);
+  const stringsDir = path.join(root, 'Strings');
+  fs.mkdirSync(stringsDir, { recursive: true });
+  fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+
+  for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+    fs.writeFileSync(
+      path.join(stringsDir, file.fileName),
+      writeStringsBuffer(goldenFixtureToMap(file), file.type),
+    );
+  }
+
+  tempDirs.push(root);
+  return pluginPath;
+};
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe('localized export golden corpus', () => {
+  it('preserves source file inventory, basename casing, and fallback text', async () => {
+    const modPath = createLooseStringsMod();
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
+
+    const exported = await exportLocalizedStringsFiles(
+      db,
+      1,
+      modPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    expect(exported.map((file) => file.fileName)).toEqual(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles.map((file) => file.fileName),
+    );
+
+    for (const expected of LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles) {
+      const actual = exported.find((file) => file.fileName === expected.fileName);
+      expect(actual).toBeDefined();
+      const parsed = parseStringsBuffer(
+        Buffer.from(actual!.contentBase64, 'base64'),
+        expected.type,
+      );
+      expect([...parsed.entries()]).toEqual([...goldenFixtureToMap(expected).entries()]);
+    }
+  });
+
+  it('packs the exported corpus into a BA2 with exactly the expected strings files', async () => {
+    const modPath = createLooseStringsMod();
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
+
+    const ba2 = await exportBa2Archive(
+      db,
+      1,
+      modPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    const archivePath = path.join(path.dirname(modPath), ba2.fileName);
+    fs.writeFileSync(archivePath, Buffer.from(ba2.contentBase64, 'base64'));
+
+    const reader = new Ba2Reader(archivePath);
+    expect(reader.listFiles()).toEqual(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles.map((file) => `Strings\\${file.fileName}`),
+    );
+
+    for (const expected of LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles) {
+      const extracted = reader.extractByName(`Strings\\${expected.fileName}`);
+      expect(extracted).not.toBeNull();
+      const parsed = parseStringsBuffer(extracted!, expected.type);
+      expect([...parsed.entries()]).toEqual([...goldenFixtureToMap(expected).entries()]);
+    }
+  });
+
+  it('falls back to loose Strings when only DX10 texture BA2 files are present', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'golden-export-textures-'));
+    tempDirs.push(root);
+    const pluginPath = path.join(root, 'Fallout4.esm');
+    const stringsDir = path.join(root, 'Strings');
+    fs.mkdirSync(stringsDir, { recursive: true });
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+    writeFakeDx10Ba2(path.join(root, 'Fallout4 - Textures1.ba2'));
+
+    for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+      fs.writeFileSync(
+        path.join(stringsDir, file.fileName),
+        writeStringsBuffer(goldenFixtureToMap(file), file.type),
+      );
+    }
+
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows);
+
+    const exported = await exportLocalizedStringsFiles(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    expect(exported.map((file) => file.fileName)).toEqual(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.expectedFiles.map((file) => file.fileName),
+    );
+
+    const { zipBuffer } = await exportLangpackZip(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+    expect(zipBuffer.length).toBeGreaterThan(0);
+  });
+
+  it('includes localized voice files in langpack ZIP', async () => {
+    const extractRoot = path.join(modStorageRoot(), `_extracted_langpack_voice_${Date.now()}`);
+    tempDirs.push(extractRoot);
+    fs.mkdirSync(extractRoot, { recursive: true });
+
+    const pluginPath = path.join(extractRoot, LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName);
+    const stringsDir = path.join(extractRoot, 'Strings');
+    fs.mkdirSync(stringsDir, { recursive: true });
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+
+    for (const file of LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceFiles) {
+      fs.writeFileSync(
+        path.join(stringsDir, file.fileName),
+        writeStringsBuffer(goldenFixtureToMap(file), file.type),
+      );
+    }
+
+    const voiceRel = `Sound/Voice/${LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName}/00123456_1.fuz`;
+    const skipRel = `Sound/Voice/${LOCALIZED_EXPORT_GOLDEN_CORPUS.pluginFileName}/000219CF_1.fuz`;
+    const localizeDir = modImportLocalizeDir(extractRoot, 'uk');
+    const voicePath = path.join(localizeDir, ...voiceRel.split('/'));
+    const skipPath = path.join(localizeDir, ...skipRel.split('/'));
+    fs.mkdirSync(path.dirname(voicePath), { recursive: true });
+    fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
+    fs.writeFileSync(skipPath, Buffer.from('grunt-fuz'));
+
+    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows, [
+      makeVoiceRow('123456', 'Hello, traveler.', 'Привіт, мандрівнику.'),
+      makeVoiceRow('0219CF', 'Oof!', 'Оф!'),
+    ]);
+
+    const { zipBuffer } = await exportLangpackZip(
+      db,
+      1,
+      pluginPath,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.sourceLang,
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.targetLang,
+    );
+
+    const zipText = zipBuffer.toString('latin1');
+    expect(zipText).toContain(voiceRel);
+    expect(zipText).not.toContain('000219CF_1.fuz');
+  });
+});

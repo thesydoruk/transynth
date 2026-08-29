@@ -1,0 +1,43 @@
+# Opt in via COMPOSE_PROFILES=embedded-embed (see .env.example).
+# Production with an external embed server leaves this unset.
+#
+# Needs the NVIDIA Container Toolkit. First start downloads the model.
+# Host: http://localhost:8013 — Snowflake arctic-embed-l-v2.0.
+# From web/worker: DOCKER_VLLM_EMBED_BASE_URL=http://tei-embed:80
+#
+# Ampere vs Ada TEI tags: 86-1.8 vs 89-1.8 (TEI_IMAGE).
+# Sharing a GPU with vllm-gemma: set EMBED_GPU_DEVICE to the other card,
+# or lower VLLM_GPU_MEMORY_UTILIZATION on the chat overlay.
+
+services:
+  tei-embed:
+    profiles: [embedded-embed]
+    image: ${TEI_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:86-1.8}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - '8013:80'
+    volumes:
+      - ../data/huggingface:/data
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /data
+      HUGGINGFACE_HUB_CACHE: /data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${EMBED_GPU_DEVICE:-0}']
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://127.0.0.1/health']
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 600s
+    command:
+      - --model-id
+      - ${VLLM_EMBED_MODEL:-Snowflake/snowflake-arctic-embed-l-v2.0}

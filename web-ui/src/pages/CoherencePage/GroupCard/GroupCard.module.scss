@@ -1,0 +1,75 @@
+/* ── GroupCard ───────────────────────────────────────────────────────────── */
+
+/** Root card container for one coherence conflict group. */
+.group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+/** Clickable header row that expands/collapses the variant list. */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-row-alt);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+/** Arrow toggle icon (▶ / ▼). */
+.groupToggle {
+  font-size: 10px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 14px;
+}
+
+/** Truncated display of the source text triggering the conflict. */
+.groupSource {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+}
+
+/** Record signature (GRUP) scope for this conflict group. */
+.sigBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: monospace;
+}
+
+/** Pill badge showing the number of distinct translation variants. */
+.groupBadge {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--primary-on);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+/** Expanded area containing all VariantCard children. */
+.variants {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

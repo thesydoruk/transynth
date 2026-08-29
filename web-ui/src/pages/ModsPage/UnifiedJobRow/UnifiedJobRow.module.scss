@@ -1,0 +1,162 @@
+/* ── UnifiedJobRow — component-unique styles ────────────────────────────── */
+/* Shared row styles (row, rowLeft, rowRight, typeBadge, fileName, meta,    */
+/* badge, progressWrap/Track/Fill/Label, actions) live in                   */
+/* ../ImportPage.module.scss and are accessed via parentS import.           */
+
+/* ── Localized plugin badge ─────────────────────────────────────────────── */
+
+/** Inline indicator shown when the mod plugin is flagged as localised. */
+.locBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--primary-on);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Row action buttons ─────────────────────────────────────────────────── */
+
+/** Base icon action button — light border, no background. */
+.actionBtn {
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary);
+  }
+}
+
+/** Cancel action — red danger colour variant. */
+.actionBtnCancel {
+  composes: actionBtn;
+  color: var(--danger);
+}
+
+/** Delete action — muted colour variant. */
+.actionBtnDelete {
+  composes: actionBtn;
+  color: var(--text-dim);
+}
+
+/* ── Overflow menu ──────────────────────────────────────────────────────── */
+
+.menuWrap {
+  position: relative;
+}
+
+.menuList {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  max-height: min(70vh, 420px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: var(--menu-shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+}
+
+.menuItem {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 7px 8px;
+  line-height: 1.2;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--menu-item-hover-bg);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.menuIcon {
+  display: inline-flex;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.menuItemDanger {
+  color: var(--danger);
+}
+
+/* ── Inline error message ────────────────────────────────────────────────── */
+
+/**
+ * Error description shown below the file name when a job has failed.
+ * Truncates with ellipsis to avoid breaking the row layout.
+ */
+.errorText {
+  display: block;
+  margin-top: 3px;
+  color: var(--danger);
+  font-size: 11px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Retry action button ─────────────────────────────────────────────────── */
+
+/**
+ * Danger-tinted start button shown specifically for failed jobs.
+ * Communicates "this will retry" intent without generic ▶ ambiguity.
+ */
+.actionBtnRetry {
+  composes: actionBtn;
+  color: var(--danger);
+  border-color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+}
+
+/* ── Badge variant ──────────────────────────────────────────────────────── */
+
+/**
+ * Green "Completed" badge — extends the shared .badge shape from the parent
+ * module via cross-module composition and overrides the background colour.
+ */
+.badgeCompleted {
+  composes: badge from '../ModsPageRow.module.scss';
+  background: var(--success-dark);
+}

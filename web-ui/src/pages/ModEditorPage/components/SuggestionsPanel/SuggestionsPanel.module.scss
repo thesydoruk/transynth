@@ -1,0 +1,43 @@
+/* ── SuggestionsPanel — component-unique styles ──────────────────────────── */
+/* panelEmpty and panelListGap4 live in ../ModEditorPage.module.scss.        */
+
+/** Single TM-suggestion row card. */
+.suggestionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: var(--bg-card);
+  border-radius: 4px;
+}
+
+/**
+ * Match-method badge — colour injected at runtime via the
+ * `--sugg-color` CSS custom property set as an inline style.
+ */
+.suggMethod {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  min-width: 40px;
+  color: var(--sugg-color, var(--text-muted));
+}
+
+/** Translated text of the TM suggestion. */
+.suggText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-bright);
+  white-space: pre-wrap;
+}
+
+/** "Apply" button that inserts the suggestion into the translation area. */
+.suggestionApplyBtn {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}

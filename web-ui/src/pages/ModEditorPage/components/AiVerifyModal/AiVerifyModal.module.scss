@@ -1,0 +1,67 @@
+@use '../scanModalShared';
+
+.tableWrap {
+  min-height: 360px;
+  max-height: min(72vh, 720px);
+}
+
+.optionGroup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.optionToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+
+  input {
+    margin: 0;
+  }
+}
+
+.suggestionCell {
+  max-width: 220px;
+  word-break: break-word;
+  color: var(--success, #6ecf8a);
+}
+
+.noSuggestion {
+  color: var(--text-dim);
+}
+
+.verdictBad {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.verdictWarn {
+  color: var(--warning, #c9a227);
+  font-weight: 600;
+}
+
+.actionApproved {
+  color: var(--success, #6ecf8a);
+  font-weight: 600;
+}
+
+.actionFixed {
+  color: var(--info, #64b5f6);
+  font-weight: 600;
+}
+
+.actionIssue {
+  color: var(--warning, #c9a227);
+  font-weight: 600;
+}
+
+.appliedMark {
+  color: var(--success, #6ecf8a);
+  font-size: 12px;
+  font-weight: 600;
+}

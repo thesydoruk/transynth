@@ -1,0 +1,104 @@
+/* ── InlineEditor component styles ──────────────────────────────────────── */
+
+/* ── Edit mode ──────────────────────────────────────────────────────────── */
+
+/** Outer column flex container shown when editing. */
+.editContainer {
+  display: flex;
+  gap: 4px;
+  flex-direction: column;
+}
+
+/** Multi-line textarea for editing the translation draft. */
+.textarea {
+  width: 100%;
+  background: var(--bg-card);
+  color: var(--text-bright);
+  border: 1px solid var(--border-heavy);
+  border-radius: 4px;
+  padding: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+/** Row of action buttons below the textarea. */
+.btnRow {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Shared button base ─────────────────────────────────────────────────── */
+
+/** Base styles shared by all action buttons in the editor. */
+.btn {
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/** Save draft button — green. */
+.btnSave {
+  composes: btn;
+  background: var(--success);
+}
+
+/** Cancel edit button — neutral grey. */
+.btnCancel {
+  composes: btn;
+  background: var(--border-heavy);
+}
+
+/** Approve / mark-as-reviewed button — blue. */
+.btnApprove {
+  composes: btn;
+  background: var(--info);
+}
+
+/** Open-edit button in view mode — dark grey. */
+.btnEdit {
+  composes: btn;
+  background: var(--border-light);
+}
+
+/** Inline save-mutation error message shown below buttons. */
+.saveError {
+  color: var(--danger);
+  font-size: 11px;
+}
+
+/* ── View mode ──────────────────────────────────────────────────────────── */
+
+/** Outer flex row shown when NOT editing; clicking it opens edit mode. */
+.viewContainer {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+/** Translation text when a value exists. */
+.text {
+  flex: 1;
+  color: var(--text-bright);
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/** Placeholder text shown when the translation is empty. */
+.textEmpty {
+  composes: text;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/** Button cluster (approve + edit) on the right side of the text. */
+.actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}

@@ -1,0 +1,87 @@
+/* ── ModEditorPage — SCSS Module ────────────────────────────────────────────── */
+/* Layout-only styles.  Component-specific styles live in their own modules:   */
+/*   EditorToolbar.module.scss, SignaturePanel.module.scss,                     */
+/*   StringGrid.module.scss, DetailPanel.module.scss, ContextMenu.module.scss,  */
+/*   ShortcutsOverlay.module.scss, EditorStatusBar.module.scss                  */
+
+/* Root layout — full height minus nav bar */
+.root {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  background: var(--bg-surface);
+  color: var(--text-bright);
+}
+
+/* ── Body — 3-column layout ──────────────────────────────────────────────── */
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Center column */
+.centerCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.gridArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailPanelResizeHandle {
+  flex-shrink: 0;
+  height: 6px;
+  cursor: row-resize;
+  touch-action: none;
+  background: var(--bg-card);
+  border-top: 2px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s;
+
+  &:hover,
+  &.detailPanelResizeHandleActive {
+    background: color-mix(in srgb, var(--primary) 35%, var(--bg-card));
+    border-top-color: var(--primary);
+  }
+}
+
+.detailPanelSizer {
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Shared bottom-tab panel primitives (Suggestions / QA / History) ─────── */
+
+.panelList {
+  display: flex;
+  flex-direction: column;
+}
+
+.panelListGap4 {
+  composes: panelList;
+  gap: 4px;
+}
+
+.panelEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 144px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+}

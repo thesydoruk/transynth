@@ -1,0 +1,190 @@
+/* ── DialogLineRow — SCSS Module ────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--bg-raised);
+  }
+
+  &:hover .actions {
+    opacity: 1;
+  }
+}
+
+.focused {
+  background: var(--bg-raised);
+  border-left-color: var(--accent);
+
+  .actions {
+    opacity: 1;
+  }
+}
+
+.saving {
+  opacity: 0.75;
+}
+
+/* ── Badge / action strip ───────────────────────────────────────────────── */
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.promptTag {
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--badge-lang-text);
+  background: var(--badge-lang-bg);
+  border-radius: 8px;
+}
+
+.qaBadge {
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--qa-error-bg);
+  border-radius: 8px;
+}
+
+.savingTag {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.action {
+  padding: 1px 6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
+/* ── Voice-over ─────────────────────────────────────────────────────────── */
+
+/* Always visible, unlike `.actions`: whether a line is voiced is information
+   about the line itself, not an action hidden behind hover. */
+.voice {
+  display: flex;
+  gap: 4px;
+}
+
+.voiceButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--border-heavy);
+  }
+}
+
+.voicePlaying {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.voiceGlyph {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.skipReason {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* ── Text ───────────────────────────────────────────────────────────────── */
+
+.source {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-bright);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.translation {
+  width: 100%;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--success-strong);
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  &:hover {
+    border-color: var(--border-input);
+  }
+}
+
+.empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-bright);
+  background: var(--transl-area-bg);
+  border: 1px solid var(--transl-area-border);
+  border-radius: 3px;
+  resize: none;
+  overflow: hidden;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+}

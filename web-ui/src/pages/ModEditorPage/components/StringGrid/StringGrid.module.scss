@@ -1,0 +1,281 @@
+/* ── StringGrid — SCSS Module ───────────────────────────────────────────────── */
+
+.tableWrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.center {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* Infinite-scroll footer: "Loaded X of N" / loading indicator. */
+.loadMoreRow {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ── Header ── */
+
+.gridHeader {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-panel);
+}
+
+.th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 10px;
+  padding: 5px 6px;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-panel);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-sizing: border-box;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+}
+
+.sortable {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.sortIcon {
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+/** Drag handle at the right edge of a resizable column header cell. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 1;
+
+  &:hover {
+    background: var(--overlay-white-08);
+  }
+}
+
+/* ── Filter row ── */
+
+.filterRow {
+  display: flex;
+  position: sticky;
+  top: 27px;
+  z-index: 2;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  padding: 2px 0;
+}
+
+.filterCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.filterInput {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-row-alt);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  font-size: 10px;
+  padding: 2px 4px;
+  outline: none;
+
+  &::placeholder {
+    color: var(--text-ghost);
+    font-style: italic;
+  }
+
+  &:focus {
+    border-color: var(--success);
+  }
+}
+
+/* ── Rows ── */
+
+.gridRow {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+/** Active (keyboard-selected) row — accent ring. */
+.activeRow {
+  outline: 1px solid var(--border-heavy);
+  outline-offset: -1px;
+  z-index: 1;
+}
+
+.td {
+  padding: 5px 6px;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.colCheck {
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.colAct {
+  width: 170px;
+  flex-shrink: 0;
+}
+
+/* ── Virtual scroller ── */
+
+.virtualScroll {
+  position: relative;
+}
+
+.virtualRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* ── Cell variants ── */
+
+.tdSig {
+  composes: td;
+  color: inherit;
+  font-size: 11px;
+}
+.tdGender {
+  composes: td;
+  text-align: center;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.tdFid {
+  composes: td;
+  font-family: monospace;
+  font-size: 11px;
+  color: inherit;
+}
+.tdEdidCell {
+  composes: td;
+  font-size: 11px;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tdField {
+  composes: td;
+  font-size: 11px;
+  color: inherit;
+}
+.tdText {
+  composes: td;
+  flex: 1;
+  min-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: inherit;
+}
+.tdTranslFilled {
+  composes: tdText;
+  color: inherit;
+}
+.tdTranslEmpty {
+  composes: tdText;
+  color: inherit;
+  font-style: italic;
+}
+
+/* ── Action buttons ── */
+
+.actionBtnRow {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  flex-wrap: nowrap;
+  /* Hidden on unfocused rows; revealed on hover or when the row is active. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+
+/** Reveal action buttons when the parent row is hovered or active. */
+:is(.gridRow:hover, .activeRow) .actionBtnRow {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.actionBtnBlue {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.actionBtnRed {
+  background: var(--danger-dark);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.actionBtnGreen {
+  background: var(--success-dark);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+/* ── QA hint badge ── */
+
+.qaHint {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--qa-hint-bg);
+  color: var(--qa-hint-text);
+  font-size: 10px;
+  font-weight: 700;
+}

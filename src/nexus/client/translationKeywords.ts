@@ -1,0 +1,85 @@
+import { uniqueStrings } from './textUtils';
+
+export const getTranslationKeywords = (language: string | null): string[] => {
+  const baseKeywords = [
+    'translation',
+    'translate',
+    'translated',
+    'translator',
+    'localization',
+    'localisation',
+    'language pack',
+    'lang pack',
+    'traduccion',
+    'traducción',
+    'traducao',
+    'tradução',
+    'traduzione',
+    'ubersetzung',
+    'översättning',
+    'oversettelse',
+    'oversættelse',
+    'vertaling',
+    'tlumaczenie',
+    'forditas',
+    'fordítás',
+    'preklad',
+    'překlad',
+    'превод',
+    'переклад',
+    'перевод',
+    'prijevod',
+    'prevod',
+    'çeviri',
+    'ceviri',
+    'trans',
+    'traduction',
+    'übersetzung',
+    'tl',
+  ];
+
+  if (!language) {
+    return uniqueStrings(baseKeywords);
+  }
+
+  const languageKeywords: Record<string, string[]> = {
+    ukrainian: ['ukrainian', 'україн', 'ua'],
+    russian: ['russian', 'рус', 'ru'],
+    polish: ['polish', 'polski', 'pl'],
+    german: ['german', 'deutsch', 'de'],
+    french: ['french', 'français', 'francais', 'fr'],
+    spanish: ['spanish', 'español', 'espanol', 'es'],
+    portuguese: ['portuguese', 'português', 'portugues', 'pt'],
+    'brazilian portuguese': [
+      'brazilian portuguese',
+      'português brasileiro',
+      'portugues brasileiro',
+      'pt-br',
+      'pt br',
+    ],
+    italian: ['italian', 'italiano', 'it'],
+    dutch: ['dutch', 'nederlands', 'nl'],
+    swedish: ['swedish', 'svenska', 'sv'],
+    norwegian: ['norwegian', 'norsk', 'no'],
+    danish: ['danish', 'dansk', 'da'],
+    finnish: ['finnish', 'suomi', 'fi'],
+    czech: ['czech', 'čeština', 'cestina', 'cz'],
+    slovak: ['slovak', 'slovenčina', 'slovencina', 'sk'],
+    slovenian: ['slovenian', 'slovenščina', 'slovenscina', 'sl'],
+    hungarian: ['hungarian', 'magyar', 'hu'],
+    romanian: ['romanian', 'română', 'romana', 'ro'],
+    croatian: ['croatian', 'hrvatski', 'hr'],
+    serbian: ['serbian', 'srpski', 'sr'],
+    bulgarian: ['bulgarian', 'български', 'bg'],
+    greek: ['greek', 'ελληνικά', 'el'],
+    turkish: ['turkish', 'türkçe', 'turkce', 'tr'],
+    japanese: ['japanese', '日本語', 'jp'],
+    korean: ['korean', '한국어', 'kr'],
+    chinese: ['chinese', '中文', 'cn', 'zh'],
+    thai: ['thai', 'ไทย', 'th'],
+    vietnamese: ['vietnamese', 'tiếng việt', 'tieng viet', 'vi'],
+    indonesian: ['indonesian', 'bahasa indonesia', 'id'],
+  };
+
+  return uniqueStrings([...baseKeywords, ...(languageKeywords[language] ?? [language])]);
+};

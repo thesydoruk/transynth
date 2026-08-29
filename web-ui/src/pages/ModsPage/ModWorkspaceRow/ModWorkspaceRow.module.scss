@@ -1,0 +1,46 @@
+.row {
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--border-heavy);
+  }
+}
+
+.rowSelected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg-raised));
+}
+
+.selectCheckbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.main {
+  min-width: 0;
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.pctRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.pctApproved {
+  color: var(--text);
+}
+
+.pctFuzzy {
+  color: var(--text-dim);
+}

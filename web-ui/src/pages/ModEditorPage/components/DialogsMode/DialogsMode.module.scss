@@ -1,0 +1,30 @@
+/* ── DialogsMode — SCSS Module ──────────────────────────────────────────── */
+
+.root {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.navigatorPane {
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.divider {
+  flex-shrink: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: var(--bg-body);
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--accent);
+  }
+}
+
+.dividerActive {
+  background: var(--accent);
+}

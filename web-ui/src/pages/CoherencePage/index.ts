@@ -1,0 +1,1 @@
+export { CoherencePage } from './CoherencePage';

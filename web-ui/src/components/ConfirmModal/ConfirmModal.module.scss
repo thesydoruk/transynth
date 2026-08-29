@@ -1,0 +1,19 @@
+/* ── ConfirmModal ─────────────────────────────────────────────────────────── */
+
+/** Body message. */
+.body {
+  margin: 0;
+  padding: 18px 20px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/** Footer button row. */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+}

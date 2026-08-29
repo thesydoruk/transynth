@@ -1,0 +1,143 @@
+/* ── Activity Log Page ───────────────────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pageEmbedded {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+/* ── Filters ───────────────────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+
+  select,
+  input {
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 13px;
+
+    &:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+  }
+}
+
+.dateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dateLabel {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.csvBtn {
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: flex-end;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-row-hover);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    padding: 7px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: var(--text);
+  }
+}
+
+.actionBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--border-light);
+  color: var(--text-muted);
+}
+
+.pagination {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.empty {
+  color: var(--text-faint);
+  text-align: center;
+  padding: 32px;
+}
+
+.details {
+  color: var(--text-dim);
+  font-size: 11px;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

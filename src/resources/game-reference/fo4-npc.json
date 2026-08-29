@@ -1,0 +1,9610 @@
+[
+  {
+    "formId": "0024A037",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A036",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A035",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A034",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A033",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A032",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A031",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A030",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A02F",
+    "term": "Settler"
+  },
+  {
+    "formId": "0024A022",
+    "term": "Settler"
+  },
+  {
+    "formId": "00249B03",
+    "term": "Legendary Annihilator Sentry Bot Mk.II"
+  },
+  {
+    "formId": "00249B02",
+    "term": "Legendary Annihilator Sentry Bot"
+  },
+  {
+    "formId": "00249B01",
+    "term": "Legendary Siege Breaker Sentry Bot"
+  },
+  {
+    "formId": "00249B00",
+    "term": "Legendary Sentry Bot"
+  },
+  {
+    "formId": "00249AFE",
+    "term": "Legendary Annihilator Sentry Bot Mk.II"
+  },
+  {
+    "formId": "00249AFD",
+    "term": "Legendary Annihilator Sentry Bot"
+  },
+  {
+    "formId": "00249AFC",
+    "term": "Legendary Siege Breaker Sentry Bot"
+  },
+  {
+    "formId": "00249AFB",
+    "term": "Legendary Sentry Bot"
+  },
+  {
+    "formId": "00249AF7",
+    "term": "Legendary Protectron Guardian"
+  },
+  {
+    "formId": "00249AF6",
+    "term": "Legendary Protectron Watcher"
+  },
+  {
+    "formId": "00249AF1",
+    "term": "Legendary Colonel Gutsy"
+  },
+  {
+    "formId": "00249AF0",
+    "term": "Legendary Major Gutsy"
+  },
+  {
+    "formId": "00249AEF",
+    "term": "Legendary Lieutenant Gutsy"
+  },
+  {
+    "formId": "00249AEE",
+    "term": "Legendary Mr. Gutsy"
+  },
+  {
+    "formId": "00249AED",
+    "term": "Legendary Assaultron Dominator"
+  },
+  {
+    "formId": "00249AEC",
+    "term": "Legendary Assaultron Invader"
+  },
+  {
+    "formId": "00249AEB",
+    "term": "Legendary Assaultron"
+  },
+  {
+    "formId": "00249AE9",
+    "term": "Brotherhood Star Paladin"
+  },
+  {
+    "formId": "00249AE8",
+    "term": "Legendary Brotherhood Paladin-Commander"
+  },
+  {
+    "formId": "00249AE7",
+    "term": "Legendary Brotherhood Paladin"
+  },
+  {
+    "formId": "00249AE6",
+    "term": "Legendary Brotherhood Knight-Commander"
+  },
+  {
+    "formId": "00249AE5",
+    "term": "Legendary Brotherhood Knight-Captain"
+  },
+  {
+    "formId": "00249AE4",
+    "term": "Legendary Brotherhood Knight-Sergeant"
+  },
+  {
+    "formId": "00249AE3",
+    "term": "Legendary Brotherhood Knight"
+  },
+  {
+    "formId": "00249AE1",
+    "term": "Brotherhood Star Paladin"
+  },
+  {
+    "formId": "00249AE0",
+    "term": "Legendary Brotherhood Paladin-Commander"
+  },
+  {
+    "formId": "00249ADF",
+    "term": "Legendary Brotherhood Paladin"
+  },
+  {
+    "formId": "00249ADE",
+    "term": "Legendary Brotherhood Knight-Commander"
+  },
+  {
+    "formId": "00249ADD",
+    "term": "Legendary Brotherhood Knight-Captain"
+  },
+  {
+    "formId": "00249ADC",
+    "term": "Legendary Brotherhood Knight-Sergeant"
+  },
+  {
+    "formId": "00249ADB",
+    "term": "Legendary Brotherhood Knight"
+  },
+  {
+    "formId": "00249ADA",
+    "term": "Legendary Brotherhood Aspirant"
+  },
+  {
+    "formId": "00249A1F",
+    "term": "Legendary Synth Eradicator"
+  },
+  {
+    "formId": "00249A1E",
+    "term": "Legendary Synth Stormer"
+  },
+  {
+    "formId": "00249A1D",
+    "term": "Legendary Synth Assaulter"
+  },
+  {
+    "formId": "00249A1C",
+    "term": "Legendary Synth Trooper"
+  },
+  {
+    "formId": "00249A1B",
+    "term": "Legendary Synth Seeker"
+  },
+  {
+    "formId": "00249A1A",
+    "term": "Legendary Synth Patroller"
+  },
+  {
+    "formId": "00249A19",
+    "term": "Legendary Synth Strider"
+  },
+  {
+    "formId": "00249A0B",
+    "term": "Legendary Stingwing Chaser"
+  },
+  {
+    "formId": "00249A0A",
+    "term": "Legendary Glowing Stingwing"
+  },
+  {
+    "formId": "00249A09",
+    "term": "Legendary Stingwing Skimmer"
+  },
+  {
+    "formId": "00249A08",
+    "term": "Legendary Stingwing Darter"
+  },
+  {
+    "formId": "00249A07",
+    "term": "Legendary Stingwing"
+  },
+  {
+    "formId": "00249A05",
+    "term": "Legendary Deathskull Radscorpion"
+  },
+  {
+    "formId": "00249A04",
+    "term": "Legendary Radscorpion Predator"
+  },
+  {
+    "formId": "00249A03",
+    "term": "Legendary Radscorpion Stalker"
+  },
+  {
+    "formId": "00249A02",
+    "term": "Legendary Albino Radscorpion"
+  },
+  {
+    "formId": "00249A01",
+    "term": "Legendary Glowing Radscorpion"
+  },
+  {
+    "formId": "00249A00",
+    "term": "Legendary Radscorpion Hunter"
+  },
+  {
+    "formId": "002499FF",
+    "term": "Legendary Radscorpion"
+  },
+  {
+    "formId": "002499FE",
+    "term": "Glowing Mutant Hound"
+  },
+  {
+    "formId": "002499FD",
+    "term": "Glowing Mutant Hound"
+  },
+  {
+    "formId": "002499FB",
+    "term": "Legendary Mole Rat Brood Mother"
+  },
+  {
+    "formId": "002499FA",
+    "term": "Legendary Glowing Mole Rat"
+  },
+  {
+    "formId": "002499F9",
+    "term": "Legendary Rabid Mole Rat"
+  },
+  {
+    "formId": "002499F6",
+    "term": "Legendary Glowing Mirelurk King"
+  },
+  {
+    "formId": "002499F5",
+    "term": "Legendary Mirelurk Deep King"
+  },
+  {
+    "formId": "002499F4",
+    "term": "Legendary Mirelurk King"
+  },
+  {
+    "formId": "002499F3",
+    "term": "Legendary Albino Mirelurk Hunter"
+  },
+  {
+    "formId": "002499F2",
+    "term": "Legendary Glowing Mirelurk Hunter"
+  },
+  {
+    "formId": "002499F1",
+    "term": "Legendary Mirelurk Hunter"
+  },
+  {
+    "formId": "002499EF",
+    "term": "Legendary Glowing Mirelurk"
+  },
+  {
+    "formId": "002499EE",
+    "term": "Legendary Mirelurk Killclaw"
+  },
+  {
+    "formId": "002499ED",
+    "term": "Legendary Mirelurk Razorclaw"
+  },
+  {
+    "formId": "002499EC",
+    "term": "Legendary Mirelurk"
+  },
+  {
+    "formId": "002499E5",
+    "term": "Legendary Bloated Glowing One"
+  },
+  {
+    "formId": "002499E4",
+    "term": "Legendary Putrid Glowing One"
+  },
+  {
+    "formId": "002499E3",
+    "term": "Legendary Glowing One"
+  },
+  {
+    "formId": "002499E2",
+    "term": "Legendary Charred Feral Ghoul"
+  },
+  {
+    "formId": "002499E1",
+    "term": "Legendary Rotting Feral Ghoul"
+  },
+  {
+    "formId": "002499E0",
+    "term": "Legendary Gangrenous Feral Ghoul"
+  },
+  {
+    "formId": "002499DF",
+    "term": "Legendary Withered Feral Ghoul"
+  },
+  {
+    "formId": "002499DE",
+    "term": "Legendary Feral Ghoul Reaver"
+  },
+  {
+    "formId": "002499DD",
+    "term": "Legendary Feral Ghoul Stalker"
+  },
+  {
+    "formId": "002499DC",
+    "term": "Legendary Feral Ghoul Roamer"
+  },
+  {
+    "formId": "002499DA",
+    "term": "Legendary Mythic Deathclaw"
+  },
+  {
+    "formId": "002499D9",
+    "term": "Legendary Chameleon Deathclaw"
+  },
+  {
+    "formId": "002499D8",
+    "term": "Legendary Albino Deathclaw"
+  },
+  {
+    "formId": "002499D7",
+    "term": "Legendary Savage Deathclaw"
+  },
+  {
+    "formId": "002499D6",
+    "term": "Legendary Deathclaw Matriarch"
+  },
+  {
+    "formId": "002499D5",
+    "term": "Legendary Glowing Deathclaw"
+  },
+  {
+    "formId": "002499D4",
+    "term": "Legendary Deathclaw"
+  },
+  {
+    "formId": "002499D3",
+    "term": "Legendary Alpha Deathclaw"
+  },
+  {
+    "formId": "002499D1",
+    "term": "Legendary Vampiric Bloodbug"
+  },
+  {
+    "formId": "002499D0",
+    "term": "Legendary Glowing Bloodbug"
+  },
+  {
+    "formId": "002499CF",
+    "term": "Legendary Infected Bloodbug"
+  },
+  {
+    "formId": "002499CE",
+    "term": "Legendary Red Widow Bloodbug"
+  },
+  {
+    "formId": "002499CD",
+    "term": "Legendary Bloodbug"
+  },
+  {
+    "formId": "002499CB",
+    "term": "Legendary Glowing Bloatfly"
+  },
+  {
+    "formId": "002499CA",
+    "term": "Legendary Festering Bloatfly"
+  },
+  {
+    "formId": "002499C9",
+    "term": "Legendary Black Bloatfly"
+  },
+  {
+    "formId": "002499C4",
+    "term": "Legendary Radroach"
+  },
+  {
+    "formId": "00248618",
+    "term": "Regi Blattaria"
+  },
+  {
+    "formId": "00248270",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00247984",
+    "term": "Stingwing Darter"
+  },
+  {
+    "formId": "00247981",
+    "term": "Black Bloatfly"
+  },
+  {
+    "formId": "00247557",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00247553",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0024754C",
+    "term": "Super Mutant"
+  },
+  {
+    "formId": "00246BF1",
+    "term": "Nora"
+  },
+  {
+    "formId": "00246BF0",
+    "term": "Nate"
+  },
+  {
+    "formId": "00246977",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00246976",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00246975",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00240C22",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "00240C21",
+    "term": "Synth"
+  },
+  {
+    "formId": "002404B6",
+    "term": "Legendary Triggerman"
+  },
+  {
+    "formId": "002404B5",
+    "term": "Legendary Triggerman"
+  },
+  {
+    "formId": "002404B4",
+    "term": "Legendary Triggerman"
+  },
+  {
+    "formId": "002404B3",
+    "term": "Legendary Triggerman"
+  },
+  {
+    "formId": "002404B2",
+    "term": "Legendary Triggerman"
+  },
+  {
+    "formId": "0023F3E9",
+    "term": "Wayne Gorski"
+  },
+  {
+    "formId": "0023E76D",
+    "term": "Synth"
+  },
+  {
+    "formId": "0023D8CD",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0023D8CC",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0023B857",
+    "term": "House Cat"
+  },
+  {
+    "formId": "0023B856",
+    "term": "Trader"
+  },
+  {
+    "formId": "002391B5",
+    "term": "Racial Commentor Valentine"
+  },
+  {
+    "formId": "002385A3",
+    "term": "Machinegun Turret Mk VII"
+  },
+  {
+    "formId": "002385A2",
+    "term": "Machinegun Turret Mk V"
+  },
+  {
+    "formId": "002385A1",
+    "term": "Machinegun Turret Mk VII"
+  },
+  {
+    "formId": "002385A0",
+    "term": "Machinegun Turret Mk V"
+  },
+  {
+    "formId": "0023859F",
+    "term": "Machinegun Turret Mk III"
+  },
+  {
+    "formId": "0023859E",
+    "term": "Machinegun Turret Mk III"
+  },
+  {
+    "formId": "0023228E",
+    "term": "PresetMale17"
+  },
+  {
+    "formId": "0023228D",
+    "term": "PresetMale16"
+  },
+  {
+    "formId": "0023228C",
+    "term": "PresetMale15"
+  },
+  {
+    "formId": "0023228B",
+    "term": "PresetMale14"
+  },
+  {
+    "formId": "0023134F",
+    "term": "PresetFemale2"
+  },
+  {
+    "formId": "0023134E",
+    "term": "PresetFemale2"
+  },
+  {
+    "formId": "0023134D",
+    "term": "PresetFemale2"
+  },
+  {
+    "formId": "0023134C",
+    "term": "PresetFemale17"
+  },
+  {
+    "formId": "0023134B",
+    "term": "PresetFemale16"
+  },
+  {
+    "formId": "0023134A",
+    "term": "PresetFemale15"
+  },
+  {
+    "formId": "00231349",
+    "term": "PresetFemale14"
+  },
+  {
+    "formId": "00231348",
+    "term": "PresetFemale13"
+  },
+  {
+    "formId": "00231346",
+    "term": "PresetFemale11"
+  },
+  {
+    "formId": "00230793",
+    "term": "Attack Dog"
+  },
+  {
+    "formId": "0022CDF9",
+    "term": "Gunner Assaultron Dominator"
+  },
+  {
+    "formId": "0022CDF8",
+    "term": "Gunner Assaultron Invader"
+  },
+  {
+    "formId": "0022CDF7",
+    "term": "Gunner Assaultron"
+  },
+  {
+    "formId": "0022CDF6",
+    "term": "Gunner Annihilator Sentry Bot Mk.II"
+  },
+  {
+    "formId": "0022CDF5",
+    "term": "Gunner Annihilator Sentry Bot"
+  },
+  {
+    "formId": "0022CDF4",
+    "term": "Gunner Siege Breaker Sentry Bot"
+  },
+  {
+    "formId": "0022CDF3",
+    "term": "Gunner Sentry Bot"
+  },
+  {
+    "formId": "0022B59D",
+    "term": "Heavy Laser Turret"
+  },
+  {
+    "formId": "0022B295",
+    "term": "Father Gabe"
+  },
+  {
+    "formId": "0022B18D",
+    "term": "Spotlight"
+  },
+  {
+    "formId": "0022B184",
+    "term": "Missile Turret"
+  },
+  {
+    "formId": "0022B183",
+    "term": "Shotgun Turret"
+  },
+  {
+    "formId": "00227ED2",
+    "term": "Bethany"
+  },
+  {
+    "formId": "00225B6A",
+    "term": "PresetFemale7"
+  },
+  {
+    "formId": "00225B69",
+    "term": "PresetFemale8"
+  },
+  {
+    "formId": "00225B68",
+    "term": "PresetFemale9"
+  },
+  {
+    "formId": "00225B67",
+    "term": "PresetFemale10"
+  },
+  {
+    "formId": "002216CD",
+    "term": "Mr. Gutsy"
+  },
+  {
+    "formId": "002216CC",
+    "term": "Mr. Gutsy"
+  },
+  {
+    "formId": "00221253",
+    "term": "Brotherhood Scribe"
+  },
+  {
+    "formId": "0021DDBF",
+    "term": "Gunner Colonel Gutsy"
+  },
+  {
+    "formId": "0021DDBE",
+    "term": "Gunner Major Gutsy"
+  },
+  {
+    "formId": "0021DDBD",
+    "term": "Gunner Lt. Gutsy"
+  },
+  {
+    "formId": "0021DDBB",
+    "term": "Gunner Mr. Gutsy"
+  },
+  {
+    "formId": "0021DDB7",
+    "term": "Brotherhood Star Paladin"
+  },
+  {
+    "formId": "00216358",
+    "term": "Annihilator Sentry Bot Mk.II"
+  },
+  {
+    "formId": "00216357",
+    "term": "Annihilator Sentry Bot"
+  },
+  {
+    "formId": "00216241",
+    "term": "Resident"
+  },
+  {
+    "formId": "00215CE1",
+    "term": "Settler"
+  },
+  {
+    "formId": "00215CE0",
+    "term": "Settler"
+  },
+  {
+    "formId": "00215CDF",
+    "term": "Settler"
+  },
+  {
+    "formId": "00215CDE",
+    "term": "Settler"
+  },
+  {
+    "formId": "00215CD2",
+    "term": "Forged Leader"
+  },
+  {
+    "formId": "00213F53",
+    "term": "Child of Atom Reborn"
+  },
+  {
+    "formId": "0020F489",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0020ED0B",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0020ED0A",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0020ED09",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0020ED08",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0020EA68",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0020EA67",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0020EA66",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0020A57B",
+    "term": "Settler"
+  },
+  {
+    "formId": "0020A57A",
+    "term": "Trader"
+  },
+  {
+    "formId": "0020A577",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "002075EB",
+    "term": "Slough"
+  },
+  {
+    "formId": "0020619C",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00206173",
+    "term": "Teddy"
+  },
+  {
+    "formId": "0020447A",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00204479",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "001FE6AB",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FE6A8",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FE6A7",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FE6A6",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FE6A5",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FB1FF",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001FB1EC",
+    "term": "Alissa"
+  },
+  {
+    "formId": "001FB1EB",
+    "term": "Kate"
+  },
+  {
+    "formId": "001FB1E9",
+    "term": "Kyle"
+  },
+  {
+    "formId": "001FB1E7",
+    "term": "Evan O'Dood"
+  },
+  {
+    "formId": "001F8A72",
+    "term": "Young Yao Guai"
+  },
+  {
+    "formId": "001F6B07",
+    "term": "Brotherhood Paladin-Commander"
+  },
+  {
+    "formId": "001F6B06",
+    "term": "Brotherhood Paladin"
+  },
+  {
+    "formId": "001F6B05",
+    "term": "Brotherhood Knight-Commander"
+  },
+  {
+    "formId": "001F22F4",
+    "term": "Fisherman"
+  },
+  {
+    "formId": "001F22F3",
+    "term": "Moonshiner"
+  },
+  {
+    "formId": "001F0719",
+    "term": "Newscaster"
+  },
+  {
+    "formId": "001EE912",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "001EE910",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "001E9922",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E9921",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E991E",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E991D",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E991A",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E9917",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E9916",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E9913",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E990C",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001E810E",
+    "term": "Leonard Moore"
+  },
+  {
+    "formId": "001E7429",
+    "term": "Raider Psycho"
+  },
+  {
+    "formId": "001E73F4",
+    "term": "PresetMale13"
+  },
+  {
+    "formId": "001E61E4",
+    "term": "Police Protectron"
+  },
+  {
+    "formId": "001E61E3",
+    "term": "Protectron"
+  },
+  {
+    "formId": "001E61E0",
+    "term": "Protectron"
+  },
+  {
+    "formId": "001E2D7C",
+    "term": "Magnolia"
+  },
+  {
+    "formId": "001E2D7A",
+    "term": "Magnolia"
+  },
+  {
+    "formId": "001E203D",
+    "term": "Rebel Synth"
+  },
+  {
+    "formId": "001E203C",
+    "term": "Rebel Synth"
+  },
+  {
+    "formId": "001E203B",
+    "term": "Rebel Synth"
+  },
+  {
+    "formId": "001E203A",
+    "term": "Rebel Synth"
+  },
+  {
+    "formId": "001E1F43",
+    "term": "Eleanor"
+  },
+  {
+    "formId": "001E1D73",
+    "term": "Synth"
+  },
+  {
+    "formId": "001E079C",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E079B",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E079A",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0799",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0798",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0797",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0796",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0795",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0794",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001E0793",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "001D77A0",
+    "term": "Utility Protectron"
+  },
+  {
+    "formId": "001D475E",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001D475B",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001D4758",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001D4757",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001D4756",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "001D2743",
+    "term": "Guard Dog"
+  },
+  {
+    "formId": "001D16B4",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "001D168F",
+    "term": "Cat"
+  },
+  {
+    "formId": "001CFB19",
+    "term": "A-2018"
+  },
+  {
+    "formId": "001CFB18",
+    "term": "Z4K-97B"
+  },
+  {
+    "formId": "001CFB17",
+    "term": "XPN-20A"
+  },
+  {
+    "formId": "001CF28C",
+    "term": "Attack Dog"
+  },
+  {
+    "formId": "001CF010",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "001CF00F",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "001CF00E",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "001CF00D",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "001CC45C",
+    "term": "Gunner Captain"
+  },
+  {
+    "formId": "001C98E8",
+    "term": "Furniture Tester"
+  },
+  {
+    "formId": "001C88A6",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "001C87CD",
+    "term": "Unarmed Weapon Stingwing"
+  },
+  {
+    "formId": "001C87CC",
+    "term": "Unarmed Weapon Human"
+  },
+  {
+    "formId": "001C64A6",
+    "term": "Gunner Captain"
+  },
+  {
+    "formId": "001C5A37",
+    "term": "Protectron Steward"
+  },
+  {
+    "formId": "001C492F",
+    "term": "Marty Bullfinch"
+  },
+  {
+    "formId": "001C4037",
+    "term": "Trader"
+  },
+  {
+    "formId": "001C4033",
+    "term": "Trader"
+  },
+  {
+    "formId": "001C246B",
+    "term": "Assaultron Dominator"
+  },
+  {
+    "formId": "001C1416",
+    "term": "Me"
+  },
+  {
+    "formId": "001C0380",
+    "term": "Bonnie"
+  },
+  {
+    "formId": "001BF702",
+    "term": "Doctor Chandrich"
+  },
+  {
+    "formId": "001BF700",
+    "term": "Technician Janowski"
+  },
+  {
+    "formId": "001BF6FB",
+    "term": "Karl Oslow"
+  },
+  {
+    "formId": "001BF6FA",
+    "term": "SS Prescott Soldier"
+  },
+  {
+    "formId": "001BF6F9",
+    "term": "Technician Rand"
+  },
+  {
+    "formId": "001BF6F8",
+    "term": "Captain Dunleavy"
+  },
+  {
+    "formId": "001BF0B7",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "001BF0B3",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0B2",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0B1",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0B0",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0AF",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0AE",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0AD",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0AC",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BF0AB",
+    "term": "Settler"
+  },
+  {
+    "formId": "001BE407",
+    "term": "Dora"
+  },
+  {
+    "formId": "001BCEA1",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "001BCEA0",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "001BCE9F",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "001BCE9E",
+    "term": "Legendary Charred Feral Ghoul"
+  },
+  {
+    "formId": "001BBCC0",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "001BBCBF",
+    "term": "Child of Atom Preacher"
+  },
+  {
+    "formId": "001BBCBE",
+    "term": "Child of Atom Cultist"
+  },
+  {
+    "formId": "001BBCBB",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "001B9EB3",
+    "term": "Synth"
+  },
+  {
+    "formId": "001B829C",
+    "term": "Mirelurk Hatchling"
+  },
+  {
+    "formId": "001B829B",
+    "term": "Mirelurk Spawn"
+  },
+  {
+    "formId": "001B48AB",
+    "term": "First Mate"
+  },
+  {
+    "formId": "001B48AA",
+    "term": "Crewman"
+  },
+  {
+    "formId": "001B48A9",
+    "term": "Crewman"
+  },
+  {
+    "formId": "001B48A8",
+    "term": "Crewman"
+  },
+  {
+    "formId": "001B446B",
+    "term": "Pilot"
+  },
+  {
+    "formId": "001B34DF",
+    "term": "Pilot"
+  },
+  {
+    "formId": "001B01D8",
+    "term": "Settler"
+  },
+  {
+    "formId": "001ADB52",
+    "term": "Guard Dog"
+  },
+  {
+    "formId": "001AD87B",
+    "term": "Cutty"
+  },
+  {
+    "formId": "001AD495",
+    "term": "Mac"
+  },
+  {
+    "formId": "001AC87B",
+    "term": "Rachel"
+  },
+  {
+    "formId": "001AC7C4",
+    "term": "Preston Garvey Impersonator"
+  },
+  {
+    "formId": "001AC74B",
+    "term": "Settler"
+  },
+  {
+    "formId": "001AC74A",
+    "term": "Settler"
+  },
+  {
+    "formId": "001AC749",
+    "term": "Settler"
+  },
+  {
+    "formId": "001AC748",
+    "term": "Preacher"
+  },
+  {
+    "formId": "001AC6D5",
+    "term": "Feral Ghoul Reaver"
+  },
+  {
+    "formId": "001AC5A8",
+    "term": "Child"
+  },
+  {
+    "formId": "001AC51E",
+    "term": "Storytime Simon"
+  },
+  {
+    "formId": "001AC145",
+    "term": "Brotherhood Senior Scribe"
+  },
+  {
+    "formId": "001AC144",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "001AC0CD",
+    "term": "Synth"
+  },
+  {
+    "formId": "001AC0C9",
+    "term": "Synth"
+  },
+  {
+    "formId": "001AC031",
+    "term": "Scribe Naceri"
+  },
+  {
+    "formId": "001AC030",
+    "term": "Initiate Dresden"
+  },
+  {
+    "formId": "001AC02E",
+    "term": "Knight Wagner"
+  },
+  {
+    "formId": "001ABFB8",
+    "term": "Richard Bradford"
+  },
+  {
+    "formId": "001AB278",
+    "term": "Announcer"
+  },
+  {
+    "formId": "001AADFA",
+    "term": "AudioTemplateMirelurkling"
+  },
+  {
+    "formId": "001AAB16",
+    "term": "femghoul"
+  },
+  {
+    "formId": "001A97FB",
+    "term": "Skrap Rat"
+  },
+  {
+    "formId": "001A967F",
+    "term": "Mikey"
+  },
+  {
+    "formId": "001A967E",
+    "term": "Moss"
+  },
+  {
+    "formId": "001A9612",
+    "term": "Chems Vendor"
+  },
+  {
+    "formId": "001A9510",
+    "term": "Timothy"
+  },
+  {
+    "formId": "001A77C6",
+    "term": "Clinton"
+  },
+  {
+    "formId": "001A77C2",
+    "term": "Charlie"
+  },
+  {
+    "formId": "001A5CF0",
+    "term": "AudioTemplateDogRaider"
+  },
+  {
+    "formId": "001A0A4D",
+    "term": "Kelly"
+  },
+  {
+    "formId": "0019D2EB",
+    "term": "Peters"
+  },
+  {
+    "formId": "0019D2E7",
+    "term": "Jennie"
+  },
+  {
+    "formId": "0019D2E2",
+    "term": "Gemma"
+  },
+  {
+    "formId": "0019D2E1",
+    "term": "Sue"
+  },
+  {
+    "formId": "0019D2E0",
+    "term": "Becka"
+  },
+  {
+    "formId": "0019ADA8",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "0019AD9B",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "0019AD7B",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "0019AD60",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "0019632B",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "0019632A",
+    "term": "Brotherhood Initiate"
+  },
+  {
+    "formId": "001946B0",
+    "term": "Brotherhood Knight-Captain"
+  },
+  {
+    "formId": "00194334",
+    "term": "Gene"
+  },
+  {
+    "formId": "001905EF",
+    "term": "Fred"
+  },
+  {
+    "formId": "001905EE",
+    "term": "Angie"
+  },
+  {
+    "formId": "001905ED",
+    "term": "Jules"
+  },
+  {
+    "formId": "00184764",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184763",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184762",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184761",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184760",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "0018475D",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "0018475A",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184759",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184758",
+    "term": "Legendary Gunner"
+  },
+  {
+    "formId": "00184755",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "00184754",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "00184753",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "00184752",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "0018474F",
+    "term": "Legendary Synth Eradicator"
+  },
+  {
+    "formId": "0018474E",
+    "term": "Legendary Synth Stormer"
+  },
+  {
+    "formId": "00184731",
+    "term": "Legendary Synth Assaulter"
+  },
+  {
+    "formId": "0018472F",
+    "term": "Legendary Synth Trooper"
+  },
+  {
+    "formId": "00184705",
+    "term": "Legendary Synth Seeker"
+  },
+  {
+    "formId": "001846E0",
+    "term": "Legendary Synth Patroller"
+  },
+  {
+    "formId": "001846DE",
+    "term": "Legendary Synth Strider"
+  },
+  {
+    "formId": "001846D9",
+    "term": "Legendary Mole Rat Brood Mother"
+  },
+  {
+    "formId": "001846D8",
+    "term": "Legendary Glowing Mole Rat"
+  },
+  {
+    "formId": "001846D7",
+    "term": "Legendary Rabid Mole Rat"
+  },
+  {
+    "formId": "001846D6",
+    "term": "Legendary Dusky Yao Guai"
+  },
+  {
+    "formId": "001846D5",
+    "term": "Legendary Rabid Yao Guai"
+  },
+  {
+    "formId": "001846D4",
+    "term": "Legendary Albino Yao Guai"
+  },
+  {
+    "formId": "001845F2",
+    "term": "Legendary Glowing Yao Guai"
+  },
+  {
+    "formId": "0018458C",
+    "term": "Legendary Shaggy Yao Guai"
+  },
+  {
+    "formId": "0018458B",
+    "term": "Legendary Yao Guai"
+  },
+  {
+    "formId": "00184582",
+    "term": "Legendary Glowing Radstag"
+  },
+  {
+    "formId": "00184580",
+    "term": "Legendary Rabid Radstag"
+  },
+  {
+    "formId": "0018457E",
+    "term": "Legendary Albino Radstag"
+  },
+  {
+    "formId": "00184527",
+    "term": "Legendary Radstag"
+  },
+  {
+    "formId": "00184524",
+    "term": "Legendary Glowing Mongrel"
+  },
+  {
+    "formId": "00184523",
+    "term": "Legendary Rabid Mongrel"
+  },
+  {
+    "formId": "00184522",
+    "term": "Legendary Albino Mongrel"
+  },
+  {
+    "formId": "00184521",
+    "term": "Legendary Feral Mongrel"
+  },
+  {
+    "formId": "00184520",
+    "term": "Legendary Vicious Mongrel"
+  },
+  {
+    "formId": "0018451A",
+    "term": "Legendary Stingwing Chaser"
+  },
+  {
+    "formId": "001844C6",
+    "term": "Legendary Glowing Stingwing"
+  },
+  {
+    "formId": "001844C5",
+    "term": "Legendary Stingwing Skimmer"
+  },
+  {
+    "formId": "001844C4",
+    "term": "Legendary Stingwing Darter"
+  },
+  {
+    "formId": "001844A5",
+    "term": "Legendary Stingwing"
+  },
+  {
+    "formId": "00183F2C",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "00183F27",
+    "term": "Synth Leader"
+  },
+  {
+    "formId": "001812F4",
+    "term": "Brotherhood Lancer-Knight"
+  },
+  {
+    "formId": "0017E796",
+    "term": "Art"
+  },
+  {
+    "formId": "0017E78C",
+    "term": "Art"
+  },
+  {
+    "formId": "0017E723",
+    "term": "Legendary Vampiric Bloodbug"
+  },
+  {
+    "formId": "0017E722",
+    "term": "Legendary Glowing Bloodbug"
+  },
+  {
+    "formId": "0017E721",
+    "term": "Legendary Infected Bloodbug"
+  },
+  {
+    "formId": "0017E720",
+    "term": "Legendary Red Widow Bloodbug"
+  },
+  {
+    "formId": "0017E71F",
+    "term": "Legendary Bloodbug"
+  },
+  {
+    "formId": "0017E718",
+    "term": "Legendary Mythic Deathclaw"
+  },
+  {
+    "formId": "0017E717",
+    "term": "Legendary Chameleon Deathclaw"
+  },
+  {
+    "formId": "0017E716",
+    "term": "Legendary Albino Deathclaw"
+  },
+  {
+    "formId": "0017E70E",
+    "term": "Legendary Savage Deathclaw"
+  },
+  {
+    "formId": "0017E70D",
+    "term": "Legendary Deathclaw Matriarch"
+  },
+  {
+    "formId": "0017E70C",
+    "term": "Legendary Glowing Deathclaw"
+  },
+  {
+    "formId": "0017E70B",
+    "term": "Legendary Alpha Deathclaw"
+  },
+  {
+    "formId": "0017E707",
+    "term": "Legendary Deathclaw"
+  },
+  {
+    "formId": "0017E704",
+    "term": "Legendary Deathskull Radscorpion"
+  },
+  {
+    "formId": "0017E703",
+    "term": "Legendary Radscorpion Predator"
+  },
+  {
+    "formId": "0017E702",
+    "term": "Legendary Radscorpion Stalker"
+  },
+  {
+    "formId": "0017E701",
+    "term": "Legendary Glowing Radscorpion"
+  },
+  {
+    "formId": "0017E700",
+    "term": "Legendary Albino Radscorpion"
+  },
+  {
+    "formId": "0017E6FF",
+    "term": "Legendary Radscorpion Hunter"
+  },
+  {
+    "formId": "0017E6FE",
+    "term": "Legendary Radscorpion"
+  },
+  {
+    "formId": "0017E6F4",
+    "term": "Legendary Super Mutant Warlord"
+  },
+  {
+    "formId": "0017E6F2",
+    "term": "Legendary Super Mutant Primus"
+  },
+  {
+    "formId": "0017E6F0",
+    "term": "Legendary Super Mutant Overlord"
+  },
+  {
+    "formId": "0017E6ED",
+    "term": "Legendary Super Mutant Master"
+  },
+  {
+    "formId": "0017E6EB",
+    "term": "Legendary Super Mutant Brute"
+  },
+  {
+    "formId": "0017E6E9",
+    "term": "Legendary Super Mutant Butcher"
+  },
+  {
+    "formId": "0017E6E7",
+    "term": "Legendary Super Mutant Enforcer"
+  },
+  {
+    "formId": "0017E6E5",
+    "term": "Legendary Super Mutant Skirmisher"
+  },
+  {
+    "formId": "0017E6DE",
+    "term": "Legendary Glowing Mirelurk King"
+  },
+  {
+    "formId": "0017E6DD",
+    "term": "Legendary Mirelurk Deep King"
+  },
+  {
+    "formId": "0017E6DC",
+    "term": "Legendary Mirelurk King"
+  },
+  {
+    "formId": "0017E6D8",
+    "term": "Legendary Albino Mirelurk Hunter"
+  },
+  {
+    "formId": "0017E6D7",
+    "term": "Legendary Mirelurk Hunter"
+  },
+  {
+    "formId": "0017E6D6",
+    "term": "Legendary Glowing Mirelurk Hunter"
+  },
+  {
+    "formId": "0017E6D3",
+    "term": "Legendary Mirelurk"
+  },
+  {
+    "formId": "0017E6D2",
+    "term": "Legendary Glowing Mirelurk"
+  },
+  {
+    "formId": "0017E6D1",
+    "term": "Legendary Mirelurk Killclaw"
+  },
+  {
+    "formId": "0017E6D0",
+    "term": "Legendary Mirelurk Razorclaw"
+  },
+  {
+    "formId": "0017E6CD",
+    "term": "Legendary Glowing Bloatfly"
+  },
+  {
+    "formId": "0017E6CC",
+    "term": "Legendary Festering Bloatfly"
+  },
+  {
+    "formId": "0017E6CB",
+    "term": "Legendary Black Bloatfly"
+  },
+  {
+    "formId": "00178F08",
+    "term": "Settler"
+  },
+  {
+    "formId": "00176DCA",
+    "term": "Mirelurk Spawn"
+  },
+  {
+    "formId": "00176337",
+    "term": "Junkyard Dog"
+  },
+  {
+    "formId": "00175093",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "00175092",
+    "term": "Brotherhood Knight-Captain"
+  },
+  {
+    "formId": "0017412F",
+    "term": "Dino"
+  },
+  {
+    "formId": "0016CA42",
+    "term": "Glowing Radroach"
+  },
+  {
+    "formId": "0016CA41",
+    "term": "Legendary Radroach"
+  },
+  {
+    "formId": "0016A65E",
+    "term": "Slab"
+  },
+  {
+    "formId": "0016556D",
+    "term": "Legendary Bloated Glowing One"
+  },
+  {
+    "formId": "0016556C",
+    "term": "Legendary Putrid Glowing One"
+  },
+  {
+    "formId": "0016556B",
+    "term": "Legendary Glowing One"
+  },
+  {
+    "formId": "00165566",
+    "term": "Legendary Rotting Feral Ghoul"
+  },
+  {
+    "formId": "00165565",
+    "term": "Legendary Gangrenous Feral Ghoul"
+  },
+  {
+    "formId": "00165564",
+    "term": "Legendary Withered Feral Ghoul"
+  },
+  {
+    "formId": "00165563",
+    "term": "Legendary Feral Ghoul Reaver"
+  },
+  {
+    "formId": "00165562",
+    "term": "Legendary Feral Ghoul Stalker"
+  },
+  {
+    "formId": "00165561",
+    "term": "Legendary Feral Ghoul Roamer"
+  },
+  {
+    "formId": "0015E64C",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "0015E647",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "0015E003",
+    "term": "Brotherhood Scribe"
+  },
+  {
+    "formId": "0015E001",
+    "term": "Brotherhood Knight-Sergeant"
+  },
+  {
+    "formId": "0015DFFF",
+    "term": "Brotherhood Senior Scribe"
+  },
+  {
+    "formId": "0015DFFA",
+    "term": "Brotherhood Lancer-Knight"
+  },
+  {
+    "formId": "0015DFF4",
+    "term": "Brotherhood Knight-Sergeant"
+  },
+  {
+    "formId": "0015DE73",
+    "term": "Sammy"
+  },
+  {
+    "formId": "0015DE70",
+    "term": "Neighborhood Watch"
+  },
+  {
+    "formId": "0015DE6F",
+    "term": "Neighborhood Watch"
+  },
+  {
+    "formId": "0015DCE2",
+    "term": "Slim"
+  },
+  {
+    "formId": "0015DC95",
+    "term": "Shug"
+  },
+  {
+    "formId": "0015CD3A",
+    "term": "Ruby"
+  },
+  {
+    "formId": "0015CD2A",
+    "term": "Dando"
+  },
+  {
+    "formId": "00157AA8",
+    "term": "Lane"
+  },
+  {
+    "formId": "00157AA7",
+    "term": "Strike"
+  },
+  {
+    "formId": "00157AA6",
+    "term": "Kingpin"
+  },
+  {
+    "formId": "00157AA5",
+    "term": "Split"
+  },
+  {
+    "formId": "001552C5",
+    "term": "Emmett"
+  },
+  {
+    "formId": "001552C4",
+    "term": "Brotherhood Mr Gutsy"
+  },
+  {
+    "formId": "0015384F",
+    "term": "Calvin"
+  },
+  {
+    "formId": "0015384E",
+    "term": "Officer Edwards"
+  },
+  {
+    "formId": "00153341",
+    "term": "Liam Binet"
+  },
+  {
+    "formId": "001526A6",
+    "term": "Brotherhood Mess Officer"
+  },
+  {
+    "formId": "0015122B",
+    "term": "Super Mutant"
+  },
+  {
+    "formId": "001511D6",
+    "term": "Synth"
+  },
+  {
+    "formId": "0014BF69",
+    "term": "Kyle"
+  },
+  {
+    "formId": "0014BF66",
+    "term": "Riley"
+  },
+  {
+    "formId": "0014640E",
+    "term": "Synth"
+  },
+  {
+    "formId": "00146168",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00146167",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00146161",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "00146150",
+    "term": "Super Mutant"
+  },
+  {
+    "formId": "00146140",
+    "term": "Synth"
+  },
+  {
+    "formId": "00145037",
+    "term": "Principal Hudson"
+  },
+  {
+    "formId": "00144ECB",
+    "term": "Mayor Alyssa Park"
+  },
+  {
+    "formId": "00140894",
+    "term": "Management"
+  },
+  {
+    "formId": "00140892",
+    "term": "Tim Shoots"
+  },
+  {
+    "formId": "00140872",
+    "term": "Bedlam"
+  },
+  {
+    "formId": "0013BF29",
+    "term": "Hugo"
+  },
+  {
+    "formId": "0013AD54",
+    "term": "Toro"
+  },
+  {
+    "formId": "00137B36",
+    "term": "Raider"
+  },
+  {
+    "formId": "000D0E2B",
+    "term": "Raider"
+  },
+  {
+    "formId": "000D0500",
+    "term": "HalluciGen Mainframe"
+  },
+  {
+    "formId": "000CF6DA",
+    "term": "Eager Ernie"
+  },
+  {
+    "formId": "000C97C7",
+    "term": "Richard"
+  },
+  {
+    "formId": "000C3C53",
+    "term": "Drifter"
+  },
+  {
+    "formId": "000BD787",
+    "term": "Marc Wilson"
+  },
+  {
+    "formId": "000BB1F9",
+    "term": "Peepers"
+  },
+  {
+    "formId": "000B105B",
+    "term": "Ack-Ack"
+  },
+  {
+    "formId": "000B100F",
+    "term": "Mole Rat Brood Mother"
+  },
+  {
+    "formId": "000AE158",
+    "term": "Scutter"
+  },
+  {
+    "formId": "000AE157",
+    "term": "Gaff"
+  },
+  {
+    "formId": "000AE156",
+    "term": "Clutch"
+  },
+  {
+    "formId": "000AE154",
+    "term": "Boomer"
+  },
+  {
+    "formId": "000AE153",
+    "term": "Cinder"
+  },
+  {
+    "formId": "000AE14C",
+    "term": "Demo"
+  },
+  {
+    "formId": "000AE146",
+    "term": "Wire"
+  },
+  {
+    "formId": "000AE145",
+    "term": "Chancer"
+  },
+  {
+    "formId": "000AE143",
+    "term": "Helter Skelter"
+  },
+  {
+    "formId": "000AE13F",
+    "term": "Sparta"
+  },
+  {
+    "formId": "000AC520",
+    "term": "Gunner Commander"
+  },
+  {
+    "formId": "000AC4DB",
+    "term": "Synth Leader"
+  },
+  {
+    "formId": "000AB3DA",
+    "term": "Neil"
+  },
+  {
+    "formId": "000AB3D8",
+    "term": "Miranda"
+  },
+  {
+    "formId": "000A93D7",
+    "term": "Deck Scribe"
+  },
+  {
+    "formId": "000A93D6",
+    "term": "Deck Scribe"
+  },
+  {
+    "formId": "000A93D5",
+    "term": "Deck Scribe"
+  },
+  {
+    "formId": "000A93D4",
+    "term": "Deck Scribe"
+  },
+  {
+    "formId": "000A0EEE",
+    "term": "Bloated Glowing One"
+  },
+  {
+    "formId": "000A0EE8",
+    "term": "Alt Feral Ghoul Glowing Sea"
+  },
+  {
+    "formId": "000A077E",
+    "term": "Alt Feral Ghoul Glowing Sea"
+  },
+  {
+    "formId": "0009BEF7",
+    "term": "Dr. Handy, M.D."
+  },
+  {
+    "formId": "00097CC5",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "000975FD",
+    "term": "Opal"
+  },
+  {
+    "formId": "00097339",
+    "term": "Raider"
+  },
+  {
+    "formId": "00097336",
+    "term": "Raider"
+  },
+  {
+    "formId": "00097335",
+    "term": "Raider"
+  },
+  {
+    "formId": "00097332",
+    "term": "Raider"
+  },
+  {
+    "formId": "0009647C",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "0008C409",
+    "term": "Sylvia Cooper"
+  },
+  {
+    "formId": "0008C408",
+    "term": "Jacqueline Spencer"
+  },
+  {
+    "formId": "0008C407",
+    "term": "Perry"
+  },
+  {
+    "formId": "0008C406",
+    "term": "Gerald Spencer"
+  },
+  {
+    "formId": "0008C400",
+    "term": "Bert Strickland"
+  },
+  {
+    "formId": "0008C3FF",
+    "term": "Male Voice"
+  },
+  {
+    "formId": "00077D36",
+    "term": "Judge Zeller"
+  },
+  {
+    "formId": "00073235",
+    "term": "Josh"
+  },
+  {
+    "formId": "000726C8",
+    "term": "Institute Computer"
+  },
+  {
+    "formId": "0007050A",
+    "term": "Gunner Brigadier"
+  },
+  {
+    "formId": "00070509",
+    "term": "Gunner Colonel"
+  },
+  {
+    "formId": "00070508",
+    "term": "Gunner Major"
+  },
+  {
+    "formId": "00070507",
+    "term": "Gunner Captain"
+  },
+  {
+    "formId": "00070506",
+    "term": "Gunner Lieutenant"
+  },
+  {
+    "formId": "000668D5",
+    "term": "Mikail"
+  },
+  {
+    "formId": "00066644",
+    "term": "Synth"
+  },
+  {
+    "formId": "00063EA0",
+    "term": "Synth"
+  },
+  {
+    "formId": "00063520",
+    "term": "Soup Can Harry"
+  },
+  {
+    "formId": "0006351F",
+    "term": "Kimberly"
+  },
+  {
+    "formId": "0006351C",
+    "term": "Benjamin"
+  },
+  {
+    "formId": "0006350D",
+    "term": "Interviewer"
+  },
+  {
+    "formId": "0005FEEF",
+    "term": "Chem Lab Worker"
+  },
+  {
+    "formId": "0005FEED",
+    "term": "Chem Lab Worker"
+  },
+  {
+    "formId": "0005FEDF",
+    "term": "Chem Lab Worker"
+  },
+  {
+    "formId": "0005E714",
+    "term": "Institute Worker"
+  },
+  {
+    "formId": "0005E712",
+    "term": "Institute Division Head"
+  },
+  {
+    "formId": "0005E70F",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "0005A7A1",
+    "term": "PresetMale7"
+  },
+  {
+    "formId": "0005A79F",
+    "term": "PresetMale8"
+  },
+  {
+    "formId": "0005A795",
+    "term": "PresetMale9"
+  },
+  {
+    "formId": "0005A793",
+    "term": "PresetMale10"
+  },
+  {
+    "formId": "0005A791",
+    "term": "PresetMale11"
+  },
+  {
+    "formId": "0005A772",
+    "term": "PresetMale12"
+  },
+  {
+    "formId": "000576D1",
+    "term": "PresetMale6"
+  },
+  {
+    "formId": "000553C5",
+    "term": "Prime Scribe"
+  },
+  {
+    "formId": "00055375",
+    "term": "Prime Scribe"
+  },
+  {
+    "formId": "00055374",
+    "term": "Prime Scribe"
+  },
+  {
+    "formId": "00055373",
+    "term": "Prime Scribe"
+  },
+  {
+    "formId": "00055372",
+    "term": "Prime Scribe"
+  },
+  {
+    "formId": "00051E91",
+    "term": "Captain Bridget"
+  },
+  {
+    "formId": "00051E54",
+    "term": "Settler"
+  },
+  {
+    "formId": "0004AB6C",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0004A517",
+    "term": "Me"
+  },
+  {
+    "formId": "0004818D",
+    "term": "Rags"
+  },
+  {
+    "formId": "00044129",
+    "term": "Brotherhood Squire Template"
+  },
+  {
+    "formId": "00044127",
+    "term": "Brotherhood Squire Template"
+  },
+  {
+    "formId": "0003D029",
+    "term": "Synth"
+  },
+  {
+    "formId": "000295A1",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "000295A0",
+    "term": "Stunted Yao Guai"
+  },
+  {
+    "formId": "0001F985",
+    "term": "Principal Tanner"
+  },
+  {
+    "formId": "0001F984",
+    "term": "Rusty"
+  },
+  {
+    "formId": "001A886D",
+    "term": "Whiplash"
+  },
+  {
+    "formId": "001A854E",
+    "term": "Machine Gun Turret"
+  },
+  {
+    "formId": "001A7C2A",
+    "term": "Synth"
+  },
+  {
+    "formId": "001A7BBE",
+    "term": "Merchant"
+  },
+  {
+    "formId": "001A7BBC",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "001A7770",
+    "term": "McDonnall"
+  },
+  {
+    "formId": "001A776F",
+    "term": "Reise"
+  },
+  {
+    "formId": "001A776E",
+    "term": "Perry"
+  },
+  {
+    "formId": "001A7762",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "001A76A6",
+    "term": "Walter"
+  },
+  {
+    "formId": "001A76A3",
+    "term": "Bear"
+  },
+  {
+    "formId": "001A76A2",
+    "term": "Tweez"
+  },
+  {
+    "formId": "001A734A",
+    "term": "Berserk Raider"
+  },
+  {
+    "formId": "001A7347",
+    "term": "Lefty"
+  },
+  {
+    "formId": "001A72CD",
+    "term": "Announcer"
+  },
+  {
+    "formId": "001A710F",
+    "term": "Captain Wes"
+  },
+  {
+    "formId": "001A710E",
+    "term": "Cruz"
+  },
+  {
+    "formId": "001A710D",
+    "term": "Ryder"
+  },
+  {
+    "formId": "001A679F",
+    "term": "Van Cleef"
+  },
+  {
+    "formId": "001A679E",
+    "term": "Clint"
+  },
+  {
+    "formId": "001A679C",
+    "term": "Baker"
+  },
+  {
+    "formId": "001A679A",
+    "term": "Tessa"
+  },
+  {
+    "formId": "001A5860",
+    "term": "Male Voice"
+  },
+  {
+    "formId": "001A5856",
+    "term": "Margaret Sutton"
+  },
+  {
+    "formId": "001A5855",
+    "term": "Russell Sutton"
+  },
+  {
+    "formId": "001A4E5C",
+    "term": "Red Tourette"
+  },
+  {
+    "formId": "001A0422",
+    "term": "Drifter"
+  },
+  {
+    "formId": "001A041E",
+    "term": "Drifter"
+  },
+  {
+    "formId": "001A041A",
+    "term": "Diamond City Security"
+  },
+  {
+    "formId": "001A0413",
+    "term": "Caravan Worker"
+  },
+  {
+    "formId": "001A03F9",
+    "term": "Synth Eradicator"
+  },
+  {
+    "formId": "001A03F8",
+    "term": "Synth Stormer"
+  },
+  {
+    "formId": "001A03F7",
+    "term": "Synth Assaulter"
+  },
+  {
+    "formId": "001A03F6",
+    "term": "Synth Trooper"
+  },
+  {
+    "formId": "001A03F5",
+    "term": "Synth Seeker"
+  },
+  {
+    "formId": "001A03F4",
+    "term": "Synth Patroller"
+  },
+  {
+    "formId": "001A035C",
+    "term": "Synth"
+  },
+  {
+    "formId": "001A0067",
+    "term": "Machinegun Turret Mk VII"
+  },
+  {
+    "formId": "001A0066",
+    "term": "Machinegun Turret Mk V"
+  },
+  {
+    "formId": "001A0065",
+    "term": "Machinegun Turret Mk III"
+  },
+  {
+    "formId": "0019FCC4",
+    "term": "Compound Guard"
+  },
+  {
+    "formId": "0019F6DA",
+    "term": "Randy"
+  },
+  {
+    "formId": "0019EE79",
+    "term": "Vault-Tec Doctor"
+  },
+  {
+    "formId": "0019E967",
+    "term": "Softshell Mirelurk"
+  },
+  {
+    "formId": "0019DE87",
+    "term": "Brotherhood Senior Scribe"
+  },
+  {
+    "formId": "0019CD12",
+    "term": "Pilot"
+  },
+  {
+    "formId": "0019A7F2",
+    "term": "Laser Turret"
+  },
+  {
+    "formId": "00198B77",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "00198B76",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "001974EB",
+    "term": "Officer"
+  },
+  {
+    "formId": "001974E9",
+    "term": "Soldier"
+  },
+  {
+    "formId": "001974E5",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "00192356",
+    "term": "Ron Staples"
+  },
+  {
+    "formId": "001922A3",
+    "term": "Wayne"
+  },
+  {
+    "formId": "001922A2",
+    "term": "Michael"
+  },
+  {
+    "formId": "0019229E",
+    "term": "David"
+  },
+  {
+    "formId": "0018FA29",
+    "term": "Pilot"
+  },
+  {
+    "formId": "0018F160",
+    "term": "Buzensky"
+  },
+  {
+    "formId": "0018E38E",
+    "term": "Announcer"
+  },
+  {
+    "formId": "0018BB2A",
+    "term": "Mole Rat"
+  },
+  {
+    "formId": "0018BA31",
+    "term": "Fens Phantom"
+  },
+  {
+    "formId": "0018B5FB",
+    "term": "PresetMale4"
+  },
+  {
+    "formId": "0018B5F9",
+    "term": "PresetMale2"
+  },
+  {
+    "formId": "0018B5F8",
+    "term": "PresetMale1"
+  },
+  {
+    "formId": "0018B5F7",
+    "term": "PresetFemale1"
+  },
+  {
+    "formId": "0018B5F6",
+    "term": "PresetFemale2"
+  },
+  {
+    "formId": "0018B5F5",
+    "term": "PresetFemale3"
+  },
+  {
+    "formId": "0018B5F4",
+    "term": "PresetFemale4"
+  },
+  {
+    "formId": "0018B5F3",
+    "term": "PresetFemale5"
+  },
+  {
+    "formId": "0018AF90",
+    "term": "Doc Anderson"
+  },
+  {
+    "formId": "0018A8CF",
+    "term": "Vault-Tec Doctor"
+  },
+  {
+    "formId": "0018A8CE",
+    "term": "Vault-Tec Doctor"
+  },
+  {
+    "formId": "0018A6D5",
+    "term": "Lexa"
+  },
+  {
+    "formId": "0018A6D4",
+    "term": "Simon"
+  },
+  {
+    "formId": "0018A6D1",
+    "term": "Stash"
+  },
+  {
+    "formId": "00188AA7",
+    "term": "Mysterious Stranger"
+  },
+  {
+    "formId": "00186973",
+    "term": "Sinjin's Gang"
+  },
+  {
+    "formId": "00186972",
+    "term": "Bodyguard"
+  },
+  {
+    "formId": "00185038",
+    "term": "Protectron"
+  },
+  {
+    "formId": "00184C51",
+    "term": "Alien"
+  },
+  {
+    "formId": "001846CB",
+    "term": "Curie"
+  },
+  {
+    "formId": "001846B2",
+    "term": "Mister Tims"
+  },
+  {
+    "formId": "001844A6",
+    "term": "Shaun"
+  },
+  {
+    "formId": "0018448D",
+    "term": "Gus"
+  },
+  {
+    "formId": "0018448C",
+    "term": "Kat"
+  },
+  {
+    "formId": "0018330A",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00183309",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00183308",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00183307",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00183306",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "001832FF",
+    "term": "Alpha Wild Mongrel"
+  },
+  {
+    "formId": "001832FE",
+    "term": "Alpha Glowing Mongrel"
+  },
+  {
+    "formId": "001832FD",
+    "term": "Alpha Rabid Mongrel"
+  },
+  {
+    "formId": "001832FC",
+    "term": "Alpha Albino Mongrel"
+  },
+  {
+    "formId": "001832FB",
+    "term": "Alpha Feral Mongrel"
+  },
+  {
+    "formId": "001832F8",
+    "term": "Mole Rat Brood Mother"
+  },
+  {
+    "formId": "001832F7",
+    "term": "Glowing Mole Rat"
+  },
+  {
+    "formId": "001832F6",
+    "term": "Rabid Mole Rat"
+  },
+  {
+    "formId": "00182DF3",
+    "term": "Hester's Announcer"
+  },
+  {
+    "formId": "001814F2",
+    "term": "Synth"
+  },
+  {
+    "formId": "0017FCE9",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "0017D882",
+    "term": "Brotherhood Scribe"
+  },
+  {
+    "formId": "0017D881",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "0017D6B6",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017D6B5",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017D6B3",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017D6B2",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017D6B1",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017D6B0",
+    "term": "Brotherhood Soldier Initiate"
+  },
+  {
+    "formId": "0017CA16",
+    "term": "Institute Courser"
+  },
+  {
+    "formId": "00179F56",
+    "term": "Vault-Tec Staff"
+  },
+  {
+    "formId": "00179C6C",
+    "term": "Sentry Bot"
+  },
+  {
+    "formId": "00179C6B",
+    "term": "Protectron"
+  },
+  {
+    "formId": "00179C6A",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "00179C69",
+    "term": "Mr. Gutsy"
+  },
+  {
+    "formId": "00179C68",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "00179C67",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "00179C65",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "00179C64",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "00179C63",
+    "term": "Protectron"
+  },
+  {
+    "formId": "00179C62",
+    "term": "Sentry Bot"
+  },
+  {
+    "formId": "00179C61",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "001796A0",
+    "term": "Vault-Tec Staff"
+  },
+  {
+    "formId": "00177DF8",
+    "term": "Overseer"
+  },
+  {
+    "formId": "00176140",
+    "term": "Synth Virus"
+  },
+  {
+    "formId": "0017610B",
+    "term": "Vendor"
+  },
+  {
+    "formId": "00176060",
+    "term": "Doctor Type"
+  },
+  {
+    "formId": "00175B76",
+    "term": "Medically Interesting Person"
+  },
+  {
+    "formId": "0016FF51",
+    "term": "Keypad Voice"
+  },
+  {
+    "formId": "0016D40E",
+    "term": "Gunner"
+  },
+  {
+    "formId": "0016CDBB",
+    "term": "AudioTemplateMirelurk"
+  },
+  {
+    "formId": "0016ADB0",
+    "term": "Gruel"
+  },
+  {
+    "formId": "0016A06E",
+    "term": "Synth"
+  },
+  {
+    "formId": "0016962D",
+    "term": "Mirelurk Hatchling"
+  },
+  {
+    "formId": "00168B89",
+    "term": "Virgil"
+  },
+  {
+    "formId": "001685F9",
+    "term": "Gunner"
+  },
+  {
+    "formId": "001685F5",
+    "term": "Private Hart"
+  },
+  {
+    "formId": "001685F4",
+    "term": "Sergeant Lee"
+  },
+  {
+    "formId": "001685F3",
+    "term": "Major Jefferies"
+  },
+  {
+    "formId": "001685E7",
+    "term": "Gunner"
+  },
+  {
+    "formId": "001685E1",
+    "term": "Major Jefferies"
+  },
+  {
+    "formId": "001685E0",
+    "term": "Private Hart"
+  },
+  {
+    "formId": "001685DF",
+    "term": "Sergeant Lee"
+  },
+  {
+    "formId": "001681CB",
+    "term": "Synth Leader"
+  },
+  {
+    "formId": "00165790",
+    "term": "Feral Ghoul Stalker"
+  },
+  {
+    "formId": "001647C6",
+    "term": "Curie"
+  },
+  {
+    "formId": "001647C4",
+    "term": "Caretaker"
+  },
+  {
+    "formId": "00163EAB",
+    "term": "Behemoth"
+  },
+  {
+    "formId": "00162781",
+    "term": "Emma"
+  },
+  {
+    "formId": "0016277E",
+    "term": "Emma"
+  },
+  {
+    "formId": "00162779",
+    "term": "Josh"
+  },
+  {
+    "formId": "001603C8",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "0016015C",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0016015B",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0016015A",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "00160159",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "00160158",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0016014D",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0016014C",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0015F03C",
+    "term": "Synth Strider"
+  },
+  {
+    "formId": "0015EF6B",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015EF6A",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015E983",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015E982",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015E922",
+    "term": "Vault-Tec Doctor"
+  },
+  {
+    "formId": "0015B545",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015B542",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015B0BC",
+    "term": "Synth"
+  },
+  {
+    "formId": "0015A1D9",
+    "term": "Mrs. Callahan"
+  },
+  {
+    "formId": "0015A1D8",
+    "term": "Mr. Callahan"
+  },
+  {
+    "formId": "00157C5F",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "00156A28",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A27",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A23",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A21",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A20",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A1D",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A1C",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A18",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A17",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A13",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A12",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A0F",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A0E",
+    "term": "Settler"
+  },
+  {
+    "formId": "00156A0D",
+    "term": "Settler"
+  },
+  {
+    "formId": "00155252",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014FC3D",
+    "term": "Dolly Madison"
+  },
+  {
+    "formId": "0014DCF8",
+    "term": "Ben Gibson"
+  },
+  {
+    "formId": "0014DCF2",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014DCEA",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014DCE9",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014DCE8",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014D172",
+    "term": "Sonya Mk. II"
+  },
+  {
+    "formId": "0014CEAB",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014CEAA",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014CEA9",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014CEA8",
+    "term": "Settler"
+  },
+  {
+    "formId": "0014CEA2",
+    "term": "Manta Man"
+  },
+  {
+    "formId": "0014CE9E",
+    "term": "Absalom"
+  },
+  {
+    "formId": "0014AE58",
+    "term": "Super Mutant Suicider"
+  },
+  {
+    "formId": "00149C9F",
+    "term": "Raider Veteran"
+  },
+  {
+    "formId": "00149C9E",
+    "term": "Laser Turret"
+  },
+  {
+    "formId": "00148B8D",
+    "term": "Scabbard"
+  },
+  {
+    "formId": "00148B76",
+    "term": "Brendan Volkert"
+  },
+  {
+    "formId": "00148B75",
+    "term": "Nathan Filmore"
+  },
+  {
+    "formId": "00148B74",
+    "term": "Quentin Filmore"
+  },
+  {
+    "formId": "00148B73",
+    "term": "Julia Thompson"
+  },
+  {
+    "formId": "00148B72",
+    "term": "Alice Thompson"
+  },
+  {
+    "formId": "00148B71",
+    "term": "Janet Thompson"
+  },
+  {
+    "formId": "0014890C",
+    "term": "Vault 81 Resident"
+  },
+  {
+    "formId": "00147D51",
+    "term": "Marty Bullfinch"
+  },
+  {
+    "formId": "00146CE2",
+    "term": "Colonel Gutsy"
+  },
+  {
+    "formId": "00146CE1",
+    "term": "Major Gutsy"
+  },
+  {
+    "formId": "00146CE0",
+    "term": "Lieutenant Gutsy"
+  },
+  {
+    "formId": "00146CDF",
+    "term": "Mr. Gutsy"
+  },
+  {
+    "formId": "001443D8",
+    "term": "AudioTemplateMirelurk"
+  },
+  {
+    "formId": "0014404A",
+    "term": "Atom's Wrath"
+  },
+  {
+    "formId": "001437F6",
+    "term": "Dusky Yao Guai"
+  },
+  {
+    "formId": "001437F5",
+    "term": "Rabid Yao Guai"
+  },
+  {
+    "formId": "001437F4",
+    "term": "Albino Yao Guai"
+  },
+  {
+    "formId": "001437F3",
+    "term": "Glowing Yao Guai"
+  },
+  {
+    "formId": "001437F2",
+    "term": "Shaggy Yao Guai"
+  },
+  {
+    "formId": "001423BE",
+    "term": "Stingwing Chaser"
+  },
+  {
+    "formId": "001423BD",
+    "term": "Glowing Stingwing"
+  },
+  {
+    "formId": "001423BC",
+    "term": "Stingwing Skimmer"
+  },
+  {
+    "formId": "001423BB",
+    "term": "Stingwing Darter"
+  },
+  {
+    "formId": "001423B8",
+    "term": "Vampiric Bloodbug"
+  },
+  {
+    "formId": "001423B7",
+    "term": "Glowing Bloodbug"
+  },
+  {
+    "formId": "001423B6",
+    "term": "Infected Bloodbug"
+  },
+  {
+    "formId": "001423B5",
+    "term": "Red Widow Bloodbug"
+  },
+  {
+    "formId": "001423B4",
+    "term": "Bloodbug"
+  },
+  {
+    "formId": "001423B2",
+    "term": "Glowing Bloatfly"
+  },
+  {
+    "formId": "001423B1",
+    "term": "Festering Bloatfly"
+  },
+  {
+    "formId": "001423B0",
+    "term": "Black Bloatfly"
+  },
+  {
+    "formId": "001423AD",
+    "term": "Mythic Deathclaw"
+  },
+  {
+    "formId": "001423AC",
+    "term": "Chameleon Deathclaw"
+  },
+  {
+    "formId": "001423AB",
+    "term": "Albino Deathclaw"
+  },
+  {
+    "formId": "001423AA",
+    "term": "Savage Deathclaw"
+  },
+  {
+    "formId": "001423A9",
+    "term": "Deathclaw Matriarch"
+  },
+  {
+    "formId": "001423A8",
+    "term": "Glowing Deathclaw"
+  },
+  {
+    "formId": "001423A7",
+    "term": "Alpha Deathclaw"
+  },
+  {
+    "formId": "00142397",
+    "term": "Super Mutant Warlord"
+  },
+  {
+    "formId": "00142391",
+    "term": "Super Mutant Primus"
+  },
+  {
+    "formId": "0014238B",
+    "term": "Super Mutant Overlord"
+  },
+  {
+    "formId": "00142385",
+    "term": "Glowing Mirelurk King"
+  },
+  {
+    "formId": "00142384",
+    "term": "Albino Mirelurk Hunter"
+  },
+  {
+    "formId": "00142383",
+    "term": "Glowing Mirelurk"
+  },
+  {
+    "formId": "00142382",
+    "term": "Mirelurk Deep King"
+  },
+  {
+    "formId": "00142381",
+    "term": "Glowing Mirelurk Hunter"
+  },
+  {
+    "formId": "00142380",
+    "term": "Mirelurk Killclaw"
+  },
+  {
+    "formId": "0014237F",
+    "term": "Mirelurk Razorclaw"
+  },
+  {
+    "formId": "0014055E",
+    "term": "Pack Brahmin"
+  },
+  {
+    "formId": "0013FE2C",
+    "term": "Earl Sterling"
+  },
+  {
+    "formId": "00136251",
+    "term": "Alpha Vicious Mongrel"
+  },
+  {
+    "formId": "0013426F",
+    "term": "Brother Ward"
+  },
+  {
+    "formId": "0013426E",
+    "term": "Sister Layla"
+  },
+  {
+    "formId": "0013426D",
+    "term": "Brother Ogden"
+  },
+  {
+    "formId": "0013426C",
+    "term": "Sister Verena"
+  },
+  {
+    "formId": "00133EDC",
+    "term": "Forged"
+  },
+  {
+    "formId": "00133EDB",
+    "term": "Forged"
+  },
+  {
+    "formId": "00133EDA",
+    "term": "Forged"
+  },
+  {
+    "formId": "00133EB5",
+    "term": "Settler"
+  },
+  {
+    "formId": "001338EE",
+    "term": "Child"
+  },
+  {
+    "formId": "001337F2",
+    "term": "Liberty Prime"
+  },
+  {
+    "formId": "0013350F",
+    "term": "Ol' Girl"
+  },
+  {
+    "formId": "0013350E",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "0013350D",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00133509",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00133508",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00133507",
+    "term": "Spot"
+  },
+  {
+    "formId": "00133505",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "001324DC",
+    "term": "Glowing Mongrel"
+  },
+  {
+    "formId": "001324DB",
+    "term": "Rabid Mongrel"
+  },
+  {
+    "formId": "001324DA",
+    "term": "Albino Mongrel"
+  },
+  {
+    "formId": "001324D9",
+    "term": "Feral Mongrel"
+  },
+  {
+    "formId": "001324D8",
+    "term": "Vicious Mongrel"
+  },
+  {
+    "formId": "0013105B",
+    "term": "Forged"
+  },
+  {
+    "formId": "00131056",
+    "term": "Forged"
+  },
+  {
+    "formId": "0013104B",
+    "term": "Forged"
+  },
+  {
+    "formId": "0013101C",
+    "term": "Forged"
+  },
+  {
+    "formId": "00131019",
+    "term": "Slag"
+  },
+  {
+    "formId": "00130B86",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00130B85",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00130B81",
+    "term": "Idiot"
+  },
+  {
+    "formId": "00130B78",
+    "term": "Lucas Miller"
+  },
+  {
+    "formId": "001304C6",
+    "term": "Theodore Croup"
+  },
+  {
+    "formId": "0012FCCE",
+    "term": "Cricket"
+  },
+  {
+    "formId": "0012FCCB",
+    "term": "Doc Weathers"
+  },
+  {
+    "formId": "0012F003",
+    "term": "Virgil"
+  },
+  {
+    "formId": "0012DB4C",
+    "term": "Brother Foster"
+  },
+  {
+    "formId": "0012DB4A",
+    "term": "Brother Griffith"
+  },
+  {
+    "formId": "0012DB48",
+    "term": "Mother Isolde"
+  },
+  {
+    "formId": "0012C046",
+    "term": "Sarge"
+  },
+  {
+    "formId": "0012BC97",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "0012BC96",
+    "term": "Brotherhood Lancer-Captain"
+  },
+  {
+    "formId": "0012BC95",
+    "term": "Brotherhood Lancer-Sergeant"
+  },
+  {
+    "formId": "0012BC94",
+    "term": "Brotherhood Lancer-Knight"
+  },
+  {
+    "formId": "0012BC93",
+    "term": "Brotherhood Lancer"
+  },
+  {
+    "formId": "0012BC92",
+    "term": "Brotherhood Lancer-Initiate"
+  },
+  {
+    "formId": "0012B97C",
+    "term": "Ancient Behemoth"
+  },
+  {
+    "formId": "0012B97B",
+    "term": "Epic Behemoth"
+  },
+  {
+    "formId": "0012B97A",
+    "term": "Glowing Behemoth"
+  },
+  {
+    "formId": "00128CEE",
+    "term": "Bodyguard"
+  },
+  {
+    "formId": "00128C5A",
+    "term": "OldManBilly"
+  },
+  {
+    "formId": "00128212",
+    "term": "Barney's Turret"
+  },
+  {
+    "formId": "0012758F",
+    "term": "Gunner Mercenary"
+  },
+  {
+    "formId": "001262DA",
+    "term": "Bosco"
+  },
+  {
+    "formId": "0012544A",
+    "term": "Caravan Prisoner"
+  },
+  {
+    "formId": "00125449",
+    "term": "Caravan Prisoner"
+  },
+  {
+    "formId": "001243D1",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "001243D0",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "001243C5",
+    "term": "Courier"
+  },
+  {
+    "formId": "00122434",
+    "term": "Sentry Bot"
+  },
+  {
+    "formId": "0012240D",
+    "term": "Glowing Mutant Hound"
+  },
+  {
+    "formId": "00121D52",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "00121D50",
+    "term": "Protectron Guardian"
+  },
+  {
+    "formId": "00121D4F",
+    "term": "Protectron Watcher"
+  },
+  {
+    "formId": "0011F99A",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "0011F999",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "0011E7B5",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "0011E794",
+    "term": "Mr. Russell"
+  },
+  {
+    "formId": "0011E792",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "0011E78E",
+    "term": "Mr. Whitfield"
+  },
+  {
+    "formId": "0011E78D",
+    "term": "Mrs. Whitfield"
+  },
+  {
+    "formId": "0011E357",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "0011E356",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "0011E355",
+    "term": "Mr. Smith"
+  },
+  {
+    "formId": "0011D83E",
+    "term": "Soldier"
+  },
+  {
+    "formId": "0011D83C",
+    "term": "Soldier"
+  },
+  {
+    "formId": "00119BB2",
+    "term": "Synth"
+  },
+  {
+    "formId": "00118ED6",
+    "term": "Combatant"
+  },
+  {
+    "formId": "00118E94",
+    "term": "Raider"
+  },
+  {
+    "formId": "00118ADB",
+    "term": "Marlene Glass"
+  },
+  {
+    "formId": "00118ADA",
+    "term": "Cheryl Glass"
+  },
+  {
+    "formId": "0011686A",
+    "term": "Duke"
+  },
+  {
+    "formId": "0011685A",
+    "term": "Bluejay"
+  },
+  {
+    "formId": "001167A8",
+    "term": "Heavy Machinegun Turret"
+  },
+  {
+    "formId": "001167A5",
+    "term": "Settler"
+  },
+  {
+    "formId": "001166A0",
+    "term": "Charred Feral Ghoul"
+  },
+  {
+    "formId": "0011669F",
+    "term": "Putrid Glowing One"
+  },
+  {
+    "formId": "0011669E",
+    "term": "Gangrenous Feral Ghoul"
+  },
+  {
+    "formId": "0011669D",
+    "term": "Feral Ghoul Roamer"
+  },
+  {
+    "formId": "001164F7",
+    "term": "Roxy"
+  },
+  {
+    "formId": "001164F6",
+    "term": "Johnny D."
+  },
+  {
+    "formId": "00115EA8",
+    "term": "Deathskull Radscorpion"
+  },
+  {
+    "formId": "00115EA7",
+    "term": "Radscorpion Predator"
+  },
+  {
+    "formId": "00115EA6",
+    "term": "Radscorpion Stalker"
+  },
+  {
+    "formId": "00115EA5",
+    "term": "Albino Radscorpion"
+  },
+  {
+    "formId": "00115CFC",
+    "term": "Neighborhood Watch"
+  },
+  {
+    "formId": "00115B50",
+    "term": "Liberty Prime"
+  },
+  {
+    "formId": "00115A8F",
+    "term": "Glowing Radstag"
+  },
+  {
+    "formId": "00115A8E",
+    "term": "Rabid Radstag"
+  },
+  {
+    "formId": "00115A8D",
+    "term": "Albino Radstag"
+  },
+  {
+    "formId": "00115A8C",
+    "term": "Radstag Yearling"
+  },
+  {
+    "formId": "00115A8B",
+    "term": "Radstag Doe"
+  },
+  {
+    "formId": "001154EB",
+    "term": "Nurse Handy"
+  },
+  {
+    "formId": "001154DE",
+    "term": "Nurse Handy"
+  },
+  {
+    "formId": "001154AB",
+    "term": "Nurse Handy"
+  },
+  {
+    "formId": "00113991",
+    "term": "Hammer"
+  },
+  {
+    "formId": "00113340",
+    "term": "Settler"
+  },
+  {
+    "formId": "00112D8E",
+    "term": "Security System"
+  },
+  {
+    "formId": "00112D1D",
+    "term": "Announcer"
+  },
+  {
+    "formId": "001128A4",
+    "term": "Eve"
+  },
+  {
+    "formId": "00111815",
+    "term": "Hadrian"
+  },
+  {
+    "formId": "00111320",
+    "term": "Laser Turret"
+  },
+  {
+    "formId": "0011131C",
+    "term": "Machinegun Turret Mk I"
+  },
+  {
+    "formId": "00110045",
+    "term": "Raider"
+  },
+  {
+    "formId": "00110044",
+    "term": "Raider"
+  },
+  {
+    "formId": "00110043",
+    "term": "Raider"
+  },
+  {
+    "formId": "0010FA73",
+    "term": "X9-27"
+  },
+  {
+    "formId": "0010D567",
+    "term": "The Scribe"
+  },
+  {
+    "formId": "0010C64F",
+    "term": "Hotel Worker"
+  },
+  {
+    "formId": "0010C4FA",
+    "term": "Institute Courser"
+  },
+  {
+    "formId": "0010C413",
+    "term": "SuperMutant Skirmisher"
+  },
+  {
+    "formId": "00109488",
+    "term": "Vertibird"
+  },
+  {
+    "formId": "001091EF",
+    "term": "Combat Sentry Prototype MKIV"
+  },
+  {
+    "formId": "00108B23",
+    "term": "Handler"
+  },
+  {
+    "formId": "00108B1E",
+    "term": "Raider"
+  },
+  {
+    "formId": "001081AA",
+    "term": "Colonel Smith"
+  },
+  {
+    "formId": "001081A9",
+    "term": "General Gage"
+  },
+  {
+    "formId": "001081A4",
+    "term": "Tour Bot"
+  },
+  {
+    "formId": "00108017",
+    "term": "Liberty Prime"
+  },
+  {
+    "formId": "00107AE9",
+    "term": "Maisie"
+  },
+  {
+    "formId": "00107AC3",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "001079B2",
+    "term": "Tad"
+  },
+  {
+    "formId": "001079AF",
+    "term": "Ricca"
+  },
+  {
+    "formId": "00107797",
+    "term": "Runaway Girl"
+  },
+  {
+    "formId": "00107712",
+    "term": "Sully Mathis"
+  },
+  {
+    "formId": "001073FC",
+    "term": "Sully Mathis"
+  },
+  {
+    "formId": "00106BF4",
+    "term": "Assistant Manager Handy"
+  },
+  {
+    "formId": "00106B09",
+    "term": "Protectron"
+  },
+  {
+    "formId": "00106A08",
+    "term": "Simone"
+  },
+  {
+    "formId": "00106A04",
+    "term": "Wolfgang"
+  },
+  {
+    "formId": "001069FE",
+    "term": "Patrick"
+  },
+  {
+    "formId": "001069FC",
+    "term": "Trudy"
+  },
+  {
+    "formId": "001015B1",
+    "term": "Dalen"
+  },
+  {
+    "formId": "00100D99",
+    "term": "Protectron"
+  },
+  {
+    "formId": "000FFF9C",
+    "term": "HalluciGen Mainframe"
+  },
+  {
+    "formId": "000FF991",
+    "term": "Vertibird"
+  },
+  {
+    "formId": "000FD4C0",
+    "term": "Greeter"
+  },
+  {
+    "formId": "000FD4BD",
+    "term": "Guard Gutsy"
+  },
+  {
+    "formId": "000E935C",
+    "term": "Spare"
+  },
+  {
+    "formId": "000E934D",
+    "term": "Tenpin"
+  },
+  {
+    "formId": "000E92AB",
+    "term": "Cook Handy"
+  },
+  {
+    "formId": "000E92AA",
+    "term": "Waitron"
+  },
+  {
+    "formId": "000E8E68",
+    "term": "3 Arm: Standard"
+  },
+  {
+    "formId": "000E8D51",
+    "term": "Sprocket"
+  },
+  {
+    "formId": "000E8D4B",
+    "term": "Reg"
+  },
+  {
+    "formId": "000E7B6C",
+    "term": "Torte"
+  },
+  {
+    "formId": "000E7B5B",
+    "term": "Crisp"
+  },
+  {
+    "formId": "000E7AFC",
+    "term": "Bean"
+  },
+  {
+    "formId": "000E6D89",
+    "term": "Vikter"
+  },
+  {
+    "formId": "000E5249",
+    "term": "Danny"
+  },
+  {
+    "formId": "000E5248",
+    "term": "Mack"
+  },
+  {
+    "formId": "000E5246",
+    "term": "The Champ"
+  },
+  {
+    "formId": "000E2C91",
+    "term": "Derek"
+  },
+  {
+    "formId": "000E12AB",
+    "term": "Mirelurk Queen"
+  },
+  {
+    "formId": "000D8E1A",
+    "term": "Mirelurk King"
+  },
+  {
+    "formId": "000D84C6",
+    "term": "Escaping Synth"
+  },
+  {
+    "formId": "000D84C5",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "000FDEE2",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "000FDEE1",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "000FDA96",
+    "term": "Francis O'Dell"
+  },
+  {
+    "formId": "000FDA94",
+    "term": "Beatrice Bell"
+  },
+  {
+    "formId": "000FDA92",
+    "term": "Sly Nicholas"
+  },
+  {
+    "formId": "000FDA91",
+    "term": "Ms. Boom"
+  },
+  {
+    "formId": "000FDA90",
+    "term": "Songbird"
+  },
+  {
+    "formId": "000FDA8F",
+    "term": "Roger"
+  },
+  {
+    "formId": "000FDA8E",
+    "term": "Maven"
+  },
+  {
+    "formId": "000FDA8D",
+    "term": "Mr. Mathers"
+  },
+  {
+    "formId": "000FDA8C",
+    "term": "Kelly K."
+  },
+  {
+    "formId": "000FDA8B",
+    "term": "Tommy Whispers"
+  },
+  {
+    "formId": "000FD3A8",
+    "term": "Gunner"
+  },
+  {
+    "formId": "000FD3A2",
+    "term": "Gunner Sergeant"
+  },
+  {
+    "formId": "000FD3A1",
+    "term": "Gunner Corporal"
+  },
+  {
+    "formId": "000FD3A0",
+    "term": "Gunner Private"
+  },
+  {
+    "formId": "000FD39B",
+    "term": "Gunner"
+  },
+  {
+    "formId": "000FA341",
+    "term": "AudioTemplateMirelurk"
+  },
+  {
+    "formId": "000F933B",
+    "term": "Chem Lab Worker"
+  },
+  {
+    "formId": "000F8F28",
+    "term": "Worker"
+  },
+  {
+    "formId": "000F790A",
+    "term": "Tim Flynn"
+  },
+  {
+    "formId": "000F73B8",
+    "term": "Dale"
+  },
+  {
+    "formId": "000F73B7",
+    "term": "Sheila"
+  },
+  {
+    "formId": "000F61BE",
+    "term": "Railroad Heavy"
+  },
+  {
+    "formId": "000F36E4",
+    "term": "Blythe"
+  },
+  {
+    "formId": "000F36E3",
+    "term": "Subject 12"
+  },
+  {
+    "formId": "000F246A",
+    "term": "Doctor Patricia"
+  },
+  {
+    "formId": "000F1497",
+    "term": "Mr Handy"
+  },
+  {
+    "formId": "000F1494",
+    "term": "Supervisor Greene"
+  },
+  {
+    "formId": "000F1492",
+    "term": "Supervisor Brown"
+  },
+  {
+    "formId": "000F12B0",
+    "term": "Buddy"
+  },
+  {
+    "formId": "000F0C5B",
+    "term": "Mr. Handy"
+  },
+  {
+    "formId": "000EFC4C",
+    "term": "Railroad Heavy"
+  },
+  {
+    "formId": "000EFBBC",
+    "term": "Bob's Your Uncle"
+  },
+  {
+    "formId": "000EFBBB",
+    "term": "Tin Man"
+  },
+  {
+    "formId": "000EFBBA",
+    "term": "Fusion's Folly"
+  },
+  {
+    "formId": "000EFBB9",
+    "term": "The Boston Blaster"
+  },
+  {
+    "formId": "000EFBB8",
+    "term": "Lady Lovelace"
+  },
+  {
+    "formId": "000EFBB7",
+    "term": "Piece o' Junk"
+  },
+  {
+    "formId": "000EFBB6",
+    "term": "Iron Maiden"
+  },
+  {
+    "formId": "000EFBB5",
+    "term": "Atomic Dreamz"
+  },
+  {
+    "formId": "000EF3F5",
+    "term": "Ol' Rusty"
+  },
+  {
+    "formId": "000EF222",
+    "term": "X4-18"
+  },
+  {
+    "formId": "000EECAF",
+    "term": "Fisherman"
+  },
+  {
+    "formId": "000EDE29",
+    "term": "Captured Synth"
+  },
+  {
+    "formId": "000EDCCB",
+    "term": "Super Mutant Master"
+  },
+  {
+    "formId": "000EDCCA",
+    "term": "Super Mutant Butcher"
+  },
+  {
+    "formId": "000EDCC9",
+    "term": "Super Mutant Enforcer"
+  },
+  {
+    "formId": "000EDCC8",
+    "term": "Super Mutant Brute"
+  },
+  {
+    "formId": "000EDCC7",
+    "term": "Super Mutant Skirmisher"
+  },
+  {
+    "formId": "000ED665",
+    "term": "Gouger"
+  },
+  {
+    "formId": "000ED4C7",
+    "term": "Heavy Machinegun Turret"
+  },
+  {
+    "formId": "000EC841",
+    "term": "Announcer"
+  },
+  {
+    "formId": "000E8D63",
+    "term": "Synth Scavenger"
+  },
+  {
+    "formId": "000E6F76",
+    "term": "Announcer"
+  },
+  {
+    "formId": "000E6EE2",
+    "term": "Nurse Handy"
+  },
+  {
+    "formId": "000E6B41",
+    "term": "Synth"
+  },
+  {
+    "formId": "000E4771",
+    "term": "Arcjet Mainframe"
+  },
+  {
+    "formId": "000E20FD",
+    "term": "Gabriel"
+  },
+  {
+    "formId": "000E1D27",
+    "term": "Shelly Tiller"
+  },
+  {
+    "formId": "000E0B5D",
+    "term": "Announcer"
+  },
+  {
+    "formId": "000DFFBF",
+    "term": "Turret"
+  },
+  {
+    "formId": "000DFB39",
+    "term": "AudioTemplateAssaultron"
+  },
+  {
+    "formId": "000DF64A",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "000DED2B",
+    "term": "AJ"
+  },
+  {
+    "formId": "000DED25",
+    "term": "Jerry"
+  },
+  {
+    "formId": "000DDB99",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000DDB97",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000DC936",
+    "term": "Trashcan Carla"
+  },
+  {
+    "formId": "000DB683",
+    "term": "Knight Keane"
+  },
+  {
+    "formId": "000DB0B4",
+    "term": "Mole Rat"
+  },
+  {
+    "formId": "000DB0A5",
+    "term": "Vault 81 Lab Mole Rat"
+  },
+  {
+    "formId": "000D9809",
+    "term": "Gorilla"
+  },
+  {
+    "formId": "000D84DF",
+    "term": "Institute Courser"
+  },
+  {
+    "formId": "000D84DC",
+    "term": "Me"
+  },
+  {
+    "formId": "000D84A7",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "000D84A5",
+    "term": "Me"
+  },
+  {
+    "formId": "000D8418",
+    "term": "Assaultron Invader"
+  },
+  {
+    "formId": "000D76C7",
+    "term": "Institute Agent"
+  },
+  {
+    "formId": "000D76C2",
+    "term": "Me"
+  },
+  {
+    "formId": "000D6053",
+    "term": "Z3-22"
+  },
+  {
+    "formId": "000D6051",
+    "term": "Y9-15"
+  },
+  {
+    "formId": "000D604F",
+    "term": "F6-33"
+  },
+  {
+    "formId": "000D6049",
+    "term": "B2-57"
+  },
+  {
+    "formId": "000D5C32",
+    "term": "Bartender"
+  },
+  {
+    "formId": "000D5C31",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000D5C30",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000D5BF2",
+    "term": "Me"
+  },
+  {
+    "formId": "000D5BE1",
+    "term": "Me"
+  },
+  {
+    "formId": "000D5224",
+    "term": "Professor Goodfeels"
+  },
+  {
+    "formId": "000D4CB5",
+    "term": "Sarah"
+  },
+  {
+    "formId": "000D4CB2",
+    "term": "Me"
+  },
+  {
+    "formId": "000D4AD0",
+    "term": "Dad"
+  },
+  {
+    "formId": "000D40AF",
+    "term": "Guard"
+  },
+  {
+    "formId": "000D3C9C",
+    "term": "Mom"
+  },
+  {
+    "formId": "000D3C53",
+    "term": "Jared"
+  },
+  {
+    "formId": "000D3896",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D3895",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D3892",
+    "term": "Vault-Tec Doctor"
+  },
+  {
+    "formId": "000D388C",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D388B",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D34F4",
+    "term": "Vault-Tec Staff"
+  },
+  {
+    "formId": "000D34F3",
+    "term": "Vault-Tec Scientist"
+  },
+  {
+    "formId": "000D2BE4",
+    "term": "Soldier"
+  },
+  {
+    "formId": "000D2BDB",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D2BDA",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D2BD7",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D2BD6",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000D29F9",
+    "term": "G9-81"
+  },
+  {
+    "formId": "000D29F8",
+    "term": "Z1-14"
+  },
+  {
+    "formId": "000CFB4A",
+    "term": "Siege Breaker Sentry Bot"
+  },
+  {
+    "formId": "000CF919",
+    "term": "Mysterious Figure"
+  },
+  {
+    "formId": "000CF918",
+    "term": "Mysterious Figure"
+  },
+  {
+    "formId": "000CF917",
+    "term": "Mysterious Figure"
+  },
+  {
+    "formId": "000CE985",
+    "term": "Gunner Conscript"
+  },
+  {
+    "formId": "000CBF4F",
+    "term": "The Watcher"
+  },
+  {
+    "formId": "000CB1DA",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "000CB1D5",
+    "term": "Vault-Tec Staff"
+  },
+  {
+    "formId": "000CB1D3",
+    "term": "Vault-Tec Staff"
+  },
+  {
+    "formId": "000CB1BB",
+    "term": "Vault-Tec Security"
+  },
+  {
+    "formId": "000CB1B8",
+    "term": "Officer"
+  },
+  {
+    "formId": "000CB1A6",
+    "term": "Soldier"
+  },
+  {
+    "formId": "000CB1A5",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000CAB90",
+    "term": "Pilot"
+  },
+  {
+    "formId": "000CAB8F",
+    "term": "Pilot"
+  },
+  {
+    "formId": "000C9AD3",
+    "term": "House Cat"
+  },
+  {
+    "formId": "000C9AC5",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "000C9AC3",
+    "term": "Institute Scientist"
+  },
+  {
+    "formId": "000C895F",
+    "term": "Sonya"
+  },
+  {
+    "formId": "000C8949",
+    "term": "Tunnel Worker"
+  },
+  {
+    "formId": "000C868B",
+    "term": "Brotherhood Squire Template"
+  },
+  {
+    "formId": "000C868A",
+    "term": "Brotherhood Squire"
+  },
+  {
+    "formId": "000C5194",
+    "term": "Brother Simon"
+  },
+  {
+    "formId": "000C5193",
+    "term": "Brother James"
+  },
+  {
+    "formId": "000C5192",
+    "term": "Brother Matthew"
+  },
+  {
+    "formId": "000C5191",
+    "term": "Brother Andrew"
+  },
+  {
+    "formId": "000C392B",
+    "term": "Knight Rylan"
+  },
+  {
+    "formId": "000C317C",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BEBA4",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "000BEBA2",
+    "term": "Missionary"
+  },
+  {
+    "formId": "000BE956",
+    "term": "Brother Thomas"
+  },
+  {
+    "formId": "000BE184",
+    "term": "Institute Courser"
+  },
+  {
+    "formId": "000BDE10",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BDE0F",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BDE09",
+    "term": "Mrs. Donoghue"
+  },
+  {
+    "formId": "000BDE07",
+    "term": "Mr. Donoghue"
+  },
+  {
+    "formId": "000BDE03",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BDE01",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BDDFD",
+    "term": "Mrs. Able"
+  },
+  {
+    "formId": "000BDDFB",
+    "term": "Mr. Able"
+  },
+  {
+    "formId": "000BDDF8",
+    "term": "Neighbor"
+  },
+  {
+    "formId": "000BC22E",
+    "term": "SentryBot"
+  },
+  {
+    "formId": "000BBF86",
+    "term": "Initiate"
+  },
+  {
+    "formId": "000BBF84",
+    "term": "Initiate"
+  },
+  {
+    "formId": "000BBF7E",
+    "term": "Soldier"
+  },
+  {
+    "formId": "000BBEE6",
+    "term": "X6-88"
+  },
+  {
+    "formId": "000BB873",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "000BB7DD",
+    "term": "Behemoth"
+  },
+  {
+    "formId": "000BAF8C",
+    "term": "General McGann"
+  },
+  {
+    "formId": "000BA509",
+    "term": "TV"
+  },
+  {
+    "formId": "000B7F95",
+    "term": "Mirelurk King"
+  },
+  {
+    "formId": "000B6E0E",
+    "term": "AudioTemplateSentryBot"
+  },
+  {
+    "formId": "000B3EC7",
+    "term": "Caretaker"
+  },
+  {
+    "formId": "000B3432",
+    "term": "AudioTemplateDogFEVHound"
+  },
+  {
+    "formId": "000B3036",
+    "term": "Machinegun Turret"
+  },
+  {
+    "formId": "000B2FD7",
+    "term": "Brother Henri"
+  },
+  {
+    "formId": "000B2FC7",
+    "term": "Professor Scara"
+  },
+  {
+    "formId": "000B28D7",
+    "term": "Machine Gun Turret"
+  },
+  {
+    "formId": "000B26F0",
+    "term": "Knight Lucia"
+  },
+  {
+    "formId": "000B26EF",
+    "term": "Knight Sergeant Gavil"
+  },
+  {
+    "formId": "000B26EE",
+    "term": "Initiate Clarke"
+  },
+  {
+    "formId": "000B26ED",
+    "term": "Blackbird"
+  },
+  {
+    "formId": "000B1E28",
+    "term": "Knight Astlin"
+  },
+  {
+    "formId": "000B1DB5",
+    "term": "Scribe Faris"
+  },
+  {
+    "formId": "000B1DB3",
+    "term": "Knight Varham"
+  },
+  {
+    "formId": "000B1DAF",
+    "term": "Paladin Brandis"
+  },
+  {
+    "formId": "000AE7E9",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "000AE0BB",
+    "term": "Sentry Bot"
+  },
+  {
+    "formId": "000ADE0C",
+    "term": "AudioTemplateBloatFly"
+  },
+  {
+    "formId": "000ABF9E",
+    "term": "Vault-Tec Rep"
+  },
+  {
+    "formId": "000AB578",
+    "term": "Shaun"
+  },
+  {
+    "formId": "000AA78E",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "000AA763",
+    "term": "Codsworth"
+  },
+  {
+    "formId": "000AA52C",
+    "term": "Isaac Karlin"
+  },
+  {
+    "formId": "000A82E4",
+    "term": "Liam Binet"
+  },
+  {
+    "formId": "000A563F",
+    "term": "EyeBot"
+  },
+  {
+    "formId": "000A291F",
+    "term": "Bosun"
+  },
+  {
+    "formId": "000A1607",
+    "term": "Mr. Navigator"
+  },
+  {
+    "formId": "000A1604",
+    "term": "Midshipman"
+  },
+  {
+    "formId": "000A1601",
+    "term": "First Mate"
+  },
+  {
+    "formId": "000A1217",
+    "term": "Cedric Hopton"
+  },
+  {
+    "formId": "000A0F33",
+    "term": "Yao Guai"
+  },
+  {
+    "formId": "000A0E3A",
+    "term": "Trader"
+  },
+  {
+    "formId": "000A0E38",
+    "term": "Gunner"
+  },
+  {
+    "formId": "000A0E36",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "000A0E34",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "000A0E32",
+    "term": "Settler"
+  },
+  {
+    "formId": "000A0E30",
+    "term": "Raider"
+  },
+  {
+    "formId": "000A0E2F",
+    "term": "Corpse"
+  },
+  {
+    "formId": "0009DCBC",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "0009BC6C",
+    "term": "Kellogg"
+  },
+  {
+    "formId": "0009A680",
+    "term": "Doctor Amari"
+  },
+  {
+    "formId": "000995A6",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "00098175",
+    "term": "AudioTemplateFeralGhoul"
+  },
+  {
+    "formId": "00098056",
+    "term": "Patches"
+  },
+  {
+    "formId": "00090C37",
+    "term": "Mutant Hound"
+  },
+  {
+    "formId": "000843E6",
+    "term": "Parker Quinn"
+  },
+  {
+    "formId": "00079585",
+    "term": "T. S. Wallace"
+  },
+  {
+    "formId": "00079304",
+    "term": "Resident"
+  },
+  {
+    "formId": "00079249",
+    "term": "Cait"
+  },
+  {
+    "formId": "00074795",
+    "term": "Compound Guard"
+  },
+  {
+    "formId": "000678CE",
+    "term": "Drummer Boy"
+  },
+  {
+    "formId": "00064C5E",
+    "term": "Mirelurk Hunter"
+  },
+  {
+    "formId": "0005FEFD",
+    "term": "H2-22"
+  },
+  {
+    "formId": "0005FD55",
+    "term": "Caravan Worker"
+  },
+  {
+    "formId": "0005FD2E",
+    "term": "Tony Savoldi"
+  },
+  {
+    "formId": "00055EA7",
+    "term": "Captain Widmark"
+  },
+  {
+    "formId": "0004F38F",
+    "term": "Brotherhood Scribe"
+  },
+  {
+    "formId": "0004EFEC",
+    "term": "Z2-47"
+  },
+  {
+    "formId": "0004EFE2",
+    "term": "K1-98"
+  },
+  {
+    "formId": "0004B0BF",
+    "term": "Tower Tom"
+  },
+  {
+    "formId": "00043216",
+    "term": "Rory Rigwell"
+  },
+  {
+    "formId": "0003BDB9",
+    "term": "Cindy Cofran"
+  },
+  {
+    "formId": "0003BDB7",
+    "term": "Mrs. Cofran"
+  },
+  {
+    "formId": "0003BDB5",
+    "term": "Mr. Cofran"
+  },
+  {
+    "formId": "0003BDB3",
+    "term": "Mr. DiPietro"
+  },
+  {
+    "formId": "0003A458",
+    "term": "Ronnie Shaw"
+  },
+  {
+    "formId": "000320D2",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "000320CE",
+    "term": "Head Knight"
+  },
+  {
+    "formId": "0002F824",
+    "term": "Rosie"
+  },
+  {
+    "formId": "0002BEEA",
+    "term": "Junkie"
+  },
+  {
+    "formId": "0002BEE9",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00020BCC",
+    "term": "Glowing One"
+  },
+  {
+    "formId": "00020B8E",
+    "term": "Doctor Sun"
+  },
+  {
+    "formId": "00020B86",
+    "term": "Glowing Radscorpion"
+  },
+  {
+    "formId": "00020B85",
+    "term": "Radscorpion Hunter"
+  },
+  {
+    "formId": "0001CA71",
+    "term": "Kath"
+  },
+  {
+    "formId": "0001A00C",
+    "term": "Super Mutant"
+  },
+  {
+    "formId": "00019983",
+    "term": "Joe Savoldi"
+  },
+  {
+    "formId": "0001997F",
+    "term": "Meg"
+  },
+  {
+    "formId": "0001997A",
+    "term": "Kay"
+  },
+  {
+    "formId": "00019978",
+    "term": "Deb"
+  },
+  {
+    "formId": "0001995C",
+    "term": "Kessler"
+  },
+  {
+    "formId": "000969D9",
+    "term": "Darla"
+  },
+  {
+    "formId": "000969C6",
+    "term": "Eddie Winter"
+  },
+  {
+    "formId": "00096629",
+    "term": "Cannery Robot"
+  },
+  {
+    "formId": "000913E2",
+    "term": "Turret"
+  },
+  {
+    "formId": "0009138B",
+    "term": "Lookout"
+  },
+  {
+    "formId": "0009085F",
+    "term": "Curator Givens"
+  },
+  {
+    "formId": "0008CA3C",
+    "term": "Radstag"
+  },
+  {
+    "formId": "0008C9DC",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0008C9D9",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000890C1",
+    "term": "Deezer"
+  },
+  {
+    "formId": "00088742",
+    "term": "Neighborhood Watch"
+  },
+  {
+    "formId": "00087AA0",
+    "term": "Mary Sutton"
+  },
+  {
+    "formId": "00083FB4",
+    "term": "Skinny Malone"
+  },
+  {
+    "formId": "00083ACF",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "00083901",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "0007ED09",
+    "term": "Feral Ghoul Reaver"
+  },
+  {
+    "formId": "0007ED08",
+    "term": "Withered Feral Ghoul"
+  },
+  {
+    "formId": "0007ED07",
+    "term": "Rotting Feral Ghoul"
+  },
+  {
+    "formId": "0007E60F",
+    "term": "AudioTemplateStingwing"
+  },
+  {
+    "formId": "0007D4F6",
+    "term": "Junkyard"
+  },
+  {
+    "formId": "0007CD78",
+    "term": "High Rise"
+  },
+  {
+    "formId": "0007BB24",
+    "term": "AudioTemplateDogmeat"
+  },
+  {
+    "formId": "00076A0B",
+    "term": "Brotherhood Scribe Template"
+  },
+  {
+    "formId": "00076A0A",
+    "term": "Brotherhood Soldier Template"
+  },
+  {
+    "formId": "00076A01",
+    "term": "Brotherhood Senior Scribe"
+  },
+  {
+    "formId": "00076A00",
+    "term": "Brotherhood Scribe"
+  },
+  {
+    "formId": "000769FF",
+    "term": "Brotherhood Scribe Initiate"
+  },
+  {
+    "formId": "000769FE",
+    "term": "Brotherhood Initiate"
+  },
+  {
+    "formId": "000769FD",
+    "term": "Brotherhood Knight-Captain"
+  },
+  {
+    "formId": "000769FC",
+    "term": "Brotherhood Knight-Sergeant"
+  },
+  {
+    "formId": "000769FB",
+    "term": "Brotherhood Knight"
+  },
+  {
+    "formId": "000769FA",
+    "term": "Brotherhood Aspirant"
+  },
+  {
+    "formId": "000758B2",
+    "term": "Raider Survivalist"
+  },
+  {
+    "formId": "000758B1",
+    "term": "Raider Waster"
+  },
+  {
+    "formId": "000758B0",
+    "term": "Raider Scavver"
+  },
+  {
+    "formId": "000758AF",
+    "term": "Raider Scum"
+  },
+  {
+    "formId": "000758AD",
+    "term": "Feral Ghoul"
+  },
+  {
+    "formId": "00075345",
+    "term": "Gunner Commander"
+  },
+  {
+    "formId": "00075342",
+    "term": "Synth Leader"
+  },
+  {
+    "formId": "00075340",
+    "term": "Robot Boss"
+  },
+  {
+    "formId": "00075339",
+    "term": "Robot"
+  },
+  {
+    "formId": "00072A08",
+    "term": "Ricky Dalton"
+  },
+  {
+    "formId": "0006C507",
+    "term": "Clarabell"
+  },
+  {
+    "formId": "0006B503",
+    "term": "Virgil"
+  },
+  {
+    "formId": "0006B4D3",
+    "term": "Blake Abernathy"
+  },
+  {
+    "formId": "0006B4D2",
+    "term": "Lucy Abernathy"
+  },
+  {
+    "formId": "0006B4D1",
+    "term": "Connie Abernathy"
+  },
+  {
+    "formId": "000642B9",
+    "term": "Senior Scribe Neriah"
+  },
+  {
+    "formId": "000642B8",
+    "term": "Elder Maxson"
+  },
+  {
+    "formId": "000642B6",
+    "term": "Proctor Quinlan"
+  },
+  {
+    "formId": "000642B5",
+    "term": "Proctor Ingram"
+  },
+  {
+    "formId": "000642B4",
+    "term": "Proctor Teagan"
+  },
+  {
+    "formId": "000642B3",
+    "term": "Knight-Captain Cade"
+  },
+  {
+    "formId": "000642B2",
+    "term": "Lancer Captain Kells"
+  },
+  {
+    "formId": "000636C2",
+    "term": "Corpse"
+  },
+  {
+    "formId": "000636AA",
+    "term": "Radscorpion"
+  },
+  {
+    "formId": "00063561",
+    "term": "Settler"
+  },
+  {
+    "formId": "00061BE7",
+    "term": "Railroad Agent"
+  },
+  {
+    "formId": "00060CA5",
+    "term": "Corpse"
+  },
+  {
+    "formId": "0005FBB3",
+    "term": "Stingwing"
+  },
+  {
+    "formId": "0005E63F",
+    "term": "Madison Li"
+  },
+  {
+    "formId": "0005E564",
+    "term": "Alana Secord"
+  },
+  {
+    "formId": "0005E563",
+    "term": "Justin Ayo"
+  },
+  {
+    "formId": "0005E562",
+    "term": "Rosalind Orman"
+  },
+  {
+    "formId": "0005E561",
+    "term": "Evan Watson"
+  },
+  {
+    "formId": "0005E560",
+    "term": "Alan Binet"
+  },
+  {
+    "formId": "0005E55F",
+    "term": "Max Loken"
+  },
+  {
+    "formId": "0005E55E",
+    "term": "Dean Volkert"
+  },
+  {
+    "formId": "0005E55D",
+    "term": "Isaac Karlin"
+  },
+  {
+    "formId": "0005E55C",
+    "term": "Clayton Holdren"
+  },
+  {
+    "formId": "0005E55B",
+    "term": "Newton Oberly"
+  },
+  {
+    "formId": "0005E55A",
+    "term": "Enrico Thompson"
+  },
+  {
+    "formId": "0005E559",
+    "term": "Lawrence Higgs"
+  },
+  {
+    "formId": "0005E557",
+    "term": "Allie Filmore"
+  },
+  {
+    "formId": "0005E547",
+    "term": "Jamaica Plain Explorer"
+  },
+  {
+    "formId": "0005E545",
+    "term": "Tanya Standish"
+  },
+  {
+    "formId": "0005E541",
+    "term": "Ken Standish"
+  },
+  {
+    "formId": "0005E540",
+    "term": "Luke Silverhand"
+  },
+  {
+    "formId": "0005E53F",
+    "term": "Carl Everett"
+  },
+  {
+    "formId": "0005DE40",
+    "term": "Knight Rhys"
+  },
+  {
+    "formId": "0005DE3F",
+    "term": "Scribe Haylen"
+  },
+  {
+    "formId": "0005B1A2",
+    "term": "Sal"
+  },
+  {
+    "formId": "0005824A",
+    "term": "Resident"
+  },
+  {
+    "formId": "000581B5",
+    "term": "Austin Engill"
+  },
+  {
+    "formId": "000570C3",
+    "term": "Shaun"
+  },
+  {
+    "formId": "00056DDC",
+    "term": "Tunnel Worker"
+  },
+  {
+    "formId": "00056DD4",
+    "term": "Mike Daly"
+  },
+  {
+    "formId": "00056B7C",
+    "term": "Swan"
+  },
+  {
+    "formId": "000566BC",
+    "term": "Nora"
+  },
+  {
+    "formId": "000566BB",
+    "term": "Nate"
+  },
+  {
+    "formId": "0005660E",
+    "term": "Erin Reische"
+  },
+  {
+    "formId": "0005660D",
+    "term": "Phil Wallace"
+  },
+  {
+    "formId": "0004F48B",
+    "term": "Vault Security"
+  },
+  {
+    "formId": "0004B369",
+    "term": "Ness"
+  },
+  {
+    "formId": "0004764B",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00047649",
+    "term": "Fred O'Connell"
+  },
+  {
+    "formId": "0004763B",
+    "term": "Farmer"
+  },
+  {
+    "formId": "00045AD3",
+    "term": "P.A.M."
+  },
+  {
+    "formId": "00045AD1",
+    "term": "Desdemona"
+  },
+  {
+    "formId": "00045ACF",
+    "term": "Glory"
+  },
+  {
+    "formId": "00045ACD",
+    "term": "Doctor Carrington"
+  },
+  {
+    "formId": "00045ACB",
+    "term": "Tinker Tom"
+  },
+  {
+    "formId": "00045AC9",
+    "term": "Deacon"
+  },
+  {
+    "formId": "0003EFF2",
+    "term": "Trader Rylee"
+  },
+  {
+    "formId": "0003DF76",
+    "term": "Dutchman"
+  },
+  {
+    "formId": "0003DF75",
+    "term": "Helena"
+  },
+  {
+    "formId": "0003DF73",
+    "term": "A9-51"
+  },
+  {
+    "formId": "0003D834",
+    "term": "Theodore Collins"
+  },
+  {
+    "formId": "0002AAB1",
+    "term": "Brad Finnegan"
+  },
+  {
+    "formId": "0002A19A",
+    "term": "Father"
+  },
+  {
+    "formId": "00029469",
+    "term": "Bloatfly"
+  },
+  {
+    "formId": "00026315",
+    "term": "Sandy Coves Attendant"
+  },
+  {
+    "formId": "000260DF",
+    "term": "Gavin Everitts"
+  },
+  {
+    "formId": "000219B0",
+    "term": "Phyllis Daily"
+  },
+  {
+    "formId": "00020D91",
+    "term": "Chief Engineer Sato"
+  },
+  {
+    "formId": "00020A47",
+    "term": "Supervisor White"
+  },
+  {
+    "formId": "0002074C",
+    "term": "Tommy Lonegan"
+  },
+  {
+    "formId": "00020749",
+    "term": "Raider"
+  },
+  {
+    "formId": "00020593",
+    "term": "Settler"
+  },
+  {
+    "formId": "00020480",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "0001DB56",
+    "term": "Rowdy"
+  },
+  {
+    "formId": "0001A255",
+    "term": "Rufus Rubins"
+  },
+  {
+    "formId": "00019567",
+    "term": "Raider Veteran"
+  },
+  {
+    "formId": "00054B0E",
+    "term": "Manny"
+  },
+  {
+    "formId": "000537E2",
+    "term": "Penny Fitzgerald"
+  },
+  {
+    "formId": "00052174",
+    "term": "Mel"
+  },
+  {
+    "formId": "00052157",
+    "term": "Casey"
+  },
+  {
+    "formId": "0004E39E",
+    "term": "Davies"
+  },
+  {
+    "formId": "0004D472",
+    "term": "Barney Rook"
+  },
+  {
+    "formId": "0004B28E",
+    "term": "Maria"
+  },
+  {
+    "formId": "0004B240",
+    "term": "Scarlett"
+  },
+  {
+    "formId": "0004AD4D",
+    "term": "Pickman"
+  },
+  {
+    "formId": "0004A101",
+    "term": "Kendra"
+  },
+  {
+    "formId": "0004863B",
+    "term": "Bluejay"
+  },
+  {
+    "formId": "00048622",
+    "term": "Zeke"
+  },
+  {
+    "formId": "000480FD",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "00047EC5",
+    "term": "Lorenzo Cabot"
+  },
+  {
+    "formId": "00047EC0",
+    "term": "Edward Deegan"
+  },
+  {
+    "formId": "00047EBF",
+    "term": "Wilhelmina Cabot"
+  },
+  {
+    "formId": "00047EBE",
+    "term": "Emogene Cabot"
+  },
+  {
+    "formId": "00047EB7",
+    "term": "Jack Cabot"
+  },
+  {
+    "formId": "000475DF",
+    "term": "Radroach"
+  },
+  {
+    "formId": "000471B4",
+    "term": "Sinjin"
+  },
+  {
+    "formId": "00046D0C",
+    "term": "The Director"
+  },
+  {
+    "formId": "0004628F",
+    "term": "Oceanological Instructor"
+  },
+  {
+    "formId": "00045798",
+    "term": "Suspect Bot"
+  },
+  {
+    "formId": "00045700",
+    "term": "Avery"
+  },
+  {
+    "formId": "000456FD",
+    "term": "Sinjin"
+  },
+  {
+    "formId": "000456F6",
+    "term": "Northy"
+  },
+  {
+    "formId": "000456F2",
+    "term": "Smiling Kate"
+  },
+  {
+    "formId": "00043389",
+    "term": "Bull"
+  },
+  {
+    "formId": "00042DDC",
+    "term": "Triggerman"
+  },
+  {
+    "formId": "0003FEC8",
+    "term": "Wayne Delancy"
+  },
+  {
+    "formId": "0003FE41",
+    "term": "Trish"
+  },
+  {
+    "formId": "0003F2EA",
+    "term": "Fist"
+  },
+  {
+    "formId": "0003F23D",
+    "term": "Abraham Finch"
+  },
+  {
+    "formId": "0003F23C",
+    "term": "Roger Warwick"
+  },
+  {
+    "formId": "0003F23B",
+    "term": "Deirdre"
+  },
+  {
+    "formId": "0003F23A",
+    "term": "Holly"
+  },
+  {
+    "formId": "0003F239",
+    "term": "Jones"
+  },
+  {
+    "formId": "0003F238",
+    "term": "Bill Sutton"
+  },
+  {
+    "formId": "0003F237",
+    "term": "Wally Warwick"
+  },
+  {
+    "formId": "0003F236",
+    "term": "June Warwick"
+  },
+  {
+    "formId": "0003F235",
+    "term": "Janey Warwick"
+  },
+  {
+    "formId": "0003F234",
+    "term": "Wiseman"
+  },
+  {
+    "formId": "0003F22D",
+    "term": "Jake Finch"
+  },
+  {
+    "formId": "0003F22C",
+    "term": "Abigail Finch"
+  },
+  {
+    "formId": "0003F22B",
+    "term": "Daniel Finch"
+  },
+  {
+    "formId": "0003D766",
+    "term": "AudioTemplateDogmeat"
+  },
+  {
+    "formId": "0003D646",
+    "term": "Gunner Mercenary"
+  },
+  {
+    "formId": "0003D638",
+    "term": "Dreth"
+  },
+  {
+    "formId": "0003D19A",
+    "term": "Police Officer"
+  },
+  {
+    "formId": "0003D199",
+    "term": "Police Chief"
+  },
+  {
+    "formId": "0003D196",
+    "term": "Institute Patrol 1"
+  },
+  {
+    "formId": "0003D195",
+    "term": "Institute Control"
+  },
+  {
+    "formId": "0003B2BF",
+    "term": "Dead Eye"
+  },
+  {
+    "formId": "0003B2A7",
+    "term": "AudioTemplateDogVicious"
+  },
+  {
+    "formId": "0003ADC8",
+    "term": "Mandy Stiles"
+  },
+  {
+    "formId": "0003ADC4",
+    "term": "Ironsides"
+  },
+  {
+    "formId": "0003AC44",
+    "term": "Farmer"
+  },
+  {
+    "formId": "00039FD3",
+    "term": "Jacob Orden"
+  },
+  {
+    "formId": "00039FD1",
+    "term": "Talia McGovern"
+  },
+  {
+    "formId": "00039FCF",
+    "term": "Ted Huntley"
+  },
+  {
+    "formId": "00039FCD",
+    "term": "Brian Fitzgerald"
+  },
+  {
+    "formId": "00039FCB",
+    "term": "Old Man Stockton"
+  },
+  {
+    "formId": "00039FC8",
+    "term": "Amelia Stockton"
+  },
+  {
+    "formId": "00039FC5",
+    "term": "Honest Dan"
+  },
+  {
+    "formId": "000399DD",
+    "term": "Henry Cooke"
+  },
+  {
+    "formId": "0001D15A",
+    "term": "Wild Mongrel"
+  },
+  {
+    "formId": "00019FDC",
+    "term": "Marcy Long"
+  },
+  {
+    "formId": "00019FDB",
+    "term": "Jun Long"
+  },
+  {
+    "formId": "00019FDA",
+    "term": "Sturges"
+  },
+  {
+    "formId": "00019FD9",
+    "term": "Preston Garvey"
+  },
+  {
+    "formId": "00019FD8",
+    "term": "Mama Murphy"
+  },
+  {
+    "formId": "000190BF",
+    "term": "Danny Sullivan"
+  },
+  {
+    "formId": "000179FF",
+    "term": "Codsworth"
+  },
+  {
+    "formId": "0000365D",
+    "term": "Resident"
+  },
+  {
+    "formId": "00003005",
+    "term": "Nina Rodriguez"
+  },
+  {
+    "formId": "00002F63",
+    "term": "Diamond City Security"
+  },
+  {
+    "formId": "00002F28",
+    "term": "Abbot"
+  },
+  {
+    "formId": "00002F26",
+    "term": "Travis Miles"
+  },
+  {
+    "formId": "00002F24",
+    "term": "Nick Valentine"
+  },
+  {
+    "formId": "00002F22",
+    "term": "Wellingham"
+  },
+  {
+    "formId": "00002F20",
+    "term": "Nat"
+  },
+  {
+    "formId": "00002F1E",
+    "term": "Piper"
+  },
+  {
+    "formId": "00002F1C",
+    "term": "Hawthorne"
+  },
+  {
+    "formId": "00002F1A",
+    "term": "Eustace"
+  },
+  {
+    "formId": "00002F18",
+    "term": "Darcy Pembroke"
+  },
+  {
+    "formId": "00002F15",
+    "term": "Pete Pembroke"
+  },
+  {
+    "formId": "00002F14",
+    "term": "Paul Pembroke"
+  },
+  {
+    "formId": "00002F12",
+    "term": "Nelson Latimer"
+  },
+  {
+    "formId": "00002F10",
+    "term": "Malcom Latimer"
+  },
+  {
+    "formId": "00002F0E",
+    "term": "Ann Codman"
+  },
+  {
+    "formId": "00002F0C",
+    "term": "Clarence Codman"
+  },
+  {
+    "formId": "00002F0A",
+    "term": "Geneva"
+  },
+  {
+    "formId": "00002F08",
+    "term": "Mayor McDonough"
+  },
+  {
+    "formId": "00002F06",
+    "term": "Sheffield"
+  },
+  {
+    "formId": "00002F02",
+    "term": "Sheng Kawolski"
+  },
+  {
+    "formId": "00002F00",
+    "term": "Colette"
+  },
+  {
+    "formId": "00002EFE",
+    "term": "Yefim Bobrov"
+  },
+  {
+    "formId": "00002EFC",
+    "term": "Vadim Bobrov"
+  },
+  {
+    "formId": "00002EFA",
+    "term": "Pastor Clements"
+  },
+  {
+    "formId": "00002EF8",
+    "term": "Doctor Duff"
+  },
+  {
+    "formId": "00002EF6",
+    "term": "Mister Zwicky"
+  },
+  {
+    "formId": "00002EF4",
+    "term": "Miss Edna"
+  },
+  {
+    "formId": "00002CDA",
+    "term": "Takahashi"
+  },
+  {
+    "formId": "00002CD4",
+    "term": "Polly"
+  },
+  {
+    "formId": "00002CCF",
+    "term": "Cathy"
+  },
+  {
+    "formId": "00002CCB",
+    "term": "John"
+  },
+  {
+    "formId": "00002CC6",
+    "term": "Becky Fallon"
+  },
+  {
+    "formId": "00002CC1",
+    "term": "Percy"
+  },
+  {
+    "formId": "00002CBF",
+    "term": "Myrna"
+  },
+  {
+    "formId": "00002CBB",
+    "term": "Solomon"
+  },
+  {
+    "formId": "00002CB7",
+    "term": "Arturo Rodriguez"
+  },
+  {
+    "formId": "00002CB2",
+    "term": "Moe Cronin"
+  },
+  {
+    "formId": "00002CD6",
+    "term": "Doc Crocker"
+  },
+  {
+    "formId": "00005817",
+    "term": "Resident"
+  },
+  {
+    "formId": "0002A83D",
+    "term": "Carol Peabody"
+  },
+  {
+    "formId": "0002A83C",
+    "term": "Matt Peabody"
+  },
+  {
+    "formId": "0002A835",
+    "term": "Ashes"
+  },
+  {
+    "formId": "0002A833",
+    "term": "Overseer"
+  },
+  {
+    "formId": "0002A830",
+    "term": "Erin Combes"
+  },
+  {
+    "formId": "0002A82F",
+    "term": "Holt Combes"
+  },
+  {
+    "formId": "0002A82D",
+    "term": "Old Rusty"
+  },
+  {
+    "formId": "0002A82A",
+    "term": "Tina De Luca"
+  },
+  {
+    "formId": "0002A829",
+    "term": "Bobby De Luca"
+  },
+  {
+    "formId": "0002A827",
+    "term": "Katy"
+  },
+  {
+    "formId": "0002A823",
+    "term": "Rachel"
+  },
+  {
+    "formId": "0002A821",
+    "term": "Dr. Jacob Forsythe"
+  },
+  {
+    "formId": "0002A81E",
+    "term": "Maria Summerset"
+  },
+  {
+    "formId": "0002A81D",
+    "term": "Mark Summerset"
+  },
+  {
+    "formId": "0002A81B",
+    "term": "Horatio"
+  },
+  {
+    "formId": "0002A819",
+    "term": "Alexis Combes"
+  },
+  {
+    "formId": "0002A0FE",
+    "term": "Vault Computer"
+  },
+  {
+    "formId": "00028FD4",
+    "term": "Ghoul"
+  },
+  {
+    "formId": "00028FAE",
+    "term": "Director"
+  },
+  {
+    "formId": "00028FAC",
+    "term": "Molly"
+  },
+  {
+    "formId": "00028DB4",
+    "term": "Bullet"
+  },
+  {
+    "formId": "00028669",
+    "term": "Bloodbug Hatchling"
+  },
+  {
+    "formId": "00028630",
+    "term": "Billy"
+  },
+  {
+    "formId": "00027684",
+    "term": "Bobbi No-Nose"
+  },
+  {
+    "formId": "00027683",
+    "term": "Paladin Danse"
+  },
+  {
+    "formId": "00027682",
+    "term": "Strong"
+  },
+  {
+    "formId": "0002740E",
+    "term": "MacCready"
+  },
+  {
+    "formId": "00026ED6",
+    "term": "Professor Widmer"
+  },
+  {
+    "formId": "000254EE",
+    "term": "Arlen Glass"
+  },
+  {
+    "formId": "00024002",
+    "term": "Mirelurk"
+  },
+  {
+    "formId": "00023751",
+    "term": "Eddie Lipkis"
+  },
+  {
+    "formId": "0002331F",
+    "term": "Drifter"
+  },
+  {
+    "formId": "00022952",
+    "term": "Daisy"
+  },
+  {
+    "formId": "000228AA",
+    "term": "Kent Connolly"
+  },
+  {
+    "formId": "000228A5",
+    "term": "Irma"
+  },
+  {
+    "formId": "000226E2",
+    "term": "Marowski"
+  },
+  {
+    "formId": "000226DF",
+    "term": "Stan Slavin"
+  },
+  {
+    "formId": "000226DC",
+    "term": "Clair Hutchins"
+  },
+  {
+    "formId": "000226D9",
+    "term": "Fred Allen"
+  },
+  {
+    "formId": "0002268C",
+    "term": "Ham"
+  },
+  {
+    "formId": "0002268A",
+    "term": "Magnolia"
+  },
+  {
+    "formId": "00022687",
+    "term": "Whitechapel Charlie"
+  },
+  {
+    "formId": "00022616",
+    "term": "Fahrenheit"
+  },
+  {
+    "formId": "00022613",
+    "term": "Hancock"
+  },
+  {
+    "formId": "000222A2",
+    "term": "Ellie Perkins"
+  },
+  {
+    "formId": "0001EE7A",
+    "term": "Vault Computer"
+  },
+  {
+    "formId": "0001DB4C",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "0001D966",
+    "term": "Mole Rat"
+  },
+  {
+    "formId": "0001D323",
+    "term": "Minuteman"
+  },
+  {
+    "formId": "0001D15C",
+    "term": "Dog"
+  },
+  {
+    "formId": "000228CE",
+    "term": "KL-E-0"
+  },
+  {
+    "formId": "0002A825",
+    "term": "Dr. Penske"
+  },
+  {
+    "formId": "000327B5",
+    "term": "Donny Kowalski"
+  },
+  {
+    "formId": "0003255F",
+    "term": "Furniture Tester"
+  },
+  {
+    "formId": "000320A1",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "00031FB3",
+    "term": "Vault-Tec Rep"
+  },
+  {
+    "formId": "0003183A",
+    "term": "Raider"
+  },
+  {
+    "formId": "00030BA6",
+    "term": "Wounded Dog"
+  },
+  {
+    "formId": "000308E3",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "0002FD9D",
+    "term": "Game Master 3000 mk II"
+  },
+  {
+    "formId": "0002FB83",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "0002F5FC",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0002F2A6",
+    "term": "Smiling Larry"
+  },
+  {
+    "formId": "0002DFFF",
+    "term": "Settler"
+  },
+  {
+    "formId": "0002C969",
+    "term": "Deathclaw"
+  },
+  {
+    "formId": "000357D7",
+    "term": "Gen 2 Synth"
+  },
+  {
+    "formId": "00034680",
+    "term": "Barnes"
+  },
+  {
+    "formId": "0003467F",
+    "term": "Winlock"
+  },
+  {
+    "formId": "000342C4",
+    "term": "Arnie"
+  },
+  {
+    "formId": "00033F49",
+    "term": "AudioTemplateMirelurk"
+  },
+  {
+    "formId": "000335C2",
+    "term": "Confessor Adalia"
+  },
+  {
+    "formId": "00033585",
+    "term": "Finn"
+  },
+  {
+    "formId": "000327B6",
+    "term": "Captain Zao"
+  },
+  {
+    "formId": "00036D6F",
+    "term": "Anne Hargraves"
+  },
+  {
+    "formId": "00036D6E",
+    "term": "George Cooper"
+  },
+  {
+    "formId": "00036D6A",
+    "term": "Rex Goodman"
+  },
+  {
+    "formId": "00036FE5",
+    "term": "Male Thug"
+  },
+  {
+    "formId": "00036FE4",
+    "term": "Female Thug"
+  },
+  {
+    "formId": "00036FE3",
+    "term": "Mayor Murphy"
+  },
+  {
+    "formId": "00036FE2",
+    "term": "Silver Shroud Announcer"
+  },
+  {
+    "formId": "00036FE1",
+    "term": "Silver Shroud"
+  },
+  {
+    "formId": "00037055",
+    "term": "Dr. Roslyn Chambers"
+  },
+  {
+    "formId": "00037005",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "00036FE7",
+    "term": "Fat Fahey"
+  },
+  {
+    "formId": "00036FE6",
+    "term": "Mistress of Mysterious"
+  },
+  {
+    "formId": "00037056",
+    "term": "Swanson"
+  },
+  {
+    "formId": "01002A9F",
+    "term": "Servomech Eyebot"
+  },
+  {
+    "formId": "01002964",
+    "term": "Weapon Dummy"
+  },
+  {
+    "formId": "01002963",
+    "term": "Weapon Dummy"
+  },
+  {
+    "formId": "01002926",
+    "term": "Legendary Protectron Golem"
+  },
+  {
+    "formId": "01002925",
+    "term": "Legendary Protectron Basilisk"
+  },
+  {
+    "formId": "01002924",
+    "term": "Legendary Doom Protectron"
+  },
+  {
+    "formId": "01002923",
+    "term": "Legendary Protectron Scourge"
+  },
+  {
+    "formId": "01002922",
+    "term": "Legendary Protectron"
+  },
+  {
+    "formId": "01002920",
+    "term": "Legendary Mr. Handy Annihilator"
+  },
+  {
+    "formId": "0100291F",
+    "term": "Legendary Mr. Handy War Machine"
+  },
+  {
+    "formId": "0100291E",
+    "term": "Legendary Mr. Handy Destroyer"
+  },
+  {
+    "formId": "0100291D",
+    "term": "Legendary Mr. Handy Dominator"
+  },
+  {
+    "formId": "0100291C",
+    "term": "Legendary Mr. Handy Wrecker"
+  },
+  {
+    "formId": "010028B4",
+    "term": "Legendary Quantum Scrapbot"
+  },
+  {
+    "formId": "010028B3",
+    "term": "Legendary Cybermech Scrapbot"
+  },
+  {
+    "formId": "010028B2",
+    "term": "Legendary Integrated Scrapbot"
+  },
+  {
+    "formId": "010028B1",
+    "term": "Legendary Servomech Scrapbot"
+  },
+  {
+    "formId": "010028B0",
+    "term": "Legendary Scrapbot"
+  },
+  {
+    "formId": "010028AE",
+    "term": "Legendary Quantum Tankbot"
+  },
+  {
+    "formId": "010028AD",
+    "term": "Legendary Cybermech Tankbot"
+  },
+  {
+    "formId": "010028AC",
+    "term": "Legendary Integrated Tankbot"
+  },
+  {
+    "formId": "010028AB",
+    "term": "Legendary Servomech Tankbot"
+  },
+  {
+    "formId": "010028AA",
+    "term": "Legendary Tankbot"
+  },
+  {
+    "formId": "010028A9",
+    "term": "Legendary Quantum Robobrain"
+  },
+  {
+    "formId": "010028A7",
+    "term": "Legendary Cybermech Robobrain"
+  },
+  {
+    "formId": "0100288E",
+    "term": "Legendary Integrated Robobrain"
+  },
+  {
+    "formId": "0100288B",
+    "term": "Legendary Servomech Robobrain"
+  },
+  {
+    "formId": "01002887",
+    "term": "Legendary Robobrain"
+  },
+  {
+    "formId": "01002868",
+    "term": "Legendary Junkbot"
+  },
+  {
+    "formId": "01002861",
+    "term": "Legendary Quantum Junkbot"
+  },
+  {
+    "formId": "0100285E",
+    "term": "Legendary Cybermech Junkbot"
+  },
+  {
+    "formId": "0100285D",
+    "term": "Legendary Integrated Junkbot"
+  },
+  {
+    "formId": "0100285C",
+    "term": "Legendary Servomech Junkbot"
+  },
+  {
+    "formId": "0100285B",
+    "term": "Legendary Junkbot"
+  },
+  {
+    "formId": "0100285A",
+    "term": "Legendary Swarmbot"
+  },
+  {
+    "formId": "01002858",
+    "term": "Legendary Quantum Swarmbot"
+  },
+  {
+    "formId": "01002857",
+    "term": "Legendary Cybermech Swarmbot"
+  },
+  {
+    "formId": "01002855",
+    "term": "Legendary Integrated Swarmbot"
+  },
+  {
+    "formId": "01002853",
+    "term": "Legendary Servomech Swarmbot"
+  },
+  {
+    "formId": "01001EEA",
+    "term": "Legendary Rust Devil"
+  },
+  {
+    "formId": "01001EE8",
+    "term": "Legendary Rust Devil"
+  },
+  {
+    "formId": "01001EA6",
+    "term": "Legendary Rust Devil"
+  },
+  {
+    "formId": "01001E72",
+    "term": "Legendary Rust Devil"
+  },
+  {
+    "formId": "0100109E",
+    "term": "Sentry Bot Ripper"
+  },
+  {
+    "formId": "0100109C",
+    "term": "Protectron Devil"
+  },
+  {
+    "formId": "0100104B",
+    "term": "Tankbot"
+  },
+  {
+    "formId": "01001041",
+    "term": "Robobrain"
+  },
+  {
+    "formId": "01001025",
+    "term": "Junkbot"
+  },
+  {
+    "formId": "0100101D",
+    "term": "Swarmbot"
+  },
+  {
+    "formId": "01000FFF",
+    "term": "Scrapbot"
+  },
+  {
+    "formId": "01000EBD",
+    "term": "Mr. Handy Wrecker"
+  },
+  {
+    "formId": "01000EB9",
+    "term": "Assaultron Devil"
+  },
+  {
+    "formId": "010008D8",
+    "term": "Rust Devil"
+  },
+  {
+    "formId": "01011079",
+    "term": "Automatron"
+  },
+  {
+    "formId": "01010F5F",
+    "term": "Ahab"
+  },
+  {
+    "formId": "01010E13",
+    "term": "Spotlight - Wall-Mounted"
+  },
+  {
+    "formId": "01010C9F",
+    "term": "BleepC Dummy Voice Bot"
+  },
+  {
+    "formId": "01010C9E",
+    "term": "BleepB Dummy Voice Bot"
+  },
+  {
+    "formId": "01010C9D",
+    "term": "BleepA Dummy Voice Bot"
+  },
+  {
+    "formId": "010109DE",
+    "term": "Trader"
+  },
+  {
+    "formId": "010109D4",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "010103C8",
+    "term": "Sentry Bot"
+  },
+  {
+    "formId": "010101B3",
+    "term": "Rust Devil"
+  },
+  {
+    "formId": "0100FF0E",
+    "term": "Hurtz"
+  },
+  {
+    "formId": "0100FF0C",
+    "term": "Porter"
+  },
+  {
+    "formId": "0100FF0A",
+    "term": "Turing"
+  },
+  {
+    "formId": "0100FF08",
+    "term": "Shades"
+  },
+  {
+    "formId": "0100FF04",
+    "term": "Liza"
+  },
+  {
+    "formId": "0100FF01",
+    "term": "Zoe"
+  },
+  {
+    "formId": "0100FEFD",
+    "term": "Jackson"
+  },
+  {
+    "formId": "0100FE92",
+    "term": "Jagger"
+  },
+  {
+    "formId": "0100FD5A",
+    "term": "Ada"
+  },
+  {
+    "formId": "0100F8A9",
+    "term": "Announcer"
+  },
+  {
+    "formId": "0100F619",
+    "term": "Bleep Voice"
+  },
+  {
+    "formId": "0100F47C",
+    "term": "Sentry Bot Dummy Voice Bot"
+  },
+  {
+    "formId": "0100F47B",
+    "term": "Assaultron Dummy Voice Bot"
+  },
+  {
+    "formId": "0100E6CF",
+    "term": "Rust Devil"
+  },
+  {
+    "formId": "0100E6C7",
+    "term": "Quantum Tankbot"
+  },
+  {
+    "formId": "0100E6C6",
+    "term": "Cybermech Tankbot"
+  },
+  {
+    "formId": "0100E6C5",
+    "term": "Quantum Robobrain"
+  },
+  {
+    "formId": "0100E6C4",
+    "term": "Cybermech Robobrain"
+  },
+  {
+    "formId": "0100E6C3",
+    "term": "Integrated Robobrain"
+  },
+  {
+    "formId": "0100E6C2",
+    "term": "Quantum Junkbot"
+  },
+  {
+    "formId": "0100E6C1",
+    "term": "Cybermech Junkbot"
+  },
+  {
+    "formId": "0100E6C0",
+    "term": "Quantum Scrapbot"
+  },
+  {
+    "formId": "0100E6BF",
+    "term": "Sentry Bot Reaper"
+  },
+  {
+    "formId": "0100E6BE",
+    "term": "Sentry Bot Butcher"
+  },
+  {
+    "formId": "0100E6BB",
+    "term": "Protectron Golem"
+  },
+  {
+    "formId": "0100E6BA",
+    "term": "Protectron Basilisk"
+  },
+  {
+    "formId": "0100E6AF",
+    "term": "Mr. Handy Annihilator"
+  },
+  {
+    "formId": "0100E6AE",
+    "term": "Mr. Handy War Machine"
+  },
+  {
+    "formId": "0100E6AD",
+    "term": "Assaultron Gorgon"
+  },
+  {
+    "formId": "0100E6AC",
+    "term": "Assaultron Hag"
+  },
+  {
+    "formId": "0100E6AB",
+    "term": "Quantum Swarmbot"
+  },
+  {
+    "formId": "0100E399",
+    "term": "Rust Devil"
+  },
+  {
+    "formId": "0100CA9F",
+    "term": "TrashBot"
+  },
+  {
+    "formId": "0100C571",
+    "term": "Unstable Assaultron"
+  },
+  {
+    "formId": "0100B857",
+    "term": "Male Dummy Voice Bot"
+  },
+  {
+    "formId": "0100B856",
+    "term": "Male Dummy Voice Bot"
+  },
+  {
+    "formId": "0100B7F6",
+    "term": "enc01"
+  },
+  {
+    "formId": "0100B213",
+    "term": "Bleep Voice"
+  },
+  {
+    "formId": "0100B212",
+    "term": "Bleep Voice"
+  },
+  {
+    "formId": "0100AABE",
+    "term": "enc01"
+  },
+  {
+    "formId": "0100A5F0",
+    "term": "Anise Ciroletti"
+  },
+  {
+    "formId": "0100A5EF",
+    "term": "Thomas Harkin"
+  },
+  {
+    "formId": "0100A5EE",
+    "term": "Tony Delano"
+  },
+  {
+    "formId": "01008B82",
+    "term": "Mechanist Turret"
+  },
+  {
+    "formId": "01008B25",
+    "term": "Tesla Turret"
+  },
+  {
+    "formId": "01008ACF",
+    "term": "Jezebel's Voice"
+  },
+  {
+    "formId": "0100787D",
+    "term": "Trashbot"
+  },
+  {
+    "formId": "0100787C",
+    "term": "Trashbot"
+  },
+  {
+    "formId": "0100787B",
+    "term": "TrashBot"
+  },
+  {
+    "formId": "01007866",
+    "term": "Trashbot"
+  },
+  {
+    "formId": "01007865",
+    "term": "Trashbot"
+  },
+  {
+    "formId": "0100784D",
+    "term": "Trashbot"
+  },
+  {
+    "formId": "0100783E",
+    "term": "TurretBot"
+  },
+  {
+    "formId": "01007837",
+    "term": "DuelBot"
+  },
+  {
+    "formId": "0100707B",
+    "term": "Sentry Bot Carnage"
+  },
+  {
+    "formId": "01007079",
+    "term": "Doom Protectron"
+  },
+  {
+    "formId": "01007078",
+    "term": "Mr. Handy Destroyer"
+  },
+  {
+    "formId": "01007077",
+    "term": "Assaultron Succubus"
+  },
+  {
+    "formId": "01002454",
+    "term": "Sentry Bot Lament"
+  },
+  {
+    "formId": "0100244C",
+    "term": "Protectron Scourge"
+  },
+  {
+    "formId": "01002444",
+    "term": "Assaultron Demon"
+  },
+  {
+    "formId": "0100243C",
+    "term": "Mr. Handy Dominator"
+  },
+  {
+    "formId": "010014F4",
+    "term": "Male Dummy Voice Bot"
+  },
+  {
+    "formId": "010014F3",
+    "term": "Male Dummy Voice Bot"
+  },
+  {
+    "formId": "01004F0F",
+    "term": "enc01"
+  },
+  {
+    "formId": "01004E06",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "0100444D",
+    "term": "Servomech Robobrain"
+  },
+  {
+    "formId": "01004386",
+    "term": "Rust Devil"
+  },
+  {
+    "formId": "01003640",
+    "term": "Cybermech Eyebot"
+  },
+  {
+    "formId": "0100363F",
+    "term": "Servomech Eyebot"
+  },
+  {
+    "formId": "0100287E",
+    "term": "AudioTemplateSentryBot"
+  },
+  {
+    "formId": "01002803",
+    "term": "Cybermech Scrapbot"
+  },
+  {
+    "formId": "01002802",
+    "term": "Servomech Junkbot"
+  },
+  {
+    "formId": "01002801",
+    "term": "Integrated Tankbot"
+  },
+  {
+    "formId": "010027FE",
+    "term": "enc01"
+  },
+  {
+    "formId": "010026F5",
+    "term": "Cybermech Swarmbot"
+  },
+  {
+    "formId": "010026F4",
+    "term": "Integrated Swarmbot"
+  },
+  {
+    "formId": "010026EF",
+    "term": "Servomech Swarmbot"
+  },
+  {
+    "formId": "01002658",
+    "term": "Spotlight - Wall-Mounted"
+  },
+  {
+    "formId": "01001EF7",
+    "term": "enc01"
+  },
+  {
+    "formId": "01001DAC",
+    "term": "Sparks"
+  },
+  {
+    "formId": "01001A80",
+    "term": "Servomech Tankbot"
+  },
+  {
+    "formId": "01001A7F",
+    "term": "Integrated Junkbot"
+  },
+  {
+    "formId": "01001A7E",
+    "term": "Integrated Scrapbot"
+  },
+  {
+    "formId": "01001A7D",
+    "term": "Servomech Scrapbot"
+  },
+  {
+    "formId": "01001121",
+    "term": "Robobrain"
+  },
+  {
+    "formId": "010008B2",
+    "term": "Isabel Cruz"
+  },
+  {
+    "formId": "01000899",
+    "term": "The Mechanist"
+  },
+  {
+    "formId": "01000EBA",
+    "term": "Glowing One"
+  },
+  {
+    "formId": "01000EB8",
+    "term": "Glowing Mongrel"
+  },
+  {
+    "formId": "01000EB5",
+    "term": "Glowing Yao Guai"
+  },
+  {
+    "formId": "01000EB3",
+    "term": "Glowing Stingwing"
+  },
+  {
+    "formId": "01000EB1",
+    "term": "Glowing Radstag"
+  },
+  {
+    "formId": "01000EAF",
+    "term": "Glowing Radscorpion"
+  },
+  {
+    "formId": "01000EAD",
+    "term": "Glowing Radroach"
+  },
+  {
+    "formId": "01000EAB",
+    "term": "Glowing Mutant Hound"
+  },
+  {
+    "formId": "01000EAA",
+    "term": "Glowing Mole Rat"
+  },
+  {
+    "formId": "01000EA8",
+    "term": "Glowing Mirelurk Hunter"
+  },
+  {
+    "formId": "01000EA7",
+    "term": "Glowing Mirelurk"
+  },
+  {
+    "formId": "01000EA6",
+    "term": "Glowing Mirelurk King"
+  },
+  {
+    "formId": "01000EA3",
+    "term": "Bloated Glowing One"
+  },
+  {
+    "formId": "01000EA2",
+    "term": "Putrid Glowing One"
+  },
+  {
+    "formId": "01000EA0",
+    "term": "Glowing Deathclaw"
+  },
+  {
+    "formId": "01000E9F",
+    "term": "Mythic Deathclaw"
+  },
+  {
+    "formId": "01000E9E",
+    "term": "Glowing Bloodbug"
+  },
+  {
+    "formId": "01000E9B",
+    "term": "Glowing Bloatfly"
+  },
+  {
+    "formId": "0100081B",
+    "term": "House Cat"
+  },
+  {
+    "formId": "0105D6D7",
+    "term": "Glowing Mirelurk"
+  },
+  {
+    "formId": "0105D6D6",
+    "term": "Mirelurk"
+  },
+  {
+    "formId": "0105D6D5",
+    "term": "Mirelurk Killclaw"
+  },
+  {
+    "formId": "0105D6D4",
+    "term": "Mirelurk Razorclaw"
+  },
+  {
+    "formId": "0105D6D3",
+    "term": "Softshell Mirelurk"
+  },
+  {
+    "formId": "0105D656",
+    "term": "AudioTemplateMirelurkling"
+  },
+  {
+    "formId": "01056F64",
+    "term": "AudioTemplateSentryBot"
+  },
+  {
+    "formId": "0105420B",
+    "term": "Grun"
+  },
+  {
+    "formId": "01054202",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "01054201",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "010515AB",
+    "term": "AudioTemplateMirelurkling"
+  },
+  {
+    "formId": "010509D5",
+    "term": "Rad Chicken"
+  },
+  {
+    "formId": "0104FF6E",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "0104F10F",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F10E",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F10D",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F10C",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F10B",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F10A",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104F109",
+    "term": "Synth Refugee"
+  },
+  {
+    "formId": "0104E718",
+    "term": "Overseer"
+  },
+  {
+    "formId": "0104E6DA",
+    "term": "Ghostly Creature"
+  },
+  {
+    "formId": "0104E6D9",
+    "term": "Ghostly Creature"
+  },
+  {
+    "formId": "0104DC07",
+    "term": "Vertibird"
+  },
+  {
+    "formId": "0104D216",
+    "term": "Nathaniel Gibbons"
+  },
+  {
+    "formId": "0104D213",
+    "term": "Patrick Gibbons"
+  },
+  {
+    "formId": "0104D211",
+    "term": "Frederick Gibbons"
+  },
+  {
+    "formId": "0104D20F",
+    "term": "Victoria Gibbons"
+  },
+  {
+    "formId": "0104D20D",
+    "term": "Steven Gibbons"
+  },
+  {
+    "formId": "0104BA67",
+    "term": "Duke"
+  },
+  {
+    "formId": "0104BA66",
+    "term": "Mutant Wolf"
+  },
+  {
+    "formId": "0104BA65",
+    "term": "Mutant Hound"
+  },
+  {
+    "formId": "0104BA64",
+    "term": "Junkyard Dog"
+  },
+  {
+    "formId": "0104B9C5",
+    "term": "AudioTemplateSentryBot"
+  },
+  {
+    "formId": "0104B9C4",
+    "term": "AudioTemplateSentryBot"
+  },
+  {
+    "formId": "0104AB93",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01049CB8",
+    "term": "Malcolm"
+  },
+  {
+    "formId": "01048BB3",
+    "term": "Legendary Ruthless Trapper"
+  },
+  {
+    "formId": "01048BB2",
+    "term": "Legendary Relentless Trapper"
+  },
+  {
+    "formId": "01048BB1",
+    "term": "Legendary Grim Trapper"
+  },
+  {
+    "formId": "01048BB0",
+    "term": "Legendary Stalking Trapper"
+  },
+  {
+    "formId": "01048BAF",
+    "term": "Legendary Scrounging Trapper"
+  },
+  {
+    "formId": "01048BAE",
+    "term": "Legendary Trapper"
+  },
+  {
+    "formId": "01048ABE",
+    "term": "Red Death"
+  },
+  {
+    "formId": "01046020",
+    "term": "Settler"
+  },
+  {
+    "formId": "01045FDA",
+    "term": "Machete Mike"
+  },
+  {
+    "formId": "01045E9F",
+    "term": "Scruffy"
+  },
+  {
+    "formId": "01045DA9",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01044BB8",
+    "term": "Sebastion"
+  },
+  {
+    "formId": "01044BB6",
+    "term": "Penny"
+  },
+  {
+    "formId": "01044BA5",
+    "term": "Rupert"
+  },
+  {
+    "formId": "0104417D",
+    "term": "Hermit Crab Hatchling"
+  },
+  {
+    "formId": "01043B0B",
+    "term": "Jasper"
+  },
+  {
+    "formId": "01043861",
+    "term": "Survivor"
+  },
+  {
+    "formId": "01043860",
+    "term": "Survivor"
+  },
+  {
+    "formId": "0104385F",
+    "term": "Survivor"
+  },
+  {
+    "formId": "0104385E",
+    "term": "Zachary"
+  },
+  {
+    "formId": "0104385B",
+    "term": "Jared Gresham"
+  },
+  {
+    "formId": "01040C30",
+    "term": "Savage Hermit Crab"
+  },
+  {
+    "formId": "01040C2F",
+    "term": "Glowing Hermit Crab"
+  },
+  {
+    "formId": "01040C2E",
+    "term": "Alpha Hermit Crab"
+  },
+  {
+    "formId": "01040C2D",
+    "term": "Albino Hermit Crab"
+  },
+  {
+    "formId": "01040AAE",
+    "term": "Shipbreaker"
+  },
+  {
+    "formId": "0103FE2C",
+    "term": "Legendary Gulper Devourer"
+  },
+  {
+    "formId": "0103FE2B",
+    "term": "Legendary Glowing Gulper"
+  },
+  {
+    "formId": "0103FE2A",
+    "term": "Legendary Gulper"
+  },
+  {
+    "formId": "0103FE29",
+    "term": "Legendary Gulper Newt"
+  },
+  {
+    "formId": "0103FE28",
+    "term": "Legendary Gulper Devourer"
+  },
+  {
+    "formId": "0103FE27",
+    "term": "Legendary Glowing Gulper"
+  },
+  {
+    "formId": "0103FE26",
+    "term": "Legendary Gulper"
+  },
+  {
+    "formId": "0103FE25",
+    "term": "Legendary Gulper Newt"
+  },
+  {
+    "formId": "0103FD6A",
+    "term": "Rad Chicken"
+  },
+  {
+    "formId": "0103DDE2",
+    "term": "Rad Rabbit"
+  },
+  {
+    "formId": "0103D2B2",
+    "term": "Legendary Glowing Wolf"
+  },
+  {
+    "formId": "0103D2B1",
+    "term": "Glowing Wolf"
+  },
+  {
+    "formId": "0103A37C",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "0103A36B",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01038B33",
+    "term": "Gilda Broscoe"
+  },
+  {
+    "formId": "01038B32",
+    "term": "Keith McKinney"
+  },
+  {
+    "formId": "01038B31",
+    "term": "Santiago Avida"
+  },
+  {
+    "formId": "01038B30",
+    "term": "Julianna Riggs"
+  },
+  {
+    "formId": "01038B2F",
+    "term": "Bert Riggs"
+  },
+  {
+    "formId": "01038B2E",
+    "term": "Spencer Lords"
+  },
+  {
+    "formId": "01038B2D",
+    "term": "Ezra Parker"
+  },
+  {
+    "formId": "0103748E",
+    "term": "Confessor Martin"
+  },
+  {
+    "formId": "01033E7A",
+    "term": "DLC03 RoboBrain"
+  },
+  {
+    "formId": "010338EE",
+    "term": "Maxwell"
+  },
+  {
+    "formId": "010338ED",
+    "term": "Concierge"
+  },
+  {
+    "formId": "01032C50",
+    "term": "Franny"
+  },
+  {
+    "formId": "01032509",
+    "term": "Pearl"
+  },
+  {
+    "formId": "010316BE",
+    "term": "Braun"
+  },
+  {
+    "formId": "010316BD",
+    "term": "Rowan"
+  },
+  {
+    "formId": "010316BC",
+    "term": "Luke"
+  },
+  {
+    "formId": "010316BB",
+    "term": "Bray Husky"
+  },
+  {
+    "formId": "010305BC",
+    "term": "Knight-Captain Larsen"
+  },
+  {
+    "formId": "0102F3F6",
+    "term": "William Moseley"
+  },
+  {
+    "formId": "0102F1C8",
+    "term": "Unknown Speaker"
+  },
+  {
+    "formId": "0102E126",
+    "term": "Bilge"
+  },
+  {
+    "formId": "0102E00D",
+    "term": "System"
+  },
+  {
+    "formId": "0102C661",
+    "term": "Gracie"
+  },
+  {
+    "formId": "0102C660",
+    "term": "Mishka"
+  },
+  {
+    "formId": "0102C65C",
+    "term": "Mishka"
+  },
+  {
+    "formId": "0102C352",
+    "term": "Mark"
+  },
+  {
+    "formId": "0102C351",
+    "term": "Levi"
+  },
+  {
+    "formId": "01027F5D",
+    "term": "Douglas"
+  },
+  {
+    "formId": "01027ECA",
+    "term": "Trapper"
+  },
+  {
+    "formId": "01027EC9",
+    "term": "Trapper"
+  },
+  {
+    "formId": "01027EC8",
+    "term": "Trapper"
+  },
+  {
+    "formId": "01027EC7",
+    "term": "Trapper"
+  },
+  {
+    "formId": "01027EC6",
+    "term": "Trapper"
+  },
+  {
+    "formId": "0102793D",
+    "term": "Gulper Devourer"
+  },
+  {
+    "formId": "0102793C",
+    "term": "Glowing Gulper"
+  },
+  {
+    "formId": "0102793B",
+    "term": "Gulper"
+  },
+  {
+    "formId": "010269C8",
+    "term": "Ghostly Fog Crawler"
+  },
+  {
+    "formId": "010269BE",
+    "term": "Ghostly Fog Crawler"
+  },
+  {
+    "formId": "010269AD",
+    "term": "Ghostly Radstag"
+  },
+  {
+    "formId": "010247C4",
+    "term": "Young Gulper"
+  },
+  {
+    "formId": "01024168",
+    "term": "BloodRage Mirelurk"
+  },
+  {
+    "formId": "01023B24",
+    "term": "Howard Dunbar"
+  },
+  {
+    "formId": "01023AC4",
+    "term": "Legendary Bloodrage Mirelurk"
+  },
+  {
+    "formId": "01023AC3",
+    "term": "Legendary Bloodrage Mirelurk"
+  },
+  {
+    "formId": "01023AC1",
+    "term": "Bloodrage Mirelurk"
+  },
+  {
+    "formId": "010225E2",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01021760",
+    "term": "Legendary Irradiated Yao Guai"
+  },
+  {
+    "formId": "0102175F",
+    "term": "Legendary Yao Guai Ghoul"
+  },
+  {
+    "formId": "0102175D",
+    "term": "Yao Guai Ghoul"
+  },
+  {
+    "formId": "0102175C",
+    "term": "Irradiated Yao Guai"
+  },
+  {
+    "formId": "0102175A",
+    "term": "Cole"
+  },
+  {
+    "formId": "010212AB",
+    "term": "High Confessor Tektus"
+  },
+  {
+    "formId": "01020631",
+    "term": "Reinhart VII"
+  },
+  {
+    "formId": "01020630",
+    "term": "Spencer Lords"
+  },
+  {
+    "formId": "0102062F",
+    "term": "Bert Riggs"
+  },
+  {
+    "formId": "0102062E",
+    "term": "Julianna Riggs"
+  },
+  {
+    "formId": "0102062D",
+    "term": "Keith McKinney"
+  },
+  {
+    "formId": "0102062C",
+    "term": "Gilda Broscoe"
+  },
+  {
+    "formId": "0102062B",
+    "term": "Ezra Parker"
+  },
+  {
+    "formId": "01020620",
+    "term": "Santiago Avida"
+  },
+  {
+    "formId": "01020405",
+    "term": "Boxer"
+  },
+  {
+    "formId": "0101FAD8",
+    "term": "Captain Arnold Wabash"
+  },
+  {
+    "formId": "0101FAD6",
+    "term": "System Voice"
+  },
+  {
+    "formId": "0101FA95",
+    "term": "Legendary Fog Ghoul"
+  },
+  {
+    "formId": "0101FA94",
+    "term": "Legendary Fog Ghoul"
+  },
+  {
+    "formId": "0101E710",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0101E70F",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0101E70E",
+    "term": "Sentry"
+  },
+  {
+    "formId": "0101E70D",
+    "term": "Sentry"
+  },
+  {
+    "formId": "0101D168",
+    "term": "Sentry"
+  },
+  {
+    "formId": "0101D166",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0101CC05",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0101CC04",
+    "term": "Sentry"
+  },
+  {
+    "formId": "0101C85F",
+    "term": "Fog Ghoul"
+  },
+  {
+    "formId": "0101C5D1",
+    "term": "Erickson"
+  },
+  {
+    "formId": "0101B0BF",
+    "term": "Sister Gwyneth"
+  },
+  {
+    "formId": "0101AC3B",
+    "term": "Assaultron"
+  },
+  {
+    "formId": "0101A210",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "010180AA",
+    "term": "Giant Hermit Crab"
+  },
+  {
+    "formId": "01018050",
+    "term": "System Voice"
+  },
+  {
+    "formId": "01014456",
+    "term": "Legendary Enraged Fog Crawler"
+  },
+  {
+    "formId": "01014455",
+    "term": "Enraged Fog Crawler"
+  },
+  {
+    "formId": "010140F5",
+    "term": "Legendary Rabid Wolf"
+  },
+  {
+    "formId": "010140F4",
+    "term": "Legendary Albino Wolf"
+  },
+  {
+    "formId": "010140F3",
+    "term": "Legendary Vicious Wolf"
+  },
+  {
+    "formId": "010140F2",
+    "term": "Legendary Feral Wolf"
+  },
+  {
+    "formId": "010140F0",
+    "term": "Feral Wolf"
+  },
+  {
+    "formId": "010140EF",
+    "term": "Vicious Wolf"
+  },
+  {
+    "formId": "010140EE",
+    "term": "Grey Wolf"
+  },
+  {
+    "formId": "010140ED",
+    "term": "Rabid Wolf"
+  },
+  {
+    "formId": "01013F7A",
+    "term": "Legendary Devolved Radstag"
+  },
+  {
+    "formId": "01013F79",
+    "term": "Legendary Devolved Radstag Doe"
+  },
+  {
+    "formId": "01013F78",
+    "term": "Legendary Erratic Radstag"
+  },
+  {
+    "formId": "01013F77",
+    "term": "Legendary Erratic Radstag Doe"
+  },
+  {
+    "formId": "01013F75",
+    "term": "Erratic Radstag Doe"
+  },
+  {
+    "formId": "01013F74",
+    "term": "Erratic Radstag"
+  },
+  {
+    "formId": "01013F72",
+    "term": "Devolved Radstag Doe"
+  },
+  {
+    "formId": "01013F71",
+    "term": "Devolved Radstag"
+  },
+  {
+    "formId": "0101054D",
+    "term": "Settler"
+  },
+  {
+    "formId": "0100F116",
+    "term": "Dottie"
+  },
+  {
+    "formId": "0100F10B",
+    "term": "Legendary Mirelurk Queen"
+  },
+  {
+    "formId": "0100AFDB",
+    "term": "Ghostly Figure"
+  },
+  {
+    "formId": "0100AAF8",
+    "term": "Uncle Ken"
+  },
+  {
+    "formId": "0100A2D1",
+    "term": "Legendary Diseased Fog Crawler"
+  },
+  {
+    "formId": "0100A2D0",
+    "term": "Legendary Skulking Fog Crawler"
+  },
+  {
+    "formId": "0100A2CF",
+    "term": "Legendary Glowing Fog Crawler"
+  },
+  {
+    "formId": "0100A2CE",
+    "term": "Legendary Fog Crawler"
+  },
+  {
+    "formId": "0100A2CD",
+    "term": "Pale Fog Crawler"
+  },
+  {
+    "formId": "0100A2CC",
+    "term": "Skulking Fog Crawler"
+  },
+  {
+    "formId": "0100A2CB",
+    "term": "Glowing Fog Crawler"
+  },
+  {
+    "formId": "0100A2CA",
+    "term": "Fog Crawler"
+  },
+  {
+    "formId": "01009593",
+    "term": "Defense Construct"
+  },
+  {
+    "formId": "0100958E",
+    "term": "Legendary Venomous Angler"
+  },
+  {
+    "formId": "0100958D",
+    "term": "Legendary Albino Angler"
+  },
+  {
+    "formId": "0100958C",
+    "term": "Legendary Glowing Angler"
+  },
+  {
+    "formId": "01009588",
+    "term": "Legendary Lantern Angler"
+  },
+  {
+    "formId": "01009586",
+    "term": "Venomous Angler"
+  },
+  {
+    "formId": "01009585",
+    "term": "Albino Angler"
+  },
+  {
+    "formId": "01009584",
+    "term": "Glowing Angler"
+  },
+  {
+    "formId": "01009583",
+    "term": "Angler"
+  },
+  {
+    "formId": "01009146",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01009145",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01009144",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01009143",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01009140",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01008A16",
+    "term": "Tink"
+  },
+  {
+    "formId": "010082C7",
+    "term": "Sister Aubert"
+  },
+  {
+    "formId": "01006E5B",
+    "term": "Old Longfellow"
+  },
+  {
+    "formId": "01005CC5",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CC4",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CC3",
+    "term": "Harborwoman"
+  },
+  {
+    "formId": "01005CC2",
+    "term": "Debby"
+  },
+  {
+    "formId": "01005CC1",
+    "term": "Harborwoman"
+  },
+  {
+    "formId": "01005CC0",
+    "term": "Harborwoman"
+  },
+  {
+    "formId": "01005CBF",
+    "term": "Harborwoman"
+  },
+  {
+    "formId": "01005CBE",
+    "term": "Fisherman"
+  },
+  {
+    "formId": "01005CBD",
+    "term": "Harborwoman"
+  },
+  {
+    "formId": "01005CBC",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CBB",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CBA",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CB9",
+    "term": "Fisherman"
+  },
+  {
+    "formId": "01005CB8",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CB7",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CA4",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005CA3",
+    "term": "Harborman"
+  },
+  {
+    "formId": "01005C9F",
+    "term": "Mitch"
+  },
+  {
+    "formId": "01005C9D",
+    "term": "Andre Michaud"
+  },
+  {
+    "formId": "01005C9B",
+    "term": "Brooks"
+  },
+  {
+    "formId": "01005C99",
+    "term": "Allen Lee"
+  },
+  {
+    "formId": "01005C97",
+    "term": "Teddy Wright"
+  },
+  {
+    "formId": "01005C95",
+    "term": "Cassie Dalton"
+  },
+  {
+    "formId": "01005C93",
+    "term": "Sandra Lee"
+  },
+  {
+    "formId": "01005C91",
+    "term": "The Mariner"
+  },
+  {
+    "formId": "01005C85",
+    "term": "Tony"
+  },
+  {
+    "formId": "01005C83",
+    "term": "Small Bertha"
+  },
+  {
+    "formId": "01005C80",
+    "term": "Captain Avery"
+  },
+  {
+    "formId": "01004D24",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01004D04",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01004D03",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "01004CFC",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01004CF6",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01004642",
+    "term": "Jule"
+  },
+  {
+    "formId": "01004641",
+    "term": "Naveen"
+  },
+  {
+    "formId": "01004640",
+    "term": "Cog"
+  },
+  {
+    "formId": "0100463F",
+    "term": "Dejen"
+  },
+  {
+    "formId": "0100463E",
+    "term": "Aster"
+  },
+  {
+    "formId": "0100463C",
+    "term": "Faraday"
+  },
+  {
+    "formId": "0100463B",
+    "term": "Miranda"
+  },
+  {
+    "formId": "0100463A",
+    "term": "Chase"
+  },
+  {
+    "formId": "01004639",
+    "term": "DiMA"
+  },
+  {
+    "formId": "010044C3",
+    "term": "Child of Atom Zealot"
+  },
+  {
+    "formId": "01004471",
+    "term": "Brother Kane"
+  },
+  {
+    "formId": "0100446F",
+    "term": "Brother Devin"
+  },
+  {
+    "formId": "0100446D",
+    "term": "Sister Mai"
+  },
+  {
+    "formId": "0100446B",
+    "term": "The Archemist"
+  },
+  {
+    "formId": "01004469",
+    "term": "Zealot Theil"
+  },
+  {
+    "formId": "01004467",
+    "term": "Zealot Ware"
+  },
+  {
+    "formId": "01004465",
+    "term": "Grand Zealot Richter"
+  },
+  {
+    "formId": "01004464",
+    "term": "High Confessor Tektus"
+  },
+  {
+    "formId": "01003ECA",
+    "term": "Kasumi Nakano"
+  },
+  {
+    "formId": "0100386F",
+    "term": "Indexer"
+  },
+  {
+    "formId": "0100385E",
+    "term": "Sentry"
+  },
+  {
+    "formId": "01002DBD",
+    "term": "Ruthless Trapper"
+  },
+  {
+    "formId": "01002DBC",
+    "term": "Relentless Trapper"
+  },
+  {
+    "formId": "01002DBB",
+    "term": "Grim Trapper"
+  },
+  {
+    "formId": "01002DBA",
+    "term": "Stalking Trapper"
+  },
+  {
+    "formId": "01002DB9",
+    "term": "Scrounging Trapper"
+  },
+  {
+    "formId": "01002DB7",
+    "term": "Trapper"
+  },
+  {
+    "formId": "0100220D",
+    "term": "Rei Nakano"
+  },
+  {
+    "formId": "01002162",
+    "term": "Kenji Nakano"
+  },
+  {
+    "formId": "010008B3",
+    "term": "Armor Rack"
+  },
+  {
+    "formId": "01004AC7",
+    "term": "Settler"
+  },
+  {
+    "formId": "010049D7",
+    "term": "Settler"
+  },
+  {
+    "formId": "010049D4",
+    "term": "Settler"
+  },
+  {
+    "formId": "010049D3",
+    "term": "Settler"
+  },
+  {
+    "formId": "010042B4",
+    "term": "Overseer Barstow"
+  },
+  {
+    "formId": "01056F4E",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F4D",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F4C",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F4B",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F4A",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F49",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F48",
+    "term": "Legendary Pack"
+  },
+  {
+    "formId": "01056F47",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F46",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F45",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F44",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F43",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F42",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F41",
+    "term": "Legendary Disciple"
+  },
+  {
+    "formId": "01056F40",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3F",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3E",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3D",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3C",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3B",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056F3A",
+    "term": "Legendary Operator"
+  },
+  {
+    "formId": "01056D36",
+    "term": "Brahmiluff"
+  },
+  {
+    "formId": "010562A4",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "010562A0",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01056291",
+    "term": "Pack Cat"
+  },
+  {
+    "formId": "0105628F",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "010561B1",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "010561AF",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "010561A5",
+    "term": "Pack Mole Rat"
+  },
+  {
+    "formId": "010560E6",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "010560E2",
+    "term": "Pack Mole Rat"
+  },
+  {
+    "formId": "010560E1",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "010560E0",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "010560DF",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "0105606B",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "0105606A",
+    "term": "Pack Mirelurk"
+  },
+  {
+    "formId": "01056069",
+    "term": "Pack Mole Rat"
+  },
+  {
+    "formId": "01056068",
+    "term": "Pack Ghoulrilla"
+  },
+  {
+    "formId": "01056067",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01056064",
+    "term": "Pack Cat"
+  },
+  {
+    "formId": "0105605D",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01056050",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01056046",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01056044",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01055C15",
+    "term": "Gunner Protectron"
+  },
+  {
+    "formId": "01055BFC",
+    "term": "Gunner Mr Handy"
+  },
+  {
+    "formId": "01055BFA",
+    "term": "Gunner Protectron Chef"
+  },
+  {
+    "formId": "01052720",
+    "term": "House Cat"
+  },
+  {
+    "formId": "01052598",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "0105258F",
+    "term": "Pack Gazelle"
+  },
+  {
+    "formId": "01051E90",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01051E8F",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01051E8E",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01051E8D",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01051E8B",
+    "term": "Pack Captive"
+  },
+  {
+    "formId": "01051E7E",
+    "term": "Pack Ghoulrilla"
+  },
+  {
+    "formId": "01051E2B",
+    "term": "Pack Yao Guai"
+  },
+  {
+    "formId": "01051C9E",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01051C9C",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01051C4B",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01051C33",
+    "term": "Pack Mole Rat"
+  },
+  {
+    "formId": "01051C27",
+    "term": "Pack Cat"
+  },
+  {
+    "formId": "01051C21",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01051784",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "01050294",
+    "term": "Gunner Commander"
+  },
+  {
+    "formId": "0104C757",
+    "term": "House Cat"
+  },
+  {
+    "formId": "0104C0BD",
+    "term": "Robin"
+  },
+  {
+    "formId": "0104C0BB",
+    "term": "Rabbit"
+  },
+  {
+    "formId": "0104C0BA",
+    "term": "Chipmunk"
+  },
+  {
+    "formId": "0104C0AE",
+    "term": "Prisoner"
+  },
+  {
+    "formId": "0104C0AD",
+    "term": "Prisoner"
+  },
+  {
+    "formId": "0104BD1B",
+    "term": "Katana"
+  },
+  {
+    "formId": "0104BD1A",
+    "term": "Luna"
+  },
+  {
+    "formId": "0104BCDB",
+    "term": "Settler"
+  },
+  {
+    "formId": "0104BC84",
+    "term": "Novatron Eliminator"
+  },
+  {
+    "formId": "0104BC83",
+    "term": "Novatron Initiator"
+  },
+  {
+    "formId": "0104BC82",
+    "term": "Galactron Sentinel"
+  },
+  {
+    "formId": "0104BC81",
+    "term": "Galactron Defender"
+  },
+  {
+    "formId": "0104BC80",
+    "term": "Nukatron Sentinel"
+  },
+  {
+    "formId": "0104BC7F",
+    "term": "Nukatron Defender"
+  },
+  {
+    "formId": "0104AC35",
+    "term": "Evan"
+  },
+  {
+    "formId": "0104A65E",
+    "term": "Caleb"
+  },
+  {
+    "formId": "0104A515",
+    "term": "Raider Man"
+  },
+  {
+    "formId": "0104A514",
+    "term": "Raider Man"
+  },
+  {
+    "formId": "0104A513",
+    "term": "Raider Man"
+  },
+  {
+    "formId": "0104A012",
+    "term": "Operator"
+  },
+  {
+    "formId": "010489B0",
+    "term": "Evelyn Black"
+  },
+  {
+    "formId": "010489AE",
+    "term": "Mags Black"
+  },
+  {
+    "formId": "010489AC",
+    "term": "Test Subject"
+  },
+  {
+    "formId": "01048933",
+    "term": "Settler"
+  },
+  {
+    "formId": "01048932",
+    "term": "Settler"
+  },
+  {
+    "formId": "01047585",
+    "term": "Pack Dog"
+  },
+  {
+    "formId": "01047304",
+    "term": "Corporal Downey"
+  },
+  {
+    "formId": "01047303",
+    "term": "Sergeant Lanier"
+  },
+  {
+    "formId": "01047302",
+    "term": "Maja Adams"
+  },
+  {
+    "formId": "01047301",
+    "term": "Dustin Polanski"
+  },
+  {
+    "formId": "01047300",
+    "term": "Emerson Gates"
+  },
+  {
+    "formId": "010472FF",
+    "term": "Mark Falcone"
+  },
+  {
+    "formId": "010472FE",
+    "term": "Luis Batemen"
+  },
+  {
+    "formId": "010472FD",
+    "term": "Kristy Green"
+  },
+  {
+    "formId": "010472FC",
+    "term": "Jesse McDaniel"
+  },
+  {
+    "formId": "01046F8F",
+    "term": "Legendary Rad-Rat Pup"
+  },
+  {
+    "formId": "01046F8E",
+    "term": "Legendary Plagued Rad-Rat"
+  },
+  {
+    "formId": "01046F8D",
+    "term": "Legendary Infected Rad-Rat"
+  },
+  {
+    "formId": "01046F8C",
+    "term": "Legendary Mangy Rad-Rat"
+  },
+  {
+    "formId": "01046F8B",
+    "term": "Legendary Infected Rad-Rat Pup"
+  },
+  {
+    "formId": "01046F8A",
+    "term": "Legendary Rad-Rat"
+  },
+  {
+    "formId": "01046F89",
+    "term": "Legendary Mangy Rad-Rat Pup"
+  },
+  {
+    "formId": "01046CF9",
+    "term": "Bloodworm Queen"
+  },
+  {
+    "formId": "01044D63",
+    "term": "General Braxton"
+  },
+  {
+    "formId": "01044D61",
+    "term": "John-Caleb Bradberton"
+  },
+  {
+    "formId": "01044A25",
+    "term": "Trader"
+  },
+  {
+    "formId": "01043BC7",
+    "term": "Victor"
+  },
+  {
+    "formId": "01043BC4",
+    "term": "Sanchez"
+  },
+  {
+    "formId": "01043BC1",
+    "term": "Sam"
+  },
+  {
+    "formId": "01043BC0",
+    "term": "Kate"
+  },
+  {
+    "formId": "010439EA",
+    "term": "Robin"
+  },
+  {
+    "formId": "010439E9",
+    "term": "Rabbit"
+  },
+  {
+    "formId": "010439E8",
+    "term": "Chipmunk"
+  },
+  {
+    "formId": "010431BE",
+    "term": "Sheriff Eagle"
+  },
+  {
+    "formId": "010431BD",
+    "term": "Sheriff Hawk"
+  },
+  {
+    "formId": "01042EDD",
+    "term": "Young Yao Guai"
+  },
+  {
+    "formId": "01042EB3",
+    "term": "Hunting Dog"
+  },
+  {
+    "formId": "01042E7D",
+    "term": "McDermot"
+  },
+  {
+    "formId": "01042B50",
+    "term": "Kali Dunmore"
+  },
+  {
+    "formId": "01042B4C",
+    "term": "Monique Dunmore"
+  },
+  {
+    "formId": "01042B47",
+    "term": "Brett Dunmore"
+  },
+  {
+    "formId": "010418D0",
+    "term": "Disciple Scavver"
+  },
+  {
+    "formId": "010418CF",
+    "term": "Disciple Scavver"
+  },
+  {
+    "formId": "010418BC",
+    "term": "AudioTemplateRadrat"
+  },
+  {
+    "formId": "010417DE",
+    "term": "Painted Ghoul"
+  },
+  {
+    "formId": "010417AF",
+    "term": "Rachel"
+  },
+  {
+    "formId": "010415FE",
+    "term": "Del Walsh"
+  },
+  {
+    "formId": "0103F948",
+    "term": "Gage"
+  },
+  {
+    "formId": "0103F93C",
+    "term": "Legendary Flying Glowing Ant Swarm"
+  },
+  {
+    "formId": "0103F93B",
+    "term": "Legendary Flying Soldier Ant Swarm"
+  },
+  {
+    "formId": "0103F939",
+    "term": "Legendary Flying Ant Swarm"
+  },
+  {
+    "formId": "0103F8D5",
+    "term": "Bennell"
+  },
+  {
+    "formId": "0103F8D4",
+    "term": "Medford"
+  },
+  {
+    "formId": "0103F8D0",
+    "term": "Kate Leavitt"
+  },
+  {
+    "formId": "0103F8CF",
+    "term": "Meacham"
+  },
+  {
+    "formId": "0103F83B",
+    "term": "Clark"
+  },
+  {
+    "formId": "0103E58B",
+    "term": "Legendary Cave Cricket"
+  },
+  {
+    "formId": "0103E3A1",
+    "term": "Legendary Overgrown Glowing Ant"
+  },
+  {
+    "formId": "0103E3A0",
+    "term": "Legendary Glowing Ant"
+  },
+  {
+    "formId": "0103E39F",
+    "term": "Legendary Small Glowing Ant"
+  },
+  {
+    "formId": "0103E39B",
+    "term": "Legendary Overgrown Soldier Ant"
+  },
+  {
+    "formId": "0103E39A",
+    "term": "Legendary Soldier Ant"
+  },
+  {
+    "formId": "0103E399",
+    "term": "Legendary Small Soldier Ant"
+  },
+  {
+    "formId": "0103B9CF",
+    "term": "Dr. Hein"
+  },
+  {
+    "formId": "0103B9CE",
+    "term": "Dr. McDermot"
+  },
+  {
+    "formId": "0103B8A6",
+    "term": "Plagued Rad-Rat"
+  },
+  {
+    "formId": "0103B57D",
+    "term": "Flying Glowing Ant Swarm"
+  },
+  {
+    "formId": "0103B512",
+    "term": "Cave Cricket Black"
+  },
+  {
+    "formId": "0103A4F7",
+    "term": "AudioTemplateBloatFly"
+  },
+  {
+    "formId": "010394E6",
+    "term": "Legendary Glowing Cave Cricket"
+  },
+  {
+    "formId": "010394E4",
+    "term": "Legendary Cave Cricket Piercer"
+  },
+  {
+    "formId": "010394E3",
+    "term": "Legendary Cave Cricket Hunter"
+  },
+  {
+    "formId": "01038513",
+    "term": "Sabine"
+  },
+  {
+    "formId": "01038512",
+    "term": "Rogue Knight"
+  },
+  {
+    "formId": "01038511",
+    "term": "Rage"
+  },
+  {
+    "formId": "01038510",
+    "term": "Commander Bear"
+  },
+  {
+    "formId": "0103850F",
+    "term": "Sabot"
+  },
+  {
+    "formId": "0103850E",
+    "term": "Wretch"
+  },
+  {
+    "formId": "01038428",
+    "term": "Legendary Glowing Bloodworm Larva"
+  },
+  {
+    "formId": "01038427",
+    "term": "Legendary Glowing Bloodworm"
+  },
+  {
+    "formId": "01038426",
+    "term": "Legendary Venomous Bloodworm"
+  },
+  {
+    "formId": "01038425",
+    "term": "Legendary Bloodworm"
+  },
+  {
+    "formId": "01038424",
+    "term": "Legendary Venomous Bloodworm Larva"
+  },
+  {
+    "formId": "01038420",
+    "term": "Legendary Bloodworm Larva"
+  },
+  {
+    "formId": "0103841D",
+    "term": "Nuka-Girl"
+  },
+  {
+    "formId": "0103841C",
+    "term": "Announcer"
+  },
+  {
+    "formId": "01036379",
+    "term": "AudioTemplateBloodbug"
+  },
+  {
+    "formId": "01035FA3",
+    "term": "Announcement"
+  },
+  {
+    "formId": "010350C5",
+    "term": "Crag"
+  },
+  {
+    "formId": "010346D2",
+    "term": "Nukalurk King"
+  },
+  {
+    "formId": "010337CA",
+    "term": "Cito"
+  },
+  {
+    "formId": "01032F58",
+    "term": "Mr Handy Greeter"
+  },
+  {
+    "formId": "01032908",
+    "term": "Galactron Guardian"
+  },
+  {
+    "formId": "01032907",
+    "term": "Galactron Watcher"
+  },
+  {
+    "formId": "01032904",
+    "term": "Mr Frothy"
+  },
+  {
+    "formId": "01032903",
+    "term": "Mr Frothy"
+  },
+  {
+    "formId": "01032902",
+    "term": "Mr Frothy"
+  },
+  {
+    "formId": "01032900",
+    "term": "Space Sentry Annihilator"
+  },
+  {
+    "formId": "010328FF",
+    "term": "Space Sentry Breaker"
+  },
+  {
+    "formId": "010328FE",
+    "term": "Space Sentry"
+  },
+  {
+    "formId": "0103198C",
+    "term": "Kendell Alston"
+  },
+  {
+    "formId": "0103123E",
+    "term": "Fritsch"
+  },
+  {
+    "formId": "0102F8E5",
+    "term": "Private Tyler"
+  },
+  {
+    "formId": "0102F8B2",
+    "term": "Sergeant Marcks"
+  },
+  {
+    "formId": "0102F8B1",
+    "term": "Ophelia"
+  },
+  {
+    "formId": "0102F8B0",
+    "term": "Lucky"
+  },
+  {
+    "formId": "0102F89D",
+    "term": "Anise"
+  },
+  {
+    "formId": "0102F888",
+    "term": "Ian"
+  },
+  {
+    "formId": "0102EBB2",
+    "term": "AudioTemplateBloatFly"
+  },
+  {
+    "formId": "0102E80D",
+    "term": "Pack Butcher"
+  },
+  {
+    "formId": "0102E80C",
+    "term": "Operator Butcher"
+  },
+  {
+    "formId": "0102E80B",
+    "term": "Pack Tormentor"
+  },
+  {
+    "formId": "0102E80A",
+    "term": "Operator Tormentor"
+  },
+  {
+    "formId": "0102E809",
+    "term": "Pack Pillager"
+  },
+  {
+    "formId": "0102E808",
+    "term": "Operator Pillager"
+  },
+  {
+    "formId": "0102E807",
+    "term": "Pack Veteran"
+  },
+  {
+    "formId": "0102E806",
+    "term": "Operator Veteran"
+  },
+  {
+    "formId": "0102E805",
+    "term": "Pack Survivalist"
+  },
+  {
+    "formId": "0102E804",
+    "term": "Operator Survivalist"
+  },
+  {
+    "formId": "0102E803",
+    "term": "Pack Waster"
+  },
+  {
+    "formId": "0102E802",
+    "term": "Operator Waster"
+  },
+  {
+    "formId": "0102E801",
+    "term": "Pack Scavver"
+  },
+  {
+    "formId": "0102E800",
+    "term": "Operator Scavver"
+  },
+  {
+    "formId": "0102E7FF",
+    "term": "Disciple Veteran"
+  },
+  {
+    "formId": "0102E7FE",
+    "term": "Disciple Survivalist"
+  },
+  {
+    "formId": "0102E7FD",
+    "term": "Disciple Waster"
+  },
+  {
+    "formId": "0102E7FC",
+    "term": "Disciple Scavver"
+  },
+  {
+    "formId": "0102E7F3",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "0102E7F2",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "0102E7F1",
+    "term": "Legendary Raider"
+  },
+  {
+    "formId": "0102E7ED",
+    "term": "Disciple Butcher"
+  },
+  {
+    "formId": "0102E7EC",
+    "term": "Disciple Tormentor"
+  },
+  {
+    "formId": "0102E7EB",
+    "term": "Disciple Pillager"
+  },
+  {
+    "formId": "0102E268",
+    "term": "Argus"
+  },
+  {
+    "formId": "0102DBFD",
+    "term": "Corin"
+  },
+  {
+    "formId": "0102DA6C",
+    "term": "Sykes"
+  },
+  {
+    "formId": "0102AEF9",
+    "term": "AudioTemplateBloatFly"
+  },
+  {
+    "formId": "010293F7",
+    "term": "Galactron Technician"
+  },
+  {
+    "formId": "010293EE",
+    "term": "Galactron Usher"
+  },
+  {
+    "formId": "010293EB",
+    "term": "Mr Frothy Waiter"
+  },
+  {
+    "formId": "010293E2",
+    "term": "Mr Frothy Chef"
+  },
+  {
+    "formId": "010293DD",
+    "term": "Startender"
+  },
+  {
+    "formId": "0102621A",
+    "term": "Trader"
+  },
+  {
+    "formId": "01026219",
+    "term": "Trader"
+  },
+  {
+    "formId": "01026218",
+    "term": "Trader"
+  },
+  {
+    "formId": "01026216",
+    "term": "Trader"
+  },
+  {
+    "formId": "01026203",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "01026202",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "01026201",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "01026200",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "01025F69",
+    "term": "Wasteland Traveler"
+  },
+  {
+    "formId": "0102552E",
+    "term": "Trader"
+  },
+  {
+    "formId": "0102439E",
+    "term": "Raider Woman"
+  },
+  {
+    "formId": "0102439D",
+    "term": "Raider Man"
+  },
+  {
+    "formId": "01020A26",
+    "term": "Brahmin"
+  },
+  {
+    "formId": "010209C8",
+    "term": "Animatronic Alien"
+  },
+  {
+    "formId": "010201F1",
+    "term": "Glowing Bloodworm"
+  },
+  {
+    "formId": "010201F0",
+    "term": "Venomous Bloodworm"
+  },
+  {
+    "formId": "010201EF",
+    "term": "Bloodworm"
+  },
+  {
+    "formId": "010201EE",
+    "term": "Infected Rad-Rat"
+  },
+  {
+    "formId": "010201ED",
+    "term": "Mangy Rad-Rat"
+  },
+  {
+    "formId": "010201EC",
+    "term": "Rad-Rat"
+  },
+  {
+    "formId": "010201EB",
+    "term": "Overgrown Glowing Ant"
+  },
+  {
+    "formId": "010201EA",
+    "term": "Overgrown Soldier Ant"
+  },
+  {
+    "formId": "010201E9",
+    "term": "Overgrown Forager Ant"
+  },
+  {
+    "formId": "010201E8",
+    "term": "Glowing Ant"
+  },
+  {
+    "formId": "010201E7",
+    "term": "Soldier Ant"
+  },
+  {
+    "formId": "010201E6",
+    "term": "Forager Ant"
+  },
+  {
+    "formId": "010201E5",
+    "term": "Glowing Cave Cricket"
+  },
+  {
+    "formId": "010201E1",
+    "term": "Infected Rad-Rat Pup"
+  },
+  {
+    "formId": "010201E0",
+    "term": "Small Forager Ant"
+  },
+  {
+    "formId": "010201DF",
+    "term": "Small Soldier Ant"
+  },
+  {
+    "formId": "010201DE",
+    "term": "Small Glowing Ant"
+  },
+  {
+    "formId": "010201DC",
+    "term": "Cave Cricket Piercer"
+  },
+  {
+    "formId": "010201DB",
+    "term": "Glowing Bloodworm Larva"
+  },
+  {
+    "formId": "010201DA",
+    "term": "Venomous Bloodworm Larva"
+  },
+  {
+    "formId": "0101FAF7",
+    "term": "Novatron Dominator"
+  },
+  {
+    "formId": "0101FAF6",
+    "term": "Novatron Invader"
+  },
+  {
+    "formId": "0101FAF3",
+    "term": "Captain Astro-Gutsy"
+  },
+  {
+    "formId": "0101FAF2",
+    "term": "Commander Astro-Gutsy"
+  },
+  {
+    "formId": "0101FAF1",
+    "term": "Lieutenant Astro-Gutsy"
+  },
+  {
+    "formId": "0101FAC3",
+    "term": "Announcer"
+  },
+  {
+    "formId": "0101FAB1",
+    "term": "Pack Brahmiluff"
+  },
+  {
+    "formId": "0101FA9E",
+    "term": "Cadet Astro-Gutsy"
+  },
+  {
+    "formId": "0101FA9D",
+    "term": "Galactron"
+  },
+  {
+    "formId": "0101F5FD",
+    "term": "Space Sentry Obliterator"
+  },
+  {
+    "formId": "0101F5FC",
+    "term": "Space Sentry Annihilator"
+  },
+  {
+    "formId": "0101F5FB",
+    "term": "Space Sentry Breaker"
+  },
+  {
+    "formId": "0101F5F8",
+    "term": "Nukatron Guardian"
+  },
+  {
+    "formId": "0101F5F7",
+    "term": "Nukatron Watcher"
+  },
+  {
+    "formId": "0101EE33",
+    "term": "Nuka-Girl"
+  },
+  {
+    "formId": "0101EE32",
+    "term": "Announcer"
+  },
+  {
+    "formId": "0101EE31",
+    "term": "Announcer"
+  },
+  {
+    "formId": "0101E3B4",
+    "term": "Keith Dawkins"
+  },
+  {
+    "formId": "0101E3B3",
+    "term": "Chip Morse"
+  },
+  {
+    "formId": "0101CB7C",
+    "term": "Maddox"
+  },
+  {
+    "formId": "0101CB7A",
+    "term": "Aaron Corbett"
+  },
+  {
+    "formId": "0101CB79",
+    "term": "Katelyn Alden"
+  },
+  {
+    "formId": "0101CB76",
+    "term": "Lauren Plummer"
+  },
+  {
+    "formId": "0101CB74",
+    "term": "Shelbie Chase"
+  },
+  {
+    "formId": "0101CB65",
+    "term": "Mackenzie Bridgeman"
+  },
+  {
+    "formId": "0101B00B",
+    "term": "Sinner's Raider"
+  },
+  {
+    "formId": "0101B00A",
+    "term": "Sinner's Raider"
+  },
+  {
+    "formId": "0101B008",
+    "term": "Sinner"
+  },
+  {
+    "formId": "0101A5C2",
+    "term": "N.I.R.A."
+  },
+  {
+    "formId": "0101A28B",
+    "term": "Commander Kaylor"
+  },
+  {
+    "formId": "01019E88",
+    "term": "Charred Painted Ghoul"
+  },
+  {
+    "formId": "01019E7F",
+    "term": "Painted Ghoul"
+  },
+  {
+    "formId": "010192F3",
+    "term": "Settler"
+  },
+  {
+    "formId": "0101763B",
+    "term": "Oswald the Outrageous"
+  },
+  {
+    "formId": "010170C4",
+    "term": "Novatron"
+  },
+  {
+    "formId": "010170C2",
+    "term": "Space Sentry"
+  },
+  {
+    "formId": "010163F7",
+    "term": "Announcer"
+  },
+  {
+    "formId": "01015AA3",
+    "term": "Bottle"
+  },
+  {
+    "formId": "010145DD",
+    "term": "Zachariah"
+  },
+  {
+    "formId": "010145DC",
+    "term": "Ticket Taker"
+  },
+  {
+    "formId": "010145DA",
+    "term": "Girl"
+  },
+  {
+    "formId": "0101443C",
+    "term": "Peter"
+  },
+  {
+    "formId": "0101443B",
+    "term": "Chelsea"
+  },
+  {
+    "formId": "0101443A",
+    "term": "Cora"
+  },
+  {
+    "formId": "010143D8",
+    "term": "Pack Member"
+  },
+  {
+    "formId": "010143D7",
+    "term": "Operator"
+  },
+  {
+    "formId": "010143D6",
+    "term": "Disciple"
+  },
+  {
+    "formId": "01013A43",
+    "term": "Sierra Petrovita"
+  },
+  {
+    "formId": "010138F4",
+    "term": "Mangy Rad-Rat Pup"
+  },
+  {
+    "formId": "010138BA",
+    "term": "Flying Soldier Ant Swarm"
+  },
+  {
+    "formId": "010138B9",
+    "term": "Cave Cricket Hunter"
+  },
+  {
+    "formId": "010138B8",
+    "term": "Cave Cricket"
+  },
+  {
+    "formId": "010138B7",
+    "term": "Bloodworm Larva"
+  },
+  {
+    "formId": "010138B6",
+    "term": "Bloodworm Larva"
+  },
+  {
+    "formId": "0101384C",
+    "term": "Prisoner"
+  },
+  {
+    "formId": "0101384B",
+    "term": "Prisoner"
+  },
+  {
+    "formId": "0101234E",
+    "term": "Nukalurk King"
+  },
+  {
+    "formId": "0101234D",
+    "term": "Nukalurk Hunter"
+  },
+  {
+    "formId": "0101234C",
+    "term": "Nukalurk"
+  },
+  {
+    "formId": "0101234B",
+    "term": "Nukalurk Queen"
+  },
+  {
+    "formId": "0101234A",
+    "term": "Nukalurk Spawn"
+  },
+  {
+    "formId": "01011A8C",
+    "term": "Settler"
+  },
+  {
+    "formId": "01011A8B",
+    "term": "Settler"
+  },
+  {
+    "formId": "01011111",
+    "term": "Weylan"
+  },
+  {
+    "formId": "01010F0D",
+    "term": "Mr Frothy"
+  },
+  {
+    "formId": "01010E51",
+    "term": "Lizzie Wyath"
+  },
+  {
+    "formId": "0100F436",
+    "term": "Mason"
+  },
+  {
+    "formId": "0100EFF2",
+    "term": "Nukatron"
+  },
+  {
+    "formId": "0100EFF0",
+    "term": "Albino Gatorclaw"
+  },
+  {
+    "formId": "0100DBDF",
+    "term": "Shank"
+  },
+  {
+    "formId": "0100DBDD",
+    "term": "Hired Gun"
+  },
+  {
+    "formId": "0100D884",
+    "term": "Doc Phosphate"
+  },
+  {
+    "formId": "0100D883",
+    "term": "The Giddyup Kid"
+  },
+  {
+    "formId": "0100D882",
+    "term": "One-Eyed Ike"
+  },
+  {
+    "formId": "0100D881",
+    "term": "Protectron Sheriff"
+  },
+  {
+    "formId": "0100D875",
+    "term": "Terry Tanaka"
+  },
+  {
+    "formId": "0100D874",
+    "term": "Ricky Braxton"
+  },
+  {
+    "formId": "0100D873",
+    "term": "Sam Teller"
+  },
+  {
+    "formId": "0100D3ED",
+    "term": "William Black"
+  },
+  {
+    "formId": "0100D3EB",
+    "term": "Mags Black"
+  },
+  {
+    "formId": "0100D35B",
+    "term": "Gazelle"
+  },
+  {
+    "formId": "0100D357",
+    "term": "Gatorclaw"
+  },
+  {
+    "formId": "0100D354",
+    "term": "Ghoulrilla King"
+  },
+  {
+    "formId": "0100D353",
+    "term": "Brahmiluff Longhorn"
+  },
+  {
+    "formId": "0100D352",
+    "term": "Brahmiluff"
+  },
+  {
+    "formId": "0100D34A",
+    "term": "Brahmiluff Shorthorn"
+  },
+  {
+    "formId": "0100D347",
+    "term": "Ghoulrilla"
+  },
+  {
+    "formId": "0100D325",
+    "term": "Quantum Deathclaw"
+  },
+  {
+    "formId": "0100CE60",
+    "term": "Small Forager Ant"
+  },
+  {
+    "formId": "0100CC99",
+    "term": "Tula Spinney"
+  },
+  {
+    "formId": "0100CC98",
+    "term": "Maurice Turner"
+  },
+  {
+    "formId": "0100CC97",
+    "term": "Cleansed"
+  },
+  {
+    "formId": "0100CC96",
+    "term": "Rolanda Hooper"
+  },
+  {
+    "formId": "0100CC94",
+    "term": "Phil Roller"
+  },
+  {
+    "formId": "0100CC90",
+    "term": "Dara Hubbell"
+  },
+  {
+    "formId": "0100C609",
+    "term": "Rad-Rat Pup"
+  },
+  {
+    "formId": "0100BE4C",
+    "term": "Pack Member"
+  },
+  {
+    "formId": "0100BE4B",
+    "term": "Operator"
+  },
+  {
+    "formId": "0100B02C",
+    "term": "Flying Ant Swarm"
+  },
+  {
+    "formId": "0100A5B2",
+    "term": "RedEye"
+  },
+  {
+    "formId": "0100A50A",
+    "term": "Overboss Colter"
+  },
+  {
+    "formId": "0100A4E7",
+    "term": "Savoy"
+  },
+  {
+    "formId": "0100A4E6",
+    "term": "Dixie"
+  },
+  {
+    "formId": "0100A4E2",
+    "term": "Nisha"
+  },
+  {
+    "formId": "0100881D",
+    "term": "Porter Gage"
+  },
+  {
+    "formId": "01007D5C",
+    "term": "Announcer"
+  },
+  {
+    "formId": "01007D59",
+    "term": "Harvey"
+  },
+  {
+    "formId": "01007CEC",
+    "term": "Raider"
+  },
+  {
+    "formId": "01007CEA",
+    "term": "Disciple"
+  }
+]

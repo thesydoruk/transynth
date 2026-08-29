@@ -1,0 +1,196 @@
+/* ModsPage — page layout and workspace chrome */
+
+.page {
+  padding: 24px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: var(--text);
+}
+
+.title {
+  color: var(--text-bright);
+  margin-bottom: 16px;
+}
+
+.subtitle {
+  color: var(--text-faint);
+  font-size: 12px;
+  margin: -16px 0 20px 4px;
+}
+
+.empty {
+  color: var(--text-dim);
+  margin-top: 32px;
+}
+
+.emptyState {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyTitle {
+  margin: 0 0 8px;
+  color: var(--text-bright);
+  font-size: 18px;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.emptyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 16px;
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    border-color: var(--border-heavy);
+    color: var(--text-bright);
+  }
+}
+
+.uploadBlock {
+  margin-bottom: 24px;
+}
+
+.uploadBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+}
+
+.advancedImport {
+  margin-top: 8px;
+}
+
+.advancedImport summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.advancedHint {
+  margin: 8px 0 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.gameSelect {
+  padding: 5px 10px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fileInput {
+  flex: 1;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.btn {
+  padding: 6px 16px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnImportAll {
+  composes: btn;
+  margin-left: 8px;
+  background: var(--primary);
+  color: var(--primary-on);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modListHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px;
+  flex-wrap: wrap;
+}
+
+.selectAllLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.selectionBtn {
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-heavy);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.error {
+  color: var(--danger);
+}

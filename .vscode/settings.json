@@ -1,0 +1,48 @@
+{
+  // ── TypeScript ──────────────────────────────────────────────
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // ── Formatting ──────────────────────────────────────────────
+  "files.eol": "\n",
+  "editor.formatOnSave": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": false
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // ── File associations ───────────────────────────────────────
+  "files.associations": {
+    "*.eet": "hex"
+  },
+
+  // ── Search / explorer exclusions ────────────────────────────
+  "search.exclude": {
+    "data/": true
+  },
+  "files.exclude": {
+    "_codemod*": true,
+    "_lint*.json": true
+  },
+
+  // ── Copilot agent — allow temp file cleanup ─────────────────
+  "github.copilot.chat.agent.terminalCommand.allowlist": ["Remove-Item _*", "del _*"],
+
+  // ── Terminal ────────────────────────────────────────────────
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
+}

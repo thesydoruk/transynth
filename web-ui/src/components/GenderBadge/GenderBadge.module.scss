@@ -1,0 +1,22 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.compact {
+  min-width: 1rem;
+  font-size: 0.8rem;
+}
+
+.badge[data-gender='unknown'] {
+  opacity: 0.45;
+}
+
+.badge[data-gender='neutral'] {
+  opacity: 0.55;
+}

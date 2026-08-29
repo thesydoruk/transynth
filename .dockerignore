@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.env
+*.sqlite
+*.db
+
+# Build artifacts and caches
+tools/
+downloads/
+learn_*/
+ml_*/
+
+# Legacy C# project
+legacy/
+
+# Documentation — not needed in runtime image
+doc/
+.github/
+
+# Runtime data — mounted as volume, not baked into image
+data/
+
+# Web UI node_modules excluded — only built dist is copied
+web-ui/node_modules/
+
+# Git metadata
+.git/
+.gitignore

@@ -1,0 +1,280 @@
+import path from 'node:path';
+import fs from 'node:fs';
+import { CONFIG } from '../config';
+import type { Tx } from '../db';
+import { log } from '../logger';
+import { modImportLocalizeDir } from '../modStorage';
+import {
+  loadImportedMod,
+  pluginRelPath,
+  resolveImportPackages,
+  toDiskPath,
+  type ImportPackageContext,
+} from '../modImport';
+import { ensureDir } from '../utils/file';
+import { getJobRuntime } from '../pipeline/jobRuntime';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
+import { checkTtsHealth } from '../tts/ttsClient';
+import { resolveTtsBaseUrl, type TtsReferenceMode } from './voiceToolPaths';
+import { loadVoiceProjectSettings } from './voiceProjectSettings';
+import { dedupeVoiceFiles, discoverVoiceFiles, resolveVoiceRootRel } from './discoverVoiceFiles';
+import {
+  loadVoiceTranslations,
+  lookupVoiceTranslation,
+  voiceTranslationMapKey,
+} from './loadVoiceTranslations';
+import { canSynthesizeVoiceLine, prepareVoiceTtsText } from './prepareVoiceTtsText';
+import { localizeVoicePackage } from './localizeVoicePackage';
+import { voiceSpeakerKey } from './speakerReference';
+import { outputLocalizedFuzRelPath } from './voiceFilePaths';
+import { loadVoiceSynthesisVersionMap, lookupVoiceSynthesisVersion } from './voiceSynthesisState';
+import {
+  isVoiceSynthesisCurrent,
+  voiceTtsPayloadVersionFromPrepared,
+} from './voiceTtsPayloadVersion';
+import { countDiscoVoiceLocalizeWork, localizeDiscoVoicePackage } from './disco/localizeDiscoVoice';
+
+/**
+ * Mod-wide voice job scope:
+ * - `missing` — only absent or stale `.fuz` (default)
+ * - `all` — force-regenerate every synthesizable line
+ */
+export type ModVoiceGenerateScope = 'all' | 'missing';
+
+export type LocalizeModImportVoiceOptions = {
+  extractDir: string;
+  pluginPath?: string;
+  modId: number;
+  srcLang?: string;
+  tgtLang?: string;
+  ttsBaseUrl?: string;
+  limit?: number;
+  dryRun?: boolean;
+  force?: boolean;
+  scope?: ModVoiceGenerateScope;
+  referenceMode?: TtsReferenceMode;
+  /** Restrict synthesis to these `FORMID6:variant` keys. */
+  onlyKeys?: ReadonlySet<string>;
+  /** Restrict synthesis to one NPC voice folder (`Sound/Voice/.../<speakerKey>/`). */
+  speakerKey?: string;
+  /** When set, skip the pre-pass count (caller already knows `total`). */
+  knownTotal?: number;
+  onProgress?: (done: number, total: number) => void;
+  shouldCancel?: () => boolean;
+  signal?: AbortSignal;
+};
+
+export type LocalizeModImportVoiceResult = {
+  modId: number;
+  modName: string;
+  localizeDir: string;
+  written: string[];
+  skipped: string[];
+  warnings: string[];
+};
+
+const resolveReferenceMode = (
+  options: Pick<LocalizeModImportVoiceOptions, 'referenceMode'>,
+  projectReferenceMode: TtsReferenceMode,
+): TtsReferenceMode => options.referenceMode ?? projectReferenceMode;
+
+/** Count voice files that have a target translation and need synthesis. */
+export const countVoiceLocalizeWork = async (
+  db: Tx,
+  modId: number,
+  packages: ImportPackageContext[],
+  srcLang: string,
+  tgtLang: string,
+  scope: ModVoiceGenerateScope = 'missing',
+  onlyKeys?: ReadonlySet<string>,
+  speakerKey?: string,
+  game?: string,
+  extractDir?: string,
+): Promise<number> => {
+  if (game === 'disco') {
+    const root =
+      extractDir ??
+      (packages[0]?.localizeDir ? path.dirname(path.dirname(packages[0].localizeDir)) : null);
+    if (!root) return 0;
+    return countDiscoVoiceLocalizeWork(
+      db,
+      modId,
+      root,
+      srcLang,
+      tgtLang,
+      scope,
+      onlyKeys,
+      speakerKey,
+    );
+  }
+
+  const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
+  const forceAll = scope === 'all';
+  const speakerFilter = speakerKey?.trim() || '';
+  let total = 0;
+  for (const pkg of packages) {
+    const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
+    const voiceRootRel = resolveVoiceRootRel(pluginRel);
+    const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
+    const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
+    for (const entry of voiceFiles) {
+      if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
+        continue;
+      }
+      if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) {
+        continue;
+      }
+      const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid)) {
+        continue;
+      }
+      const prepared = prepareVoiceTtsText({
+        lineSource: row.source,
+        translation: row.translation,
+        speakerSource: row.source,
+        edid: row.edid,
+      });
+      if (prepared.action !== 'synthesize') continue;
+      if (!forceAll) {
+        const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
+        const fuzDest = toDiskPath(pkg.localizeDir, outputLocalizedFuzRelPath(entry));
+        const storedVersion = lookupVoiceSynthesisVersion(
+          storedVersions,
+          voiceSpeakerKey(entry, voiceRootRel),
+          entry.formidLower6,
+          entry.variant,
+        );
+        if (isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
+          continue;
+        }
+      }
+      total += 1;
+    }
+  }
+  return total;
+};
+
+/** Synthesize localized `.fuz` voice files into `_localize_{hash}/{lang}/`. */
+export const localizeModImportVoice = async (
+  db: Tx,
+  options: LocalizeModImportVoiceOptions,
+): Promise<LocalizeModImportVoiceResult> => {
+  const extractDir = path.resolve(options.extractDir);
+
+  if (!options.dryRun) {
+    if (getJobRuntime()) await ensureDependencyHealthy('tts');
+    else await checkTtsHealth(options.ttsBaseUrl);
+  }
+
+  const mod = await loadImportedMod(db, options.modId);
+  const srcLang = options.srcLang?.trim() || mod.srcLang;
+  const tgtLang = options.tgtLang?.trim() || CONFIG.defaultTgtLang;
+  const ttsBaseUrl = options.ttsBaseUrl ?? resolveTtsBaseUrl();
+  const voiceConfig = await loadVoiceProjectSettings(db, mod.game);
+  const referenceMode = resolveReferenceMode(options, voiceConfig.referenceMode);
+  const synthesis = voiceConfig.synthesis;
+
+  const packages = resolveImportPackages(extractDir, tgtLang, options.pluginPath);
+  const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
+  ensureDir(localizeDir);
+  const scope = options.scope ?? 'missing';
+  // `all` always force-regenerates; explicit `force` still wins for either scope.
+  const force = options.force ?? scope === 'all';
+
+  const written: string[] = [];
+  const skipped: string[] = [];
+  const warnings: string[] = [];
+
+  const speakerKey = options.speakerKey?.trim() || undefined;
+  const total =
+    options.knownTotal ??
+    (options.dryRun || options.onProgress == null
+      ? 0
+      : await countVoiceLocalizeWork(
+          db,
+          mod.modId,
+          packages,
+          srcLang,
+          tgtLang,
+          scope,
+          options.onlyKeys,
+          speakerKey,
+          mod.game,
+          extractDir,
+        ));
+  let progressDone = 0;
+  const bumpProgress = () => {
+    progressDone += 1;
+    options.onProgress?.(progressDone, total);
+  };
+
+  log.info(
+    `Voice localize "${mod.modName}" → ${localizeDir} (mod id=${mod.modId}, ${srcLang}→${tgtLang}, TTS=${ttsBaseUrl}, refMode=${referenceMode}, scope=${scope}, force=${force}${speakerKey ? `, speaker=${speakerKey}` : ''})`,
+  );
+
+  if (mod.game === 'disco') {
+    await localizeDiscoVoicePackage(
+      db,
+      {
+        extractDir,
+        modId: mod.modId,
+        game: mod.game,
+        srcLang,
+        tgtLang,
+        ttsBaseUrl,
+        synthesis,
+        referenceMode,
+        force,
+        scope,
+        onlyKeys: options.onlyKeys,
+        speakerKey,
+        limit: options.limit,
+        dryRun: options.dryRun ?? false,
+        shouldCancel: options.shouldCancel,
+        signal: options.signal,
+        onEligibleStep: options.onProgress ? bumpProgress : undefined,
+      },
+      written,
+      skipped,
+      warnings,
+    );
+  } else {
+    for (const pkg of packages) {
+      if (options.shouldCancel?.()) break;
+      await localizeVoicePackage(
+        db,
+        mod.modId,
+        pkg,
+        srcLang,
+        tgtLang,
+        {
+          game: mod.game,
+          ttsBaseUrl,
+          dryRun: options.dryRun ?? false,
+          force,
+          scope,
+          referenceMode,
+          synthesis,
+          onlyKeys: options.onlyKeys,
+          speakerKey,
+          limit: options.limit,
+          shouldCancel: options.shouldCancel,
+          signal: options.signal,
+          onEligibleStep: options.onProgress ? bumpProgress : undefined,
+        },
+        written,
+        skipped,
+        warnings,
+      );
+    }
+  }
+
+  return {
+    modId: mod.modId,
+    modName: mod.modName,
+    localizeDir,
+    written,
+    skipped,
+    warnings,
+  };
+};

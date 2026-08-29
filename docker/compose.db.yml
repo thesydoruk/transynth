@@ -1,0 +1,76 @@
+services:
+  db:
+    # Opt in via COMPOSE_PROFILES=embedded-db (see .env.example). Production
+    # with an external Postgres leaves the profile unset so this never starts.
+    profiles: [embedded-db]
+    # pgvector is required for translation RAG (translation_examples embeddings).
+    image: pgvector/pgvector:pg17
+
+    restart: unless-stopped
+
+    # Default Docker /dev/shm (64 MB) is too small for shared_buffers + parallel workers.
+    shm_size: '1gb'
+
+    volumes:
+      # Paths are relative to this file (Compose include). PG 17 data dir is
+      # /var/lib/postgresql/data inside this mount.
+      - ../data/postgres:/var/lib/postgresql
+
+    env_file:
+      - ../.env
+
+    # First-boot only. Changing these does not rename an existing data/postgres role.
+    environment:
+      POSTGRES_USER: transynth
+      POSTGRES_PASSWORD: transynth
+      POSTGRES_DB: transynth
+
+    ports:
+      - '5433:5432'
+
+    # See docker/postgresql-tuning.conf for rationale and non-Docker installs.
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - temp_buffers=32MB
+      - -c
+      - wal_buffers=64MB
+      - -c
+      - min_wal_size=512MB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=256
+      - -c
+      - max_worker_processes=8
+      - -c
+      - max_parallel_workers=8
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - default_statistics_target=200
+      - -c
+      - huge_pages=off
+
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U transynth']
+
+      interval: 5s
+
+      timeout: 3s
+
+      retries: 5

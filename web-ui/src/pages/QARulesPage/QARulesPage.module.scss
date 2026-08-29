@@ -1,0 +1,218 @@
+/* ── QARulesPage — SCSS Module ───────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pageEmbedded {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+.description {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* ── Toolbar / add-form ──────────────────────────────────────────────────── */
+
+.addForm {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.input {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  min-width: 80px;
+}
+
+.inputWide {
+  composes: input;
+  flex: 1;
+  min-width: 140px;
+}
+
+.btnAdd {
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.mutError {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+
+.center {
+  text-align: center;
+  color: var(--text-dim);
+  margin-top: 32px;
+}
+
+.emptyHint {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-input);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.tdMono {
+  composes: td;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.tdAny {
+  composes: td;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.severityError {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.severityWarning {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.activeOn {
+  color: var(--success);
+}
+
+.activeOff {
+  color: var(--text-faint);
+}
+
+.btnSmall {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-heavy);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 4px;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--text-dim);
+  }
+}
+
+.btnDelete {
+  composes: btnSmall;
+  color: var(--danger);
+  border-color: var(--danger-dark);
+
+  &:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+}
+
+/* ── Inline edit row ─────────────────────────────────────────────────────── */
+
+.editInput {
+  background: var(--bg-card);
+  color: var(--text-bright);
+  border: 1px solid var(--border-heavy);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.editSelect {
+  background: var(--bg-card);
+  color: var(--text-bright);
+  border: 1px solid var(--border-heavy);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.editActions {
+  display: flex;
+  gap: 4px;
+}
+
+.btnSave {
+  composes: btnSmall;
+  color: var(--success);
+  border-color: var(--success-dark);
+
+  &:hover {
+    color: var(--success);
+    border-color: var(--success);
+  }
+}
+
+.btnCancel {
+  composes: btnSmall;
+}

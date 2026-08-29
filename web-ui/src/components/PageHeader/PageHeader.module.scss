@@ -1,0 +1,66 @@
+/* ── PageHeader — shared page-level header shell SCSS Module ─────────────── */
+
+/**
+ * Outer wrapper.
+ * The bottom margin creates consistent spacing between the header block
+ * and the first toolbar or content area on every page.
+ */
+.header {
+  margin-bottom: 20px;
+}
+
+/**
+ * Title + actions row.
+ * Title block stretches; actions cluster on the right without wrapping.
+ */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/** Left column: title + optional description. */
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+/** Primary page heading — h1 or h2 depending on page context. */
+.title {
+  margin: 0 0 4px;
+  color: var(--text-bright);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/** Optional descriptive subtitle rendered below the title. */
+.description {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/**
+ * Right-aligned actions slot.
+ * Receives CTA buttons and secondary controls passed via the `actions` prop.
+ * Padding-top aligns the buttons with the top of the title text.
+ */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/**
+ * Optional meta / status strip rendered below the title row.
+ * Used for item counts, last-sync timestamps, and similar secondary context.
+ */
+.meta {
+  margin-top: 8px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}

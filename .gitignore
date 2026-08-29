@@ -1,0 +1,28 @@
+/node_modules/
+.eslintcache
+
+# Build output
+/dist/
+
+# Test assets
+/test/
+
+# Temporary working dirs from learnFromMultilangMod, etc.
+ml_*/
+/work_*/
+/tmp_*/
+/tmp-*.sh
+/tmp-*.ts
+
+# Environment variables
+.env
+
+# Runtime data (logs, uploads, cache, postgres, backups)
+/data/
+
+# Local Cursor rules and skills (not part of the public project)
+.cursor/
+
+# Homelab GPU / vLLM stacks (not the Transynth app)
+docker-compose.ai-translate.yml
+docker-compose.ai-translate-heretic.yml

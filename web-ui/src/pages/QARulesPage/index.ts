@@ -1,0 +1,1 @@
+export { QARulesPage } from './QARulesPage';

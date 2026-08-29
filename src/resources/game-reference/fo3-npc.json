@@ -1,0 +1,9062 @@
+[
+  {
+    "formId": "0007E952",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E951",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E950",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94F",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94E",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94D",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94C",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94B",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E94A",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E949",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E948",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E947",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007E40D",
+    "term": "Hunter"
+  },
+  {
+    "formId": "0007E40A",
+    "term": "Slave"
+  },
+  {
+    "formId": "0007D782",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000628F6",
+    "term": "TestQAHiuLaiMHairOld05"
+  },
+  {
+    "formId": "000628D1",
+    "term": "TestQAHiuLaiMHairOld04"
+  },
+  {
+    "formId": "00062897",
+    "term": "TestQAHiuLaiMHairOld03"
+  },
+  {
+    "formId": "00062894",
+    "term": "TestQAHiuLaiMHairOld02"
+  },
+  {
+    "formId": "0006287D",
+    "term": "TestQAHiuLaiMHairOld01"
+  },
+  {
+    "formId": "00062806",
+    "term": "TestQAHiuLaiMHairGhoul02"
+  },
+  {
+    "formId": "00062740",
+    "term": "TestQAHiuLaiMHairGhoul01"
+  },
+  {
+    "formId": "00062733",
+    "term": "TestQAHiuLaiMHairChild06"
+  },
+  {
+    "formId": "00062732",
+    "term": "TestQAHiuLaiMHairChild05"
+  },
+  {
+    "formId": "000626BE",
+    "term": "TestQAHiuLaiMHairChild04"
+  },
+  {
+    "formId": "00062631",
+    "term": "TestQAHiuLaiMHairChild03"
+  },
+  {
+    "formId": "00062630",
+    "term": "TestQAHiuLaiMHairChild02"
+  },
+  {
+    "formId": "000625D0",
+    "term": "TestQAHiuLaiMHairChild01"
+  },
+  {
+    "formId": "000625CF",
+    "term": "TestQAHiuLaiMHair18"
+  },
+  {
+    "formId": "000625CE",
+    "term": "TestQAHiuLaiMHair17"
+  },
+  {
+    "formId": "0006226E",
+    "term": "TestQAHiuLaiMHair16"
+  },
+  {
+    "formId": "0006213F",
+    "term": "TestQAHiuLaiMHair15"
+  },
+  {
+    "formId": "00062139",
+    "term": "TestQAHiuLaiMHair14"
+  },
+  {
+    "formId": "00061FBD",
+    "term": "TestQAHiuLaiMHair13"
+  },
+  {
+    "formId": "00061FBC",
+    "term": "TestQAHiuLaiMHair12"
+  },
+  {
+    "formId": "00061FB9",
+    "term": "TestQAHiuLaiMHair11"
+  },
+  {
+    "formId": "00061FB8",
+    "term": "TestQAHiuLaiMHair10"
+  },
+  {
+    "formId": "00061FB6",
+    "term": "TestQAHiuLaiMHair09"
+  },
+  {
+    "formId": "00061BAD",
+    "term": "TestQAHiuLaiMHair08"
+  },
+  {
+    "formId": "00061B66",
+    "term": "TestQAHiuLaiMHair07"
+  },
+  {
+    "formId": "00061ABF",
+    "term": "TestQAHiuLaiMHair06"
+  },
+  {
+    "formId": "00061A8C",
+    "term": "TestQAHiuLaiMHair05"
+  },
+  {
+    "formId": "00061A82",
+    "term": "TestQAHiuLaiMHair04"
+  },
+  {
+    "formId": "00061A71",
+    "term": "TestQAHiuLaiMHair03"
+  },
+  {
+    "formId": "00061A6C",
+    "term": "TestQAHiuLaiMHair02"
+  },
+  {
+    "formId": "00061A6B",
+    "term": "TestQAHiuLaiMHair01"
+  },
+  {
+    "formId": "00061A5F",
+    "term": "TestQAHiuLaiFHairOld01"
+  },
+  {
+    "formId": "00061A5E",
+    "term": "TestQAHiuLaiFHairGhoul05"
+  },
+  {
+    "formId": "00061A53",
+    "term": "TestQAHiuLaiFHairGhoul04"
+  },
+  {
+    "formId": "00061A34",
+    "term": "TestQAHiuLaiFHairGhoul03"
+  },
+  {
+    "formId": "00061A31",
+    "term": "TestQAHiuLaiFHairGhoul02"
+  },
+  {
+    "formId": "00061A30",
+    "term": "TestQAHiuLaiFHairGhoul01"
+  },
+  {
+    "formId": "00061A12",
+    "term": "TestQAHiuLaiFHairChild06"
+  },
+  {
+    "formId": "00061A10",
+    "term": "TestQAHiuLaiFHairChild05"
+  },
+  {
+    "formId": "000619E0",
+    "term": "TestQAHiuLaiFHairChild04"
+  },
+  {
+    "formId": "000619C4",
+    "term": "TestQAHiuLaiFHairChild03"
+  },
+  {
+    "formId": "000619C1",
+    "term": "TestQAHiuLaiFHairChild02"
+  },
+  {
+    "formId": "000619B4",
+    "term": "TestQAHiuLaiFHairChild01"
+  },
+  {
+    "formId": "000619A9",
+    "term": "TestQAHiuLaiFHair23"
+  },
+  {
+    "formId": "000619A6",
+    "term": "TestQAHiuLaiFHair22"
+  },
+  {
+    "formId": "000619A4",
+    "term": "TestQAHiuLaiFHair21"
+  },
+  {
+    "formId": "000619A1",
+    "term": "TestQAHiuLaiFHair20"
+  },
+  {
+    "formId": "0006199D",
+    "term": "TestQAHiuLaiFHair19"
+  },
+  {
+    "formId": "0006199B",
+    "term": "TestQAHiuLaiFHair18"
+  },
+  {
+    "formId": "0006199A",
+    "term": "TestQAHiuLaiFHair17"
+  },
+  {
+    "formId": "00061998",
+    "term": "TestQAHiuLaiFHair16"
+  },
+  {
+    "formId": "00061994",
+    "term": "TestQAHiuLaiFHair15"
+  },
+  {
+    "formId": "00061993",
+    "term": "TestQAHiuLaiFHair14"
+  },
+  {
+    "formId": "00061992",
+    "term": "TestQAHiuLaiFHair13"
+  },
+  {
+    "formId": "00061990",
+    "term": "TestQAHiuLaiFHair12"
+  },
+  {
+    "formId": "0006198F",
+    "term": "TestQAHiuLaiFHair11"
+  },
+  {
+    "formId": "0006198D",
+    "term": "TestQAHiuLaiFHair10"
+  },
+  {
+    "formId": "0006198B",
+    "term": "TestQAHiuLaiFHair09"
+  },
+  {
+    "formId": "00061986",
+    "term": "TestQAHiuLaiFHair08"
+  },
+  {
+    "formId": "00061980",
+    "term": "TestQAHiuLaiFHair07"
+  },
+  {
+    "formId": "00061979",
+    "term": "TestQAHiuLaiFHair06"
+  },
+  {
+    "formId": "00061978",
+    "term": "TestQAHiuLaiFHair05"
+  },
+  {
+    "formId": "00061976",
+    "term": "TestQAHiuLaiFHair04"
+  },
+  {
+    "formId": "00061975",
+    "term": "TestQAHiuLaiFHair03"
+  },
+  {
+    "formId": "00061973",
+    "term": "TestQAHiuLaiFHair02"
+  },
+  {
+    "formId": "00061971",
+    "term": "TestQAHiuLaiFHair01"
+  },
+  {
+    "formId": "000554C7",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0007086E",
+    "term": "William Brandice"
+  },
+  {
+    "formId": "0006C69B",
+    "term": "Scientist"
+  },
+  {
+    "formId": "0006C5C9",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C8",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C7",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C6",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C5",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C4",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C5C3",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0006C583",
+    "term": "Jim Wilkins"
+  },
+  {
+    "formId": "0006C582",
+    "term": "Chip Taylor"
+  },
+  {
+    "formId": "0006C581",
+    "term": "Steve Armstrong"
+  },
+  {
+    "formId": "0006C57F",
+    "term": "Janice Wilkins"
+  },
+  {
+    "formId": "0006BC15",
+    "term": "Officer Wilkins"
+  },
+  {
+    "formId": "00069BC8",
+    "term": "Regulator"
+  },
+  {
+    "formId": "00069BC4",
+    "term": "Regulator"
+  },
+  {
+    "formId": "00069BAC",
+    "term": "Regulator"
+  },
+  {
+    "formId": "00069B9B",
+    "term": "Regulator"
+  },
+  {
+    "formId": "00069B90",
+    "term": "Regulator"
+  },
+  {
+    "formId": "00069B88",
+    "term": "Regulator"
+  },
+  {
+    "formId": "000655E7",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000655B9",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0006559F",
+    "term": "Raider"
+  },
+  {
+    "formId": "0006558A",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00065586",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0006555C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00065552",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0006554F",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0006553E",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00062DE9",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00062DA8",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00062DA7",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00062DA6",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0005C341",
+    "term": "Chief Gustavo"
+  },
+  {
+    "formId": "0005C340",
+    "term": "Allistair Tenpenny"
+  },
+  {
+    "formId": "0005C336",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "0005C335",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "0005C334",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "0005C32C",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "0005C32B",
+    "term": "Margaret Primrose"
+  },
+  {
+    "formId": "0005C32A",
+    "term": "Herbert \"Daring\" Dashwood"
+  },
+  {
+    "formId": "0005C323",
+    "term": "Doctor Banfield"
+  },
+  {
+    "formId": "0005C320",
+    "term": "Tiffany Cheng"
+  },
+  {
+    "formId": "0005C31B",
+    "term": "Irving Cheng"
+  },
+  {
+    "formId": "0005C31A",
+    "term": "Michael Hawthorne"
+  },
+  {
+    "formId": "0005B5A0",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0005B599",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0005B58B",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0005B58A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0005B536",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0005B4F6",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0005B4F5",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00057508",
+    "term": "Tom Holden"
+  },
+  {
+    "formId": "00057507",
+    "term": "Mary Holden"
+  },
+  {
+    "formId": "000569B1",
+    "term": "Allen Mack"
+  },
+  {
+    "formId": "00056948",
+    "term": "raceAfricanAmericanF06"
+  },
+  {
+    "formId": "00056946",
+    "term": "raceAfricanAmericanF07"
+  },
+  {
+    "formId": "00056940",
+    "term": "raceAfricanAmericanF08"
+  },
+  {
+    "formId": "0005693E",
+    "term": "raceAfricanAmericanF09"
+  },
+  {
+    "formId": "0005693B",
+    "term": "raceAfricanAmericanF10"
+  },
+  {
+    "formId": "00056939",
+    "term": "raceAfricanAmericanM06"
+  },
+  {
+    "formId": "00056934",
+    "term": "raceAfricanAmericanM07"
+  },
+  {
+    "formId": "00056923",
+    "term": "raceAfricanAmericanM08"
+  },
+  {
+    "formId": "00056922",
+    "term": "raceAfricanAmericanM09"
+  },
+  {
+    "formId": "00056921",
+    "term": "raceAfricanAmericanM10"
+  },
+  {
+    "formId": "00056919",
+    "term": "raceAsianF06"
+  },
+  {
+    "formId": "00056918",
+    "term": "raceAsianF07"
+  },
+  {
+    "formId": "00056916",
+    "term": "raceAsianF08"
+  },
+  {
+    "formId": "00056909",
+    "term": "raceAsianF09"
+  },
+  {
+    "formId": "00056908",
+    "term": "raceAsianF10"
+  },
+  {
+    "formId": "00056907",
+    "term": "raceAsianM06"
+  },
+  {
+    "formId": "00056906",
+    "term": "raceAsianM07"
+  },
+  {
+    "formId": "00056905",
+    "term": "raceAsianM08"
+  },
+  {
+    "formId": "000568FA",
+    "term": "raceAsianM09"
+  },
+  {
+    "formId": "000568F8",
+    "term": "raceAsianM10"
+  },
+  {
+    "formId": "000568F7",
+    "term": "raceCaucasianF06"
+  },
+  {
+    "formId": "000568F6",
+    "term": "raceCaucasianF07"
+  },
+  {
+    "formId": "000568F5",
+    "term": "raceCaucasianF08"
+  },
+  {
+    "formId": "000568E3",
+    "term": "raceCaucasianF09"
+  },
+  {
+    "formId": "000568E2",
+    "term": "raceCaucasianF10"
+  },
+  {
+    "formId": "000568DF",
+    "term": "raceCaucasianM06"
+  },
+  {
+    "formId": "000568DD",
+    "term": "raceCaucasianM07"
+  },
+  {
+    "formId": "000568DC",
+    "term": "raceCaucasianM08"
+  },
+  {
+    "formId": "000568DA",
+    "term": "raceCaucasianM09"
+  },
+  {
+    "formId": "000568D6",
+    "term": "raceCaucasianM10"
+  },
+  {
+    "formId": "000568D5",
+    "term": "raceHispanicF06"
+  },
+  {
+    "formId": "000568D4",
+    "term": "raceHispanicF07"
+  },
+  {
+    "formId": "000568D3",
+    "term": "raceHispanicF08"
+  },
+  {
+    "formId": "000568D2",
+    "term": "raceHispanicF09"
+  },
+  {
+    "formId": "000568CA",
+    "term": "raceHispanicF10"
+  },
+  {
+    "formId": "000568C8",
+    "term": "raceHispanicM06"
+  },
+  {
+    "formId": "000568C7",
+    "term": "raceHispanicM07"
+  },
+  {
+    "formId": "000568C5",
+    "term": "raceHispanicM08"
+  },
+  {
+    "formId": "000568C4",
+    "term": "raceHispanicM09"
+  },
+  {
+    "formId": "000568C3",
+    "term": "raceHispanicM10"
+  },
+  {
+    "formId": "00054433",
+    "term": "Floyd Lewis"
+  },
+  {
+    "formId": "00054397",
+    "term": "Grandma Taylor"
+  },
+  {
+    "formId": "00052364",
+    "term": "Raider"
+  },
+  {
+    "formId": "0004E5B8",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00045AB7",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00035DA9",
+    "term": "Officer Wolfe"
+  },
+  {
+    "formId": "00035DA8",
+    "term": "Officer Park"
+  },
+  {
+    "formId": "00035B13",
+    "term": "Dead Branchtender"
+  },
+  {
+    "formId": "00032EB8",
+    "term": "Sleeping Guy"
+  },
+  {
+    "formId": "000CC766",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000CC26C",
+    "term": "Scientist"
+  },
+  {
+    "formId": "000CC228",
+    "term": "Dead Regulator"
+  },
+  {
+    "formId": "000CBCFB",
+    "term": "The Overseer"
+  },
+  {
+    "formId": "000CB587",
+    "term": "Shelton - Audio Only"
+  },
+  {
+    "formId": "000CAFBC",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFBB",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFBA",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB9",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB8",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB6",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB5",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB4",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB3",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFB2",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000CAFA7",
+    "term": "Junders Plunkett"
+  },
+  {
+    "formId": "000CADC5",
+    "term": "Winger Gervais"
+  },
+  {
+    "formId": "000CADC4",
+    "term": "Winger Mercier"
+  },
+  {
+    "formId": "000CADC3",
+    "term": "Centre Dubois"
+  },
+  {
+    "formId": "000CADC2",
+    "term": "Goalie Ledoux"
+  },
+  {
+    "formId": "000CA994",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA993",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA992",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA991",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA990",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA98F",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA98E",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA98D",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA98C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA98B",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000CA6EF",
+    "term": "Torcher"
+  },
+  {
+    "formId": "000C9CF9",
+    "term": "Barrett"
+  },
+  {
+    "formId": "000C9CEF",
+    "term": "Murphy"
+  },
+  {
+    "formId": "000C9AE1",
+    "term": "Isabella Proud"
+  },
+  {
+    "formId": "000C9AE0",
+    "term": "Jason"
+  },
+  {
+    "formId": "000C942C",
+    "term": "Drifter"
+  },
+  {
+    "formId": "000C9390",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000C8E0E",
+    "term": "Grady"
+  },
+  {
+    "formId": "000C825B",
+    "term": "A Wanderer"
+  },
+  {
+    "formId": "000C7FAF",
+    "term": "Victoria Watts"
+  },
+  {
+    "formId": "000C7D5E",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C7D5C",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C7D5A",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C7D58",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C7D39",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000C7D38",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000C7D36",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000C77F0",
+    "term": "Prime"
+  },
+  {
+    "formId": "000C72D1",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "000C6E97",
+    "term": "Willy"
+  },
+  {
+    "formId": "000C6E95",
+    "term": "Carlos"
+  },
+  {
+    "formId": "000C6E90",
+    "term": "Micky"
+  },
+  {
+    "formId": "000C6E5C",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000C5D07",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000C4F40",
+    "term": "Willow"
+  },
+  {
+    "formId": "000C47D4",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000C47CA",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000C393E",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C393C",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C393A",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C3938",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C3297",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000C3294",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000C2289",
+    "term": "Wasteland Merchant"
+  },
+  {
+    "formId": "000C2288",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C2287",
+    "term": "Raider"
+  },
+  {
+    "formId": "000C2286",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "000C191A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000C1919",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000C1121",
+    "term": "Survivor"
+  },
+  {
+    "formId": "000C1120",
+    "term": "Paul Hannon"
+  },
+  {
+    "formId": "000C111F",
+    "term": "Butch"
+  },
+  {
+    "formId": "000C111E",
+    "term": "Wally Mack"
+  },
+  {
+    "formId": "000C0CAE",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000C0CAD",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000C09D6",
+    "term": "Officer Taylor"
+  },
+  {
+    "formId": "000C09D5",
+    "term": "Officer Armstrong"
+  },
+  {
+    "formId": "000BFE4C",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000BFE4B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000BFE4A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000BEA70",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000BEA6F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000BEA6E",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000BEA25",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "000BEA21",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000BE79B",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000BE79A",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000BE799",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000BE798",
+    "term": "Tenpenny Resident"
+  },
+  {
+    "formId": "000BE797",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "000BE796",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "000BE795",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "000BE794",
+    "term": "Tenpenny Tower Resident"
+  },
+  {
+    "formId": "000BD693",
+    "term": "Stanislaus Braun"
+  },
+  {
+    "formId": "000B07A8",
+    "term": "Argyle"
+  },
+  {
+    "formId": "000B0611",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000B0610",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000B060F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000B05E7",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A7883",
+    "term": "Amata"
+  },
+  {
+    "formId": "000A5C87",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C86",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C85",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C7A",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C79",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C78",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C77",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A5C76",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000A33D1",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00095B48",
+    "term": "Bill Foster"
+  },
+  {
+    "formId": "00088588",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00083C54",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00083C52",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0007542A",
+    "term": "Beatrice"
+  },
+  {
+    "formId": "000614EF",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000614EE",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000614ED",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0005AC3E",
+    "term": "Gibson"
+  },
+  {
+    "formId": "00054E91",
+    "term": "Snowflake"
+  },
+  {
+    "formId": "0003ED60",
+    "term": "Wasteland Recluse"
+  },
+  {
+    "formId": "0003E644",
+    "term": "Ant Researcher"
+  },
+  {
+    "formId": "0003D0D8",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0003D09C",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0003D07C",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0003D07B",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0003CF92",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0003CF90",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0003CF89",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0003923F",
+    "term": "Chinese Remnant Spy"
+  },
+  {
+    "formId": "0002AEFF",
+    "term": "Sapling Yew"
+  },
+  {
+    "formId": "0002A43A",
+    "term": "Patient"
+  },
+  {
+    "formId": "0002A27F",
+    "term": "Branchtender Maple"
+  },
+  {
+    "formId": "0002A27A",
+    "term": "Branchtender Linden"
+  },
+  {
+    "formId": "0002A279",
+    "term": "Branchtender Cypress"
+  },
+  {
+    "formId": "0002A278",
+    "term": "Bloomseer Poplar"
+  },
+  {
+    "formId": "0002A276",
+    "term": "Leaf Mother Laurel"
+  },
+  {
+    "formId": "0002A275",
+    "term": "Tree Father Birch"
+  },
+  {
+    "formId": "00023BDC",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00018292",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018291",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001828E",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001828C",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018275",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018258",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018255",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018251",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001824D",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001824C",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001824B",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001824A",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018249",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018248",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018247",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018246",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001823E",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001823D",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001823C",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001823B",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0001823A",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018239",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018238",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018237",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018236",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018235",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018234",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018233",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018232",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018231",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018230",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822F",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822E",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822D",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822C",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822B",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001822A",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018229",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018228",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018227",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018226",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018225",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018224",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0001821A",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018218",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018217",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018216",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018213",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018212",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018211",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018210",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0001820F",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018209",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018208",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00018202",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181FC",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181FB",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181EF",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181EE",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181E3",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181DC",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181DB",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181DA",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "000181D2",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00000A9C",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A9B",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A9A",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A99",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A98",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A97",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A94",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00000A93",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000BD46F",
+    "term": "Little Lamplighter"
+  },
+  {
+    "formId": "000BD46E",
+    "term": "Little Lamplighter"
+  },
+  {
+    "formId": "000BB1E2",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "000BA740",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000BA73F",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000BA400",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000B9B82",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9B7F",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9B51",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9AFA",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9AF5",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9AC1",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B9ABF",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000B87B4",
+    "term": "Wasteland Junkie"
+  },
+  {
+    "formId": "000B875B",
+    "term": "Paladin Bael"
+  },
+  {
+    "formId": "000B8758",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000B7620",
+    "term": "Wasteland Junkie"
+  },
+  {
+    "formId": "000B69BE",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000B54C2",
+    "term": "Rocksalt"
+  },
+  {
+    "formId": "000B3973",
+    "term": "Sydney's Father"
+  },
+  {
+    "formId": "000B2D96",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B25B5",
+    "term": "Commander Jabsco"
+  },
+  {
+    "formId": "000B22C9",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C8",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C7",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C6",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C5",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C4",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B22C3",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000B0E7B",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000B02E0",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "000AE66D",
+    "term": "Dead Slave"
+  },
+  {
+    "formId": "000AE66C",
+    "term": "Dead Slave"
+  },
+  {
+    "formId": "000AE072",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000AD827",
+    "term": "Raider"
+  },
+  {
+    "formId": "000AD824",
+    "term": "Raider"
+  },
+  {
+    "formId": "000AD81A",
+    "term": "Raider"
+  },
+  {
+    "formId": "000ACD1C",
+    "term": "TestQAHiuLaiMale22test"
+  },
+  {
+    "formId": "000ACD1B",
+    "term": "TestQAHiuLaiMale21"
+  },
+  {
+    "formId": "000ACD1A",
+    "term": "TestQAHiuLaiMale20"
+  },
+  {
+    "formId": "000ACD19",
+    "term": "TestQAHiuLaiMale19"
+  },
+  {
+    "formId": "000ACD18",
+    "term": "TestQAHiuLaiMale18"
+  },
+  {
+    "formId": "000ACD17",
+    "term": "TestQAHiuLaiMale17"
+  },
+  {
+    "formId": "000ACD16",
+    "term": "TestQAHiuLaiMale16"
+  },
+  {
+    "formId": "000ACD15",
+    "term": "TestQAHiuLaiMale15"
+  },
+  {
+    "formId": "000ACD14",
+    "term": "TestQAHiuLaiMale14"
+  },
+  {
+    "formId": "000ACD13",
+    "term": "TestQAHiuLaiMale13"
+  },
+  {
+    "formId": "000ACD12",
+    "term": "TestQAHiuLaiMale12"
+  },
+  {
+    "formId": "000ACD11",
+    "term": "TestQAHiuLaiMale11"
+  },
+  {
+    "formId": "000ACD10",
+    "term": "TestQAHiuLaiMale10"
+  },
+  {
+    "formId": "000ACD0F",
+    "term": "TestQAHiuLaiMale09"
+  },
+  {
+    "formId": "000ACD0E",
+    "term": "TestQAHiuLaiMale08"
+  },
+  {
+    "formId": "000ACD0D",
+    "term": "TestQAHiuLaiMale07"
+  },
+  {
+    "formId": "000ACD0C",
+    "term": "TestQAHiuLaiMale06"
+  },
+  {
+    "formId": "000ACD0B",
+    "term": "TestQAHiuLaiMale05"
+  },
+  {
+    "formId": "000ACD0A",
+    "term": "TestQAHiuLaiMale04"
+  },
+  {
+    "formId": "000ACD09",
+    "term": "TestQAHiuLaiMale03"
+  },
+  {
+    "formId": "000ACD08",
+    "term": "TestQAHiuLaiMale02"
+  },
+  {
+    "formId": "000ACD07",
+    "term": "TestQAHiuLaiMale01"
+  },
+  {
+    "formId": "000ACD06",
+    "term": "TestQAHiuLaiFemale22test"
+  },
+  {
+    "formId": "000ACD05",
+    "term": "TestQAHiuLaiFemale21"
+  },
+  {
+    "formId": "000ACD04",
+    "term": "TestQAHiuLaiFemale0"
+  },
+  {
+    "formId": "000ACD03",
+    "term": "TestQAHiuLaiFemale19"
+  },
+  {
+    "formId": "000ACD02",
+    "term": "TestQAHiuLaiFemale18"
+  },
+  {
+    "formId": "000ACD01",
+    "term": "TestQAHiuLaiFemale17"
+  },
+  {
+    "formId": "000ACD00",
+    "term": "TestQAHiuLaiFemale16"
+  },
+  {
+    "formId": "000ACCFF",
+    "term": "TestQAHiuLaiFemale15"
+  },
+  {
+    "formId": "000ACCFE",
+    "term": "TestQAHiuLaiFemale14"
+  },
+  {
+    "formId": "000ACCFD",
+    "term": "TestQAHiuLaiFemale13"
+  },
+  {
+    "formId": "000ACCFC",
+    "term": "TestQAHiuLaiFemale12"
+  },
+  {
+    "formId": "000ACCFB",
+    "term": "TestQAHiuLaiFemale11"
+  },
+  {
+    "formId": "000ACCFA",
+    "term": "TestQAHiuLaiFemale10"
+  },
+  {
+    "formId": "000ACCF9",
+    "term": "TestQAHiuLaiFemale09"
+  },
+  {
+    "formId": "000ACCF8",
+    "term": "TestQAHiuLaiFemale08"
+  },
+  {
+    "formId": "000ACCF7",
+    "term": "TestQAHiuLaiFemale07"
+  },
+  {
+    "formId": "000ACCF6",
+    "term": "TestQAHiuLaiFemale06"
+  },
+  {
+    "formId": "000ACCF5",
+    "term": "TestQAHiuLaiFemale05"
+  },
+  {
+    "formId": "000ACCF4",
+    "term": "TestQAHiuLaiFemale04"
+  },
+  {
+    "formId": "000ACCF3",
+    "term": "TestQAHiuLaiFemale03"
+  },
+  {
+    "formId": "000ACCF2",
+    "term": "TestQAHiuLaiFemale02"
+  },
+  {
+    "formId": "000ACCF1",
+    "term": "TestQAHiuLaiFemale01"
+  },
+  {
+    "formId": "000AC3D8",
+    "term": "Chinese Remnant Captain"
+  },
+  {
+    "formId": "000AC3D7",
+    "term": "Chinese Remnant Officer"
+  },
+  {
+    "formId": "000AC3D6",
+    "term": "Chinese Remnant Officer"
+  },
+  {
+    "formId": "000AC3D5",
+    "term": "Chinese Remnant Officer"
+  },
+  {
+    "formId": "000AC3D4",
+    "term": "Chinese Remnant Officer"
+  },
+  {
+    "formId": "000AC3D3",
+    "term": "Chinese Remnant Sargeant"
+  },
+  {
+    "formId": "000AC3D2",
+    "term": "Chinese Remnant Sargeant"
+  },
+  {
+    "formId": "000AC3D1",
+    "term": "Chinese Remnant Sargeant"
+  },
+  {
+    "formId": "000AC3D0",
+    "term": "Chinese Remnant Sergeant"
+  },
+  {
+    "formId": "000AC3CF",
+    "term": "Chinese Remnant Soldier"
+  },
+  {
+    "formId": "000AC3CE",
+    "term": "Chinese Remnant Soldier"
+  },
+  {
+    "formId": "000AC3CD",
+    "term": "Chinese Remnant Soldier"
+  },
+  {
+    "formId": "000AC3C7",
+    "term": "Chinese Remnant Soldier"
+  },
+  {
+    "formId": "000ABED4",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABED3",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABED2",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABED1",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABED0",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABECF",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABECE",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABECD",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEC4",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEC3",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEC2",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEC1",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEC0",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEBF",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEBE",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABEBD",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000ABE1F",
+    "term": "raceHispanicM05"
+  },
+  {
+    "formId": "000ABE1E",
+    "term": "raceHispanicM04"
+  },
+  {
+    "formId": "000ABE1D",
+    "term": "raceHispanicM03"
+  },
+  {
+    "formId": "000ABE1C",
+    "term": "raceHispanicF05"
+  },
+  {
+    "formId": "000ABE1B",
+    "term": "raceHispanicF04"
+  },
+  {
+    "formId": "000ABE1A",
+    "term": "raceHispanicF03"
+  },
+  {
+    "formId": "000ABE19",
+    "term": "raceCaucasianM05"
+  },
+  {
+    "formId": "000ABE18",
+    "term": "raceCaucasianM04"
+  },
+  {
+    "formId": "000ABE17",
+    "term": "raceCaucasianM03"
+  },
+  {
+    "formId": "000ABE16",
+    "term": "raceCaucasianF05"
+  },
+  {
+    "formId": "000ABE15",
+    "term": "raceCaucasianF04"
+  },
+  {
+    "formId": "000ABE14",
+    "term": "raceCaucasianF03"
+  },
+  {
+    "formId": "000ABE13",
+    "term": "raceAsianM05"
+  },
+  {
+    "formId": "000ABE12",
+    "term": "raceAsianM04"
+  },
+  {
+    "formId": "000ABE11",
+    "term": "raceAsianM03"
+  },
+  {
+    "formId": "000ABE10",
+    "term": "raceAsianF05"
+  },
+  {
+    "formId": "000ABE0F",
+    "term": "raceAsianF04"
+  },
+  {
+    "formId": "000ABE0E",
+    "term": "raceAsianF03"
+  },
+  {
+    "formId": "000ABE0D",
+    "term": "raceAfricanAmericanM05"
+  },
+  {
+    "formId": "000ABE0C",
+    "term": "raceAfricanAmericanM04"
+  },
+  {
+    "formId": "000ABE0B",
+    "term": "raceAfricanAmericanM03"
+  },
+  {
+    "formId": "000ABE0A",
+    "term": "raceAfricanAmericanF05"
+  },
+  {
+    "formId": "000ABE09",
+    "term": "raceAfricanAmericanF04"
+  },
+  {
+    "formId": "000ABE08",
+    "term": "raceAfricanAmericanF03"
+  },
+  {
+    "formId": "000ABD05",
+    "term": "Ryan Brigg"
+  },
+  {
+    "formId": "000ABBCC",
+    "term": "Raider"
+  },
+  {
+    "formId": "000ABBCB",
+    "term": "Raider"
+  },
+  {
+    "formId": "000ABBCA",
+    "term": "Raider"
+  },
+  {
+    "formId": "000ABBC9",
+    "term": "Raider"
+  },
+  {
+    "formId": "000ABBC8",
+    "term": "Raider"
+  },
+  {
+    "formId": "000AA849",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "000AA846",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A873E",
+    "term": "Ted"
+  },
+  {
+    "formId": "000A86E9",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E8",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E7",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E6",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E5",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E4",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E3",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A86E2",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A84ED",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84EC",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84EB",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84EA",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84E9",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84E8",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84E7",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A84E5",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A6EFE",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A6D67",
+    "term": "Sid"
+  },
+  {
+    "formId": "000A60E8",
+    "term": "Dead Settler"
+  },
+  {
+    "formId": "000A60E7",
+    "term": "Dead Settler"
+  },
+  {
+    "formId": "000A5395",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000A1212",
+    "term": "Professor Malleus"
+  },
+  {
+    "formId": "000A11F5",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11F4",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11F3",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11F2",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11F1",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11F0",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A11EF",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000A0C21",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C20",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C1E",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C1D",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C1C",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C1B",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C1A",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0C19",
+    "term": "Wasteland Captive"
+  },
+  {
+    "formId": "000A0BD4",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000A0A4C",
+    "term": "Dead Chinese Commando"
+  },
+  {
+    "formId": "0009EA79",
+    "term": "Silver"
+  },
+  {
+    "formId": "0009BE84",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0007D313",
+    "term": "Officer O'Brian"
+  },
+  {
+    "formId": "00061F9B",
+    "term": "Raider"
+  },
+  {
+    "formId": "000456A3",
+    "term": "Emaline"
+  },
+  {
+    "formId": "00037F43",
+    "term": "Jaime"
+  },
+  {
+    "formId": "000230DF",
+    "term": "Ellen DeLoria"
+  },
+  {
+    "formId": "000230DD",
+    "term": "Amata"
+  },
+  {
+    "formId": "000230DC",
+    "term": "Butch"
+  },
+  {
+    "formId": "000230DA",
+    "term": "The Overseer"
+  },
+  {
+    "formId": "0009B171",
+    "term": "Officer Kendall"
+  },
+  {
+    "formId": "00099343",
+    "term": "Jonas"
+  },
+  {
+    "formId": "00097F39",
+    "term": "Manny Koch"
+  },
+  {
+    "formId": "00096350",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0009634E",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "00095D7E",
+    "term": "Radio Play NPC"
+  },
+  {
+    "formId": "0009550A",
+    "term": "Susie Mack"
+  },
+  {
+    "formId": "00095501",
+    "term": "Christine Kendall"
+  },
+  {
+    "formId": "000942C8",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000942C7",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000942C6",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "000942C3",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00090A23",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A8",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A7",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A6",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A5",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A4",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0008F9A3",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0007843C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0007843B",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0007843A",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00078439",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00078437",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00078436",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00078434",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00078433",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "00078432",
+    "term": "Raider"
+  },
+  {
+    "formId": "00078431",
+    "term": "Raider"
+  },
+  {
+    "formId": "00078430",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007842F",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007842E",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007842D",
+    "term": "Raider"
+  },
+  {
+    "formId": "0008DE15",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0008D10D",
+    "term": "Gary 42"
+  },
+  {
+    "formId": "0008D0F5",
+    "term": "Gary Template"
+  },
+  {
+    "formId": "0008AABB",
+    "term": "Gary 41"
+  },
+  {
+    "formId": "0008AAAB",
+    "term": "Gary 36"
+  },
+  {
+    "formId": "000892C7",
+    "term": "Dad"
+  },
+  {
+    "formId": "00088FF7",
+    "term": "Dad"
+  },
+  {
+    "formId": "000824AB",
+    "term": "Smiling Jack"
+  },
+  {
+    "formId": "0007F4FF",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4FD",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4FB",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4F8",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4F7",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4F5",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4F3",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4F0",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4EF",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4ED",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4EB",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4E6",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0007F4DD",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4DC",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4DB",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4DA",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D9",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D8",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D7",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D6",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D5",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D4",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D3",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D2",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D1",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4D0",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4CF",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007F4CE",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E209",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E208",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E207",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E206",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E205",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E204",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E203",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007E202",
+    "term": "Raider"
+  },
+  {
+    "formId": "0007D428",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D427",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D426",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D425",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D424",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D423",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D422",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "0007D41F",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "000777AC",
+    "term": "Raider"
+  },
+  {
+    "formId": "0006FEDD",
+    "term": "Raider"
+  },
+  {
+    "formId": "0006F92B",
+    "term": "Hitman"
+  },
+  {
+    "formId": "0006F8B3",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0006F833",
+    "term": "Hitman"
+  },
+  {
+    "formId": "0006F832",
+    "term": "Megaton Refugee"
+  },
+  {
+    "formId": "0006F703",
+    "term": "Wasteland Merchant"
+  },
+  {
+    "formId": "0006F58A",
+    "term": "Child"
+  },
+  {
+    "formId": "0006F543",
+    "term": "Stanley"
+  },
+  {
+    "formId": "0006F22B",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0006F22A",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0006F228",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0006F211",
+    "term": "Sonora Cruz"
+  },
+  {
+    "formId": "0006F203",
+    "term": "Secretary"
+  },
+  {
+    "formId": "0006F202",
+    "term": "Secretary"
+  },
+  {
+    "formId": "0006F201",
+    "term": "Secretary"
+  },
+  {
+    "formId": "0006F200",
+    "term": "Secretary"
+  },
+  {
+    "formId": "0006F1F2",
+    "term": "Daniel Littlehorn"
+  },
+  {
+    "formId": "0006C48D",
+    "term": "The Surgeon"
+  },
+  {
+    "formId": "0006B96D",
+    "term": "Gloria Mack"
+  },
+  {
+    "formId": "0006B236",
+    "term": "Stanley"
+  },
+  {
+    "formId": "0006B12B",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0006A776",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00069C49",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00069C47",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00069C45",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00069C43",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "000692C5",
+    "term": "Raider"
+  },
+  {
+    "formId": "00066E68",
+    "term": "Frank"
+  },
+  {
+    "formId": "00066E0B",
+    "term": "Raider"
+  },
+  {
+    "formId": "00065375",
+    "term": "Caravan Guard"
+  },
+  {
+    "formId": "00064E1F",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00064D47",
+    "term": "Gallo"
+  },
+  {
+    "formId": "00064915",
+    "term": "Officer Richards"
+  },
+  {
+    "formId": "00064911",
+    "term": "Officer Gomez"
+  },
+  {
+    "formId": "00064910",
+    "term": "Officer Mack"
+  },
+  {
+    "formId": "0006490F",
+    "term": "Officer Kendall"
+  },
+  {
+    "formId": "0006490D",
+    "term": "Security Chief Hannon"
+  },
+  {
+    "formId": "00064906",
+    "term": "Escaped Slave"
+  },
+  {
+    "formId": "00063BFA",
+    "term": "Crazy Wolfgang"
+  },
+  {
+    "formId": "00063BF9",
+    "term": "Lucky Harith"
+  },
+  {
+    "formId": "00063BF8",
+    "term": "Crow"
+  },
+  {
+    "formId": "00063BF7",
+    "term": "Doc Hoff"
+  },
+  {
+    "formId": "00062AB2",
+    "term": "Child Slaver"
+  },
+  {
+    "formId": "000617E7",
+    "term": "Dead Settler"
+  },
+  {
+    "formId": "00061794",
+    "term": "Biwwy"
+  },
+  {
+    "formId": "000606CD",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0005F9CE",
+    "term": "Mysterious Stranger"
+  },
+  {
+    "formId": "0005EDDF",
+    "term": "Catherine"
+  },
+  {
+    "formId": "0005CFE8",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "000599A3",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "00059412",
+    "term": "Caravan Trader"
+  },
+  {
+    "formId": "00059411",
+    "term": "Caravan Trader"
+  },
+  {
+    "formId": "00058827",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00058826",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00058059",
+    "term": "Mel"
+  },
+  {
+    "formId": "0003E554",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0003E553",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0003E552",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0003E551",
+    "term": "Regulator"
+  },
+  {
+    "formId": "0002E032",
+    "term": "Paladin Northup"
+  },
+  {
+    "formId": "0002C9F7",
+    "term": "Officer Richards"
+  },
+  {
+    "formId": "000290A6",
+    "term": "Dad"
+  },
+  {
+    "formId": "000290A3",
+    "term": "Doctor Li"
+  },
+  {
+    "formId": "00052163",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "00052162",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "00052161",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "00052160",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "0005215F",
+    "term": "Grandma Sparkle"
+  },
+  {
+    "formId": "0005215E",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "0005215D",
+    "term": "Rock Crick Hunter"
+  },
+  {
+    "formId": "0005213F",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0005213B",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0005157A",
+    "term": "Christine Kendall"
+  },
+  {
+    "formId": "0004F47F",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0004F47E",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0004E896",
+    "term": "Freddie Gomez"
+  },
+  {
+    "formId": "0004E895",
+    "term": "Susie Mack"
+  },
+  {
+    "formId": "0004E894",
+    "term": "Wally Mack"
+  },
+  {
+    "formId": "0004CFC7",
+    "term": "Tara"
+  },
+  {
+    "formId": "0004BF63",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004B359",
+    "term": "Insane Survivor"
+  },
+  {
+    "formId": "0004837F",
+    "term": "Slave"
+  },
+  {
+    "formId": "0004837D",
+    "term": "Slave"
+  },
+  {
+    "formId": "00048127",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00048122",
+    "term": "Ronald Laren"
+  },
+  {
+    "formId": "000474C5",
+    "term": "Laszlo Radford"
+  },
+  {
+    "formId": "000464F8",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000464F7",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000464F6",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000458BE",
+    "term": "Sam Warrick"
+  },
+  {
+    "formId": "0001816A",
+    "term": "raceAfricanAmericanF01"
+  },
+  {
+    "formId": "000444AB",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "000444A9",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "000444A7",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "000444A4",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "000444A3",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "000444A1",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004449E",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004449C",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044491",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004448F",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004448D",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004448A",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044489",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044487",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044485",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044481",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044480",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004447E",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004447C",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004445A",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044458",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044456",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044453",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044452",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044450",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004444E",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0004444B",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044449",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044447",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044446",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044443",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00044442",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "00043DEC",
+    "term": "Defender Rockfowl"
+  },
+  {
+    "formId": "00043DEB",
+    "term": "Defender Morgan"
+  },
+  {
+    "formId": "00042861",
+    "term": "Patient"
+  },
+  {
+    "formId": "00042860",
+    "term": "Patient"
+  },
+  {
+    "formId": "0004285F",
+    "term": "Patient"
+  },
+  {
+    "formId": "0004171E",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "0004171D",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "0004171C",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "0004171B",
+    "term": "Child of Atom"
+  },
+  {
+    "formId": "00041712",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00041711",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00041710",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00041708",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00041706",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00041704",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0004168A",
+    "term": "Gary 1"
+  },
+  {
+    "formId": "00041688",
+    "term": "Gary 12"
+  },
+  {
+    "formId": "00041686",
+    "term": "Gary 17"
+  },
+  {
+    "formId": "00041684",
+    "term": "Gary 47"
+  },
+  {
+    "formId": "00041682",
+    "term": "Gary 43"
+  },
+  {
+    "formId": "00041680",
+    "term": "Gary 27"
+  },
+  {
+    "formId": "0004167E",
+    "term": "Gary 33"
+  },
+  {
+    "formId": "0004167C",
+    "term": "Gary 29"
+  },
+  {
+    "formId": "0004167A",
+    "term": "Gary 25"
+  },
+  {
+    "formId": "00041677",
+    "term": "Gary 32"
+  },
+  {
+    "formId": "00040EF8",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00040EF7",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00040EF6",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00040EF5",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00040C39",
+    "term": "Protector Casdin"
+  },
+  {
+    "formId": "000406A9",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0003A587",
+    "term": "Hunter"
+  },
+  {
+    "formId": "0003A586",
+    "term": "Hunter"
+  },
+  {
+    "formId": "00037804",
+    "term": "Wasteland Doctor"
+  },
+  {
+    "formId": "00030A41",
+    "term": "raceHispanicM02"
+  },
+  {
+    "formId": "00030A40",
+    "term": "raceHispanicM01"
+  },
+  {
+    "formId": "00030A39",
+    "term": "raceHispanicF02"
+  },
+  {
+    "formId": "00030A2E",
+    "term": "raceHispanicF01"
+  },
+  {
+    "formId": "00030A17",
+    "term": "raceCaucasianM02"
+  },
+  {
+    "formId": "000309FE",
+    "term": "raceCaucasianM01"
+  },
+  {
+    "formId": "000309FA",
+    "term": "raceCaucasianF02"
+  },
+  {
+    "formId": "000309F4",
+    "term": "raceCaucasianF01"
+  },
+  {
+    "formId": "000309F3",
+    "term": "raceAsianM02"
+  },
+  {
+    "formId": "000309F2",
+    "term": "raceAsianM01"
+  },
+  {
+    "formId": "000309EB",
+    "term": "raceAsianF02"
+  },
+  {
+    "formId": "000309E9",
+    "term": "raceAsianF01"
+  },
+  {
+    "formId": "000309E7",
+    "term": "raceAfricanAmericanM02"
+  },
+  {
+    "formId": "000309E5",
+    "term": "raceAfricanAmericanM01"
+  },
+  {
+    "formId": "000309DA",
+    "term": "raceAfricanAmericanF02"
+  },
+  {
+    "formId": "000307BA",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000302CC",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000302CB",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "000302CA",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0002FB18",
+    "term": "Escaped Slave"
+  },
+  {
+    "formId": "0002FA28",
+    "term": "Slave"
+  },
+  {
+    "formId": "0002F7A0",
+    "term": "Slaver"
+  },
+  {
+    "formId": "0002F6E1",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6E0",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DF",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DE",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DD",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DC",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DB",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6DA",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D9",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D8",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D7",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D6",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D5",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D4",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D3",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D2",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D1",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6D0",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CF",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CE",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CD",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CC",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CB",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6CA",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C9",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C8",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C7",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C6",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C5",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C4",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C3",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F6C2",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002F566",
+    "term": "Slave"
+  },
+  {
+    "formId": "0002F565",
+    "term": "Slave"
+  },
+  {
+    "formId": "0002E2A2",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E2A1",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E2A0",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E29F",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E29E",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E29D",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E29C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002E29B",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "00026362",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00026361",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0003D34A",
+    "term": "Agatha"
+  },
+  {
+    "formId": "0003D347",
+    "term": "Mr. Brotch"
+  },
+  {
+    "formId": "0003D346",
+    "term": "Overseer Mack"
+  },
+  {
+    "formId": "0003C182",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0003B280",
+    "term": "Dead Settler"
+  },
+  {
+    "formId": "0003A389",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00039634",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "00038DF5",
+    "term": "Anna Holt"
+  },
+  {
+    "formId": "000388E3",
+    "term": "Lug-Nut"
+  },
+  {
+    "formId": "000388E1",
+    "term": "Ronald Laren"
+  },
+  {
+    "formId": "000388DF",
+    "term": "Sierra Petrovita"
+  },
+  {
+    "formId": "00038837",
+    "term": "Little Lamplighter"
+  },
+  {
+    "formId": "00038836",
+    "term": "Little Lamplighter"
+  },
+  {
+    "formId": "000384D6",
+    "term": "Ymir"
+  },
+  {
+    "formId": "000384D5",
+    "term": "Jotun"
+  },
+  {
+    "formId": "000384D4",
+    "term": "Carolina Red"
+  },
+  {
+    "formId": "00037142",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00037141",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00037140",
+    "term": "Slaver"
+  },
+  {
+    "formId": "0003713F",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00036F86",
+    "term": "Tinker Joe"
+  },
+  {
+    "formId": "00036C1C",
+    "term": "The AntAgonizer"
+  },
+  {
+    "formId": "00036C1B",
+    "term": "The Mechanist"
+  },
+  {
+    "formId": "00034202",
+    "term": "Christine Kendall"
+  },
+  {
+    "formId": "00032F74",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00032F73",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00032F72",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0003210B",
+    "term": "Wasteland Settler"
+  },
+  {
+    "formId": "0003210A",
+    "term": "Wasteland Settler"
+  },
+  {
+    "formId": "00032109",
+    "term": "Wasteland Settler"
+  },
+  {
+    "formId": "00032108",
+    "term": "Escaped Slave"
+  },
+  {
+    "formId": "00032107",
+    "term": "Escaped Slave"
+  },
+  {
+    "formId": "00031ECA",
+    "term": "Joe Porter"
+  },
+  {
+    "formId": "00031EC9",
+    "term": "Uncle Roe"
+  },
+  {
+    "formId": "00031EC8",
+    "term": "Machete"
+  },
+  {
+    "formId": "00031EC7",
+    "term": "Derek Pacion"
+  },
+  {
+    "formId": "00031EC6",
+    "term": "Dominic D'Ellsadro"
+  },
+  {
+    "formId": "00031E28",
+    "term": "Ben Canning"
+  },
+  {
+    "formId": "0003197A",
+    "term": "Fred Wilks"
+  },
+  {
+    "formId": "00031648",
+    "term": "Stanley"
+  },
+  {
+    "formId": "0003142E",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003142D",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003142C",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003142B",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003142A",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00031429",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00031428",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00031427",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00030DE1",
+    "term": "The Roach King"
+  },
+  {
+    "formId": "00030D82",
+    "term": "Carter"
+  },
+  {
+    "formId": "000309C5",
+    "term": "Rosie"
+  },
+  {
+    "formId": "000309B0",
+    "term": "Stevie Mack"
+  },
+  {
+    "formId": "000309AE",
+    "term": "Officer Gomez"
+  },
+  {
+    "formId": "000309AC",
+    "term": "Beatrice"
+  },
+  {
+    "formId": "000309A7",
+    "term": "Old Lady Palmer"
+  },
+  {
+    "formId": "000309A6",
+    "term": "Old Lady Palmer"
+  },
+  {
+    "formId": "000307C8",
+    "term": "Doctor Lesko"
+  },
+  {
+    "formId": "000307C7",
+    "term": "Bryan Wilks"
+  },
+  {
+    "formId": "0003072C",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003072B",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0003072A",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00030729",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00030728",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "00030104",
+    "term": "Mad Johnny Wes"
+  },
+  {
+    "formId": "000300F0",
+    "term": "The Overseer"
+  },
+  {
+    "formId": "000300EC",
+    "term": "Wally Mack"
+  },
+  {
+    "formId": "000300EB",
+    "term": "Paul Hannon"
+  },
+  {
+    "formId": "000300EA",
+    "term": "Butch"
+  },
+  {
+    "formId": "000300E9",
+    "term": "Amata"
+  },
+  {
+    "formId": "000300E7",
+    "term": "Jonas"
+  },
+  {
+    "formId": "000300A3",
+    "term": "Meat"
+  },
+  {
+    "formId": "000300A2",
+    "term": "Ethyl"
+  },
+  {
+    "formId": "0002FDCF",
+    "term": "Dad"
+  },
+  {
+    "formId": "0002EA46",
+    "term": "Dad"
+  },
+  {
+    "formId": "0002DC08",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002DC07",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002DC06",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0002DB1A",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0002D3C0",
+    "term": "Moira Brown"
+  },
+  {
+    "formId": "0002D043",
+    "term": "The Overseer"
+  },
+  {
+    "formId": "0002C884",
+    "term": "Shawna"
+  },
+  {
+    "formId": "0002BD23",
+    "term": "Arkansas"
+  },
+  {
+    "formId": "0002B8EC",
+    "term": "Chinese Commando"
+  },
+  {
+    "formId": "0002B89D",
+    "term": "Ralph"
+  },
+  {
+    "formId": "0002B89C",
+    "term": "Flower"
+  },
+  {
+    "formId": "0002B89B",
+    "term": "Rachael"
+  },
+  {
+    "formId": "0002B89A",
+    "term": "Mary"
+  },
+  {
+    "formId": "0002B898",
+    "term": "Bob"
+  },
+  {
+    "formId": "0002B896",
+    "term": "Jessica"
+  },
+  {
+    "formId": "0002B509",
+    "term": "Brotherhood of Steel"
+  },
+  {
+    "formId": "0002AE21",
+    "term": "Cherry"
+  },
+  {
+    "formId": "0002AE20",
+    "term": "Fantasia"
+  },
+  {
+    "formId": "0002AE1E",
+    "term": "Dukov"
+  },
+  {
+    "formId": "000288BC",
+    "term": "Dusty"
+  },
+  {
+    "formId": "0002805A",
+    "term": "Timebomb"
+  },
+  {
+    "formId": "0002796C",
+    "term": "Pappy"
+  },
+  {
+    "formId": "0002796B",
+    "term": "Flash"
+  },
+  {
+    "formId": "0002796A",
+    "term": "Bittercup"
+  },
+  {
+    "formId": "0002AB95",
+    "term": "Shorty"
+  },
+  {
+    "formId": "0002AB94",
+    "term": "Kimba"
+  },
+  {
+    "formId": "0002A9FF",
+    "term": "Nurse Graves"
+  },
+  {
+    "formId": "0002A7FC",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7FB",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7FA",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F9",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F8",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F7",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F6",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F5",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002A7F4",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7F3",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7F2",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7F1",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7F0",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7EF",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7EE",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7ED",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002A7EC",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7EB",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7EA",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E9",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E8",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E7",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E6",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E5",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E4",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E3",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E2",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002A7E1",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029AA9",
+    "term": "Old Man Harris"
+  },
+  {
+    "formId": "00029AA8",
+    "term": "Karen Johnson"
+  },
+  {
+    "formId": "00029AA7",
+    "term": "Tuck Johnson"
+  },
+  {
+    "formId": "00029AA6",
+    "term": "Jenny Wilson"
+  },
+  {
+    "formId": "00029AA5",
+    "term": "Martha Wilson"
+  },
+  {
+    "formId": "00029AA4",
+    "term": "Bill Wilson"
+  },
+  {
+    "formId": "00029AA3",
+    "term": "Junior Smith"
+  },
+  {
+    "formId": "00029AA2",
+    "term": "Linda Smith"
+  },
+  {
+    "formId": "00029AA1",
+    "term": "Jack Smith"
+  },
+  {
+    "formId": "00029A98",
+    "term": "Dave"
+  },
+  {
+    "formId": "000296AD",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296AC",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296AB",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296AA",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A9",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A8",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A7",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A6",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A5",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A4",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A3",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A2",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A1",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "000296A0",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969F",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969E",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969D",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969C",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969B",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002969A",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029699",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029698",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029697",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029696",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029695",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029694",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029693",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029692",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029691",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029690",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002968F",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002968B",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002968A",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029689",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029688",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029687",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029686",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029685",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029684",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029683",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029682",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029681",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029680",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002967F",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002967E",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002967D",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002967C",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002967B",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029676",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029675",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029674",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029673",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029672",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029671",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "00029670",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002966F",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0002966B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002966A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029669",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029668",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029667",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029666",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029665",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029664",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029663",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029662",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029661",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002965F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002965A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029659",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029658",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029657",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029656",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029655",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029654",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029653",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029652",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029651",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029650",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002964F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002964E",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002964D",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002964C",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029636",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029635",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029634",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029633",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029632",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029631",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "00029630",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002962F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002962B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0002961B",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002961A",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029619",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029618",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029617",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029616",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029607",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029606",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029605",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029604",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029603",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029602",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029601",
+    "term": "Raider"
+  },
+  {
+    "formId": "00029600",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FF",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FE",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FD",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FC",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FB",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295FA",
+    "term": "Raider"
+  },
+  {
+    "formId": "000295EB",
+    "term": "Sticky"
+  },
+  {
+    "formId": "00029579",
+    "term": "Theo"
+  },
+  {
+    "formId": "00029578",
+    "term": "Butcher"
+  },
+  {
+    "formId": "00029577",
+    "term": "Donovan"
+  },
+  {
+    "formId": "00029576",
+    "term": "Brick"
+  },
+  {
+    "formId": "000289C1",
+    "term": "Planetarium Guy"
+  },
+  {
+    "formId": "00027FB1",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00027FB0",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00027FAF",
+    "term": "Silas"
+  },
+  {
+    "formId": "00027F65",
+    "term": "Butch"
+  },
+  {
+    "formId": "00027977",
+    "term": "TestQAHiuLaiPlayer"
+  },
+  {
+    "formId": "000273CB",
+    "term": "Ellen DeLoria"
+  },
+  {
+    "formId": "00027057",
+    "term": "Officer Gomez"
+  },
+  {
+    "formId": "00027056",
+    "term": "Officer Mack"
+  },
+  {
+    "formId": "00027055",
+    "term": "Officer Kendall"
+  },
+  {
+    "formId": "00027054",
+    "term": "Security Chief Hannon"
+  },
+  {
+    "formId": "00026C57",
+    "term": "Paladin Gunny"
+  },
+  {
+    "formId": "00025FD0",
+    "term": "Scribe Jameson"
+  },
+  {
+    "formId": "00025A90",
+    "term": "Trigger"
+  },
+  {
+    "formId": "000259F9",
+    "term": "Little Toe"
+  },
+  {
+    "formId": "00025955",
+    "term": "Knight Dillon"
+  },
+  {
+    "formId": "00025954",
+    "term": "Knight Finley"
+  },
+  {
+    "formId": "00025953",
+    "term": "Knight Sergeant Wilks"
+  },
+  {
+    "formId": "0002549E",
+    "term": "Amata"
+  },
+  {
+    "formId": "00025251",
+    "term": "Red"
+  },
+  {
+    "formId": "00025093",
+    "term": "Timmy Neusbaum"
+  },
+  {
+    "formId": "000244A3",
+    "term": "Mabel Henderson"
+  },
+  {
+    "formId": "000244A2",
+    "term": "Old Lady Dithers"
+  },
+  {
+    "formId": "000244A1",
+    "term": "Martha Simpson"
+  },
+  {
+    "formId": "000244A0",
+    "term": "Roger Rockwell"
+  },
+  {
+    "formId": "0002449F",
+    "term": "Janet Rockwell"
+  },
+  {
+    "formId": "0002449E",
+    "term": "Pat Neusbaum"
+  },
+  {
+    "formId": "0002449D",
+    "term": "George Neusbaum"
+  },
+  {
+    "formId": "0002449C",
+    "term": "Betty"
+  },
+  {
+    "formId": "000239D2",
+    "term": "Bill Seward"
+  },
+  {
+    "formId": "000239D1",
+    "term": "Alejandra Torres"
+  },
+  {
+    "formId": "000239D0",
+    "term": "Simone Cameron"
+  },
+  {
+    "formId": "000239CF",
+    "term": "Caleb Smith"
+  },
+  {
+    "formId": "000239CE",
+    "term": "Leroy Walker"
+  },
+  {
+    "formId": "000239CD",
+    "term": "Hannibal Hamlin"
+  },
+  {
+    "formId": "00023968",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00023967",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0002359C",
+    "term": "Raider"
+  },
+  {
+    "formId": "0002359B",
+    "term": "Raider"
+  },
+  {
+    "formId": "00023598",
+    "term": "Raider"
+  },
+  {
+    "formId": "00023597",
+    "term": "Raider"
+  },
+  {
+    "formId": "00023176",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0001E55F",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0001E55E",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "00019938",
+    "term": "Initiate Pek"
+  },
+  {
+    "formId": "0001558E",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00015502",
+    "term": "Paladin Hoss"
+  },
+  {
+    "formId": "0002248B",
+    "term": "Three Dog"
+  },
+  {
+    "formId": "00022242",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0002222C",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000221DA",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00021E9F",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000210ED",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "000210DF",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "000210DE",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "000210D9",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000210D8",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00020D85",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001F355",
+    "term": "Initiate Jennings"
+  },
+  {
+    "formId": "0001EF46",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0001EF45",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0001EF44",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0001EF43",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0001E71A",
+    "term": "Knight Captain Durga"
+  },
+  {
+    "formId": "0001937E",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "0001937D",
+    "term": "Knight Artemis"
+  },
+  {
+    "formId": "0001937A",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00019379",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000184AE",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00003A22",
+    "term": "Sydney"
+  },
+  {
+    "formId": "000208F6",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000208F5",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000208F4",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000208F3",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000208F2",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0002044F",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0002044E",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0002029B",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "000200CD",
+    "term": "Robert"
+  },
+  {
+    "formId": "000200C9",
+    "term": "Justin"
+  },
+  {
+    "formId": "000200C4",
+    "term": "Karl"
+  },
+  {
+    "formId": "000200BE",
+    "term": "Alan"
+  },
+  {
+    "formId": "000200BB",
+    "term": "Brianna"
+  },
+  {
+    "formId": "0001FF12",
+    "term": "Mercenary"
+  },
+  {
+    "formId": "0001F1CB",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0001E7AE",
+    "term": "Armitage"
+  },
+  {
+    "formId": "0001E759",
+    "term": "Mister Lopez"
+  },
+  {
+    "formId": "0001E745",
+    "term": "Sister"
+  },
+  {
+    "formId": "0001E379",
+    "term": "Chief Gustavo"
+  },
+  {
+    "formId": "0001DC19",
+    "term": "Michael Masters"
+  },
+  {
+    "formId": "0001DC18",
+    "term": "Bessie Lynn"
+  },
+  {
+    "formId": "0001D7B0",
+    "term": "Roy Phillips"
+  },
+  {
+    "formId": "0001D036",
+    "term": "Garza"
+  },
+  {
+    "formId": "0001D02A",
+    "term": "Pepper Gomez"
+  },
+  {
+    "formId": "0001D019",
+    "term": "Freddie Gomez"
+  },
+  {
+    "formId": "0001CFDD",
+    "term": "Susie Mack"
+  },
+  {
+    "formId": "0001CFD8",
+    "term": "Stanley"
+  },
+  {
+    "formId": "0001CFBF",
+    "term": "Beatrice"
+  },
+  {
+    "formId": "0001CFBC",
+    "term": "Jonas"
+  },
+  {
+    "formId": "0001CFB7",
+    "term": "Mr. Brotch"
+  },
+  {
+    "formId": "0001CE38",
+    "term": "Dad"
+  },
+  {
+    "formId": "0001CE2A",
+    "term": "Wally Mack"
+  },
+  {
+    "formId": "0001CE28",
+    "term": "Paul Hannon"
+  },
+  {
+    "formId": "0001CE26",
+    "term": "Butch"
+  },
+  {
+    "formId": "0001CE24",
+    "term": "Amata"
+  },
+  {
+    "formId": "0001CCA3",
+    "term": "Alex Dargon"
+  },
+  {
+    "formId": "0001CCA1",
+    "term": "Daniel Agincourt"
+  },
+  {
+    "formId": "00019CEF",
+    "term": "Dad"
+  },
+  {
+    "formId": "00019A1F",
+    "term": "Colonel Autumn"
+  },
+  {
+    "formId": "00019A1C",
+    "term": "President Eden"
+  },
+  {
+    "formId": "00019420",
+    "term": "Holly"
+  },
+  {
+    "formId": "00019020",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "0001901E",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "0001901D",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "00018FAF",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "00018734",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00018732",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "00017C2F",
+    "term": "Lucy West's Father"
+  },
+  {
+    "formId": "00017A02",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "000179EE",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "000179EC",
+    "term": "Margaret Primrose"
+  },
+  {
+    "formId": "000179D6",
+    "term": "Zip"
+  },
+  {
+    "formId": "0001D714",
+    "term": "Karen Schenzy"
+  },
+  {
+    "formId": "0001D711",
+    "term": "Brailee Ewers"
+  },
+  {
+    "formId": "0001D710",
+    "term": "Ken Ewers"
+  },
+  {
+    "formId": "0001D5F7",
+    "term": "Vance"
+  },
+  {
+    "formId": "0001D5F6",
+    "term": "Evan King"
+  },
+  {
+    "formId": "0001D5F5",
+    "term": "Ian West"
+  },
+  {
+    "formId": "0001D44E",
+    "term": "Paladin Vargas"
+  },
+  {
+    "formId": "0001D432",
+    "term": "Knight Captain Colvin"
+  },
+  {
+    "formId": "0001D430",
+    "term": "Sentinel Lyons"
+  },
+  {
+    "formId": "0001D42F",
+    "term": "Initiate Reddin"
+  },
+  {
+    "formId": "000156F8",
+    "term": "Tulip"
+  },
+  {
+    "formId": "000156F7",
+    "term": "Ahzrukhal"
+  },
+  {
+    "formId": "000156F6",
+    "term": "Charon"
+  },
+  {
+    "formId": "000156F5",
+    "term": "Mister Crowley"
+  },
+  {
+    "formId": "000156F4",
+    "term": "Quinn"
+  },
+  {
+    "formId": "000156F3",
+    "term": "Greta"
+  },
+  {
+    "formId": "000156F2",
+    "term": "Carol"
+  },
+  {
+    "formId": "000156F1",
+    "term": "Reilly"
+  },
+  {
+    "formId": "000156F0",
+    "term": "Doctor Barrows"
+  },
+  {
+    "formId": "000156EF",
+    "term": "Patchwork"
+  },
+  {
+    "formId": "000156EE",
+    "term": "Winthrop"
+  },
+  {
+    "formId": "000156ED",
+    "term": "Scribe Peabody"
+  },
+  {
+    "formId": "000156EC",
+    "term": "Scribe Bowditch"
+  },
+  {
+    "formId": "000156EB",
+    "term": "Scribe Yearling"
+  },
+  {
+    "formId": "000156EA",
+    "term": "Scribe Rothchild"
+  },
+  {
+    "formId": "000156E9",
+    "term": "Paladin Glade"
+  },
+  {
+    "formId": "000156E8",
+    "term": "Knight Captain Gallows"
+  },
+  {
+    "formId": "000156E7",
+    "term": "Knight Captain Dusk"
+  },
+  {
+    "formId": "000156E6",
+    "term": "Paladin Kodiak"
+  },
+  {
+    "formId": "000156E5",
+    "term": "Star Paladin Cross"
+  },
+  {
+    "formId": "000156E4",
+    "term": "Elder Lyons"
+  },
+  {
+    "formId": "000156E2",
+    "term": "Squire Maxson"
+  },
+  {
+    "formId": "000156E0",
+    "term": "Allistair Tenpenny"
+  },
+  {
+    "formId": "000156DF",
+    "term": "Herbert \"Daring\" Dashwood"
+  },
+  {
+    "formId": "000156DE",
+    "term": "Susan Lancaster"
+  },
+  {
+    "formId": "000156DD",
+    "term": "Tiffany Cheng"
+  },
+  {
+    "formId": "000156DC",
+    "term": "Irving Cheng"
+  },
+  {
+    "formId": "000156DB",
+    "term": "Anthony Ling"
+  },
+  {
+    "formId": "000156DA",
+    "term": "Lydia Montenegro"
+  },
+  {
+    "formId": "000156D9",
+    "term": "Doctor Banfield"
+  },
+  {
+    "formId": "000156D8",
+    "term": "Millicent Wellington"
+  },
+  {
+    "formId": "000156D7",
+    "term": "Edgar Wellington II"
+  },
+  {
+    "formId": "000156D6",
+    "term": "Michael Hawthorne"
+  },
+  {
+    "formId": "000156D5",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "000156D3",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "000156D2",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "000156D1",
+    "term": "Security Guard"
+  },
+  {
+    "formId": "000156D0",
+    "term": "Doctor Preston"
+  },
+  {
+    "formId": "000156CF",
+    "term": "Abraham Washington"
+  },
+  {
+    "formId": "000156CE",
+    "term": "Diego"
+  },
+  {
+    "formId": "000156CD",
+    "term": "Father Clifford"
+  },
+  {
+    "formId": "000156CC",
+    "term": "Doctor Li"
+  },
+  {
+    "formId": "000156CB",
+    "term": "Janice Kaplinski"
+  },
+  {
+    "formId": "000156CA",
+    "term": "Pinkerton"
+  },
+  {
+    "formId": "000156C8",
+    "term": "Christie Young"
+  },
+  {
+    "formId": "000156C7",
+    "term": "Henry Young"
+  },
+  {
+    "formId": "000156C6",
+    "term": "C.J. Young"
+  },
+  {
+    "formId": "000156C5",
+    "term": "Tammy Hargrave"
+  },
+  {
+    "formId": "000156C4",
+    "term": "James Hargrave"
+  },
+  {
+    "formId": "000156C3",
+    "term": "Trinnie"
+  },
+  {
+    "formId": "000156C2",
+    "term": "Brock"
+  },
+  {
+    "formId": "000156C1",
+    "term": "Belle Bonny"
+  },
+  {
+    "formId": "000156BF",
+    "term": "Mei Wong"
+  },
+  {
+    "formId": "000156BE",
+    "term": "Ted Strayer"
+  },
+  {
+    "formId": "000156BD",
+    "term": "Angela Staley"
+  },
+  {
+    "formId": "000156BC",
+    "term": "Gary Staley"
+  },
+  {
+    "formId": "000156BB",
+    "term": "Seagrave Holmes"
+  },
+  {
+    "formId": "000156B9",
+    "term": "Dr. Zimmer"
+  },
+  {
+    "formId": "000156B8",
+    "term": "Vera Weatherly"
+  },
+  {
+    "formId": "000156B7",
+    "term": "Cindy Cantelli"
+  },
+  {
+    "formId": "000156B6",
+    "term": "Paulie Cantelli"
+  },
+  {
+    "formId": "000156B5",
+    "term": "Bannon"
+  },
+  {
+    "formId": "000156B4",
+    "term": "Shrapnel"
+  },
+  {
+    "formId": "000156B3",
+    "term": "Flak"
+  },
+  {
+    "formId": "000156B2",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000156B1",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000156B0",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000156AF",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000156AE",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "000156AD",
+    "term": "Commander Danvers"
+  },
+  {
+    "formId": "000156AC",
+    "term": "Mayor MacCready"
+  },
+  {
+    "formId": "000156AB",
+    "term": "Stacey"
+  },
+  {
+    "formId": "000156AA",
+    "term": "Harkness"
+  },
+  {
+    "formId": "000156A9",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000156A8",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000156A7",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000156A6",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000156A5",
+    "term": "Slaver"
+  },
+  {
+    "formId": "000156A4",
+    "term": "Pronto"
+  },
+  {
+    "formId": "000156A3",
+    "term": "Cutter"
+  },
+  {
+    "formId": "000156A2",
+    "term": "Clover"
+  },
+  {
+    "formId": "000156A1",
+    "term": "Crimson"
+  },
+  {
+    "formId": "000156A0",
+    "term": "Forty"
+  },
+  {
+    "formId": "0001569F",
+    "term": "Eulogy Jones"
+  },
+  {
+    "formId": "0001569E",
+    "term": "Rory Maclaren"
+  },
+  {
+    "formId": "0001569D",
+    "term": "Bleak"
+  },
+  {
+    "formId": "0001569C",
+    "term": "Miss Jeanette"
+  },
+  {
+    "formId": "0001569B",
+    "term": "Bronson"
+  },
+  {
+    "formId": "0001569A",
+    "term": "Breadbox"
+  },
+  {
+    "formId": "00015699",
+    "term": "Bumble"
+  },
+  {
+    "formId": "00015698",
+    "term": "Grouse"
+  },
+  {
+    "formId": "00015697",
+    "term": "Slaver"
+  },
+  {
+    "formId": "00015696",
+    "term": "Lucy"
+  },
+  {
+    "formId": "00015693",
+    "term": "Knock Knock"
+  },
+  {
+    "formId": "00015692",
+    "term": "Knick Knack"
+  },
+  {
+    "formId": "00015691",
+    "term": "Penny"
+  },
+  {
+    "formId": "0001568D",
+    "term": "Joseph"
+  },
+  {
+    "formId": "00015686",
+    "term": "Squirrel"
+  },
+  {
+    "formId": "00015685",
+    "term": "Princess"
+  },
+  {
+    "formId": "00015684",
+    "term": "Sammy"
+  },
+  {
+    "formId": "00015682",
+    "term": "Eclair"
+  },
+  {
+    "formId": "00014F14",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000043CA",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000043C8",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000043C6",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "000043C4",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "00003B1C",
+    "term": "Stockholm"
+  },
+  {
+    "formId": "00000A73",
+    "term": "Harden Simms"
+  },
+  {
+    "formId": "00000A71",
+    "term": "Jericho"
+  },
+  {
+    "formId": "00000A70",
+    "term": "Mother Maya"
+  },
+  {
+    "formId": "00000A6F",
+    "term": "Confessor Cromwell"
+  },
+  {
+    "formId": "00000A6E",
+    "term": "Doc Church"
+  },
+  {
+    "formId": "00000A6D",
+    "term": "Jenny Stahl"
+  },
+  {
+    "formId": "00000A6C",
+    "term": "Andy Stahl"
+  },
+  {
+    "formId": "00000A6B",
+    "term": "Leo Stahl"
+  },
+  {
+    "formId": "00000A6A",
+    "term": "Mister Burke"
+  },
+  {
+    "formId": "00000A69",
+    "term": "Lucy West"
+  },
+  {
+    "formId": "00000A68",
+    "term": "Manya"
+  },
+  {
+    "formId": "00000A67",
+    "term": "Nathan"
+  },
+  {
+    "formId": "00000A66",
+    "term": "Maggie"
+  },
+  {
+    "formId": "00000A65",
+    "term": "Billy Creel"
+  },
+  {
+    "formId": "00000A64",
+    "term": "Walter"
+  },
+  {
+    "formId": "00000A63",
+    "term": "Nova"
+  },
+  {
+    "formId": "00000A62",
+    "term": "Gob"
+  },
+  {
+    "formId": "00000A61",
+    "term": "Colin Moriarty"
+  },
+  {
+    "formId": "00000A60",
+    "term": "Lucas Simms"
+  },
+  {
+    "formId": "0100CCF7",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "0100CC76",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "0100CBF8",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100CBF4",
+    "term": "General Jingwei"
+  },
+  {
+    "formId": "0100CBEA",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "0100C3C8",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "0100C339",
+    "term": "Audiotape Voice Gary"
+  },
+  {
+    "formId": "0100C338",
+    "term": "Audiotape Voice 2"
+  },
+  {
+    "formId": "0100C337",
+    "term": "Audiotape Voice 1"
+  },
+  {
+    "formId": "0100C188",
+    "term": "American War Correspondent"
+  },
+  {
+    "formId": "0100C166",
+    "term": "Voice Actor NPC 3 (Gary)"
+  },
+  {
+    "formId": "0100C164",
+    "term": "Voice Actor NPC 2"
+  },
+  {
+    "formId": "0100C163",
+    "term": "Voice Actor NPC 1"
+  },
+  {
+    "formId": "0100C0E6",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "0100C0E5",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "0100C0E4",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100C0E3",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100C0E2",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100C0E1",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "0100C0E0",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "0100BC3D",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "0100B5FB",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "0100B56E",
+    "term": "Doctor Adami"
+  },
+  {
+    "formId": "0100B4B7",
+    "term": "American T51-B Unit"
+  },
+  {
+    "formId": "0100B4AA",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "0100AD38",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100AD30",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100A088",
+    "term": "Crimson Dragoon"
+  },
+  {
+    "formId": "0100A085",
+    "term": "Crimson Dragoon"
+  },
+  {
+    "formId": "0100A044",
+    "term": "Sergeant Benjamin Montgomery"
+  },
+  {
+    "formId": "010091B4",
+    "term": "Crimson Dragoon"
+  },
+  {
+    "formId": "01008D05",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008D04",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008D03",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008D02",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008D01",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008D00",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFF",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFE",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFD",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFC",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFB",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CFA",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CF9",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CF8",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CF7",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CF6",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01008CF1",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CF0",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CEF",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CEE",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CED",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CEC",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CEB",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CEA",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE9",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE8",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE7",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE6",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE5",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE4",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE3",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CE2",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01008CDD",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CDC",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CDB",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CDA",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD9",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD8",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD7",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD6",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD5",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD4",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD3",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD2",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD1",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CD0",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CCF",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CCE",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01008CCD",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CCC",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CCB",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CCA",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC9",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC8",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC7",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC6",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC5",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC4",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC3",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC2",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC1",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CC0",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CBF",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01008CBE",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "0100845D",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "0100845C",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "0100845B",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "0100845A",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "01008459",
+    "term": "Chinese Launcher"
+  },
+  {
+    "formId": "01008458",
+    "term": "Chinese Launcher"
+  },
+  {
+    "formId": "01008457",
+    "term": "Chinese Launcher"
+  },
+  {
+    "formId": "01008456",
+    "term": "Chinese Launcher"
+  },
+  {
+    "formId": "01008455",
+    "term": "Chinese Inferno Unit"
+  },
+  {
+    "formId": "01008454",
+    "term": "Chinese Inferno Unit"
+  },
+  {
+    "formId": "01008453",
+    "term": "Chinese Inferno Unit"
+  },
+  {
+    "formId": "01008452",
+    "term": "Chinese Inferno Unit"
+  },
+  {
+    "formId": "01008451",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01008450",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100844F",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100844E",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100844D",
+    "term": "American Sniper"
+  },
+  {
+    "formId": "0100844C",
+    "term": "American Sniper"
+  },
+  {
+    "formId": "0100844B",
+    "term": "American Sniper"
+  },
+  {
+    "formId": "0100844A",
+    "term": "American Sniper"
+  },
+  {
+    "formId": "01008449",
+    "term": "American Launcher"
+  },
+  {
+    "formId": "01008448",
+    "term": "American Launcher"
+  },
+  {
+    "formId": "01008447",
+    "term": "American Launcher"
+  },
+  {
+    "formId": "01008446",
+    "term": "American Launcher"
+  },
+  {
+    "formId": "01008445",
+    "term": "American Inferno Unit"
+  },
+  {
+    "formId": "01008444",
+    "term": "American Inferno Unit"
+  },
+  {
+    "formId": "01008443",
+    "term": "American Inferno Unit"
+  },
+  {
+    "formId": "01008442",
+    "term": "American Inferno Unit"
+  },
+  {
+    "formId": "01008437",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01008436",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01008435",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01008434",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01005658",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01005025",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01005024",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01005023",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01005022",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01005021",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01005020",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "0100501F",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "0100501E",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "0100501D",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "0100501C",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "0100501B",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "0100501A",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "01004F78",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01004E11",
+    "term": "U.S. Paratrooper"
+  },
+  {
+    "formId": "01004DE6",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "01004DE5",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "01004DE4",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "01004DD3",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "01004D26",
+    "term": "Dead U.S. Paratrooper"
+  },
+  {
+    "formId": "01004CF5",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01004AB4",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "01004A52",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01004A4F",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01004520",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "0100450C",
+    "term": "American Grease-Monkey"
+  },
+  {
+    "formId": "01004398",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01003ED7",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01003CCE",
+    "term": "American Launcher"
+  },
+  {
+    "formId": "01003CCD",
+    "term": "American Inferno Unit"
+  },
+  {
+    "formId": "01003CCC",
+    "term": "American Sniper"
+  },
+  {
+    "formId": "01003CCB",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01003CC6",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01003CC5",
+    "term": "Chinese Launcher"
+  },
+  {
+    "formId": "01003CC4",
+    "term": "Chinese Inferno Unit"
+  },
+  {
+    "formId": "01003CC3",
+    "term": "Chinese Sniper"
+  },
+  {
+    "formId": "01003CC2",
+    "term": "Chinese Soldier"
+  },
+  {
+    "formId": "01003489",
+    "term": "American Soldier"
+  },
+  {
+    "formId": "01002D22",
+    "term": "Quartermaster"
+  },
+  {
+    "formId": "01002D07",
+    "term": "Strike Team Sniper"
+  },
+  {
+    "formId": "01002D06",
+    "term": "Strike Team Missile Unit"
+  },
+  {
+    "formId": "01002D05",
+    "term": "Strike Team Grenadier"
+  },
+  {
+    "formId": "01002D04",
+    "term": "Strike Team Infantryman"
+  },
+  {
+    "formId": "010029CD",
+    "term": "Gary 23"
+  },
+  {
+    "formId": "01002985",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "01002984",
+    "term": "Power Armored Soldier"
+  },
+  {
+    "formId": "01002944",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "0100293B",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "010018D2",
+    "term": "General Jingwei"
+  },
+  {
+    "formId": "01000E26",
+    "term": "Defender Morrill"
+  },
+  {
+    "formId": "01000E24",
+    "term": "Defender Sibley"
+  },
+  {
+    "formId": "01000E23",
+    "term": "Protector McGraw"
+  },
+  {
+    "formId": "01000E22",
+    "term": "Specialist Olin"
+  },
+  {
+    "formId": "010009C3",
+    "term": "Lieutenant Morgan"
+  },
+  {
+    "formId": "010009C2",
+    "term": "Sergeant Benjamin Montgomery"
+  },
+  {
+    "formId": "010009C1",
+    "term": "General Chase"
+  },
+  {
+    "formId": "0100B65D",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B65C",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B65B",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B65A",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B659",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B658",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B657",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B656",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B655",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B654",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B653",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B652",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B651",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B650",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64F",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64E",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64D",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64C",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64B",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B64A",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B649",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B648",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B647",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B646",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B594",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B593",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B381",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100B35B",
+    "term": "Guard"
+  },
+  {
+    "formId": "0100B161",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100A9C8",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100A96D",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100A7C0",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "0100A688",
+    "term": "Everett"
+  },
+  {
+    "formId": "0100A683",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A681",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A608",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100A3A5",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A3A4",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A3A0",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A39C",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A399",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "0100A397",
+    "term": "Test Liz"
+  },
+  {
+    "formId": "01009F4B",
+    "term": "Milly"
+  },
+  {
+    "formId": "01009F4A",
+    "term": "Wild Bill"
+  },
+  {
+    "formId": "01009B54",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01009B53",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01009B52",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01009B51",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01009ACB",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100944E",
+    "term": "Wildman"
+  },
+  {
+    "formId": "01009416",
+    "term": "Wildman"
+  },
+  {
+    "formId": "01009411",
+    "term": "Wildman"
+  },
+  {
+    "formId": "01009385",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01009384",
+    "term": "Wildman"
+  },
+  {
+    "formId": "01007FA6",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA5",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA4",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA3",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA2",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA1",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007FA0",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9F",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9E",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9D",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9C",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9B",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F9A",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F99",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F98",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F97",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01007F95",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F94",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F93",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F92",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F91",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F90",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8D",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8C",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8B",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F8A",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F89",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F88",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F87",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F86",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F85",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F84",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F83",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F82",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F81",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F80",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7D",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7C",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7B",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F7A",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F79",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F78",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F77",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F76",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F75",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F74",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F73",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F72",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F71",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F70",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6D",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6C",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6B",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F6A",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F69",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F68",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F67",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F66",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F65",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F64",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F63",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F62",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F61",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F60",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5D",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5C",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5B",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F5A",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F59",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F58",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F57",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F56",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F55",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F54",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F53",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F52",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F51",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F50",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4D",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4C",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4B",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F4A",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F49",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F48",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F47",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F46",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F45",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F44",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F43",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F42",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F41",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F40",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F3F",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007F3E",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01007EC2",
+    "term": "Wildman"
+  },
+  {
+    "formId": "010071B1",
+    "term": "Raider Fighter"
+  },
+  {
+    "formId": "010071B0",
+    "term": "Raider Fighter"
+  },
+  {
+    "formId": "010071AF",
+    "term": "Slave Fighter"
+  },
+  {
+    "formId": "010071AE",
+    "term": "Slave Fighter"
+  },
+  {
+    "formId": "010071AD",
+    "term": "Slave Fighter"
+  },
+  {
+    "formId": "01006C18",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01006840",
+    "term": "Guard"
+  },
+  {
+    "formId": "01006838",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01006837",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100682C",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01006166",
+    "term": "Mex"
+  },
+  {
+    "formId": "010054FA",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01004149",
+    "term": "Wildman"
+  },
+  {
+    "formId": "01004148",
+    "term": "Wildman"
+  },
+  {
+    "formId": "0100413F",
+    "term": "Mona"
+  },
+  {
+    "formId": "0100413E",
+    "term": "Reddup"
+  },
+  {
+    "formId": "0100413D",
+    "term": "O-Dog"
+  },
+  {
+    "formId": "0100413C",
+    "term": "Duke"
+  },
+  {
+    "formId": "0100413B",
+    "term": "Phantom"
+  },
+  {
+    "formId": "0100413A",
+    "term": "Squill"
+  },
+  {
+    "formId": "01004139",
+    "term": "Vikia"
+  },
+  {
+    "formId": "01004138",
+    "term": "Lulu"
+  },
+  {
+    "formId": "01003E52",
+    "term": "Trouble Man"
+  },
+  {
+    "formId": "01003E51",
+    "term": "Jackson"
+  },
+  {
+    "formId": "01003E50",
+    "term": "Spook"
+  },
+  {
+    "formId": "01003E4F",
+    "term": "Hammer"
+  },
+  {
+    "formId": "01003E4E",
+    "term": "Harris"
+  },
+  {
+    "formId": "01003E4D",
+    "term": "Friday"
+  },
+  {
+    "formId": "01003E4C",
+    "term": "Bone"
+  },
+  {
+    "formId": "01003E4B",
+    "term": "Bingo"
+  },
+  {
+    "formId": "01003E49",
+    "term": "Nola"
+  },
+  {
+    "formId": "01003E48",
+    "term": "Marco"
+  },
+  {
+    "formId": "01003E2F",
+    "term": "Kai"
+  },
+  {
+    "formId": "01003E2E",
+    "term": "Brand"
+  },
+  {
+    "formId": "01003E2D",
+    "term": "Adan"
+  },
+  {
+    "formId": "010039C9",
+    "term": "Beth"
+  },
+  {
+    "formId": "010038A8",
+    "term": "Arena Announcer"
+  },
+  {
+    "formId": "01003435",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01003433",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01003300",
+    "term": "Krenshaw"
+  },
+  {
+    "formId": "010032F8",
+    "term": "Grudd Bear"
+  },
+  {
+    "formId": "010032F7",
+    "term": "John Bear"
+  },
+  {
+    "formId": "010032E6",
+    "term": "Gruber"
+  },
+  {
+    "formId": "010032E5",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "010032E4",
+    "term": "Faydra"
+  },
+  {
+    "formId": "01002E21",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01002BDB",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01002BD7",
+    "term": "Prosper"
+  },
+  {
+    "formId": "01002A57",
+    "term": "TestPerson03"
+  },
+  {
+    "formId": "01002A55",
+    "term": "TestPerson02"
+  },
+  {
+    "formId": "01002947",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01002946",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01002941",
+    "term": "Pitt Raider"
+  },
+  {
+    "formId": "01002940",
+    "term": "Slave Master"
+  },
+  {
+    "formId": "0100293F",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100293E",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100293D",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100293C",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100293A",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "010028FC",
+    "term": "DLC01TestHiuLaiMA"
+  },
+  {
+    "formId": "010028FB",
+    "term": "DLC01TestHiuLaiMH"
+  },
+  {
+    "formId": "010028FA",
+    "term": "DLC01TestHiuLaiMAA"
+  },
+  {
+    "formId": "010028F9",
+    "term": "DLC01TestHiuLaiMC"
+  },
+  {
+    "formId": "010028F8",
+    "term": "DLC01TestHiuLaiFC"
+  },
+  {
+    "formId": "01002211",
+    "term": "Ramsey"
+  },
+  {
+    "formId": "0100220A",
+    "term": "Slave"
+  },
+  {
+    "formId": "01001961",
+    "term": "TestPerson"
+  },
+  {
+    "formId": "01001578",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01001561",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100155F",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01001558",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "01001557",
+    "term": "Pitt Slave"
+  },
+  {
+    "formId": "0100109B",
+    "term": "Midea"
+  },
+  {
+    "formId": "01000F22",
+    "term": "Slave Guard"
+  },
+  {
+    "formId": "01000F21",
+    "term": "Sandra"
+  },
+  {
+    "formId": "01000F20",
+    "term": "Ashur"
+  },
+  {
+    "formId": "01000F1F",
+    "term": "Slave Guard"
+  },
+  {
+    "formId": "01001082",
+    "term": "Wernher"
+  },
+  {
+    "formId": "01001046",
+    "term": "Billy McShady"
+  },
+  {
+    "formId": "01000801",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100B27D",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100B27C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100A6C8",
+    "term": "Test Subject"
+  },
+  {
+    "formId": "0100A6C7",
+    "term": "Test Subject"
+  },
+  {
+    "formId": "0100A672",
+    "term": "DLC05TestNPC"
+  },
+  {
+    "formId": "01009A0B",
+    "term": "Madeline Wallace"
+  },
+  {
+    "formId": "01009A0A",
+    "term": "Dr. Morrison Rand"
+  },
+  {
+    "formId": "01009A09",
+    "term": "Vin"
+  },
+  {
+    "formId": "01009A08",
+    "term": "Andrew Endicott"
+  },
+  {
+    "formId": "010098F1",
+    "term": "Corporal Spurlock"
+  },
+  {
+    "formId": "010098F0",
+    "term": "Private Mears"
+  },
+  {
+    "formId": "010098EF",
+    "term": "Corporal Rheems"
+  },
+  {
+    "formId": "01007E50",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "01007E4D",
+    "term": "Raider"
+  },
+  {
+    "formId": "01007E4A",
+    "term": "Enclave Officer"
+  },
+  {
+    "formId": "010079A0",
+    "term": "DLC05TestNPC"
+  },
+  {
+    "formId": "01006C6C",
+    "term": "Private Beckett"
+  },
+  {
+    "formId": "01006C6B",
+    "term": "Sergeant Daniels"
+  },
+  {
+    "formId": "01006871",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01003302",
+    "term": "Colonel Hartigan"
+  },
+  {
+    "formId": "010032FC",
+    "term": "Toshiro Kago"
+  },
+  {
+    "formId": "010032FB",
+    "term": "Paulson"
+  },
+  {
+    "formId": "0100096B",
+    "term": "Elliott Tercorien"
+  },
+  {
+    "formId": "0100096A",
+    "term": "Somah"
+  },
+  {
+    "formId": "01000969",
+    "term": "Sally"
+  },
+  {
+    "formId": "01010BFC",
+    "term": "Marcella"
+  },
+  {
+    "formId": "01010A4B",
+    "term": "Used for Dialogue Only"
+  },
+  {
+    "formId": "0101039F",
+    "term": "Dead Settler"
+  },
+  {
+    "formId": "0100F9F3",
+    "term": "Mister Break"
+  },
+  {
+    "formId": "0100F8DF",
+    "term": "Bandit"
+  },
+  {
+    "formId": "0100F8DE",
+    "term": "Bandit"
+  },
+  {
+    "formId": "0100F795",
+    "term": "Twigbag"
+  },
+  {
+    "formId": "0100F3CE",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3CD",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3CC",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3CB",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3CA",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3C9",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3C8",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100F3C7",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100EA7D",
+    "term": "Haley"
+  },
+  {
+    "formId": "0100EA7C",
+    "term": "Panada"
+  },
+  {
+    "formId": "0100E435",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E434",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E433",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E432",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E431",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E430",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42F",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42E",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42D",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42C",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42B",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E42A",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E429",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E428",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E427",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E426",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E425",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E424",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E423",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E422",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E421",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E420",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41F",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41E",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41D",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41C",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41B",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E41A",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E419",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E418",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E417",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E416",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E415",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E414",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E413",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E412",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E411",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E410",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40F",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40E",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40D",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40C",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40B",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E40A",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E409",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E408",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E407",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E406",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E405",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E404",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E403",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E402",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E401",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E400",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FF",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FE",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FD",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FC",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FB",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3FA",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F9",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F8",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F7",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F6",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F5",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F4",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F3",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F2",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F1",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3F0",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3EF",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3EE",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3ED",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3EC",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3EB",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3EA",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3E9",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3E8",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3E7",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E3E6",
+    "term": "Smuggler"
+  },
+  {
+    "formId": "0100E27B",
+    "term": "Moira Brown"
+  },
+  {
+    "formId": "0100E27A",
+    "term": "Elder Lyons"
+  },
+  {
+    "formId": "0100E23E",
+    "term": "Lucas Simms"
+  },
+  {
+    "formId": "0100E235",
+    "term": "Amata"
+  },
+  {
+    "formId": "0100D79F",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D79E",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D79D",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D79C",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D79B",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D79A",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D799",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D798",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D797",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D796",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D795",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D794",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D793",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D792",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D791",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D790",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78F",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78E",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78D",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78C",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78B",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D78A",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D789",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D788",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D787",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D786",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D785",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D784",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D783",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D782",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D781",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D780",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77F",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77E",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77D",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77C",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77B",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D77A",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D779",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D778",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D777",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D776",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D775",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D774",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D773",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D772",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D771",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D770",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76F",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76E",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76D",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76C",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76B",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D76A",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D769",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D768",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D767",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D766",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D765",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D764",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D763",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D762",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D761",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D760",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75F",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75E",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75D",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75C",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75B",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D75A",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D759",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D758",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D757",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D756",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D755",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D754",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D753",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D752",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D751",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100D750",
+    "term": "Tribal"
+  },
+  {
+    "formId": "0100C2B7",
+    "term": "Dead Pilot"
+  },
+  {
+    "formId": "0100A864",
+    "term": "Croatoa"
+  },
+  {
+    "formId": "0100A862",
+    "term": "Woodrose"
+  },
+  {
+    "formId": "01009BFE",
+    "term": "Jacob Humboldt"
+  },
+  {
+    "formId": "01009BF8",
+    "term": "Rip Smithy"
+  },
+  {
+    "formId": "01009B5A",
+    "term": "Plik"
+  },
+  {
+    "formId": "0100927D",
+    "term": "Jimson"
+  },
+  {
+    "formId": "0100815A",
+    "term": "Kenny"
+  },
+  {
+    "formId": "01006637",
+    "term": "Jackson"
+  },
+  {
+    "formId": "01006636",
+    "term": "Catherine"
+  },
+  {
+    "formId": "01006635",
+    "term": "Nadine"
+  },
+  {
+    "formId": "01006634",
+    "term": "Tobar the Ferryman"
+  },
+  {
+    "formId": "01005A39",
+    "term": "The Brain"
+  },
+  {
+    "formId": "01003F6E",
+    "term": "Marguerite"
+  },
+  {
+    "formId": "01003F2C",
+    "term": "Used for Dialogue Only"
+  },
+  {
+    "formId": "010035B4",
+    "term": "Desmond"
+  },
+  {
+    "formId": "01002F42",
+    "term": "Marcella"
+  },
+  {
+    "formId": "01002F3E",
+    "term": "Obadiah Blackhall"
+  },
+  {
+    "formId": "0100D439",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D438",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D437",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D436",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D435",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D434",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "0100D42F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100D41B",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100D41A",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100D419",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100D418",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100D417",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100D416",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100CF36",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100CF35",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100CF34",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100CF33",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100CF32",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100CF31",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100CF30",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100CF2F",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100C915",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100BD81",
+    "term": "Dunbar"
+  },
+  {
+    "formId": "0100BD80",
+    "term": "Carl"
+  },
+  {
+    "formId": "0100BD7F",
+    "term": "Connelly"
+  },
+  {
+    "formId": "0100BD7E",
+    "term": "Sanders"
+  },
+  {
+    "formId": "0100BD7D",
+    "term": "Badger"
+  },
+  {
+    "formId": "01007313",
+    "term": "Project Purity Scientist"
+  },
+  {
+    "formId": "010072EE",
+    "term": "Project Purity Scientist"
+  },
+  {
+    "formId": "010072ED",
+    "term": "Project Purity Scientist"
+  },
+  {
+    "formId": "010072DD",
+    "term": "Project Purity Scientist"
+  },
+  {
+    "formId": "0100BCB8",
+    "term": "Patient"
+  },
+  {
+    "formId": "0100BCB5",
+    "term": "Patient"
+  },
+  {
+    "formId": "0100BCB2",
+    "term": "Patient"
+  },
+  {
+    "formId": "0100BCAA",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0100BCA9",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0100BCA8",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0100BBBB",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0100BBB6",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0100BBB4",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0100BBB2",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "0100BB32",
+    "term": "Water Caravan Driver"
+  },
+  {
+    "formId": "0100BB31",
+    "term": "Water Caravan Driver"
+  },
+  {
+    "formId": "0100B95E",
+    "term": "Lag-Bolt"
+  },
+  {
+    "formId": "0100B958",
+    "term": "Audio Only NPC"
+  },
+  {
+    "formId": "0100B823",
+    "term": "Brother Gerard"
+  },
+  {
+    "formId": "0100B39F",
+    "term": "Kidd"
+  },
+  {
+    "formId": "0100B39E",
+    "term": "Wint"
+  },
+  {
+    "formId": "0100A956",
+    "term": "Sentinel Lyons"
+  },
+  {
+    "formId": "0100A955",
+    "term": "Sentinel Lyons"
+  },
+  {
+    "formId": "0100A954",
+    "term": "Sentinel Lyons"
+  },
+  {
+    "formId": "010095C5",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "0100953E",
+    "term": "Security Officer"
+  },
+  {
+    "formId": "0100946A",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "0100944F",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "010091D5",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "01008CE1",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01008CE0",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "010088E9",
+    "term": "Enclave Doctor"
+  },
+  {
+    "formId": "01008893",
+    "term": "Armory Master"
+  },
+  {
+    "formId": "0100836D",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "010081DF",
+    "term": "Enclave Scientist"
+  },
+  {
+    "formId": "01007E35",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01007E34",
+    "term": "Novice"
+  },
+  {
+    "formId": "01007D9B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01006F61",
+    "term": "Ghoul Guard"
+  },
+  {
+    "formId": "01006F60",
+    "term": "Ghoul Guard"
+  },
+  {
+    "formId": "01006F5F",
+    "term": "Ghoul Guard"
+  },
+  {
+    "formId": "0100695A",
+    "term": "Bandit"
+  },
+  {
+    "formId": "01006959",
+    "term": "Bandit"
+  },
+  {
+    "formId": "01006958",
+    "term": "Bandit"
+  },
+  {
+    "formId": "01006957",
+    "term": "Bandit"
+  },
+  {
+    "formId": "010068C3",
+    "term": "Enclave Sigma Leader"
+  },
+  {
+    "formId": "010068BF",
+    "term": "Stiggs"
+  },
+  {
+    "formId": "01006722",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01006721",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01006720",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671F",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671E",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671D",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671C",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671B",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "0100671A",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01006517",
+    "term": "Water Beggar"
+  },
+  {
+    "formId": "010064FE",
+    "term": "Rosa"
+  },
+  {
+    "formId": "01005C59",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C58",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C57",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C56",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C54",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C53",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005C4E",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C4D",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C4C",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C4B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C4A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C49",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01005C1D",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "01005C1C",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "01005C1B",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "01005C1A",
+    "term": "Underworld Resident"
+  },
+  {
+    "formId": "010057BE",
+    "term": "Enclave Squad Sigma"
+  },
+  {
+    "formId": "01005732",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005731",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005730",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01005686",
+    "term": "Paladin Tristan"
+  },
+  {
+    "formId": "01005685",
+    "term": "Scribe Vallincourt"
+  },
+  {
+    "formId": "01004C77",
+    "term": "Mother Curie III"
+  },
+  {
+    "formId": "01004C76",
+    "term": "Brother Gerard"
+  },
+  {
+    "formId": "01004C1A",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "01004C19",
+    "term": "Brotherhood Outcast"
+  },
+  {
+    "formId": "01003B64",
+    "term": "Griffon"
+  },
+  {
+    "formId": "01003B3E",
+    "term": "Water Caravan Driver"
+  },
+  {
+    "formId": "01003B3D",
+    "term": "Bandit"
+  },
+  {
+    "formId": "01003B3C",
+    "term": "Officer Lepelletier"
+  },
+  {
+    "formId": "01003B3B",
+    "term": "Officer Davis"
+  },
+  {
+    "formId": "01003B3A",
+    "term": "Split Jack"
+  },
+  {
+    "formId": "01003B39",
+    "term": "Bandit"
+  },
+  {
+    "formId": "01003B38",
+    "term": "Officer Lorin"
+  },
+  {
+    "formId": "01003851",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "01003850",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100384F",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100384E",
+    "term": "Brotherhood of Steel Scribe"
+  },
+  {
+    "formId": "0100382D",
+    "term": "Scribe Bigsley"
+  },
+  {
+    "formId": "01003734",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "01003730",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0100372F",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "01003728",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0100341F",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0100341B",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0100341A",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "010031FF",
+    "term": "Wastelander"
+  },
+  {
+    "formId": "01002E0D",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002E0C",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002E0B",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "01002E0A",
+    "term": "Paladin Jensen"
+  },
+  {
+    "formId": "01002E09",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002E08",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002E07",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "01002DC0",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "01002938",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002937",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002933",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002932",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002931",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002930",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100292F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100292E",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100292D",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002789",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002788",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002787",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002786",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002785",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002784",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002783",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01002782",
+    "term": "Enclave Hellfire Trooper"
+  },
+  {
+    "formId": "01002766",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "01002764",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "01002763",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01002762",
+    "term": "Raider"
+  },
+  {
+    "formId": "0100267D",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "01002650",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0100264F",
+    "term": "Megaton Settler"
+  },
+  {
+    "formId": "0100264E",
+    "term": "Scavenger"
+  },
+  {
+    "formId": "0100264D",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "0100264C",
+    "term": "Brotherhood of Steel Knight"
+  },
+  {
+    "formId": "010024CD",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "010024CA",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "010024C9",
+    "term": "Brotherhood of Steel Paladin"
+  },
+  {
+    "formId": "01001D3E",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "01001D3A",
+    "term": "Brotherhood of Steel Initiate"
+  },
+  {
+    "formId": "010013BA",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "010013AF",
+    "term": "Rivet City Security"
+  },
+  {
+    "formId": "0100103D",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100103C",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100103B",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100103A",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001039",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001038",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001037",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001036",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001035",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001034",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001033",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001032",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001031",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "01001030",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100102F",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100102E",
+    "term": "Talon Company Merc"
+  },
+  {
+    "formId": "0100102D",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100102C",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100102B",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100102A",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001029",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001028",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001027",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001026",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001025",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001024",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001023",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001022",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001021",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "01001020",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100101F",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "0100101E",
+    "term": "Enclave Soldier"
+  },
+  {
+    "formId": "010009DD",
+    "term": "Sentinel Lyons"
+  },
+  {
+    "formId": "01000909",
+    "term": "Brotherhood of Steel Knight"
+  }
+]

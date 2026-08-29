@@ -1,0 +1,85 @@
+# Transynth — Project Wiki
+
+**Transynth** is an open, self-hosted toolchain for localizing game mods:
+import, translation memory, local LLM, review, and voice synthesis in the same
+app. Bethesda and Disco Elysium are supported today; another game is mostly a
+new profile.
+
+This wiki covers both **end-user workflows** and **technical project documentation**.
+Some pages are aimed at translators, while others describe architecture, runtime
+components, and development tooling.
+
+---
+
+## Table of Contents
+
+| #   | Page                                           | What you'll learn                                           |
+| --- | ---------------------------------------------- | ----------------------------------------------------------- |
+| 1   | [Getting Started](01-getting-started.md)       | Installation, Docker, first launch                          |
+| 2   | [Importing Mods](02-importing-mods.md)         | How to upload ESP/ESM/ESL files and BA2 archives            |
+| 3   | [The Editor](03-editor.md)                     | Strings grid, Dialogs, Voice, filters, detail panel         |
+| 4   | [Keyboard Shortcuts](04-keyboard-shortcuts.md) | Complete shortcut reference table                           |
+| 5   | [Translation Memory](05-translation-memory.md) | Exact/anchor TM reuse, auto-apply, propagation              |
+| 6   | [LLM Translation](06-llm-translation.md)       | AI-assisted translation with OpenAI or vLLM                 |
+| 7   | [Quality Assurance](07-qa.md)                  | QA issues, types, severity levels, configuring rules        |
+| 8   | [Glossary](08-glossary.md)                     | Managing terminology, injecting terms into LLM prompts      |
+| 9   | [Voice](09-voice.md)                           | Fish Speech TTS, Voice mode, lip-sync tools                 |
+| 10  | [Exporting](10-export.md)                      | Patched ESP, STRINGS, BA2/BSA, Disco langpack, ZIP          |
+| 11  | [Diff & Re-import](11-diff-and-reimport.md)    | Updating a mod to a new version, carrying over translations |
+| 12  | [Special Editors](12-special-editors.md)       | INNR editor, Book/HTML editor                               |
+| 13  | [Coherence Checker](13-coherence.md)           | Finding and fixing inconsistent translations                |
+| 14  | [Configuration](14-configuration.md)           | Environment variables, Settings tabs, Docker                |
+| 15  | [Technology Stack](15-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker   |
+
+---
+
+## Quick Overview
+
+The pipeline, including optional voice, looks like this:
+
+```
+Import mod (ESP/BA2)
+   ↓
+Automatic TM match ←── Translation Memory (exact / anchor reuse)
+   ↓
+LLM batch translate ←── OpenAI / vLLM
+   ↓
+Human review in web editor
+   ↓
+QA check ←── 9 issue types + configurable rules
+   ↓
+Voice (optional) ←── Fish Speech + game reference audio
+   ↓
+Export (STRINGS / patched ESP / BA2 / langpack)
+```
+
+---
+
+## Supported Games
+
+Transynth supports the following titles:
+
+- Fallout 4 (`fo4`)
+- Fallout 76 (`fo76`)
+- Fallout 3 (`fo3`)
+- Fallout: New Vegas (`fnv`)
+- The Elder Scrolls IV: Oblivion (`ob`)
+- The Elder Scrolls III: Morrowind (`mw`)
+- Skyrim Special Edition (`sse`)
+- Skyrim Legendary Edition (`sle`)
+- Disco Elysium Final Cut (`disco`)
+
+Archive/export behavior depends on the selected game profile:
+
+- FO4 / FO76: BA2 workflow
+- FO3 / FNV / OB / MW / SSE / SLE: BSA workflow
+- Disco Elysium: Disco Translator Final Cut language packs (`.po` + `.wav`)
+
+---
+
+## Where to Start
+
+- **New user?** → Start with [Getting Started](01-getting-started.md).
+- **Just want to translate?** → Read [Importing Mods](02-importing-mods.md) then [The Editor](03-editor.md).
+- **Setting up AI?** → See [LLM Translation](06-llm-translation.md).
+- **Need development context?** → Read [Technology Stack](15-technology-stack.md).

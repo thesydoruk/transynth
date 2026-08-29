@@ -1,0 +1,30 @@
+# Line endings are settled here rather than through per-machine Git config, so
+# every clone behaves the same. Git stores LF and checks out LF on all
+# platforms: the app builds and runs in Linux containers, Prettier writes LF,
+# and scripts/*.sh cannot execute on the server once a CRLF copy reaches it.
+
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.7z binary
+
+# Bethesda plugin, archive, and audio fixtures read by the format tests.
+*.esp binary
+*.esm binary
+*.esl binary
+*.ba2 binary
+*.bsa binary
+*.fuz binary
+*.pex binary
+*.wav binary
+*.xwm binary
+*.eet binary
