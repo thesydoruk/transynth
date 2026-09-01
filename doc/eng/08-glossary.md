@@ -9,6 +9,7 @@ into LLM prompts to ensure consistent terminology across all mods.
 
 - [What is the Glossary?](#what-is-the-glossary)
 - [Built-in Fallout 4 Glossary (Seed)](#built-in-fallout-4-glossary-seed)
+- [Built-in Disco Elysium Glossary (Seed)](#built-in-disco-elysium-glossary-seed)
 - [Opening the Glossary Page](#opening-the-glossary-page)
 - [Adding Terms](#adding-terms)
 - [Editing and Removing Terms](#editing-and-removing-terms)
@@ -62,6 +63,16 @@ from the confirmed base-game translations (`Fallout4.esm`) by frequency.
 To extend the built-in glossary, add pairs to `fo4-uk.ts` and re-run the seed
 command (recommended for terms that should live in the repo), or add one-off
 terms through the **Glossary** page in the UI.
+
+---
+
+## Built-in Disco Elysium Glossary (Seed)
+
+DE canon (`EN → UK`) lives in `src/resources/glossary/disco-uk.ts`. Disco
+translate and verify prompts inject it; `npm run db:seed:glossary` still seeds
+Fallout 4 only. Before LLM and TTS, lockit asterisk-censorship is restored to
+the full word, so pairs such as `faggot` / `Pissfaggot` can match. Italic
+`*belong*` is left alone.
 
 ---
 

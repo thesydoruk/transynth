@@ -196,7 +196,10 @@ export const translateChunkOnce = async (
       items: normalEntries.map((entry) => ({
         ...entry.llmItem,
         context: maskLlmOptionalText(entry.llmItem.context),
-        reference_examples: maskLlmReferenceExamples(ragByStringId.get(entry.stringId)),
+        reference_examples: maskLlmReferenceExamples(
+          ragByStringId.get(entry.stringId),
+          ctx.opts.modGame ?? entry.game,
+        ),
       })),
       model: ctx.model,
       srcLang: ctx.opts.srcLang,

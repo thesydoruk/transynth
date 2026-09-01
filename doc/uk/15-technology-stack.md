@@ -67,13 +67,18 @@
 - vLLM (або інший OpenAI-compatible сервер) підтримується для локального LLM inference.
 - OpenAI підтримується для хмарних workflow LLM-перекладу.
 - Абстракції провайдерів лежать у `src/llm/`.
+- Зовнішній **audio-intel** (`AUDIO_INTEL_BASE_URL`) транскрибує WAV через
+  Whisper (`POST /v1/audio/transcriptions`). Клієнт і кеш — у
+  `src/audioIntel/`. Disco використовує транскрипт, щоб відрізати закадровий
+  текст від озвучених лапок; TTS лишається окремим сервісом (`TTS_BASE_URL`).
 
 ---
 
 ## Обробка файлів і форматів гри
 
-- Власні TypeScript readers і writers у `src/formats/` (`ba2/`, `bsa/`, `esp/`, …) обробляють формати ESP,
-  EET, PEX, MCM, BA2, BSA та пов'язані зі STRINGS дані.
+- Власні TypeScript readers і writers у `src/formats/` (`ba2/`, `bsa/`, `esp/`,
+  `po/`, …) обробляють формати ESP, EET, PEX, MCM, BA2, BSA, STRINGS і Disco
+  gettext lockit (`discoLockitMarkup`, маски `¤Q¤` / `¤IT¤` / `¤TS¤` / `¤EM¤`).
 - `archiver` і `node-7z` обробляють архіви. Обидва пакети лишаються: `7zip-bin`
   (`7za`, zip/7z) і `7z-bin` (повний `7z`, RAR) — `7za` не розпаковує RAR.
 - `fast-xml-parser` використовується для XML-контенту.

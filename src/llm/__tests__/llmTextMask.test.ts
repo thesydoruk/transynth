@@ -3,6 +3,7 @@ import {
   maskLlmText,
   maskLlmTextFields,
   maskLlmReferenceExamples,
+  maskTranslateSource,
   unmaskLlmText,
 } from '../llmTextMask';
 
@@ -62,5 +63,41 @@ describe('maskLlmText', () => {
     const { masked, mapping } = maskLlmText('Hello %s');
     expect(masked).toBe('Hello ¤PH0¤');
     expect(mapping['¤PH0¤']).toBe('%s');
+  });
+});
+
+describe('maskTranslateSource', () => {
+  it('adds Disco lockit keys after placeholders', () => {
+    const { masked, placeholderMap } = maskTranslateSource('Need {0} -- *now*', 'disco');
+    expect(masked).toBe('Need ¤PH0¤ ¤EM0¤ ¤IT0¤now¤IT0¤');
+    expect(placeholderMap['¤PH0¤']).toBe('{0}');
+    expect(placeholderMap['¤EM0¤']).toBe('--');
+    expect(placeholderMap['¤IT0¤']).toBe('*');
+  });
+
+  it('does not mask Disco markup for other games', () => {
+    const { masked } = maskTranslateSource('Need {0} -- *now*', 'fo4');
+    expect(masked).toBe('Need ¤PH0¤ -- *now*');
+  });
+});
+
+describe('maskLlmReferenceExamples disco', () => {
+  it('masks lockit markup in RAG examples for Disco', () => {
+    const masked = maskLlmReferenceExamples(
+      [
+        {
+          source: 'You *belong* here.',
+          translation: 'Ти *належиш* сюди.',
+          grup: 'PO',
+          edid: null,
+          field: 'Dialogue Text',
+          match_method: 'exact',
+          similarity: 1,
+        },
+      ],
+      'disco',
+    );
+    expect(masked?.[0]?.source).toBe('You ¤IT0¤belong¤IT0¤ here.');
+    expect(masked?.[0]?.translation).toBe('Ти ¤IT0¤належиш¤IT0¤ сюди.');
   });
 });

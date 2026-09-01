@@ -28,13 +28,16 @@ export const parseRecordLocation = (
     return { grup, field: null };
   }
 
-  const field = segments[segments.length - 1] ?? null;
+  const rawField = segments[segments.length - 1] ?? null;
+  const field = rawField?.includes('::')
+    ? rawField.slice(0, rawField.indexOf('::')) || rawField
+    : rawField;
   if (grup) {
     return { grup, field };
   }
 
   if (segments.length === 1) {
-    return { grup: null, field: segments[0] ?? null };
+    return { grup: null, field };
   }
 
   return {

@@ -1,6 +1,7 @@
 import type { Tx } from '../../db';
 import { withPgRetry } from '../../db';
 import { CONFIG } from '../../config';
+import { normalizeAutoTranslationQuotes } from '../../utils/textNorm';
 import { bulkRecordTranslationRevisions } from '../../web/data/translationRevisions';
 import type { TranslationStatus } from '../../web/data/statusMachine';
 import { chunk } from './chunk';
@@ -9,7 +10,7 @@ import type { BulkTranslationRow, SqlConvertImportTranslationsResult } from './t
 /** Deduplicate by src_string_id (last text wins) before bulk insert. */
 export const dedupeBulkTranslationRows = (items: BulkTranslationRow[]): BulkTranslationRow[] => {
   const byId = new Map<number, string>();
-  for (const item of items) byId.set(item.srcStringId, item.text);
+  for (const item of items) byId.set(item.srcStringId, normalizeAutoTranslationQuotes(item.text));
   return [...byId.entries()].map(([srcStringId, text]) => ({ srcStringId, text }));
 };
 

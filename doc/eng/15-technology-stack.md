@@ -68,13 +68,18 @@ At a high level, the system supports these flows:
 - vLLM (or any OpenAI-compatible server) is supported for local LLM inference.
 - OpenAI is supported for hosted LLM translation workflows.
 - Provider abstractions live under `src/llm/`.
+- External **audio-intel** (`AUDIO_INTEL_BASE_URL`) transcribes WAV via
+  Whisper (`POST /v1/audio/transcriptions`). Client and cache live in
+  `src/audioIntel/`. Disco uses the transcript to cut narration away from
+  spoken quotes; TTS stays a separate service (`TTS_BASE_URL`).
 
 ---
 
 ## File and Game-Format Processing
 
-- Custom TypeScript readers and writers under `src/formats/` (`ba2/`, `bsa/`, `esp/`, …) process ESP, EET,
-  PEX, MCM, BA2, BSA, and STRINGS-related formats.
+- Custom TypeScript readers and writers under `src/formats/` (`ba2/`, `bsa/`,
+  `esp/`, `po/`, …) process ESP, EET, PEX, MCM, BA2, BSA, STRINGS, and Disco
+  gettext lockit (`discoLockitMarkup`, `¤Q¤` / `¤IT¤` / `¤TS¤` / `¤EM¤` masks).
 - `archiver` and `node-7z` handle archives. Keep both `7zip-bin` (`7za`, zip/7z)
   and `7z-bin` (full `7z`, RAR) — `7za` cannot unpack RAR.
 - `fast-xml-parser` is used for XML-based content.

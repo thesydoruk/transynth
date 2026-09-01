@@ -26,7 +26,7 @@ import {
   discoVoiceSpeakerKey,
   groupDiscoVoiceFilesBySpeaker,
 } from './discoverDiscoVoiceFiles';
-import { resolveDiscoSpokenRowText } from './discoSpokenText';
+import { resolveDiscoSpokenRowText } from './resolveDiscoSpokenRow';
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
@@ -91,8 +91,8 @@ export const countDiscoVoiceLocalizeWork = async (
     if (speakerFilter && discoSpeakerKeyFromStem(stem) !== speakerFilter) continue;
     const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
     if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
-    // Mixed narration+quote lines: synthesize only what the clip voices.
-    const spoken = resolveDiscoSpokenRowText(row, entry.absolutePath);
+    // Mixed narration+quote: cache only (no Whisper) so count stays cheap.
+    const spoken = await resolveDiscoSpokenRowText(row, entry.absolutePath, { transcribe: false });
     const prepared = prepareVoiceTtsText({
       lineSource: spoken.source,
       translation: spoken.translation,
@@ -189,8 +189,8 @@ export const localizeDiscoVoicePackage = async (
       const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
       if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
 
-      // Mixed narration+quote lines: synthesize only what the clip voices.
-      const spoken = resolveDiscoSpokenRowText(row, entry.absolutePath);
+      // Mixed narration+quote: audio-intel decides full vs quoted.
+      const spoken = await resolveDiscoSpokenRowText(row, entry.absolutePath);
       const prepared = prepareVoiceTtsText({
         lineSource: spoken.source,
         translation: spoken.translation,

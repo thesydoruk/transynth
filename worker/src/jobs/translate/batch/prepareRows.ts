@@ -1,10 +1,10 @@
-import { maskFunctionKeywords, maskPlaceholders } from '../../../../../src/utils/placeholders';
-import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
+import { restoreDiscoCensoredSpeech } from '../../../../../src/formats/po/discoCensorship';
+import { MASK_KEY_RE } from '../../../../../src/utils/placeholders';
+import { maskLlmOptionalText, maskTranslateSource } from '../../../../../src/llm/llmTextMask';
 import { buildLlmParticipantPayload } from '../../../../../src/llm/dialogParticipants';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../../../../src/web/data/queries/dialogs';
 import { mergeNarratorGender } from './mergeNarratorGender';
-import type { GameType } from '../../../../../src/types';
 import type { PreparedLlmItem, StringRow, TranslateBatchOptions } from './types';
 
 export const prepareLlmItems = (
@@ -28,19 +28,19 @@ export const prepareLlmItems = (
       continue;
     }
 
-    const sourceText = row.text_raw;
+    const sourceText = restoreDiscoCensoredSpeech(row.text_raw);
     const game = row.game ?? opts.modGame ?? undefined;
     const { grup, field } = parseRecordLocation(row.signature, row.path);
 
-    const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(sourceText);
-    const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
-      placeholderMasked,
-      game as GameType | undefined,
-      { grup, field },
-    );
-    const maskedSourceText = protectedMasked;
+    const {
+      masked: maskedSourceText,
+      placeholderMap,
+      functionKeywordMap,
+    } = maskTranslateSource(sourceText, game, { grup, field });
 
-    const translatableContent = maskedSourceText.replace(/¤(?:PH|GL|FK)\d+¤/g, '').trim();
+    const translatableContent = maskedSourceText
+      .replace(new RegExp(MASK_KEY_RE.source, 'g'), '')
+      .trim();
     if (!translatableContent) {
       immediateResults.push({ stringId, text: sourceText });
       continue;

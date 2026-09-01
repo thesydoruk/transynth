@@ -15,6 +15,7 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Voice mode](#voice-mode)
 - [Dialogs playback](#dialogs-playback)
 - [Running synthesis](#running-synthesis)
+- [Disco: what gets spoken](#disco-what-gets-spoken)
 - [Settings](#settings)
 - [Known limitations](#known-limitations)
 
@@ -29,13 +30,19 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
    `Sound/Voice/`.
 3. **Fish Speech** reachable at `TTS_BASE_URL` (see `.env.example`). The URL
    is read-only in the UI; change it in `.env` and restart.
-4. **Voice tools** for Bethesda lip-sync: `npm run tools:install`, or
+4. **audio-intel** at `AUDIO_INTEL_BASE_URL` (Whisper, separate from TTS).
+   Disco needs it to cut narration away from spoken quote spans. Without the
+   service the full lockit line goes to TTS. Transcripts are cached under
+   `AUDIO_INTEL_CACHE_DIR` (default `data/cache/audio-intel`). Compose does
+   not start audio-intel — set the URL in `.env`.
+5. **Voice tools** for Bethesda lip-sync: `npm run tools:install`, or
    `docker compose --profile tools run --rm cli npm run tools:install`.
    That installs FaceFXWrapper, Fonix data, and xWMAEncode under
    `data/tools/voice/`.
 
 Disco Elysium does not use FaceFX. Synthesized lines are WAV files inside the
-exported Final Cut langpack.
+exported Final Cut langpack. Per-line regenerate also goes through WAV, not
+Bethesda FUZ / LIP.
 
 ---
 
@@ -85,6 +92,35 @@ import, not into the extracted English voice archive. Disco writes localized
 
 ---
 
+## Disco: what gets spoken
+
+Lockit lines often mix a quoted line with narration (`She says, "Okay."`).
+That used to be decided from clip duration. It is now decided from an
+**audio-intel** (Whisper) transcript of the English WAV.
+
+- Distinct narration words in the transcript → TTS speaks the **whole** line.
+- Those words absent (the actor only voiced the quotes) → TTS is cut to the
+  matching quote span(s) in the translation. Several quotes can narrow to one
+  when ASR matches only that index.
+- Service down or no cache → the line stays whole, except `"A." She… "B."`:
+  the middle narration between two quotes is never in the clip, so only the
+  quotes are voiced.
+- An empty transcript from a live service (almost no speech) also cuts to
+  quotes: Whisper always recognizes prose.
+- Low ASR confidence can still drop narration, but it **never** picks a
+  single quote out of several.
+
+Before TTS, Disco also:
+
+- unwraps italic `*word*` to plain words (not a Fallout stage direction);
+- strips UI brackets `[Leave.]`;
+- restores lockit asterisk-censorship (`f****t` → the full word) so voice
+  and glossary see the same canon as the LLM.
+
+Lockit markup details: [LLM Translation](06-llm-translation.md#disco-lockit).
+
+---
+
 ## Settings
 
 **Settings → Voice** (`/settings?tab=voice`):
@@ -92,6 +128,7 @@ import, not into the extracted English voice archive. Disco writes localized
 | Control                 | Where it lives                            | Effect                                                                                           |
 | ----------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | TTS server URL          | `.env` `TTS_BASE_URL`                     | Shown read-only                                                                                  |
+| audio-intel URL         | `.env` `AUDIO_INTEL_BASE_URL`             | Whisper for Disco spoken spans; not shown in the UI                                              |
 | Fish Speech parallelism | `project_settings`                        | Max concurrent synthesize requests (1–32)                                                        |
 | Line reference          | `project_settings` `voice.line_reference` | Clone from the original line clip when it is short enough; otherwise fall back to a speaker clip |
 | Per-game timing match   | `project_settings`                        | Stretch/pad synthesized audio toward the original line length                                    |

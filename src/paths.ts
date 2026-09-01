@@ -39,6 +39,10 @@ export const PATHS = {
   voicePreview: resolveDir(
     process.env.VOICE_PREVIEW_CACHE_DIR ?? path.join(dataDir, 'cache', 'voice-preview'),
   ),
+  /** Cached audio-intel transcripts keyed by wav path + mtime + size. */
+  audioIntel: resolveDir(
+    process.env.AUDIO_INTEL_CACHE_DIR ?? path.join(dataDir, 'cache', 'audio-intel'),
+  ),
   /** Temporary voice regeneration previews before the user commits one attempt. */
   voiceRegenerate: resolveDir(
     process.env.VOICE_REGENERATE_DIR ?? path.join(dataDir, 'cache', 'voice-regenerate'),
@@ -64,6 +68,7 @@ export const ensureDataDirs = (): void => {
     PATHS.scanExtract,
     PATHS.pexDecompile,
     PATHS.voicePreview,
+    PATHS.audioIntel,
     PATHS.voiceRegenerate,
     PATHS.exports,
     PATHS.backups,

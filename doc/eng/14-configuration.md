@@ -48,9 +48,10 @@ to the browser; only whether it is configured is shown.
 
 ### Voice tab
 
-TTS server URL is `TTS_BASE_URL` in `.env` (read-only here). Parallelism,
-line-reference mode, and per-game timing match are stored in `project_settings`.
-See [Voice](09-voice.md).
+TTS server URL is `TTS_BASE_URL` in `.env` (read-only here). **audio-intel**
+(`AUDIO_INTEL_BASE_URL`) is not on this tab: Whisper for Disco spoken spans,
+separate from TTS. Parallelism, line-reference mode, and per-game timing
+match are stored in `project_settings`. See [Voice](09-voice.md).
 
 ### Workflow tab
 
@@ -126,6 +127,11 @@ LOG_LEVEL=info
 
 # --- Debug ---
 # DEBUG=1
+
+# --- Voice / audio-intel (external; not started by Compose) ---
+# TTS_BASE_URL=http://localhost:8080
+# AUDIO_INTEL_BASE_URL=http://localhost:8080
+# AUDIO_INTEL_CACHE_DIR=./data/cache/audio-intel
 ```
 
 ---
@@ -196,8 +202,10 @@ You do not need to set it manually when running the full stack with `docker comp
 Also in `.env.example` (not repeated in the tables above): `NEXUS_API_KEY`
 (Discover / Nexus download), `REDIS_URL` (job queue; Compose sets
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
-`CHAMPOLLION_PATH` / `WINE_*` after `tools:install`. The full list is the
-example file.
+`CHAMPOLLION_PATH` / `WINE_*` after `tools:install`, `AUDIO_INTEL_BASE_URL`
+(Whisper for Disco, default `http://localhost:8080`), and
+`AUDIO_INTEL_CACHE_DIR` (default `data/cache/audio-intel`). The full list is
+the example file.
 
 ---
 

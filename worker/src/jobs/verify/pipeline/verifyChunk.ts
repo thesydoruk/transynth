@@ -1,4 +1,5 @@
 import type { Tx } from '../../../../../src/db';
+import { restoreDiscoCensoredSpeech } from '../../../../../src/formats/po/discoCensorship';
 import { CONFIG, getTranslateModel } from '../../../../../src/config';
 import { filterVerifyReferenceExamples } from '../../../../../src/llm/verifyReferenceExamples';
 import {
@@ -95,8 +96,8 @@ export const buildVerifyItems = (
     const participants = dialogParticipantsFromRow(row, field);
     return {
       id: row.string_id,
-      source: row.source,
-      translation: row.translation,
+      source: restoreDiscoCensoredSpeech(row.source),
+      translation: restoreDiscoCensoredSpeech(row.translation),
       grup,
       edid: row.edid,
       field,
@@ -105,7 +106,7 @@ export const buildVerifyItems = (
       reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
         grup,
         field,
-        source: row.source,
+        source: restoreDiscoCensoredSpeech(row.source),
       }),
     };
   });

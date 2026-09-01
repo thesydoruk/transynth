@@ -1,11 +1,13 @@
 import { CONFIG } from '../../../../../src/config';
 import { translateStrings, isLlmResponseTruncatedError } from '../../../../../src/llm/translate';
-import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../../../../src/llm/llmTextMask';
+import {
+  maskLlmOptionalText,
+  maskLlmReferenceExamples,
+  maskTranslateSource,
+} from '../../../../../src/llm/llmTextMask';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import {
   compareProtectedTokens,
-  maskFunctionKeywords,
-  maskPlaceholders,
   unmask,
   validateMaskedTranslation,
 } from '../../../../../src/utils/placeholders';
@@ -24,13 +26,12 @@ type RagExamples = NonNullable<PreparedLlmItem['llmItem']['reference_examples']>
 export { needsLongTextSplit };
 
 const maskSourcePart = (entry: PreparedLlmItem, partSource: string) => {
-  const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(partSource);
-  const { masked: protectedMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
-    placeholderMasked,
-    (entry.game ?? undefined) as GameType | undefined,
+  const { masked, placeholderMap, functionKeywordMap } = maskTranslateSource(
+    partSource,
+    entry.game,
     { grup: entry.grup, field: entry.field },
   );
-  return { maskedSource: protectedMasked, placeholderMap, functionKeywordMap };
+  return { maskedSource: masked, placeholderMap, functionKeywordMap };
 };
 
 const translatePartSourceOnce = async (
@@ -47,7 +48,9 @@ const translatePartSourceOnce = async (
         ...entry.llmItem,
         source: maskedSource,
         context: includeContext ? maskLlmOptionalText(entry.llmItem.context) : null,
-        reference_examples: includeContext ? maskLlmReferenceExamples(ragExamples) : undefined,
+        reference_examples: includeContext
+          ? maskLlmReferenceExamples(ragExamples, ctx.opts.modGame ?? entry.game)
+          : undefined,
       },
     ],
     model: ctx.model,

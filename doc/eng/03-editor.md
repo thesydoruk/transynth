@@ -57,6 +57,10 @@ The toolbar switch changes the workspace. The choice is stored in the URL as
 
 Disco has no Dialogs tab, no FormID / gender columns, no gender-detect, and no
 INNR link. Grid headers become type / audio / PO key (`Dialogues.po · msgctxt::msgid`).
+The **Field** column is gettext **msgctxt** (`Dialogue Text/…`, `Alternate1/…`,
+`*_EFFECT`), not a Bethesda subrecord. Saves fold `«»` to ASCII `"…"`; the
+LLM path also restores `--` and nested `'…'`. See
+[LLM Translation](06-llm-translation.md#disco-lockit).
 
 **Dialogs** (Bethesda): the left navigator lists groups. Keys `1`–`4` switch
 scope (topics, branches, scenes, conversations). The transcript supports Fill TM
@@ -79,7 +83,7 @@ so there is no page-by-page navigation (see [Infinite scroll](#infinite-scroll))
 | **GRUP**        | Record type signature (e.g. `DIAL`, `BOOK`, `NPC_`, `QUST`)                      |
 | **FormID**      | Unique hexadecimal record identifier                                             |
 | **EDID**        | Editor ID — the author's internal name for the record                            |
-| **Field**       | Sub-record field name (e.g. `FULL`, `DESC`, `NNAM`)                              |
+| **Field**       | Bethesda: sub-record (`FULL`, `DESC`, `NNAM`). Disco: gettext **msgctxt**        |
 | **Source**      | Original English (or base-language) text                                         |
 | **Translation** | Current best translation, plus a small QA count hint when issues exist           |
 | **Actions**     | Quick actions: approve, reject, clear, copy source, and the current status badge |
@@ -178,6 +182,8 @@ Save behavior in the current implementation:
 - **Ctrl+S** saves manually.
 - **Ctrl+Enter** also saves from the translation textarea.
 - Clearing the translation field and saving removes the translation, returning the row to the untranslated state.
+- Every save folds `«»` to ASCII `"…"`. Other lockit shape (`--`, `'title'`)
+  is restored on the LLM / auto-normalize path, not on a manual save.
 
 Press **Escape** to close the context menu, close the detail panel, or clear selection depending on what is open.
 

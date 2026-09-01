@@ -1,5 +1,6 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
+import { normalizeAutoTranslationQuotes } from '../../../utils/textNorm';
 import { recordTranslationRevision } from '../translationRevisions';
 import { scheduleRagSync } from '../../services/ragHooks';
 import type { TranslationStatus } from '../statusMachine';
@@ -15,7 +16,7 @@ export type { LlmTranslateOverwriteMode } from './constants';
 export const upsertTranslation = async (
   db: Tx,
   stringId: number,
-  text: string,
+  rawText: string,
   status: Exclude<TranslationStatus, 'deleted'>,
   targetLang = CONFIG.defaultTgtLang,
   provenance?: string,
@@ -27,6 +28,8 @@ export const upsertTranslation = async (
     await markStringsAsSkip(db, [stringId]);
     return { id: stringId, text: '', status: 'skip' as const };
   }
+
+  const text = normalizeAutoTranslationQuotes(rawText);
 
   const effectiveProvenance =
     provenance ??

@@ -1,12 +1,15 @@
+import { maskDiscoLockitMarkupIfDisco } from '../formats/po/discoMarkupMask';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
 import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
+import { applyDiscoMarkupGuardToVerifyResult } from './verifyDiscoMarkupGuard';
 import { applyCorruptedTranslationGuard, reconcileVerifyResult } from './verifySuggestionGuards';
 import type { LlmVerifyItem, LlmVerifyItemResult } from './verifyTranslateTypes';
 
 /** Mask text fields sent to the verify LLM; keeps raw items for post-audit guards. */
 export const maskVerifyItemForLlm = (
   item: LlmVerifyItem,
+  game?: GameType | string | null,
 ): { item: LlmVerifyItem; mapping: Record<string, string> } => {
   const fields: Array<string | null | undefined> = [item.source, item.translation];
   for (const ref of item.reference_examples ?? []) {
@@ -15,8 +18,14 @@ export const maskVerifyItemForLlm = (
   if (item.context != null) fields.push(item.context);
 
   const { masked, mapping } = maskLlmTextFields(fields, { reuseKeysForIdenticalTokens: true });
+  const withDisco = masked.map((field) => {
+    if (field == null) return null;
+    const disco = maskDiscoLockitMarkupIfDisco(field, game ?? null);
+    Object.assign(mapping, disco.mapping);
+    return disco.masked;
+  });
   let idx = 0;
-  const take = (): string => masked[idx++] as string;
+  const take = (): string => withDisco[idx++] as string;
 
   return {
     mapping,
@@ -89,8 +98,9 @@ export const finalizeVerifyItemResults = (
   return parsed.map((result) => {
     const item = itemById.get(result.id);
     if (!item) return result;
-    const guarded = applyPlaceholderGuardToVerifyResult(item, result, game);
-    const cleaned = applyCorruptedTranslationGuard(item, guarded);
+    const placeholders = applyPlaceholderGuardToVerifyResult(item, result, game);
+    const markup = applyDiscoMarkupGuardToVerifyResult(item, placeholders, game);
+    const cleaned = applyCorruptedTranslationGuard(item, markup);
     return reconcileVerifyResult(item, cleaned);
   });
 };

@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import {
   normalizeAutoTranslationDashes,
+  normalizeAutoTranslationQuotes,
   normalizeAutoTranslation,
   isSourceAllCaps,
   matchSourceCapitalization,
@@ -21,6 +22,22 @@ describe('normalizeAutoTranslationDashes', () => {
 
   it('leaves ASCII hyphen unchanged', () => {
     expect(normalizeAutoTranslationDashes('Ammo - Ballistic')).toBe('Ammo - Ballistic');
+  });
+});
+
+describe('normalizeAutoTranslationQuotes', () => {
+  it('turns guillemets into ASCII quotes', () => {
+    expect(normalizeAutoTranslationQuotes('Хтось надряпав: «Копія все ще тут».')).toBe(
+      'Хтось надряпав: "Копія все ще тут".',
+    );
+  });
+
+  it('leaves ASCII quotes unchanged', () => {
+    expect(normalizeAutoTranslationQuotes('Вона каже: "Гаразд".')).toBe('Вона каже: "Гаразд".');
+  });
+
+  it('does not invent guillemets', () => {
+    expect(normalizeAutoTranslationQuotes('"Okay."')).toBe('"Okay."');
   });
 });
 
@@ -59,6 +76,30 @@ describe('normalizeAutoTranslation', () => {
 
   it('only normalizes dashes when source is not ALL CAPS', () => {
     expect(normalizeAutoTranslation('Lookout duty', 'Чергова — варта')).toBe('Чергова - варта');
+  });
+
+  it('normalizes guillemets together with dashes', () => {
+    expect(normalizeAutoTranslation('He said, "Go."', 'Він сказав: «Іди».')).toBe(
+      'Він сказав: "Іди".',
+    );
+  });
+
+  it('restores nested singles after folding inner guillemets to doubles', () => {
+    expect(
+      normalizeAutoTranslation(
+        `"If by 'fun stuff,' you mean alcohol."`,
+        `"Якщо під «розвагами» ви маєте на увазі алкоголь."`,
+      ),
+    ).toBe(`"Якщо під 'розвагами' ви маєте на увазі алкоголь."`);
+  });
+
+  it('keeps Disco lockit -- instead of folding the em dash to a hyphen', () => {
+    expect(
+      normalizeAutoTranslation(
+        'All I ever wanted was to live with dignity -- to die with honour.',
+        'Усе, чого я хотів, — це жити з гідністю — і померти з честю.',
+      ),
+    ).toBe('Усе, чого я хотів, -- це жити з гідністю — і померти з честю.');
   });
 });
 

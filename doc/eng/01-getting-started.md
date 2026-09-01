@@ -62,8 +62,14 @@ English_English_en/
     **/*.wav
 ```
 
-4. Translate in the UI, optionally synthesize voice (TTS → localized `.wav`).
-5. Export a langpack ZIP shaped as `Ukrainian_Ukrainian_uk/*.po` (+ `Audio/*.wav`). Drop that folder next to other Final Cut languages and select it in-game.
+4. Translate in the UI. The LLM path masks lockit (`"…"`, `*italics*`,
+   `'title'`, `--`); saves fold `«»` to ASCII quotes. See
+   [LLM Translation](06-llm-translation.md#disco-lockit).
+5. Optionally synthesize voice: set `TTS_BASE_URL` and
+   `AUDIO_INTEL_BASE_URL` (Whisper cuts narration away from quotes). Compose
+   does not start those services. See
+   [Voice](09-voice.md#disco-what-gets-spoken).
+6. Export a langpack ZIP shaped as `Ukrainian_Ukrainian_uk/*.po` (+ `Audio/*.wav`). Drop that folder next to other Final Cut languages and select it in-game.
 
 ---
 
@@ -104,6 +110,8 @@ Notes:
 - Lip-sync / Champollion (PEX source in the editor):
   `docker compose --profile tools run --rm cli npm run tools:install`.
   One-shot `cli` commands need `--profile tools`.
+- Fish Speech (`TTS_BASE_URL`) and audio-intel (`AUDIO_INTEL_BASE_URL`) are
+  external; Compose does not start them. Disco voice needs both.
 - If you want to stop everything later, run `docker compose down`.
 
 ### External Postgres

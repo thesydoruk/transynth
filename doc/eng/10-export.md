@@ -119,7 +119,11 @@ Only **changed or new** artifacts are included:
 
 **Disco Elysium** uses the same Langpack ZIP action. The zip is a Final Cut
 pack: updated `.po` files plus localized `Audio/*.wav` when voice was
-synthesized. There is no STRINGS / ESP / BA2 path for that game.
+synthesized. There is no STRINGS / ESP / BA2 path for that game. Exported
+`.po` keeps ASCII `"…"` (saves fold `«»`); `--`, `*italics*`, and `'title'`
+should still match the English lockit. Synthesized WAVs already omit
+narration when audio-intel cut the line to quotes — see
+[Voice](09-voice.md#disco-what-gets-spoken).
 
 Naming:
 

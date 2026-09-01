@@ -41,6 +41,7 @@
  * human grunts use *Sigh*, *gasp*.
  */
 
+import { restoreDiscoCensoredSpeech } from '../formats/po/discoCensorship';
 import { isPhoneticVocalizationLine } from './phoneticVocalization';
 
 /** How `*...*` is treated before TTS. Fallout strips the block; Disco unwraps it. */
@@ -95,7 +96,10 @@ const dropAsterisks = (text: string, markup: VoiceTtsMarkupStyle): string =>
 export const stripVoiceNonSpeechBlocks = (
   text: string,
   markup: VoiceTtsMarkupStyle = 'fallout',
-): string => dropAsterisks(text, markup).replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
+): string => {
+  const prepared = markup === 'disco' ? restoreDiscoCensoredSpeech(text) : text;
+  return dropAsterisks(prepared, markup).replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
+};
 
 /**
  * True when the INFO record is a companion interject engine stub.

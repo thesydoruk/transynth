@@ -17,6 +17,7 @@ placeholder protection.
 - [Running a Batch Translation](#running-a-batch-translation)
 - [Verify, skip-detect, and gender](#verify-skip-detect-and-gender)
 - [Placeholder Masking](#placeholder-masking)
+- [Disco lockit](#disco-lockit)
 - [Glossary Injection](#glossary-injection)
 - [Style Guide](#style-guide)
 - [Reviewing Auto-translated Strings](#reviewing-auto-translated-strings)
@@ -230,7 +231,9 @@ These are separate jobs on the same circular control strip.
 - **Verify** opens a modal (`llm-verify`). Options: auto-approve strings the
   model marks clean, auto-apply suggested fixes for suspicious lines, and
   whether to include already confirmed translations. Results stay in the modal
-  until you close it.
+  until you close it. For Disco a **markup guard** runs after the model:
+  lost quotes upgrade the verdict to `incorrect`; other lockit marks become
+  `suspicious`.
 - **Skip-detect** marks rows that should not be translated. Heuristic is cheap
   (same-as-source, empty, codes). **With LLM** asks the model as well. Status
   becomes `skip`.
@@ -279,10 +282,50 @@ Restored: "<Alias=Player> отримав {0} кришок від <Alias=NPC>."
 ```
 
 The LLM is instructed in the system prompt to **keep `¤PH0¤` and `¤FK0¤` tokens unchanged**.
+Disco adds the same rule for `¤IT¤` / `¤Q¤` / `¤TS¤` / `¤EM¤` (see below).
 After receiving the response, the pipeline restores each token positionally.
 
 The web UI batch translate now applies the same protected-token masking before
 calling the LLM. Glossary injection still runs through the system prompt.
+
+Empty metadata (`form_id`, `context`, `edid`, …) is **omitted** from the JSON
+sent to the model. RAG examples carry texts and location only — no
+`similarity` / `match_method`. For Disco, `field` is gettext **msgctxt**
+(`Dialogue Text/…`, `Alternate1/…`, `*_EFFECT`), not a Bethesda subrecord.
+
+---
+
+## Disco lockit
+
+Final Cut lines carry structural markup that a translation must **mirror by
+count**, even if quote _kind_ changes (`"…"` → `«…»` in a model draft):
+
+| Markup        | Example             | LLM mask                | After unmask    |
+| ------------- | ------------------- | ----------------------- | --------------- |
+| Spoken quotes | `"Okay."`           | `¤Q0¤Okay.¤Q0¤`         | ASCII `"…"`     |
+| Italics       | `*belong*`          | `¤IT0¤belong¤IT0¤`      | `*belong*`      |
+| Title singles | `'Scab Leader'`     | `¤TS0¤Scab Leader¤TS0¤` | `'Scab Leader'` |
+| Lockit dash   | `dignity -- to die` | `dignity ¤EM0¤ to die`  | `--`            |
+| UI brackets   | `[Leave.]`          | not wrapped as a key    | brackets kept   |
+
+Paired keys must appear **twice**. `--` is a pause, not a `--emphasis--`
+wrapper. Disco `*italics*` are emphasis, not a Fallout `*sigh*` stage
+direction.
+
+After the model replies, the pipeline restores shape:
+
+- `«»` fold to ASCII `"…"` (also on every editor save);
+- `'Title'` / nested singles that the model flattened to inner `"…"` come
+  back;
+- extra quotes around names are stripped; typographic `—` / `–` map back to
+  `--` when the source uses that dash;
+- leftover Latin `*Prefect*` tokens are re-wrapped.
+
+Before LLM and TTS, lockit asterisk-censorship (`f****t` family, ~89 lines)
+is restored to the full word so glossary and voice match. Italic `*belong*`
+stars are left alone.
+
+Voice cuts mixed lines from ASR — see [Voice](09-voice.md#disco-what-gets-spoken).
 
 ---
 

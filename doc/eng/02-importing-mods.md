@@ -179,6 +179,14 @@ Terms you will see in previews and editor tables:
 - **FormID**: the record's hexadecimal identifier inside the plugin. This is useful when comparing strings with xEdit or other modding tools.
 - **EDID**: the editor ID, a human-readable internal record name when the plugin defines one. Translators often use it as context when the source text is short or ambiguous.
 
+**Disco Elysium.** A Final Cut archive (`.po` + `Audio/*.wav`) does not go
+through ESP. The importer reads gettext: `msgid` is the source, **msgctxt**
+lands in the Field column (`Dialogue Text/…`, `Alternate1/…`, `*_EFFECT`),
+GRUP is usually `PO`, and EDID is the actor name (`You`, `Volition`,
+`Kim Kitsuragi`). Empty Bethesda fields (`form_id`, …) are omitted from LLM
+payloads. Lockit markup is stored as-is; masking and shape restore happen at
+translate time ([LLM Translation](06-llm-translation.md#disco-lockit)).
+
 ---
 
 ## TM Auto-match After Import

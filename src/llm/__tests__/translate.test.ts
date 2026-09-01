@@ -138,10 +138,50 @@ describe('buildTranslateUserPayload', () => {
               grup: 'INFO',
               edid: 'Line01',
               field: 'NAM1',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('omits empty metadata and RAG ranking fields', () => {
+    const payload = buildTranslateUserPayload({
+      items: [
+        {
+          id: 1,
+          source: 'Test',
+          grup: null,
+          field: null,
+          form_id: null,
+          edid: null,
+          context: null,
+          reference_examples: [
+            {
+              source: 'Src',
+              translation: 'Trg',
+              grup: null,
+              edid: null,
+              field: null,
               match_method: 'exact',
               similarity: 1,
             },
           ],
+        },
+      ],
+      srcLang: 'en',
+      targetLang: 'uk',
+    });
+
+    expect(payload).toEqual({
+      source_language: 'en',
+      target_language: 'uk',
+      game: null,
+      items: [
+        {
+          id: 1,
+          source: 'Test',
+          reference_examples: [{ source: 'Src', translation: 'Trg' }],
         },
       ],
     });

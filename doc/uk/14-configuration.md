@@ -48,9 +48,10 @@
 
 ### Вкладка «Озвучка»
 
-URL TTS-сервера — `TTS_BASE_URL` у `.env` (тут лише читання). Паралелізм,
-режим line-reference і збіг таймінгу на гру зберігаються в `project_settings`.
-Див. [Озвучка](09-voice.md).
+URL TTS-сервера — `TTS_BASE_URL` у `.env` (тут лише читання). **audio-intel**
+(`AUDIO_INTEL_BASE_URL`) у UI немає: це Whisper для Disco spoken-span, окремо
+від TTS. Паралелізм, режим line-reference і збіг таймінгу на гру зберігаються
+в `project_settings`. Див. [Озвучка](09-voice.md).
 
 ### Вкладка Workflow
 
@@ -109,6 +110,10 @@ LOG_LEVEL=info
 
 # LOG_DIR=./logs/
 # DEBUG=1
+
+# TTS_BASE_URL=http://localhost:8080
+# AUDIO_INTEL_BASE_URL=http://localhost:8080
+# AUDIO_INTEL_CACHE_DIR=./data/cache/audio-intel
 ```
 
 ---
@@ -182,7 +187,9 @@ postgresql://transynth:transynth@localhost:5433/transynth
 Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`
 (Discover / завантаження з Nexus), `REDIS_URL` (черга джоб; Compose ставить
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
-`CHAMPOLLION_PATH` / `WINE_*` після `tools:install`. Повний список — у
+`CHAMPOLLION_PATH` / `WINE_*` після `tools:install`, `AUDIO_INTEL_BASE_URL`
+(Whisper для Disco, типово `http://localhost:8080`) і
+`AUDIO_INTEL_CACHE_DIR` (типово `data/cache/audio-intel`). Повний список — у
 прикладі.
 
 ---

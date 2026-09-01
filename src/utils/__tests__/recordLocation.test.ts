@@ -32,4 +32,17 @@ describe('parseRecordLocation', () => {
   it('returns nulls for empty input', () => {
     expect(parseRecordLocation(null, null)).toEqual({ grup: null, field: null });
   });
+
+  it('strips Disco msgid from PO path so field is only msgctxt', () => {
+    expect(
+      parseRecordLocation(
+        'DLG',
+        `PO\\DialoguesLockitEnglish.po\\Dialogue Text/0xABC::If by 'fun stuff,' you mean alcohol.`,
+      ),
+    ).toEqual({ grup: 'DLG', field: 'Dialogue Text/0xABC' });
+    expect(parseRecordLocation('DLG', 'PO\\Dialogues.po\\Kim Kitsuragi-YARD-1::Hello')).toEqual({
+      grup: 'DLG',
+      field: 'Kim Kitsuragi-YARD-1',
+    });
+  });
 });

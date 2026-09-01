@@ -55,6 +55,10 @@ LLM-переклад, LLM-перевірка, skip-detect (евристика а
 
 У Disco немає вкладки Dialogs, колонок FormID / стать, визначення статі і посилання INNR.
 Заголовки таблиці стають тип / аудіо / ключ PO (`Dialogues.po · msgctxt::msgid`).
+Колонка **Field** — це gettext **msgctxt** (`Dialogue Text/…`, `Alternate1/…`,
+`*_EFFECT`), не Bethesda subrecord. При збереженні `«»` складаються до ASCII
+`"…"`; LLM ще відновлює `--` і вкладені `'…'`. Див.
+[LLM-переклад](06-llm-translation.md#disco-lockit).
 
 **Dialogs** (Bethesda): ліворуч навігатор груп. Клавіші `1`–`4` змінюють scope
 (topics, branches, scenes, conversations). У транскрипті є Fill TM / Fill LLM,
@@ -71,16 +75,16 @@ LLM-переклад, LLM-перевірка, skip-detect (евристика а
 
 ### Колонки
 
-| Колонка         | Опис                                                                     |
-| --------------- | ------------------------------------------------------------------------ |
-| **Select**      | Checkbox рядка; checkbox у хедері вибирає всі рядки за поточним фільтром |
-| **GRUP**        | Signature типу запису (наприклад, `DIAL`, `BOOK`, `NPC_`, `QUST`)        |
-| **FormID**      | Унікальний шістнадцятковий ідентифікатор запису                          |
-| **EDID**        | Editor ID — внутрішня назва запису, яку задав автор                      |
-| **Field**       | Назва sub-record field (наприклад, `FULL`, `DESC`, `NNAM`)               |
-| **Source**      | Оригінальний англійський або базовий текст                               |
-| **Translation** | Поточний найкращий переклад плюс маленька підказка з кількістю QA        |
-| **Actions**     | Швидкі дії: approve, reject, clear, copy source і поточний бейдж статусу |
+| Колонка         | Опис                                                                      |
+| --------------- | ------------------------------------------------------------------------- |
+| **Select**      | Checkbox рядка; checkbox у хедері вибирає всі рядки за поточним фільтром  |
+| **GRUP**        | Signature типу запису (наприклад, `DIAL`, `BOOK`, `NPC_`, `QUST`)         |
+| **FormID**      | Унікальний шістнадцятковий ідентифікатор запису                           |
+| **EDID**        | Editor ID — внутрішня назва запису, яку задав автор                       |
+| **Field**       | Bethesda: sub-record (`FULL`, `DESC`, `NNAM`). Disco: gettext **msgctxt** |
+| **Source**      | Оригінальний англійський або базовий текст                                |
+| **Translation** | Поточний найкращий переклад плюс маленька підказка з кількістю QA         |
+| **Actions**     | Швидкі дії: approve, reject, clear, copy source і поточний бейдж статусу  |
 
 ### Нескінченне прокручування
 
@@ -175,6 +179,8 @@ Status dropdown підтримує:
 - **Ctrl+S** зберігає вручну.
 - **Ctrl+Enter** також зберігає з translation textarea.
 - Якщо очистити translation field і зберегти, переклад видаляється, а рядок повертається в untranslated state.
+- Будь-яке збереження складає `«»` до ASCII `"…"`. Іншу форму lockit
+  (`--`, `'title'`) відновлює LLM / auto-normalize, не ручне збереження.
 
 Натисніть **Escape**, щоб закрити context menu, закрити detail panel або скинути selection — залежно від поточного стану UI.
 

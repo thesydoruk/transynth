@@ -3,9 +3,10 @@
  */
 import { isNonPlayerFacingRecord } from '../formats/subrecords/nonPlayerFacing';
 import { detectPexSkipFromContext } from '../formats/pex/pexTranslatableFilter';
+import { MASK_KEY_RE } from '../utils/placeholders';
 
-/** Internal mask markers injected by the translation pipeline (¤PH0¤, ¤GL1¤, ¤FK2¤). */
-const MARKER_RE = /¤(?:PH|GL|FK)\d+¤/g;
+/** Internal mask markers injected by the translation pipeline (¤PH0¤, ¤IT0¤, …). */
+const MARKER_RE = new RegExp(MASK_KEY_RE.source, 'g');
 
 /**
  * Unambiguously-technical tokens that carry no translatable text.

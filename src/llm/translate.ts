@@ -15,6 +15,7 @@ import {
   trySalvageTruncatedTranslateJson,
 } from './jsonParse';
 import { participantPayloadFields, type LlmDialogParticipants } from './dialogParticipants';
+import { compactLlmItemFields, compactLlmReferenceExamples } from './llmPayloadCompact';
 import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
@@ -131,21 +132,15 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
     source_language: opts.srcLang,
     target_language: opts.targetLang,
     game: opts.game ?? null,
-    mod_name: opts.modName ?? null,
+    ...(opts.modName?.trim() ? { mod_name: opts.modName } : {}),
     ...(opts.styleGuide?.trim() ? { style_guide: opts.styleGuide.slice(0, 4000) } : {}),
-    glossary,
+    ...(glossary.length > 0 ? { glossary } : {}),
     items: opts.items.map((item) => ({
       id: item.id,
       source: item.source,
-      grup: item.grup,
-      edid: item.edid,
-      field: item.field,
-      form_id: item.form_id,
-      context: item.context,
+      ...compactLlmItemFields(item),
       ...participantPayloadFields(item),
-      ...(item.reference_examples && item.reference_examples.length > 0
-        ? { reference_examples: item.reference_examples }
-        : {}),
+      ...compactLlmReferenceExamples(item.reference_examples),
     })),
   };
 };

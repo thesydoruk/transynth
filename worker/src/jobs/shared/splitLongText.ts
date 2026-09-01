@@ -1,7 +1,8 @@
 import { CONFIG } from '../../../../src/config';
+import { MASK_KEY_RE } from '../../../../src/utils/placeholders';
 
-/** Mask keys produced by placeholder / glossary / function-keyword masking. */
-const MASK_TOKEN_RE = /¤(?:PH|GL|FK)\d+¤/g;
+/** Mask keys produced by placeholder / glossary / function-keyword / Disco markup masking. */
+const MASK_TOKEN_RE = new RegExp(MASK_KEY_RE.source, 'g');
 
 type Span = { start: number; end: number };
 

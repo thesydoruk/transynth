@@ -1,8 +1,18 @@
 /**
  * Mask game placeholders before LLM requests and restore them in model output.
  * Uses ¤PH0¤, ¤PH1¤, … — same keys as {@link maskPlaceholders}.
+ * Disco lockit markup is masked as ¤IT¤ / ¤Q¤ / ¤TS¤ / ¤EM¤ after placeholders.
  */
-import { PLACEHOLDER_PATTERN_PARTS, maskPlaceholders, unmask } from '../utils/placeholders';
+import { restoreDiscoCensoredSpeech } from '../formats/po/discoCensorship';
+import { maskDiscoLockitMarkupIfDisco } from '../formats/po/discoMarkupMask';
+import type { GameType } from '../types';
+import {
+  PLACEHOLDER_PATTERN_PARTS,
+  maskFunctionKeywords,
+  maskPlaceholders,
+  unmask,
+  type ProtectedTokenContext,
+} from '../utils/placeholders';
 
 export type LlmTextMaskResult = { masked: string; mapping: Record<string, string> };
 
@@ -53,14 +63,45 @@ export const maskLlmOptionalText = (text: string | null | undefined): string | n
   return maskLlmText(text).masked;
 };
 
+const maskFieldForLlm = (text: string, game?: GameType | string | null): string =>
+  maskDiscoLockitMarkupIfDisco(maskLlmText(text).masked, game ?? null).masked;
+
 /** Mask source/translation in RAG examples (each field masked independently). */
 export const maskLlmReferenceExamples = <T extends { source: string; translation: string }>(
   examples: T[] | undefined,
+  game?: GameType | string | null,
 ): T[] | undefined => {
   if (!examples?.length) return examples;
   return examples.map((ex) => ({
     ...ex,
-    source: maskLlmText(ex.source).masked,
-    translation: maskLlmText(ex.translation).masked,
+    source: maskFieldForLlm(restoreDiscoCensoredSpeech(ex.source), game),
+    translation: maskFieldForLlm(restoreDiscoCensoredSpeech(ex.translation), game),
   }));
+};
+
+/**
+ * PH → FK → Disco lockit keys for a translate source.
+ * Disco wrapper keys are merged into `placeholderMap` so existing unmask works.
+ */
+export const maskTranslateSource = (
+  text: string,
+  game?: GameType | string | null,
+  context?: ProtectedTokenContext | null,
+): {
+  masked: string;
+  placeholderMap: Record<string, string>;
+  functionKeywordMap: Record<string, string>;
+} => {
+  const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(text);
+  const { masked: fkMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
+    placeholderMasked,
+    game as GameType | undefined,
+    context,
+  );
+  const disco = maskDiscoLockitMarkupIfDisco(fkMasked, game ?? null);
+  return {
+    masked: disco.masked,
+    placeholderMap: { ...placeholderMap, ...disco.mapping },
+    functionKeywordMap,
+  };
 };

@@ -53,8 +53,13 @@ Transynth підтримує такі ігри:
 1. Встановіть BepInEx + Disco Translator Final Cut у папку гри.
 2. У головному меню натисніть **c**, щоб вивантажити англійські `.po`, і **a** для референсних `.wav`.
 3. Заархівуйте папку мови Final Cut і завантажте її в Transynth з грою `disco`.
-4. Перекладіть у UI, за потреби синтезуйте голос.
-5. Експортуйте langpack ZIP (`Ukrainian_Ukrainian_uk/*.po` + `Audio/*.wav`) і покладіть його поруч з іншими мовами Final Cut.
+4. Перекладіть у UI. LLM маскує lockit (`"…"`, `*курсив*`, `'title'`, `--`);
+   при збереженні `«»` складаються до ASCII-лапок. Див.
+   [LLM-переклад](06-llm-translation.md#disco-lockit).
+5. За потреби синтезуйте голос: потрібні `TTS_BASE_URL` і
+   `AUDIO_INTEL_BASE_URL` (Whisper ріже закадровий текст від лапок). Compose
+   ці сервіси не піднімає. Див. [Озвучка](09-voice.md#disco-що-саме-озвучується).
+6. Експортуйте langpack ZIP (`Ukrainian_Ukrainian_uk/*.po` + `Audio/*.wav`) і покладіть його поруч з іншими мовами Final Cut.
 
 ---
 
@@ -95,6 +100,8 @@ docker compose run --rm web npm run db:init
 - Ліпсинк / Champollion (джерело PEX у редакторі):
   `docker compose --profile tools run --rm cli npm run tools:install`.
   Одноразові команди `cli` потребують `--profile tools`.
+- Fish Speech (`TTS_BASE_URL`) і audio-intel (`AUDIO_INTEL_BASE_URL`) —
+  зовнішні сервіси; Compose їх не стартує. Для Disco voice потрібні обидва.
 - Щоб зупинити стек, виконайте `docker compose down`.
 
 ### Зовнішній Postgres

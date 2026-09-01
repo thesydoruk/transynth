@@ -11,6 +11,7 @@
 #   docker compose up -d web worker redis
 #
 # External TTS: set TTS_BASE_URL in .env (not in this compose).
+# External audio-intel: set AUDIO_INTEL_BASE_URL in .env (not in this compose).
 # Optional Gemma chat / RAG embed: add `embedded-vllm` and/or `embedded-embed`
 # (docker/compose.vllm.yml, docker/compose.embed.yml). External pools omit both.
 # Put TLS/reverse proxy in front of WEB_PORT. See SECURITY.md.

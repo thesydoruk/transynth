@@ -6,6 +6,8 @@ import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 import { toDiskPath, resolveImportPackages } from '../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
+import { loadImportedMod } from '../../modImport/importedMod';
+import { synthesizeDiscoVoiceLineBuffers } from '../../voice/disco/synthesizeDiscoVoiceLine';
 import {
   synthesizeModVoiceLineBuffers,
   type SynthesizeModVoiceLineOptions,
@@ -34,6 +36,8 @@ type VoiceRegeneratePreviewMeta = {
   fuzRel: string;
   payloadVersion: string;
   params: VoiceRegenerateParams;
+  artifact?: 'fuz' | 'wav';
+  speakerKey?: string;
 };
 
 type VoiceRegenerateSessionMeta = {
@@ -175,46 +179,73 @@ export const generateVoiceRegeneratePreview = async (
     };
   }
 
-  const built = await synthesizeModVoiceLineBuffers(db, {
-    modId,
-    packageDir: resolved.ctx.packageDir,
-    pluginPath: resolved.ctx.pluginPath,
-    formidLower6,
-    variant,
-    srcLang,
-    tgtLang: targetLang,
-    referenceMode: params.line_reference ? 'line' : 'speaker',
-    speakerKey,
-  } satisfies SynthesizeModVoiceLineOptions);
-
-  if (!built.ok) return built;
-
+  const mod = await loadImportedMod(db, modId);
+  const referenceMode = params.line_reference ? 'line' : 'speaker';
   const previewId = crypto.randomBytes(6).toString('hex');
   const attempt = meta.previews.length + 1;
   const dir = sessionDir(modId, sessionId);
   ensureDir(dir);
-  const fuzPath = path.join(dir, `${previewId}.fuz`);
   const wavPath = path.join(dir, `${previewId}.wav`);
-  fs.writeFileSync(fuzPath, built.fuzData);
-  // Decode preview from the packed FUZ (same path as "current" translation playback),
-  // not from the pre-xWMA fo4 WAV — otherwise A/B always sounds different.
-  try {
-    await convertAudioToPreviewWav(fuzPath, wavPath);
-  } catch (err) {
-    return {
-      ok: false,
-      reason: 'preview_convert_failed',
-      message: err instanceof Error ? err.message : String(err),
-    };
+
+  let destRel: string;
+  let payloadVersion: string;
+  let artifact: 'fuz' | 'wav';
+  let previewSpeakerKey: string | undefined;
+
+  if (mod.game === 'disco') {
+    const built = await synthesizeDiscoVoiceLineBuffers(db, {
+      modId,
+      pluginPath: resolved.ctx.pluginPath,
+      formidLower6,
+      variant,
+      srcLang,
+      tgtLang: targetLang,
+      referenceMode,
+    });
+    if (!built.ok) return built;
+    destRel = built.wavRel;
+    payloadVersion = built.payloadVersion;
+    artifact = 'wav';
+    previewSpeakerKey = built.speakerKey;
+    fs.writeFileSync(wavPath, built.ttsWav);
+  } else {
+    const built = await synthesizeModVoiceLineBuffers(db, {
+      modId,
+      packageDir: resolved.ctx.packageDir,
+      pluginPath: resolved.ctx.pluginPath,
+      formidLower6,
+      variant,
+      srcLang,
+      tgtLang: targetLang,
+      referenceMode,
+      speakerKey,
+    } satisfies SynthesizeModVoiceLineOptions);
+    if (!built.ok) return built;
+    destRel = built.fuzRel;
+    payloadVersion = built.payloadVersion;
+    artifact = 'fuz';
+    const fuzPath = path.join(dir, `${previewId}.fuz`);
+    fs.writeFileSync(fuzPath, built.fuzData);
+    try {
+      await convertAudioToPreviewWav(fuzPath, wavPath);
+    } catch (err) {
+      return {
+        ok: false,
+        reason: 'preview_convert_failed',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 
   const previewMeta: VoiceRegeneratePreviewMeta = {
     id: previewId,
     attempt,
     createdAt: new Date().toISOString(),
-    fuzRel: built.fuzRel,
-    payloadVersion: built.payloadVersion,
+    fuzRel: destRel,
+    payloadVersion,
     params,
+    artifact,
+    speakerKey: previewSpeakerKey ?? speakerKey,
   };
   meta.previews.push(previewMeta);
   writeSessionMeta(modId, sessionId, meta);
@@ -292,20 +323,25 @@ export const commitVoiceRegenerateSession = async (
     packages[0]?.localizeDir ?? modImportLocalizeDir(extractRoot, resolved.targetLang);
   ensureDir(localizeDir);
 
-  const fuzPath = path.join(sessionDir(modId, sessionId), `${previewId}.fuz`);
-  if (!fs.existsSync(fuzPath)) {
-    return { ok: false, reason: 'preview_not_found', message: 'Preview FUZ not found' };
+  const artifact = preview.artifact === 'wav' ? 'wav' : 'fuz';
+  const artifactPath = path.join(sessionDir(modId, sessionId), `${previewId}.${artifact}`);
+  if (!fs.existsSync(artifactPath)) {
+    return {
+      ok: false,
+      reason: 'preview_not_found',
+      message: artifact === 'wav' ? 'Preview WAV not found' : 'Preview FUZ not found',
+    };
   }
 
-  const fuzDest = toDiskPath(localizeDir, preview.fuzRel);
-  ensureDir(path.dirname(fuzDest));
-  fs.writeFileSync(fuzDest, fs.readFileSync(fuzPath));
+  const destPath = toDiskPath(localizeDir, preview.fuzRel);
+  ensureDir(path.dirname(destPath));
+  fs.writeFileSync(destPath, fs.readFileSync(artifactPath));
 
   await upsertVoiceSynthesisState(db, {
     modId,
     formidLower6: meta.formidLower6,
     variant: meta.variant,
-    speakerKey: speakerKeyFromVoiceRelPath(preview.fuzRel),
+    speakerKey: preview.speakerKey?.trim() || speakerKeyFromVoiceRelPath(preview.fuzRel),
     targetLang: meta.targetLang,
     ttsTextVersion: preview.payloadVersion,
   });

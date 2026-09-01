@@ -80,6 +80,8 @@ describe('translationRules', () => {
     expect(translate).toContain('Disco Elysium');
     expect(translate).toContain('Напівсвітло');
     expect(translate).toContain('Навіювання');
+    expect(translate).toContain('підар');
+    expect(translate).toContain('сцикуняка');
     expect(translate).toContain('Зцілити Волю [1]');
     expect(translate).not.toContain('ESP/ESM');
     expect(translate).not.toContain('кришок');
@@ -116,6 +118,9 @@ describe('translationRules', () => {
     const verify = buildEnglishVerifySystemPrompt('en', 'de', 'disco');
     const rules = buildEnglishTranslationRules('de', 'disco');
     expect(rules).toContain('Inland Empire');
+    expect(rules).toContain('Lockit markup');
+    expect(rules).toContain('faggot → підар');
+    expect(rules).toContain('*word*');
     expect(rules).toContain('Half Light');
     expect(rules).not.toContain('Stealth Boy');
     expect(translate).toContain('Disco Translator Final Cut');

@@ -321,8 +321,10 @@ export const unmask = (text: string, mapping: Record<string, string>) => {
   return out;
 };
 
-/** Opaque mask keys produced by {@link maskPlaceholders}, {@link applyGlossaryMask}, {@link maskFunctionKeywords}. */
-export const MASK_KEY_RE = /¤(?:PH|GL|FK)\d+¤/g;
+/** Opaque mask keys: ¤PH¤ / ¤GL¤ / ¤FK¤ plus Disco lockit ¤IT¤ / ¤Q¤ / ¤TS¤ / ¤EM¤. */
+export const MASK_KEY_RE = /¤(?:PH|GL|FK|IT|TS|EM|Q)\d+¤/g;
+
+const DISCO_PAIR_MASK_KEY_RE = /^¤(?:IT|Q|TS)\d+¤$/;
 
 export type PlaceholderValidationResult = { ok: true } | { ok: false; message: string };
 
@@ -334,6 +336,15 @@ export const validateMaskedTranslation = (
   for (const key of Object.keys(mapping)) {
     if (!maskedTranslation.includes(key)) {
       return { ok: false, message: `Missing mask key ${key} in LLM output` };
+    }
+    if (DISCO_PAIR_MASK_KEY_RE.test(key)) {
+      const count = maskedTranslation.split(key).length - 1;
+      if (count !== 2) {
+        return {
+          ok: false,
+          message: `Disco mask key ${key} must appear twice in LLM output (got ${count})`,
+        };
+      }
     }
   }
 

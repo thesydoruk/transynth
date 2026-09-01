@@ -1,4 +1,5 @@
 // Simple normalization for hashing/alignment: lowercasing, stripping tags/placeholders/numbers and collapsing whitespace.
+import { restoreDiscoMarkupShape } from '../formats/po/discoLockitMarkup';
 import { PLACEHOLDER_RE } from './placeholders';
 
 export const normalizeForHash = (s: string): string => {
@@ -17,6 +18,9 @@ export const normalizeForHash = (s: string): string => {
 /** Replace typographic dashes (en/em) with ASCII hyphen in LLM auto-translations. */
 export const normalizeAutoTranslationDashes = (text: string): string =>
   text.replace(/\u2013|\u2014/g, '-');
+
+/** Fold Ukrainian/typographic guillemets to ASCII quotes. Never the reverse. */
+export const normalizeAutoTranslationQuotes = (text: string): string => text.replace(/[«»]/g, '"');
 
 const LETTER_RE = /\p{L}/u;
 
@@ -40,9 +44,9 @@ export const matchSourceCapitalization = (source: string, translation: string): 
   return translation.toLocaleUpperCase('uk-UA');
 };
 
-/** Dash + capitalization post-process for LLM / auto translations. */
+/** Dash + quote + capitalization post-process for LLM / auto translations. */
 export const normalizeAutoTranslation = (source: string, translation: string): string =>
-  matchSourceCapitalization(source, normalizeAutoTranslationDashes(translation));
+  matchSourceCapitalization(source, restoreDiscoMarkupShape(source, translation));
 
 export const normalizeNoPunct = (s: string): string => {
   let t = normalizeForHash(s);

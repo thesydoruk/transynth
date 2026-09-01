@@ -26,7 +26,6 @@ import {
 } from '../voiceTtsPayloadVersion';
 import { resolveTtsLanguage, type TtsReferenceMode } from '../voiceToolPaths';
 import { discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
-import { decideDiscoSpokenText, readWavDurationSecLight } from './discoSpokenText';
 import { outputLocalizedWavRelPath } from './voicePaths';
 
 export type ProcessDiscoVoiceEntryOptions = {
@@ -46,6 +45,8 @@ export type ProcessDiscoVoiceEntryOptions = {
   getSiblingEntries: (speakerKey: string, current: VoiceFileEntry) => VoiceFileEntry[];
   storedVersions: Map<string, string>;
   signal?: AbortSignal;
+  /** When false, write the WAV but do not stamp voice_synthesis_state (preview). */
+  persistState?: boolean;
 };
 
 export type ProcessDiscoVoiceEntryResult =
@@ -75,6 +76,7 @@ export const processDiscoVoiceEntry = async (
     getSiblingEntries,
     storedVersions,
     signal,
+    persistState = true,
   } = options;
 
   const wavRel = outputLocalizedWavRelPath(entry);
@@ -114,16 +116,17 @@ export const processDiscoVoiceEntry = async (
       speakerRefCache,
       markup: 'disco',
     });
-    // The first clip is the line take; extras are speaker identity only.
+    // First clip speaker_text is the same spoken EN span as prepared.speakerText.
     const ttsWav = await synthesizeWav(
       prepared.text,
       picked.clips.map((clip, index) => {
-        const raw = clip.speakerText ?? row.source;
-        const spoken =
-          index === 0 ? decideDiscoSpokenText(raw, readWavDurationSecLight(clip.wavPath)) : raw;
+        const spokenEn =
+          index === 0
+            ? (prepared.speakerText ?? clip.speakerText ?? row.source)
+            : (clip.speakerText ?? row.source);
         return {
           wavPath: clip.wavPath,
-          speakerText: stripVoiceNonSpeechBlocks(spoken, 'disco') || undefined,
+          speakerText: stripVoiceNonSpeechBlocks(spokenEn, 'disco') || undefined,
         };
       }),
       {
@@ -134,8 +137,8 @@ export const processDiscoVoiceEntry = async (
       },
     );
 
-    const baselinePath = fs.existsSync(wavDest) ? wavDest : null;
-    if (!force && writeIfChanged(wavDest, ttsWav, baselinePath)) {
+    const persist = async (): Promise<void> => {
+      if (!persistState) return;
       await upsertVoiceSynthesisState(db, {
         modId,
         formidLower6: entry.formidLower6,
@@ -145,21 +148,18 @@ export const processDiscoVoiceEntry = async (
         ttsTextVersion: payloadVersion,
       });
       storedVersions.set(versionKey, payloadVersion);
+    };
+
+    const baselinePath = fs.existsSync(wavDest) ? wavDest : null;
+    if (!force && writeIfChanged(wavDest, ttsWav, baselinePath)) {
+      await persist();
       log.info(`Disco voice ${wavRel}`);
       return { kind: 'written', relPath: wavRel };
     }
     if (force) {
       ensureDir(path.dirname(wavDest));
       fs.writeFileSync(wavDest, ttsWav);
-      await upsertVoiceSynthesisState(db, {
-        modId,
-        formidLower6: entry.formidLower6,
-        variant: entry.variant,
-        speakerKey,
-        targetLang: tgtLang,
-        ttsTextVersion: payloadVersion,
-      });
-      storedVersions.set(versionKey, payloadVersion);
+      await persist();
       log.info(`Disco voice ${wavRel}`);
       return { kind: 'written', relPath: wavRel };
     }

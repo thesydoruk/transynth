@@ -5,6 +5,7 @@
  */
 import { chatWithFallback } from './index';
 import { participantPayloadFields } from './dialogParticipants';
+import { compactLlmItemFields, compactLlmReferenceExamples } from './llmPayloadCompact';
 import { parseLlmJson } from './jsonParse';
 import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
@@ -39,6 +40,7 @@ export {
   isLlmVerifyMissingIdsError,
   parseVerifyItemId,
 } from './verifyTranslateTypes';
+export { applyDiscoMarkupGuardToVerifyResult } from './verifyDiscoMarkupGuard';
 export {
   applyPlaceholderGuardToVerifyResult,
   finalizeVerifyItemResults,
@@ -64,20 +66,15 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
   source_language: opts.srcLang.trim().toLowerCase(),
   target_language: opts.targetLang.trim().toLowerCase(),
   game: opts.game ?? null,
-  mod_name: opts.modName ?? null,
+  ...(opts.modName?.trim() ? { mod_name: opts.modName } : {}),
   ...(opts.glossary && opts.glossary.length > 0 ? { glossary: opts.glossary } : {}),
   items: opts.items.map((item) => ({
     id: item.id,
     source: item.source,
     translation: item.translation,
-    grup: item.grup,
-    edid: item.edid,
-    field: item.field,
-    context: item.context,
+    ...compactLlmItemFields(item),
     ...participantPayloadFields(item),
-    ...(item.reference_examples && item.reference_examples.length > 0
-      ? { reference_examples: item.reference_examples }
-      : {}),
+    ...compactLlmReferenceExamples(item.reference_examples),
   })),
 });
 
@@ -209,7 +206,7 @@ export const verifyTranslationsWithLlm = async (
 
   const mappingById = new Map<number, Record<string, string>>();
   const maskedItems = opts.items.map((item) => {
-    const masked = maskVerifyItemForLlm(item);
+    const masked = maskVerifyItemForLlm(item, opts.game);
     mappingById.set(item.id, masked.mapping);
     return masked.item;
   });

@@ -40,6 +40,24 @@ describe('maskVerifyItemForLlm', () => {
     expect(mapping['¤PH0¤']).toBe(tag);
     expect(mapping['¤PH1¤']).toBe('<Alias=Player>');
   });
+
+  it('masks Disco lockit markup when the game is disco', () => {
+    const { item, mapping } = maskVerifyItemForLlm(
+      {
+        id: 1,
+        source: 'You *belong* here.',
+        translation: 'Ти належиш сюди.',
+        grup: 'PO',
+        field: 'Dialogue Text',
+        edid: null,
+        context: null,
+      },
+      'disco',
+    );
+    expect(item.source).toBe('You ¤IT0¤belong¤IT0¤ here.');
+    expect(item.translation).toBe('Ти належиш сюди.');
+    expect(mapping['¤IT0¤']).toBe('*');
+  });
 });
 
 describe('buildVerifyTranslateUserPayload', () => {
@@ -73,18 +91,29 @@ describe('buildVerifyTranslateUserPayload', () => {
       ],
     });
 
-    expect(payload).toMatchObject({
+    expect(payload).toEqual({
       task: 'translation_quality_audit',
       source_language: 'en',
       target_language: 'uk',
+      game: 'fo4',
+      mod_name: 'TestMod.esp',
       items: [
         {
           id: 7,
           source: 'Hello',
           translation: 'Привіт',
           grup: 'WEAP',
+          edid: 'MyGun',
           field: 'FULL',
-          reference_examples: [{ source: 'Goodbye', translation: 'Бувай' }],
+          reference_examples: [
+            {
+              source: 'Goodbye',
+              translation: 'Бувай',
+              grup: 'INFO',
+              edid: 'Line01',
+              field: 'NAM1',
+            },
+          ],
         },
       ],
     });

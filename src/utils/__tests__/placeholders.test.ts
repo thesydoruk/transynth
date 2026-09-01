@@ -259,6 +259,19 @@ describe('validateTranslationPlaceholders', () => {
     if (!result.ok) expect(result.message).toMatch(/Unknown/);
   });
 
+  it('rejects a Disco italic key that appears only once', () => {
+    const mapping = { '¤IT0¤': '*' };
+    const result = validateTranslationPlaceholders(
+      'You *now*',
+      'Ти ¤IT0¤зараз',
+      mapping,
+      {},
+      'disco',
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/must appear twice/);
+  });
+
   it('rejects protected token drift after unmask', () => {
     const check = compareProtectedTokens('You have %d caps', 'You have %s caps', 'fo4');
     expect(check.ok).toBe(false);

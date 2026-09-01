@@ -3,7 +3,8 @@
  */
 import type { GameType } from '../types';
 import { normalizeAutoTranslation } from '../utils/textNorm';
-import { maskFunctionKeywords, maskPlaceholders, unmask } from '../utils/placeholders';
+import { maskTranslateSource } from './llmTextMask';
+import { unmask } from '../utils/placeholders';
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
 import {
@@ -47,10 +48,9 @@ export const rewriteVerifyTranslationsFromSource = async (
   >();
 
   for (const item of opts.items) {
-    const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(item.source);
-    const { masked, mapping: functionKeywordMap } = maskFunctionKeywords(
-      placeholderMasked,
-      opts.game as GameType | undefined,
+    const { masked, placeholderMap, functionKeywordMap } = maskTranslateSource(
+      item.source,
+      opts.game,
       { grup: item.grup, field: item.field },
     );
     maskedById.set(item.id, { masked, placeholderMap, functionKeywordMap });
