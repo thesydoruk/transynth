@@ -1,4 +1,7 @@
-import { readFuz, writeFuz } from '../fuz';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { readFuz, readFuzLipPeek, readFuzLipSize, writeFuz } from '../fuz';
 
 describe('fuz format', () => {
   it('round-trips lip and xwm payloads', () => {
@@ -19,5 +22,14 @@ describe('fuz format', () => {
 
     expect(newParts.lip.equals(oldParts.lip)).toBe(false);
     expect(newParts.lip.toString()).toBe('new-lip-from-facefx');
+  });
+
+  it('reads lip size from the header without loading the whole file', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fuz-lip-size-'));
+    const file = path.join(dir, 'line.fuz');
+    fs.writeFileSync(file, writeFuz(Buffer.from('LIP-BYTES'), Buffer.from('XWM')));
+    expect(readFuzLipSize(file)).toBe(9);
+    expect(readFuzLipPeek(file).lipVersion).toBe(Buffer.from('LIP-BYTES').readUInt32LE(0));
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

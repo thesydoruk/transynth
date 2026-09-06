@@ -10,6 +10,8 @@
 - [Підтримувані ігри](#підтримувані-ігри)
 - [Варіант A: Docker (рекомендовано)](#варіант-a-docker-рекомендовано)
   - [Опційно: вбудовані Gemma і RAG](#опційно-вбудовані-gemma-і-rag)
+  - [Опційно: вбудований audio-intel](#опційно-вбудований-audio-intel)
+  - [Опційно: вбудований bethesda-tools](#опційно-вбудований-bethesda-tools)
 - [Варіант B: Локальний Node.js](#варіант-b-локальний-nodejs)
 - [Перший запуск: створення бази даних](#перший-запуск-створення-бази-даних)
 - [Відкриття Web UI](#відкриття-web-ui)
@@ -57,8 +59,9 @@ Transynth підтримує такі ігри:
    при збереженні `«»` складаються до ASCII-лапок. Див.
    [LLM-переклад](06-llm-translation.md#disco-lockit).
 5. За потреби синтезуйте голос: потрібні `TTS_BASE_URL` і
-   `AUDIO_INTEL_BASE_URL` (Whisper ріже закадровий текст від лапок). Compose
-   ці сервіси не піднімає. Див. [Озвучка](09-voice.md#disco-що-саме-озвучується).
+   `AUDIO_INTEL_BASE_URL` (Whisper ріже закадровий текст від лапок). TTS
+   лишається зовнішнім; Whisper можна підняти профілем `embedded-audio-intel`.
+   Див. [Озвучка](09-voice.md#disco-що-саме-озвучується).
 6. Експортуйте langpack ZIP (`Ukrainian_Ukrainian_uk/*.po` + `Audio/*.wav`) і покладіть його поруч з іншими мовами Final Cut.
 
 ---
@@ -97,11 +100,14 @@ docker compose run --rm web npm run db:init
 - Імпорт, переклад і озвучка йдуть у **`worker`** через **Redis**.
   `docker compose up -d` піднімає обидва. `npm run dev` потребує доступний
   `REDIS_URL` (типово `redis://localhost:6379`), інакше джоби стоять.
-- Ліпсинк / Champollion (джерело PEX у редакторі):
-  `docker compose --profile tools run --rm cli npm run tools:install`.
+- Ліпсинк (FaceFX / xWMA): інструменти в `data/tools/voice`, далі профіль
+  `embedded-bethesda-tools` або `BETHESDA_TOOLS_URL` на зовнішній sidecar.
+  Champollion (джерело PEX у редакторі) збирається в образ під час `docker compose build`.
   Одноразові команди `cli` потребують `--profile tools`.
-- Fish Speech (`TTS_BASE_URL`) і audio-intel (`AUDIO_INTEL_BASE_URL`) —
-  зовнішні сервіси; Compose їх не стартує. Для Disco voice потрібні обидва.
+- Fish Speech (`TTS_BASE_URL`) — зовнішній; Compose його не стартує.
+  audio-intel (`AUDIO_INTEL_BASE_URL`) теж може бути зовнішнім, або
+  профіль `embedded-audio-intel` (див. [нижче](#опційно-вбудований-audio-intel)).
+  Для Disco voice потрібні обидва.
 - Щоб зупинити стек, виконайте `docker compose down`.
 
 ### Зовнішній Postgres
@@ -141,6 +147,41 @@ DOCKER_VLLM_EMBED_BASE_URL=http://tei-embed:80
 
 Прод із зовнішнім пулом обидва профілі не ставить. GPU, Settings → LLM і
 Blackwell — у [LLM-переклад](06-llm-translation.md#вбудовані-vllm-і-embed).
+
+### Опційно: вбудований audio-intel
+
+Той самий opt-in, що й `embedded-db`: профіль `embedded-audio-intel` піднімає
+`audio-intel` з `docker/compose.audio-intel.yml` (Whisper STT, без діаризації
+й UI). Потрібен NVIDIA Container Toolkit. Перший старт качає модель у
+`data/whisper`.
+
+У `.env`:
+
+```env
+COMPOSE_PROFILES=embedded-db,embedded-audio-intel
+AUDIO_INTEL_BASE_URL=http://localhost:8014
+DOCKER_AUDIO_INTEL_BASE_URL=http://audio-intel:9000
+```
+
+`DOCKER_AUDIO_INTEL_BASE_URL` потрібен, коли `web` / `worker` у Compose.
+Healthcheck: `curl -s http://localhost:8014/health`. Пізніше один сервіс:
+`docker compose --profile embedded-audio-intel restart audio-intel`.
+Зовнішній Whisper — не ставте профіль, залиште `AUDIO_INTEL_BASE_URL`.
+
+### Опційно: вбудований bethesda-tools
+
+Той самий opt-in: профіль `embedded-bethesda-tools` піднімає FaceFX і xWMAEncode
+з `docker/compose.bethesda-tools.yml`. FaceFXWrapper качається на білді образу.
+Потрібні Fonix і xWMAEncode в `data/tools/voice/` (`npm run tools:install`).
+
+```env
+COMPOSE_PROFILES=embedded-db,embedded-bethesda-tools
+BETHESDA_TOOLS_URL=http://localhost:8015
+DOCKER_BETHESDA_TOOLS_URL=http://bethesda-tools:3210
+```
+
+Healthcheck: `curl -s http://localhost:8015/health`. Зовнішній sidecar — не
+ставте профіль, вкажіть `BETHESDA_TOOLS_URL`.
 
 ---
 

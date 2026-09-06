@@ -1,0 +1,5 @@
+node_modules
+wine
+tools/*.exe
+tools/*.cdf
+tools/*.dll

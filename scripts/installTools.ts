@@ -3,10 +3,10 @@
  * Install bundled external tools used by the localization pipeline.
  *
  * Components:
- *   - Champollion (PEX decompilation)
- *   - FaceFXWrapper (fresh LIP generation)
  *   - FonixData.cdf + xWMAEncode.exe (game copy, or xWMAEncode from Microsoft DirectX SDK download)
  *   - ffmpeg (Windows static build when not on PATH)
+ *
+ * FaceFXWrapper is baked into the bethesda-tools image.
  *
  * Usage:
  *   npm run tools:install
@@ -43,17 +43,10 @@ try {
     gameDir: argv['game-dir'],
   });
 
-  if (result.champollion.skipped) {
-    log.info(`Champollion ${result.champollion.version} already installed`);
-  } else {
-    log.info(`Installed Champollion ${result.champollion.version} → ${result.champollion.exePath}`);
-  }
-
   if (result.voice.skipped) {
     log.info(`Voice tools already installed in ${result.voice.installDir}`);
   } else {
     log.info(`Installed voice tools → ${result.voice.installDir}`);
-    log.info(`  FaceFXWrapper: ${result.voice.faceFxPath}`);
     log.info(`  FonixData.cdf: ${result.voice.fonixPath}`);
     log.info(`  xWMAEncode:    ${result.voice.xwmaPath}`);
     log.info(`  ffmpeg:        ${result.voice.ffmpegPath}`);

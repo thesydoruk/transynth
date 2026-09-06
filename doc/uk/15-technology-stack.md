@@ -67,10 +67,14 @@
 - vLLM (або інший OpenAI-compatible сервер) підтримується для локального LLM inference.
 - OpenAI підтримується для хмарних workflow LLM-перекладу.
 - Абстракції провайдерів лежать у `src/llm/`.
-- Зовнішній **audio-intel** (`AUDIO_INTEL_BASE_URL`) транскрибує WAV через
+- **audio-intel** (`AUDIO_INTEL_BASE_URL`) транскрибує WAV через
   Whisper (`POST /v1/audio/transcriptions`). Клієнт і кеш — у
   `src/audioIntel/`. Disco використовує транскрипт, щоб відрізати закадровий
   текст від озвучених лапок; TTS лишається окремим сервісом (`TTS_BASE_URL`).
+  Опційно в Compose: профіль `embedded-audio-intel` (лише STT).
+- **FaceFX** пише Bethesda `.lip`. Український текст спочатку адаптується під
+  англійські фонеми Fonix (`src/voice/faceFx/ukToFonix.ts`). LIP і xWMA йдуть
+  у sidecar `bethesda-tools` (`BETHESDA_TOOLS_URL`).
 
 ---
 
@@ -115,7 +119,8 @@
 - У репозиторії є `docker/Dockerfile` і кореневий `docker-compose.yml`.
 - Опційні оверлеї: `docker/compose.db.yml` (`embedded-db`),
   `docker/compose.vllm.yml` (`embedded-vllm`), `docker/compose.embed.yml`
-  (`embedded-embed`).
+  (`embedded-embed`), `docker/compose.audio-intel.yml` (`embedded-audio-intel`),
+  `docker/compose.bethesda-tools.yml` (`embedded-bethesda-tools`).
 
 ---
 
@@ -125,7 +130,7 @@
 - `web-ui/` - frontend-застосунок.
 - `scripts/` - службові скрипти проєкту та bootstrap бази даних.
 - `sql/` - SQL-схема та пов'язані з БД ресурси.
-- `docker/` - збірка образу та опційні Compose-оверлеї (Postgres, Gemma, RAG).
+- `docker/` - збірка образу та опційні Compose-оверлеї (Postgres, Gemma, RAG, Whisper).
 - `doc/` - консолідована документація проєкту.
 
 ---

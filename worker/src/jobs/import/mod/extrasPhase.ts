@@ -8,7 +8,7 @@
 import { resolveModDirectoryFromPath, resolveMcmLocaleKey } from '../../../../../src/formats/mcm';
 import { CONFIG } from '../../../../../src/config';
 import { logImport } from '../../../../../src/logging/loggers';
-import { ensureChampollionInstalled } from '../../../../../src/tools/installTools';
+import { ensureChampollionInstalled } from '../../../../../src/champollionPath';
 import {
   bulkInsertModImportRows,
   bulkUpsertImportTranslations,

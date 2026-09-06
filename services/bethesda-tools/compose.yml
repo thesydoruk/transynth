@@ -1,0 +1,33 @@
+# Standalone host (split deploy). Same image as the embedded Compose profile.
+# Latest FaceFXWrapper.exe is baked at image build. Mount FonixData.cdf and xWMAEncode.exe at ./tools.
+services:
+  bethesda-tools:
+    build:
+      context: .
+    image: bethesda-tools:local
+    init: true
+    restart: unless-stopped
+    ports:
+      - '3210:3210'
+    environment:
+      BETHESDA_TOOLS_WINE_SERVERS: ${BETHESDA_TOOLS_WINE_SERVERS:-1}
+      BETHESDA_TOOLS_PER_WINE: ${BETHESDA_TOOLS_PER_WINE:-1}
+      BETHESDA_TOOLS_TIMEOUT_MS: ${BETHESDA_TOOLS_TIMEOUT_MS:-120000}
+    volumes:
+      - ./tools:/data/tools:ro
+      - wineprefix:/data/wine
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3210/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 180s
+
+volumes:
+  wineprefix:

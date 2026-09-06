@@ -32,11 +32,16 @@
 4. **audio-intel** на `AUDIO_INTEL_BASE_URL` (Whisper, окремо від TTS). Для
    Disco потрібен, щоб відрізати закадровий текст від озвучених лапок. Без
    сервісу рядок іде в TTS цілком. Кеш транскриптів — `AUDIO_INTEL_CACHE_DIR`
-   (типово `data/cache/audio-intel`). Compose audio-intel не піднімає —
-   лише URL у `.env`.
-5. **Інструменти озвучки** для ліпсинку Bethesda: `npm run tools:install` або
-   `docker compose --profile tools run --rm cli npm run tools:install`.
-   Ставляться FaceFXWrapper, дані Fonix і xWMAEncode у `data/tools/voice/`.
+   (типово `data/cache/audio-intel`). Зовнішній сервер — URL у `.env`. Або
+   профіль `embedded-audio-intel` (`docker/compose.audio-intel.yml`): лише STT,
+   без діаризації й UI. Див. [Старт](01-getting-started.md#опційно-вбудований-audio-intel).
+5. **FaceFX** пише `.lip` для Bethesda. Український текст перед цим
+   адаптується під англійські фонеми Fonix (`привіт` → `prihveet`); кирилиця в
+   обгортку не йде. LIP і xWMA йдуть у `bethesda-tools`
+   (`BETHESDA_TOOLS_URL` або профіль `embedded-bethesda-tools`).
+6. **Інструменти на диску:** образ `bethesda-tools` качає останній
+   FaceFXWrapper на білді. `npm run tools:install` (або профіль Compose `tools`) кладе
+   Fonix і xWMAEncode у `data/tools/voice/` для маунту sidecar.
 
 Disco Elysium не використовує FaceFX. Синтезовані репліки — WAV у експортованому
 мовному пакеті Final Cut. Перегенерація одного рядка теж іде через WAV, не

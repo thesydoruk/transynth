@@ -3,7 +3,6 @@ import path from 'node:path';
 import { PATHS } from '../paths';
 import { log } from '../logger';
 import {
-  resolveFaceFxWrapperPath,
   resolveFonixDataPath,
   resolveFfmpegPath,
   resolveXwmaEncodePath,
@@ -18,8 +17,6 @@ import {
 } from './archiveUtils';
 import { discoverGameVoiceAssets, pickFirstGameAsset } from './discoverGameVoiceAssets';
 
-export const FACEFX_WRAPPER_VERSION = '0.41';
-const FACEFX_DOWNLOAD_URL = `https://github.com/Nukem9/FaceFXWrapper/releases/download/${FACEFX_WRAPPER_VERSION}/FaceFXWrapper.${FACEFX_WRAPPER_VERSION}.zip`;
 const FFMPEG_DOWNLOAD_URL =
   'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip';
 /** Official Microsoft DirectX SDK (June 2010) — xWMAEncode lives inside (~570 MB). */
@@ -27,11 +24,8 @@ const DXSDK_JUN10_DOWNLOAD_URL =
   'https://download.microsoft.com/download/A/E/7/AE743F1C-BA16-4A70-B571-8CF6A3388B44/DXSDK_Jun10.exe';
 const DXSDK_CACHE_NAME = 'DXSDK_Jun10.exe';
 
-export const voiceToolsVersionFilePath = (): string => path.join(voiceToolsDir(), 'VERSION');
-
 export type InstallVoiceToolsResult = {
   installDir: string;
-  faceFxPath: string;
   fonixPath: string;
   xwmaPath: string;
   ffmpegPath: string;
@@ -39,56 +33,16 @@ export type InstallVoiceToolsResult = {
   warnings: string[];
 };
 
-const readVoiceToolsVersion = (): string | null => {
-  try {
-    return fs.readFileSync(voiceToolsVersionFilePath(), 'utf8').trim() || null;
-  } catch {
-    return null;
-  }
-};
-
-const isVoiceToolsInstalled = (): boolean => {
-  return (
-    fs.existsSync(resolveFaceFxWrapperPath()) &&
-    fs.existsSync(resolveFonixDataPath()) &&
-    fs.existsSync(resolveXwmaEncodePath()) &&
-    voiceFfmpegExists()
-  );
-};
+const isVoiceToolsInstalled = (): boolean =>
+  fs.existsSync(resolveFonixDataPath()) &&
+  fs.existsSync(resolveXwmaEncodePath()) &&
+  voiceFfmpegExists();
 
 const voiceFfmpegExists = (): boolean => {
   const bundled = path.join(voiceToolsDir(), 'ffmpeg.exe');
   if (fs.existsSync(bundled)) return true;
   if (process.env.FFMPEG_PATH?.trim()) return fs.existsSync(process.env.FFMPEG_PATH.trim());
   return process.platform !== 'win32';
-};
-
-const installFaceFxWrapper = async (installDir: string, force: boolean): Promise<void> => {
-  const dest = path.join(installDir, 'FaceFXWrapper.exe');
-  if (!force && fs.existsSync(dest)) return;
-
-  const cacheZip = path.join(
-    PATHS.dataDir,
-    'cache',
-    'voice',
-    `FaceFXWrapper.${FACEFX_WRAPPER_VERSION}.zip`,
-  );
-  const extractDir = path.join(PATHS.dataDir, 'cache', 'voice', 'facefx-extract');
-
-  if (!fs.existsSync(cacheZip)) {
-    log.info(`Downloading FaceFXWrapper ${FACEFX_WRAPPER_VERSION}…`);
-    await downloadFile(FACEFX_DOWNLOAD_URL, cacheZip);
-  }
-
-  fs.rmSync(extractDir, { recursive: true, force: true });
-  fs.mkdirSync(extractDir, { recursive: true });
-  await extractZip(cacheZip, extractDir);
-
-  const discovered = findFileRecursive(extractDir, 'FaceFXWrapper.exe');
-  if (!discovered) {
-    throw new Error('FaceFXWrapper.exe not found in the downloaded archive');
-  }
-  copyFileSafe(discovered, dest);
 };
 
 const installFonixData = (
@@ -215,9 +169,8 @@ const installFfmpeg = async (
 };
 
 /**
- * Install voice-localization tooling into `data/tools/voice`.
- * Downloads FaceFXWrapper, ffmpeg, and xWMAEncode (from Microsoft DirectX SDK when needed).
- * Copies FonixData.cdf from a detected game / Creation Kit install.
+ * Install disk voice tools into `data/tools/voice`: FonixData.cdf, xWMAEncode,
+ * and Windows ffmpeg. FaceFXWrapper is baked into the bethesda-tools image.
  */
 export const installVoiceTools = async (opts?: {
   force?: boolean;
@@ -228,10 +181,9 @@ export const installVoiceTools = async (opts?: {
   const installDir = voiceToolsDir();
   const warnings: string[] = [];
 
-  if (!force && isVoiceToolsInstalled() && readVoiceToolsVersion() === FACEFX_WRAPPER_VERSION) {
+  if (!force && isVoiceToolsInstalled()) {
     return {
       installDir,
-      faceFxPath: resolveFaceFxWrapperPath(),
       fonixPath: resolveFonixDataPath(),
       xwmaPath: resolveXwmaEncodePath(),
       ffmpegPath: resolveFfmpegPath(),
@@ -241,16 +193,12 @@ export const installVoiceTools = async (opts?: {
   }
 
   fs.mkdirSync(installDir, { recursive: true });
-  await installFaceFxWrapper(installDir, force);
   installFonixData(installDir, gameDirs, force, warnings);
   await installXwmaEncode(installDir, gameDirs, force, warnings);
   await installFfmpeg(installDir, force, warnings);
 
-  fs.writeFileSync(voiceToolsVersionFilePath(), `${FACEFX_WRAPPER_VERSION}\n`, 'utf8');
-
   return {
     installDir,
-    faceFxPath: resolveFaceFxWrapperPath(),
     fonixPath: resolveFonixDataPath(),
     xwmaPath: resolveXwmaEncodePath(),
     ffmpegPath: resolveFfmpegPath(),

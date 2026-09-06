@@ -1,16 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS, resolveDir } from '../paths';
-import { isWineAvailable, isWineExePath } from './voiceExec';
 
 export const voiceToolsDir = (): string =>
   resolveDir(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.toolsDir, 'voice'));
 
-export const resolveFaceFxWrapperPath = (): string => {
-  const configured = process.env.FACEFX_WRAPPER_PATH?.trim();
-  if (configured) return configured;
-  return path.join(voiceToolsDir(), 'FaceFXWrapper.exe');
-};
+export const resolveFaceFxWrapperPath = (): string =>
+  path.join(voiceToolsDir(), 'FaceFXWrapper.exe');
 
 export const resolveFonixDataPath = (): string => {
   const configured = process.env.FONIX_DATA_PATH?.trim();
@@ -59,24 +55,17 @@ export type TtsReferenceMode = 'speaker' | 'line';
 export const resolveTtsReferenceMode = (): TtsReferenceMode => 'speaker';
 
 const assertVoiceToolFile = (label: string, toolPath: string, missing: string[]): void => {
-  if (!fs.existsSync(toolPath)) {
-    missing.push(`${label} (${toolPath})`);
-    return;
-  }
-  if (process.platform !== 'win32' && isWineExePath(toolPath) && !isWineAvailable()) {
-    missing.push(`Wine (required to run ${label} on Linux — install wine/wine32 or set WINE_PATH)`);
-  }
+  if (!fs.existsSync(toolPath)) missing.push(`${label} (${toolPath})`);
 };
 
 export const assertVoiceTooling = (): void => {
   const missing: string[] = [];
-  assertVoiceToolFile('FaceFXWrapper', resolveFaceFxWrapperPath(), missing);
   const fonix = resolveFonixDataPath();
   if (!fs.existsSync(fonix)) missing.push(`FonixData.cdf (${fonix})`);
   assertVoiceToolFile('xWMAEncode', resolveXwmaEncodePath(), missing);
   if (missing.length > 0) {
     throw new Error(
-      `Missing voice tooling:\n  - ${missing.join('\n  - ')}\nRun \`npm run tools:install\` or set FACEFX_WRAPPER_PATH / FONIX_DATA_PATH / XWMA_ENCODE_PATH`,
+      `Missing voice tooling:\n  - ${missing.join('\n  - ')}\nRun \`npm run tools:install\` or set FONIX_DATA_PATH / XWMA_ENCODE_PATH`,
     );
   }
 };

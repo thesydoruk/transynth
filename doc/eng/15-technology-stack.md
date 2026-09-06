@@ -68,10 +68,14 @@ At a high level, the system supports these flows:
 - vLLM (or any OpenAI-compatible server) is supported for local LLM inference.
 - OpenAI is supported for hosted LLM translation workflows.
 - Provider abstractions live under `src/llm/`.
-- External **audio-intel** (`AUDIO_INTEL_BASE_URL`) transcribes WAV via
+- **audio-intel** (`AUDIO_INTEL_BASE_URL`) transcribes WAV via
   Whisper (`POST /v1/audio/transcriptions`). Client and cache live in
   `src/audioIntel/`. Disco uses the transcript to cut narration away from
-  spoken quotes; TTS stays a separate service (`TTS_BASE_URL`).
+  spoken quotes; TTS stays a separate service (`TTS_BASE_URL`). Optional
+  in Compose: profile `embedded-audio-intel` (STT only).
+- **FaceFX** writes Bethesda `.lip` files. Ukrainian lines are respelled into
+  Fonix English phonemes first (`src/voice/faceFx/ukToFonix.ts`). LIP and xWMA
+  run in the `bethesda-tools` sidecar (`BETHESDA_TOOLS_URL`).
 
 ---
 
@@ -115,7 +119,9 @@ Key shared components:
 - The repository includes `docker/Dockerfile` and a root `docker-compose.yml`.
 - Optional overlays: `docker/compose.db.yml` (`embedded-db`),
   `docker/compose.vllm.yml` (`embedded-vllm`), `docker/compose.embed.yml`
-  (`embedded-embed`).
+  (`embedded-embed`), `docker/compose.audio-intel.yml`
+  (`embedded-audio-intel`), `docker/compose.bethesda-tools.yml`
+  (`embedded-bethesda-tools`).
 
 ---
 
@@ -126,7 +132,7 @@ Key shared components:
 - `web-ui/` - frontend application.
 - `scripts/` - project maintenance and database bootstrap scripts.
 - `sql/` - SQL schema and related database assets.
-- `docker/` - image build and optional Compose overlays (Postgres, Gemma, RAG).
+- `docker/` - image build and optional Compose overlays (Postgres, Gemma, RAG, Whisper).
 - `doc/` - consolidated project documentation.
 
 ---

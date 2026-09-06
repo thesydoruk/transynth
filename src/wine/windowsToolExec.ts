@@ -7,7 +7,8 @@ import { execFileAsync, type ExecFileResult } from '../utils/execFile';
 import { hintProcessGc } from '../utils/processGc';
 import { ensureWinePrefixOwnedByCurrentUser } from './ensureWinePrefixOwner';
 
-export type WineArch = 'win32' | 'win64';
+/** 32-bit Wine only — FaceFX / xWMA. Champollion is a native ELF. */
+export type WineArch = 'win32';
 
 /** FaceFX/xWMA rarely print more than a few KB; the default 64MB buffer inflates RSS. */
 const WINE_TOOL_MAX_BUFFER = 1 * 1024 * 1024;
@@ -34,7 +35,7 @@ const killWineServer = (arch: WineArch): void => {
     execFileSync(wineServerCommand(), ['-k'], {
       timeout: 10_000,
       stdio: 'ignore',
-      env: wineProcessEnv(arch),
+      env: wineProcessEnv(),
     });
   } catch {
     // No wineserver for this prefix.
@@ -44,7 +45,7 @@ const killWineServer = (arch: WineArch): void => {
 const ensureWineReady = (arch: WineArch): void => {
   if (process.platform === 'win32') return;
 
-  const prefix = resolveWinePrefix(arch);
+  const prefix = resolveWinePrefix();
   if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
   if (ensureWinePrefixOwnedByCurrentUser(prefix)) {
     killWineServer(arch);
@@ -65,7 +66,7 @@ const ensureWineReady = (arch: WineArch): void => {
   if (wineReady.has(arch)) return;
   wineReady.add(arch);
 
-  const env = wineProcessEnv(arch);
+  const env = wineProcessEnv();
   try {
     execFileSync(wineCommand(), ['wineboot', '--init'], {
       timeout: 120_000,
@@ -86,11 +87,10 @@ const ensureWineReady = (arch: WineArch): void => {
   }
 };
 
-/** Kill both prefixes and forget the in-process "ready" flag. */
+/** Kill the 32-bit prefix and forget the in-process "ready" flag. */
 export const shutdownWine = (): void => {
   if (process.platform === 'win32') return;
   killWineServer('win32');
-  killWineServer('win64');
   wineReady.clear();
   wineInFlight = 0;
   wineUsesSinceRecycle = 0;
@@ -137,17 +137,13 @@ export const wineCommand = (): string => process.env.WINE_PATH?.trim() || 'wine'
 export const wineServerCommand = (): string => process.env.WINESERVER_PATH?.trim() || 'wineserver';
 
 /** 32-bit prefix for voice tools; override with `WINEPREFIX`. */
-export const resolveWinePrefix = (arch: WineArch = 'win32'): string => {
-  if (arch === 'win64') {
-    return resolveDir(process.env.WINEPREFIX64?.trim() || path.join(PATHS.toolsDir, '.wine64'));
-  }
-  return resolveDir(process.env.WINEPREFIX?.trim() || path.join(PATHS.toolsDir, '.wine'));
-};
+export const resolveWinePrefix = (): string =>
+  resolveDir(process.env.WINEPREFIX?.trim() || path.join(PATHS.toolsDir, '.wine'));
 
-export const wineProcessEnv = (arch: WineArch): NodeJS.ProcessEnv => {
+export const wineProcessEnv = (): NodeJS.ProcessEnv => {
   const env = { ...process.env };
-  env.WINEPREFIX = resolveWinePrefix(arch);
-  env.WINEARCH = arch;
+  env.WINEPREFIX = resolveWinePrefix();
+  env.WINEARCH = 'win32';
   return env;
 };
 
@@ -204,13 +200,12 @@ export const wineifyArgs = (args: string[], env: NodeJS.ProcessEnv): string[] =>
 export const execWindowsToolAsync = async (
   toolPath: string,
   args: string[],
-  options: { cwd?: string; timeoutMs?: number; arch?: WineArch } = {},
+  options: { cwd?: string; timeoutMs?: number } = {},
 ): Promise<ExecFileResult> => {
-  const arch = options.arch ?? 'win32';
   const { command, argsPrefix } = resolveWindowsExecutable(toolPath);
   const useWine = isWineExePath(toolPath) && process.platform !== 'win32';
-  const env = useWine ? wineProcessEnv(arch) : undefined;
-  if (useWine) beginWineUse(arch);
+  const env = useWine ? wineProcessEnv() : undefined;
+  if (useWine) beginWineUse('win32');
   const execArgs = useWine ? wineifyArgs(args, env!) : args;
   try {
     return await execFileAsync(command, [...argsPrefix, ...execArgs], {

@@ -249,7 +249,7 @@ export const CONFIG = {
   defaultSrcLang: process.env.SRC_LANG || 'en',
   defaultTgtLang: process.env.TGT_LANG || 'uk',
 
-  /** Absolute path to Champollion.exe for on-demand PEX decompilation in the editor. */
+  /** Absolute path to Champollion for on-demand PEX decompilation in the editor. */
   champollionPath: resolveChampollionPath(),
 };
 

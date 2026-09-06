@@ -31,6 +31,8 @@ export type VoiceSourceRow = {
 export type VoiceSourceDetailRow = VoiceSourceRow & {
   infoFormidHex: string;
   stringId: number;
+  /** INFO EDID when the loader has it — used to drop `CA_Interject_Stub_*`. */
+  edid?: string | null;
 };
 
 /** INFO response lines imported as `INFO\NAM1` (multiple per INFO when voiced). */

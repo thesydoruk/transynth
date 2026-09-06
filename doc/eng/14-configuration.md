@@ -128,10 +128,13 @@ LOG_LEVEL=info
 # --- Debug ---
 # DEBUG=1
 
-# --- Voice / audio-intel (external; not started by Compose) ---
+# --- Voice / audio-intel ---
 # TTS_BASE_URL=http://localhost:8080
 # AUDIO_INTEL_BASE_URL=http://localhost:8080
 # AUDIO_INTEL_CACHE_DIR=./data/cache/audio-intel
+# Optional in-stack Whisper: COMPOSE_PROFILES=…,embedded-audio-intel
+# AUDIO_INTEL_BASE_URL=http://localhost:8014
+# DOCKER_AUDIO_INTEL_BASE_URL=http://audio-intel:9000
 ```
 
 ---
@@ -159,22 +162,23 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ## LLM Provider Settings
 
-| Variable                     | Default                                   | Description                                                           |
-| ---------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
-| `LLM_PROVIDER`               | `vllm`                                    | Primary LLM provider: `openai` or `vllm`                              |
-| `LLM_FALLBACK`               | `none`                                    | Fallback provider if primary fails: `none`, `openai`, or `vllm`       |
-| `OPENAI_API_KEY`             | _(required for OpenAI)_                   | Your OpenAI API key                                                   |
-| `OPENAI_TRANSLATE_MODEL`     | `gpt-4.1-mini`                            | OpenAI model used for translation                                     |
-| `OPENAI_EMBED_MODEL`         | `text-embedding-3-large`                  | OpenAI model used for embeddings                                      |
-| `VLLM_BASE_URL`              | `http://localhost:8000`                   | vLLM / OpenAI-compatible API endpoint (legacy single-server mode)     |
-| `VLLM_SERVERS`               | _(optional)_                              | JSON array of chat servers: `[{host, maxParallel, apiKey}, …]`        |
-| `VLLM_API_KEY`               | _(optional)_                              | API key when the inference server requires authentication             |
-| `LLM_MAX_PARALLEL`           | `2`                                       | Max concurrent chat requests (single-server mode only)                |
-| `VLLM_MODEL`                 | _(required for vLLM)_                     | Model name served by vLLM, e.g. `meta-llama/Meta-Llama-3-8B-Instruct` |
-| `VLLM_EMBED_BASE_URL`        | _(same as chat)_                          | Separate embedding server; otherwise `VLLM_BASE_URL`                  |
-| `VLLM_EMBED_MODEL`           | `Snowflake/snowflake-arctic-embed-l-v2.0` | Embedding model when `VLLM_EMBED_BASE_URL` is used                    |
-| `DOCKER_VLLM_BASE_URL`       | _(unset)_                                 | Chat URL for Compose `web`/`worker` (`http://vllm-gemma:8000`)        |
-| `DOCKER_VLLM_EMBED_BASE_URL` | _(unset)_                                 | Embed URL inside Compose (`http://tei-embed:80`)                      |
+| Variable                      | Default                                   | Description                                                           |
+| ----------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| `LLM_PROVIDER`                | `vllm`                                    | Primary LLM provider: `openai` or `vllm`                              |
+| `LLM_FALLBACK`                | `none`                                    | Fallback provider if primary fails: `none`, `openai`, or `vllm`       |
+| `OPENAI_API_KEY`              | _(required for OpenAI)_                   | Your OpenAI API key                                                   |
+| `OPENAI_TRANSLATE_MODEL`      | `gpt-4.1-mini`                            | OpenAI model used for translation                                     |
+| `OPENAI_EMBED_MODEL`          | `text-embedding-3-large`                  | OpenAI model used for embeddings                                      |
+| `VLLM_BASE_URL`               | `http://localhost:8000`                   | vLLM / OpenAI-compatible API endpoint (legacy single-server mode)     |
+| `VLLM_SERVERS`                | _(optional)_                              | JSON array of chat servers: `[{host, maxParallel, apiKey}, …]`        |
+| `VLLM_API_KEY`                | _(optional)_                              | API key when the inference server requires authentication             |
+| `LLM_MAX_PARALLEL`            | `2`                                       | Max concurrent chat requests (single-server mode only)                |
+| `VLLM_MODEL`                  | _(required for vLLM)_                     | Model name served by vLLM, e.g. `meta-llama/Meta-Llama-3-8B-Instruct` |
+| `VLLM_EMBED_BASE_URL`         | _(same as chat)_                          | Separate embedding server; otherwise `VLLM_BASE_URL`                  |
+| `VLLM_EMBED_MODEL`            | `Snowflake/snowflake-arctic-embed-l-v2.0` | Embedding model when `VLLM_EMBED_BASE_URL` is used                    |
+| `DOCKER_VLLM_BASE_URL`        | _(unset)_                                 | Chat URL for Compose `web`/`worker` (`http://vllm-gemma:8000`)        |
+| `DOCKER_VLLM_EMBED_BASE_URL`  | _(unset)_                                 | Embed URL inside Compose (`http://tei-embed:80`)                      |
+| `DOCKER_AUDIO_INTEL_BASE_URL` | _(unset)_                                 | Whisper URL for Compose `web`/`worker` (`http://audio-intel:9000`)    |
 
 > Chat temperature, decay, max tokens, retries, and HTTP timeout are env-set:
 > `LLM_TEMPERATURE` (default `0.3`), `LLM_TEMPERATURE_DECAY`, `LLM_MAX_TOKENS`,
@@ -202,10 +206,10 @@ You do not need to set it manually when running the full stack with `docker comp
 Also in `.env.example` (not repeated in the tables above): `NEXUS_API_KEY`
 (Discover / Nexus download), `REDIS_URL` (job queue; Compose sets
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
-`CHAMPOLLION_PATH` / `WINE_*` after `tools:install`, `AUDIO_INTEL_BASE_URL`
-(Whisper for Disco, default `http://localhost:8080`), and
-`AUDIO_INTEL_CACHE_DIR` (default `data/cache/audio-intel`). The full list is
-the example file.
+`BETHESDA_TOOLS_URL` / `DOCKER_BETHESDA_TOOLS_URL`, `AUDIO_INTEL_BASE_URL`
+(Whisper for Disco, default `http://localhost:8080`; in Compose —
+`DOCKER_AUDIO_INTEL_BASE_URL`), and `AUDIO_INTEL_CACHE_DIR` (default
+`data/cache/audio-intel`). The full list is the example file.
 
 ---
 
@@ -220,11 +224,15 @@ All features are enabled by default and cannot be selectively disabled via envir
 
 The project ships with `docker-compose.yml` (web, worker, redis),
 `docker/compose.db.yml` (Postgres, profile `embedded-db`),
-`docker/compose.vllm.yml` (Gemma chat, profile `embedded-vllm`), and
-`docker/compose.embed.yml` (Arctic embed, profile `embedded-embed`).
-Add the profiles to `COMPOSE_PROFILES` and set `DOCKER_VLLM_*`, or the
-containers call `host.docker.internal:8000`. How to enable:
+`docker/compose.vllm.yml` (Gemma chat, profile `embedded-vllm`),
+`docker/compose.embed.yml` (Arctic embed, profile `embedded-embed`), and
+`docker/compose.audio-intel.yml` (Whisper STT, profile `embedded-audio-intel`),
+and `docker/compose.bethesda-tools.yml` (FaceFX / xWMA, profile `embedded-bethesda-tools`).
+Add the profiles to `COMPOSE_PROFILES` and set `DOCKER_VLLM_*` /
+`DOCKER_AUDIO_INTEL_BASE_URL` / `DOCKER_BETHESDA_TOOLS_URL`, or the containers call `host.docker.internal`.
+How to enable:
 [Getting Started](01-getting-started.md#optional-embedded-gemma-and-rag),
+[embedded audio-intel](01-getting-started.md#optional-embedded-audio-intel),
 [LLM Translation](06-llm-translation.md#embedded-vllm-and-embed).
 See also [SECURITY.md](../../SECURITY.md).
 Production with an external vLLM pool leaves the model profiles unset.

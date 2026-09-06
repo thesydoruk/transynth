@@ -1,0 +1,43 @@
+# Opt in via COMPOSE_PROFILES=embedded-bethesda-tools (see .env.example).
+# External sidecar: omit the profile and set BETHESDA_TOOLS_URL.
+#
+# Host: http://localhost:8015 — GET /health, POST /v1/lip, POST /v1/xwm.
+# From web/worker: DOCKER_BETHESDA_TOOLS_URL=http://bethesda-tools:3210
+#
+# Latest thesydoruk/FaceFXWrapper release is downloaded at image build.
+# Mounts data/tools/voice for FonixData.cdf and xWMAEncode.exe only.
+# Wine prefix is a named volume so the container owns it.
+
+services:
+  bethesda-tools:
+    profiles: [embedded-bethesda-tools]
+    build:
+      context: ../services/bethesda-tools
+      dockerfile: Dockerfile
+    image: ${BETHESDA_TOOLS_IMAGE:-bethesda-tools:local}
+    init: true
+    restart: unless-stopped
+    ports:
+      - '8015:3210'
+    environment:
+      BETHESDA_TOOLS_WINE_SERVERS: ${BETHESDA_TOOLS_WINE_SERVERS:-1}
+      BETHESDA_TOOLS_PER_WINE: ${BETHESDA_TOOLS_PER_WINE:-1}
+      BETHESDA_TOOLS_TIMEOUT_MS: ${BETHESDA_TOOLS_TIMEOUT_MS:-120000}
+    volumes:
+      - ../data/tools/voice:/data/tools:ro
+      - bethesda-tools-wine:/data/wine
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3210/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 180s
+
+volumes:
+  bethesda-tools-wine:

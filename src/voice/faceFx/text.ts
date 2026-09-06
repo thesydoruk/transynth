@@ -1,3 +1,5 @@
+import { adaptUkrainianForFonix } from './ukToFonix';
+
 /** Bracketed tone tag / UI token: `[Сарказм]`, `[Click]`, … */
 const BRACKET_BLOCK_RE = /\[[^[\]]*\]/g;
 
@@ -16,3 +18,7 @@ export const encodeFaceFxDialogueText = (text: string): string => {
   if (process.platform !== 'win32') return text;
   return Buffer.from(text, 'utf8').toString('latin1');
 };
+
+/** Strip `[ремарки]`, then respell Ukrainian so Fonix sees English phonemes. */
+export const prepareFaceFxDialogueText = (text: string): string =>
+  adaptUkrainianForFonix(sanitizeFaceFxDialogueText(text));

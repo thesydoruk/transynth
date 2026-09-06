@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 const config = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/worker/src'],
+  roots: ['<rootDir>/src', '<rootDir>/worker/src', '<rootDir>/services/bethesda-tools'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {

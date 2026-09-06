@@ -1,6 +1,6 @@
 {
   "name": "transynth",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "type": "module",
   "private": true,
@@ -22,7 +22,6 @@
     "scan:strings": "tsx scripts/scanStrings.ts",
     "voice:clear": "tsx scripts/clearGeneratedVoice.ts",
     "voice:purge-skipped": "tsx scripts/purgeSkippedVoice.ts",
-    "tools:champollion": "tsx scripts/installChampollion.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --cache",

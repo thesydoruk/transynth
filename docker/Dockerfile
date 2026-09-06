@@ -10,7 +10,32 @@ RUN npm ci --omit=dev --ignore-scripts \
   && chmod +x node_modules/7zip-bin/linux/x64/7za \
   && chmod +x node_modules/7z-bin/bin/linux/x64/7zzs
 
-# ── Stage 2: build web-ui (React SPA) ─────────────────────────────────────────
+# ── Stage 2: native Champollion (cloned from GitHub at image build) ───────────
+FROM node:24-slim AS champollion
+
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    cmake \
+    g++ \
+    make \
+    libboost-program-options-dev \
+    libfmt-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN git clone --depth 1 --branch main https://github.com/thesydoruk/linux-champollion.git . \
+  && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  && cmake --build build -j"$(nproc)" \
+  && install -D build/Champollion/Champollion /out/Champollion \
+  && mkdir -p /out/lib \
+  && ldd /out/Champollion \
+    | awk '/=>/ && ($3 ~ /libboost_program_options/ || $3 ~ /libfmt/) { print $3 }' \
+    | xargs -r -I{} cp -L {} /out/lib/ \
+  && touch /out/lib/.keep
+
+# ── Stage 3: build web-ui (React SPA) ─────────────────────────────────────────
 FROM node:24-slim AS ui-build
 
 WORKDIR /app/web-ui
@@ -21,18 +46,17 @@ RUN npm ci
 COPY web-ui/ ./
 RUN npm run build
 
-# ── Stage 3: production runtime ───────────────────────────────────────────────
+# ── Stage 4: production runtime ───────────────────────────────────────────────
 FROM node:24-slim AS runtime
 
-# Wine for Bethesda voice tools (32-bit) and Champollion (64-bit)
-RUN dpkg --add-architecture i386 \
-  && apt-get update \
+# ffmpeg for voice WAV prep. FaceFX / xWMA run in bethesda-tools. Champollion is native.
+RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    wine \
-    wine32 \
-    wine64 \
     ffmpeg \
   && rm -rf /var/lib/apt/lists/*
+
+COPY --from=champollion /out/Champollion /usr/local/bin/Champollion
+COPY --from=champollion /out/lib/ /usr/local/lib/champollion/
 
 WORKDIR /app
 
@@ -56,11 +80,7 @@ COPY --from=ui-build /app/web-ui/dist ./web-ui/dist/
 
 ENV LLM_PROVIDER=vllm
 ENV NODE_ENV=production
-ENV WINEARCH=win32
-ENV WINEPREFIX=/app/data/tools/.wine
-ENV WINEPREFIX64=/app/data/tools/.wine64
-ENV WINEDLLOVERRIDES=mscoree,mshtml=
-ENV WINEDEBUG=-all
+ENV LD_LIBRARY_PATH=/usr/local/lib/champollion
 
 EXPOSE 3000
 

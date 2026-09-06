@@ -121,11 +121,13 @@ export const loadVoiceSourcesDetailed = async (
     voice_ordinal: number;
     string_id: number;
     source: string;
+    edid: string | null;
   }>(
     `WITH voiced AS (
        SELECT
          UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
          r.formid_hex AS info_formid_hex,
+         r.edid,
          s.id AS string_id,
          s.text_raw AS source,
          ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_ordinal
@@ -134,7 +136,7 @@ export const loadVoiceSourcesDetailed = async (
        WHERE r.mod_id = $1
          AND ${infoNam1RecordsSql('r', '$3')}
      )
-     SELECT formid_lower6, info_formid_hex, voice_ordinal, string_id, source
+     SELECT formid_lower6, info_formid_hex, voice_ordinal, string_id, source, edid
      FROM voiced
      ORDER BY formid_lower6, voice_ordinal`,
     [modId, srcLang, [...INFO_NAM1_RECORD_PATHS]],
@@ -149,6 +151,7 @@ export const loadVoiceSourcesDetailed = async (
       source,
       infoFormidHex: row.info_formid_hex,
       stringId: row.string_id,
+      edid: row.edid,
     });
   }
   fillMissingVoiceKeys(map, await loadVoicePromptSources(db, modId, srcLang));

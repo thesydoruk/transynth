@@ -33,12 +33,18 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 4. **audio-intel** at `AUDIO_INTEL_BASE_URL` (Whisper, separate from TTS).
    Disco needs it to cut narration away from spoken quote spans. Without the
    service the full lockit line goes to TTS. Transcripts are cached under
-   `AUDIO_INTEL_CACHE_DIR` (default `data/cache/audio-intel`). Compose does
-   not start audio-intel — set the URL in `.env`.
-5. **Voice tools** for Bethesda lip-sync: `npm run tools:install`, or
-   `docker compose --profile tools run --rm cli npm run tools:install`.
-   That installs FaceFXWrapper, Fonix data, and xWMAEncode under
-   `data/tools/voice/`.
+   `AUDIO_INTEL_CACHE_DIR` (default `data/cache/audio-intel`). An external
+   server is a URL in `.env`. Or the `embedded-audio-intel` profile
+   (`docker/compose.audio-intel.yml`): STT only, no diarization or UI. See
+   [Getting Started](01-getting-started.md#optional-embedded-audio-intel).
+5. **FaceFX** writes Bethesda `.lip` files. Ukrainian dialogue is respelled
+   into Fonix English phonemes first (`привіт` → `prihveet`); Cyrillic never
+   reaches the wrapper. LIP and xWMA run in `bethesda-tools`
+   (`BETHESDA_TOOLS_URL`, or profile `embedded-bethesda-tools`).
+6. **Voice tools** on disk: the `bethesda-tools` image downloads the latest
+   FaceFXWrapper at build. `npm run tools:install` (or the `tools` Compose profile)
+   copies Fonix data and xWMAEncode into `data/tools/voice/` for the sidecar
+   to mount.
 
 Disco Elysium does not use FaceFX. Synthesized lines are WAV files inside the
 exported Final Cut langpack. Per-line regenerate also goes through WAV, not

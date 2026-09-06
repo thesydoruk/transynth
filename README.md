@@ -42,7 +42,7 @@ docker compose run --rm web npm run db:init
 
 Open [http://localhost:3000](http://localhost:3000). You land on the **Games** catalogue. Pick a title, then import a mod.
 
-`.env.example` starts embedded Postgres (`COMPOSE_PROFILES=embedded-db`). Add `embedded-vllm` and/or `embedded-embed` for in-stack Gemma / Arctic embed (NVIDIA). Production with external Postgres / vLLM: omit those profiles and start `web worker redis`. Details: [Getting Started](doc/eng/01-getting-started.md).
+`.env.example` starts embedded Postgres (`COMPOSE_PROFILES=embedded-db`). Add `embedded-vllm`, `embedded-embed`, `embedded-audio-intel`, and/or `embedded-bethesda-tools` for in-stack Gemma / Arctic embed / Whisper / FaceFX+xWMA. Production with external Postgres / vLLM / Whisper / tools: omit those profiles and start `web worker redis`. Details: [Getting Started](doc/eng/01-getting-started.md).
 
 Local Node (API + worker + Vite, Postgres/Redis you provide):
 

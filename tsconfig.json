@@ -12,6 +12,6 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "worker", "scripts", "sql"],
+  "include": ["src", "worker", "scripts", "sql", "services/bethesda-tools"],
   "exclude": ["dist", "node_modules"]
 }

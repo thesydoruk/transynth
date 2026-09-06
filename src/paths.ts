@@ -47,10 +47,6 @@ export const PATHS = {
   voiceRegenerate: resolveDir(
     process.env.VOICE_REGENERATE_DIR ?? path.join(dataDir, 'cache', 'voice-regenerate'),
   ),
-  /** Champollion CLI installed by `npm run tools:install`. */
-  champollion: resolveDir(
-    process.env.CHAMPOLLION_INSTALL_DIR ?? path.join(toolsDir, 'champollion'),
-  ),
   backups: resolveDir(process.env.BACKUP_DIR ?? path.join(dataDir, 'backups')),
   postgres: resolveDir(process.env.POSTGRES_DATA_DIR ?? path.join(dataDir, 'postgres')),
   /** Background langpack ZIPs written by the worker (`{id}/{fileName}`). */

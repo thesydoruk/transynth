@@ -11,15 +11,21 @@
 #   docker compose up -d web worker redis
 #
 # External TTS: set TTS_BASE_URL in .env (not in this compose).
-# External audio-intel: set AUDIO_INTEL_BASE_URL in .env (not in this compose).
+# Optional Whisper (Disco spoken-span): add `embedded-audio-intel`
+# (docker/compose.audio-intel.yml). External audio-intel: set
+# AUDIO_INTEL_BASE_URL and omit the profile.
 # Optional Gemma chat / RAG embed: add `embedded-vllm` and/or `embedded-embed`
 # (docker/compose.vllm.yml, docker/compose.embed.yml). External pools omit both.
+# Optional FaceFX / xWMA: add `embedded-bethesda-tools`
+# (docker/compose.bethesda-tools.yml). External sidecar: set BETHESDA_TOOLS_URL.
 # Put TLS/reverse proxy in front of WEB_PORT. See SECURITY.md.
 
 include:
   - docker/compose.db.yml
   - docker/compose.vllm.yml
   - docker/compose.embed.yml
+  - docker/compose.audio-intel.yml
+  - docker/compose.bethesda-tools.yml
 
 services:
   web:
@@ -28,7 +34,7 @@ services:
       dockerfile: docker/Dockerfile
     image: transynth:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    # Node as PID 1 never reaps orphaned ffmpeg grandchildren.
     init: true
     env_file:
       - .env
@@ -43,11 +49,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
       VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
+      AUDIO_INTEL_BASE_URL: ${DOCKER_AUDIO_INTEL_BASE_URL:-${AUDIO_INTEL_BASE_URL:-http://host.docker.internal:8080}}
+      BETHESDA_TOOLS_URL: ${DOCKER_BETHESDA_TOOLS_URL:-${BETHESDA_TOOLS_URL:-}}
       REDIS_URL: redis://redis:6379
-      WINEARCH: win32
-      WINEPREFIX: /app/data/tools/.wine
-      WINEPREFIX64: /app/data/tools/.wine64
-      WINEDEBUG: -all
     volumes:
       - ./data:/app/data
     depends_on:
@@ -82,7 +86,7 @@ services:
       dockerfile: docker/Dockerfile
     image: transynth:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    # Node as PID 1 never reaps orphaned Wine/ffmpeg grandchildren.
+    # Node as PID 1 never reaps orphaned ffmpeg grandchildren.
     init: true
     command: ['npm', '--prefix', 'worker', 'start']
     env_file:
@@ -94,13 +98,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
       VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
+      AUDIO_INTEL_BASE_URL: ${DOCKER_AUDIO_INTEL_BASE_URL:-${AUDIO_INTEL_BASE_URL:-http://host.docker.internal:8080}}
+      BETHESDA_TOOLS_URL: ${DOCKER_BETHESDA_TOOLS_URL:-${BETHESDA_TOOLS_URL:-}}
       REDIS_URL: redis://redis:6379
       JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
       NODE_OPTIONS: ${NODE_OPTIONS:---expose-gc}
-      WINEARCH: win32
-      WINEPREFIX: /app/data/tools/.wine
-      WINEPREFIX64: /app/data/tools/.wine64
-      WINEDEBUG: -all
     volumes:
       - ./data:/app/data
     depends_on:
@@ -142,10 +144,8 @@ services:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
       VLLM_BASE_URL: ${DOCKER_VLLM_BASE_URL:-${VLLM_BASE_URL:-http://host.docker.internal:8000}}
       VLLM_EMBED_BASE_URL: ${DOCKER_VLLM_EMBED_BASE_URL:-${VLLM_EMBED_BASE_URL:-}}
-      WINEARCH: win32
-      WINEPREFIX: /app/data/tools/.wine
-      WINEPREFIX64: /app/data/tools/.wine64
-      WINEDEBUG: -all
+      AUDIO_INTEL_BASE_URL: ${DOCKER_AUDIO_INTEL_BASE_URL:-${AUDIO_INTEL_BASE_URL:-http://host.docker.internal:8080}}
+      BETHESDA_TOOLS_URL: ${DOCKER_BETHESDA_TOOLS_URL:-${BETHESDA_TOOLS_URL:-}}
     volumes:
       - ./data:/app/data
     # depends_on:

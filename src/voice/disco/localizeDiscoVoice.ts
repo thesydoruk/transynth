@@ -6,26 +6,17 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
-import { toDiskPath } from '../../modImport';
 import { modImportLocalizeDir } from '../../modStorage';
 import type { TtsSynthesisParams } from '../../tts/ttsClient';
 import type { GameType } from '../../types';
 import { ensureDir } from '../../utils/file';
-import { canSynthesizeVoiceLine, prepareVoiceTtsText } from '../prepareVoiceTtsText';
-import { lookupVoiceTranslation, voiceTranslationMapKey } from '../loadVoiceTranslations';
+import { prepareVoiceTtsText } from '../prepareVoiceTtsText';
 import type { ModVoiceGenerateScope } from '../localizeModImportVoice';
-import { loadVoiceSynthesisVersionMap, lookupVoiceSynthesisVersion } from '../voiceSynthesisState';
-import {
-  isVoiceSynthesisCurrent,
-  voiceTtsPayloadVersionFromPrepared,
-} from '../voiceTtsPayloadVersion';
+import { loadVoiceSynthesisVersionMap } from '../voiceSynthesisState';
 import type { TtsReferenceMode } from '../voiceToolPaths';
 import type { SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
-import {
-  discoSpeakerKeyFromStem,
-  discoVoiceSpeakerKey,
-  groupDiscoVoiceFilesBySpeaker,
-} from './discoverDiscoVoiceFiles';
+import { groupDiscoVoiceFilesBySpeaker } from './discoverDiscoVoiceFiles';
+import { evaluateDiscoVoiceWork, type DiscoVoiceWorkFilter } from './evaluateDiscoVoiceWork';
 import { resolveDiscoSpokenRowText } from './resolveDiscoSpokenRow';
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
@@ -80,41 +71,19 @@ export const countDiscoVoiceLocalizeWork = async (
     speakerFilter || undefined,
   );
   const localizeDir = modImportLocalizeDir(extractDir, tgtLang);
-  const forceAll = scope === 'all';
+  const filter: DiscoVoiceWorkFilter = {
+    onlyKeys,
+    speakerFilter,
+    tgtLang,
+    localizeDir,
+    storedVersions,
+    forceAll: scope === 'all',
+    transcribe: false,
+  };
   let total = 0;
 
   for (const entry of voiceFiles) {
-    const stem = path.basename(entry.fileName, path.extname(entry.fileName));
-    if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
-      continue;
-    }
-    if (speakerFilter && discoSpeakerKeyFromStem(stem) !== speakerFilter) continue;
-    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-    if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
-    // Mixed narration+quote: cache only (no Whisper) so count stays cheap.
-    const spoken = await resolveDiscoSpokenRowText(row, entry.absolutePath, { transcribe: false });
-    const prepared = prepareVoiceTtsText({
-      lineSource: spoken.source,
-      translation: spoken.translation,
-      speakerSource: spoken.source,
-      edid: row.edid,
-      markup: 'disco',
-    });
-    if (prepared.action !== 'synthesize') continue;
-    if (!forceAll) {
-      const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
-      const wavDest = toDiskPath(localizeDir, outputLocalizedWavRelPath(entry));
-      const storedVersion = lookupVoiceSynthesisVersion(
-        storedVersions,
-        discoVoiceSpeakerKey(entry),
-        entry.formidLower6,
-        entry.variant,
-      );
-      if (isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(wavDest))) {
-        continue;
-      }
-    }
-    total += 1;
+    if (await evaluateDiscoVoiceWork(entry, translations, filter)) total += 1;
   }
   return total;
 };
@@ -170,6 +139,15 @@ export const localizeDiscoVoicePackage = async (
   const tempRoot = path.join(os.tmpdir(), `disco-voice-${modId}-${Date.now()}`);
   ensureDir(tempRoot);
 
+  const workFilter: DiscoVoiceWorkFilter = {
+    onlyKeys,
+    speakerFilter,
+    tgtLang,
+    localizeDir,
+    storedVersions,
+    forceAll: force,
+    transcribe: false,
+  };
   let processed = 0;
   log.info(
     `Disco voice: ${voiceFiles.length} wav(s), ${translations.size} translated line(s) (mod ${modId})`,
@@ -180,28 +158,8 @@ export const localizeDiscoVoicePackage = async (
       if (shouldCancel?.()) break;
       if (limit != null && processed >= limit) break;
 
-      const stem = path.basename(entry.fileName, path.extname(entry.fileName));
-      if (onlyKeys && !onlyKeys.has(voiceTranslationMapKey(entry.formidLower6, entry.variant))) {
-        continue;
-      }
-      if (speakerFilter && discoSpeakerKeyFromStem(stem) !== speakerFilter) continue;
-
-      const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-      if (!row || !canSynthesizeVoiceLine(row.source, row.translation, row.edid, 'disco')) continue;
-
-      // Mixed narration+quote: audio-intel decides full vs quoted.
-      const spoken = await resolveDiscoSpokenRowText(row, entry.absolutePath);
-      const prepared = prepareVoiceTtsText({
-        lineSource: spoken.source,
-        translation: spoken.translation,
-        speakerSource: spoken.source,
-        edid: row.edid,
-        markup: 'disco',
-      });
-      if (prepared.action !== 'synthesize') {
-        warnings.push(`${entry.relPath}: skipped (${prepared.action})`);
-        continue;
-      }
+      const eligible = await evaluateDiscoVoiceWork(entry, translations, workFilter);
+      if (!eligible) continue;
 
       onEligibleStep?.();
       processed += 1;
@@ -211,7 +169,21 @@ export const localizeDiscoVoicePackage = async (
         continue;
       }
 
-      const result = await processDiscoVoiceEntry(entry, row, prepared, {
+      // Mixed narration+quote: audio-intel decides full vs quoted.
+      const spoken = await resolveDiscoSpokenRowText(eligible.row, entry.absolutePath);
+      const prepared = prepareVoiceTtsText({
+        lineSource: spoken.source,
+        translation: spoken.translation,
+        speakerSource: spoken.source,
+        edid: eligible.row.edid,
+        markup: 'disco',
+      });
+      if (prepared.action !== 'synthesize') {
+        warnings.push(`${entry.relPath}: skipped (${prepared.action})`);
+        continue;
+      }
+
+      const result = await processDiscoVoiceEntry(entry, eligible.row, prepared, {
         db,
         modId,
         extractDir,

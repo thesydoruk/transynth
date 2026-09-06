@@ -4,14 +4,19 @@ Transynth does **not** ship Bethesda game assets or Creation Kit binaries in git
 
 You need a legal copy of the relevant game (and usually the Creation Kit) to use voice lip-sync features that depend on Fonix data.
 
+## Baked into Docker images
+
+| Tool                                                                                                                                   | Source                                                                                                   | License (upstream)                                                                                      | Notes                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Champollion](https://github.com/Orvid/Champollion) 1.3.2                                                                              | Clone [thesydoruk/linux-champollion](https://github.com/thesydoruk/linux-champollion) at web image build | LGPL-3.0                                                                                                | Papyrus `.pex` decompiler. Native binary at `/usr/local/bin/Champollion`. |
+| [FaceFXWrapper](https://github.com/thesydoruk/FaceFXWrapper) (fork of [Nukem9/FaceFXWrapper](https://github.com/Nukem9/FaceFXWrapper)) | Latest GitHub release zip at `bethesda-tools` image build                                                | Wrapper code: MIT. Uses Creation Kit–derived code and Bethesda resource files; those remain Bethesda’s. | Generates `.lip` files. Image path `/opt/bethesda/FaceFXWrapper.exe`.     |
+
 ## Downloaded by `npm run tools:install`
 
-| Tool                                                          | Source                                                                  | License (upstream)                                                                                      | Notes                                                                                                     |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [Champollion](https://github.com/Orvid/Champollion) 1.3.2     | GitHub release zip                                                      | LGPL-3.0                                                                                                | Papyrus `.pex` decompiler. Installed under `data/tools/champollion/`.                                     |
-| [FaceFXWrapper](https://github.com/Nukem9/FaceFXWrapper) 0.41 | GitHub release zip                                                      | Wrapper code: MIT. Uses Creation Kit–derived code and Bethesda resource files; those remain Bethesda’s. | Generates `.lip` files. Installed under `data/tools/voice/`.                                              |
-| ffmpeg (Windows)                                              | [BtbN FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) `win64-gpl` | GPL (that build)                                                                                        | Only fetched when ffmpeg is not already on `PATH`. Linux/Docker use the distro `ffmpeg` package instead.  |
-| xWMAEncode.exe                                                | Microsoft DirectX SDK (June 2010), if not copied from a game install    | Microsoft SDK terms                                                                                     | Large optional download. Prefer `--game-dir` when the file already exists in the game or CK tools folder. |
+| Tool             | Source                                                                  | License (upstream)  | Notes                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------- |
+| ffmpeg (Windows) | [BtbN FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) `win64-gpl` | GPL (that build)    | Only fetched when ffmpeg is not already on `PATH`. Linux/Docker use the distro `ffmpeg` package instead.  |
+| xWMAEncode.exe   | Microsoft DirectX SDK (June 2010), if not copied from a game install    | Microsoft SDK terms | Large optional download. Prefer `--game-dir` when the file already exists in the game or CK tools folder. |
 
 ## You must supply (not redistributed)
 
@@ -22,7 +27,7 @@ You need a legal copy of the relevant game (and usually the Creation Kit) to use
 
 ## Also used, not vendored in this repo
 
-- **Wine** (32-bit and 64-bit) — Docker image only, to run the Windows `.exe` tools on Linux.
+- **Wine** (32-bit) — `bethesda-tools` sidecar only, for FaceFXWrapper and xWMAEncode. Champollion is compiled natively in the web image.
 - **7-Zip** — both npm packages stay: `7zip-bin` ships `7za` (zip/7z), `7z-bin` ships full `7z` (RAR). `7za` cannot unpack RAR. See `src/tools/archiveUtils.ts`. Licenses ship with the packages.
 
 ## Game-derived metadata in git

@@ -114,6 +114,9 @@ LOG_LEVEL=info
 # TTS_BASE_URL=http://localhost:8080
 # AUDIO_INTEL_BASE_URL=http://localhost:8080
 # AUDIO_INTEL_CACHE_DIR=./data/cache/audio-intel
+# Опційний Whisper у Compose: COMPOSE_PROFILES=…,embedded-audio-intel
+# AUDIO_INTEL_BASE_URL=http://localhost:8014
+# DOCKER_AUDIO_INTEL_BASE_URL=http://audio-intel:9000
 ```
 
 ---
@@ -144,22 +147,23 @@ postgresql://transynth:transynth@localhost:5433/transynth
 
 ## Налаштування LLM-провайдера
 
-| Змінна                       | За замовчуванням                          | Опис                                                         |
-| ---------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| `LLM_PROVIDER`               | `vllm`                                    | Основний провайдер: `openai` або `vllm`                      |
-| `LLM_FALLBACK`               | `none`                                    | Fallback: `none`, `openai` або `vllm`                        |
-| `OPENAI_API_KEY`             | _(для OpenAI)_                            | Ваш OpenAI API key                                           |
-| `OPENAI_TRANSLATE_MODEL`     | `gpt-4.1-mini`                            | Модель OpenAI для перекладу                                  |
-| `OPENAI_EMBED_MODEL`         | `text-embedding-3-large`                  | Модель OpenAI для embeddings                                 |
-| `VLLM_BASE_URL`              | `http://localhost:8000`                   | API endpoint vLLM (режим одного сервера)                     |
-| `VLLM_SERVERS`               | _(опційно)_                               | JSON-масив chat-серверів: `[{host, maxParallel, apiKey}, …]` |
-| `VLLM_API_KEY`               | _(опційно)_                               | API key, якщо сервер вимагає автентифікацію                  |
-| `LLM_MAX_PARALLEL`           | `2`                                       | Макс. одночасних chat-запитів (лише один сервер)             |
-| `VLLM_MODEL`                 | _(для vLLM)_                              | Назва моделі на inference-сервері                            |
-| `VLLM_EMBED_BASE_URL`        | _(як чат)_                                | Окремий embedding-сервер; інакше `VLLM_BASE_URL`             |
-| `VLLM_EMBED_MODEL`           | `Snowflake/snowflake-arctic-embed-l-v2.0` | Модель ембедів, коли є `VLLM_EMBED_BASE_URL`                 |
-| `DOCKER_VLLM_BASE_URL`       | _(немає)_                                 | Чат для `web`/`worker` у Compose (`http://vllm-gemma:8000`)  |
-| `DOCKER_VLLM_EMBED_BASE_URL` | _(немає)_                                 | Embed для контейнерів (`http://tei-embed:80`)                |
+| Змінна                        | За замовчуванням                          | Опис                                                         |
+| ----------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| `LLM_PROVIDER`                | `vllm`                                    | Основний провайдер: `openai` або `vllm`                      |
+| `LLM_FALLBACK`                | `none`                                    | Fallback: `none`, `openai` або `vllm`                        |
+| `OPENAI_API_KEY`              | _(для OpenAI)_                            | Ваш OpenAI API key                                           |
+| `OPENAI_TRANSLATE_MODEL`      | `gpt-4.1-mini`                            | Модель OpenAI для перекладу                                  |
+| `OPENAI_EMBED_MODEL`          | `text-embedding-3-large`                  | Модель OpenAI для embeddings                                 |
+| `VLLM_BASE_URL`               | `http://localhost:8000`                   | API endpoint vLLM (режим одного сервера)                     |
+| `VLLM_SERVERS`                | _(опційно)_                               | JSON-масив chat-серверів: `[{host, maxParallel, apiKey}, …]` |
+| `VLLM_API_KEY`                | _(опційно)_                               | API key, якщо сервер вимагає автентифікацію                  |
+| `LLM_MAX_PARALLEL`            | `2`                                       | Макс. одночасних chat-запитів (лише один сервер)             |
+| `VLLM_MODEL`                  | _(для vLLM)_                              | Назва моделі на inference-сервері                            |
+| `VLLM_EMBED_BASE_URL`         | _(як чат)_                                | Окремий embedding-сервер; інакше `VLLM_BASE_URL`             |
+| `VLLM_EMBED_MODEL`            | `Snowflake/snowflake-arctic-embed-l-v2.0` | Модель ембедів, коли є `VLLM_EMBED_BASE_URL`                 |
+| `DOCKER_VLLM_BASE_URL`        | _(немає)_                                 | Чат для `web`/`worker` у Compose (`http://vllm-gemma:8000`)  |
+| `DOCKER_VLLM_EMBED_BASE_URL`  | _(немає)_                                 | Embed для контейнерів (`http://tei-embed:80`)                |
+| `DOCKER_AUDIO_INTEL_BASE_URL` | _(немає)_                                 | Whisper для `web`/`worker` (`http://audio-intel:9000`)       |
 
 Температура, decay, max tokens, retry і HTTP timeout задаються в `.env`:
 `LLM_TEMPERATURE` (типово `0.3`), `LLM_TEMPERATURE_DECAY`, `LLM_MAX_TOKENS`,
@@ -187,10 +191,10 @@ postgresql://transynth:transynth@localhost:5433/transynth
 Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`
 (Discover / завантаження з Nexus), `REDIS_URL` (черга джоб; Compose ставить
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
-`CHAMPOLLION_PATH` / `WINE_*` після `tools:install`, `AUDIO_INTEL_BASE_URL`
-(Whisper для Disco, типово `http://localhost:8080`) і
-`AUDIO_INTEL_CACHE_DIR` (типово `data/cache/audio-intel`). Повний список — у
-прикладі.
+`BETHESDA_TOOLS_URL` / `DOCKER_BETHESDA_TOOLS_URL`, `AUDIO_INTEL_BASE_URL`
+(Whisper для Disco, типово `http://localhost:8080`; у Compose —
+`DOCKER_AUDIO_INTEL_BASE_URL`) і `AUDIO_INTEL_CACHE_DIR` (типово
+`data/cache/audio-intel`). Повний список — у прикладі.
 
 ---
 
@@ -205,11 +209,15 @@ postgresql://transynth:transynth@localhost:5433/transynth
 
 Проєкт постачається з `docker-compose.yml` (web, worker, redis),
 `docker/compose.db.yml` (Postgres, профіль `embedded-db`),
-`docker/compose.vllm.yml` (Gemma, профіль `embedded-vllm`) і
-`docker/compose.embed.yml` (Arctic embed, профіль `embedded-embed`).
-Додайте профілі в `COMPOSE_PROFILES` і задайте `DOCKER_VLLM_*`, інакше
-контейнери б’ють у `host.docker.internal:8000`. Як увімкнути:
+`docker/compose.vllm.yml` (Gemma, профіль `embedded-vllm`),
+`docker/compose.embed.yml` (Arctic embed, профіль `embedded-embed`) і
+`docker/compose.audio-intel.yml` (Whisper STT, профіль `embedded-audio-intel`),
+`docker/compose.bethesda-tools.yml` (FaceFX / xWMA, профіль `embedded-bethesda-tools`).
+Додайте профілі в `COMPOSE_PROFILES` і задайте `DOCKER_VLLM_*` /
+`DOCKER_AUDIO_INTEL_BASE_URL`, інакше контейнери б’ють у
+`host.docker.internal`. Як увімкнути:
 [Початок роботи](01-getting-started.md#опційно-вбудовані-gemma-і-rag),
+[вбудований audio-intel](01-getting-started.md#опційно-вбудований-audio-intel),
 [LLM-переклад](06-llm-translation.md#вбудовані-vllm-і-embed).
 Див. також [SECURITY.md](../../SECURITY.md).
 Прод із зовнішнім пулом vLLM профілі моделей не ставить.

@@ -8,23 +8,15 @@ import { hintProcessGc } from '../../utils/processGc';
 
 describe('resolveWinePrefix', () => {
   const originalPrefix = process.env.WINEPREFIX;
-  const originalPrefix64 = process.env.WINEPREFIX64;
 
   afterEach(() => {
     if (originalPrefix === undefined) delete process.env.WINEPREFIX;
     else process.env.WINEPREFIX = originalPrefix;
-    if (originalPrefix64 === undefined) delete process.env.WINEPREFIX64;
-    else process.env.WINEPREFIX64 = originalPrefix64;
   });
 
   it('defaults to tools/.wine under DATA_DIR', () => {
     delete process.env.WINEPREFIX;
     expect(resolveWinePrefix()).toMatch(/[\\/]tools[\\/]\.wine$/);
-  });
-
-  it('defaults win64 prefix to tools/.wine64', () => {
-    delete process.env.WINEPREFIX64;
-    expect(resolveWinePrefix('win64')).toMatch(/[\\/]tools[\\/]\.wine64$/);
   });
 });
 

@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
 import { PATHS } from '../../paths';
-import { ensureChampollionInstalled } from '../../tools/installTools';
-import { execWindowsToolAsync } from '../../wine/windowsToolExec';
+import { ensureChampollionInstalled } from '../../champollionPath';
+import { execFileAsync } from '../../utils/execFile';
 import { sha1Hex } from '../../utils/hash';
 import { collectModPexSources } from '../../formats/pex';
 import {
@@ -71,7 +71,7 @@ const findPscFile = (
 };
 
 const runChampollion = async (
-  exePath: string,
+  binPath: string,
   pexPath: string,
   outDir: string,
   recreateSubdirs: boolean,
@@ -80,10 +80,7 @@ const runChampollion = async (
   if (recreateSubdirs) args.push('-s');
   args.push(pexPath);
 
-  await execWindowsToolAsync(exePath, args, {
-    timeoutMs: DECOMPILE_TIMEOUT_MS,
-    arch: 'win64',
-  });
+  await execFileAsync(binPath, args, { timeoutMs: DECOMPILE_TIMEOUT_MS });
 };
 
 const decompilePexToPsc = async (
@@ -107,7 +104,7 @@ const decompilePexToPsc = async (
 
   const champollion = await ensureChampollionInstalled();
   if (!fs.existsSync(champollion)) {
-    throw new Error('Champollion not found after install');
+    throw new Error('Champollion not found. Rebuild the Docker image.');
   }
 
   const workDir = path.join(cacheDir, 'work');
@@ -226,7 +223,7 @@ export const getPexSourceSnippetForString = async (
     return {
       ok: false,
       reason: 'decompiler_missing',
-      message: 'Champollion not available. Check network access or set CHAMPOLLION_PATH in .env',
+      message: 'Champollion not available. Rebuild the Docker image.',
     };
   }
 
@@ -237,7 +234,9 @@ export const getPexSourceSnippetForString = async (
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn(`PEX decompile failed mod=${modId} script=${scriptKey}: ${message}`);
-    const reason = message.includes('CHAMPOLLION_PATH') ? 'decompiler_missing' : 'decompile_failed';
+    const reason = message.includes('Champollion not found')
+      ? 'decompiler_missing'
+      : 'decompile_failed';
     return { ok: false, reason, message };
   }
 

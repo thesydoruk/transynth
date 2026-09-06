@@ -5,12 +5,9 @@ import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
-import {
-  FACEFX_TIMEOUT_MS,
-  runFaceFxLip,
-  type FaceFxLipRequest,
-  type FaceFxLipResult,
-} from './lipCore';
+import { FACEFX_TIMEOUT_MS, type FaceFxLipRequest, type FaceFxLipResult } from './lipCore';
+import { prepareFaceFxDialogueText } from './text';
+import { generateLipViaRemote, resolveBethesdaToolsUrl } from '../bethesdaTools';
 
 const tsxCliPath = (): string => path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
@@ -19,7 +16,7 @@ const faceFxRunnerPath = (): string =>
 
 /**
  * Windows-only: FaceFXWrapper attaches to the parent console and floods our logs,
- * so it runs in a throwaway Node process there. Other platforms call it in-process.
+ * so it runs in a throwaway Node process. Linux uses bethesda-tools.
  */
 const spawnFaceFxRunner = (request: FaceFxLipRequest): Promise<FaceFxLipResult> =>
   new Promise((resolve, reject) => {
@@ -85,6 +82,23 @@ export const generateLipFile = async (
 ): Promise<void> => {
   ensureDir(path.dirname(lipPath));
 
+  const remoteUrl = resolveBethesdaToolsUrl();
+  if (remoteUrl) {
+    await generateLipViaRemote(
+      remoteUrl,
+      game,
+      sourceWavPath,
+      lipPath,
+      prepareFaceFxDialogueText(dialogueText),
+    );
+    log.debug(`FaceFX remote ${path.basename(lipPath)}`);
+    return;
+  }
+
+  if (process.platform !== 'win32') {
+    throw new Error('BETHESDA_TOOLS_URL is not set');
+  }
+
   const request: FaceFxLipRequest = {
     game,
     fonixPath: resolveFonixDataPath(),
@@ -95,8 +109,7 @@ export const generateLipFile = async (
     dialogueText,
   };
 
-  const result =
-    process.platform === 'win32' ? await spawnFaceFxRunner(request) : await runFaceFxLip(request);
+  const result = await spawnFaceFxRunner(request);
 
   if (!result.ok || !fs.existsSync(lipPath)) {
     throw new Error(`FaceFX: ${result.summary}`);
