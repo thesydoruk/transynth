@@ -8,7 +8,9 @@ import {
 } from '../../../voice/loadVoiceTranslations';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import {
+  loadVoiceSimilarityMap,
   loadVoiceSynthesisVersionMap,
+  lookupVoiceSimilarity,
   lookupVoiceSynthesisVersion,
 } from '../../../voice/voiceSynthesisState';
 import {
@@ -42,6 +44,7 @@ export const listVoiceAvailabilityForMod = async (
   if (!resolved.ok) return resolved;
 
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, resolved.targetLang);
+  const storedSimilarities = await loadVoiceSimilarityMap(db, modId, resolved.targetLang);
   const mod = await loadImportedMod(db, modId);
   const translations = await loadVoiceTranslations(db, modId, mod.srcLang, resolved.targetLang);
   const sources = await loadVoiceSourcesDetailed(db, modId, mod.srcLang);
@@ -51,6 +54,7 @@ export const listVoiceAvailabilityForMod = async (
   const translation: string[] = [];
   const stale: string[] = [];
   const skipReasons: Record<string, VoiceTtsSkipReason> = {};
+  const similarities: Record<string, number> = {};
 
   for (const entry of discoverVoiceEntries(resolved.ctx)) {
     const key = voiceTranslationMapKey(entry.formidLower6, entry.variant);
@@ -66,6 +70,16 @@ export const listVoiceAvailabilityForMod = async (
     if (!hasTranslationAudioForEntry(translationAudio, entry)) continue;
 
     translation.push(key);
+    const score = lookupVoiceSimilarity(
+      storedSimilarities,
+      voiceSpeakerKey(entry, voiceRootRel),
+      entry.formidLower6,
+      entry.variant,
+    );
+    if (score != null) {
+      const previous = similarities[key];
+      similarities[key] = previous == null ? score : Math.min(previous, score);
+    }
 
     if (!row) continue;
     const prepared = prepareVoiceTtsText({
@@ -87,5 +101,13 @@ export const listVoiceAvailabilityForMod = async (
     }
   }
 
-  return { ok: true, targetLang: resolved.targetLang, source, translation, stale, skipReasons };
+  return {
+    ok: true,
+    targetLang: resolved.targetLang,
+    source,
+    translation,
+    stale,
+    skipReasons,
+    similarities,
+  };
 };

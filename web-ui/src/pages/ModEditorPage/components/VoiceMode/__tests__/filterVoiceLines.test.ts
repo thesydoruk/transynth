@@ -26,6 +26,7 @@ const line = (
   hasTranslationAudio: true,
   canGenerateVoice: false,
   ttsSkipReason: null,
+  voiceSimilarity: null,
   ...partial,
 });
 

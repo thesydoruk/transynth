@@ -20,6 +20,8 @@ export interface DialogLineVoice {
   hasTranslation: boolean;
   /** Why TTS is unavailable; null when the line may be synthesized. */
   ttsSkipReason: VoiceTtsSkipReason | null;
+  /** Stored ECAPA cosine for the dubbed take, when known. */
+  voiceSimilarity: number | null;
   /** Take of this line that is currently sounding. */
   playing: VoiceTrackKind | null;
   /** Take of this line that is still being fetched. */
@@ -79,6 +81,7 @@ export const useDialogVoice = (modId: number, targetLang: string) => {
       source: new Set(data.source),
       translation: new Set(data.translation),
       skipReasons: data.skipReasons ?? {},
+      similarities: data.similarities ?? {},
     };
   }, [query.data]);
 
@@ -97,6 +100,7 @@ export const useDialogVoice = (modId: number, targetLang: string) => {
         hasSource,
         hasTranslation: ttsSkipReason ? false : hasTranslation,
         ttsSkipReason,
+        voiceSimilarity: available.similarities[ref.key] ?? null,
         playing: kindOf(track.playingKey, ref.key),
         loading: kindOf(track.loadingKey, ref.key),
         play: (kind) =>

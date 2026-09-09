@@ -42,7 +42,14 @@ export type SynthesizeDiscoVoiceLineOptions = {
 };
 
 export type SynthesizeDiscoVoiceLineBuffersResult =
-  | { ok: true; ttsWav: Buffer; wavRel: string; payloadVersion: string; speakerKey: string }
+  | {
+      ok: true;
+      ttsWav: Buffer;
+      wavRel: string;
+      payloadVersion: string;
+      speakerKey: string;
+      voiceSimilarity: number | null;
+    }
   | { ok: false; reason: string; message: string };
 
 const prepareDiscoLine = async (
@@ -236,6 +243,7 @@ export const synthesizeDiscoVoiceLineBuffers = async (
       wavRel: result.relPath,
       payloadVersion: loaded.payloadVersion,
       speakerKey: loaded.speakerKey,
+      voiceSimilarity: result.kind === 'written' ? result.voiceSimilarity : null,
     };
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });

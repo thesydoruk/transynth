@@ -4,6 +4,7 @@ import type { VoiceLinePreview } from '../../../../../../api';
 import { StatusBadge } from '../../../../../../components/StatusBadge';
 import type { CommitAdvance } from '../../../DialogsMode/components/DialogLineRow/DialogLineRow';
 import { playTrackKey, type PlayKind } from '../../voiceLineKeys';
+import { VoiceSimilarityScore } from '../../../VoiceSimilarityScore';
 import styles from './VoiceLineRow.module.scss';
 
 export type { CommitAdvance };
@@ -154,12 +155,15 @@ export const VoiceLineRow = ({
               {t(`dialogs.ttsSkipReason.${skipReason}`)}
             </span>
           ) : (
-            voiceButton(
-              'translation',
-              t('dialogs.playTranslation'),
-              t('modEditor.voicePlayTranslationTitle'),
-              hasTranslationAudio,
-            )
+            <>
+              {voiceButton(
+                'translation',
+                t('dialogs.playTranslation'),
+                t('modEditor.voicePlayTranslationTitle'),
+                hasTranslationAudio,
+              )}
+              {hasTranslationAudio && <VoiceSimilarityScore score={line.voiceSimilarity} />}
+            </>
           )}
         </div>
         <span className={styles.spacer} />

@@ -14,6 +14,7 @@ import {
   resolveVoiceLineSkipReason,
 } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
+import { lookupVoiceSimilarity } from '../../../voice/voiceSynthesisState';
 import { formatVoiceSpeakerLabel } from './voiceEntries';
 import { discoVoiceSpeakerKey } from './discoVoiceList';
 import { hasTranslationAudio, hasTranslationAudioForEntry } from './translationAudioIndex';
@@ -126,6 +127,14 @@ export const buildVoiceLinePreview = (
     hasTranslationAudio: hasAudio,
     canGenerateVoice: synthesizable && !hasAudio,
     ttsSkipReason,
+    voiceSimilarity: hasAudio
+      ? lookupVoiceSimilarity(
+          context.voiceSimilarities,
+          speakerKey,
+          entry.formidLower6,
+          entry.variant,
+        )
+      : null,
   };
 };
 

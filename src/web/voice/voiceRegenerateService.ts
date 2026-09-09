@@ -38,6 +38,7 @@ type VoiceRegeneratePreviewMeta = {
   params: VoiceRegenerateParams;
   artifact?: 'fuz' | 'wav';
   speakerKey?: string;
+  voiceSimilarity?: number | null;
 };
 
 type VoiceRegenerateSessionMeta = {
@@ -191,6 +192,7 @@ export const generateVoiceRegeneratePreview = async (
   let payloadVersion: string;
   let artifact: 'fuz' | 'wav';
   let previewSpeakerKey: string | undefined;
+  let voiceSimilarity: number | null = null;
 
   if (mod.game === 'disco') {
     const built = await synthesizeDiscoVoiceLineBuffers(db, {
@@ -207,6 +209,7 @@ export const generateVoiceRegeneratePreview = async (
     payloadVersion = built.payloadVersion;
     artifact = 'wav';
     previewSpeakerKey = built.speakerKey;
+    voiceSimilarity = built.voiceSimilarity;
     fs.writeFileSync(wavPath, built.ttsWav);
   } else {
     const built = await synthesizeModVoiceLineBuffers(db, {
@@ -224,6 +227,7 @@ export const generateVoiceRegeneratePreview = async (
     destRel = built.fuzRel;
     payloadVersion = built.payloadVersion;
     artifact = 'fuz';
+    voiceSimilarity = built.voiceSimilarity;
     const fuzPath = path.join(dir, `${previewId}.fuz`);
     fs.writeFileSync(fuzPath, built.fuzData);
     try {
@@ -246,6 +250,7 @@ export const generateVoiceRegeneratePreview = async (
     params,
     artifact,
     speakerKey: previewSpeakerKey ?? speakerKey,
+    voiceSimilarity,
   };
   meta.previews.push(previewMeta);
   writeSessionMeta(modId, sessionId, meta);
@@ -344,6 +349,7 @@ export const commitVoiceRegenerateSession = async (
     speakerKey: preview.speakerKey?.trim() || speakerKeyFromVoiceRelPath(preview.fuzRel),
     targetLang: meta.targetLang,
     ttsTextVersion: preview.payloadVersion,
+    voiceSimilarity: preview.voiceSimilarity,
   });
 
   const relPath = preview.fuzRel;

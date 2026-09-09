@@ -1,4 +1,10 @@
-import { buildSynthesisForm, readSynthWarning, TTS_SYNTH_WARNING_HEADER } from '../ttsClient';
+import {
+  buildSynthesisForm,
+  readSynthWarning,
+  readVoiceSimilarity,
+  TTS_SYNTH_WARNING_HEADER,
+  TTS_VOICE_SIMILARITY_HEADER,
+} from '../ttsClient';
 
 describe('buildSynthesisForm', () => {
   it('includes speaker_text when reference transcript is provided', () => {
@@ -88,5 +94,16 @@ describe('readSynthWarning', () => {
 
   it('is empty when the take is clean', () => {
     expect(readSynthWarning(new Headers())).toBe('');
+  });
+});
+
+describe('readVoiceSimilarity', () => {
+  it('reads the Fish Speech cosine header', () => {
+    const headers = new Headers({ [TTS_VOICE_SIMILARITY_HEADER]: '0.412' });
+    expect(readVoiceSimilarity(headers)).toBe(0.412);
+  });
+
+  it('is null when the host omitted the header', () => {
+    expect(readVoiceSimilarity(new Headers())).toBeNull();
   });
 });

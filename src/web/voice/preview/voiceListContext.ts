@@ -28,6 +28,10 @@ import { loadVoiceFolderGenders, type VoiceFolderGender } from './speakerGender'
 import { discoverVoiceEntries, loadSpeakerNamesFromDb } from './voiceEntries';
 import { loadDiscoSpeakerGenders, loadDiscoSpeakerNames } from './discoVoiceList';
 import { buildTranslationAudioSet } from './translationAudioIndex';
+import {
+  loadVoiceSimilarityMap,
+  type VoiceSimilarityMap,
+} from '../../../voice/voiceSynthesisState';
 
 export type VoiceListContextError = {
   ok: false;
@@ -52,15 +56,60 @@ export type VoiceListContext = {
   speakerRefs: VoiceSpeakerRefMap;
   folderGenders: Map<string, VoiceFolderGender>;
   translationAudio: Set<string>;
+  voiceSimilarities: VoiceSimilarityMap;
 };
 
 export type VoiceListContextResult = VoiceListContextError | { ok: true; data: VoiceListContext };
 
-const CACHE_TTL_MS = 5 * 60_000;
-const cache = new Map<string, { loadedAt: number; result: Promise<VoiceListContextResult> }>();
+type VoiceListCacheEntry = {
+  revision: string;
+  result: Promise<VoiceListContextResult>;
+};
+
+const cache = new Map<string, VoiceListCacheEntry>();
 
 const cacheKey = (modId: number, srcLang: string, targetLang: string): string =>
   `${modId}:${srcLang}:${targetLang}`;
+
+/**
+ * Cheap fingerprint of data the voice list must not serve stale.
+ *
+ * The worker writes `voice_synthesis_state` in another process, so a wall-clock
+ * TTL cannot see new takes. Speaker refs change on the web process.
+ */
+export const loadVoiceListRevision = async (
+  db: Tx,
+  modId: number,
+  targetLang: string,
+): Promise<string> => {
+  const { rows } = await db.query<{
+    synth_n: string;
+    synth_at: Date | string | null;
+    ref_n: string;
+    ref_at: Date | string | null;
+  }>(
+    `SELECT
+       (SELECT COUNT(*)::text
+          FROM voice_synthesis_state
+         WHERE mod_id = $1 AND target_lang = $2) AS synth_n,
+       (SELECT MAX(synthesized_at)
+          FROM voice_synthesis_state
+         WHERE mod_id = $1 AND target_lang = $2) AS synth_at,
+       (SELECT COUNT(*)::text
+          FROM voice_speaker_refs
+         WHERE mod_id = $1) AS ref_n,
+       (SELECT MAX(updated_at)
+          FROM voice_speaker_refs
+         WHERE mod_id = $1) AS ref_at`,
+    [modId, targetLang],
+  );
+  const row = rows[0];
+  const stamp = (value: Date | string | null | undefined): string => {
+    if (value == null) return 'none';
+    return value instanceof Date ? value.toISOString() : String(value);
+  };
+  return `${row?.synth_n ?? '0'}:${stamp(row?.synth_at)}:${row?.ref_n ?? '0'}:${stamp(row?.ref_at)}`;
+};
 
 const loadVoiceListContext = async (
   db: Tx,
@@ -105,10 +154,11 @@ const loadVoiceListContext = async (
       clips.filter((clip) => clip.recordId != null).map((clip) => clip.formidLower12),
     );
     const translationAudio = buildTranslationAudioSet(ctx.localizeDir, { disco: true });
-    const [dbSpeakerNames, speakerRefs, folderGenders] = await Promise.all([
+    const [dbSpeakerNames, speakerRefs, folderGenders, voiceSimilarities] = await Promise.all([
       loadDiscoSpeakerNames(db, modId),
       loadVoiceSpeakerRefs(db, modId),
       loadDiscoSpeakerGenders(db, modId),
+      loadVoiceSimilarityMap(db, modId, resolvedTargetLang),
     ]);
 
     return {
@@ -127,6 +177,7 @@ const loadVoiceListContext = async (
         speakerRefs,
         folderGenders,
         translationAudio,
+        voiceSimilarities,
       },
     };
   }
@@ -139,15 +190,23 @@ const loadVoiceListContext = async (
   const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
   const translationAudio = buildTranslationAudioSet(ctx.localizeDir);
 
-  const [sources, translations, masterMods, dbSpeakerNames, speakerRefs, folderGenders] =
-    await Promise.all([
-      loadVoiceSourcesDetailed(db, modId, srcLang),
-      loadVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
-      findImportedMasterMods(db, pluginPath, modId),
-      loadSpeakerNamesFromDb(db, modId),
-      loadVoiceSpeakerRefs(db, modId),
-      loadVoiceFolderGenders(db, modId),
-    ]);
+  const [
+    sources,
+    translations,
+    masterMods,
+    dbSpeakerNames,
+    speakerRefs,
+    folderGenders,
+    voiceSimilarities,
+  ] = await Promise.all([
+    loadVoiceSourcesDetailed(db, modId, srcLang),
+    loadVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
+    findImportedMasterMods(db, pluginPath, modId),
+    loadSpeakerNamesFromDb(db, modId),
+    loadVoiceSpeakerRefs(db, modId),
+    loadVoiceFolderGenders(db, modId),
+    loadVoiceSimilarityMap(db, modId, resolvedTargetLang),
+  ]);
 
   let inheritedLookup: InheritedVoiceLookup | null = null;
   if (masterMods.length > 0) {
@@ -173,23 +232,36 @@ const loadVoiceListContext = async (
       speakerRefs,
       folderGenders,
       translationAudio,
+      voiceSimilarities,
     },
   };
 };
 
-/** Load shared voice-list inputs, cached briefly so speaker + line requests reuse one scan. */
-export const getVoiceListContext = (
+/**
+ * Load shared voice-list inputs. Speaker + line requests reuse one catalog scan
+ * while the synthesis/ref revision is unchanged. A finished voice job bumps
+ * stamps, so the next GET rebuilds and sees new audio immediately.
+ */
+export const getVoiceListContext = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
 ): Promise<VoiceListContextResult> => {
-  const key = cacheKey(modId, srcLang, targetLang);
+  const resolvedTargetLang = targetLang || CONFIG.defaultTgtLang;
+  const revision = await loadVoiceListRevision(db, modId, resolvedTargetLang);
+  const key = cacheKey(modId, srcLang, resolvedTargetLang);
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.loadedAt < CACHE_TTL_MS) return hit.result;
+  if (hit && hit.revision === revision) return hit.result;
 
-  const result = loadVoiceListContext(db, modId, srcLang, targetLang);
-  cache.set(key, { loadedAt: Date.now(), result });
+  const result = loadVoiceListContext(db, modId, srcLang, targetLang).then((loaded) => {
+    if (!loaded.ok) {
+      const current = cache.get(key);
+      if (current?.revision === revision) cache.delete(key);
+    }
+    return loaded;
+  });
+  cache.set(key, { revision, result });
   return result;
 };
 

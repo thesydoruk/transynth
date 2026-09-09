@@ -60,6 +60,8 @@ export type VoiceLinePreview = {
   canGenerateVoice: boolean;
   /** Set when TTS must not run; the editor keeps only original playback. */
   ttsSkipReason: VoiceTtsSkipReason | null;
+  /** Stored ECAPA cosine for the dubbed take, when known. */
+  voiceSimilarity: number | null;
 };
 
 export type VoiceSpeakerRefPick = {
@@ -97,6 +99,8 @@ export type VoiceAvailabilityResponse =
       translation: string[];
       stale: string[];
       skipReasons: Record<string, VoiceTtsSkipReason>;
+      /** Weakest stored ECAPA score per `FORMID6:variant`. */
+      similarities?: Record<string, number>;
     }
   | { ok: false; reason: string; message: string };
 

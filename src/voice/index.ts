@@ -105,8 +105,10 @@ export {
 export {
   clearAllVoiceSynthesisState,
   clearModVoiceSynthesisState,
+  loadVoiceSimilarityMap,
   loadVoiceSynthesisVersion,
   loadVoiceSynthesisVersionMap,
+  lookupVoiceSimilarity,
   lookupVoiceSynthesisVersion,
   normalizeVoiceSpeakerKey,
   speakerKeyFromVoiceRelPath,

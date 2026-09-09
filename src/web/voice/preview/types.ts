@@ -29,6 +29,8 @@ export type VoiceLinePreview = {
   canGenerateVoice: boolean;
   /** Set when TTS must not run; the editor keeps only original playback. */
   ttsSkipReason: VoiceTtsSkipReason | null;
+  /** ECAPA cosine vs the clone prompt; null when the take has no stored score. */
+  voiceSimilarity: number | null;
 };
 
 /** Speaker row for the voice navigator — counts only, no line payloads. */
@@ -80,6 +82,8 @@ export type VoiceAvailabilityResult =
       stale: string[];
       /** Lines that must not be synthesized, keyed by `FORMID6:variant`. */
       skipReasons: Record<string, VoiceTtsSkipReason>;
+      /** Weakest stored ECAPA score per `FORMID6:variant`. */
+      similarities: Record<string, number>;
     }
   | {
       ok: false;

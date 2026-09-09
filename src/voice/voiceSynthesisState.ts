@@ -8,7 +8,11 @@ export type VoiceSynthesisStateRow = {
   /** Voice-type folder; empty only for rows migrated from the old primary key. */
   speakerKey: string;
   ttsTextVersion: string;
+  /** ECAPA cosine vs the clone prompt; omitted when the TTS host did not send it. */
+  voiceSimilarity?: number | null;
 };
+
+export type VoiceSimilarityMap = Map<string, number>;
 
 /** Trim a speaker folder name; missing values become `''` (legacy rows). */
 export const normalizeVoiceSpeakerKey = (speakerKey: string | null | undefined): string =>
@@ -109,18 +113,59 @@ export const loadVoiceSynthesisVersionMap = async (
   return out;
 };
 
+export const loadVoiceSimilarityMap = async (
+  db: Tx,
+  modId: number,
+  targetLang: string,
+): Promise<VoiceSimilarityMap> => {
+  const { rows } = await db.query<{
+    formid_lower6: string;
+    variant: number;
+    speaker_key: string;
+    voice_similarity: number;
+  }>(
+    `SELECT formid_lower6, variant, speaker_key, voice_similarity
+     FROM voice_synthesis_state
+     WHERE mod_id = $1 AND target_lang = $2 AND voice_similarity IS NOT NULL`,
+    [modId, targetLang.trim().toLowerCase()],
+  );
+  const out: VoiceSimilarityMap = new Map();
+  for (const row of rows) {
+    out.set(
+      voiceSynthesisStateKey(row.speaker_key, row.formid_lower6, row.variant),
+      Number(row.voice_similarity),
+    );
+  }
+  return out;
+};
+
+export const lookupVoiceSimilarity = (
+  stored: ReadonlyMap<string, number>,
+  speakerKey: string | null | undefined,
+  formidLower6: string,
+  variant: number,
+): number | null => {
+  const exact = stored.get(voiceSynthesisStateKey(speakerKey, formidLower6, variant));
+  if (exact !== undefined) return exact;
+  const speaker = normalizeVoiceSpeakerKey(speakerKey);
+  if (!speaker) return null;
+  return stored.get(voiceSynthesisStateKey('', formidLower6, variant)) ?? null;
+};
+
 export const upsertVoiceSynthesisState = async (
   db: Tx,
   row: VoiceSynthesisStateRow,
 ): Promise<void> => {
   await db.query(
     `INSERT INTO voice_synthesis_state (
-       mod_id, formid_lower6, variant, target_lang, speaker_key, tts_text_version, synthesized_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       mod_id, formid_lower6, variant, target_lang, speaker_key, tts_text_version,
+       voice_similarity, synthesized_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
      ON CONFLICT (mod_id, formid_lower6, variant, target_lang, speaker_key)
      DO UPDATE SET
        tts_text_version = EXCLUDED.tts_text_version,
-       synthesized_at = NOW()`,
+       synthesized_at = NOW(),
+       voice_similarity = COALESCE(EXCLUDED.voice_similarity, voice_synthesis_state.voice_similarity)`,
     [
       row.modId,
       row.formidLower6.toUpperCase(),
@@ -128,6 +173,7 @@ export const upsertVoiceSynthesisState = async (
       row.targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(row.speakerKey),
       row.ttsTextVersion,
+      row.voiceSimilarity ?? null,
     ],
   );
 };

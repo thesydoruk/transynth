@@ -50,7 +50,7 @@ export type ProcessDiscoVoiceEntryOptions = {
 };
 
 export type ProcessDiscoVoiceEntryResult =
-  | { kind: 'written'; relPath: string }
+  | { kind: 'written'; relPath: string; voiceSimilarity: number | null }
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
 
@@ -117,7 +117,7 @@ export const processDiscoVoiceEntry = async (
       markup: 'disco',
     });
     // First clip speaker_text is the same spoken EN span as prepared.speakerText.
-    const ttsWav = await synthesizeWav(
+    const tts = await synthesizeWav(
       prepared.text,
       picked.clips.map((clip, index) => {
         const spokenEn =
@@ -146,22 +146,23 @@ export const processDiscoVoiceEntry = async (
         speakerKey,
         targetLang: tgtLang,
         ttsTextVersion: payloadVersion,
+        voiceSimilarity: tts.voiceSimilarity,
       });
       storedVersions.set(versionKey, payloadVersion);
     };
 
     const baselinePath = fs.existsSync(wavDest) ? wavDest : null;
-    if (!force && writeIfChanged(wavDest, ttsWav, baselinePath)) {
+    if (!force && writeIfChanged(wavDest, tts.wav, baselinePath)) {
       await persist();
       log.info(`Disco voice ${wavRel}`);
-      return { kind: 'written', relPath: wavRel };
+      return { kind: 'written', relPath: wavRel, voiceSimilarity: tts.voiceSimilarity };
     }
     if (force) {
       ensureDir(path.dirname(wavDest));
-      fs.writeFileSync(wavDest, ttsWav);
+      fs.writeFileSync(wavDest, tts.wav);
       await persist();
       log.info(`Disco voice ${wavRel}`);
-      return { kind: 'written', relPath: wavRel };
+      return { kind: 'written', relPath: wavRel, voiceSimilarity: tts.voiceSimilarity };
     }
     return { kind: 'skipped', relPath: wavRel };
   } catch (err) {

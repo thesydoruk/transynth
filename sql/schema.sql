@@ -731,6 +731,9 @@ ALTER TABLE voice_synthesis_state ADD CONSTRAINT voice_synthesis_state_pkey
 CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
   ON voice_synthesis_state(mod_id, target_lang);
 
+-- ECAPA cosine of the take vs the clone prompt (Fish Speech X-Voice-Similarity).
+ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS voice_similarity DOUBLE PRECISION;
+
 -- ── Disco wav stem → lockit record (built once at import) ─────────────────────
 -- Audio files are AssetName stems (`Kim Kitsuragi-YARD-324`); PO rows are
 -- Articy msgctxt (`Dialogue Text/0x…`). The voice editor used to zip those

@@ -71,7 +71,14 @@ export type SynthesizeModVoiceLineOptions = {
 };
 
 export type SynthesizeModVoiceLineBuffersResult =
-  | { ok: true; ttsWav: Buffer; fuzData: Buffer; fuzRel: string; payloadVersion: string }
+  | {
+      ok: true;
+      ttsWav: Buffer;
+      fuzData: Buffer;
+      fuzRel: string;
+      payloadVersion: string;
+      voiceSimilarity: number | null;
+    }
   | { ok: false; reason: string; message: string };
 
 /** Resolve absolute path to a localized `.fuz` under the mod localize tree. */
@@ -193,7 +200,7 @@ export const synthesizeModVoiceLineBuffers = async (
 
     // TTS may speak against a different reference transcript than the line
     // source; the version stamp above stays on the line-source transcript.
-    const ttsWav = await synthesizeWav(
+    const tts = await synthesizeWav(
       prepared.text,
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
@@ -208,7 +215,7 @@ export const synthesizeModVoiceLineBuffers = async (
 
     const built = await buildVoicedFuzFromTtsWav(
       game,
-      ttsWav,
+      tts.wav,
       workDir,
       entry.fileName,
       prepared.text,
@@ -225,6 +232,7 @@ export const synthesizeModVoiceLineBuffers = async (
       fuzData: built.fuzData,
       fuzRel,
       payloadVersion,
+      voiceSimilarity: tts.voiceSimilarity,
     };
   } catch (err) {
     if (isDependencyUnavailableError(err)) throw err;
@@ -303,6 +311,7 @@ export const synthesizeModVoiceLine = async (
       speakerKey,
       targetLang: opts.tgtLang,
       ttsTextVersion: built.payloadVersion,
+      voiceSimilarity: built.voiceSimilarity,
     });
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }
@@ -316,6 +325,7 @@ export const synthesizeModVoiceLine = async (
       speakerKey,
       targetLang: opts.tgtLang,
       ttsTextVersion: built.payloadVersion,
+      voiceSimilarity: built.voiceSimilarity,
     });
     return { ok: true, relPath: built.fuzRel, skipped: false };
   }

@@ -11,6 +11,7 @@ import {
   resolveVoiceLineSkipReason,
 } from '../../../voice/prepareVoiceTtsText';
 import { loadVoiceSpeakerRefs, voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
+import { loadVoiceSimilarityMap, lookupVoiceSimilarity } from '../../../voice/voiceSynthesisState';
 import { normalizeVoiceText } from '../../../voice/loadVoiceTranslations';
 import { resolveDiscoVoiceExtractRoot } from '../../../voice/disco/discoverDiscoVoiceFiles';
 import { loadDiscoVoiceClipSummaries } from '../../../voice/disco/loadVoiceClips';
@@ -187,6 +188,7 @@ export const listDiscoVoiceLinesForSpeaker = async (
   }
 
   const speakerRefs = await loadVoiceSpeakerRefs(db, modId);
+  const voiceSimilarities = await loadVoiceSimilarityMap(db, modId, resolvedTargetLang);
   const translationAudio = buildTranslationAudioSet(meta.localizeDir, { disco: true });
   const referencePick = speakerRefs[normalizedKey] ?? null;
 
@@ -221,6 +223,9 @@ export const listDiscoVoiceLinesForSpeaker = async (
       hasTranslationAudio: hasAudio,
       canGenerateVoice: synthesizable && !hasAudio,
       ttsSkipReason,
+      voiceSimilarity: hasAudio
+        ? lookupVoiceSimilarity(voiceSimilarities, normalizedKey, formidLower6, 1)
+        : null,
     };
   });
 

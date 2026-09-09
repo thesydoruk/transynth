@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { DialogLineVoice, VoiceTrackKind } from '../../hooks/useDialogVoice';
+import { VoiceSimilarityScore } from '../../../VoiceSimilarityScore';
 import styles from './DialogLineRow.module.scss';
 
 export interface VoiceButtonsProps {
@@ -43,8 +44,12 @@ export const VoiceButtons = ({ voice }: VoiceButtonsProps) => {
           {t(`dialogs.ttsSkipReason.${voice.ttsSkipReason}`)}
         </span>
       ) : (
-        voice.hasTranslation &&
-        button('translation', t('dialogs.playTranslation'), t('dialogs.playTranslationTitle'))
+        voice.hasTranslation && (
+          <>
+            {button('translation', t('dialogs.playTranslation'), t('dialogs.playTranslationTitle'))}
+            <VoiceSimilarityScore score={voice.voiceSimilarity} />
+          </>
+        )
       )}
     </div>
   );

@@ -122,7 +122,7 @@ export const processVoiceLocalizeEntry = async (
 
     // TTS may use a different reference transcript than the line source; version
     // stamp stays on prepared text so it matches count/availability/rebuild.
-    const ttsWav = await synthesizeWav(
+    const tts = await synthesizeWav(
       prepared.text,
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
@@ -138,7 +138,7 @@ export const processVoiceLocalizeEntry = async (
 
     const { fuzData } = await buildVoicedFuzFromTtsWav(
       game,
-      ttsWav,
+      tts.wav,
       workDir,
       entry.fileName,
       prepared.text,
@@ -153,6 +153,7 @@ export const processVoiceLocalizeEntry = async (
         speakerKey,
         targetLang: tgtLang,
         ttsTextVersion: payloadVersion,
+        voiceSimilarity: tts.voiceSimilarity,
       });
       storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);
@@ -168,6 +169,7 @@ export const processVoiceLocalizeEntry = async (
         speakerKey,
         targetLang: tgtLang,
         ttsTextVersion: payloadVersion,
+        voiceSimilarity: tts.voiceSimilarity,
       });
       storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);

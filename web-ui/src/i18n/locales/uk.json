@@ -504,6 +504,7 @@
     "playSourceTitle": "Прослухати оригінальну озвучку з мода (P)",
     "playTranslation": "Озвучка",
     "playTranslationTitle": "Прослухати згенеровану озвучку перекладу",
+    "voiceSimilarityTitle": "Подібність озвучки до оригіналу: {{score}}",
     "ttsSkipReason": {
       "interject_stub": "Службова репліка — синтез не підтримується",
       "non_speech_marker": "Звук / ремарка — синтез не підтримується",

@@ -15,11 +15,25 @@ export { resolveTtsSynthesisParams, TTS_SYNTHESIS_DEFAULTS } from './ttsSynthesi
 
 /** Fish Speech sets this when the WAV is still silence or a cutoff after retries. */
 export const TTS_SYNTH_WARNING_HEADER = 'x-synth-warning';
+/** Fish Speech ECAPA cosine of the raw take vs the clone prompt. */
+export const TTS_VOICE_SIMILARITY_HEADER = 'x-voice-similarity';
 
 const TTS_WARNING_TEXT_LIMIT = 160;
 
 export const readSynthWarning = (headers: Headers): string =>
   headers.get(TTS_SYNTH_WARNING_HEADER)?.trim() ?? '';
+
+export const readVoiceSimilarity = (headers: Headers): number | null => {
+  const raw = headers.get(TTS_VOICE_SIMILARITY_HEADER)?.trim();
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+};
+
+export type TtsSynthesizeResult = {
+  wav: Buffer;
+  voiceSimilarity: number | null;
+};
 
 const logSynthWarning = (warning: string, text: string): void => {
   const clipped = text.trim().replace(/\s+/g, ' ');
@@ -120,7 +134,7 @@ const synthesizeWavHttp = async (
   text: string,
   reference: string | TtsReferenceInput[],
   options: TtsSynthesizeOptions = {},
-): Promise<Buffer> => {
+): Promise<TtsSynthesizeResult> => {
   const clips = readReferenceClips(reference, options.speakerText);
   const baseUrl = (options.baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
   const form = buildSynthesisForm(text, clips, options);
@@ -142,7 +156,10 @@ const synthesizeWavHttp = async (
     const warning = readSynthWarning(response.headers);
     if (warning) logSynthWarning(warning, text);
     const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    return {
+      wav: Buffer.from(arrayBuffer),
+      voiceSimilarity: readVoiceSimilarity(response.headers),
+    };
   } finally {
     options.signal?.removeEventListener('abort', onAbort);
     clearTimeout(timeout);
@@ -158,7 +175,7 @@ export const synthesizeWav = async (
   text: string,
   reference: string | TtsReferenceInput[],
   options: TtsSynthesizeOptions = {},
-): Promise<Buffer> => {
+): Promise<TtsSynthesizeResult> => {
   throwIfAborted(options.signal);
   await ensureDependencyHealthy('tts');
   throwIfAborted(options.signal);

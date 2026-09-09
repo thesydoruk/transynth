@@ -1,0 +1,19 @@
+.score {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.fail {
+  color: hsl(0 78% 64%);
+}
+
+.warn {
+  color: hsl(38 88% 58%);
+}
+
+.ok {
+  color: hsl(145 52% 52%);
+}

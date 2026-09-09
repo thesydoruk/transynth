@@ -504,6 +504,7 @@
     "playSourceTitle": "Play the voice-over shipped with the mod (P)",
     "playTranslation": "Dub",
     "playTranslationTitle": "Play the generated voice-over of the translation",
+    "voiceSimilarityTitle": "Similarity of the dub to the original: {{score}}",
     "ttsSkipReason": {
       "interject_stub": "Companion stub — synthesis not supported",
       "non_speech_marker": "Sound / stage direction — synthesis not supported",

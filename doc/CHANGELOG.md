@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-09-10
+
+Voice clone quality in the editor:
+
+- Fish Speech `X-Voice-Similarity` (ECAPA cosine vs the clone prompt) is stored on each dubbed take.
+- Voice and Dialogs color-code the score with the same floors as fish_studio (`< 0.25` fail, `< 0.30` warn).
+- The voice list rebuilds when synthesis stamps change, so a finished worker job shows new takes immediately instead of waiting out a cache TTL.
+
 ## 0.3.0 — 2026-09-06
 
 Bethesda lips and tool isolation:

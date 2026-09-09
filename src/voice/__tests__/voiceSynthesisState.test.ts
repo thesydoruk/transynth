@@ -1,4 +1,5 @@
 import {
+  lookupVoiceSimilarity,
   lookupVoiceSynthesisVersion,
   normalizeVoiceSpeakerKey,
   speakerKeyFromVoiceRelPath,
@@ -55,6 +56,25 @@ describe('lookupVoiceSynthesisVersion', () => {
       [voiceSynthesisStateKey('', '005825', 1), 'legacy-hash'],
     ]);
     expect(lookupVoiceSynthesisVersion(both, 'PlayerVoiceMale01', '005825', 1)).toBe('male-hash');
+  });
+});
+
+describe('lookupVoiceSimilarity', () => {
+  const map = new Map([
+    [voiceSynthesisStateKey('PlayerVoiceMale01', '005825', 1), 0.41],
+    [voiceSynthesisStateKey('', '00ABCD', 2), 0.22],
+  ]);
+
+  it('prefers the per-speaker score', () => {
+    expect(lookupVoiceSimilarity(map, 'PlayerVoiceMale01', '005825', 1)).toBe(0.41);
+  });
+
+  it('falls back to a legacy row', () => {
+    expect(lookupVoiceSimilarity(map, 'PlayerVoiceFemale01', '00ABCD', 2)).toBe(0.22);
+  });
+
+  it('is null when nothing was stored', () => {
+    expect(lookupVoiceSimilarity(map, 'PlayerVoiceMale01', '00FFFF', 1)).toBeNull();
   });
 });
 
