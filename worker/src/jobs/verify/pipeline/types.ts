@@ -71,6 +71,7 @@ export type VerifyChunkContext = {
   fixSuspicious: boolean;
   dryRun: boolean;
   persistCtx: BatchPersistContext;
+  mcmSiblingTexts: Map<string, string>;
   shouldCancel?: () => boolean;
   collectIssue?: (issue: LlmVerifyIssue) => void;
 };

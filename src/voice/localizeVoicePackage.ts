@@ -37,6 +37,7 @@ import {
 import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameType } from '../types';
+import { emitVoiceLive } from './voiceLiveEvents';
 
 type VoiceLocalizeWorkItem = {
   entry: VoiceFileEntry;
@@ -200,11 +201,35 @@ export const localizeVoicePackage = async (
       workItems(),
       ttsPipelineConcurrency(),
       async ({ entry, row, prepared }) => {
-        const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
-        finishEligibleStep();
-        if (result.kind === 'written') written.push(result.relPath);
-        else if (result.kind === 'skipped') skipped.push(result.relPath);
-        else warnings.push(result.message);
+        const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
+        const live = {
+          modId,
+          speakerKey,
+          formidLower6: entry.formidLower6,
+          variant: entry.variant,
+        };
+        emitVoiceLive({ type: 'line_started', ...live });
+        try {
+          const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
+          finishEligibleStep();
+          if (result.kind === 'written') {
+            written.push(result.relPath);
+            emitVoiceLive({
+              type: 'line_done',
+              ...live,
+              voiceSimilarity: result.voiceSimilarity,
+            });
+          } else if (result.kind === 'skipped') {
+            skipped.push(result.relPath);
+            emitVoiceLive({ type: 'line_failed', ...live });
+          } else {
+            warnings.push(result.message);
+            emitVoiceLive({ type: 'line_failed', ...live });
+          }
+        } catch (err) {
+          emitVoiceLive({ type: 'line_failed', ...live });
+          throw err;
+        }
       },
       { shouldAbort: options.shouldCancel },
     );

@@ -1,6 +1,27 @@
 /** Which kind of dialog container the editor is browsing. */
 export type DialogScope = 'topics' | 'branches' | 'scenes' | 'conversations';
 
+/** Kind of a node in the quest-oriented dialog navigator. */
+export type DialogTreeKind = 'quest' | 'scene' | 'branch' | 'topic' | 'group';
+
+/**
+ * One node of the dialog tree. Quests own scenes, branches, and leftover
+ * topics; a `group` wraps records that have no quest.
+ */
+export type DialogTreeNode = {
+  kind: DialogTreeKind;
+  scope: DialogScope;
+  key: string;
+  label: string;
+  sublabel: string | null;
+  node_count: number;
+  line_count: number;
+  translated_count: number;
+  qa_count: number;
+  timing_sensitive: boolean;
+  children: DialogTreeNode[];
+};
+
 /**
  * Grammatical gender of a dialog participant.
  *

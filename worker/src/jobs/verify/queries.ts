@@ -6,7 +6,83 @@ import {
   dialogParticipantsLateralSql,
 } from '../../../../src/web/data/queries/dialogs';
 import { buildLlmTranslateChunks } from '../translate/chunking';
+import { parseRecordLocation } from '../../../../src/utils/recordLocation';
+import { partitionByPromptFamily, type LlmPromptFamily } from '../../../../src/llm/promptFamily';
+import { chunkFo4DialogFamily, loadFo4DialogLineGroups } from '../../../../src/llm/fo4DialogChunks';
+import type { DialogSceneContext } from '../../../../src/llm/dialogScene';
 import type { VerifyLlmWorkUnit, VerifyStringRow } from './types';
+
+const stampVerifyRows = (
+  rows: VerifyStringRow[],
+  family: LlmPromptFamily,
+  scene?: DialogSceneContext,
+): VerifyStringRow[] =>
+  rows.map((row) => ({
+    ...row,
+    promptFamily: family,
+    ...(scene ? { dialogScene: scene } : {}),
+  }));
+
+const buildVerifyFamilyChunks = async (
+  db: Tx,
+  rows: VerifyStringRow[],
+  game: string | null,
+): Promise<VerifyStringRow[][]> => {
+  const located = rows.map((row) => ({
+    ...row,
+    ...parseRecordLocation(row.signature, row.path),
+  }));
+  const buckets = partitionByPromptFamily(game, located);
+  const chunks: VerifyStringRow[][] = [];
+  const opts = {
+    batchSize: CONFIG.batchSize,
+    maxSourceChars: CONFIG.llmBatchMaxSourceChars,
+    singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
+  };
+
+  for (const [family, familyRows] of buckets) {
+    if (family === 'dialog') {
+      const groups = await loadFo4DialogLineGroups(
+        db,
+        familyRows.map((row) => row.string_id),
+      );
+      const chunkable = familyRows.map((row) => ({
+        stringId: row.string_id,
+        sourceText: row.source,
+        field: row.field,
+        llmItem: { source: row.source },
+        row,
+      }));
+      for (const { items, scene } of chunkFo4DialogFamily(chunkable, groups, {
+        maxTargets: opts.batchSize,
+        singleRowMaxSourceChars: opts.singleRowMaxSourceChars,
+      })) {
+        chunks.push(
+          stampVerifyRows(
+            items.map((item) => item.row),
+            'dialog',
+            scene,
+          ),
+        );
+      }
+      continue;
+    }
+
+    for (const part of buildLlmTranslateChunks(
+      familyRows.map((row) => ({ row, sourceText: row.source })),
+      opts,
+    )) {
+      chunks.push(
+        stampVerifyRows(
+          part.map((entry) => entry.row),
+          family,
+        ),
+      );
+    }
+  }
+
+  return chunks;
+};
 
 /** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
 export const LLM_VERIFY_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
@@ -86,6 +162,7 @@ export async function* iterateVerifyLlmChunks(
     modId: number;
     srcLang: string;
     targetLang: string;
+    game?: string | null;
     dbChunkSize?: number;
     force?: boolean;
   },
@@ -118,17 +195,10 @@ export async function* iterateVerifyLlmChunks(
         ? loadVerifyChunk(db, opts.modId, opts.srcLang, opts.targetLang, lastId, dbChunkSize, force)
         : Promise.resolve([]);
 
-    const llmChunks = buildLlmTranslateChunks(
-      dbChunk.map((row) => ({ row, sourceText: row.source })),
-      {
-        batchSize: CONFIG.batchSize,
-        maxSourceChars: CONFIG.llmBatchMaxSourceChars,
-        singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
-      },
-    );
+    const llmChunks = await buildVerifyFamilyChunks(db, dbChunk, opts.game ?? null);
 
     for (const part of llmChunks) {
-      yield { page, chunk: part.map((entry) => entry.row) };
+      yield { page, chunk: part };
     }
   }
 }

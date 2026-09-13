@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { postBethesdaToolBinary } from './client';
 
-/** Text must already be prepared (`prepareFaceFxDialogueText`); the sidecar does not respell. */
+/** Raw dialogue. Sidecar picks Ukrainian vs USEnglish; FaceFXWrapper 0.51+ respells. */
 export const generateLipViaRemote = async (
   baseUrl: string,
   game: string,

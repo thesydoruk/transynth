@@ -18,11 +18,22 @@ export interface VortexFolderInfo {
   modName: string;
   /** NexusMods numeric mod ID. */
   nexusModId: number;
+  /** File version from the Vortex suffix (`2-2-1` → `2.2.1`), if present. */
+  version: string | null;
 }
 
 /** Strip optional Vortex installation timestamp suffix (`-1692860656`). */
 const stripVortexTimestamp = (folderName: string): string => {
   return folderName.replace(/-(\d{10})$/, '');
+};
+
+/** `2-2-1` → `2.2.1`; leave dotted / alphanumeric tails as-is. */
+export const formatVortexVersionTail = (raw: string): string => {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.includes('.')) return trimmed;
+  if (/^[\d\w]+(?:-[\d\w]+)+$/.test(trimmed)) return trimmed.replace(/-/g, '.');
+  return trimmed;
 };
 
 /**
@@ -35,8 +46,8 @@ export const parseVortexModFolder = (folderName: string): VortexFolderInfo | nul
 
   const rest = stripVortexTimestamp(trimmed);
 
-  // Non-greedy mod name — first `-{modId}-{fileId}` pair after the title.
-  const match = rest.match(/^(.+?)-(\d{1,9})-(\d{1,9})(?:-([\d\w.]+(?:-[\d\w.]+)*))?$/i);
+  // `{name}-{modId}-{version}` after the timestamp is stripped (`2-2-1` → `2.2.1`).
+  const match = rest.match(/^(.+?)-(\d{1,9})-([\d\w.]+(?:-[\d\w.]+)*)$/i);
   if (match) {
     const nexusModId = Number.parseInt(match[2], 10);
     if (Number.isFinite(nexusModId) && nexusModId > 0) {
@@ -44,6 +55,7 @@ export const parseVortexModFolder = (folderName: string): VortexFolderInfo | nul
         folderName: trimmed,
         modName: match[1].trim(),
         nexusModId,
+        version: match[3] ? formatVortexVersionTail(match[3]) : null,
       };
     }
   }

@@ -15,7 +15,7 @@ import type { ModVoiceGenerateScope } from '../localizeModImportVoice';
 import { loadVoiceSynthesisVersionMap } from '../voiceSynthesisState';
 import type { TtsReferenceMode } from '../voiceToolPaths';
 import type { SpeakerRefCacheEntry } from '../pickVoiceTtsReference';
-import { groupDiscoVoiceFilesBySpeaker } from './discoverDiscoVoiceFiles';
+import { discoVoiceSpeakerKey, groupDiscoVoiceFilesBySpeaker } from './discoverDiscoVoiceFiles';
 import { evaluateDiscoVoiceWork, type DiscoVoiceWorkFilter } from './evaluateDiscoVoiceWork';
 import { resolveDiscoSpokenRowText } from './resolveDiscoSpokenRow';
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
@@ -23,6 +23,7 @@ import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { processDiscoVoiceEntry } from './processDiscoVoiceEntry';
 import { resolveDiscoVoiceFilesFromClips } from './resolveClipEntry';
 import { outputLocalizedWavRelPath } from './voicePaths';
+import { emitVoiceLive } from '../voiceLiveEvents';
 
 export type LocalizeDiscoVoiceOptions = {
   extractDir: string;
@@ -183,32 +184,55 @@ export const localizeDiscoVoicePackage = async (
         continue;
       }
 
-      const result = await processDiscoVoiceEntry(entry, eligible.row, prepared, {
-        db,
+      const live = {
         modId,
-        extractDir,
-        localizeDir,
-        tempRoot,
-        game,
-        ttsBaseUrl,
-        referenceMode,
-        synthesis,
-        tgtLang,
-        force,
-        voiceSources,
-        speakerRefCache,
-        getSiblingEntries: (key, current) =>
-          (bySpeaker.get(key) ?? []).filter(
-            (candidate) =>
-              candidate.formidLower6 !== current.formidLower6 ||
-              candidate.variant !== current.variant,
-          ),
-        storedVersions,
-        signal,
-      });
-      if (result.kind === 'written') written.push(result.relPath);
-      else if (result.kind === 'skipped') skipped.push(result.relPath);
-      else warnings.push(result.message);
+        speakerKey: discoVoiceSpeakerKey(entry),
+        formidLower6: entry.formidLower6,
+        variant: entry.variant,
+      };
+      emitVoiceLive({ type: 'line_started', ...live });
+      try {
+        const result = await processDiscoVoiceEntry(entry, eligible.row, prepared, {
+          db,
+          modId,
+          extractDir,
+          localizeDir,
+          tempRoot,
+          game,
+          ttsBaseUrl,
+          referenceMode,
+          synthesis,
+          tgtLang,
+          force,
+          voiceSources,
+          speakerRefCache,
+          getSiblingEntries: (key, current) =>
+            (bySpeaker.get(key) ?? []).filter(
+              (candidate) =>
+                candidate.formidLower6 !== current.formidLower6 ||
+                candidate.variant !== current.variant,
+            ),
+          storedVersions,
+          signal,
+        });
+        if (result.kind === 'written') {
+          written.push(result.relPath);
+          emitVoiceLive({
+            type: 'line_done',
+            ...live,
+            voiceSimilarity: result.voiceSimilarity,
+          });
+        } else if (result.kind === 'skipped') {
+          skipped.push(result.relPath);
+          emitVoiceLive({ type: 'line_failed', ...live });
+        } else {
+          warnings.push(result.message);
+          emitVoiceLive({ type: 'line_failed', ...live });
+        }
+      } catch (err) {
+        emitVoiceLive({ type: 'line_failed', ...live });
+        throw err;
+      }
     }
   } finally {
     try {

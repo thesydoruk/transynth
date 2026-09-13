@@ -21,6 +21,12 @@ describe('creationKitArchiveRules', () => {
     expect(shouldCompressBa2Entry('MyMod - Voices.ba2', 'Sound\\Voice\\Line.fuz')).toBe(false);
   });
 
+  it('keeps Sound paths uncompressed even in a Main BA2', () => {
+    expect(shouldCompressBa2Entry('MyMod - Main.ba2', 'Sound\\Voice\\Line.fuz')).toBe(false);
+    expect(shouldCompressBa2Entry('MyMod - Main.ba2', 'Sound/FX/Shot.xwm')).toBe(false);
+    expect(shouldCompressBa2Entry('MyMod - Main.ba2', 'Meshes\\Armor.nif')).toBe(true);
+  });
+
   it('compresses non-string BSA entries', () => {
     expect(shouldCompressBsaEntry('MyMod - Strings.bsa', 'strings\\mod_en.strings')).toBe(false);
     expect(shouldCompressBsaEntry('MyMod - Strings.bsa', 'meshes\\a.nif')).toBe(true);

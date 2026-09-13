@@ -3,6 +3,8 @@ import {
   dedupeDialogInfoRowsForImport,
   modImportRecordKey,
   parseModImportRecordKey,
+  SQL_CONVERT_INLINE_INSERT,
+  SQL_CONVERT_LSTRING_INSERT,
   stringAlignKeySql,
   trackModImportBulkResults,
 } from '..';
@@ -134,6 +136,21 @@ describe('stringAlignKeySql', () => {
     expect(expr).toContain("':P' ||");
     expect(expr).toContain('PARTITION BY s.record_id, s.lang');
     expect(expr).toContain('ORDER BY s.id');
+  });
+});
+
+describe('sql convert insert paths', () => {
+  it('pairs localized strings by record and lstring id', () => {
+    expect(SQL_CONVERT_LSTRING_INSERT).toContain('tgt.record_id = src.record_id');
+    expect(SQL_CONVERT_LSTRING_INSERT).toContain('tgt.lstring_id = src.lstring_id');
+    expect(SQL_CONVERT_LSTRING_INSERT).toContain('src.lstring_id IS NOT NULL');
+    expect(SQL_CONVERT_LSTRING_INSERT).not.toContain('OVER (');
+  });
+
+  it('windows only inline rows that have no lstring id', () => {
+    expect(SQL_CONVERT_INLINE_INSERT).toContain('s.lstring_id IS NULL');
+    expect(SQL_CONVERT_INLINE_INSERT).toContain('ROW_NUMBER() OVER (');
+    expect(SQL_CONVERT_INLINE_INSERT).toContain('tgt.ordinal = src.ordinal');
   });
 });
 

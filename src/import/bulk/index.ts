@@ -31,6 +31,8 @@ export { bulkInsertModImportRows } from './bulkInsert';
 export {
   dedupeBulkTranslationRows,
   stringAlignKeySql,
+  SQL_CONVERT_LSTRING_INSERT,
+  SQL_CONVERT_INLINE_INSERT,
   sqlConvertImportedStringsToTranslations,
   bulkUpsertImportTranslations,
   bulkUpsertAutoTranslations,

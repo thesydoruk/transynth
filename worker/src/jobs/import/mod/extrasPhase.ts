@@ -23,7 +23,8 @@ import {
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from '../../../../../src/import/mod/localeHelpers';
 import {
   collectMcmLocalesForModParallel,
-  buildMcmCsvRows,
+  buildMcmImportRows,
+  loadMcmKeyMetaForMod,
 } from '../../../../../src/import/mod/mcmLocales';
 import {
   buildInterfaceTranslateCsvRows,
@@ -66,13 +67,13 @@ export const importMcmStringRows = async (
     `[Mod Import #${ctx.job.id}] MCM: ${mcmLocales.size} locale file(s); using "${mcmSourceLocale}" text stored as lang="${ctx.pluginStringLang}"`,
   );
 
-  const mcmRows = buildMcmCsvRows(sourceMcmMap);
+  const mcmRows = buildMcmImportRows(sourceMcmMap, loadMcmKeyMetaForMod(mcmModDir, ctx.espPath));
   const sourceStringIdByKey = new Map<string, number>();
   const importBatchSize = CONFIG.dbChunkSize;
   const mcmBulkRows: ModImportBulkRow[] = mcmRows.map((r) => ({
-    csvRow: r,
+    csvRow: r.csvRow,
     locale: ctx.pluginStringLang,
-    context: null,
+    context: r.context,
     sourceKind: 'mcm',
   }));
 

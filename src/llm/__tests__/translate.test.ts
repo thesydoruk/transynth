@@ -37,9 +37,9 @@ describe('buildTranslateSystemPrompt', () => {
 describe('prompt examples', () => {
   it('includes JSON few-shot examples in the Ukrainian FO4 prompt', () => {
     const prompt = buildUkrainianTranslateSystemPrompt('en', 'fo4');
-    expect(prompt).toContain('"id": 101');
-    expect(prompt).toContain('¤PH0¤ кришок');
-    expect(prompt).toContain('### 7. ПРИКЛАДИ ВХОДУ ТА ВИХОДУ');
+    expect(prompt).toContain('"id":101');
+    expect(prompt).toContain('кришок.');
+    expect(prompt).toContain('### 6. ПРИКЛАДИ');
     expect(prompt).toContain('source_language');
     expect(prompt).toContain('reference_examples');
     expect(prompt).toContain('### 1. ТЕХНІЧНИЙ ФОРМАТ');
@@ -62,7 +62,9 @@ describe('buildTranslateUserPayload', () => {
       items: [
         {
           id: 42,
-          source: 'Hello ¤PH0¤',
+          source: 'Hello {0}',
+          parts: ['Hello ', 0],
+          slots: [{ i: 0, kind: 'alias' }],
           grup: 'INFO',
           field: 'NAM1',
           form_id: '00123456',
@@ -76,6 +78,19 @@ describe('buildTranslateUserPayload', () => {
       modName: 'TestMod',
       glossary: [{ term: 'Vault', translation: 'Сховище' }],
       styleGuide: 'Use informal tone.',
+      dialogScene: {
+        questEdid: 'MQ102',
+        sceneEdid: 'MQ102Scene',
+        turns: [
+          {
+            id: 42,
+            kind: 'response',
+            speaker: 'Codsworth',
+            source: 'Hello {0}',
+            translate: true,
+          },
+        ],
+      },
     });
 
     expect(payload).toEqual({
@@ -85,10 +100,25 @@ describe('buildTranslateUserPayload', () => {
       mod_name: 'TestMod',
       style_guide: 'Use informal tone.',
       glossary: [{ term: 'Vault', translation: 'Сховище' }],
+      dialog_scene: {
+        quest: 'MQ102',
+        scene: 'MQ102Scene',
+        timing_sensitive: false,
+        turns: [
+          {
+            id: 42,
+            kind: 'response',
+            speaker: 'Codsworth',
+            source: 'Hello {0}',
+            role: 'translate',
+          },
+        ],
+      },
       items: [
         {
           id: 42,
-          source: 'Hello ¤PH0¤',
+          parts: ['Hello ', 0],
+          slots: [{ i: 0, kind: 'alias' }],
           grup: 'INFO',
           field: 'NAM1',
           form_id: '00123456',
@@ -189,6 +219,57 @@ describe('buildTranslateUserPayload', () => {
 });
 
 describe('parseLlmTranslateResponse', () => {
+  it('joins parts using request slots', () => {
+    const raw = JSON.stringify({
+      items: [{ id: 1, parts: ['Слухай, ', 0, ', нам треба ', 1, ' кришок.'] }],
+    });
+    expect(
+      parseLlmTranslateResponse(raw, [1], undefined, [
+        {
+          id: 1,
+          source: 'Listen, {0}, we need {1} caps.',
+          parts: ['Listen, ', 0, ', we need ', 1, ' caps.'],
+          sourceParts: ['Listen, ', 0, ', we need ', 1, ' caps.'],
+          slots: [
+            { i: 0, kind: 'alias' },
+            { i: 1, kind: 'printf' },
+          ],
+          restoreSlots: [
+            { i: 0, raw: '<Alias=Player>', kind: 'alias' },
+            { i: 1, raw: '%d', kind: 'printf' },
+          ],
+          grup: null,
+          edid: null,
+          field: null,
+          form_id: null,
+          context: null,
+        },
+      ]),
+    ).toEqual([{ id: 1, translation: 'Слухай, <Alias=Player>, нам треба %d кришок.' }]);
+  });
+
+  it('treats invalid slot multisets as missing ids', () => {
+    const raw = JSON.stringify({ items: [{ id: 1, parts: ['Привіт, ', 0] }] });
+    expect(() =>
+      parseLlmTranslateResponse(raw, [1], undefined, [
+        {
+          id: 1,
+          source: '{0} {1}',
+          sourceParts: [0, ' ', 1],
+          restoreSlots: [
+            { i: 0, raw: '<Alias=Player>', kind: 'alias' },
+            { i: 1, raw: '%d', kind: 'printf' },
+          ],
+          grup: null,
+          edid: null,
+          field: null,
+          form_id: null,
+          context: null,
+        },
+      ]),
+    ).toThrow(LlmTranslateMissingIdsError);
+  });
+
   it('parses a valid JSON object', () => {
     const raw = JSON.stringify({
       items: [

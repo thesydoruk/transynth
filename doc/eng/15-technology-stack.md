@@ -73,8 +73,8 @@ At a high level, the system supports these flows:
   `src/audioIntel/`. Disco uses the transcript to cut narration away from
   spoken quotes; TTS stays a separate service (`TTS_BASE_URL`). Optional
   in Compose: profile `embedded-audio-intel` (STT only).
-- **FaceFX** writes Bethesda `.lip` files. Ukrainian lines are respelled into
-  Fonix English phonemes first (`src/voice/faceFx/ukToFonix.ts`). LIP and xWMA
+- **FaceFX** writes Bethesda `.lip` files. Cyrillic lines are sent to
+  FaceFXWrapper as `Ukrainian`; the wrapper respells for Fonix. LIP and xWMA
   run in the `bethesda-tools` sidecar (`BETHESDA_TOOLS_URL`).
 
 ---

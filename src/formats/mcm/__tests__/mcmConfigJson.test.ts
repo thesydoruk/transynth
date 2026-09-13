@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
+  extractMcmKeyMetaFromConfigJson,
   extractMcmStringsFromConfigJson,
   findMcmConfigJsonFiles,
   loadMcmLocalesFromConfigJson,
@@ -40,6 +41,46 @@ describe('extractMcmStringsFromConfigJson', () => {
     expect(strings.get('$Page0_DisplayName')).toBe('Advanced');
     expect(strings.get('$iValue:advanced')).toBe('Value');
     expect(strings.get('$iValue:advanced_help')).toBe('Adjust value.');
+
+    const meta = extractMcmKeyMetaFromConfigJson({
+      modName: 'MyMod',
+      displayName: 'My Mod',
+      content: [
+        { type: 'section', text: 'General' },
+        {
+          id: 'bIsEnabled:general',
+          text: 'Enable mod',
+          type: 'switcher',
+          help: 'Turn the mod on or off.',
+        },
+      ],
+      pages: [
+        {
+          pageDisplayName: 'Advanced',
+          content: [
+            { id: 'iValue:advanced', text: 'Value', type: 'slider', help: 'Adjust value.' },
+          ],
+        },
+      ],
+    });
+    expect(meta.get('$bIsEnabled:general')).toEqual({
+      page: undefined,
+      type: 'switcher',
+      help: 'Turn the mod on or off.',
+      label: undefined,
+    });
+    expect(meta.get('$iValue:advanced')).toEqual({
+      page: 'Advanced',
+      type: 'slider',
+      help: 'Adjust value.',
+      label: undefined,
+    });
+    expect(meta.get('$iValue:advanced_help')).toEqual({
+      page: 'Advanced',
+      type: 'slider',
+      help: undefined,
+      label: 'Value',
+    });
   });
 
   it('registers $placeholder references without inline text', () => {

@@ -1,41 +1,43 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
+import { glossaryGameKey } from '../../../llm/prompts/resolveGame';
 import { PENDING_REVIEW_STATUS_SQL } from './constants';
-import { glossaryTermMatchesSource } from './glossaryHelpers';
+import { GLOSSARY_MOD_GAME_SQL, glossaryTermMatchesSource } from './glossaryHelpers';
+import { loadGlossaryTermsForGame } from './glossaryLoad';
 
 // ── Batch glossary enforcement ───────────────────────────────────────────────
 
 /**
- * Batch-enforce glossary terms across all translated strings in scope.
+ * Batch-enforce glossary terms across translated strings for one game.
  *
- * 1. Deletes every existing `glossary_violation` QA issue in the target scope.
- * 2. Fetches **all** translated strings (optionally restricted to one mod).
+ * 1. Deletes existing `glossary_violation` QA issues in the target scope.
+ * 2. Fetches translated strings (optionally one mod; otherwise that game).
  * 3. For each string, checks whether every glossary term that appears in the
- *    English source (matched with `\b` word boundaries) has its required
- *    translation present in the target text (case-insensitive substring).
- * 4. Creates new `glossary_violation` QA issues for any mismatches found.
- *
- * @param db          - Database transaction handle.
- * @param opts.modId  - Optional: restrict enforcement to strings belonging to this mod.
- * @param opts.targetLang - Target language to check (default `'uk'`).
- * @returns `{ checked, violations }` — how many strings were examined and how
- *          many individual glossary-violation issues were created.
+ *    English source has its required translation in the target text.
+ * 4. Creates new `glossary_violation` QA issues for mismatches.
  */
 export const enforceGlossary = async (
   db: Tx,
-  opts: { modId?: number; targetLang?: string; srcLang?: string } = {},
+  opts: { modId?: number; targetLang?: string; srcLang?: string; game?: string | null } = {},
 ): Promise<{ checked: number; violations: number }> => {
   const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
+  const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
 
-  /* ── 1. Load glossary terms (srcLang → targetLang) ───────────────────────── */
-  const { rows: glossaryTerms } = await db.query(
-    `SELECT term, translation FROM glossary
-     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
-    [opts.srcLang ?? CONFIG.defaultSrcLang, targetLang],
-  );
+  let game = opts.game;
+  if (opts.modId) {
+    const { rows: modRows } = await db.query<{ game: string }>(
+      `SELECT game FROM mods WHERE id = $1`,
+      [opts.modId],
+    );
+    game = modRows[0]?.game ?? game;
+  }
+  const gameKey = glossaryGameKey(game);
+
+  const glossaryTerms = await loadGlossaryTermsForGame(db, srcLang, targetLang, gameKey, {
+    requireTranslation: true,
+  });
   if (glossaryTerms.length === 0) return { checked: 0, violations: 0 };
 
-  /* ── 2. Delete existing glossary_violation issues in scope ──────────── */
   if (opts.modId) {
     await db.query(
       `DELETE FROM qa_issues
@@ -49,35 +51,42 @@ export const enforceGlossary = async (
     );
   } else {
     await db.query(
-      `DELETE FROM qa_issues WHERE issue_type = 'glossary_violation' AND target_lang = $1`,
-      [targetLang],
+      `DELETE FROM qa_issues
+       WHERE issue_type = 'glossary_violation' AND target_lang = $1
+         AND src_string_id IN (
+           SELECT s.id FROM strings s
+           JOIN records r ON r.id = s.record_id
+           JOIN mods m ON m.id = r.mod_id
+           WHERE ${GLOSSARY_MOD_GAME_SQL} = $2
+         )`,
+      [targetLang, gameKey],
     );
   }
 
-  /* ── 3. Fetch all strings with their best translation ──────────────── */
   let stringsSQL = `
     SELECT s.id AS string_id, s.text_raw AS source,
            t.id AS translation_id, t.text AS translation
     FROM strings s
     JOIN records r ON r.id = s.record_id
+    JOIN mods m ON m.id = r.mod_id
     JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $1
     WHERE t.text IS NOT NULL AND t.text <> ''
       AND s.is_ignored = FALSE
-      AND t.status IN ${PENDING_REVIEW_STATUS_SQL}`;
+      AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
+      AND ${GLOSSARY_MOD_GAME_SQL} = $2`;
 
-  const params: unknown[] = [targetLang];
+  const params: unknown[] = [targetLang, gameKey];
   if (opts.modId) {
-    stringsSQL += ` AND r.mod_id = $2`;
+    stringsSQL += ` AND r.mod_id = $3`;
     params.push(opts.modId);
   }
 
   const { rows: strings } = await db.query(stringsSQL, params);
 
-  /* ── 4. Build word-boundary checks and scan every string ───────────── */
-  const checks = (glossaryTerms as Array<{ term: string; translation: string }>).map((g) => ({
-    tgtNeedle: g.translation.toLowerCase(),
+  const checks = glossaryTerms.map((g) => ({
+    tgtNeedle: (g.translation ?? '').toLowerCase(),
     term: g.term,
-    translation: g.translation,
+    translation: g.translation ?? '',
   }));
 
   let violations = 0;
@@ -103,7 +112,6 @@ export const enforceGlossary = async (
     }
   }
 
-  /* ── 5. Batch-insert all violations ────────────────────────────────── */
   for (const v of insertValues) {
     await db.query(
       `INSERT INTO qa_issues(src_string_id, translation_id, target_lang, issue_type, severity, message, is_active, updated_at)

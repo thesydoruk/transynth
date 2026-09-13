@@ -100,6 +100,65 @@ describe('BA2 writer', () => {
     }
   });
 
+  it('leaves Sound entries uncompressed even when compressed is requested', () => {
+    const payload = Buffer.alloc(256, 0xab);
+    const ba2 = writeBa2([
+      {
+        name: 'Sound\\Voice\\Fallout4.esm\\NPC\\00123456_1.fuz',
+        data: payload,
+        compressed: true,
+      },
+    ]);
+
+    expect(ba2.readUInt32LE(24 + 24)).toBe(0);
+    expect(ba2.readUInt32LE(24 + 28)).toBe(payload.length);
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formats-ba2-sound-'));
+    const archivePath = path.join(tempDir, 'UASoundPack - Main.ba2');
+    tempArtifacts.push(tempDir);
+    fs.writeFileSync(archivePath, ba2);
+
+    const reader = new Ba2Reader(archivePath);
+    try {
+      expect(reader.extractByName('Sound\\Voice\\Fallout4.esm\\NPC\\00123456_1.fuz')).toEqual(
+        payload,
+      );
+    } finally {
+      reader.close();
+    }
+  });
+
+  it('streams to destPath and still zlib-compresses non-sound files', () => {
+    const voice = Buffer.alloc(256, 0xab);
+    const mesh = Buffer.alloc(256, 0xcd);
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'formats-ba2-stream-'));
+    tempArtifacts.push(tempDir);
+    const voicePath = path.join(tempDir, 'line.fuz');
+    const archivePath = path.join(tempDir, 'Mixed - Main.ba2');
+    fs.writeFileSync(voicePath, voice);
+
+    const byteSize = writeBa2(
+      [
+        { name: 'Sound/Voice/Mod.esp/00123456_1.fuz', absPath: voicePath, compressed: true },
+        { name: 'Meshes\\Armor.nif', data: mesh, compressed: true },
+      ],
+      archivePath,
+    );
+
+    expect(byteSize).toBe(fs.statSync(archivePath).size);
+    const ba2 = fs.readFileSync(archivePath);
+    expect(ba2.readUInt32LE(24 + 24)).toBe(0);
+    expect(ba2.readUInt32LE(24 + 36 + 24)).toBeGreaterThan(0);
+
+    const reader = new Ba2Reader(archivePath);
+    try {
+      expect(reader.extractByName('Sound\\Voice\\Mod.esp\\00123456_1.fuz')).toEqual(voice);
+      expect(reader.extractByName('Meshes\\Armor.nif')).toEqual(mesh);
+    } finally {
+      reader.close();
+    }
+  });
+
   it('round-trips zlib-compressed non-string assets', () => {
     const payload = Buffer.alloc(256, 0xab);
     const ba2 = writeBa2([{ name: 'Meshes\\Armor.nif', data: payload, compressed: true }]);

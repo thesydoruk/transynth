@@ -1,5 +1,7 @@
 import type { LlmVerifyVerdict } from '../../../../src/llm/verifyTranslate';
 import type { DialogParticipantsRow } from '../../../../src/web/data/queries/dialogs';
+import type { LlmPromptFamily } from '../../../../src/llm/promptFamily';
+import type { DialogSceneContext } from '../../../../src/llm/dialogScene';
 
 export type LlmVerifyIssue = {
   stringId: number;
@@ -83,6 +85,8 @@ export type VerifyStringRow = DialogParticipantsRow & {
   path: string | null;
   edid: string | null;
   context: string | null;
+  promptFamily?: LlmPromptFamily;
+  dialogScene?: DialogSceneContext;
 };
 
 export type VerifyLlmWorkUnit = {

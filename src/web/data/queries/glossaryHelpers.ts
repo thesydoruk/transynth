@@ -1,3 +1,5 @@
+import { glossaryGameKey } from '../../../llm/prompts/resolveGame';
+
 export const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -16,4 +18,28 @@ export const glossaryTermMatchesSource = (source: string, term: string): boolean
     return new RegExp(`\\b${escapeRegExp(term)}\\b`).test(source);
   }
   return termWordBoundaryRe(term).test(source);
+};
+
+/** SQL: map Skyrim LE mods onto the SSE glossary key. */
+export const GLOSSARY_MOD_GAME_SQL = `CASE WHEN m.game = 'sle' THEN 'sse' ELSE m.game END`;
+
+export type GlossaryTermRow = {
+  term: string;
+  translation: string | null;
+};
+
+export type GlossaryQaTerm = {
+  term: string;
+  translation: string;
+  game: string;
+};
+
+export const glossaryTermsForGame = (
+  terms: readonly GlossaryQaTerm[],
+  game?: string | null,
+): Array<{ term: string; translation: string }> => {
+  const key = glossaryGameKey(game);
+  return terms
+    .filter((row) => row.game === key)
+    .map((row) => ({ term: row.term, translation: row.translation }));
 };

@@ -1,6 +1,5 @@
 import type { GameType } from '../../../../types';
 import { GAME_UK_GLOSSARIES } from '../../../../resources/glossary';
-import { FO4_UK_GLOSSARY } from '../../../../resources/glossary/fo4-uk';
 import { DISCO_UK_GLOSSARY } from '../../../../resources/glossary/disco-uk';
 import {
   canonicalEnHeader,
@@ -53,16 +52,28 @@ describe('canonical terminology', () => {
     }
   });
 
-  it('every FO4 glossary entry appears in Ukrainian translate and verify prompts as JSON', () => {
-    const translate = buildUkrainianTranslateSystemPrompt('en', 'fo4');
-    const verify = buildUkrainianVerifySystemPrompt('en', 'fo4');
-
-    for (const { term, translation } of FO4_UK_GLOSSARY) {
-      expect(translate).toContain(`"term": "${term}"`);
-      expect(translate).toContain(`"translation": "${translation}"`);
-      expect(verify).toContain(`"term": "${term}"`);
-      expect(verify).toContain(`"translation": "${translation}"`);
-    }
+  it('FO4 Ukrainian prompts do not dump the full glossary JSON', () => {
+    const translate = buildUkrainianTranslateSystemPrompt('en', 'fo4', 'dialog');
+    const verify = buildUkrainianVerifySystemPrompt('en', 'fo4', 'dialog');
+    expect(translate).toContain('Поле "glossary"');
+    expect(verify).toContain('Поле "glossary"');
+    expect(translate).toContain('техно-лицарі');
+    expect(verify).toContain('техно-лицарі');
+    expect(translate).toContain('непередбачені наслідки');
+    expect(verify).toContain('непередбачені наслідки');
+    expect(translate).toContain('посадова інструкція');
+    expect(verify).toContain('посадова інструкція');
+    expect(translate).toContain('характерну хуйню');
+    expect(verify).toContain('характерну хуйню');
+    expect(translate).toContain('гаражні технарі');
+    expect(verify).toContain('гаражні технарі');
+    expect(translate).toContain('народна самооборона');
+    expect(verify).toContain('народна самооборона');
+    expect(translate).toContain('постапокаліптичного писання');
+    expect(verify).toContain('постапокаліптичного писання');
+    expect(translate).not.toContain('"term": "Addictol"');
+    expect(verify).not.toContain('"term": "Addictol"');
+    expect(translate.length).toBeLessThan(30_000);
   });
 
   it('every Disco glossary entry appears in Ukrainian translate and verify prompts as JSON', () => {

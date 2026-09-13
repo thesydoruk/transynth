@@ -74,12 +74,6 @@ export const runTmApplyJob = async (
 
     onEvent({ type: 'started', jobId, total });
 
-    if (total === 0) {
-      status = 'completed';
-      onEvent({ type: 'done', done: 0, total: 0, applied: 0, skipped: 0 });
-      return snapshot();
-    }
-
     const result = await applyTMToMod(db, modId, opts.targetLang, opts.srcLang, {
       shouldCancel: opts.isCancelled,
       onProgress: ({ done: d, total: t, applied: a }) => {

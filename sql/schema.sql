@@ -62,6 +62,13 @@ CREATE TABLE IF NOT EXISTS strings (
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS lstring_id INTEGER;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS text_norm_nopunct TEXT;
 ALTER TABLE strings ADD COLUMN IF NOT EXISTS context TEXT;
+-- FO4 INFO response number for `<FormID>_<N>.fuz` (TRDA, not NAM1 ordinal).
+-- Null on non-voiced strings. Set at import from the plugin walk.
+ALTER TABLE strings ADD COLUMN IF NOT EXISTS voice_variant INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_strings_voice_variant
+  ON strings(voice_variant)
+  WHERE voice_variant IS NOT NULL;
 
 -- ── Dialogue graph tables (DIAL/INFO tree mode) ────────────────────────────
 
@@ -333,9 +340,9 @@ CREATE TABLE IF NOT EXISTS glossary (
   translation TEXT,
   src_lang TEXT NOT NULL DEFAULT 'en',
   tgt_lang TEXT NOT NULL DEFAULT 'uk',
+  game TEXT NOT NULL DEFAULT 'fo4',
   source TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(term, src_lang, tgt_lang)
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Migration: glossary term→pair model
@@ -343,11 +350,16 @@ ALTER TABLE glossary ADD COLUMN IF NOT EXISTS translation TEXT;
 ALTER TABLE glossary ADD COLUMN IF NOT EXISTS src_lang TEXT NOT NULL DEFAULT 'en';
 ALTER TABLE glossary ADD COLUMN IF NOT EXISTS tgt_lang TEXT NOT NULL DEFAULT 'uk';
 ALTER TABLE glossary ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE glossary ADD COLUMN IF NOT EXISTS game TEXT NOT NULL DEFAULT 'fo4';
 -- Drop old constraint and columns if they exist
 ALTER TABLE glossary DROP CONSTRAINT IF EXISTS glossary_term_lang_key;
+ALTER TABLE glossary DROP CONSTRAINT IF EXISTS glossary_term_src_lang_tgt_lang_key;
+ALTER TABLE glossary DROP CONSTRAINT IF EXISTS glossary_term_src_tgt_key;
 ALTER TABLE glossary DROP COLUMN IF EXISTS lang;
 ALTER TABLE glossary DROP COLUMN IF EXISTS count;
-CREATE UNIQUE INDEX IF NOT EXISTS glossary_term_src_tgt_key ON glossary(term, src_lang, tgt_lang);
+DROP INDEX IF EXISTS glossary_term_src_tgt_key;
+CREATE UNIQUE INDEX IF NOT EXISTS glossary_term_src_tgt_game_key
+  ON glossary(term, src_lang, tgt_lang, game);
 
 CREATE TABLE IF NOT EXISTS eet_imports (
   id SERIAL PRIMARY KEY,
@@ -434,6 +446,13 @@ CREATE INDEX IF NOT EXISTS idx_qa_issues_translation_id ON qa_issues(translation
 
 -- Mod editor string grid: join path (records.mod_id + strings.lang)
 CREATE INDEX IF NOT EXISTS idx_strings_record_lang ON strings(record_id, lang);
+-- Import convert: pair localized locales without a window over every language
+CREATE INDEX IF NOT EXISTS idx_strings_record_lstring
+  ON strings(record_id, lstring_id)
+  WHERE lstring_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_strings_inline_ordinal
+  ON strings(record_id, lang, id)
+  WHERE lstring_id IS NULL;
 
 -- Mod editor sort (B-tree; mod_id is always filtered in listStrings)
 CREATE INDEX IF NOT EXISTS idx_records_mod_signature_path ON records(mod_id, signature, path);
@@ -759,6 +778,47 @@ CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_record
   ON disco_voice_clips(record_id)
   WHERE record_id IS NOT NULL;
 
+-- Bethesda source takes: one row per speaker folder × INFO response.
+-- Nate/Nora and shared NPC lines are separate rows (same FormID + variant,
+-- different speaker_key). DNAM aliases keep their own FormID and point at the
+-- borrowed string via string_id + shared_from_formid.
+-- SHA-1 lives in voice_source_file_hashes (join on mod_id + rel_path).
+CREATE TABLE IF NOT EXISTS voice_clips (
+  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  speaker_key TEXT NOT NULL,
+  formid_lower6 TEXT NOT NULL,
+  variant INTEGER NOT NULL CHECK (variant >= 1),
+  formid_hex TEXT NOT NULL,
+  string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
+  rel_path TEXT NOT NULL,
+  shared_from_formid TEXT,
+  PRIMARY KEY (mod_id, speaker_key, formid_lower6, variant)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_clips_mod_rel
+  ON voice_clips(mod_id, rel_path);
+CREATE INDEX IF NOT EXISTS idx_voice_clips_string
+  ON voice_clips(string_id)
+  WHERE string_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_voice_clips_mod_formid
+  ON voice_clips(mod_id, formid_lower6);
+
+-- SHA-1 of the original (English) voice file. Reuse of synthesized takes
+-- compares this instead of hashing the NAS file on every carry-over / TM apply.
+-- Fresh only while size + mtime still match the file on disk.
+CREATE TABLE IF NOT EXISTS voice_source_file_hashes (
+  mod_id    INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
+  rel_path  TEXT NOT NULL,
+  file_size BIGINT NOT NULL,
+  sha1      TEXT NOT NULL,
+  mtime_ms  BIGINT NOT NULL,
+  hashed_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (mod_id, rel_path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_source_file_hashes_mod
+  ON voice_source_file_hashes(mod_id);
+
 -- ── Narrator gender (BOOK/TERM/NOTE) ─────────────────────────────────────────
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender TEXT;
 ALTER TABLE records ADD COLUMN IF NOT EXISTS narrator_gender_source TEXT;
@@ -795,3 +855,72 @@ CREATE TABLE IF NOT EXISTS export_archives (
 
 CREATE INDEX IF NOT EXISTS idx_export_archives_game_created
   ON export_archives(game, created_at DESC);
+
+-- ── Vortex sync isolation ───────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS vortex_groups (
+  id SERIAL PRIMARY KEY,
+  game TEXT NOT NULL DEFAULT 'fo4',
+  group_key TEXT NOT NULL,
+  label TEXT NOT NULL,
+  staging_path TEXT,
+  game_dir TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (game, group_key)
+);
+
+CREATE TABLE IF NOT EXISTS vortex_game_releases (
+  id SERIAL PRIMARY KEY,
+  vortex_group_id INTEGER NOT NULL REFERENCES vortex_groups(id) ON DELETE CASCADE,
+  version_label TEXT NOT NULL,
+  release_hash TEXT NOT NULL,
+  is_current BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (vortex_group_id, release_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vortex_game_releases_group
+  ON vortex_game_releases(vortex_group_id, is_current);
+
+CREATE TABLE IF NOT EXISTS vortex_sync_runs (
+  id SERIAL PRIMARY KEY,
+  vortex_group_id INTEGER NOT NULL REFERENCES vortex_groups(id) ON DELETE CASCADE,
+  game TEXT NOT NULL DEFAULT 'fo4',
+  src_lang TEXT NOT NULL DEFAULT 'en',
+  tgt_lang TEXT NOT NULL DEFAULT 'uk',
+  channel TEXT NOT NULL DEFAULT 'all',
+  status TEXT NOT NULL DEFAULT 'planning',
+  current_stage TEXT,
+  last_completed_stage TEXT,
+  current_mod_id INTEGER,
+  job_id INTEGER,
+  export_archive_id INTEGER REFERENCES export_archives(id) ON DELETE SET NULL,
+  error TEXT,
+  plan_json JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vortex_sync_runs_group
+  ON vortex_sync_runs(vortex_group_id, created_at DESC);
+
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'manual';
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS channel TEXT;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS game_release_id INTEGER REFERENCES vortex_game_releases(id) ON DELETE SET NULL;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS version_label TEXT;
+ALTER TABLE mods ADD COLUMN IF NOT EXISTS is_current BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE mod_imports ADD COLUMN IF NOT EXISTS vortex_group_id INTEGER REFERENCES vortex_groups(id) ON DELETE SET NULL;
+
+DROP INDEX IF EXISTS idx_mods_name_version;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version_manual
+  ON mods(name, version_hash) WHERE vortex_group_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_name_version_vortex
+  ON mods(vortex_group_id, name, version_hash) WHERE vortex_group_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_mods_vortex_group ON mods(vortex_group_id)
+  WHERE vortex_group_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mods_vortex_current
+  ON mods(vortex_group_id, is_current) WHERE vortex_group_id IS NOT NULL;

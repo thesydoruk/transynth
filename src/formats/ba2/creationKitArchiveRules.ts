@@ -2,10 +2,18 @@ import type { GameType } from '../../types';
 
 export type Ba2ArchiveRole = 'main' | 'interface' | 'voices' | 'textures' | 'other';
 
+const ba2EntryPath = (entryPath: string): string => entryPath.toLowerCase().replace(/\//g, '\\');
+
 /** Creation Kit string table extensions — always stored uncompressed. */
 export const isStringsTablePath = (entryPath: string): boolean => {
-  const lower = entryPath.toLowerCase().replace(/\//g, '\\');
+  const lower = ba2EntryPath(entryPath);
   return lower.endsWith('.strings') || lower.endsWith('.dlstrings') || lower.endsWith('.ilstrings');
+};
+
+/** `Sound\` (voice, fx, music cues) — zlib in a GNRL BA2 breaks playback. */
+export const isSoundArchivePath = (entryPath: string): boolean => {
+  const lower = ba2EntryPath(entryPath);
+  return lower === 'sound' || lower.startsWith('sound\\');
 };
 
 /** DX10 texture archives use a different BA2 layout — never repack from loose files. */
@@ -26,12 +34,12 @@ export const classifyBa2Archive = (archiveFileName: string): Ba2ArchiveRole => {
 
 /**
  * FO4/FO76 GNRL BA2 (Creation Kit):
- * - Main / Interface / other GNRL: zlib for all files except string tables
+ * - Main / Interface / other GNRL: zlib except string tables and `Sound\`
  * - Voices: no compression
  * - Textures (DX10): not built here — pass through as-is
  */
 export const shouldCompressBa2Entry = (archiveFileName: string, entryPath: string): boolean => {
-  if (isStringsTablePath(entryPath)) return false;
+  if (isStringsTablePath(entryPath) || isSoundArchivePath(entryPath)) return false;
 
   const role = classifyBa2Archive(archiveFileName);
   if (role === 'textures' || role === 'voices') return false;

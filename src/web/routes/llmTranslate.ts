@@ -55,7 +55,7 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!(await stopJobOfKind(jobId, ['llm-translate']))) {
+    if (!(await stopJobOfKind(jobId, TRANSLATE_GUARD_KINDS))) {
       return reply.code(404).send({ error: 'Running translation job not found' });
     }
     return reply.send({ ok: true });
@@ -68,7 +68,7 @@ export const llmTranslateRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!Number.isInteger(modId) || modId < 1) {
         return reply.code(400).send({ error: 'Invalid modId' });
       }
-      if (!(await stopJobForMod(['llm-translate'], modId))) {
+      if (!(await stopJobForMod(TRANSLATE_GUARD_KINDS, modId))) {
         return reply.code(404).send({ error: 'Running translation job not found' });
       }
       return reply.send({ ok: true });

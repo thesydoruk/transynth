@@ -82,6 +82,23 @@ describe('mergeLangpackEntries', () => {
     ]);
     expect(merged.find((file) => file.name === 'Strings/Shared.STRINGS')?.data).toEqual(newer);
   });
+
+  it('prefers the Vortex file winner over later-mod overwrite', () => {
+    const merged = mergeLangpackEntries(
+      [
+        {
+          entry: { name: 'Interface/Translate_en.txt', data: Buffer.from('inventory') },
+          sourceFolder: 'FallUI - Inventory',
+        },
+        {
+          entry: { name: 'Interface/Translate_en.txt', data: Buffer.from('vr') },
+          sourceFolder: 'FallUI VR-Patch',
+        },
+      ],
+      [{ path: 'Interface/Translate_en.txt', sourceFolder: 'FallUI VR-Patch' }],
+    );
+    expect(merged[0]?.data).toEqual(Buffer.from('vr'));
+  });
 });
 
 describe('exportLangpackZipBatch', () => {

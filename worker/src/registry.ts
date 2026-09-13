@@ -16,6 +16,7 @@ import { skipDetectHandler } from './jobs/skipDetect/handler';
 import { tmApplyHandler } from './jobs/tmApply/handler';
 import { voiceGenerateHandler } from './jobs/voice/handler';
 import { langpackExportHandler } from './jobs/langpackExport/handler';
+import { vortexSyncHandler } from './jobs/vortexSync/handler';
 import type { JobHandler, JobKind } from './types';
 
 const handlers: Record<JobKind, JobHandler> = {
@@ -31,6 +32,7 @@ const handlers: Record<JobKind, JobHandler> = {
   'csv-import': csvImportHandler,
   'eet-import': eetImportHandler,
   'langpack-export': langpackExportHandler,
+  'vortex-sync': vortexSyncHandler,
 };
 
 export const getJobHandler = (kind: JobKind): JobHandler => {

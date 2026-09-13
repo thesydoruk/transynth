@@ -2,6 +2,7 @@ import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { resolveModStoredPath } from '../../modStorage';
 import { getExportArchive, getModsByIds, setExportArchiveProgress } from '../data/queries';
+import type { VortexFileWinner } from '../../vortex/types';
 import { exportLangpackZipToPath, type LangpackBatchMod } from './batchLangpack';
 import {
   exportArchiveRelPath,
@@ -13,6 +14,8 @@ export type LangpackExportJobParams = {
   archiveId: number;
   srcLang: string;
   targetLang: string;
+  fileWinners?: VortexFileWinner[];
+  sourceFolders?: Record<number, string | null>;
 };
 
 export type LangpackExportRunResult = {
@@ -27,6 +30,7 @@ export type LangpackExportRunResult = {
 export const resolveLangpackExportTargets = async (
   db: Tx,
   modIds: number[],
+  sourceFolders?: Record<number, string | null>,
 ): Promise<LangpackBatchMod[]> => {
   const rows = await getModsByIds(db, modIds);
   const byId = new Map(rows.map((row) => [row.id, row]));
@@ -38,6 +42,7 @@ export const resolveLangpackExportTargets = async (
       modId: id,
       modPath: resolveModStoredPath(mod.abs_path),
       game: (mod.game ?? 'fo4') as GameType,
+      sourceFolder: sourceFolders?.[id] ?? null,
     });
   }
   return targets;
@@ -56,7 +61,7 @@ export const runLangpackExportJob = async (
     return { status: 'failed', done: 0, total: 0, error: 'Export archive row not found' };
   }
 
-  const targets = await resolveLangpackExportTargets(db, archive.mod_ids);
+  const targets = await resolveLangpackExportTargets(db, archive.mod_ids, params.sourceFolders);
   const total = targets.length;
   if (total === 0) {
     return { status: 'failed', done: 0, total: 0, error: 'No exportable mods in selection' };
@@ -82,6 +87,7 @@ export const runLangpackExportJob = async (
       await setExportArchiveProgress(db, archive.id, done, progressTotal);
       await opts.onProgress(done, progressTotal);
     },
+    { fileWinners: params.fileWinners },
   );
 
   if (opts.isCancelled()) {

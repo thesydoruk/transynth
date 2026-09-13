@@ -7,6 +7,7 @@ import {
   clearModGeneratedVoice,
   countVoiceLocalizeWork,
   localizeModImportVoice,
+  reuseSynthesizedVoice,
   summarizeVoiceWarnings,
   type ModVoiceGenerateScope,
 } from '../../../../src/voice';
@@ -76,6 +77,13 @@ export const runModVoiceGenerateJob = async (
   }
   // Always missing after an optional wipe so a later worker restart can resume.
   const scope: ModVoiceGenerateScope = 'missing';
+  let reused = 0;
+  if (!opts.resetVoice) {
+    const voiceReuse = await reuseSynthesizedVoice(db, modId, opts.targetLang, {
+      speakerKey,
+    });
+    reused = voiceReuse.copied;
+  }
   let total = await countVoiceLocalizeWork(
     db,
     modId,
@@ -88,12 +96,37 @@ export const runModVoiceGenerateJob = async (
     opts.game,
     paths.extractDir,
   );
-  if (total === 0) {
+  if (total === 0 && reused === 0) {
     throw new Error(
       speakerKey
         ? `No missing or stale voice lines to synthesize for ${speakerKey}`
         : 'No missing or stale voice lines to synthesize',
     );
+  }
+  if (total === 0) {
+    log.info(
+      `[Voice generate mod #${modId}] job #${jobId} reused ${reused} take(s); nothing left to synthesize`,
+    );
+    onEvent({ type: 'started', jobId, total: reused });
+    onEvent({
+      type: 'done',
+      done: reused,
+      total: reused,
+      written: reused,
+      skipped: 0,
+      warningCount: 0,
+    });
+    return {
+      jobId,
+      modId,
+      status: 'completed',
+      done: reused,
+      total: reused,
+      written: reused,
+      skipped: 0,
+      warningCount: 0,
+      error: null,
+    };
   }
 
   let done = 0;
@@ -139,7 +172,7 @@ export const runModVoiceGenerateJob = async (
       },
     });
 
-    written = result.written.length;
+    written = result.written.length + reused;
     skipped = result.skipped.length;
     warningCount = result.warnings.length;
 

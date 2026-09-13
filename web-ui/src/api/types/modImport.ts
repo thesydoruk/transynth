@@ -14,6 +14,7 @@ export type ModImportJob = {
   created_at: string;
   updated_at: string;
   running: boolean;
+  vortex_group_id?: number | null;
 };
 
 export type ModImportDeleteDataMode = 'job' | 'rows' | 'mod';

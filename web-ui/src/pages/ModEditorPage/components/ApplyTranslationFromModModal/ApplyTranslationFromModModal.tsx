@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type Mod } from '../../../../api';
+import { formatModDisplayName } from '../../../ModsPage/modVersions';
 import { Button } from '../../../../components/Button';
 import { ModalShell } from '../../../../components/ModalShell';
 import { modListQueryKey } from '../../../../langDefaults';
@@ -98,7 +99,7 @@ export const ApplyTranslationFromModModal = ({
           ) : (
             sourceMods.map((mod) => (
               <option key={mod.id} value={mod.id}>
-                {mod.name} (#{mod.id})
+                {formatModDisplayName(mod)} (#{mod.id})
               </option>
             ))
           )}

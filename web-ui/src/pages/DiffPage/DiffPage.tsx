@@ -215,6 +215,13 @@ export const DiffPage = () => {
                 <b className={s.carryOrange}>{carryOver.data.needsReview}</b>
                 {' · '}
                 {t('diff.skipped')}: <b className={s.carryGrey}>{carryOver.data.skipped}</b>
+                {carryOver.data.voiceCopied != null && (
+                  <>
+                    {' · '}
+                    {t('diff.voiceCopied')}:{' '}
+                    <b className={s.carryGreen}>{carryOver.data.voiceCopied}</b>
+                  </>
+                )}
               </span>
             )}
             {/* After carry-over, offer a direct link to the new mod's editor filtered to drafts */}

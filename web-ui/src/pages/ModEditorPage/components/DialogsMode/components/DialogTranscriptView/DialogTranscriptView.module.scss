@@ -166,18 +166,97 @@
   }
 }
 
+.entryWrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.gutter {
+  display: flex;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.gutterGap,
+.rail,
+.tee,
+.elbow {
+  position: relative;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.rail::before,
+.tee::before,
+.elbow::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  width: 1px;
+  background: var(--border);
+}
+
+.rail::before {
+  top: 0;
+  bottom: 0;
+}
+
+.tee::before {
+  top: 0;
+  bottom: 0;
+}
+
+.elbow::before {
+  top: 0;
+  height: 18px;
+}
+
+.tee::after,
+.elbow::after {
+  content: '';
+  position: absolute;
+  top: 17px;
+  left: 7px;
+  width: 9px;
+  height: 1px;
+  background: var(--border);
+}
+
+.elbow::before {
+  height: 18px;
+}
+
 .entry {
   /* A quest conversation can run to several hundred turns; skipping layout and
      paint for the off-screen ones keeps scrolling smooth without virtualizing
      variable-height cards that hold live editors. */
   content-visibility: auto;
   contain-intrinsic-size: auto 90px;
-  margin-bottom: 8px;
+  flex: 1;
+  min-width: 0;
   padding: 6px 8px 8px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-left: 3px solid hsl(var(--speaker-hue, 40) 45% 45%);
   border-radius: 5px;
+}
+
+.branchToggle {
+  flex-shrink: 0;
+  width: 16px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-bright);
+  }
 }
 
 .entryHead {

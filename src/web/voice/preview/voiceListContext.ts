@@ -23,7 +23,12 @@ import {
 } from '../../../voice/disco/discoverDiscoVoiceFiles';
 import { loadDiscoVoiceClipSummaries } from '../../../voice/disco/loadVoiceClips';
 import { ensureDiscoVoiceClips } from '../../../voice/disco/persistVoiceClips';
-import { resolveVoicePackageContext, type VoicePackageContext } from './context';
+import { ensureBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
+import {
+  fillVoiceLocalizeDirFromImport,
+  resolveVoicePackageContext,
+  type VoicePackageContext,
+} from './context';
 import { loadVoiceFolderGenders, type VoiceFolderGender } from './speakerGender';
 import { discoverVoiceEntries, loadSpeakerNamesFromDb } from './voiceEntries';
 import { loadDiscoSpeakerGenders, loadDiscoSpeakerNames } from './discoVoiceList';
@@ -136,6 +141,7 @@ const loadVoiceListContext = async (
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
+  await fillVoiceLocalizeDirFromImport(db, modId, ctx);
 
   if (isDisco) {
     const extractRoot = resolveDiscoVoiceExtractRoot(pluginPath);
@@ -180,6 +186,16 @@ const loadVoiceListContext = async (
         voiceSimilarities,
       },
     };
+  }
+
+  try {
+    await ensureBethesdaVoiceClips(db, modId, srcLang);
+  } catch (err) {
+    log.warn(
+      `Voice clips: ensure failed for mod ${modId}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
   }
 
   const voiceFiles = discoverVoiceEntries(ctx);

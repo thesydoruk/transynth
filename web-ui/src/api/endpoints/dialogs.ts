@@ -5,6 +5,7 @@ import type {
   DialogScope,
   DialogSpeaker,
   DialogTranscript,
+  DialogTreeNode,
   SpeakerGender,
 } from '../types';
 
@@ -12,6 +13,10 @@ const langQuery = (srcLang: string, targetLang: string) =>
   `srcLang=${encodeURIComponent(srcLang)}&targetLang=${encodeURIComponent(targetLang)}`;
 
 export const dialogsEndpoints = {
+  /** Quest-oriented forest of scenes, branches, and topics, with progress. */
+  tree: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
+    req<DialogTreeNode[]>(`/api/dialogs/tree?modId=${modId}&${langQuery(srcLang, targetLang)}`),
+
   /** Every selectable group of a scope, with translation progress counters. */
   groups: (modId: number, scope: DialogScope, srcLang = getSrcLang(), targetLang = getTgtLang()) =>
     req<DialogGroup[]>(

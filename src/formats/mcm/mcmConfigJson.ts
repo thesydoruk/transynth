@@ -8,6 +8,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import type { McmKeyMeta } from './mcmContext';
 
 type McmContentItem = {
   id?: string;
@@ -52,10 +53,27 @@ const addMcmConfigString = (out: Map<string, string>, key: string, value: string
   if (!out.has(key)) out.set(key, value);
 };
 
+const resolveConfigStringKey = (fallbackKey: string, value: string): string => {
+  const trimmed = value.trim();
+  return isTranslationReference(trimmed) ? trimmed : fallbackKey;
+};
+
+const putMcmKeyMeta = (meta: Map<string, McmKeyMeta>, key: string, patch: McmKeyMeta): void => {
+  const current = meta.get(key) ?? {};
+  meta.set(key, {
+    page: patch.page || current.page,
+    type: patch.type || current.type,
+    help: patch.help || current.help,
+    label: patch.label || current.label,
+  });
+};
+
 const walkContent = (
   out: Map<string, string>,
+  meta: Map<string, McmKeyMeta>,
   items: McmContentItem[] | undefined,
   pageIndex: number | null,
+  pageName: string | null,
 ): void => {
   if (!items) return;
 
@@ -64,48 +82,95 @@ const walkContent = (
 
   for (const item of items) {
     itemSeq++;
+    const type = item.type?.trim() || undefined;
+    const fallbackLabel = item.id ? `$${item.id}` : `$${scope}_${item.type ?? 'item'}_${itemSeq}`;
+    const fallbackHelp = item.id
+      ? `$${item.id}_help`
+      : `$${scope}_${item.type ?? 'item'}_${itemSeq}_help`;
 
+    let labelKey: string | null = null;
+    let labelText: string | null = null;
     if (typeof item.text === 'string') {
-      const key = item.id ? `$${item.id}` : `$${scope}_${item.type ?? 'item'}_${itemSeq}`;
-      addMcmConfigString(out, key, item.text);
+      labelKey = resolveConfigStringKey(fallbackLabel, item.text);
+      labelText = item.text.trim();
+      addMcmConfigString(out, fallbackLabel, item.text);
     }
 
+    let helpKey: string | null = null;
+    let helpText: string | null = null;
     if (typeof item.help === 'string') {
-      const key = item.id ? `$${item.id}_help` : `$${scope}_${item.type ?? 'item'}_${itemSeq}_help`;
-      addMcmConfigString(out, key, item.help);
+      helpKey = resolveConfigStringKey(fallbackHelp, item.help);
+      helpText = item.help.trim();
+      addMcmConfigString(out, fallbackHelp, item.help);
+    }
+
+    if (labelKey) {
+      putMcmKeyMeta(meta, labelKey, {
+        page: pageName ?? undefined,
+        type,
+        help: helpText || undefined,
+      });
+    }
+    if (helpKey) {
+      putMcmKeyMeta(meta, helpKey, {
+        page: pageName ?? undefined,
+        type,
+        label: labelText || undefined,
+      });
     }
 
     if (item.content?.length) {
-      walkContent(out, item.content, pageIndex);
+      walkContent(out, meta, item.content, pageIndex, pageName);
     }
   }
+};
+
+type McmConfigExtract = {
+  strings: Map<string, string>;
+  meta: Map<string, McmKeyMeta>;
+};
+
+const extractMcmConfig = (config: unknown): McmConfigExtract => {
+  const strings = new Map<string, string>();
+  const meta = new Map<string, McmKeyMeta>();
+  if (!config || typeof config !== 'object') return { strings, meta };
+
+  const root = config as McmConfigJson;
+
+  if (typeof root.displayName === 'string') {
+    addMcmConfigString(strings, '$displayName', root.displayName);
+    putMcmKeyMeta(meta, resolveConfigStringKey('$displayName', root.displayName), {
+      type: 'modName',
+    });
+  }
+
+  walkContent(strings, meta, root.content, null, null);
+
+  for (let pageIndex = 0; pageIndex < (root.pages?.length ?? 0); pageIndex++) {
+    const page = root.pages![pageIndex]!;
+    const pageName = typeof page.pageDisplayName === 'string' ? page.pageDisplayName.trim() : '';
+    if (pageName) {
+      const pageKey = `$Page${pageIndex}_DisplayName`;
+      addMcmConfigString(strings, pageKey, page.pageDisplayName!);
+      putMcmKeyMeta(meta, resolveConfigStringKey(pageKey, page.pageDisplayName!), {
+        type: 'page',
+      });
+    }
+    walkContent(strings, meta, page.content, pageIndex, pageName || null);
+  }
+
+  return { strings, meta };
 };
 
 /**
  * Extract MCM translation keys and source text from a parsed config.json object.
  */
-export const extractMcmStringsFromConfigJson = (config: unknown): Map<string, string> => {
-  const out = new Map<string, string>();
-  if (!config || typeof config !== 'object') return out;
+export const extractMcmStringsFromConfigJson = (config: unknown): Map<string, string> =>
+  extractMcmConfig(config).strings;
 
-  const root = config as McmConfigJson;
-
-  if (typeof root.displayName === 'string') {
-    addMcmConfigString(out, '$displayName', root.displayName);
-  }
-
-  walkContent(out, root.content, null);
-
-  for (let pageIndex = 0; pageIndex < (root.pages?.length ?? 0); pageIndex++) {
-    const page = root.pages![pageIndex]!;
-    if (typeof page.pageDisplayName === 'string') {
-      addMcmConfigString(out, `$Page${pageIndex}_DisplayName`, page.pageDisplayName);
-    }
-    walkContent(out, page.content, pageIndex);
-  }
-
-  return out;
-};
+/** Page / control-type / label↔help hints from a parsed config.json. */
+export const extractMcmKeyMetaFromConfigJson = (config: unknown): Map<string, McmKeyMeta> =>
+  extractMcmConfig(config).meta;
 
 /** List config.json files under MCM/Config subfolders in a mod directory. */
 export const findMcmConfigJsonFiles = (modDir: string): string[] => {
@@ -177,4 +242,35 @@ export const loadMcmLocalesFromConfigJson = (
   }
 
   return locales;
+};
+
+/** Load page/type/help metadata from matching config.json files in a mod folder. */
+export const loadMcmKeyMetaFromConfigJson = (
+  modDir: string,
+  modPrefixes: string[],
+): Map<string, McmKeyMeta> => {
+  const merged = new Map<string, McmKeyMeta>();
+
+  for (const configPath of findMcmConfigJsonFiles(modDir)) {
+    if (!mcmConfigJsonMatchesMod(configPath, modPrefixes)) continue;
+
+    let config: unknown;
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+      continue;
+    }
+
+    for (const [key, value] of extractMcmKeyMetaFromConfigJson(config)) {
+      const current = merged.get(key) ?? {};
+      merged.set(key, {
+        page: value.page || current.page,
+        type: value.type || current.type,
+        help: value.help || current.help,
+        label: value.label || current.label,
+      });
+    }
+  }
+
+  return merged;
 };

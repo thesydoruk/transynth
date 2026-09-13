@@ -1,4 +1,5 @@
 import type { LlmReferenceExample } from './translate';
+import { compactLlmPartsFields } from './textParts';
 
 const presentText = (value: string | null | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -25,13 +26,23 @@ export const compactLlmItemFields = (item: CompactableItemFields): Record<string
 /** RAG hints for the model: text + location only, no match_method / similarity. */
 export const compactLlmReferenceExample = (
   example: LlmReferenceExample,
-): { source: string; translation: string } & Record<string, string> => ({
-  source: example.source,
-  translation: example.translation,
-  ...(presentText(example.grup) ? { grup: example.grup!.trim() } : {}),
-  ...(presentText(example.edid) ? { edid: example.edid!.trim() } : {}),
-  ...(presentText(example.field) ? { field: example.field!.trim() } : {}),
-});
+): Record<string, unknown> => {
+  const structured = compactLlmPartsFields(example.parts, example.slots);
+  const textFields = structured.parts
+    ? {
+        ...structured,
+        ...(example.translation_parts && example.translation_parts.length > 0
+          ? { translation_parts: [...example.translation_parts] }
+          : { translation: example.translation }),
+      }
+    : { source: example.source, translation: example.translation };
+  return {
+    ...textFields,
+    ...(presentText(example.grup) ? { grup: example.grup!.trim() } : {}),
+    ...(presentText(example.edid) ? { edid: example.edid!.trim() } : {}),
+    ...(presentText(example.field) ? { field: example.field!.trim() } : {}),
+  };
+};
 
 export const compactLlmReferenceExamples = (
   examples: LlmReferenceExample[] | undefined,

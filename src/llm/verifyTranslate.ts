@@ -6,9 +6,12 @@
 import { chatWithFallback } from './index';
 import { participantPayloadFields } from './dialogParticipants';
 import { compactLlmItemFields, compactLlmReferenceExamples } from './llmPayloadCompact';
+import { assembleTranslatedText, compactLlmPartsFields } from './textParts';
 import { parseLlmJson } from './jsonParse';
 import { buildEnglishVerifySystemPrompt } from './prompts/en';
 import { buildUkrainianVerifySystemPrompt } from './prompts/uk';
+import { resolveBatchPromptFamily, type LlmPromptFamily } from './promptFamily';
+import { dialogScenePayload } from './dialogScene';
 import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, LlmResponseTruncatedError } from './translate';
@@ -54,9 +57,10 @@ export const buildVerifySystemPrompt = (
   srcLang: string,
   targetLang: string,
   game?: GameType | string | null,
+  family?: LlmPromptFamily | null,
 ): string => {
   if (isUkrainianTargetLang(targetLang)) {
-    return buildUkrainianVerifySystemPrompt(srcLang, game);
+    return buildUkrainianVerifySystemPrompt(srcLang, game, family);
   }
   return buildEnglishVerifySystemPrompt(srcLang, targetLang, game);
 };
@@ -68,14 +72,24 @@ export const buildVerifyTranslateUserPayload = (opts: Omit<LlmVerifyOptions, 'mo
   game: opts.game ?? null,
   ...(opts.modName?.trim() ? { mod_name: opts.modName } : {}),
   ...(opts.glossary && opts.glossary.length > 0 ? { glossary: opts.glossary } : {}),
-  items: opts.items.map((item) => ({
-    id: item.id,
-    source: item.source,
-    translation: item.translation,
-    ...compactLlmItemFields(item),
-    ...participantPayloadFields(item),
-    ...compactLlmReferenceExamples(item.reference_examples),
-  })),
+  ...(opts.dialogScene ? { dialog_scene: dialogScenePayload(opts.dialogScene) } : {}),
+  items: opts.items.map((item) => {
+    const structured = compactLlmPartsFields(item.parts, item.slots);
+    return {
+      id: item.id,
+      ...(structured.parts
+        ? {
+            ...structured,
+            ...(item.translation_parts && item.translation_parts.length > 0
+              ? { translation_parts: item.translation_parts }
+              : { translation: item.translation }),
+          }
+        : { source: item.source, translation: item.translation }),
+      ...compactLlmItemFields(item),
+      ...participantPayloadFields(item),
+      ...compactLlmReferenceExamples(item.reference_examples),
+    };
+  }),
 });
 
 const clampConfidence = (value: unknown): number => {
@@ -90,13 +104,25 @@ const parseVerdict = (value: unknown): LlmVerifyVerdict => {
   return 'suspicious';
 };
 
-const parseSuggestion = (value: unknown, verdict: LlmVerifyVerdict): string | null =>
-  parseVerifySuggestionValue(value, verdict);
+const parseSuggestion = (
+  value: unknown,
+  verdict: LlmVerifyVerdict,
+  item?: LlmVerifyItem,
+): string | null => {
+  const assembled = assembleTranslatedText(
+    Array.isArray(value) ? value : undefined,
+    typeof value === 'string' ? value : undefined,
+    item?.sourceParts,
+    item?.restoreSlots,
+  );
+  return parseVerifySuggestionValue(assembled, verdict);
+};
 
 const parseVerifyItemsFromRaw = (
   raw: string,
   expectedIds?: number[],
   completionMeta?: ChatCompletionMeta,
+  requestItems?: readonly LlmVerifyItem[],
 ): Map<number, LlmVerifyItemResult> => {
   const parsed = parseLlmJson(raw, {
     operation: 'verify',
@@ -135,7 +161,11 @@ const parseVerifyItemsFromRaw = (
           ? row.reason.trim()
           : 'No reason provided.',
       confidence: clampConfidence(row.confidence),
-      suggestion: parseSuggestion(row.suggestion, verdict),
+      suggestion: parseSuggestion(
+        row.suggestion,
+        verdict,
+        requestItems?.find((item) => item.id === id),
+      ),
     });
   }
 
@@ -163,7 +193,12 @@ const callVerifyTranslateLlm = async (opts: LlmVerifyOptions, items: LlmVerifyIt
     messages: [
       {
         role: 'system',
-        content: buildVerifySystemPrompt(opts.srcLang, opts.targetLang, opts.game),
+        content: buildVerifySystemPrompt(
+          opts.srcLang,
+          opts.targetLang,
+          opts.game,
+          resolveBatchPromptFamily(opts.game, items, opts.promptFamily),
+        ),
       },
       { role: 'user', content: JSON.stringify(payload) },
     ],
@@ -177,8 +212,9 @@ export const parseLlmVerifyTranslateResponse = (
   raw: string,
   expectedItemIds: number[],
   completionMeta?: ChatCompletionMeta,
+  requestItems?: readonly LlmVerifyItem[],
 ): LlmVerifyItemResult[] => {
-  const byId = parseVerifyItemsFromRaw(raw, expectedItemIds, completionMeta);
+  const byId = parseVerifyItemsFromRaw(raw, expectedItemIds, completionMeta, requestItems);
 
   const items: LlmVerifyItemResult[] = [];
   const missingIds: number[] = [];
@@ -220,7 +256,7 @@ export const verifyTranslationsWithLlm = async (
     );
   }
 
-  const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta);
+  const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta, maskedItems);
   const unmasked = unmaskVerifySuggestions(parsed, mappingById);
   return finalizeVerifyItemResults(opts.items, unmasked, opts.game);
 };

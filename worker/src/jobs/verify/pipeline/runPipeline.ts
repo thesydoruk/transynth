@@ -14,6 +14,7 @@ import { isLlmTimeoutError } from '../../../../../src/llm/retry';
 import { llmChatPipelineConcurrency } from '../../../../../src/llm/requestPool';
 import { logVerify } from '../../../../../src/logging/loggers';
 import { loadGlossaryEntries } from '../../shared/glossaryForLlm';
+import { loadMcmSiblingTextsByModId } from '../../../../../src/web/data/queries/mcmSiblings';
 import { countVerifiableStrings, iterateVerifyLlmChunks } from '../queries';
 import { createPersistPool, drainPersistJobs, type BatchPersistCounters } from './batchPersist';
 import {
@@ -62,7 +63,15 @@ export const runModVerifyPipeline = async (
     await requirePgvectorForRag(db);
   }
 
-  const glossaryAll = await loadGlossaryEntries(db, opts.srcLang, opts.targetLang);
+  let game = opts.game;
+  if (!game) {
+    const { rows: modRows } = await db.query<{ game: string }>(
+      `SELECT game FROM mods WHERE id = $1`,
+      [opts.modId],
+    );
+    game = modRows[0]?.game ?? null;
+  }
+  const glossaryAll = await loadGlossaryEntries(db, opts.srcLang, opts.targetLang, game);
   const projectSettings = await getAllProjectSettings(db);
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
@@ -122,6 +131,7 @@ export const runModVerifyPipeline = async (
     logAction,
   };
 
+  const mcmSiblingTexts = await loadMcmSiblingTextsByModId(db, opts.modId, opts.srcLang);
   const chunkCtx = createVerifyChunkContext(
     db,
     opts,
@@ -133,6 +143,7 @@ export const runModVerifyPipeline = async (
     fixSuspicious,
     dryRun,
     handlers.collectIssue,
+    mcmSiblingTexts,
   );
   persistCtx.model = chunkCtx.model;
 
@@ -156,6 +167,7 @@ export const runModVerifyPipeline = async (
       modId: opts.modId,
       srcLang: opts.srcLang,
       targetLang: opts.targetLang,
+      game: opts.game,
       dbChunkSize,
       force,
     })) {

@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DialogLine } from '../../../../api';
+import { treeNodeId } from './dialogTreeView';
 import { DialogNavigator } from './components/DialogNavigator';
 import { DialogTranscriptView, type DialogLineHandlers } from './components/DialogTranscriptView';
 import type { CommitAdvance } from './components/DialogLineRow';
@@ -27,8 +28,8 @@ export interface DialogsModeProps {
 }
 
 /**
- * Dialogs editor: a navigator of topics, branches, scenes, and quest
- * conversations beside the transcript of the selected one.
+ * Dialogs editor: a quest tree of scenes, branches, and topics beside the
+ * transcript of the selected node.
  *
  * Everything the user picks lives in the URL, so a reload or a shared link
  * reopens the same line. Editing is keyboard-driven — see `dialogs.hotkeyHint`
@@ -61,6 +62,7 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
     transcriptQueryKey: data.transcriptQueryKey,
     groupsQueryKey: data.groupsQueryKey,
     activeKey: data.activeKey,
+    activeScope: data.activeScope,
     targetLang,
   });
 
@@ -73,16 +75,19 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
   });
 
   const stepGroup = (delta: number) => {
-    const groups = data.visibleGroups;
-    if (groups.length === 0) return;
-    const current = groups.findIndex((group) => group.key === data.activeKey);
+    const rows = data.rows.filter((row) => row.node.kind !== 'group');
+    if (rows.length === 0) return;
+    const current = rows.findIndex(
+      (row) => row.node.scope === data.activeScope && row.node.key === data.activeKey,
+    );
     const next =
       current < 0
         ? delta > 0
           ? 0
-          : groups.length - 1
-        : Math.min(Math.max(current + delta, 0), groups.length - 1);
-    state.setGroupKey(groups[next].key);
+          : rows.length - 1
+        : Math.min(Math.max(current + delta, 0), rows.length - 1);
+    const node = rows[next].node;
+    state.setSelection(node.scope, node.key);
   };
 
   const commitLine = (line: DialogLine, text: string, advance: CommitAdvance) => {
@@ -117,8 +122,11 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
   };
 
   useDialogsKeyboard({
-    setScope: state.setScope,
     stepGroup,
+    setSelectedExpanded: (open) => {
+      if (!data.activeNode) return;
+      data.setNodeExpanded(treeNodeId(data.activeNode), open);
+    },
     stepLine: (delta) => cursor.step(delta),
     goToNextTodo: () => cursor.goToNextTodo(),
     edit: () => cursor.edit(),
@@ -134,30 +142,35 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
   const emptyMessage =
     data.activeKey !== null
       ? null
-      : data.groupsQuery.isLoading
+      : data.treeQuery.isLoading
         ? t('dialogs.loadingGroups')
-        : data.groups.length === 0
-          ? t(`dialogs.empty.${state.scope}`)
+        : data.tree.length === 0
+          ? t('dialogs.empty.tree')
           : t('dialogs.selectGroup');
+
+  const kindLabel = data.activeNode ? t(`dialogs.tree.kind.${data.activeNode.kind}`) : null;
 
   return (
     <div className={styles.root}>
       <div className={styles.navigatorPane} style={{ width }}>
         <DialogNavigator
-          scope={state.scope}
-          onScopeChange={state.setScope}
           search={state.search}
           onSearchChange={state.setSearch}
           sort={state.sort}
           onSortChange={state.setSort}
           hideDone={state.hideDone}
           onHideDoneChange={state.setHideDone}
-          groups={data.visibleGroups}
-          totalCount={data.groups.length}
+          rows={data.rows}
+          visibleTree={data.visibleTree}
+          totalQuestCount={data.totalQuestCount}
+          activeScope={data.activeScope}
           activeKey={data.activeKey}
-          onSelect={state.setGroupKey}
+          onSelect={state.setSelection}
+          onToggle={data.toggleExpanded}
+          onExpandAll={data.expandAll}
+          onCollapseAll={data.collapseAll}
           onStepGroup={stepGroup}
-          isLoading={data.groupsQuery.isLoading}
+          isLoading={data.treeQuery.isLoading}
           searchRef={searchRef}
         />
       </div>
@@ -170,9 +183,12 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
       />
 
       <DialogTranscriptView
+        key={`${data.activeScope}:${data.activeKey ?? ''}`}
         header={{
-          label: data.transcript?.label ?? data.activeGroup?.label ?? '',
-          sublabel: data.activeGroup?.sublabel ?? null,
+          label: data.transcript?.label ?? data.activeNode?.label ?? '',
+          sublabel: data.activeNode
+            ? [kindLabel, data.activeNode.sublabel].filter(Boolean).join(' · ') || null
+            : null,
           counts: view.counts,
           filter: state.filter,
           onFilterChange: state.setFilter,

@@ -16,19 +16,20 @@ export const useGlossaryPage = () => {
   const [enforceModId, setEnforceModId] = useState<number | ''>('');
   const newTermRef = useRef<HTMLInputElement | null>(null);
 
-  const currentGameId = getCurrentGame() ?? undefined;
+  const currentGameId = getCurrentGame() ?? 'fo4';
   const { data: mods } = useQuery({
     queryKey: modListQueryKey(currentGameId),
     queryFn: () => api.mods.list(currentGameId),
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['glossary', srcLang, tgtLang, q],
+    queryKey: ['glossary', currentGameId, srcLang, tgtLang, q],
     queryFn: () =>
       api.glossary.list({
         srcLang: srcLang || undefined,
         tgtLang: tgtLang || undefined,
         q: q || undefined,
+        game: currentGameId,
       }),
   });
 
@@ -37,6 +38,7 @@ export const useGlossaryPage = () => {
       api.glossary.enforce({
         modId: enforceModId !== '' ? enforceModId : undefined,
         targetLang: tgtLang || getTgtLang(),
+        game: currentGameId,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qa'] });
@@ -45,7 +47,13 @@ export const useGlossaryPage = () => {
 
   const add = useMutation({
     mutationFn: () =>
-      api.glossary.add(newTerm.trim(), newTranslation.trim() || null, srcLang, tgtLang),
+      api.glossary.add(
+        newTerm.trim(),
+        newTranslation.trim() || null,
+        srcLang,
+        tgtLang,
+        currentGameId,
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['glossary'] });
       setNewTerm('');

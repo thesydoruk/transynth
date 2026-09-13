@@ -33,8 +33,7 @@
  * still synthesizable.
  *
  * Bracketed [...] blocks are tone tags and UI tokens ([Сарказм], [Click]).
- * They are never spoken, and FaceFXWrapper hangs on non-ASCII text inside
- * brackets, so they are stripped exactly like Fallout *...* blocks.
+ * They are never spoken, so they are stripped exactly like Fallout *...* blocks.
  *
  * Parentheses (...) count as non-speech only when the entire line matches.
  * Mid-line parens are left untouched. Vanilla FO4: animals use (Bark!), (Growl);

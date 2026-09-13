@@ -1,39 +1,17 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  encodeFaceFxDialogueText,
-  sanitizeFaceFxDialogueText,
-  summarizeFaceFxOutput,
-} from '../faceFx';
+import { summarizeFaceFxOutput } from '../faceFx/lipCore';
+import { faceFxDialogueLanguage } from '../faceFx/text';
 
-describe('sanitizeFaceFxDialogueText', () => {
-  it('removes bracketed tags that hang the wrapper', () => {
-    expect(sanitizeFaceFxDialogueText('[Сарказм] Який розпач.')).toBe('Який розпач.');
-
-    expect(sanitizeFaceFxDialogueText('Ну [Сарказм] звісно')).toBe('Ну звісно');
+describe('faceFxDialogueLanguage', () => {
+  it('selects Ukrainian when the line has Cyrillic', () => {
+    expect(faceFxDialogueLanguage('Привіт, мешканцю.')).toBe('Ukrainian');
+    expect(faceFxDialogueLanguage('Pip-Boy працює')).toBe('Ukrainian');
   });
 
-  it('drops unbalanced brackets and keeps plain dialogue intact', () => {
-    expect(sanitizeFaceFxDialogueText('Що це за [ штука?')).toBe('Що це за штука?');
-
-    expect(sanitizeFaceFxDialogueText('Привіт, мешканцю Убезпечища.')).toBe(
-      'Привіт, мешканцю Убезпечища.',
-    );
-  });
-});
-
-describe('encodeFaceFxDialogueText', () => {
-  it('preserves UTF-8 bytes for Cyrillic dialogue', () => {
-    const text = 'Привіт! Це тест українського синтезу.';
-    const encoded = encodeFaceFxDialogueText(text);
-    expect(Buffer.from(encoded, 'latin1').toString('utf8')).toBe(text);
-  });
-
-  it('leaves ASCII unchanged on Windows encoding path', () => {
-    const text = 'Hello, vault dweller.';
-    const encoded = encodeFaceFxDialogueText(text);
-    expect(encoded).toBe(text);
+  it('keeps USEnglish for ASCII dialogue', () => {
+    expect(faceFxDialogueLanguage('Hello, vault dweller.')).toBe('USEnglish');
   });
 });
 

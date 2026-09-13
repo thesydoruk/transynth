@@ -1,9 +1,14 @@
 import { restoreDiscoCensoredSpeech } from '../../../../../src/formats/po/discoCensorship';
-import { MASK_KEY_RE } from '../../../../../src/utils/placeholders';
-import { maskLlmOptionalText, maskTranslateSource } from '../../../../../src/llm/llmTextMask';
+import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
+import {
+  applyTranslateSplit,
+  hasTranslatableParts,
+  splitTranslateSource,
+} from '../../../../../src/llm/textParts';
 import { buildLlmParticipantPayload } from '../../../../../src/llm/dialogParticipants';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../../../../src/web/data/queries/dialogs';
+import { mcmKeyFromRecordPath, resolveMcmLlmContext } from '../../../../../src/formats/mcm';
 import { mergeNarratorGender } from './mergeNarratorGender';
 import type { PreparedLlmItem, StringRow, TranslateBatchOptions } from './types';
 
@@ -32,16 +37,8 @@ export const prepareLlmItems = (
     const game = row.game ?? opts.modGame ?? undefined;
     const { grup, field } = parseRecordLocation(row.signature, row.path);
 
-    const {
-      masked: maskedSourceText,
-      placeholderMap,
-      functionKeywordMap,
-    } = maskTranslateSource(sourceText, game, { grup, field });
-
-    const translatableContent = maskedSourceText
-      .replace(new RegExp(MASK_KEY_RE.source, 'g'), '')
-      .trim();
-    if (!translatableContent) {
+    const split = splitTranslateSource(sourceText, game, { grup, field });
+    if (!hasTranslatableParts(split.parts)) {
       immediateResults.push({ stringId, text: sourceText });
       continue;
     }
@@ -59,22 +56,41 @@ export const prepareLlmItems = (
       grup,
       field,
       recordPath: row.path,
-      placeholderMap,
-      functionKeywordMap,
+      placeholderMap: split.placeholderMap,
+      functionKeywordMap: split.functionKeywordMap,
       game: row.game ?? opts.modGame ?? null,
       modName: row.mod_name ?? opts.modName ?? null,
-      llmItem: {
-        id: stringId,
-        source: maskedSourceText,
-        grup,
-        edid: row.edid,
-        field,
-        form_id: row.formid_hex,
-        context: maskLlmOptionalText(row.context),
-        ...buildLlmParticipantPayload(participants),
-      },
+      llmItem: applyTranslateSplit(
+        {
+          id: stringId,
+          source: '',
+          grup,
+          edid: row.edid,
+          field,
+          form_id: row.formid_hex,
+          context: maskLlmOptionalText(row.context),
+          ...buildLlmParticipantPayload(participants),
+        },
+        split,
+      ),
     });
   }
 
   return { llmPending, immediateResults };
+};
+
+/** Fill empty MCM context from sibling `$key` / `$key_help` source texts. */
+export const attachMcmTranslateContext = (
+  items: PreparedLlmItem[],
+  siblingTexts: Map<string, string>,
+): void => {
+  if (siblingTexts.size === 0) return;
+  for (const item of items) {
+    if (item.grup !== 'MCM') continue;
+    const key = item.field ?? mcmKeyFromRecordPath(item.recordPath);
+    const next = resolveMcmLlmContext(item.llmItem.context, key, siblingTexts);
+    if (next && next !== item.llmItem.context) {
+      item.llmItem.context = maskLlmOptionalText(next);
+    }
+  }
 };

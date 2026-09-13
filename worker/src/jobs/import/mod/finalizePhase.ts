@@ -14,6 +14,7 @@ import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from '../../../../../src/import/mod/
 import { markDone } from '../../../../../src/import/mod/jobStatus';
 import { importSceneRecords } from './sceneImport';
 import { convertImportedStringsToTranslations } from './translationConvert';
+import { persistBethesdaVoiceClips } from '../../../../../src/voice/persistBethesdaVoiceClips';
 import { commitExtrasStop, extrasStopRequested } from './extrasStop';
 import type { ModImportPhaseContext } from './phases';
 
@@ -164,6 +165,28 @@ export const finalizeModImportJob = async (
       } catch {
         /* ignore */
       }
+    }
+  }
+
+  if (extrasStopRequested(ctx)) {
+    await commitExtrasStop(ctx);
+    return;
+  }
+
+  if (ctx.game !== 'disco') {
+    try {
+      const voiceIndex = await persistBethesdaVoiceClips(ctx.db, importModId, ctx.pluginStringLang);
+      if (voiceIndex.clips > 0 || voiceIndex.variants > 0) {
+        logImport.info(
+          `[Mod Import #${ctx.job.id}] Voice index: ${voiceIndex.variants} response variant(s), ${voiceIndex.clips} clip(s)`,
+        );
+      }
+    } catch (err) {
+      logImport.warn(
+        `[Mod Import #${ctx.job.id}] Voice clip persist failed (non-fatal): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
     }
   }
 

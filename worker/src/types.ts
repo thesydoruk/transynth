@@ -34,6 +34,7 @@ export const JOB_KINDS = [
   'csv-import',
   'eet-import',
   'langpack-export',
+  'vortex-sync',
 ] as const;
 
 export type JobKind = (typeof JOB_KINDS)[number];

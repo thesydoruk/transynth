@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
+import { ensureVortexSchema } from '../../../vortex/schema';
 import { registerListCrudRoutes } from './listCrud';
 import { registerVoiceRoutes } from './voice';
 import { registerVoiceRegenerateRoutes } from './voiceRegenerate';
@@ -8,6 +9,7 @@ import { registerApplyImportedRoutes } from './applyImported';
 import { registerDiffCarryOverRoutes } from './diffCarryOver';
 
 export const modsRoutes = async (app: FastifyInstance, db: Tx) => {
+  await ensureVortexSchema(db);
   await registerListCrudRoutes(app, db);
   await registerVoiceRoutes(app, db);
   await registerVoiceRegenerateRoutes(app, db);

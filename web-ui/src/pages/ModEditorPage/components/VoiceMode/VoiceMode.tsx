@@ -21,6 +21,7 @@ import { useVoiceLineView } from './hooks/useVoiceLineView';
 import { useVoiceNavigatorWidth } from './hooks/useVoiceNavigatorWidth';
 import { useVoicePlayback } from './hooks/useVoicePlayback';
 import { useSpeakerVoiceGenerate } from './hooks/useSpeakerVoiceGenerate';
+import { useVoiceLiveEvents } from './hooks/useVoiceLiveEvents';
 import { useVoiceState } from './hooks/useVoiceState';
 import { useVoiceStatusMatch } from './hooks/useVoiceStatusMatch';
 import { VoiceRegenerateModal } from './VoiceRegenerateModal';
@@ -87,6 +88,7 @@ export const VoiceMode = ({
 
   const playback = useVoicePlayback(modId);
   const speakerVoice = useSpeakerVoiceGenerate(modId, data.activeKey, srcLang, targetLang);
+  const live = useVoiceLiveEvents({ modId, srcLang, targetLang });
   const actions = useVoiceActions({
     modId,
     srcLang,
@@ -217,6 +219,8 @@ export const VoiceMode = ({
           onStepSpeaker={stepSpeaker}
           isLoading={data.speakersQuery.isLoading}
           searchRef={searchRef}
+          synthesizingKeys={live.synthesizingSpeakers}
+          flashedKeys={live.flashedSpeakers}
         />
       </div>
 
@@ -266,6 +270,8 @@ export const VoiceMode = ({
         onVoiceMissing={speakerVoice.startMissing}
         onVoiceAll={speakerVoice.startAll}
         onVoiceStop={speakerVoice.stop}
+        synthesizingLines={live.synthesizingLines}
+        flashedLines={live.flashedLines}
       />
 
       {regenerateLine && (

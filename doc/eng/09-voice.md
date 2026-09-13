@@ -17,6 +17,7 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Running synthesis](#running-synthesis)
 - [Disco: what gets spoken](#disco-what-gets-spoken)
 - [Settings](#settings)
+- [Clip and response index](#clip-and-response-index)
 - [Known limitations](#known-limitations)
 
 ---
@@ -37,9 +38,9 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
    server is a URL in `.env`. Or the `embedded-audio-intel` profile
    (`docker/compose.audio-intel.yml`): STT only, no diarization or UI. See
    [Getting Started](01-getting-started.md#optional-embedded-audio-intel).
-5. **FaceFX** writes Bethesda `.lip` files. Ukrainian dialogue is respelled
-   into Fonix English phonemes first (`привіт` → `prihveet`); Cyrillic never
-   reaches the wrapper. LIP and xWMA run in `bethesda-tools`
+5. **FaceFX** writes Bethesda `.lip` files. Cyrillic lines go to FaceFXWrapper
+   as `Ukrainian` (the wrapper respells for stock Fonix). ASCII stays
+   `USEnglish`. LIP and xWMA run in `bethesda-tools`
    (`BETHESDA_TOOLS_URL`, or profile `embedded-bethesda-tools`).
 6. **Voice tools** on disk: the `bethesda-tools` image downloads the latest
    FaceFXWrapper at build. `npm run tools:install` (or the `tools` Compose profile)
@@ -93,7 +94,9 @@ Per-line regenerate in Voice mode opens a small dialog (keep current
 reference settings or override line-reference for that take).
 
 Output for Bethesda is written under `_localize_{hash}/{lang}/` next to the
-import, not into the extracted English voice archive. Disco writes localized
+import, not into the extracted English voice archive. FO4 langpack export
+packs those clips into uncompressed `UASoundPack - Main.ba2` plus dummy
+`UASoundPack.esp`. Disco writes localized
 `.wav` files into the langpack tree.
 
 ---
@@ -140,6 +143,26 @@ Lockit markup details: [LLM Translation](06-llm-translation.md#disco-lockit).
 | Per-game timing match   | `project_settings`                        | Stretch/pad synthesized audio toward the original line length                                    |
 
 Game hub **Voice** is a link to this tab, not a separate page.
+
+Carry Over and **Apply TM** copy an existing take into the new mod when both
+the line text and the character's source voice file match. **Voice → Missing**
+runs the same pass first, then synthesizes only what could not be copied.
+**All** (full regenerate) does not reuse.
+
+SHA-1 of each source `.fuz`/`.wav` is stored in `voice_source_file_hashes`
+(with size and mtime). Later Carry Over / TM / Missing passes skip the NAS
+read while the file is unchanged.
+
+---
+
+## Clip and response index
+
+Bethesda import writes a take index to `voice_clips` (speaker × FormID ×
+TRDA response number) and sets `strings.voice_variant`. One INFO with several
+NAM1 lines, or several voice types (Nate/Nora, shared NPC lines), is several
+rows. A DNAM alias keeps its own FormID and points at the borrowed
+`string_id`. Older imports backfill the index the first time Voice opens.
+Disco still uses `disco_voice_clips`.
 
 ---
 

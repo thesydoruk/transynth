@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { convertToFaceFxWav } from '../ffmpegAudio';
 import { execVoiceToolAsync } from '../voiceExec';
-import { encodeFaceFxDialogueText, prepareFaceFxDialogueText } from './text';
+import { faceFxDialogueLanguage } from './text';
 
 export type FaceFxLipRequest = {
   game: string;
@@ -62,11 +62,11 @@ export const runFaceFxLip = async (request: FaceFxLipRequest): Promise<FaceFxLip
   if (fs.existsSync(resampledPath)) fs.unlinkSync(resampledPath);
   if (fs.existsSync(lipPath)) fs.unlinkSync(lipPath);
 
-  const dialogueArg = encodeFaceFxDialogueText(prepareFaceFxDialogueText(dialogueText));
+  const language = faceFxDialogueLanguage(dialogueText);
   const faceFxArgs =
     process.platform === 'win32'
-      ? [faceFxGameType(game), 'USEnglish', fonixPath, wavPath, resampledPath, lipPath, dialogueArg]
-      : [faceFxGameType(game), 'USEnglish', fonixPath, resampledPath, lipPath, dialogueArg];
+      ? [faceFxGameType(game), language, fonixPath, wavPath, resampledPath, lipPath, dialogueText]
+      : [faceFxGameType(game), language, fonixPath, resampledPath, lipPath, dialogueText];
 
   let stdout = '';
   let stderr = '';

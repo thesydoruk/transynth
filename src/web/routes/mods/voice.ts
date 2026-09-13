@@ -14,8 +14,18 @@ import {
   listVoiceSpeakersForMod,
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
+import { attachVoiceLiveSse } from '../../voice/voiceLiveHub';
 
 export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
+  // GET /api/mods/:id/voice/live — per-line synthesis events for the voice editor.
+  app.get<{ Params: { id: string } }>('/api/mods/:id/voice/live', async (req, reply) => {
+    const modId = Number(req.params.id);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'Invalid mod id' });
+    }
+    attachVoiceLiveSse(req, reply, modId);
+  });
+
   // GET /api/mods/:id/voice/lines — speakers (default) or one speaker's lines.
   app.get<{
     Params: { id: string };

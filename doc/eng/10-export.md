@@ -110,12 +110,13 @@ and mod managers.
 
 ## Langpack ZIP
 
-A langpack is a ZIP containing only translation delta files — no BA2 archive.
+A langpack is a ZIP containing only translation delta files.
 Only **changed or new** artifacts are included:
 
 - `Strings\*.STRINGS` / `*.DLSTRINGS` / `*.ILSTRINGS` — only tables where at least one string differs from source;
 - patched ESP/ESM — only when the binary differs from the imported original;
-- `Scripts\*.pex` — only scripts with translated string literals.
+- `Scripts\*.pex` — only scripts with translated string literals;
+- FO4 synthesized voice — `UASoundPack.esp` and an **uncompressed** GNRL `UASoundPack - Main.ba2` (`packedSize = 0`). Loose `Sound\Voice\` files are not added to the ZIP.
 
 **Disco Elysium** uses the same Langpack ZIP action. The zip is a Final Cut
 pack: updated `.po` files plus localized `Audio/*.wav` when voice was

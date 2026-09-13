@@ -27,3 +27,5 @@ export {
 
 export { listDialogGroups } from './groups';
 export { getDialogTranscript } from './transcript';
+export { listDialogTree, ORPHAN_GROUP_KEY } from './dialogTree';
+export type { DialogTreeKind, DialogTreeNode } from './dialogTree';

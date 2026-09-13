@@ -1,8 +1,3 @@
 export { generateLipFile } from './generateLip';
 export { runFaceFxLip, summarizeFaceFxOutput, type FaceFxLipResult } from './lipCore';
-export { adaptUkrainianForFonix } from './ukToFonix';
-export {
-  encodeFaceFxDialogueText,
-  prepareFaceFxDialogueText,
-  sanitizeFaceFxDialogueText,
-} from './text';
+export { faceFxDialogueLanguage, type FaceFxDialogueLanguage } from './text';

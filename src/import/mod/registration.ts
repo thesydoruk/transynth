@@ -56,8 +56,8 @@ const insertModImportJob = async (
        file_name, file_hash, mod_id, total_records, status,
        src_lang, tgt_lang, is_localized, game, esp_path,
        extract_dir, archive_manifest,
-       nexus_mod_id, source_folder, nexus_mod_name
-     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12)`,
+       nexus_mod_id, source_folder, nexus_mod_name, vortex_group_id
+     ) VALUES ($1, $2, NULL, $3, 'pending', $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12, $13)`,
     [
       params.fileName,
       params.fileHash,
@@ -71,6 +71,7 @@ const insertModImportJob = async (
       params.scan?.nexusModId ?? null,
       params.scan?.sourceFolder ?? null,
       params.scan?.nexusModName ?? null,
+      params.scan?.vortexGroupId ?? null,
     ],
   );
 
@@ -162,8 +163,9 @@ export const registerArchiveFile = async (
   tgtLang: string,
   game: GameType = 'fo4',
   scan?: ModScanContext,
+  fileHashOverride?: string,
 ): Promise<ModImportJob> => {
-  const fileHash = await sha1HexFile(archivePath);
+  const fileHash = fileHashOverride ?? (await sha1HexFile(archivePath));
 
   const existing = await getModImportJobByFileHash(db, fileHash);
   if (existing) {

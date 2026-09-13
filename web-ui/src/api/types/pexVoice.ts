@@ -115,3 +115,15 @@ export type VoiceRegeneratePreview = {
   audioUrl: string;
   params: VoiceRegenerateParams;
 };
+
+/** Per-line synthesis event from GET /api/mods/:id/voice/live. */
+export type VoiceLiveLineEvent = {
+  type: 'line_started' | 'line_done' | 'line_failed';
+  modId: number;
+  speakerKey: string;
+  formidLower6: string;
+  variant: number;
+  voiceSimilarity?: number | null;
+};
+
+export type VoiceLiveSseEvent = VoiceLiveLineEvent | { type: 'ping' };

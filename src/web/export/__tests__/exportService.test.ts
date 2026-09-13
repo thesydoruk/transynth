@@ -212,7 +212,13 @@ describe('localized export golden corpus', () => {
     );
 
     const zipText = zipBuffer.toString('latin1');
-    expect(zipText).toContain(voiceRel);
+    expect(zipText).toContain('UASoundPack.esp');
+    expect(zipText).toContain('UASoundPack - Main.ba2');
+    expect(zipText).toContain('00123456_1.fuz');
+    expect(zipText).not.toContain(voiceRel);
     expect(zipText).not.toContain('000219CF_1.fuz');
+    const ba2At = zipBuffer.indexOf(Buffer.from('BTDX', 'ascii'));
+    expect(ba2At).toBeGreaterThanOrEqual(0);
+    expect(zipBuffer.readUInt32LE(ba2At + 24 + 24)).toBe(0);
   });
 });

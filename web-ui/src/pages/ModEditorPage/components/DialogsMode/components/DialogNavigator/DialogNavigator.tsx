@@ -1,56 +1,57 @@
 import { useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
-import type { DialogGroup, DialogScope } from '../../../../../../api';
+import type { DialogScope, DialogTreeNode } from '../../../../../../api';
+import type { DialogTreeRow as DialogTreeRowModel } from '../../dialogTreeView';
 import type { GroupSort } from '../../hooks/useDialogsState';
-import { DialogGroupRow } from './DialogGroupRow';
+import { DialogTreeRow } from './DialogTreeRow';
 import styles from './DialogNavigator.module.scss';
 
-const SCOPES: DialogScope[] = ['topics', 'branches', 'scenes', 'conversations'];
 const SORTS: GroupSort[] = ['label', 'progress', 'size'];
-const ROW_HEIGHT = 50;
+const ROW_HEIGHT = 44;
 
 export interface DialogNavigatorProps {
-  scope: DialogScope;
-  onScopeChange: (scope: DialogScope) => void;
   search: string;
   onSearchChange: (value: string) => void;
   sort: GroupSort;
   onSortChange: (sort: GroupSort) => void;
   hideDone: boolean;
   onHideDoneChange: (value: boolean) => void;
-  /** Groups after search, sort, and the hide-finished toggle. */
-  groups: DialogGroup[];
-  /** How many groups the scope holds in total. */
-  totalCount: number;
+  rows: DialogTreeRowModel[];
+  /** Roots after search / hide-finished, used for expand-all. */
+  visibleTree: DialogTreeNode[];
+  totalQuestCount: number;
+  activeScope: DialogScope;
   activeKey: string | null;
-  onSelect: (key: string) => void;
-  /** Moves the selection by whole groups, used by the arrow keys in the search box. */
+  onSelect: (scope: DialogScope, key: string) => void;
+  onToggle: (id: string) => void;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
   onStepGroup: (delta: number) => void;
   isLoading: boolean;
   searchRef: React.RefObject<HTMLInputElement | null>;
 }
 
 /**
- * Left column of the dialogs editor: scope switcher, search, and the list of
- * groups with their translation progress.
- *
- * The full list is held in memory and virtualized, so a mod with thousands of
- * topics filters and scrolls without paging.
+ * Left column of the dialogs editor: search plus the quest tree of scenes,
+ * branches, and topics.
  */
 export const DialogNavigator = ({
-  scope,
-  onScopeChange,
   search,
   onSearchChange,
   sort,
   onSortChange,
   hideDone,
   onHideDoneChange,
-  groups,
-  totalCount,
+  rows,
+  visibleTree,
+  totalQuestCount,
+  activeScope,
   activeKey,
   onSelect,
+  onToggle,
+  onExpandAll,
+  onCollapseAll,
   onStepGroup,
   isLoading,
   searchRef,
@@ -59,13 +60,16 @@ export const DialogNavigator = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
-    count: groups.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 12,
+    overscan: 16,
   });
 
-  const activeIndex = groups.findIndex((group) => group.key === activeKey);
+  const activeIndex = rows.findIndex(
+    (row) =>
+      row.node.kind !== 'group' && row.node.scope === activeScope && row.node.key === activeKey,
+  );
 
   useEffect(() => {
     if (activeIndex >= 0) virtualizer.scrollToIndex(activeIndex, { align: 'auto' });
@@ -85,22 +89,6 @@ export const DialogNavigator = ({
 
   return (
     <aside className={styles.navigator}>
-      <div className={styles.scopes} role="tablist">
-        {SCOPES.map((value, index) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={scope === value}
-            className={`${styles.scope} ${scope === value ? styles.scopeActive : ''}`}
-            onClick={() => onScopeChange(value)}
-            title={t('dialogs.scopeHotkey', { key: index + 1 })}
-          >
-            {t(`dialogs.scope.${value}`)}
-          </button>
-        ))}
-      </div>
-
       <div className={styles.controls}>
         <input
           ref={searchRef}
@@ -133,36 +121,54 @@ export const DialogNavigator = ({
             {t('dialogs.hideFinished')}
           </label>
         </div>
+        <div className={styles.controlRow}>
+          <button type="button" className={styles.treeAction} onClick={onExpandAll}>
+            {t('dialogs.tree.expandAll')}
+          </button>
+          <button type="button" className={styles.treeAction} onClick={onCollapseAll}>
+            {t('dialogs.tree.collapseAll')}
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className={styles.list}>
         {isLoading ? (
           <p className={styles.note}>{t('dialogs.loadingGroups')}</p>
-        ) : groups.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p className={styles.note}>
-            {totalCount === 0 ? t(`dialogs.empty.${scope}`) : t('dialogs.noMatches')}
+            {totalQuestCount === 0 && visibleTree.length === 0
+              ? t('dialogs.empty.tree')
+              : t('dialogs.noMatches')}
           </p>
         ) : (
           <div className={styles.viewport} style={{ height: virtualizer.getTotalSize() }}>
-            {virtualizer.getVirtualItems().map((item) => (
-              <div
-                key={groups[item.index].key}
-                className={styles.rowSlot}
-                style={{ height: item.size, transform: `translateY(${item.start}px)` }}
-              >
-                <DialogGroupRow
-                  group={groups[item.index]}
-                  active={groups[item.index].key === activeKey}
-                  onSelect={onSelect}
-                />
-              </div>
-            ))}
+            {virtualizer.getVirtualItems().map((item) => {
+              const row = rows[item.index];
+              return (
+                <div
+                  key={row.id}
+                  className={styles.rowSlot}
+                  style={{ height: item.size, transform: `translateY(${item.start}px)` }}
+                >
+                  <DialogTreeRow
+                    row={row}
+                    active={
+                      row.node.kind !== 'group' &&
+                      row.node.scope === activeScope &&
+                      row.node.key === activeKey
+                    }
+                    onSelect={() => onSelect(row.node.scope, row.node.key)}
+                    onToggle={() => onToggle(row.id)}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       <footer className={styles.footer}>
-        {t('dialogs.groupCount', { shown: groups.length, total: totalCount })}
+        {t('dialogs.tree.rowCount', { shown: rows.length, quests: totalQuestCount })}
       </footer>
     </aside>
   );

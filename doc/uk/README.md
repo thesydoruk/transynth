@@ -29,6 +29,7 @@
 | 13  | [Перевірка узгодженості](13-coherence.md)          | Пошук і виправлення неузгоджених перекладів                 |
 | 14  | [Конфігурація](14-configuration.md)                | Змінні середовища, вкладки Settings, Docker                 |
 | 15  | [Технологічний стек](15-technology-stack.md)       | Runtime, backend, frontend, база даних, AI, tooling, Docker |
+| 16  | [Vortex sync](16-vortex-sync.md)                   | CLI: стейдж Vortex + гра → ізольована група → ленгпак       |
 
 ---
 

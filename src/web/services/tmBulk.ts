@@ -28,6 +28,10 @@ export type TmBulkMatch = {
   text: string;
   method: TmMatchMethod;
   confidence: number;
+  /** Donor mod when the match came from another imported plugin. */
+  sourceModId: number | null;
+  /** True when the donor source string is byte-for-byte the same as the target. */
+  exactSourceText: boolean;
 };
 
 const TM_TRANSLATION_STATUS_ORDER = `CASE tr.status
@@ -94,6 +98,7 @@ export const bulkFindTmMatches = async (
     target_id: number;
     text: string;
     match_source: string;
+    source_mod_id: number;
     method: 'anchor' | 'edid' | 'text_norm';
   }>(
     `WITH targets AS (
@@ -102,7 +107,8 @@ export const bulkFindTmMatches = async (
          AS u(id, formid_hex, path, edid, text_norm, text_raw)
      ),
      candidates AS (
-       SELECT t.id AS target_id, tr.text, s.text_raw AS match_source, 1 AS method_rank,
+       SELECT t.id AS target_id, tr.text, s.text_raw AS match_source, r.mod_id AS source_mod_id,
+         1 AS method_rank,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
            ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
@@ -121,7 +127,7 @@ export const bulkFindTmMatches = async (
 
        UNION ALL
 
-       SELECT t.id, tr.text, s.text_raw, 2,
+       SELECT t.id, tr.text, s.text_raw, r.mod_id, 2,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
            ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
@@ -137,7 +143,7 @@ export const bulkFindTmMatches = async (
 
        UNION ALL
 
-       SELECT t.id, tr.text, s.text_raw, 3,
+       SELECT t.id, tr.text, s.text_raw, r.mod_id, 3,
          ROW_NUMBER() OVER (
            PARTITION BY t.id
            ORDER BY CASE WHEN s.text_raw = t.text_raw THEN 0 ELSE 1 END,
@@ -148,15 +154,16 @@ export const bulkFindTmMatches = async (
        FROM targets t
        JOIN strings s ON s.text_norm = t.text_norm AND s.lang = $9
        JOIN translations tr ON tr.src_string_id = s.id AND tr.target_lang = $8
+       JOIN records r ON r.id = s.record_id
        WHERE NULLIF(t.text_norm, '') IS NOT NULL
      ),
      best_per_method AS (
-       SELECT target_id, text, match_source, method_rank
+       SELECT target_id, text, match_source, source_mod_id, method_rank
        FROM candidates
        WHERE rn = 1
      )
      SELECT DISTINCT ON (b.target_id)
-       b.target_id, b.text, b.match_source,
+       b.target_id, b.text, b.match_source, b.source_mod_id,
        CASE b.method_rank
          WHEN 1 THEN 'anchor'
          WHEN 2 THEN 'edid'
@@ -183,6 +190,8 @@ export const bulkFindTmMatches = async (
       text,
       method,
       confidence: tmConfidenceForMethod(method),
+      sourceModId: row.source_mod_id,
+      exactSourceText: row.match_source === target.text_raw,
     });
   }
   return adapted;
@@ -250,18 +259,32 @@ export const bulkUpsertTmTranslations = async (
 };
 
 /** Match and persist TM hits for one batch of untranslated rows. */
+export const exactTmVoiceSourceModIds = (matches: TmBulkMatch[], destModId: number): number[] => {
+  const ids = new Set<number>();
+  for (const match of matches) {
+    if (match.method === 'numeric' || !match.exactSourceText) continue;
+    if (match.sourceModId == null || match.sourceModId === destModId) continue;
+    ids.add(match.sourceModId);
+  }
+  return [...ids];
+};
+
 export const bulkApplyTmBatch = async (
   db: Tx,
   modId: number,
   rows: TmUntranslatedRow[],
   targetLang: string,
   srcLang: string,
-): Promise<{ applied: number; byMethod: Record<TmMatchMethod, number> }> => {
+): Promise<{
+  applied: number;
+  byMethod: Record<TmMatchMethod, number>;
+  sourceModIds: number[];
+}> => {
   const byMethod = emptyByMethod();
-  if (rows.length === 0) return { applied: 0, byMethod };
+  if (rows.length === 0) return { applied: 0, byMethod, sourceModIds: [] };
 
   const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang);
-  if (matches.length === 0) return { applied: 0, byMethod };
+  if (matches.length === 0) return { applied: 0, byMethod, sourceModIds: [] };
 
   const writeRows: TmBulkWriteRow[] = matches.map((m) => ({
     stringId: m.stringId,
@@ -275,5 +298,9 @@ export const bulkApplyTmBatch = async (
     byMethod[match.method]++;
   }
 
-  return { applied: matches.length, byMethod };
+  return {
+    applied: matches.length,
+    byMethod,
+    sourceModIds: exactTmVoiceSourceModIds(matches, modId),
+  };
 };

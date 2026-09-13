@@ -30,6 +30,7 @@ components, and development tooling.
 | 13  | [Coherence Checker](13-coherence.md)           | Finding and fixing inconsistent translations                |
 | 14  | [Configuration](14-configuration.md)           | Environment variables, Settings tabs, Docker                |
 | 15  | [Technology Stack](15-technology-stack.md)     | Runtime, backend, frontend, database, AI, tooling, Docker   |
+| 16  | [Vortex sync](../uk/16-vortex-sync.md)         | CLI: Vortex staging + game → isolated group → langpack      |
 
 ---
 

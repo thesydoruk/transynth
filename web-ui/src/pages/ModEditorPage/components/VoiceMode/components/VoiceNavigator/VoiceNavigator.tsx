@@ -17,6 +17,8 @@ export interface VoiceNavigatorProps {
   onStepSpeaker: (delta: number) => void;
   isLoading: boolean;
   searchRef: React.RefObject<HTMLInputElement | null>;
+  synthesizingKeys?: ReadonlySet<string>;
+  flashedKeys?: ReadonlySet<string>;
 }
 
 /** Left column: speaker search and virtualized list. */
@@ -30,6 +32,8 @@ export const VoiceNavigator = ({
   onStepSpeaker,
   isLoading,
   searchRef,
+  synthesizingKeys,
+  flashedKeys,
 }: VoiceNavigatorProps) => {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -95,6 +99,8 @@ export const VoiceNavigator = ({
                 <VoiceSpeakerRow
                   speaker={speakers[item.index]}
                   active={speakers[item.index].key === activeKey}
+                  synthesizing={synthesizingKeys?.has(speakers[item.index].key) ?? false}
+                  flashed={flashedKeys?.has(speakers[item.index].key) ?? false}
                   onSelect={onSelect}
                 />
               </div>

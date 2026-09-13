@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
-import type { DialogScope } from '../../../../../api';
 
 /** Callbacks the dialogs hotkeys drive. */
 export interface DialogsKeyboardConfig {
-  setScope: (scope: DialogScope) => void;
-  /** Move the navigator selection by whole groups. */
+  /** Move the navigator selection by visible tree rows. */
   stepGroup: (delta: number) => void;
+  /** Collapse or expand the selected tree node. */
+  setSelectedExpanded: (open: boolean) => void;
   /** Move the line cursor inside the transcript. */
   stepLine: (delta: number) => void;
   goToNextTodo: () => void;
@@ -17,13 +17,6 @@ export interface DialogsKeyboardConfig {
   /** True while a line editor holds the caret. */
   isEditing: boolean;
 }
-
-const SCOPE_KEYS: Record<string, DialogScope> = {
-  '1': 'topics',
-  '2': 'branches',
-  '3': 'scenes',
-  '4': 'conversations',
-};
 
 /**
  * Global hotkeys of the dialogs editor.
@@ -57,13 +50,6 @@ export const useDialogsKeyboard = (config: DialogsKeyboardConfig): void => {
 
       if (isTyping) return;
 
-      const scope = SCOPE_KEYS[event.key];
-      if (scope) {
-        event.preventDefault();
-        c.setScope(scope);
-        return;
-      }
-
       if (event.key === '/') {
         event.preventDefault();
         c.focusSearch();
@@ -73,6 +59,18 @@ export const useDialogsKeyboard = (config: DialogsKeyboardConfig): void => {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         c.stepLine(event.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        c.setSelectedExpanded(false);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        c.setSelectedExpanded(true);
         return;
       }
 

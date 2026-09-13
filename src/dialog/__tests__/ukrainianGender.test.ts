@@ -30,6 +30,37 @@ describe('detectUkrainianGenderMarkers', () => {
 
   it('stops at a preposition so nouns are not read as verbs', () => {
     expect(detectUkrainianGenderMarkers('Я на острів не поїду.')).toEqual([]);
+    expect(detectUkrainianGenderMarkers('Я про старий світ.')).toEqual([]);
+  });
+
+  it('reads irregular masculine past tense («звик», «міг»)', () => {
+    expect(detectUkrainianGenderMarkers('Я звик до цього.')).toEqual([
+      { person: 1, gender: 'male', form: 'звик' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Я не міг інакше.')).toEqual([
+      { person: 1, gender: 'male', form: 'міг' },
+    ]);
+  });
+
+  it('reads a verb after a short prepositional object', () => {
+    expect(detectUkrainianGenderMarkers('Я до цього звик.')).toEqual([
+      { person: 1, gender: 'male', form: 'звик' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Я до цього вже звикла.')).toEqual([
+      { person: 1, gender: 'female', form: 'звикла' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Я про це думав.')).toEqual([
+      { person: 1, gender: 'male', form: 'думав' },
+    ]);
+  });
+
+  it('reads a verb after an object pronoun', () => {
+    expect(detectUkrainianGenderMarkers('Я їй сказав правду.')).toEqual([
+      { person: 1, gender: 'male', form: 'сказав' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Я це бачила.')).toEqual([
+      { person: 1, gender: 'female', form: 'бачила' },
+    ]);
   });
 
   it('ignores nouns that merely look like past-tense forms', () => {
@@ -94,6 +125,15 @@ describe('findUkrainianGenderConflicts', () => {
         addresseeGender: 'any',
       }),
     ).toEqual([{ role: 'addressee', expected: 'any', found: 'male', form: 'готовий' }]);
+  });
+
+  it('flags a shared player line that hides gender behind a prepositional object', () => {
+    expect(
+      findUkrainianGenderConflicts('Проблеми були, але це був дім. Я до цього звик.', {
+        speakerGender: 'any',
+        addresseeGender: 'female',
+      }),
+    ).toEqual([{ role: 'speaker', expected: 'any', found: 'male', form: 'звик' }]);
   });
 
   it('stays silent when the participant gender is unknown', () => {

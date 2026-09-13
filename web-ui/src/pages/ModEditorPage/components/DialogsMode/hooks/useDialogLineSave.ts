@@ -1,6 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, type DialogGroup, type DialogLine, type DialogTranscript } from '../../../../../api';
+import {
+  api,
+  type DialogLine,
+  type DialogScope,
+  type DialogTranscript,
+  type DialogTreeNode,
+} from '../../../../../api';
+import { bumpDialogTreeProgress } from '../dialogTreeView';
 import { isUntranslated } from './useTranscriptView';
 
 /** Statuses a reviewer can set straight from the transcript. */
@@ -11,6 +18,7 @@ export interface UseDialogLineSaveParams {
   groupsQueryKey: readonly unknown[];
   /** Group whose progress counters follow the edit. */
   activeKey: string | null;
+  activeScope: DialogScope;
   targetLang: string;
 }
 
@@ -25,6 +33,7 @@ export const useDialogLineSave = ({
   transcriptQueryKey,
   groupsQueryKey,
   activeKey,
+  activeScope,
   targetLang,
 }: UseDialogLineSaveParams) => {
   const qc = useQueryClient();
@@ -57,21 +66,11 @@ export const useDialogLineSave = ({
   const bumpProgress = useCallback(
     (delta: number) => {
       if (delta === 0 || activeKey === null) return;
-      qc.setQueryData<DialogGroup[]>(groupsQueryKey as unknown[], (prev) =>
-        prev?.map((group) =>
-          group.key === activeKey
-            ? {
-                ...group,
-                translated_count: Math.min(
-                  Math.max(group.translated_count + delta, 0),
-                  group.line_count,
-                ),
-              }
-            : group,
-        ),
+      qc.setQueryData<DialogTreeNode[]>(groupsQueryKey as unknown[], (prev) =>
+        prev ? bumpDialogTreeProgress(prev, activeScope, activeKey, delta) : prev,
       );
     },
-    [qc, groupsQueryKey, activeKey],
+    [qc, groupsQueryKey, activeKey, activeScope],
   );
 
   const run = useCallback(async (stringId: number, action: () => Promise<void>) => {

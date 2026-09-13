@@ -5,7 +5,7 @@ import type { ModImportJob } from './types';
 const MOD_IMPORT_JOB_LIST_SQL = `SELECT
   id, file_name, file_hash, mod_id, total_records, imported_records, status,
   src_lang, tgt_lang, is_localized, game, esp_path, extract_dir,
-  nexus_mod_id, source_folder, nexus_mod_name, created_at, updated_at
+  nexus_mod_id, source_folder, nexus_mod_name, vortex_group_id, created_at, updated_at
  FROM mod_imports`;
 
 /**

@@ -17,6 +17,7 @@ import { logVerify } from '../../../../../src/logging/loggers';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../../../../src/web/data/queries/dialogs';
 import { buildLlmParticipantPayload } from '../../../../../src/llm/dialogParticipants';
+import { mcmKeyFromRecordPath, resolveMcmLlmContext } from '../../../../../src/formats/mcm';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../../shared/glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
 import { scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
@@ -35,7 +36,7 @@ const verifyLongRows = async (
   ragByStringId: RagByStringId,
 ): Promise<void> => {
   for (const row of rows) {
-    const item = buildVerifyItems([row], ragByStringId)[0]!;
+    const item = buildVerifyItems([row], ragByStringId, ctx.mcmSiblingTexts)[0]!;
     const result = await verifyLongTextItem(ctx, item);
     scheduleBatchPersist(
       ctx.persistCtx,
@@ -90,10 +91,19 @@ export const fetchChunkRag = async (
 export const buildVerifyItems = (
   llmChunk: VerifyStringRow[],
   ragByStringId: RagByStringId,
+  mcmSiblingTexts?: Map<string, string>,
 ): LlmVerifyItem[] =>
   llmChunk.map((row) => {
     const { grup, field } = parseRecordLocation(row.signature, row.path);
     const participants = dialogParticipantsFromRow(row, field);
+    const context =
+      grup === 'MCM'
+        ? resolveMcmLlmContext(
+            row.context,
+            field ?? mcmKeyFromRecordPath(row.path),
+            mcmSiblingTexts ?? new Map(),
+          )
+        : row.context;
     return {
       id: row.string_id,
       source: restoreDiscoCensoredSpeech(row.source),
@@ -101,7 +111,7 @@ export const buildVerifyItems = (
       grup,
       edid: row.edid,
       field,
-      context: row.context,
+      context,
       ...buildLlmParticipantPayload(participants),
       reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
         grup,
@@ -125,7 +135,11 @@ export const verifyChunkOnce = async (
   }
   if (normalRows.length === 0) return;
 
-  const items = buildVerifyItems(normalRows, ragByStringId);
+  const items = buildVerifyItems(normalRows, ragByStringId, ctx.mcmSiblingTexts);
+  const glossary = await relevantGlossaryEntries(
+    ctx.glossaryAll,
+    normalRows.map((row) => row.source),
+  );
 
   try {
     const results = await withRequestDeadline(
@@ -139,10 +153,9 @@ export const verifyChunkOnce = async (
           targetLang: ctx.opts.targetLang,
           game: ctx.opts.game,
           modName: ctx.opts.modName,
-          glossary: relevantGlossaryEntries(
-            ctx.glossaryAll,
-            normalRows.map((row) => row.source),
-          ),
+          glossary,
+          promptFamily: normalRows[0]?.promptFamily,
+          dialogScene: normalRows[0]?.dialogScene,
           signal,
         }),
     );
@@ -182,7 +195,7 @@ export const verifyChunkOnce = async (
       const missingSet = new Set(err.missingIds);
       const okRows = normalRows.filter((row) => !missingSet.has(row.string_id));
       if (err.partialResults.length > 0) {
-        const okItems = buildVerifyItems(okRows, ragByStringId);
+        const okItems = buildVerifyItems(okRows, ragByStringId, ctx.mcmSiblingTexts);
         scheduleBatchPersist(
           ctx.persistCtx,
           buildBatchPersistJob(
@@ -248,6 +261,7 @@ export const createVerifyChunkContext = (
   fixSuspicious: boolean,
   dryRun: boolean,
   collectIssue?: (issue: import('../queries').LlmVerifyIssue) => void,
+  mcmSiblingTexts: Map<string, string> = new Map(),
 ): VerifyChunkContext => ({
   db,
   opts,
@@ -259,6 +273,7 @@ export const createVerifyChunkContext = (
   fixSuspicious,
   dryRun,
   persistCtx,
+  mcmSiblingTexts,
   shouldCancel: opts.shouldCancel,
   collectIssue,
 });

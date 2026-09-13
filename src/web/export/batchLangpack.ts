@@ -5,8 +5,11 @@ import type { Tx } from '../../db';
 import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { collectLangpackEntries } from './langpackCollect';
+import { mergeLangpackEntries, type TaggedLangpackEntry } from './langpackMerge';
 import { writeLangpackEntriesToDir } from './langpackStage';
+import { splitLangpackVoiceEntries, writeUaSoundPackIntoDir } from './uaSoundPack';
 import { zipDirectoryToPath } from './zipPack';
+import type { VortexFileWinner } from '../../vortex/types';
 
 export { mergeLangpackEntries, normalizeLangpackZipPath } from './langpackMerge';
 
@@ -14,6 +17,7 @@ export type LangpackBatchMod = {
   modId: number;
   modPath: string;
   game: GameType;
+  sourceFolder?: string | null;
 };
 
 export type LangpackZipProgress = (done: number, total: number) => void | Promise<void>;
@@ -28,8 +32,8 @@ const langpackZipFileName = (game: GameType, targetLang: string): string =>
   `${game}_${targetLang}_langpack.zip`;
 
 /**
- * Stage each mod onto a shared Data tree (later mods overwrite), then stream
- * one Vortex-installable ZIP to `destPath` without holding the archive in RAM.
+ * Stage each mod onto a shared Data tree (later mods overwrite, unless Vortex
+ * file winners are passed), then stream one Vortex-installable ZIP to `destPath`.
  */
 export const exportLangpackZipToPath = async (
   db: Tx,
@@ -38,6 +42,7 @@ export const exportLangpackZipToPath = async (
   targetLang: string,
   destPath: string,
   onProgress?: LangpackZipProgress,
+  options?: { fileWinners?: readonly VortexFileWinner[] },
 ): Promise<LangpackZipToPathResult> => {
   const stagingDir = `${destPath}.staging`;
   fs.rmSync(stagingDir, { recursive: true, force: true });
@@ -45,6 +50,7 @@ export const exportLangpackZipToPath = async (
 
   let fileCount = 0;
   try {
+    const tagged: TaggedLangpackEntry[] = [];
     for (let i = 0; i < mods.length; i++) {
       const mod = mods[i]!;
       const files = await collectLangpackEntries(
@@ -58,11 +64,20 @@ export const exportLangpackZipToPath = async (
       if (files.length === 0) {
         log.info(`Batch langpack: no exportable content for mod ${mod.modId}, skipping`);
       } else {
-        fileCount += writeLangpackEntriesToDir(stagingDir, files);
+        for (const entry of files) {
+          tagged.push({ entry, sourceFolder: mod.sourceFolder ?? null });
+        }
         log.info(`Batch langpack: staged ${files.length} file(s) from mod ${mod.modId}`);
       }
       await onProgress?.(i + 1, mods.length);
     }
+
+    const game = mods[0]?.game ?? 'fo4';
+    const merged = mergeLangpackEntries(tagged, options?.fileWinners);
+    const { rest, voice } =
+      game === 'fo4' ? splitLangpackVoiceEntries(merged) : { rest: merged, voice: [] };
+    fileCount = writeLangpackEntriesToDir(stagingDir, rest);
+    fileCount += writeUaSoundPackIntoDir(stagingDir, voice, game);
 
     if (fileCount === 0) {
       throw new Error(
@@ -71,7 +86,6 @@ export const exportLangpackZipToPath = async (
     }
 
     const byteSize = await zipDirectoryToPath(stagingDir, destPath);
-    const game = mods[0]?.game ?? 'fo4';
     const zipFileName = path.basename(destPath) || langpackZipFileName(game, targetLang);
     log.info(
       `Batch langpack: ZIP ready — ${fileCount} file(s) from ${mods.length} mod(s), ${byteSize} bytes → ${destPath}`,

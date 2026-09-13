@@ -1,6 +1,8 @@
 import type { LlmTranslateOverwriteMode } from '../../../../../src/web/data/queries';
 import type { RagRetrievalOptions } from '../../../../../src/llm/rag';
 import type { LlmTranslateItem } from '../../../../../src/llm/translate';
+import type { LlmPromptFamily } from '../../../../../src/llm/promptFamily';
+import type { DialogSceneContext } from '../../../../../src/llm/dialogScene';
 import type { DialogParticipantsRow } from '../../../../../src/web/data/queries/dialogs';
 import type { Semaphore } from '../../../../../src/utils/concurrency';
 import type { Tx } from '../../../../../src/db';
@@ -52,6 +54,8 @@ export type PreparedLlmItem = {
   functionKeywordMap: Record<string, string>;
   game: string | null;
   modName: string | null;
+  promptFamily?: LlmPromptFamily;
+  dialogScene?: DialogSceneContext;
   llmItem: LlmTranslateItem;
 };
 

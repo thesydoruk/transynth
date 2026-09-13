@@ -20,6 +20,7 @@ export interface ModImportJob {
   nexus_mod_id: number | null;
   source_folder: string | null;
   nexus_mod_name: string | null;
+  vortex_group_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface ModScanContext {
   nexusModId?: number;
   nexusModName?: string;
   sourceFolder?: string;
+  vortexGroupId?: number;
 }
 
 /** A mod artifact discovered in a directory listing. */

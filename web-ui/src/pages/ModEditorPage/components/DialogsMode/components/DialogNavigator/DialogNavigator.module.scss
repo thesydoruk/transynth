@@ -9,38 +9,6 @@
   border-right: 1px solid var(--border);
 }
 
-/* ── Scope switcher ─────────────────────────────────────────────────────── */
-
-.scopes {
-  display: flex;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.scope {
-  flex: 1;
-  padding: 8px 2px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-
-  &:hover {
-    color: var(--text-bright);
-  }
-}
-
-.scopeActive {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
 /* ── Search and list controls ───────────────────────────────────────────── */
 
 .controls {
@@ -94,7 +62,23 @@
   white-space: nowrap;
 }
 
-/* ── Virtualized group list ─────────────────────────────────────────────── */
+.treeAction {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-bright);
+    border-color: var(--accent);
+  }
+}
+
+/* ── Virtualized tree ───────────────────────────────────────────────────── */
 
 .list {
   flex: 1;
@@ -116,15 +100,52 @@
 
 .row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: stretch;
   width: 100%;
   height: 100%;
-  padding: 6px 10px;
+  padding-right: 8px;
+  border-left: 2px solid transparent;
+}
+
+.rowActive {
+  background: var(--bg-active);
+  border-left-color: var(--accent);
+
+  .rowBody:hover {
+    background: transparent;
+  }
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 18px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--text-bright);
+  }
+}
+
+.chevronGhost {
+  cursor: default;
+}
+
+.rowBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 4px 5px 2px;
   text-align: left;
   background: none;
   border: none;
-  border-left: 2px solid transparent;
   color: var(--text);
   cursor: pointer;
 
@@ -133,20 +154,47 @@
   }
 }
 
-.rowActive {
-  background: var(--bg-active);
-  border-left-color: var(--accent);
-
-  &:hover {
-    background: var(--bg-active);
-  }
-}
-
 .rowTop {
   display: flex;
   align-items: baseline;
   gap: 6px;
   min-width: 0;
+}
+
+.kind {
+  flex-shrink: 0;
+  padding: 0 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+
+.kindQuest {
+  color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.16);
+}
+
+.kindScene {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.kindBranch {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.kindTopic {
+  color: #86efac;
+  background: rgba(74, 222, 128, 0.14);
+}
+
+.kindGroup {
+  color: var(--text-dim);
+  background: var(--bg-input);
 }
 
 .rowLabel {
@@ -158,18 +206,12 @@
   white-space: nowrap;
 }
 
-.rowNodes {
-  flex-shrink: 0;
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-}
-
 .rowBottom {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  padding-left: 2px;
 }
 
 .rowQa {

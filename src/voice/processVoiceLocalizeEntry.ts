@@ -51,7 +51,7 @@ export type ProcessVoiceLocalizeEntryOptions = {
 };
 
 export type ProcessVoiceLocalizeEntryResult =
-  | { kind: 'written'; relPath: string }
+  | { kind: 'written'; relPath: string; voiceSimilarity: number | null }
   | { kind: 'skipped'; relPath: string }
   | { kind: 'warning'; message: string };
 
@@ -157,7 +157,7 @@ export const processVoiceLocalizeEntry = async (
       });
       storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);
-      return { kind: 'written', relPath: prefix + fuzRel };
+      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
     }
     if (force) {
       ensureDir(path.dirname(fuzDest));
@@ -173,7 +173,7 @@ export const processVoiceLocalizeEntry = async (
       });
       storedVersions.set(versionKey, payloadVersion);
       log.info(`Voice ${prefix}${fuzRel}`);
-      return { kind: 'written', relPath: prefix + fuzRel };
+      return { kind: 'written', relPath: prefix + fuzRel, voiceSimilarity: tts.voiceSimilarity };
     }
     return { kind: 'skipped', relPath: prefix + fuzRel };
   } catch (err) {

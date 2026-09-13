@@ -21,6 +21,16 @@ import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildTranslateResponseFormat } from './responseSchemas';
 import type { GameType } from '../types';
+import { resolveBatchPromptFamily, type LlmPromptFamily } from './promptFamily';
+import { recastFo4UkDialogTranslations } from './dialogRecast';
+import { dialogScenePayload, type DialogSceneContext } from './dialogScene';
+import {
+  assembleTranslatedText,
+  compactLlmPartsFields,
+  type LlmSlotHint,
+  type LlmTextPart,
+  type LlmTextSlot,
+} from './textParts';
 
 export type { LlmDialogParticipants, LlmParticipantGender } from './dialogParticipants';
 
@@ -34,6 +44,9 @@ export interface LlmGlossaryEntry {
 export interface LlmReferenceExample {
   source: string;
   translation: string;
+  parts?: LlmTextPart[];
+  translation_parts?: LlmTextPart[];
+  slots?: LlmSlotHint[];
   grup: string | null;
   edid: string | null;
   field: string | null;
@@ -45,6 +58,14 @@ export interface LlmReferenceExample {
 export interface LlmTranslateItem extends LlmDialogParticipants {
   id: number;
   source: string;
+  /** Translatable fragments + integer slot ids. Preferred over inline ¤PH¤ masks. */
+  parts?: LlmTextPart[];
+  /** Slot kinds only — raw tokens stay in {@link restoreSlots}. */
+  slots?: LlmSlotHint[];
+  /** Local restore table; never sent to the LLM. */
+  restoreSlots?: LlmTextSlot[];
+  /** Source parts used to validate the model's slot multiset. */
+  sourceParts?: LlmTextPart[];
   grup: string | null;
   edid: string | null;
   field: string | null;
@@ -63,6 +84,12 @@ export interface LlmTranslateOptions {
   modName?: string | null;
   glossary?: LlmGlossaryEntry[];
   styleGuide?: string;
+  /** FO4 text family; inferred from item grup/field when omitted. */
+  promptFamily?: LlmPromptFamily;
+  /** Spoken scene window for the dialog family (neighbors + order). */
+  dialogScene?: DialogSceneContext;
+  /** Skip the FO4 UK dialog gender/register editor pass. */
+  skipDialogRecast?: boolean;
   /** Aborts the in-flight LLM request when the owning job is stopped. */
   signal?: AbortSignal;
 }
@@ -113,9 +140,10 @@ export const buildTranslateSystemPrompt = (
   srcLang: string,
   targetLang: string,
   game?: GameType | string | null,
+  family?: LlmPromptFamily | null,
 ): string => {
   if (isUkrainianTargetLang(targetLang)) {
-    return buildUkrainianTranslateSystemPrompt(srcLang, game);
+    return buildUkrainianTranslateSystemPrompt(srcLang, game, family);
   }
 
   return buildEnglishTranslateSystemPrompt(srcLang, targetLang, game);
@@ -135,14 +163,33 @@ export const buildTranslateUserPayload = (opts: Omit<LlmTranslateOptions, 'model
     ...(opts.modName?.trim() ? { mod_name: opts.modName } : {}),
     ...(opts.styleGuide?.trim() ? { style_guide: opts.styleGuide.slice(0, 4000) } : {}),
     ...(glossary.length > 0 ? { glossary } : {}),
-    items: opts.items.map((item) => ({
-      id: item.id,
-      source: item.source,
-      ...compactLlmItemFields(item),
-      ...participantPayloadFields(item),
-      ...compactLlmReferenceExamples(item.reference_examples),
-    })),
+    ...(opts.dialogScene ? { dialog_scene: dialogScenePayload(opts.dialogScene) } : {}),
+    items: opts.items.map((item) => {
+      const structured = compactLlmPartsFields(item.parts, item.slots);
+      return {
+        id: item.id,
+        ...(structured.parts ? structured : { source: item.source }),
+        ...compactLlmItemFields(item),
+        ...participantPayloadFields(item),
+        ...compactLlmReferenceExamples(item.reference_examples),
+      };
+    }),
   };
+};
+
+const assembleItemTranslation = (
+  id: number,
+  rawParts: unknown,
+  rawTranslation: unknown,
+  requestItems?: readonly LlmTranslateItem[],
+): string | null => {
+  const request = requestItems?.find((item) => item.id === id);
+  return assembleTranslatedText(
+    rawParts,
+    rawTranslation,
+    request?.sourceParts,
+    request?.restoreSlots,
+  );
 };
 
 /**
@@ -154,6 +201,7 @@ export const parseLlmTranslateResponse = (
   raw: string,
   expectedIds: number[],
   completionMeta?: ChatCompletionMeta,
+  requestItems?: readonly LlmTranslateItem[],
 ): LlmTranslateResult[] => {
   let parsed: unknown = tryParseLlmJson(raw);
   if (parsed === undefined && expectedIds.length === 1) {
@@ -190,11 +238,12 @@ export const parseLlmTranslateResponse = (
   const byId = new Map<number, string>();
   for (const entry of items) {
     if (!entry || typeof entry !== 'object') continue;
-    const row = entry as { id?: unknown; translation?: unknown };
+    const row = entry as { id?: unknown; translation?: unknown; parts?: unknown };
     const id = parseLlmItemId(row.id);
     if (id == null) continue;
-    if (typeof row.translation !== 'string') continue;
-    byId.set(id, row.translation);
+    const assembled = assembleItemTranslation(id, row.parts, row.translation, requestItems);
+    if (assembled == null) continue;
+    byId.set(id, assembled);
   }
 
   const results: LlmTranslateResult[] = [];
@@ -228,7 +277,8 @@ export const translateStrings = async (
   if (opts.items.length === 0) return [];
 
   const expectedIds = opts.items.map((item) => item.id);
-  const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game);
+  const family = resolveBatchPromptFamily(opts.game, opts.items, opts.promptFamily);
+  const systemPrompt = buildTranslateSystemPrompt(opts.srcLang, opts.targetLang, opts.game, family);
   const payload = buildTranslateUserPayload(opts);
 
   const { content: text, meta } = await chatWithFallback({
@@ -270,5 +320,6 @@ export const translateStrings = async (
     );
   }
 
-  return parseLlmTranslateResponse(text, expectedIds, meta);
+  const draft = parseLlmTranslateResponse(text, expectedIds, meta, opts.items);
+  return recastFo4UkDialogTranslations(opts, draft);
 };

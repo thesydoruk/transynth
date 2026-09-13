@@ -76,9 +76,40 @@ export const resolveModImportLocalizeDir = (extractRoot: string, lang: string): 
   return fs.existsSync(localizeDir) ? localizeDir : null;
 };
 
-export const isInsideModStorage = (absPath: string): boolean => {
-  const rel = path.relative(modStorageRoot(), path.resolve(absPath));
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
+const isInsideRoot = (absPath: string, root: string): boolean => {
+  const rel = path.relative(path.resolve(root), path.resolve(absPath));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+};
+
+export const isInsideModStorage = (absPath: string): boolean =>
+  isInsideRoot(absPath, modStorageRoot());
+
+const isInsideVortexUploads = (absPath: string): boolean =>
+  isInsideRoot(absPath, PATHS.vortexUploads);
+
+const startWalkDir = (absPath: string): string =>
+  fs.existsSync(absPath) && fs.statSync(absPath).isDirectory() ? absPath : path.dirname(absPath);
+
+const walkForExtractRoot = (
+  startDir: string,
+  inside: (dir: string) => boolean,
+  isRoot: (dir: string) => boolean,
+): string | null => {
+  let current = startDir;
+  while (inside(current)) {
+    if (isRoot(current)) return current;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
+};
+
+/** Vortex extract: `uploads/vortex/{groupId}/{contentHash}/`. */
+const isVortexExtractRoot = (dir: string): boolean => {
+  const vortexRoot = path.resolve(PATHS.vortexUploads);
+  const parent = path.dirname(dir);
+  return parent !== vortexRoot && path.dirname(parent) === vortexRoot;
 };
 
 /** Remap a DB-stored path from another host/OS to the current {@link PATHS.dataDir}. */
@@ -105,24 +136,20 @@ export const resolveModStoredPath = (storedPath: string): string => {
   return direct;
 };
 
-/** Resolve `_extracted_*` root for a plugin path under mod storage, if any. */
+/**
+ * Resolve the import extract root for a plugin path.
+ *
+ * Manual uploads live under `_extracted_{hash}/`. Vortex packs live under
+ * `uploads/vortex/{groupId}/{hash}/` — without that, voice UI cannot find
+ * `_localize_{key}/{lang}` that TM / carry-over already wrote.
+ */
 export const resolveModImportExtractRoot = (pluginPath: string): string | null => {
-  const absPluginPath = path.resolve(pluginPath);
-  if (!isInsideModStorage(absPluginPath)) return null;
-
-  let current =
-    fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
-      ? absPluginPath
-      : path.dirname(absPluginPath);
-
-  while (isInsideModStorage(current)) {
-    if (path.basename(current).startsWith('_extracted_')) return current;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-
-  return null;
+  const startDir = startWalkDir(path.resolve(pluginPath));
+  return (
+    walkForExtractRoot(startDir, isInsideModStorage, (dir) =>
+      path.basename(dir).startsWith('_extracted_'),
+    ) ?? walkForExtractRoot(startDir, isInsideVortexUploads, isVortexExtractRoot)
+  );
 };
 
 /** Resolve `_localize_*` root for a plugin path under mod storage, if any. */

@@ -1,7 +1,7 @@
 export type { Tx } from './types';
 export { isPgTransientError, withPgRetry } from './retry';
 export { openDb, closeDb, runSchema, withTransaction } from './pool';
-export { upsertMod } from './mods';
+export { upsertMod, upsertVortexMod } from './mods';
 export { upsertRecord, insertString, findStringId } from './records';
 export {
   upsertDialogTopic,

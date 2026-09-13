@@ -3,8 +3,8 @@
  */
 import type { GameType } from '../types';
 import { normalizeAutoTranslation } from '../utils/textNorm';
-import { maskTranslateSource } from './llmTextMask';
 import { unmask } from '../utils/placeholders';
+import { applyTranslateSplit, isMaskedLlmText, splitTranslateSource } from './textParts';
 import { translateStrings } from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
 import {
@@ -38,34 +38,28 @@ export const rewriteVerifyTranslationsFromSource = async (
 ): Promise<VerifySourceRewriteOutcome> => {
   if (opts.items.length === 0) return { rewritten: [], confirmedUnchanged: [] };
 
-  const maskedById = new Map<
-    number,
-    {
-      masked: string;
-      placeholderMap: Record<string, string>;
-      functionKeywordMap: Record<string, string>;
-    }
-  >();
-
-  for (const item of opts.items) {
-    const { masked, placeholderMap, functionKeywordMap } = maskTranslateSource(
-      item.source,
-      opts.game,
-      { grup: item.grup, field: item.field },
-    );
-    maskedById.set(item.id, { masked, placeholderMap, functionKeywordMap });
-  }
+  const splitById = new Map(
+    opts.items.map((item) => [
+      item.id,
+      splitTranslateSource(item.source, opts.game, { grup: item.grup, field: item.field }),
+    ]),
+  );
 
   const translations = await translateStrings({
-    items: opts.items.map((item) => ({
-      id: item.id,
-      source: maskedById.get(item.id)!.masked,
-      grup: item.grup,
-      edid: item.edid,
-      field: item.field,
-      form_id: null,
-      context: null,
-    })),
+    items: opts.items.map((item) =>
+      applyTranslateSplit(
+        {
+          id: item.id,
+          source: '',
+          grup: item.grup,
+          edid: item.edid,
+          field: item.field,
+          form_id: null,
+          context: null,
+        },
+        splitById.get(item.id)!,
+      ),
+    ),
     model: opts.model,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
@@ -78,13 +72,13 @@ export const rewriteVerifyTranslationsFromSource = async (
   const confirmedUnchanged: number[] = [];
   for (const row of translations) {
     const item = opts.items.find((entry) => entry.id === row.id);
-    const masks = maskedById.get(row.id);
-    if (!item || !masks) continue;
+    const split = splitById.get(row.id);
+    if (!item || !split) continue;
 
-    const text = normalizeAutoTranslation(
-      item.source,
-      unmask(unmask(row.translation, masks.functionKeywordMap), masks.placeholderMap),
-    );
+    const assembled = isMaskedLlmText(row.translation)
+      ? unmask(unmask(row.translation, split.functionKeywordMap), split.placeholderMap)
+      : row.translation;
+    const text = normalizeAutoTranslation(item.source, assembled);
     const check = validateRewrittenTranslation(item, text, opts.game);
     if (!check.ok) {
       if (isRewriteUnchangedConfirmation(check)) {

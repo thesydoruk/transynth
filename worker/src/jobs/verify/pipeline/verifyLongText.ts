@@ -56,6 +56,7 @@ const verifyPartOnce = async (
   ctx: VerifyChunkContext,
   item: LlmVerifyItem,
 ): Promise<LlmVerifyItemResult> => {
+  const glossary = await relevantGlossaryEntries(ctx.glossaryAll, [item.source]);
   const [result] = await withRequestDeadline(
     CONFIG.llmRequestTimeoutMs,
     ctx.opts.signal,
@@ -67,7 +68,7 @@ const verifyPartOnce = async (
         targetLang: ctx.opts.targetLang,
         game: ctx.opts.game,
         modName: ctx.opts.modName,
-        glossary: relevantGlossaryEntries(ctx.glossaryAll, [item.source]),
+        glossary,
         signal,
       }),
   );

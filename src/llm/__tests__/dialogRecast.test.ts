@@ -1,0 +1,175 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import type { ChatResult } from '../provider';
+import type { LlmTranslateOptions } from '../translate';
+
+const chatWithFallback = jest.fn<() => Promise<ChatResult>>();
+
+jest.unstable_mockModule('../index', () => ({
+  chatWithFallback,
+}));
+
+const {
+  buildDialogRecastUserPayload,
+  FO4_UK_DIALOG_RECAST_PROMPT,
+  mergeDialogRecast,
+  recastFo4UkDialogTranslations,
+  shouldRecastFo4UkDialog,
+} = await import('../dialogRecast');
+
+const chatResult = (content: string, finishReason: 'stop' | 'length' = 'stop'): ChatResult => ({
+  content,
+  meta: {
+    finishReason,
+    promptTokens: null,
+    completionTokens: null,
+    totalTokens: null,
+  },
+});
+
+const baseOpts = (): LlmTranslateOptions => ({
+  items: [
+    {
+      id: 1,
+      source: 'I was surprised.',
+      grup: 'INFO',
+      edid: null,
+      field: 'NAM1',
+      form_id: null,
+      context: null,
+      speaker: 'Player',
+      speaker_gender: 'any',
+    },
+    {
+      id: 2,
+      source: 'Are you ready?',
+      grup: 'INFO',
+      edid: null,
+      field: 'NAM1',
+      form_id: null,
+      context: null,
+      speaker: 'Preston',
+      addressee: 'Player',
+      addressee_gender: 'any',
+    },
+  ],
+  model: 'test-model',
+  srcLang: 'en',
+  targetLang: 'uk',
+  game: 'fo4',
+  promptFamily: 'dialog',
+});
+
+describe('shouldRecastFo4UkDialog', () => {
+  it('runs only for FO4 Ukrainian dialog', () => {
+    expect(shouldRecastFo4UkDialog({ ...baseOpts() })).toBe(true);
+    expect(shouldRecastFo4UkDialog({ ...baseOpts(), targetLang: 'de' })).toBe(false);
+    expect(shouldRecastFo4UkDialog({ ...baseOpts(), game: 'sse' })).toBe(false);
+    expect(shouldRecastFo4UkDialog({ ...baseOpts(), promptFamily: 'item' })).toBe(false);
+    expect(shouldRecastFo4UkDialog({ ...baseOpts(), skipDialogRecast: true })).toBe(false);
+  });
+});
+
+describe('FO4_UK_DIALOG_RECAST_PROMPT', () => {
+  it('shows how to recast gender instead of flipping masculine to feminine', () => {
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('спільний рядок Нейта і Нори');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('голосу мовця');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Не міняй чоловічий рід на жіночий');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('З тобою інакше');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Було приємно просто послухати');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Дякую за ці слова');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('чого я чекав/чекала');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Куди це ти?');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('єдина людина');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('дволична людина');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Ще не ясно, чи зможу');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Нічого з того, що скажеш');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Ви можете розправитися з тими гулями');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Я ціную ваші зусилля');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('ти вільна йти');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Словами мене не зупиниш');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Зробіть самі');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Зачекай. Скінні');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Що саме вам було потрібно');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Я вже давно на тебе чекаю');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Ще нікого не вдалося знайти');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Не вгадуй стать з імені');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('як зможеш');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Тобі вперед');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('робота зроблена');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Бережи себе.');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Будь обережною там. Будь обережним там.');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Будьте обережні');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).not.toContain('шкереберть');
+  });
+});
+
+describe('mergeDialogRecast', () => {
+  it('keeps the draft when a recast id is missing or blank', () => {
+    const draft = [
+      { id: 1, translation: 'Я був здивований.' },
+      { id: 2, translation: 'Ну що, рушаємо?' },
+    ];
+    expect(
+      mergeDialogRecast(
+        draft,
+        new Map([
+          [1, 'Мене це здивувало.'],
+          [2, '   '],
+        ]),
+      ),
+    ).toEqual([
+      { id: 1, translation: 'Мене це здивувало.' },
+      { id: 2, translation: 'Ну що, рушаємо?' },
+    ]);
+  });
+});
+
+describe('buildDialogRecastUserPayload', () => {
+  it('sends the draft next to source and participants', () => {
+    const payload = buildDialogRecastUserPayload(baseOpts(), [
+      { id: 1, translation: 'Я був здивований.' },
+      { id: 2, translation: 'Ти готовий?' },
+    ]) as { items: Array<{ id: number; translation: string; speaker_gender?: string }> };
+    expect(payload.items[0]).toMatchObject({
+      id: 1,
+      source: 'I was surprised.',
+      translation: 'Я був здивований.',
+      speaker_gender: 'any',
+    });
+    expect(payload.items[1]?.translation).toBe('Ти готовий?');
+  });
+});
+
+describe('recastFo4UkDialogTranslations', () => {
+  beforeEach(() => {
+    chatWithFallback.mockReset();
+  });
+
+  it('applies the editor pass', async () => {
+    chatWithFallback.mockResolvedValue(
+      chatResult(
+        JSON.stringify({
+          items: [
+            { id: 1, translation: 'Мене це здивувало.' },
+            { id: 2, translation: 'Ну що, рушаємо?' },
+          ],
+        }),
+      ),
+    );
+    const result = await recastFo4UkDialogTranslations(baseOpts(), [
+      { id: 1, translation: 'Я був здивований.' },
+      { id: 2, translation: 'Ти готовий?' },
+    ]);
+    expect(result).toEqual([
+      { id: 1, translation: 'Мене це здивувало.' },
+      { id: 2, translation: 'Ну що, рушаємо?' },
+    ]);
+    expect(chatWithFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the draft when the editor call fails', async () => {
+    chatWithFallback.mockRejectedValue(new Error('vLLM down'));
+    const draft = [{ id: 1, translation: 'Я був здивований.' }];
+    await expect(recastFo4UkDialogTranslations(baseOpts(), draft)).resolves.toEqual(draft);
+  });
+});

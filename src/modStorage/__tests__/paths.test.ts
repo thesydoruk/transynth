@@ -9,6 +9,7 @@ import {
   modImportStorageKey,
   modStorageRoot,
   modUploadedFilePath,
+  resolveModImportExtractRoot,
   resolveModImportLocalizeDir,
   resolveModStoredPath,
 } from '../paths';
@@ -34,6 +35,22 @@ describe('modStorage paths', () => {
   it('returns null when localize dir does not exist yet', () => {
     const extractRoot = path.join(modStorageRoot(), '_extracted_missing_test');
     expect(resolveModImportLocalizeDir(extractRoot, 'uk')).toBeNull();
+  });
+
+  it('resolves Vortex extract roots so localize overlays are findable', () => {
+    const extractRoot = path.join(PATHS.vortexUploads, '1', 'v1_abc123');
+    const pluginPath = path.join(extractRoot, 'Data', 'DLCCoast.esm');
+    expect(resolveModImportExtractRoot(pluginPath)).toBe(path.resolve(extractRoot));
+    expect(modImportLocalizeDir(extractRoot, 'uk')).toBe(
+      path.join(modStorageRoot(), `_localize_${modImportStorageKey(extractRoot)}`, 'uk'),
+    );
+  });
+
+  it('still resolves classic _extracted_ upload trees', () => {
+    const extractRoot = path.join(modStorageRoot(), '_extracted_abc123');
+    expect(resolveModImportExtractRoot(path.join(extractRoot, 'Fallout4.esm'))).toBe(
+      path.resolve(extractRoot),
+    );
   });
 
   it('remaps Windows data paths to the current DATA_DIR', () => {

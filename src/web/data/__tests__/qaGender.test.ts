@@ -48,6 +48,13 @@ describe('applyGenderQaIssues', () => {
     expect(issues[0]!.severity).toBe('warning');
   });
 
+  it('warns when a shared player NAM1 hides gender after «до цього»', () => {
+    const issues = run('Я до цього звик.', { speaker_gender: 'any' });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.severity).toBe('warning');
+    expect(issues[0]!.message).toContain('"звик"');
+  });
+
   it('stays silent for rows outside the dialog graph', () => {
     expect(run('Я була тут учора.', {})).toEqual([]);
   });

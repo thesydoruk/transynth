@@ -9,6 +9,7 @@ import { ModDataMenuItems } from '../ModDataMenuItems';
 import { ModAiControls } from '../../../components/ModAiControls';
 import { useModAiJobsForMod } from '../../../hooks/useModAiJobsForMod';
 import type { ModExportAction } from '../modsShared';
+import { formatModDisplayName } from '../modVersions';
 import s from './ModWorkspaceRow.module.scss';
 
 export interface ModWorkspaceRowProps {
@@ -18,6 +19,7 @@ export interface ModWorkspaceRowProps {
   clearingRows?: boolean;
   deletingAll?: boolean;
   selected?: boolean;
+  nested?: boolean;
   multiSelectActive?: boolean;
   onSelectedChange?: (selected: boolean) => void;
   onOpen: () => void;
@@ -48,6 +50,7 @@ export const ModWorkspaceRow = ({
   clearingRows,
   deletingAll,
   selected,
+  nested,
   multiSelectActive,
   onSelectedChange,
   onOpen,
@@ -88,7 +91,7 @@ export const ModWorkspaceRow = ({
 
   return (
     <div
-      className={`${parentS.row} ${s.row}${selected ? ` ${s.rowSelected}` : ''}`}
+      className={`${parentS.row} ${s.row}${selected ? ` ${s.rowSelected}` : ''}${nested ? ` ${s.rowNested}` : ''}`}
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -107,7 +110,7 @@ export const ModWorkspaceRow = ({
             checked={selected ?? false}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => onSelectedChange(e.target.checked)}
-            aria-label={t('mods.selectMod', { name: mod.name })}
+            aria-label={t('mods.selectMod', { name: formatModDisplayName(mod) })}
           />
         )}
         <span className={parentS.typeBadge} style={{ background: '#2e7d32' }}>
@@ -116,6 +119,11 @@ export const ModWorkspaceRow = ({
         <div className={s.main}>
           <span className={parentS.fileName}>
             {mod.name}
+            {mod.version_label?.trim() ? (
+              <span className={s.versionBadge} title={t('mods.version')}>
+                {mod.version_label.trim()}
+              </span>
+            ) : null}
             {importJob?.is_localized ? (
               <span className={rowS.locBadge}>{t('modImport.localized')}</span>
             ) : null}

@@ -4,34 +4,9 @@
  * Maps BullMQ kinds onto the compact UI labels (`translate` / `verify` / …)
  * and merges live counters from the Redis snapshot when available.
  */
-import { fromBullJobId, listUnfinishedJobs } from '../core/queue';
-import { readJobSnapshot } from '../core/snapshots';
-import type { JobKind, JobSnapshotStatus } from '../types';
-import type { Job } from 'bullmq';
-import type { JobData } from '../types';
-
-const TERMINAL_SNAPSHOT: ReadonlySet<JobSnapshotStatus> = new Set([
-  'completed',
-  'cancelled',
-  'failed',
-]);
-
-/** Drop queue rows left behind after the worker already wrote a terminal snapshot. */
-const cleanupZombieQueueJob = async (job: Job<JobData>): Promise<void> => {
-  try {
-    const state = await job.getState();
-    if (
-      state === 'waiting' ||
-      state === 'delayed' ||
-      state === 'prioritized' ||
-      state === 'waiting-children'
-    ) {
-      await job.remove();
-    }
-  } catch {
-    /* best effort — UI already hides the job */
-  }
-};
+import { fromBullJobId, listUnfinishedJobs, removeIdleQueueJob } from '../core/queue';
+import { isJobMarkedCancelled, isTerminalSnapshotStatus, readJobSnapshot } from '../core/snapshots';
+import type { JobKind } from '../types';
 
 export type ModAiJobKind = 'translate' | 'verify' | 'skip-detect' | 'gender-detect' | 'voice';
 export type ModTranslateMode = 'tm' | 'llm';
@@ -69,8 +44,11 @@ export const listActiveModAiJobs = async (): Promise<ActiveModAiJob[]> => {
       const jobId = fromBullJobId(job.id);
       if (!mapping || job.data.modId == null || jobId == null) return null;
       const snapshot = await readJobSnapshot(jobId);
-      if (snapshot && TERMINAL_SNAPSHOT.has(snapshot.status)) {
-        void cleanupZombieQueueJob(job);
+      if (
+        (snapshot && isTerminalSnapshotStatus(snapshot.status)) ||
+        (await isJobMarkedCancelled(jobId))
+      ) {
+        void removeIdleQueueJob(job);
         return null;
       }
       const params = job.data.params as { speakerKey?: unknown } | undefined;

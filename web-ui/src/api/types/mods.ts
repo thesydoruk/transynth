@@ -7,6 +7,12 @@ export type Mod = {
   nexus_mod_id: number | null;
   nexus_name: string | null;
   nexus_thumbnail: string | null;
+  origin?: string;
+  vortex_group_id?: number | null;
+  channel?: string | null;
+  game_release_id?: number | null;
+  version_label?: string | null;
+  is_current?: boolean;
   created_at: string;
   record_count: number;
   string_count: number;

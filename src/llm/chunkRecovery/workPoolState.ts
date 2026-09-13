@@ -11,6 +11,12 @@ export const createWorkPoolState = <T>(
     shouldAbort,
     pump: () => {},
     maybeDone: () => {
+      // Stop must not wait for leftover queued chunks — that deadlocks the
+      // serial LLM worker (inFlight is already 0, queue still full).
+      if (state.shouldAbort?.()) {
+        if (state.inFlight === 0) resolve();
+        return;
+      }
       if (state.queue.length === 0 && state.inFlight === 0 && state.pendingDelayed === 0) {
         resolve();
       }

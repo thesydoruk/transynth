@@ -3,17 +3,24 @@ import { req } from '../client';
 import type { GlossaryEnforceResult, GlossaryEntry } from '../types';
 
 export const glossaryEndpoints = {
-  list: (params?: { srcLang?: string; tgtLang?: string; q?: string }) => {
+  list: (params?: { srcLang?: string; tgtLang?: string; q?: string; game?: string }) => {
     const qs = new URLSearchParams();
     if (params?.srcLang) qs.set('srcLang', params.srcLang);
     if (params?.tgtLang) qs.set('tgtLang', params.tgtLang);
     if (params?.q) qs.set('q', params.q);
+    if (params?.game) qs.set('game', params.game);
     return req<GlossaryEntry[]>(`/api/glossary?${qs}`);
   },
-  add: (term: string, translation: string | null, srcLang = getSrcLang(), tgtLang = getTgtLang()) =>
+  add: (
+    term: string,
+    translation: string | null,
+    srcLang = getSrcLang(),
+    tgtLang = getTgtLang(),
+    game?: string,
+  ) =>
     req<GlossaryEntry>('/api/glossary', {
       method: 'POST',
-      body: JSON.stringify({ term, translation, srcLang, tgtLang }),
+      body: JSON.stringify({ term, translation, srcLang, tgtLang, game }),
     }),
   update: (id: number, term: string, translation: string | null) =>
     req<GlossaryEntry>(`/api/glossary/${id}`, {
@@ -23,7 +30,7 @@ export const glossaryEndpoints = {
   remove: (id: number) => req<{ ok: boolean }>(`/api/glossary/${id}`, { method: 'DELETE' }),
 
   /** Batch-enforce glossary terms as QA rules across translated strings. */
-  enforce: (opts?: { modId?: number; targetLang?: string }) =>
+  enforce: (opts?: { modId?: number; targetLang?: string; game?: string }) =>
     req<GlossaryEnforceResult>('/api/glossary/enforce', {
       method: 'POST',
       body: JSON.stringify(opts ?? {}),

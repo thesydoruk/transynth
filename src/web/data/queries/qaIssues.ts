@@ -1,11 +1,11 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { DIALOG_PARTICIPANT_COLUMNS, dialogParticipantsLateralSql } from './dialogs';
+import { loadGlossaryTermsForQa } from './glossaryLoad';
 import {
   collectQAIssuesForRow,
   bulkInsertQAIssues,
   loadQaCheckSettings,
-  loadGlossaryTermsForQa,
   loadQaRulesForGame,
   qaRuleGameKey,
   type QaRuleRow,

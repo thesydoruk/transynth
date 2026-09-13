@@ -20,6 +20,12 @@ export const resolveGameType = (game?: GameType | string | null): GameType => {
   return 'fo4';
 };
 
+/** Glossary storage key: Skyrim LE shares the SSE term list. */
+export const glossaryGameKey = (game?: GameType | string | null): GameType => {
+  const resolved = resolveGameType(game);
+  return resolved === 'sle' ? 'sse' : resolved;
+};
+
 /** Disco Elysium Final Cut (.po) — not a Bethesda / Creation Kit title. */
 export const isDiscoGame = (game?: GameType | string | null): boolean =>
   resolveGameType(game) === 'disco';

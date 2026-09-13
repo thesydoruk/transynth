@@ -95,6 +95,75 @@ export const stringAlignKeySql = (alias = 's'): string => {
   END`;
 };
 
+const TRANSLATION_INSERT_COLS = `INSERT INTO translations(
+  src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
+)`;
+
+const TRANSLATION_INSERT_VALUES = `SELECT
+  src.id,
+  tgt.lang,
+  tgt.text_raw,
+  'reviewed',
+  1.0,
+  'import_self_translation',
+  NULL,
+  NULL,
+  NOW()`;
+
+/** Official plugins pair locales by lstring id — integer join, no window. */
+export const SQL_CONVERT_LSTRING_INSERT = `${TRANSLATION_INSERT_COLS}
+${TRANSLATION_INSERT_VALUES}
+FROM strings src
+INNER JOIN records r ON r.id = src.record_id
+INNER JOIN strings tgt
+  ON tgt.record_id = src.record_id
+ AND tgt.lstring_id = src.lstring_id
+WHERE r.mod_id = $1
+  AND src.lang = $2
+  AND src.lstring_id IS NOT NULL`;
+
+/**
+ * Inline (no lstring) rows only. Window stays here so MCM / Interface txt still
+ * pair by position; official FO4 INFO/TES4 strings never enter this CTE.
+ */
+export const SQL_CONVERT_INLINE_INSERT = `WITH inline_strings AS (
+  SELECT
+    s.id,
+    s.lang,
+    s.text_raw,
+    s.record_id,
+    (ROW_NUMBER() OVER (
+      PARTITION BY s.record_id, s.lang
+      ORDER BY s.id
+    ) - 1) AS ordinal
+  FROM strings s
+  INNER JOIN records r ON r.id = s.record_id
+  WHERE r.mod_id = $1 AND s.lstring_id IS NULL
+)
+${TRANSLATION_INSERT_COLS}
+${TRANSLATION_INSERT_VALUES}
+FROM inline_strings src
+INNER JOIN inline_strings tgt
+  ON tgt.record_id = src.record_id
+ AND tgt.ordinal = src.ordinal
+WHERE src.lang = $2`;
+
+const toCount = (value: string | null | undefined): number => Number.parseInt(value ?? '0', 10);
+
+const withConvertTx = async <T>(db: Tx, fn: () => Promise<T>): Promise<T> => {
+  await db.query('BEGIN');
+  try {
+    await db.query("SET LOCAL work_mem = '256MB'");
+    await db.query('SET LOCAL synchronous_commit = off');
+    const result = await fn();
+    await db.query('COMMIT');
+    return result;
+  } catch (err) {
+    await db.query('ROLLBACK');
+    throw err;
+  }
+};
+
 /**
  * Build translations from imported locale strings via SQL alignment join.
  * Avoids loading all strings into Node for large multi-locale mods.
@@ -116,84 +185,55 @@ export const sqlConvertImportedStringsToTranslations = async (
     return { inserted: 0, skippedWithoutSource: 0, locales: [], resolvedSourceLocale };
   }
 
-  const alignKey = stringAlignKeySql('s');
-  const modStringsCte = `mod_strings AS (
-    SELECT
-      s.id,
-      s.lang,
-      s.text_raw,
-      ${alignKey} AS align_key
-    FROM strings s
-    INNER JOIN records r ON r.id = s.record_id
-    WHERE r.mod_id = $1
-  )`;
+  return withConvertTx(db, async () => {
+    const sourceCountResult = await db.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM strings s
+       JOIN records r ON r.id = s.record_id
+       WHERE r.mod_id = $1 AND s.lang = $2`,
+      [modId, resolvedSourceLocale],
+    );
+    if (toCount(sourceCountResult.rows[0]?.count) === 0) {
+      throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
+    }
 
-  const skippedResult = await db.query<{ count: string }>(
-    `WITH ${modStringsCte},
-     source_keys AS (
-       SELECT align_key FROM mod_strings WHERE lang = $2
-     )
-     SELECT COUNT(*)::text AS count
-     FROM mod_strings tgt
-     WHERE tgt.lang != $2
-       AND NOT EXISTS (
-         SELECT 1 FROM source_keys sk WHERE sk.align_key = tgt.align_key
-       )`,
-    [modId, resolvedSourceLocale],
-  );
-  const skippedWithoutSource = Number.parseInt(skippedResult.rows[0]?.count ?? '0', 10);
+    await db.query(
+      `DELETE FROM translations t
+       USING strings s
+       JOIN records r ON r.id = s.record_id
+       WHERE t.src_string_id = s.id
+         AND r.mod_id = $1
+         AND s.lang = $2`,
+      [modId, resolvedSourceLocale],
+    );
 
-  const sourceCountResult = await db.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count
-     FROM strings s
-     JOIN records r ON r.id = s.record_id
-     WHERE r.mod_id = $1 AND s.lang = $2`,
-    [modId, resolvedSourceLocale],
-  );
-  const sourceStringCount = Number.parseInt(sourceCountResult.rows[0]?.count ?? '0', 10);
-  if (sourceStringCount === 0) {
-    throw new Error(`Source locale "${resolvedSourceLocale}" not found for mod ${modId}`);
-  }
+    const lstringInsert = await db.query(SQL_CONVERT_LSTRING_INSERT, [modId, resolvedSourceLocale]);
+    const inlineInsert = await db.query(SQL_CONVERT_INLINE_INSERT, [modId, resolvedSourceLocale]);
 
-  await db.query(
-    `DELETE FROM translations t
-     USING strings s
-     JOIN records r ON r.id = s.record_id
-     WHERE t.src_string_id = s.id
-       AND r.mod_id = $1
-       AND s.lang = $2`,
-    [modId, resolvedSourceLocale],
-  );
+    const skippedResult = await db.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM strings tgt
+       INNER JOIN records r ON r.id = tgt.record_id
+       WHERE r.mod_id = $1
+         AND tgt.lang IS DISTINCT FROM $2
+         AND tgt.lstring_id IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1
+           FROM strings src
+           WHERE src.record_id = tgt.record_id
+             AND src.lstring_id = tgt.lstring_id
+             AND src.lang = $2
+         )`,
+      [modId, resolvedSourceLocale],
+    );
 
-  const { rowCount } = await db.query(
-    `WITH ${modStringsCte},
-     source_strings AS (
-       SELECT id, align_key FROM mod_strings WHERE lang = $2
-     )
-     INSERT INTO translations(
-       src_string_id, target_lang, text, status, confidence, provenance, model, user_id, updated_at
-     )
-     SELECT
-       src.id,
-       tgt.lang,
-       tgt.text_raw,
-       'reviewed',
-       1.0,
-       'import_self_translation',
-       NULL,
-       NULL,
-       NOW()
-     FROM source_strings src
-     INNER JOIN mod_strings tgt ON tgt.align_key = src.align_key`,
-    [modId, resolvedSourceLocale],
-  );
-
-  return {
-    inserted: rowCount ?? 0,
-    skippedWithoutSource,
-    locales,
-    resolvedSourceLocale,
-  };
+    return {
+      inserted: (lstringInsert.rowCount ?? 0) + (inlineInsert.rowCount ?? 0),
+      skippedWithoutSource: toCount(skippedResult.rows[0]?.count),
+      locales,
+      resolvedSourceLocale,
+    };
+  });
 };
 
 /** Fast translation upsert for import pipelines (no RAG, revision, or QA). */

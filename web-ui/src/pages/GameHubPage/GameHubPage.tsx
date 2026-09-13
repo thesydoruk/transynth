@@ -16,6 +16,7 @@ import { ProgressBar } from '../../components/StatusBadge';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { modListQueryKey } from '../../langDefaults';
 import { modProgress } from '../../utils/modProgress';
+import { formatModDisplayName } from '../ModsPage/modVersions';
 import { GameHubNav } from './GameHubNav';
 import s from './GameHubPage.module.scss';
 
@@ -241,7 +242,7 @@ export const GameHubPage = () => {
                   <tr key={mod.id}>
                     <td>
                       <Link to={`/games/${gameId}/mods/${mod.id}`} className={s.modLink}>
-                        {mod.name}
+                        {formatModDisplayName(mod)}
                       </Link>
                     </td>
                     <td className={s.countCell}>{compactCountFmt.format(stats.total)}</td>

@@ -9,6 +9,12 @@ import {
   stopJobOfKind,
 } from '../../../worker/src/api/jobStatus';
 import { startJobSse } from '../../../worker/src/api/startJobSse';
+import { startTmApplyJob } from '../../../worker/src/api/startTmApplyJob';
+
+const wantsJsonJobStart = (accept: string | undefined): boolean => {
+  const header = accept ?? '';
+  return header.includes('application/json') && !header.includes('text/event-stream');
+};
 
 /** A mod may run either TM apply or LLM translate, never both at once. */
 const TRANSLATE_GUARD_KINDS: readonly JobKind[] = ['llm-translate', 'tm-apply'];
@@ -38,6 +44,11 @@ export const tmApplyRoutes = async (app: FastifyInstance, db: Tx) => {
     );
     if (!modRows[0]) return reply.code(404).send({ error: 'Mod not found' });
 
+    if (wantsJsonJobStart(req.headers.accept)) {
+      const jobId = await startTmApplyJob(modId, srcLang, targetLang);
+      return reply.send({ jobId, modId, name: modRows[0].name });
+    }
+
     await startJobSse(req, reply, {
       data: { kind: 'tm-apply', modId, params: { srcLang, targetLang } },
       initialSnapshotData: { applied: 0, skipped: 0 },
@@ -49,7 +60,7 @@ export const tmApplyRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(jobId) || jobId < 1) {
       return reply.code(400).send({ error: 'Invalid jobId' });
     }
-    if (!(await stopJobOfKind(jobId, ['tm-apply']))) {
+    if (!(await stopJobOfKind(jobId, TRANSLATE_GUARD_KINDS))) {
       return reply.code(404).send({ error: 'Running TM apply job not found' });
     }
     return reply.send({ ok: true });
@@ -60,7 +71,7 @@ export const tmApplyRoutes = async (app: FastifyInstance, db: Tx) => {
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid modId' });
     }
-    if (!(await stopJobForMod(['tm-apply'], modId))) {
+    if (!(await stopJobForMod(TRANSLATE_GUARD_KINDS, modId))) {
       return reply.code(404).send({ error: 'Running TM apply job not found' });
     }
     return reply.send({ ok: true });

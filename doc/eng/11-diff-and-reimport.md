@@ -123,17 +123,18 @@ Rules:
 Verified carry-over behaviour from `src/web/data/queries/importDiff.ts`
 (`carryOverTranslations`):
 
-| String situation                  | What happens                                                                                  |
-| --------------------------------- | --------------------------------------------------------------------------------------------- |
-| **Unchanged** source text         | Translation copied to new version with its **original status** (reviewed, human, draft, etc.) |
-| **Changed** source text           | Translation copied to new version with status forced to **`draft`**                           |
-| **Added** (not in old version)    | No carry-over; string starts with status `empty` / untranslated                               |
-| Already translated in new version | **Skipped** — carry-over never overwrites an existing translation                             |
+| String situation                  | What happens                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unchanged** source text         | Translation copied to new version with its **original status** (reviewed, human, draft, etc.)                                                                                                     |
+| **Changed** source text           | Translation copied to new version with status forced to **`draft`**                                                                                                                               |
+| **Added** (not in old version)    | No carry-over; string starts with status `empty` / untranslated                                                                                                                                   |
+| Already translated in new version | **Skipped** — carry-over never overwrites an existing translation                                                                                                                                 |
+| Voice                             | Localized take is copied only when **both** the line text **and** the character's source voice file match byte-for-byte. Changed text or a re-recorded `.fuz`/`.wav` stay for a fresh synthesize. |
 
 After the carry-over completes, the result summary is shown inline:
 
 ```
-Carried: 820 · Needs review: 43 · Skipped: 12
+Carried: 820 · Needs review: 43 · Skipped: 12 · Voice copied: 790
 ```
 
 - **Carried** — strings where source was unchanged; translation applied with original status.

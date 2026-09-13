@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'dialogs-navigator-width';
-const MIN_WIDTH = 220;
-const MAX_WIDTH = 560;
-const DEFAULT_WIDTH = 300;
+const MIN_WIDTH = 260;
+const MAX_WIDTH = 640;
+const DEFAULT_WIDTH = 360;
 
 const clamp = (value: number) => Math.min(Math.max(value, MIN_WIDTH), MAX_WIDTH);
 

@@ -36,7 +36,11 @@ describe('maskVerifyItemForLlm', () => {
 
     expect(item.source).toBe('¤PH0¤Scrap');
     expect(item.translation).toBe('¤PH0¤Брухт');
+    expect(item.parts).toEqual([0, 'Scrap']);
+    expect(item.translation_parts).toEqual([0, 'Брухт']);
+    expect(item.slots).toEqual([{ i: 0, kind: 'markup' }]);
     expect(item.reference_examples?.[0]?.source).toBe('¤PH1¤ left');
+    expect(item.reference_examples?.[0]?.parts).toEqual([0, ' left']);
     expect(mapping['¤PH0¤']).toBe(tag);
     expect(mapping['¤PH1¤']).toBe('<Alias=Player>');
   });

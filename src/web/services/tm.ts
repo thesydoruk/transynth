@@ -21,6 +21,8 @@ import type pg from 'pg';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
 import { mapWithConcurrency } from '../../utils/concurrency';
+import { reuseSynthesizedVoice } from '../../voice/reuseSynthesizedVoice';
+import { invalidateVoiceListContext } from '../voice/preview/voiceListContext';
 import {
   bulkApplyTmBatch,
   bulkUpsertTmTranslations,
@@ -103,7 +105,11 @@ const applyTMSubChunk = async (
   targetLang: string,
   srcLang: string,
   chunk: TmUntranslatedRow[],
-): Promise<{ applied: number; byMethod: Record<TmMatchMethod, number> }> =>
+): Promise<{
+  applied: number;
+  byMethod: Record<TmMatchMethod, number>;
+  sourceModIds: number[];
+}> =>
   withTransaction(db, async (client) =>
     bulkApplyTmBatch(client, modId, chunk, targetLang, srcLang),
   );
@@ -115,6 +121,7 @@ const applyTMChunk = async (
   srcLang: string,
   chunk: TmUntranslatedRow[],
   byMethod: Record<TmMatchMethod, number>,
+  sourceModIds: Set<number>,
   workers: number,
 ): Promise<number> => {
   const pool = db as pg.Pool;
@@ -127,9 +134,26 @@ const applyTMChunk = async (
   for (const partial of partials) {
     applied += partial.applied;
     mergeByMethod(byMethod, partial.byMethod);
+    for (const id of partial.sourceModIds) sourceModIds.add(id);
   }
 
   return applied;
+};
+
+const reuseVoiceAfterTm = async (
+  db: Tx,
+  modId: number,
+  targetLang: string,
+  sourceModIds: number[],
+): Promise<number> => {
+  const voice = await reuseSynthesizedVoice(
+    db,
+    modId,
+    targetLang,
+    sourceModIds.length > 0 ? { sourceModIds } : {},
+  );
+  if (voice.copied > 0) invalidateVoiceListContext(modId);
+  return voice.copied;
 };
 
 /**
@@ -153,7 +177,12 @@ export const applyTMToMod = async (
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
   handlers?: TmApplyHandlers,
-): Promise<{ applied: number; skipped: number; byMethod: Record<string, number> }> => {
+): Promise<{
+  applied: number;
+  skipped: number;
+  byMethod: Record<string, number>;
+  voiceCopied: number;
+}> => {
   const chunkSize = CONFIG.dbChunkSize;
   const workers = CONFIG.tmApplyWorkers;
   const totalUntranslated = await countUntranslatedStrings(db, modId, targetLang, srcLang);
@@ -169,6 +198,7 @@ export const applyTMToMod = async (
     text_norm: 0,
     numeric: 0,
   };
+  const sourceModIds = new Set<number>();
   let afterStringId = 0;
 
   while (true) {
@@ -191,6 +221,7 @@ export const applyTMToMod = async (
       srcLang,
       chunk,
       byMethod,
+      sourceModIds,
       workers,
     );
     applied += chunkApplied;
@@ -206,7 +237,11 @@ export const applyTMToMod = async (
     if (chunk.length < chunkSize) break;
   }
 
-  return { applied, skipped: processed - applied, byMethod };
+  const voiceCopied = handlers?.shouldCancel?.()
+    ? 0
+    : await reuseVoiceAfterTm(db, modId, targetLang, [...sourceModIds]);
+
+  return { applied, skipped: processed - applied, byMethod, voiceCopied };
 };
 
 /**
@@ -221,12 +256,18 @@ export const applyTMToStringIds = async (
   stringIds: number[],
   targetLang = CONFIG.defaultTgtLang,
   srcLang = CONFIG.defaultSrcLang,
-): Promise<{ applied: number; skipped: number; byMethod: Record<TmMatchMethod, number> }> => {
+): Promise<{
+  applied: number;
+  skipped: number;
+  byMethod: Record<TmMatchMethod, number>;
+  voiceCopied: number;
+}> => {
   if (stringIds.length === 0) {
     return {
       applied: 0,
       skipped: 0,
       byMethod: { anchor: 0, edid: 0, text_norm: 0, numeric: 0 },
+      voiceCopied: 0,
     };
   }
 
@@ -252,14 +293,25 @@ export const applyTMToStringIds = async (
     numeric: 0,
   };
   const workers = CONFIG.tmApplyWorkers;
+  const sourceModIds = new Set<number>();
   let applied = 0;
 
   for (let i = 0; i < rows.length; i += CONFIG.dbChunkSize) {
     const chunk = rows.slice(i, i + CONFIG.dbChunkSize);
-    applied += await applyTMChunk(db, modId, targetLang, srcLang, chunk, byMethod, workers);
+    applied += await applyTMChunk(
+      db,
+      modId,
+      targetLang,
+      srcLang,
+      chunk,
+      byMethod,
+      sourceModIds,
+      workers,
+    );
   }
 
-  return { applied, skipped: stringIds.length - applied, byMethod };
+  const voiceCopied = await reuseVoiceAfterTm(db, modId, targetLang, [...sourceModIds]);
+  return { applied, skipped: stringIds.length - applied, byMethod, voiceCopied };
 };
 
 // ── Translation propagation ───────────────────────────────────────────────────

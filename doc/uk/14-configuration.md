@@ -188,7 +188,8 @@ postgresql://transynth:transynth@localhost:5433/transynth
 `PORT` і `HOST` читаються з `process.env`, не з `CONFIG`. Vite проксіює `/api`
 через `PORT`; змінної `VITE_API_BASE` немає.
 
-Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`
+Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`,
+`TRANSYNTH_CLI_TOKEN` / `TRANSYNTH_API_URL` (віддалений [Vortex sync](16-vortex-sync.md)),
 (Discover / завантаження з Nexus), `REDIS_URL` (черга джоб; Compose ставить
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
 `BETHESDA_TOOLS_URL` / `DOCKER_BETHESDA_TOOLS_URL`, `AUDIO_INTEL_BASE_URL`

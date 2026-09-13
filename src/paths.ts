@@ -24,6 +24,9 @@ export const PATHS = {
   toolsDir,
   logs: resolveDir(process.env.LOG_DIR ?? path.join(dataDir, 'logs')),
   modUploads: resolveDir(process.env.MOD_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'mod')),
+  vortexUploads: resolveDir(
+    process.env.VORTEX_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'vortex'),
+  ),
   eetUploads: resolveDir(process.env.EET_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'eet')),
   csvUploads: resolveDir(process.env.CSV_UPLOAD_DIR ?? path.join(dataDir, 'uploads', 'csv')),
   gamesCache: resolveDir(process.env.GAMES_CACHE_DIR ?? path.join(dataDir, 'cache', 'games')),
@@ -58,6 +61,7 @@ export const ensureDataDirs = (): void => {
   for (const dir of [
     PATHS.logs,
     PATHS.modUploads,
+    PATHS.vortexUploads,
     PATHS.eetUploads,
     PATHS.csvUploads,
     PATHS.gamesCache,

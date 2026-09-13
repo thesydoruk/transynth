@@ -1,8 +1,9 @@
 import type { GameType } from '../../types';
+import type { LlmPromptFamily } from '../promptFamily';
 import { FO3_UK_TRANSLATE_PROMPT } from './games/fo3/translate';
 import { FO3_UK_VERIFY_PROMPT } from './games/fo3/verify';
-import { FO4_UK_TRANSLATE_PROMPT } from './games/fo4/translate';
-import { FO4_UK_VERIFY_PROMPT } from './games/fo4/verify';
+import { fo4UkTranslatePrompt } from './games/fo4/families';
+import { fo4UkVerifyPrompt } from './games/fo4/families';
 import { FO76_UK_TRANSLATE_PROMPT } from './games/fo76/translate';
 import { FO76_UK_VERIFY_PROMPT } from './games/fo76/verify';
 import { FNV_UK_TRANSLATE_PROMPT } from './games/fnv/translate';
@@ -18,7 +19,7 @@ import { DISCO_UK_TRANSLATE_PROMPT } from './games/disco/translate';
 import { DISCO_UK_VERIFY_PROMPT } from './games/disco/verify';
 
 const UK_TRANSLATE_PROMPTS: Record<GameType, string> = {
-  fo4: FO4_UK_TRANSLATE_PROMPT,
+  fo4: fo4UkTranslatePrompt('item'),
   fo76: FO76_UK_TRANSLATE_PROMPT,
   fo3: FO3_UK_TRANSLATE_PROMPT,
   fnv: FNV_UK_TRANSLATE_PROMPT,
@@ -30,7 +31,7 @@ const UK_TRANSLATE_PROMPTS: Record<GameType, string> = {
 };
 
 const UK_VERIFY_PROMPTS: Record<GameType, string> = {
-  fo4: FO4_UK_VERIFY_PROMPT,
+  fo4: fo4UkVerifyPrompt('item'),
   fo76: FO76_UK_VERIFY_PROMPT,
   fo3: FO3_UK_VERIFY_PROMPT,
   fnv: FNV_UK_VERIFY_PROMPT,
@@ -45,10 +46,20 @@ const UK_VERIFY_PROMPTS: Record<GameType, string> = {
 export const buildUkrainianTranslateSystemPrompt = (
   _srcLang: string,
   game?: GameType | string | null,
-): string => UK_TRANSLATE_PROMPTS[resolveGameType(game)];
+  family?: LlmPromptFamily | null,
+): string => {
+  const resolved = resolveGameType(game);
+  if (resolved === 'fo4') return fo4UkTranslatePrompt(family ?? 'item');
+  return UK_TRANSLATE_PROMPTS[resolved];
+};
 
 /** System prompt for Ukrainian localization quality audit (per-game standalone prompts). */
 export const buildUkrainianVerifySystemPrompt = (
   _srcLang: string,
   game?: GameType | string | null,
-): string => UK_VERIFY_PROMPTS[resolveGameType(game)];
+  family?: LlmPromptFamily | null,
+): string => {
+  const resolved = resolveGameType(game);
+  if (resolved === 'fo4') return fo4UkVerifyPrompt(family ?? 'item');
+  return UK_VERIFY_PROMPTS[resolved];
+};

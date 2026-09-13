@@ -120,6 +120,9 @@ export function useEditorBatchTranslate({
           updateProgress(Math.min(i + chunk.length, ids.length));
         }
         qc.invalidateQueries({ queryKey: ['strings', modId] });
+        qc.invalidateQueries({ queryKey: ['dialog-voice-availability', modId] });
+        qc.invalidateQueries({ queryKey: ['voice-speakers', modId] });
+        qc.invalidateQueries({ queryKey: ['voice-speaker-lines', modId] });
         void refetchStats();
         showTranslateResultToast(mode, doneCount);
         if (!explicitIds) clearSelection();

@@ -14,68 +14,81 @@ const GENDER_SYMBOL: Record<SpeakerGender, string> = {
 export interface VoiceSpeakerRowProps {
   speaker: VoiceSpeakerSummary;
   active: boolean;
+  synthesizing?: boolean;
+  flashed?: boolean;
   onSelect: (key: string) => void;
 }
 
 /** One selectable speaker with dubbing progress. */
-export const VoiceSpeakerRow = memo(({ speaker, active, onSelect }: VoiceSpeakerRowProps) => {
-  const { t } = useTranslation();
-  const dubbableCount = speaker.lineCount - speaker.orphanCount;
+export const VoiceSpeakerRow = memo(
+  ({ speaker, active, synthesizing = false, flashed = false, onSelect }: VoiceSpeakerRowProps) => {
+    const { t } = useTranslation();
+    const dubbableCount = speaker.lineCount - speaker.orphanCount;
 
-  return (
-    <button
-      type="button"
-      className={`${styles.row} ${active ? styles.rowActive : ''}`}
-      onClick={() => onSelect(speaker.key)}
-      title={speaker.displayName}
-    >
-      <span className={styles.rowTop}>
-        <span className={styles.rowLabel}>
-          {speaker.referencePick && (
-            <span className={styles.refMark} title={t('modEditor.voiceRefSet')}>
-              ★
-            </span>
-          )}
-          {speaker.displayName}
-          {speaker.gender !== 'unknown' && (
-            <span
-              className={styles.gender}
-              data-mismatch={speaker.genderMismatch ? '' : undefined}
-              title={
-                speaker.genderMismatch
-                  ? t('modEditor.voiceGenderMismatch', {
-                      gender: t(`dialogs.gender.${speaker.gender}`),
-                    })
-                  : t(`dialogs.gender.${speaker.gender}`)
-              }
-            >
-              {' '}
-              {GENDER_SYMBOL[speaker.gender]}
-            </span>
-          )}
+    return (
+      <button
+        type="button"
+        className={`${styles.row} ${active ? styles.rowActive : ''} ${synthesizing ? styles.rowSynthesizing : ''} ${flashed ? styles.rowFlash : ''}`}
+        onClick={() => onSelect(speaker.key)}
+        title={
+          synthesizing
+            ? t('voice.synthesizingTitle', { name: speaker.displayName })
+            : speaker.displayName
+        }
+      >
+        <span className={styles.rowTop}>
+          <span className={styles.rowLabel}>
+            {synthesizing && (
+              <span className={styles.synthDot} aria-hidden>
+                ●
+              </span>
+            )}
+            {speaker.referencePick && (
+              <span className={styles.refMark} title={t('modEditor.voiceRefSet')}>
+                ★
+              </span>
+            )}
+            {speaker.displayName}
+            {speaker.gender !== 'unknown' && (
+              <span
+                className={styles.gender}
+                data-mismatch={speaker.genderMismatch ? '' : undefined}
+                title={
+                  speaker.genderMismatch
+                    ? t('modEditor.voiceGenderMismatch', {
+                        gender: t(`dialogs.gender.${speaker.gender}`),
+                      })
+                    : t(`dialogs.gender.${speaker.gender}`)
+                }
+              >
+                {' '}
+                {GENDER_SYMBOL[speaker.gender]}
+              </span>
+            )}
+          </span>
+          <span className={styles.rowLines}>{speaker.lineCount}</span>
         </span>
-        <span className={styles.rowLines}>{speaker.lineCount}</span>
-      </span>
-      <span className={styles.rowBottom}>
-        <ProgressPill
-          done={speaker.dubbedCount}
-          total={dubbableCount}
-          showCount
-          title={
-            speaker.orphanCount > 0
-              ? `${t('voice.dubbedProgress', {
-                  done: speaker.dubbedCount,
-                  total: dubbableCount,
-                })} · ${t('voice.orphanLines', { count: speaker.orphanCount })}`
-              : t('voice.dubbedProgress', {
-                  done: speaker.dubbedCount,
-                  total: dubbableCount,
-                })
-          }
-        />
-      </span>
-    </button>
-  );
-});
+        <span className={styles.rowBottom}>
+          <ProgressPill
+            done={speaker.dubbedCount}
+            total={dubbableCount}
+            showCount
+            title={
+              speaker.orphanCount > 0
+                ? `${t('voice.dubbedProgress', {
+                    done: speaker.dubbedCount,
+                    total: dubbableCount,
+                  })} · ${t('voice.orphanLines', { count: speaker.orphanCount })}`
+                : t('voice.dubbedProgress', {
+                    done: speaker.dubbedCount,
+                    total: dubbableCount,
+                  })
+            }
+          />
+        </span>
+      </button>
+    );
+  },
+);
 
 VoiceSpeakerRow.displayName = 'VoiceSpeakerRow';

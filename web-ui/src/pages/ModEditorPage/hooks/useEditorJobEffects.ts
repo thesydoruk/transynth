@@ -77,6 +77,9 @@ export function useEditorJobEffects({
 
     if (wasRunning && aiJobs.translate.status === 'completed') {
       qc.invalidateQueries({ queryKey: ['strings', modId] });
+      qc.invalidateQueries({ queryKey: ['dialog-voice-availability', modId] });
+      qc.invalidateQueries({ queryKey: ['voice-speakers', modId] });
+      qc.invalidateQueries({ queryKey: ['voice-speaker-lines', modId] });
       void refetchStats();
       showTranslateResultToast(mode, aiJobs.translate.done);
     }

@@ -9,6 +9,7 @@ import {
   resolveModStoredPath,
 } from '../../../modStorage';
 import { resolveImportPackages } from '../../../modImport';
+import { loadModImportPaths } from '../../../import/mod/resolvePaths';
 import { ensureDir } from '../../../utils/file';
 
 export type VoicePackageContext = {
@@ -23,9 +24,8 @@ const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/'
 const resolveVoiceLocalizeDir = (pluginPath: string, targetLang: string): string | null => {
   const extractRoot = resolveModImportExtractRoot(pluginPath);
   if (!extractRoot) return null;
-  const packages = resolveImportPackages(extractRoot, targetLang, pluginPath);
-  const localizeDir = packages[0]?.localizeDir;
-  return localizeDir && fs.existsSync(localizeDir) ? localizeDir : null;
+  const localizeDir = modImportLocalizeDir(extractRoot, targetLang);
+  return fs.existsSync(localizeDir) ? localizeDir : null;
 };
 
 export const resolveVoicePackageContext = (
@@ -109,6 +109,7 @@ export const resolveModVoiceContext = async (
   if (!ctx) {
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   }
+  await fillVoiceLocalizeDirFromImport(db, modId, ctx);
 
   return {
     ok: true,
@@ -116,6 +117,21 @@ export const resolveModVoiceContext = async (
     ctx,
     targetLang: resolvedTargetLang,
   };
+};
+
+/** Prefer the import-job localize tree when plugin-path inference misses Vortex extracts. */
+export const fillVoiceLocalizeDirFromImport = async (
+  db: Tx,
+  modId: number,
+  ctx: VoicePackageContext,
+): Promise<void> => {
+  if (ctx.localizeDir) return;
+  try {
+    const paths = await loadModImportPaths(db, { modId });
+    if (fs.existsSync(paths.localizeDir)) ctx.localizeDir = paths.localizeDir;
+  } catch {
+    // No import job or extract — leave localizeDir null.
+  }
 };
 
 export const resolveLocalizeDir = (ctx: VoicePackageContext, targetLang: string): string | null => {

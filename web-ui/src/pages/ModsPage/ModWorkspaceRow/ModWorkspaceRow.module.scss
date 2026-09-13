@@ -11,6 +11,22 @@
   background: color-mix(in srgb, var(--primary) 8%, var(--bg-raised));
 }
 
+.rowNested {
+  opacity: 0.92;
+}
+
+.versionBadge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--text-bright);
+  background: color-mix(in srgb, var(--primary) 22%, var(--bg-card));
+  vertical-align: 1px;
+}
+
 .selectCheckbox {
   flex-shrink: 0;
   width: 16px;

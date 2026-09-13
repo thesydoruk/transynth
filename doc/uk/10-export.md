@@ -104,11 +104,12 @@ Strings\{filename}
 
 ## Langpack ZIP
 
-Langpack — це ZIP-архів лише з файлами перекладу, без BA2. У пакет потрапляють **тільки змінені або нові** артефакти:
+Langpack — це ZIP-архів лише з файлами перекладу. У пакет потрапляють **тільки змінені або нові** артефакти:
 
 - `Strings\*.STRINGS` / `*.DLSTRINGS` / `*.ILSTRINGS` — лише таблиці, де хоча б один рядок відрізняється від source;
 - patched ESP/ESM — лише якщо бінарник відрізняється від імпортованого оригіналу;
-- `Scripts\*.pex` — лише скрипти з перекладеними літералами.
+- `Scripts\*.pex` — лише скрипти з перекладеними літералами;
+- синтезована озвучка FO4 — `UASoundPack.esp` і **нестиснений** GNRL `UASoundPack - Main.ba2` (`packedSize = 0`). Loose `Sound\Voice\` у ZIP не кладемо.
 
 **Disco Elysium** — та сама дія Langpack ZIP. У архіві пак Final Cut:
 оновлені `.po` і локалізовані `Audio/*.wav`, якщо була озвучка. STRINGS /

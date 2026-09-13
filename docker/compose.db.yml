@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
 
     # Default Docker /dev/shm (64 MB) is too small for shared_buffers + parallel workers.
-    shm_size: '1gb'
+    shm_size: '8gb'
 
     volumes:
       # Paths are relative to this file (Compose include). PG 17 data dir is
@@ -34,13 +34,13 @@ services:
       - -c
       - max_connections=200
       - -c
-      - shared_buffers=512MB
+      - shared_buffers=4GB
       - -c
-      - work_mem=64MB
+      - work_mem=32MB
       - -c
-      - maintenance_work_mem=512MB
+      - maintenance_work_mem=1GB
       - -c
-      - effective_cache_size=1536MB
+      - effective_cache_size=16GB
       - -c
       - temp_buffers=32MB
       - -c
@@ -56,11 +56,11 @@ services:
       - -c
       - effective_io_concurrency=256
       - -c
-      - max_worker_processes=8
+      - max_worker_processes=12
       - -c
-      - max_parallel_workers=8
+      - max_parallel_workers=10
       - -c
-      - max_parallel_workers_per_gather=4
+      - max_parallel_workers_per_gather=6
       - -c
       - default_statistics_target=200
       - -c

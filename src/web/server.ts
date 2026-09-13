@@ -51,13 +51,16 @@ import { tmApplyRoutes } from './routes/tmApply';
 import { modAiJobsRoutes } from './routes/modAiJobs';
 import { modVoiceGenerateRoutes } from './routes/modVoiceGenerate';
 import { exportArchivesRoutes } from './routes/exportArchives';
+import { vortexSyncRoutes } from './routes/vortexSync';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
 import { closeJobsQueue } from '../../worker/src/core/queue';
 import { closeJobsQueueEvents } from '../../worker/src/core/queueEvents';
 import { closeSharedRedis } from '../../worker/src/core/connection';
+import { installVoiceLivePublisher } from '../../worker/src/core/voiceLiveChannel';
 import { isLoopbackHost, resolveListenHost } from './listenHost';
+import { closeVoiceLiveHub } from './voice/voiceLiveHub';
 
 /** Directory of this module file (ESM replacement for __dirname). */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -102,6 +105,8 @@ const db = openDb();
   syncLlmPoolFromProjectSettings(projectSettings);
 }
 
+installVoiceLivePublisher();
+
 await ensureDefaultUser(db);
 await registerAuthHook(app, db);
 await activityRoutes(app, db);
@@ -132,6 +137,7 @@ await tmApplyRoutes(app, db);
 await modAiJobsRoutes(app);
 await modVoiceGenerateRoutes(app, db);
 await exportArchivesRoutes(app, db);
+await vortexSyncRoutes(app, db);
 
 // Health check — verifies DB connectivity and returns uptime info
 app.get('/api/health', async () => {
@@ -169,6 +175,7 @@ try {
 const shutdown = async () => {
   log.info('Shutting down...');
   await app.close();
+  await closeVoiceLiveHub();
   await closeJobsQueueEvents();
   await closeJobsQueue();
   await closeSharedRedis();

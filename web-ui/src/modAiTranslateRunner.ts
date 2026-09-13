@@ -3,6 +3,21 @@ import { getModAiJob, upsertModAiJob, type ModAiJobEntry } from './modAiJobsStor
 
 const inFlight = new Set<number>();
 const jobIdByMod = new Map<number, number>();
+const startAbortByMod = new Map<number, AbortController>();
+
+const releaseStart = (modId: number, ac: AbortController): void => {
+  if (startAbortByMod.get(modId) === ac) startAbortByMod.delete(modId);
+  inFlight.delete(modId);
+};
+
+const beginStart = (modId: number): AbortController => {
+  startAbortByMod.get(modId)?.abort();
+  const ac = new AbortController();
+  startAbortByMod.set(modId, ac);
+  inFlight.add(modId);
+  jobIdByMod.delete(modId);
+  return ac;
+};
 
 const handleTranslateEvent = (
   modId: number,
@@ -60,9 +75,7 @@ export const startModAiTranslate = async (
   srcLang: string,
   targetLang: string,
 ): Promise<void> => {
-  if (inFlight.has(modId)) return;
-  inFlight.add(modId);
-  jobIdByMod.delete(modId);
+  const ac = beginStart(modId);
 
   upsertModAiJob(modId, 'translate', {
     status: 'running',
@@ -74,10 +87,18 @@ export const startModAiTranslate = async (
   });
 
   try {
-    const snapshot = await api.llmTranslate.start(modId, srcLang, targetLang, (event) => {
-      handleTranslateEvent(modId, 'llm', event);
-    });
+    const snapshot = await api.llmTranslate.start(
+      modId,
+      srcLang,
+      targetLang,
+      (event) => {
+        if (startAbortByMod.get(modId) !== ac) return;
+        handleTranslateEvent(modId, 'llm', event);
+      },
+      ac.signal,
+    );
 
+    if (startAbortByMod.get(modId) !== ac) return;
     if (snapshot) {
       jobIdByMod.set(modId, snapshot.jobId);
       upsertModAiJob(modId, 'translate', {
@@ -90,14 +111,14 @@ export const startModAiTranslate = async (
       });
     }
   } catch (err) {
+    if (ac.signal.aborted || startAbortByMod.get(modId) !== ac) return;
     upsertModAiJob(modId, 'translate', {
       status: 'failed',
       translateMode: 'llm',
       error: err instanceof Error ? err.message : String(err),
     });
   } finally {
-    inFlight.delete(modId);
-    jobIdByMod.delete(modId);
+    releaseStart(modId, ac);
   }
 };
 
@@ -107,9 +128,7 @@ export const startModAiTranslateTm = async (
   srcLang: string,
   targetLang: string,
 ): Promise<void> => {
-  if (inFlight.has(modId)) return;
-  inFlight.add(modId);
-  jobIdByMod.delete(modId);
+  const ac = beginStart(modId);
 
   upsertModAiJob(modId, 'translate', {
     status: 'running',
@@ -121,10 +140,18 @@ export const startModAiTranslateTm = async (
   });
 
   try {
-    const snapshot = await api.tmApply.start(modId, srcLang, targetLang, (event) => {
-      handleTranslateEvent(modId, 'tm', event);
-    });
+    const snapshot = await api.tmApply.start(
+      modId,
+      srcLang,
+      targetLang,
+      (event) => {
+        if (startAbortByMod.get(modId) !== ac) return;
+        handleTranslateEvent(modId, 'tm', event);
+      },
+      ac.signal,
+    );
 
+    if (startAbortByMod.get(modId) !== ac) return;
     if (snapshot) {
       jobIdByMod.set(modId, snapshot.jobId);
       upsertModAiJob(modId, 'translate', {
@@ -137,14 +164,14 @@ export const startModAiTranslateTm = async (
       });
     }
   } catch (err) {
+    if (ac.signal.aborted || startAbortByMod.get(modId) !== ac) return;
     upsertModAiJob(modId, 'translate', {
       status: 'failed',
       translateMode: 'tm',
       error: err instanceof Error ? err.message : String(err),
     });
   } finally {
-    inFlight.delete(modId);
-    jobIdByMod.delete(modId);
+    releaseStart(modId, ac);
   }
 };
 
@@ -154,6 +181,9 @@ export const stopModAiTranslate = async (
   entry: ModAiJobEntry = getModAiJob(modId, 'translate'),
 ): Promise<void> => {
   const resolvedJobId = entry.jobId ?? jobIdByMod.get(modId) ?? null;
+  startAbortByMod.get(modId)?.abort();
+  startAbortByMod.delete(modId);
+  inFlight.delete(modId);
 
   upsertModAiJob(modId, 'translate', { status: 'stopping', error: null });
 

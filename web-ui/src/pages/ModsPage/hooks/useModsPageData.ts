@@ -2,17 +2,22 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ModImportJob } from '../../../api';
 import { modListQueryKey } from '../../../langDefaults';
-import { isActiveModImportJob } from '../modsPageUtils';
+import { isActiveModImportJob, matchesVortexGroupView } from '../modsPageUtils';
 import type { UnifiedJob } from '../modsPageTypes';
 
-export const useModsPageData = (gameId: string, srcLang: string, targetLang: string) => {
+export const useModsPageData = (
+  gameId: string,
+  srcLang: string,
+  targetLang: string,
+  vortexGroupId?: number,
+) => {
   const {
     data: mods,
     isLoading: isModsLoading,
     error: modsError,
   } = useQuery({
-    queryKey: modListQueryKey(gameId, srcLang, targetLang),
-    queryFn: () => api.mods.list(gameId, srcLang, targetLang),
+    queryKey: [...modListQueryKey(gameId, srcLang, targetLang), vortexGroupId ?? 'manual'],
+    queryFn: () => api.mods.list(gameId, srcLang, targetLang, vortexGroupId),
   });
 
   const { data: eetJobs } = useQuery({
@@ -37,8 +42,11 @@ export const useModsPageData = (gameId: string, srcLang: string, targetLang: str
   });
 
   const gameModJobs = useMemo(
-    () => (modJobs ?? []).filter((job) => job.game === gameId),
-    [modJobs, gameId],
+    () =>
+      (modJobs ?? []).filter(
+        (job) => job.game === gameId && matchesVortexGroupView(vortexGroupId, job.vortex_group_id),
+      ),
+    [modJobs, gameId, vortexGroupId],
   );
 
   const importJobByModId = useMemo(() => {
@@ -55,20 +63,29 @@ export const useModsPageData = (gameId: string, srcLang: string, targetLang: str
 
   const importedModIds = useMemo(() => new Set((mods ?? []).map((mod) => mod.id)), [mods]);
 
-  const activeImportJobs: UnifiedJob[] = useMemo(
-    () =>
-      [
-        ...(eetJobs ?? []).map((job): UnifiedJob => ({ kind: 'eet', job })),
-        ...(csvJobs ?? []).map((job): UnifiedJob => ({ kind: 'csv', job })),
-        ...gameModJobs
-          .filter((job) => isActiveModImportJob(job, importedModIds))
-          .map((job): UnifiedJob => ({ kind: 'mod', job })),
-      ].sort((a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime()),
-    [eetJobs, csvJobs, gameModJobs, importedModIds],
-  );
+  const activeImportJobs: UnifiedJob[] = useMemo(() => {
+    const localJobs: UnifiedJob[] =
+      vortexGroupId == null
+        ? [
+            ...(eetJobs ?? []).map((job): UnifiedJob => ({ kind: 'eet', job })),
+            ...(csvJobs ?? []).map((job): UnifiedJob => ({ kind: 'csv', job })),
+          ]
+        : [];
+    return [
+      ...localJobs,
+      ...gameModJobs
+        .filter((job) => isActiveModImportJob(job, importedModIds))
+        .map((job): UnifiedJob => ({ kind: 'mod', job })),
+    ].sort((a, b) => new Date(b.job.created_at).getTime() - new Date(a.job.created_at).getTime());
+  }, [eetJobs, csvJobs, gameModJobs, importedModIds, vortexGroupId]);
 
   const sortedMods = useMemo(
-    () => [...(mods ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...(mods ?? [])].sort((a, b) => {
+        if (a.channel === 'game' && b.channel !== 'game') return -1;
+        if (b.channel === 'game' && a.channel !== 'game') return 1;
+        return a.name.localeCompare(b.name);
+      }),
     [mods],
   );
 

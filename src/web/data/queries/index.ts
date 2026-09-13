@@ -1,12 +1,14 @@
 // Re-export all query modules for backward-compatible imports from '../data/queries'.
 export * from './constants';
 export * from './glossaryHelpers';
+export * from './glossaryLoad';
 export * from './qaIssues';
 export * from './qaRefreshTargets';
 export * from './mods';
 export * from './modsDelete';
 export * from './stringsFilter';
 export * from './strings';
+export * from './mcmSiblings';
 export * from './dialogs';
 export * from './translationsRead';
 export * from './translationsUpsert';

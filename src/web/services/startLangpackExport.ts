@@ -15,18 +15,22 @@ export type StartLangpackExportInput = {
   modIds: number[];
   srcLang?: string;
   targetLang?: string;
+  maxMods?: number;
 };
 
 export type StartLangpackExportResult =
   | { ok: true; archive: ExportArchiveRow; jobId: number }
   | { ok: false; status: 400 | 409; error: string };
 
-const parseModIdList = (modIds: number[]): { modIds: number[] } | { error: string } => {
+const parseModIdList = (
+  modIds: number[],
+  maxMods = 100,
+): { modIds: number[] } | { error: string } => {
   if (!Array.isArray(modIds) || modIds.length === 0) {
     return { error: 'modIds must be a non-empty array' };
   }
-  if (modIds.length > 100) {
-    return { error: 'Too many mods in one batch (max 100)' };
+  if (modIds.length > maxMods) {
+    return { error: `Too many mods in one batch (max ${maxMods})` };
   }
   if (!modIds.every((id) => Number.isInteger(id) && id > 0)) {
     return { error: 'Invalid mod id in modIds' };
@@ -38,7 +42,7 @@ export const startLangpackExport = async (
   db: Tx,
   input: StartLangpackExportInput,
 ): Promise<StartLangpackExportResult> => {
-  const parsed = parseModIdList(input.modIds);
+  const parsed = parseModIdList(input.modIds, input.maxMods ?? 100);
   if ('error' in parsed) return { ok: false, status: 400, error: parsed.error };
 
   const running = await findRunningExportArchive(db);

@@ -113,7 +113,7 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
 
   await new Promise<void>((resolve) => {
     state = createWorkPoolState<T>(() => {
-      if (feedDone) resolve();
+      if (feedDone || shouldStop()) resolve();
     }, shouldStop);
 
     const enqueueSplit = (parts: readonly (readonly T[])[]): void => {
@@ -151,6 +151,7 @@ export const runLlmChunkWorkPoolFromFeed = async <T>(
             state.maybeDone();
           });
       }
+      if (shouldStop()) notifyBufferWaiters();
       state.maybeDone();
     };
 

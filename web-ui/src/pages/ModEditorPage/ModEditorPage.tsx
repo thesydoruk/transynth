@@ -16,6 +16,7 @@ import { ShortcutsOverlay } from './components/ShortcutsOverlay';
 import { EditorStatusBar } from './components/EditorStatusBar';
 import { clampEditorPageMode, editorCapabilities } from './editorCapabilities';
 import { useModEditorPage } from './hooks/useModEditorPage';
+import { formatModDisplayName } from '../ModsPage/modVersions';
 import styles from './ModEditorPage.module.scss';
 
 /**
@@ -49,7 +50,7 @@ export const ModEditorPage = () => {
   return (
     <div className={styles.root}>
       <EditorToolbar
-        modName={mod?.name}
+        modName={mod ? formatModDisplayName(mod) : undefined}
         srcLang={filter.srcLang}
         targetLang={filter.targetLang}
         availLangs={editorQueries.availLangs}

@@ -33,6 +33,18 @@
   opacity: 0.75;
 }
 
+.synthesizing {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.flash {
+  background: color-mix(in srgb, var(--success, #4caf50) 16%, var(--bg-raised));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--success, #4caf50) 70%, transparent);
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
 .savingTag {
   font-size: 10.5px;
   color: var(--text-dim);

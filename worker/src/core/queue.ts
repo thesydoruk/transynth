@@ -32,6 +32,30 @@ const UNFINISHED_STATES: JobType[] = [
   'paused',
 ];
 
+/** Queued but not executing — safe to `job.remove()` after Stop. */
+const IDLE_QUEUE_STATES = new Set([
+  'wait',
+  'waiting',
+  'delayed',
+  'prioritized',
+  'paused',
+  'waiting-children',
+]);
+
+export const isIdleQueueState = (state: string): boolean => IDLE_QUEUE_STATES.has(state);
+
+/** Drop a leftover waiting/delayed job; leave `active` alone (handler still holds the slot). */
+export const removeIdleQueueJob = async (job: Job<JobData>): Promise<boolean> => {
+  try {
+    const state = await job.getState();
+    if (!isIdleQueueState(state)) return false;
+    await job.remove();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const JOB_ID_SEQ_KEY = 'transynth:jobs:id-seq';
 
 /** Next numeric job id (API / snapshots / control channel). */
@@ -106,8 +130,13 @@ export const listActiveJobs = async (): Promise<Job<JobData>[]> => {
 export const findUnfinishedJobForMod = async (
   kinds: readonly JobKind[],
   modId: number,
-): Promise<Job<JobData> | null> =>
-  (await listUnfinishedJobs(kinds)).find((job) => job.data.modId === modId) ?? null;
+): Promise<Job<JobData> | null> => (await listUnfinishedJobsForMod(kinds, modId))[0] ?? null;
+
+export const listUnfinishedJobsForMod = async (
+  kinds: readonly JobKind[],
+  modId: number,
+): Promise<Job<JobData>[]> =>
+  (await listUnfinishedJobs(kinds)).filter((job) => job.data.modId === modId);
 
 /** Enqueue under a pre-allocated id (see `allocateJobId`). */
 export const enqueueJob = async (data: JobData, jobId: number): Promise<void> => {
@@ -159,13 +188,18 @@ export const requestJobStop = async (jobId: number): Promise<boolean> => {
   return true;
 };
 
-/** Stop by mod when the client does not know the job id yet (e.g. early Stop). */
+/** Stop every unfinished job of these kinds for the mod (not just the first). */
 export const requestJobStopForMod = async (
   kinds: readonly JobKind[],
   modId: number,
 ): Promise<number | null> => {
-  const job = await findUnfinishedJobForMod(kinds, modId);
-  if (job?.id == null) return null;
-  const id = fromBullJobId(job.id);
-  return id != null && (await requestJobStop(id)) ? id : null;
+  const jobs = await listUnfinishedJobsForMod(kinds, modId);
+  let firstStopped: number | null = null;
+  for (const job of jobs) {
+    if (job.id == null) continue;
+    const id = fromBullJobId(job.id);
+    if (id == null) continue;
+    if (await requestJobStop(id)) firstStopped ??= id;
+  }
+  return firstStopped;
 };

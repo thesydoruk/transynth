@@ -17,8 +17,14 @@ RUN mkdir -p /opt/bethesda \
     const res = await fetch("https://api.github.com/repos/thesydoruk/FaceFXWrapper/releases/latest");\
     if (!res.ok) throw new Error(`GitHub latest: ${res.status}`);\
     const release = await res.json();\
-    const asset = release.assets.find((row) => /FaceFXWrapper.*\\.zip$/i.test(row.name));\
-    if (!asset) throw new Error("no FaceFXWrapper zip on latest release");\
+    const asset = release.assets.find((row) => {\
+      const name = String(row.name || "").toLowerCase();\
+      return name.includes("facefxwrapper") && name.endsWith(".zip");\
+    });\
+    if (!asset) {\
+      const names = (release.assets || []).map((row) => row.name).join(", ") || "(none)";\
+      throw new Error(`no FaceFXWrapper zip on ${release.tag_name}: ${names}`);\
+    }\
     const zip = await fetch(asset.browser_download_url);\
     if (!zip.ok) throw new Error(`download ${zip.status}`);\
     const { writeFileSync } = await import("node:fs");\

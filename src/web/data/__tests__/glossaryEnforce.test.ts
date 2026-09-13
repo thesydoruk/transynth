@@ -6,7 +6,7 @@
  * while still correctly matching standalone occurrences and multi-word terms.
  */
 import { describe, it, expect } from '@jest/globals';
-import { escapeRegExp, termWordBoundaryRe } from '../queries';
+import { escapeRegExp, glossaryTermsForGame, termWordBoundaryRe } from '../queries/glossaryHelpers';
 
 describe('escapeRegExp', () => {
   it('escapes regex metacharacters', () => {
@@ -68,5 +68,21 @@ describe('termWordBoundaryRe', () => {
     expect(re.test('escape')).toBe(false);
     expect(re.test('capital')).toBe(false);
     expect(re.test('Grab a cap.')).toBe(true);
+  });
+});
+
+describe('glossaryTermsForGame', () => {
+  const terms = [
+    { term: 'Institute', translation: 'Інститут', game: 'fo4' },
+    { term: 'Stormcloaks', translation: 'Бурові плащі', game: 'sse' },
+  ];
+
+  it('keeps only the requested game', () => {
+    expect(glossaryTermsForGame(terms, 'fo4').map((row) => row.term)).toEqual(['Institute']);
+    expect(glossaryTermsForGame(terms, 'sse').map((row) => row.term)).toEqual(['Stormcloaks']);
+  });
+
+  it('maps Skyrim LE onto the SSE list', () => {
+    expect(glossaryTermsForGame(terms, 'sle').map((row) => row.term)).toEqual(['Stormcloaks']);
   });
 });

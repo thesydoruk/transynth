@@ -4,7 +4,11 @@ import { CONFIG } from '../../../config';
 import type { TranslationStatus } from '../statusMachine';
 import { compareProtectedTokens } from '../../../utils/placeholders';
 import { parseRecordLocation } from '../../../utils/recordLocation';
-import { glossaryTermMatchesSource } from './glossaryHelpers';
+import {
+  glossaryTermMatchesSource,
+  glossaryTermsForGame,
+  type GlossaryQaTerm,
+} from './glossaryHelpers';
 import { applyGenderQaIssues } from './qaGender';
 import type { DialogParticipantsRow } from './dialogs';
 import { PENDING_REVIEW_STATUSES } from './constants';
@@ -161,19 +165,6 @@ export const loadQaCheckSettings = async (db: Tx): Promise<QACheckSettings> => {
   return qaSettings;
 };
 
-export const loadGlossaryTermsForQa = async (
-  db: Tx,
-  srcLang: string,
-  targetLang: string,
-): Promise<Array<{ term: string; translation: string }>> => {
-  const { rows } = await db.query<{ term: string; translation: string }>(
-    `SELECT term, translation FROM glossary
-     WHERE src_lang = $1 AND tgt_lang = $2 AND translation IS NOT NULL`,
-    [srcLang, targetLang],
-  );
-  return rows;
-};
-
 export const loadQaRulesForGame = async (db: Tx, game: string): Promise<QaRuleRow[]> => {
   const { rows } = await db.query<QaRuleRow>(
     `SELECT rule_type, value, severity, description, signature AS rule_sig, path AS rule_path
@@ -276,7 +267,7 @@ export type QaBatchContext = {
   settings: QACheckSettings;
   /** Configurable `qa_rules` rows for the game of the row being checked. */
   rules: QaRuleRow[];
-  glossaryTerms: Array<{ term: string; translation: string }>;
+  glossaryTerms: GlossaryQaTerm[];
 };
 
 export const collectQAIssuesForRow = (
@@ -298,7 +289,12 @@ export const collectQAIssuesForRow = (
     location,
   );
   applyConfigurableQaRules(issues, row.translation, row.signature, row.path, ctx.rules);
-  applyGlossaryQaIssues(issues, row.source, row.translation, ctx.glossaryTerms);
+  applyGlossaryQaIssues(
+    issues,
+    row.source,
+    row.translation,
+    glossaryTermsForGame(ctx.glossaryTerms, row.game),
+  );
   applyGenderQaIssues(issues, row.translation, ctx.targetLang, row, location.field);
   appendDuplicateInconsistencyIssue(issues, duplicateAlts);
   return issues;

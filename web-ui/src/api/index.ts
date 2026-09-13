@@ -29,6 +29,7 @@ import { llmTranslateEndpoints } from './endpoints/llmTranslate';
 import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
 import { modAiJobsEndpoints } from './endpoints/modAiJobs';
 import { exportsEndpoints } from './endpoints/exports';
+import { vortexEndpoints } from './endpoints/vortex';
 
 export const api = {
   mods: modsEndpoints,
@@ -57,4 +58,5 @@ export const api = {
   voiceGenerate: voiceGenerateEndpoints,
   modAiJobs: modAiJobsEndpoints,
   exports: exportsEndpoints,
+  vortex: vortexEndpoints,
 };

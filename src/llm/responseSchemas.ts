@@ -20,6 +20,22 @@ const boundedArray = (
 ): { minItems: number; maxItems: number } | Record<string, never> =>
   itemCount > 0 ? { minItems: itemCount, maxItems: itemCount } : {};
 
+const llmPartsItemSchema = (maxStringLength?: number): Record<string, unknown> => ({
+  anyOf: [
+    {
+      type: 'string',
+      ...(maxStringLength !== undefined ? { maxLength: maxStringLength } : {}),
+    },
+    { type: 'integer', minimum: 0 },
+  ],
+});
+
+const llmPartsArraySchema = (maxStringLength?: number): Record<string, unknown> => ({
+  type: 'array',
+  minItems: 1,
+  items: llmPartsItemSchema(maxStringLength),
+});
+
 /** JSON Schema for {@link translateStrings} batch responses. */
 export const buildTranslateResponseSchema = (
   itemCount: number,
@@ -34,12 +50,9 @@ export const buildTranslateResponseSchema = (
         type: 'object',
         properties: {
           id: { type: 'integer' },
-          translation: {
-            type: 'string',
-            ...(maxTranslationLength !== undefined ? { maxLength: maxTranslationLength } : {}),
-          },
+          parts: llmPartsArraySchema(maxTranslationLength),
         },
-        required: ['id', 'translation'],
+        required: ['id', 'parts'],
         additionalProperties: false,
       },
     },
@@ -62,7 +75,9 @@ export const buildVerifyResponseSchema = (itemCount: number): Record<string, unk
           verdict: { type: 'string', enum: ['ok', 'suspicious', 'incorrect'] },
           reason: { type: 'string' },
           confidence: { type: 'number' },
-          suggestion: { type: ['string', 'null'] },
+          suggestion: {
+            anyOf: [{ type: 'null' }, { type: 'string' }, llmPartsArraySchema()],
+          },
         },
         required: ['id', 'verdict', 'reason', 'confidence', 'suggestion'],
         additionalProperties: false,

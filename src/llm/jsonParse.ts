@@ -96,12 +96,16 @@ const unescapePartialJsonString = (value: string): string => {
 export const trySalvageTruncatedTranslateJson = (
   raw: string,
   expectedId: number,
-): { items: Array<{ id: number; translation: string }> } | undefined => {
+): { items: Array<{ id: number; translation?: string; parts?: string[] }> } | undefined => {
   const markers = [
     `"id":${expectedId},"translation":"`,
     `"id": ${expectedId}, "translation": "`,
     `\\"id\\":${expectedId},\\"translation\\":\\"`,
     `\\"id\\": ${expectedId}, \\"translation\\": \\"`,
+    `"id":${expectedId},"parts":["`,
+    `"id": ${expectedId}, "parts": ["`,
+    `\\"id\\":${expectedId},\\"parts\\":[\\"`,
+    `\\"id\\": ${expectedId}, \\"parts\\": [\\"`,
   ];
 
   for (const candidate of uniqueCandidates(raw)) {
@@ -113,7 +117,9 @@ export const trySalvageTruncatedTranslateJson = (
       tail = tail.replace(/"\}\s*\]\s*\}"?\s*$/u, '');
       const translation = unescapePartialJsonString(tail).trim();
       if (translation.length >= 8) {
-        return { items: [{ id: expectedId, translation }] };
+        return marker.includes('parts')
+          ? { items: [{ id: expectedId, parts: [translation] }] }
+          : { items: [{ id: expectedId, translation }] };
       }
     }
   }

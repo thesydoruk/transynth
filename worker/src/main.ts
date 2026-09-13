@@ -26,8 +26,10 @@ import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { shutdownWine } from '../../src/wine/windowsToolExec';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
 import { subscribeJobControl } from './core/controlChannel';
+import { installVoiceLivePublisher } from './core/voiceLiveChannel';
 import { JOBS_QUEUE_NAME, LLM_QUEUE_NAME, VOICE_QUEUE_NAME } from './core/queue';
 import { migrateJobsToDedicatedQueues } from './core/migrateJobQueues';
+import { recoverOrphanedLlmJobs, requeueStalledLlmJob } from './core/recoverLlmJobs';
 import {
   recoverOrphanedVoiceGenerateJobs,
   requeueStalledVoiceGenerate,
@@ -45,8 +47,11 @@ const db = openDb();
   syncLlmPoolFromProjectSettings(projectSettings);
 }
 
+installVoiceLivePublisher();
+
 await migrateJobsToDedicatedQueues();
 await recoverOrphanedVoiceGenerateJobs();
+await recoverOrphanedLlmJobs();
 
 const startQueueWorker = (
   queueName: string,
@@ -70,7 +75,10 @@ const startQueueWorker = (
       kind: job?.data.kind,
       error: err.message,
     });
-    if (job) void requeueStalledVoiceGenerate(job, err);
+    if (job) {
+      void requeueStalledVoiceGenerate(job, err);
+      void requeueStalledLlmJob(job, err);
+    }
   });
   return worker;
 };

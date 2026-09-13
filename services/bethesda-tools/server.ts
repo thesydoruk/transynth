@@ -167,7 +167,7 @@ const runLipOnSlot = async (
 ): Promise<Buffer> => {
   const gameType = faceFxGameType(game);
   await servePool.runLip(slot.prefix, gameType, {
-    language: 'USEnglish',
+    language: /[\u0400-\u04FF]/.test(text) ? 'Ukrainian' : 'USEnglish',
     fonixWinPath: toWinePath(FONIX),
     wavWinPath: toWinePath(resampled),
     lipWinPath: toWinePath(lipPath),

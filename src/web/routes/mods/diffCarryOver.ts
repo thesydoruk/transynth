@@ -1,8 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
+import { reuseSynthesizedVoice } from '../../../voice/reuseSynthesizedVoice';
 import { diffMods, carryOverTranslations } from '../../data/queries';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
+import { invalidateVoiceListContext } from '../../voice/preview/voiceListContext';
 
 export const registerDiffCarryOverRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods/:id/diff?compareModId= — compare two mod versions
@@ -40,7 +42,14 @@ export const registerDiffCarryOverRoutes = async (app: FastifyInstance, db: Tx) 
 
       try {
         const result = await carryOverTranslations(db, newModId, oldModId, targetLang);
-        return reply.send(result);
+        const voice = await reuseSynthesizedVoice(db, newModId, targetLang, {
+          sourceModIds: [oldModId],
+        });
+        if (voice.copied > 0) invalidateVoiceListContext(newModId);
+        log.info(
+          `Carry-over voice: copied ${voice.copied} take(s) from mod ${oldModId} to ${newModId}`,
+        );
+        return reply.send({ ...result, voiceCopied: voice.copied });
       } catch (err) {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
       }

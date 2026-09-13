@@ -6,7 +6,6 @@ import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
 import { FACEFX_TIMEOUT_MS, type FaceFxLipRequest, type FaceFxLipResult } from './lipCore';
-import { prepareFaceFxDialogueText } from './text';
 import { generateLipViaRemote, resolveBethesdaToolsUrl } from '../bethesdaTools';
 
 const tsxCliPath = (): string => path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
@@ -84,13 +83,7 @@ export const generateLipFile = async (
 
   const remoteUrl = resolveBethesdaToolsUrl();
   if (remoteUrl) {
-    await generateLipViaRemote(
-      remoteUrl,
-      game,
-      sourceWavPath,
-      lipPath,
-      prepareFaceFxDialogueText(dialogueText),
-    );
+    await generateLipViaRemote(remoteUrl, game, sourceWavPath, lipPath, dialogueText);
     log.debug(`FaceFX remote ${path.basename(lipPath)}`);
     return;
   }

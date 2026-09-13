@@ -7,6 +7,7 @@ import {
   listDialogGroups,
   listDialogSpeakers,
   listDialogSpeakerStringIds,
+  listDialogTree,
   parseDialogScope,
   refreshQAIssuesBatch,
   setDialogSpeakerGenderOverride,
@@ -22,13 +23,25 @@ const parseGenderOverride = (value: unknown): SpeakerGender | null | undefined =
 /**
  * API of the dialogs editor.
  *
- * Two endpoints cover all four scopes (topics, branches, scenes, conversations):
- * one lists the selectable groups with their translation progress, the other
- * loads the transcript of a single group. Editing reuses the strings
- * translation API. A third pair exposes the speakers of a mod so a human can
- * correct the gender that import guessed.
+ * The navigator loads one quest-oriented tree. The older `/groups` list stays
+ * for deep links. A transcript endpoint covers each selectable node. Editing
+ * reuses the strings translation API. Speakers expose gender so a human can
+ * correct what import guessed.
  */
 export const dialogsRoutes = async (app: FastifyInstance, db: Tx) => {
+  // GET /api/dialogs/tree?modId=&srcLang=&targetLang=
+  app.get<{
+    Querystring: { modId?: string; srcLang?: string; targetLang?: string };
+  }>('/api/dialogs/tree', async (req, reply) => {
+    const modId = Number(req.query.modId);
+    if (!Number.isInteger(modId) || modId < 1) {
+      return reply.code(400).send({ error: 'modId is required' });
+    }
+    const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+    const targetLang = req.query.targetLang ?? CONFIG.defaultTgtLang;
+    return reply.send(await listDialogTree(db, modId, srcLang, targetLang));
+  });
+
   // GET /api/dialogs/groups?modId=&scope=&srcLang=&targetLang=
   app.get<{
     Querystring: { modId?: string; scope?: string; srcLang?: string; targetLang?: string };

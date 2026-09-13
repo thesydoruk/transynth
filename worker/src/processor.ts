@@ -19,7 +19,7 @@ import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSett
 import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { writeSystemLog } from '../../src/web/services/systemLog';
 import { fromBullJobId } from './core/queue';
-import { writeJobSnapshot } from './core/snapshots';
+import { isJobMarkedCancelled, readJobSnapshot, writeJobSnapshot } from './core/snapshots';
 import { getJobHandler } from './registry';
 import type { JobContext, JobData, JobResult } from './types';
 
@@ -74,7 +74,7 @@ export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
   };
 
   const flushTimer = setInterval(() => {
-    if (!snapshotDirty) return;
+    if (cancelled || !snapshotDirty) return;
     snapshotDirty = false;
     pushSnapshot('running', null);
   }, SNAPSHOT_FLUSH_MS);
@@ -118,9 +118,20 @@ export const processJob = async (db: Tx, job: Job<JobData>): Promise<void> => {
   };
 
   logJobs.info('job started', { jobId, kind, modId });
-  pushSnapshot('running', null);
 
   try {
+    const alreadyCancelled =
+      (await readJobSnapshot(jobId))?.status === 'cancelled' || (await isJobMarkedCancelled(jobId));
+    if (alreadyCancelled) {
+      cancelled = true;
+      abort.abort();
+      pushSnapshot('cancelled', null);
+      logJobs.info('job skipped (already cancelled)', { jobId, kind, modId });
+      throw new Error('Cancelled by user');
+    }
+
+    pushSnapshot('running', null);
+
     const result = await runWithJobRuntime(
       {
         db,

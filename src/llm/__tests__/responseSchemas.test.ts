@@ -21,13 +21,12 @@ describe('responseSchemas', () => {
     expect(format.json_schema.strict).toBe(true);
   });
 
-  it('adds maxLength to translation when provided', () => {
+  it('adds maxLength to string parts when provided', () => {
     const schema = buildTranslateResponseSchema(1, 200);
     const items = (schema.properties as Record<string, unknown>).items as Record<string, unknown>;
-    const translation = (
-      (items.items as Record<string, unknown>).properties as Record<string, unknown>
-    ).translation as { maxLength: number };
-    expect(translation.maxLength).toBe(200);
+    const parts = ((items.items as Record<string, unknown>).properties as Record<string, unknown>)
+      .parts as { items: { anyOf: Array<{ maxLength?: number }> } };
+    expect(parts.items.anyOf[0]?.maxLength).toBe(200);
   });
 
   it('builds verify schema with verdict enum', () => {

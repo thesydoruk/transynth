@@ -166,6 +166,14 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
     translation: 'Брудна вода',
   },
   {
+    term: 'Disciple',
+    translation: 'Учениця',
+  },
+  {
+    term: 'Disciples',
+    translation: 'Учениці',
+  },
+  {
     term: 'Doctor Amari',
     translation: 'Доктор Амарі',
   },
@@ -506,6 +514,10 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
     translation: 'Ядер-Світ',
   },
   {
+    term: 'Operators',
+    translation: 'Оператори',
+  },
+  {
     term: 'Nuke',
     translation: 'Ядерна бомба',
   },
@@ -660,6 +672,10 @@ export const FO4_UK_GLOSSARY: GlossaryEntry[] = [
   {
     term: 'Spectacle Island',
     translation: 'Спектакл-айленд',
+  },
+  {
+    term: 'Squire',
+    translation: 'Зброєносець',
   },
   {
     term: 'Star Paladin',

@@ -11,31 +11,30 @@ export const MW_UK_VERIFY_PROMPT = `Ти — суворий, але справе
 Твоє завдання: провести ретельний аудит наданих перекладів з мови en на українську, виявити помилки, неточності, порушення лору чи технічні збої.
 
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА VERDICT (КРИТИЧНО)
-- **Вхід**: JSON з метаданими та масивом "items" (поля id, source, translation, grup, field, edid, context, speaker, speaker_gender, addressee, addressee_gender, glossary, reference_examples тощо).
+- **Вхід**: JSON з метаданими та масивом "items" (поля id, parts, translation_parts, slots, grup, field, edid, context, speaker, speaker_gender, addressee, addressee_gender, glossary, reference_examples тощо).
 - **Вихід**: ЛИШЕ валідний, чистий JSON. Заборонено markdown-обгортки (\`\`\`json ... \`\`\`), вступні чи підсумкові слова.
 - Для кожного вхідного "id" у вихідному JSON ПОВИНЕН бути відповідний об'єкт.
 
 **Критерії verdict:**
-1. **"ok"**: Переклад точний, природний, стиль витримано, термінологія правильна, плейсхолдери збережені. Поле "suggestion" — **null**.
+1. **"ok"**: Переклад точний, природний, стиль витримано, термінологія правильна, слоти збережені. Поле "suggestion" — **null**.
 2. **"suspicious"**: Конкретна виправна проблема (калька, русизм, втрата змісту, помилковий термін, порушення звертання/гендеру, розбіжність шаблону серії). НЕ для дрібних стилістичних уподобань. Якщо переклад прийнятний — "ok". Інакше — кращий варіант у "suggestion".
 3. **"incorrect"**: Груба помилка: збій пари source↔translation (TM), неправильний зміст, омонім, русизм, зламані токени, неперекладений source, текст без сенсу. НЕ став "incorrect" лише через порядок слів у назві предмета/mod-модифікації, якщо зміст збережено.
 
 **Правила suggestion (КРИТИЧНО):**
-- Поля source та translation — **замаскований** текст: ключі \`¤PH0¤\`, \`¤FK0¤\` (та \`¤GL0¤\` за наявності).
-- У "suggestion" збережи ВСІ технічні токени/ключі з source без змін синтаксису, **особливо %s**.
+- Source/translation приходять як "parts" / "translation_parts" і опційно "slots" (лише kind). Suggestion — той самий масив parts (або null). Не пиши сирі теги в рядках. **Morrowind: індекси для %s критичні.**
 - Не переписуй прийнятний переклад «на всяк випадок». Якщо проблеми немає — verdict "ok", suggestion null.
-- Якщо suggestion збігається з translation — verdict ОБОВ'ЯЗКОВО "ok", suggestion null.
+- Якщо suggestion збігається з translation_parts — verdict ОБОВ'ЯЗКОВО "ok", suggestion null.
 - Не вигадуй «русизми»: «повіка», «шкода», «ствол» — коректна українська. Якщо не впевнений — verdict "ok".
 - У suggestion змінюй ЛИШЕ конкретну проблему з reason; не переписуй увесь рядок без потреби (лише для "suspicious").
 - Для verdict **"incorrect"** поле "suggestion" ЗАВЖДИ **null** — система перекладе source заново.
-- НІКОЛИ не вставляй у "suggestion" JSON-об'єкт verify (id, verdict, reason, confidence). Лише чистий текст перекладу або null.
-- НІКОЛИ не скорочуй suggestion через "..." — або повний виправлений текст, або null.
+- НІКОЛИ не вставляй у "suggestion" JSON-об'єкт verify (id, verdict, reason, confidence). Лише масив parts або null.
+- НІКОЛИ не скорочуй suggestion через "..." — або повний виправлений parts, або null.
 - Для багаторядкового source (кілька абзаців/рядків) suggestion має бути **null**; опиши проблему в reason, система перекладе заново.
 
 **Поля відповіді:**
 - "reason": коротке конкретне пояснення українською (не «Гарний переклад», а ЧОМУ ok або ЩО не так).
 - "confidence": впевненість 0.0–1.0.
-- "suggestion": null для "ok" і "incorrect"; для "suspicious" — ПОВНИЙ виправлений переклад з source (не з reference_examples, якщо їхній source інший). Якщо не впевнений — null і verdict "ok".
+- "suggestion": null для "ok" і "incorrect"; для "suspicious" — ПОВНИЙ виправлений parts з того самого source (не з reference_examples, якщо їхній source інший). Якщо не впевнений — null і verdict "ok".
 
 **Формат відповіді:**
 {"items":[{"id":1,"verdict":"ok","reason":"…","confidence":1.0,"suggestion":null},{"id":2,"verdict":"incorrect","reason":"…","confidence":0.95,"suggestion":null}]}
@@ -52,11 +51,11 @@ export const MW_UK_VERIFY_PROMPT = `Ти — суворий, але справе
 - **Ієрархія**: source (#1) → glossary → правила гри → batch siblings → reference_examples. Якщо reference_examples суперечать source — ігноруй їх.
 - edid — внутрішня назва; НЕ додавай у переклад/suggestion слова з edid (Perk, PickUp, Remnant), якщо їх немає в source.
 
-### 3. ЗБЕРЕЖЕННЯ ПЛЕЙСХОЛДЕРІВ І ТЕГІВ (КРИТИЧНО)
-- Усі ключі \`¤PH0¤\` та **%s** з source мають бути в translation і в suggestion без змін — та сама кількість, той самий напис (НЕМОЖЛИВО "¤ PH0 ¤").
-- Після розмаскування: %s, %d, %2$s, {0}, $PlayerName, <Alias=Player>, <Global=…>, <font>, [Mod], [Key], [*Class], [DIAL:…] — синтаксис незмінний.
-- [Sarcasm], [Whispering] — перекладені ([Сарказм], [Шепіт]); [Mod], [Key], [Note], [Scrap] — захищені UI-префікси.
-- **ПОМИЛКА → "incorrect"**: пропущений %s або ¤PH0¤, розбитий ключ, %s→%d, заміна <Alias=Player>.
+### 3. ЗБЕРЕЖЕННЯ СЛОТІВ І ТЕГІВ (КРИТИЧНО)
+- Мультимножина індексів у translation_parts і suggestion = як у parts. **%s у Morrowind — слоти; індекси критичні.**
+- Не пиши сирі %s / <Alias=…> / ¤PH0¤ у рядках. Пайплайн підставить %s, %d, {0} тощо.
+- [Sarcasm], [Whispering] — перекладені ([Сарказм], [Шепіт]); [Mod], [Key], [Note], [Scrap] — слоти.
+- **ПОМИЛКА → "incorrect"**: пропущений/вигаданий індекс, сирий тег у рядку, %s→%d.
 
 ### 4. ЛІНГВІСТИЧНІ ПРАВИЛА, ЗВЕРТАННЯ ТА ГЕНДЕР
 - **Якість мови**: Сучасний український правопис. Жодних русизмів чи кальок ("приймати участь" → "брати участь", "нажаль" → "на жаль").
@@ -92,7 +91,7 @@ ${buildUkGenderVerifyRules('визволитель')}
 - **Лаконічність UI**: назви не розлогі.
 - **Герундій (-ing) в UI**: дія → інфінітив; категорія → іменник.
 - **Категорії UI**: "[Category] - [Subcategory]" → "[Категорія] — [підкатегорія]" обома частинами українською.
-- **%s placeholders**: обов'язково зберігати в translation і suggestion.
+- **%s як слоти**: індекси обов'язково лишай у translation_parts і suggestion.
 - **DIAL-меню** (лише grup: DIAL/MESG): "Goodbye" → "До побачення". Синоніми меню → "suspicious".
 - **Лексика Fallout** у фентезі → **"incorrect"**.
 - Плутанина зі Skyrim/Oblivion-only термінами → "suspicious".
@@ -104,7 +103,7 @@ ${promptJsonFormat([...MW_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.len
 
 ### 8. ПРИКЛАДИ АУДИТУ
 
-Вхідний фрагмент (замаскований):
+Вхідний фрагмент:
 {
   "source_language": "en",
   "target_language": "uk",
@@ -115,34 +114,34 @@ ${promptJsonFormat([...MW_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.len
     { "term": "drakes", "translation": "дрейки" }
   ],
   "reference_examples": [
-    { "source": "Welcome, %s. I am %s.", "translation": "Вітаю, %s. Я — %s." }
+    { "parts": ["Welcome, ", 0, ". I am ", 1, "."], "translation_parts": ["Вітаю, ", 0, ". Я — ", 1, "."] }
   ],
   "items": [
-    { "id": 101, "source": "Welcome, %s. I am %s.", "translation": "Вітаю. Я — Каius.", "grup": "INFO", "context": "Caius" },
-    { "id": 102, "source": "You have %s drakes.", "translation": "У вас 100 кришок.", "grup": "INFO" },
-    { "id": 103, "source": "Kwama Egg Mine", "translation": "шахта яєць квама", "grup": "LCTN" },
-    { "id": 104, "source": "Unique", "translation": "Daedric Longsword", "grup": "WEAP", "edid": "Unique_Daedric" },
-    { "id": 105, "source": "Are you ready?", "translation": "Ти готовий?", "grup": "INFO", "context": "Caius" },
-    { "id": 106, "source": "I was surprised to hear that.", "translation": "Я був здивований цим.", "grup": "INFO", "context": "Player" },
-    { "id": 107, "source": "¤PH0¤ wants %s drakes.", "translation": "¤PH0¤ хоче дрейків.", "grup": "INFO" }
+    { "id": 101, "parts": ["Welcome, ", 0, ". I am ", 1, "."], "translation_parts": ["Вітаю. Я — Каius."], "slots": [{ "i": 0, "kind": "printf" }, { "i": 1, "kind": "printf" }], "grup": "INFO", "context": "Caius" },
+    { "id": 102, "parts": ["You have ", 0, " drakes."], "translation_parts": ["У вас 100 кришок."], "slots": [{ "i": 0, "kind": "printf" }], "grup": "INFO" },
+    { "id": 103, "parts": ["Kwama Egg Mine"], "translation_parts": ["шахта яєць квама"], "grup": "LCTN" },
+    { "id": 104, "parts": ["Unique"], "translation_parts": ["Daedric Longsword"], "grup": "WEAP", "edid": "Unique_Daedric" },
+    { "id": 105, "parts": ["Are you ready?"], "translation_parts": ["Ти готовий?"], "grup": "INFO", "context": "Caius" },
+    { "id": 106, "parts": ["I was surprised to hear that."], "translation_parts": ["Я був здивований цим."], "grup": "INFO", "context": "Player" },
+    { "id": 107, "parts": [0, " wants ", 1, " drakes."], "translation_parts": [0, " хоче дрейків."], "slots": [{ "i": 0, "kind": "alias" }, { "i": 1, "kind": "printf" }], "grup": "INFO" }
   ]
 }
 
 Валідна відповідь (ЛИШЕ чистий JSON):
 {
   "items": [
-    { "id": 101, "verdict": "incorrect", "reason": "Пропущено обидва плейсхолдери %s з source; translation підставляє ім'я замість %s.", "confidence": 0.98, "suggestion": null },
-    { "id": 102, "verdict": "incorrect", "reason": "«Кришки» — лексика Fallout; для drakes — «дрейки». Пропущено %s.", "confidence": 0.98, "suggestion": null },
+    { "id": 101, "verdict": "incorrect", "reason": "Пропущено обидва слоти %s; translation підставляє ім'я замість індексів.", "confidence": 0.98, "suggestion": null },
+    { "id": 102, "verdict": "incorrect", "reason": "«Кришки» — лексика Fallout; для drakes — «дрейки». Пропущено слот 0.", "confidence": 0.98, "suggestion": null },
     { "id": 103, "verdict": "ok", "reason": "Канонічний термін квама, зміст збережено.", "confidence": 1.0, "suggestion": null },
     { "id": 104, "verdict": "incorrect", "reason": "Збій пари: source лише рідкість «Unique», translation — повна назва предмета з edid.", "confidence": 0.98, "suggestion": null },
-    { "id": 105, "verdict": "suspicious", "reason": "Звертання до гравця: «ти готовий» замість «ви»/безособового «Усе готово?».", "confidence": 0.9, "suggestion": "Усе готово?" },
-    { "id": 106, "verdict": "suspicious", "reason": "Гендер: «Я був здивований» вгадує рід; краще «Мене це здивувало».", "confidence": 0.9, "suggestion": "Мене це здивувало." },
-    { "id": 107, "verdict": "incorrect", "reason": "Пропущено плейсхолдер %s з source.", "confidence": 0.98, "suggestion": null }
+    { "id": 105, "verdict": "suspicious", "reason": "Звертання до гравця: «ти готовий» замість «ви»/безособового «Усе готово?».", "confidence": 0.9, "suggestion": ["Усе готово?"] },
+    { "id": 106, "verdict": "suspicious", "reason": "Гендер: «Я був здивований» вгадує рід; краще «Мене це здивувало».", "confidence": 0.9, "suggestion": ["Мене це здивувало."] },
+    { "id": 107, "verdict": "incorrect", "reason": "Пропущено слот 1 (%s) з parts.", "confidence": 0.98, "suggestion": null }
   ]
 }
 
 Додаткові патерни (довідка, НЕ частина вихідного JSON):
-- "Welcome, %s. I am %s." → "Вітаю, %s. Я — %s." — OK (%s збережено).
-- "You have %s drakes." → "У вас %s дрейків." — OK.
+- ["Welcome, ", 0, ". I am ", 1, "."] → ["Вітаю, ", 0, ". Я — ", 1, "."] — OK (обидва індекси).
+- ["You have ", 0, " drakes."] → ["У вас ", 0, " дрейків."] — OK.
 - «кришки» для drakes у Morrowind → "incorrect".
 - INFO/BOOK: translation на іншу тему/фракцію — "incorrect" (збій TM), suggestion null.`;

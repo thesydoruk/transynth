@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { VoiceLinePreview } from '../../../../../../api';
 import type { ModAiJobEntry } from '../../../../../../modAiJobsStore';
-import type { PlayKind } from '../../voiceLineKeys';
+import { lineKey, type PlayKind } from '../../voiceLineKeys';
 import type { VoiceLineFilter } from '../../hooks/useVoiceState';
 import type { CommitAdvance } from './VoiceLineRow';
 import { VoiceLineRow } from './VoiceLineRow';
@@ -56,6 +56,8 @@ export interface VoiceLinesViewProps {
   onVoiceMissing: () => void;
   onVoiceAll: () => void;
   onVoiceStop: () => void;
+  synthesizingLines?: ReadonlySet<string>;
+  flashedLines?: ReadonlySet<string>;
 }
 
 /** Right column: header filters and the stream of voice lines. */
@@ -92,6 +94,8 @@ export const VoiceLinesView = ({
   onVoiceMissing,
   onVoiceAll,
   onVoiceStop,
+  synthesizingLines,
+  flashedLines,
 }: VoiceLinesViewProps) => {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -162,6 +166,8 @@ export const VoiceLinesView = ({
                     loadingTrack={loadingTrack}
                     setReferencePending={setReferencePending}
                     generatePending={generatePending}
+                    synthesizing={synthesizingLines?.has(lineKey(line)) ?? false}
+                    flashed={flashedLines?.has(lineKey(line)) ?? false}
                     regenerateOpen={
                       regenerateLine?.speakerKey === line.speakerKey &&
                       regenerateLine.formidLower6 === line.formidLower6 &&

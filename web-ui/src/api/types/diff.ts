@@ -21,6 +21,8 @@ export type CarryOverResult = {
   carried: number;
   needsReview: number;
   skipped: number;
+  /** Synthesized takes copied because line text and source voice file matched. */
+  voiceCopied?: number;
 };
 
 /** Result of applying imported mod strings as translations on another mod. */

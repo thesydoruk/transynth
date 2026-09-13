@@ -4,6 +4,7 @@ export type GlossaryEntry = {
   translation: string | null;
   src_lang: string;
   tgt_lang: string;
+  game: string;
   source: string;
   created_at: string;
 };

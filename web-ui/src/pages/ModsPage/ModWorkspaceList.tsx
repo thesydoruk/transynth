@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Mod, ModImportJob } from '../../api';
 import { getModAiJob } from '../../modAiJobsStore';
 import {
@@ -10,6 +11,8 @@ import { startModAiSkipDetect, stopModAiSkipDetect } from '../../modAiSkipDetect
 import { toggleModAiGenderDetect, stopModAiGenderDetect } from '../../modAiGenderDetectRunner';
 import { ModWorkspaceRow } from './ModWorkspaceRow';
 import type { ModExportAction } from './modsShared';
+import { formatModDisplayName, groupModVersions } from './modVersions';
+import pageS from './ModsPage.module.scss';
 
 type ModWorkspaceListProps = {
   mods: Mod[];
@@ -38,36 +41,21 @@ type ModWorkspaceListProps = {
   exportingLangpack?: boolean;
 };
 
-export const ModWorkspaceList = ({
-  mods,
-  importJobByModId,
-  srcLang,
-  targetLang,
-  selectedModIds,
-  multiSelectActive,
-  clearingModId,
-  deletingAll,
-  buildExportActions,
-  selectedModsForDelete,
-  onOpenMod,
-  onOpenAiPanel,
-  onToggleSelection,
-  onClearRows,
-  onDeleteAll,
-  onDeleteImport,
-  onExportLangpack,
-  exportingLangpack,
-}: ModWorkspaceListProps) =>
-  mods.map((mod) => {
-    const importJob = importJobByModId.get(mod.id) ?? null;
-    const exportActions = buildExportActions(
+export const ModWorkspaceList = (props: ModWorkspaceListProps) => {
+  const { t } = useTranslation();
+  const groups = groupModVersions(props.mods);
+
+  const renderRow = (mod: Mod, nested: boolean) => {
+    const importJob = props.importJobByModId.get(mod.id) ?? null;
+    const displayName = formatModDisplayName(mod);
+    const exportActions = props.buildExportActions(
       mod.id,
-      mod.name,
-      srcLang,
-      targetLang,
+      displayName,
+      props.srcLang,
+      props.targetLang,
       `mod-${mod.id}`,
     );
-    const isSelected = selectedModIds.has(mod.id);
+    const isSelected = props.selectedModIds.has(mod.id);
 
     return (
       <ModWorkspaceRow
@@ -75,53 +63,96 @@ export const ModWorkspaceList = ({
         mod={mod}
         importJob={importJob}
         exportActions={exportActions}
-        clearingRows={clearingModId === mod.id}
-        deletingAll={deletingAll}
+        clearingRows={props.clearingModId === mod.id}
+        deletingAll={props.deletingAll}
         selected={isSelected}
-        multiSelectActive={multiSelectActive}
-        onSelectedChange={(selected) => onToggleSelection(mod.id, selected)}
-        onOpen={() => onOpenMod(mod.id)}
+        nested={nested}
+        multiSelectActive={props.multiSelectActive}
+        onSelectedChange={(selected) => props.onToggleSelection(mod.id, selected)}
+        onOpen={() => props.onOpenMod(mod.id)}
         onAiTranslateTm={() =>
-          toggleModAiTranslateTm(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'translate'))
+          toggleModAiTranslateTm(
+            mod.id,
+            props.srcLang,
+            props.targetLang,
+            getModAiJob(mod.id, 'translate'),
+          )
         }
         onAiTranslateLlm={() =>
-          toggleModAiTranslate(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'translate'))
+          toggleModAiTranslate(
+            mod.id,
+            props.srcLang,
+            props.targetLang,
+            getModAiJob(mod.id, 'translate'),
+          )
         }
         onAiTranslateStop={() => void stopModAiTranslate(mod.id, getModAiJob(mod.id, 'translate'))}
-        onAiVerify={() => onOpenAiPanel(mod.id)}
+        onAiVerify={() => props.onOpenAiPanel(mod.id)}
         onSkipDetectHeuristic={() =>
-          void startModAiSkipDetect(mod.id, srcLang, false, getModAiJob(mod.id, 'skip-detect'))
+          void startModAiSkipDetect(
+            mod.id,
+            props.srcLang,
+            false,
+            getModAiJob(mod.id, 'skip-detect'),
+          )
         }
         onSkipDetectWithLlm={() =>
-          void startModAiSkipDetect(mod.id, srcLang, true, getModAiJob(mod.id, 'skip-detect'))
+          void startModAiSkipDetect(mod.id, props.srcLang, true, getModAiJob(mod.id, 'skip-detect'))
         }
         onSkipDetectStop={() =>
           void stopModAiSkipDetect(mod.id, getModAiJob(mod.id, 'skip-detect').jobId)
         }
         onGenderDetect={() =>
-          toggleModAiGenderDetect(mod.id, srcLang, getModAiJob(mod.id, 'gender-detect'))
+          toggleModAiGenderDetect(mod.id, props.srcLang, getModAiJob(mod.id, 'gender-detect'))
         }
         onGenderDetectStop={() =>
           void stopModAiGenderDetect(mod.id, getModAiJob(mod.id, 'gender-detect').jobId)
         }
         onAiVoiceMissing={() =>
-          toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'), 'missing')
-        }
-        onAiVoiceAll={() =>
-          toggleModAiVoice(mod.id, srcLang, targetLang, getModAiJob(mod.id, 'voice'), 'all')
-        }
-        onAiVoiceStop={() => void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)}
-        onClearRows={() => onClearRows(mod.id, mod.name)}
-        onDeleteAll={() =>
-          onDeleteAll(
-            multiSelectActive && isSelected
-              ? selectedModsForDelete()
-              : [{ id: mod.id, name: mod.name }],
+          toggleModAiVoice(
+            mod.id,
+            props.srcLang,
+            props.targetLang,
+            getModAiJob(mod.id, 'voice'),
+            'missing',
           )
         }
-        onDeleteImport={importJob ? () => onDeleteImport(importJob) : undefined}
-        onExportLangpack={onExportLangpack}
-        exportingLangpack={exportingLangpack}
+        onAiVoiceAll={() =>
+          toggleModAiVoice(
+            mod.id,
+            props.srcLang,
+            props.targetLang,
+            getModAiJob(mod.id, 'voice'),
+            'all',
+          )
+        }
+        onAiVoiceStop={() => void stopModAiVoice(mod.id, getModAiJob(mod.id, 'voice').jobId)}
+        onClearRows={() => props.onClearRows(mod.id, displayName)}
+        onDeleteAll={() =>
+          props.onDeleteAll(
+            props.multiSelectActive && isSelected
+              ? props.selectedModsForDelete()
+              : [{ id: mod.id, name: displayName }],
+          )
+        }
+        onDeleteImport={importJob ? () => props.onDeleteImport(importJob) : undefined}
+        onExportLangpack={props.onExportLangpack}
+        exportingLangpack={props.exportingLangpack}
       />
     );
-  });
+  };
+
+  return groups.map((group) => (
+    <div key={`family-${group.current.id}`} className={pageS.versionGroup}>
+      {renderRow(group.current, false)}
+      {group.previous.length > 0 && (
+        <details className={pageS.previousVersions}>
+          <summary>{t('mods.previousVersions', { count: group.previous.length })}</summary>
+          <div className={pageS.previousList}>
+            {group.previous.map((mod) => renderRow(mod, true))}
+          </div>
+        </details>
+      )}
+    </div>
+  ));
+};

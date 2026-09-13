@@ -6,3 +6,7 @@ const PROMPT_JSON_INDENT = '  ';
  */
 export const promptJsonFormat = (value: unknown): string =>
   JSON.stringify(value, null, PROMPT_JSON_INDENT);
+
+/** Compact JSON array: one object per line. Use for long few-shot lists. */
+export const promptJsonItems = (items: readonly object[]): string =>
+  `{"items":[\n${items.map((item) => `  ${JSON.stringify(item)}`).join(',\n')}\n]}`;

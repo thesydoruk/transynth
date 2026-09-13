@@ -1,7 +1,10 @@
 import type { LlmDialogParticipants } from './dialogParticipants';
 import type { LlmGlossaryEntry, LlmReferenceExample } from './translate';
 import type { GameType } from '../types';
+import type { LlmPromptFamily } from './promptFamily';
+import type { DialogSceneContext } from './dialogScene';
 import { parseLlmItemId } from './jsonParse';
+import type { LlmSlotHint, LlmTextPart, LlmTextSlot } from './textParts';
 
 export type LlmVerifyVerdict = 'ok' | 'suspicious' | 'incorrect';
 
@@ -10,6 +13,11 @@ export interface LlmVerifyItem extends LlmDialogParticipants {
   id: number;
   source: string;
   translation: string;
+  parts?: LlmTextPart[];
+  translation_parts?: LlmTextPart[];
+  slots?: LlmSlotHint[];
+  restoreSlots?: LlmTextSlot[];
+  sourceParts?: LlmTextPart[];
   grup: string | null;
   edid: string | null;
   field: string | null;
@@ -36,6 +44,8 @@ export interface LlmVerifyOptions {
   modName?: string | null;
   /** Per-batch glossary terms (same filtering as translate). */
   glossary?: LlmGlossaryEntry[];
+  promptFamily?: LlmPromptFamily;
+  dialogScene?: DialogSceneContext;
   /** Aborts the in-flight LLM request when the owning job is stopped. */
   signal?: AbortSignal;
 }

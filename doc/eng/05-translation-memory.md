@@ -120,6 +120,11 @@ translation from the Detail Panel:
 You can also trigger re-matching for the entire mod (or a filtered set of strings)
 using the batch **Apply TM** action.
 
+When TM writes a translation from an **exact** source-text match, and the
+character's source voice file is byte-identical to the donor's, the synthesized
+take is copied with the text. Numeric transplants and re-recorded `.fuz`/`.wav`
+files are not reused.
+
 ---
 
 ## RAG Examples Tab in the Detail Panel

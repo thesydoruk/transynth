@@ -19,3 +19,4 @@ export * from './modImport';
 export * from './llmJobs';
 export * from './pexVoice';
 export * from './exports';
+export * from './vortex';

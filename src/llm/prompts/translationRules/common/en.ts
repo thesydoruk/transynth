@@ -1,5 +1,6 @@
 import { englishGenderRules, englishVerifyGenderRules } from './gender';
 import { englishPlaceholderRules, englishVerifyPlaceholderRules } from './placeholders';
+import { mcmUiTranslateRulesEn, mcmUiVerifyRulesEn } from '../../mcmUiRules';
 
 /** Rules shared across all Bethesda games (English prompt, any target language). */
 export const englishCommonRules = (targetLang: string): string[] => [
@@ -41,6 +42,7 @@ export const englishCommonRules = (targetLang: string): string[] => [
   '- Do not convert numeric values unless the source clearly expects localization.',
   '- Metadata (grup, field, edid, form_id, context): use these as the primary guide for WHO speaks, TO WHOM, and WHERE the text appears. Consider edid prefixes (e.g. MQ = main quest, Companion_ = companion line). Do not copy metadata into the translation or expand a short source with edid words.',
   '- Homonyms: the same English word may need different translations by grup/field (e.g. "Light" in ARMO/FULL vs WEAP/MOD).',
+  ...mcmUiTranslateRulesEn(),
 ];
 
 /** Shared verify/audit rules (pre-masked text sent to the LLM). */
@@ -75,4 +77,5 @@ export const englishVerifyCommonRules = (targetLang: string): string[] => [
   '- Glossary "Sentry Bot" is for creature/dialogue references; model token "Sentry" in item names/edid — transliterate, do not expand to a creature name in item labels.',
   '- reference_examples: align terminology and series templates only when the example source skeleton matches the current source. Do not copy a template from a different grup/field, source structure, or edid faction. Ignore examples that contradict source.',
   '- Metadata (grup, field, edid): context only; do not copy edid into the translation.',
+  ...mcmUiVerifyRulesEn(),
 ];

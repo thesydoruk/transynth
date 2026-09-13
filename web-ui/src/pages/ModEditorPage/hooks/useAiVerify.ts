@@ -249,6 +249,8 @@ export const useAiVerify = (modId: number, srcLang: string, targetLang: string) 
     setState((prev) => ({ ...prev, status: 'stopping', error: null }));
 
     try {
+      streamAbortRef.current?.abort();
+      inFlight.current = false;
       const jobId = jobIdRef.current;
       if (jobId != null) {
         await api.llmVerify.stop(jobId);

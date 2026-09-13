@@ -8,9 +8,10 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../../components/PageHeader';
 import { useTranslation } from 'react-i18next';
-import type { PreviousVersionRow } from '../../api';
+import { api, type PreviousVersionRow } from '../../api';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { useModAiJobsPoll } from '../../hooks/useModAiJobsPoll';
 import { ModsPageUploadBar } from './ModsPageUploadBar';
@@ -42,8 +43,15 @@ export const ModsPage = () => {
     newModId: number;
     prevVersions: PreviousVersionRow[];
   } | null>(null);
+  const [vortexGroupId, setVortexGroupId] = useState<number | undefined>(undefined);
 
-  const pageData = useModsPageData(gameId, srcLang, targetLang);
+  const { data: vortexGroupsData } = useQuery({
+    queryKey: ['vortex-groups', gameId],
+    queryFn: () => api.vortex.groups(gameId),
+  });
+  const vortexGroups = vortexGroupsData?.groups ?? [];
+
+  const pageData = useModsPageData(gameId, srcLang, targetLang, vortexGroupId);
   const {
     isModsLoading,
     modsError,
@@ -139,15 +147,38 @@ export const ModsPage = () => {
     <div className={s.page}>
       <PageHeader title={t('mods.title')} description={t('mods.pageDescription')} />
 
-      <ModsPageUploadBar
-        fileRef={upload.fileRef}
-        advancedFileRef={upload.advancedFileRef}
-        uploading={upload.uploading}
-        pendingCount={importPendingCount}
-        onUpload={() => void upload.handleUpload()}
-        onAdvancedUpload={() => void upload.handleAdvancedUpload()}
-        onStartAll={() => startAll(activeImportJobs)}
-      />
+      {vortexGroups.length > 0 && (
+        <label className={s.vortexFilter}>
+          <span>{t('mods.vortexGroup')}</span>
+          <select
+            value={vortexGroupId ?? ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              setVortexGroupId(value ? Number(value) : undefined);
+              selection.clearModSelection();
+            }}
+          >
+            <option value="">{t('mods.vortexManual')}</option>
+            {vortexGroups.map((group) => (
+              <option key={group.id} value={group.id} title={group.staging_path ?? undefined}>
+                {group.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {vortexGroupId == null && (
+        <ModsPageUploadBar
+          fileRef={upload.fileRef}
+          advancedFileRef={upload.advancedFileRef}
+          uploading={upload.uploading}
+          pendingCount={importPendingCount}
+          onUpload={() => void upload.handleUpload()}
+          onAdvancedUpload={() => void upload.handleAdvancedUpload()}
+          onStartAll={() => startAll(activeImportJobs)}
+        />
+      )}
 
       {isModsLoading && sortedMods.length === 0 && activeImportJobs.length === 0 ? (
         <div className={s.center}>{t('mods.loadingMods')}</div>

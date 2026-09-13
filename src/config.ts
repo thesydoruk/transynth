@@ -242,6 +242,9 @@ export const CONFIG = {
   // The static cover-image CDN does NOT require this key.
   nexusApiKey: process.env.NEXUS_API_KEY || '',
 
+  /** Bearer token for remote Vortex sync CLI. Empty = routes are open (dev). */
+  cliToken: process.env.TRANSYNTH_CLI_TOKEN || '',
+
   // Default language pair for translation.
   // SRC_LANG — source language code stored in strings.lang (e.g. 'en').
   // TGT_LANG — target translation language code (e.g. 'uk', 'pl', 'de').

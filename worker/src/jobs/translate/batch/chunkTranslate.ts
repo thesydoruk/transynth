@@ -10,8 +10,13 @@ import { enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
 import { fetchReferenceExamplesBatch, type RagRetrievalOptions } from '../../../../../src/llm/rag';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import { Semaphore } from '../../../../../src/utils/concurrency';
-import { unmask, validateTranslationPlaceholders } from '../../../../../src/utils/placeholders';
-import { maskLlmOptionalText, maskLlmReferenceExamples } from '../../../../../src/llm/llmTextMask';
+import {
+  compareProtectedTokens,
+  unmask,
+  validateTranslationPlaceholders,
+} from '../../../../../src/utils/placeholders';
+import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
+import { isMaskedLlmText, structureLlmReferenceExamples } from '../../../../../src/llm/textParts';
 import { normalizeAutoTranslation } from '../../../../../src/utils/textNorm';
 import type { GameType } from '../../../../../src/types';
 import { relevantGlossaryForChunk } from './glossary';
@@ -121,14 +126,18 @@ export const collectValidatedRows = (
       continue;
     }
 
-    const placeholderCheck = validateTranslationPlaceholders(
-      entry.sourceText,
-      maskedTranslation,
-      entry.placeholderMap,
-      entry.functionKeywordMap,
-      (entry.game ?? ctx.opts.modGame) as GameType | undefined,
-      { grup: entry.grup, field: entry.field },
-    );
+    const game = (entry.game ?? ctx.opts.modGame) as GameType | undefined;
+    const tokenCtx = { grup: entry.grup, field: entry.field };
+    const placeholderCheck = isMaskedLlmText(maskedTranslation)
+      ? validateTranslationPlaceholders(
+          entry.sourceText,
+          maskedTranslation,
+          entry.placeholderMap,
+          entry.functionKeywordMap,
+          game,
+          tokenCtx,
+        )
+      : compareProtectedTokens(entry.sourceText, maskedTranslation, game, tokenCtx);
     if (!placeholderCheck.ok) {
       ctx.emitResult({
         stringId: entry.stringId,
@@ -137,10 +146,10 @@ export const collectValidatedRows = (
       continue;
     }
 
-    const translated = normalizeAutoTranslation(
-      entry.sourceText,
-      unmask(unmask(maskedTranslation, entry.functionKeywordMap), entry.placeholderMap),
-    );
+    const joined = isMaskedLlmText(maskedTranslation)
+      ? unmask(unmask(maskedTranslation, entry.functionKeywordMap), entry.placeholderMap)
+      : maskedTranslation;
+    const translated = normalizeAutoTranslation(entry.sourceText, joined);
     okRows.push({ stringId: entry.stringId, text: translated });
   }
 
@@ -196,7 +205,7 @@ export const translateChunkOnce = async (
       items: normalEntries.map((entry) => ({
         ...entry.llmItem,
         context: maskLlmOptionalText(entry.llmItem.context),
-        reference_examples: maskLlmReferenceExamples(
+        reference_examples: structureLlmReferenceExamples(
           ragByStringId.get(entry.stringId),
           ctx.opts.modGame ?? entry.game,
         ),
@@ -206,10 +215,12 @@ export const translateChunkOnce = async (
       targetLang: ctx.opts.targetLang,
       game: ctx.opts.modGame ?? normalEntries[0]?.game,
       modName: ctx.opts.modName ?? normalEntries[0]?.modName,
-      glossary: relevantGlossaryForChunk(
+      glossary: await relevantGlossaryForChunk(
         ctx.glossaryAll,
         normalEntries.map((entry) => entry.sourceText),
       ),
+      promptFamily: normalEntries[0]?.promptFamily,
+      dialogScene: normalEntries[0]?.dialogScene,
       signal: ctx.opts.signal,
     });
     await scheduleChunkPersist(ctx, collectValidatedRows(ctx, normalEntries, translations));

@@ -18,6 +18,8 @@ export interface VoiceLineRowProps {
   loadingTrack: string | null;
   setReferencePending: boolean;
   generatePending: boolean;
+  synthesizing?: boolean;
+  flashed?: boolean;
   regenerateOpen: boolean;
   onFocus: () => void;
   onEdit: () => void;
@@ -39,6 +41,8 @@ export const VoiceLineRow = ({
   loadingTrack,
   setReferencePending,
   generatePending,
+  synthesizing = false,
+  flashed = false,
   regenerateOpen,
   onFocus,
   onEdit,
@@ -127,7 +131,7 @@ export const VoiceLineRow = ({
   return (
     <article
       ref={rowRef}
-      className={`${styles.row} ${line.isReference ? styles.reference : ''} ${focused ? styles.focused : ''} ${saving ? styles.saving : ''}`}
+      className={`${styles.row} ${line.isReference ? styles.reference : ''} ${focused ? styles.focused : ''} ${saving ? styles.saving : ''} ${synthesizing ? styles.synthesizing : ''} ${flashed ? styles.flash : ''}`}
       onMouseDown={editable ? onFocus : undefined}
     >
       <div className={styles.meta}>
@@ -195,14 +199,16 @@ export const VoiceLineRow = ({
               type="button"
               className={styles.action}
               onClick={() => onGenerate(line)}
-              disabled={!canGenerate || generatePending}
+              disabled={!canGenerate || generatePending || synthesizing}
               title={
                 canGenerate
                   ? t('modEditor.voiceGenerateTitle')
                   : t('modEditor.voiceGenerateNeedsTranslation')
               }
             >
-              {generatePending ? t('modEditor.voiceGenerating') : t('modEditor.voiceGenerateBtn')}
+              {generatePending || synthesizing
+                ? t('modEditor.voiceGenerating')
+                : t('modEditor.voiceGenerateBtn')}
             </button>
           )}
           {canBeReference && (!skipReason || line.isReference) && (

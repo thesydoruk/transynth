@@ -17,6 +17,7 @@ import {
   type DialogLine,
 } from './lines';
 import type { DialogEntryRow, DialogScope, DialogTranscriptRow } from './scope';
+import { getBranchTranscript } from './branchTranscript';
 
 type PhaseRow = {
   scene_id: number;
@@ -165,10 +166,11 @@ export const getSceneTranscript = async (
 };
 
 /**
- * Load every scene of one quest stitched into a single transcript.
+ * Load every scene and every player-dialog branch of one quest.
  *
  * Scene order falls back to `dialog_scenes.id`, which preserves the order the
- * plugin walk imported them in.
+ * plugin walk imported them in. Branches follow as extra sections so a quest
+ * click shows the full spoken tree, not only the scripted scenes.
  */
 export const getConversationTranscript = async (
   db: Tx,
@@ -177,7 +179,15 @@ export const getConversationTranscript = async (
   srcLang: string,
   targetLang: string,
 ): Promise<DialogTranscriptRow | null> => {
-  const { rows: headRows } = await db.query(
+  const { rows: questRows } = await db.query(
+    `SELECT COALESCE(NULLIF(edid, ''), NULLIF(name, ''), formid_hex) AS label
+     FROM dialog_quests
+     WHERE mod_id = $1 AND formid_hex = $2`,
+    [modId, conversationKey],
+  );
+  const questLabel = (questRows as Array<{ label: string }>)[0]?.label ?? null;
+
+  const { rows: sceneHeadRows } = await db.query(
     `SELECT COALESCE(
         NULLIF(MIN(dq.edid), ''),
         NULLIF(MIN(dq.name), ''),
@@ -191,8 +201,12 @@ export const getConversationTranscript = async (
      WHERE ds.mod_id = $1 AND COALESCE(ds.quest_formid_hex, ds.formid_hex) = $2`,
     [modId, conversationKey],
   );
-  const head = (headRows as Array<{ label: string | null; timing_sensitive: boolean | null }>)[0];
-  if (!head?.label) return null;
+  const sceneHead = (
+    sceneHeadRows as Array<{ label: string | null; timing_sensitive: boolean | null }>
+  )[0];
+
+  const label = questLabel ?? sceneHead?.label ?? null;
+  if (!label) return null;
 
   const { rows } = await db.query(
     phaseLinesSql({
@@ -206,12 +220,31 @@ export const getConversationTranscript = async (
     [modId, conversationKey, srcLang, targetLang, DIALOG_RESPONSE_PATH, DIALOG_PROMPT_PATH],
   );
   const responseMap = await loadModInfoVoiceResponseNumbers(db, modId);
+  const entries = toEntries(rows as PhaseRow[], true, responseMap);
+
+  const { rows: branchRows } = await db.query(
+    `SELECT db.id
+     FROM dialog_branches db
+     WHERE db.mod_id = $1 AND db.quest_formid_hex = $2
+     ORDER BY COALESCE(NULLIF(db.edid, ''), db.formid_hex) ASC`,
+    [modId, conversationKey],
+  );
+  for (const branch of branchRows as Array<{ id: number }>) {
+    const transcript = await getBranchTranscript(db, modId, branch.id, srcLang, targetLang);
+    if (!transcript || transcript.entries.length === 0) continue;
+    const first = transcript.entries[0];
+    entries.push({
+      ...first,
+      section: first.section ?? transcript.label,
+    });
+    entries.push(...transcript.entries.slice(1));
+  }
 
   return {
     scope: 'conversations' as DialogScope,
     key: conversationKey,
-    label: head.label,
-    timing_sensitive: head.timing_sensitive === true,
-    entries: toEntries(rows as PhaseRow[], true, responseMap),
+    label,
+    timing_sensitive: sceneHead?.timing_sensitive === true,
+    entries,
   };
 };

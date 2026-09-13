@@ -6,12 +6,13 @@
  * still sees the update after an early return on cancel/pause.
  */
 import type { Tx } from '../../../../../src/db';
-import { upsertMod } from '../../../../../src/db';
+import { upsertMod, upsertVortexMod } from '../../../../../src/db';
 import { EspReader, type EspStringRow } from '../../../../../src/formats/esp';
 import { CONFIG } from '../../../../../src/config';
 import { logImport } from '../../../../../src/logging/loggers';
 import type { GameType } from '../../../../../src/types';
 import { parseVortexModFolder } from '../../../../../src/utils/vortexFolder';
+import { inferModVersionLabel } from '../../../../../src/vortex/versionLabel';
 import {
   trackModImportBulkResults,
   type ModImportBulkResult,
@@ -94,10 +95,45 @@ export const ensureImportModId = async (ctx: ModImportPhaseContext): Promise<num
     ctx.job.nexus_mod_name?.trim() ||
     (ctx.job.source_folder ? parseVortexModFolder(ctx.job.source_folder)?.modName : null) ||
     deriveModNameFromFileName(ctx.job.file_name);
-  const importModId = await upsertMod(ctx.db, modName, ctx.espPath, ctx.job.file_hash, ctx.game, {
-    nexusModId: ctx.job.nexus_mod_id ?? undefined,
-    nexusName: ctx.job.nexus_mod_name ?? undefined,
+  const versionHash = ctx.job.file_hash.includes(':')
+    ? ctx.job.file_hash.slice(ctx.job.file_hash.indexOf(':') + 1)
+    : ctx.job.file_hash;
+  const channel = ctx.job.source_folder ? 'mods' : 'game';
+  let gameReleaseLabel: string | null = null;
+  if (ctx.job.vortex_group_id != null && channel === 'game') {
+    const { rows: releaseRows } = await ctx.db.query<{ version_label: string }>(
+      `SELECT version_label FROM vortex_game_releases
+       WHERE vortex_group_id = $1 AND is_current = TRUE
+       ORDER BY created_at DESC LIMIT 1`,
+      [ctx.job.vortex_group_id],
+    );
+    gameReleaseLabel = releaseRows[0]?.version_label ?? null;
+  }
+  const versionLabel = inferModVersionLabel({
+    sourceFolder: ctx.job.source_folder,
+    channel,
+    gameReleaseLabel,
+    contentHash: versionHash,
   });
+  const importModId =
+    ctx.job.vortex_group_id != null
+      ? await upsertVortexMod(ctx.db, {
+          name: modName,
+          absPath: ctx.espPath,
+          versionHash,
+          game: ctx.game,
+          groupId: ctx.job.vortex_group_id,
+          channel,
+          versionLabel,
+          nexus: {
+            nexusModId: ctx.job.nexus_mod_id ?? undefined,
+            nexusName: ctx.job.nexus_mod_name ?? undefined,
+          },
+        })
+      : await upsertMod(ctx.db, modName, ctx.espPath, versionHash, ctx.game, {
+          nexusModId: ctx.job.nexus_mod_id ?? undefined,
+          nexusName: ctx.job.nexus_mod_name ?? undefined,
+        });
   if (ctx.job.nexus_mod_id) {
     logImport.info(
       `[Mod Import #${ctx.job.id}] Nexus link: mod ${ctx.job.nexus_mod_id}${ctx.job.nexus_mod_name ? ` (${ctx.job.nexus_mod_name})` : ''}`,

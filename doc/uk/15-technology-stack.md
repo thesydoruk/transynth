@@ -72,9 +72,9 @@
   `src/audioIntel/`. Disco використовує транскрипт, щоб відрізати закадровий
   текст від озвучених лапок; TTS лишається окремим сервісом (`TTS_BASE_URL`).
   Опційно в Compose: профіль `embedded-audio-intel` (лише STT).
-- **FaceFX** пише Bethesda `.lip`. Український текст спочатку адаптується під
-  англійські фонеми Fonix (`src/voice/faceFx/ukToFonix.ts`). LIP і xWMA йдуть
-  у sidecar `bethesda-tools` (`BETHESDA_TOOLS_URL`).
+- **FaceFX** пише Bethesda `.lip`. Кирилиця йде в FaceFXWrapper як `Ukrainian`;
+  ріспелінг під Fonix — у враппері. LIP і xWMA — у sidecar `bethesda-tools`
+  (`BETHESDA_TOOLS_URL`).
 
 ---
 

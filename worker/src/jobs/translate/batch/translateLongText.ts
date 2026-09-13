@@ -1,10 +1,12 @@
 import { CONFIG } from '../../../../../src/config';
 import { translateStrings, isLlmResponseTruncatedError } from '../../../../../src/llm/translate';
+import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
 import {
-  maskLlmOptionalText,
-  maskLlmReferenceExamples,
-  maskTranslateSource,
-} from '../../../../../src/llm/llmTextMask';
+  applyTranslateSplit,
+  isMaskedLlmText,
+  splitTranslateSource,
+  structureLlmReferenceExamples,
+} from '../../../../../src/llm/textParts';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import {
   compareProtectedTokens,
@@ -25,15 +27,6 @@ type RagExamples = NonNullable<PreparedLlmItem['llmItem']['reference_examples']>
 
 export { needsLongTextSplit };
 
-const maskSourcePart = (entry: PreparedLlmItem, partSource: string) => {
-  const { masked, placeholderMap, functionKeywordMap } = maskTranslateSource(
-    partSource,
-    entry.game,
-    { grup: entry.grup, field: entry.field },
-  );
-  return { maskedSource: masked, placeholderMap, functionKeywordMap };
-};
-
 const translatePartSourceOnce = async (
   ctx: ChunkTranslateContext,
   entry: PreparedLlmItem,
@@ -41,37 +34,56 @@ const translatePartSourceOnce = async (
   ragExamples: RagExamples | undefined,
   includeContext: boolean,
 ): Promise<string> => {
-  const { maskedSource, placeholderMap, functionKeywordMap } = maskSourcePart(entry, partSource);
+  const split = splitTranslateSource(partSource, entry.game, {
+    grup: entry.grup,
+    field: entry.field,
+  });
   const results = await translateStrings({
     items: [
-      {
-        ...entry.llmItem,
-        source: maskedSource,
-        context: includeContext ? maskLlmOptionalText(entry.llmItem.context) : null,
-        reference_examples: includeContext
-          ? maskLlmReferenceExamples(ragExamples, ctx.opts.modGame ?? entry.game)
-          : undefined,
-      },
+      applyTranslateSplit(
+        {
+          ...entry.llmItem,
+          context: includeContext ? maskLlmOptionalText(entry.llmItem.context) : null,
+          reference_examples: includeContext
+            ? structureLlmReferenceExamples(ragExamples, ctx.opts.modGame ?? entry.game)
+            : undefined,
+        },
+        split,
+      ),
     ],
     model: ctx.model,
     srcLang: ctx.opts.srcLang,
     targetLang: ctx.opts.targetLang,
     game: ctx.opts.modGame ?? entry.game,
     modName: ctx.opts.modName ?? entry.modName,
-    glossary: relevantGlossaryForChunk(ctx.glossaryAll, [entry.sourceText]),
+    glossary: await relevantGlossaryForChunk(ctx.glossaryAll, [entry.sourceText]),
+    promptFamily: entry.promptFamily,
+    dialogScene: entry.dialogScene,
     signal: ctx.opts.signal,
   });
 
-  const maskedPart = results[0]!.translation;
-  const partMaskCheck = validateMaskedTranslation(maskedPart, {
-    ...placeholderMap,
-    ...functionKeywordMap,
-  });
-  if (!partMaskCheck.ok) {
-    throw new Error(partMaskCheck.message);
+  const assembled = results[0]!.translation;
+  if (isMaskedLlmText(assembled)) {
+    const partMaskCheck = validateMaskedTranslation(assembled, {
+      ...split.placeholderMap,
+      ...split.functionKeywordMap,
+    });
+    if (!partMaskCheck.ok) {
+      throw new Error(partMaskCheck.message);
+    }
+    return unmask(unmask(assembled, split.functionKeywordMap), split.placeholderMap);
   }
 
-  return unmask(unmask(maskedPart, functionKeywordMap), placeholderMap);
+  const tokenCheck = compareProtectedTokens(
+    partSource,
+    assembled,
+    entry.game as GameType | undefined,
+    { grup: entry.grup, field: entry.field },
+  );
+  if (!tokenCheck.ok) {
+    throw new Error(tokenCheck.message);
+  }
+  return assembled;
 };
 
 const translatePartSource = async (

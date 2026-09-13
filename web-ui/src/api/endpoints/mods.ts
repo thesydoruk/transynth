@@ -21,9 +21,15 @@ import type {
 } from '../types';
 
 export const modsEndpoints = {
-  list: (game?: string, srcLang = getSrcLang(), targetLang = getTgtLang()) => {
+  list: (
+    game?: string,
+    srcLang = getSrcLang(),
+    targetLang = getTgtLang(),
+    vortexGroupId?: number,
+  ) => {
     const params = new URLSearchParams({ srcLang, targetLang });
     if (game) params.set('game', game);
+    if (vortexGroupId) params.set('vortexGroupId', String(vortexGroupId));
     return req<Mod[]>(`/api/mods?${params}`);
   },
   get: (id: number) => req<Mod>(`/api/mods/${id}`),

@@ -1,6 +1,10 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { DependencyUnavailableError } from '../../pipeline/errors';
-import { runLlmChunkWithRecovery, runLlmChunkWorkPoolFromFeed } from '../chunkRecovery';
+import {
+  runLlmChunkWithRecovery,
+  runLlmChunkWorkPool,
+  runLlmChunkWorkPoolFromFeed,
+} from '../chunkRecovery';
 import { LlmVerifyMissingIdsError } from '../verifyTranslate';
 import type { Logger } from '../../logger';
 
@@ -149,6 +153,48 @@ describe('runLlmChunkWithRecovery', () => {
       }),
     ).rejects.toBeInstanceOf(DependencyUnavailableError);
     expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it('resolves on abort even when leftover chunks remain queued', async () => {
+    let abort = false;
+    await runLlmChunkWorkPool({
+      initialChunks: [[{ id: 1 }], [{ id: 2 }], [{ id: 3 }], [{ id: 4 }]],
+      concurrency: 1,
+      shouldAbort: () => abort,
+      runOnce: async (chunk) => {
+        if (chunk[0]!.id === 1) {
+          abort = true;
+          return;
+        }
+        throw new Error('must not run leftover chunks after abort');
+      },
+      onFailure: () => {},
+      log: silentLog,
+      operation: 'test',
+      itemIds: (c) => c.map((item) => item.id),
+    });
+  });
+
+  it('runLlmChunkWorkPoolFromFeed resolves on abort with a full buffer', async () => {
+    let abort = false;
+    async function* feed() {
+      yield [{ id: 1 }];
+      yield [{ id: 2 }];
+      yield [{ id: 3 }];
+    }
+
+    await runLlmChunkWorkPoolFromFeed(feed(), {
+      concurrency: 1,
+      maxBufferedChunks: 8,
+      shouldAbort: () => abort,
+      runOnce: async (chunk) => {
+        if (chunk[0]!.id === 1) abort = true;
+      },
+      onFailure: () => {},
+      log: silentLog,
+      operation: 'test',
+      itemIds: (c) => c.map((item) => item.id),
+    });
   });
 
   it('stops the work pool when a chunk hits DependencyUnavailableError', async () => {

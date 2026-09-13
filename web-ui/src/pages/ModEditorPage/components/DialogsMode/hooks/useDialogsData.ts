@@ -1,6 +1,13 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, type DialogGroup, type DialogScope } from '../../../../../api';
+import { api, type DialogScope } from '../../../../../api';
+import {
+  ancestorIdsOf,
+  filterDialogTree,
+  findTreeNode,
+  flattenDialogTreeRows,
+  treeNodeId,
+} from '../dialogTreeView';
 import type { GroupSort } from './useDialogsState';
 
 export interface UseDialogsDataParams {
@@ -15,25 +22,24 @@ export interface UseDialogsDataParams {
   targetLang: string;
 }
 
-const percent = (group: DialogGroup) =>
-  group.line_count === 0 ? 1 : group.translated_count / group.line_count;
-
-const isDone = (group: DialogGroup) =>
-  group.line_count > 0 && group.translated_count >= group.line_count;
-
-const comparators: Record<GroupSort, (a: DialogGroup, b: DialogGroup) => number> = {
-  label: (a, b) => a.label.localeCompare(b.label),
-  progress: (a, b) => percent(a) - percent(b) || a.label.localeCompare(b.label),
-  size: (a, b) => b.line_count - a.line_count || a.label.localeCompare(b.label),
+const collectExpandableIds = (nodes: Parameters<typeof flattenDialogTreeRows>[0]): string[] => {
+  const ids: string[] = [];
+  const walk = (list: typeof nodes) => {
+    for (const node of list) {
+      if (node.children.length > 0) ids.push(treeNodeId(node));
+      walk(node.children);
+    }
+  };
+  walk(nodes);
+  return ids;
 };
 
 /**
- * Group list and transcript of the dialogs editor.
+ * Quest tree and transcript of the dialogs editor.
  *
- * The group list arrives complete, so search, sort, and the "hide finished"
- * toggle run in memory and stay instant while typing. The transcript of the
- * selected group is fetched separately and is the only request that repeats
- * while the user works.
+ * The tree arrives complete, so search, sort, expand, and the "hide finished"
+ * toggle run in memory. The transcript of the selected node is fetched
+ * separately and is the only request that repeats while the user works.
  */
 export const useDialogsData = ({
   modId,
@@ -45,39 +51,61 @@ export const useDialogsData = ({
   srcLang,
   targetLang,
 }: UseDialogsDataParams) => {
-  const groupsQueryKey = ['dialog-groups', modId, scope, srcLang, targetLang] as const;
+  const treeQueryKey = ['dialog-tree', modId, srcLang, targetLang] as const;
 
-  const groupsQuery = useQuery({
-    queryKey: groupsQueryKey,
-    queryFn: () => api.dialogs.groups(modId, scope, srcLang, targetLang),
+  const treeQuery = useQuery({
+    queryKey: treeQueryKey,
+    queryFn: () => api.dialogs.tree(modId, srcLang, targetLang),
     staleTime: 60_000,
   });
 
-  const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const tree = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
 
-  const visibleGroups = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    const matched = groups.filter((group) => {
-      if (hideDone && isDone(group)) return false;
-      if (!needle) return true;
-      return (
-        group.label.toLowerCase().includes(needle) ||
-        (group.sublabel?.toLowerCase().includes(needle) ?? false)
-      );
+  const visibleTree = useMemo(
+    () => filterDialogTree(tree, search, hideDone, sort),
+    [tree, search, sort, hideDone],
+  );
+
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (!groupKey) return;
+    const ancestors = ancestorIdsOf(tree, scope, groupKey);
+    if (ancestors.length === 0) return;
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of ancestors) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
     });
-    return matched.sort(comparators[sort]);
-  }, [groups, search, sort, hideDone]);
+  }, [tree, scope, groupKey]);
 
-  /*
-   * A key coming from the URL wins as long as it still exists, so a deep link
-   * survives a reload even when the current filters would hide the group.
-   */
-  const activeKey =
-    (groupKey && groups.some((group) => group.key === groupKey) ? groupKey : null) ??
-    visibleGroups[0]?.key ??
-    null;
+  useEffect(() => {
+    if (!search.trim()) return;
+    const ids = collectExpandableIds(visibleTree);
+    if (ids.length === 0) return;
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of ids) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [search, visibleTree]);
 
-  const activeGroup = groups.find((group) => group.key === activeKey) ?? null;
+  const rows = useMemo(() => flattenDialogTreeRows(visibleTree, expanded), [visibleTree, expanded]);
+
+  const activeKey = groupKey && findTreeNode(tree, scope, groupKey) ? groupKey : null;
+  const activeNode = activeKey ? findTreeNode(tree, scope, activeKey) : null;
 
   const transcriptQueryKey = [
     'dialog-transcript',
@@ -95,15 +123,46 @@ export const useDialogsData = ({
     staleTime: 30_000,
   });
 
+  const toggleExpanded = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const expandAll = () => setExpanded(new Set(collectExpandableIds(visibleTree)));
+  const collapseAll = () => setExpanded(new Set());
+
+  const setNodeExpanded = (id: string, open: boolean) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
   return {
-    groupsQuery,
-    groups,
-    visibleGroups,
+    treeQuery,
+    tree,
+    visibleTree,
+    rows,
     activeKey,
-    activeGroup,
+    activeNode,
+    activeScope: scope,
     transcriptQuery,
     transcript: transcriptQuery.data ?? null,
-    groupsQueryKey,
+    treeQueryKey,
+    /** @deprecated alias kept so save/fill hooks keep a stable name. */
+    groupsQueryKey: treeQueryKey,
     transcriptQueryKey,
+    toggleExpanded,
+    expandAll,
+    collapseAll,
+    setNodeExpanded,
+    groupsQuery: treeQuery,
+    totalQuestCount: tree.filter((node) => node.kind === 'quest').length,
   };
 };

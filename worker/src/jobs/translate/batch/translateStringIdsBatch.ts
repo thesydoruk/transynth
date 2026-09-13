@@ -17,7 +17,6 @@ import { logTranslate } from '../../../../../src/logging/loggers';
 import { clampRagMaxExamples } from '../../../../../src/llm/ragConstants';
 import { runLlmChunkWorkPool } from '../../../../../src/llm/chunkRecovery';
 import { llmChatPipelineConcurrency } from '../../../../../src/llm/requestPool';
-import { buildLlmTranslateChunks } from '../chunking';
 import { loadGlossaryForBatch } from './glossary';
 import {
   chunkWorkPoolShouldSplit,
@@ -27,7 +26,9 @@ import {
   prefetchChunkRag,
   translateChunkOnce,
 } from './chunkTranslate';
-import { prepareLlmItems } from './prepareRows';
+import { attachMcmTranslateContext, prepareLlmItems } from './prepareRows';
+import { loadMcmSiblingTextsByStringIds } from '../../../../../src/web/data/queries/mcmSiblings';
+import { buildFamilyTranslateChunks } from './familyChunks';
 import type { StringRow, TranslateBatchOptions, TranslateBatchResult } from './types';
 
 export type { TranslateBatchOptions, TranslateBatchResult } from './types';
@@ -72,7 +73,7 @@ export const translateStringIdsBatch = async (
     await requirePgvectorForRag(db);
   }
 
-  const glossaryAll = await loadGlossaryForBatch(db, srcLang, targetLang);
+  const glossaryAll = await loadGlossaryForBatch(db, srcLang, targetLang, modGame);
   const projectSettings = await getAllProjectSettings(db);
   const ragMaxExamples = clampRagMaxExamples(projectSettings['llm.rag_max_examples']);
   const ragMinSimilarity = Math.min(1, Math.max(0, projectSettings['llm.rag_min_similarity']));
@@ -143,11 +144,16 @@ export const translateStringIdsBatch = async (
     emitResult,
   );
 
-  const llmChunks = buildLlmTranslateChunks(llmPending, {
-    batchSize: CONFIG.batchSize,
-    maxSourceChars: CONFIG.llmBatchMaxSourceChars,
-    singleRowMaxSourceChars: CONFIG.llmBatchMaxSingleSourceChars,
-  });
+  if (llmPending.some((item) => item.grup === 'MCM')) {
+    const siblingTexts = await loadMcmSiblingTextsByStringIds(db, eligibleIds, srcLang);
+    attachMcmTranslateContext(llmPending, siblingTexts);
+  }
+
+  const llmChunks = await buildFamilyTranslateChunks(
+    db,
+    llmPending,
+    modGame ?? llmPending[0]?.game ?? null,
+  );
 
   if (immediateResults.length > 0) {
     await persistAutoTranslationRows(immediateResults);

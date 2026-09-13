@@ -56,6 +56,9 @@ export const useDialogsState = () => {
     /** Switching scope drops the selected group — keys are scope-specific. */
     setScope: (next: DialogScope) => patch({ dscope: next, dkey: null, dfind: null }),
     setGroupKey: (next: string | null) => patch({ dkey: next, dfind: null }),
+    /** Select a tree node; scope and key travel together. */
+    setSelection: (nextScope: DialogScope, nextKey: string) =>
+      patch({ dscope: nextScope, dkey: nextKey, dfind: null }),
     setSearch: (next: string) => patch({ dq: next }),
     setFind: (next: string) => patch({ dfind: next }),
     setFilter: (next: TranscriptFilter) => patch({ dfilter: next === 'all' ? null : next }),

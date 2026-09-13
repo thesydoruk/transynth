@@ -3,6 +3,7 @@
  */
 import type { Tx } from '../../db';
 import { CONFIG } from '../../config';
+import { log } from '../../logger';
 import { discoSpokenSignatureSqlValues } from '../../import/mod/discoPoSignature';
 import {
   discoverDiscoVoiceFiles,
@@ -10,6 +11,7 @@ import {
 } from './discoverDiscoVoiceFiles';
 import { discoVoiceMsgctxtKeyFromPath } from './remapVoiceRows';
 import { getDiscoVoiceTextIndex } from './voiceTextIndex';
+import { resolveVoiceSourceFileHashes } from '../voiceSourceFileHashes';
 import { buildDiscoVoiceClipRows, type DiscoVoiceClipRow } from './voiceClipRows';
 
 const insertClipChunk = async (
@@ -96,6 +98,22 @@ export const persistDiscoVoiceClips = async (
   const chunkSize = Math.max(1, CONFIG.dbChunkSize);
   for (let i = 0; i < rows.length; i += chunkSize) {
     await insertClipChunk(db, modId, rows.slice(i, i + chunkSize));
+  }
+  try {
+    await resolveVoiceSourceFileHashes(
+      db,
+      voiceFiles.map((file) => ({
+        modId,
+        relPath: file.relPath,
+        absPath: file.absolutePath,
+      })),
+    );
+  } catch (err) {
+    log.warn(
+      `Disco voice source hashes skipped for mod ${modId}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
   }
   return rows.length;
 };

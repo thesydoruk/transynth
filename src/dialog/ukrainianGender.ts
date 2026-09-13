@@ -38,11 +38,118 @@ const FILLERS = new Set([
   'таки',
   'мабуть',
   'напевно',
+  'аж',
   'би',
   'б',
   'ж',
   'же',
   'й',
+]);
+
+/**
+ * Prepositions that open a short PP before the verb («я до цього звик»).
+ * After one of these the next content word must be an anaphor, not a noun:
+ * otherwise «я на острів» / «я про старий світ» would be misread.
+ */
+const PREPOSITIONS = new Set([
+  'до',
+  'з',
+  'зі',
+  'із',
+  'про',
+  'на',
+  'у',
+  'в',
+  'за',
+  'під',
+  'над',
+  'при',
+  'через',
+  'після',
+  'перед',
+  'для',
+  'без',
+  'від',
+  'об',
+  'о',
+]);
+
+/**
+ * Object pronouns and demonstratives that sit between «я/ти» and the verb.
+ * «Я це бачив», «я їй сказав», «я до цього звик».
+ */
+const BRIDGES = new Set([
+  'це',
+  'те',
+  'цей',
+  'ця',
+  'ці',
+  'той',
+  'та',
+  'ті',
+  'цього',
+  'цьому',
+  'цим',
+  'цією',
+  'цієї',
+  'цій',
+  'цих',
+  'цими',
+  'того',
+  'тому',
+  'тим',
+  'тією',
+  'тієї',
+  'тій',
+  'тих',
+  'тими',
+  'таке',
+  'такий',
+  'така',
+  'такі',
+  'такого',
+  'такому',
+  'таким',
+  'такої',
+  'такій',
+  'такою',
+  'все',
+  'усе',
+  'всього',
+  'усього',
+  'всьому',
+  'усьому',
+  'всім',
+  'усім',
+  'мене',
+  'мені',
+  'мною',
+  'тебе',
+  'тобі',
+  'тобою',
+  'його',
+  'йому',
+  'ним',
+  'нього',
+  'ньому',
+  'її',
+  'їй',
+  'нею',
+  'неї',
+  'ній',
+  'нас',
+  'нам',
+  'нами',
+  'вас',
+  'вам',
+  'вами',
+  'їх',
+  'їм',
+  'ними',
+  'них',
+  'себе',
+  'собі',
+  'собою',
 ]);
 
 const FIRST_PERSON_ANCHORS = new Set(['я']);
@@ -142,6 +249,40 @@ const NOT_MASCULINE_VERBS = new Set([
   'довкола',
 ]);
 
+/**
+ * Masculine past-tense verbs that do not end in «в» («звик», «міг», «ліг»).
+ * Feminine counterparts still match the regular «-ла» rule.
+ */
+const MASCULINE_IRREGULAR_PAST = new Set([
+  'звик',
+  'відвик',
+  'привик',
+  'міг',
+  'зміг',
+  'допоміг',
+  'переміг',
+  'ліг',
+  'поліг',
+  'заліз',
+  'виліз',
+  'поліз',
+  'проліз',
+  'ніс',
+  'приніс',
+  'поніс',
+  'відніс',
+  'виніс',
+  'заніс',
+  'віз',
+  'привіз',
+  'перевіз',
+  'відвіз',
+  'вивіз',
+  'ріс',
+  'виріс',
+  'підріс',
+]);
+
 /** Nouns that end in «ла» and would trip the past-tense rule. */
 const NOT_FEMININE_VERBS = new Set([
   'сила',
@@ -184,6 +325,7 @@ export type UkGenderMarker = {
 const classifyForm = (token: string): 'male' | 'female' | null => {
   if (FEMININE_PREDICATIVES.has(token)) return 'female';
   if (MASCULINE_PREDICATIVES.has(token)) return 'male';
+  if (MASCULINE_IRREGULAR_PAST.has(token)) return 'male';
   if (NOT_FEMININE_VERBS.has(token) || NOT_MASCULINE_VERBS.has(token)) return null;
 
   if (token.length >= 5 && (token.endsWith('лася') || token.endsWith('лась'))) return 'female';
@@ -203,9 +345,11 @@ const anchorPerson = (token: string): 1 | 2 | null => {
 /**
  * Find gendered forms that must agree with a dialog participant.
  *
- * Scanning starts at each pronoun and walks forward over fillers only, so
- * «я вже сказала» is inspected while «я на острів» is not: the preposition
- * ends the scan before the noun can be mistaken for a past-tense verb.
+ * Scanning starts at each pronoun and walks forward over fillers, object
+ * pronouns and a short «prep + anaphor» PP, so «я вже сказала» and
+ * «я до цього звик» are inspected. A preposition followed by a noun
+ * («я на острів», «я про старий світ») still ends the scan: the complement
+ * is not an anaphor, so it is not read as a past-tense verb.
  */
 const isWordToken = (value: string): boolean => /^[а-яіїєґёa-z'’]+$/i.test(value);
 
@@ -248,10 +392,20 @@ export const detectUkrainianGenderMarkers = (text: string): UkGenderMarker[] => 
     if (person == null) continue;
     const anchorPiece = wordIdx[k]!;
 
+    let mustBridge = false;
     for (let j = k + 1; j < wordIdx.length; j++) {
       if (punctBetween(anchorPiece, wordIdx[j]!)) break;
       const token = wordAt(j);
       if (FILLERS.has(token)) continue;
+      if (PREPOSITIONS.has(token)) {
+        mustBridge = true;
+        continue;
+      }
+      if (BRIDGES.has(token)) {
+        mustBridge = false;
+        continue;
+      }
+      if (mustBridge) break;
       const gender = classifyForm(token);
       if (gender) push(person, gender, token);
       break;

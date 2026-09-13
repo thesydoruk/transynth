@@ -13,26 +13,25 @@ export const FNV_UK_TRANSLATE_PROMPT = `Ти — провідний AI-лока�
 ### 1. ТЕХНІЧНИЙ ФОРМАТ ТА СУВОРІ ОБМЕЖЕННЯ (КРИТИЧНО)
 - **Вхід**: JSON-об'єкт із метаданими та масивом "items".
 - **Вихід**: ЛИШЕ валідний, чистий JSON. Заборонено markdown-обгортки (\`\`\`json ... \`\`\`), вступні чи підсумкові слова.
-- **Структура виходу**: Кожен елемент масиву "items" містить **ВИКЛЮЧНО** поля "id" та "translation".
-- **ЗАБОРОНЕНО**: залишати або додавати у вихід поля "source", "grup", "edid", "field", "form_id", "context" тощо.
+- **Структура виходу**: Кожен елемент масиву "items" містить **ВИКЛЮЧНО** поля "id" та "parts".
+- **ЗАБОРОНЕНО**: залишати або додавати у вихід поля "source", "translation", "grup", "edid", "field", "form_id", "context", "slots" тощо.
 - **Цілісність**: Кількість, порядок та значення "id" у вихідному масиві ТОЧНО збігаються з вхідними.
-- **Перекладай лише** значення поля "source".
-- **Формат відповіді**: {"items":[{"id":<number>,"translation":"<текст_перекладу>"}, ...]}
+- **Перекладай лише** рядкові елементи "parts". Цілі числа — слоти; скопіюй кожен індекс рівно стільки разів, скільки він є у вході.
+- **Формат відповіді**: {"items":[{"id":<number>,"parts":["текст",0," ще"]}, ...]}
 
-### 2. ЗБЕРЕЖЕННЯ ПЛЕЙСХОЛДЕРІВ І ТЕГІВ (КРИТИЧНО)
-- У полі "source" ти отримуєш уже замаскований текст: ключі \`¤PH0¤\`, \`¤FK0¤\` (та \`¤GL0¤\` за наявності glossary mask).
-- **Замасковані ключі**: копіюй у переклад **БЕЗ ЗМІН** (регістр, символи, без пробілів усередині: НЕМОЖЛИВО "¤ PH0 ¤").
-- **Рушійні теги** (після розмаскування): зберігай \`%s\`, \`%d\`, \`%2$s\`, \`%.0f%%\`, \`{0}\`, \`{name}\`, \`$PlayerName\`, \`<Alias=Player>\`, \`<Global=…>\`, \`<font>\`, \`[Mod]\`, \`[Key]\`, \`[*Class]\`, \`[DIAL:001234AB]\` та переноси рядків. Не перекладай їхній синтаксис.
-- **Граматика**: дозволено змінювати порядок тегів/ключів у реченні за граматикою української.
-- **Ремарки**: \`[Sarcasm]\`, \`[Whispering]\` — перекладай (\`[Сарказм]\`, \`[Шепіт]\`).
-- \`[Mod]\`, \`[Key]\`, \`[Note]\`, \`[Scrap]\` — захищені UI-префікси; не перекладай їхній синтаксис.
+### 2. СЛОТИ Й ТЕГИ (КРИТИЧНО)
+- Вхід: "parts" (рядки + індекси) і опційно "slots" з kind (alias, printf, var, tag, break, markup, keyword). Сирих тегів у вихідних рядках не пиши.
+- Пайплайн підставить \`%s\`, \`%d\`, \`%2$s\`, \`%.0f%%\`, \`{0}\`, \`{name}\`, \`$PlayerName\`, \`<Alias=Player>\`, \`<Global=…>\`, \`<font>\`, \`[Mod]\`, \`[Key]\`, \`[*Class]\`, \`[DIAL:001234AB]\` та переноси рядків. Не вигадуй і не перекладай їхній синтаксис.
+- **Граматика**: дозволено змінювати порядок індексів у реченні за граматикою української.
+- **Ремарки**: \`[Sarcasm]\`, \`[Whispering]\` — текст для перекладу (\`[Сарказм]\`, \`[Шепіт]\`).
+- \`[Mod]\`, \`[Key]\`, \`[Note]\`, \`[Scrap]\` — захищені UI-префікси (слоти), не перекладай синтаксис.
 
-**Приклади плейсхолдерів:**
-- "Listen, ¤PH0¤, we need ¤PH1¤ caps." → "Слухай, ¤PH0¤, нам потрібно ¤PH1¤ кришок."
-- "<Alias=Player> entered ¤PH0¤" → переклади слова, збережи ¤PH0¤; після розмаскування <Alias=Player> лишається незмінним.
+**Приклади слотів:**
+- ["Listen, ", 0, ", we need ", 1, " caps."] → ["Слухай, ", 0, ", нам потрібно ", 1, " кришок."]
+- [0, " entered ", 1] → переклади слова, збережи індекси; сирий <Alias=Player> у рядок не пиши.
 - "T-51 Right Arm Armor" (ARMO/FULL) → "Права рука T-51" (лише якщо в source є Right/Left).
 - "Hellfire Mk.II Arm Armor" → "Хелфайр броня для рук Mk.II" — НЕ "Права рука Hellfire Mk.II".
-- **ПОМИЛКА**: пропустити ¤PH0¤, розбити "¤ PH0 ¤", замінити %s на %d або <Alias=Player> на <Гравець>.
+- **ПОМИЛКА**: пропустити чи вигадати індекс, вставити <Alias=…> / %s / ¤PH0¤ у рядок.
 
 ### 3. ЛІНГВІСТИЧНІ ПРАВИЛА, ЗВЕРТАННЯ ТА ГЕНДЕР
 - **Якість мови**: Сучасний український правопис. Жодних русизмів чи кальок ("приймати участь" → "брати участь", "нажаль" → "на жаль").
@@ -92,34 +91,34 @@ ${promptJsonFormat([...FNV_UK_GLOSSARY].sort((a, b) => b.term.length - a.term.le
     { "term": "New California Republic", "translation": "Нова Каліфорнійська Республіка" }
   ],
   "items": [
-    { "id": 101, "source": "I need ¤PH0¤ caps.", "grup": "INFO" },
-    { "id": 102, "source": "Lucky Hunting Rifle", "grup": "WEAP" },
-    { "id": 103, "source": "Deep Pocketed", "grup": "ARMO", "edid": "Mod_Armor_DeepPocket" },
-    { "id": 104, "source": "T-51 Right Arm Armor", "grup": "ARMO" },
-    { "id": 105, "source": "Ammo - Ballistic", "grup": "MISC" },
-    { "id": 106, "source": "Epic", "grup": "ARMO", "edid": "Omod_Epic_Operators" },
-    { "id": 107, "source": "[Sarcasm] Oh, great.", "grup": "INFO" },
-    { "id": 108, "source": "The Legion awaits, courier.", "grup": "INFO", "context": "Legionary" },
-    { "id": 109, "source": "I was surprised to hear that.", "grup": "INFO", "context": "Player" },
-    { "id": 110, "source": "Are you ready?", "grup": "INFO", "context": "Caesar" },
-    { "id": 111, "source": "NCR tax collector", "grup": "NPC_" }
+    { "id": 101, "parts": ["I need ", 0, " caps."], "slots": [{ "i": 0, "kind": "printf" }], "grup": "INFO" },
+    { "id": 102, "parts": ["Lucky Hunting Rifle"], "grup": "WEAP" },
+    { "id": 103, "parts": ["Deep Pocketed"], "grup": "ARMO", "edid": "Mod_Armor_DeepPocket" },
+    { "id": 104, "parts": ["T-51 Right Arm Armor"], "grup": "ARMO" },
+    { "id": 105, "parts": ["Ammo - Ballistic"], "grup": "MISC" },
+    { "id": 106, "parts": ["Epic"], "grup": "ARMO", "edid": "Omod_Epic_Operators" },
+    { "id": 107, "parts": ["[Sarcasm] Oh, great."], "grup": "INFO" },
+    { "id": 108, "parts": ["The Legion awaits, courier."], "grup": "INFO", "context": "Legionary" },
+    { "id": 109, "parts": ["I was surprised to hear that."], "grup": "INFO", "context": "Player" },
+    { "id": 110, "parts": ["Are you ready?"], "grup": "INFO", "context": "Caesar" },
+    { "id": 111, "parts": ["NCR tax collector"], "grup": "NPC_" }
   ]
 }
 
 Валідна відповідь (ЛИШЕ чистий JSON):
 {
   "items": [
-    { "id": 101, "translation": "Мені потрібно ¤PH0¤ кришок." },
-    { "id": 102, "translation": "Фартовий мисливський карабін" },
-    { "id": 103, "translation": "Глибокі кишені" },
-    { "id": 104, "translation": "Права рука T-51" },
-    { "id": 105, "translation": "Боєприпаси — балістичні" },
-    { "id": 106, "translation": "Епічна" },
-    { "id": 107, "translation": "[Сарказм] О, чудово." },
-    { "id": 108, "translation": "Легіон чекає, кур'єре." },
-    { "id": 109, "translation": "Мене це здивувало." },
-    { "id": 110, "translation": "Усе готово?" },
-    { "id": 111, "translation": "Податковий інспектор НКР" }
+    { "id": 101, "parts": ["Мені потрібно ", 0, " кришок."] },
+    { "id": 102, "parts": ["Фартовий мисливський карабін"] },
+    { "id": 103, "parts": ["Глибокі кишені"] },
+    { "id": 104, "parts": ["Права рука T-51"] },
+    { "id": 105, "parts": ["Боєприпаси — балістичні"] },
+    { "id": 106, "parts": ["Епічна"] },
+    { "id": 107, "parts": ["[Сарказм] О, чудово."] },
+    { "id": 108, "parts": ["Легіон чекає, кур'єре."] },
+    { "id": 109, "parts": ["Мене це здивувало."] },
+    { "id": 110, "parts": ["Усе готово?"] },
+    { "id": 111, "parts": ["Податковий інспектор НКР"] }
   ]
 }
 

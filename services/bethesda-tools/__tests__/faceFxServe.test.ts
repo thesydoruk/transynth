@@ -19,6 +19,26 @@ describe('encodeLipJob', () => {
     expect(raw.endsWith(`${text}\n`)).toBe(true);
     expect(buf.subarray(buf.length - text.length - 1, buf.length - 1).toString('utf8')).toBe(text);
   });
+
+  it('prefixes Ukrainian UTF-8 by byte length', () => {
+    const text = 'Привіт';
+    const buf = encodeLipJob({
+      language: 'Ukrainian',
+      fonixWinPath: 'Z:\\FonixData.cdf',
+      wavWinPath: 'Z:\\in.wav',
+      lipWinPath: 'Z:\\out.lip',
+      text,
+    });
+    const bytes = Buffer.from(text, 'utf8');
+    expect(
+      buf
+        .toString('binary')
+        .startsWith(
+          `LIP\nUkrainian\nZ:\\FonixData.cdf\nZ:\\in.wav\nZ:\\out.lip\n${bytes.length}\n`,
+        ),
+    ).toBe(true);
+    expect(buf.subarray(buf.length - bytes.length - 1, buf.length - 1).toString('utf8')).toBe(text);
+  });
 });
 
 describe('parseFxwLine', () => {

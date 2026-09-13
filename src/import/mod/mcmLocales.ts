@@ -11,6 +11,9 @@ import {
   mcmTranslationMatchesMod,
   resolveModDirectoryFromPath,
   loadMcmLocalesFromConfigJson,
+  loadMcmKeyMetaFromConfigJson,
+  buildMcmContexts,
+  type McmKeyMeta,
 } from '../../formats/mcm';
 import { CONFIG } from '../../config';
 import { logImport } from '../../logging/loggers';
@@ -187,13 +190,37 @@ const countMcmTranslationRecords = (modDir: string, anchorPath: string): number 
   return max;
 };
 
-const buildMcmCsvRows = (mcmMap: Map<string, string>): CsvRow[] =>
-  Array.from(mcmMap.entries()).map(([key, text]) => ({
-    FormID: '',
-    Signature: 'MCM',
-    Path: `MCM\\${key}`,
-    PathSimplified: `MCM\\${key}`,
-    Source: text,
-  }));
+export type McmImportRow = {
+  csvRow: CsvRow;
+  context: string | null;
+};
 
-export { collectMcmLocalesForModParallel, countMcmTranslationRecords, buildMcmCsvRows };
+const loadMcmKeyMetaForMod = (modDir: string, anchorPath: string): Map<string, McmKeyMeta> => {
+  const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
+  const prefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
+  return loadMcmKeyMetaFromConfigJson(modDir, prefixes);
+};
+
+const buildMcmImportRows = (
+  mcmMap: Map<string, string>,
+  configMeta?: Map<string, McmKeyMeta>,
+): McmImportRow[] => {
+  const contexts = buildMcmContexts(mcmMap, configMeta);
+  return Array.from(mcmMap.entries()).map(([key, text]) => ({
+    csvRow: {
+      FormID: '',
+      Signature: 'MCM',
+      Path: `MCM\\${key}`,
+      PathSimplified: `MCM\\${key}`,
+      Source: text,
+    },
+    context: contexts.get(key) ?? null,
+  }));
+};
+
+export {
+  collectMcmLocalesForModParallel,
+  countMcmTranslationRecords,
+  buildMcmImportRows,
+  loadMcmKeyMetaForMod,
+};

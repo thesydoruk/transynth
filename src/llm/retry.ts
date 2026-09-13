@@ -16,8 +16,13 @@ const isRetryable = (err: unknown): boolean => {
 
 /** True for user-initiated aborts (job stopped) — never retry these. */
 export const isAbortError = (err: unknown): boolean => {
-  const e = err as { name?: string; code?: string };
-  return e?.name === 'AbortError' || e?.name === 'APIUserAbortError' || e?.code === 'ABORT_ERR';
+  const e = err as { name?: string; code?: string; message?: string };
+  if (e?.name === 'AbortError' || e?.name === 'APIUserAbortError' || e?.code === 'ABORT_ERR') {
+    return true;
+  }
+  // vLLM / undici often throw a plain Error after fetch abort.
+  const msg = (e?.message ?? String(err)).toLowerCase();
+  return msg.includes('request was aborted') || msg.includes('aborted by the user');
 };
 
 /** True when the HTTP client or server aborted due to a request timeout. */

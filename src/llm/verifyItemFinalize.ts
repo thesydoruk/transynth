@@ -2,6 +2,12 @@ import { maskDiscoLockitMarkupIfDisco } from '../formats/po/discoMarkupMask';
 import type { GameType } from '../types';
 import { compareProtectedTokens } from '../utils/placeholders';
 import { maskLlmTextFields, unmaskLlmText } from './llmTextMask';
+import {
+  isMaskedLlmText,
+  publicSlotHints,
+  splitMaskedToParts,
+  splitMaskedUsingKeys,
+} from './textParts';
 import { applyDiscoMarkupGuardToVerifyResult } from './verifyDiscoMarkupGuard';
 import { applyCorruptedTranslationGuard, reconcileVerifyResult } from './verifySuggestionGuards';
 import type { LlmVerifyItem, LlmVerifyItemResult } from './verifyTranslateTypes';
@@ -27,17 +33,37 @@ export const maskVerifyItemForLlm = (
   let idx = 0;
   const take = (): string => withDisco[idx++] as string;
 
+  const source = take();
+  const translation = take();
+  const sourceSplit = splitMaskedToParts(source, mapping);
+  const translationParts = splitMaskedUsingKeys(translation, sourceSplit.keyToIndex);
+
+  const examples = item.reference_examples?.map((ref) => {
+    const exSource = take();
+    const exTranslation = take();
+    const exSplit = splitMaskedToParts(exSource, mapping);
+    return {
+      ...ref,
+      source: exSource,
+      translation: exTranslation,
+      parts: exSplit.parts,
+      translation_parts: splitMaskedUsingKeys(exTranslation, exSplit.keyToIndex),
+      slots: publicSlotHints(exSplit.slots),
+    };
+  });
+
   return {
     mapping,
     item: {
       ...item,
-      source: take(),
-      translation: take(),
-      reference_examples: item.reference_examples?.map((ref) => ({
-        ...ref,
-        source: take(),
-        translation: take(),
-      })),
+      source,
+      translation,
+      parts: sourceSplit.parts,
+      translation_parts: translationParts,
+      slots: publicSlotHints(sourceSplit.slots),
+      sourceParts: sourceSplit.parts,
+      restoreSlots: sourceSplit.slots,
+      reference_examples: examples,
       context: item.context != null ? take() : item.context,
     },
   };
@@ -49,6 +75,7 @@ export const unmaskVerifySuggestions = (
 ): LlmVerifyItemResult[] =>
   results.map((result) => {
     if (!result.suggestion) return result;
+    if (!isMaskedLlmText(result.suggestion)) return result;
     const mapping = mappingById.get(result.id);
     if (!mapping || Object.keys(mapping).length === 0) return result;
     return { ...result, suggestion: unmaskLlmText(result.suggestion, mapping) };

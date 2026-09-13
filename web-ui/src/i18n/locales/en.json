@@ -107,6 +107,11 @@
   "mods": {
     "title": "Mods",
     "pageDescription": "Import mod files, track import jobs, and manage translation progress — all in one place.",
+    "vortexGroup": "Source",
+    "vortexManual": "Local imports",
+    "version": "Version",
+    "previousVersions": "{{count}} previous versions",
+    "previousVersions_one": "1 previous version",
     "loadingMods": "Loading mods…",
     "noModsFound": "No mods found",
     "noModsHint": "Upload plugin files or archives above, or browse NexusMods to import new mods.",
@@ -436,6 +441,23 @@
       "conversations": "Conversations"
     },
     "scopeHotkey": "Switch with the {{key}} key",
+    "tree": {
+      "kind": {
+        "quest": "Quest",
+        "scene": "Scene",
+        "branch": "Branch",
+        "topic": "Topic",
+        "group": "Other"
+      },
+      "orphans": "No quest",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "expandBranch": "Show this dialog branch",
+      "collapseBranch": "Hide this dialog branch",
+      "rowCount": "{{shown}} rows · {{quests}} quests"
+    },
     "searchPlaceholder": "Search by name or FormID  ( / )",
     "sortLabel": "Sort order",
     "sort": {
@@ -450,7 +472,8 @@
       "topics": "This mod has no dialog topics. Re-import it to build the dialog graph.",
       "branches": "This mod has no dialog branches. Re-import it to read DLBR records.",
       "scenes": "This mod has no dialog scenes.",
-      "conversations": "This mod has no quest conversations."
+      "conversations": "This mod has no quest conversations.",
+      "tree": "This mod has no dialog structure. Re-import it to build the quest, scene, and branch tree."
     },
     "groupCount": "{{shown}} shown of {{total}}",
     "nodeCountTitle": "Dialog records inside this entry",
@@ -458,7 +481,7 @@
     "qaIssueCount": "{{count}} QA issue(s)",
     "timingSensitive": "timing",
     "timingSensitiveTitle": "This scene has a timer, package, start-scene, or looping action — spoken length is not enough",
-    "selectGroup": "Pick an entry on the left to open its dialog.",
+    "selectGroup": "Pick a quest, scene, branch, or topic in the tree on the left.",
     "loadingTranscript": "Loading dialog…",
     "noLines": "No lines match the current filter.",
     "filterLabel": "Line filter",
@@ -480,7 +503,7 @@
     "hiddenEntries": "{{count}} turn(s) hidden by the filter",
     "saveFailed": "Save failed: {{message}} — click to dismiss",
     "voiceFailed": "Playback failed: {{message}} — click to dismiss",
-    "hotkeyHint": "1/2/3/4 scope · / search · Alt+↑↓ entry · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play voice-over · Esc cancel",
+    "hotkeyHint": "/ search · Alt+↑↓ tree row · ←→ collapse/expand · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play voice-over · Esc cancel",
     "sceneMarker": "{{label}}",
     "unknownSpeaker": "Unknown speaker",
     "playerAlias": "Player",
@@ -546,6 +569,7 @@
     "regenerateBtn": "Regenerate",
     "generateSpeaker": "Generate speaker voice",
     "generateSpeakerTitle": "Generate voice for this character (same job as the mod voice control)",
+    "synthesizingTitle": "Synthesizing a line for {{name}}",
     "hotkeyHint": "↑↓ in search — switch speakers · ↑↓ line · Enter edit · Ctrl+Enter save and continue · Ctrl+Shift+Enter save and jump to untranslated · N next untranslated · P play · Esc cancel"
   },
   "ctx": {
@@ -616,6 +640,7 @@
     "carried": "Carried",
     "needsReview": "Needs review",
     "skipped": "Skipped",
+    "voiceCopied": "Voice copied",
     "noDifferences": "No {{filter}} entries.",
     "change": "Change",
     "type": "Type",

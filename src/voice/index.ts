@@ -58,6 +58,15 @@ export {
   type VoiceSpeakerRefPick,
 } from './voiceSpeakerRefs';
 export {
+  emitVoiceLive,
+  parseVoiceLiveEvent,
+  setVoiceLiveSink,
+  voiceLiveLineKey,
+  VOICE_LIVE_CHANNEL,
+  type VoiceLiveLineEvent,
+  type VoiceLiveSseEvent,
+} from './voiceLiveEvents';
+export {
   countVoiceLocalizeWork,
   localizeModImportVoice,
   type LocalizeModImportVoiceOptions,
@@ -102,6 +111,41 @@ export {
   VOICE_AUDIO_POST_VERSION,
   type VoiceTtsPayload,
 } from './voiceTtsPayloadVersion';
+export {
+  matchReusableVoiceLines,
+  type ReuseVoiceDestLine,
+  type ReuseVoiceMatch,
+  type ReuseVoiceSourceLine,
+} from './reuseSynthesizedVoiceMatch';
+export {
+  listOverlappingVoiceReuseModIds,
+  listSameNameVoiceReuseModIds,
+  reuseSynthesizedVoice,
+  type ReuseSynthesizedVoiceOptions,
+  type ReuseSynthesizedVoiceResult,
+} from './reuseSynthesizedVoice';
+export {
+  loadVoiceSourceFileHashMap,
+  normalizeVoiceSourceRelPath,
+  resolveVoiceSourceFileHashes,
+  storedVoiceSourceHashIfFresh,
+  takeStoredVoiceSourceHash,
+  voiceSourceHashMapKey,
+  type StoredVoiceSourceHash,
+  type VoiceSourceFileRef,
+} from './voiceSourceFileHashes';
+export {
+  buildVoiceClipRows,
+  padVoiceFormidHex,
+  type VoiceClipRow,
+  type VoiceClipStringRef,
+} from './voiceClipRows';
+export {
+  countBethesdaVoiceClips,
+  ensureBethesdaVoiceClips,
+  persistBethesdaVoiceClips,
+  type PersistBethesdaVoiceClipsResult,
+} from './persistBethesdaVoiceClips';
 export {
   clearAllVoiceSynthesisState,
   clearModVoiceSynthesisState,

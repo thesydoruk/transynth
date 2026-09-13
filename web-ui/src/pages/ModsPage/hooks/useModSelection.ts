@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Mod } from '../../../api';
+import { formatModDisplayName, groupModVersions } from '../modVersions';
 
 export const useModSelection = (sortedMods: Mod[]) => {
+  const currentMods = useMemo(
+    () => groupModVersions(sortedMods).map((group) => group.current),
+    [sortedMods],
+  );
   const [selectedModIds, setSelectedModIds] = useState<Set<number>>(() => new Set());
   const [batchMenuOpen, setBatchMenuOpen] = useState(false);
   const batchMenuRef = useRef<HTMLDivElement>(null);
@@ -9,7 +14,8 @@ export const useModSelection = (sortedMods: Mod[]) => {
 
   const selectedModCount = selectedModIds.size;
   const multiSelectActive = selectedModCount > 1;
-  const allModsSelected = sortedMods.length > 0 && selectedModCount === sortedMods.length;
+  const allModsSelected =
+    currentMods.length > 0 && currentMods.every((mod) => selectedModIds.has(mod.id));
   const someModsSelected = selectedModCount > 0 && !allModsSelected;
 
   useEffect(() => {
@@ -51,14 +57,16 @@ export const useModSelection = (sortedMods: Mod[]) => {
   }, []);
 
   const toggleSelectAllMods = useCallback(() => {
-    setSelectedModIds((prev) =>
-      prev.size === sortedMods.length ? new Set() : new Set(sortedMods.map((mod) => mod.id)),
-    );
-  }, [sortedMods]);
+    setSelectedModIds((prev) => {
+      const currentIds = currentMods.map((mod) => mod.id);
+      const allCurrent = currentIds.every((id) => prev.has(id));
+      return allCurrent ? new Set() : new Set(currentIds);
+    });
+  }, [currentMods]);
 
   const selectedModsForDelete = useCallback(() => {
     const selected = sortedMods.filter((mod) => selectedModIds.has(mod.id));
-    return selected.map((mod) => ({ id: mod.id, name: mod.name }));
+    return selected.map((mod) => ({ id: mod.id, name: formatModDisplayName(mod) }));
   }, [sortedMods, selectedModIds]);
 
   return {

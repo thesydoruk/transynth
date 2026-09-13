@@ -13,14 +13,30 @@ import { APPROVED_STATUS_SQL } from '../../services/modLangStats';
  */
 export const listMods = async (
   db: Tx,
-  opts: { game?: string; srcLang?: string; targetLang?: string } = {},
+  opts: {
+    game?: string;
+    srcLang?: string;
+    targetLang?: string;
+    vortexGroupId?: number | null;
+  } = {},
 ) => {
   const srcLang = opts.srcLang ?? CONFIG.defaultSrcLang;
   const targetLang = opts.targetLang ?? CONFIG.defaultTgtLang;
 
-  const whereClause = opts.game ? 'WHERE m.game = $3' : '';
+  const conds: string[] = [];
   const params: unknown[] = [srcLang, targetLang];
-  if (opts.game) params.push(opts.game);
+  let next = 3;
+  if (opts.game) {
+    conds.push(`m.game = $${next++}`);
+    params.push(opts.game);
+  }
+  if (opts.vortexGroupId == null) {
+    conds.push('m.vortex_group_id IS NULL');
+  } else {
+    conds.push(`m.vortex_group_id = $${next++}`);
+    params.push(opts.vortexGroupId);
+  }
+  const whereClause = conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : '';
 
   const queryMods = () =>
     db.query<{
@@ -32,6 +48,12 @@ export const listMods = async (
       nexus_mod_id: number | null;
       nexus_name: string | null;
       nexus_thumbnail: string | null;
+      origin: string;
+      vortex_group_id: number | null;
+      channel: string | null;
+      game_release_id: number | null;
+      version_label: string | null;
+      is_current: boolean;
       created_at: Date;
       record_count: string;
       string_count: string;
@@ -48,6 +70,12 @@ export const listMods = async (
         m.nexus_mod_id,
         m.nexus_name,
         m.nexus_thumbnail,
+        m.origin,
+        m.vortex_group_id,
+        m.channel,
+        m.game_release_id,
+        m.version_label,
+        COALESCE(m.is_current, TRUE) AS is_current,
         m.created_at,
         COALESCE(st.record_count, 0)::bigint AS record_count,
         COALESCE(st.string_count, 0)::bigint AS string_count,
