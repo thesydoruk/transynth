@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { isStringsDirName, PLUGIN_EXTS, SKIP_DIRS } from './constants';
 
 /** Collect plugin stems under a pack root (case-insensitive, without extension). */
@@ -35,11 +35,7 @@ export const collectPluginStems = (packRoot: string): Set<string> => {
 };
 
 /** Find a plugin file for a stem within the given search roots. */
-export const findPluginFile = (
-  stem: string,
-  searchDirs: string[],
-  recursive = true,
-): string | null => {
+const findPluginFile = (stem: string, searchDirs: string[], recursive = true): string | null => {
   const stemLower = stem.toLowerCase();
 
   const tryDir = (dir: string): string | null => {
@@ -78,7 +74,7 @@ export const findPluginFile = (
 /** Resolve a plugin path from disk search and/or previously imported mods. */
 export const resolvePluginPathForStem = async (
   stem: string,
-  game: GameType,
+  game: GameId,
   searchDirs: string[],
   db?: Tx,
 ): Promise<string | null> => {

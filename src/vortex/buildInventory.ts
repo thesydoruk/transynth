@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { resolveDirectoryInput } from '../utils/file';
 import { vortexGroupKey } from './groupKey';
 import { scanGameUnits } from './scanGame';
@@ -8,7 +8,7 @@ import type { VortexChannel } from './stages';
 import type { VortexInventory } from './types';
 
 export const buildVortexInventory = async (opts: {
-  game: GameType;
+  game: GameId;
   stagingPath: string;
   gameDir: string;
   channel?: VortexChannel;

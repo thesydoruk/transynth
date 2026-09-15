@@ -1,3 +1,4 @@
+import { DISCO_VOICE_MARKUP } from '../../games/disco-elysium/voice/markup';
 import {
   canSynthesizeVoiceLine,
   isFullNonSpeechMarkerLine,
@@ -225,26 +226,30 @@ describe('canSynthesizeVoiceLine', () => {
   });
 });
 
-describe('Disco italic markup', () => {
+describe('a markup style that speaks its emphasis (Disco Elysium)', () => {
   it('keeps emphasized words and drops only the asterisks', () => {
-    expect(stripVoiceNonSpeechBlocks('Це просто *такі фрази*, нічого більше.', 'disco')).toBe(
-      'Це просто такі фрази, нічого більше.',
-    );
-    expect(stripVoiceNonSpeechBlocks('*такі фрази*', 'disco')).toBe('такі фрази');
+    expect(
+      stripVoiceNonSpeechBlocks('Це просто *такі фрази*, нічого більше.', DISCO_VOICE_MARKUP),
+    ).toBe('Це просто такі фрази, нічого більше.');
+    expect(stripVoiceNonSpeechBlocks('*такі фрази*', DISCO_VOICE_MARKUP)).toBe('такі фрази');
   });
 
   it('still strips bracket tags', () => {
-    expect(stripVoiceNonSpeechBlocks('[Click] Look at *this*.', 'disco')).toBe('Look at this.');
+    expect(stripVoiceNonSpeechBlocks('[Click] Look at *this*.', DISCO_VOICE_MARKUP)).toBe(
+      'Look at this.',
+    );
   });
 
   it('synthesizes a line that is only italic emphasis', () => {
-    expect(canSynthesizeVoiceLine('*Such a waste.*', '*Така втрата.*', null, 'disco')).toBe(true);
+    expect(
+      canSynthesizeVoiceLine('*Such a waste.*', '*Така втрата.*', null, DISCO_VOICE_MARKUP),
+    ).toBe(true);
     expect(
       prepareVoiceTtsText({
         lineSource: '*Such a waste.*',
         translation: '*Така втрата.*',
         speakerSource: '*Such a waste.*',
-        markup: 'disco',
+        markup: DISCO_VOICE_MARKUP,
       }),
     ).toEqual({
       action: 'synthesize',
@@ -259,7 +264,7 @@ describe('Disco italic markup', () => {
         lineSource: '*chuckle* This troublemaker here.',
         translation: '*смішок* Цей негідник.',
         speakerSource: '*chuckle* This troublemaker here.',
-        markup: 'disco',
+        markup: DISCO_VOICE_MARKUP,
       }),
     ).toEqual({
       action: 'synthesize',

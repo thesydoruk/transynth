@@ -11,10 +11,11 @@
  * Only files the mod itself ships are touched. Vanilla game files are left alone, and a
  * mod without interface fonts exports as before.
  */
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import { glyphOpsForLanguage, patchFontGlyphs } from '../../formats/swf';
 import { exportLocaleSlots, isOfficialBethesdaLocale } from '../../locale';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { patchFontConfigForLanguage } from './exportFontConfig';
 import { readModInterfaceFile } from './modInterfaceFiles';
 
@@ -31,7 +32,7 @@ const FONT_CONFIG_NAMES = ['FontConfig.txt'];
 const patchLibraries = (
   modPath: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
 ): { files: PatchedFontFile[]; libraries: Map<string, Buffer> } => {
   const ops = glyphOpsForLanguage(targetLang);
   const files: PatchedFontFile[] = [];
@@ -39,7 +40,7 @@ const patchLibraries = (
 
   for (const slot of exportLocaleSlots(targetLang, game)) {
     const fileName = `fonts_${slot}.swf`;
-    const source = readModInterfaceFile(modPath, fileName, game);
+    const source = readModInterfaceFile(modPath, fileName);
     if (!source) continue;
 
     libraries.set(fileName.toLowerCase(), source);
@@ -77,7 +78,7 @@ const patchLibraries = (
 export const exportPatchedFontFiles = (
   modPath: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): PatchedFontFile[] => {
   // Official languages already have fonts drawing their alphabet.
   if (isOfficialBethesdaLocale(targetLang, game)) return [];
@@ -85,14 +86,14 @@ export const exportPatchedFontFiles = (
   const { files, libraries } = patchLibraries(modPath, targetLang, game);
 
   for (const configName of FONT_CONFIG_NAMES) {
-    const source = readModInterfaceFile(modPath, configName, game);
+    const source = readModInterfaceFile(modPath, configName);
     if (!source) continue;
 
     try {
       // The config also loads libraries of its own, such as the console fonts.
       const patched = patchFontConfigForLanguage(
         source,
-        (name) => libraries.get(name.toLowerCase()) ?? readModInterfaceFile(modPath, name, game),
+        (name) => libraries.get(name.toLowerCase()) ?? readModInterfaceFile(modPath, name),
         targetLang,
       );
       if (!patched) continue;

@@ -1,10 +1,7 @@
 import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } from '../../en';
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
-import {
-  buildEnglishTranslationRules,
-  buildEnglishVerifyTranslationRules,
-  resolveGameType,
-} from '../index';
+import { buildEnglishTranslationRules, buildEnglishVerifyTranslationRules } from '../index';
+import { resolveGameId } from '../../../../games/registry';
 
 describe('translationRules', () => {
   it('includes common and game-specific sections for English', () => {
@@ -23,8 +20,8 @@ describe('translationRules', () => {
   });
 
   it('defaults unknown game to fo4', () => {
-    expect(resolveGameType(null)).toBe('fo4');
-    expect(resolveGameType('unknown-mod')).toBe('fo4');
+    expect(resolveGameId(null)).toBe('fo4');
+    expect(resolveGameId('unknown-mod')).toBe('fo4');
     expect(buildUkrainianTranslateSystemPrompt('en', null)).toBe(
       buildUkrainianTranslateSystemPrompt('en', 'fo4'),
     );

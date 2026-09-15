@@ -28,6 +28,8 @@ export type GenderSource =
   | 'voice_type_flag'
   /** Creation Kit naming pattern with no explicit gender, e.g. CrFeralGhoul. */
   | 'voice_type_heuristic'
+  /** Pronouns the rest of the mod uses about this character, in the source language. */
+  | 'pronoun_evidence'
   /** The player character, whose gender is chosen in-game. */
   | 'player'
   /** Set by a human in the speakers editor. */
@@ -67,25 +69,12 @@ export type SpeakerGenderRecord = {
   gender_override: string | null;
 };
 
-/**
- * Gender that downstream consumers should use for a speaker.
- *
- * A human override always wins; the player is always `any` because their
- * gender is a runtime choice that no plugin data can pin down.
- */
-export const effectiveSpeakerGender = (row: SpeakerGenderRecord): SpeakerGender => {
-  const override = parseSpeakerGender(row.gender_override);
-  if (override !== 'unknown') return override;
-  if (row.is_player) return 'any';
-  return parseSpeakerGender(row.detected_gender);
-};
-
 /** SQL expression computing {@link effectiveSpeakerGender} for a joined `dialog_speakers` alias. */
 export const effectiveSpeakerGenderSql = (alias: string): string =>
   `COALESCE(
      NULLIF(${alias}.gender_override, ''),
+     NULLIF(NULLIF(${alias}.detected_gender, ''), 'unknown'),
      CASE WHEN ${alias}.is_player THEN 'any' END,
-     NULLIF(${alias}.detected_gender, ''),
      'unknown'
    )`;
 
@@ -97,6 +86,9 @@ export type DialogLineParticipants = {
   addresseeGender: SpeakerGender;
 };
 
+/** Player-facing label used wherever the participant is the player character. */
+const PLAYER_LABEL = 'Player';
+
 /**
  * Resolve who says a line and to whom.
  *
@@ -104,29 +96,44 @@ export type DialogLineParticipants = {
  * player picks and `NAM1` is the reply, so the same node yields opposite
  * speaker/addressee pairs depending on which subrecord the line came from.
  *
- * @param opts.isPlayerPrompt - True for `INFO\RNAM` lines, which the player speaks.
+ * A player-voiced node is the awkward case: the player is on the speaking side
+ * of both halves, so the counterpart has to come from the node's resolved
+ * addressee. Without that the line reads as the player talking to themselves,
+ * and a translator told both sides are `any` hedges the whole sentence.
+ *
+ * @param opts.isPlayerPrompt - True for the half of a record the player speaks.
+ * @param opts.playerGender - What the protagonist's gender resolves to: `any`
+ * where the player picks it, a definite gender where the game writes them.
  */
 export const resolveDialogLineParticipants = (opts: {
   isPlayerPrompt: boolean;
+  playerGender: SpeakerGender;
   nodeSpeakerName: string | null;
   nodeSpeakerGender: SpeakerGender;
+  /** True when the node's own speaker is the player character. */
+  nodeSpeakerIsPlayer: boolean;
   addresseeKind: AddresseeKind;
   addresseeName: string | null;
   addresseeGender: SpeakerGender;
 }): DialogLineParticipants => {
+  const counterpart =
+    opts.addresseeKind === 'player'
+      ? { name: PLAYER_LABEL, gender: opts.playerGender }
+      : { name: opts.addresseeName, gender: opts.addresseeGender };
+
   if (opts.isPlayerPrompt) {
     return {
-      speakerName: 'Player',
-      speakerGender: 'any',
-      addresseeName: opts.nodeSpeakerName,
-      addresseeGender: opts.nodeSpeakerGender,
+      speakerName: PLAYER_LABEL,
+      speakerGender: opts.playerGender,
+      addresseeName: opts.nodeSpeakerIsPlayer ? counterpart.name : opts.nodeSpeakerName,
+      addresseeGender: opts.nodeSpeakerIsPlayer ? counterpart.gender : opts.nodeSpeakerGender,
     };
   }
 
   return {
-    speakerName: opts.nodeSpeakerName,
+    speakerName: opts.nodeSpeakerIsPlayer ? PLAYER_LABEL : opts.nodeSpeakerName,
     speakerGender: opts.nodeSpeakerGender,
-    addresseeName: opts.addresseeKind === 'player' ? 'Player' : opts.addresseeName,
-    addresseeGender: opts.addresseeKind === 'player' ? 'any' : opts.addresseeGender,
+    addresseeName: counterpart.name,
+    addresseeGender: counterpart.gender,
   };
 };

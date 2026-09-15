@@ -9,15 +9,16 @@ import {
   isStatusOnlyStringsFilter,
   SORT_COLUMNS,
 } from './stringsFilter';
-import { dialogParticipantsLateralSql } from './dialogs/participants';
 import {
-  npcSpeakerLateralSql,
+  dialogParticipantsLateralSql,
+  lineSpeakerLateralSql,
+} from './dialogs/participants';
+import {
   stringLineGenderSql,
   stringLineSpeakerNameSql,
 } from './stringLineGender';
 
 export type { StringsFilter } from './stringsFilter';
-export { parseStatusFilter } from './stringsFilter';
 
 export const listStrings = async (db: Tx, f: StringsFilter) => {
   const page = Math.max(1, f.page ?? 1);
@@ -83,8 +84,8 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
       t.model,
       t.updated_at,
       COALESCE(q.issue_count, 0) AS qa_issue_count,
-      ${stringLineGenderSql('r', 'dp', 'npc_sp')} AS line_gender,
-      ${stringLineSpeakerNameSql('r', 'dp', 'npc_sp')} AS line_speaker_name,
+      ${stringLineGenderSql('r', 'ls')} AS line_gender,
+      ${stringLineSpeakerNameSql('ls')} AS line_speaker_name,
       dp.addressee_gender AS line_addressee_gender
      FROM page
      JOIN strings s ON s.id = page.string_id
@@ -92,7 +93,7 @@ export const listStrings = async (db: Tx, f: StringsFilter) => {
      LEFT JOIN translations t
        ON t.src_string_id = s.id AND t.target_lang = $${targetLangIdx}
      LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}) dp ON TRUE
-     LEFT JOIN LATERAL (${npcSpeakerLateralSql('r')}) npc_sp ON TRUE
+     LEFT JOIN LATERAL (${lineSpeakerLateralSql('r')}) ls ON TRUE
      LEFT JOIN LATERAL (
        SELECT COUNT(*)::int AS issue_count
        FROM qa_issues qi

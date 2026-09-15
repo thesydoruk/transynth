@@ -78,6 +78,10 @@ export type VerifyChunkContext = {
 
 export type VerifyBatchPersistJob = {
   okStringIds: number[];
+  /** Model-only objections: recorded against the row, never a bar to approval. */
+  advisories: Array<{ stringId: number; message: string }>;
+  /** Proven gender leaks the auditor gave no wording for. */
+  genderRepairs: VerifyStringRow[];
   fixes: Array<{ stringId: number; text: string; row: VerifyStringRow }>;
   rewrites: Array<{ item: LlmVerifyItem; row: VerifyStringRow }>;
   issues: LlmVerifyIssue[];

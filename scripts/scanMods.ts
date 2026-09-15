@@ -32,6 +32,8 @@
  *   npm run scan:mods -- --dir "Z:\Mods" --game fo4 --force
  *   npm run scan:mods -- --dir "Z:\Mods" --force --src-lang en --tgt-lang uk
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +43,7 @@ import { CONFIG } from '../src/config';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { PATHS, ensureDataDirs } from '../src/paths';
-import type { GameType } from '../src/types';
+import { allGameIds, resolveGameId } from '../src/games/registry';
 import { ensureDir, resolveDirectoryInput } from '../src/utils/file';
 import { sha1HexFile } from '../src/utils/hash';
 import {
@@ -53,13 +55,10 @@ import {
   registerPluginFile,
   restartModImportJob,
 } from '../src/import/mod';
-import { runModImport } from '../worker/src/jobs/import/mod/runImport';
+import { runModImport } from '../src/import/mod/run/runImport';
 
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'] as const;
-
-const isGameType = (value: string): value is GameType => {
-  return (GAME_CHOICES as readonly string[]).includes(value);
-};
+/** Whatever the registry holds — a newly registered plugin shows up here on its own. */
+const GAME_CHOICES = allGameIds();
 
 /** True for Windows UNC paths (`\\server\share\...`). */
 const isUncPath = (p: string): boolean => process.platform === 'win32' && p.startsWith('\\\\');
@@ -125,7 +124,7 @@ ensureDataDirs();
 ensureDir(PATHS.scanExtract);
 
 const scanDir = resolveDirectoryInput(argv.dir);
-const game = isGameType(argv.game) ? argv.game : 'fo4';
+const game = resolveGameId(argv.game);
 const srcLang = argv['src-lang'] || MOD_IMPORT_DEFAULT_SOURCE_LOCALE;
 const tgtLang = argv['tgt-lang'];
 const force = argv.force;

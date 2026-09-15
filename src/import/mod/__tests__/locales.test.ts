@@ -1,3 +1,4 @@
+import { fallout4 } from '../../../games/creation-engine/titles/fallout';
 import { describe, it, expect } from '@jest/globals';
 import type { EspStringRow } from '../../../formats/esp';
 import { localeFromStringsFileName } from '../localeSources';
@@ -52,7 +53,7 @@ describe('localeFromStringsFileName', () => {
 describe('generateImportCsvRows', () => {
   it('resolves INFO/NAM1 from ILSTRINGS table', () => {
     const maps = typedMaps({ ILSTRINGS: [[42, 'Resolved']] });
-    const rows = [...generateImportCsvRows(espRows, maps, 'fo4')];
+    const rows = [...generateImportCsvRows(espRows, maps, fallout4.recorddefs)];
     expect(rows).toHaveLength(2);
     expect(rows[0]?.Source).toBe('Resolved');
     expect(rows[0]?.LStringID).toBe(42);
@@ -64,13 +65,13 @@ describe('generateImportCsvRows', () => {
       STRINGS: [[42, 'Wrong table']],
       ILSTRINGS: [],
     });
-    const rows = [...generateImportCsvRows(espRows, maps, 'fo4')];
+    const rows = [...generateImportCsvRows(espRows, maps, fallout4.recorddefs)];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.Source).toBe('Inline text');
   });
 
   it('skips unresolved lstring refs', () => {
-    const rows = [...generateImportCsvRows(espRows, typedMaps({}), 'fo4')];
+    const rows = [...generateImportCsvRows(espRows, typedMaps({}), fallout4.recorddefs)];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.Source).toBe('Inline text');
   });
@@ -79,8 +80,8 @@ describe('generateImportCsvRows', () => {
 describe('countImportRowsForLocale', () => {
   it('matches generator row count', () => {
     const maps = typedMaps({ ILSTRINGS: [[42, 'Resolved']] });
-    expect(countImportRowsForLocale(espRows, maps, 'fo4')).toBe(2);
-    expect(countImportRowsForLocale(espRows, null, 'fo4')).toBe(1);
+    expect(countImportRowsForLocale(espRows, maps, fallout4.recorddefs)).toBe(2);
+    expect(countImportRowsForLocale(espRows, null, fallout4.recorddefs)).toBe(1);
   });
 });
 
@@ -94,7 +95,7 @@ describe('estimateLocalizedImportTotal', () => {
         { locale: 'ru', files: [] },
       ],
       ['en', 'ru'],
-      'fo4',
+      fallout4.recorddefs,
     );
     expect(total).toBe(2);
   });

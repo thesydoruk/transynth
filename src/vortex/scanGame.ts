@@ -1,14 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { sha1Hex } from '../utils/hash';
 import { collectNamedPluginFiles } from './collectSubset';
 import { merkleContentHash } from './hashSubset';
 import { readPeProductVersion } from './exeVersion';
-import { isOfficialGamePlugin, officialMasterNames } from './officialPlugins';
+import { exeNameForGame, isOfficialGamePlugin, officialMasterNames } from './gameProfiles';
 import type { VortexGameReleaseHint, VortexInventoryUnit } from './types';
 
-export const resolveGameDataDir = (gameDir: string): string => {
+const resolveGameDataDir = (gameDir: string): string => {
   const direct = path.resolve(gameDir);
   if (
     fs.existsSync(path.join(direct, 'Fallout4.esm')) ||
@@ -21,17 +21,8 @@ export const resolveGameDataDir = (gameDir: string): string => {
   return direct;
 };
 
-const exeNameForGame = (game: GameType): string => {
-  if (game === 'fo4') return 'Fallout4.exe';
-  if (game === 'fo76') return 'Fallout76.exe';
-  if (game === 'fo3') return 'Fallout3.exe';
-  if (game === 'fnv') return 'FalloutNV.exe';
-  if (game === 'sse' || game === 'sle') return 'SkyrimSE.exe';
-  return 'Fallout4.exe';
-};
-
 export const scanGameUnits = async (
-  game: GameType,
+  game: GameId,
   gameDir: string,
   stagingPluginNames: Set<string>,
 ): Promise<{
@@ -83,9 +74,11 @@ export const scanGameUnits = async (
     });
   }
 
-  const exePath = path.join(rootDir, exeNameForGame(game));
-  const versionLabel =
-    readPeProductVersion(exePath) ?? units[0]?.contentHash.slice(0, 12) ?? 'unknown';
+  // The executable's product version is the most reliable release label; a
+  // game with no known executable falls back to the content hash.
+  const exeName = exeNameForGame(game);
+  const exeVersion = exeName ? readPeProductVersion(path.join(rootDir, exeName)) : null;
+  const versionLabel = exeVersion ?? units[0]?.contentHash.slice(0, 12) ?? 'unknown';
   const releaseHash = sha1Hex(units.map((unit) => `${unit.unitId}:${unit.contentHash}`).join('\n'));
 
   return { units, gameRelease: { versionLabel, releaseHash }, dataDir };

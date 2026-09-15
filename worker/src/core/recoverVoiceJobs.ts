@@ -27,7 +27,7 @@ export type RecoverVoiceJobsDeps = {
 export const isVoiceStallFailure = (err: Error): boolean => STALL_FAIL.test(err.message);
 
 /** Drop the one-shot wipe flag so a resumed job only fills remaining lines. */
-export const resumeVoiceGenerateData = (data: JobData): JobData => ({
+const resumeVoiceGenerateData = (data: JobData): JobData => ({
   ...data,
   params: {
     ...data.params,

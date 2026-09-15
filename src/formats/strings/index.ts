@@ -1,8 +1,9 @@
 export { parseStringsBuffer, stringsTypeFromPath, writeStringsBuffer } from './stringsBuffer';
-export { resolveLooseStringsDir, resolveLooseStringsDirForPlugin } from './looseStringsDir';
+export { resolveLooseStringsDirForPlugin } from './looseStringsDir';
 export {
-  resolveStringsTableType,
+  compileRecorddefs,
   resolveStringsTableTypeForRow,
-  subrecordFieldFromPath,
+  type CompiledRecorddefs,
+  type RecorddefsJson,
 } from './recorddefs';
 export type { StringsEntry, StringsType } from '../types';

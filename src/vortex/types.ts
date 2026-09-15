@@ -1,4 +1,4 @@
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import type { VortexChannel } from './stages';
 
 export type VortexUnitChannel = 'mods' | 'game';
@@ -27,7 +27,7 @@ export type VortexGameReleaseHint = {
 };
 
 export type VortexInventory = {
-  game: GameType;
+  game: GameId;
   stagingPath: string;
   gameDir: string;
   dataDir: string;
@@ -70,7 +70,7 @@ export type VortexExportOrder = {
 export type VortexPlanPayload = {
   groupKey: string;
   label: string;
-  game: GameType;
+  game: GameId;
   stagingPath: string;
   gameDir: string;
   channel: VortexChannel;

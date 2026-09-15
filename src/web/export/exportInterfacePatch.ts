@@ -1,3 +1,4 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
@@ -16,16 +17,13 @@ import {
   resolveModImportLocalizeDir,
 } from '../../modStorage/paths';
 import { pluginSiblingRelPath } from '../../modImport/packages';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { exportPatchedFontFiles } from './exportFontPatch';
 import type { ZipPackEntry } from './exportTypes';
 import { readModInterfaceFile } from './modInterfaceFiles';
 
-const readSourceInterfaceTranslateBuffer = (
-  modPath: string,
-  sourceLocale: string,
-  game: GameType,
-): Buffer | null => readModInterfaceFile(modPath, `Translate_${sourceLocale}.txt`, game);
+const readSourceInterfaceTranslateBuffer = (modPath: string, sourceLocale: string): Buffer | null =>
+  readModInterfaceFile(modPath, `Translate_${sourceLocale}.txt`);
 
 const getInterfaceTranslationOverlay = async (
   db: Tx,
@@ -66,10 +64,10 @@ export const exportInterfaceTranslateFile = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
   sourceLocale = 'en',
 ): Promise<InterfaceTranslateExportResult[] | null> => {
-  const sourceBuf = readSourceInterfaceTranslateBuffer(modPath, sourceLocale, game);
+  const sourceBuf = readSourceInterfaceTranslateBuffer(modPath, sourceLocale);
   if (!sourceBuf) return null;
 
   const sourceEntries = readInterfaceTranslateEntries(sourceBuf);
@@ -120,7 +118,7 @@ const walkInterfaceFiles = (
 };
 
 /** Collect binary Interface assets from `_localize_{hash}/{lang}/Interface/`. */
-export const collectInterfaceLocalizeAssets = (
+const collectInterfaceLocalizeAssets = (
   modPath: string,
   targetLang: string,
   packageFolder = '',
@@ -184,7 +182,7 @@ export const collectInterfacePatchEntries = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): Promise<ZipPackEntry[]> => {
   const entries: ZipPackEntry[] = [];
   const packageFolder = (() => {

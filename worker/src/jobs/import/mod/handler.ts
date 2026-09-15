@@ -8,8 +8,8 @@
  */
 import { getModImportJob } from '../../../../../src/import/mod';
 import type { JobHandler } from '../../../types';
-import { requestModCancel, requestModPause } from './activeJobs';
-import { runModImport } from './runImport';
+import { requestModCancel, requestModPause } from '../../../../../src/import/mod/run/activeJobs';
+import { runModImport } from '../../../../../src/import/mod/run/runImport';
 
 export type ModImportJobParams = {
   /** `mod_imports.id` — progress events carry this id, as the UI expects. */

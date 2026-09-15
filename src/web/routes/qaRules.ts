@@ -1,3 +1,4 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
 import { log } from '../../logger';
@@ -81,7 +82,7 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
   }>('/api/qa-rules', async (req, reply) => {
     const body = req.body ?? ({} as Record<string, unknown>);
     const {
-      game = 'fo4',
+      game = DEFAULT_GAME_ID,
       rule_type,
       signature = null,
       path = null,

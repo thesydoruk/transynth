@@ -60,7 +60,7 @@ export type BuildModImportExtractManifestOptions = {
 };
 
 /** Extract in-game archives under `extractRoot` and build a provenance manifest. */
-export const buildModImportExtractManifest = (
+const buildModImportExtractManifest = (
   options: BuildModImportExtractManifestOptions,
 ): ModImportExtractManifest => {
   const extractRoot = path.resolve(options.extractRoot);

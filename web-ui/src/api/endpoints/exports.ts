@@ -1,4 +1,4 @@
-import { BASE, downloadBinary, req } from '../client';
+import { downloadBinary, req } from '../client';
 import { getSrcLang, getTgtLang } from '../../langDefaults';
 import type { ExportArchive } from '../types/exports';
 
@@ -18,5 +18,3 @@ export const exportsEndpoints = {
     downloadBinary(`/api/exports/${id}/file`, fallbackName),
   remove: (id: number) => req<{ ok: true }>(`/api/exports/${id}`, { method: 'DELETE' }),
 };
-
-export const exportArchiveDownloadUrl = (id: number): string => `${BASE}/api/exports/${id}/file`;

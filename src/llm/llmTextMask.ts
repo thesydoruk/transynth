@@ -1,11 +1,10 @@
 /**
  * Mask game placeholders before LLM requests and restore them in model output.
  * Uses ¤PH0¤, ¤PH1¤, … — same keys as {@link maskPlaceholders}.
- * Disco lockit markup is masked as ¤IT¤ / ¤Q¤ / ¤TS¤ / ¤EM¤ after placeholders.
+ * A game may mask markup of its own on top (Disco's lockit ¤IT¤ / ¤Q¤ / ¤TS¤ / ¤EM¤).
  */
-import { restoreDiscoCensoredSpeech } from '../formats/po/discoCensorship';
-import { maskDiscoLockitMarkupIfDisco } from '../formats/po/discoMarkupMask';
-import type { GameType } from '../types';
+import { gamePlugin } from '../games/registry';
+import type { GameId } from '../types';
 import {
   PLACEHOLDER_PATTERN_PARTS,
   maskFunctionKeywords,
@@ -63,29 +62,30 @@ export const maskLlmOptionalText = (text: string | null | undefined): string | n
   return maskLlmText(text).masked;
 };
 
-const maskFieldForLlm = (text: string, game?: GameType | string | null): string =>
-  maskDiscoLockitMarkupIfDisco(maskLlmText(text).masked, game ?? null).masked;
+const maskFieldForLlm = (text: string, game?: GameId | string | null): string =>
+  gamePlugin(game).text.maskMarkup(maskLlmText(text).masked).masked;
 
 /** Mask source/translation in RAG examples (each field masked independently). */
 export const maskLlmReferenceExamples = <T extends { source: string; translation: string }>(
   examples: T[] | undefined,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): T[] | undefined => {
   if (!examples?.length) return examples;
+  const { text } = gamePlugin(game);
   return examples.map((ex) => ({
     ...ex,
-    source: maskFieldForLlm(restoreDiscoCensoredSpeech(ex.source), game),
-    translation: maskFieldForLlm(restoreDiscoCensoredSpeech(ex.translation), game),
+    source: maskFieldForLlm(text.restoreCensoredSpeech(ex.source), game),
+    translation: maskFieldForLlm(text.restoreCensoredSpeech(ex.translation), game),
   }));
 };
 
 /**
- * PH → FK → Disco lockit keys for a translate source.
- * Disco wrapper keys are merged into `placeholderMap` so existing unmask works.
+ * Placeholders, then function keywords, then whatever markup the game masks.
+ * Markup keys are merged into `placeholderMap` so one unmask call restores all.
  */
 export const maskTranslateSource = (
   text: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
   context?: ProtectedTokenContext | null,
 ): {
   masked: string;
@@ -95,13 +95,13 @@ export const maskTranslateSource = (
   const { masked: placeholderMasked, mapping: placeholderMap } = maskPlaceholders(text);
   const { masked: fkMasked, mapping: functionKeywordMap } = maskFunctionKeywords(
     placeholderMasked,
-    game as GameType | undefined,
+    game as GameId | undefined,
     context,
   );
-  const disco = maskDiscoLockitMarkupIfDisco(fkMasked, game ?? null);
+  const markup = gamePlugin(game).text.maskMarkup(fkMasked);
   return {
-    masked: disco.masked,
-    placeholderMap: { ...placeholderMap, ...disco.mapping },
+    masked: markup.masked,
+    placeholderMap: { ...placeholderMap, ...markup.mapping },
     functionKeywordMap,
   };
 };

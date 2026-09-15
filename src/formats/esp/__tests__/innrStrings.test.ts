@@ -1,3 +1,4 @@
+import { fallout4 } from '../../../games/creation-engine/titles/fallout';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -85,7 +86,7 @@ describe('EspReader INNR extraction', () => {
     ]);
     const pluginPath = writeTempPlugin(buildPlugin([innr]));
 
-    const rows = new EspReader(pluginPath, 'fo4').extractStrings();
+    const rows = new EspReader(pluginPath, fallout4.subrecords).extractStrings();
 
     expect(rows).toEqual([
       expect.objectContaining({
@@ -117,7 +118,7 @@ describe('EspReader INNR extraction', () => {
     ]);
     const pluginPath = writeTempPlugin(buildPlugin([innr], true));
 
-    const rows = new EspReader(pluginPath, 'fo4').extractStrings();
+    const rows = new EspReader(pluginPath, fallout4.subrecords).extractStrings();
 
     expect(rows).toEqual([
       expect.objectContaining({

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "worker/src/main.ts",
+    "web-ui/src/main.tsx",
+    "services/bethesda-tools/server.ts",
+    "scripts/*.ts",
+    "src/voice/faceFx/runner.ts",
+    "**/__tests__/**/*.test.{ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "worker/src/**/*.ts",
+    "web-ui/src/**/*.{ts,tsx}",
+    "scripts/*.ts",
+    "services/**/*.ts"
+  ],
+  "ignore": ["web-ui/src/scss.d.ts"],
+  "rules": {
+    "types": "off",
+    "unlisted": "off",
+    "binaries": "off"
+  }
+}

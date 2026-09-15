@@ -2,13 +2,10 @@ import { describe, it, expect } from '@jest/globals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  filterPrimaryPlugins,
-  isSecondaryPluginPath,
-  selectArchiveImportAnchor,
-} from '../importAnchor';
+import { filterPrimaryPlugins, isSecondaryPluginPath } from '../importAnchor';
+import { gamePlugin } from '../../../games/registry';
 
-describe('importAnchor', () => {
+describe('import anchors', () => {
   it('treats Optional/fomod plugins as secondary', () => {
     expect(isSecondaryPluginPath('mod/Optional/Helper.esp')).toBe(true);
     expect(isSecondaryPluginPath('mod/fomod/dummy.esl')).toBe(true);
@@ -26,14 +23,13 @@ describe('importAnchor', () => {
     fs.writeFileSync(path.join(optional, 'Helper.esp'), Buffer.from('TES4'));
 
     expect(filterPrimaryPlugins([path.join(optional, 'Helper.esp')])).toEqual([]);
-    const anchor = selectArchiveImportAnchor(root);
-    expect(anchor.isPlugin).toBe(false);
-    expect(path.basename(anchor.anchorPath)).toBe('FallUIInv_en.txt');
+    const anchor = gamePlugin('fo4').import.selectAnchor(root);
+    expect(anchor && path.basename(anchor)).toBe('FallUIInv_en.txt');
 
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it('selects Disco Final Cut .po when game is disco', () => {
+  it('selects a Final Cut .po pack for Disco Elysium', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'disco-anchor-'));
     const lang = path.join(root, 'English_English_en');
     fs.mkdirSync(lang, { recursive: true });
@@ -43,9 +39,8 @@ describe('importAnchor', () => {
       'utf8',
     );
 
-    const anchor = selectArchiveImportAnchor(root, 'disco');
-    expect(anchor.isPlugin).toBe(false);
-    expect(path.basename(anchor.anchorPath)).toBe('Dialogues.po');
+    const anchor = gamePlugin('disco').import.selectAnchor(root);
+    expect(anchor && path.basename(anchor)).toBe('Dialogues.po');
 
     fs.rmSync(root, { recursive: true, force: true });
   });

@@ -101,7 +101,7 @@ export const GameModDetailsPage = () => {
       )}
 
       <RelationsTabs
-        gameDomain={game.domainName}
+        gameDomain={game.domainName ?? ''}
         translations={translations}
         isTranslationsLoading={isTranslationsLoading}
         translationsError={translationsError}

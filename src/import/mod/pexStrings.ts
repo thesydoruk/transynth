@@ -1,3 +1,4 @@
+import type { CsvRow } from '../../types';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getBa2Reader } from '../../formats/ba2';
@@ -14,7 +15,6 @@ import {
 import { CONFIG } from '../../config';
 import { logImport } from '../../logging/loggers';
 import { mapWithConcurrency } from '../../utils/concurrency';
-import type { CsvRow, GameType } from '../../types';
 import type { DecompiledPexScript } from '../../web/export/pexDecompileService';
 import { listCompanionGnrlBa2ForPlugin } from './discovery';
 
@@ -108,14 +108,11 @@ const loadPexStringsFromLooseFiles = (modDir: string): Map<string, PexScriptStri
   return result;
 };
 
-const collectPexStrings = async (
-  espPath: string,
-  game: GameType = 'fo4',
-): Promise<Map<string, PexScriptStrings>> => {
+const collectPexStrings = async (espPath: string): Promise<Map<string, PexScriptStrings>> => {
   const modDir = path.dirname(espPath);
   const merged = new Map<string, PexScriptStrings>();
 
-  const ba2Paths = listCompanionGnrlBa2ForPlugin(espPath, game);
+  const ba2Paths = listCompanionGnrlBa2ForPlugin(espPath);
   const ba2Results = await mapWithConcurrency(
     ba2Paths,
     CONFIG.modImportIoParallel,

@@ -4,7 +4,7 @@ import { withTransaction } from '../../db';
 import type pg from 'pg';
 import { log } from '../../logger';
 import { enforceGlossary } from '../data/queries';
-import { glossaryGameKey } from '../../llm/prompts/resolveGame';
+import { glossaryGameKey } from '../../games/glossaryKey';
 import { CONFIG } from '../../config';
 
 const GLOSSARY_SELECT = 'id, term, translation, src_lang, tgt_lang, game, source, created_at';

@@ -1,7 +1,7 @@
+import { resolveFo4PromptFamily } from '../../games/creation-engine/prompts/fo4/families/resolve';
 import {
   partitionByPromptFamily,
   resolveBatchPromptFamily,
-  resolveFo4PromptFamily,
   resolvePromptFamily,
 } from '../promptFamily';
 

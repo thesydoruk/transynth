@@ -22,7 +22,7 @@ afterEach(() => {
 
 const makeDb = (
   voiceRows: Array<{
-    formid_lower6: string;
+    line_key: string;
     info_formid_hex: string;
     voice_ordinal: number;
     string_id: number;
@@ -50,7 +50,7 @@ const makeDb = (
           ],
         };
       }
-      if (sql.includes('formid_lower6') || sql.includes('voice_ordinal')) {
+      if (sql.includes('line_key') || sql.includes('voice_ordinal')) {
         return { rows: voiceRows };
       }
       return { rows: [] };
@@ -139,7 +139,7 @@ describe('stageFullLocalizedMod', () => {
     const result = await stageFullLocalizedMod(
       makeDb([
         {
-          formid_lower6: '123456',
+          line_key: '123456',
           info_formid_hex: '00123456',
           voice_ordinal: 1,
           string_id: 1,
@@ -148,7 +148,7 @@ describe('stageFullLocalizedMod', () => {
           edid: null,
         },
         {
-          formid_lower6: '0219CF',
+          line_key: '0219CF',
           info_formid_hex: '000219CF',
           voice_ordinal: 1,
           string_id: 2,

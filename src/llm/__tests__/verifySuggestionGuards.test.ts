@@ -156,7 +156,7 @@ describe('resolveVerifyFixAction', () => {
     );
   });
 
-  it('rewrites incorrect rows even when suggestion preserves tokens', () => {
+  it('applies the suggestion on an incorrect row when it preserves tokens', () => {
     const item: LlmVerifyItem = {
       id: 8,
       source: 'Layer Handle - 4',
@@ -167,7 +167,53 @@ describe('resolveVerifyFixAction', () => {
       context: null,
     };
     const action = resolveVerifyFixAction(item, 'incorrect', 'Обробник шару — 4', true, 'fo4');
-    expect(action.kind).toBe('rewrite_from_source');
+    expect(action).toEqual({ kind: 'apply', suggestion: 'Обробник шару — 4' });
+  });
+
+  it('applies the suggestion on an incorrect row even without fixSuspicious', () => {
+    const item: LlmVerifyItem = {
+      id: 8,
+      source: 'Layer Handle - 4',
+      translation: 'Ручка шару 4',
+      grup: 'ACTI',
+      field: 'FULL',
+      edid: 'WSPlus_LayerHandleMarker_04',
+      context: null,
+    };
+    expect(resolveVerifyFixAction(item, 'incorrect', 'Обробник шару — 4', false, 'fo4').kind).toBe(
+      'apply',
+    );
+  });
+
+  it('re-translates an incorrect row when the model restates the bad translation', () => {
+    const item: LlmVerifyItem = {
+      id: 8,
+      source: 'Layer Handle - 4',
+      translation: 'Ручка шару 4',
+      grup: 'ACTI',
+      field: 'FULL',
+      edid: 'WSPlus_LayerHandleMarker_04',
+      context: null,
+    };
+    expect(resolveVerifyFixAction(item, 'incorrect', 'Ручка шару 4', true, 'fo4').kind).toBe(
+      'rewrite_from_source',
+    );
+  });
+
+  it('re-translates an incorrect row when no suggestion is offered', () => {
+    const item: LlmVerifyItem = {
+      id: 8,
+      source: 'Layer Handle - 4',
+      translation: 'Ручка шару 4',
+      grup: 'ACTI',
+      field: 'FULL',
+      edid: 'WSPlus_LayerHandleMarker_04',
+      context: null,
+    };
+    expect(shouldRewriteFromSource(item, 'incorrect', null, true, 'fo4')).toBe(true);
+    expect(resolveVerifyFixAction(item, 'incorrect', null, true, 'fo4').kind).toBe(
+      'rewrite_from_source',
+    );
   });
 
   it('rewrites from source on full mismatch with null suggestion', () => {

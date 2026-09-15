@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
@@ -74,7 +74,7 @@ const spawnFaceFxRunner = (request: FaceFxLipRequest): Promise<FaceFxLipResult> 
 
 /** Generate a fresh LIP file from synthesized dialogue audio and translated text. */
 export const generateLipFile = async (
-  game: GameType,
+  game: GameId,
   sourceWavPath: string,
   lipPath: string,
   dialogueText: string,

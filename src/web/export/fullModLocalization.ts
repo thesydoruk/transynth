@@ -12,7 +12,7 @@ import {
   toDiskPath,
   type ImportPackageContext,
 } from '../../modImport/packages';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { ensureDir } from '../../utils/file';
 import { exportPatchedEsp } from './exportEsp';
 import { exportPatchedFontFiles } from './exportFontPatch';
@@ -38,7 +38,7 @@ export const applyLocalizationToPackage = async (
   packageDir: string,
   srcLang: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
   isLocalized: boolean,
 ): Promise<void> => {
   const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);

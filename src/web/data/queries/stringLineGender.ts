@@ -1,47 +1,19 @@
 import { effectiveNarratorGenderSql } from '../../../dialog/narratorGender';
-import { effectiveSpeakerGenderSql } from '../../../dialog/gender';
-import { DIALOG_PROMPT_PATH } from './dialogs/lines';
 
-/** Lateral body resolving gender for an NPC_ record via dialog_speakers. */
-export const npcSpeakerLateralSql = (recordsAlias: string): string => `
-    SELECT sp.display_name,
-           ${effectiveSpeakerGenderSql('sp')} AS speaker_gender
-      FROM dialog_speakers sp
-     WHERE ${recordsAlias}.signature = 'NPC_'
-       AND sp.mod_id = ${recordsAlias}.mod_id
-       AND sp.speaker_key = 'npc:' || upper(${recordsAlias}.formid_hex)
-     LIMIT 1`;
+/**
+ * The string grid's speaker column.
+ *
+ * Which rows have a voice, and whose, is each game's answer — a Creation Engine
+ * plugin counts both halves of an INFO exchange and an `NPC_` record's own
+ * name, a Disco `.po` row the speaker of its clip — so the lookup comes from
+ * the plugin (`dialog.lineSpeakerSql`) and this file only decides the fallback:
+ * a row no game claims shows the record's narrator gender instead.
+ */
 
-/** SQL expression for the gender icon column in the string grid. */
-export const stringLineGenderSql = (
-  recordsAlias: string,
-  dpAlias: string,
-  npcAlias: string,
-): string => `
-  CASE
-    WHEN ${recordsAlias}.signature = 'INFO'
-     AND ${recordsAlias}.path_simplified = '${DIALOG_PROMPT_PATH}' THEN 'any'
-    WHEN ${recordsAlias}.signature = 'INFO' THEN
-      COALESCE(NULLIF(${dpAlias}.speaker_gender, ''), 'unknown')
-    WHEN ${recordsAlias}.signature = 'NPC_' THEN
-      COALESCE(NULLIF(${npcAlias}.speaker_gender, ''), 'unknown')
-    ELSE ${effectiveNarratorGenderSql(recordsAlias)}
-  END`;
+/** Gender shown in the grid, for a row joined to {@link lineSpeakerLateralSql}. */
+export const stringLineGenderSql = (recordsAlias: string, speakerAlias: string): string => `
+  COALESCE(NULLIF(${speakerAlias}.gender, ''), ${effectiveNarratorGenderSql(recordsAlias)})`;
 
-/** Primary speaker / NPC name for the gender column tooltip. */
-export const stringLineSpeakerNameSql = (
-  recordsAlias: string,
-  dpAlias: string,
-  npcAlias: string,
-): string => `
-  CASE
-    WHEN ${recordsAlias}.signature = 'INFO'
-     AND ${recordsAlias}.path_simplified = '${DIALOG_PROMPT_PATH}' THEN
-      NULLIF(${dpAlias}.addressee_name, '')
-    WHEN ${recordsAlias}.signature = 'INFO' THEN NULLIF(${dpAlias}.speaker_name, '')
-    WHEN ${recordsAlias}.signature = 'NPC_' THEN
-      COALESCE(NULLIF(${npcAlias}.display_name, ''), NULLIF(${recordsAlias}.edid, ''))
-    ELSE NULL
-  END`;
-
-export { effectiveNarratorGenderSql, effectiveSpeakerGenderSql };
+/** Speaker name for the gender column tooltip; null when nobody speaks the row. */
+export const stringLineSpeakerNameSql = (speakerAlias: string): string =>
+  `NULLIF(${speakerAlias}.display_name, '')`;

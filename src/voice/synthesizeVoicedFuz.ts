@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeFuz } from '../formats/fuz';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { generateLipFile } from './faceFx';
 import { convertToFo4Wav, writeTempWav } from './ffmpegAudio';
 import { encodeWavToXwm } from './xwmEncode';
@@ -19,7 +19,7 @@ export type BuiltVoicedFuz = {
  * Speech level is already matched on the TTS server to the first speaker_wav.
  */
 export const buildVoicedFuzFromTtsWav = async (
-  game: GameType,
+  game: GameId,
   ttsWavBytes: Buffer,
   workDir: string,
   fileName: string,

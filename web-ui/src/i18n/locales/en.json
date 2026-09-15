@@ -148,7 +148,9 @@
     "exportDownload": "Download",
     "exportDelete": "Delete",
     "exportDeleting": "Deleting…",
-    "exportFullMod": "Full localized mod"
+    "exportFullMod": "Full localized mod",
+    "vortexExperimental": "experimental",
+    "vortexExperimentalTitle": "Vortex sync is at a very early stage. Back up your staging folder and check the result before relying on it."
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",
@@ -546,7 +548,17 @@
       "overriddenTitle": "{{label}} (set manually)",
       "addressee": "→ {{name}}",
       "addresseeTitle": "Speaking to {{name}} ({{gender}})",
-      "saveFailed": "Could not save the gender: {{message}} — click to dismiss"
+      "saveFailed": "Could not save the gender: {{message}} — click to dismiss",
+      "editHint": "{{label}} — click to correct",
+      "editHintOverridden": "{{label}} (set manually) — click to change",
+      "unknownHint": "Gender unknown — click to set it"
+    },
+    "contextTitle": "Context stored with the record",
+    "origin": {
+      "tm": "TM",
+      "tmTitle": "Filled from translation memory — check it fits this line",
+      "llm": "AI",
+      "llmTitle": "Machine translation — not reviewed by a person"
     }
   },
   "voice": {
@@ -735,7 +747,7 @@
   },
   "imports": {
     "title": "Imports",
-    "pageDescription": "Upload EET archives, CSV glossary files, or mod plugins (.esp\/.esm\/.ba2\/.zip). Each file is queued for language configuration before import starts.",
+    "pageDescription": "Upload EET archives, CSV glossary files, or mod plugins (.esp/.esm/.ba2/.zip). Each file is queued for language configuration before import starts.",
     "emptyTitle": "No import activity yet",
     "advancedImport": "Advanced import",
     "advancedImportHint": "EET project files and CSV translation tables.",
@@ -909,7 +921,10 @@
       "end_punct_mismatch": "Trailing punctuation",
       "min_word_count": "Too few words",
       "glossary_violation": "Glossary",
-      "duplicate_inconsistency": "Inconsistent translation"
+      "duplicate_inconsistency": "Inconsistent translation",
+      "gender_mismatch": "Gender agreement",
+      "calque": "Calque from English",
+      "llm_review": "Reviewer note"
     }
   },
   "coherence": {
@@ -970,7 +985,7 @@
   "bookEditor": {
     "openBtn": "Book editor",
     "title": "Book / HTML Editor",
-    "subtitle": "Edit in-game book markup. Toggle \u201cPreview\u201d to see the rendered result.",
+    "subtitle": "Edit in-game book markup. Toggle “Preview” to see the rendered result.",
     "sourceLabel": "Source",
     "translationLabel": "Translation",
     "previewBtn": "Preview",
@@ -979,7 +994,7 @@
     "showRaw": "Switch to raw markup",
     "sourcePreviewTitle": "Source book preview",
     "translPreviewTitle": "Translation book preview",
-    "placeholder": "Enter translated markup here\u2026",
+    "placeholder": "Enter translated markup here…",
     "markupHint": "Supported tags: font, b, i, p, div, br, hr, img src=\"img://...\"",
     "charCount": "{{count}} chars"
   },

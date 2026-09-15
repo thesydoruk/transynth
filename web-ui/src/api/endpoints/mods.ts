@@ -60,7 +60,7 @@ export const modsEndpoints = {
   setVoiceSpeakerRef: (
     modId: number,
     speakerKey: string,
-    formidLower6: string,
+    lineKey: string,
     variant: number,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
@@ -70,7 +70,7 @@ export const modsEndpoints = {
       `/api/mods/${modId}/voice/speaker-ref?${params}`,
       {
         method: 'PUT',
-        body: JSON.stringify({ speakerKey, formidLower6, variant }),
+        body: JSON.stringify({ speakerKey, lineKey, variant }),
       },
     );
   },
@@ -81,7 +81,7 @@ export const modsEndpoints = {
     ),
   generateVoiceLine: (
     modId: number,
-    formidLower6: string,
+    lineKey: string,
     variant: number,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
@@ -90,20 +90,20 @@ export const modsEndpoints = {
     const params = new URLSearchParams({ srcLang, targetLang });
     if (speakerKey?.trim()) params.set('speakerKey', speakerKey.trim());
     return req<{ ok: true; relPath: string; skipped: boolean }>(
-      `/api/mods/${modId}/voice/translation-audio/${formidLower6}/${variant}?${params}`,
+      `/api/mods/${modId}/voice/translation-audio/${lineKey}/${variant}?${params}`,
       { method: 'POST' },
     );
   },
   initVoiceRegenerateSession: (
     modId: number,
-    formidLower6: string,
+    lineKey: string,
     variant: number,
     sessionId: string,
     srcLang = getSrcLang(),
     targetLang = getTgtLang(),
   ) =>
     req<{ ok: true; defaultParams: VoiceRegenerateParams }>(
-      `/api/mods/${modId}/voice/regenerate/${formidLower6}/${variant}/session`,
+      `/api/mods/${modId}/voice/regenerate/${lineKey}/${variant}/session`,
       {
         method: 'POST',
         body: JSON.stringify({ sessionId, srcLang, targetLang }),
@@ -112,7 +112,7 @@ export const modsEndpoints = {
   getVoiceRegenerateSession: (modId: number, sessionId: string) =>
     req<{
       ok: true;
-      formidLower6: string;
+      lineKey: string;
       variant: number;
       srcLang: string;
       targetLang: string;
@@ -122,7 +122,7 @@ export const modsEndpoints = {
     modId: number,
     sessionId: string,
     body: {
-      formidLower6: string;
+      lineKey: string;
       variant: number;
       srcLang: string;
       targetLang: string;

@@ -1,8 +1,8 @@
 /**
  * Bulk PostgreSQL ingest for tabular record imports (EET, CSV).
  *
- * Replaces per-row upsertRecord / insertString / addTranslation round-trips
- * with UNNEST batch queries (same pattern as the mod bulk writers here).
+ * One UNNEST batch query per table instead of a round-trip per row, the same
+ * pattern as the mod bulk writers alongside this file.
  */
 import type { Tx } from '../../db';
 import { sha1Hex } from '../../utils/hash';

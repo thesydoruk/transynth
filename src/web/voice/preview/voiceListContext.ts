@@ -1,77 +1,22 @@
+/**
+ * Cached access to a mod's voice catalog.
+ *
+ * Building a catalog scans the localize tree and runs several queries, and the
+ * editor asks for it twice per screen (speakers, then lines). The cache keeps
+ * one build per mod and language pair, keyed by a fingerprint of the data that
+ * must never be served stale.
+ */
 import type { Tx } from '../../../db';
-import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
-import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
-import { resolveVoiceRootRel } from '../../../voice/discoverVoiceFiles';
-import {
-  loadVoiceSourcesDetailed,
-  loadVoiceTranslations,
-  type VoiceTranslationRow,
-} from '../../../voice/loadVoiceTranslations';
-import {
-  findImportedMasterMods,
-  loadInheritedVoiceLookup,
-  type InheritedVoiceLookup,
-} from '../../../voice/inheritedVoiceText';
-import { collectVoiceSourceFormids } from '../../../voice/voiceSourceFormids';
+import { gamePlugin } from '../../../games/registry';
 import { resolveModStoredPath } from '../../../modStorage';
-import { loadVoiceSpeakerRefs, type VoiceSpeakerRefMap } from '../../../voice/voiceSpeakerRefs';
-import {
-  discoVoiceFileEntryFromClip,
-  resolveDiscoPreferredLangFolder,
-  resolveDiscoVoiceExtractRoot,
-} from '../../../voice/disco/discoverDiscoVoiceFiles';
-import { loadDiscoVoiceClipSummaries } from '../../../voice/disco/loadVoiceClips';
-import { ensureDiscoVoiceClips } from '../../../voice/disco/persistVoiceClips';
-import { ensureBethesdaVoiceClips } from '../../../voice/persistBethesdaVoiceClips';
-import {
-  fillVoiceLocalizeDirFromImport,
-  resolveVoicePackageContext,
-  type VoicePackageContext,
-} from './context';
-import { loadVoiceFolderGenders, type VoiceFolderGender } from './speakerGender';
-import { discoverVoiceEntries, loadSpeakerNamesFromDb } from './voiceEntries';
-import { loadDiscoSpeakerGenders, loadDiscoSpeakerNames } from './discoVoiceList';
-import { buildTranslationAudioSet } from './translationAudioIndex';
-import {
-  loadVoiceSimilarityMap,
-  type VoiceSimilarityMap,
-} from '../../../voice/voiceSynthesisState';
+import type { VoiceLineCatalogResult } from '../../../voice/lineCatalog';
 
-export type VoiceListContextError = {
-  ok: false;
-  reason: 'mod_not_found' | 'no_plugin_path' | 'plugin_missing' | 'no_voice_files';
-  message: string;
-};
+export type { VoiceLineCatalog, VoiceLineCatalogError } from '../../../voice/lineCatalog';
 
-export type VoiceListContext = {
-  modId: number;
-  isDisco: boolean;
-  ctx: VoicePackageContext;
-  voiceRootRel: string;
-  voiceFiles: VoiceFileEntry[];
-  sources: Awaited<ReturnType<typeof loadVoiceSourcesDetailed>>;
-  translations: Map<string, VoiceTranslationRow>;
-  inheritedLookup: InheritedVoiceLookup | null;
-  /**
-   * FormIDs that have source text — audio missing here is orphan (no line to dub).
-   */
-  sourceFormids: Set<string>;
-  dbSpeakerNames: Map<string, string>;
-  speakerRefs: VoiceSpeakerRefMap;
-  folderGenders: Map<string, VoiceFolderGender>;
-  translationAudio: Set<string>;
-  voiceSimilarities: VoiceSimilarityMap;
-};
+type CacheEntry = { revision: string; result: Promise<VoiceLineCatalogResult> };
 
-export type VoiceListContextResult = VoiceListContextError | { ok: true; data: VoiceListContext };
-
-type VoiceListCacheEntry = {
-  revision: string;
-  result: Promise<VoiceListContextResult>;
-};
-
-const cache = new Map<string, VoiceListCacheEntry>();
+const cache = new Map<string, CacheEntry>();
 
 const cacheKey = (modId: number, srcLang: string, targetLang: string): string =>
   `${modId}:${srcLang}:${targetLang}`;
@@ -116,161 +61,52 @@ export const loadVoiceListRevision = async (
   return `${row?.synth_n ?? '0'}:${stamp(row?.synth_at)}:${row?.ref_n ?? '0'}:${stamp(row?.ref_at)}`;
 };
 
-const loadVoiceListContext = async (
+const buildVoiceListContext = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-): Promise<VoiceListContextResult> => {
-  const resolvedTargetLang = targetLang || CONFIG.defaultTgtLang;
-  const { rows } = await db.query<{ name: string; abs_path: string | null; game: string | null }>(
-    `SELECT name, abs_path, game FROM mods WHERE id = $1`,
+): Promise<VoiceLineCatalogResult> => {
+  const { rows } = await db.query<{ abs_path: string | null; game: string | null }>(
+    `SELECT abs_path, game FROM mods WHERE id = $1`,
     [modId],
   );
   const mod = rows[0];
-  if (!mod) {
-    return { ok: false, reason: 'mod_not_found', message: 'Mod not found' };
-  }
-  if (!mod.abs_path) {
+  if (!mod) return { ok: false, reason: 'mod_not_found', message: 'Mod not found' };
+  if (!mod.abs_path)
     return { ok: false, reason: 'no_plugin_path', message: 'Mod has no plugin path' };
+
+  const voice = gamePlugin(mod.game).voice;
+  if (!voice) {
+    return { ok: false, reason: 'no_voice_files', message: 'This game has no voice support' };
   }
 
-  const isDisco = (mod.game ?? '').toLowerCase() === 'disco';
-  const pluginPath = resolveModStoredPath(mod.abs_path);
-  const ctx = resolveVoicePackageContext(pluginPath, resolvedTargetLang);
-  if (!ctx) {
-    return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
-  }
-  await fillVoiceLocalizeDirFromImport(db, modId, ctx);
-
-  if (isDisco) {
-    const extractRoot = resolveDiscoVoiceExtractRoot(pluginPath);
-    if (!extractRoot) {
-      return { ok: false, reason: 'no_voice_files', message: 'No voice files found for this mod' };
-    }
-    await ensureDiscoVoiceClips(db, modId, extractRoot);
-    const langFolder = resolveDiscoPreferredLangFolder(extractRoot);
-    const clips = await loadDiscoVoiceClipSummaries(db, modId);
-    if (!langFolder || clips.length === 0) {
-      return { ok: false, reason: 'no_voice_files', message: 'No voice files found for this mod' };
-    }
-
-    const voiceFiles = clips.map((clip) => discoVoiceFileEntryFromClip(langFolder, clip));
-    const sourceFormids = new Set(
-      clips.filter((clip) => clip.recordId != null).map((clip) => clip.formidLower12),
-    );
-    const translationAudio = buildTranslationAudioSet(ctx.localizeDir, { disco: true });
-    const [dbSpeakerNames, speakerRefs, folderGenders, voiceSimilarities] = await Promise.all([
-      loadDiscoSpeakerNames(db, modId),
-      loadVoiceSpeakerRefs(db, modId),
-      loadDiscoSpeakerGenders(db, modId),
-      loadVoiceSimilarityMap(db, modId, resolvedTargetLang),
-    ]);
-
-    return {
-      ok: true,
-      data: {
-        modId,
-        isDisco: true,
-        ctx,
-        voiceRootRel: 'Audio',
-        voiceFiles,
-        sources: new Map(),
-        translations: new Map(),
-        inheritedLookup: null,
-        sourceFormids,
-        dbSpeakerNames,
-        speakerRefs,
-        folderGenders,
-        translationAudio,
-        voiceSimilarities,
-      },
-    };
-  }
-
-  try {
-    await ensureBethesdaVoiceClips(db, modId, srcLang);
-  } catch (err) {
-    log.warn(
-      `Voice clips: ensure failed for mod ${modId}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
-  }
-
-  const voiceFiles = discoverVoiceEntries(ctx);
-  if (voiceFiles.length === 0) {
-    return { ok: false, reason: 'no_voice_files', message: 'No voice files found for this mod' };
-  }
-
-  const voiceRootRel = resolveVoiceRootRel(ctx.pluginRel);
-  const translationAudio = buildTranslationAudioSet(ctx.localizeDir);
-
-  const [
-    sources,
-    translations,
-    masterMods,
-    dbSpeakerNames,
-    speakerRefs,
-    folderGenders,
-    voiceSimilarities,
-  ] = await Promise.all([
-    loadVoiceSourcesDetailed(db, modId, srcLang),
-    loadVoiceTranslations(db, modId, srcLang, resolvedTargetLang),
-    findImportedMasterMods(db, pluginPath, modId),
-    loadSpeakerNamesFromDb(db, modId),
-    loadVoiceSpeakerRefs(db, modId),
-    loadVoiceFolderGenders(db, modId),
-    loadVoiceSimilarityMap(db, modId, resolvedTargetLang),
-  ]);
-
-  let inheritedLookup: InheritedVoiceLookup | null = null;
-  if (masterMods.length > 0) {
-    inheritedLookup = await loadInheritedVoiceLookup(db, masterMods, srcLang, resolvedTargetLang);
-    log.debug(
-      `Voice list mod=${modId}: inherited lookup from ${masterMods.map((m) => m.pluginName).join(', ')}`,
-    );
-  }
-
-  return {
-    ok: true,
-    data: {
-      modId,
-      isDisco: false,
-      ctx,
-      voiceRootRel,
-      voiceFiles,
-      sources,
-      translations,
-      inheritedLookup,
-      sourceFormids: collectVoiceSourceFormids(sources, translations, inheritedLookup),
-      dbSpeakerNames,
-      speakerRefs,
-      folderGenders,
-      translationAudio,
-      voiceSimilarities,
-    },
-  };
+  return voice.loadLineCatalog(db, {
+    modId,
+    pluginPath: resolveModStoredPath(mod.abs_path),
+    srcLang,
+    targetLang,
+  });
 };
 
 /**
- * Load shared voice-list inputs. Speaker + line requests reuse one catalog scan
- * while the synthesis/ref revision is unchanged. A finished voice job bumps
- * stamps, so the next GET rebuilds and sees new audio immediately.
+ * Load a mod's voice catalog. Speaker and line requests reuse one build while
+ * the synthesis/reference revision is unchanged; a finished voice job bumps the
+ * stamps, so the next request rebuilds and sees the new audio immediately.
  */
 export const getVoiceListContext = async (
   db: Tx,
   modId: number,
   srcLang: string,
   targetLang: string,
-): Promise<VoiceListContextResult> => {
+): Promise<VoiceLineCatalogResult> => {
   const resolvedTargetLang = targetLang || CONFIG.defaultTgtLang;
   const revision = await loadVoiceListRevision(db, modId, resolvedTargetLang);
   const key = cacheKey(modId, srcLang, resolvedTargetLang);
   const hit = cache.get(key);
   if (hit && hit.revision === revision) return hit.result;
 
-  const result = loadVoiceListContext(db, modId, srcLang, targetLang).then((loaded) => {
+  const result = buildVoiceListContext(db, modId, srcLang, resolvedTargetLang).then((loaded) => {
     if (!loaded.ok) {
       const current = cache.get(key);
       if (current?.revision === revision) cache.delete(key);

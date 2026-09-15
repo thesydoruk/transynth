@@ -1,6 +1,6 @@
 import type { LlmDialogParticipants } from './dialogParticipants';
 import type { LlmGlossaryEntry, LlmReferenceExample } from './translate';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import type { LlmPromptFamily } from './promptFamily';
 import type { DialogSceneContext } from './dialogScene';
 import { parseLlmItemId } from './jsonParse';
@@ -25,6 +25,21 @@ export interface LlmVerifyItem extends LlmDialogParticipants {
   reference_examples?: LlmReferenceExample[];
 }
 
+/**
+ * A defect the system proved for itself, independent of the model's opinion.
+ *
+ * Measured on the production corpus: findings backed by one of these recur on
+ * 96% of re-checks, while the model's unaided judgement of calque, tone or
+ * register flips on a third of the rows it passed last time. Only a proven
+ * defect is allowed to block approval; the rest is advice for a human.
+ */
+export type VerifyDefectKind =
+  | 'protected_token_mismatch'
+  | 'markup_broken'
+  | 'gender_leak'
+  | 'corrupted_translation'
+  | 'full_translation_mismatch';
+
 /** Per-item audit result returned by the LLM. */
 export interface LlmVerifyItemResult {
   id: number;
@@ -33,14 +48,26 @@ export interface LlmVerifyItemResult {
   confidence: number;
   /** Improved translation when verdict is suspicious or incorrect; null for ok. */
   suggestion: string | null;
+  /** Deterministic findings on this row; empty when only the model objected. */
+  defects?: VerifyDefectKind[];
 }
+
+/**
+ * Whether this result may block approval.
+ *
+ * `incorrect` is the model's strongest claim and is rare and mostly real, so it
+ * blocks. A bare `suspicious` is advice: it is recorded against the row and
+ * shown in the editor, but it does not hold the row out of review for ever.
+ */
+export const isBlockingVerifyResult = (result: LlmVerifyItemResult): boolean =>
+  result.verdict === 'incorrect' || (result.defects?.length ?? 0) > 0;
 
 export interface LlmVerifyOptions {
   items: LlmVerifyItem[];
   model: string;
   srcLang: string;
   targetLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   /** Per-batch glossary terms (same filtering as translate). */
   glossary?: LlmGlossaryEntry[];

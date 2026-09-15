@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeBa2 } from '../../formats/ba2';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
 import type { ZipPackEntry } from './exportTypes';
 import { normalizeLangpackZipPath } from './langpackMerge';
 
@@ -20,7 +19,7 @@ const uaSoundPackEspPath = (): string => {
   return path.join(process.cwd(), 'src', 'web', 'export', 'assets', UA_SOUND_PACK_ESP);
 };
 
-export const isLangpackVoicePath = (raw: string): boolean =>
+const isLangpackVoicePath = (raw: string): boolean =>
   normalizeLangpackZipPath(raw).toLowerCase().startsWith('sound/voice/');
 
 export const splitLangpackVoiceEntries = (
@@ -39,14 +38,13 @@ export const splitLangpackVoiceEntries = (
 
 /**
  * Write dummy UASoundPack.esp + uncompressed UASoundPack - Main.ba2 into `dir`.
+ *
+ * Only a title whose engine refuses loose voice needs this; the caller decides
+ * (see `CreationEngineTitle.voice.packLangpackVoiceIntoBa2`).
  * Returns how many files were added (0 or 2).
  */
-export const writeUaSoundPackIntoDir = (
-  dir: string,
-  voice: ZipPackEntry[],
-  game: GameType,
-): number => {
-  if (game !== 'fo4' || voice.length === 0) return 0;
+export const writeUaSoundPackIntoDir = (dir: string, voice: ZipPackEntry[]): number => {
+  if (voice.length === 0) return 0;
   const espSrc = uaSoundPackEspPath();
   if (!fs.existsSync(espSrc)) {
     throw new Error(`UASoundPack.esp is missing next to the exporter (${espSrc})`);

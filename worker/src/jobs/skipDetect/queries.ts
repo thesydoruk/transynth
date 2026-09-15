@@ -2,9 +2,6 @@ import type { Tx } from '../../../../src/db';
 import { DB_CHUNK_SIZE } from '../../../../src/config';
 import type { ScanStringRow, SkipDetectWorkUnit } from './types';
 
-/** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
-export const SKIP_DETECT_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
-
 export type { LlmSkipDetectCandidate, ScanStringRow, SkipDetectWorkUnit } from './types';
 
 const scannableFilterSql = (force: boolean): string =>

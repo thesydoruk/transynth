@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-export const DETAIL_PANEL_HEIGHT_STORAGE_KEY = 'mod-editor-detail-panel-height';
+const DETAIL_PANEL_HEIGHT_STORAGE_KEY = 'mod-editor-detail-panel-height';
 
-export const DEFAULT_DETAIL_PANEL_HEIGHT = 360;
-export const MIN_DETAIL_PANEL_HEIGHT = 240;
-export const MIN_GRID_HEIGHT = 120;
+const DEFAULT_DETAIL_PANEL_HEIGHT = 360;
+const MIN_DETAIL_PANEL_HEIGHT = 240;
+const MIN_GRID_HEIGHT = 120;
 
 const readStoredHeight = (): number => {
   try {

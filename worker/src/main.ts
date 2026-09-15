@@ -14,6 +14,8 @@
  * mod/CSV/EET ingestion loops. Their parsing and job-row helpers stay in
  * `../src/import`, which the upload/list routes also use.
  */
+// Registers the game plugins; every registry lookup below depends on it.
+import '../../src/games';
 import { Worker } from 'bullmq';
 import { CONFIG } from '../../src/config';
 import { closeDb, openDb } from '../../src/db';

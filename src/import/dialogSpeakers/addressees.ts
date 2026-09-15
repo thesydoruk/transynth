@@ -1,10 +1,18 @@
 /**
- * Work out who each dialog node is addressed to.
+ * Work out who each dialog node is addressed to, and recover speakers the
+ * plugin did not name.
  *
  * Topic dialog is player-facing by construction: the player picks a prompt and
- * the NPC answers them. Scenes are different — they play out between quest
- * aliases, and the player is only one possible participant, so the addressee
- * has to be read off the other aliases taking part in the same scene.
+ * the NPC answers them. Two things complicate that.
+ *
+ * Lines the *player* speaks are also topic dialog, and they are not addressed
+ * to the player — they go to whoever owns the conversation. Marking them
+ * `player` tells the translator that both sides have a runtime-chosen gender,
+ * and the result is a line hedged on both ends for no reason.
+ *
+ * Scenes are the other case: they play out between quest aliases, the player is
+ * only one possible participant, and many of their lines carry no speaker at
+ * all. An alias that is named on one of its lines names the rest of them too.
  */
 import type { AddresseeKind } from '../../dialog';
 
@@ -30,16 +38,24 @@ export type NodeAddressee = {
   speakerKey: string | null;
 };
 
+/** A node whose speaker the scene graph could name after the fact. */
+export type RecoveredNodeSpeaker = {
+  nodeId: number;
+  speakerKey: string;
+};
+
 export type AddresseeResolution = {
   addressees: NodeAddressee[];
   /** Speaker keys that turned out to be the player character. */
   playerSpeakerKeys: Set<string>;
+  /** Speaker-less nodes their scene alias could name. */
+  recoveredSpeakers: RecoveredNodeSpeaker[];
 };
 
 type SceneAliases = Map<number, Map<number, string[]>>;
 
 /** Most frequent value, or null for an empty list. Ties resolve to the first seen. */
-const dominant = (values: string[]): string | null => {
+const dominant = (values: readonly string[]): string | null => {
   const counts = new Map<string, number>();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
   let best: string | null = null;
@@ -86,56 +102,82 @@ const assignNodesToScenes = (
   nodesByTopic: Map<number, SpeakerNodeRow[]>,
   phases: ScenePhaseRow[],
 ): Map<number, { sceneId: number; aliasId: number }> => {
-  const assignment = new Map<number, { sceneId: number; aliasId: number; order: number }>();
+  const assignment = new Map<number, { sceneId: number; aliasId: number }>();
 
   for (const phase of [...phases].sort(
     (a, b) => a.scene_id - b.scene_id || a.phase_order - b.phase_order,
   )) {
     for (const node of nodesByTopic.get(phase.topic_id) ?? []) {
       if (assignment.has(node.id)) continue;
-      assignment.set(node.id, {
-        sceneId: phase.scene_id,
-        aliasId: phase.alias_id,
-        order: phase.phase_order,
-      });
+      assignment.set(node.id, { sceneId: phase.scene_id, aliasId: phase.alias_id });
     }
   }
 
-  return new Map(
-    [...assignment].map(([nodeId, value]) => [
-      nodeId,
-      { sceneId: value.sceneId, aliasId: value.aliasId },
-    ]),
-  );
+  return assignment;
 };
+
+/** Is every speaker this alias was seen with the player character? */
+const aliasIsPlayer = (
+  aliasId: number,
+  keys: readonly string[],
+  playerKeys: ReadonlySet<string>,
+): boolean =>
+  aliasId === PLAYER_ALIAS_ID || (keys.length > 0 && keys.every((key) => playerKeys.has(key)));
 
 const addresseeForSceneTurn = (
   aliases: Map<number, string[]>,
   aliasId: number,
+  playerKeys: ReadonlySet<string>,
 ): { kind: AddresseeKind; speakerKey: string | null } => {
+  const speaking = aliasIsPlayer(aliasId, aliases.get(aliasId) ?? [], playerKeys);
   const others = [...aliases.keys()].filter((id) => id !== aliasId);
+  const counterparts = others.filter((id) => !aliasIsPlayer(id, aliases.get(id) ?? [], playerKeys));
 
-  if (aliasId !== PLAYER_ALIAS_ID && others.includes(PLAYER_ALIAS_ID)) {
+  // The player is in the scene and someone else is talking: they are the audience.
+  if (!speaking && counterparts.length < others.length) {
     return { kind: 'player', speakerKey: null };
   }
-
-  const counterparts = others.filter((id) => id !== PLAYER_ALIAS_ID);
   if (counterparts.length === 1) {
     return { kind: 'npc', speakerKey: dominant(aliases.get(counterparts[0]!) ?? []) };
   }
-
   return { kind: 'unknown', speakerKey: null };
 };
 
 /**
- * Resolve the addressee of every dialog node of one mod.
+ * Addressee of a node outside any scene.
+ *
+ * Ordinary topic dialog is an exchange between the player and one NPC, so the
+ * addressee is simply the other side. When the player is speaking, the other
+ * side is whoever else answers in the same topic.
+ */
+const addresseeForTopicTurn = (
+  node: SpeakerNodeRow,
+  topicSpeakers: readonly string[],
+  playerKeys: ReadonlySet<string>,
+): { kind: AddresseeKind; speakerKey: string | null } => {
+  if (!node.speaker_key || !playerKeys.has(node.speaker_key)) {
+    return { kind: 'player', speakerKey: null };
+  }
+
+  const counterpart = dominant(topicSpeakers.filter((key) => !playerKeys.has(key)));
+  return counterpart
+    ? { kind: 'npc', speakerKey: counterpart }
+    : { kind: 'unknown', speakerKey: null };
+};
+
+/**
+ * Resolve the addressee of every dialog node of one mod, and name the speakers
+ * a scene alias can account for.
  *
  * @param nodes - Every dialog node, with the speaker key resolved at import.
  * @param phases - Scene phases linking scenes and aliases to dialog topics.
+ * @param knownPlayerKeys - Speaker keys already known to be the player, from
+ * player voice types and actor records. Scene aliases add to this set.
  */
 export const resolveNodeAddressees = (
   nodes: SpeakerNodeRow[],
   phases: ScenePhaseRow[],
+  knownPlayerKeys: ReadonlySet<string> = new Set(),
 ): AddresseeResolution => {
   const nodesByTopic = new Map<number, SpeakerNodeRow[]>();
   for (const node of nodes) {
@@ -147,21 +189,31 @@ export const resolveNodeAddressees = (
   const sceneAliases = collectSceneAliases(nodesByTopic, phases);
   const nodeScenes = assignNodesToScenes(nodesByTopic, phases);
 
-  const playerSpeakerKeys = new Set<string>();
+  const playerSpeakerKeys = new Set(knownPlayerKeys);
   for (const aliases of sceneAliases.values()) {
     for (const key of aliases.get(PLAYER_ALIAS_ID) ?? []) playerSpeakerKeys.add(key);
   }
 
+  const recoveredSpeakers: RecoveredNodeSpeaker[] = [];
   const addressees = nodes.map<NodeAddressee>((node) => {
     const scene = nodeScenes.get(node.id);
-    if (!scene) return { nodeId: node.id, kind: 'player', speakerKey: null };
+    const aliases = scene ? sceneAliases.get(scene.sceneId) : undefined;
 
-    const aliases = sceneAliases.get(scene.sceneId);
-    if (!aliases) return { nodeId: node.id, kind: 'player', speakerKey: null };
+    if (scene && aliases) {
+      if (!node.speaker_key) {
+        const own = dominant(aliases.get(scene.aliasId) ?? []);
+        if (own) recoveredSpeakers.push({ nodeId: node.id, speakerKey: own });
+      }
+      const resolved = addresseeForSceneTurn(aliases, scene.aliasId, playerSpeakerKeys);
+      return { nodeId: node.id, kind: resolved.kind, speakerKey: resolved.speakerKey };
+    }
 
-    const resolved = addresseeForSceneTurn(aliases, scene.aliasId);
+    const topicSpeakers = (nodesByTopic.get(node.topic_id) ?? [])
+      .map((sibling) => sibling.speaker_key)
+      .filter((key): key is string => key != null);
+    const resolved = addresseeForTopicTurn(node, topicSpeakers, playerSpeakerKeys);
     return { nodeId: node.id, kind: resolved.kind, speakerKey: resolved.speakerKey };
   });
 
-  return { addressees, playerSpeakerKeys };
+  return { addressees, playerSpeakerKeys, recoveredSpeakers };
 };

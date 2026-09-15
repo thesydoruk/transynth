@@ -1,23 +1,25 @@
-import type { GameType } from '../../../../types';
-import { GAME_UK_GLOSSARIES } from '../../../../resources/glossary';
-import { DISCO_UK_GLOSSARY } from '../../../../resources/glossary/disco-uk';
+import type { GameId } from '../../../../types';
+import { allGameIds, gamePlugin } from '../../../../games/registry';
+import { DISCO_UK_GLOSSARY } from '../../../../games/disco-elysium/prompts/glossary';
 import {
   canonicalEnHeader,
   canonicalUkHeader,
   formatCanonicalEnLines,
   formatCanonicalUkLines,
 } from '../canonical';
-import { GAME_RULES } from '../games';
-import { buildEnglishTranslationRules, buildEnglishVerifyTranslationRules } from '../index';
+import { buildEnglishTranslationRules, buildEnglishVerifyTranslationRules } from '..';
 import { buildEnglishTranslateSystemPrompt, buildEnglishVerifySystemPrompt } from '../../en';
 import { buildUkrainianTranslateSystemPrompt, buildUkrainianVerifySystemPrompt } from '../../uk';
 
-const ALL_GAMES: GameType[] = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'];
+const ALL_GAMES: GameId[] = [...allGameIds()];
+
+const glossaryOf = (game: GameId) => gamePlugin(game).prompts.glossary;
+const rulesOf = (game: GameId) => gamePlugin(game).prompts.rules;
 
 describe('canonical terminology', () => {
   it('every game has a non-empty UK glossary', () => {
     for (const game of ALL_GAMES) {
-      expect(GAME_UK_GLOSSARIES[game].length).toBeGreaterThan(0);
+      expect(glossaryOf(game).length).toBeGreaterThan(0);
     }
   });
 
@@ -46,7 +48,7 @@ describe('canonical terminology', () => {
     const rules = buildEnglishTranslationRules('de', game);
     expect(rules).toMatch(/### .+ CANONICAL TERMINOLOGY/);
 
-    const terms = [...new Set(GAME_UK_GLOSSARIES[game].map((e) => e.term))];
+    const terms = [...new Set(glossaryOf(game).map((entry) => entry.term))];
     for (const term of terms) {
       expect(rules).toContain(`- ${term}`);
     }
@@ -73,7 +75,13 @@ describe('canonical terminology', () => {
     expect(verify).toContain('постапокаліптичного писання');
     expect(translate).not.toContain('"term": "Addictol"');
     expect(verify).not.toContain('"term": "Addictol"');
-    expect(translate.length).toBeLessThan(30_000);
+
+    // Backstop for a dump that slips past the checks above. The FO4 glossary is
+    // ~10 KB of JSON, so a budget a few KB over the current prompt still catches
+    // one while leaving the rule blocks room to grow. Trim the prompt before
+    // raising this: every character is paid on every request.
+    expect(translate.length).toBeLessThan(34_000);
+    expect(translate.length + JSON.stringify(glossaryOf('fo4')).length).toBeGreaterThan(34_000);
   });
 
   it('every Disco glossary entry appears in Ukrainian translate and verify prompts as JSON', () => {
@@ -106,10 +114,10 @@ describe('canonical terminology', () => {
   });
 
   it('sle shares sse glossary and rules', () => {
-    expect(GAME_UK_GLOSSARIES.sle).toBe(GAME_UK_GLOSSARIES.sse);
+    expect(glossaryOf('sle')).toBe(glossaryOf('sse'));
     expect(buildUkrainianTranslateSystemPrompt('en', 'sle')).toBe(
       buildUkrainianTranslateSystemPrompt('en', 'sse'),
     );
-    expect(GAME_RULES.sle).toBe(GAME_RULES.sse);
+    expect(rulesOf('sle')).toBe(rulesOf('sse'));
   });
 });

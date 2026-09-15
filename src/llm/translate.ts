@@ -20,9 +20,10 @@ import { buildEnglishTranslateSystemPrompt } from './prompts/en';
 import { buildUkrainianTranslateSystemPrompt } from './prompts/uk';
 import type { ChatCompletionMeta } from './provider';
 import { buildTranslateResponseFormat } from './responseSchemas';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { resolveBatchPromptFamily, type LlmPromptFamily } from './promptFamily';
-import { recastFo4UkDialogTranslations } from './dialogRecast';
+import { recastDialogTranslations } from './dialogRecast';
+import { repairGenderLeaks } from './genderRepair';
 import { dialogScenePayload, type DialogSceneContext } from './dialogScene';
 import {
   assembleTranslatedText,
@@ -80,7 +81,7 @@ export interface LlmTranslateOptions {
   model: string;
   srcLang: string;
   targetLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   glossary?: LlmGlossaryEntry[];
   styleGuide?: string;
@@ -139,7 +140,7 @@ export const isUkrainianTargetLang = (targetLang: string): boolean => {
 export const buildTranslateSystemPrompt = (
   srcLang: string,
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
   family?: LlmPromptFamily | null,
 ): string => {
   if (isUkrainianTargetLang(targetLang)) {
@@ -321,5 +322,7 @@ export const translateStrings = async (
   }
 
   const draft = parseLlmTranslateResponse(text, expectedIds, meta, opts.items);
-  return recastFo4UkDialogTranslations(opts, draft);
+  const recast = await recastDialogTranslations(opts, draft);
+  // Last line of defence: the detector sees leaks the prompt failed to prevent.
+  return repairGenderLeaks(opts, recast);
 };

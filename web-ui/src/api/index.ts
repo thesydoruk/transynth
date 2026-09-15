@@ -1,5 +1,5 @@
 export * from './types';
-export { BASE, req, downloadBinary } from './client';
+export { BASE } from './client';
 export { voiceAudioUrl, voiceTranslationAudioUrl, voiceRegeneratePreviewUrl } from './voiceUrls';
 export type { VoiceRegenerateParams, VoiceRegeneratePreview } from './types/pexVoice';
 

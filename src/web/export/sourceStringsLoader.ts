@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { Ba2Reader } from '../../formats/ba2';
 import { BsaReader } from '../../formats/bsa';
 import {
@@ -11,6 +11,8 @@ import {
 } from '../../formats/strings';
 import { log } from '../../logger';
 import { discoverCompanionBa2 } from './archiveExportPlan';
+import { DEFAULT_GAME_ID } from '../../games/registry';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 
 /**
  * Parsed source strings table loaded from the original mod distribution.
@@ -170,41 +172,50 @@ const loadSourceStringsFromLooseFiles = (modPath: string, srcLang: string): Sour
 };
 
 /**
- * Load all source strings tables for a given mod and locale.
+ * Load every source strings table for a mod and locale.
  *
- * The search order depends on the game:
- * - Skyrim: BSA → BA2 → loose files.
- * - Fallout 4/76: BA2 → loose files.
+ * Where to look is the title's business: Skyrim and the Gamebryo Fallouts keep
+ * their tables in a BSA, Fallout 4 / 76 in a BA2, and any title may ship them
+ * loose under `Strings\`. The first container that yields tables wins.
  *
  * @param modPath - Absolute path to the mod plugin file.
  * @param srcLang - Source locale suffix (e.g. `"en"`).
- * @param game - Target game type (controls which archive types to probe first).
- * @returns Stable-sorted list of parsed source strings tables.
+ * @param game - Which Creation Engine title the mod is for.
  */
 export const loadSourceStringsFiles = (
   modPath: string,
   srcLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): SourceStringsFile[] => {
-  if (game === 'sse' || game === 'sle') {
-    const bsaPath = findBsa(modPath);
-    if (bsaPath) {
-      const bsaFiles = loadSourceStringsFromBSA(bsaPath, srcLang);
-      if (bsaFiles.length > 0) return bsaFiles;
+  const title = creationEngineTitle(game);
+
+  for (const container of title.strings.lookupOrder) {
+    if (container === 'bsa') {
+      const bsaPath = findBsa(modPath);
+      const files = bsaPath ? loadSourceStringsFromBSA(bsaPath, srcLang) : [];
+      if (files.length > 0) return files;
+      continue;
     }
-  }
-  const ba2Path = discoverCompanionBa2(modPath, game);
-  if (ba2Path) {
-    try {
-      const ba2Files = loadSourceStringsFromBA2(ba2Path, srcLang);
-      if (ba2Files.length > 0) return ba2Files;
-    } catch (err) {
-      log.warn(
-        `STRINGS export: failed to read source tables from ${path.basename(ba2Path)}: ${
-          err instanceof Error ? err.message : String(err)
-        }; falling back to loose Strings\\`,
-      );
+
+    if (container === 'ba2') {
+      const ba2Path = discoverCompanionBa2(modPath, title.archive.kind);
+      if (!ba2Path) continue;
+      try {
+        const files = loadSourceStringsFromBA2(ba2Path, srcLang);
+        if (files.length > 0) return files;
+      } catch (err) {
+        log.warn(
+          `STRINGS export: failed to read source tables from ${path.basename(ba2Path)}: ${
+            err instanceof Error ? err.message : String(err)
+          }; trying the next source`,
+        );
+      }
+      continue;
     }
+
+    const files = loadSourceStringsFromLooseFiles(modPath, srcLang);
+    if (files.length > 0) return files;
   }
-  return loadSourceStringsFromLooseFiles(modPath, srcLang);
+
+  return [];
 };

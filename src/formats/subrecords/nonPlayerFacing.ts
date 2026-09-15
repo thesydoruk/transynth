@@ -16,11 +16,11 @@
  * Used at import (subrecord JSON `read: false`) and by the skip-detect scan
  * for rows already in the DB (CSV import, older scans).
  */
-export const NON_PLAYER_FACING_RECORDS = ['ARMA'] as const;
+const NON_PLAYER_FACING_RECORDS = ['ARMA'] as const;
 
 export type NonPlayerFacingRecord = (typeof NON_PLAYER_FACING_RECORDS)[number];
 
-export const NON_PLAYER_FACING_RECORD_SET = new Set<string>(NON_PLAYER_FACING_RECORDS);
+const NON_PLAYER_FACING_RECORD_SET = new Set<string>(NON_PLAYER_FACING_RECORDS);
 
 export const isNonPlayerFacingRecord = (signature: string | null | undefined): boolean =>
   signature != null && NON_PLAYER_FACING_RECORD_SET.has(signature);

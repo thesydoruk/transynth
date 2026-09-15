@@ -1,3 +1,4 @@
+import { gamePlugin } from '../games/registry';
 import type { NarratorGender } from './narratorGender';
 
 const FEMALE_PRONOUN_RE = /\b(she|her|hers|herself)\b/i;
@@ -38,6 +39,8 @@ export const inferNarratorGenderHeuristic = (opts: {
   source: string;
   edid?: string | null;
   signature?: string | null;
+  /** Owner of the record, for what counts as unspoken narration. */
+  game?: string | null;
 }): HeuristicHit | null => {
   const excerpt = opts.source.slice(0, 4000);
   const body = scoreBody(excerpt);
@@ -46,8 +49,9 @@ export const inferNarratorGenderHeuristic = (opts: {
   const pronouns = scorePronouns(excerpt);
   if (pronouns) return pronouns;
 
-  // Lore terminals without a diary voice — safe to skip LLM.
-  if (opts.signature === 'TERM' && !FIRST_PERSON_RE.test(excerpt)) {
+  // Narration with no diary voice — safe to skip the LLM.
+  const kind = gamePlugin(opts.game).text.recordKind(opts.signature);
+  if (kind === 'prose' && !FIRST_PERSON_RE.test(excerpt)) {
     return { gender: 'neutral', confidence: 0.75, reason: 'no first-person markers' };
   }
 

@@ -53,19 +53,3 @@ export type TtsReferenceMode = 'speaker' | 'line';
  * - `speaker` — one shared clip per NPC folder (auto / DB pick / `_reference.wav`).
  */
 export const resolveTtsReferenceMode = (): TtsReferenceMode => 'speaker';
-
-const assertVoiceToolFile = (label: string, toolPath: string, missing: string[]): void => {
-  if (!fs.existsSync(toolPath)) missing.push(`${label} (${toolPath})`);
-};
-
-export const assertVoiceTooling = (): void => {
-  const missing: string[] = [];
-  const fonix = resolveFonixDataPath();
-  if (!fs.existsSync(fonix)) missing.push(`FonixData.cdf (${fonix})`);
-  assertVoiceToolFile('xWMAEncode', resolveXwmaEncodePath(), missing);
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing voice tooling:\n  - ${missing.join('\n  - ')}\nRun \`npm run tools:install\` or set FONIX_DATA_PATH / XWMA_ENCODE_PATH`,
-    );
-  }
-};

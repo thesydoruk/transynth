@@ -51,7 +51,13 @@ const collectEvidence = (
   return evidence;
 };
 
-/** Gender of an actor whose NPC_ record the plugin does not define. */
+/**
+ * Gender of an actor whose NPC_ record the plugin does not define.
+ *
+ * Only the plugin's own evidence is used here. A mod voice type named after
+ * the character (`SS2_VT_Lydia`) says nothing a naming convention can read, and
+ * that gap is closed afterwards from the mod's text — see `pronounEvidence`.
+ */
 const genderFromEvidence = (
   evidence: SpeakerEvidence,
   index: PluginSpeakerIndex,
@@ -87,13 +93,14 @@ const buildRow = (
   }
 
   const folderName = speakerKey.startsWith('voice:') ? speakerKey.slice('voice:'.length) : null;
+  const displayName =
+    actor?.name ?? fallbackName ?? (folderName ? cleanVoiceFolderName(folderName) : null);
   const inferred = genderFromEvidence(evidence, index);
   const voiceType = actor?.voiceType ?? inferred.voiceType ?? folderName;
 
   return {
     speakerKey,
-    displayName:
-      actor?.name ?? fallbackName ?? (folderName ? cleanVoiceFolderName(folderName) : null),
+    displayName,
     voiceType,
     isPlayer: actor?.isPlayer === true || (voiceType != null && isPlayerVoiceType(voiceType)),
     detectedGender: inferred.gender,
@@ -102,21 +109,39 @@ const buildRow = (
 };
 
 /**
- * Build the speaker table of one mod.
+ * Build the speaker table of one mod from the plugin alone.
  *
- * @param playerSpeakerKeys - Keys the scene graph proved to be the player, who
- * is always `any` because their gender is picked when the game starts.
+ * Scene aliases can prove that a speaker is the player, but that evidence is
+ * only available once addressees are resolved, and addressee resolution needs
+ * to know who the player is. The knot is cut by running this first — voice
+ * types and actor records already identify most player speakers — and applying
+ * the alias evidence afterwards with {@link markPlayerSpeakers}.
  */
 export const buildDialogSpeakerRows = (opts: {
   nodes: SpeakerSourceNode[];
   index: PluginSpeakerIndex;
-  playerSpeakerKeys: Set<string>;
 }): DialogSpeakerRow[] => {
   const evidence = collectEvidence(opts.nodes, opts.index);
+  return [...evidence].map(([speakerKey, entry]) => buildRow(speakerKey, entry, opts.index));
+};
 
-  return [...evidence].map(([speakerKey, entry]) => {
-    const row = buildRow(speakerKey, entry, opts.index);
-    if (!opts.playerSpeakerKeys.has(speakerKey) && speakerKey !== PLAYER_SPEAKER_KEY) return row;
+/**
+ * Force the player's own rows to `any`, whose gender is picked when the game
+ * starts and can never be committed to in a translation.
+ */
+export const markPlayerSpeakers = (
+  rows: DialogSpeakerRow[],
+  playerSpeakerKeys: ReadonlySet<string>,
+): DialogSpeakerRow[] =>
+  rows.map((row) => {
+    const isPlayer =
+      row.isPlayer ||
+      playerSpeakerKeys.has(row.speakerKey) ||
+      row.speakerKey === PLAYER_SPEAKER_KEY;
+    if (!isPlayer) return row;
     return { ...row, isPlayer: true, detectedGender: 'any', detectedSource: 'player' };
   });
-};
+
+/** Speaker keys these rows already identify as the player character. */
+export const playerKeysFromRows = (rows: readonly DialogSpeakerRow[]): Set<string> =>
+  new Set(rows.filter((row) => row.isPlayer).map((row) => row.speakerKey));

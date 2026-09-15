@@ -1,6 +1,12 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getCurrentGame, getSrcLang, getTgtLang, modListQueryKey } from '../../langDefaults';
+import {
+  DEFAULT_GAME_ID,
+  getCurrentGame,
+  getSrcLang,
+  getTgtLang,
+  modListQueryKey,
+} from '../../langDefaults';
 import { api, type GlossaryEntry } from '../../api';
 
 export const useGlossaryPage = () => {
@@ -16,7 +22,7 @@ export const useGlossaryPage = () => {
   const [enforceModId, setEnforceModId] = useState<number | ''>('');
   const newTermRef = useRef<HTMLInputElement | null>(null);
 
-  const currentGameId = getCurrentGame() ?? 'fo4';
+  const currentGameId = getCurrentGame() ?? DEFAULT_GAME_ID;
   const { data: mods } = useQuery({
     queryKey: modListQueryKey(currentGameId),
     queryFn: () => api.mods.list(currentGameId),

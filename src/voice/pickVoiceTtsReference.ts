@@ -45,7 +45,7 @@ const referenceTextForPick = (
   pick: ResolvedSpeakerReference['pick'],
 ): string | null => {
   if (isManualVoiceReferencePick(pick)) return null;
-  return lookupVoiceSource(sources, pick.formidLower6, pick.variant);
+  return lookupVoiceSource(sources, pick.lineKey, pick.variant);
 };
 
 const resolveCachedSpeakerRef = async (input: {
@@ -71,8 +71,7 @@ const resolveCachedSpeakerRef = async (input: {
     packageDir: input.packageDir,
     pluginRelPath: input.pluginRelPath,
     isEligible: voiceReferenceEligibilityFromSources(input.voiceSources),
-    getSourceText: (formidLower6, variant) =>
-      lookupVoiceSource(input.voiceSources, formidLower6, variant),
+    getSourceText: (lineKey, variant) => lookupVoiceSource(input.voiceSources, lineKey, variant),
     markup: input.markup,
   });
   if (resolved) {
@@ -105,7 +104,7 @@ const logSiblingFallback = async (
     modId: input.modId,
     details: {
       speakerKey: input.speakerKey,
-      formidLower6: input.entry.formidLower6,
+      lineKey: input.entry.lineKey,
       variant: input.entry.variant,
       lineFile: input.entry.fileName,
       siblings: input.extras.map((clip) => clip.fileName),

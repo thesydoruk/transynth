@@ -11,6 +11,7 @@ import {
   tmRevisionNoteForProvenance,
 } from '../data/translationRevisions';
 import { adaptTmTranslation } from './tmAdapt';
+import type { GameId } from '../../types';
 
 export type TmMatchMethod = 'anchor' | 'edid' | 'text_norm' | 'numeric';
 
@@ -77,12 +78,13 @@ const emptyByMethod = (): Record<TmMatchMethod, number> => ({
  * When the matched source differs from the target only by numbers, the translation
  * is adapted via number transplant. Unsafe adaptations are skipped.
  */
-export const bulkFindTmMatches = async (
+const bulkFindTmMatches = async (
   db: Tx,
   modId: number,
   rows: TmUntranslatedRow[],
   targetLang: string,
   srcLang: string,
+  game: GameId,
 ): Promise<TmBulkMatch[]> => {
   if (rows.length === 0) return [];
 
@@ -179,7 +181,7 @@ export const bulkFindTmMatches = async (
     const target = targetById.get(row.target_id);
     if (!target) continue;
 
-    const text = adaptTmTranslation(row.text, row.match_source, target.text_raw);
+    const text = adaptTmTranslation(row.text, row.match_source, target.text_raw, game);
     if (text === null) continue;
 
     const method: TmMatchMethod =
@@ -275,6 +277,7 @@ export const bulkApplyTmBatch = async (
   rows: TmUntranslatedRow[],
   targetLang: string,
   srcLang: string,
+  game: GameId,
 ): Promise<{
   applied: number;
   byMethod: Record<TmMatchMethod, number>;
@@ -283,7 +286,7 @@ export const bulkApplyTmBatch = async (
   const byMethod = emptyByMethod();
   if (rows.length === 0) return { applied: 0, byMethod, sourceModIds: [] };
 
-  const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang);
+  const matches = await bulkFindTmMatches(db, modId, rows, targetLang, srcLang, game);
   if (matches.length === 0) return { applied: 0, byMethod, sourceModIds: [] };
 
   const writeRows: TmBulkWriteRow[] = matches.map((m) => ({

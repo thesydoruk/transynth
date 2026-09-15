@@ -7,11 +7,4 @@ export type {
   VerifyLlmWorkUnit,
 } from './types';
 
-export {
-  LLM_VERIFY_DB_CHUNK_SIZE,
-  countVerifiableStrings,
-  iterateVerifyLlmChunks,
-  loadVerifyChunk,
-} from './queries';
-
 export { runLlmVerifyJob } from './runJob';

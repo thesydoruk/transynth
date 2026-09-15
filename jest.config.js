@@ -1,6 +1,7 @@
 /** @type {import('jest').Config} */
 const config = {
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/src/games/registerForTests.ts'],
   roots: ['<rootDir>/src', '<rootDir>/worker/src', '<rootDir>/services/bethesda-tools'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],

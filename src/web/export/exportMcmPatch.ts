@@ -4,6 +4,7 @@
  * Source locale files (usually `*_en.txt`) are overlaid with DB translations and
  * written into each install slot from {@link exportLocaleSlots}.
  */
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
@@ -20,7 +21,7 @@ import {
 } from '../../formats/mcm';
 import { exportLocaleSlots } from '../../locale/exportSlots';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import type { ZipPackEntry } from './exportTypes';
 
 export type McmTranslateExportFile = {
@@ -133,7 +134,7 @@ export const exportMcmTranslationFiles = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): Promise<McmTranslateExportFile[]> => {
   const sourceFiles = listMcmSourceTranslationFiles(modPath);
   if (sourceFiles.length === 0) return [];
@@ -171,7 +172,7 @@ export const collectMcmPatchEntries = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): Promise<ZipPackEntry[]> => {
   try {
     const files = await exportMcmTranslationFiles(db, modId, modPath, srcLang, targetLang, game);

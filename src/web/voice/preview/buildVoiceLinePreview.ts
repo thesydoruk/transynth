@@ -8,70 +8,35 @@ import {
   formatInheritedFromLabel,
   lookupInheritedVoiceLine,
 } from '../../../voice/inheritedVoiceText';
-import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import {
   canSynthesizeVoiceLine,
   resolveVoiceLineSkipReason,
 } from '../../../voice/prepareVoiceTtsText';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { lookupVoiceSimilarity } from '../../../voice/voiceSynthesisState';
-import { formatVoiceSpeakerLabel } from './voiceEntries';
-import { discoVoiceSpeakerKey } from './discoVoiceList';
-import { hasTranslationAudio, hasTranslationAudioForEntry } from './translationAudioIndex';
-import type { VoiceListContext } from './voiceListContext';
+import type { VoiceLineCatalog } from '../../../voice/lineCatalog';
 import type { VoiceLinePreview, VoiceSpeakerSummary } from './types';
-
-export const resolveSpeakerKey = (
-  entry: VoiceFileEntry,
-  voiceRootRel: string,
-  isDisco = false,
-): string => {
-  if (isDisco) return discoVoiceSpeakerKey(entry);
-  return voiceSpeakerKey(entry, voiceRootRel) || 'Unknown';
-};
-
-export const resolveSpeakerDisplayName = (
-  speakerKey: string,
-  formidLower6: string,
-  dbSpeakerNames: Map<string, string>,
-  isDisco = false,
-): string => {
-  if (isDisco) {
-    return dbSpeakerNames.get(speakerKey) || speakerKey;
-  }
-  const folderLabel = formatVoiceSpeakerLabel(speakerKey);
-  // Same INFO FormID is recorded for Nate and Nora; the folder, not the
-  // FormID, is what tells those two speakers apart.
-  if (/^Player (Female|Male)$/i.test(folderLabel)) return folderLabel;
-  return dbSpeakerNames.get(formidLower6.toUpperCase()) || folderLabel;
-};
 
 /**
  * True when no INFO record carries this FormID — neither in the mod nor in an
  * imported master. Bethesda ships such audio for lines cut after the voice
  * archives were built, so there is nothing to translate or dub.
  *
- * @param sourceFormids - {@link VoiceListContext.sourceFormids}
+ * @param sourceFormids - {@link VoiceLineCatalog.sourceFormids}
  */
 export const isOrphanVoiceEntry = (sourceFormids: Set<string>, entry: VoiceFileEntry): boolean =>
-  !sourceFormids.has(entry.formidLower6.toUpperCase());
+  !sourceFormids.has(entry.lineKey.toUpperCase());
 
 export const buildVoiceLinePreview = (
-  context: VoiceListContext,
+  context: VoiceLineCatalog,
   entry: VoiceFileEntry,
   speakerKey: string,
 ): VoiceLinePreview => {
-  const mapKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+  const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant);
   const sourceRow = context.sources.get(mapKey);
-  const translationRow = lookupVoiceTranslation(
-    context.translations,
-    entry.formidLower6,
-    entry.variant,
-  );
+  const translationRow = lookupVoiceTranslation(context.translations, entry.lineKey, entry.variant);
   const referencePick = context.speakerRefs[speakerKey] ?? null;
-  const hasAudio = context.isDisco
-    ? hasTranslationAudio(context.translationAudio, entry.formidLower6, entry.variant)
-    : hasTranslationAudioForEntry(context.translationAudio, entry);
+  const hasAudio = context.hasLocalizedTake(entry);
   const translationText = normalizeVoiceText(translationRow?.translation) ?? '';
   const localSource =
     normalizeVoiceText(sourceRow?.source) ?? normalizeVoiceText(translationRow?.source);
@@ -88,7 +53,7 @@ export const buildVoiceLinePreview = (
   if (!source && context.inheritedLookup) {
     const inherited = lookupInheritedVoiceLine(
       context.inheritedLookup,
-      entry.formidLower6,
+      entry.lineKey,
       entry.variant,
     );
     if (inherited) {
@@ -104,11 +69,21 @@ export const buildVoiceLinePreview = (
   }
 
   const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
-  const ttsSkipReason = resolveVoiceLineSkipReason(source, translation ?? '', translationRow?.edid);
-  const synthesizable = canSynthesizeVoiceLine(source, translation ?? '', translationRow?.edid);
+  const ttsSkipReason = resolveVoiceLineSkipReason(
+    source,
+    translation ?? '',
+    translationRow?.edid,
+    context.markupStyle,
+  );
+  const synthesizable = canSynthesizeVoiceLine(
+    source,
+    translation ?? '',
+    translationRow?.edid,
+    context.markupStyle,
+  );
 
   return {
-    formidLower6: entry.formidLower6,
+    lineKey: entry.lineKey,
     infoFormidHex,
     variant: entry.variant,
     fileName: entry.fileName,
@@ -119,7 +94,7 @@ export const buildVoiceLinePreview = (
     source,
     translation,
     isReference: referencePick
-      ? voiceSpeakerRefMatches(referencePick, entry.formidLower6, entry.variant)
+      ? voiceSpeakerRefMatches(referencePick, entry.lineKey, entry.variant)
       : false,
     isInheritedAudio,
     inheritedFrom,
@@ -128,19 +103,14 @@ export const buildVoiceLinePreview = (
     canGenerateVoice: synthesizable && !hasAudio,
     ttsSkipReason,
     voiceSimilarity: hasAudio
-      ? lookupVoiceSimilarity(
-          context.voiceSimilarities,
-          speakerKey,
-          entry.formidLower6,
-          entry.variant,
-        )
+      ? lookupVoiceSimilarity(context.voiceSimilarities, speakerKey, entry.lineKey, entry.variant)
       : null,
   };
 };
 
 export const sortVoiceLines = (lines: VoiceLinePreview[]): VoiceLinePreview[] =>
   [...lines].sort((a, b) => {
-    const formidCmp = a.formidLower6.localeCompare(b.formidLower6);
+    const formidCmp = a.lineKey.localeCompare(b.lineKey);
     return formidCmp !== 0 ? formidCmp : a.variant - b.variant;
   });
 

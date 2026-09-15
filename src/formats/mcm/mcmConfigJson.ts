@@ -31,7 +31,7 @@ export type McmConfigJson = {
 };
 
 /** Default locale bucket for strings extracted from config.json source text. */
-export const MCM_CONFIG_JSON_SOURCE_LOCALE = 'en';
+const MCM_CONFIG_JSON_SOURCE_LOCALE = 'en';
 
 const isTranslationReference = (value: string): boolean => value.startsWith('$');
 

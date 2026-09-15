@@ -1,5 +1,5 @@
 import type { Tx } from '../../../../../src/db';
-import { restoreDiscoCensoredSpeech } from '../../../../../src/formats/po/discoCensorship';
+import { gamePlugin } from '../../../../../src/games/registry';
 import { CONFIG, getTranslateModel } from '../../../../../src/config';
 import { filterVerifyReferenceExamples } from '../../../../../src/llm/verifyReferenceExamples';
 import {
@@ -17,6 +17,7 @@ import { logVerify } from '../../../../../src/logging/loggers';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { dialogParticipantsFromRow } from '../../../../../src/web/data/queries/dialogs';
 import { buildLlmParticipantPayload } from '../../../../../src/llm/dialogParticipants';
+import { mergeNarratorGender } from '../../translate/batch/mergeNarratorGender';
 import { mcmKeyFromRecordPath, resolveMcmLlmContext } from '../../../../../src/formats/mcm';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../../shared/glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
@@ -36,7 +37,7 @@ const verifyLongRows = async (
   ragByStringId: RagByStringId,
 ): Promise<void> => {
   for (const row of rows) {
-    const item = buildVerifyItems([row], ragByStringId, ctx.mcmSiblingTexts)[0]!;
+    const item = buildVerifyItems([row], ragByStringId, ctx.opts.game, ctx.mcmSiblingTexts)[0]!;
     const result = await verifyLongTextItem(ctx, item);
     scheduleBatchPersist(
       ctx.persistCtx,
@@ -88,16 +89,29 @@ export const fetchChunkRag = async (
   }
 };
 
-export const buildVerifyItems = (
+const buildVerifyItems = (
   llmChunk: VerifyStringRow[],
   ragByStringId: RagByStringId,
+  game: string | null | undefined,
   mcmSiblingTexts?: Map<string, string>,
-): LlmVerifyItem[] =>
-  llmChunk.map((row) => {
+): LlmVerifyItem[] => {
+  // Disco ships `f%$#ing` in its catalogues; the auditor has to see the word
+  // the player sees. Identity for every other game.
+  const uncensor = gamePlugin(game).text.restoreCensoredSpeech;
+  const dialog = gamePlugin(game).dialog;
+  const recordKind = gamePlugin(game).text.recordKind;
+  const isSpoken = (signature: string | null): boolean =>
+    dialog?.isSpokenSignature(signature) ?? false;
+
+  return llmChunk.map((row) => {
     const { grup, field } = parseRecordLocation(row.signature, row.path);
-    const participants = dialogParticipantsFromRow(row, field);
+    const participants = mergeNarratorGender(
+      dialogParticipantsFromRow(row, field, game),
+      row.narrator_gender,
+      isSpoken(grup),
+    );
     const context =
-      grup === 'MCM'
+      recordKind(grup, field) === 'settings_menu'
         ? resolveMcmLlmContext(
             row.context,
             field ?? mcmKeyFromRecordPath(row.path),
@@ -106,20 +120,21 @@ export const buildVerifyItems = (
         : row.context;
     return {
       id: row.string_id,
-      source: restoreDiscoCensoredSpeech(row.source),
-      translation: restoreDiscoCensoredSpeech(row.translation),
+      source: uncensor(row.source),
+      translation: uncensor(row.translation),
       grup,
       edid: row.edid,
       field,
       context,
-      ...buildLlmParticipantPayload(participants),
+      ...buildLlmParticipantPayload(participants, { isDialogueLine: isSpoken(grup) }),
       reference_examples: filterVerifyReferenceExamples(ragByStringId.get(row.string_id), {
         grup,
         field,
-        source: restoreDiscoCensoredSpeech(row.source),
+        source: uncensor(row.source),
       }),
     };
   });
+};
 
 export const verifyChunkOnce = async (
   ctx: VerifyChunkContext,
@@ -135,7 +150,7 @@ export const verifyChunkOnce = async (
   }
   if (normalRows.length === 0) return;
 
-  const items = buildVerifyItems(normalRows, ragByStringId, ctx.mcmSiblingTexts);
+  const items = buildVerifyItems(normalRows, ragByStringId, ctx.opts.game, ctx.mcmSiblingTexts);
   const glossary = await relevantGlossaryEntries(
     ctx.glossaryAll,
     normalRows.map((row) => row.source),
@@ -195,12 +210,17 @@ export const verifyChunkOnce = async (
       const missingSet = new Set(err.missingIds);
       const okRows = normalRows.filter((row) => !missingSet.has(row.string_id));
       if (err.partialResults.length > 0) {
-        const okItems = buildVerifyItems(okRows, ragByStringId, ctx.mcmSiblingTexts);
+        const okItems = buildVerifyItems(okRows, ragByStringId, ctx.opts.game, ctx.mcmSiblingTexts);
         scheduleBatchPersist(
           ctx.persistCtx,
           buildBatchPersistJob(
             okRows,
-            finalizeVerifyItemResults(okItems, [...err.partialResults], ctx.opts.game),
+            finalizeVerifyItemResults(
+              okItems,
+              [...err.partialResults],
+              ctx.opts.game,
+              ctx.opts.targetLang,
+            ),
             ctx.opts,
             ctx.fixSuspicious,
             ctx.dryRun,

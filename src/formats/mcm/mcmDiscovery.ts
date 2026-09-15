@@ -289,7 +289,7 @@ const collectPrefixesFromDir = (dir: string, prefixes: Set<string>): void => {
 /**
  * Find Translation/Translations directories under a mod tree.
  */
-export const findMcmTranslationDirs = (modDir: string): string[] => {
+const findMcmTranslationDirs = (modDir: string): string[] => {
   const dirs = new Set<string>();
 
   const addIfExists = (dir: string) => {

@@ -73,21 +73,26 @@ export const useDialogLineSave = ({
     [qc, groupsQueryKey, activeKey, activeScope],
   );
 
-  const run = useCallback(async (stringId: number, action: () => Promise<void>) => {
-    setPendingIds((prev) => new Set(prev).add(stringId));
-    setError(null);
-    try {
-      await action();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setPendingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(stringId);
-        return next;
-      });
-    }
-  }, []);
+  const run = useCallback(
+    async (stringId: number, action: () => Promise<void>) => {
+      setPendingIds((prev) => new Set(prev).add(stringId));
+      setError(null);
+      try {
+        await action();
+        // The server re-runs QA on save, so whatever we showed for this line is stale.
+        void qc.invalidateQueries({ queryKey: ['dialog-line-qa', stringId] });
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setPendingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(stringId);
+          return next;
+        });
+      }
+    },
+    [qc],
+  );
 
   /** Store a translation, or drop it when the text is emptied. */
   const saveLine = useCallback(

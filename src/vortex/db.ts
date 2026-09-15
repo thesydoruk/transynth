@@ -1,5 +1,5 @@
 import type { Tx } from '../db';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { scopedVortexFileHash } from './groupKey';
 import type { VortexChannel } from './stages';
 import type { VortexGameReleaseHint, VortexPlanPayload, VortexPlanUnit } from './types';
@@ -33,7 +33,7 @@ export type VortexSyncRunRow = {
 export const getOrCreateVortexGroup = async (
   db: Tx,
   params: {
-    game: GameType;
+    game: GameId;
     groupKey: string;
     label: string;
     stagingPath: string;
@@ -112,16 +112,6 @@ export const upsertCurrentGameRelease = async (
   return rows[0]?.id ?? null;
 };
 
-export const getCurrentGameReleaseId = async (db: Tx, groupId: number): Promise<number | null> => {
-  const { rows } = await db.query<{ id: number }>(
-    `SELECT id FROM vortex_game_releases
-     WHERE vortex_group_id = $1 AND is_current = TRUE
-     ORDER BY created_at DESC LIMIT 1`,
-    [groupId],
-  );
-  return rows[0]?.id ?? null;
-};
-
 export const listGameReleases = async (db: Tx, groupId: number) => {
   const { rows } = await db.query(
     `SELECT id, version_label, release_hash, is_current, created_at
@@ -137,7 +127,7 @@ export const insertVortexSyncRun = async (
   db: Tx,
   params: {
     groupId: number;
-    game: GameType;
+    game: GameId;
     srcLang: string;
     tgtLang: string;
     channel: VortexChannel;

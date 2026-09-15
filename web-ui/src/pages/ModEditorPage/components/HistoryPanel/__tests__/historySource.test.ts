@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHistorySource } from '../historySource';
-import type { TranslationHistoryEntry } from '../../../../api';
+import type { TranslationHistoryEntry } from '../../../../../api';
 
 const entry = (patch: Partial<TranslationHistoryEntry>): TranslationHistoryEntry => ({
   id: 1,

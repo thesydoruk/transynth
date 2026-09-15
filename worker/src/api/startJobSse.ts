@@ -19,7 +19,7 @@ import type { JobData, JobKind } from '../types';
 import { openSseStream, type SseStream } from './sse';
 
 /** Forward one job's BullMQ progress/completed/failed/removed into an SSE stream. */
-export const relayJobToSse = (jobId: number, stream: SseStream, kind: JobKind): void => {
+const relayJobToSse = (jobId: number, stream: SseStream, kind: JobKind): void => {
   const events = getQueueEvents(queueNameForKind(kind));
   const id = toBullJobId(jobId);
 

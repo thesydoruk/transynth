@@ -18,17 +18,16 @@ export type PexTranslatabilityVerdict = {
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Debug-only Papyrus calls — never player-facing. */
-export const PEX_DEBUG_CALL_RE =
-  /\bDebug\.(?:Trace(?:Stack|This)?|Message|Warning|Assert|Dump)\s*\(/i;
+const PEX_DEBUG_CALL_RE = /\bDebug\.(?:Trace(?:Stack|This)?|Message|Warning|Assert|Dump)\s*\(/i;
 
 /** Dev / wiring calls where quoted strings are IDs, events, or asset names. */
-export const PEX_TECHNICAL_CALL_RE =
+const PEX_TECHNICAL_CALL_RE =
   /\b(?:RegisterFor\w+|Send(?:Custom|Animation)Event|PlaySound|Cast|GetFormFromFile|Game\.GetForm(?:FromFile)?|AddPerk|RemovePerk|EquipItem|SetOpenState|StartCannibal|Find|GetKeyword|HasKeyword|IsSpellTarget|GetLinkedRef(?:Chain)?|StartTimer|RegisterForSingleUpdate|RegisterForMenuOpenEvent|GetAnimationVariable|SetAnimationVariable|SendStoryEvent|EvaluatePackage|AddScriptPackage|PushActorAway|GetDistance|IsInInterior|GetCurrentLocation|GetFactionRank|HasMagicEffect|GetItemCount|GetValue|SetValue|FindMatchingRef|GetPropertyValue|SetPropertyValue)\s*\(/i;
 
 const SCRIPT_META_RE = /^\s*(?:Scriptname|extends|import)\b/i;
 
 /** Calls that usually pass UI / dialogue text to the player. */
-export const PEX_PLAYER_FACING_CALL_RE =
+const PEX_PLAYER_FACING_CALL_RE =
   /\b(?:MessageBox(?:\.\w+)?|Notification|Show(?:Message|Subtitle|Title|RankMenu)|AddTopic|Say|SetObjective(?:Displayed|Completed)?|SetStage|DisplayMessage|ShowBarterMenu|ShowGiftMenu|ShowWarning|ShowTutorial|AddHUDMessage|ShowQuestStage|ShowCustomMessage|AddText|SetText|AddHUDMessage|ShowFloatingMessage)\s*\(/i;
 
 const DEBUG_USAGE_HINT_RE = /^Debug\.(?:Trace(?:Stack|This)?|Message|Warning|Assert)/i;

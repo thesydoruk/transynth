@@ -11,8 +11,9 @@ import {
   summarizeVoiceWarnings,
   type ModVoiceGenerateScope,
 } from '../../../../src/voice';
-import { resolveImportPackages } from '../../../../src/modImport';
 import { loadModImportPaths } from '../../../../src/import/mod/resolvePaths';
+import { loadVoiceProjectSettings } from '../../../../src/voice/voiceProjectSettings';
+import { resolveTtsBaseUrl } from '../../../../src/voice/voiceToolPaths';
 
 export type ModVoiceGenerateJobStatus = 'running' | 'completed' | 'cancelled' | 'failed';
 
@@ -62,7 +63,6 @@ export const runModVoiceGenerateJob = async (
 ): Promise<ModVoiceGenerateJobSnapshot> => {
   const { jobId, modId } = opts;
   const paths = await loadModImportPaths(db, { modId });
-  const packages = resolveImportPackages(paths.extractDir, opts.targetLang, paths.pluginPath);
   const speakerKey = opts.speakerKey?.trim() || undefined;
   if (opts.resetVoice) {
     const cleared = await clearModGeneratedVoice(db, {
@@ -84,18 +84,22 @@ export const runModVoiceGenerateJob = async (
     });
     reused = voiceReuse.copied;
   }
-  let total = await countVoiceLocalizeWork(
-    db,
+  const voiceSettings = await loadVoiceProjectSettings(db, opts.game);
+  let total = await countVoiceLocalizeWork(db, {
     modId,
-    packages,
-    opts.srcLang,
-    opts.targetLang,
+    game: opts.game,
+    extractDir: paths.extractDir,
+    pluginPath: paths.pluginPath,
+    srcLang: opts.srcLang,
+    tgtLang: opts.targetLang,
+    ttsBaseUrl: resolveTtsBaseUrl(),
+    synthesis: voiceSettings.synthesis,
+    referenceMode: voiceSettings.referenceMode,
     scope,
-    undefined,
+    force: false,
+    dryRun: false,
     speakerKey,
-    opts.game,
-    paths.extractDir,
-  );
+  });
   if (total === 0 && reused === 0) {
     throw new Error(
       speakerKey

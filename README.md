@@ -4,7 +4,7 @@ Self-hosted toolchain for **localizing game mods**: import a plugin or archive, 
 
 It is **open** (MIT). You run it on your machine; there is no cloud account. Anyone who can reach the HTTP port can use the app — see [SECURITY.md](SECURITY.md).
 
-The same pipeline — import, TM, LLM, review, QA, **voice**, export — is built around a game profile. Bethesda and Disco Elysium are wired up today. Another title is mostly a new profile, not a new product.
+The same pipeline — import, TM, LLM, review, QA, **voice**, export — runs off a **game plugin**. Bethesda and Disco Elysium are wired up today. Another title is a plugin directory, not a new product: no shared code branches on which game it is.
 
 Voice lives in the same editor as the strings: speakers, reference audio, Fish Speech, and (for Bethesda) lip-sync tools. Localized takes export with the rest of the pack.
 
@@ -14,7 +14,7 @@ First-class LLM prompts and glossaries are **Ukrainian** (`en → uk`). Other ta
 
 Fallout 4, 76, 3, New Vegas · Oblivion · Morrowind · Skyrim SE / LE · Disco Elysium Final Cut.
 
-A new game is an issue or a pull request, not a rewrite.
+A new game is one directory under `src/games/` implementing the plugin contract, plus one line registering it — see [Adding a Game](doc/eng/17-adding-a-game.md).
 
 ## What you get
 

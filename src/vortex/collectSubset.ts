@@ -27,7 +27,7 @@ const walkLoose = (root: string, current: string, out: string[]): void => {
   }
 };
 
-export const listTranslatableFiles = (root: string): string[] => {
+const listTranslatableFiles = (root: string): string[] => {
   const files: string[] = [];
   walkLoose(root, root, files);
   return files;

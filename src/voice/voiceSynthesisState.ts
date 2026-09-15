@@ -2,7 +2,7 @@ import type { Tx } from '../db';
 
 export type VoiceSynthesisStateRow = {
   modId: number;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   targetLang: string;
   /** Voice-type folder; empty only for rows migrated from the old primary key. */
@@ -26,9 +26,9 @@ export const normalizeVoiceSpeakerKey = (speakerKey: string | null | undefined):
  */
 export const voiceSynthesisStateKey = (
   speakerKey: string | null | undefined,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
-): string => `${normalizeVoiceSpeakerKey(speakerKey)}:${formidLower6.toUpperCase()}:${variant}`;
+): string => `${normalizeVoiceSpeakerKey(speakerKey)}:${lineKey.toUpperCase()}:${variant}`;
 
 /**
  * Stored TTS version for this take. Prefers the per-speaker stamp; if that
@@ -40,14 +40,14 @@ export const voiceSynthesisStateKey = (
 export const lookupVoiceSynthesisVersion = (
   storedVersions: ReadonlyMap<string, string>,
   speakerKey: string | null | undefined,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
 ): string | null => {
-  const exact = storedVersions.get(voiceSynthesisStateKey(speakerKey, formidLower6, variant));
+  const exact = storedVersions.get(voiceSynthesisStateKey(speakerKey, lineKey, variant));
   if (exact !== undefined) return exact;
   const speaker = normalizeVoiceSpeakerKey(speakerKey);
   if (!speaker) return null;
-  return storedVersions.get(voiceSynthesisStateKey('', formidLower6, variant)) ?? null;
+  return storedVersions.get(voiceSynthesisStateKey('', lineKey, variant)) ?? null;
 };
 
 /** Speaker folder from `Sound/Voice/<plugin>/<Speaker>/<FormID>_<N>.fuz`. */
@@ -60,7 +60,7 @@ export const speakerKeyFromVoiceRelPath = (relPath: string): string => {
 export const loadVoiceSynthesisVersion = async (
   db: Tx,
   modId: number,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   targetLang: string,
   speakerKey: string,
@@ -69,7 +69,7 @@ export const loadVoiceSynthesisVersion = async (
     `SELECT tts_text_version
      FROM voice_synthesis_state
      WHERE mod_id = $1
-       AND formid_lower6 = $2
+       AND line_key = $2
        AND variant = $3
        AND target_lang = $4
        AND (speaker_key = $5 OR speaker_key = '')
@@ -77,7 +77,7 @@ export const loadVoiceSynthesisVersion = async (
      LIMIT 1`,
     [
       modId,
-      formidLower6.toUpperCase(),
+      lineKey.toUpperCase(),
       variant,
       targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(speakerKey),
@@ -93,12 +93,12 @@ export const loadVoiceSynthesisVersionMap = async (
   targetLang: string,
 ): Promise<Map<string, string>> => {
   const { rows } = await db.query<{
-    formid_lower6: string;
+    line_key: string;
     variant: number;
     speaker_key: string;
     tts_text_version: string;
   }>(
-    `SELECT formid_lower6, variant, speaker_key, tts_text_version
+    `SELECT line_key, variant, speaker_key, tts_text_version
      FROM voice_synthesis_state
      WHERE mod_id = $1 AND target_lang = $2`,
     [modId, targetLang.trim().toLowerCase()],
@@ -106,7 +106,7 @@ export const loadVoiceSynthesisVersionMap = async (
   const out = new Map<string, string>();
   for (const row of rows) {
     out.set(
-      voiceSynthesisStateKey(row.speaker_key, row.formid_lower6, row.variant),
+      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant),
       row.tts_text_version,
     );
   }
@@ -119,12 +119,12 @@ export const loadVoiceSimilarityMap = async (
   targetLang: string,
 ): Promise<VoiceSimilarityMap> => {
   const { rows } = await db.query<{
-    formid_lower6: string;
+    line_key: string;
     variant: number;
     speaker_key: string;
     voice_similarity: number;
   }>(
-    `SELECT formid_lower6, variant, speaker_key, voice_similarity
+    `SELECT line_key, variant, speaker_key, voice_similarity
      FROM voice_synthesis_state
      WHERE mod_id = $1 AND target_lang = $2 AND voice_similarity IS NOT NULL`,
     [modId, targetLang.trim().toLowerCase()],
@@ -132,7 +132,7 @@ export const loadVoiceSimilarityMap = async (
   const out: VoiceSimilarityMap = new Map();
   for (const row of rows) {
     out.set(
-      voiceSynthesisStateKey(row.speaker_key, row.formid_lower6, row.variant),
+      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant),
       Number(row.voice_similarity),
     );
   }
@@ -142,14 +142,14 @@ export const loadVoiceSimilarityMap = async (
 export const lookupVoiceSimilarity = (
   stored: ReadonlyMap<string, number>,
   speakerKey: string | null | undefined,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
 ): number | null => {
-  const exact = stored.get(voiceSynthesisStateKey(speakerKey, formidLower6, variant));
+  const exact = stored.get(voiceSynthesisStateKey(speakerKey, lineKey, variant));
   if (exact !== undefined) return exact;
   const speaker = normalizeVoiceSpeakerKey(speakerKey);
   if (!speaker) return null;
-  return stored.get(voiceSynthesisStateKey('', formidLower6, variant)) ?? null;
+  return stored.get(voiceSynthesisStateKey('', lineKey, variant)) ?? null;
 };
 
 export const upsertVoiceSynthesisState = async (
@@ -158,17 +158,17 @@ export const upsertVoiceSynthesisState = async (
 ): Promise<void> => {
   await db.query(
     `INSERT INTO voice_synthesis_state (
-       mod_id, formid_lower6, variant, target_lang, speaker_key, tts_text_version,
+       mod_id, line_key, variant, target_lang, speaker_key, tts_text_version,
        voice_similarity, synthesized_at
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (mod_id, formid_lower6, variant, target_lang, speaker_key)
+     ON CONFLICT (mod_id, line_key, variant, target_lang, speaker_key)
      DO UPDATE SET
        tts_text_version = EXCLUDED.tts_text_version,
        synthesized_at = NOW(),
        voice_similarity = COALESCE(EXCLUDED.voice_similarity, voice_synthesis_state.voice_similarity)`,
     [
       row.modId,
-      row.formidLower6.toUpperCase(),
+      row.lineKey.toUpperCase(),
       row.variant,
       row.targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(row.speakerKey),

@@ -11,7 +11,7 @@ export type VoiceLiveLineEvent = {
   type: 'line_started' | 'line_done' | 'line_failed';
   modId: number;
   speakerKey: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   voiceSimilarity?: number | null;
 };
@@ -46,15 +46,15 @@ export const parseVoiceLiveEvent = (value: unknown): VoiceLiveLineEvent | null =
   const modId = Number(raw.modId);
   const variant = Number(raw.variant);
   const speakerKey = typeof raw.speakerKey === 'string' ? raw.speakerKey : '';
-  const formidLower6 = typeof raw.formidLower6 === 'string' ? raw.formidLower6 : '';
+  const lineKey = typeof raw.lineKey === 'string' ? raw.lineKey : '';
   if (!Number.isInteger(modId) || modId < 1) return null;
   if (!Number.isInteger(variant) || variant < 1) return null;
-  if (!speakerKey || !formidLower6) return null;
+  if (!speakerKey || !lineKey) return null;
   const event: VoiceLiveLineEvent = {
     type: raw.type,
     modId,
     speakerKey,
-    formidLower6,
+    lineKey,
     variant,
   };
   if (raw.type === 'line_done' && 'voiceSimilarity' in raw) {
@@ -66,6 +66,6 @@ export const parseVoiceLiveEvent = (value: unknown): VoiceLiveLineEvent | null =
 
 export const voiceLiveLineKey = (event: {
   speakerKey: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
-}): string => `${event.speakerKey}:${event.formidLower6}:${event.variant}`;
+}): string => `${event.speakerKey}:${event.lineKey}:${event.variant}`;

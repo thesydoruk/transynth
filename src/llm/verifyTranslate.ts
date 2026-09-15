@@ -15,7 +15,7 @@ import { dialogScenePayload } from './dialogScene';
 import type { ChatCompletionMeta } from './provider';
 import { buildVerifyResponseFormat } from './responseSchemas';
 import { isUkrainianTargetLang, LlmResponseTruncatedError } from './translate';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { CONFIG } from '../config';
 import { parseVerifySuggestionValue } from './verifySuggestionGuards';
 import {
@@ -37,13 +37,14 @@ export type {
   LlmVerifyItemResult,
   LlmVerifyOptions,
   LlmVerifyVerdict,
+  VerifyDefectKind,
 } from './verifyTranslateTypes';
 export {
   LlmVerifyMissingIdsError,
+  isBlockingVerifyResult,
   isLlmVerifyMissingIdsError,
   parseVerifyItemId,
 } from './verifyTranslateTypes';
-export { applyDiscoMarkupGuardToVerifyResult } from './verifyDiscoMarkupGuard';
 export {
   applyPlaceholderGuardToVerifyResult,
   finalizeVerifyItemResults,
@@ -56,7 +57,7 @@ const VALID_VERDICTS = new Set<LlmVerifyVerdict>(['ok', 'suspicious', 'incorrect
 export const buildVerifySystemPrompt = (
   srcLang: string,
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
   family?: LlmPromptFamily | null,
 ): string => {
   if (isUkrainianTargetLang(targetLang)) {
@@ -258,5 +259,5 @@ export const verifyTranslationsWithLlm = async (
 
   const parsed = parseLlmVerifyTranslateResponse(raw, expectedIds, meta, maskedItems);
   const unmasked = unmaskVerifySuggestions(parsed, mappingById);
-  return finalizeVerifyItemResults(opts.items, unmasked, opts.game);
+  return finalizeVerifyItemResults(opts.items, unmasked, opts.game, opts.targetLang);
 };

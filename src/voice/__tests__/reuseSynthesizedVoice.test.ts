@@ -12,7 +12,7 @@ const dest = (overrides: Partial<ReuseVoiceDestLine> = {}): ReuseVoiceDestLine =
   sourceAbsPath: '/old/00011111_1.fuz',
   sourceRelPath: 'Sound/Voice/Mod.esp/MaleBoston/00011111_1.fuz',
   hasLocalized: false,
-  formidLower6: '011111',
+  lineKey: '011111',
   variant: 1,
   ...overrides,
 });
@@ -24,7 +24,7 @@ const source = (overrides: Partial<ReuseVoiceSourceLine> = {}): ReuseVoiceSource
   localizedAbsPath: '/src/_localize/Sound/Voice/Mod.esp/MaleBoston/00011111_1.fuz',
   sourceAbsPath: '/src/00011111_1.fuz',
   sourceRelPath: 'Sound/Voice/Mod.esp/MaleBoston/00011111_1.fuz',
-  formidLower6: '011111',
+  lineKey: '011111',
   variant: 1,
   ttsTextVersion: 'v1',
   voiceSimilarity: 0.9,
@@ -74,13 +74,13 @@ describe('matchReusableVoiceLines', () => {
     const matches = matchReusableVoiceLines(
       [
         dest({
-          formidLower6: '0ABCDE',
+          lineKey: '0ABCDE',
           destRelPath: 'Sound/Voice/Mod.esp/MaleBoston/000ABCDE_1.fuz',
         }),
       ],
-      [source({ formidLower6: '011111' })],
+      [source({ lineKey: '011111' })],
     );
     expect(matches).toHaveLength(1);
-    expect(matches[0]?.dest.formidLower6).toBe('0ABCDE');
+    expect(matches[0]?.dest.lineKey).toBe('0ABCDE');
   });
 });

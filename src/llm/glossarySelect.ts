@@ -11,8 +11,8 @@ import { logLlm } from '../logging/loggers';
 import { glossaryTermMatchesSource } from '../web/data/queries/glossaryHelpers';
 import type { LlmGlossaryEntry } from './translate';
 
-export const GLOSSARY_PROMPT_LIMIT = 24;
-export const GLOSSARY_EMBED_FILL_MAX = 8;
+const GLOSSARY_PROMPT_LIMIT = 24;
+const GLOSSARY_EMBED_FILL_MAX = 8;
 export const GLOSSARY_EMBED_MIN_SIM = 0.5;
 const QUERY_EMBED_MAX_CHARS = 2_000;
 

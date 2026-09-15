@@ -26,11 +26,6 @@ export const resolveLlmChatTemperature = (seq: number): number =>
 
 const nextChatTemperature = (): number => resolveLlmChatTemperature(llmChatRequestSeq++);
 
-/** Reset the chat temperature sequence (tests / long-lived workers). */
-export const resetLlmChatTemperatureSeq = (): void => {
-  llmChatRequestSeq = 0;
-};
-
 /** Network or HTTP-level error shape for availability checks. */
 interface HttpLikeError {
   code?: string;
@@ -41,7 +36,7 @@ const createProvider = (name: LLMProviderName): LLMProvider => {
   return name === 'openai' ? new OpenAIProvider() : new VllmProvider();
 };
 
-export const getLLM = (): LLMProvider => {
+const getLLM = (): LLMProvider => {
   if (_instance) return _instance;
   _instance = createProvider(CONFIG.llmProvider);
   logLlm.info(`provider initialized: ${_instance.name}`);
@@ -271,12 +266,6 @@ export const embedWithFallback = async (
   }
 };
 
-export {
-  embedPool,
-  llmChatPool,
-  llmRagConcurrency,
-  llmChatPipelineConcurrency,
-} from './requestPool';
 export type { RequestPoolStats } from './requestPool';
 
 export type {

@@ -5,14 +5,14 @@ import type { TranslationStatus } from '../statusMachine';
 export const PENDING_REVIEW_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto')`;
 
 /** Translation statuses included when mod-wide LLM verify runs with `force`. */
-export const LLM_VERIFY_FORCE_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto', 'reviewed', 'human')`;
+const LLM_VERIFY_FORCE_STATUS_SQL = `('draft', 'tm', 'fuzzy', 'auto', 'reviewed', 'human')`;
 
 /** SQL `IN (...)` list for mod-wide LLM verify row selection. */
 export const llmVerifyEligibleStatusSql = (force: boolean): string =>
   force ? LLM_VERIFY_FORCE_STATUS_SQL : PENDING_REVIEW_STATUS_SQL;
 
 /** Translation statuses that LLM translate/verify must never overwrite or re-process. */
-export const LLM_PROTECTED_TRANSLATION_STATUS_SQL = `('reviewed', 'human', 'rejected')`;
+const LLM_PROTECTED_TRANSLATION_STATUS_SQL = `('reviewed', 'human', 'rejected')`;
 
 /** How CLI / mod-wide LLM translate selects existing translations to overwrite. */
 export type LlmTranslateOverwriteMode = 'default' | 'force' | 'force-all';

@@ -36,14 +36,14 @@ export interface DialogLineVoice {
 const audioRef = (
   entry: DialogEntry,
   line: DialogLine,
-): { formidLower6: string; variant: number; key: string } | null => {
+): { lineKey: string; variant: number; key: string } | null => {
   if (line.voice_variant === null || !entry.info_formid_hex) return null;
-  const formidLower6 = entry.info_formid_hex.slice(2).toUpperCase();
-  if (!/^[0-9A-F]{6}$/.test(formidLower6)) return null;
+  const lineKey = entry.info_formid_hex.slice(2).toUpperCase();
+  if (!/^[0-9A-F]{6}$/.test(lineKey)) return null;
   return {
-    formidLower6,
+    lineKey,
     variant: line.voice_variant,
-    key: `${formidLower6}:${line.voice_variant}`,
+    key: `${lineKey}:${line.voice_variant}`,
   };
 };
 
@@ -107,9 +107,9 @@ export const useDialogVoice = (modId: number, targetLang: string) => {
           play(
             `${kind}:${ref.key}`,
             kind === 'source'
-              ? voiceAudioUrl(modId, ref.formidLower6, ref.variant)
+              ? voiceAudioUrl(modId, ref.lineKey, ref.variant)
               : // Regenerating a take overwrites the file, so bypass the HTTP cache.
-                voiceTranslationAudioUrl(modId, ref.formidLower6, ref.variant),
+                voiceTranslationAudioUrl(modId, ref.lineKey, ref.variant),
             kind === 'source'
               ? t('modEditor.voicePlayError')
               : t('modEditor.voicePlayTranslationError'),

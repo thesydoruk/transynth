@@ -3,7 +3,7 @@ import { CONFIG } from '../../../config';
 import { APPROVED_STATUS_SQL, type ModDetailStats } from './types';
 
 /** Effective translation status for aggregation (matches editor filter semantics). */
-export const EFFECTIVE_STATUS_SQL = `CASE
+const EFFECTIVE_STATUS_SQL = `CASE
   WHEN s.is_ignored THEN 'skip'
   WHEN t.id IS NULL THEN 'untranslated'
   ELSE t.status

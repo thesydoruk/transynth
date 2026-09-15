@@ -5,8 +5,8 @@
 import type { Tx } from '../../db';
 import { log } from '../../logger';
 
-export const SYSTEM_LOG_LEVELS = ['error', 'warning', 'info'] as const;
-export const SYSTEM_LOG_SOURCES = ['llm', 'tts', 'job', 'system'] as const;
+const SYSTEM_LOG_LEVELS = ['error', 'warning', 'info'] as const;
+const SYSTEM_LOG_SOURCES = ['llm', 'tts', 'job', 'system'] as const;
 
 export type SystemLogLevel = (typeof SYSTEM_LOG_LEVELS)[number];
 export type SystemLogSource = (typeof SYSTEM_LOG_SOURCES)[number];

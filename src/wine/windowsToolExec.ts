@@ -30,7 +30,7 @@ const resetWinePrefix = (prefix: string): void => {
   fs.mkdirSync(prefix, { recursive: true });
 };
 
-const killWineServer = (arch: WineArch): void => {
+const killWineServer = (): void => {
   try {
     execFileSync(wineServerCommand(), ['-k'], {
       timeout: 10_000,
@@ -48,7 +48,7 @@ const ensureWineReady = (arch: WineArch): void => {
   const prefix = resolveWinePrefix();
   if (!fs.existsSync(prefix)) fs.mkdirSync(prefix, { recursive: true });
   if (ensureWinePrefixOwnedByCurrentUser(prefix)) {
-    killWineServer(arch);
+    killWineServer();
     wineReady.delete(arch);
   }
 
@@ -90,7 +90,7 @@ const ensureWineReady = (arch: WineArch): void => {
 /** Kill the 32-bit prefix and forget the in-process "ready" flag. */
 export const shutdownWine = (): void => {
   if (process.platform === 'win32') return;
-  killWineServer('win32');
+  killWineServer();
   wineReady.clear();
   wineInFlight = 0;
   wineUsesSinceRecycle = 0;
@@ -132,15 +132,15 @@ export const withWineJob = async <T>(fn: () => Promise<T>): Promise<T> => {
   }
 };
 
-export const wineCommand = (): string => process.env.WINE_PATH?.trim() || 'wine';
+const wineCommand = (): string => process.env.WINE_PATH?.trim() || 'wine';
 
-export const wineServerCommand = (): string => process.env.WINESERVER_PATH?.trim() || 'wineserver';
+const wineServerCommand = (): string => process.env.WINESERVER_PATH?.trim() || 'wineserver';
 
 /** 32-bit prefix for voice tools; override with `WINEPREFIX`. */
 export const resolveWinePrefix = (): string =>
   resolveDir(process.env.WINEPREFIX?.trim() || path.join(PATHS.toolsDir, '.wine'));
 
-export const wineProcessEnv = (): NodeJS.ProcessEnv => {
+const wineProcessEnv = (): NodeJS.ProcessEnv => {
   const env = { ...process.env };
   env.WINEPREFIX = resolveWinePrefix();
   env.WINEARCH = 'win32';
@@ -160,18 +160,8 @@ export const resolveWindowsExecutable = (
   return { command: wineCommand(), argsPrefix: [resolved] };
 };
 
-export const isWineAvailable = (): boolean => {
-  if (process.platform === 'win32') return true;
-  try {
-    execFileSync(wineCommand(), ['--version'], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 /** Convert a Unix path to a `Z:\…` path for Wine Windows tools. */
-export const toWinePath = (unixPath: string, env: NodeJS.ProcessEnv): string => {
+const toWinePath = (unixPath: string, env: NodeJS.ProcessEnv): string => {
   if (process.platform === 'win32') return path.resolve(unixPath);
   try {
     return execFileSync('winepath', ['-w', path.resolve(unixPath)], {

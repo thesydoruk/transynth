@@ -133,6 +133,7 @@ export const DialogEntryCard = ({
                 onCommit={(text, advance) => handlers.onCommit(line, text, advance)}
                 onSetStatus={(status) => handlers.onSetStatus(line, status)}
                 voice={handlers.voiceFor(entry, line)}
+                targetLang={handlers.targetLang}
               />
             ))
           )}

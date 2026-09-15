@@ -1,5 +1,5 @@
 import { PATHS } from '../paths';
-import { readAudioIntelCacheAt, transcribeWavCachedAt, writeAudioIntelCacheAt } from './cacheStore';
+import { readAudioIntelCacheAt, transcribeWavCachedAt } from './cacheStore';
 import type { TranscribeWavOptions } from './client';
 import type { AudioIntelTranscript } from './types';
 
@@ -10,9 +10,6 @@ const cacheDir = (): string => {
 
 export const readAudioIntelCache = (wavPath: string): AudioIntelTranscript | null =>
   readAudioIntelCacheAt(cacheDir(), wavPath);
-
-export const writeAudioIntelCache = (wavPath: string, transcript: AudioIntelTranscript): void =>
-  writeAudioIntelCacheAt(cacheDir(), wavPath, transcript);
 
 /** Cached transcribe — skip HTTP when path+mtime+size already has a transcript. */
 export const transcribeWavCached = (

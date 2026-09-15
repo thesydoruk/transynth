@@ -1,8 +1,7 @@
 import type { Tx } from '../../../../src/db';
 import { selectRelevantGlossary } from '../../../../src/llm/glossarySelect';
 import type { LlmGlossaryEntry } from '../../../../src/llm/translate';
-import type { LlmVerifyItem } from '../../../../src/llm/verifyTranslate';
-import { resolveGlossaryFixSuggestion as resolveGlossaryFixSuggestionCore } from '../../../../src/llm/glossaryVerify';
+
 import { loadGlossaryTermsForGame, termWordBoundaryRe } from '../../../../src/web/data/queries';
 
 export type GlossaryEntryWithRe = LlmGlossaryEntry & { re: RegExp };
@@ -22,10 +21,3 @@ export const relevantGlossaryEntries = (
   glossaryAll: GlossaryEntryWithRe[],
   sourceTexts: string[],
 ): Promise<LlmGlossaryEntry[]> => selectRelevantGlossary(glossaryAll, sourceTexts);
-
-export { findGlossaryViolation } from '../../../../src/llm/glossaryVerify';
-
-export const resolveGlossaryFixSuggestion = (
-  item: LlmVerifyItem,
-  glossary: LlmGlossaryEntry[],
-): string | null => resolveGlossaryFixSuggestionCore(item.source, item.translation, glossary);

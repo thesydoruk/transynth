@@ -8,7 +8,7 @@ const shouldForceRescan = (entry: ModAiJobEntry): boolean =>
   entry.status === 'completed' || entry.status === 'cancelled' || entry.status === 'failed';
 
 /** Start mod-wide narrator gender detection. */
-export const startModAiGenderDetect = async (
+const startModAiGenderDetect = async (
   modId: number,
   srcLang: string,
   entry: ModAiJobEntry = getModAiJob(modId, 'gender-detect'),

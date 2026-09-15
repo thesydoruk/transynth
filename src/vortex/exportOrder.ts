@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { isPlugin } from '../import/mod/discovery';
 import { discoverVortexDeployment } from './deploymentManifest';
 import { discoverPluginLoadOrder } from './pluginsTxt';
@@ -48,7 +48,7 @@ export const isVortexExportOrder = (value: unknown): value is VortexExportOrder 
 };
 
 export const discoverVortexExportOrder = (opts: {
-  game: GameType;
+  game: GameId;
   stagingPath: string;
   pluginsTxt?: string;
   vortexProfile?: string;

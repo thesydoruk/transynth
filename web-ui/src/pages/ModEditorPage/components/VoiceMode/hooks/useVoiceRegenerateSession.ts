@@ -38,7 +38,7 @@ export const useVoiceRegenerateSession = (
       try {
         const result = await api.mods.initVoiceRegenerateSession(
           modId,
-          line.formidLower6,
+          line.lineKey,
           line.variant,
           sessionId,
           srcLang,
@@ -58,7 +58,7 @@ export const useVoiceRegenerateSession = (
     return () => {
       cancelled = true;
     };
-  }, [line.formidLower6, line.variant, modId, sessionId, srcLang, targetLang, t]);
+  }, [line.lineKey, line.variant, modId, sessionId, srcLang, targetLang, t]);
 
   const discardSession = useCallback(async () => {
     try {
@@ -74,7 +74,7 @@ export const useVoiceRegenerateSession = (
     setError(null);
     try {
       const result = await api.mods.generateVoiceRegeneratePreview(modId, sessionId, {
-        formidLower6: line.formidLower6,
+        lineKey: line.lineKey,
         variant: line.variant,
         srcLang,
         targetLang,

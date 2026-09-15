@@ -1,5 +1,6 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { patchStringsMap } from '../../formats/esp';
 import { writeStringsBuffer } from '../../formats/strings';
 import { exportLocaleSlots } from '../../locale/exportSlots';
@@ -30,7 +31,7 @@ export const exportLocalizedStringsFiles = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): Promise<ExportedStringsFile[]> => {
   const sourceFiles = loadSourceStringsFiles(modPath, srcLang, game);
   if (sourceFiles.length === 0) {

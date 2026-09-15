@@ -1,20 +1,24 @@
 #!/usr/bin/env tsx
 /**
- * SHA-1 backfill for source voice files listed in `voice_clips` / `disco_voice_clips`.
+ * SHA-1 backfill for the source voice files a mod ships with.
+ *
+ * Which mods have any is the plugin's answer, not a table this script names:
+ * each game stores its clip index differently — Creation Engine keeps one row
+ * per speaker folder × response, Disco one per `.wav` stem — so listing them
+ * here meant a UNION that a third engine would have had to be added to.
  *
  * Usage:
  *   npm run voice:backfill-hashes
  *   npm run voice:backfill-hashes -- --workers=8
  *   npm run voice:backfill-hashes -- --mod=33
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import { closeDb, openDb } from '../src/db';
-import { resolveModDirectoryFromPath } from '../src/formats/mcm';
+import { gamePlugin } from '../src/games/registry';
 import { loadModImportPaths } from '../src/import/mod/resolvePaths';
 import { log } from '../src/logger';
-import { pluginRelPath } from '../src/modImport/packages';
-import { discoverDiscoVoiceFiles } from '../src/voice/disco/discoverDiscoVoiceFiles';
-import { dedupeVoiceFiles, discoverVoiceFiles } from '../src/voice/discoverVoiceFiles';
 import { resolveVoiceSourceFileHashes } from '../src/voice/voiceSourceFileHashes';
 
 const arg = (name: string): string | undefined => {
@@ -28,19 +32,15 @@ const onlyModId = arg('mod');
 
 const db = openDb();
 try {
-  const { rows } = await db.query<{ id: number; name: string; game: string; clips: string }>(
-    `SELECT m.id, m.name, m.game, COUNT(*)::text AS clips
-       FROM (
-         SELECT mod_id FROM voice_clips
-         UNION ALL
-         SELECT mod_id FROM disco_voice_clips
-       ) c
-       JOIN mods m ON m.id = c.mod_id
+  const { rows: allMods } = await db.query<{ id: number; name: string; game: string }>(
+    `SELECT m.id, m.name, m.game
+       FROM mods m
       WHERE ($1::int IS NULL OR m.id = $1)
-      GROUP BY m.id, m.name, m.game
-      ORDER BY COUNT(*) DESC, m.id`,
+      ORDER BY m.id`,
     [onlyModId ? Number(onlyModId) : null],
   );
+  // A game with no voice adapter ships no takes to hash.
+  const rows = allMods.filter((mod) => gamePlugin(mod.game).voice);
 
   console.log(`Voice hash backfill: ${rows.length} mod(s), workers=${workers}`);
   let resolvedTotal = 0;
@@ -56,16 +56,8 @@ try {
       continue;
     }
 
-    const files = (
-      mod.game === 'disco'
-        ? discoverDiscoVoiceFiles(paths.extractDir)
-        : (() => {
-            const packageDir = resolveModDirectoryFromPath(paths.pluginPath);
-            return dedupeVoiceFiles(
-              discoverVoiceFiles(packageDir, pluginRelPath(packageDir, paths.pluginPath)),
-            );
-          })()
-    ).map((file) => ({
+    const takes = gamePlugin(mod.game).voice?.discoverSourceTakes(paths) ?? [];
+    const files = takes.map((file) => ({
       modId: mod.id,
       relPath: file.relPath,
       absPath: file.absolutePath,
@@ -87,7 +79,7 @@ try {
 
     resolvedTotal += hashes.size;
     console.log(
-      `Voice hash backfill: #${mod.id} ${mod.name} files=${files.length} resolved=${hashes.size} clips=${mod.clips} ${((Date.now() - started) / 1000).toFixed(1)}s`,
+      `Voice hash backfill: #${mod.id} ${mod.name} files=${files.length} resolved=${hashes.size} ${((Date.now() - started) / 1000).toFixed(1)}s`,
     );
     log.info(`Voice hash backfill: #${mod.id} ${mod.name} resolved=${hashes.size}`);
   }

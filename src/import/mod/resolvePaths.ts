@@ -14,7 +14,7 @@ import {
   resolveModImportExtractRoot,
   resolveModStoredPath,
 } from '../../modStorage';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { getModImportJob } from './jobs';
 import type { ModImportJob } from './types';
 
@@ -22,7 +22,7 @@ export type ModImportPaths = {
   jobId: number;
   modId: number;
   fileName: string;
-  game: GameType;
+  game: GameId;
   extractDir: string;
   pluginPath: string;
   targetLang: string;
@@ -31,7 +31,7 @@ export type ModImportPaths = {
   packOutputDir: string;
 };
 
-export const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
+const pathsFromModImportJob = (job: ModImportJob): ModImportPaths => {
   if (!job.esp_path) {
     throw new Error(`Import job #${job.id} has no plugin path`);
   }

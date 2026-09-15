@@ -16,7 +16,8 @@
  * > human > tm > auto > draft) and records provenance for auditability.
  */
 import type { Tx } from '../../db';
-import { withTransaction } from '../../db';
+import { gameForMod, withTransaction } from '../../db';
+import type { GameId } from '../../types';
 import type pg from 'pg';
 import { log } from '../../logger';
 import { CONFIG } from '../../config';
@@ -105,13 +106,14 @@ const applyTMSubChunk = async (
   targetLang: string,
   srcLang: string,
   chunk: TmUntranslatedRow[],
+  game: GameId,
 ): Promise<{
   applied: number;
   byMethod: Record<TmMatchMethod, number>;
   sourceModIds: number[];
 }> =>
   withTransaction(db, async (client) =>
-    bulkApplyTmBatch(client, modId, chunk, targetLang, srcLang),
+    bulkApplyTmBatch(client, modId, chunk, targetLang, srcLang, game),
   );
 
 const applyTMChunk = async (
@@ -123,11 +125,12 @@ const applyTMChunk = async (
   byMethod: Record<TmMatchMethod, number>,
   sourceModIds: Set<number>,
   workers: number,
+  game: GameId,
 ): Promise<number> => {
   const pool = db as pg.Pool;
   const subChunks = splitChunk(chunk, workers);
   const partials = await mapWithConcurrency(subChunks, workers, (subChunk) =>
-    applyTMSubChunk(pool, modId, targetLang, srcLang, subChunk),
+    applyTMSubChunk(pool, modId, targetLang, srcLang, subChunk, game),
   );
 
   let applied = 0;
@@ -192,6 +195,7 @@ export const applyTMToMod = async (
 
   let applied = 0;
   let processed = 0;
+  const game = await gameForMod(db, modId);
   const byMethod: Record<TmMatchMethod, number> = {
     anchor: 0,
     edid: 0,
@@ -223,6 +227,7 @@ export const applyTMToMod = async (
       byMethod,
       sourceModIds,
       workers,
+      game,
     );
     applied += chunkApplied;
     processed += chunk.length;
@@ -286,6 +291,7 @@ export const applyTMToStringIds = async (
     [stringIds, modId, targetLang, srcLang],
   );
 
+  const game = await gameForMod(db, modId);
   const byMethod: Record<TmMatchMethod, number> = {
     anchor: 0,
     edid: 0,
@@ -307,6 +313,7 @@ export const applyTMToStringIds = async (
       byMethod,
       sourceModIds,
       workers,
+      game,
     );
   }
 
@@ -329,6 +336,7 @@ export const propagateTranslation = async (
   translatedText: string,
   targetLang: string,
   excludeStringId: number,
+  game: GameId,
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<number> => {
   const { rows: candidates } = await db.query<{ id: number; text_raw: string }>(
@@ -344,7 +352,7 @@ export const propagateTranslation = async (
 
   const writeRows: TmBulkWriteRow[] = [];
   for (const candidate of candidates) {
-    const text = adaptTmTranslation(translatedText, sourceText, candidate.text_raw);
+    const text = adaptTmTranslation(translatedText, sourceText, candidate.text_raw, game);
     if (text === null) continue;
     writeRows.push({
       stringId: candidate.id,

@@ -20,7 +20,7 @@ export type VoiceClipStringRef = {
 
 export type VoiceClipRow = {
   speakerKey: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   formidHex: string;
   stringId: number | null;
@@ -29,20 +29,20 @@ export type VoiceClipRow = {
 };
 
 /** 6-char FormID → 8-char hex used on INFO records (`005825` → `00005825`). */
-export const padVoiceFormidHex = (formidLower6: string): string =>
-  formidLower6.toUpperCase().padStart(8, '0');
+export const padVoiceFormidHex = (lineKey: string): string =>
+  lineKey.toUpperCase().padStart(8, '0');
 
 const clipSpeakerKey = (entry: VoiceFileEntry, voiceRootRel: string): string =>
   voiceSpeakerKey(entry, voiceRootRel) || speakerFromRelPath(entry.relPath);
 
 const resolveClipString = (
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   stringsByKey: Map<string, VoiceClipStringRef>,
   sharedFrom: Map<string, string>,
 ): { ref: VoiceClipStringRef | undefined; sharedFromFormid: string | null } => {
-  const own = stringsByKey.get(voiceTranslationMapKey(formidLower6, variant));
-  const sharedFromFormid = sharedFrom.get(formidLower6) ?? null;
+  const own = stringsByKey.get(voiceTranslationMapKey(lineKey, variant));
+  const sharedFromFormid = sharedFrom.get(lineKey) ?? null;
   if (own) return { ref: own, sharedFromFormid };
   if (!sharedFromFormid) return { ref: undefined, sharedFromFormid: null };
   return {
@@ -68,23 +68,18 @@ export const buildVoiceClipRows = (
 
   for (const entry of files) {
     const speakerKey = clipSpeakerKey(entry, voiceRootRel);
-    const formidLower6 = entry.formidLower6.toUpperCase();
+    const lineKey = entry.lineKey.toUpperCase();
     const variant = entry.variant;
-    const takeKey = `${speakerKey.toLowerCase()}\0${formidLower6}\0${variant}`;
+    const takeKey = `${speakerKey.toLowerCase()}\0${lineKey}\0${variant}`;
     if (seen.has(takeKey)) continue;
     seen.add(takeKey);
 
-    const { ref, sharedFromFormid } = resolveClipString(
-      formidLower6,
-      variant,
-      stringsByKey,
-      sharedFrom,
-    );
+    const { ref, sharedFromFormid } = resolveClipString(lineKey, variant, stringsByKey, sharedFrom);
     rows.push({
       speakerKey,
-      formidLower6,
+      lineKey,
       variant,
-      formidHex: padVoiceFormidHex(formidLower6),
+      formidHex: padVoiceFormidHex(lineKey),
       stringId: ref?.stringId ?? null,
       relPath: normalizeRelPath(entry.relPath),
       sharedFromFormid,

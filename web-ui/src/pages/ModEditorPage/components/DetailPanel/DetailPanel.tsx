@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../../api';
 import { Button } from '../../../../components/Button';
 import {
-  editorCapabilities,
-  formatDiscoPoKey,
+  defaultEditorCapabilities,
+  formatPoKey,
   type EditorCapabilities,
 } from '../../editorCapabilities';
 import { SuggestionsPanel } from '../SuggestionsPanel';
@@ -82,7 +82,7 @@ export const DetailPanel = ({
   capabilities: capabilitiesProp,
 }: DetailPanelProps) => {
   const { t } = useTranslation();
-  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
+  const capabilities = capabilitiesProp ?? defaultEditorCapabilities();
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const { tabContentHeight, isResizing, startTabContentResize } =
     useTabContentHeight(detailPanelRef);
@@ -100,9 +100,10 @@ export const DetailPanel = ({
     overlay.scrollLeft = e.currentTarget.scrollLeft;
   };
 
-  const isPex = !capabilities.isDisco && activeRow.signature === 'PEX';
+  const isPex = capabilities.usesRecordPaths && activeRow.signature === 'PEX';
   const showBookEditor =
-    !capabilities.isDisco && (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
+    capabilities.usesRecordPaths &&
+    (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
 
   return (
     <div ref={detailPanelRef} className={styles.detailPanel}>
@@ -119,16 +120,16 @@ export const DetailPanel = ({
               <PexSourcePanel modId={modId} activeRow={activeRow} />
             ) : (
               <>
-                {capabilities.isDisco && (
+                {!capabilities.usesRecordPaths && (
                   <div className={styles.speakerContext} title={activeRow.path ?? undefined}>
                     {t('modEditor.discoKeyLabel')}
-                    {formatDiscoPoKey(activeRow.path) || '—'}
+                    {formatPoKey(activeRow.path) || '—'}
                     {activeRow.edid?.trim()
                       ? ` · ${t('modEditor.discoAudioLabel')}${activeRow.edid}`
                       : ''}
                   </div>
                 )}
-                {!capabilities.isDisco && activeRow.context && (
+                {capabilities.usesRecordPaths && activeRow.context && (
                   <div className={styles.speakerContext} title={t('modEditor.speakerContextTitle')}>
                     {t('modEditor.speakerContextLabel')}
                     {activeRow.context}

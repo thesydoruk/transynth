@@ -12,9 +12,10 @@ const run = (
   },
   field: string | null = 'NAM1',
   targetLang = 'uk',
+  game = 'fo4',
 ) => {
   const issues: Issue[] = [];
-  applyGenderQaIssues(issues, translation, targetLang, row, field);
+  applyGenderQaIssues(issues, translation, targetLang, row, field, game);
   return issues;
 };
 

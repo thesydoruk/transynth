@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const MANIFEST_FILE_NAME = 'import-manifest.json';
 export const MOD_IMPORT_MANIFEST_FILE_NAME = 'import-manifest.json';
 
 /** Container / in-game archive packing formats tracked during mod import. */
@@ -52,7 +51,7 @@ export type ModImportExtractManifest = {
   files: Record<string, ModImportFileProvenance>;
 };
 
-export const modImportManifestPath = (extractRoot: string): string =>
+const modImportManifestPath = (extractRoot: string): string =>
   path.join(extractRoot, MOD_IMPORT_MANIFEST_FILE_NAME);
 
 export const readModImportExtractManifest = (

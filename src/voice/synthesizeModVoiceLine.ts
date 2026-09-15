@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Tx } from '../db';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { pluginRelPath, toDiskPath, writeIfChanged } from '../modImport';
 import { loadImportedMod } from '../modImport/importedMod';
 import { ensureDir } from '../utils/file';
@@ -56,13 +56,13 @@ export type SynthesizeModVoiceLineOptions = {
   modId: number;
   packageDir: string;
   pluginPath: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   srcLang: string;
   tgtLang: string;
   /** Voice folder to dub; required to pick a side when several share the line. */
   speakerKey?: string;
-  game?: GameType;
+  game?: GameId;
   referenceMode?: TtsReferenceMode;
   ttsBaseUrl?: string;
   synthesis?: Partial<TtsSynthesisParams>;
@@ -81,25 +81,16 @@ export type SynthesizeModVoiceLineBuffersResult =
     }
   | { ok: false; reason: string; message: string };
 
-/** Resolve absolute path to a localized `.fuz` under the mod localize tree. */
-export const resolveLocalizedVoiceAbsPath = (
-  localizeDir: string | null,
-  entry: VoiceFileEntry,
-): string | null => {
-  if (!localizeDir) return null;
-  return toDiskPath(localizeDir, outputLocalizedFuzRelPath(entry));
-};
-
 const findVoiceEntry = (
   entries: VoiceFileEntry[],
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   voiceRootRel: string,
   speakerKey?: string,
 ): VoiceFileEntry | undefined => {
   const wantSpeaker = speakerKey?.trim();
   return entries.find((entry) => {
-    if (entry.formidLower6.toUpperCase() !== formidLower6.toUpperCase()) return false;
+    if (entry.lineKey.toUpperCase() !== lineKey.toUpperCase()) return false;
     if (entry.variant !== variant) return false;
     if (!wantSpeaker) return true;
     return voiceSpeakerKey(entry, voiceRootRel) === wantSpeaker;
@@ -116,7 +107,7 @@ export const synthesizeModVoiceLineBuffers = async (
   const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(opts.packageDir, pluginRel));
   const entry = findVoiceEntry(
     voiceFiles,
-    opts.formidLower6,
+    opts.lineKey,
     opts.variant,
     voiceRootRel,
     opts.speakerKey,
@@ -126,7 +117,7 @@ export const synthesizeModVoiceLineBuffers = async (
   }
 
   const translations = await loadVoiceTranslations(db, opts.modId, opts.srcLang, opts.tgtLang);
-  const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+  const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
   if (!row?.translation?.trim()) {
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
@@ -170,7 +161,7 @@ export const synthesizeModVoiceLineBuffers = async (
     if (getJobRuntime()) await ensureDependencyHealthy('tts');
     else await checkTtsHealth(ttsBaseUrl);
 
-    const workDir = path.join(tempRoot, `${entry.formidLower6}_${entry.variant}`);
+    const workDir = path.join(tempRoot, `${entry.lineKey}_${entry.variant}`);
     ensureDir(workDir);
 
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
@@ -181,7 +172,7 @@ export const synthesizeModVoiceLineBuffers = async (
           .get(speakerKey)
           ?.filter(
             (candidate) =>
-              candidate.formidLower6 !== entry.formidLower6 || candidate.variant !== entry.variant,
+              candidate.lineKey !== entry.lineKey || candidate.variant !== entry.variant,
           ) ?? [])
       : [];
     const picked = await pickVoiceTtsReference({
@@ -269,7 +260,7 @@ export const synthesizeModVoiceLine = async (
           const storedVersion = await loadVoiceSynthesisVersion(
             db,
             opts.modId,
-            opts.formidLower6,
+            opts.lineKey,
             opts.variant,
             opts.tgtLang,
             opts.speakerKey?.trim() || speakerKeyFromVoiceRelPath(fuzRel),
@@ -306,7 +297,7 @@ export const synthesizeModVoiceLine = async (
   if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
     await upsertVoiceSynthesisState(db, {
       modId: opts.modId,
-      formidLower6: opts.formidLower6,
+      lineKey: opts.lineKey,
       variant: opts.variant,
       speakerKey,
       targetLang: opts.tgtLang,
@@ -320,7 +311,7 @@ export const synthesizeModVoiceLine = async (
     fs.writeFileSync(fuzDest, built.fuzData);
     await upsertVoiceSynthesisState(db, {
       modId: opts.modId,
-      formidLower6: opts.formidLower6,
+      lineKey: opts.lineKey,
       variant: opts.variant,
       speakerKey,
       targetLang: opts.tgtLang,

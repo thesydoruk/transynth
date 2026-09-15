@@ -13,14 +13,10 @@ import {
   unmask,
   validateMaskedTranslation,
 } from '../../../../../src/utils/placeholders';
-import type { GameType } from '../../../../../src/types';
+import type { GameId } from '../../../../../src/types';
 import { normalizeAutoTranslation } from '../../../../../src/utils/textNorm';
 import { relevantGlossaryForChunk } from './glossary';
-import {
-  splitLongSourceForTranslate,
-  splitLongSourceText,
-  needsLongTextSplit,
-} from '../../shared/splitLongText';
+import { splitLongSourceForTranslate, needsLongTextSplit } from '../../shared/splitLongText';
 import type { ChunkTranslateContext, PreparedLlmItem } from './types';
 
 type RagExamples = NonNullable<PreparedLlmItem['llmItem']['reference_examples']>;
@@ -77,7 +73,7 @@ const translatePartSourceOnce = async (
   const tokenCheck = compareProtectedTokens(
     partSource,
     assembled,
-    entry.game as GameType | undefined,
+    entry.game as GameId | undefined,
     { grup: entry.grup, field: entry.field },
   );
   if (!tokenCheck.ok) {
@@ -148,7 +144,7 @@ export const finalizeLongTextTranslation = (
   const tokenCheck = compareProtectedTokens(
     entry.sourceText,
     translated,
-    (entry.game ?? ctx.opts.modGame) as GameType | undefined,
+    (entry.game ?? ctx.opts.modGame) as GameId | undefined,
     { grup: entry.grup, field: entry.field },
   );
   if (!tokenCheck.ok) {
@@ -156,7 +152,11 @@ export const finalizeLongTextTranslation = (
   }
   return {
     stringId: entry.stringId,
-    text: normalizeAutoTranslation(entry.sourceText, translated),
+    text: normalizeAutoTranslation(
+      entry.sourceText,
+      translated,
+      (entry.game ?? ctx.opts.modGame) as GameId | undefined,
+    ),
   };
 };
 

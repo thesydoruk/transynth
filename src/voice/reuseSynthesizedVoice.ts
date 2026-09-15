@@ -10,7 +10,7 @@ import path from 'node:path';
 import type { Tx } from '../db';
 import { loadModImportPaths } from '../import/mod/resolvePaths';
 import { log } from '../logger';
-import { loadImportedMod, pluginRelPath, resolveImportPackages } from '../modImport';
+import { loadImportedMod } from '../modImport';
 import { ensureDir } from '../utils/file';
 import { resolveVoiceSourceFileHashes, voiceSourceHashMapKey } from './voiceSourceFileHashes';
 import {
@@ -21,15 +21,8 @@ import {
   type ReuseVoiceMatch,
   type ReuseVoiceSourceLine,
 } from './reuseSynthesizedVoiceMatch';
-import { discoVoiceSpeakerKey } from './disco/discoverDiscoVoiceFiles';
-import { loadDiscoVoiceTranslations } from './disco/loadDiscoVoiceTranslations';
-import { resolveDiscoVoiceFilesFromClips } from './disco/resolveClipEntry';
-import { outputLocalizedWavRelPath } from './disco/voicePaths';
-import { dedupeVoiceFiles, discoverVoiceFiles, resolveVoiceRootRel } from './discoverVoiceFiles';
-import { loadVoiceTranslations, lookupVoiceTranslation } from './loadVoiceTranslations';
+import { gamePlugin } from '../games/registry';
 import { prepareVoiceTtsText } from './prepareVoiceTtsText';
-import { voiceSpeakerKey } from './speakerReference';
-import { outputLocalizedFuzRelPath } from './voiceFilePaths';
 import {
   voiceTtsPayloadVersionFromPrepared,
   computeVoiceTtsPayloadVersion,
@@ -49,7 +42,6 @@ export type {
   ReuseVoiceMatch,
   ReuseVoiceSourceLine,
 } from './reuseSynthesizedVoiceMatch';
-export { matchReusableVoiceLines } from './reuseSynthesizedVoiceMatch';
 
 export type ReuseSynthesizedVoiceResult = {
   copied: number;
@@ -114,104 +106,51 @@ const loadVoiceReuseSnapshot = async (
   }
 
   const mod = await loadImportedMod(db, modId);
-  const speaker = speakerFilter?.trim() || '';
+  const voice = gamePlugin(mod.game).voice;
+  if (!voice) return null;
+
   const storedVersions = await loadVoiceSynthesisVersionMap(db, modId, lang);
   const storedSimilarities = await loadVoiceSimilarityMap(db, modId, lang);
   const localizeDir = paths.localizeDir;
 
-  if (mod.game === 'disco') {
-    const translations = await loadDiscoVoiceTranslations(
-      db,
-      modId,
-      mod.srcLang,
-      lang,
-      paths.extractDir,
-      speaker ? { speakerKey: speaker } : {},
-    );
-    const voiceFiles = await resolveDiscoVoiceFilesFromClips(
-      db,
-      modId,
-      paths.extractDir,
-      speaker || undefined,
-    );
-    const lines: VoiceReuseSnapshot['lines'] = [];
-    for (const entry of voiceFiles) {
-      const speakerKey = discoVoiceSpeakerKey(entry);
-      if (speaker && speakerKey !== speaker) continue;
-      const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-      const destRelPath = outputLocalizedWavRelPath(entry);
-      lines.push({
-        speakerKey,
-        formidLower6: entry.formidLower6,
-        variant: entry.variant,
-        sourceText: row?.source ?? '',
-        translation: row?.translation ?? '',
-        sourceAbsPath: entry.absolutePath,
-        sourceRelPath: entry.relPath,
-        destRelPath,
-        hasLocalized: hasLocalizedTake(localizeDir, destRelPath),
-        ttsTextVersion: lookupVoiceSynthesisVersion(
-          storedVersions,
-          speakerKey,
-          entry.formidLower6,
-          entry.variant,
-        ),
-        voiceSimilarity: lookupVoiceSimilarity(
-          storedSimilarities,
-          speakerKey,
-          entry.formidLower6,
-          entry.variant,
-        ),
-      });
-    }
-    return { modId, game: mod.game, localizeDir, lines };
-  }
+  const takes = await voice.listTakes(db, {
+    modId,
+    extractDir: paths.extractDir,
+    pluginPath: paths.pluginPath,
+    srcLang: mod.srcLang,
+    targetLang: lang,
+    speakerKey: speakerFilter?.trim() || undefined,
+  });
 
-  const packages = resolveImportPackages(paths.extractDir, lang, paths.pluginPath);
-  const pkg = packages[0];
-  if (!pkg) return null;
-  const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-  const voiceRootRel = resolveVoiceRootRel(pluginRel);
-  const translations = await loadVoiceTranslations(db, modId, mod.srcLang, lang);
-  const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
-  const lines: VoiceReuseSnapshot['lines'] = [];
-  for (const entry of voiceFiles) {
-    const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-    if (speaker && speakerKey !== speaker) continue;
-    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
-    const destRelPath = outputLocalizedFuzRelPath(entry);
-    lines.push({
-      speakerKey,
-      formidLower6: entry.formidLower6,
-      variant: entry.variant,
-      sourceText: row?.source ?? '',
-      translation: row?.translation ?? '',
-      sourceAbsPath: entry.absolutePath,
-      sourceRelPath: entry.relPath,
-      destRelPath,
-      hasLocalized: hasLocalizedTake(localizeDir, destRelPath),
-      ttsTextVersion: lookupVoiceSynthesisVersion(
-        storedVersions,
-        speakerKey,
-        entry.formidLower6,
-        entry.variant,
-      ),
-      voiceSimilarity: lookupVoiceSimilarity(
-        storedSimilarities,
-        speakerKey,
-        entry.formidLower6,
-        entry.variant,
-      ),
-    });
-  }
+  const lines: VoiceReuseSnapshot['lines'] = takes.map((take) => ({
+    speakerKey: take.speakerKey,
+    lineKey: take.entry.lineKey,
+    variant: take.entry.variant,
+    sourceText: take.source,
+    translation: take.translation,
+    sourceAbsPath: take.entry.absolutePath,
+    sourceRelPath: take.entry.relPath,
+    destRelPath: take.destRelPath,
+    hasLocalized: hasLocalizedTake(localizeDir, take.destRelPath),
+    ttsTextVersion: lookupVoiceSynthesisVersion(
+      storedVersions,
+      take.speakerKey,
+      take.entry.lineKey,
+      take.entry.variant,
+    ),
+    voiceSimilarity: lookupVoiceSimilarity(
+      storedSimilarities,
+      take.speakerKey,
+      take.entry.lineKey,
+      take.entry.variant,
+    ),
+  }));
+
   return { modId, game: mod.game, localizeDir, lines };
 };
 
 /** Other imported versions of the same mod, newest first. */
-export const listSameNameVoiceReuseModIds = async (
-  db: Tx,
-  destModId: number,
-): Promise<number[]> => {
+const listSameNameVoiceReuseModIds = async (db: Tx, destModId: number): Promise<number[]> => {
   const { rows } = await db.query<{ id: number }>(
     `SELECT id FROM mods
      WHERE name = (SELECT name FROM mods WHERE id = $1)
@@ -223,7 +162,7 @@ export const listSameNameVoiceReuseModIds = async (
 };
 
 /** Mods that already synthesized at least one of these FormIDs. */
-export const listOverlappingVoiceReuseModIds = async (
+const listOverlappingVoiceReuseModIds = async (
   db: Tx,
   destModId: number,
   targetLang: string,
@@ -235,7 +174,7 @@ export const listOverlappingVoiceReuseModIds = async (
      FROM voice_synthesis_state
      WHERE target_lang = $1
        AND mod_id != $2
-       AND formid_lower6 = ANY($3::text[])`,
+       AND line_key = ANY($3::text[])`,
     [targetLang.trim().toLowerCase(), destModId, formids],
   );
   return rows.map((row) => row.mod_id);
@@ -250,7 +189,7 @@ const resolveSourceModIds = async (
   if (explicit && explicit.length > 0) {
     return [...new Set(explicit.filter((id) => id > 0 && id !== dest.modId))];
   }
-  const formids = [...new Set(dest.lines.map((line) => line.formidLower6))];
+  const formids = [...new Set(dest.lines.map((line) => line.lineKey))];
   const ids = new Set<number>([
     ...(await listSameNameVoiceReuseModIds(db, dest.modId)),
     ...(await listOverlappingVoiceReuseModIds(db, dest.modId, targetLang, formids)),
@@ -271,7 +210,7 @@ const copyOneTake = async (
   await fs.promises.copyFile(match.source.localizedAbsPath, destAbs);
   await upsertVoiceSynthesisState(db, {
     modId: dest.modId,
-    formidLower6: match.dest.formidLower6,
+    lineKey: match.dest.lineKey,
     variant: match.dest.variant,
     targetLang,
     speakerKey: match.dest.speakerKey,
@@ -342,7 +281,7 @@ const reuseSynthesizedVoiceUnsafe = async (
         sourceAbsPath: line.sourceAbsPath,
         sourceRelPath: line.sourceRelPath,
         localizedAbsPath,
-        formidLower6: line.formidLower6,
+        lineKey: line.lineKey,
         variant: line.variant,
         ttsTextVersion: line.ttsTextVersion,
         voiceSimilarity: line.voiceSimilarity,
@@ -387,7 +326,7 @@ const reuseSynthesizedVoiceUnsafe = async (
         const destLine = dest.lines.find(
           (line) =>
             line.speakerKey === pair.dest.speakerKey &&
-            line.formidLower6 === pair.dest.formidLower6 &&
+            line.lineKey === pair.dest.lineKey &&
             line.variant === pair.dest.variant &&
             line.destRelPath === pair.dest.destRelPath,
         );

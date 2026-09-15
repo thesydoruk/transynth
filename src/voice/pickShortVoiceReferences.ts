@@ -5,7 +5,7 @@ import { isManualVoiceReferencePick } from './speakerReference/eligibility';
 import { wavDurationSec } from './speakerReference/pcm';
 import type { ResolvedSpeakerReference } from './speakerReference/resolve';
 
-export const SHORT_SIBLING_MIN_TOTAL_SEC = 3;
+const SHORT_SIBLING_MIN_TOTAL_SEC = 3;
 export const SHORT_SIBLING_MAX_COUNT = 3;
 
 export type VoiceTtsRefClip = {
@@ -15,7 +15,7 @@ export type VoiceTtsRefClip = {
 };
 
 const sameTake = (a: VoiceFileEntry, b: VoiceFileEntry): boolean =>
-  a.formidLower6.toUpperCase() === b.formidLower6.toUpperCase() && a.variant === b.variant;
+  a.lineKey.toUpperCase() === b.lineKey.toUpperCase() && a.variant === b.variant;
 
 /** True when the speaker default is a different, usable clip — not this short line. */
 export const isUsableSpeakerDefault = (
@@ -26,7 +26,7 @@ export const isUsableSpeakerDefault = (
   if (wavDurationSec(resolved.wavPath) < MIN_REFERENCE_DURATION_SEC) return false;
   if (isManualVoiceReferencePick(resolved.pick)) return true;
   return (
-    resolved.pick.formidLower6.toUpperCase() !== entry.formidLower6.toUpperCase() ||
+    resolved.pick.lineKey.toUpperCase() !== entry.lineKey.toUpperCase() ||
     resolved.pick.variant !== entry.variant
   );
 };
@@ -61,7 +61,7 @@ export const collectSiblingFallbackClips = async (
     if (!decoded || !(decoded.durationSec > 0)) continue;
     clips.push({
       wavPath: decoded.wavPath,
-      speakerText: lookupVoiceSource(sources, candidate.formidLower6, candidate.variant),
+      speakerText: lookupVoiceSource(sources, candidate.lineKey, candidate.variant),
       fileName: candidate.fileName,
     });
     totalSec += decoded.durationSec;

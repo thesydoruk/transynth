@@ -26,9 +26,16 @@ export interface SpeakerGenderBadgeProps {
 /**
  * Gender of a speaker, and the control that corrects it.
  *
- * Import guesses gender from the plugin and from voice folder names, both of
- * which can be wrong or missing, so the badge doubles as the editor: picking a
- * value writes an override that wins over detection everywhere downstream.
+ * Import guesses gender from the plugin, from voice folder names and from how
+ * the mod's own text refers to a character — all of which can be wrong or come
+ * back empty — so the badge doubles as the editor: picking a value writes an
+ * override that wins over detection everywhere downstream.
+ *
+ * That makes it the highest-leverage manual fix in the pipeline, so it has to
+ * look like a control. It used to be a transparent `<select>` laid over the
+ * glyph with a tooltip that named the gender and never mentioned that clicking
+ * did anything; a caret and a hover affordance now say so, and an unresolved
+ * gender says it louder, because that is the one worth correcting.
  */
 export const SpeakerGenderBadge = ({
   gender,
@@ -39,6 +46,11 @@ export const SpeakerGenderBadge = ({
 }: SpeakerGenderBadgeProps) => {
   const { t } = useTranslation();
   const label = t(`dialogs.gender.${gender}`);
+  const hint = override
+    ? t('dialogs.gender.editHintOverridden', { label })
+    : gender === 'unknown'
+      ? t('dialogs.gender.unknownHint')
+      : t('dialogs.gender.editHint', { label });
 
   if (!speakerKey) {
     return (
@@ -53,9 +65,12 @@ export const SpeakerGenderBadge = ({
       className={`${styles.genderBadge} ${styles.genderBadgeEditable}`}
       data-gender={gender}
       data-overridden={override ? '' : undefined}
-      title={override ? t('dialogs.gender.overriddenTitle', { label }) : label}
+      title={hint}
     >
       {GENDER_SYMBOL[gender]}
+      <span className={styles.genderCaret} aria-hidden>
+        ▾
+      </span>
       <select
         className={styles.genderSelect}
         value={override ?? ''}

@@ -13,7 +13,7 @@ import {
 import { getTranslationKeywords } from './translationKeywords';
 import { isLikelyTranslationRequirementNode } from './translationScoring';
 
-export async function hydrateModsByIds(
+async function hydrateModsByIds(
   getModById: GetModByIdFn,
   domainName: string,
   gameId: number,

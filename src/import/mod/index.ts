@@ -17,18 +17,8 @@ export {
   deleteModImportJob,
 } from './jobs';
 export { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
-export {
-  isArchive,
-  isPlugin,
-  isPluginPath,
-  discoverModFiles,
-  listModFilesInDirectory,
-} from './discovery';
-export {
-  filterPrimaryPlugins,
-  isSecondaryPluginPath,
-  selectArchiveImportAnchor,
-} from './importAnchor';
+export { isArchive, isPlugin, discoverModFiles, listModFilesInDirectory } from './discovery';
+
 export { registerPluginFile, registerArchiveFile } from './registration';
 export { markFailed } from './jobStatus';
 export { alignmentKeyedStrings } from './alignment';

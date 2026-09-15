@@ -2,9 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type VoiceLinePreview } from '../../../../../api';
 
-export const voiceSpeakersQueryKey = (modId: number, srcLang: string, targetLang: string) =>
-  ['voice-speakers', modId, srcLang, targetLang] as const;
-
 export interface UseVoiceActionsParams {
   modId: number;
   srcLang: string;
@@ -39,7 +36,7 @@ export const useVoiceActions = ({
       return api.mods.setVoiceSpeakerRef(
         modId,
         speakerKey,
-        line.formidLower6,
+        line.lineKey,
         line.variant,
         srcLang,
         targetLang,
@@ -52,7 +49,7 @@ export const useVoiceActions = ({
     mutationFn: (line: VoiceLinePreview) =>
       api.mods.generateVoiceLine(
         modId,
-        line.formidLower6,
+        line.lineKey,
         line.variant,
         srcLang,
         targetLang,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type UploadProgressEvent, type ModImportJob } from '../../../api';
-import { isSupportedGameId, kindFromExt } from '../modsPageUtils';
+import { kindFromExt } from '../modsPageUtils';
 import type { PendingModUpload } from '../modsPageTypes';
 
 type UseModUploadOptions = {
@@ -55,7 +55,8 @@ export const useModUpload = ({
           const job = await api.csv.upload(f);
           if (job) doStart('csv', job.id);
         } else {
-          const uploadOptions = isSupportedGameId(gameId) ? { game: gameId } : undefined;
+          // The server validates the id against its registered games.
+          const uploadOptions = gameId ? { game: gameId } : undefined;
           const uploadId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
           setPendingModUploads((prev) => [
             ...prev,

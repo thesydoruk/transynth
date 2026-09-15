@@ -4,7 +4,7 @@ import { reuseSynthesizedVoice } from '../../../../src/voice/reuseSynthesizedVoi
 import { invalidateVoiceListContext } from '../../../../src/web/voice/preview/voiceListContext';
 import { insertExportArchive } from '../../../../src/web/data/queries/exportArchives';
 import { executeLangpackExport } from '../langpackExport/runJob';
-import { runModImport } from '../import/mod/runImport';
+import { runModImport } from '../../../../src/import/mod/run/runImport';
 import { getModImportJob } from '../../../../src/import/mod/jobs';
 import { runLlmTranslateJob } from '../translate/runJob';
 import { log } from '../../../../src/logger';

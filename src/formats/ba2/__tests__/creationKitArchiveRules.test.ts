@@ -33,9 +33,9 @@ describe('creationKitArchiveRules', () => {
   });
 
   it('dispatches archive compression by type', () => {
-    expect(shouldCompressArchiveEntry('ba2', 'Mod - Main.ba2', 'Meshes\\x.nif', 'fo4')).toBe(true);
-    expect(
-      shouldCompressArchiveEntry('bsa', 'Mod - Strings.bsa', 'strings\\x.strings', 'sse'),
-    ).toBe(false);
+    expect(shouldCompressArchiveEntry('ba2', 'Mod - Main.ba2', 'Meshes\\x.nif')).toBe(true);
+    expect(shouldCompressArchiveEntry('bsa', 'Mod - Strings.bsa', 'strings\\x.strings')).toBe(
+      false,
+    );
   });
 });

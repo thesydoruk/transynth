@@ -33,9 +33,7 @@ export const withModImportWriteLock = async <T>(db: Tx, fn: () => Promise<T>): P
 };
 
 /** Hold one pool client for the whole bulk window, so session locks and writes share a session. */
-export const pinDbClient = async (
-  db: Tx,
-): Promise<{ client: pg.PoolClient; release?: () => void }> => {
+const pinDbClient = async (db: Tx): Promise<{ client: pg.PoolClient; release?: () => void }> => {
   if (db instanceof Pool) {
     const client = await db.connect();
     return { client, release: () => client.release() };

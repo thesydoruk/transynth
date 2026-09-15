@@ -201,10 +201,14 @@ You do not need to set it manually when running the full stack with `docker comp
 | `WEB_PORT`                | same as `PORT` | Host publish port in Docker Compose                                                                             |
 
 > `PORT` and `HOST` are read from `process.env` (not `CONFIG` in `src/config.ts`).
-> Vite proxies `/api` using `PORT`; there is no `VITE_API_BASE`.
+> In development Vite proxies `/api` using `PORT`, so the frontend needs no
+> address of its own. A build served from somewhere other than the API can be
+> pointed at it with `VITE_API_URL` (`web-ui/src/api/client.ts`), which is
+> baked in at build time and empty by default.
 
 Also in `.env.example` (not repeated in the tables above): `NEXUS_API_KEY`
-(Discover / Nexus download), `REDIS_URL` (job queue; Compose sets
+(Discover / Nexus download), `TRANSYNTH_CLI_TOKEN` / `TRANSYNTH_API_URL`
+(remote [Vortex Sync](16-vortex-sync.md)), `REDIS_URL` (job queue; Compose sets
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
 `BETHESDA_TOOLS_URL` / `DOCKER_BETHESDA_TOOLS_URL`, `AUDIO_INTEL_BASE_URL`
 (Whisper for Disco, default `http://localhost:8080`; in Compose —
@@ -278,16 +282,24 @@ Embedded Postgres data lives in `./data/postgres` on the host (see
 `docker/compose.db.yml`). It survives `docker compose down`. Do not use
 `docker compose down -v` unless you intend to wipe it.
 
-**Backup the PostgreSQL data volume:**
+**Backup and restore:**
 
 ```bash
-docker compose exec db pg_dump -U transynth transynth > backup_$(date +%Y%m%d).sql
+./scripts/backup.sh    # auto-detects Docker vs local pg_dump
+./scripts/restore.sh <backup_file.sql.gz>
 ```
 
-**Restore from a backup:**
+Both auto-detect whether the `db` Compose service is running and fall back to
+a local `pg_dump` / `psql` otherwise (`--docker` / `--local` forces a mode).
+`backup.sh` writes a timestamped, gzipped dump to
+`${DATA_DIR:-./data}/backups/transynth_YYYYMMDD_HHMMSS.sql.gz`. `restore.sh`
+**drops and recreates** the target database — it asks for confirmation first.
+
+Equivalent manual commands, e.g. against an external Postgres:
 
 ```bash
-cat backup_20250101.sql | docker compose exec -T db psql -U transynth transynth
+docker compose exec db pg_dump -U transynth transynth | gzip > backup.sql.gz
+gunzip -c backup.sql.gz | docker compose exec -T db psql -U transynth transynth
 ```
 
 **Access the database from the host machine:**
@@ -317,9 +329,8 @@ Vite service in production.
 2. **Do not overwrite a live `.env`** with `.env.example`.
 3. **Reverse proxy:** terminate TLS in front of `WEB_PORT`. See [SECURITY.md](../../SECURITY.md).
    This is a trusted-LAN app — do not put the raw port on the public internet.
-4. **Backups:** `pg_dump` the external database (or `./data/postgres` if you
-   use the embedded profile). Never `docker compose down -v` on a machine
-   that holds translation data.
+4. **Backups:** run `./scripts/backup.sh` on a schedule (cron/Task Scheduler).
+   Never `docker compose down -v` on a machine that holds translation data.
 5. **Deploy** by `git pull` and rebuilding the `web` image. `web` and `worker`
    share that image — restart both.
 

@@ -1,27 +1,16 @@
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
+import { findGamePlugin } from '../../games/registry';
 
-const GAME_LABELS: Record<GameType, string> = {
-  fo4: 'Fallout 4',
-  fo76: 'Fallout 76',
-  fo3: 'Fallout 3',
-  fnv: 'Fallout: New Vegas',
-  ob: 'The Elder Scrolls IV: Oblivion',
-  mw: 'The Elder Scrolls III: Morrowind',
-  sse: 'Skyrim Special Edition',
-  sle: 'Skyrim Legendary Edition',
-  disco: 'Disco Elysium',
-};
-
-const isGameType = (value: string | null | undefined): value is GameType => {
-  return value != null && value in GAME_LABELS;
-};
-
-/** Human-readable game title for localization prompts. */
+/**
+ * Human-readable game title for localization prompts.
+ *
+ * An unregistered id is echoed back rather than replaced, so a prompt built
+ * for a game the app no longer ships still names the right thing.
+ */
 export const gameLabel = (
-  game: GameType | string | null | undefined,
+  game: GameId | string | null | undefined,
   fallback = 'Bethesda game',
 ): string => {
   if (game == null || game === '') return fallback;
-  if (isGameType(game)) return GAME_LABELS[game];
-  return game;
+  return findGamePlugin(game)?.prompts.label ?? game;
 };

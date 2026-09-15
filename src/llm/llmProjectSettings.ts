@@ -24,7 +24,7 @@ const envFallbackServers = (): VllmServerEntry[] =>
   });
 
 /** Effective chat servers: project setting when non-empty, else env. */
-export const resolveVllmServersFromProjectSettings = (
+const resolveVllmServersFromProjectSettings = (
   settings: ProjectSettings,
 ): { servers: VllmServerEntry[]; fromSettings: boolean } => {
   const fromSettings = normalizeVllmServerEntries(settings['llm.vllm_servers']);

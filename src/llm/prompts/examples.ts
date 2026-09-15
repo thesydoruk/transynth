@@ -65,52 +65,6 @@ export const buildEnglishPromptExamples = (targetLang: string): string => {
   ].join('\n');
 };
 
-/** Ukrainian prompt examples — output is always Ukrainian. */
-export const buildUkrainianPromptExamples = (): string => {
-  return [
-    'Приклад вхідних даних:',
-    fill(INPUT_EXAMPLE, {
-      targetLang: 'uk',
-      glossaryBos: 'Братерство сталі',
-    }),
-    '',
-    'Приклад відповіді:',
-    fill(OUTPUT_EXAMPLE, {
-      line101Parts: '"Мені потрібно ", 0, " кришок за цей карабін."',
-      line102: 'Бойова броня Братерства сталі',
-    }),
-    '',
-    'Додатковий приклад (легендарний афікс + зброя):',
-    'Вхід: {"id":110,"source":"Lucky Hunting Rifle","grup":"WEAP","field":"FULL"}',
-    'Вихід: {"id":110,"parts":["Фартовий мисливський карабін"]}',
-    '',
-    'Додатковий приклад (OMOD-слот броні):',
-    'Вхід: {"id":111,"source":"Deep Pocketed","grup":"ARMO","field":"FULL","edid":"Mod_Armor_DeepPocket"}',
-    'Вихід: {"id":111,"parts":["Глибокі кишені"]}',
-    '',
-    'Додатковий приклад (фракційний прикметник у назві):',
-    'Вхід: {"id":112,"source":"Railroad Gauntlets","grup":"ARMO","field":"FULL"}',
-    'Вихід: {"id":112,"parts":["Підземні рукавиці"]}',
-    '',
-    'Додатковий приклад (частина силової броні, ARMO/FULL):',
-    'Вхід: {"id":103,"source":"T-51 Right Arm Armor","grup":"ARMO","field":"FULL","edid":"Armor_Power_T51_ArmRight"}',
-    'Вихід: {"id":103,"parts":["Права рука T-51"]}',
-    'Альтернатива OK: {"id":103,"parts":["Броня T-51 для правої руки"]}',
-    '',
-    'Додатковий приклад (деталь PA для крафту, MISC):',
-    'Вхід: {"id":109,"parts":["T-45d Arm Armor"],"grup":"MISC","field":"FULL"} → {"id":109,"parts":["Броня T-45d для руки"]}',
-    '',
-    'Додатковий приклад (матеріали, FULL — без капсу):',
-    'Вхід: {"id":104,"parts":["Bamboo Fiber"],"grup":"MISC","field":"FULL"} → {"id":104,"parts":["Бамбукове волокно"]}',
-    'Вхід: {"id":105,"parts":["Wood"],"grup":"MISC","field":"FULL"} → {"id":105,"parts":["Деревина"]}',
-    '',
-    'Додатковий приклад (категорії UI — обидві частини українською):',
-    'Вхід: {"id":106,"parts":["Ammo - Ballistic"],"grup":"MISC","field":"FULL"} → {"id":106,"parts":["Боєприпаси — балістичні"]}',
-    'Вхід: {"id":107,"parts":["Armor - Standard"],"grup":"MISC","field":"FULL"} → {"id":107,"parts":["Броня — стандартна"]}',
-    'Вхід: {"id":108,"parts":["Weapon Parts"],"grup":"MISC","field":"FULL"} → {"id":108,"parts":["Деталі зброї"]}',
-  ].join('\n');
-};
-
 const sampleTranslationsForTarget = (
   targetLang: string,
 ): {

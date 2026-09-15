@@ -4,7 +4,8 @@ import { writeBa2, shouldCompressArchiveEntry, isRepackableBethesdaArchive } fro
 import { writeBsa } from '../formats/bsa';
 import type { ArchiveInputFile } from '../formats/types';
 import { log } from '../logger';
-import type { GameType } from '../types';
+import { archiveKindForGame } from '../games/creation-engine/archives';
+import type { GameId } from '../types';
 import type { ArchiveManifestEntry } from './archiveManifest';
 import {
   archiveEntryToDiskPath,
@@ -64,11 +65,10 @@ export const refreshArchiveEntryPaths = (
   return [...paths.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 };
 
-export const collectArchiveInputFiles = (
+const collectArchiveInputFiles = (
   rootDir: string,
   entries: string[],
   archive: ArchiveManifestEntry,
-  game: GameType,
 ): ArchiveInputFile[] => {
   const files: ArchiveInputFile[] = [];
   for (const entryName of entries) {
@@ -80,17 +80,17 @@ export const collectArchiveInputFiles = (
     files.push({
       name: normalized,
       data: fs.readFileSync(diskPath),
-      compressed: shouldCompressArchiveEntry(archive.type, archive.fileName, normalized, game),
+      compressed: shouldCompressArchiveEntry(archive.type, archive.fileName, normalized),
     });
   }
   return files;
 };
 
-export const writeBethesdaArchiveFile = (
+const writeBethesdaArchiveFile = (
   destPath: string,
   archive: ArchiveManifestEntry,
   files: ArchiveInputFile[],
-  game: GameType,
+  game: GameId,
 ): void => {
   if (files.length === 0) {
     throw new Error(`Cannot write empty archive ${archive.fileName}`);
@@ -107,7 +107,7 @@ export const writeBethesdaArchiveFile = (
 export const inferArchivesForPackage = (
   packageDir: string,
   pluginFiles: string[],
-  game: GameType,
+  game: GameId,
 ): ArchiveManifestEntry[] => {
   const looseFiles = collectArchiveableLooseFiles(packageDir);
   if (looseFiles.length === 0) return [];
@@ -131,7 +131,7 @@ export const resolvePackageArchives = (
   packageDir: string,
   archives: ArchiveManifestEntry[],
   pluginFiles: string[],
-  game: GameType,
+  game: GameId,
 ): ArchiveManifestEntry[] => {
   const resolved =
     archives.length > 0 ? archives : inferArchivesForPackage(packageDir, pluginFiles, game);
@@ -148,19 +148,19 @@ export const packBethesdaArchivesIntoDir = (
   destDir: string,
   archives: ArchiveManifestEntry[],
   pluginFiles: string[],
-  game: GameType,
+  game: GameId,
 ): PackedBethesdaArchive[] => {
   const resolved = resolvePackageArchives(packageDir, archives, pluginFiles, game);
   const packed: PackedBethesdaArchive[] = [];
 
   for (const archive of resolved) {
     if (archive.entries.length === 0) continue;
-    if (!isRepackableBethesdaArchive(archive.type, archive.fileName, game)) {
+    if (!isRepackableBethesdaArchive(archive.type, archive.fileName, archiveKindForGame(game))) {
       log.info(`  skip repack ${archive.fileName} (DX10 / pass-through)`);
       continue;
     }
 
-    const files = collectArchiveInputFiles(packageDir, archive.entries, archive, game);
+    const files = collectArchiveInputFiles(packageDir, archive.entries, archive);
     const destPath = path.join(destDir, archive.fileName);
     writeBethesdaArchiveFile(destPath, archive, files, game);
     packed.push({ fileName: archive.fileName, destPath, entryCount: files.length });

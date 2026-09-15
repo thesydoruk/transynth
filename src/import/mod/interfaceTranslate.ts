@@ -7,7 +7,6 @@ import {
   parseInterfaceTranslateBuffer,
 } from '../../formats/interface';
 import { listCompanionGnrlBa2ForPlugin } from './discovery';
-import type { GameType } from '../../types';
 import type { CsvRow } from '../../types';
 
 const loadInterfaceTranslateFromBa2 = (ba2Path: string): Map<string, Map<string, string>> => {
@@ -51,11 +50,10 @@ const loadInterfaceTranslateFromLooseFiles = (modDir: string): Map<string, Map<s
 export const collectInterfaceTranslateLocales = (
   modDir: string,
   anchorPath: string,
-  game: GameType = 'fo4',
 ): Map<string, Map<string, string>> => {
   const merged = new Map<string, Map<string, string>>();
 
-  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath, game)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath)) {
     try {
       for (const [locale, map] of loadInterfaceTranslateFromBa2(ba2Path)) {
         if (!merged.has(locale)) merged.set(locale, new Map());
@@ -85,14 +83,3 @@ export const buildInterfaceTranslateCsvRows = (
     PathSimplified: `Interface\\Translate_${locale}\\${key}`,
     Source: text,
   }));
-
-export const countInterfaceTranslateRecords = (
-  modDir: string,
-  anchorPath: string,
-  game: GameType = 'fo4',
-): number => {
-  const locales = collectInterfaceTranslateLocales(modDir, anchorPath, game);
-  let max = 0;
-  for (const map of locales.values()) max = Math.max(max, map.size);
-  return max;
-};

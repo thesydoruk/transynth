@@ -11,6 +11,8 @@
  * Environment:
  *   DATABASE_URL   PostgreSQL connection string (see .env.example)
  */
+// Registers the game plugins; the first-run QA seed reads the registry.
+import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -5,7 +5,7 @@ import {
 } from '../../../../../utils/pexStoredContext';
 
 /** Derive a minimal script label from a PEX record path (`PEX\\ScriptName`). */
-export const pexScriptLabelFromPath = (recordPath: string): string | null => {
+const pexScriptLabelFromPath = (recordPath: string): string | null => {
   const trimmed = recordPath.trim();
   if (!trimmed.toUpperCase().startsWith('PEX\\')) return null;
   const scriptKey = trimmed.slice(4).trim();

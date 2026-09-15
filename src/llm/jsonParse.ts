@@ -155,7 +155,7 @@ const formatSnippet = (text: string, position: number, radius = 120): string => 
 };
 
 /** Structured warn log when LLM output fails JSON.parse (for post-mortem analysis). */
-export const logLlmJsonParseFailure = (
+const logLlmJsonParseFailure = (
   raw: string,
   err: unknown,
   context?: Record<string, unknown>,

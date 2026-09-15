@@ -1,3 +1,3 @@
-export { resolveBethesdaToolsUrl, requireBethesdaToolsUrl } from './url';
+export { resolveBethesdaToolsUrl } from './url';
 export { generateLipViaRemote } from './remoteLip';
 export { encodeXwmViaRemote } from './remoteXwm';

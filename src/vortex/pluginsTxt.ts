@@ -1,29 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GameType } from '../types';
-import { officialMasterNames } from './officialPlugins';
-
-const GAME_LOCAL_FOLDERS: Partial<Record<GameType, string>> = {
-  fo4: 'Fallout4',
-  fo76: 'Fallout76',
-  fo3: 'Fallout3',
-  fnv: 'FalloutNV',
-  sse: 'Skyrim Special Edition',
-  sle: 'Skyrim',
-  ob: 'Oblivion',
-  mw: 'Morrowind',
-};
-
-const GAME_VORTEX_IDS: Partial<Record<GameType, string>> = {
-  fo4: 'fallout4',
-  fo76: 'fallout76',
-  fo3: 'fallout3',
-  fnv: 'falloutnv',
-  sse: 'skyrimse',
-  sle: 'skyrim',
-  ob: 'oblivion',
-  mw: 'morrowind',
-};
+import type { GameId } from '../types';
+import { gameLocalAppFolder, officialMasterNames, vortexGameId } from './gameProfiles';
 
 export type ParsedPluginList = {
   plugins: string[];
@@ -56,14 +34,10 @@ export const parsePluginList = (text: string): ParsedPluginList => {
   return { plugins, enabled };
 };
 
-export const readPluginListFile = (filePath: string): ParsedPluginList => {
+const readPluginListFile = (filePath: string): ParsedPluginList => {
   if (!fs.existsSync(filePath)) return { plugins: [], enabled: [] };
   return parsePluginList(fs.readFileSync(filePath, 'utf8'));
 };
-
-export const gameLocalAppFolder = (game: GameType): string | undefined => GAME_LOCAL_FOLDERS[game];
-
-export const vortexGameId = (game: GameType): string | undefined => GAME_VORTEX_IDS[game];
 
 const newestChildDir = (dir: string): string | null => {
   if (!fs.existsSync(dir)) return null;
@@ -107,7 +81,7 @@ const readOrderPair = (dir: string): ParsedPluginList => {
   return mergePluginLists([loadorder, plugins, pluginsAlt]);
 };
 
-const prependOfficialMasters = (game: GameType, list: ParsedPluginList): ParsedPluginList => {
+const prependOfficialMasters = (game: GameId, list: ParsedPluginList): ParsedPluginList => {
   const masters = officialMasterNames(game);
   // Masters belong in load order; enabled is only plugins.txt `*` (plus deployed folders).
   const head: ParsedPluginList = { plugins: [...masters], enabled: [] };
@@ -115,7 +89,7 @@ const prependOfficialMasters = (game: GameType, list: ParsedPluginList): ParsedP
 };
 
 export const discoverPluginLoadOrder = (opts: {
-  game: GameType;
+  game: GameId;
   stagingPath: string;
   pluginsTxt?: string;
   vortexProfile?: string;

@@ -1,5 +1,5 @@
 import type { ModImportExtractManifest } from '../../modImport';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import type { VortexFolderInfo } from '../../utils/vortexFolder';
 
 export interface ModImportJob {
@@ -13,7 +13,7 @@ export interface ModImportJob {
   src_lang: string;
   tgt_lang: string;
   is_localized: number; // 0 | 1
-  game: GameType;
+  game: GameId;
   esp_path: string | null;
   extract_dir: string | null;
   archive_manifest: ModImportExtractManifest | null;

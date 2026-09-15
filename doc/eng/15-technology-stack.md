@@ -86,7 +86,6 @@ At a high level, the system supports these flows:
   gettext lockit (`discoLockitMarkup`, `¤Q¤` / `¤IT¤` / `¤TS¤` / `¤EM¤` masks).
 - `archiver` and `node-7z` handle archives. Keep both `7zip-bin` (`7za`, zip/7z)
   and `7z-bin` (full `7z`, RAR) — `7za` cannot unpack RAR.
-- `fast-xml-parser` is used for XML-based content.
 
 ---
 
@@ -95,7 +94,14 @@ At a high level, the system supports these flows:
 - Root Jest covers `src/` and `worker/`. `web-ui` uses Vitest (`*.test.ts` / `*.test.tsx`).
 - Tests are colocated near code in local `__tests__/` folders or `*.test.ts(x)` next to the source.
 - `tsx` is used to run TypeScript files directly in development and CLI flows.
-- `concurrently` and `wait-on` are used in development orchestration scripts.
+- `concurrently` is used in development orchestration scripts.
+- `npm run knip` reports code nothing reaches — unused files, exports, and
+  dependencies. It is configured to be actionable rather than exhaustive: the
+  repo is one flat project (the worker imports `src/` by relative path, so
+  treating it as a separate workspace breaks the graph), and unused _types_ are
+  not reported, because most of them name the signature of their own function.
+  A clean run is the expected state; anything it prints is either dead or a
+  missing entry point in `knip.json`.
 
 ### Shared UI Components
 
@@ -137,4 +143,4 @@ Key shared components:
 
 ---
 
-← [Configuration](14-configuration.md) | [Home](README.md)
+← [Configuration](14-configuration.md) | [Home](README.md) | **Next: [Vortex Sync →](16-vortex-sync.md)**

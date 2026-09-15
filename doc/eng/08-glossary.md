@@ -47,7 +47,7 @@ terminology (`EN → UK`): factions, locations, companions, creatures, robots,
 chems, weapons/armor, and S.P.E.C.I.A.L. attributes. The pairs were curated
 from the confirmed base-game translations (`Fallout4.esm`) by frequency.
 
-- **Source of truth:** `src/resources/glossary/fo4-uk.ts` — a curated, typed
+- **Source of truth:** `src/games/creation-engine/data/glossary/fo4-uk.ts` — a curated, typed
   list of pairs kept in git, so the terminology does not live in the database
   alone and can never be lost.
 - **Seeding the database:** run
@@ -68,7 +68,7 @@ terms through the **Glossary** page in the UI.
 
 ## Built-in Disco Elysium Glossary (Seed)
 
-DE canon (`EN → UK`) lives in `src/resources/glossary/disco-uk.ts`. Disco
+DE canon (`EN → UK`) lives in `src/games/disco-elysium/prompts/glossary.ts`. Disco
 translate and verify prompts inject it; `npm run db:seed:glossary` still seeds
 Fallout 4 only. Before LLM and TTS, lockit asterisk-censorship is restored to
 the full word, so pairs such as `faggot` / `Pissfaggot` can match. Italic
@@ -186,7 +186,7 @@ column are **not** included — only pairs with a defined translation are inject
 > **Developer note.** Previously the first 80 terms _alphabetically_ were sent
 > with every batch regardless of relevance, so relevant terms past the cutoff
 > could be dropped. Injection is now filtered by chunk content (see
-> `relevantGlossaryForChunk` in `src/web/llm/translateBatch/glossary.ts`).
+> `selectRelevantGlossary` in `src/llm/glossarySelect.ts`).
 
 Beyond the glossary, key canonical conventions (e.g. `...Rifle/Gun → ...карабін`,
 `caps → кришки`, `Vault → Сховище`) are baked directly into the Ukrainian system
@@ -261,7 +261,7 @@ Response:
 - **Review LLM output for glossary compliance.** After a translation run,
   filter by status `auto` and look for `glossary_violation` QA warnings.
 - **Keep shared terms in git.** Terms that should be shared across the team and
-  survive a database reset belong in `src/resources/glossary/fo4-uk.ts`; apply
+  survive a database reset belong in `src/games/creation-engine/data/glossary/fo4-uk.ts`; apply
   them with `npm run db:seed:glossary`. Use the UI for one-off / local terms.
 
 ---

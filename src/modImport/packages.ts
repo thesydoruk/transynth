@@ -1,12 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  findFirstMcmTranslationFile,
-  hasMcmTranslationFiles,
-  resolveModDirectoryFromPath,
-} from '../formats/mcm';
-import { findFirstDiscoPoFile, hasDiscoPoPack } from '../formats/po';
+import { resolveModDirectoryFromPath } from '../formats/mcm';
 import { filterPrimaryPlugins } from '../import/mod/importAnchor';
+import { gamePlugin, resolveGameId } from '../games/registry';
+import type { GameId } from '../types';
 import { discoverModFiles } from '../import/mod';
 import { modImportLocalizeDir } from '../modStorage';
 import { ensureDir } from '../utils/file';
@@ -95,6 +92,11 @@ export const resolveImportPackages = (
   extractDir: string,
   lang: string,
   primaryPluginPath?: string,
+  /**
+   * Only consulted when `primaryPluginPath` is omitted: the anchor then has to
+   * be discovered, and which file counts as one is the game's own business.
+   */
+  game?: GameId | null,
 ): ImportPackageContext[] => {
   const resolvedExtractDir = path.resolve(extractDir);
   const localizeRoot = modImportLocalizeDir(resolvedExtractDir, lang);
@@ -109,16 +111,19 @@ export const resolveImportPackages = (
 
   const plugins = filterPrimaryPlugins(discoverModFiles(resolvedExtractDir).plugins);
   if (plugins.length === 0) {
-    if (hasMcmTranslationFiles(resolvedExtractDir)) {
-      const anchor = findFirstMcmTranslationFile(resolvedExtractDir);
-      if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
+    // Nothing this code recognizes as a plugin, so ask the game what its own
+    // uploads are anchored to — a `.po` pack, an MCM translation file, or
+    // whatever the next engine ships. Guessing a game here would pick the
+    // wrong answer silently, so a caller that needs the fallback must say.
+    if (game == null) {
+      throw new Error(
+        `No plugin found under ${resolvedExtractDir}; pass a game to resolve the anchor`,
+      );
     }
-    if (hasDiscoPoPack(resolvedExtractDir)) {
-      const anchor = findFirstDiscoPoFile(resolvedExtractDir);
-      if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
-    }
+    const anchor = gamePlugin(game).import.selectAnchor(resolvedExtractDir);
+    if (anchor) return [packageContextForAnchor(resolvedExtractDir, localizeRoot, anchor)];
     throw new Error(
-      `No plugins, MCM translation files, or Disco .po pack found under ${resolvedExtractDir}`,
+      `Nothing importable for ${resolveGameId(game)} found under ${resolvedExtractDir}`,
     );
   }
 

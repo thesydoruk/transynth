@@ -95,9 +95,6 @@ export const readSwfFonts = (buf: Buffer): SwfFont[] => {
   });
 };
 
-/** Code points of a string, for coverage checks. */
-export const codePointsOf = (text: string): number[] => [...text].map((ch) => ch.codePointAt(0)!);
-
 /** Characters of `text` that a font does not embed a glyph for. */
 export const missingGlyphs = (font: SwfFont, text: string): string[] =>
   [...text].filter((ch) => !font.codePoints.has(ch.codePointAt(0)!));

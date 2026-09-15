@@ -32,29 +32,3 @@ export const writePoWithOverlays = (
   }
   return gettextParser.po.compile(parsed);
 };
-
-/** Compile a minimal `.po` from msgid→msgstr pairs (no msgctxt). */
-export const writePoFromMap = (entries: Map<string, string>, charset = 'utf-8'): Buffer => {
-  const translations: GetTextTranslations['translations'] = {
-    '': {
-      '': {
-        msgid: '',
-        msgstr: [`Content-Type: text/plain; charset=${charset}\n`],
-      },
-    },
-  };
-
-  for (const [msgid, msgstr] of entries) {
-    if (!msgid) continue;
-    translations['']![msgid] = { msgid, msgstr: [msgstr] };
-  }
-
-  const data: GetTextTranslations = {
-    charset,
-    headers: {
-      'content-type': `text/plain; charset=${charset}`,
-    },
-    translations,
-  };
-  return gettextParser.po.compile(data);
-};

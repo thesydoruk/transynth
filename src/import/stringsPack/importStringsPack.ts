@@ -1,11 +1,13 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import fs from 'node:fs';
 import path from 'node:path';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 import { EspReader } from '../../formats/esp';
 import { parseStringsBuffer } from '../../formats/strings';
 import type { Tx } from '../../db';
 import { upsertMod } from '../../db';
 import { log } from '../../logger';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { CONFIG } from '../../config';
 import { bulkInsertModImportRows, type ModImportBulkRow } from '../bulk';
 import { withModImportWriteLock } from '../locks';
@@ -36,7 +38,7 @@ const countExistingRecords = async (db: Tx, modId: number): Promise<number> => {
 export const importStringsPack = async (
   db: Tx,
   pack: StringsPackCandidate,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
   options: StringsPackImportOptions = {},
 ): Promise<StringsPackImportResult> => {
   const force = options.force ?? false;
@@ -55,7 +57,7 @@ export const importStringsPack = async (
     );
   }
 
-  const esp = new EspReader(pluginPath, game);
+  const esp = new EspReader(pluginPath, creationEngineTitle(game).subrecords);
   if (!esp.info.isLocalized) {
     throw new Error(`Plugin "${pluginPath}" is not localized — strings tables are not used`);
   }

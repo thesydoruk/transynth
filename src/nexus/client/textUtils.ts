@@ -1,5 +1,5 @@
 import type { NexusMod } from '../types';
-import type { SortDirection, TranslationLanguage } from '../types';
+import type { TranslationLanguage } from '../types';
 
 export const uniqueStrings = (values: string[]): string[] => {
   const seen = new Set<string>();
@@ -36,10 +36,6 @@ export const normalizeLanguage = (language: TranslationLanguage | undefined): st
 
 export const normalizeQuery = (value: string): string => {
   return value.replace(/\s+/g, ' ').trim();
-};
-
-export const normalizeSortDirection = (direction: SortDirection | undefined): SortDirection => {
-  return direction ?? 'DESC';
 };
 
 export const normalizeTextForMatch = (value: string): string => {

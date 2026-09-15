@@ -5,11 +5,7 @@ import { isBa2GnrArchive, readBa2ArchiveType } from '../formats/ba2/readBa2Archi
 import { BsaReader } from '../formats/bsa';
 import { log } from '../logger';
 import { ensureDir } from '../utils/file';
-import type {
-  ArchiveManifestEntry,
-  ModImportArchiveRecord,
-  ModImportFileProvenance,
-} from './archiveManifest';
+import type { ModImportArchiveRecord, ModImportFileProvenance } from './archiveManifest';
 
 const normalizeEntryPath = (entryPath: string): string => entryPath.replace(/\\/g, '/');
 
@@ -20,7 +16,7 @@ const relativeFromRoot = (extractRoot: string, absPath: string): string =>
 const archiveEntryPathToDisk = (outDir: string, entryName: string): string =>
   path.join(outDir, ...entryName.split(/[/\\]/).filter(Boolean));
 
-export const listBa2ArchiveEntries = (archivePath: string): string[] => {
+const listBa2ArchiveEntries = (archivePath: string): string[] => {
   const reader = new Ba2Reader(archivePath);
   try {
     return reader.listFiles();
@@ -29,13 +25,8 @@ export const listBa2ArchiveEntries = (archivePath: string): string[] => {
   }
 };
 
-export const listBsaArchiveEntries = (archivePath: string): string[] => {
-  const reader = new BsaReader(archivePath);
-  return reader.list().map((entry) => entry.name);
-};
-
 /** Extract a GNRL BA2 archive into `outDir`, preserving internal paths. */
-export const extractBa2ToDir = (archivePath: string, outDir: string): void => {
+const extractBa2ToDir = (archivePath: string, outDir: string): void => {
   if (!isBa2GnrArchive(archivePath)) {
     log.warn(`Skipping non-GNRL BA2: ${path.basename(archivePath)}`);
     return;
@@ -54,7 +45,7 @@ export const extractBa2ToDir = (archivePath: string, outDir: string): void => {
 };
 
 /** Extract a BSA archive into `outDir`, preserving internal paths. */
-export const extractBsaToDir = (archivePath: string, outDir: string): void => {
+const extractBsaToDir = (archivePath: string, outDir: string): void => {
   const reader = new BsaReader(archivePath);
   for (const entry of reader.list()) {
     const dest = archiveEntryPathToDisk(outDir, entry.name);
@@ -69,25 +60,10 @@ export type BethesdaExtractWithManifestResult = {
 };
 
 /**
- * Extract a BA2/BSA archive next to itself, remove the archive file, and return manifest metadata.
- */
-export const extractBethesdaArchiveInPlace = (archivePath: string): ArchiveManifestEntry | null => {
-  const result = extractBethesdaArchiveInPlaceWithManifest(archivePath, path.dirname(archivePath));
-  if (!result) return null;
-  const { archive } = result;
-  return {
-    type: archive.packing,
-    fileName: archive.fileName,
-    entries: archive.entries,
-    bsaVersion: archive.bsaVersion,
-  };
-};
-
-/**
  * Like {@link extractBethesdaArchiveInPlace} but also records per-file provenance relative to
  * `extractRoot`.
  */
-export const extractBethesdaArchiveInPlaceWithManifest = (
+const extractBethesdaArchiveInPlaceWithManifest = (
   archivePath: string,
   extractRoot: string,
 ): BethesdaExtractWithManifestResult | null => {
@@ -190,19 +166,6 @@ const collectBethesdaArchivesInDirs = (dirs: string[]): string[] => {
     }
   }
   return [...archives];
-};
-
-/** Extract every BA2/BSA under `root` in place (deepest archives first). */
-export const extractAllBethesdaArchivesInTree = (root: string): ArchiveManifestEntry[] => {
-  const result = extractAllBethesdaArchivesInTreeWithManifest(root);
-  return result.archives
-    .filter((archive) => archive.extracted)
-    .map((archive) => ({
-      type: archive.packing,
-      fileName: archive.fileName,
-      entries: archive.entries,
-      bsaVersion: archive.bsaVersion,
-    }));
 };
 
 /** Extract every BA2/BSA under `root` and build a provenance manifest. */

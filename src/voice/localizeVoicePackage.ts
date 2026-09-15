@@ -36,7 +36,7 @@ import {
 } from './voiceTtsPayloadVersion';
 import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { emitVoiceLive } from './voiceLiveEvents';
 
 type VoiceLocalizeWorkItem = {
@@ -53,7 +53,7 @@ export const localizeVoicePackage = async (
   srcLang: string,
   tgtLang: string,
   options: {
-    game: GameType;
+    game: GameId;
     ttsBaseUrl: string;
     dryRun: boolean;
     force: boolean;
@@ -100,8 +100,7 @@ export const localizeVoicePackage = async (
       voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
     }
     return (voiceFilesBySpeaker.get(speaker) ?? []).filter(
-      (candidate) =>
-        candidate.formidLower6 !== current.formidLower6 || candidate.variant !== current.variant,
+      (candidate) => candidate.lineKey !== current.lineKey || candidate.variant !== current.variant,
     );
   };
 
@@ -117,11 +116,11 @@ export const localizeVoicePackage = async (
   const takeNextWorkItem = (entry: VoiceFileEntry): VoiceLocalizeWorkItem | 'stop' | null => {
     if (options.limit != null && eligibleSeen >= options.limit) return 'stop';
 
-    const entryKey = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    const entryKey = voiceTranslationMapKey(entry.lineKey, entry.variant);
     if (options.onlyKeys && !options.onlyKeys.has(entryKey)) return null;
     if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) return null;
 
-    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+    const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
     if (!row) {
       skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
       return null;
@@ -144,7 +143,7 @@ export const localizeVoicePackage = async (
     const storedVersion = lookupVoiceSynthesisVersion(
       storedVersions,
       voiceSpeakerKey(entry, voiceRootRel),
-      entry.formidLower6,
+      entry.lineKey,
       entry.variant,
     );
     if (
@@ -205,7 +204,7 @@ export const localizeVoicePackage = async (
         const live = {
           modId,
           speakerKey,
-          formidLower6: entry.formidLower6,
+          lineKey: entry.lineKey,
           variant: entry.variant,
         };
         emitVoiceLive({ type: 'line_started', ...live });

@@ -13,5 +13,5 @@ export {
   deleteCsvImportJob,
   markFailed as markCsvImportFailed,
 } from './jobs';
-export { parseCsvRecords, iterCsvRecords } from './parse';
+export { iterCsvRecords } from './parse';
 export { registerCsvFile } from './register';

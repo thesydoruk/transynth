@@ -1,5 +1,9 @@
 import { inferNarratorGenderHeuristic } from '../narratorGenderHeuristics';
-import { narratorToSpeakerGender, parseNarratorGender } from '../narratorGender';
+import {
+  isNarratorGenderTrusted,
+  narratorToSpeakerGender,
+  parseNarratorGender,
+} from '../narratorGender';
 import { mergeNarratorGender } from '../../../worker/src/jobs/translate/batch/mergeNarratorGender';
 
 describe('inferNarratorGenderHeuristic', () => {
@@ -40,12 +44,12 @@ describe('mergeNarratorGender', () => {
         addresseeGender: 'unknown',
       },
       'female',
-      'TERM',
+      false,
     );
     expect(merged.speakerGender).toBe('female');
   });
 
-  it('does not override INFO dialog gender', () => {
+  it('does not override the gender of a spoken line', () => {
     const merged = mergeNarratorGender(
       {
         speakerName: 'Preston',
@@ -54,7 +58,7 @@ describe('mergeNarratorGender', () => {
         addresseeGender: 'any',
       },
       'female',
-      'INFO',
+      true,
     );
     expect(merged.speakerGender).toBe('male');
   });
@@ -64,5 +68,29 @@ describe('narratorToSpeakerGender', () => {
   it('maps definite genders only', () => {
     expect(narratorToSpeakerGender(parseNarratorGender('female'))).toBe('female');
     expect(narratorToSpeakerGender(parseNarratorGender('neutral'))).toBeNull();
+  });
+});
+
+describe('isNarratorGenderTrusted', () => {
+  it('trusts a gender a person set by hand', () => {
+    expect(isNarratorGenderTrusted('manual', null)).toBe(true);
+  });
+
+  it('trusts an override whatever produced the underlying guess', () => {
+    expect(isNarratorGenderTrusted('heuristic', 'female')).toBe(true);
+    expect(isNarratorGenderTrusted(null, 'male')).toBe(true);
+  });
+
+  it('does not trust an inference', () => {
+    // The heuristic labelled Piper Wright's own article male on the real corpus.
+    expect(isNarratorGenderTrusted('heuristic', null)).toBe(false);
+    expect(isNarratorGenderTrusted('llm', null)).toBe(false);
+    expect(isNarratorGenderTrusted('edid', null)).toBe(false);
+  });
+
+  it('does not trust a missing or blank answer', () => {
+    expect(isNarratorGenderTrusted(null, null)).toBe(false);
+    expect(isNarratorGenderTrusted(undefined, undefined)).toBe(false);
+    expect(isNarratorGenderTrusted('heuristic', '   ')).toBe(false);
   });
 });

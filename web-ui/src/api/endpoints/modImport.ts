@@ -12,7 +12,8 @@ export const modImportEndpoints = {
   upload: async (
     file: File,
     options?: {
-      game?: 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle' | 'disco';
+      /** Registered game id; the server falls back to its default when unknown. */
+      game?: string;
       srcLang?: string;
       tgtLang?: string;
     },

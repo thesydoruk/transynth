@@ -53,7 +53,15 @@ export const registerTranslationRoutes = async (app: FastifyInstance, db: Tx) =>
     if (projectSettings['workflow.propagate_to_identical']) {
       const keys = await getStringPropagationKeys(db, stringId);
       if (keys) {
-        await propagateTranslation(db, keys.textNorm, keys.textRaw, text, targetLang, stringId);
+        await propagateTranslation(
+          db,
+          keys.textNorm,
+          keys.textRaw,
+          text,
+          targetLang,
+          stringId,
+          keys.game,
+        );
       }
     }
 

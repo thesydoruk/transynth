@@ -11,7 +11,7 @@ export type AudioIntelCacheRecord = {
   transcript: AudioIntelTranscript;
 };
 
-export const audioIntelCacheKey = (wavPath: string): string => {
+const audioIntelCacheKey = (wavPath: string): string => {
   const resolved = path.resolve(wavPath);
   const stat = fs.statSync(resolved);
   return sha1Hex(`${resolved}|${stat.mtimeMs}|${stat.size}`);

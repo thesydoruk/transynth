@@ -5,7 +5,7 @@ describe('parseVoiceLiveEvent', () => {
     type: 'line_done',
     modId: 4,
     speakerKey: 'PlayerVoiceMale01',
-    formidLower6: '005825',
+    lineKey: '005825',
     variant: 1,
     voiceSimilarity: 0.82,
   };
@@ -32,7 +32,7 @@ describe('parseVoiceLiveEvent', () => {
 
 describe('voiceLiveLineKey', () => {
   it('joins speaker, formid and variant', () => {
-    expect(voiceLiveLineKey({ speakerKey: 'Nora', formidLower6: '005825', variant: 2 })).toBe(
+    expect(voiceLiveLineKey({ speakerKey: 'Nora', lineKey: '005825', variant: 2 })).toBe(
       'Nora:005825:2',
     );
   });

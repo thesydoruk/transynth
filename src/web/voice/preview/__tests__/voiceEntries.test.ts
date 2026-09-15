@@ -1,11 +1,11 @@
 import { findVoiceEntry, formatVoiceSpeakerLabel } from '../voiceEntries';
 import type { VoiceFileEntry } from '../../../../voice/discoverVoiceFiles';
 
-const entry = (speaker: string, formidLower6: string): VoiceFileEntry => ({
-  relPath: `Sound/Voice/Fallout4.esm/${speaker}/00${formidLower6}_1.fuz`,
-  absolutePath: `/data/${speaker}/00${formidLower6}_1.fuz`,
-  fileName: `00${formidLower6}_1.fuz`,
-  formidLower6,
+const entry = (speaker: string, lineKey: string): VoiceFileEntry => ({
+  relPath: `Sound/Voice/Fallout4.esm/${speaker}/00${lineKey}_1.fuz`,
+  absolutePath: `/data/${speaker}/00${lineKey}_1.fuz`,
+  fileName: `00${lineKey}_1.fuz`,
+  lineKey,
   variant: 1,
   ext: 'fuz',
 });

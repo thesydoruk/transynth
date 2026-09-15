@@ -80,19 +80,19 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send(result);
   });
 
-  // GET /api/mods/:id/voice/audio/:formidLower6/:variant — stream cached preview WAV.
+  // GET /api/mods/:id/voice/audio/:lineKey/:variant — stream cached preview WAV.
   // `speakerKey` disambiguates lines recorded by more than one voice type.
   app.get<{
-    Params: { id: string; formidLower6: string; variant: string };
+    Params: { id: string; lineKey: string; variant: string };
     Querystring: { speakerKey?: string };
-  }>('/api/mods/:id/voice/audio/:formidLower6/:variant', async (req, reply) => {
+  }>('/api/mods/:id/voice/audio/:lineKey/:variant', async (req, reply) => {
     const modId = Number(req.params.id);
-    const formidLower6 = req.params.formidLower6.trim();
+    const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!isVoiceFormidKey(formidLower6)) {
+    if (!isVoiceFormidKey(lineKey)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -102,7 +102,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     const result = await getVoicePreviewWav(
       db,
       modId,
-      formidLower6,
+      lineKey,
       variant,
       req.query.speakerKey?.trim(),
     );
@@ -119,18 +119,18 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.type('audio/wav').send(fs.createReadStream(result.wavPath));
   });
 
-  // GET /api/mods/:id/voice/translation-audio/:formidLower6/:variant — stream synthesized TTS WAV.
+  // GET /api/mods/:id/voice/translation-audio/:lineKey/:variant — stream synthesized TTS WAV.
   app.get<{
-    Params: { id: string; formidLower6: string; variant: string };
+    Params: { id: string; lineKey: string; variant: string };
     Querystring: { speakerKey?: string };
-  }>('/api/mods/:id/voice/translation-audio/:formidLower6/:variant', async (req, reply) => {
+  }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
     const modId = Number(req.params.id);
-    const formidLower6 = req.params.formidLower6.trim();
+    const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!isVoiceFormidKey(formidLower6)) {
+    if (!isVoiceFormidKey(lineKey)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -140,7 +140,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     const result = await getVoiceTranslationWav(
       db,
       modId,
-      formidLower6,
+      lineKey,
       variant,
       req.query.speakerKey?.trim(),
     );
@@ -157,18 +157,18 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.type('audio/wav').send(fs.createReadStream(result.wavPath));
   });
 
-  // POST /api/mods/:id/voice/translation-audio/:formidLower6/:variant — synthesize one line.
+  // POST /api/mods/:id/voice/translation-audio/:lineKey/:variant — synthesize one line.
   app.post<{
-    Params: { id: string; formidLower6: string; variant: string };
+    Params: { id: string; lineKey: string; variant: string };
     Querystring: { srcLang?: string; targetLang?: string; speakerKey?: string };
-  }>('/api/mods/:id/voice/translation-audio/:formidLower6/:variant', async (req, reply) => {
+  }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
     const modId = Number(req.params.id);
-    const formidLower6 = req.params.formidLower6.trim();
+    const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!isVoiceFormidKey(formidLower6)) {
+    if (!isVoiceFormidKey(lineKey)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -180,7 +180,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     const result = await generateVoiceTranslationForMod(
       db,
       modId,
-      formidLower6,
+      lineKey,
       variant,
       srcLang,
       targetLang,
@@ -203,7 +203,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   app.put<{
     Params: { id: string };
     Querystring: { srcLang?: string; targetLang?: string };
-    Body: { speakerKey?: string; formidLower6?: string; variant?: number };
+    Body: { speakerKey?: string; lineKey?: string; variant?: number };
   }>('/api/mods/:id/voice/speaker-ref', async (req, reply) => {
     const modId = Number(req.params.id);
     if (!Number.isInteger(modId) || modId < 1) {
@@ -211,11 +211,11 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     const speakerKey = req.body?.speakerKey?.trim() ?? '';
-    const formidLower6 = req.body?.formidLower6?.trim() ?? '';
+    const lineKey = req.body?.lineKey?.trim() ?? '';
     const variant = Number(req.body?.variant);
     if (!speakerKey) return reply.code(400).send({ error: 'speakerKey is required' });
-    if (!isVoiceFormidKey(formidLower6)) {
-      return reply.code(400).send({ error: 'Invalid formidLower6' });
+    if (!isVoiceFormidKey(lineKey)) {
+      return reply.code(400).send({ error: 'Invalid lineKey' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
       return reply.code(400).send({ error: 'Invalid variant' });
@@ -225,7 +225,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       db,
       modId,
       speakerKey,
-      formidLower6,
+      lineKey,
       variant,
       req.query.srcLang?.trim() || CONFIG.defaultSrcLang,
       req.query.targetLang?.trim() || CONFIG.defaultTgtLang,

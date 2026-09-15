@@ -1,4 +1,4 @@
-import { restoreDiscoCensoredSpeech } from '../../../../../src/formats/po/discoCensorship';
+import { gamePlugin } from '../../../../../src/games/registry';
 import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
 import {
   applyTranslateSplit,
@@ -33,8 +33,8 @@ export const prepareLlmItems = (
       continue;
     }
 
-    const sourceText = restoreDiscoCensoredSpeech(row.text_raw);
     const game = row.game ?? opts.modGame ?? undefined;
+    const sourceText = gamePlugin(game).text.restoreCensoredSpeech(row.text_raw);
     const { grup, field } = parseRecordLocation(row.signature, row.path);
 
     const split = splitTranslateSource(sourceText, game, { grup, field });
@@ -43,10 +43,11 @@ export const prepareLlmItems = (
       continue;
     }
 
+    const isSpokenLine = gamePlugin(game).dialog?.isSpokenSignature(grup) ?? false;
     const participants = mergeNarratorGender(
-      dialogParticipantsFromRow(row, field),
+      dialogParticipantsFromRow(row, field, game),
       row.narrator_gender,
-      grup,
+      isSpokenLine,
     );
     llmPending.push({
       stringId,
@@ -69,7 +70,7 @@ export const prepareLlmItems = (
           field,
           form_id: row.formid_hex,
           context: maskLlmOptionalText(row.context),
-          ...buildLlmParticipantPayload(participants),
+          ...buildLlmParticipantPayload(participants, { isDialogueLine: isSpokenLine }),
         },
         split,
       ),
@@ -83,10 +84,12 @@ export const prepareLlmItems = (
 export const attachMcmTranslateContext = (
   items: PreparedLlmItem[],
   siblingTexts: Map<string, string>,
+  game: string | null | undefined,
 ): void => {
   if (siblingTexts.size === 0) return;
+  const recordKind = gamePlugin(game).text.recordKind;
   for (const item of items) {
-    if (item.grup !== 'MCM') continue;
+    if (recordKind(item.grup, item.field) !== 'settings_menu') continue;
     const key = item.field ?? mcmKeyFromRecordPath(item.recordPath);
     const next = resolveMcmLlmContext(item.llmItem.context, key, siblingTexts);
     if (next && next !== item.llmItem.context) {

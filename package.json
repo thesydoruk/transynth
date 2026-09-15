@@ -1,6 +1,6 @@
 {
   "name": "transynth",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "type": "module",
   "private": true,
@@ -13,6 +13,8 @@
     "db:restore": "tsx scripts/dbRestore.ts",
     "db:seed:glossary": "tsx scripts/seedGlossary.ts",
     "qa:refresh": "tsx scripts/refreshQaIssues.ts",
+    "eval:quality": "tsx scripts/evalTranslationQuality.ts",
+    "dialog:refresh": "tsx scripts/refreshDialogSpeakers.ts",
     "rag:reindex": "tsx scripts/reindexRag.ts",
     "rag:index-missing": "tsx scripts/indexMissingRag.ts",
     "tools:install": "tsx scripts/installTools.ts",
@@ -39,7 +41,8 @@
     "worker": "npm --prefix worker start",
     "worker:dev": "npm --prefix worker run dev",
     "web:ui": "npm --prefix web-ui run dev",
-    "web:build": "npm --prefix web-ui run build"
+    "web:build": "npm --prefix web-ui run build",
+    "knip": "knip"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
@@ -52,7 +55,6 @@
     "bullmq": "^5.81.2",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
-    "fast-xml-parser": "^5.5.9",
     "fastify": "^5.8.4",
     "gettext-parser": "^9.1.1",
     "ioredis": "^5.11.1",
@@ -78,12 +80,12 @@
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "jest": "^30.0.5",
+    "knip": "^5.64.4",
     "lint-staged": "^16.1.2",
     "prettier": "^3.8.1",
     "ts-jest": "^29.4.1",
     "typescript": "^5.5.4",
-    "typescript-eslint": "^8.68.0",
-    "wait-on": "^9.0.4"
+    "typescript-eslint": "^8.68.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md,yml,yaml,css,scss,html}": "prettier --write"

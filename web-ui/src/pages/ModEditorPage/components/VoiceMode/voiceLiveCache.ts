@@ -15,7 +15,7 @@ export const parseVoiceLiveSseEvent = (raw: string): VoiceLiveSseEvent | null =>
     if (!value || typeof value !== 'object' || !('type' in value)) return null;
     if (value.type === 'ping') return value;
     if (!isLineEvent(value)) return null;
-    if (!value.speakerKey || !value.formidLower6) return null;
+    if (!value.speakerKey || !value.lineKey) return null;
     if (!Number.isInteger(value.variant) || value.variant < 1) return null;
     return value;
   } catch {
@@ -25,16 +25,16 @@ export const parseVoiceLiveSseEvent = (raw: string): VoiceLiveSseEvent | null =>
 
 export const voiceLiveLineKey = (event: {
   speakerKey: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
-}): string => `${event.speakerKey}:${event.formidLower6}:${event.variant}`;
+}): string => `${event.speakerKey}:${event.lineKey}:${event.variant}`;
 
 const sameLine = (
   line: VoiceLinePreview,
-  event: Pick<VoiceLiveLineEvent, 'speakerKey' | 'formidLower6' | 'variant'>,
+  event: Pick<VoiceLiveLineEvent, 'speakerKey' | 'lineKey' | 'variant'>,
 ): boolean =>
   line.speakerKey === event.speakerKey &&
-  line.formidLower6.toLowerCase() === event.formidLower6.toLowerCase() &&
+  line.lineKey.toLowerCase() === event.lineKey.toLowerCase() &&
   line.variant === event.variant;
 
 export const applyVoiceLiveLineDone = (

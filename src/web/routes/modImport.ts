@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import { DEFAULT_GAME_ID, isGameId } from '../../games/registry';
+import type { GameId } from '../../types';
 import { log } from '../../logger';
 import { deleteModData } from '../data/queries';
 import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../../import/mod/deleteMods';
@@ -56,17 +57,7 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
       const origName = data.filename;
-      const game: GameType =
-        req.query.game === 'sse' ||
-        req.query.game === 'sle' ||
-        req.query.game === 'fo76' ||
-        req.query.game === 'fo3' ||
-        req.query.game === 'fnv' ||
-        req.query.game === 'ob' ||
-        req.query.game === 'mw' ||
-        req.query.game === 'disco'
-          ? req.query.game
-          : 'fo4';
+      const game: GameId = isGameId(req.query.game) ? req.query.game : DEFAULT_GAME_ID;
       const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
       const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
 

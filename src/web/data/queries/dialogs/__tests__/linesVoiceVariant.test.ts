@@ -8,10 +8,7 @@ const line = (variant: number): DialogLine => ({
   translation_id: null,
   translation: null,
   status: null,
-  confidence: null,
   provenance: null,
-  model: null,
-  updated_at: null,
   qa_issue_count: 0,
   voice_variant: variant,
 });

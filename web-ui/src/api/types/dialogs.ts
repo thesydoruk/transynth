@@ -78,10 +78,8 @@ export type DialogLine = {
   translation_id: number | null;
   translation: string | null;
   status: DialogLineStatus;
-  confidence: number | null;
+  /** Where the translation came from; see `lineOrigin`. */
   provenance: string | null;
-  model: string | null;
-  updated_at: string | null;
   qa_issue_count: number;
   /**
    * Position of this response among the NAM1 lines of its INFO record, or null

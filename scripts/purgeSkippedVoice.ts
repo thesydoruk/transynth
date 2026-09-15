@@ -6,6 +6,8 @@
  * Usage:
  *   npm run voice:purge-skipped
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -119,14 +121,14 @@ try {
     filesRemoved += unlinkLocalizedSkipClips(resolved.ctx.localizeDir, skipReasons, byReason);
 
     for (const key of skipReasons.keys()) {
-      const [formidLower6, variantText] = key.split(':');
+      const [lineKey, variantText] = key.split(':');
       const variant = Number.parseInt(variantText ?? '', 10);
-      if (!formidLower6 || !Number.isFinite(variant)) continue;
+      if (!lineKey || !Number.isFinite(variant)) continue;
       const { rowCount } = await db.query(
         `DELETE FROM voice_synthesis_state
          WHERE mod_id = $1 AND target_lang = $2
-           AND formid_lower6 = $3 AND variant = $4`,
-        [mod.id, lang, formidLower6.toUpperCase(), variant],
+           AND line_key = $3 AND variant = $4`,
+        [mod.id, lang, lineKey.toUpperCase(), variant],
       );
       dbRowsRemoved += rowCount ?? 0;
     }

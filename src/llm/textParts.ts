@@ -3,7 +3,7 @@
  * string parts and only echoes integer slot ids. The pipeline joins slots back.
  */
 import { maskTranslateSource } from './llmTextMask';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { MASK_KEY_RE, PLACEHOLDER_RE, type ProtectedTokenContext } from '../utils/placeholders';
 
 export type LlmSlotKind =
@@ -125,7 +125,7 @@ export const assembleTranslatedText = (
 
 export const splitTranslateSource = (
   text: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
   context?: ProtectedTokenContext | null,
 ): {
   parts: LlmTextPart[];
@@ -159,7 +159,7 @@ export const joinParts = (parts: readonly LlmTextPart[], slots: readonly LlmText
     .join('');
 };
 
-export const slotIndexMultiset = (parts: readonly LlmTextPart[]): number[] =>
+const slotIndexMultiset = (parts: readonly LlmTextPart[]): number[] =>
   parts.filter((part): part is number => typeof part === 'number').sort((a, b) => a - b);
 
 export const parseLlmParts = (value: unknown): LlmTextPart[] | null => {
@@ -222,7 +222,7 @@ export const validateTranslatedParts = (
 export const alignTextToSlots = (
   text: string,
   sourceSlots: readonly LlmTextSlot[],
-  game?: GameType | string | null,
+  game?: GameId | string | null,
   context?: ProtectedTokenContext | null,
 ): LlmTextPart[] => {
   const split = splitTranslateSource(text, game, context);
@@ -279,7 +279,7 @@ export const applyTranslateSplit = <
 
 export const structureLlmReferenceExamples = <T extends { source: string; translation: string }>(
   examples: T[] | undefined,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ):
   | Array<T & { parts: LlmTextPart[]; translation_parts: LlmTextPart[]; slots: LlmSlotHint[] }>
   | undefined => {

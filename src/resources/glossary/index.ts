@@ -1,27 +1,23 @@
-import type { GameType } from '../../types';
+/**
+ * Canonical EN→UK terminology per game.
+ *
+ * The lists themselves live with the games that own them; this is only the
+ * lookup the prompt builder and the glossary seeder go through.
+ */
+import { allGamePlugins } from '../../games/registry';
+import type { GameId } from '../../types';
 import type { GlossaryEntry } from './types';
-import { FO3_UK_GLOSSARY } from './fo3-uk';
-import { FO4_UK_GLOSSARY } from './fo4-uk';
-import { FO76_UK_GLOSSARY } from './fo76-uk';
-import { FNV_UK_GLOSSARY } from './fnv-uk';
-import { MW_UK_GLOSSARY } from './mw-uk';
-import { OB_UK_GLOSSARY } from './ob-uk';
-import { SSE_UK_GLOSSARY } from './sse-uk';
-import { DISCO_UK_GLOSSARY } from './disco-uk';
 
 export type { GlossaryEntry } from './types';
 
-/** Canonical EN→UK terminology per game for prompts and glossary seeding. */
-export const GAME_UK_GLOSSARIES: Record<GameType, GlossaryEntry[]> = {
-  fo4: FO4_UK_GLOSSARY,
-  fo76: FO76_UK_GLOSSARY,
-  fo3: FO3_UK_GLOSSARY,
-  fnv: FNV_UK_GLOSSARY,
-  ob: OB_UK_GLOSSARY,
-  mw: MW_UK_GLOSSARY,
-  sse: SSE_UK_GLOSSARY,
-  sle: SSE_UK_GLOSSARY,
-  disco: DISCO_UK_GLOSSARY,
+/**
+ * Every game's terminology, keyed by the game whose rows it is stored under —
+ * so editions that share a list (Skyrim LE and SE) appear once.
+ */
+export const gameUkGlossaries = (): Map<GameId, GlossaryEntry[]> => {
+  const byStorageKey = new Map<GameId, GlossaryEntry[]>();
+  for (const plugin of allGamePlugins()) {
+    byStorageKey.set(plugin.storageKeys.glossary, plugin.prompts.glossary);
+  }
+  return byStorageKey;
 };
-
-export const getGameUkGlossary = (game: GameType): GlossaryEntry[] => GAME_UK_GLOSSARIES[game];

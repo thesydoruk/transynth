@@ -4,10 +4,10 @@ import { Readable } from 'node:stream';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import type { Tx } from '../../../db';
-import type { GameType } from '../../../types';
+import type { GameId } from '../../../types';
 import { isArchive, isPlugin } from '../../../import/mod';
 import { registerUploadedModFile } from '../../../import/mod/registerUpload';
-import { SUPPORTED_GAMES } from './catalogue';
+import { findSupportedGame } from './catalogue';
 import {
   downloadNexusFileToDisk,
   fetchNexusFileDownloadUrl,
@@ -29,7 +29,7 @@ export const registerNexusFileRoutes = async (app: FastifyInstance, db: Tx) => {
 
     if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
-    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
+    const game = findSupportedGame(gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -42,13 +42,13 @@ export const registerNexusFileRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     try {
-      const files = await fetchNexusModFiles(game.domainName, modId);
+      const files = await fetchNexusModFiles(game.domainName!, modId);
       const file = files.find((entry) => entry.fileId === fileId);
       if (!file) {
         return reply.code(404).send({ error: 'Nexus file not found' });
       }
 
-      const downloadUrl = await fetchNexusFileDownloadUrl(game.domainName, modId, fileId);
+      const downloadUrl = await fetchNexusFileDownloadUrl(game.domainName!, modId, fileId);
       const upstream = await fetch(downloadUrl, { redirect: 'follow' });
       if (!upstream.ok || !upstream.body) {
         return reply
@@ -89,7 +89,7 @@ export const registerNexusFileRoutes = async (app: FastifyInstance, db: Tx) => {
 
     if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
-    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
+    const game = findSupportedGame(gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -102,7 +102,7 @@ export const registerNexusFileRoutes = async (app: FastifyInstance, db: Tx) => {
     }
 
     try {
-      const files = await fetchNexusModFiles(game.domainName, modId);
+      const files = await fetchNexusModFiles(game.domainName!, modId);
       const file = files.find((entry) => entry.fileId === fileId);
       if (!file) {
         return reply.code(404).send({ error: 'Nexus file not found' });
@@ -113,14 +113,14 @@ export const registerNexusFileRoutes = async (app: FastifyInstance, db: Tx) => {
         return reply.code(400).send({ error: 'Only plugin or archive files can be imported' });
       }
 
-      const localPath = await downloadNexusFileToDisk(game.domainName, modId, fileId, fileName);
+      const localPath = await downloadNexusFileToDisk(game.domainName!, modId, fileId, fileName);
 
       const job = await registerUploadedModFile(db, {
         fileName,
         storedPath: localPath,
         srcLang,
         tgtLang,
-        game: game.id as GameType,
+        game: game.id as GameId,
       });
 
       return reply.code(201).send({ ...job, running: false });

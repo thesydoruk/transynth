@@ -6,7 +6,7 @@ export type PexLineTextPart = {
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Locate the literal substring inside a `.psc` line (quoted or bare). */
-export const findPexLiteralRange = (
+const findPexLiteralRange = (
   lineText: string,
   literal: string,
 ): { start: number; end: number } | null => {

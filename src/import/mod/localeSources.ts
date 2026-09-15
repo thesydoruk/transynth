@@ -7,10 +7,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { BsaReader } from '../../formats/bsa';
-import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
+import { discoverBa2Candidate, getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
 import { stringsTypeFromPath, resolveLooseStringsDirForPlugin } from '../../formats/strings';
 import type { StringsType } from '../../formats/strings';
-import type { GameType } from '../../types';
+import type { CreationEngineTitle } from '../../games/creation-engine/title';
 import { logImport } from '../../logging/loggers';
 
 export type LocaleStringsFileRef =
@@ -65,7 +65,7 @@ const discoverLooseLocaleSources = (espPath: string): LocaleStringsSource[] => {
   return catalogToSources(catalog);
 };
 
-const discoverBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] => {
+const readBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] => {
   const reader = getBa2Reader(ba2Path);
   const catalog = new Map<string, LocaleStringsFileRef[]>();
 
@@ -115,32 +115,6 @@ const discoverBsaLocaleSources = (bsaPath: string): LocaleStringsSource[] => {
   return catalogToSources(catalog);
 };
 
-const discoverBa2 = (
-  modPath: string,
-  ba2Candidates: string[],
-  game: GameType = 'fo4',
-): string | null => {
-  const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
-  const baseStem = path.basename(modPath, path.extname(modPath));
-  const suffixes =
-    game === 'fo4' || game === 'fo76' ? [' - main', ' - interface', ''] : [' - main', ''];
-
-  for (const suffix of suffixes) {
-    const target = suffix ? `${stem}${suffix}` : stem;
-    for (const ba2 of ba2Candidates) {
-      if (path.basename(ba2, '.ba2').toLowerCase() === target) return ba2;
-    }
-  }
-
-  const dir = path.dirname(modPath);
-  for (const suffix of suffixes) {
-    const candidate = suffix ? `${baseStem}${suffix}.ba2` : `${baseStem}.ba2`;
-    const p = path.join(dir, candidate);
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-};
-
 const discoverBsa = (modPath: string, bsaCandidates: string[]): string | null => {
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
   const variants = [`${stem} - strings`, `${stem} - textures`, stem];
@@ -156,9 +130,9 @@ const discoverBsa = (modPath: string, bsaCandidates: string[]): string | null =>
   return null;
 };
 
-const tryDiscoverBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] | null => {
+const tryReadBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] | null => {
   try {
-    const locales = discoverBa2LocaleSources(ba2Path);
+    const locales = readBa2LocaleSources(ba2Path);
     return locales.length > 0 ? locales : null;
   } catch (err) {
     logImport.warn(
@@ -168,18 +142,14 @@ const tryDiscoverBa2LocaleSources = (ba2Path: string): LocaleStringsSource[] | n
   }
 };
 
-const discoverFo4LocaleSources = (
+const discoverBa2LocaleSourcesForPlugin = (
   espPath: string,
-  game: GameType,
   ba2Candidates: string[],
 ): LocaleStringsSource[] => {
-  const loose = discoverLooseLocaleSources(espPath);
-  if (loose.length > 0) return loose;
-
   const ba2Cands = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.ba2'));
-  const primaryBa2 = discoverBa2(espPath, ba2Cands, game);
+  const primaryBa2 = discoverBa2Candidate(espPath, ba2Cands, 'ba2');
   if (primaryBa2) {
-    const fromPrimary = tryDiscoverBa2LocaleSources(primaryBa2);
+    const fromPrimary = tryReadBa2LocaleSources(primaryBa2);
     if (fromPrimary) return fromPrimary;
   }
 
@@ -189,35 +159,44 @@ const discoverFo4LocaleSources = (
     const base = path.basename(ba2, '.ba2').toLowerCase();
     if (!base.startsWith(stem)) continue;
     if (!isBa2GnrArchive(ba2)) continue;
-    const fromBa2 = tryDiscoverBa2LocaleSources(ba2);
+    const fromBa2 = tryReadBa2LocaleSources(ba2);
     if (fromBa2) return fromBa2;
   }
 
-  return loose;
+  return [];
 };
 
-const discoverBsaGameLocaleSources = (
+const discoverBsaLocaleSourcesForPlugin = (
   espPath: string,
-  ba2Candidates: string[],
+  archiveCandidates: string[],
 ): LocaleStringsSource[] => {
-  const bsaCandidates = ba2Candidates.filter((f) => f.toLowerCase().endsWith('.bsa'));
+  const bsaCandidates = archiveCandidates.filter((f) => f.toLowerCase().endsWith('.bsa'));
   const bsaPath = discoverBsa(espPath, bsaCandidates);
-  if (bsaPath) return discoverBsaLocaleSources(bsaPath);
-  return discoverLooseLocaleSources(espPath);
+  return bsaPath ? discoverBsaLocaleSources(bsaPath) : [];
 };
 
 /**
  * Discover STRINGS/DLSTRINGS/ILSTRINGS locale files without loading string text.
+ *
+ * Where to look is the title's business: Skyrim and the Gamebryo Fallouts keep
+ * their tables in a BSA, Fallout 4 / 76 in a BA2, and any title may ship them
+ * loose next to the plugin. The first container that yields tables wins.
  */
 export const discoverLocaleSources = (
   espPath: string,
-  game: GameType,
+  title: CreationEngineTitle,
   archiveCandidates: string[] = [],
 ): LocaleStringsSource[] => {
-  if (game === 'sse' || game === 'sle' || game === 'fo3' || game === 'fnv') {
-    return discoverBsaGameLocaleSources(espPath, archiveCandidates);
+  for (const container of title.strings.lookupOrder) {
+    const found =
+      container === 'bsa'
+        ? discoverBsaLocaleSourcesForPlugin(espPath, archiveCandidates)
+        : container === 'ba2'
+          ? discoverBa2LocaleSourcesForPlugin(espPath, archiveCandidates)
+          : discoverLooseLocaleSources(espPath);
+    if (found.length > 0) return found;
   }
-  return discoverFo4LocaleSources(espPath, game, archiveCandidates);
+  return [];
 };
 
 /** Map locale tag → source descriptor for O(1) lookup during import. */

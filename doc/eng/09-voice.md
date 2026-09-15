@@ -157,12 +157,17 @@ read while the file is unchanged.
 
 ## Clip and response index
 
-Bethesda import writes a take index to `voice_clips` (speaker × FormID ×
-TRDA response number) and sets `strings.voice_variant`. One INFO with several
-NAM1 lines, or several voice types (Nate/Nora, shared NPC lines), is several
-rows. A DNAM alias keeps its own FormID and points at the borrowed
-`string_id`. Older imports backfill the index the first time Voice opens.
-Disco still uses `disco_voice_clips`.
+Every game indexes its takes in one shared `voice_clips` table: one row per
+audio file, with the speaker, the game's own id for the line (`line_key`), and
+whichever of `string_id` / `record_id` that game links text by. Anything only
+one engine needs goes in `game_data`.
+
+Bethesda import writes one row per speaker folder × FormID × TRDA response and
+sets `strings.voice_variant`; one INFO with several NAM1 lines, or several
+voice types (Nate/Nora, shared NPC lines), is several rows, and a DNAM alias
+keeps its own FormID in `game_data` while pointing at the borrowed `string_id`.
+Older imports backfill the index the first time Voice opens. Disco writes one
+row per `.wav` stem, keyed to the `.po` record it belongs to.
 
 ---
 

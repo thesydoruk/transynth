@@ -3,7 +3,13 @@
  * Sync a Vortex staging tree + game Data into an isolated Transynth group.
  *
  *   npm run vortex:sync -- --staging "D:\\Vortex Mods\\fallout4" --game-dir "D:\\Games\\Fallout4"
+ *
+ * EXPERIMENTAL, very early. It reads a real staging folder and a real game
+ * install, and `--install-staging` writes a mod back into staging, so every run
+ * says so out loud — see `EXPERIMENTAL_NOTICE` below.
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
 import { openAsBlob } from 'node:fs';
@@ -15,9 +21,10 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { CONFIG } from '../src/config';
+import { DEFAULT_GAME_ID, allGamePlugins } from '../src/games/registry';
 import { log } from '../src/logger';
 import { extractArchive } from '../src/tools/archiveUtils';
-import type { GameType } from '../src/types';
+import type { GameId } from '../src/types';
 import {
   buildVortexInventory,
   discoverVortexExportOrder,
@@ -34,7 +41,16 @@ import {
   type ServerVortexStage,
 } from '../src/vortex/stages';
 
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle'] as const;
+/**
+ * Only games a mod manager actually deploys.
+ *
+ * A plugin says so by declaring a `deployment` adapter; one that does not —
+ * Disco Elysium, or anything else installed by hand — never reaches Vortex,
+ * and dropping off this list is the plugin's own doing, not an edit here.
+ */
+const GAME_CHOICES = allGamePlugins()
+  .filter((plugin) => plugin.deployment)
+  .map((plugin) => plugin.id);
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('vortex:sync')
@@ -110,13 +126,25 @@ const putUnitZip = async (runId: number, unitId: string, zipPath: string): Promi
   if (!res.ok) throw new Error(`Upload ${unitId} failed: ${await res.text()}`);
 };
 
-const isGameType = (value: string): value is GameType =>
+const isDeployableGame = (value: string): value is GameId =>
   (GAME_CHOICES as readonly string[]).includes(value);
 
 const stages = resolveStageRange(argv.from, argv.to, argv.stage);
 const channel = isVortexChannel(argv.channel) ? argv.channel : 'all';
-const game = isGameType(argv.game) ? argv.game : 'fo4';
+const game = isDeployableGame(argv.game) ? argv.game : DEFAULT_GAME_ID;
 
+/**
+ * Said out loud on every run.
+ *
+ * The command touches a real Vortex staging folder and a real game install, so
+ * whoever runs it should know how early this is before it does, not after.
+ */
+const EXPERIMENTAL_NOTICE =
+  'Vortex sync is EXPERIMENTAL and at a very early stage. It reads your staging ' +
+  'folder and game install, and --install-staging writes into staging. Back up ' +
+  'the staging folder first, and try --dry-run before a real run.';
+
+log.warn(EXPERIMENTAL_NOTICE);
 log.info(`Vortex sync stages=${stages.join('→')} channel=${channel} game=${game}`);
 
 const needInventory = needsVortexFileInventory(stages);

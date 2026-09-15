@@ -15,7 +15,7 @@ const entry = (
   relPath: `Sound/Voice/Mod.esm/NPC/${fileName}`,
   absolutePath: `/tmp/${fileName}`,
   fileName,
-  formidLower6: formid,
+  lineKey: formid,
   variant,
   ext: 'fuz',
 });
@@ -30,7 +30,7 @@ describe('isUsableSpeakerDefault', () => {
   it('rejects the current short take even if it was auto-picked', () => {
     expect(
       isUsableSpeakerDefault(
-        { wavPath: '/missing.wav', pick: { formidLower6: '00AA01', variant: 1 }, source: 'saved' },
+        { wavPath: '/missing.wav', pick: { lineKey: '00AA01', variant: 1 }, source: 'saved' },
         current,
       ),
     ).toBe(false);
@@ -41,7 +41,7 @@ describe('isUsableSpeakerDefault', () => {
       isUsableSpeakerDefault(
         {
           wavPath: '/missing-manual.wav',
-          pick: { formidLower6: MANUAL_REFERENCE_FORMID, variant: 1 },
+          pick: { lineKey: MANUAL_REFERENCE_FORMID, variant: 1 },
           source: 'manual',
         },
         current,
@@ -65,7 +65,7 @@ describe('collectSiblingFallbackClips', () => {
       0.4,
       async (candidate) => ({
         wavPath: `/tmp/${candidate.fileName}`,
-        durationSec: candidate.formidLower6 === '00AA05' ? 2 : 0.8,
+        durationSec: candidate.lineKey === '00AA05' ? 2 : 0.8,
       }),
       new Map(),
     );

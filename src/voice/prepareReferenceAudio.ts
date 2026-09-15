@@ -9,13 +9,13 @@ export const prepareReferenceAudio = async (
   entry: VoiceFileEntry,
   tempDir: string,
 ): Promise<string> => {
-  const referencePath = path.join(tempDir, `${entry.formidLower6}_${entry.variant}.ref.wav`);
+  const referencePath = path.join(tempDir, `${entry.lineKey}_${entry.variant}.ref.wav`);
   if (entry.ext === 'wav') {
     await decodeAudioToReferenceWav(entry.absolutePath, referencePath);
     return referencePath;
   }
 
-  const sourceAudioPath = path.join(tempDir, `${entry.formidLower6}_${entry.variant}.src.audio`);
+  const sourceAudioPath = path.join(tempDir, `${entry.lineKey}_${entry.variant}.src.audio`);
   if (entry.ext === 'fuz') {
     const xwm = extractXwmFromFuzFile(entry.absolutePath);
     fs.writeFileSync(`${sourceAudioPath}.xwm`, xwm);

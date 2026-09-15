@@ -12,16 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS } from '../paths';
 
-const INVALID_DIR_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
-
 /** Root directory for all mod file storage. */
 export const modStorageRoot = (): string => PATHS.modUploads;
-
-/** Sanitize a folder name for Windows and POSIX filesystems. */
-export const sanitizeModDirName = (name: string): string => {
-  const trimmed = name.trim().replace(INVALID_DIR_CHARS, '_').replace(/\.+$/, '');
-  return trimmed.length > 0 ? trimmed : 'mod';
-};
 
 export const ensureModStorageDir = (): void => {
   if (!fs.existsSync(modStorageRoot())) {
@@ -81,8 +73,7 @@ const isInsideRoot = (absPath: string, root: string): boolean => {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 };
 
-export const isInsideModStorage = (absPath: string): boolean =>
-  isInsideRoot(absPath, modStorageRoot());
+const isInsideModStorage = (absPath: string): boolean => isInsideRoot(absPath, modStorageRoot());
 
 const isInsideVortexUploads = (absPath: string): boolean =>
   isInsideRoot(absPath, PATHS.vortexUploads);
@@ -150,24 +141,4 @@ export const resolveModImportExtractRoot = (pluginPath: string): string | null =
       path.basename(dir).startsWith('_extracted_'),
     ) ?? walkForExtractRoot(startDir, isInsideVortexUploads, isVortexExtractRoot)
   );
-};
-
-/** Resolve `_localize_*` root for a plugin path under mod storage, if any. */
-export const resolveModImportLocalizeRoot = (pluginPath: string): string | null => {
-  const absPluginPath = path.resolve(pluginPath);
-  if (!isInsideModStorage(absPluginPath)) return null;
-
-  let current =
-    fs.existsSync(absPluginPath) && fs.statSync(absPluginPath).isDirectory()
-      ? absPluginPath
-      : path.dirname(absPluginPath);
-
-  while (isInsideModStorage(current)) {
-    if (path.basename(current).startsWith('_localize_')) return current;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-
-  return null;
 };

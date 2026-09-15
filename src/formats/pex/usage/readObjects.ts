@@ -86,7 +86,7 @@ export const readObjects = (
 
     const propertyCount = reader.readU16();
     for (let p = 0; p < propertyCount; p++) {
-      readProperty(reader, table, usagesByTableIndex, objectName, modernFormat);
+      readProperty(reader, table, usagesByTableIndex, objectName);
     }
 
     const stateCount = reader.readU16();

@@ -7,6 +7,8 @@
  *   npm run voice:backfill-clips -- --mod=12
  *   npm run voice:backfill-clips -- --hash
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import { closeDb, openDb } from '../src/db';
 import { CONFIG } from '../src/config';

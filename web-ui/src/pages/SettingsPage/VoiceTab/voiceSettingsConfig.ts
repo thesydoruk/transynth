@@ -15,7 +15,7 @@ export type GameTtsMatchSettings = {
 
 export type GameTtsSettingsMap = Record<string, GameTtsMatchSettings>;
 
-export const GAME_TTS_MATCH_DEFAULTS: GameTtsMatchSettings = {
+const GAME_TTS_MATCH_DEFAULTS: GameTtsMatchSettings = {
   matchLoudness: true,
   matchTiming: true,
 };

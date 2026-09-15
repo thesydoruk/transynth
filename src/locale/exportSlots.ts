@@ -1,36 +1,20 @@
-import type { GameType } from '../types';
-
-/** Locale suffixes shipped in official Fallout 4 / 76 string tables and Interface files. */
-const FO4_OFFICIAL_LOCALES = new Set([
-  'en',
-  'ru',
-  'de',
-  'fr',
-  'es',
-  'esmx',
-  'it',
-  'pl',
-  'ptbr',
-  'ja',
-  'cn',
-]);
-
-export const isOfficialBethesdaLocale = (locale: string, game: GameType): boolean => {
-  const lang = locale.trim().toLowerCase();
-  if (game === 'fo4' || game === 'fo76') return FO4_OFFICIAL_LOCALES.has(lang);
-  return true;
-};
+import { creationEngineTitle } from '../games/creation-engine/registry';
+import type { GameId } from '../types';
 
 /**
  * Locale file suffixes to write when exporting translations for installation.
  *
- * Unofficial targets (e.g. Ukrainian on FO4) ship in both `en` and `ru` slots
- * so the patch replaces the two locales players typically switch between.
+ * A game ships string tables and Interface files only for the locales it was
+ * released in. Exporting an unofficial target (Ukrainian on Fallout 4) into a
+ * suffix the game never loads would produce files the engine ignores, so those
+ * go into the `en` and `ru` slots — the two locales players switch between.
  */
-export const exportLocaleSlots = (targetLang: string, game: GameType): string[] => {
+export const isOfficialBethesdaLocale = (locale: string, game: GameId): boolean => {
+  const official = creationEngineTitle(game).strings.officialLocales;
+  return official === null || official.has(locale.trim().toLowerCase());
+};
+
+export const exportLocaleSlots = (targetLang: string, game: GameId): string[] => {
   const lang = targetLang.trim().toLowerCase();
-  if ((game === 'fo4' || game === 'fo76') && !isOfficialBethesdaLocale(lang, game)) {
-    return ['en', 'ru'];
-  }
-  return [lang];
+  return isOfficialBethesdaLocale(lang, game) ? [lang] : ['en', 'ru'];
 };

@@ -13,7 +13,7 @@ import {
 import { logJobs } from '../../../src/logging/loggers';
 import { createRedisConnection, getSharedRedis } from './connection';
 
-export const publishVoiceLiveEvent = async (event: VoiceLiveLineEvent): Promise<void> => {
+const publishVoiceLiveEvent = async (event: VoiceLiveLineEvent): Promise<void> => {
   try {
     await getSharedRedis().publish(VOICE_LIVE_CHANNEL, JSON.stringify(event));
   } catch (err) {

@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isBa2GnrArchive } from '../../formats/ba2';
-import type { GameType } from '../../types';
+import { discoverBa2Candidate, isBa2GnrArchive } from '../../formats/ba2';
 import { resolveVortexFolderFromPath } from '../../utils/vortexFolder';
-import type { VortexFolderInfo } from '../../utils/vortexFolder';
+
 import type { ModFileCandidate } from './types';
 
 const ARCHIVE_EXTS = new Set(['.zip', '.7z', '.rar']);
@@ -106,32 +105,6 @@ export const discoverArchiveCandidatesForPlugin = (espPath: string): string[] =>
   return [...fromParent.ba2s, ...fromParent.bsas];
 };
 
-const discoverBa2 = (
-  modPath: string,
-  ba2Candidates: string[],
-  game: GameType = 'fo4',
-): string | null => {
-  const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
-  const baseStem = path.basename(modPath, path.extname(modPath));
-  const suffixes =
-    game === 'fo4' || game === 'fo76' ? [' - main', ' - interface', ''] : [' - main', ''];
-
-  for (const suffix of suffixes) {
-    const target = suffix ? `${stem}${suffix}` : stem;
-    for (const ba2 of ba2Candidates) {
-      if (path.basename(ba2, '.ba2').toLowerCase() === target) return ba2;
-    }
-  }
-
-  const dir = path.dirname(modPath);
-  for (const suffix of suffixes) {
-    const candidate = suffix ? `${baseStem}${suffix}.ba2` : `${baseStem}.ba2`;
-    const p = path.join(dir, candidate);
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-};
-
 /** List GNRL-type BA2 archives in a mod directory (skips DX10 texture archives). */
 const listGnrBa2FilesInDir = (modDir: string): string[] => {
   try {
@@ -152,7 +125,6 @@ const listGnrBa2FilesInDir = (modDir: string): string[] => {
  */
 export const listCompanionGnrlBa2ForPlugin = (
   espPath: string,
-  game: GameType,
   ba2Candidates: string[] = discoverArchiveCandidatesForPlugin(espPath),
 ): string[] => {
   const modDir = path.dirname(espPath);
@@ -162,7 +134,7 @@ export const listCompanionGnrlBa2ForPlugin = (
   );
   const matched = new Set<string>();
 
-  const primary = discoverBa2(espPath, ba2Cands, game);
+  const primary = discoverBa2Candidate(espPath, ba2Cands, 'ba2');
   if (primary) matched.add(primary);
 
   for (const ba2 of ba2Cands) {

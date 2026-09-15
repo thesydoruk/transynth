@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import { NexusModsError } from '../../../nexus/index';
-import { SUPPORTED_GAMES } from './catalogue';
+import { findSupportedGame } from './catalogue';
 import { getNexus, sendNexusKeyMissing } from './nexusClient';
 
 export const registerNexusSearchRoutes = async (app: FastifyInstance) => {
@@ -29,7 +29,7 @@ export const registerNexusSearchRoutes = async (app: FastifyInstance) => {
 
     if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
-    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
+    const game = findSupportedGame(gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const count = Math.min(50, Math.max(1, parseInt(rawCount ?? '20', 10) || 20));
@@ -37,7 +37,7 @@ export const registerNexusSearchRoutes = async (app: FastifyInstance) => {
 
     try {
       const result = await getNexus().searchModsByName(q?.trim() ?? '', {
-        gameDomainName: game.domainName,
+        gameDomainName: game.domainName!,
         count,
         offset,
         useStemmedSearch: true,

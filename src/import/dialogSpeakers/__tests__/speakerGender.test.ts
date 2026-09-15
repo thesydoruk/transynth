@@ -136,7 +136,6 @@ describe('buildDialogSpeakerRows', () => {
         { speaker_key: 'voice:DP_RoxyVoice', speaker_name: null, info_formid_hex: '000012AB' },
       ],
       index,
-      playerSpeakerKeys: new Set(),
     });
 
     expect(rows).toEqual([
@@ -170,7 +169,6 @@ describe('buildDialogSpeakerRows', () => {
     const rows = buildDialogSpeakerRows({
       nodes: [{ speaker_key: 'npc:000ABCDE', speaker_name: null, info_formid_hex: '00001111' }],
       index,
-      playerSpeakerKeys: new Set(),
     });
 
     expect(rows[0]).toMatchObject({

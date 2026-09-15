@@ -5,7 +5,7 @@
 import { useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
-import { editorCapabilities } from '../../editorCapabilities';
+import { defaultEditorCapabilities } from '../../editorCapabilities';
 import { useStringGridColumnWidths } from '../../hooks/useStringGridColumnWidths';
 import { StringGridHeader } from './StringGridHeader';
 import { StringGridRow } from './StringGridRow';
@@ -44,9 +44,9 @@ export const StringGrid = ({
 }: StringGridProps) => {
   const { t } = useTranslation();
   const { colStyle, startResize } = useStringGridColumnWidths();
-  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
-  const showGender = capabilities.showGenderColumn;
-  const showFormId = capabilities.showFormIdColumn;
+  const capabilities = capabilitiesProp ?? defaultEditorCapabilities();
+  const showGender = capabilities.columns.gender;
+  const showFormId = capabilities.columns.formId;
   const sigLabel = t(`modEditor.${capabilities.labels.signature}`);
   const edidLabel = t(`modEditor.${capabilities.labels.edid}`);
   const fieldLabel = t(`modEditor.${capabilities.labels.field}`);

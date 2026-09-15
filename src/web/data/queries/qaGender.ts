@@ -30,8 +30,8 @@ const conflictMessage = (role: UkGenderConflict['role'], group: UkGenderConflict
  *
  * @param row - Participant columns from `dialogParticipantsLateralSql`; rows
  * outside the dialog graph carry nulls and produce no issues.
- * @param field - Subrecord the string came from, needed to tell the player
- * prompt half of an INFO record from the NPC reply.
+ * @param field - Subrecord the string came from; the game decides whether it
+ * marks the player's half of an exchange.
  */
 export const applyGenderQaIssues = (
   issues: QAIssueInput[],
@@ -39,10 +39,11 @@ export const applyGenderQaIssues = (
   targetLang: string,
   row: Partial<DialogParticipantsRow>,
   field: string | null | undefined,
+  game: string | null | undefined,
 ): void => {
   if (targetLang !== SUPPORTED_TARGET_LANG) return;
 
-  const participants = dialogParticipantsFromRow(row, field);
+  const participants = dialogParticipantsFromRow(row, field, game);
   const conflicts = findUkrainianGenderConflicts(translation, participants);
   if (conflicts.length === 0) return;
 

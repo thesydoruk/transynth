@@ -20,9 +20,9 @@ const writeFakeDx10Ba2 = (filePath: string): void => {
   fs.writeFileSync(filePath, header);
 };
 
-const makeVoiceRow = (formidLower6: string, source: string, translation: string) => ({
-  formid_lower6: formidLower6,
-  info_formid_hex: `00${formidLower6}`,
+const makeVoiceRow = (lineKey: string, source: string, translation: string) => ({
+  line_key: lineKey,
+  info_formid_hex: `00${lineKey}`,
   voice_ordinal: 1,
   string_id: 1,
   translation_id: 1,
@@ -38,7 +38,7 @@ const makeOverlayDb = (
 ): Tx => {
   return {
     query: async (sql: string) => {
-      if (sql.includes('formid_lower6') || sql.includes('voice_ordinal')) {
+      if (sql.includes('line_key') || sql.includes('voice_ordinal')) {
         return { rows: voiceRows };
       }
       if (sql.includes('FROM mods')) {

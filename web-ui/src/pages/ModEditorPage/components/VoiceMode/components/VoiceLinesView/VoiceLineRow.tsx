@@ -136,7 +136,7 @@ export const VoiceLineRow = ({
     >
       <div className={styles.meta}>
         <code className={styles.idCode}>
-          {line.infoFormidHex ?? `00${line.formidLower6}`}_{line.variant}
+          {line.infoFormidHex ?? `00${line.lineKey}`}_{line.variant}
         </code>
         {line.status && <StatusBadge status={line.status} small />}
         {line.isReference && (

@@ -99,7 +99,7 @@ const pageFromKey = (key: string, pageTitles: Map<string, string>): string | und
   return pageTitles.get(match[1]!);
 };
 
-export const mergeMcmKeyMeta = (base: McmKeyMeta, overlay?: McmKeyMeta): McmKeyMeta => ({
+const mergeMcmKeyMeta = (base: McmKeyMeta, overlay?: McmKeyMeta): McmKeyMeta => ({
   page: overlay?.page || base.page,
   type: overlay?.type || base.type,
   help: overlay?.help || base.help,
@@ -116,7 +116,7 @@ export const formatMcmStoredContext = (meta: McmKeyMeta): string | null => {
   return parts.length > 0 ? parts.join('; ') : null;
 };
 
-export const buildMcmKeyMeta = (
+const buildMcmKeyMeta = (
   key: string,
   texts: Map<string, string>,
   configMeta?: McmKeyMeta,

@@ -15,7 +15,7 @@ export type {
 
 export { parseStringsFileName } from './constants';
 export { resolveStringsTypeForEspRow, buildLstringEspIndex, espRowToCsvRow } from './espIndex';
-export { collectPluginStems, findPluginFile, resolvePluginPathForStem } from './pluginDiscovery';
+export { collectPluginStems } from './pluginDiscovery';
 export { discoverStringsPacks, groupStringsFilesByStem } from './discovery';
-export { computeStringsPackHash, buildStringsPackModName, buildStringsPackRows } from './packRows';
+export { buildStringsPackModName, buildStringsPackRows } from './packRows';
 export { importStringsPack } from './importStringsPack';

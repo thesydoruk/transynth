@@ -75,7 +75,7 @@ export const VoiceRegenerateModal = ({
     onClose();
   }, [discardSession, onClose, stopPlayback]);
 
-  const lineLabel = line.infoFormidHex ?? `00${line.formidLower6}_${line.variant}`;
+  const lineLabel = line.infoFormidHex ?? `00${line.lineKey}_${line.variant}`;
 
   return (
     <div className={s.overlay}>

@@ -24,20 +24,20 @@ export const speakingRateSylPerSec = (metrics: AutoSelectMetrics): number | null
   return metrics.syllableCount / metrics.activeSec;
 };
 
-export const isPreferredReferenceDuration = (durationSec: number): boolean =>
+const isPreferredReferenceDuration = (durationSec: number): boolean =>
   durationSec >= PREFERRED_REFERENCE_DURATION_MIN_SEC &&
   durationSec <= PREFERRED_REFERENCE_DURATION_MAX_SEC;
 
-export const isLongerThanPreferredDuration = (durationSec: number): boolean =>
+const isLongerThanPreferredDuration = (durationSec: number): boolean =>
   durationSec > PREFERRED_REFERENCE_DURATION_MAX_SEC;
 
-export const isSpeakingRateInBand = (rate: number | null): boolean =>
+const isSpeakingRateInBand = (rate: number | null): boolean =>
   rate != null && rate >= MIN_SPEAKING_RATE_SYL_PER_SEC && rate <= MAX_SPEAKING_RATE_SYL_PER_SEC;
 
 /**
  * Tempo is required when we know the transcript. Without text, rank by duration only.
  */
-export const meetsSpeakingRateRequirement = (metrics: AutoSelectMetrics): boolean => {
+const meetsSpeakingRateRequirement = (metrics: AutoSelectMetrics): boolean => {
   if (metrics.syllableCount == null) return true;
   return isSpeakingRateInBand(speakingRateSylPerSec(metrics));
 };

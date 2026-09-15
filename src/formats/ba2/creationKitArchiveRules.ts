@@ -1,5 +1,3 @@
-import type { GameType } from '../../types';
-
 export type Ba2ArchiveRole = 'main' | 'interface' | 'voices' | 'textures' | 'other';
 
 const ba2EntryPath = (entryPath: string): string => entryPath.toLowerCase().replace(/\//g, '\\');
@@ -17,7 +15,7 @@ export const isSoundArchivePath = (entryPath: string): boolean => {
 };
 
 /** DX10 texture archives use a different BA2 layout — never repack from loose files. */
-export const isDx10TextureBa2Name = (archiveFileName: string): boolean => {
+const isDx10TextureBa2Name = (archiveFileName: string): boolean => {
   const lower = archiveFileName.toLowerCase();
   return lower.includes(' - textures') || lower.includes(' - texture');
 };
@@ -54,33 +52,30 @@ export const shouldCompressBsaEntry = (_archiveFileName: string, entryPath: stri
   return !isStringsTablePath(entryPath);
 };
 
-/** Apply Creation Kit compression rules for the target game and archive file name. */
+/** Apply Creation Kit compression rules for an archive container and file name. */
 export const shouldCompressArchiveEntry = (
   archiveType: 'ba2' | 'bsa',
   archiveFileName: string,
   entryPath: string,
-  _game: GameType,
 ): boolean => {
   if (archiveType === 'ba2') return shouldCompressBa2Entry(archiveFileName, entryPath);
   return shouldCompressBsaEntry(archiveFileName, entryPath);
 };
 
-export const usesBa2Archives = (game: GameType): boolean => game === 'fo4' || game === 'fo76';
+/** Archive file name the Creation Kit gives a plugin's string tables. */
+export const defaultArchiveFileName = (pluginStem: string, archiveKind: 'ba2' | 'bsa'): string =>
+  archiveKind === 'ba2' ? `${pluginStem} - Main.ba2` : `${pluginStem} - Strings.bsa`;
 
-export const defaultArchiveFileName = (pluginStem: string, game: GameType): string => {
-  if (usesBa2Archives(game)) return `${pluginStem} - Main.ba2`;
-  return `${pluginStem} - Strings.bsa`;
-};
-
-/** GNRL BA2 / BSA archives are rebuilt from loose files; DX10 BA2 are copied unchanged. */
+/**
+ * GNRL BA2 and BSA archives are rebuilt from loose files; DX10 texture BA2 are
+ * copied through unchanged. An archive of a container the title does not use
+ * is never repacked — it came from somewhere else and is passed through.
+ */
 export const isRepackableBethesdaArchive = (
   archiveType: 'ba2' | 'bsa',
   archiveFileName: string,
-  game: GameType,
+  archiveKind: 'ba2' | 'bsa',
 ): boolean => {
-  if (archiveType === 'ba2') {
-    if (!usesBa2Archives(game)) return false;
-    return !isDx10TextureBa2Name(archiveFileName);
-  }
-  return !usesBa2Archives(game);
+  if (archiveType !== archiveKind) return false;
+  return archiveType === 'bsa' || !isDx10TextureBa2Name(archiveFileName);
 };

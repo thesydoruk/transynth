@@ -7,8 +7,6 @@ import { registerNexusFileRoutes } from './nexusFiles';
 import { registerNexusRelationsRoutes } from './nexusRelations';
 import { registerNexusTranslationsRoutes } from './nexusTranslations';
 
-export { type GameInfo, SUPPORTED_GAMES } from './catalogue';
-
 export const gamesRoutes = async (app: FastifyInstance, db: Tx) => {
   await registerCatalogueRoutes(app);
   await registerNexusSearchRoutes(app);

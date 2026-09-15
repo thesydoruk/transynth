@@ -113,13 +113,3 @@ export const stopModAiSkipDetect = async (modId: number, jobId: number | null): 
     });
   }
 };
-
-/** Stop a running skip-detect job when one is active. */
-export const toggleModAiSkipDetect = (
-  modId: number,
-  entry: ModAiJobEntry = getModAiJob(modId, 'skip-detect'),
-): void => {
-  const isRunning = entry.status === 'running' || entry.status === 'stopping';
-  if (!isRunning) return;
-  void stopModAiSkipDetect(modId, entry.jobId);
-};

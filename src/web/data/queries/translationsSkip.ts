@@ -2,7 +2,7 @@ import type { Tx } from '../../../db';
 import { recordTranslationRevision } from '../translationRevisions';
 
 /** Remove every translation row (all target languages) for one source string. */
-export const deleteAllTranslationsForString = async (db: Tx, stringId: number): Promise<number> => {
+const deleteAllTranslationsForString = async (db: Tx, stringId: number): Promise<number> => {
   const { rows } = await db.query<{
     id: number;
     target_lang: string;

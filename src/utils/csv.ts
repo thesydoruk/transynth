@@ -1,9 +1,6 @@
 // Centralized CSV parser — RFC 4180 compliant.
 // Handles quoted fields and escaped double quotes ("").
 
-import fs from 'fs';
-import type { CsvRow } from '../types';
-
 /**
  * Parse a single CSV line into an array of field values (RFC 4180).
  * Supports: quoted fields, commas inside quotes, escaped quotes ("").
@@ -57,32 +54,4 @@ export const parseCsvLine = (line: string): string[] => {
 /** Encode fields into a single CSV line (RFC 4180 — all fields quoted). */
 export const csvRow = (fields: string[]): string => {
   return fields.map((f) => `"${(f ?? '').replace(/"/g, '""')}"`).join(',');
-};
-
-/**
- * Read a CSV file into CsvRow[].
- * Column mapping is derived from the header row (order-independent).
- */
-export const readCsv = (filePath: string): CsvRow[] => {
-  const content = fs.readFileSync(filePath, 'utf8');
-  const lines = content.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return [];
-
-  const headerLine = lines.shift()!;
-  const cols = parseCsvLine(headerLine);
-  const idx = (name: string) => cols.findIndex((c) => c.toLowerCase() === name.toLowerCase());
-
-  return lines.map((line) => {
-    const f = parseCsvLine(line);
-    const row: CsvRow = {
-      FormID: f[idx('FormID')] ?? '',
-      Signature: f[idx('Signature')] ?? '',
-      Path: f[idx('Path')] ?? '',
-      Source: f[idx('Source')] ?? '',
-      Hints: f[idx('Hints')] ?? '',
-    };
-    const edidIdx = idx('EDID');
-    if (edidIdx >= 0) row.EDID = f[edidIdx] ?? '';
-    return row;
-  });
 };

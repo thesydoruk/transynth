@@ -4,11 +4,11 @@ import { voiceTranslationMapKey } from '../../../../voice/loadVoiceTranslations'
 import { collectVoiceSourceFormids } from '../../../../voice/voiceSourceFormids';
 import { isOrphanVoiceEntry } from '../buildVoiceLinePreview';
 
-const entry = (formidLower6: string, variant: number): VoiceFileEntry => ({
-  relPath: `Sound/Voice/Mod.esp/Speaker/00${formidLower6}_${variant}.fuz`,
-  absolutePath: `/data/Sound/Voice/Mod.esp/Speaker/00${formidLower6}_${variant}.fuz`,
-  fileName: `00${formidLower6}_${variant}.fuz`,
-  formidLower6,
+const entry = (lineKey: string, variant: number): VoiceFileEntry => ({
+  relPath: `Sound/Voice/Mod.esp/Speaker/00${lineKey}_${variant}.fuz`,
+  absolutePath: `/data/Sound/Voice/Mod.esp/Speaker/00${lineKey}_${variant}.fuz`,
+  fileName: `00${lineKey}_${variant}.fuz`,
+  lineKey,
   variant,
   ext: 'fuz',
 });

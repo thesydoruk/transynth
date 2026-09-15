@@ -1,4 +1,4 @@
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 
 /**
  * File descriptor returned by export endpoints.
@@ -47,7 +47,7 @@ export type ModExportTarget = {
   modName: string;
   modPath: string;
   srcLang: string;
-  game: GameType;
+  game: GameId;
   isLocalized: boolean;
 };
 

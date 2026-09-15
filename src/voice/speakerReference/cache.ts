@@ -21,12 +21,12 @@ export const sourceDigest = (sourcePath: string): string => {
   return sha1Hex(`${sourcePath}|${stat.mtimeMs}|${stat.size}`);
 };
 
-export const readCacheMarker = (markerPath: string): string | null => {
+const readCacheMarker = (markerPath: string): string | null => {
   if (!fs.existsSync(markerPath)) return null;
   return fs.readFileSync(markerPath, 'utf8').trim() || null;
 };
 
-export const writeCacheMarker = (markerPath: string, marker: string): void => {
+const writeCacheMarker = (markerPath: string, marker: string): void => {
   fs.writeFileSync(markerPath, marker);
 };
 
@@ -36,7 +36,7 @@ export const getOrDecodeEntryReferenceWav = async (
   entryCacheDir: string,
   workDir: string,
 ): Promise<string> => {
-  const base = `${entry.formidLower6}_${entry.variant}`;
+  const base = `${entry.lineKey}_${entry.variant}`;
   const outPath = path.join(entryCacheDir, `${base}.wav`);
   const markerPath = path.join(entryCacheDir, `${base}.source`);
   const digest = sourceDigest(entry.absolutePath);
@@ -55,7 +55,7 @@ export const getOrDecodeEntryReferenceWav = async (
 };
 
 /** Cached reference WAV plus its marker file for one speaker. */
-export const speakerReferenceCacheFiles = (
+const speakerReferenceCacheFiles = (
   speakerKey: string,
   speakerCacheDir: string,
 ): { wavPath: string; markerPath: string } => {
@@ -64,13 +64,6 @@ export const speakerReferenceCacheFiles = (
     wavPath: path.join(speakerCacheDir, `${safeKey}.wav`),
     markerPath: path.join(speakerCacheDir, `${safeKey}.source`),
   };
-};
-
-/** Drop a speaker's cached reference WAV so the next resolve re-decodes it. */
-export const clearCachedSpeakerReference = (speakerKey: string, speakerCacheDir: string): void => {
-  const { wavPath, markerPath } = speakerReferenceCacheFiles(speakerKey, speakerCacheDir);
-  fs.rmSync(wavPath, { force: true });
-  fs.rmSync(markerPath, { force: true });
 };
 
 export const getOrReuseSpeakerReferenceWav = async (
@@ -119,7 +112,7 @@ const decodeEntryToReferenceWav = async (
     return;
   }
 
-  const sourceAudioPath = path.join(tempDir, `${entry.formidLower6}_${entry.variant}.src.audio`);
+  const sourceAudioPath = path.join(tempDir, `${entry.lineKey}_${entry.variant}.src.audio`);
   if (entry.ext === 'fuz') {
     const xwm = extractXwmFromFuzFile(entry.absolutePath);
     fs.writeFileSync(`${sourceAudioPath}.xwm`, xwm);

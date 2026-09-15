@@ -4,10 +4,10 @@
  * Request and response payloads are JSON-only.
  */
 import { MCM_LOCALE_ALIASES } from '../formats/mcm/mcmDiscovery';
-import { chatWithFallback } from './index';
+
 import { maskLlmText } from './llmTextMask';
 import { parseLlmJson } from './jsonParse';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 
 /** Bethesda / project locale codes the LLM may return. */
 export const LOCALE_DETECT_ALLOWED_LANGS = [...MCM_LOCALE_ALIASES.keys()].sort();
@@ -48,7 +48,7 @@ export interface LlmLocaleDetectOptions {
   storedLang: string;
   isLocalized: boolean;
   allowedLanguages?: readonly string[];
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   fileName?: string | null;
 }
@@ -186,38 +186,4 @@ export const parseLlmLocaleDetectResponse = (
         : 'No summary provided.',
     samples,
   };
-};
-
-/** Run locale audit on a sample of mod strings via LLM (JSON in/out). */
-export const detectLocaleWithLlm = async (
-  opts: LlmLocaleDetectOptions,
-): Promise<LlmLocaleDetectResult> => {
-  if (opts.samples.length === 0) {
-    throw new Error('Locale detect requires at least one sample string');
-  }
-
-  const expectedSampleIds = opts.samples.map((s) => s.id);
-  const allowedLanguages = opts.allowedLanguages ?? LOCALE_DETECT_ALLOWED_LANGS;
-  const payload = buildLocaleDetectUserPayload({ ...opts, allowedLanguages });
-  const { content: text } = await chatWithFallback({
-    model: opts.model,
-    responseFormat: { type: 'json_object' },
-    logMeta: {
-      operation: 'locale_detect',
-      context: {
-        sampleIds: expectedSampleIds,
-        sampleCount: expectedSampleIds.length,
-        expectedLang: opts.expectedLang,
-        storedLang: opts.storedLang,
-        modName: opts.modName ?? null,
-        fileName: opts.fileName ?? null,
-      },
-    },
-    messages: [
-      { role: 'system', content: LOCALE_DETECT_SYSTEM_PROMPT },
-      { role: 'user', content: JSON.stringify(payload) },
-    ],
-  });
-
-  return parseLlmLocaleDetectResponse(text, expectedSampleIds, allowedLanguages);
 };

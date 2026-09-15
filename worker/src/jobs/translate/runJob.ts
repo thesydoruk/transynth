@@ -20,7 +20,7 @@ import { awaitPendingQaRefresh } from '../../../../src/web/services/qaHooks';
  *
  * Default from `DB_CHUNK_SIZE` env (5000). Override via `--db-chunk` on the CLI.
  */
-export const LLM_TRANSLATE_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
+const LLM_TRANSLATE_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
 export type LlmTranslateRow = {
   stringId: number;
@@ -46,10 +46,7 @@ export type LlmTranslateJobSnapshot = {
 
 export type { LlmTranslateOverwriteMode } from '../../../../src/web/data/queries';
 
-/** Statuses that must not be overwritten unless `--force-all`. */
-export const LLM_TRANSLATE_VERIFIED_STATUSES = ['reviewed', 'human', 'rejected'] as const;
-
-export const countUntranslatedStrings = async (
+const countUntranslatedStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -83,7 +80,7 @@ type UntranslatedMetaRow = {
  * Load the next page of strings eligible for LLM translate.
  * Cursor-based pagination (`afterStringId`) — safe for force re-translate too.
  */
-export const loadUntranslatedChunk = async (
+const loadUntranslatedChunk = async (
   db: Tx,
   modId: number,
   srcLang: string,

@@ -44,14 +44,3 @@ export const statusParamFromSelection = (selected: readonly string[]): string | 
   const tokens = selected.filter((s) => VALID.has(s));
   return tokens.length > 0 ? tokens.join(',') : undefined;
 };
-
-/** Toggles one status token in a multi-select filter. */
-export const toggleStatusSelection = (
-  selected: readonly string[],
-  status: string,
-): StatusFilterValue[] => {
-  const set = new Set(selected.filter((s) => VALID.has(s)));
-  if (set.has(status)) set.delete(status);
-  else set.add(status);
-  return STATUS_FILTER_OPTS.filter((s) => set.has(s));
-};

@@ -1,19 +1,15 @@
-/** Plugin and archive extensions for the main Mods upload. */
-export const ACCEPTED_MOD_EXTENSIONS = '.esp,.esm,.esl,.zip,.7z,.rar';
+/** Archive formats every game accepts, whatever it keeps inside them. */
+const ARCHIVE_EXTENSIONS = ['.zip', '.7z', '.rar'];
+
+/**
+ * `accept` attribute for the main Mods upload: the game's own file types plus
+ * archives. Falls back to archives alone until the catalogue has loaded.
+ */
+export const acceptedModExtensions = (uploadExtensions: readonly string[] = []): string =>
+  [...uploadExtensions, ...ARCHIVE_EXTENSIONS].join(',');
 
 /** EET / CSV — behind Advanced import. */
 export const ACCEPTED_ADVANCED_EXTENSIONS = '.eet,.csv';
-
-export type SupportedGameId =
-  | 'fo4'
-  | 'fo76'
-  | 'fo3'
-  | 'fnv'
-  | 'ob'
-  | 'mw'
-  | 'sse'
-  | 'sle'
-  | 'disco';
 
 export type UploadKind = 'eet' | 'csv' | 'mod';
 
@@ -25,9 +21,6 @@ export const kindFromExt = (name: string): UploadKind | null => {
   if (['.esp', '.esm', '.esl', '.zip', '.7z', '.rar'].includes(ext)) return 'mod';
   return null;
 };
-
-export const isSupportedGameId = (value: string): value is SupportedGameId =>
-  ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'].includes(value);
 
 /** Mod import jobs that are still in-flight or not represented by a mod row. */
 export const isActiveModImportJob = (

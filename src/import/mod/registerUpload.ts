@@ -1,13 +1,14 @@
 /**
- * Registration step for uploaded plugin/archive files: hashes the upload and
- * creates (or resumes) the `mod_imports` job row. The import itself runs in the
- * worker.
+ * Registration step for uploaded files: hash the upload and create (or resume)
+ * the `mod_imports` job row. The import itself runs in the worker.
  */
 import crypto from 'node:crypto';
+import path from 'node:path';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import { DEFAULT_GAME_ID, gamePlugin } from '../../games/registry';
+import type { GameId } from '../../types';
 import { modImportExtractDir } from '../../modStorage';
-import { isArchive, isPlugin } from './discovery';
+import { isArchive } from './discovery';
 import { registerArchiveFile, registerPluginFile } from './registration';
 import type { ModImportJob, ModScanContext } from './types';
 
@@ -16,7 +17,7 @@ export type RegisterUploadedModOptions = {
   storedPath: string;
   srcLang: string;
   tgtLang: string;
-  game?: GameType;
+  game?: GameId;
   scan?: ModScanContext;
 };
 
@@ -25,9 +26,11 @@ export const registerUploadedModFile = async (
   db: Tx,
   options: RegisterUploadedModOptions,
 ): Promise<ModImportJob> => {
-  const { fileName, storedPath, srcLang, tgtLang, game = 'fo4', scan } = options;
+  const { fileName, storedPath, srcLang, tgtLang, game = DEFAULT_GAME_ID, scan } = options;
+  const { uploadExtensions } = gamePlugin(game).import;
+  const extension = path.extname(fileName).toLowerCase();
 
-  if (isPlugin(fileName)) {
+  if (uploadExtensions.includes(extension)) {
     return registerPluginFile(db, fileName, storedPath, srcLang, tgtLang, game, scan);
   }
   if (isArchive(fileName)) {
@@ -36,5 +39,6 @@ export const registerUploadedModFile = async (
     return registerArchiveFile(db, fileName, storedPath, outDir, srcLang, tgtLang, game, scan);
   }
 
-  throw new Error('Only .esp/.esm/.esl plugin files or .zip/.7z/.rar archives are accepted');
+  const accepted = [...uploadExtensions, '.zip', '.7z', '.rar'].join(', ');
+  throw new Error(`Unsupported upload for ${game}. Accepted: ${accepted}`);
 };

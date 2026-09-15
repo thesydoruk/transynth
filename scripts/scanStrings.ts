@@ -25,6 +25,8 @@
  *   npm run scan:strings -- --dir "D:\Mods" --game fo4 --force
  *   npm run scan:strings -- --dir "D:\Mods" --plugins-dir "D:\Data" --no-recursive
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,15 +35,12 @@ import { hideBin } from 'yargs/helpers';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { ensureDataDirs } from '../src/paths';
-import type { GameType } from '../src/types';
+import { allGameIds, resolveGameId } from '../src/games/registry';
 import { resolveDirectoryInput } from '../src/utils/file';
 import { discoverStringsPacks, importStringsPack } from '../src/import/stringsPack';
 
-const GAME_CHOICES = ['fo4', 'fo76', 'fo3', 'fnv', 'ob', 'mw', 'sse', 'sle', 'disco'] as const;
-
-const isGameType = (value: string): value is GameType => {
-  return (GAME_CHOICES as readonly string[]).includes(value);
-};
+/** Whatever the registry holds — a newly registered plugin shows up here on its own. */
+const GAME_CHOICES = allGameIds();
 
 const argv = await yargs(hideBin(process.argv))
   .scriptName('scan:strings')
@@ -78,7 +77,7 @@ const argv = await yargs(hideBin(process.argv))
 ensureDataDirs();
 
 const scanDir = resolveDirectoryInput(argv.dir);
-const game = isGameType(argv.game) ? argv.game : 'fo4';
+const game = resolveGameId(argv.game);
 const force = argv.force;
 const recursive = argv.recursive;
 const pluginSearchDirs = argv['plugins-dir']

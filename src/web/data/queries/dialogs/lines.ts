@@ -25,10 +25,7 @@ export type DialogLine = {
   translation_id: number | null;
   translation: string | null;
   status: string | null;
-  confidence: number | null;
   provenance: string | null;
-  model: string | null;
-  updated_at: string | null;
   qa_issue_count: number;
   /**
    * Voice-file response number for `<FormID>_<N>.fuz`, or null for prompts.
@@ -82,10 +79,7 @@ export const dialogLinesLateralSql = (p: {
           'translation_id', t.id,
           'translation', t.text,
           'status', t.status,
-          'confidence', t.confidence,
           'provenance', t.provenance,
-          'model', t.model,
-          'updated_at', t.updated_at,
           'voice_variant', CASE
             WHEN r.path_simplified = ${p.responsePath}
               THEN (ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id))::int

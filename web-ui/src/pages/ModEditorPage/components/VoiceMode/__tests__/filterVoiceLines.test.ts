@@ -10,7 +10,7 @@ import {
 const line = (
   partial: Partial<VoiceLinePreview> & Pick<VoiceLinePreview, 'stringId'>,
 ): VoiceLinePreview => ({
-  formidLower6: '000001',
+  lineKey: '000001',
   infoFormidHex: '00000001',
   variant: 1,
   fileName: '00000001_1.fuz',

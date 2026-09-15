@@ -210,11 +210,14 @@ CREATE TABLE IF NOT EXISTS dialog_speakers (
   speaker_key TEXT NOT NULL,
   display_name TEXT,
   voice_type TEXT,
-  -- The player character, whose gender is chosen in-game and never fixed.
+  -- The player character. Whether their gender is chosen in-game or written
+  -- is the game's own answer: see `playerGender` on the plugin's dialog adapter.
   is_player BOOLEAN NOT NULL DEFAULT FALSE,
   -- male | female | any | unknown, resolved during import.
   detected_gender TEXT NOT NULL DEFAULT 'unknown',
-  -- plugin | voice_type | player
+  -- How the gender was worked out; see GenderSource in src/dialog/gender.ts.
+  -- plugin | voice_type | voice_type_flag | voice_type_heuristic
+  -- | pronoun_evidence | player | manual
   detected_source TEXT,
   -- Set in the speakers editor; always wins over detection.
   gender_override TEXT,
@@ -711,13 +714,33 @@ CREATE UNIQUE INDEX IF NOT EXISTS translations_src_string_id_target_lang_key
 DROP INDEX IF EXISTS translations_src_string_id_target_lang_text_key;
 
 -- ── Per-speaker TTS reference picks ───────────────────────────────────────────
--- Stores which voiced line (formid + variant) is used as the speaker_wav
--- reference for each NPC voice folder. Auto-selected on first localize run;
--- editable from the editor voice modal.
+-- Stores which voiced line (`line_key` + variant) is used as the speaker_wav
+-- reference for each speaker. Auto-selected on first localize run; editable
+-- from the editor voice modal.
+--
+-- `line_key` was `formid_lower6`, which was a Bethesda FormID in name only:
+-- Disco stores a 12-character Articy id in the same column. Same key as
+-- `voice_clips.line_key`.
+DO $$
+BEGIN
+  IF to_regclass('public.voice_speaker_refs') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema='public' AND table_name='voice_speaker_refs'
+                    AND column_name='formid_lower6') THEN
+    ALTER TABLE voice_speaker_refs RENAME COLUMN formid_lower6 TO line_key;
+  END IF;
+  IF to_regclass('public.voice_synthesis_state') IS NOT NULL
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema='public' AND table_name='voice_synthesis_state'
+                    AND column_name='formid_lower6') THEN
+    ALTER TABLE voice_synthesis_state RENAME COLUMN formid_lower6 TO line_key;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS voice_speaker_refs (
   mod_id        INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
   speaker_key   TEXT NOT NULL,
-  formid_lower6 TEXT NOT NULL,
+  line_key      TEXT NOT NULL,
   variant       INTEGER NOT NULL CHECK (variant >= 1),
   auto_score    DOUBLE PRECISION,
   updated_at    TIMESTAMPTZ DEFAULT NOW(),
@@ -732,20 +755,20 @@ CREATE INDEX IF NOT EXISTS idx_voice_speaker_refs_mod
 -- are regenerated when translation or speaker_text changes.
 CREATE TABLE IF NOT EXISTS voice_synthesis_state (
   mod_id           INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  formid_lower6    TEXT NOT NULL,
+  line_key         TEXT NOT NULL,
   variant          INTEGER NOT NULL CHECK (variant >= 1),
   target_lang      TEXT NOT NULL,
   speaker_key      TEXT NOT NULL DEFAULT '',
   tts_text_version TEXT NOT NULL,
   synthesized_at   TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (mod_id, formid_lower6, variant, target_lang, speaker_key)
+  PRIMARY KEY (mod_id, line_key, variant, target_lang, speaker_key)
 );
 
 -- Existing DBs created the table without speaker_key (Nate/Nora shared one row).
 ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS speaker_key TEXT NOT NULL DEFAULT '';
 ALTER TABLE voice_synthesis_state DROP CONSTRAINT IF EXISTS voice_synthesis_state_pkey;
 ALTER TABLE voice_synthesis_state ADD CONSTRAINT voice_synthesis_state_pkey
-  PRIMARY KEY (mod_id, formid_lower6, variant, target_lang, speaker_key);
+  PRIMARY KEY (mod_id, line_key, variant, target_lang, speaker_key);
 
 CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
   ON voice_synthesis_state(mod_id, target_lang);
@@ -753,55 +776,84 @@ CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
 -- ECAPA cosine of the take vs the clone prompt (Fish Speech X-Voice-Similarity).
 ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS voice_similarity DOUBLE PRECISION;
 
--- ── Disco wav stem → lockit record (built once at import) ─────────────────────
--- Audio files are AssetName stems (`Kim Kitsuragi-YARD-324`); PO rows are
--- Articy msgctxt (`Dialogue Text/0x…`). The voice editor used to zip those
--- on every page open. Persist the join so speakers/lines are SQL.
-CREATE TABLE IF NOT EXISTS disco_voice_clips (
-  mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  wav_stem TEXT NOT NULL,
-  formid_lower12 TEXT NOT NULL,
-  speaker_key TEXT NOT NULL,
-  record_id INTEGER REFERENCES records(id) ON DELETE SET NULL,
-  msgctxt_key TEXT,
-  articy_id TEXT,
-  field TEXT,
-  rel_path TEXT NOT NULL,
-  PRIMARY KEY (mod_id, wav_stem)
-);
+-- ── Voice clips: one row per audio file a mod ships ──────────────────────────
+-- Every game indexes its takes differently — Creation Engine by speaker folder
+-- × FormID × TRDA response, Disco by the `.wav` stem beside a `.po` entry — but
+-- what a clip *is* does not differ: a file, a speaker, and the line it says. The
+-- columns below are that; anything an engine needs on top goes in `game_data`,
+-- which only that game's plugin reads.
+--
+-- Was two tables, `voice_clips` (Creation Engine) and `disco_voice_clips`. The
+-- DO blocks around the CREATE fold them in and are a no-op afterwards.
+DO $$
+BEGIN
+  IF to_regclass('public.voice_clips') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'voice_clips'
+          AND column_name = 'line_key'
+     ) THEN
+    ALTER TABLE voice_clips RENAME TO voice_clips_pre_merge;
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_mod_speaker
-  ON disco_voice_clips(mod_id, speaker_key);
-CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_mod_formid
-  ON disco_voice_clips(mod_id, formid_lower12);
-CREATE INDEX IF NOT EXISTS idx_disco_voice_clips_record
-  ON disco_voice_clips(record_id)
-  WHERE record_id IS NOT NULL;
-
--- Bethesda source takes: one row per speaker folder × INFO response.
--- Nate/Nora and shared NPC lines are separate rows (same FormID + variant,
--- different speaker_key). DNAM aliases keep their own FormID and point at the
--- borrowed string via string_id + shared_from_formid.
--- SHA-1 lives in voice_source_file_hashes (join on mod_id + rel_path).
 CREATE TABLE IF NOT EXISTS voice_clips (
   mod_id INTEGER NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
-  speaker_key TEXT NOT NULL,
-  formid_lower6 TEXT NOT NULL,
-  variant INTEGER NOT NULL CHECK (variant >= 1),
-  formid_hex TEXT NOT NULL,
-  string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
+  -- The audio file, relative to the mod. One clip is one file.
   rel_path TEXT NOT NULL,
-  shared_from_formid TEXT,
-  PRIMARY KEY (mod_id, speaker_key, formid_lower6, variant)
+  speaker_key TEXT NOT NULL,
+  -- The game's own id for the spoken line: a FormID, an Articy id, whatever.
+  line_key TEXT NOT NULL,
+  -- Nth take of that line, where a game records several. Null where it does not.
+  variant INTEGER,
+  -- The game's own name for the take, when it differs from the path.
+  clip_key TEXT,
+  -- The text. Some games link the string, others the record that owns it.
+  string_id INTEGER REFERENCES strings(id) ON DELETE SET NULL,
+  record_id INTEGER REFERENCES records(id) ON DELETE SET NULL,
+  -- Engine-specific leftovers, read only by the plugin that wrote them.
+  game_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  PRIMARY KEY (mod_id, rel_path)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_clips_mod_rel
-  ON voice_clips(mod_id, rel_path);
-CREATE INDEX IF NOT EXISTS idx_voice_clips_string
-  ON voice_clips(string_id)
+DO $$
+BEGIN
+  IF to_regclass('public.voice_clips_pre_merge') IS NOT NULL THEN
+    INSERT INTO voice_clips (
+      mod_id, rel_path, speaker_key, line_key, variant, string_id, game_data
+    )
+    SELECT mod_id, rel_path, speaker_key, formid_lower6, variant, string_id,
+           jsonb_strip_nulls(jsonb_build_object(
+             'formid_hex', formid_hex,
+             'shared_from_formid', shared_from_formid))
+      FROM voice_clips_pre_merge
+    ON CONFLICT (mod_id, rel_path) DO NOTHING;
+    DROP TABLE voice_clips_pre_merge;
+  END IF;
+
+  IF to_regclass('public.disco_voice_clips') IS NOT NULL THEN
+    INSERT INTO voice_clips (
+      mod_id, rel_path, speaker_key, line_key, clip_key, record_id, game_data
+    )
+    SELECT mod_id, rel_path, speaker_key, formid_lower12, wav_stem, record_id,
+           jsonb_strip_nulls(jsonb_build_object(
+             'msgctxt_key', msgctxt_key,
+             'articy_id', articy_id,
+             'field', field))
+      FROM disco_voice_clips
+    ON CONFLICT (mod_id, rel_path) DO NOTHING;
+    DROP TABLE disco_voice_clips;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_voice_clips_mod_line ON voice_clips(mod_id, line_key);
+CREATE INDEX IF NOT EXISTS idx_voice_clips_mod_speaker ON voice_clips(mod_id, speaker_key);
+CREATE INDEX IF NOT EXISTS idx_voice_clips_string_id ON voice_clips(string_id)
   WHERE string_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_voice_clips_mod_formid
-  ON voice_clips(mod_id, formid_lower6);
+CREATE INDEX IF NOT EXISTS idx_voice_clips_record_id ON voice_clips(record_id)
+  WHERE record_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_voice_clips_mod_clip_key ON voice_clips(mod_id, clip_key)
+  WHERE clip_key IS NOT NULL;
 
 -- SHA-1 of the original (English) voice file. Reuse of synthesized takes
 -- compares this instead of hashing the NAS file on every carry-over / TM apply.

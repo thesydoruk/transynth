@@ -1,8 +1,21 @@
-/** Parsed Bethesda record location for LLM / RAG context. */
+/**
+ * Where a string sits in its mod, as the LLM and RAG context see it.
+ *
+ * `grup` is Creation Engine's word for a record group, and it stuck as the
+ * payload key: every game prompt documents it, so both games fill it with
+ * whatever their own record types are. Nothing outside a plugin reads the
+ * *value* — ask `text.recordKind(grup, field)` when a decision depends on it.
+ */
 export type RecordLocation = {
-  /** Record type (GRUP), e.g. INFO, ARMO, WEAP. */
+  /**
+   * The game's own record type. `INFO`, `ARMO`, `WEAP` in a Bethesda plugin;
+   * `PO`, `DLG`, `GEN`, `FX` in a Disco `.po` catalogue.
+   */
   grup: string | null;
-  /** Subrecord / field name, e.g. NAM1, FULL, DESC. */
+  /**
+   * Field within the record. A Bethesda subrecord (`NAM1`, `FULL`, `DESC`),
+   * or whatever the game names the slot the text came from.
+   */
   field: string | null;
 };
 

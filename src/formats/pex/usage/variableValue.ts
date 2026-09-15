@@ -57,7 +57,7 @@ export const readInstruction = (
   return { op, args };
 };
 
-export const readVariableTypes = (reader: PexBinaryReader, table: string[]): void => {
+export const readVariableTypes = (reader: PexBinaryReader): void => {
   const count = reader.readU16();
   for (let i = 0; i < count; i++) {
     reader.readU16();

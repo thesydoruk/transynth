@@ -1,14 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { discoVoiceFormidLower6 } from '../../../voice/disco/discoverDiscoVoiceFiles';
+import type { GameVoiceAdapter } from '../../../games/contract';
 import { voiceTranslationMapKey } from '../../../voice/loadVoiceTranslations';
 
+/** Key of one dubbed clip by FormID and response number, for games that use them. */
 const LOCALIZED_VOICE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav)$/i;
-
-export type TranslationAudioIndexOptions = {
-  /** Index Disco Audio/*.wav by stem SHA1 FormID (variant 1). */
-  disco?: boolean;
-};
 
 /**
  * Key for one physical dubbed clip: its path under the localize tree, without
@@ -33,11 +29,11 @@ export const voiceEntryAudioKey = (entry: { relPath: string }): string =>
  * Index every synthesized `.fuz`/`.wav` under the mod localize tree in one directory walk.
  *
  * Replaces thousands of per-line `fs.existsSync` calls when listing voice lines.
- * Holds path keys for plugin voice trees and FormID keys for Disco stems.
+ * Keys come from the game's own take-naming rules.
  */
 export const buildTranslationAudioSet = (
   localizeDir: string | null,
-  options: TranslationAudioIndexOptions = {},
+  voice: Pick<GameVoiceAdapter, 'voiceKeyFromFileName'>,
 ): Set<string> => {
   const keys = new Set<string>();
   if (!localizeDir || !fs.existsSync(localizeDir)) return keys;
@@ -50,16 +46,12 @@ export const buildTranslationAudioSet = (
         walk(fullPath, relPath);
         continue;
       }
-      const match = entry.name.match(LOCALIZED_VOICE_RE);
-      if (match) {
-        keys.add(audioPathKey(relPath));
-        keys.add(voiceTranslationMapKey(match[1]!.substring(2), Number.parseInt(match[2]!, 10)));
-        continue;
-      }
-      if (options.disco && /\.wav$/i.test(entry.name)) {
-        const stem = path.basename(entry.name, path.extname(entry.name));
-        keys.add(voiceTranslationMapKey(discoVoiceFormidLower6(stem), 1));
-      }
+      const lineKey = voice.voiceKeyFromFileName(entry.name);
+      if (!lineKey) continue;
+      keys.add(lineKey);
+      // Games whose takes mirror a source tree also need the path key, because
+      // one line can have a separate take per speaker folder.
+      if (LOCALIZED_VOICE_RE.test(entry.name)) keys.add(audioPathKey(relPath));
     }
   };
 
@@ -67,12 +59,12 @@ export const buildTranslationAudioSet = (
   return keys;
 };
 
-/** Dubbed-clip check for Disco, where a stem maps to exactly one clip. */
+/** Dubbed-clip check for a game where one line maps to exactly one take. */
 export const hasTranslationAudio = (
   translationAudio: Set<string>,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
-): boolean => translationAudio.has(voiceTranslationMapKey(formidLower6, variant));
+): boolean => translationAudio.has(voiceTranslationMapKey(lineKey, variant));
 
 /** Dubbed-clip check for a plugin voice tree, scoped to this file's speaker folder. */
 export const hasTranslationAudioForEntry = (
@@ -97,47 +89,4 @@ export const findLocalizedVoiceForEntry = (
     if (fs.existsSync(candidate)) return candidate;
   }
   return null;
-};
-
-/**
- * Find a localized `.fuz`/`.wav` by FormID + variant anywhere under the localize tree.
- *
- * Ambiguous for plugin voice trees where several speakers share a FormID — use
- * {@link findLocalizedVoiceForEntry} there and keep this for Disco stems.
- */
-export const findLocalizedVoiceAbsPath = (
-  localizeDir: string | null,
-  formidLower6: string,
-  variant: number,
-  options: TranslationAudioIndexOptions = {},
-): string | null => {
-  if (!localizeDir || !fs.existsSync(localizeDir)) return null;
-
-  const want = formidLower6.toUpperCase();
-  let found: string | null = null;
-  const walk = (currentDir: string): boolean => {
-    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
-      const fullPath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        if (walk(fullPath)) return true;
-        continue;
-      }
-      const match = entry.name.match(LOCALIZED_VOICE_RE);
-      if (match) {
-        if (match[1]!.substring(2).toUpperCase() !== want) continue;
-        if (Number.parseInt(match[2]!, 10) !== variant) continue;
-        found = fullPath;
-        return true;
-      }
-      if (options.disco && variant === 1 && /\.wav$/i.test(entry.name)) {
-        const stem = path.basename(entry.name, path.extname(entry.name));
-        if (discoVoiceFormidLower6(stem).toUpperCase() !== want) continue;
-        found = fullPath;
-        return true;
-      }
-    }
-    return false;
-  };
-  walk(localizeDir);
-  return found;
 };

@@ -11,11 +11,12 @@
  *
  * No CLI flags. Requires an initialized database (`npm run db:init`).
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
-import { GAME_UK_GLOSSARIES } from '../src/resources/glossary';
-import type { GameType } from '../src/types';
+import { gameUkGlossaries } from '../src/resources/glossary';
 
 const SRC_LANG = 'en';
 const TGT_LANG = 'uk';
@@ -26,11 +27,8 @@ let inserted = 0;
 let updated = 0;
 let skippedManual = 0;
 
-for (const [game, entries] of Object.entries(GAME_UK_GLOSSARIES) as Array<
-  [GameType, (typeof GAME_UK_GLOSSARIES)[GameType]]
->) {
-  if (game === 'sle') continue;
-
+// Keyed by storage key, so editions that share a list are already deduped.
+for (const [game, entries] of gameUkGlossaries()) {
   const source = `seed:${game}-base`;
   for (const { term, translation } of entries) {
     const cleanTerm = term.trim();

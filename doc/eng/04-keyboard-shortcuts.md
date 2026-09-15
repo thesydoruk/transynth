@@ -47,16 +47,22 @@ If the browser intercepts `Ctrl+S`, use a clean profile or disable the conflicti
 Active on the Dialogs tab (Bethesda). Modifier chords stay live while editing;
 plain keys are ignored while the caret is in a field.
 
-| Shortcut              | Action                                         |
-| --------------------- | ---------------------------------------------- |
-| `1` / `2` / `3` / `4` | Scope: topics, branches, scenes, conversations |
-| `Alt+↑` / `Alt+↓`     | Previous / next group in the navigator         |
-| `↑` / `↓`             | Previous / next line in the transcript         |
-| `/`                   | Focus find                                     |
-| `N`                   | Next unfinished line                           |
-| `P`                   | Play the focused line’s voice-over, if any     |
-| `Enter`               | Edit the focused line                          |
-| `Escape`              | Clear focus (when not editing)                 |
+| Shortcut           | Action                                           |
+| ------------------ | ------------------------------------------------ |
+| `Alt+↑` / `Alt+↓`  | Previous / next group in the navigator           |
+| `←` / `→`          | Collapse / expand the selected navigator node    |
+| `↑` / `↓`          | Previous / next line in the transcript           |
+| `/`                | Focus find                                       |
+| `N`                | Next unfinished line                             |
+| `P`                | Play the focused line’s voice-over, if any       |
+| `Enter`            | Edit the focused line                            |
+| `Ctrl+Enter`       | Save and move to the next line                   |
+| `Ctrl+Shift+Enter` | Save and jump to the next unfinished line        |
+| `Escape`           | Cancel the edit, or clear focus when not editing |
+
+There is no scope hotkey: the navigator is one tree holding topics, branches,
+scenes and conversations together, and selecting a node picks its scope with
+it. The scope of the open node is kept in the URL as `?dscope=`.
 
 ---
 

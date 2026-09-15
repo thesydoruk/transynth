@@ -2,9 +2,9 @@ import type { StringsType } from '../../formats/types/StringsType';
 import { stringsTypeFromPath } from '../../formats/strings';
 
 export const PLUGIN_EXTS = new Set(['.esp', '.esm', '.esl']);
-export const STRINGS_DIR_NAMES = new Set(['strings']);
+const STRINGS_DIR_NAMES = new Set(['strings']);
 export const SKIP_DIRS = new Set(['.transynth-extracted', '.git', 'node_modules']);
-export const STRINGS_FILE_RE = /^(.+)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i;
+const STRINGS_FILE_RE = /^(.+)_([a-z]+)\.(strings|dlstrings|ilstrings)$/i;
 
 export const isStringsDirName = (name: string): boolean =>
   STRINGS_DIR_NAMES.has(name.toLowerCase());

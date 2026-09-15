@@ -6,6 +6,23 @@
   margin: 0 auto;
 }
 
+/**
+ * Says the Vortex group came from a feature that is still very early.
+ *
+ * Shown only while such a group is selected — someone looking at their local
+ * imports has nothing to be warned about.
+ */
+.experimentalTag {
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--warning);
+  background: var(--qa-warning-bg);
+  border-radius: 8px;
+  cursor: help;
+}
+
 .vortexFilter {
   display: flex;
   align-items: center;

@@ -4,13 +4,13 @@ import { canSynthesizeVoiceLine } from '../prepareVoiceTtsText';
 
 describe('voiceKeyFromLocalizedFileName', () => {
   it('parses Bethesda FormID_variant clips', () => {
-    expect(voiceKeyFromLocalizedFileName('00123456_1.fuz')).toBe('123456:1');
-    expect(voiceKeyFromLocalizedFileName('000219CF_2.wav')).toBe('0219CF:2');
+    expect(voiceKeyFromLocalizedFileName('00123456_1.fuz', 'fo4')).toBe('123456:1');
+    expect(voiceKeyFromLocalizedFileName('000219CF_2.wav', 'fo4')).toBe('0219CF:2');
   });
 
   it('rejects leftover names that are not voice takes', () => {
-    expect(voiceKeyFromLocalizedFileName('extra.fuz')).toBeNull();
-    expect(voiceKeyFromLocalizedFileName('readme.txt')).toBeNull();
+    expect(voiceKeyFromLocalizedFileName('extra.fuz', 'fo4')).toBeNull();
+    expect(voiceKeyFromLocalizedFileName('readme.txt', 'fo4')).toBeNull();
   });
 });
 

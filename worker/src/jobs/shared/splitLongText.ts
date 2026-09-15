@@ -131,12 +131,6 @@ export const needsLongTextSplit = (
   maxChars = CONFIG.llmTranslateTextChunkMaxChars,
 ): boolean => text.length > maxChars;
 
-export const needsLongTextVerifySplit = (
-  source: string,
-  translation: string,
-  maxChars = CONFIG.llmTranslateTextChunkMaxChars,
-): boolean => source.length > maxChars || translation.length > maxChars;
-
 export type LongTextPair = { source: string; translation: string };
 
 const splitParagraphsKeepBreaks = (text: string): string[] => {

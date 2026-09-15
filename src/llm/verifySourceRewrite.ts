@@ -1,7 +1,7 @@
 /**
  * Full-mismatch verify fix — re-translate source only (wrong long translation attached).
  */
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { normalizeAutoTranslation } from '../utils/textNorm';
 import { unmask } from '../utils/placeholders';
 import { applyTranslateSplit, isMaskedLlmText, splitTranslateSource } from './textParts';
@@ -18,7 +18,7 @@ export type VerifySourceRewriteOpts = {
   model: string;
   srcLang: string;
   targetLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   signal?: AbortSignal;
 };
@@ -55,7 +55,10 @@ export const rewriteVerifyTranslationsFromSource = async (
           edid: item.edid,
           field: item.field,
           form_id: null,
-          context: null,
+          // The verify item carries the speaker/addressee context. Dropping it here
+          // left the re-translation blind to who is speaking, which is exactly what
+          // decides Ukrainian gender agreement.
+          context: item.context ?? null,
         },
         splitById.get(item.id)!,
       ),
@@ -78,7 +81,7 @@ export const rewriteVerifyTranslationsFromSource = async (
     const assembled = isMaskedLlmText(row.translation)
       ? unmask(unmask(row.translation, split.functionKeywordMap), split.placeholderMap)
       : row.translation;
-    const text = normalizeAutoTranslation(item.source, assembled);
+    const text = normalizeAutoTranslation(item.source, assembled, opts.game);
     const check = validateRewrittenTranslation(item, text, opts.game);
     if (!check.ok) {
       if (isRewriteUnchangedConfirmation(check)) {

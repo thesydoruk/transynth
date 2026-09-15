@@ -1,1 +1,1 @@
-export { ModWorkspaceRow, type ModWorkspaceRowProps } from './ModWorkspaceRow';
+export { ModWorkspaceRow } from './ModWorkspaceRow';

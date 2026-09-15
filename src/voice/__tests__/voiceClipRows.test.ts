@@ -7,7 +7,7 @@ const file = (speaker: string, formid: string, variant: number): VoiceFileEntry 
   relPath: `Sound/Voice/Fallout4.esm/${speaker}/${formid}_${variant}.fuz`,
   absolutePath: `/data/${speaker}/${formid}_${variant}.fuz`,
   fileName: `${formid}_${variant}.fuz`,
-  formidLower6: formid.substring(2).toUpperCase(),
+  lineKey: formid.substring(2).toUpperCase(),
   variant,
   ext: 'fuz',
 });
@@ -54,7 +54,7 @@ describe('buildVoiceClipRows', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       speakerKey: 'PlayerVoiceMale01',
-      formidLower6: '22B5CD',
+      lineKey: '22B5CD',
       formidHex: '0022B5CD',
       variant: 1,
       stringId: 77,

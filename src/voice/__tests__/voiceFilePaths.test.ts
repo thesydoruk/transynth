@@ -6,7 +6,7 @@ const entry = (relPath: string, fileName: string): VoiceFileEntry => ({
   relPath,
   absolutePath: `/pkg/${relPath}`,
   fileName,
-  formidLower6: '002CBA',
+  lineKey: '002CBA',
   variant: 4,
   ext: 'fuz',
 });

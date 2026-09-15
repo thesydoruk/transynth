@@ -18,7 +18,7 @@ export const STATUS_COLORS: Record<string, string> = {
 };
 
 /** Subtle grid-row backgrounds — mixed from {@link STATUS_COLORS} in CSS. */
-export const STATUS_ROW_BG: Record<string, string> = {
+const STATUS_ROW_BG: Record<string, string> = {
   reviewed: 'var(--status-row-reviewed)',
   human: 'var(--status-row-human)',
   draft: 'var(--status-row-draft)',

@@ -1,5 +1,9 @@
-import type { GameType } from '../types';
-import { getFunctionKeywordsForGame } from '../resources/functionKeywords';
+import type { GameId } from '../types';
+import { gamePlugin } from '../games/registry';
+
+/** Engine keywords this game protects from translation. */
+const gamePluginFunctionKeywords = (game?: GameId | null): readonly string[] =>
+  game ? gamePlugin(game).text.functionKeywords : [];
 
 // Protects placeholders and tags so the model does not alter them.
 // Mask format is ¤PH0¤, ¤GL0¤, and ¤FK0¤ for easy post-replacement.
@@ -96,7 +100,7 @@ const GENERIC_ANGLE_TAG_PATTERN = String.raw`<(?!\d[\d,]*\s+[Cc]aps>)[^>]+>`;
 const PLACEHOLDER_COMPARE_PATTERN_PARTS = PLACEHOLDER_PATTERN_PARTS.filter(
   (part) => part !== GENERIC_ANGLE_TAG_PATTERN,
 );
-export const PLACEHOLDER_COMPARE_RE = new RegExp(PLACEHOLDER_COMPARE_PATTERN_PARTS.join('|'), 'g');
+const PLACEHOLDER_COMPARE_RE = new RegExp(PLACEHOLDER_COMPARE_PATTERN_PARTS.join('|'), 'g');
 
 /** Record metadata for deciding whether Papyrus FunctionKeywords apply. */
 export type ProtectedTokenContext = {
@@ -104,12 +108,21 @@ export type ProtectedTokenContext = {
   field?: string | null;
 };
 
-/** FunctionKeywords are literal identifiers only in script source subrecords. */
-export const shouldProtectFunctionKeywords = (context?: ProtectedTokenContext | null): boolean => {
+/**
+ * FunctionKeywords are literal identifiers only in script source.
+ *
+ * With no record context at all the caller is masking a bare string and gets
+ * the cautious answer; otherwise the game says whether this record holds script
+ * text, because which record that is differs by engine.
+ */
+const shouldProtectFunctionKeywords = (
+  context?: ProtectedTokenContext | null,
+  game?: GameId | null,
+): boolean => {
   if (context == null || (context.grup == null && context.field == null)) {
     return true;
   }
-  return context.grup === 'SCPT' || context.field === 'SCTX';
+  return gamePlugin(game).text.recordKind(context.grup, context.field) === 'script_source';
 };
 
 const IDENTIFIER_RE = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
@@ -173,8 +186,8 @@ const stripModelAndVersionTokensForScriptCheck = (text: string): string =>
 const buildScriptProbe = (text: string): string =>
   stripModelAndVersionTokensForScriptCheck(stripProtectedForScriptCheck(text));
 
-const findFunctionKeywordMatches = (text: string, game?: GameType | null): KeywordMatch[] => {
-  const keywords = getFunctionKeywordsForGame(game);
+const findFunctionKeywordMatches = (text: string, game?: GameId | null): KeywordMatch[] => {
+  const keywords = gamePluginFunctionKeywords(game);
   if (keywords.length === 0) return [];
 
   const keywordSet = new Set(keywords);
@@ -233,10 +246,10 @@ export const maskPlaceholders = (text: string) => {
  */
 export const maskFunctionKeywords = (
   text: string,
-  game?: GameType | null,
+  game?: GameId | null,
   context?: ProtectedTokenContext | null,
 ): MaskResult => {
-  if (!shouldProtectFunctionKeywords(context)) {
+  if (!shouldProtectFunctionKeywords(context, game)) {
     return { masked: text, mapping: {} };
   }
   const matches = findFunctionKeywordMatches(text, game);
@@ -269,11 +282,11 @@ export const maskFunctionKeywords = (
  */
 export const extractProtectedTokens = (
   text: string,
-  game?: GameType | null,
+  game?: GameId | null,
   context?: ProtectedTokenContext | null,
 ): string[] => {
   const placeholderMatches = text.match(PLACEHOLDER_COMPARE_RE) ?? [];
-  const keywordMatches = shouldProtectFunctionKeywords(context)
+  const keywordMatches = shouldProtectFunctionKeywords(context, game)
     ? findFunctionKeywordMatches(text, game).map((match) => match.token)
     : [];
   return filterCompareTokens([...placeholderMatches, ...keywordMatches]).sort();
@@ -366,7 +379,7 @@ export const validateMaskedTranslation = (
 export const compareProtectedTokens = (
   source: string,
   translation: string,
-  game?: GameType | null,
+  game?: GameId | null,
   context?: ProtectedTokenContext | null,
 ): PlaceholderValidationResult => {
   const srcProtectedTokens = extractProtectedTokens(source, game, context);
@@ -388,7 +401,7 @@ export const validateTranslationPlaceholders = (
   maskedTranslation: string,
   placeholderMap: Record<string, string>,
   functionKeywordMap: Record<string, string>,
-  game?: GameType | null,
+  game?: GameId | null,
   context?: ProtectedTokenContext | null,
 ): PlaceholderValidationResult => {
   const combinedMap = { ...placeholderMap, ...functionKeywordMap };

@@ -26,11 +26,9 @@ describe('writeUaSoundPackIntoDir', () => {
     const clip = path.join(dir, 'clip.fuz');
     fs.writeFileSync(clip, Buffer.from('fuz-bytes'));
 
-    const added = writeUaSoundPackIntoDir(
-      dir,
-      [{ name: 'Sound/Voice/Fallout4.esm/NPC/00123456_1.fuz', absPath: clip }],
-      'fo4',
-    );
+    const added = writeUaSoundPackIntoDir(dir, [
+      { name: 'Sound/Voice/Fallout4.esm/NPC/00123456_1.fuz', absPath: clip },
+    ]);
 
     expect(added).toBe(2);
     expect(fs.existsSync(path.join(dir, UA_SOUND_PACK_ESP))).toBe(true);
@@ -49,13 +47,10 @@ describe('writeUaSoundPackIntoDir', () => {
     }
   });
 
-  it('does nothing without voice or on non-FO4', () => {
+  it('does nothing when there is no voice to pack', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ua-sound-skip-'));
     tempDirs.push(dir);
-    expect(writeUaSoundPackIntoDir(dir, [], 'fo4')).toBe(0);
-    expect(
-      writeUaSoundPackIntoDir(dir, [{ name: 'Sound/Voice/x.fuz', data: Buffer.from('x') }], 'sse'),
-    ).toBe(0);
+    expect(writeUaSoundPackIntoDir(dir, [])).toBe(0);
     expect(fs.existsSync(path.join(dir, UA_SOUND_PACK_ESP))).toBe(false);
   });
 });

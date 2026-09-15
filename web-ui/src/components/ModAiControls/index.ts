@@ -1,1 +1,1 @@
-export { ModAiControls, type ModAiControlsProps } from './ModAiControls';
+export { ModAiControls } from './ModAiControls';

@@ -1,6 +1,7 @@
+import { DEFAULT_GAME_ID } from '../../../games/registry';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Tx } from '../../../db';
-import type { GameType } from '../../../types';
+import type { GameId } from '../../../types';
 import { getMod } from '../../data/queries';
 import { exportFullModZip, exportLangpackZip } from '../../export';
 import { CONFIG } from '../../../config';
@@ -14,7 +15,7 @@ const sendModExportZip = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
   buildZip: typeof exportLangpackZip,
 ) => {
   try {
@@ -51,7 +52,7 @@ export const registerExportRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path)
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
-      const game = (mod.game ?? 'fo4') as GameType;
+      const game = (mod.game ?? DEFAULT_GAME_ID) as GameId;
       const modPath = resolveModStoredPath(mod.abs_path);
       return sendModExportZip(db, reply, id, modPath, srcLang, targetLang, game, exportLangpackZip);
     },
@@ -72,7 +73,7 @@ export const registerExportRoutes = async (app: FastifyInstance, db: Tx) => {
       if (!mod.abs_path)
         return reply.code(400).send({ error: 'Mod file path is not available for export' });
 
-      const game = (mod.game ?? 'fo4') as GameType;
+      const game = (mod.game ?? DEFAULT_GAME_ID) as GameId;
       const modPath = resolveModStoredPath(mod.abs_path);
       return sendModExportZip(db, reply, id, modPath, srcLang, targetLang, game, exportFullModZip);
     },

@@ -24,6 +24,8 @@ export type LlmVerifyJobParams = {
   autoApproveVerified?: boolean;
   fixSuspicious?: boolean;
   includeConfirmed?: boolean;
+  /** Report verdicts without writing fixes or approvals — a preview run. */
+  dryRun?: boolean;
 };
 
 export const llmVerifyHandler: JobHandler = (db, ctx) => {

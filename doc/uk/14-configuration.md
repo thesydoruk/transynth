@@ -185,12 +185,15 @@ postgresql://transynth:transynth@localhost:5433/transynth
 | `UPLOAD_MAX_FILE_SIZE_MB` | не задано        | Необов’язкова стеля multipart у мегабайтах; якщо немає — практичної стелі немає                     |
 | `WEB_PORT`                | як `PORT`        | Порт на хості в Docker Compose                                                                      |
 
-`PORT` і `HOST` читаються з `process.env`, не з `CONFIG`. Vite проксіює `/api`
-через `PORT`; змінної `VITE_API_BASE` немає.
+`PORT` і `HOST` читаються з `process.env`, не з `CONFIG`. У розробці Vite
+проксіює `/api` через `PORT`, тож фронтенд не потребує власної адреси. Збірку,
+яку віддають не з того ж місця, що API, можна націлити на нього через
+`VITE_API_URL` (`web-ui/src/api/client.ts`) — вона зашивається під час збірки
+і за замовчуванням порожня.
 
-Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`,
-`TRANSYNTH_CLI_TOKEN` / `TRANSYNTH_API_URL` (віддалений [Vortex sync](16-vortex-sync.md)),
-(Discover / завантаження з Nexus), `REDIS_URL` (черга джоб; Compose ставить
+Ще в `.env.example` (не дублюються в таблицях вище): `NEXUS_API_KEY`
+(Discover / завантаження з Nexus), `TRANSYNTH_CLI_TOKEN` / `TRANSYNTH_API_URL`
+(віддалений [Vortex sync](16-vortex-sync.md)), `REDIS_URL` (черга джоб; Compose ставить
 `redis://redis:6379`), `TTS_BASE_URL` (Fish Speech), `DATA_DIR`,
 `BETHESDA_TOOLS_URL` / `DOCKER_BETHESDA_TOOLS_URL`, `AUDIO_INTEL_BASE_URL`
 (Whisper для Disco, типово `http://localhost:8080`; у Compose —
@@ -264,16 +267,24 @@ docker compose down
 `docker/compose.db.yml`) і переживають `docker compose down`. Не запускайте
 `docker compose down -v`, якщо не хочете їх стерти.
 
-Резервне копіювання:
+Резервне копіювання і відновлення:
 
 ```bash
-docker compose exec db pg_dump -U transynth transynth > backup_$(date +%Y%m%d).sql
+./scripts/backup.sh    # авто-визначення Docker чи локальний pg_dump
+./scripts/restore.sh <backup_file.sql.gz>
 ```
 
-Відновлення:
+Обидва самі визначають, чи запущений сервіс `db` у Compose, і інакше йдуть
+через локальний `pg_dump` / `psql` (прапорці `--docker` / `--local`
+форсують режим). `backup.sh` пише датований gzip-дамп у
+`${DATA_DIR:-./data}/backups/transynth_YYYYMMDD_HHMMSS.sql.gz`. `restore.sh`
+**дропає і перестворює** цільову базу — перед цим питає підтвердження.
+
+Еквівалентні ручні команди, наприклад для зовнішнього Postgres:
 
 ```bash
-cat backup_20250101.sql | docker compose exec -T db psql -U transynth transynth
+docker compose exec db pg_dump -U transynth transynth | gzip > backup.sql.gz
+gunzip -c backup.sql.gz | docker compose exec -T db psql -U transynth transynth
 ```
 
 Щоб підключатися до бази з хоста через pgAdmin або DBeaver, використовуйте `localhost:5433` — порт уже проброшений у `docker/compose.db.yml`. Облікові дані беруться з `DATABASE_URL`.
@@ -290,8 +301,8 @@ cat backup_20250101.sql | docker compose exec -T db psql -U transynth transynth
 2. **Не перезаписуйте живий `.env`** файлом `.env.example`.
 3. **Reverse proxy:** TLS перед `WEB_PORT`. Див. [SECURITY.md](../../SECURITY.md).
    Це застосунок для довіреної мережі — сирий порт у відкритий інтернет не ставте.
-4. **Бекапи:** `pg_dump` зовнішньої бази (або `./data/postgres` для embedded
-   профілю). Ніколи `docker compose down -v` на машині з даними перекладів.
+4. **Бекапи:** запускайте `./scripts/backup.sh` за розкладом (cron/Task
+   Scheduler). Ніколи `docker compose down -v` на машині з даними перекладів.
 5. **Деплой** — `git pull` і перезбірка образу `web`. `web` і `worker` ділять
    цей образ — перезапускайте обидва.
 

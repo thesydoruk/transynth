@@ -19,7 +19,7 @@ const speaker = (partial: Partial<VoiceSpeakerSummary> = {}): VoiceSpeakerSummar
 });
 
 const line = (partial: Partial<VoiceLinePreview> = {}): VoiceLinePreview => ({
-  formidLower6: '000001',
+  lineKey: '000001',
   infoFormidHex: '00000001',
   variant: 1,
   fileName: '00000001_1.fuz',
@@ -49,7 +49,7 @@ describe('parseVoiceLiveSseEvent', () => {
           type: 'line_started',
           modId: 2,
           speakerKey: 'MaleBoston',
-          formidLower6: '000001',
+          lineKey: '000001',
           variant: 1,
         }),
       ),
@@ -63,7 +63,7 @@ describe('applyVoiceLiveLineDone', () => {
     type: 'line_done' as const,
     modId: 2,
     speakerKey: 'MaleBoston',
-    formidLower6: '000001',
+    lineKey: '000001',
     variant: 1,
     voiceSimilarity: 0.91,
   };
@@ -100,8 +100,6 @@ describe('applyVoiceLiveLineDone', () => {
 
 describe('voiceLiveLineKey', () => {
   it('matches the editor row key', () => {
-    expect(voiceLiveLineKey({ speakerKey: 'Nora', formidLower6: 'aa', variant: 2 })).toBe(
-      'Nora:aa:2',
-    );
+    expect(voiceLiveLineKey({ speakerKey: 'Nora', lineKey: 'aa', variant: 2 })).toBe('Nora:aa:2');
   });
 });

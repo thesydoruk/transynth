@@ -1,13 +1,20 @@
 import type { Tx } from '../../../../../src/db';
 import { CONFIG } from '../../../../../src/config';
 import { rewriteVerifyTranslationsFromSource } from '../../../../../src/llm/verifySourceRewrite';
+import { editVerifyFixes, repairProvenGenderLeaks } from './editVerifyFixes';
+import { preferBetterTranslations } from '../../../../../src/llm/preferBetterTranslation';
+import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { logVerify } from '../../../../../src/logging/loggers';
 import { Semaphore } from '../../../../../src/utils/concurrency';
 import {
   approveVerifiedTranslations,
   upsertTranslation,
 } from '../../../../../src/web/data/queries';
+import { bulkInsertQAIssues } from '../../../../../src/web/data/queries/qaHelpers';
 import type { VerifyBatchPersistJob, RunModVerifyPipelineOpts, VerifyStringRow } from './types';
+
+/** QA issue type for an objection only the model made. */
+export const VERIFY_ADVISORY_ISSUE_TYPE = 'llm_review';
 
 export type BatchPersistCounters = {
   done: number;
@@ -100,16 +107,109 @@ export const scheduleBatchPersist = (
           }
         }
 
+        // A fix goes through the same editor passes translate ends with. The
+        // source rewrites above already ran them inside translateStrings.
+        const editedFixes = await editVerifyFixes(job.fixes, {
+          model,
+          srcLang: opts.srcLang,
+          targetLang: opts.targetLang,
+          game: opts.game,
+          modName: opts.modName,
+          ...(opts.signal ? { signal: opts.signal } : {}),
+        });
+
+        // Last gate: the rewrite has to beat what is already there. Judging a
+        // line on its own does not reproduce, so the pass that decides whether
+        // to write is a comparison, and a tie leaves the row alone.
+        const candidates = job.fixes.map((fix) => ({
+          item: {
+            id: fix.stringId,
+            source: fix.row.source,
+            translation: fix.row.translation,
+            ...parseRecordLocation(fix.row.signature, fix.row.path),
+            edid: fix.row.edid,
+            context: fix.row.context,
+          },
+          candidate: editedFixes.get(fix.stringId) ?? fix.text,
+        }));
+        const preferred = await preferBetterTranslations(candidates, {
+          model,
+          srcLang: opts.srcLang,
+          targetLang: opts.targetLang,
+          game: opts.game,
+          ...(opts.signal ? { signal: opts.signal } : {}),
+        });
+
         for (const fix of job.fixes) {
+          if (!preferred.has(fix.stringId)) {
+            ctx.logAction(fix.row, 'issue', 'Rewrite did not beat the current translation.');
+            continue;
+          }
+          const text = editedFixes.get(fix.stringId) ?? fix.text;
           try {
-            await upsertTranslation(db, fix.stringId, fix.text, 'auto', opts.targetLang);
+            await upsertTranslation(db, fix.stringId, text, 'auto', opts.targetLang);
             counters.fixed++;
-            ctx.logAction(fix.row, 'fixed', fix.text);
+            ctx.logAction(fix.row, 'fixed', text);
           } catch (err) {
             counters.errors++;
             logVerify.warn('verify auto-fix failed', {
               modId: opts.modId,
               stringId: fix.stringId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
+        // A proven gender leak the auditor would not put a wording to. The
+        // specialist pass is given the line as it stands; a result that still
+        // leaks is dropped, so a row is never "repaired" into the same fault.
+        if (job.genderRepairs.length > 0) {
+          const genderFixed = await repairProvenGenderLeaks(job.genderRepairs, {
+            model,
+            srcLang: opts.srcLang,
+            targetLang: opts.targetLang,
+            game: opts.game,
+            modName: opts.modName,
+            ...(opts.signal ? { signal: opts.signal } : {}),
+          });
+          for (const row of job.genderRepairs) {
+            const text = genderFixed.get(row.string_id);
+            if (!text) continue;
+            try {
+              await upsertTranslation(db, row.string_id, text, 'auto', opts.targetLang);
+              counters.fixed++;
+              ctx.logAction(row, 'fixed', text);
+            } catch (err) {
+              counters.errors++;
+              logVerify.warn('verify gender repair persist failed', {
+                modId: opts.modId,
+                stringId: row.string_id,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+        }
+
+        // The model's unaided objections outlive the job: they belong on the row
+        // where a translator can see and act on them, not in a job snapshot that
+        // is thrown away when the run ends.
+        if (job.advisories.length > 0) {
+          try {
+            await bulkInsertQAIssues(
+              db,
+              job.advisories.map((advisory) => ({
+                stringId: advisory.stringId,
+                translationId: null,
+                targetLang: opts.targetLang,
+                issueType: VERIFY_ADVISORY_ISSUE_TYPE,
+                severity: 'warning',
+                message: advisory.message,
+              })),
+            );
+          } catch (err) {
+            logVerify.warn('verify advisory persist failed', {
+              modId: opts.modId,
+              count: job.advisories.length,
               error: err instanceof Error ? err.message : String(err),
             });
           }

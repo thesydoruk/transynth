@@ -2,7 +2,7 @@
  * Minimal guards on LLM verify suggestions before auto-apply.
  * Verdict quality is delegated to the LLM; only token safety and noop are checked here.
  */
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import {
   compareProtectedTokens,
   extractProtectedTokens,
@@ -18,7 +18,7 @@ export type VerifySuggestionValidation =
   | { ok: true }
   | { ok: false; reason: SuggestionRejectReason; message: string };
 
-export const REWRITE_UNCHANGED_MESSAGE = 'Rewrite unchanged translation.';
+const REWRITE_UNCHANGED_MESSAGE = 'Rewrite unchanged translation.';
 
 /** True when a source rewrite reproduced the current translation — treat as verified. */
 export const isRewriteUnchangedConfirmation = (check: VerifySuggestionValidation): boolean =>
@@ -77,15 +77,15 @@ const tokenContextFromItem = (item: LlmVerifyItem): ProtectedTokenContext => ({
 /** Short source paired with a much longer translation that contains alien protected tokens. */
 export const isFullTranslationMismatch = (
   item: LlmVerifyItem,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): boolean => {
   const ctx = tokenContextFromItem(item);
-  if (compareProtectedTokens(item.source, item.translation, game as GameType | undefined, ctx).ok) {
+  if (compareProtectedTokens(item.source, item.translation, game as GameId | undefined, ctx).ok) {
     return false;
   }
 
-  const srcTokens = extractProtectedTokens(item.source, game as GameType | undefined, ctx);
-  const trTokens = extractProtectedTokens(item.translation, game as GameType | undefined, ctx);
+  const srcTokens = extractProtectedTokens(item.source, game as GameId | undefined, ctx);
+  const trTokens = extractProtectedTokens(item.translation, game as GameId | undefined, ctx);
   const srcSet = new Set(srcTokens);
   const extraInTranslation = trTokens.some((token) => !srcSet.has(token));
   if (!extraInTranslation) return false;
@@ -106,7 +106,7 @@ export const isCorruptedVerifyTranslation = (translation: string): boolean =>
 export const validateRewrittenTranslation = (
   item: LlmVerifyItem,
   text: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): VerifySuggestionValidation => {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -123,7 +123,7 @@ export const validateRewrittenTranslation = (
   const tokenCheck = compareProtectedTokens(
     item.source,
     trimmed,
-    game as GameType | undefined,
+    game as GameId | undefined,
     tokenContextFromItem(item),
   );
   if (!tokenCheck.ok) {
@@ -146,10 +146,12 @@ export const shouldRewriteFromSource = (
   verdict: LlmVerifyVerdict,
   suggestion: string | null,
   fixSuspicious: boolean,
-  _game?: GameType | string | null,
+  _game?: GameId | string | null,
 ): boolean => {
   if (isCorruptedVerifyTranslation(item.translation)) return true;
-  if (verdict === 'incorrect') return true;
+  // An 'incorrect' verdict means the translation is beyond patching. The model is
+  // asked for a fresh translation of the source; re-translate only when it gave none.
+  if (verdict === 'incorrect') return !suggestion;
   if (verdict === 'suspicious' && fixSuspicious && !suggestion && isMultiLineSource(item.source)) {
     return true;
   }
@@ -159,7 +161,7 @@ export const shouldRewriteFromSource = (
 export const validateVerifySuggestion = (
   item: LlmVerifyItem,
   suggestion: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): VerifySuggestionValidation => {
   if (looksLikeVerifyJsonArtifact(suggestion)) {
     return {
@@ -180,7 +182,7 @@ export const validateVerifySuggestion = (
   const tokenCheck = compareProtectedTokens(
     item.source,
     suggestion,
-    game as GameType | undefined,
+    game as GameId | undefined,
     tokenContextFromItem(item),
   );
   if (!tokenCheck.ok) {
@@ -212,7 +214,7 @@ export const resolveVerifyFixAction = (
   verdict: LlmVerifyVerdict,
   suggestion: string | null,
   fixSuspicious: boolean,
-  _game?: GameType | string | null,
+  _game?: GameId | string | null,
 ): VerifyFixAction => {
   if (isCorruptedVerifyTranslation(item.translation)) {
     return { kind: 'rewrite_from_source' };
@@ -223,13 +225,17 @@ export const resolveVerifyFixAction = (
     return { kind: 'rewrite_from_source' };
   }
 
-  const wantsFix = !!suggestion && verdict === 'suspicious' && fixSuspicious;
+  // 'incorrect' is always repaired — without a usable suggestion it already fell
+  // through to rewrite_from_source above. 'suspicious' is repaired only on request.
+  const wantsFix =
+    !!suggestion && (verdict === 'incorrect' || (verdict === 'suspicious' && fixSuspicious));
   if (!wantsFix) return { kind: 'flag_only' };
 
   const check = validateVerifySuggestion(item, suggestion, _game);
   if (!check.ok) {
     if (check.reason === 'noop') {
-      return { kind: 'approve_as_ok' };
+      // A translation called incorrect cannot be approved by restating it.
+      return verdict === 'incorrect' ? { kind: 'rewrite_from_source' } : { kind: 'approve_as_ok' };
     }
     if (
       check.reason === 'json_artifact' ||
@@ -242,23 +248,6 @@ export const resolveVerifyFixAction = (
   }
 
   return { kind: 'apply', suggestion };
-};
-
-export const formatVerifyIssuePrefix = (dryRun: boolean, action: VerifyFixAction): string => {
-  switch (action.kind) {
-    case 'apply':
-      return dryRun ? 'Would fix' : 'Fixed';
-    case 'reject_fix':
-      return dryRun ? 'Would flag (fix rejected)' : 'Flagged (fix rejected)';
-    case 'rewrite_from_source':
-      return dryRun ? 'Would rewrite from source' : 'Rewrote from source';
-    case 'approve_as_ok':
-      return dryRun ? 'Would approve' : 'Approved';
-    case 'flag_only':
-      return dryRun ? 'Would flag' : 'Flagged';
-    default:
-      return dryRun ? 'Would flag' : 'Flagged';
-  }
 };
 
 /** Upgrade corrupted translations saved as verify JSON blobs. */

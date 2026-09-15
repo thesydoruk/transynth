@@ -1,5 +1,5 @@
 /** Ordered Vortex sync stages. Order is fixed; callers may cut a contiguous range. */
-export const VORTEX_STAGES = [
+const VORTEX_STAGES = [
   'plan',
   'upload',
   'import',
@@ -20,13 +20,13 @@ export type ServerVortexStage = (typeof SERVER_VORTEX_STAGES)[number];
 
 const STAGE_INDEX = new Map(VORTEX_STAGES.map((stage, index) => [stage, index]));
 
-export const isVortexStage = (value: string): value is VortexStage =>
+const isVortexStage = (value: string): value is VortexStage =>
   STAGE_INDEX.has(value as VortexStage);
 
 export const isVortexChannel = (value: string): value is VortexChannel =>
   (VORTEX_CHANNELS as readonly string[]).includes(value);
 
-export const stageIndex = (stage: VortexStage): number => STAGE_INDEX.get(stage) ?? -1;
+const stageIndex = (stage: VortexStage): number => STAGE_INDEX.get(stage) ?? -1;
 
 export const resolveStageRange = (from?: string, to?: string, single?: string): VortexStage[] => {
   if (single) {

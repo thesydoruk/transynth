@@ -19,6 +19,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
       autoApproveVerified?: boolean;
       fixSuspicious?: boolean;
       includeConfirmed?: boolean;
+      dryRun?: boolean;
     };
   }>('/api/mods/:modId/llm-verify', async (req, reply) => {
     const modId = Number(req.params.modId);
@@ -31,6 +32,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
     const autoApproveVerified = req.body?.autoApproveVerified === true;
     const fixSuspicious = req.body?.fixSuspicious === true;
     const includeConfirmed = req.body?.includeConfirmed === true;
+    const dryRun = req.body?.dryRun === true;
 
     const running = await findActiveJobIdForMod(['llm-verify'], modId);
     if (running) {
@@ -58,6 +60,7 @@ export const llmVerifyRoutes = async (app: FastifyInstance, db: Tx) => {
           autoApproveVerified,
           fixSuspicious,
           includeConfirmed,
+          dryRun,
         },
       },
       initialSnapshotData: { approved: 0, fixed: 0, issues: [], actionLog: [] },

@@ -3,8 +3,7 @@ import path from 'node:path';
 import { PATHS } from '../../paths';
 import { ensureDir } from '../../utils/file';
 
-export const exportArchiveDir = (archiveId: number): string =>
-  path.join(PATHS.exports, String(archiveId));
+const exportArchiveDir = (archiveId: number): string => path.join(PATHS.exports, String(archiveId));
 
 export const exportArchiveZipPath = (archiveId: number, fileName: string): string =>
   path.join(exportArchiveDir(archiveId), fileName);

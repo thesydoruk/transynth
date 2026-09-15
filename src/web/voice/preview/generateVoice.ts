@@ -1,7 +1,6 @@
 import type { Tx } from '../../../db';
+import { gamePlugin } from '../../../games/registry';
 import { loadImportedMod } from '../../../modImport/importedMod';
-import { synthesizeDiscoVoiceLine } from '../../../voice/disco/synthesizeDiscoVoiceLine';
-import { synthesizeModVoiceLine } from '../../../voice/synthesizeModVoiceLine';
 import { emitVoiceLive } from '../../../voice/voiceLiveEvents';
 import { resolveLocalizeDir, resolveModVoiceContext } from './context';
 import type { VoiceGenerateLineResult } from './types';
@@ -10,7 +9,7 @@ import type { VoiceGenerateLineResult } from './types';
 export const generateVoiceTranslationForMod = async (
   db: Tx,
   modId: number,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   srcLang: string,
   targetLang: string,
@@ -29,34 +28,27 @@ export const generateVoiceTranslationForMod = async (
   }
 
   const speaker = speakerKey?.trim() ?? '';
-  const live = speaker ? { modId, speakerKey: speaker, formidLower6, variant } : null;
+  const live = speaker ? { modId, speakerKey: speaker, lineKey, variant } : null;
   if (live) emitVoiceLive({ type: 'line_started', ...live });
 
   const mod = await loadImportedMod(db, modId);
+  const voice = gamePlugin(mod.game).voice;
+  if (!voice) {
+    return { ok: false, reason: 'no_localize_dir', message: 'This game has no voice support' };
+  }
+
   try {
-    const result =
-      mod.game === 'disco'
-        ? await synthesizeDiscoVoiceLine(db, {
-            modId,
-            pluginPath: resolved.ctx.pluginPath,
-            localizeDir,
-            formidLower6,
-            variant,
-            srcLang,
-            tgtLang: targetLang,
-            force: true,
-          })
-        : await synthesizeModVoiceLine(db, {
-            modId,
-            packageDir: resolved.ctx.packageDir,
-            pluginPath: resolved.ctx.pluginPath,
-            localizeDir,
-            formidLower6,
-            variant,
-            srcLang,
-            tgtLang: targetLang,
-            speakerKey,
-          });
+    const result = await voice.synthesizeLine(db, {
+      modId,
+      packageDir: resolved.ctx.packageDir,
+      pluginPath: resolved.ctx.pluginPath,
+      localizeDir,
+      lineKey,
+      variant,
+      srcLang,
+      tgtLang: targetLang,
+      speakerKey,
+    });
     if (live) {
       if (result.ok && !result.skipped) emitVoiceLive({ type: 'line_done', ...live });
       else emitVoiceLive({ type: 'line_failed', ...live });

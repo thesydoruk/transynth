@@ -16,7 +16,8 @@ import {
 } from '../../modImport/packBethesdaArchives';
 import { pluginRelPath, resolveImportPackages, toDiskPath } from '../../modImport/packages';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
-import type { GameType } from '../../types';
+import { gamePlugin } from '../../games/registry';
+import type { GameId } from '../../types';
 import { copyFileSafe, ensureDir } from '../../utils/file';
 import { applyLocalizationToPackage } from './fullModLocalization';
 import { collectExportableVoiceFiles } from './exportVoiceFiles';
@@ -66,13 +67,13 @@ const writeBufferToPackage = (packageDir: string, relPath: string, data: Buffer)
   fs.writeFileSync(dest, data);
 };
 
-const isLocalizedVoiceRelPath = (relPath: string, game: GameType): boolean => {
-  const norm = relPath.replace(/\\/g, '/').toLowerCase();
-  if (game === 'disco') return /(^|\/)audio(\/|$)/.test(norm);
-  return /(^|\/)sound\/voice(\/|$)/.test(norm);
+const isLocalizedVoiceRelPath = (relPath: string, game: GameId): boolean => {
+  const voice = gamePlugin(game).voice;
+  if (!voice) return false;
+  return voice.isLocalizedVoicePath(relPath.replace(/\\/g, '/').toLowerCase());
 };
 
-const mergeLocalizeOverlay = (localizeDir: string, packageDir: string, game: GameType): void => {
+const mergeLocalizeOverlay = (localizeDir: string, packageDir: string, game: GameId): void => {
   if (!fs.existsSync(localizeDir)) return;
 
   const walk = (current: string, rel = ''): void => {
@@ -98,7 +99,7 @@ const applyExportableVoiceOverlay = async (
   packageDir: string,
   srcLang: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
 ): Promise<void> => {
   const voiceFiles = await collectExportableVoiceFiles(
     db,
@@ -107,7 +108,7 @@ const applyExportableVoiceOverlay = async (
     srcLang,
     targetLang,
     game,
-    { extensions: game === 'disco' ? ['.wav'] : ['.fuz'] },
+    { extensions: [gamePlugin(game).voice?.sourceExtension ?? '.fuz'] },
   );
   for (const file of voiceFiles) {
     writeBufferToPackage(packageDir, file.packageRel, fs.readFileSync(file.absPath));
@@ -202,7 +203,7 @@ export const stageFullLocalizedMod = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
 ): Promise<FullModStagingResult> => {
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (!extractRoot) {

@@ -4,13 +4,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { parsePexBuffer, isLikelyUserText, patchPexBuffer, formatPexStringContext } from '..';
 
-const writeWString = (buf: Buffer, offset: number, s: string): number => {
-  const bytes = Buffer.from(s, 'utf8');
-  buf.writeUInt16BE(bytes.length, offset);
-  bytes.copy(buf, offset + 2);
-  return offset + 2 + bytes.length;
-};
-
 const buildPex = (
   strings: string[],
   opts?: { sourceFile?: string; gameId?: number; endian?: 'be' | 'le' },

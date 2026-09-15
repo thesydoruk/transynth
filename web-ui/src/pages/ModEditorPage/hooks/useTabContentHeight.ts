@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-export const TAB_CONTENT_HEIGHT_STORAGE_KEY = 'mod-editor-tab-content-height';
+const TAB_CONTENT_HEIGHT_STORAGE_KEY = 'mod-editor-tab-content-height';
 
-export const DEFAULT_TAB_CONTENT_HEIGHT = 160;
-export const MIN_TAB_CONTENT_HEIGHT = 80;
-export const MIN_TEXT_PANELS_HEIGHT = 120;
+const DEFAULT_TAB_CONTENT_HEIGHT = 160;
+const MIN_TAB_CONTENT_HEIGHT = 80;
+const MIN_TEXT_PANELS_HEIGHT = 120;
 const TAB_BAR_HEIGHT = 32;
 const RESIZE_HANDLE_HEIGHT = 6;
 

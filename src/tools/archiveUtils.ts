@@ -64,19 +64,6 @@ export const copyFileSafe = (fromPath: string, toPath: string): void => {
   fs.copyFileSync(fromPath, toPath);
 };
 
-export const copyDirectory = (fromDir: string, toDir: string): void => {
-  fs.mkdirSync(toDir, { recursive: true });
-  for (const entry of fs.readdirSync(fromDir, { withFileTypes: true })) {
-    const src = path.join(fromDir, entry.name);
-    const dest = path.join(toDir, entry.name);
-    if (entry.isDirectory()) {
-      copyDirectory(src, dest);
-    } else {
-      fs.copyFileSync(src, dest);
-    }
-  }
-};
-
 export const downloadFile = async (url: string, destPath: string): Promise<void> => {
   const response = await request(url, { maxRedirections: 5 });
   if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import type { StringRow } from '../../../../api';
 import {
-  editorCapabilities,
-  formatDiscoPoKey,
+  defaultEditorCapabilities,
+  formatPoKey,
   type EditorCapabilities,
 } from '../../editorCapabilities';
 import { resolvePexScriptContext } from '../DetailPanel/utils';
@@ -33,8 +33,8 @@ export interface EditorStatusBarProps {
 }
 
 const activeRowDetail = (activeRow: StringRow, caps: EditorCapabilities): string => {
-  if (caps.isDisco) {
-    const key = formatDiscoPoKey(activeRow.path) || '—';
+  if (!caps.usesRecordPaths) {
+    const key = formatPoKey(activeRow.path) || '—';
     const audio = activeRow.edid?.trim() ? activeRow.edid : '—';
     return `${activeRow.signature} · ${key} · ${audio}`;
   }
@@ -55,7 +55,7 @@ export const EditorStatusBar = ({
   capabilities: capabilitiesProp,
 }: EditorStatusBarProps) => {
   const { t } = useTranslation();
-  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
+  const capabilities = capabilitiesProp ?? defaultEditorCapabilities();
 
   return (
     <div className={styles.statusBar}>

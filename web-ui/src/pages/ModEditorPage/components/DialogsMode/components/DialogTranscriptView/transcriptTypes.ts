@@ -24,4 +24,6 @@ export interface DialogLineHandlers {
   voiceFor: (entry: DialogEntry, line: DialogLine) => DialogLineVoice | null;
   /** Speaker genders of the mod, and the writer that corrects them. */
   speakers: DialogSpeakers;
+  /** Language the QA findings of a focused line are read for. */
+  targetLang: string;
 }

@@ -14,7 +14,7 @@ import { ModEditorModals } from './components/ModEditorModals';
 import { ContextMenu } from './components/ContextMenu';
 import { ShortcutsOverlay } from './components/ShortcutsOverlay';
 import { EditorStatusBar } from './components/EditorStatusBar';
-import { clampEditorPageMode, editorCapabilities } from './editorCapabilities';
+import { clampEditorPageMode, useEditorCapabilities } from './editorCapabilities';
 import { useModEditorPage } from './hooks/useModEditorPage';
 import { formatModDisplayName } from '../ModsPage/modVersions';
 import styles from './ModEditorPage.module.scss';
@@ -44,7 +44,7 @@ export const ModEditorPage = () => {
 
   const { mod, strings, stats, sigs, suggestions, qaIssues, history, isLoading } = editorQueries;
   const total = strings?.total ?? 0;
-  const capabilities = editorCapabilities(mod?.game ?? gameId);
+  const capabilities = useEditorCapabilities(mod?.game ?? gameId);
   const pageMode = clampEditorPageMode(filter.pageMode, capabilities);
 
   return (

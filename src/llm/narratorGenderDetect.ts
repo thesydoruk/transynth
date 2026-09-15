@@ -9,11 +9,11 @@ import {
   buildNarratorGenderUserPayload,
 } from './prompts/narratorGenderDetect';
 import type { ChatCompletionMeta } from './provider';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
 import { parseNarratorGender, type NarratorGender } from '../dialog/narratorGender';
 
-export class LlmNarratorGenderMissingIdsError extends Error {
+class LlmNarratorGenderMissingIdsError extends Error {
   readonly missingIds: readonly number[];
   readonly partialResults: readonly LlmNarratorGenderResult[];
 
@@ -49,15 +49,10 @@ export type LlmNarratorGenderOptions = {
   items: LlmNarratorGenderItem[];
   model: string;
   srcLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   signal?: AbortSignal;
 };
-
-export {
-  buildNarratorGenderSystemPrompt,
-  buildNarratorGenderUserPayload,
-} from './prompts/narratorGenderDetect';
 
 const VALID_GENDERS = new Set<NarratorGender>(['male', 'female', 'neutral', 'unknown']);
 

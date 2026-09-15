@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, type DiffEntry } from '../../api';
-import { getCurrentGame, modListQueryKey } from '../../langDefaults';
+import { DEFAULT_GAME_ID, getCurrentGame, modListQueryKey } from '../../langDefaults';
 import { useContentLangs } from '../../hooks/useContentLangs';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ReleaseChecklist } from './components';
@@ -230,7 +230,7 @@ export const DiffPage = () => {
               carryOver.data.needsReview > 0 &&
               newModId && (
                 <Link
-                  to={`/games/${mods?.find((m) => m.id === Number(newModId))?.game ?? 'fo4'}/mods/${newModId}?status=draft`}
+                  to={`/games/${mods?.find((m) => m.id === Number(newModId))?.game ?? DEFAULT_GAME_ID}/mods/${newModId}?status=draft`}
                   className={s.btnOpenEditor}
                   title={t('diff.openInEditorTitle')}
                 >

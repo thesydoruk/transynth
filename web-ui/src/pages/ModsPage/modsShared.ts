@@ -20,7 +20,7 @@ export type ImportJobLike = {
 };
 
 /** DB says in_progress but no worker/SSE is active (e.g. after server restart). */
-export const isStaleImportInProgress = (job: ImportJobLike, isRunning: boolean): boolean =>
+const isStaleImportInProgress = (job: ImportJobLike, isRunning: boolean): boolean =>
   job.status === 'in_progress' && !isRunning;
 
 /** Resume paused or interrupted import — continue from saved progress. */

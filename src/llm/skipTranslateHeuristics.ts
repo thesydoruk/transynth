@@ -1,6 +1,7 @@
 /**
  * Heuristic detection of source strings that should not be translated.
  */
+import { gamePlugin } from '../games/registry';
 import { isNonPlayerFacingRecord } from '../formats/subrecords/nonPlayerFacing';
 import { detectPexSkipFromContext } from '../formats/pex/pexTranslatableFilter';
 import { MASK_KEY_RE } from '../utils/placeholders';
@@ -54,9 +55,6 @@ const isCodeLikeIdentifier = (token: string): boolean =>
   /[a-z][A-Z]/.test(token) ||
   /[A-Za-z][.\-][A-Za-z]/.test(token);
 
-/** Record types whose text is a human name/label and must never be treated as a bare code. */
-const NAME_BEARING_SIGNATURES = new Set(['NPC_']);
-
 /** Any Unicode letter (Latin, Cyrillic, …) — the signal that text is translatable. */
 const LETTER_RE = /\p{L}/u;
 
@@ -85,6 +83,8 @@ export type SkipHeuristicMeta = {
   path?: string | null;
   signature?: string | null;
   context?: string | null;
+  /** Owner of the row, for reading its record kind. */
+  game?: string | null;
 };
 
 export type SkipAuditRow = {
@@ -123,6 +123,7 @@ const isDenseInternalIdentifier = (token: string): boolean =>
  */
 export const partitionSkipAuditRows = (
   rows: SkipAuditRow[],
+  game?: string | null,
 ): { heuristicHits: Map<number, SkipHeuristicHit>; llmCandidates: SkipAuditRow[] } => {
   const heuristicHits = new Map<number, SkipHeuristicHit>();
   const llmCandidates: SkipAuditRow[] = [];
@@ -133,6 +134,7 @@ export const partitionSkipAuditRows = (
       path: row.path,
       signature: row.signature,
       context: row.context,
+      game,
     });
     if (hit) heuristicHits.set(row.id, hit);
     else llmCandidates.push(row);
@@ -163,7 +165,8 @@ export const detectSkipHeuristic = (
   }
 
   const signature = meta?.signature?.trim() ?? null;
-  if (signature === 'PEX') {
+  // Compiled script strings are mostly identifiers and log text, not prose.
+  if (gamePlugin(meta?.game).text.recordKind(signature) === 'compiled_script') {
     const pexHit = detectPexSkipFromContext(trimmed, meta?.context);
     if (pexHit) {
       return { reason: pexHit.reason, method: 'heuristic' };
@@ -259,7 +262,7 @@ export const detectSkipHeuristic = (
     masked.length <= 3 &&
     IDENTIFIER_RE.test(masked) &&
     masked === masked.toUpperCase() &&
-    !(signature && NAME_BEARING_SIGNATURES.has(signature))
+    gamePlugin(meta?.game).text.recordKind(signature) !== 'actor_name'
   ) {
     return { reason: 'Short uppercase identifier/code.', method: 'heuristic' };
   }

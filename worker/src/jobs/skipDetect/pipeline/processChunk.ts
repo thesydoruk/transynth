@@ -89,7 +89,7 @@ export const processSkipDetectChunk = async (
     };
   });
 
-  const { heuristicHits } = partitionSkipAuditRows(auditRows);
+  const { heuristicHits } = partitionSkipAuditRows(auditRows, opts.game);
   const hits = new Map<number, LlmSkipDetectCandidate>();
 
   for (const row of chunk) {

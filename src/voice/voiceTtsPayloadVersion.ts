@@ -6,7 +6,7 @@ import { resolveTtsLanguage } from './voiceToolPaths';
  * Bump when TTS-server loudness/fade post-process changes so existing `.fuz`
  * files are treated as stale and re-synthesized.
  */
-export const VOICE_AUDIO_POST_VERSION = 'tts-server-loudness-v1';
+const VOICE_AUDIO_POST_VERSION = 'tts-server-loudness-v1';
 
 /** Fields sent to Fish Speech (`POST /v1/synthesize`) plus post-process stamp. */
 export type VoiceTtsPayload = {

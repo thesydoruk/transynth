@@ -152,8 +152,8 @@ export const EditorToolbar = ({
           onVoiceMissing={onAiVoiceMissing}
           onVoiceAll={onAiVoiceAll}
           onVoiceStop={onAiVoiceStop}
-          showGenderDetect={capabilities.showGenderDetect}
-          showVoice={capabilities.showVoiceMode}
+          showGenderDetect={capabilities.actions.genderDetect}
+          showVoice={capabilities.modes.includes('voice')}
           variant="circular"
         />
       </div>
@@ -229,7 +229,7 @@ export const EditorToolbar = ({
           },
         ]}
       />
-      {capabilities.showInnrLink && hasInnrSignature && (
+      {capabilities.actions.innrLink && hasInnrSignature && (
         <Link
           to={`/games/${gameId}/mods/${modId}/innr`}
           className={styles.btnSec}

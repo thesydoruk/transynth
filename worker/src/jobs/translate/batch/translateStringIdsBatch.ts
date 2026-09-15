@@ -1,6 +1,7 @@
 /**
  * Shared batch LLM translation for a list of string IDs.
  */
+import { gamePlugin } from '../../../../../src/games/registry';
 import type { Tx } from '../../../../../src/db';
 import { CONFIG, getTranslateModel } from '../../../../../src/config';
 import { requirePgvectorForRag } from '../../../../../src/llm/rag';
@@ -49,7 +50,6 @@ export const translateStringIdsBatch = async (
     overwriteMode = 'default',
     rag = {},
     shouldCancel,
-    signal,
     onProgress,
   } = opts;
   const eligibleIds = await filterStringIdsForLlmTranslate(
@@ -144,9 +144,10 @@ export const translateStringIdsBatch = async (
     emitResult,
   );
 
-  if (llmPending.some((item) => item.grup === 'MCM')) {
+  const recordKind = gamePlugin(modGame).text.recordKind;
+  if (llmPending.some((item) => recordKind(item.grup, item.field) === 'settings_menu')) {
     const siblingTexts = await loadMcmSiblingTextsByStringIds(db, eligibleIds, srcLang);
-    attachMcmTranslateContext(llmPending, siblingTexts);
+    attachMcmTranslateContext(llmPending, siblingTexts, modGame);
   }
 
   const llmChunks = await buildFamilyTranslateChunks(

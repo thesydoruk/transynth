@@ -1,7 +1,9 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { EspStringRow } from '../../formats/esp';
 import { resolveStringsTableTypeForRow } from '../../formats/strings/recorddefs';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 import type { StringsType } from '../../formats/types/StringsType';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import type { CsvRow } from '../../types';
 import type { LstringEspIndex } from './types';
 
@@ -12,13 +14,14 @@ import type { LstringEspIndex } from './types';
  */
 export const resolveStringsTypeForEspRow = (
   row: EspStringRow,
-  game: GameType = 'fo4',
-): StringsType => resolveStringsTableTypeForRow(game, row.signature, row.path);
+  game: GameId = DEFAULT_GAME_ID,
+): StringsType =>
+  resolveStringsTableTypeForRow(creationEngineTitle(game).recorddefs, row.signature, row.path);
 
 /** Build lstring id → ESP row lookup split by strings file type. */
 export const buildLstringEspIndex = (
   espRows: EspStringRow[],
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): LstringEspIndex => {
   const index: LstringEspIndex = new Map();
 

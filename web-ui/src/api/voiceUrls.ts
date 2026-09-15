@@ -12,22 +12,22 @@ const appendQuery = (url: string, params: Record<string, string | undefined>): s
 
 export const voiceAudioUrl = (
   modId: number,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   speakerKey?: string,
 ): string =>
-  appendQuery(`${BASE}/api/mods/${modId}/voice/audio/${formidLower6}/${variant}`, {
+  appendQuery(`${BASE}/api/mods/${modId}/voice/audio/${lineKey}/${variant}`, {
     speakerKey,
   });
 
 /** Dubbed take. Always cache-busted — regenerate overwrites the same path. */
 export const voiceTranslationAudioUrl = (
   modId: number,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   speakerKey?: string,
 ): string =>
-  appendQuery(`${BASE}/api/mods/${modId}/voice/translation-audio/${formidLower6}/${variant}`, {
+  appendQuery(`${BASE}/api/mods/${modId}/voice/translation-audio/${lineKey}/${variant}`, {
     speakerKey,
     t: String(Date.now()),
   });

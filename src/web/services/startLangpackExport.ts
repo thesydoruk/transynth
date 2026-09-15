@@ -1,5 +1,6 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { CONFIG } from '../../config';
 import { startBackgroundJob } from '../../../worker/src/api/startBackgroundJob';
 import {
@@ -61,7 +62,7 @@ export const startLangpackExport = async (
     return { ok: false, status: 400, error: 'No exportable mods in selection' };
   }
 
-  const game = (targets[0]?.game ?? 'fo4') as GameType;
+  const game = (targets[0]?.game ?? DEFAULT_GAME_ID) as GameId;
   const fileName = `${game}_${targetLang}_langpack.zip`;
   const mods = await getModsByIds(
     db,

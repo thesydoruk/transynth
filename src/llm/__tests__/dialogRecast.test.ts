@@ -10,11 +10,12 @@ jest.unstable_mockModule('../index', () => ({
 
 const {
   buildDialogRecastUserPayload,
-  FO4_UK_DIALOG_RECAST_PROMPT,
   mergeDialogRecast,
-  recastFo4UkDialogTranslations,
-  shouldRecastFo4UkDialog,
+  recastDialogTranslations,
+  resolveDialogRecast,
 } = await import('../dialogRecast');
+const { FO4_UK_DIALOG_RECAST_PROMPT } =
+  await import('../../games/creation-engine/prompts/fo4/recast');
 
 const chatResult = (content: string, finishReason: 'stop' | 'length' = 'stop'): ChatResult => ({
   content,
@@ -59,13 +60,17 @@ const baseOpts = (): LlmTranslateOptions => ({
   promptFamily: 'dialog',
 });
 
-describe('shouldRecastFo4UkDialog', () => {
-  it('runs only for FO4 Ukrainian dialog', () => {
-    expect(shouldRecastFo4UkDialog({ ...baseOpts() })).toBe(true);
-    expect(shouldRecastFo4UkDialog({ ...baseOpts(), targetLang: 'de' })).toBe(false);
-    expect(shouldRecastFo4UkDialog({ ...baseOpts(), game: 'sse' })).toBe(false);
-    expect(shouldRecastFo4UkDialog({ ...baseOpts(), promptFamily: 'item' })).toBe(false);
-    expect(shouldRecastFo4UkDialog({ ...baseOpts(), skipDialogRecast: true })).toBe(false);
+describe('resolveDialogRecast', () => {
+  it('runs only for the Fallout 4 Ukrainian dialogue pass', () => {
+    expect(resolveDialogRecast({ ...baseOpts() })?.prompt).toBe(FO4_UK_DIALOG_RECAST_PROMPT);
+    expect(resolveDialogRecast({ ...baseOpts(), targetLang: 'de' })).toBeNull();
+    expect(resolveDialogRecast({ ...baseOpts(), promptFamily: 'item' })).toBeNull();
+    expect(resolveDialogRecast({ ...baseOpts(), skipDialogRecast: true })).toBeNull();
+  });
+
+  it('is absent for a game that declares no recast pass', () => {
+    expect(resolveDialogRecast({ ...baseOpts(), game: 'sse' })).toBeNull();
+    expect(resolveDialogRecast({ ...baseOpts(), game: 'disco' })).toBeNull();
   });
 });
 
@@ -140,7 +145,7 @@ describe('buildDialogRecastUserPayload', () => {
   });
 });
 
-describe('recastFo4UkDialogTranslations', () => {
+describe('recastDialogTranslations', () => {
   beforeEach(() => {
     chatWithFallback.mockReset();
   });
@@ -156,7 +161,7 @@ describe('recastFo4UkDialogTranslations', () => {
         }),
       ),
     );
-    const result = await recastFo4UkDialogTranslations(baseOpts(), [
+    const result = await recastDialogTranslations(baseOpts(), [
       { id: 1, translation: 'Я був здивований.' },
       { id: 2, translation: 'Ти готовий?' },
     ]);
@@ -170,6 +175,6 @@ describe('recastFo4UkDialogTranslations', () => {
   it('keeps the draft when the editor call fails', async () => {
     chatWithFallback.mockRejectedValue(new Error('vLLM down'));
     const draft = [{ id: 1, translation: 'Я був здивований.' }];
-    await expect(recastFo4UkDialogTranslations(baseOpts(), draft)).resolves.toEqual(draft);
+    await expect(recastDialogTranslations(baseOpts(), draft)).resolves.toEqual(draft);
   });
 });

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 — 2026-09-15
+
+A game is a plugin, and Ukrainian that reads like Ukrainian:
+
+- **Adding a game means writing a plugin, not editing the whole codebase.** Everything a game decides — which records hold text, how its markup is protected, its prompts and glossary, its import, export, voice and deployment — lives in one folder under `src/games/` behind a single contract. Shared code no longer names a game or an engine: `GRUP`, `.esp` and Bethesda's record signatures stay inside the Creation Engine plugin, and a test fails the build when a new reference leaks out of one. See [Adding a game](uk/17-adding-a-game.md).
+- **Disco Elysium dialogue has speakers.** The grid, the scene window and the prompts were resolving nobody for any of its 90,802 lines; the game now answers who speaks and who is spoken to, and 41,431 lines carry a resolved participant. Harry is named as the addressee, and a speaker's gender is read out of the surrounding text when the data does not state it.
+- **Fewer gender and calque errors.** Speaker gender is no longer decided by a three-pronoun window, and internal voices, the player character and unnamed NPCs are handled explicitly instead of falling through to male. Eleven Russian-calque patterns are checked after the model answers; the four worth their tokens are also in the prompt.
+- **Verify holds a line only on a proven defect.** A broken token, broken markup, a gender leak or a corrupted translation — things the system can check itself. A bare `suspicious` (calque, tone, register) is written to `qa_issues` as `llm_review` and shown in the editor, and the row goes to review instead of circling through a dozen rewrites. On base Fallout 4 that took the pool from 998 to 98; 771 of 869 rows approved, 721 carrying their critique. A rewrite that repeats a wording the row already had is refused, advice stops after five attempts, and a new wording has to beat the incumbent. A proven defect is never capped.
+- **Gender repair is three prompts, not one.** A participant whose gender is known just needs the ending changed; a line the player says about themselves, or an NPC says to the player, needs a construction rewrite. One prompt covering all three contradicted itself and rewrote Curie's log from a correct feminine into a wrong impersonal. The branches run one after another. The detector now reads subjectless clauses and predicative adjectives — Ukrainian drops subjects constantly — and an inferred narrator gender is no longer evidence: only a person's own decision gates a narration row.
+- **QA is visible while translating.** A dialogue row shows what QA found on it and whether the translation came from memory or the model, so a gender fix is findable instead of buried in another tab. Speaker colours now meet WCAG AA in both themes.
+- **One `voice_clips` table for every game** instead of one per engine, with columns named for what they hold (`line_key`, not `formid_lower6`).
+- **Documentation checked against the code.** Broken links, renamed scripts and undocumented features are fixed, dead CLI pages and one-off dev scripts are gone, and the Vortex sync page now says outright that the feature is experimental and at a very early stage.
+
 ## 0.5.0 — 2026-09-13
 
 Vortex collections, voice at scale, and Ukrainian output quality:

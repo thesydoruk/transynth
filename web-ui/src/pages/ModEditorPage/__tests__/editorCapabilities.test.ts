@@ -1,37 +1,52 @@
 import { describe, expect, it } from 'vitest';
-import { clampEditorPageMode, editorCapabilities, formatDiscoPoKey } from '../editorCapabilities';
+import type { GameEditorProfile } from '../../../api/types/games';
+import {
+  clampEditorPageMode,
+  defaultEditorCapabilities,
+  formatPoKey,
+  formatRowFieldLabel,
+} from '../editorCapabilities';
 
-describe('editorCapabilities', () => {
-  it('hides Bethesda-only surfaces for disco', () => {
-    const caps = editorCapabilities('disco');
-    expect(caps.isDisco).toBe(true);
-    expect(caps.modes).toEqual(['strings', 'voice']);
-    expect(caps.showDialogsMode).toBe(false);
-    expect(caps.showFormIdColumn).toBe(false);
-    expect(caps.showGenderColumn).toBe(false);
-    expect(caps.showSignaturePanel).toBe(true);
-    expect(caps.showGenderDetect).toBe(false);
-    expect(caps.showInnrLink).toBe(false);
-  });
+/** A profile shaped like the one a gettext-based game's plugin sends. */
+const poKeyProfile: GameEditorProfile = {
+  modes: ['strings', 'voice'],
+  columns: { formId: false, signature: true, gender: false },
+  actions: { genderDetect: false, innrLink: false },
+  labels: { signature: 'discoType', edid: 'discoAudio', field: 'discoKey' },
+  recordPathStyle: 'po-key',
+};
 
-  it('keeps Bethesda defaults for fo4', () => {
-    const caps = editorCapabilities('fo4');
+const poKeyCaps = {
+  ...defaultEditorCapabilities('disco'),
+  ...poKeyProfile,
+  usesRecordPaths: false,
+};
+
+describe('editor capabilities', () => {
+  it('falls back to a permissive profile before the catalogue loads', () => {
+    const caps = defaultEditorCapabilities('fo4');
     expect(caps.modes).toContain('dialogs');
-    expect(caps.showFormIdColumn).toBe(true);
-    expect(caps.showSignaturePanel).toBe(true);
+    expect(caps.columns.formId).toBe(true);
+    expect(caps.usesRecordPaths).toBe(true);
   });
 
-  it('clamps unsupported modes to strings', () => {
-    expect(clampEditorPageMode('dialogs', editorCapabilities('disco'))).toBe('strings');
-    expect(clampEditorPageMode('voice', editorCapabilities('disco'))).toBe('voice');
+  it('clamps a mode the game does not offer back to strings', () => {
+    expect(clampEditorPageMode('dialogs', poKeyCaps)).toBe('strings');
+    expect(clampEditorPageMode('voice', poKeyCaps)).toBe('voice');
   });
 });
 
-describe('formatDiscoPoKey', () => {
-  it('formats PO path as file · entry key', () => {
-    expect(formatDiscoPoKey('PO\\Dialogues.po\\Kim::Hello')).toBe('Dialogues.po · Kim::Hello');
-    expect(formatDiscoPoKey('PO/General.po/::Thought Cabinet')).toBe(
-      'General.po · ::Thought Cabinet',
+describe('row field labels', () => {
+  it('formats a gettext path as file · entry key', () => {
+    expect(formatPoKey('PO\\Dialogues.po\\Kim::Hello')).toBe('Dialogues.po · Kim::Hello');
+    expect(formatPoKey('PO/General.po/::Thought Cabinet')).toBe('General.po · ::Thought Cabinet');
+  });
+
+  it('shows the last segment of a record path, and the whole gettext key', () => {
+    const recordCaps = defaultEditorCapabilities('fo4');
+    expect(formatRowFieldLabel('INFO\\NAM1', recordCaps)).toBe('NAM1');
+    expect(formatRowFieldLabel('PO\\Dialogues.po\\Kim::Hello', poKeyCaps)).toBe(
+      'Dialogues.po · Kim::Hello',
     );
   });
 });

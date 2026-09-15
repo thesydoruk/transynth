@@ -1,6 +1,5 @@
 import type { Tx } from '../../../db';
-import type { GameType } from '../../../types';
-import { CONFIG } from '../../../config';
+import type { GameId } from '../../../types';
 import type { TranslationStatus } from '../statusMachine';
 import { compareProtectedTokens } from '../../../utils/placeholders';
 import { parseRecordLocation } from '../../../utils/recordLocation';
@@ -9,6 +8,7 @@ import {
   glossaryTermsForGame,
   type GlossaryQaTerm,
 } from './glossaryHelpers';
+import { applyCalqueQaIssues } from './qaCalque';
 import { applyGenderQaIssues } from './qaGender';
 import type { DialogParticipantsRow } from './dialogs';
 import { PENDING_REVIEW_STATUSES } from './constants';
@@ -47,7 +47,7 @@ const lastEndPunct = (s: string): string | null => s.trimEnd().match(END_PUNCT_R
 const buildQAIssues = (
   source: string,
   translation: string,
-  game?: GameType | null,
+  game?: GameId | null,
   settings?: Partial<QACheckSettings>,
   tokenContext?: { grup?: string | null; field?: string | null },
 ): QAIssueInput[] => {
@@ -150,8 +150,7 @@ export type QaRuleRow = {
   rule_path: string | null;
 };
 
-export const qaRuleGameKey = (game: string | null | undefined): string =>
-  game === 'fo76' ? 'fo4' : (game ?? 'fo4');
+export { qaRuleGameKey } from '../../../games/glossaryKey';
 
 export const loadQaCheckSettings = async (db: Tx): Promise<QACheckSettings> => {
   const { rows: settingRows } = await db.query<{ key: string; value: unknown }>(
@@ -284,7 +283,7 @@ export const collectQAIssuesForRow = (
   const issues = buildQAIssues(
     row.source,
     row.translation,
-    row.game as GameType | undefined,
+    row.game as GameId | undefined,
     ctx.settings,
     location,
   );
@@ -295,7 +294,8 @@ export const collectQAIssuesForRow = (
     row.translation,
     glossaryTermsForGame(ctx.glossaryTerms, row.game),
   );
-  applyGenderQaIssues(issues, row.translation, ctx.targetLang, row, location.field);
+  applyGenderQaIssues(issues, row.translation, ctx.targetLang, row, location.field, row.game);
+  applyCalqueQaIssues(issues, row.translation, ctx.targetLang);
   appendDuplicateInconsistencyIssue(issues, duplicateAlts);
   return issues;
 };

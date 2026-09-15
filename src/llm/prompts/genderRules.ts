@@ -10,7 +10,7 @@ import { promptJsonItems } from './promptJsonFormat';
 /** How the game addresses the player in the second person. */
 export type UkPlayerRegister = 'formal-vy' | 'wasteland-ty';
 
-const UK_GENDER_RECAST_ITEMS = [
+export const UK_GENDER_RECAST_ITEMS = [
   {
     source: "I've been waiting for you.",
     speaker: 'Player',
@@ -107,6 +107,47 @@ const UK_GENDER_RECAST_ITEMS = [
     addressee_gender: 'any',
     translation: 'Ну що, рушаємо?',
     bad: ['Ти готовий?', 'Ти готова?', 'Ви готові?'],
+  },
+  {
+    source: "Codsworth, I already looked. They're not here.",
+    speaker_gender: 'any',
+    translation: 'Кодсворте, там уже все перевірено. Їх тут немає.',
+    bad: ['Кодсворте, я вже перевірив.', 'Кодсворте, я вже перевірила.'],
+  },
+  {
+    source: "You've been to a Vault?",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Тобі вже доводилося бувати у Сховищі?',
+    bad: ['Ти вже бував у Сховищі?', 'Ти вже бувала у Сховищі?'],
+  },
+  {
+    source: "For all you've done you deserve it.",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'За всі твої заслуги це твоє по праву.',
+    bad: ['За все, що ти зробив, ти на це заслужив.', 'За все, що ти зробила, ти на це заслужила.'],
+  },
+  {
+    source: 'I saved your lives. You should be grateful.',
+    speaker: 'Player',
+    speaker_gender: 'any',
+    translation: 'Завдяки мені ви живі. Будьте вдячні.',
+    bad: ['Я врятував/ла вам життя.', 'Я вас врятував.', 'Я вас врятувала.'],
+  },
+  {
+    source: "I would've spared them if I could've.",
+    speaker: 'Player',
+    speaker_gender: 'any',
+    translation: 'Якби була змога, вони б лишилися живі.',
+    bad: ['Я б їх пощадив, якби міг.', 'Я б їх пощадила, якби могла.'],
+  },
+  {
+    source: 'You were ready to give up the lab to save your skin.',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'У тебе ж не було вагань — лабораторія за власну шкуру.',
+    bad: ['Ти ж готовий був здати лабораторію.', 'Ти ж готова була здати лабораторію.'],
   },
   {
     source: 'Be careful out there.',
@@ -285,7 +326,8 @@ export const buildUkGenderTranslateRules = (
   - \`speaker_gender: "female"\` → перша особа в жіночому роді: «я була», «я сказала», «я готова».
   - \`addressee_gender: "male"/"female"\` → друга особа однини узгоджується так само: «ти впевнений» / «ти впевнена».
 ${playerSecondPersonTranslate(register)}
-  - \`"unknown"\` чи поле відсутнє — не вгадуй: нейтральна конструкція (безособове, інфінітив, іменник, «треба…»), **не** чоловічий рід «за замовчуванням».
+  - \`"unknown"\` — стать справді невідома. Ховай рід **так само ретельно, як при \`any\`**: нейтральна конструкція (теперішній час, наказ, безособове, іменник), а не чоловічий рід «за замовчуванням». Це не дозвіл вгадувати.
+  - Поле **відсутнє взагалі** — рядок не діалоговий (назва, опис, термінал): учасників немає, гендеруй за самим текстом.
   - Метадані сильніші за здогад із source: при \`speaker_gender: "female"\` "I was ready" → «Я була готова», а не безособовий перефраз.
   - Поля \`speaker\` і \`addressee\` дають імена учасників — використовуй для кличного відмінка та тону, не додавай їх у переклад.
 ${playerRegisterTranslate(register)}
@@ -301,7 +343,8 @@ export const buildUkGenderVerifyRules = (
   `- **Рід за метаданими (КРИТИЧНО, ${playerLabel})**: звіряй рід у translation з \`speaker\`, \`speaker_gender\`, \`addressee\`, \`addressee_gender\` — у будь-якому grup, де поля є.
   - Розбіжність із "male"/"female" → **"incorrect"**: «я була» при \`speaker_gender: "male"\`, «ти готовий» при \`addressee_gender: "female"\`.
 ${playerSecondPersonVerify(register)}
-  - \`"unknown"\` чи поле відсутнє: чоловічий рід «за замовчуванням» без підказки в source → "suspicious"; коректний нейтральний перефраз → "ok".
+  - \`"unknown"\`: маркований рід без підказки в source → **"suspicious"** так само, як при \`any\`; коректний нейтральний перефраз → "ok".
+  - Поле відсутнє взагалі — рядок не діалоговий: не вимагай нейтралізації.
   - Якщо метадані задають рід, а переклад безособовий і природний — це "ok"; не переписуй його на гендерований без потреби.
   - Поля \`speaker\` і \`addressee\` — імена учасників: перевіряй кличний відмінок, але не вимагай додавати імена в переклад.
 ${UK_ENDEARMENT_VERIFY}`;

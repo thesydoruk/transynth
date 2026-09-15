@@ -108,6 +108,7 @@ export const DialogsMode = ({ modId, srcLang, targetLang }: DialogsModeProps) =>
     onSetStatus: (line, status) => void save.setLineStatus(line, status),
     voiceFor: voice.voiceFor,
     speakers,
+    targetLang,
   };
 
   /** Prefer the original take: it is the reference a translator listens for. */

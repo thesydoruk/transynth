@@ -2,7 +2,7 @@ import path from 'node:path';
 import { registerArchiveFile } from '../import/mod/registration';
 import type { ModImportJob } from '../import/mod/types';
 import type { Tx } from '../db';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { scopedVortexFileHash } from './groupKey';
 
 export const registerVortexPack = async (
@@ -15,7 +15,7 @@ export const registerVortexPack = async (
     contentHash: string;
     srcLang: string;
     tgtLang: string;
-    game: GameType;
+    game: GameId;
     nexusModId?: number | null;
     nexusModName?: string | null;
     sourceFolder?: string | null;

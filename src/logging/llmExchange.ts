@@ -7,9 +7,6 @@ export type LlmLogMeta = {
   context?: Record<string, unknown>;
 };
 
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v) && !(v instanceof Error);
-
 const messageStats = (messages: ChatMessage[]) => {
   const byRole: Record<string, number> = {};
   let totalChars = 0;

@@ -5,7 +5,7 @@ import { PATHS } from '../paths';
 import { isVoiceFormidKey } from './voiceFormidKey';
 
 export type VoiceSpeakerRefPick = {
-  formidLower6: string;
+  lineKey: string;
   variant: number;
 };
 
@@ -14,8 +14,8 @@ export type VoiceSpeakerRefMap = Record<string, VoiceSpeakerRefPick>;
 const speakerRefsFilePath = (modId: number): string =>
   path.join(PATHS.voicePreview, String(modId), 'speaker-refs.json');
 
-export const normalizeVoiceSpeakerRefPick = (pick: VoiceSpeakerRefPick): VoiceSpeakerRefPick => ({
-  formidLower6: pick.formidLower6.toUpperCase(),
+const normalizeVoiceSpeakerRefPick = (pick: VoiceSpeakerRefPick): VoiceSpeakerRefPick => ({
+  lineKey: pick.lineKey.toUpperCase(),
   variant: pick.variant,
 });
 
@@ -25,11 +25,11 @@ const parseJsonSpeakerRefs = (raw: unknown): VoiceSpeakerRefMap => {
   const out: VoiceSpeakerRefMap = {};
   for (const [speakerKey, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!speakerKey.trim() || !value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const formidLower6 = (value as { formidLower6?: unknown }).formidLower6;
+    const lineKey = (value as { lineKey?: unknown }).lineKey;
     const variant = (value as { variant?: unknown }).variant;
-    if (typeof formidLower6 !== 'string' || !isVoiceFormidKey(formidLower6)) continue;
+    if (typeof lineKey !== 'string' || !isVoiceFormidKey(lineKey)) continue;
     if (!Number.isInteger(variant) || (variant as number) < 1) continue;
-    out[speakerKey] = normalizeVoiceSpeakerRefPick({ formidLower6, variant: variant as number });
+    out[speakerKey] = normalizeVoiceSpeakerRefPick({ lineKey, variant: variant as number });
   }
   return out;
 };
@@ -59,8 +59,8 @@ export const migrateVoiceSpeakerRefsFromJsonIfNeeded = async (
 /** Load all per-speaker TTS reference picks for a mod. */
 export const loadVoiceSpeakerRefs = async (db: Tx, modId: number): Promise<VoiceSpeakerRefMap> => {
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
-  const { rows } = await db.query<{ speaker_key: string; formid_lower6: string; variant: number }>(
-    `SELECT speaker_key, formid_lower6, variant
+  const { rows } = await db.query<{ speaker_key: string; line_key: string; variant: number }>(
+    `SELECT speaker_key, line_key, variant
      FROM voice_speaker_refs
      WHERE mod_id = $1
      ORDER BY speaker_key`,
@@ -70,18 +70,12 @@ export const loadVoiceSpeakerRefs = async (db: Tx, modId: number): Promise<Voice
   const out: VoiceSpeakerRefMap = {};
   for (const row of rows) {
     out[row.speaker_key] = normalizeVoiceSpeakerRefPick({
-      formidLower6: row.formid_lower6,
+      lineKey: row.line_key,
       variant: row.variant,
     });
   }
   return out;
 };
-
-export const loadVoiceSpeakerRefsMap = async (
-  db: Tx,
-  modId: number,
-): Promise<Map<string, VoiceSpeakerRefPick>> =>
-  new Map(Object.entries(await loadVoiceSpeakerRefs(db, modId)));
 
 /** Load one speaker's saved TTS reference pick. */
 export const loadVoiceSpeakerRef = async (
@@ -93,15 +87,15 @@ export const loadVoiceSpeakerRef = async (
   if (!key) return null;
 
   await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
-  const { rows } = await db.query<{ formid_lower6: string; variant: number }>(
-    `SELECT formid_lower6, variant
+  const { rows } = await db.query<{ line_key: string; variant: number }>(
+    `SELECT line_key, variant
      FROM voice_speaker_refs
      WHERE mod_id = $1 AND speaker_key = $2`,
     [modId, key],
   );
   const row = rows[0];
   if (!row) return null;
-  return normalizeVoiceSpeakerRefPick({ formidLower6: row.formid_lower6, variant: row.variant });
+  return normalizeVoiceSpeakerRefPick({ lineKey: row.line_key, variant: row.variant });
 };
 
 /** Persist one speaker's TTS reference line pick. */
@@ -117,14 +111,14 @@ export const setVoiceSpeakerRef = async (
 
   const normalized = normalizeVoiceSpeakerRefPick(pick);
   await db.query(
-    `INSERT INTO voice_speaker_refs (mod_id, speaker_key, formid_lower6, variant, auto_score, updated_at)
+    `INSERT INTO voice_speaker_refs (mod_id, speaker_key, line_key, variant, auto_score, updated_at)
      VALUES ($1, $2, $3, $4, $5, NOW())
      ON CONFLICT (mod_id, speaker_key) DO UPDATE SET
-       formid_lower6 = EXCLUDED.formid_lower6,
+       line_key = EXCLUDED.line_key,
        variant = EXCLUDED.variant,
        auto_score = EXCLUDED.auto_score,
        updated_at = NOW()`,
-    [modId, key, normalized.formidLower6, normalized.variant, autoScore ?? null],
+    [modId, key, normalized.lineKey, normalized.variant, autoScore ?? null],
   );
 };
 
@@ -145,7 +139,6 @@ export const clearVoiceSpeakerRef = async (
 
 export const voiceSpeakerRefMatches = (
   pick: VoiceSpeakerRefPick,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
-): boolean =>
-  pick.formidLower6.toUpperCase() === formidLower6.toUpperCase() && pick.variant === variant;
+): boolean => pick.lineKey.toUpperCase() === lineKey.toUpperCase() && pick.variant === variant;

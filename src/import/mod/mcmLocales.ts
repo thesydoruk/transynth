@@ -1,3 +1,4 @@
+import type { CsvRow } from '../../types';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getBa2Reader } from '../../formats/ba2';
@@ -9,7 +10,6 @@ import {
   listMcmTranslationDirs,
   isMcmTranslationArchivePath,
   mcmTranslationMatchesMod,
-  resolveModDirectoryFromPath,
   loadMcmLocalesFromConfigJson,
   loadMcmKeyMetaFromConfigJson,
   buildMcmContexts,
@@ -18,7 +18,6 @@ import {
 import { CONFIG } from '../../config';
 import { logImport } from '../../logging/loggers';
 import { mapWithConcurrency } from '../../utils/concurrency';
-import type { CsvRow, GameType } from '../../types';
 import { listCompanionGnrlBa2ForPlugin } from './discovery';
 
 const loadMcmLocalesFromBA2 = (
@@ -88,13 +87,12 @@ const loadMcmLocalesFromLooseFiles = (
 const collectMcmLocalesForMod = (
   modDir: string,
   anchorPath: string,
-  game: GameType = 'fo4',
 ): Map<string, Map<string, string>> => {
   const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
   const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
   const merged = new Map<string, Map<string, string>>();
 
-  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath, game)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(anchorPath)) {
     try {
       for (const [locale, mcmMap] of loadMcmLocalesFromBA2(ba2Path, modPrefixes)) {
         if (!merged.has(locale)) merged.set(locale, new Map());
@@ -127,13 +125,12 @@ const collectMcmLocalesForMod = (
 const collectMcmLocalesForModParallel = async (
   modDir: string,
   anchorPath: string,
-  game: GameType = 'fo4',
 ): Promise<Map<string, Map<string, string>>> => {
   const modPrefix = resolveMcmModPrefix(modDir, anchorPath);
   const modPrefixes = resolveMcmTranslationPrefixes(modDir, modPrefix);
   const merged = new Map<string, Map<string, string>>();
 
-  const ba2Paths = listCompanionGnrlBa2ForPlugin(anchorPath, game);
+  const ba2Paths = listCompanionGnrlBa2ForPlugin(anchorPath);
   const ba2LocaleMaps = await mapWithConcurrency(
     ba2Paths,
     CONFIG.modImportIoParallel,
@@ -170,17 +167,6 @@ const collectMcmLocalesForModParallel = async (
   }
 
   return merged;
-};
-
-/**
- * Collect all MCM locales for a plugin by scanning GNRL BA2 archives and loose
- * `Interface/Translations` files that match the mod's MCM prefix.
- *
- * @param espPath - Absolute path to the plugin (.esp/.esm/.esl)
- */
-const collectMcmLocales = (espPath: string): Map<string, Map<string, string>> => {
-  const modDir = resolveModDirectoryFromPath(espPath);
-  return collectMcmLocalesForMod(modDir, espPath);
 };
 
 const countMcmTranslationRecords = (modDir: string, anchorPath: string): number => {

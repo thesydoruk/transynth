@@ -27,10 +27,9 @@
  *   Suffix strip — "…take your time *groan*" → synth (without *groan*)
  *   Multi-block  — "*Gasping* *Coughing*" → skip (empty_after_strip)
  *
- * Disco Elysium uses *...* as italics, not stage directions. With
- * `markup: 'disco'`, asterisks are dropped and the inner words are spoken
- * (`*такі фрази*` → `такі фрази`); a line that is only emphasized text is
- * still synthesizable.
+ * A game whose `*...*` means italics rather than a stage direction (Disco
+ * Elysium) supplies a markup style that unwraps them instead, so `*такі фрази*`
+ * is spoken as `такі фрази` and an all-italic line is still synthesizable.
  *
  * Bracketed [...] blocks are tone tags and UI tokens ([Сарказм], [Click]).
  * They are never spoken, so they are stripped exactly like Fallout *...* blocks.
@@ -40,11 +39,23 @@
  * human grunts use *Sigh*, *gasp*.
  */
 
-import { restoreDiscoCensoredSpeech } from '../formats/po/discoCensorship';
 import { isPhoneticVocalizationLine } from './phoneticVocalization';
 
-/** How `*...*` is treated before TTS. Fallout strips the block; Disco unwraps it. */
-export type VoiceTtsMarkupStyle = 'fallout' | 'disco';
+/**
+ * How one game's text markup is handled before TTS.
+ *
+ * Games disagree on what `*…*` means: Bethesda writes stage directions there,
+ * Disco Elysium writes italics that must be spoken. A game's voice adapter
+ * supplies the rules; nothing here knows which game it is looking at.
+ */
+export type VoiceTtsMarkupStyle = {
+  /** Remove or unwrap `*…*` in a line that also holds real speech. */
+  stripEmphasis: (text: string) => string;
+  /** Is a line that is nothing but `*…*` a stage direction rather than speech? */
+  emphasisLineIsNonSpeech: boolean;
+  /** Undo in-game censorship so TTS speaks the real word. Identity by default. */
+  restoreCensoredSpeech: (text: string) => string;
+};
 
 /** Inline stage direction / sound-effect block: `*chuckle*`, `*groan*`, … */
 const ASTERISK_BLOCK_RE = /\*[^*]+\*/g;
@@ -77,8 +88,15 @@ export type PrepareVoiceTtsTextResult =
 
 const normalizeLine = (text: string | null | undefined): string => text?.trim() ?? '';
 
-const dropAsterisks = (text: string, markup: VoiceTtsMarkupStyle): string =>
-  markup === 'disco' ? text.replace(/\*/g, '') : text.replace(ASTERISK_BLOCK_RE, ' ');
+/**
+ * Bethesda markup: `*…*` is a stage direction, so the whole block goes; the
+ * text carries no in-game censorship to undo.
+ */
+export const BETHESDA_VOICE_MARKUP: VoiceTtsMarkupStyle = {
+  stripEmphasis: (text) => text.replace(ASTERISK_BLOCK_RE, ' '),
+  emphasisLineIsNonSpeech: true,
+  restoreCensoredSpeech: (text) => text,
+};
 
 /**
  * Remove Fallout `*...*` / `[...]` stage-direction blocks, or (Disco) unwrap
@@ -90,15 +108,16 @@ const dropAsterisks = (text: string, markup: VoiceTtsMarkupStyle): string =>
  *          → 'Yeah, just take your time...'
  * @example stripVoiceNonSpeechBlocks('[Сарказм] Ну звісно.') → 'Ну звісно.'
  * @example stripVoiceNonSpeechBlocks('*Gasping* *Coughing*') → ''
- * @example stripVoiceNonSpeechBlocks('Це *такі фрази*.', 'disco') → 'Це такі фрази.'
  */
 export const stripVoiceNonSpeechBlocks = (
   text: string,
-  markup: VoiceTtsMarkupStyle = 'fallout',
-): string => {
-  const prepared = markup === 'disco' ? restoreDiscoCensoredSpeech(text) : text;
-  return dropAsterisks(prepared, markup).replace(BRACKET_BLOCK_RE, ' ').replace(/\s+/g, ' ').trim();
-};
+  markup: VoiceTtsMarkupStyle = BETHESDA_VOICE_MARKUP,
+): string =>
+  markup
+    .stripEmphasis(markup.restoreCensoredSpeech(text))
+    .replace(BRACKET_BLOCK_RE, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /**
  * True when the INFO record is a companion interject engine stub.
@@ -132,11 +151,11 @@ export const isInterjectStubEdid = (edid?: string | null): boolean => {
  */
 export const isFullNonSpeechMarkerLine = (
   text: string,
-  markup: VoiceTtsMarkupStyle = 'fallout',
+  markup: VoiceTtsMarkupStyle = BETHESDA_VOICE_MARKUP,
 ): boolean => {
   const line = text.trim();
   if (!line) return false;
-  if (markup !== 'disco' && FULL_ASTERISK_LINE_RE.test(line)) return true;
+  if (markup.emphasisLineIsNonSpeech && FULL_ASTERISK_LINE_RE.test(line)) return true;
   return FULL_PAREN_LINE_RE.test(line) || FULL_BRACKET_LINE_RE.test(line);
 };
 
@@ -170,11 +189,11 @@ export const voiceTtsSkipMessage = (reason: VoiceTtsSkipReason): string => {
  * @example detectVoiceTtsSkipReason('Agh!', 'Агх!') → 'phonetic_vocalization'
  * @example detectVoiceTtsSkipReason('*ahem* Hello?', 'Привіт?') → null
  */
-export const detectVoiceTtsSkipReason = (
+const detectVoiceTtsSkipReason = (
   lineSource: string | null | undefined,
   translation: string,
   edid?: string | null,
-  markup: VoiceTtsMarkupStyle = 'fallout',
+  markup: VoiceTtsMarkupStyle = BETHESDA_VOICE_MARKUP,
 ): VoiceTtsSkipReason | null => {
   if (isInterjectStubEdid(edid)) return 'interject_stub';
 
@@ -200,7 +219,7 @@ export const resolveVoiceLineSkipReason = (
   lineSource: string | null | undefined,
   translation: string,
   edid?: string | null,
-  markup: VoiceTtsMarkupStyle = 'fallout',
+  markup: VoiceTtsMarkupStyle = BETHESDA_VOICE_MARKUP,
 ): VoiceTtsSkipReason | null => {
   const detected = detectVoiceTtsSkipReason(lineSource, translation, edid, markup);
   if (detected) return detected;
@@ -221,7 +240,7 @@ export const canSynthesizeVoiceLine = (
   lineSource: string | null | undefined,
   translation: string,
   edid?: string | null,
-  markup: VoiceTtsMarkupStyle = 'fallout',
+  markup: VoiceTtsMarkupStyle = BETHESDA_VOICE_MARKUP,
 ): boolean =>
   !resolveVoiceLineSkipReason(lineSource, translation, edid, markup) &&
   stripVoiceNonSpeechBlocks(translation, markup).length > 0;
@@ -261,7 +280,7 @@ export const prepareVoiceTtsText = (input: {
   edid?: string | null;
   markup?: VoiceTtsMarkupStyle;
 }): PrepareVoiceTtsTextResult => {
-  const markup = input.markup ?? 'fallout';
+  const markup = input.markup ?? BETHESDA_VOICE_MARKUP;
   const skipReason = detectVoiceTtsSkipReason(
     input.lineSource,
     input.translation,

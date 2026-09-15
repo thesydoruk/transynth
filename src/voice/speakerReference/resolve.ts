@@ -5,6 +5,7 @@ import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { decodeAudioToReferenceWav } from '../ffmpegAudio';
 import { resolveVoiceRootRel, type VoiceFileEntry } from '../discoverVoiceFiles';
+import { BETHESDA_VOICE_MARKUP } from '../prepareVoiceTtsText';
 import {
   loadVoiceSpeakerRef,
   setVoiceSpeakerRef,
@@ -55,7 +56,7 @@ export type ResolveSpeakerReferenceInput = {
   /** Keeps clips without a known transcript (orphan audio) out of the pool. */
   isEligible?: VoiceReferenceEligibility;
   /** English line text for syllable-rate ranking. */
-  getSourceText?: (formidLower6: string, variant: number) => string | null;
+  getSourceText?: (lineKey: string, variant: number) => string | null;
   markup?: VoiceTtsMarkupStyle;
 };
 
@@ -71,15 +72,14 @@ const findPickedEntry = (
   getFallbackEntries: () => VoiceFileEntry[],
 ): VoiceFileEntry | undefined => {
   if (
-    pick.formidLower6.toUpperCase() === preferredEntry.formidLower6.toUpperCase() &&
+    pick.lineKey.toUpperCase() === preferredEntry.lineKey.toUpperCase() &&
     pick.variant === preferredEntry.variant
   ) {
     return preferredEntry;
   }
   return getFallbackEntries().find(
     (entry) =>
-      entry.formidLower6.toUpperCase() === pick.formidLower6.toUpperCase() &&
-      entry.variant === pick.variant,
+      entry.lineKey.toUpperCase() === pick.lineKey.toUpperCase() && entry.variant === pick.variant,
   );
 };
 
@@ -95,7 +95,7 @@ const syllableCountForEntry = (
   markup: VoiceTtsMarkupStyle,
 ): number | null => {
   if (!getSourceText) return null;
-  const source = getSourceText(entry.formidLower6, entry.variant);
+  const source = getSourceText(entry.lineKey, entry.variant);
   if (!source) return null;
   const spoken = stripVoiceNonSpeechBlocks(source, markup);
   const count = countEnglishSyllables(spoken);
@@ -136,12 +136,12 @@ const finalizeAutoReference = async (
   scored: ScoredEntry,
 ): Promise<ResolvedSpeakerReference> => {
   const pick: VoiceSpeakerRefPick = {
-    formidLower6: scored.entry.formidLower6,
+    lineKey: scored.entry.lineKey,
     variant: scored.entry.variant,
   };
   await setVoiceSpeakerRef(db, modId, speakerKey, pick, scored.score);
 
-  const autoMarker = `auto:${scored.entry.formidLower6}_${scored.entry.variant}:${sourceDigest(scored.entry.absolutePath)}`;
+  const autoMarker = `auto:${scored.entry.lineKey}_${scored.entry.variant}:${sourceDigest(scored.entry.absolutePath)}`;
   const outPath = await getOrReuseSpeakerReferenceWav(
     speakerKey,
     dirs.speaker,
@@ -174,7 +174,7 @@ const resolveManualReference = async (
   log.info(`Speaker ref "${speakerKey}": manual ${MANUAL_REFERENCE_NAME}`);
   return {
     wavPath: outPath,
-    pick: { formidLower6: MANUAL_REFERENCE_FORMID, variant: 1 },
+    pick: { lineKey: MANUAL_REFERENCE_FORMID, variant: 1 },
     source: 'manual',
   };
 };
@@ -195,13 +195,13 @@ const resolveSavedReference = async (
   const pickedEntry = findPickedEntry(savedPick, input.preferredEntry, input.getFallbackEntries);
   if (!pickedEntry) {
     log.warn(
-      `Speaker ref "${speakerKey}": saved pick ${savedPick.formidLower6}_${savedPick.variant} not found on disk`,
+      `Speaker ref "${speakerKey}": saved pick ${savedPick.lineKey}_${savedPick.variant} not found on disk`,
     );
     return null;
   }
 
   try {
-    const savedMarker = `saved:${pickedEntry.formidLower6}_${pickedEntry.variant}:${sourceDigest(pickedEntry.absolutePath)}`;
+    const savedMarker = `saved:${pickedEntry.lineKey}_${pickedEntry.variant}:${sourceDigest(pickedEntry.absolutePath)}`;
     const outPath = await getOrReuseSpeakerReferenceWav(speakerKey, dirs.speaker, savedMarker, () =>
       getOrDecodeEntryReferenceWav(pickedEntry, dirs.entry, dirs.work),
     );
@@ -223,11 +223,11 @@ const autoSelectReference = async (
   isEligible: VoiceReferenceEligibility,
 ): Promise<ResolvedSpeakerReference | null> => {
   const { db, modId, speakerKey, preferredEntry } = input;
-  const markup = input.markup ?? 'fallout';
+  const markup = input.markup ?? BETHESDA_VOICE_MARKUP;
   const analyze = (entry: VoiceFileEntry) =>
     scoreEntryReference(entry, dirs, input.getSourceText, markup);
 
-  const preferredScored = isEligible(preferredEntry.formidLower6, preferredEntry.variant)
+  const preferredScored = isEligible(preferredEntry.lineKey, preferredEntry.variant)
     ? await analyze(preferredEntry)
     : null;
   if (preferredScored && isPreferredAutoSelectPick(preferredScored)) {
@@ -237,7 +237,7 @@ const autoSelectReference = async (
   const candidates: ScoredEntry[] = [];
   if (preferredScored) candidates.push(preferredScored);
   for (const entry of input.getFallbackEntries()) {
-    if (!isEligible(entry.formidLower6, entry.variant)) continue;
+    if (!isEligible(entry.lineKey, entry.variant)) continue;
     const scored = await analyze(entry);
     if (scored) candidates.push(scored);
   }
@@ -280,7 +280,7 @@ export const resolveSpeakerReferenceForSpeaker = async (
   const savedPick = await loadVoiceSpeakerRef(db, modId, speakerKey);
   if (savedPick && !isVoiceReferencePickEligible(savedPick, isEligible)) {
     log.warn(
-      `Speaker ref "${speakerKey}": dropping pick ${savedPick.formidLower6}_${savedPick.variant} — no dialogue text for that clip`,
+      `Speaker ref "${speakerKey}": dropping pick ${savedPick.lineKey}_${savedPick.variant} — no dialogue text for that clip`,
     );
   } else if (savedPick) {
     const resolved = await resolveSavedReference(speakerKey, savedPick, input, dirs);

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildVortexInventory } from '../buildInventory';
 import { merkleContentHash } from '../hashSubset';
-import { isOfficialGamePlugin } from '../officialPlugins';
+import { isOfficialGamePlugin } from '../gameProfiles';
 import { scanStagingUnits, stagingPluginBasenames } from '../scanStaging';
 
 const writeFile = (filePath: string, body = 'hello'): void => {

@@ -1,5 +1,5 @@
 import type { Tx } from '../../../db';
-import type { GameType } from '../../../types';
+import type { GameId } from '../../../types';
 
 export type ExportArchiveStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -25,7 +25,7 @@ export type ExportArchiveRow = {
 export const insertExportArchive = async (
   db: Tx,
   row: {
-    game: GameType | string;
+    game: GameId | string;
     srcLang: string;
     tgtLang: string;
     label: string;

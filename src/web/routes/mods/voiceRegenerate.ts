@@ -14,19 +14,19 @@ import {
 } from '../../voice/voiceRegenerateService';
 
 export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx) => {
-  // POST /api/mods/:id/voice/regenerate/:formidLower6/:variant/session — start a preview session.
+  // POST /api/mods/:id/voice/regenerate/:lineKey/:variant/session — start a preview session.
   app.post<{
-    Params: { id: string; formidLower6: string; variant: string };
+    Params: { id: string; lineKey: string; variant: string };
     Body: { sessionId?: string; srcLang?: string; targetLang?: string };
-  }>('/api/mods/:id/voice/regenerate/:formidLower6/:variant/session', async (req, reply) => {
+  }>('/api/mods/:id/voice/regenerate/:lineKey/:variant/session', async (req, reply) => {
     const modId = Number(req.params.id);
-    const formidLower6 = req.params.formidLower6.trim();
+    const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
     const sessionId = req.body?.sessionId?.trim();
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!isVoiceFormidKey(formidLower6)) {
+    if (!isVoiceFormidKey(lineKey)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant < 1) {
@@ -42,7 +42,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       db,
       modId,
       sessionId,
-      formidLower6,
+      lineKey,
       variant,
       srcLang,
       targetLang,
@@ -72,7 +72,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
 
       return reply.send({
         ok: true,
-        formidLower6: meta.formidLower6,
+        lineKey: meta.lineKey,
         variant: meta.variant,
         srcLang: meta.srcLang,
         targetLang: meta.targetLang,
@@ -91,7 +91,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   app.post<{
     Params: { id: string; sessionId: string };
     Body: {
-      formidLower6?: string;
+      lineKey?: string;
       variant?: number;
       srcLang?: string;
       targetLang?: string;
@@ -101,13 +101,13 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   }>('/api/mods/:id/voice/regenerate/:sessionId/preview', async (req, reply) => {
     const modId = Number(req.params.id);
     const sessionId = req.params.sessionId.trim();
-    const formidLower6 = req.body?.formidLower6?.trim();
+    const lineKey = req.body?.lineKey?.trim();
     const variant = req.body?.variant;
     const params = req.body?.params;
     if (!Number.isInteger(modId) || modId < 1) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
-    if (!formidLower6 || !isVoiceFormidKey(formidLower6)) {
+    if (!lineKey || !isVoiceFormidKey(lineKey)) {
       return reply.code(400).send({ error: 'Invalid formid' });
     }
     if (!Number.isInteger(variant) || variant! < 1) {
@@ -123,7 +123,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       db,
       modId,
       sessionId,
-      formidLower6,
+      lineKey,
       variant!,
       srcLang,
       targetLang,

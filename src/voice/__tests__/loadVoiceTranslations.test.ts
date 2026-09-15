@@ -27,7 +27,7 @@ describe('lookupVoiceTranslation', () => {
     [
       '002CBA:1',
       {
-        formidLower6: '002CBA',
+        lineKey: '002CBA',
         infoFormidHex: '00002CBA',
         voiceVariant: 1,
         stringId: 42,

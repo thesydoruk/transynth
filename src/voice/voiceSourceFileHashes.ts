@@ -59,7 +59,7 @@ const chunk = <T>(items: T[], size: number): T[][] => {
   return out;
 };
 
-export const loadVoiceSourceFileHashMap = async (
+const loadVoiceSourceFileHashMap = async (
   db: Tx,
   modIds: number[],
 ): Promise<Map<string, StoredVoiceSourceHash>> => {

@@ -35,7 +35,7 @@ export type InheritedVoiceLookup = {
 };
 
 /** Master plugins from the TES4 header, most specific dependency first. */
-export const readMasterPluginNames = (pluginPath: string): string[] => {
+const readMasterPluginNames = (pluginPath: string): string[] => {
   if (!fs.existsSync(pluginPath)) return [];
   try {
     return readPluginMasterNames(pluginPath).reverse();
@@ -102,15 +102,15 @@ export const loadInheritedVoiceLookup = async (
 /** Resolve voice line text from master plugins when the current mod has no local NAM1. */
 export const lookupInheritedVoiceLine = (
   lookup: InheritedVoiceLookup,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
 ): InheritedVoiceLine | null => {
   for (const master of lookup.masters) {
     const sources = lookup.sourcesByMod.get(master.modId);
     const translations = lookup.translationsByMod.get(master.modId);
-    const mapKey = voiceTranslationMapKey(formidLower6, variant);
+    const mapKey = voiceTranslationMapKey(lineKey, variant);
     const sourceRow = sources?.get(mapKey);
-    const translationRow = lookupVoiceTranslation(translations ?? new Map(), formidLower6, variant);
+    const translationRow = lookupVoiceTranslation(translations ?? new Map(), lineKey, variant);
     const source =
       normalizeVoiceText(sourceRow?.source) ?? normalizeVoiceText(translationRow?.source);
     if (!source) continue;

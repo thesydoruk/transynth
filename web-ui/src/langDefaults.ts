@@ -20,7 +20,7 @@ export const LS_SRC_LANG = 'transynth-src-lang';
 export const LS_TGT_LANG = 'transynth-tgt-lang';
 
 /** localStorage key for the last game context seen in a game-scoped route. */
-export const LS_CURRENT_GAME = 'transynth-current-game';
+const LS_CURRENT_GAME = 'transynth-current-game';
 
 adoptStorageKey(LS_SRC_LANG, 'fo4-src-lang');
 adoptStorageKey(LS_TGT_LANG, 'fo4-tgt-lang');
@@ -33,6 +33,17 @@ export const DEFAULT_SRC_LANG = 'en';
 
 /** Fallback target language when nothing is stored. */
 export const DEFAULT_TGT_LANG = 'uk';
+
+/**
+ * Game to assume before the user has picked one.
+ *
+ * The catalogue itself comes from `GET /api/games`, so the frontend never
+ * enumerates titles — but a few places need an id before that response lands
+ * (a link built during render, a blank QA-rule form). This is the only place
+ * the frontend names a game; it must match `DEFAULT_GAME_ID` in the server's
+ * plugin registry.
+ */
+export const DEFAULT_GAME_ID = 'fo4';
 
 /* ── Supported content languages ─────────────────────────────────────────── */
 
@@ -62,7 +73,7 @@ export const SUPPORTED_CONTENT_LANGUAGES = [
 export type SupportedContentLanguage = (typeof SUPPORTED_CONTENT_LANGUAGES)[number];
 
 /** Human-friendly labels for content language selectors. */
-export const CONTENT_LANGUAGE_LABELS: Record<SupportedContentLanguage, string> = {
+const CONTENT_LANGUAGE_LABELS: Record<SupportedContentLanguage, string> = {
   en: 'English',
   uk: 'Ukrainian',
   ru: 'Russian',

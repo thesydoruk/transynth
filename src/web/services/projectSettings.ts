@@ -80,7 +80,7 @@ export type ProjectSettings = {
 };
 
 /** Clamp TTS parallel request limits to 1–32. */
-export const clampTtsMaxParallel = (value: number): number => {
+const clampTtsMaxParallel = (value: number): number => {
   if (!Number.isFinite(value)) return 1;
   return Math.min(32, Math.max(1, Math.round(value)));
 };
@@ -140,28 +140,6 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     result['pipeline.health_check_interval_sec'],
   );
   return result;
-};
-
-/**
- * Fetches a single project setting value, returning the default if not set.
- *
- * @param db  - Database connection or pool.
- * @param key - Setting key to read.
- * @returns The persisted value or the default for that key.
- */
-export const getProjectSetting = async <K extends ProjectSettingKey>(
-  db: Tx,
-  key: K,
-): Promise<ProjectSettings[K]> => {
-  const { rows } = await db.query<{ value: unknown }>(
-    `SELECT value FROM project_settings WHERE key = $1`,
-    [key],
-  );
-  if (rows.length === 0) return SETTING_DEFAULTS[key];
-  if (key === 'voice.game_tts') {
-    return normalizeGameTtsSettings(rows[0].value) as ProjectSettings[K];
-  }
-  return rows[0].value as ProjectSettings[K];
 };
 
 /**

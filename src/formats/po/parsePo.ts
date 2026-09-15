@@ -48,6 +48,3 @@ export const parsePoBuffer = (buf: Buffer | string): PoEntry[] => {
 
   return entries;
 };
-
-/** Parse a UTF-8 `.po` string. */
-export const parsePoString = (text: string): PoEntry[] => parsePoBuffer(text);

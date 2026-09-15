@@ -1,14 +1,7 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
-import { isDiscoMod, listDiscoVoiceSpeakersForMod } from './listDiscoVoice';
 import { getVoiceListContext } from './voiceListContext';
-import {
-  isOrphanVoiceEntry,
-  resolveSpeakerDisplayName,
-  resolveSpeakerKey,
-  sortSpeakers,
-} from './buildVoiceLinePreview';
-import { hasTranslationAudioForEntry } from './translationAudioIndex';
+import { isOrphanVoiceEntry, sortSpeakers } from './buildVoiceLinePreview';
 import type { VoiceSpeakersListResult } from './types';
 
 /** List voice speakers with dubbing progress, without loading every line's text. */
@@ -18,44 +11,20 @@ export const listVoiceSpeakersForMod = async (
   srcLang: string,
   targetLang: string,
 ): Promise<VoiceSpeakersListResult> => {
-  if (await isDiscoMod(db, modId)) {
-    return listDiscoVoiceSpeakersForMod(db, modId, targetLang);
-  }
-
   const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 
-  const {
-    voiceFiles,
-    voiceRootRel,
-    isDisco,
-    dbSpeakerNames,
-    speakerRefs,
-    folderGenders,
-    translationAudio,
-    sourceFormids,
-  } = loaded.data;
   const groups = new Map<
     string,
-    {
-      displayName: string;
-      lineCount: number;
-      dubbedCount: number;
-      orphanCount: number;
-    }
+    { displayName: string; lineCount: number; dubbedCount: number; orphanCount: number }
   >();
 
-  for (const entry of voiceFiles) {
-    const speakerKey = resolveSpeakerKey(entry, voiceRootRel, isDisco);
+  for (const entry of loaded.voiceFiles) {
+    const speakerKey = loaded.speakerKeyOf(entry);
     let group = groups.get(speakerKey);
     if (!group) {
       group = {
-        displayName: resolveSpeakerDisplayName(
-          speakerKey,
-          entry.formidLower6,
-          dbSpeakerNames,
-          isDisco,
-        ),
+        displayName: loaded.speakerDisplayName(speakerKey, entry.lineKey),
         lineCount: 0,
         dubbedCount: 0,
         orphanCount: 0,
@@ -63,19 +32,17 @@ export const listVoiceSpeakersForMod = async (
       groups.set(speakerKey, group);
     }
     group.lineCount += 1;
-    if (isOrphanVoiceEntry(sourceFormids, entry)) group.orphanCount += 1;
-    if (hasTranslationAudioForEntry(translationAudio, entry)) {
-      group.dubbedCount += 1;
-    }
+    if (isOrphanVoiceEntry(loaded.sourceFormids, entry)) group.orphanCount += 1;
+    if (loaded.hasLocalizedTake(entry)) group.dubbedCount += 1;
   }
 
   const speakers = sortSpeakers(
     [...groups.entries()].map(([key, group]) => {
-      const folderGender = folderGenders.get(key);
+      const folderGender = loaded.folderGenders.get(key);
       return {
         key,
         displayName: group.displayName,
-        referencePick: speakerRefs[key] ?? null,
+        referencePick: loaded.speakerRefs[key] ?? null,
         gender: folderGender?.gender ?? 'unknown',
         genderMismatch: folderGender?.mismatch ?? false,
         lineCount: group.lineCount,

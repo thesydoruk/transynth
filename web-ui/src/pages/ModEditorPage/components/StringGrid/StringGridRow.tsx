@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 import type { StringRow } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { GenderBadge } from '../../../../components/GenderBadge';
-import { formatDiscoPoKey, type EditorCapabilities } from '../../editorCapabilities';
+import { formatRowFieldLabel, type EditorCapabilities } from '../../editorCapabilities';
 import type { StringGridColKey } from '../../hooks/useStringGridColumnWidths';
 import { rowBg, rowTextColor } from '../../utils';
 import { genderBadgeTitle } from './stringGridHelpers';
@@ -51,10 +51,10 @@ export const StringGridRow = ({
   onCopySource,
 }: StringGridRowProps) => {
   const displayStatus = isActive ? '__active' : row.status;
-  const fieldTitle = capabilities.isDisco ? (row.path ?? '') : (row.path?.split('\\').pop() ?? '');
-  const fieldLabel = capabilities.isDisco
-    ? formatDiscoPoKey(row.path)
-    : (row.path?.split('\\').pop() ?? '');
+  const fieldTitle = capabilities.usesRecordPaths
+    ? (row.path?.split('\\').pop() ?? '')
+    : (row.path ?? '');
+  const fieldLabel = formatRowFieldLabel(row.path, capabilities);
 
   return (
     <div

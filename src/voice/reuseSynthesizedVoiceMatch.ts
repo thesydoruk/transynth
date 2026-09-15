@@ -11,7 +11,7 @@ export type ReuseVoiceDestLine = ReuseVoiceLineKey & {
   sourceAbsPath: string;
   sourceRelPath: string;
   hasLocalized: boolean;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
 };
 
@@ -19,7 +19,7 @@ export type ReuseVoiceSourceLine = ReuseVoiceLineKey & {
   localizedAbsPath: string;
   sourceAbsPath: string;
   sourceRelPath: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   ttsTextVersion: string | null;
   voiceSimilarity: number | null;
@@ -30,7 +30,7 @@ export type ReuseVoiceMatch = {
   source: ReuseVoiceSourceLine;
 };
 
-export const reuseVoiceLineKey = (line: ReuseVoiceLineKey): string =>
+const reuseVoiceLineKey = (line: ReuseVoiceLineKey): string =>
   `${line.speakerKey.toLowerCase()}\0${line.sourceText}\0${line.translation}`;
 
 export const isReusableVoiceText = (value: string | null | undefined): value is string =>

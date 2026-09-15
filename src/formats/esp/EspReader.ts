@@ -34,9 +34,8 @@
 
 import fs from 'fs';
 import { inflateSync } from 'zlib';
-import { isTranslatableSubrecord } from '../subrecords';
+import type { TranslatableSubrecords } from '../subrecords';
 import { extractInnrWnamRows } from './innrStrings';
-import type { GameType } from '../../types';
 import { log } from '../../logger';
 import { EspActorExtractor } from './EspActorExtractor';
 import {
@@ -99,17 +98,18 @@ export class EspReader {
   private readonly sceneExtractor: EspSceneExtractor;
   private structureExtractor: EspDialogStructureExtractor | null = null;
   public info!: EspPluginInfo;
-  /** Target game — determines which subrecords are extracted. */
-  private readonly game: GameType;
+  /** Which record/subrecord pairs hold translatable text for this title. */
+  private readonly subrecords: TranslatableSubrecords;
 
   /**
-   * @param filePath - Absolute path to the .esp/.esm/.esl plugin file.
-   * @param game     - Set to `'sse'` for Skyrim SE plugins; defaults to `'fo4'`.
+   * @param filePath   - Absolute path to the .esp/.esm/.esl plugin file.
+   * @param subrecords - The title's translatable-subrecord table; a Creation
+   *                     Engine game plugin supplies it from its own JSON config.
    */
-  constructor(filePath: string, game: GameType = 'fo4') {
+  constructor(filePath: string, subrecords: TranslatableSubrecords) {
     this.filePath = filePath;
-    log.debug(`ESP: opening ${filePath} (game=${game})`);
-    this.game = game;
+    log.debug(`ESP: opening ${filePath}`);
+    this.subrecords = subrecords;
     this.buf = fs.readFileSync(filePath);
     this.explorer = new EspExplorer(this.buf);
     this.sceneExtractor = new EspSceneExtractor(this.buf);
@@ -361,7 +361,7 @@ export class EspReader {
           previousInfoFormId = rawPrevId.toString(16).toUpperCase().padStart(8, '0');
         }
       } else if (
-        isTranslatableSubrecord(recSig, subSig, this.game) &&
+        this.subrecords.isTranslatable(recSig, subSig) &&
         // GMST DATA is text only for string settings (EDID `s…`); int/float/bool
         // GMSTs would import as garbage text or, when localized, bogus lstring ids.
         (recSig !== 'GMST' || /^s/i.test(edid))

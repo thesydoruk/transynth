@@ -1,11 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ArchiveInputFile } from '../formats/types';
-import type { GameType } from '../types';
-import { defaultArchiveFileName, usesBa2Archives } from '../formats/ba2';
+import { archiveKindForGame, defaultArchiveFileName } from '../games/creation-engine/archives';
 
 /** Top-level folders that are normally stored inside BA2/BSA archives. */
-export const ARCHIVE_TOP_DIRS = new Set([
+const ARCHIVE_TOP_DIRS = new Set([
   'strings',
   'scripts',
   'meshes',
@@ -44,12 +43,10 @@ export const archiveEntryToDiskPath = (rootDir: string, entryName: string): stri
 export const normalizeArchivePath = (entryName: string): string =>
   entryName.replace(/\\/g, '/').toLowerCase();
 
-export const bsaVersionForGame = (game: GameType): number => (game === 'sse' ? 105 : 104);
+export { bsaVersionForGame } from '../games/creation-engine/archives';
+export { defaultArchiveFileName };
 
-export { defaultArchiveFileName, usesBa2Archives };
-
-export const defaultArchiveType = (game: GameType): 'ba2' | 'bsa' =>
-  usesBa2Archives(game) ? 'ba2' : 'bsa';
+export const defaultArchiveType = archiveKindForGame;
 
 const walkFiles = (dir: string, out: string[]): void => {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

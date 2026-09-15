@@ -1,11 +1,10 @@
 import type { Tx } from '../../../db';
 import { log } from '../../../logger';
-import { isDiscoMod, listDiscoVoiceLinesForSpeaker } from './listDiscoVoice';
 import { getVoiceListContext } from './voiceListContext';
-import { buildVoiceLinePreview, resolveSpeakerKey, sortVoiceLines } from './buildVoiceLinePreview';
+import { buildVoiceLinePreview, sortVoiceLines } from './buildVoiceLinePreview';
 import type { VoiceSpeakerLinesResult } from './types';
 
-/** Load every voiced line of one speaker folder. */
+/** Load every voiced line of one speaker. */
 export const listVoiceLinesForSpeaker = async (
   db: Tx,
   modId: number,
@@ -18,18 +17,13 @@ export const listVoiceLinesForSpeaker = async (
     return { ok: false, reason: 'speaker_not_found', message: 'Speaker not found' };
   }
 
-  if (await isDiscoMod(db, modId)) {
-    return listDiscoVoiceLinesForSpeaker(db, modId, normalizedKey, srcLang, targetLang);
-  }
-
   const loaded = await getVoiceListContext(db, modId, srcLang, targetLang);
   if (!loaded.ok) return loaded;
 
-  const { voiceFiles, voiceRootRel, isDisco } = loaded.data;
   const lines = sortVoiceLines(
-    voiceFiles
-      .filter((entry) => resolveSpeakerKey(entry, voiceRootRel, isDisco) === normalizedKey)
-      .map((entry) => buildVoiceLinePreview(loaded.data, entry, normalizedKey)),
+    loaded.voiceFiles
+      .filter((entry) => loaded.speakerKeyOf(entry) === normalizedKey)
+      .map((entry) => buildVoiceLinePreview(loaded, entry, normalizedKey)),
   );
 
   if (lines.length === 0) {

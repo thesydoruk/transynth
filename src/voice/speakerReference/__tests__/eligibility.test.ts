@@ -30,26 +30,19 @@ describe('isVoiceReferencePickEligible', () => {
   const isEligible = voiceReferenceEligibilityFromSources(sources);
 
   it('keeps a hand-placed reference regardless of dialogue text', () => {
-    const pick = { formidLower6: MANUAL_REFERENCE_FORMID, variant: 1 };
+    const pick = { lineKey: MANUAL_REFERENCE_FORMID, variant: 1 };
     expect(isManualVoiceReferencePick(pick)).toBe(true);
     expect(isVoiceReferencePickEligible(pick, isEligible)).toBe(true);
   });
 
   it('drops a saved pick that has no dialogue text', () => {
-    expect(isVoiceReferencePickEligible({ formidLower6: '002D79', variant: 1 }, isEligible)).toBe(
-      false,
-    );
-    expect(isVoiceReferencePickEligible({ formidLower6: '002CBA', variant: 1 }, isEligible)).toBe(
-      true,
-    );
+    expect(isVoiceReferencePickEligible({ lineKey: '002D79', variant: 1 }, isEligible)).toBe(false);
+    expect(isVoiceReferencePickEligible({ lineKey: '002CBA', variant: 1 }, isEligible)).toBe(true);
   });
 
   it('accepts everything when no filter is configured', () => {
     expect(
-      isVoiceReferencePickEligible(
-        { formidLower6: '002D79', variant: 1 },
-        anyVoiceReferenceEligible,
-      ),
+      isVoiceReferencePickEligible({ lineKey: '002D79', variant: 1 }, anyVoiceReferenceEligible),
     ).toBe(true);
   });
 });

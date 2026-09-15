@@ -5,9 +5,6 @@
  */
 import { createLogger } from '../logger';
 
-/** Root / miscellaneous application logs. */
-export const logApp = createLogger('app');
-
 /** LLM provider, chat/embed API calls, prompts and responses. */
 export const logLlm = createLogger('llm');
 
@@ -20,17 +17,11 @@ export const logTranslate = createLogger('translate');
 /** LLM translation quality verification jobs. */
 export const logVerify = createLogger('verify');
 
-/** LLM mod locale detection. */
-export const logLocale = createLogger('locale');
-
 /** Mod import and conversion jobs. */
 export const logImport = createLogger('import');
 
 /** Embedding helpers (RAG, alignment). */
 export const logEmbed = createLogger('embed');
-
-/** HTTP API routes (optional use). */
-export const logApi = createLogger('api');
 
 /** Background job queue and worker lifecycle. */
 export const logJobs = createLogger('jobs');

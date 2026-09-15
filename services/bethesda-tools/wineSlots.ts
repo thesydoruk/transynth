@@ -19,7 +19,7 @@ export const parseWineServerCount = (raw: string | undefined): number => clampIn
 /** FaceFX jobs allowed on one wineserver. Default 1 — more just waits on the same server. */
 export const parsePerWine = (raw: string | undefined): number => clampInt(raw, 1, 1, 4);
 
-export const wineSlotPrefix = (root: string, id: number): string => path.join(root, `w${id}`);
+const wineSlotPrefix = (root: string, id: number): string => path.join(root, `w${id}`);
 
 /** Move a leftover flat WINEPREFIX into `w0` so sibling prefixes can live beside it. */
 export const migrateLegacyWinePrefix = (root: string): void => {

@@ -1,16 +1,13 @@
 /**
- * Supported game identifiers.
- * - `fo4`  — Fallout 4 (uses BA2 archives, BTDX magic)
- * - `fo76` — Fallout 76 (uses BA2 archives, same engine as FO4)
- * - `fo3`  — Fallout 3 (uses BSA v104 archives, non-localized ESPs)
- * - `fnv`  — Fallout: New Vegas (uses BSA v104 archives, non-localized ESPs)
- * - `ob`   — The Elder Scrolls IV: Oblivion (uses BSA v103 archives)
- * - `mw`   — The Elder Scrolls III: Morrowind (uses BSA archives)
- * - `sse`  — Skyrim Special Edition (uses BSA archives, BSA\0 magic, version 105)
- * - `sle`  — Skyrim Legendary Edition / Original (uses BSA archives, version 104)
- * - `disco` — Disco Elysium Final Cut (Unity; Final Cut .po + .wav packs)
+ * Identifier of a game supported by the app, e.g. `fo4` or `disco`.
+ *
+ * This is deliberately an open `string`, not a closed union: which games exist
+ * is decided by the plugins registered in `src/games`, not by this file.
+ * Adding a title must never require editing shared types. Validate an id that
+ * came from the outside (a DB column, a query string, an upload form) with
+ * `isGameId` / `resolveGameId` from `src/games` before trusting it.
  */
-export type GameType = 'fo4' | 'fo76' | 'fo3' | 'fnv' | 'ob' | 'mw' | 'sse' | 'sle' | 'disco';
+export type GameId = string;
 
 /**
  * A single row from a Transynth CSV export or import file.

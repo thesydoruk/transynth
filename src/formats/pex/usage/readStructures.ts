@@ -17,8 +17,8 @@ export const readFunctionBody = (
   reader.readU16();
   reader.readU32();
   reader.readU8();
-  readVariableTypes(reader, table);
-  readVariableTypes(reader, table);
+  readVariableTypes(reader);
+  readVariableTypes(reader);
 
   const instructionCount = reader.readU16();
   for (let i = 0; i < instructionCount; i++) {
@@ -39,7 +39,6 @@ export const readProperty = (
   table: string[],
   usagesByTableIndex: Map<number, PexStringUsage[]>,
   objectName: string,
-  modernFormat: boolean,
 ): void => {
   const propertyName = resolveString(table, reader.readU16()) ?? '?';
   reader.readU16();

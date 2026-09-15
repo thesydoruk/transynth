@@ -151,7 +151,7 @@ export const VoiceLinesView = ({
               const line = lines[item.index]!;
               return (
                 <div
-                  key={`${line.speakerKey}:${line.formidLower6}:${line.variant}`}
+                  key={`${line.speakerKey}:${line.lineKey}:${line.variant}`}
                   ref={virtualizer.measureElement}
                   data-index={item.index}
                   className={styles.rowSlot}
@@ -170,7 +170,7 @@ export const VoiceLinesView = ({
                     flashed={flashedLines?.has(lineKey(line)) ?? false}
                     regenerateOpen={
                       regenerateLine?.speakerKey === line.speakerKey &&
-                      regenerateLine.formidLower6 === line.formidLower6 &&
+                      regenerateLine.lineKey === line.lineKey &&
                       regenerateLine.variant === line.variant
                     }
                     onFocus={() => lineHandlers.onFocus(line)}

@@ -24,8 +24,6 @@ export {
 
 export { pruneStaleModImportData } from './pruneStale';
 
-export { pruneOrphanDialogGraph } from './pruneDialogGraph';
-
 export { bulkInsertModImportRows } from './bulkInsert';
 
 export {

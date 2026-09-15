@@ -49,9 +49,9 @@ export const useVoiceRegenerateComparePlayback = (
 
       const url =
         track.kind === 'source'
-          ? voiceAudioUrl(modId, line.formidLower6, line.variant, line.speakerKey)
+          ? voiceAudioUrl(modId, line.lineKey, line.variant, line.speakerKey)
           : track.kind === 'current'
-            ? voiceTranslationAudioUrl(modId, line.formidLower6, line.variant, line.speakerKey)
+            ? voiceTranslationAudioUrl(modId, line.lineKey, line.variant, line.speakerKey)
             : voiceRegeneratePreviewUrl(modId, sessionId, track.preview.id);
 
       audio.src = url;
@@ -77,16 +77,7 @@ export const useVoiceRegenerateComparePlayback = (
       audio.addEventListener('error', onAudioError, { once: true });
       audio.load();
     },
-    [
-      line.formidLower6,
-      line.speakerKey,
-      line.variant,
-      modId,
-      playingTrack,
-      sessionId,
-      stopPlayback,
-      t,
-    ],
+    [line.lineKey, line.speakerKey, line.variant, modId, playingTrack, sessionId, stopPlayback, t],
   );
 
   return {

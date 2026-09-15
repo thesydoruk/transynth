@@ -8,7 +8,7 @@ import {
 export type DeleteModDataScope = 'rows' | 'mod';
 
 /** Drop trigram GIN indexes when purging at least this many records. */
-export const LARGE_MOD_DELETE_TRGM_DROP_MIN_RECORDS = 10_000;
+const LARGE_MOD_DELETE_TRGM_DROP_MIN_RECORDS = 10_000;
 
 const deleteChunkSize = (): number => {
   const parsed = Number.parseInt(process.env.DB_CHUNK_SIZE ?? '5000', 10);
@@ -161,7 +161,7 @@ export const deleteModDataOnClient = async (
   }
 };
 
-export const deleteModDataForModIds = async (
+const deleteModDataForModIds = async (
   db: Tx,
   modIds: number[],
   scope: DeleteModDataScope,

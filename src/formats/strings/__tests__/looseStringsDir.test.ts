@@ -1,3 +1,4 @@
+import { fallout4 } from '../../../games/creation-engine/titles/fallout';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -38,7 +39,7 @@ describe('discoverLocaleSources loose folder casing', () => {
     fs.writeFileSync(path.join(root, 'STRINGS', 'Fallout4_en.STRINGS'), Buffer.alloc(0));
     fs.writeFileSync(path.join(root, 'STRINGS', 'Fallout4_en.DLSTRINGS'), Buffer.alloc(0));
 
-    const sources = discoverLocaleSources(pluginPath, 'fo4');
+    const sources = discoverLocaleSources(pluginPath, fallout4);
     expect(sources.map((s) => s.locale)).toContain('en');
     expect(sources.find((s) => s.locale === 'en')?.files).toHaveLength(2);
   });

@@ -31,7 +31,6 @@ export * from './types';
 export * from './errors';
 export * from './graphql';
 export { NEXUS_USER_AGENT } from './userAgent';
-export { NexusModsClient };
 
 /**
  * Creates a {@link NexusModsClient} pre-configured from the project `CONFIG`.

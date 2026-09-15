@@ -9,7 +9,7 @@ const isStringsDirName = (name: string): boolean => name.toLowerCase() === 'stri
  * Windows installs use `Strings\`; Linux extracts and case-sensitive FS often
  * keep the archive entry name as `STRINGS\`.
  */
-export const resolveLooseStringsDir = (modDir: string): string | null => {
+const resolveLooseStringsDir = (modDir: string): string | null => {
   try {
     for (const entry of fs.readdirSync(modDir, { withFileTypes: true })) {
       if (entry.isDirectory() && isStringsDirName(entry.name)) {

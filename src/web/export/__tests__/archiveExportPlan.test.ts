@@ -36,7 +36,7 @@ describe('archiveExportPlan', () => {
     fs.writeFileSync(path.join(root, 'Fallout4 - Main.ba2'), Buffer.from('main'));
     fs.writeFileSync(path.join(root, 'Fallout4 - Interface.ba2'), Buffer.from('iface'));
 
-    expect(discoverCompanionBa2(pluginPath, 'fo4')).toBe(
+    expect(discoverCompanionBa2(pluginPath, 'ba2')).toBe(
       path.join(root, 'Fallout4 - Interface.ba2'),
     );
   });
@@ -48,7 +48,7 @@ describe('archiveExportPlan', () => {
     fs.writeFileSync(pluginPath, Buffer.from('TES4'));
     writeFakeDx10Ba2(path.join(root, 'Fallout4 - Textures1.ba2'));
 
-    expect(discoverCompanionBa2(pluginPath, 'fo4')).toBeNull();
+    expect(discoverCompanionBa2(pluginPath, 'ba2')).toBeNull();
   });
 
   it('uses import manifest provenance for strings archive naming', () => {

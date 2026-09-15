@@ -10,6 +10,7 @@ import { parseRecordLocation } from '../../../../src/utils/recordLocation';
 import { partitionByPromptFamily, type LlmPromptFamily } from '../../../../src/llm/promptFamily';
 import { chunkFo4DialogFamily, loadFo4DialogLineGroups } from '../../../../src/llm/fo4DialogChunks';
 import type { DialogSceneContext } from '../../../../src/llm/dialogScene';
+import { effectiveNarratorGenderSql } from '../../../../src/dialog/narratorGender';
 import type { VerifyLlmWorkUnit, VerifyStringRow } from './types';
 
 const stampVerifyRows = (
@@ -85,7 +86,7 @@ const buildVerifyFamilyChunks = async (
 };
 
 /** Rows fetched from the database per pagination step (see CONFIG.dbChunkSize). */
-export const LLM_VERIFY_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
+const LLM_VERIFY_DB_CHUNK_SIZE = DB_CHUNK_SIZE;
 
 export type { LlmVerifyIssue, VerifyLlmWorkUnit, VerifyStringRow } from './types';
 
@@ -117,7 +118,7 @@ export const countVerifiableStrings = async (
  * and silently skip rows. Fetching strictly `s.id > afterId` is stable under
  * concurrent status changes and avoids OFFSET scan cost on large mods.
  */
-export const loadVerifyChunk = async (
+const loadVerifyChunk = async (
   db: Tx,
   modId: number,
   srcLang: string,
@@ -136,12 +137,28 @@ export const loadVerifyChunk = async (
             r.path,
             r.edid,
             s.context,
+            ${effectiveNarratorGenderSql('r')} AS narrator_gender,
+            r.narrator_gender_source,
+            r.narrator_gender_override,
+            COALESCE(hist.rewrite_count, 0) AS rewrite_count,
+            COALESCE(hist.prior_texts, ARRAY[]::text[]) AS prior_texts,
             ${DIALOG_PARTICIPANT_COLUMNS}
        FROM strings s
        JOIN records r ON r.id = s.record_id
        JOIN translations t ON t.src_string_id = s.id AND t.target_lang = $3
        LEFT JOIN LATERAL (${dialogParticipantsLateralSql('r')}
        ) dp ON TRUE
+       -- What this row has already been through. A wording that was written and
+       -- then written over is one the pipeline already walked away from, so
+       -- proposing it again is how a row ends up circling its own past.
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::int AS rewrite_count,
+                ARRAY_AGG(DISTINCT rv.text) FILTER (WHERE rv.text IS NOT NULL) AS prior_texts
+           FROM translation_revisions rv
+          WHERE rv.src_string_id = s.id
+            AND rv.target_lang = $3
+            AND rv.text IS DISTINCT FROM t.text
+       ) hist ON TRUE
       WHERE r.mod_id = $1
         AND s.lang = $2
         AND s.is_ignored = FALSE

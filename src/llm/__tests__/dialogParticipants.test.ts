@@ -19,7 +19,7 @@ describe('participantPayloadFields', () => {
     });
   });
 
-  it('drops unknown genders and empty names', () => {
+  it('carries an explicit unknown through and drops only empty names', () => {
     expect(
       participantPayloadFields({
         speaker: 'Raider',
@@ -27,19 +27,22 @@ describe('participantPayloadFields', () => {
         addressee: null,
         addressee_gender: 'unknown',
       }),
-    ).toEqual({ speaker: 'Raider' });
+    ).toEqual({ speaker: 'Raider', speaker_gender: 'unknown', addressee_gender: 'unknown' });
   });
 });
 
 describe('buildLlmParticipantPayload', () => {
   it('maps resolved participants into the LLM payload', () => {
     expect(
-      buildLlmParticipantPayload({
-        speakerName: 'Piper',
-        speakerGender: 'female',
-        addresseeName: 'Player',
-        addresseeGender: 'any',
-      }),
+      buildLlmParticipantPayload(
+        {
+          speakerName: 'Piper',
+          speakerGender: 'female',
+          addresseeName: 'Player',
+          addresseeGender: 'any',
+        },
+        { isDialogueLine: true },
+      ),
     ).toEqual({
       speaker: 'Piper',
       speaker_gender: 'female',
@@ -47,9 +50,59 @@ describe('buildLlmParticipantPayload', () => {
       addressee_gender: 'any',
     });
   });
+
+  it('says "unknown" out loud on a dialog line rather than staying silent', () => {
+    expect(
+      buildLlmParticipantPayload(
+        {
+          speakerName: null,
+          speakerGender: 'unknown',
+          addresseeName: null,
+          addresseeGender: 'unknown',
+        },
+        { isDialogueLine: true },
+      ),
+    ).toEqual({ speaker_gender: 'unknown', addressee_gender: 'unknown' });
+  });
+
+  it('sends no participants at all for text that is not dialog', () => {
+    expect(
+      buildLlmParticipantPayload(
+        {
+          speakerName: null,
+          speakerGender: 'unknown',
+          addresseeName: null,
+          addresseeGender: 'unknown',
+        },
+        { isDialogueLine: false },
+      ),
+    ).toEqual({});
+  });
+
+  it('keeps a resolved narrator gender off a dialog line', () => {
+    expect(
+      buildLlmParticipantPayload(
+        {
+          speakerName: null,
+          speakerGender: 'female',
+          addresseeName: null,
+          addresseeGender: 'unknown',
+        },
+        { isDialogueLine: false },
+      ),
+    ).toEqual({ speaker_gender: 'female' });
+  });
 });
 
 describe('dialogParticipantsFromRow', () => {
+  it('keeps a written protagonist definite instead of hedging', () => {
+    // Same row, two games: the Bethesda player is `any` because the player
+    // picks; Disco's Harry is male because the writers did.
+    const row = { speaker_name: 'Kim', speaker_gender: 'male', addressee_kind: 'player' };
+    expect(dialogParticipantsFromRow(row, 'NAM1', 'disco').addresseeGender).toBe('male');
+    expect(dialogParticipantsFromRow(row, 'NAM1', 'fo4').addresseeGender).toBe('any');
+  });
+
   it('flips RNAM to the player speaking to the topic NPC', () => {
     expect(
       dialogParticipantsFromRow(
@@ -59,6 +112,7 @@ describe('dialogParticipantsFromRow', () => {
           addressee_kind: 'player',
         },
         'RNAM',
+        'fo4',
       ),
     ).toEqual({
       speakerName: 'Player',
@@ -77,6 +131,7 @@ describe('dialogParticipantsFromRow', () => {
           addressee_kind: 'player',
         },
         'NAM1',
+        'fo4',
       ),
     ).toEqual({
       speakerName: 'Preston',
@@ -96,6 +151,7 @@ describe('dialogParticipantsFromRow', () => {
           addressee_kind: 'player',
         },
         'RNAM',
+        'fo4',
       ),
     ).toEqual({
       speakerName: 'Player',

@@ -10,7 +10,7 @@ import type { Tx } from '../../db';
 import { EspReader, type EspActorIndex } from '../../formats/esp';
 import { logImport } from '../../logging/loggers';
 import { resolveModStoredPath } from '../../modStorage/paths';
-import type { GameType } from '../../types';
+import type { CreationEngineTitle } from '../../games/creation-engine/title';
 
 /** Basename of a stored plugin path → the path itself. */
 export const loadPluginPathByBasename = async (db: Tx): Promise<Map<string, string>> => {
@@ -27,7 +27,7 @@ export const loadPluginPathByBasename = async (db: Tx): Promise<Map<string, stri
 };
 
 /** Resolve one TES4 master to a readable plugin path, if any. */
-export const resolveMasterPluginPath = (
+const resolveMasterPluginPath = (
   pluginPath: string,
   masterName: string,
   storedByBasename: Map<string, string>,
@@ -72,7 +72,7 @@ export const mergeActorIndexes = (indexes: EspActorIndex[]): EspActorIndex => {
  */
 export const buildSpeakerActorIndex = (
   esp: EspReader,
-  game: GameType,
+  title: CreationEngineTitle,
   storedByBasename: Map<string, string>,
 ): EspActorIndex => {
   const indexes: EspActorIndex[] = [];
@@ -81,7 +81,7 @@ export const buildSpeakerActorIndex = (
     const masterPath = resolveMasterPluginPath(esp.filePath, masterName, storedByBasename);
     if (!masterPath) continue;
     try {
-      indexes.push(new EspReader(masterPath, game).extractActorIndex());
+      indexes.push(new EspReader(masterPath, title.subrecords).extractActorIndex());
     } catch (err) {
       logImport.warn(
         `Master plugin ${masterName} skipped: ${err instanceof Error ? err.message : String(err)}`,

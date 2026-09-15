@@ -5,7 +5,7 @@ import type { VoiceSpeakerRefPick } from '../voiceSpeakerRefs';
 export const MANUAL_REFERENCE_FORMID = 'MANUAL';
 
 /** Answers whether one voice clip may be used as a speaker's TTS reference. */
-export type VoiceReferenceEligibility = (formidLower6: string, variant: number) => boolean;
+export type VoiceReferenceEligibility = (lineKey: string, variant: number) => boolean;
 
 export const anyVoiceReferenceEligible: VoiceReferenceEligibility = () => true;
 
@@ -16,13 +16,13 @@ export const anyVoiceReferenceEligible: VoiceReferenceEligibility = () => true;
  */
 export const voiceReferenceEligibilityFromSources =
   (sources: Map<string, VoiceSourceRow>): VoiceReferenceEligibility =>
-  (formidLower6, variant) =>
-    lookupVoiceSource(sources, formidLower6, variant) != null;
+  (lineKey, variant) =>
+    lookupVoiceSource(sources, lineKey, variant) != null;
 
 export const isManualVoiceReferencePick = (pick: VoiceSpeakerRefPick): boolean =>
-  pick.formidLower6.toUpperCase() === MANUAL_REFERENCE_FORMID;
+  pick.lineKey.toUpperCase() === MANUAL_REFERENCE_FORMID;
 
 export const isVoiceReferencePickEligible = (
   pick: VoiceSpeakerRefPick,
   isEligible: VoiceReferenceEligibility,
-): boolean => isManualVoiceReferencePick(pick) || isEligible(pick.formidLower6, pick.variant);
+): boolean => isManualVoiceReferencePick(pick) || isEligible(pick.lineKey, pick.variant);

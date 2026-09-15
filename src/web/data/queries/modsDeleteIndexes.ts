@@ -1,7 +1,7 @@
 import type { Tx } from '../../../db';
 
 /** Trigram GIN indexes that make bulk DELETE of strings/records extremely slow. */
-export const STRING_RECORD_TRGM_INDEXES: ReadonlyArray<{ name: string; createSql: string }> = [
+const STRING_RECORD_TRGM_INDEXES: ReadonlyArray<{ name: string; createSql: string }> = [
   {
     name: 'idx_strings_trgm_text_norm',
     createSql:

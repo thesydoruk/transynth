@@ -1,3 +1,4 @@
+import { gamePlugin } from '../games/registry';
 import type { LlmGlossaryEntry } from './translate';
 import { glossaryTermMatchesSource } from '../web/data/queries';
 
@@ -6,6 +7,8 @@ export type GlossaryViolation = { term: string; translation: string };
 export type GlossaryVerifyContext = {
   grup?: string | null;
   field?: string | null;
+  /** Owner of the row, so record kinds are read in that game's vocabulary. */
+  game?: string | null;
 };
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -23,9 +26,8 @@ const isRaceCompoundMorph = (
   term: string,
   ctx?: GlossaryVerifyContext,
 ): boolean => {
-  if (ctx?.grup !== 'RACE') return false;
-  const morphField = ctx.field === 'FMRN' || ctx.field === 'MPPN' || ctx.field === 'TTGP';
-  return morphField && !isExactOrDashGlossarySource(source, term);
+  if (gamePlugin(ctx?.game).text.recordKind(ctx?.grup, ctx?.field) !== 'face_morph') return false;
+  return !isExactOrDashGlossarySource(source, term);
 };
 
 /** "Workshop Plus" is a mod brand — do not force generic "Майстерня" on the product name. */

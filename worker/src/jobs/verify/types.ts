@@ -18,6 +18,8 @@ export type LlmVerifyIssue = {
   fixRejected?: string | null;
   /** Full mismatch — translation will be replaced by a fresh translate of source. */
   rewriteFromSource?: boolean;
+  /** No deterministic check backs this — the model alone objected. */
+  advisory?: boolean;
 };
 
 /** One row in the auto-approve action log streamed during verification. */
@@ -85,6 +87,15 @@ export type VerifyStringRow = DialogParticipantsRow & {
   path: string | null;
   edid: string | null;
   context: string | null;
+  /** Narrator gender of the record, for text that is narration rather than dialog. */
+  narrator_gender: string | null;
+  /** How that narrator gender was arrived at — inferred, or set by a person. */
+  narrator_gender_source: string | null;
+  narrator_gender_override: string | null;
+  /** How many times this row has already been written over. */
+  rewrite_count: number;
+  /** Wordings this row has already had and moved on from. */
+  prior_texts: string[];
   promptFamily?: LlmPromptFamily;
   dialogScene?: DialogSceneContext;
 };

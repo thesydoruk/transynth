@@ -12,7 +12,7 @@ import {
 
 type RefRow = {
   speaker_key: string;
-  formid_lower6: string;
+  line_key: string;
   variant: number;
   auto_score: number | null;
 };
@@ -33,14 +33,14 @@ const createMockDb = () => {
       const key = `${modId}:${params[1] as string}`;
       rows.set(key, {
         speaker_key: params[1] as string,
-        formid_lower6: params[2] as string,
+        line_key: params[2] as string,
         variant: params[3] as number,
         auto_score: (params[4] as number | null) ?? null,
       });
       return { rows: [] };
     }
 
-    if (sql.includes('SELECT speaker_key, formid_lower6, variant')) {
+    if (sql.includes('SELECT speaker_key, line_key, variant')) {
       const out = [...rows.entries()]
         .filter(([key]) => key.startsWith(`${modId}:`))
         .map(([, row]) => row)
@@ -48,9 +48,9 @@ const createMockDb = () => {
       return { rows: out };
     }
 
-    if (sql.includes('SELECT formid_lower6, variant')) {
+    if (sql.includes('SELECT line_key, variant')) {
       const row = rows.get(`${modId}:${speakerKey}`);
-      return { rows: row ? [{ formid_lower6: row.formid_lower6, variant: row.variant }] : [] };
+      return { rows: row ? [{ line_key: row.line_key, variant: row.variant }] : [] };
     }
 
     throw new Error(`Unexpected SQL in mock db: ${sql}`);
@@ -74,20 +74,20 @@ describe('voiceSpeakerRefs', () => {
   });
 
   it('round-trips speaker reference picks per mod in the database', async () => {
-    await setVoiceSpeakerRef(db, modId, 'AlexanderBrown', { formidLower6: '002cba', variant: 4 });
+    await setVoiceSpeakerRef(db, modId, 'AlexanderBrown', { lineKey: '002cba', variant: 4 });
     await expect(loadVoiceSpeakerRefs(db, modId)).resolves.toEqual({
-      AlexanderBrown: { formidLower6: '002CBA', variant: 4 },
+      AlexanderBrown: { lineKey: '002CBA', variant: 4 },
     });
   });
 
   it('clears a speaker pick', async () => {
-    await setVoiceSpeakerRef(db, modId, 'AlexanderBrown', { formidLower6: '002CBA', variant: 4 });
+    await setVoiceSpeakerRef(db, modId, 'AlexanderBrown', { lineKey: '002CBA', variant: 4 });
     await clearVoiceSpeakerRef(db, modId, 'AlexanderBrown');
     await expect(loadVoiceSpeakerRefs(db, modId)).resolves.toEqual({});
   });
 
   it('matches formid case-insensitively', () => {
-    const pick = { formidLower6: '002CBA', variant: 2 };
+    const pick = { lineKey: '002CBA', variant: 2 };
     expect(voiceSpeakerRefMatches(pick, '002cba', 2)).toBe(true);
     expect(voiceSpeakerRefMatches(pick, '002CBA', 3)).toBe(false);
   });
@@ -96,13 +96,13 @@ describe('voiceSpeakerRefs', () => {
     fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
     fs.writeFileSync(
       jsonPath,
-      JSON.stringify({ AlexanderBrown: { formidLower6: '002cba', variant: 4 } }),
+      JSON.stringify({ AlexanderBrown: { lineKey: '002cba', variant: 4 } }),
       'utf8',
     );
 
     await migrateVoiceSpeakerRefsFromJsonIfNeeded(db, modId);
     await expect(loadVoiceSpeakerRefs(db, modId)).resolves.toEqual({
-      AlexanderBrown: { formidLower6: '002CBA', variant: 4 },
+      AlexanderBrown: { lineKey: '002CBA', variant: 4 },
     });
     expect(fs.existsSync(jsonPath)).toBe(false);
   });

@@ -39,7 +39,7 @@ export type VoiceTtsSkipReason =
   | 'phonetic_vocalization';
 
 export type VoiceLinePreview = {
-  formidLower6: string;
+  lineKey: string;
   infoFormidHex: string | null;
   variant: number;
   fileName: string;
@@ -65,7 +65,7 @@ export type VoiceLinePreview = {
 };
 
 export type VoiceSpeakerRefPick = {
-  formidLower6: string;
+  lineKey: string;
   variant: number;
 };
 
@@ -121,7 +121,7 @@ export type VoiceLiveLineEvent = {
   type: 'line_started' | 'line_done' | 'line_failed';
   modId: number;
   speakerKey: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   voiceSimilarity?: number | null;
 };

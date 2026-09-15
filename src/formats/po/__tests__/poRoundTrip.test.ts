@@ -2,15 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parsePoBuffer, poEntryKey, writePoWithOverlays } from '../index';
 import {
   discoLangFolderNameForLocale,
   discoverDiscoLangFolders,
   hasDiscoPoPack,
   parseDiscoLangFolderName,
-  parsePoBuffer,
-  poEntryKey,
-  writePoWithOverlays,
-} from '../index';
+} from '../../../games/disco-elysium/packLayout';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(__dirname, 'fixtures', 'sample.po');

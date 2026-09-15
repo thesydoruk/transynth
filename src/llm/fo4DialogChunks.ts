@@ -55,13 +55,13 @@ export const loadFo4DialogLineGroups = async (
   return new Map(rows.map((row) => [row.string_id, row]));
 };
 
-export const dialogGroupKey = (row: Fo4DialogGroupRow | undefined, stringId: number): string => {
+const dialogGroupKey = (row: Fo4DialogGroupRow | undefined, stringId: number): string => {
   if (row?.scene_id != null) return `scene:${row.scene_id}`;
   if (row?.topic_id != null) return `topic:${row.topic_id}`;
   return `orphan:${stringId}`;
 };
 
-export const sortDialogItems = <T extends { stringId: number }>(
+const sortDialogItems = <T extends { stringId: number }>(
   items: T[],
   groups: Map<number, Fo4DialogGroupRow>,
 ): T[] =>
@@ -75,7 +75,7 @@ export const sortDialogItems = <T extends { stringId: number }>(
     return a.stringId - b.stringId;
   });
 
-export const buildDialogSceneForItems = <T extends DialogChunkable>(
+const buildDialogSceneForItems = <T extends DialogChunkable>(
   items: T[],
   groups: Map<number, Fo4DialogGroupRow>,
 ): DialogSceneContext => {

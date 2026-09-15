@@ -1,8 +1,8 @@
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
-import { glossaryGameKey } from '../../../llm/prompts/resolveGame';
+import { glossaryGameKey } from '../../../games/glossaryKey';
 import { PENDING_REVIEW_STATUS_SQL } from './constants';
-import { GLOSSARY_MOD_GAME_SQL, glossaryTermMatchesSource } from './glossaryHelpers';
+import { glossaryModGameSql, glossaryTermMatchesSource } from './glossaryHelpers';
 import { loadGlossaryTermsForGame } from './glossaryLoad';
 
 // ── Batch glossary enforcement ───────────────────────────────────────────────
@@ -57,7 +57,7 @@ export const enforceGlossary = async (
            SELECT s.id FROM strings s
            JOIN records r ON r.id = s.record_id
            JOIN mods m ON m.id = r.mod_id
-           WHERE ${GLOSSARY_MOD_GAME_SQL} = $2
+           WHERE ${glossaryModGameSql()} = $2
          )`,
       [targetLang, gameKey],
     );
@@ -73,7 +73,7 @@ export const enforceGlossary = async (
     WHERE t.text IS NOT NULL AND t.text <> ''
       AND s.is_ignored = FALSE
       AND t.status IN ${PENDING_REVIEW_STATUS_SQL}
-      AND ${GLOSSARY_MOD_GAME_SQL} = $2`;
+      AND ${glossaryModGameSql()} = $2`;
 
   const params: unknown[] = [targetLang, gameKey];
   if (opts.modId) {

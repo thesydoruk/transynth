@@ -135,7 +135,7 @@ export type DecompiledPexScript = {
 };
 
 /** Decompile one `.pex` buffer to PSC text (cached under mod id + digest). */
-export const decompilePexScript = async (
+const decompilePexScript = async (
   pexData: Buffer,
   scriptKey: string,
   cacheBucket: number | string,

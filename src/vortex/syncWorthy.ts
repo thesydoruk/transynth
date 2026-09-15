@@ -71,7 +71,7 @@ export const shouldSkipVortexWalkDir = (
   return afterSound.length > 0 && afterSound[0] !== 'voice';
 };
 
-export const SKIP_VORTEX_WALK_DIRS = new Set([
+const SKIP_VORTEX_WALK_DIRS = new Set([
   '.git',
   'node_modules',
   '.transynth-extracted',

@@ -150,7 +150,9 @@
     "exportDownload": "Завантажити",
     "exportDelete": "Видалити",
     "exportDeleting": "Видалення…",
-    "exportFullMod": "Повний локалізований мод"
+    "exportFullMod": "Повний локалізований мод",
+    "vortexExperimental": "експериментально",
+    "vortexExperimentalTitle": "Синхронізація з Vortex на дуже ранній стадії. Зробіть резервну копію стейджа й перевіряйте результат, перш ніж на нього покладатись."
   },
   "modAi": {
     "progressShort": "{{done}} / {{total}}",
@@ -548,7 +550,17 @@
       "overriddenTitle": "{{label}} (задано вручну)",
       "addressee": "→ {{name}}",
       "addresseeTitle": "Звертається до {{name}} ({{gender}})",
-      "saveFailed": "Не вдалося зберегти стать: {{message}} — клацніть, щоб приховати"
+      "saveFailed": "Не вдалося зберегти стать: {{message}} — клацніть, щоб приховати",
+      "editHint": "{{label}} — клацніть, щоб виправити",
+      "editHintOverridden": "{{label}} (задано вручну) — клацніть, щоб змінити",
+      "unknownHint": "Рід невідомий — клацніть, щоб задати"
+    },
+    "contextTitle": "Контекст, збережений із записом",
+    "origin": {
+      "tm": "TM",
+      "tmTitle": "Підставлено з пам'яті перекладів — перевірте, чи пасує саме тут",
+      "llm": "AI",
+      "llmTitle": "Машинний переклад — людина його не переглядала"
     }
   },
   "voice": {
@@ -737,7 +749,7 @@
   },
   "imports": {
     "title": "Імпорт",
-    "pageDescription": "Завантажте EET-архіви, CSV-файли глосарію або мод-плагіни (.esp\/.esm\/.ba2\/.zip). Кожен файл потрапляє в чергу для вибору мови перед початком імпорту.",
+    "pageDescription": "Завантажте EET-архіви, CSV-файли глосарію або мод-плагіни (.esp/.esm/.ba2/.zip). Кожен файл потрапляє в чергу для вибору мови перед початком імпорту.",
     "emptyTitle": "Ще немає активності імпорту",
     "advancedImport": "Розширений імпорт",
     "advancedImportHint": "Файли проєктів EET і таблиці перекладу CSV.",
@@ -911,7 +923,10 @@
       "end_punct_mismatch": "Кінцевий розділовий знак",
       "min_word_count": "Замало слів",
       "glossary_violation": "Глосарій",
-      "duplicate_inconsistency": "Неузгоджений переклад"
+      "duplicate_inconsistency": "Неузгоджений переклад",
+      "gender_mismatch": "Узгодження роду",
+      "calque": "Калька з англійської",
+      "llm_review": "Зауваження рецензента"
     }
   },
   "coherence": {

@@ -11,7 +11,6 @@ import {
 } from './assembleDialogTree';
 
 export type { DialogTreeKind, DialogTreeNode } from './assembleDialogTree';
-export { ORPHAN_GROUP_KEY } from './assembleDialogTree';
 
 /**
  * Resolve the source strings of every `dn` (dialog node) row of the enclosing

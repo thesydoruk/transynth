@@ -17,6 +17,8 @@
  *   --force     Reinstall even when the bundled versions are already present
  *   --game-dir  Fallout 4 / Creation Kit install (FonixData.cdf, xWMAEncode.exe)
  */
+// Registers the game plugins; the registry lookups below depend on it.
+import '../src/games';
 import '../src/loadEnv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';

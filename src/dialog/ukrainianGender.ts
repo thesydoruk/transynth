@@ -310,7 +310,6 @@ const NOT_FEMININE_VERBS = new Set([
 const looksLikeGenitivePlural = (token: string): boolean =>
   token.length >= 4 && (token.endsWith('ів') || token.endsWith('їв'));
 
-const WORD_RE = /[а-яіїєґёa-z'’]+/gi;
 /** Split so we can see punctuation between a candidate verb and its pronoun. */
 const TOKEN_RE = /[а-яіїєґёa-z'’]+|[^а-яіїєґёa-z'’\s]+/gi;
 
@@ -330,6 +329,9 @@ const classifyForm = (token: string): 'male' | 'female' | null => {
 
   if (token.length >= 5 && (token.endsWith('лася') || token.endsWith('лась'))) return 'female';
   if (token.length >= 4 && token.endsWith('ла')) return 'female';
+  // Right after the pronoun an adjective is predicative, so «ти перший»,
+  // «ти єдиний» and «ти інший» pin the addressee down as surely as a verb.
+  if (token.length >= 5 && (token.endsWith('ий') || token.endsWith('ій'))) return 'male';
   if (token.length >= 4 && (token.endsWith('вся') || token.endsWith('всь'))) return 'male';
   if (token.length >= 3 && token.endsWith('в')) return 'male';
 
@@ -428,6 +430,270 @@ export const detectUkrainianGenderMarkers = (text: string): UkGenderMarker[] => 
   return markers;
 };
 
+/**
+ * Verbs whose masculine past ends in -ів.
+ *
+ * That ending is otherwise the genitive plural of a noun — «синтів», «років»,
+ * «доказів» — and in the production corpus it is nominal in 361 of 372 distinct
+ * words. So for a clause with no pronoun to lean on, the handful of verbs are
+ * listed rather than guessed at.
+ */
+const MASCULINE_PAST_IV = new Set([
+  'хотів',
+  'захотів',
+  'розхотів',
+  'зрозумів',
+  'розумів',
+  'умів',
+  'зумів',
+  'волів',
+  'сидів',
+  'летів',
+  'злетів',
+  'горів',
+  'згорів',
+  'терпів',
+  'стерпів',
+  'розповів',
+  'повів',
+  'зустрів',
+  'збожеволів',
+  'накоїв',
+]);
+
+/** Words that may open a clause before an elided subject's predicate. */
+const CLAUSE_OPENERS = new Set([
+  'що',
+  'щоб',
+  'бо',
+  'коли',
+  'якщо',
+  'хоч',
+  'хоча',
+  'поки',
+  'доки',
+  'адже',
+  'тож',
+  'отже',
+  'і',
+  'й',
+  'а',
+  'але',
+  'та',
+  'чи',
+  'як',
+  'де',
+  'куди',
+  'звідки',
+  'наче',
+  'ніби',
+  'мовби',
+]);
+
+/** Object and oblique forms: present in a clause, but never its subject. */
+const OBLIQUE_FORMS = new Set([
+  'мене',
+  'мені',
+  'мною',
+  'тебе',
+  'тобі',
+  'тобою',
+  'його',
+  'йому',
+  'нього',
+  'ним',
+  'її',
+  'їй',
+  'неї',
+  'нею',
+  'їх',
+  'їм',
+  'них',
+  'ними',
+  'нас',
+  'нам',
+  'вас',
+  'вам',
+  'себе',
+  'собі',
+  'собою',
+  'нікого',
+  'нікому',
+  'ніким',
+  'нічого',
+  'нічому',
+  'нічим',
+  'когось',
+  'комусь',
+  'чогось',
+  'чомусь',
+  'щось',
+  'хтось',
+  'дещо',
+  'усе',
+  'усього',
+  'усім',
+  'всього',
+  'всім',
+  'усіх',
+  'всіх',
+]);
+
+// Bare -ов and -ев are surnames far more often than verbs («Петров», «Женев»),
+// but -шов is the past of every йти verb: знайшов, прийшов, пішов, вийшов.
+const MASCULINE_PAST_TAILS = ['ав', 'ив', 'ув', 'яв', 'шов'];
+
+/**
+ * A masculine past-tense or predicative form, judged without a pronoun to lean
+ * on — so stricter than {@link classifyForm}, which has an anchor to trust.
+ * The -ов / -ев tails are left out: as verbs they are rare, and they collide
+ * with surnames the game is full of.
+ */
+const looksLikeMasculineUnanchored = (token: string): boolean => {
+  if (NOT_MASCULINE_VERBS.has(token)) return false;
+  if (MASCULINE_PREDICATIVES.has(token)) return true;
+  if (MASCULINE_IRREGULAR_PAST.has(token)) return true;
+  if (token.length >= 5 && (token.endsWith('вся') || token.endsWith('всь'))) return true;
+  if (token.length < 4 || !token.endsWith('в')) return false;
+  if (token.endsWith('ів') || token.endsWith('їв')) return MASCULINE_PAST_IV.has(token);
+  return MASCULINE_PAST_TAILS.some((tail) => token.endsWith(tail));
+};
+
+/**
+ * The feminine counterpart. Bare -ла is left out on purpose: «сила», «правила»,
+ * «джерела» and a genitive «Ерла» all end that way, and with no pronoun there is
+ * nothing to tell them from a verb. The reflexive -лася / -лась has no such
+ * collision, and the named predicatives are unambiguous.
+ */
+const looksLikeFeminineUnanchored = (token: string): boolean => {
+  if (NOT_FEMININE_VERBS.has(token)) return false;
+  if (FEMININE_PREDICATIVES.has(token)) return true;
+  return token.length >= 4 && (token.endsWith('ла') || token.endsWith('лась'));
+};
+
+const unanchoredGender = (token: string): 'male' | 'female' | null => {
+  if (looksLikeMasculineUnanchored(token)) return 'male';
+  if (looksLikeFeminineUnanchored(token)) return 'female';
+  return null;
+};
+
+/** A gendered form in a clause whose subject was left out. */
+export type UkUnanchoredMarker = { gender: 'male' | 'female'; form: string };
+
+const SENTENCE_SPLIT_RE = /[.!?…\n]+/u;
+const CLAUSE_SPLIT_RE = /[,;:—–()"«»]+/u;
+const CLAUSE_WORD_RE = /[а-яіїєґёa-z'’]+/gu;
+
+/** Infinitives and adverbs are never the subject the predicate agrees with. */
+const isInfinitive = (token: string): boolean =>
+  token.length >= 4 && (token.endsWith('ти') || token.endsWith('ть') || token.endsWith('тися'));
+
+/**
+ * A finite verb or an oblique noun — either way, not the subject a predicate
+ * agrees with. A Ukrainian nominative ends in a consonant or in -а / -я, so a
+ * word ending in -у / -ю is an object or a verb: «Дякую, що сказав», «Зброю
+ * знайшов». Without this the first verb of a sentence is mistaken for its
+ * subject and the clause after it is never looked at.
+ */
+const isNotSubjectShape = (token: string): boolean =>
+  token.length >= 3 &&
+  (token.endsWith('у') ||
+    token.endsWith('ю') ||
+    token.endsWith('еш') ||
+    token.endsWith('єш') ||
+    token.endsWith('иш') ||
+    token.endsWith('їш'));
+
+/** Words that may stand before the predicate without being its subject. */
+const isSubjectless = (token: string): boolean =>
+  FILLERS.has(token) ||
+  CLAUSE_OPENERS.has(token) ||
+  OBLIQUE_FORMS.has(token) ||
+  isNotSubjectShape(token);
+
+/**
+ * Gendered predicates in clauses that name no subject at all.
+ *
+ * Ukrainian drops the subject pronoun constantly — «Зрозумів.», «Не впевнений.»,
+ * «Ще нікого не знайшов.» — and the anchored scan, which needs «я» or «ти» beside
+ * the form, cannot see any of it. Measured against this project's own hand-written
+ * leak examples, that blind spot was most of what the detector missed.
+ *
+ * Three things have to hold before a form counts, each of them a false positive
+ * found on the production corpus:
+ *
+ * - nothing before it in the clause could be a subject, or «Ерл був мертвий»
+ *   reads as a leak;
+ * - nothing bare follows it either, because Ukrainian puts the subject after the
+ *   verb as readily as before it — «Чи знищив Інститут Підземку?», «що сказав би
+ *   синт» — and the same test throws out the attributive reading of «старий
+ *   Денні» and «ще один робот»;
+ * - no earlier clause in the same sentence introduced a subject, or the relative
+ *   clause in «Він привів тебе до нас, бо знав» is read as subjectless when it
+ *   is plainly about him.
+ */
+export const detectUnanchoredGenderForms = (text: string): UkUnanchoredMarker[] => {
+  const markers: UkUnanchoredMarker[] = [];
+  const seen = new Set<string>();
+
+  for (const sentence of text.toLowerCase().split(SENTENCE_SPLIT_RE)) {
+    for (const clause of sentence.split(CLAUSE_SPLIT_RE)) {
+      const tokens = clause.match(CLAUSE_WORD_RE) ?? [];
+      let index = 0;
+      while (index < tokens.length && isSubjectless(tokens[index]!)) index++;
+
+      const candidate = tokens[index];
+      if (candidate == null) continue;
+      const gender = unanchoredGender(candidate);
+      // A content word that is not a predicate is a subject this sentence now
+      // has, and every clause after it may be speaking about that subject.
+      if (!gender) break;
+
+      const rest = tokens.slice(index + 1);
+      let governed = false;
+      const subjectAfter = rest.some((token) => {
+        if (PREPOSITIONS.has(token)) {
+          governed = true;
+          return false;
+        }
+        if (isSubjectless(token) || isInfinitive(token)) return false;
+        if (governed) {
+          governed = false;
+          return false;
+        }
+        return true;
+      });
+      if (subjectAfter) break;
+
+      if (!seen.has(`${gender}:${candidate}`)) {
+        seen.add(`${gender}:${candidate}`);
+        markers.push({ gender, form: candidate });
+      }
+    }
+  }
+
+  return markers;
+};
+
+/**
+ * Which participant an elided subject could belong to without leaking.
+ *
+ * A role can own a masculine form if it is male, or if nobody knows its gender.
+ * A role the player chooses (`any`) never can. So the form is only reported when
+ * no role could own it and at least one of them is the player's — the one case
+ * where the wording is wrong however the line is read.
+ */
+const unanchoredConflictRole = (
+  gender: 'male' | 'female',
+  participants: { speakerGender: SpeakerGender; addresseeGender: SpeakerGender },
+): 'speaker' | 'addressee' | null => {
+  const canOwn = (role: SpeakerGender): boolean => role === 'unknown' || role === gender;
+  if (canOwn(participants.speakerGender) || canOwn(participants.addresseeGender)) return null;
+  if (participants.speakerGender === 'any') return 'speaker';
+  if (participants.addresseeGender === 'any') return 'addressee';
+  return null;
+};
+
 /** A gendered form that contradicts the known gender of a dialog participant. */
 export type UkGenderConflict = {
   /** Participant the form disagrees with. */
@@ -456,12 +722,23 @@ export const findUkrainianGenderConflicts = (
   const markers = detectUkrainianGenderMarkers(translation);
   const conflicts: UkGenderConflict[] = [];
 
+  const reported = new Set<string>();
+
   for (const marker of markers) {
     const role = marker.person === 1 ? 'speaker' : 'addressee';
     const expected =
       marker.person === 1 ? participants.speakerGender : participants.addresseeGender;
     if (!conflictsWith(expected, marker.gender)) continue;
+    reported.add(marker.form);
     conflicts.push({ role, expected, found: marker.gender, form: marker.form });
+  }
+
+  for (const marker of detectUnanchoredGenderForms(translation)) {
+    if (reported.has(marker.form)) continue;
+    const role = unanchoredConflictRole(marker.gender, participants);
+    if (!role) continue;
+    reported.add(marker.form);
+    conflicts.push({ role, expected: 'any', found: marker.gender, form: marker.form });
   }
 
   return conflicts;

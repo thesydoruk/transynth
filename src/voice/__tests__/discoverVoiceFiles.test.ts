@@ -9,7 +9,7 @@ const entry = (
   relPath: `Sound/Voice/Fallout4.esm/${speaker}/${formid}_${variant}.${ext}`,
   absolutePath: `/data/${speaker}/${formid}_${variant}.${ext}`,
   fileName: `${formid}_${variant}.${ext}`,
-  formidLower6: formid.substring(2).toUpperCase(),
+  lineKey: formid.substring(2).toUpperCase(),
   variant,
   ext,
 });

@@ -142,9 +142,40 @@ export const buildSkipDetectResponseFormat = (itemCount: number): LlmJsonSchemaF
   },
 });
 
-export const buildNarratorGenderDetectResponseSchema = (
+const buildPreferredTranslationSchema = (itemCount: number): Record<string, unknown> => ({
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      ...boundedArray(itemCount),
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          choice: { type: 'string', enum: ['current', 'candidate'] },
+        },
+        required: ['id', 'choice'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+});
+
+/** JSON Schema for the current-versus-candidate comparison batch. */
+export const buildPreferredTranslationResponseFormat = (
   itemCount: number,
-): Record<string, unknown> => ({
+): LlmJsonSchemaFormat => ({
+  type: 'json_schema',
+  json_schema: {
+    name: 'preferred_translation_batch',
+    strict: true,
+    schema: buildPreferredTranslationSchema(itemCount),
+  },
+});
+
+const buildNarratorGenderDetectResponseSchema = (itemCount: number): Record<string, unknown> => ({
   type: 'object',
   properties: {
     items: {

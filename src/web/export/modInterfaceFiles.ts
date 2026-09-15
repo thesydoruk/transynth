@@ -10,21 +10,15 @@ import path from 'node:path';
 import { getBa2Reader, isBa2GnrArchive } from '../../formats/ba2';
 import { resolveModDirectoryFromPath } from '../../formats/mcm';
 import { listCompanionGnrlBa2ForPlugin } from '../../import/mod/discovery';
-import type { GameType } from '../../types';
 
 /**
  * Read one file from the mod's `Interface/` folder.
  *
  * @param modPath - Path to the mod's plugin file.
  * @param fileName - File name inside `Interface/`, e.g. `fonts_en.swf`.
- * @param game - Game the mod targets, used to locate companion archives.
  * @returns File contents, or `null` when the mod does not ship it.
  */
-export const readModInterfaceFile = (
-  modPath: string,
-  fileName: string,
-  game: GameType,
-): Buffer | null => {
+export const readModInterfaceFile = (modPath: string, fileName: string): Buffer | null => {
   const modDir = resolveModDirectoryFromPath(modPath);
   const loosePath = path.join(modDir, 'Interface', fileName);
   if (fs.existsSync(loosePath)) return fs.readFileSync(loosePath);
@@ -32,7 +26,7 @@ export const readModInterfaceFile = (
   const ext = path.extname(fileName).replace(/^\./, '');
   const suffix = `/${fileName.toLowerCase()}`;
 
-  for (const ba2Path of listCompanionGnrlBa2ForPlugin(modPath, game)) {
+  for (const ba2Path of listCompanionGnrlBa2ForPlugin(modPath)) {
     if (!isBa2GnrArchive(ba2Path)) continue;
     try {
       const reader = getBa2Reader(ba2Path);

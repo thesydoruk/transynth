@@ -28,9 +28,9 @@ export const loadSpeakerNamesFromDb = async (
   db: Tx,
   modId: number,
 ): Promise<Map<string, string>> => {
-  const { rows } = await db.query<{ formid_lower6: string; speaker_name: string }>(
+  const { rows } = await db.query<{ line_key: string; speaker_name: string }>(
     `SELECT DISTINCT ON (UPPER(SUBSTRING(dn.info_formid_hex FROM 3)))
-        UPPER(SUBSTRING(dn.info_formid_hex FROM 3)) AS formid_lower6,
+        UPPER(SUBSTRING(dn.info_formid_hex FROM 3)) AS line_key,
         dn.speaker_name
      FROM dialog_nodes dn
      JOIN dialog_topics dt ON dt.id = dn.topic_id
@@ -43,7 +43,7 @@ export const loadSpeakerNamesFromDb = async (
 
   const map = new Map<string, string>();
   for (const row of rows) {
-    map.set(row.formid_lower6.toUpperCase(), row.speaker_name);
+    map.set(row.line_key.toUpperCase(), row.speaker_name);
   }
   return map;
 };
@@ -60,13 +60,13 @@ export const discoverVoiceEntries = (ctx: VoicePackageContext): VoiceFileEntry[]
  */
 export const findVoiceEntry = (
   entries: VoiceFileEntry[],
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   scope?: { voiceRootRel: string; speakerKey?: string },
 ): VoiceFileEntry | undefined => {
   const wantSpeaker = scope?.speakerKey?.trim();
   return entries.find((entry) => {
-    if (entry.formidLower6.toUpperCase() !== formidLower6.toUpperCase()) return false;
+    if (entry.lineKey.toUpperCase() !== lineKey.toUpperCase()) return false;
     if (entry.variant !== variant) return false;
     if (!wantSpeaker) return true;
     return voiceSpeakerKey(entry, scope!.voiceRootRel) === wantSpeaker;

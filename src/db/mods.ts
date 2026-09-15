@@ -1,13 +1,28 @@
-import type { GameType } from '../types';
+import { DEFAULT_GAME_ID, resolveGameId } from '../games/registry';
+import type { GameId } from '../types';
 import { log } from '../logger';
 import type { Tx } from './types';
+
+/**
+ * Which game a mod belongs to, for code that has a mod id and needs a plugin.
+ *
+ * Falls back to {@link DEFAULT_GAME_ID} for a missing row or an id no plugin
+ * claims, so a caller gets a usable plugin rather than a crash — the same
+ * contract as {@link resolveGameId}.
+ */
+export const gameForMod = async (db: Tx, modId: number): Promise<GameId> => {
+  const { rows } = await db.query<{ game: string | null }>(`SELECT game FROM mods WHERE id = $1`, [
+    modId,
+  ]);
+  return resolveGameId(rows[0]?.game);
+};
 
 export const upsertMod = async (
   db: Tx,
   name: string,
   absPath: string,
   versionHash: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
   nexus?: { nexusModId?: number; nexusName?: string },
 ): Promise<number> => {
   log.debug(`DB: upsertMod name=${name} game=${game}`);
@@ -31,7 +46,7 @@ export const upsertVortexMod = async (
     name: string;
     absPath: string;
     versionHash: string;
-    game: GameType;
+    game: GameId;
     groupId: number;
     channel: 'mods' | 'game';
     gameReleaseId?: number | null;

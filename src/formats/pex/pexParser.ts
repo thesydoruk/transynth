@@ -46,7 +46,6 @@ import {
   analyzePexStringUsages,
   buildPexUserStringDetails,
   readPexStringTable,
-  type PexStringUsage,
   type PexUserStringDetail,
 } from './usage';
 
@@ -110,7 +109,7 @@ export interface PexResult {
  * Read a PEX wstring (uint16 length prefix + UTF-8 body) at the given offset.
  * Defaults to big-endian for legacy Skyrim-style fixtures.
  */
-export const readWString = (
+const readWString = (
   buf: Buffer,
   offset: number,
   endian: PexEndianLocal = 'be',

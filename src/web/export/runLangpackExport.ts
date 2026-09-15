@@ -1,5 +1,6 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { Tx } from '../../db';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { resolveModStoredPath } from '../../modStorage';
 import { getExportArchive, getModsByIds, setExportArchiveProgress } from '../data/queries';
 import type { VortexFileWinner } from '../../vortex/types';
@@ -41,7 +42,7 @@ export const resolveLangpackExportTargets = async (
     targets.push({
       modId: id,
       modPath: resolveModStoredPath(mod.abs_path),
-      game: (mod.game ?? 'fo4') as GameType,
+      game: (mod.game ?? DEFAULT_GAME_ID) as GameId,
       sourceFolder: sourceFolders?.[id] ?? null,
     });
   }

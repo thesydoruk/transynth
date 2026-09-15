@@ -48,7 +48,7 @@ export const parseVortexDeployment = (raw: unknown): VortexDeployedFile[] => {
 
 const DEPLOYMENT_NAMES = ['vortex.deployment.msgpack', 'vortex.deployment.json'] as const;
 
-export const readVortexDeploymentFile = (filePath: string): VortexDeployedFile[] => {
+const readVortexDeploymentFile = (filePath: string): VortexDeployedFile[] => {
   const buf = fs.readFileSync(filePath);
   if (filePath.toLowerCase().endsWith('.json')) {
     return parseVortexDeployment(JSON.parse(buf.toString('utf8')));

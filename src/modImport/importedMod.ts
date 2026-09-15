@@ -1,12 +1,13 @@
+import { DEFAULT_GAME_ID } from '../games/registry';
 import { CONFIG } from '../config';
 import type { Tx } from '../db';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 
 export type ImportedMod = {
   modId: number;
   modName: string;
   srcLang: string;
-  game: GameType;
+  game: GameId;
   isLocalized: boolean;
 };
 
@@ -23,7 +24,7 @@ export const loadImportedMod = async (db: Tx, modId: number): Promise<ImportedMo
         m.id AS mod_id,
         m.name AS mod_name,
         mi.src_lang,
-        COALESCE(m.game, mi.game, 'fo4') AS game,
+        COALESCE(m.game, mi.game, '${DEFAULT_GAME_ID}') AS game,
         mi.is_localized
      FROM mods m
      JOIN mod_imports mi ON mi.mod_id = m.id AND mi.status = 'completed'
@@ -37,7 +38,7 @@ export const loadImportedMod = async (db: Tx, modId: number): Promise<ImportedMo
     modId: row.mod_id,
     modName: row.mod_name,
     srcLang: row.src_lang?.trim() || CONFIG.defaultSrcLang,
-    game: (row.game ?? 'fo4') as GameType,
+    game: (row.game ?? DEFAULT_GAME_ID) as GameId,
     isLocalized: (row.is_localized ?? 0) === 1,
   };
 };

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 
-export const STRING_GRID_COLUMN_WIDTHS_STORAGE_KEY = 'mod-editor-string-grid-column-widths';
+const STRING_GRID_COLUMN_WIDTHS_STORAGE_KEY = 'mod-editor-string-grid-column-widths';
 
 /** Keys identifying each resizable column in the string grid. */
 export type StringGridColKey =
@@ -15,7 +15,7 @@ export type StringGridColKey =
 
 export type StringGridColumnWidths = Record<StringGridColKey, number | null>;
 
-export const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
+const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
   gender: 28,
   grup: 52,
   formid: 70,

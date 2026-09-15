@@ -6,14 +6,12 @@ export {
 } from './fontConfig';
 export type { CharListLine, FontConfig, FontConfigLine, FontMapLine } from './fontConfig';
 export {
-  interfaceTranslateArchivePath,
   interfaceTranslateArchivePathForSlot,
-  interfaceTranslateExportSlot,
   interfaceTranslateExportSlots,
-  interfaceTranslateFileName,
+} from './interfaceTranslateSlots';
+export {
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,
-  interfaceTranslateRecordPath,
   interfaceTranslateRecordPrefix,
   isInterfaceTranslatePath,
   parseInterfaceTranslateBuffer,

@@ -29,11 +29,12 @@ import {
   useModDeleteActions,
 } from './hooks';
 import s from './ModsPage.module.scss';
+import { DEFAULT_GAME_ID } from '../../langDefaults';
 
 export const ModsPage = () => {
   const { t } = useTranslation();
   const nav = useNavigate();
-  const { gameId = 'fo4' } = useParams<{ gameId: string }>();
+  const { gameId = DEFAULT_GAME_ID } = useParams<{ gameId: string }>();
   const { srcLang, targetLang } = useContentLangs();
   useModAiJobsPoll(true);
 
@@ -150,6 +151,11 @@ export const ModsPage = () => {
       {vortexGroups.length > 0 && (
         <label className={s.vortexFilter}>
           <span>{t('mods.vortexGroup')}</span>
+          {vortexGroupId != null && (
+            <span className={s.experimentalTag} title={t('mods.vortexExperimentalTitle')}>
+              {t('mods.vortexExperimental')}
+            </span>
+          )}
           <select
             value={vortexGroupId ?? ''}
             onChange={(event) => {
@@ -170,6 +176,7 @@ export const ModsPage = () => {
 
       {vortexGroupId == null && (
         <ModsPageUploadBar
+          gameId={gameId}
           fileRef={upload.fileRef}
           advancedFileRef={upload.advancedFileRef}
           uploading={upload.uploading}

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import { NexusModsError, NexusModsNotFoundError } from '../../../nexus/index';
-import { SUPPORTED_GAMES } from './catalogue';
+import { findSupportedGame } from './catalogue';
 import {
   fetchNexusModFiles,
   fetchNexusModInfo,
@@ -30,7 +30,7 @@ export const registerNexusModRoutes = async (app: FastifyInstance) => {
 
     if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
-    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
+    const game = findSupportedGame(gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -41,20 +41,20 @@ export const registerNexusModRoutes = async (app: FastifyInstance) => {
     try {
       let mod: NexusModView;
       try {
-        mod = (await getNexus().getModById(game.domainName, game.nexusId, modId)) as NexusModView;
+        mod = (await getNexus().getModById(game.domainName!, game.nexusId!, modId)) as NexusModView;
       } catch (err) {
         if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
           log.warn(
             `Nexus GraphQL mod lookup fallback to REST for ${gameId}/${modId}: ${err.message}`,
           );
-          const rest = await fetchNexusModInfo(game.domainName, modId);
+          const rest = await fetchNexusModInfo(game.domainName!, modId);
           mod = mapRestModToView(rest, game);
         } else {
           throw err;
         }
       }
 
-      const files = await fetchNexusModFiles(game.domainName, modId);
+      const files = await fetchNexusModFiles(game.domainName!, modId);
       return reply.send({ mod, files });
     } catch (err) {
       if (err instanceof NexusModsNotFoundError) {

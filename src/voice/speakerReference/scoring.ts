@@ -59,10 +59,7 @@ const rejectAnalysis = (durationSec: number, activeSec = 0): ReferenceClipAnalys
  * Duration, active-speech length, and quality score for one reference clip.
  * Score is `-Infinity` when the clip is unsuitable as an XTTS reference.
  */
-export const analyzeReferencePcm = (
-  samples: Int16Array,
-  sampleRate: number,
-): ReferenceClipAnalysis => {
+const analyzeReferencePcm = (samples: Int16Array, sampleRate: number): ReferenceClipAnalysis => {
   const durationSec = sampleRate > 0 ? samples.length / sampleRate : 0;
   if (samples.length === 0) return rejectAnalysis(durationSec);
   if (durationSec < MIN_REFERENCE_DURATION_SEC || durationSec > MAX_REFERENCE_DURATION_SEC) {

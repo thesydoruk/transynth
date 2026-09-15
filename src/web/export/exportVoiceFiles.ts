@@ -1,9 +1,10 @@
+import { DEFAULT_GAME_ID, gamePlugin } from '../../games/registry';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Tx } from '../../db';
 import { resolveImportPackages } from '../../modImport/packages';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import {
   loadExportableVoiceKeys,
   voiceKeyFromLocalizedFileName,
@@ -24,7 +25,7 @@ export type CollectLocalizedVoiceOptions = {
   zipPathTransform?: (relPath: string) => string;
   /** When set, keep only clips whose FormID is in this DB-backed allowlist. */
   exportableKeys?: Set<string>;
-  game?: GameType;
+  game?: GameId;
 };
 
 const normalizeZipPath = (relPath: string): string => relPath.replace(/\\/g, '/');
@@ -36,7 +37,7 @@ const matchesExtension = (fileName: string, extensions: string[]): boolean => {
 
 const isAllowedVoiceFile = (fileName: string, options: CollectLocalizedVoiceOptions): boolean => {
   if (!options.exportableKeys) return true;
-  const key = voiceKeyFromLocalizedFileName(fileName, options.game ?? 'fo4');
+  const key = voiceKeyFromLocalizedFileName(fileName, options.game ?? DEFAULT_GAME_ID);
   return key != null && options.exportableKeys.has(key);
 };
 
@@ -49,7 +50,9 @@ export const collectLocalizedVoiceFiles = (
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (!extractRoot) return [];
 
-  const extensions = options.extensions ?? ['.fuz'];
+  const extensions = options.extensions ?? [
+    gamePlugin(options.game).voice?.sourceExtension ?? '.fuz',
+  ];
   const packages = resolveImportPackages(extractRoot, targetLang, modPath);
   const files: LocalizedVoiceExportEntry[] = [];
 
@@ -95,7 +98,7 @@ export const collectExportableVoiceFiles = async (
   modPath: string,
   srcLang: string,
   targetLang: string,
-  game: GameType,
+  game: GameId,
   options: Omit<CollectLocalizedVoiceOptions, 'exportableKeys' | 'game'> = {},
 ): Promise<LocalizedVoiceExportEntry[]> => {
   const extractRoot = resolveModImportExtractRoot(modPath);

@@ -18,7 +18,7 @@ import {
 import { maskLlmOptionalText } from '../../../../../src/llm/llmTextMask';
 import { isMaskedLlmText, structureLlmReferenceExamples } from '../../../../../src/llm/textParts';
 import { normalizeAutoTranslation } from '../../../../../src/utils/textNorm';
-import type { GameType } from '../../../../../src/types';
+import type { GameId } from '../../../../../src/types';
 import { relevantGlossaryForChunk } from './glossary';
 import {
   needsLongTextSplit,
@@ -78,7 +78,7 @@ export const prefetchChunkRag = async (
   }
 };
 
-export const scheduleChunkPersist = async (
+const scheduleChunkPersist = async (
   ctx: ChunkTranslateContext,
   okRows: Array<{ stringId: number; text: string }>,
 ): Promise<void> => {
@@ -108,7 +108,7 @@ export const scheduleChunkPersist = async (
   }
 };
 
-export const collectValidatedRows = (
+const collectValidatedRows = (
   ctx: ChunkTranslateContext,
   chunk: PreparedLlmItem[],
   translations: Awaited<ReturnType<typeof translateStrings>>,
@@ -126,7 +126,7 @@ export const collectValidatedRows = (
       continue;
     }
 
-    const game = (entry.game ?? ctx.opts.modGame) as GameType | undefined;
+    const game = (entry.game ?? ctx.opts.modGame) as GameId | undefined;
     const tokenCtx = { grup: entry.grup, field: entry.field };
     const placeholderCheck = isMaskedLlmText(maskedTranslation)
       ? validateTranslationPlaceholders(
@@ -149,7 +149,7 @@ export const collectValidatedRows = (
     const joined = isMaskedLlmText(maskedTranslation)
       ? unmask(unmask(maskedTranslation, entry.functionKeywordMap), entry.placeholderMap)
       : maskedTranslation;
-    const translated = normalizeAutoTranslation(entry.sourceText, joined);
+    const translated = normalizeAutoTranslation(entry.sourceText, joined, game);
     okRows.push({ stringId: entry.stringId, text: translated });
   }
 

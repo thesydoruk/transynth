@@ -10,10 +10,11 @@ import { getBa2Reader } from '../../formats/ba2';
 import {
   parseStringsBuffer,
   resolveStringsTableTypeForRow,
+  type CompiledRecorddefs,
   type StringsType,
 } from '../../formats/strings';
 import type { EspStringRow } from '../../formats/esp';
-import type { CsvRow, GameType } from '../../types';
+import type { CsvRow } from '../../types';
 import { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
 import { localeSourcesByLocale, type LocaleStringsSource } from './localeSources';
 
@@ -53,12 +54,12 @@ export const loadLocaleStringsByType = (source: LocaleStringsSource): LocaleStri
 const resolveLstringText = (
   row: EspStringRow,
   stringsMaps: LocaleStringsMaps | null,
-  game: GameType,
+  recorddefs: CompiledRecorddefs,
 ): string | null => {
   if (!stringsMaps) return null;
   const id = Number.parseInt(row.text, 10);
   if (!Number.isFinite(id) || id <= 0) return null;
-  const table = resolveStringsTableTypeForRow(game, row.signature, row.path);
+  const table = resolveStringsTableTypeForRow(recorddefs, row.signature, row.path);
   const text = stringsMaps.get(table)?.get(id);
   return text || null;
 };
@@ -67,12 +68,12 @@ const resolveLstringText = (
 export const countImportRowsForLocale = (
   espRows: EspStringRow[],
   stringsMaps: LocaleStringsMaps | null,
-  game: GameType = 'fo4',
+  recorddefs: CompiledRecorddefs,
 ): number => {
   let count = 0;
   for (const row of espRows) {
     if (row.isLstringId) {
-      if (!resolveLstringText(row, stringsMaps, game)) continue;
+      if (!resolveLstringText(row, stringsMaps, recorddefs)) continue;
     }
     count++;
   }
@@ -83,12 +84,12 @@ export const countImportRowsForLocale = (
 export function* generateImportCsvRows(
   espRows: EspStringRow[],
   stringsMaps: LocaleStringsMaps | null,
-  game: GameType = 'fo4',
+  recorddefs: CompiledRecorddefs,
 ): Generator<CsvRow> {
   for (const row of espRows) {
     let text: string;
     if (row.isLstringId) {
-      const resolved = resolveLstringText(row, stringsMaps, game);
+      const resolved = resolveLstringText(row, stringsMaps, recorddefs);
       if (!resolved) continue;
       text = resolved;
     } else {
@@ -109,7 +110,7 @@ export function* generateImportCsvRows(
 }
 
 /** Pick the English (or best available) locale source for NPC-name resolution. */
-export const resolveEnglishLocaleSource = (
+const resolveEnglishLocaleSource = (
   sources: LocaleStringsSource[],
 ): LocaleStringsSource | undefined => {
   const byLocale = localeSourcesByLocale(sources);
@@ -142,7 +143,7 @@ export const estimateLocalizedImportTotal = (
   espRows: EspStringRow[],
   sources: LocaleStringsSource[],
   locales: string[],
-  game: GameType = 'fo4',
+  recorddefs: CompiledRecorddefs,
 ): number => {
   if (locales.length === 0) return 0;
   const sample =
@@ -150,6 +151,6 @@ export const estimateLocalizedImportTotal = (
     sources.find((s) => s.locale === resolveEnglishLocaleSource(sources)?.locale);
   if (!sample) return espRows.length * locales.length;
   const sampleMaps = loadLocaleStringsByType(sample);
-  const perLocale = countImportRowsForLocale(espRows, sampleMaps, game);
+  const perLocale = countImportRowsForLocale(espRows, sampleMaps, recorddefs);
   return perLocale * locales.length;
 };

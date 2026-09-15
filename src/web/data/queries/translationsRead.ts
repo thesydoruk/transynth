@@ -1,4 +1,6 @@
 import type { Tx } from '../../../db';
+import { resolveGameId } from '../../../games/registry';
+import type { GameId } from '../../../types';
 import { CONFIG } from '../../../config';
 import { log } from '../../../logger';
 import { findReferenceExamples, type RagReferenceExample } from '../../../llm/rag';
@@ -51,20 +53,30 @@ export const getRagSuggestions = async (
 export type StringPropagationKeys = {
   textRaw: string;
   textNorm: string;
+  /** Game of the mod this string belongs to, for the destination's markup rules. */
+  game: GameId;
 };
 
-// Returns text_raw + text_norm for a string ID (used by propagation)
+// Returns text_raw + text_norm + game for a string ID (used by propagation)
 export const getStringPropagationKeys = async (
   db: Tx,
   stringId: number,
 ): Promise<StringPropagationKeys | null> => {
-  const { rows } = await db.query<{ text_raw: string; text_norm: string | null }>(
-    `SELECT text_raw, text_norm FROM strings WHERE id = $1`,
+  const { rows } = await db.query<{
+    text_raw: string;
+    text_norm: string | null;
+    game: string | null;
+  }>(
+    `SELECT s.text_raw, s.text_norm, m.game
+       FROM strings s
+       JOIN records r ON r.id = s.record_id
+       JOIN mods m ON m.id = r.mod_id
+      WHERE s.id = $1`,
     [stringId],
   );
   const row = rows[0];
   if (!row?.text_norm) return null;
-  return { textRaw: row.text_raw, textNorm: row.text_norm };
+  return { textRaw: row.text_raw, textNorm: row.text_norm, game: resolveGameId(row.game) };
 };
 
 export const getTranslationHistory = async (

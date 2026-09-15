@@ -92,7 +92,7 @@ describe('lookupInheritedVoiceLine', () => {
             [
               voiceTranslationMapKey('002CBA', 1),
               {
-                formidLower6: '002CBA',
+                lineKey: '002CBA',
                 infoFormidHex: '03002CBA',
                 voiceVariant: 1,
                 stringId: 303,

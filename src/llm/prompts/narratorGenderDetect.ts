@@ -1,4 +1,4 @@
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import { maskLlmTextFields } from '../llmTextMask';
 import { gameLabel } from './gameLabel';
 
@@ -14,14 +14,14 @@ export type NarratorGenderDetectPromptItem = {
 export type NarratorGenderDetectUserPayloadOpts = {
   items: NarratorGenderDetectPromptItem[];
   srcLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
 };
 
 /** System prompt for BOOK/TERM/NOTE narrator gender pre-pass. */
 export const buildNarratorGenderSystemPrompt = (
   srcLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): string => {
   const title = gameLabel(game, 'Bethesda');
 

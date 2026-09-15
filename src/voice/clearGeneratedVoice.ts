@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import fg from 'fast-glob';
 import type { Tx } from '../db';
 import { PATHS } from '../paths';
@@ -20,7 +19,7 @@ const removeDirIfExists = (dir: string): boolean => {
 };
 
 /** Delete synthesized `.fuz` files under all `_localize_*` trees. */
-export const clearGeneratedVoiceFiles = (): number => {
+const clearGeneratedVoiceFiles = (): number => {
   const root = modStorageRoot().replace(/\\/g, '/');
   const matches = fg.sync(`${root}/_localize_*/**/Sound/Voice/**/*.fuz`, {
     onlyFiles: true,

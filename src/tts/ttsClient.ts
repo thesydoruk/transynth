@@ -9,9 +9,8 @@ import {
   type TtsSynthesisParams,
 } from './ttsSynthesisParams';
 
-export { checkTtsHealth, probeTtsHealth } from './ttsHealth';
+export { checkTtsHealth } from './ttsHealth';
 export type { TtsSynthesisParams } from './ttsSynthesisParams';
-export { resolveTtsSynthesisParams, TTS_SYNTHESIS_DEFAULTS } from './ttsSynthesisParams';
 
 /** Fish Speech sets this when the WAV is still silence or a cutoff after retries. */
 export const TTS_SYNTH_WARNING_HEADER = 'x-synth-warning';

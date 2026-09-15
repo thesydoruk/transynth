@@ -154,19 +154,19 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
   let modId: number;
 
   const createMockDb = () => {
-    const picks = new Map<string, { formidLower6: string; variant: number }>();
+    const picks = new Map<string, { lineKey: string; variant: number }>();
     return {
       query: async (sql: string, params: unknown[] = []) => {
         const key = params[1] as string | undefined;
-        if (sql.includes('SELECT formid_lower6, variant') && key) {
+        if (sql.includes('SELECT line_key, variant') && key) {
           const pick = picks.get(key);
           return {
-            rows: pick ? [{ formid_lower6: pick.formidLower6, variant: pick.variant }] : [],
+            rows: pick ? [{ line_key: pick.lineKey, variant: pick.variant }] : [],
           };
         }
         if (sql.includes('INSERT INTO voice_speaker_refs')) {
           picks.set(params[1] as string, {
-            formidLower6: params[2] as string,
+            lineKey: params[2] as string,
             variant: params[3] as number,
           });
           return { rows: [] };
@@ -179,11 +179,11 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
   const makeEntry = (
     packageDir: string,
     speaker: string,
-    formidLower6: string,
+    lineKey: string,
     variant: number,
     samples: Int16Array,
   ): VoiceFileEntry => {
-    const fileName = `${formidLower6}_${variant}.wav`;
+    const fileName = `${lineKey}_${variant}.wav`;
     const relPath = `Data/Sound/Voice/Mod.esp/${speaker}/${fileName}`;
     const absolutePath = path.join(packageDir, ...relPath.split('/'));
     writeTestWav(absolutePath, samples);
@@ -191,7 +191,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       relPath,
       absolutePath,
       fileName,
-      formidLower6,
+      lineKey,
       variant,
       ext: 'wav',
     };
@@ -258,7 +258,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ formidLower6: '00002CBA', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBA', variant: 1 });
     expect(fallbackCalled).toBe(false);
   });
 
@@ -283,7 +283,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
     expect(fallbackCalled).toBe(true);
   });
 
@@ -304,7 +304,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       pluginRelPath: 'Data/Mod.esp',
     });
 
-    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
   });
 
   it('prefers the 8–12s clip whose speaking rate is closer to 5 syl/s', async () => {
@@ -325,7 +325,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       getSourceText: (formid) => (formid === '00002CBA' ? pace(80) : pace(50)),
     });
 
-    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
   });
 
   it('scans sibling entries when the current line is too short to use', async () => {
@@ -349,7 +349,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
     });
 
     expect(result?.source).toBe('auto');
-    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
     expect(fallbackCalled).toBe(true);
   });
 
@@ -367,10 +367,10 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       getFallbackEntries: () => [withText],
       packageDir: tmpDir,
       pluginRelPath: 'Data/Mod.esp',
-      isEligible: (formidLower6) => formidLower6 !== '00002CBA',
+      isEligible: (lineKey) => lineKey !== '00002CBA',
     });
 
-    expect(result?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(result?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
   });
 
   it('drops a saved pick that lost its dialogue text', async () => {
@@ -388,7 +388,7 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       packageDir: tmpDir,
       pluginRelPath: 'Data/Mod.esp',
     });
-    expect(saved?.pick.formidLower6).toBe('00002CBA');
+    expect(saved?.pick.lineKey).toBe('00002CBA');
 
     const reresolved = await resolveSpeakerReferenceForSpeaker({
       db,
@@ -398,10 +398,10 @@ describe('resolveSpeakerReferenceForSpeaker', () => {
       getFallbackEntries: () => [withText],
       packageDir: tmpDir,
       pluginRelPath: 'Data/Mod.esp',
-      isEligible: (formidLower6) => formidLower6 !== '00002CBA',
+      isEligible: (lineKey) => lineKey !== '00002CBA',
     });
 
-    expect(reresolved?.pick).toEqual({ formidLower6: '00002CBB', variant: 1 });
+    expect(reresolved?.pick).toEqual({ lineKey: '00002CBB', variant: 1 });
   });
 
   it('scores an 8–12s speech clip as a usable reference', () => {

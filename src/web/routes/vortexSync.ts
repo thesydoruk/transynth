@@ -35,7 +35,7 @@ import {
 } from '../../vortex/stages';
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import type { VortexExportOrder, VortexPlanPayload } from '../../vortex/types';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 
 const requireCliToken = async (
   req: { headers: { authorization?: string } },
@@ -111,7 +111,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
       return reply.code(400).send({ error: 'groupKey, game and units are required' });
     }
     const channel = isVortexChannel(body.channel) ? body.channel : 'all';
-    const game = body.game as GameType;
+    const game = body.game as GameId;
     const group = await getOrCreateVortexGroup(db, {
       game,
       groupKey: body.groupKey,
@@ -160,7 +160,7 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
         contentHash,
         srcLang: run.src_lang,
         tgtLang: run.tgt_lang,
-        game: run.game as GameType,
+        game: run.game as GameId,
         nexusModId: typeof unit.nexusModId === 'number' ? unit.nexusModId : null,
         nexusModName: typeof unit.nexusModName === 'string' ? unit.nexusModName : null,
         sourceFolder: typeof unit.sourceFolder === 'string' ? unit.sourceFolder : null,

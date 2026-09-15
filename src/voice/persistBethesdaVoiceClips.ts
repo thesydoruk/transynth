@@ -32,18 +32,16 @@ const loadNam1ClipStrings = async (
   db: Tx,
   modId: number,
   srcLang: string,
-): Promise<
-  Array<{ formidLower6: string; formidHex: string; stringId: number; ordinal: number }>
-> => {
+): Promise<Array<{ lineKey: string; formidHex: string; stringId: number; ordinal: number }>> => {
   const { rows } = await db.query<{
-    formid_lower6: string;
+    line_key: string;
     info_formid_hex: string;
     string_id: number;
     voice_ordinal: number;
   }>(
     `WITH voiced AS (
        SELECT
-         UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
+         UPPER(SUBSTRING(r.formid_hex FROM 3)) AS line_key,
          r.formid_hex AS info_formid_hex,
          s.id AS string_id,
          ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY s.id)::int AS voice_ordinal
@@ -52,13 +50,13 @@ const loadNam1ClipStrings = async (
        WHERE r.mod_id = $1
          AND ${infoNam1RecordsSql('r', '$3')}
      )
-     SELECT formid_lower6, info_formid_hex, string_id, voice_ordinal
+     SELECT line_key, info_formid_hex, string_id, voice_ordinal
      FROM voiced
-     ORDER BY formid_lower6, voice_ordinal`,
+     ORDER BY line_key, voice_ordinal`,
     [modId, srcLang, [...INFO_NAM1_RECORD_PATHS]],
   );
   return rows.map((row) => ({
-    formidLower6: row.formid_lower6.toUpperCase(),
+    lineKey: row.line_key.toUpperCase(),
     formidHex: row.info_formid_hex,
     stringId: row.string_id,
     ordinal: row.voice_ordinal,
@@ -84,7 +82,7 @@ const collectClipStringRefs = async (
       row.ordinal,
       responses.get(row.formidHex.toUpperCase()),
     );
-    const key = voiceTranslationMapKey(row.formidLower6, variant);
+    const key = voiceTranslationMapKey(row.lineKey, variant);
     if (!stringsByKey.has(key)) {
       stringsByKey.set(key, { stringId: row.stringId, formidHex: row.formidHex });
     }
@@ -140,35 +138,33 @@ const replaceVoiceClips = async (db: Tx, modId: number, rows: VoiceClipRow[]): P
   const batchSize = Math.max(1, CONFIG.dbChunkSize);
   for (const part of chunk(rows, batchSize)) {
     await db.query(
+      // `formid_hex` and the DNAM alias source are Creation Engine's own
+      // business, so they ride in `game_data` rather than widening the table
+      // every game shares.
       `INSERT INTO voice_clips(
-         mod_id, speaker_key, formid_lower6, variant, formid_hex,
-         string_id, rel_path, shared_from_formid
+         mod_id, speaker_key, line_key, variant, string_id, rel_path, game_data
        )
-       SELECT $1, * FROM UNNEST(
-         $2::text[], $3::text[], $4::int[], $5::text[],
-         $6::int[], $7::text[], $8::text[]
-       )`,
+       SELECT $1, u.speaker_key, u.line_key, u.variant, u.string_id, u.rel_path,
+              jsonb_strip_nulls(jsonb_build_object(
+                'formid_hex', u.formid_hex,
+                'shared_from_formid', u.shared_from_formid))
+         FROM UNNEST(
+           $2::text[], $3::text[], $4::int[], $5::int[], $6::text[], $7::text[], $8::text[]
+         ) AS u(speaker_key, line_key, variant, string_id, rel_path,
+                formid_hex, shared_from_formid)`,
       [
         modId,
         part.map((row) => row.speakerKey),
-        part.map((row) => row.formidLower6),
+        part.map((row) => row.lineKey),
         part.map((row) => row.variant),
-        part.map((row) => row.formidHex),
         part.map((row) => row.stringId),
         part.map((row) => row.relPath),
+        part.map((row) => row.formidHex),
         part.map((row) => row.sharedFromFormid),
       ],
     );
   }
   return rows.length;
-};
-
-export const countBethesdaVoiceClips = async (db: Tx, modId: number): Promise<number> => {
-  const { rows } = await db.query<{ n: string }>(
-    `SELECT COUNT(*)::text AS n FROM voice_clips WHERE mod_id = $1`,
-    [modId],
-  );
-  return Number(rows[0]?.n ?? 0);
 };
 
 export type PersistBethesdaVoiceClipsResult = {
@@ -233,15 +229,4 @@ export const persistBethesdaVoiceClips = async (
   }
 
   return { clips, variants };
-};
-
-/** Build clip rows when this mod has none yet (existing imports / first page open). */
-export const ensureBethesdaVoiceClips = async (
-  db: Tx,
-  modId: number,
-  srcLang = CONFIG.defaultSrcLang,
-): Promise<PersistBethesdaVoiceClipsResult> => {
-  const existing = await countBethesdaVoiceClips(db, modId);
-  if (existing > 0) return { clips: existing, variants: 0 };
-  return persistBethesdaVoiceClips(db, modId, srcLang, { hashSourceFiles: false });
 };

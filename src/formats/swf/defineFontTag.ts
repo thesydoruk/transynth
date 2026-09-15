@@ -36,7 +36,7 @@ export type DefineFont = {
   layout: Buffer;
 };
 
-export const isWideCodes = (font: DefineFont): boolean => (font.flags & FLAG_WIDE_CODES) !== 0;
+const isWideCodes = (font: DefineFont): boolean => (font.flags & FLAG_WIDE_CODES) !== 0;
 
 const advanceAt = (font: DefineFont, index: number): number | null => {
   if ((font.flags & FLAG_HAS_LAYOUT) === 0) return null;

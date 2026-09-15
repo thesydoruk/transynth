@@ -1,13 +1,52 @@
-import type { LlmVerifyItem } from '../../../../../src/llm/verifyTranslate';
+import { isNarratorGenderTrusted } from '../../../../../src/dialog/narratorGender';
+import { gamePlugin } from '../../../../../src/games/registry';
+import { isBlockingVerifyResult, type LlmVerifyItem } from '../../../../../src/llm/verifyTranslate';
 import { resolveVerifyFixAction } from '../../../../../src/llm/verifySuggestionGuards';
 import { logVerify } from '../../../../../src/logging/loggers';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import type { LlmVerifyIssue } from '../queries';
 import type { RunModVerifyPipelineOpts, VerifyBatchPersistJob, VerifyStringRow } from './types';
 
+/**
+ * How many rewrites a row gets before the pipeline stops trying.
+ *
+ * Measured on the production corpus: rows that never settle average 17.8
+ * rewrites and 11 distinct wordings, cycling back through ones they already
+ * had. Past a handful of attempts another rewrite is not converging on
+ * anything, so the objection is recorded and the row is left for a person.
+ * Only advice is capped this way — a proven defect is always repaired.
+ */
+const MAX_ADVISORY_REWRITES = 5;
+
+const sameWording = (a: string, b: string): boolean =>
+  a.trim().replace(/\s+/g, ' ') === b.trim().replace(/\s+/g, ' ');
+
 type VerifyResults = Awaited<
   ReturnType<typeof import('../../../../../src/llm/verifyTranslate').verifyTranslationsWithLlm>
 >;
+
+/**
+ * Drop a gender finding that rests on a guess about who narrates a record.
+ *
+ * On a spoken line the gender comes from the game's own dialogue data and the
+ * finding stands. On a terminal entry or a book nobody recorded an author, so
+ * the gender was inferred — and a wrong inference does more than block a
+ * correct line: it invites the repair pass to rewrite it into a wrong one. The
+ * objection is kept as advice; it just stops counting as proof.
+ */
+const withoutGuessedGenderDefect = (
+  result: VerifyResults[number],
+  row: VerifyStringRow,
+  grup: string | null,
+  game?: string | null,
+): VerifyResults[number] => {
+  if (!result.defects?.includes('gender_leak')) return result;
+  if (gamePlugin(game).dialog?.isSpokenSignature(grup) ?? false) return result;
+  if (isNarratorGenderTrusted(row.narrator_gender_source, row.narrator_gender_override)) {
+    return result;
+  }
+  return { ...result, defects: result.defects.filter((defect) => defect !== 'gender_leak') };
+};
 
 export const buildBatchPersistJob = (
   llmChunk: VerifyStringRow[],
@@ -19,6 +58,8 @@ export const buildBatchPersistJob = (
 ): VerifyBatchPersistJob => {
   const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
   const okStringIds: number[] = [];
+  const advisories: VerifyBatchPersistJob['advisories'] = [];
+  const genderRepairs: VerifyBatchPersistJob['genderRepairs'] = [];
   const fixes: VerifyBatchPersistJob['fixes'] = [];
   const rewrites: VerifyBatchPersistJob['rewrites'] = [];
   const issues: LlmVerifyIssue[] = [];
@@ -53,7 +94,31 @@ export const buildBatchPersistJob = (
       opts.game,
     );
 
+    const graded = withoutGuessedGenderDefect(
+      result,
+      row,
+      parseRecordLocation(row.signature, row.path).grup,
+      opts.game,
+    );
+    const blocking = isBlockingVerifyResult(graded);
+
+    // Advice has a budget; a proven defect does not.
+    const exhausted = !blocking && row.rewrite_count >= MAX_ADVISORY_REWRITES;
+    const repeatsRejected =
+      fixAction.kind === 'apply' &&
+      row.prior_texts.some((prior) => sameWording(prior, fixAction.suggestion));
+    const effectiveFix: typeof fixAction =
+      exhausted || repeatsRejected ? { kind: 'flag_only' } : fixAction;
+
+    if (repeatsRejected) {
+      logVerify.debug('verify fix repeats a wording this row already had', {
+        modId: opts.modId,
+        stringId: result.id,
+      });
+    }
+
     const issue: LlmVerifyIssue = {
+      advisory: !blocking,
       stringId: result.id,
       source: row.source,
       translation: row.translation,
@@ -63,25 +128,36 @@ export const buildBatchPersistJob = (
       verdict: result.verdict,
       reason: result.reason,
       confidence: result.confidence,
-      suggestion: fixAction.kind === 'apply' ? fixAction.suggestion : result.suggestion,
-      fixRejected: fixAction.kind === 'reject_fix' ? fixAction.message : null,
-      rewriteFromSource: fixAction.kind === 'rewrite_from_source',
+      suggestion: effectiveFix.kind === 'apply' ? effectiveFix.suggestion : result.suggestion,
+      fixRejected: effectiveFix.kind === 'reject_fix' ? effectiveFix.message : null,
+      rewriteFromSource: effectiveFix.kind === 'rewrite_from_source',
     };
 
     issues.push(issue);
     collectIssue?.(issue);
 
-    if (!dryRun && fixAction.kind === 'apply') {
-      fixes.push({ stringId: result.id, text: fixAction.suggestion, row });
-    } else if (!dryRun && fixAction.kind === 'rewrite_from_source') {
+    if (!dryRun && effectiveFix.kind === 'apply') {
+      fixes.push({ stringId: result.id, text: effectiveFix.suggestion, row });
+    } else if (!dryRun && effectiveFix.kind === 'rewrite_from_source') {
       rewrites.push({ item: itemForValidation, row });
-    } else if (fixAction.kind === 'approve_as_ok') {
+    } else if (effectiveFix.kind === 'approve_as_ok') {
       okStringIds.push(result.id);
-    } else if (!dryRun && fixAction.kind === 'reject_fix') {
+    } else if (blocking && effectiveFix.kind === 'flag_only') {
+      // Proven wrong with no wording offered. Without this the row can be
+      // neither repaired nor approved, and simply stays blocked for ever.
+      if (!dryRun && graded.defects?.includes('gender_leak')) genderRepairs.push(row);
+    } else if (!blocking && effectiveFix.kind === 'flag_only') {
+      // Nothing was proven and nothing was rewritten, so the row stands as it
+      // is. Keep the objection against it and let it go to review: holding it
+      // back for ever on an opinion the next run may not repeat is what left
+      // these rows circling.
+      advisories.push({ stringId: result.id, message: result.reason });
+      okStringIds.push(result.id);
+    } else if (!dryRun && effectiveFix.kind === 'reject_fix') {
       logVerify.warn('verify fix skipped — suggestion failed validation', {
         modId: opts.modId,
         stringId: result.id,
-        reason: fixAction.message,
+        reason: effectiveFix.message,
       });
     }
 
@@ -96,5 +172,14 @@ export const buildBatchPersistJob = (
     });
   }
 
-  return { okStringIds, fixes, rewrites, issues, rowById, progressRows };
+  return {
+    okStringIds,
+    advisories,
+    genderRepairs,
+    fixes,
+    rewrites,
+    issues,
+    rowById,
+    progressRows,
+  };
 };

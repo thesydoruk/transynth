@@ -38,7 +38,7 @@ export const writeFuz = (lip: Buffer, xwm: Buffer): Buffer => {
   return Buffer.concat([header, lip, xwm]);
 };
 
-export const readFuzFile = (filePath: string): FuzParts => readFuz(fs.readFileSync(filePath));
+const readFuzFile = (filePath: string): FuzParts => readFuz(fs.readFileSync(filePath));
 
 export const extractXwmFromFuzFile = (filePath: string): Buffer => readFuzFile(filePath).xwm;
 

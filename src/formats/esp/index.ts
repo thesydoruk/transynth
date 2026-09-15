@@ -1,5 +1,5 @@
 export { EspReader } from './EspReader';
-export { isTimingSensitiveAction, sceneHasTimingConstraint } from './scene/actionTypes';
+export { sceneHasTimingConstraint } from './scene/actionTypes';
 export type {
   ActorRecord,
   BranchRecord,

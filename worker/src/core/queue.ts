@@ -9,18 +9,12 @@ import { logJobs } from '../../../src/logging/loggers';
 import type { JobData, JobKind } from '../types';
 import { publishJobControl } from './controlChannel';
 import { getSharedRedis } from './connection';
-import { fromBullJobId, toBullJobId } from './jobId';
-import { ALL_QUEUE_NAMES, JOBS_QUEUE_NAME, queueNameForKind } from './queueNames';
+import { toBullJobId } from './jobId';
+import { ALL_QUEUE_NAMES, queueNameForKind } from './queueNames';
 import { readJobSnapshot, writeJobSnapshot } from './snapshots';
 
 export { fromBullJobId, toBullJobId } from './jobId';
-export {
-  ALL_QUEUE_NAMES,
-  JOBS_QUEUE_NAME,
-  LLM_QUEUE_NAME,
-  VOICE_QUEUE_NAME,
-  queueNameForKind,
-} from './queueNames';
+export { JOBS_QUEUE_NAME, LLM_QUEUE_NAME, VOICE_QUEUE_NAME, queueNameForKind } from './queueNames';
 
 /** States that still occupy the queue — used by duplicate-start (409) guards. */
 const UNFINISHED_STATES: JobType[] = [
@@ -82,9 +76,6 @@ export const getQueueByName = (name: string): Queue<JobData> => {
   }
   return queue;
 };
-
-/** General queue (imports, TM apply, …). Prefer {@link getQueueByName} for new code. */
-export const getJobsQueue = (): Queue<JobData> => getQueueByName(JOBS_QUEUE_NAME);
 
 export const closeJobsQueue = async (): Promise<void> => {
   const open = [...queues.values()];
@@ -186,20 +177,4 @@ export const requestJobStop = async (jobId: number): Promise<boolean> => {
     /* waiting job may have become active between getState and remove */
   }
   return true;
-};
-
-/** Stop every unfinished job of these kinds for the mod (not just the first). */
-export const requestJobStopForMod = async (
-  kinds: readonly JobKind[],
-  modId: number,
-): Promise<number | null> => {
-  const jobs = await listUnfinishedJobsForMod(kinds, modId);
-  let firstStopped: number | null = null;
-  for (const job of jobs) {
-    if (job.id == null) continue;
-    const id = fromBullJobId(job.id);
-    if (id == null) continue;
-    if (await requestJobStop(id)) firstStopped ??= id;
-  }
-  return firstStopped;
 };

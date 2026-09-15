@@ -92,6 +92,14 @@
   --badge-lang-text: #98d1ff;
   --qa-error-bg: #3a1d1d;
   --qa-warning-bg: #433418;
+
+  /* Speaker identity colour in the dialogs transcript. The hue is derived per
+     speaker so the same character keeps its colour; only how light and how
+     saturated that hue is rendered belongs to the theme. */
+  --speaker-text-s: 55%;
+  --speaker-text-l: 68%;
+  --speaker-rail-s: 45%;
+  --speaker-rail-l: 45%;
   --qa-hint-bg: #4d2f0f;
   --qa-hint-text: #f1c97b;
   --ctx-bg: #13271a;
@@ -296,6 +304,16 @@
   --flag-del-text: #b44b4b;
   --flag-master-bg: #e1f0e0;
   --flag-master-text: #2d6b3b;
+
+  /* A 68% lightness reads as washed-out on a light ground, and the speaker
+     name is the main way a translator tracks who is talking. Measured across
+     every hue against --bg-card: 68% bottoms out at 1.44:1 on yellow, 28%
+     holds 5.23:1, which clears AA for the 12px bold this is rendered at.
+     Saturation stays at 55% so a speaker keeps the same colour in both themes. */
+  --speaker-text-s: 55%;
+  --speaker-text-l: 28%;
+  --speaker-rail-s: 50%;
+  --speaker-rail-l: 42%;
 }
 
 body {

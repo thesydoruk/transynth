@@ -29,8 +29,6 @@ export type {
   SkipDetectPipelineSummary,
 } from './types';
 
-export { SKIP_DETECT_LLM_BATCH_SIZE } from './constants';
-
 export const runModSkipDetectPipeline = async (
   db: Tx,
   opts: RunModSkipDetectPipelineOpts,

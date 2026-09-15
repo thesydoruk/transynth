@@ -12,7 +12,7 @@
  */
 
 export type VoiceTranslationRow = {
-  formidLower6: string;
+  lineKey: string;
   infoFormidHex: string;
   voiceVariant: number;
   stringId: number;
@@ -58,8 +58,8 @@ export const infoPromptRecordsSql = (recordAlias: string, pathParam: string): st
   infoSubrecordSql(recordAlias, pathParam, 'RNAM');
 
 /** Map key for voice file `00002CBA_4.fuz` → formid lower-6 + variant (`002CBA:4`). */
-export const voiceTranslationMapKey = (formidLower6: string, variant: number): string =>
-  `${formidLower6.toUpperCase()}:${variant}`;
+export const voiceTranslationMapKey = (lineKey: string, variant: number): string =>
+  `${lineKey.toUpperCase()}:${variant}`;
 
 /** Trim voice text; whitespace-only values are treated as missing. */
 export const normalizeVoiceText = (text: string | null | undefined): string | null => {

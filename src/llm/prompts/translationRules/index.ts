@@ -1,37 +1,36 @@
-import type { GameType } from '../../../types';
+import type { GameId } from '../../../types';
+import { gamePlugin } from '../../../games/registry';
 import { englishCommonRules, englishVerifyCommonRules } from './common/en';
-import { GAME_RULES } from './games';
-import { isDiscoGame, resolveGameType } from '../resolveGame';
 
-export { resolveGameType } from '../resolveGame';
-export type { GameRules } from './types';
+export type { GamePromptRules as GameRules } from '../../../games/contract';
 
-/** Full English translation rules block for translate/verify prompts. */
+/**
+ * Full English translation rules for a game.
+ *
+ * Games whose text has nothing in common with the shared bullet set (no
+ * records, no item rarities) opt out of them via `english.useCommonRules`.
+ */
 export const buildEnglishTranslationRules = (
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): string => {
-  const resolved = resolveGameType(game);
-  const gameRules = GAME_RULES[resolved].en(targetLang);
-  if (isDiscoGame(resolved)) return gameRules.join('\n');
+  const { prompts } = gamePlugin(game);
+  const gameRules = prompts.rules.en(targetLang);
+  if (!prompts.english.useCommonRules) return gameRules.join('\n');
   return [...englishCommonRules(targetLang), '', ...gameRules].join('\n');
 };
 
 /** English rules block for verify-only prompts. */
 export const buildEnglishVerifyTranslationRules = (
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): string => {
-  const resolved = resolveGameType(game);
-  const gameRules = GAME_RULES[resolved].en(targetLang);
-  if (isDiscoGame(resolved)) return gameRules.join('\n');
+  const { prompts } = gamePlugin(game);
+  const gameRules = prompts.rules.en(targetLang);
+  if (!prompts.english.useCommonRules) return gameRules.join('\n');
   return [...englishVerifyCommonRules(targetLang), '', ...gameRules].join('\n');
 };
 
 /** Game-specific verify audit bullets (English). */
-export const buildEnglishVerifyGameNotes = (game?: GameType | string | null): string => {
-  const resolved = resolveGameType(game);
-  const notes = GAME_RULES[resolved].verifyEn?.() ?? [];
-  if (notes.length === 0) return '';
-  return notes.join('\n');
-};
+export const buildEnglishVerifyGameNotes = (game?: GameId | string | null): string =>
+  (gamePlugin(game).prompts.rules.verifyEn?.() ?? []).join('\n');

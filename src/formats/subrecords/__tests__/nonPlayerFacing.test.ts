@@ -1,5 +1,32 @@
 import { describe, it, expect } from '@jest/globals';
-import { isTranslatableSubrecord, isIgnoredRecord } from '../knownStrings';
+import {
+  fallout3,
+  fallout4,
+  fallout76,
+  falloutNewVegas,
+} from '../../../games/creation-engine/titles/fallout';
+import {
+  oblivion,
+  skyrimLegendaryEdition,
+  skyrimSpecialEdition,
+} from '../../../games/creation-engine/titles/elderScrolls';
+
+/** The titles whose subrecord configs these expectations describe. */
+const TITLES = {
+  fo4: fallout4,
+  fo76: fallout76,
+  fo3: fallout3,
+  fnv: falloutNewVegas,
+  ob: oblivion,
+  sse: skyrimSpecialEdition,
+  sle: skyrimLegendaryEdition,
+} as const;
+
+const isIgnoredRecord = (sig: string, game: keyof typeof TITLES): boolean =>
+  TITLES[game].subrecords.isIgnoredRecord(sig);
+
+const isTranslatableSubrecord = (sig: string, sub: string, game: keyof typeof TITLES): boolean =>
+  TITLES[game].subrecords.isTranslatable(sig, sub);
 import { isNonPlayerFacingRecord } from '../nonPlayerFacing';
 
 describe('non-player-facing records', () => {

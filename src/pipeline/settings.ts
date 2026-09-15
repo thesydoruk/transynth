@@ -3,10 +3,10 @@
 export const DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC = 600;
 export const DEFAULT_HEALTH_CHECK_INTERVAL_SEC = 10;
 
-export const MIN_DEPENDENCY_WAIT_TIMEOUT_SEC = 30;
-export const MAX_DEPENDENCY_WAIT_TIMEOUT_SEC = 7_200;
-export const MIN_HEALTH_CHECK_INTERVAL_SEC = 1;
-export const MAX_HEALTH_CHECK_INTERVAL_SEC = 120;
+const MIN_DEPENDENCY_WAIT_TIMEOUT_SEC = 30;
+const MAX_DEPENDENCY_WAIT_TIMEOUT_SEC = 7_200;
+const MIN_HEALTH_CHECK_INTERVAL_SEC = 1;
+const MAX_HEALTH_CHECK_INTERVAL_SEC = 120;
 
 const clampInt = (value: number, min: number, max: number, fallback: number): number => {
   if (!Number.isFinite(value)) return fallback;

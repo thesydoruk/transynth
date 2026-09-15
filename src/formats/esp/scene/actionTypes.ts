@@ -25,7 +25,7 @@ export const SCENE_TOPIC_SUBRECORDS = new Set([
 ]);
 
 /** FNAM bit 16 — action loops for DMIN/DMAX seconds instead of one spoken line. */
-export const SCENE_ACTION_LOOPING_FLAG = 0x0001_0000;
+const SCENE_ACTION_LOOPING_FLAG = 0x0001_0000;
 
 const TIMING_KINDS = new Set<SceneActionKind>(['package', 'timer', 'start_scene', 'radio']);
 

@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
+import { isBa2GnrArchive, shouldCompressArchiveEntry } from '../../formats/ba2';
 import {
+  archiveKindForGame,
   defaultArchiveFileName,
-  isBa2GnrArchive,
-  shouldCompressArchiveEntry,
   usesBa2Archives,
-} from '../../formats/ba2';
+} from '../../games/creation-engine/archives';
 import type { ArchiveInputFile } from '../../formats/types';
 import { readModImportExtractManifest } from '../../modImport/archiveManifest';
 import { resolveModImportExtractRoot } from '../../modStorage/paths';
@@ -14,12 +14,15 @@ import { resolveModImportExtractRoot } from '../../modStorage/paths';
 const STRINGS_LOOSE_RE = /^strings\/.*\.(strings|dlstrings|ilstrings)$/i;
 
 /** Discover a companion GNRL BA2 next to the plugin (Main, Interface, or stem.ba2). */
-export const discoverCompanionBa2 = (modPath: string, game: GameType = 'fo4'): string | null => {
+export const discoverCompanionBa2 = (
+  modPath: string,
+  archiveKind: 'ba2' | 'bsa' = 'ba2',
+): string | null => {
   const dir = path.dirname(modPath);
   const stem = path.basename(modPath, path.extname(modPath)).toLowerCase();
   const baseStem = path.basename(modPath, path.extname(modPath));
   const suffixes: Array<{ fileSuffix: string }> =
-    game === 'fo4' || game === 'fo76'
+    archiveKind === 'ba2'
       ? [{ fileSuffix: ' - Interface' }, { fileSuffix: ' - Main' }, { fileSuffix: '' }]
       : [{ fileSuffix: ' - Main' }, { fileSuffix: '' }];
 
@@ -55,7 +58,7 @@ export const discoverCompanionBa2 = (modPath: string, game: GameType = 'fo4'): s
 export const resolveStringsArchiveFileName = (
   modPath: string,
   pluginStem: string,
-  game: GameType,
+  game: GameId,
 ): string => {
   const extractRoot = resolveModImportExtractRoot(modPath);
   if (extractRoot) {
@@ -72,7 +75,7 @@ export const resolveStringsArchiveFileName = (
   }
 
   if (usesBa2Archives(game)) {
-    const discovered = discoverCompanionBa2(modPath, game);
+    const discovered = discoverCompanionBa2(modPath, archiveKindForGame(game));
     if (discovered) return path.basename(discovered);
   }
 
@@ -83,7 +86,7 @@ export const resolveStringsArchiveFileName = (
 export const resolveScriptsArchiveFileName = (
   pluginStem: string,
   stringsArchiveFileName: string,
-  game: GameType,
+  game: GameId,
 ): string => {
   if (!usesBa2Archives(game)) return stringsArchiveFileName;
   if (stringsArchiveFileName.toLowerCase().includes(' - interface')) {
@@ -97,13 +100,12 @@ export const buildArchiveInputFile = (
   archiveFileName: string,
   entryPath: string,
   data: Buffer,
-  game: GameType,
 ): ArchiveInputFile => {
   const normalized = entryPath.replace(/\//g, '\\');
   return {
     name: normalized,
     data,
-    compressed: shouldCompressArchiveEntry(archiveType, archiveFileName, normalized, game),
+    compressed: shouldCompressArchiveEntry(archiveType, archiveFileName, normalized),
   };
 };
 

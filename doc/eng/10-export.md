@@ -9,7 +9,7 @@ Create the translation files that players install to play the mod in your langua
 - [Export Formats](#export-formats)
 - [STRINGS Files](#strings-files)
 - [Patched ESP](#patched-esp)
-- [BA2 Archive](#ba2-archive)
+- [BA2 Archive](#ba2-archive-fallout-4--fallout-76)
 - [Langpack ZIP](#langpack-zip)
 - [Full Localized Mod (ZIP)](#full-localized-mod-zip)
 - [Triggering an Export](#triggering-an-export)

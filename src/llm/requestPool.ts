@@ -132,9 +132,6 @@ export const syncLlmChatPool = (servers: readonly VllmServerEntry[], multi: bool
 /** Embedding requests (RAG indexing and retrieval). */
 export const embedPool = new RequestPool(new Semaphore(CONFIG.embedMaxParallel));
 
-/** Worker count for the RAG phase — aligned with the embed pool size. */
-export const llmRagConcurrency = (): number => CONFIG.embedMaxParallel;
-
 /**
  * Worker count for pipelined RAG→chat batches (translate, verify).
  * Aligned with the chat pool; +1 overlaps DB writes with the next chat slot.

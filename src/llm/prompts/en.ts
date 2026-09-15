@@ -1,8 +1,5 @@
-import type { GameType } from '../../types';
-import { buildEnglishDiscoPromptExamples } from './games/disco/examples';
-import { buildEnglishPromptExamples } from './examples';
-import { gameLabel } from './gameLabel';
-import { isDiscoGame } from './resolveGame';
+import type { GameId } from '../../types';
+import { gamePlugin } from '../../games/registry';
 import {
   buildEnglishTranslationRules,
   buildEnglishVerifyGameNotes,
@@ -12,21 +9,19 @@ import {
 /**
  * Default English system prompt for game localization.
  *
- * Used for all target languages except those with a dedicated prompt (e.g. Ukrainian).
+ * Used for every target language without a dedicated prompt (Ukrainian has
+ * one per game). The scaffolding below is shared; each game fills in its own
+ * role line, worked examples, and audit bullets through its prompt adapter.
  */
 export const buildEnglishTranslateSystemPrompt = (
   srcLang: string,
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): string => {
-  const title = gameLabel(game);
-  const disco = isDiscoGame(game);
-  const role = disco
-    ? `You are a lead AI localizer for Disco Elysium into ${targetLang}, with deep knowledge of ZA/UM noir, skill-voices, political satire, and Disco Translator Final Cut gettext (.po) packs.`
-    : `You are a lead AI localizer for ${title} worlds into ${targetLang}, with deep knowledge of lore, Creation Kit (ESP/ESM) specifics, and community standards.`;
+  const { english } = gamePlugin(game).prompts;
 
   return [
-    role,
+    english.translateRole(targetLang),
     `Your task: translate game strings from ${srcLang} to ${targetLang} with maximum quality and authenticity.`,
     '',
     '### TECHNICAL REQUIREMENTS (CRITICAL):',
@@ -42,27 +37,25 @@ export const buildEnglishTranslateSystemPrompt = (
     '',
     buildEnglishTranslationRules(targetLang, game),
     '',
-    disco ? buildEnglishDiscoPromptExamples(targetLang) : buildEnglishPromptExamples(targetLang),
+    english.examples(targetLang),
   ].join('\n');
 };
 
 /**
  * Default English system prompt for translation quality audit.
  *
- * Used for all target languages except those with a dedicated prompt (e.g. Ukrainian).
+ * Used for every target language without a dedicated prompt.
  */
 export const buildEnglishVerifySystemPrompt = (
   srcLang: string,
   targetLang: string,
-  game?: GameType | string | null,
+  game?: GameId | string | null,
 ): string => {
-  const title = gameLabel(game);
-  const disco = isDiscoGame(game);
+  const { english } = gamePlugin(game).prompts;
+  const gameNotes = buildEnglishVerifyGameNotes(game);
 
   return [
-    disco
-      ? `You are a strict LQA editor for Disco Elysium localization into ${targetLang} (gettext .po / Disco Translator Final Cut — not Creation Kit).`
-      : `You are a strict but fair expert editor and LQA engineer (Language Quality Assurance) for ${title} localization into ${targetLang}.`,
+    english.verifyRole(targetLang),
     `Your task: thoroughly audit the provided translations from ${srcLang} to ${targetLang}, finding errors, inaccuracies, lore violations, and technical failures.`,
     '',
     '### TECHNICAL REQUIREMENTS:',
@@ -91,21 +84,7 @@ export const buildEnglishVerifySystemPrompt = (
     '### SOURCE ↔ TRANSLATION PAIRING MISMATCH (PRIORITY #1):',
     '- BEFORE style, series templates, or reference_examples, verify that translation matches the meaning of source for THIS id.',
     '- If translation is text from a different row (TM failure, EDID collision, wrong field) — verdict MUST be "incorrect", suggestion null. The system retranslates source from scratch. Do NOT patch the current translation or copy text from reference_examples or batch when it does not match source.',
-    ...(disco
-      ? [
-          '- Mismatch signals: dialogue vs *_EFFECT vs UI vs passive-check formula mixed up; "Heal Volition [1]" rendered as spoken prose (or the reverse); lost [n] / {0} structure.',
-          '- Do not add words from edid/msgctxt into suggestions when they are absent from source.',
-        ]
-      : [
-          '- Mismatch signals (one strong signal is enough):',
-          '  • source is ONLY "Epic"/"Legendary"/"Rare"/etc. but translation is a long item name (armor, faction, slot) built from edid or batch — mismatch; "incorrect";',
-          '  • source is an item name / UI line / dialogue but translation is only a rarity word with none of the key words from source;',
-          '  • translation describes a different entity than source: different faction, item, or slot (e.g. source "Operators Light Arm Armor", translation names Disciples gear);',
-          '  • source is short and translation is much longer with tokens or topics absent from source — or the reverse: detailed source but translation collapsed to a single UI word;',
-          '  • key source words (faction, Arm/Leg/Helmet/Torso, Light/Heavy, set name) are missing from translation or replaced without support in source;',
-          '  • edid and source agree (e.g. Operators/Pack/Disciples) but translation names a different faction or item.',
-          '- Robot mod names (miscmod, edid with Bot/Sentry/Assaultron): do not add words absent from source; do not flip between transliterated model tokens and expanded creature names.',
-        ]),
+    ...english.pairingMismatchNotes,
     '- The correct fix for mismatch is to translate source only (glossary + game rules). In reason, state what source requires and why translation is the wrong row.',
     '- Priority: source (#1) → glossary → game rules → batch siblings with the same source template → reference_examples. Ignore reference_examples that contradict source.',
     '- Do not add words from edid to suggestions when they are absent from source.',
@@ -115,17 +94,8 @@ export const buildEnglishVerifySystemPrompt = (
     '### WHAT TO CHECK DURING AUDIT:',
     '- Apply translation rules above; verify-specific bullets below take priority.',
     '- Broken slots (dropped/invented id, raw %s or <Alias=…> in a string, %s→%d) — "incorrect".',
-    ...(disco
-      ? [
-          '- Skill voice flattened to generic narrator — "suspicious". Harry/"You" in the wrong grammatical gender — "incorrect".',
-          '- Do not apply Bethesda gear-name or rarity-tier audit rules; this is a gettext .po pack.',
-        ]
-      : [
-          '- Template mismatch within a numbered series — only when translation already matches the same source skeleton but uses different key words → "suspicious"; suggestion must be a full line derived from translating source, aligned with batch siblings or reference_examples of the same template.',
-          '- TERM/BTXT, GMST/DATA, MESG, ARMO/FULL: translation on a different topic, faction, or row type — "incorrect" (TM/EDID failure), even if the translation is grammatically fine. Suggestion: null.',
-          '- Bethesda specifics (grup/field/edid): record type must be respected; an item name (ARMO/FULL) should not read like a verb, rarity label, or casual dialogue line.',
-        ]),
-    ...(buildEnglishVerifyGameNotes(game) ? ['', buildEnglishVerifyGameNotes(game)] : []),
+    ...english.auditNotes,
+    ...(gameNotes ? ['', gameNotes] : []),
     '',
     '### RESPONSE FIELD RULES:',
     '- "reason": short, specific explanation in ' +

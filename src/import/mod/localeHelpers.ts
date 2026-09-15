@@ -37,18 +37,6 @@ export const isImportAllLocalesRequest = (srcLang: string): boolean => {
   return normalized === '' || normalized === 'en' || normalized === 'english';
 };
 
-/** Normalize a locale code via {@link MCM_LOCALE_ALIASES} for equality checks. */
-const normalizeLocaleAlias = (lang: string): string => {
-  const lower = lang.trim().toLowerCase();
-  if (!lower) return lower;
-
-  for (const [key, aliases] of MCM_LOCALE_ALIASES) {
-    if (key === lower || aliases.includes(lower)) return key;
-  }
-
-  return lower;
-};
-
 const resolveSingleImportLocale = (
   locales: Map<string, unknown>,
   srcLang: string,
@@ -63,9 +51,4 @@ const resolveModStringsLang = (requestedLang: string | null | undefined): string
   return trimmed && trimmed.length > 0 ? trimmed : MOD_IMPORT_DEFAULT_SOURCE_LOCALE;
 };
 
-export {
-  resolveAvailableLocale,
-  normalizeLocaleAlias,
-  resolveSingleImportLocale,
-  resolveModStringsLang,
-};
+export { resolveAvailableLocale, resolveSingleImportLocale, resolveModStringsLang };

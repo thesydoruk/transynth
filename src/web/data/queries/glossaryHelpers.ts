@@ -1,4 +1,5 @@
-import { glossaryGameKey } from '../../../llm/prompts/resolveGame';
+import { glossaryGameKey } from '../../../games/glossaryKey';
+import { allGamePlugins } from '../../../games/registry';
 
 export const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -20,8 +21,21 @@ export const glossaryTermMatchesSource = (source: string, term: string): boolean
   return termWordBoundaryRe(term).test(source);
 };
 
-/** SQL: map Skyrim LE mods onto the SSE glossary key. */
-export const GLOSSARY_MOD_GAME_SQL = `CASE WHEN m.game = 'sle' THEN 'sse' ELSE m.game END`;
+/**
+ * SQL expression mapping `m.game` to the game whose glossary rows it reads.
+ *
+ * Built from the registry, so an edition that shares another's term list
+ * (Skyrim LE reads Skyrim SE's) is folded in without editing this query. Ids
+ * come from registered plugins, never from user input, and are restricted to
+ * url-safe characters before they reach the SQL.
+ */
+export const glossaryModGameSql = (): string => {
+  const branches = allGamePlugins()
+    .filter((plugin) => plugin.storageKeys.glossary !== plugin.id)
+    .filter((plugin) => /^[a-z0-9_-]+$/.test(plugin.id + plugin.storageKeys.glossary))
+    .map((plugin) => `WHEN m.game = '${plugin.id}' THEN '${plugin.storageKeys.glossary}'`);
+  return branches.length > 0 ? `CASE ${branches.join(' ')} ELSE m.game END` : 'm.game';
+};
 
 export type GlossaryTermRow = {
   term: string;

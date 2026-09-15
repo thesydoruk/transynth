@@ -1,5 +1,6 @@
 // Simple normalization for hashing/alignment: lowercasing, stripping tags/placeholders/numbers and collapsing whitespace.
-import { restoreDiscoMarkupShape } from '../formats/po/discoLockitMarkup';
+import { gamePlugin } from '../games/registry';
+import type { GameId } from '../types';
 import { PLACEHOLDER_RE } from './placeholders';
 
 export const normalizeForHash = (s: string): string => {
@@ -22,8 +23,6 @@ export const normalizeAutoTranslationDashes = (text: string): string =>
 /** Fold Ukrainian/typographic guillemets to ASCII quotes. Never the reverse. */
 export const normalizeAutoTranslationQuotes = (text: string): string => text.replace(/[«»]/g, '"');
 
-const LETTER_RE = /\p{L}/u;
-
 /**
  * True when the source has at least one letter and every letter is uppercase
  * (digits/punctuation/whitespace ignored). Used to force matching ALL CAPS in
@@ -44,9 +43,20 @@ export const matchSourceCapitalization = (source: string, translation: string): 
   return translation.toLocaleUpperCase('uk-UA');
 };
 
-/** Dash + quote + capitalization post-process for LLM / auto translations. */
-export const normalizeAutoTranslation = (source: string, translation: string): string =>
-  matchSourceCapitalization(source, restoreDiscoMarkupShape(source, translation));
+/**
+ * Post-process an LLM or TM translation before it is stored.
+ *
+ * Which punctuation counts as markup is the game's business — Disco's `.po`
+ * catalogues spell an em dash `--` and mark italics with `*`, a Creation
+ * Engine plugin does neither — so the shape step goes through the plugin and
+ * only the ALL-CAPS rule, which depends on the source alone, stays here.
+ */
+export const normalizeAutoTranslation = (
+  source: string,
+  translation: string,
+  game: GameId | null | undefined,
+): string =>
+  matchSourceCapitalization(source, gamePlugin(game).text.restoreMarkupShape(source, translation));
 
 export const normalizeNoPunct = (s: string): string => {
   let t = normalizeForHash(s);

@@ -20,37 +20,6 @@ export interface ActivityEntry {
 }
 
 /**
- * Records an action in the activity log.
- *
- * @param db       - Database pool or client.
- * @param userId   - The user who performed the action (null if unknown).
- * @param action   - Short action verb: translate, import, export, etc.
- * @param entityType - The type of entity affected (mod, string, translation, glossary, user).
- * @param entityId - The primary key of the affected entity.
- * @param details  - Optional JSON object with additional context.
- */
-export const logActivity = async (
-  db: pg.Pool | pg.PoolClient,
-  userId: number | null,
-  action: string,
-  entityType?: string | null,
-  entityId?: number | null,
-  details?: Record<string, unknown> | null,
-): Promise<void> => {
-  await db.query(
-    `INSERT INTO activity_log (user_id, action, entity_type, entity_id, details)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [
-      userId,
-      action,
-      entityType ?? null,
-      entityId ?? null,
-      details ? JSON.stringify(details) : null,
-    ],
-  );
-};
-
-/**
  * Retrieves recent activity log entries with user info joined.
  *
  * @param db          - Database pool.

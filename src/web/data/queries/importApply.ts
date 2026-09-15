@@ -56,7 +56,7 @@ export const applyImportedModStringsAsTranslations = async (
 };
 
 /** DB write and progress report interval (rows) for apply-imported translation copy. */
-export const APPLY_IMPORTED_BATCH_SIZE = 500;
+const APPLY_IMPORTED_BATCH_SIZE = 500;
 
 /** Count target mod source strings eligible for imported translation apply. */
 export const countApplyImportedTargetStrings = async (
@@ -74,7 +74,7 @@ export const countApplyImportedTargetStrings = async (
   return Number.parseInt(rows[0]?.cnt ?? '0', 10);
 };
 
-export const applyImportedRowsAsTranslations = async (
+const applyImportedRowsAsTranslations = async (
   db: Tx,
   targetModId: number,
   importedRows: Array<{

@@ -5,7 +5,7 @@ export const IMAGE_CHAMPOLLION_PATH = '/usr/local/bin/Champollion';
 
 export const resolveChampollionPath = (): string => IMAGE_CHAMPOLLION_PATH;
 
-export const requireChampollionPath = (): string => {
+const requireChampollionPath = (): string => {
   const resolved = resolveChampollionPath();
   if (!fs.existsSync(resolved)) {
     throw new Error(`Champollion not found at ${resolved}. Rebuild the Docker image.`);

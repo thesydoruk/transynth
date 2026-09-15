@@ -10,7 +10,7 @@ import {
 } from './coercion';
 import type { ModRequirementConnection, ModRequirementNode, NexusRequestFn } from './internalTypes';
 
-export const mapRequirementNode = (input: unknown): ModRequirementNode => {
+const mapRequirementNode = (input: unknown): ModRequirementNode => {
   const value = asRecord(input);
 
   return {
@@ -30,7 +30,7 @@ export const mapModRequirementNodes = (nodes: ModRequirementNode[]): NexusModReq
   }));
 };
 
-export async function loadRequirementConnection(
+async function loadRequirementConnection(
   request: NexusRequestFn,
   query: string,
   domainName: string,

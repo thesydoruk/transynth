@@ -43,8 +43,7 @@ const HEADER_SIZE = BA2_HEADER_SIZE;
 const ENTRY_SIZE = BA2_ENTRY_SIZE; // valid for both v1 and v8 GNRL format
 
 /** Case-insensitive archive path key used by the name index and `extractByName`. */
-export const normalizeBa2ArchivePath = (name: string): string =>
-  name.toLowerCase().replace(/\//g, '\\');
+const normalizeBa2ArchivePath = (name: string): string => name.toLowerCase().replace(/\//g, '\\');
 
 const readAt = (fd: number, offset: number, length: number): Buffer => {
   const buf = Buffer.alloc(length);

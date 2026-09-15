@@ -1,12 +1,17 @@
+/**
+ * Turning an upload into a `mod_imports` job row.
+ *
+ * Hashing, de-duplicating, extracting, and inserting the row are the same for
+ * every game. Which file anchors the import, whether the mod is localized, and
+ * how many records to expect are answered by the game's import adapter.
+ */
 import path from 'node:path';
 import { extractArchive } from '../../tools/archiveUtils';
 import type { Tx } from '../../db';
+import { gamePlugin } from '../../games/registry';
 import { sha1HexFile } from '../../utils/hash';
-import { EspReader } from '../../formats/esp';
-import { resolveModDirectoryFromPath } from '../../formats/mcm';
-import type { GameType } from '../../types';
-import { discoverLocaleSources } from './localeSources';
-import { estimateLocalizedImportTotal } from './localeRows';
+import { DEFAULT_GAME_ID } from '../../games/registry';
+import type { GameId } from '../../types';
 import {
   collectPluginArchiveScopeDirs,
   extractGameArchivesForImport,
@@ -14,9 +19,6 @@ import {
 } from './extract';
 import { getModImportJobByFileHash } from './jobs';
 import { discoverArchiveCandidatesForPlugin } from './discovery';
-import { selectArchiveImportAnchor } from './importAnchor';
-import { countDiscoPoTranslationRecords } from './discoPoLocales';
-import { countMcmTranslationRecords } from './mcmLocales';
 import type { ModImportJob, ModScanContext } from './types';
 
 const patchModImportScanContext = async (
@@ -45,7 +47,7 @@ const insertModImportJob = async (
     srcLang: string;
     tgtLang: string;
     isLocalized: number;
-    game: GameType;
+    game: GameId;
     espPath: string;
     extractDir?: string | null;
     scan?: ModScanContext;
@@ -83,9 +85,8 @@ const insertModImportJob = async (
 /**
  * Register a plugin upload as a mod import job.
  *
- * This performs a lightweight scan to determine whether the plugin is localized
- * and to compute the number of translatable rows (used as initial job total).
- * It does not ingest strings — call {@link runModImport} to perform the import.
+ * Scans the plugin only far enough to size the job; call `runModImport` to
+ * actually ingest it.
  */
 export const registerPluginFile = async (
   db: Tx,
@@ -93,7 +94,7 @@ export const registerPluginFile = async (
   pluginPath: string,
   srcLang: string,
   tgtLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
   scan?: ModScanContext,
 ): Promise<ModImportJob> => {
   const fileHash = await sha1HexFile(pluginPath);
@@ -110,34 +111,15 @@ export const registerPluginFile = async (
     scopeDirs: collectPluginArchiveScopeDirs(pluginPath, discoverArchiveCandidatesForPlugin),
   });
 
-  const esp = new EspReader(pluginPath, game);
-  const espRows = esp.extractStrings();
-  const isLocalized = esp.info.isLocalized ? 1 : 0;
-
-  let totalRecords = espRows.length;
-  if (isLocalized) {
-    const localeSources = discoverLocaleSources(
-      pluginPath,
-      game,
-      discoverArchiveCandidatesForPlugin(pluginPath),
-    );
-    if (localeSources.length > 0) {
-      totalRecords = estimateLocalizedImportTotal(
-        espRows,
-        localeSources,
-        localeSources.map((s) => s.locale),
-        game,
-      );
-    }
-  }
+  const anchor = gamePlugin(game).import.describeAnchor(pluginPath, extractRoot);
 
   return insertModImportJob(db, {
     fileName,
     fileHash,
-    totalRecords,
+    totalRecords: anchor.totalRecords,
     srcLang,
     tgtLang,
-    isLocalized,
+    isLocalized: anchor.isLocalized ? 1 : 0,
     game,
     espPath: pluginPath,
     extractDir: manifest.extractRoot,
@@ -148,11 +130,8 @@ export const registerPluginFile = async (
 /**
  * Register an archive upload as a mod import job.
  *
- * The archive is extracted into `extractDir`, then a primary plugin (if any) or
- * an MCM translation file is used as the import anchor. Optional/fomod plugins
- * alone do not block MCM-only packages.
- *
- * This does not ingest strings — call {@link runModImport} to perform the import.
+ * The archive is extracted, then the game's adapter picks the anchor inside it.
+ * This does not ingest strings — call `runModImport` to perform the import.
  */
 export const registerArchiveFile = async (
   db: Tx,
@@ -161,7 +140,7 @@ export const registerArchiveFile = async (
   extractDir: string,
   srcLang: string,
   tgtLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
   scan?: ModScanContext,
   fileHashOverride?: string,
 ): Promise<ModImportJob> => {
@@ -181,57 +160,20 @@ export const registerArchiveFile = async (
     scopeDirs: [extractDir],
   });
 
-  const { anchorPath, isPlugin } = selectArchiveImportAnchor(extractDir, game);
-
-  if (!isPlugin) {
-    const modDir = resolveModDirectoryFromPath(anchorPath);
-    const isDiscoPo = anchorPath.toLowerCase().endsWith('.po') || game === 'disco';
-    const totalRecords = isDiscoPo
-      ? countDiscoPoTranslationRecords(extractDir)
-      : countMcmTranslationRecords(modDir, anchorPath);
-
-    return insertModImportJob(db, {
-      fileName,
-      fileHash,
-      totalRecords,
-      srcLang,
-      tgtLang,
-      isLocalized: 0,
-      game,
-      espPath: anchorPath,
-      extractDir: manifest.extractRoot,
-      scan,
-    });
+  const importAdapter = gamePlugin(game).import;
+  const anchorPath = importAdapter.selectAnchor(extractDir);
+  if (!anchorPath) {
+    throw new Error(`Archive holds no files this game can import (${game})`);
   }
-
-  const esp = new EspReader(anchorPath, game);
-  const espRows = esp.extractStrings();
-  const isLocalized = esp.info.isLocalized ? 1 : 0;
-
-  let totalRecords = espRows.length;
-  if (isLocalized) {
-    const localeSources = discoverLocaleSources(
-      anchorPath,
-      game,
-      discoverArchiveCandidatesForPlugin(anchorPath),
-    );
-    if (localeSources.length > 0) {
-      totalRecords = estimateLocalizedImportTotal(
-        espRows,
-        localeSources,
-        localeSources.map((s) => s.locale),
-        game,
-      );
-    }
-  }
+  const anchor = importAdapter.describeAnchor(anchorPath, extractDir);
 
   return insertModImportJob(db, {
     fileName,
     fileHash,
-    totalRecords,
+    totalRecords: anchor.totalRecords,
     srcLang,
     tgtLang,
-    isLocalized,
+    isLocalized: anchor.isLocalized ? 1 : 0,
     game,
     espPath: anchorPath,
     extractDir: manifest.extractRoot,

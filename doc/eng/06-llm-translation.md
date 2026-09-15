@@ -16,10 +16,11 @@ placeholder protection.
 - [Configuring the Provider](#configuring-the-provider)
 - [Running a Batch Translation](#running-a-batch-translation)
 - [Verify, skip-detect, and gender](#verify-skip-detect-and-gender)
+  - [What blocks approval](#what-blocks-approval)
+  - [The gender guard](#the-gender-guard)
 - [Placeholder Masking](#placeholder-masking)
 - [Disco lockit](#disco-lockit)
 - [Glossary Injection](#glossary-injection)
-- [Style Guide](#style-guide)
 - [Reviewing Auto-translated Strings](#reviewing-auto-translated-strings)
 - [Limitations and Best Practices](#limitations-and-best-practices)
 
@@ -216,9 +217,6 @@ toolbar and Mods list). For a subset of rows:
    strings; a larger “select all matching” run is split automatically.
 5. Finished rows get status **Auto**. The grid refreshes as batches complete.
 
-The web UI does not attach a style guide to batch translation.
-For style-guided translation, use the CLI (`npm run translate`).
-
 On the Dialogs tab, **Fill LLM** / **Fill TM** in the transcript header run the
 same endpoints for the visible group.
 
@@ -228,8 +226,8 @@ same endpoints for the visible group.
 
 These are separate jobs on the same circular control strip.
 
-- **Verify** opens a modal (`llm-verify`). Options: auto-approve strings the
-  model marks clean, auto-apply suggested fixes for suspicious lines, and
+- **Verify** opens a modal (`llm-verify`). Options: auto-approve strings with
+  no proven defect, auto-apply suggested fixes for suspicious lines, and
   whether to include already confirmed translations. Results stay in the modal
   until you close it. For Disco a **markup guard** runs after the model:
   lost quotes upgrade the verdict to `incorrect`; other lockit marks become
@@ -241,6 +239,74 @@ These are separate jobs on the same circular control strip.
   QA `gender_mismatch` and by Ukrainian prompts. Disco hides this control.
 
 Skipped rows stay out of later TM/LLM passes until you unskip them.
+
+### What blocks approval
+
+The auditor still judges tone and calque, but its opinion no longer holds a
+row out of review. Approval blocks only on a defect the system proved
+(`protected_token_mismatch`, `markup_broken`, `gender_leak`,
+`corrupted_translation`, `full_translation_mismatch`) or a verdict of
+`incorrect`. A bare `suspicious` is written to `qa_issues` as `llm_review` and
+shown in the editor; the row goes on. A fix that repeats a wording the row
+already had is refused; advice rewrites at most five times; a new wording has
+to beat the incumbent. A proven defect is never capped. `dryRun` on the
+endpoint reports verdicts and writes nothing.
+
+### The gender guard
+
+Ukrainian marks gender on past-tense verbs and predicative adjectives, so a
+line the player character speaks — or hears — has to be phrased to read
+correctly either way. The prompt says so; a model gets it right most of the
+time and quietly defaults to masculine the rest of the time. The detector
+reads more than a form beside «я» or «ти»: subjectless clauses and predicative
+adjectives too — Ukrainian drops subjects constantly. It runs at the two
+points where the wrong line can still be stopped:
+
+1. **After translation.** Lines that leaked a gender go back to the model on
+   their own (`gender-repair` in the LLM log). Three prompts, chosen per line:
+   - **agreement** — the participant's gender is known: change the ending,
+     touch nothing else;
+   - **speaker** — the player talking about themselves: impersonal, -но
+     passive, a noun instead of «я»;
+   - **addressee** — an NPC talking at the player: turn the action into an
+     event, a possessive or a thing. This is most of the leaks.
+     The branches run one after another, not in parallel. A repair is kept only
+     if the leak is actually gone — swapping masculine for feminine on a player
+     line, `зробив/ла`, or hiding behind «ви» all fail the same check and the
+     original draft stands.
+2. **During verify.** A gender leak is a proven defect: it blocks approval and
+   the row goes to the same repair pass. A verdict of `ok` on a leaking line is
+   downgraded, and a suggested fix that would introduce a leak is dropped. An
+   inferred narrator gender (heuristic or LLM) is no longer evidence — only a
+   person's own decision gates a narration row.
+
+Anything that survives both still surfaces as QA `gender_mismatch`. The guard
+runs only when the target language is `uk`.
+
+### Measuring a prompt change
+
+Prompt work is unfalsifiable without a number to move, so
+`npm run eval:quality` scores stored translations against the checks a machine
+can be sure about — a gender the metadata rules out, an English calque, a
+broken placeholder — bucketed by the case each line poses (`player_speaks`,
+`player_addressed`, `known_gender`, `unknown_gender`, `not_dialogue`):
+
+```bash
+npm run eval:quality -- --mod 122 --out before.json
+# change a prompt, re-translate
+npm run eval:quality -- --mod 122 --baseline before.json
+```
+
+The second run prints each bucket's defect rate with the change in percentage
+points. A falling rate is necessary, not sufficient: a line can be clean on
+every count here and still be flat.
+
+Speaker and addressee resolution happens during import, so a fix to how it is
+derived reaches only new imports. `npm run dialog:refresh -- --mod 122` re-runs
+that one step against the plugin on disk — far cheaper than re-importing, and
+it touches nothing else. Strings, translations, review status and manual
+gender overrides all survive; only `detected_gender` and the addressee columns
+are rewritten. Takes `--game <id>` or `--all` as well, and `--dry-run`.
 
 ---
 
@@ -346,53 +412,6 @@ See [Glossary](08-glossary.md) for how to manage your terms.
 
 ---
 
-## Style Guide
-
-You can provide a Markdown-formatted style guide that the LLM follows when
-translating — specifying tone, formality, dialect, and terminology preferences.
-
-The style guide is available in the **CLI translator only** (`translateMod.ts`).
-Pass it with the `--style` flag pointing to a Markdown file:
-
-```bash
-npm run translate -- --in export.csv --out translated.csv --style style.md
-```
-
-The style guide content is injected into the `style_guide` field of the LLM
-request (first 4 000 characters). The web UI batch translate does not
-support a style guide — it uses only the glossary injection.
-
-**Example style guide for Fallout 4 Ukrainian:**
-
-```markdown
-# Translation Style Guide — Fallout 4 Ukrainian
-
-## Tone
-
-- Post-apocalyptic setting: gritty, worn, pragmatic tone.
-- NPCs range from gruff soldiers to cheerful vault dwellers — match the character voice.
-- Avoid modern internet slang or anachronistic phrasing.
-
-## Formality
-
-- Use informal "ти" for companions and generic NPCs.
-- Use formal "ви" for faction leaders and formal quest givers.
-
-## Dialect
-
-- Standard modern Ukrainian orthography.
-- Avoid Russianisms (кальки з російської).
-- Prefer native Ukrainian words over loanwords where natural.
-
-## Terminology
-
-- Measurements: keep as-is (caps, rads, lbs) — do not convert.
-- Faction names: translate as defined in the glossary.
-- "Brotherhood of Steel" → "Братство Сталі" (always).
-```
-
----
-
 ## Reviewing Auto-translated Strings
 
 All LLM-translated strings receive the status **Auto**.
@@ -426,8 +445,6 @@ toolbar filter to work through results in the mod editor.
 - **Rate limits:** OpenAI may return HTTP 429 on large batches. The retry
   mechanism handles transient bursts but sustained rate limits will stall
   translation. Reduce `BATCH_SIZE` or add delays if needed.
-- **No streaming in CLI:** the CLI translator (`translateMod.ts`) sends strings
-  in configurable batches (default 30) and blocks until each batch completes.
 
 **Best practices:**
 
@@ -436,13 +453,11 @@ toolbar filter to work through results in the mod editor.
    results than the LLM for identical strings.
 2. **Build the glossary before translating.** Add key faction names, item names,
    and recurring terminology to the Glossary page before the first LLM run.
-3. **Use a style guide (CLI).** For large projects, write a style guide Markdown
-   file and pass it with `--style` to enforce consistent tone and dialect.
-4. **Filter by untranslated.** Always select only `untranslated` strings for
+3. **Filter by untranslated.** Always select only `untranslated` strings for
    LLM translation — do not overwrite existing TM, fuzzy, or human translations.
-5. **Run QA after each batch.** Check for placeholder errors, missing
+4. **Run QA after each batch.** Check for placeholder errors, missing
    translations, and length anomalies before exporting.
-6. **Review Auto strings before publishing.** Filter by `Status = auto` in the
+5. **Review Auto strings before publishing.** Filter by `Status = auto` in the
    editor and spot-check at minimum the high-visibility strings (quest names,
    NPC dialogue, UI labels).
 

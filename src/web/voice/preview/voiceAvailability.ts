@@ -26,6 +26,7 @@ import { loadImportedMod } from '../../../modImport/importedMod';
 import { resolveModVoiceContext } from './context';
 import { discoverVoiceEntries } from './voiceEntries';
 import { buildTranslationAudioSet, hasTranslationAudioForEntry } from './translationAudioIndex';
+import { gamePlugin } from '../../../games/registry';
 import type { VoiceAvailabilityResult } from './types';
 
 /**
@@ -48,7 +49,11 @@ export const listVoiceAvailabilityForMod = async (
   const mod = await loadImportedMod(db, modId);
   const translations = await loadVoiceTranslations(db, modId, mod.srcLang, resolved.targetLang);
   const sources = await loadVoiceSourcesDetailed(db, modId, mod.srcLang);
-  const translationAudio = buildTranslationAudioSet(resolved.ctx.localizeDir);
+  const voice = gamePlugin(mod.game).voice;
+  if (!voice) {
+    return { ok: false, reason: 'plugin_missing', message: 'This game has no voice support' };
+  }
+  const translationAudio = buildTranslationAudioSet(resolved.ctx.localizeDir, voice);
   const voiceRootRel = resolveVoiceRootRel(resolved.ctx.pluginRel);
   const source: string[] = [];
   const translation: string[] = [];
@@ -57,9 +62,9 @@ export const listVoiceAvailabilityForMod = async (
   const similarities: Record<string, number> = {};
 
   for (const entry of discoverVoiceEntries(resolved.ctx)) {
-    const key = voiceTranslationMapKey(entry.formidLower6, entry.variant);
+    const key = voiceTranslationMapKey(entry.lineKey, entry.variant);
     source.push(key);
-    const row = lookupVoiceTranslation(translations, entry.formidLower6, entry.variant);
+    const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
     const skipReason = resolveVoiceLineSkipReason(
       sources.get(key)?.source ?? row?.source,
       row?.translation ?? '',
@@ -73,7 +78,7 @@ export const listVoiceAvailabilityForMod = async (
     const score = lookupVoiceSimilarity(
       storedSimilarities,
       voiceSpeakerKey(entry, voiceRootRel),
-      entry.formidLower6,
+      entry.lineKey,
       entry.variant,
     );
     if (score != null) {
@@ -93,7 +98,7 @@ export const listVoiceAvailabilityForMod = async (
     const storedVersion = lookupVoiceSynthesisVersion(
       storedVersions,
       voiceSpeakerKey(entry, voiceRootRel),
-      entry.formidLower6,
+      entry.lineKey,
       entry.variant,
     );
     if (!isVoiceSynthesisCurrent(storedVersion, payloadVersion, true)) {

@@ -1,6 +1,7 @@
 import pg from 'pg';
 import { CONFIG } from '../config';
 import { log } from '../logger';
+import { allGameIds } from '../games/registry';
 import type { Tx } from './types';
 
 const { Pool } = pg;
@@ -36,8 +37,36 @@ export const closeDb = async (): Promise<void> => {
   }
 };
 
+/**
+ * First-run QA rule every game gets, until someone edits the rules page.
+ *
+ * Seeded here rather than in `schema.sql` because the set of games lives in the
+ * plugin registry: a title added there would otherwise also have to be added to
+ * the schema by hand, which is the whole thing the registry exists to prevent.
+ */
+const seedDefaultQaRules = async (db: Tx): Promise<void> => {
+  const games = [...allGameIds()];
+  if (games.length === 0) return;
+
+  await db.query(
+    `INSERT INTO qa_rules (game, rule_type, value, severity, description)
+     SELECT g, 'forbidden_chars', '©®™', 'warning',
+            'Trademark symbols often missing from game UI fonts'
+       FROM unnest($1::text[]) AS g
+      WHERE NOT EXISTS (SELECT 1 FROM qa_rules)`,
+    [games],
+  );
+};
+
+/**
+ * Apply the schema, then seed the defaults that depend on the plugin registry.
+ *
+ * Both `db:init` and `db:reset` come through here, so a new entry point cannot
+ * forget the seed.
+ */
 export const runSchema = async (db: Tx, schemaSql: string): Promise<void> => {
   await db.query(schemaSql);
+  await seedDefaultQaRules(db);
 };
 
 /**

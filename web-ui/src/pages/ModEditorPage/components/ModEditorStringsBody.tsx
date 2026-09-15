@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { RefObject } from 'react';
 import type { StringRow, RagSuggestion, QAIssue, TranslationHistoryEntry } from '../../../api';
-import { editorCapabilities, type EditorCapabilities } from '../editorCapabilities';
+import { defaultEditorCapabilities, type EditorCapabilities } from '../editorCapabilities';
 import { SignaturePanel, type SigCount } from './SignaturePanel';
 import { StringGrid, type SortCol, type SortDir, type ColumnFilters } from './StringGrid';
 import { DetailPanel, type BottomTab } from './DetailPanel';
@@ -114,11 +114,11 @@ export const ModEditorStringsBody = ({
   capabilities: capabilitiesProp,
 }: ModEditorStringsBodyProps) => {
   const { t } = useTranslation();
-  const capabilities = capabilitiesProp ?? editorCapabilities('fo4');
+  const capabilities = capabilitiesProp ?? defaultEditorCapabilities();
 
   return (
     <div className={styles.body}>
-      {capabilities.showSignaturePanel && (
+      {capabilities.columns.signature && (
         <SignaturePanel
           sigCounts={sigCounts}
           activeSignature={signature}

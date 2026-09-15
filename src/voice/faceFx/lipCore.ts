@@ -3,8 +3,10 @@ import path from 'node:path';
 import { convertToFaceFxWav } from '../ffmpegAudio';
 import { execVoiceToolAsync } from '../voiceExec';
 import { faceFxDialogueLanguage } from './text';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 
 export type FaceFxLipRequest = {
+  /** Creation Engine title id — decides which name FaceFXWrapper expects. */
   game: string;
   fonixPath: string;
   wavPath: string;
@@ -22,20 +24,6 @@ export type FaceFxLipResult = {
 
 /** Max wall time for one FaceFXWrapper run (Wine on Linux can hang indefinitely). */
 export const FACEFX_TIMEOUT_MS = 120_000;
-
-const faceFxGameType = (game: string): string => {
-  switch (game) {
-    case 'fo4':
-    case 'fo76':
-      return 'Fallout4';
-    case 'fo3':
-      return 'Fallout3';
-    case 'fnv':
-      return 'FalloutNV';
-    default:
-      return 'Skyrim';
-  }
-};
 
 export const summarizeFaceFxOutput = (stdout: string, stderr: string, lipPath: string): string => {
   const log = `${stdout}\n${stderr}`.trim();
@@ -58,6 +46,7 @@ export const summarizeFaceFxOutput = (stdout: string, stderr: string, lipPath: s
 /** Resample the dialogue WAV and run FaceFXWrapper to produce the `.lip` file. */
 export const runFaceFxLip = async (request: FaceFxLipRequest): Promise<FaceFxLipResult> => {
   const { game, fonixPath, wavPath, resampledPath, lipPath, faceFxExe, dialogueText } = request;
+  const faceFxTitle = creationEngineTitle(game).voice.faceFxTitle;
 
   if (fs.existsSync(resampledPath)) fs.unlinkSync(resampledPath);
   if (fs.existsSync(lipPath)) fs.unlinkSync(lipPath);
@@ -65,8 +54,8 @@ export const runFaceFxLip = async (request: FaceFxLipRequest): Promise<FaceFxLip
   const language = faceFxDialogueLanguage(dialogueText);
   const faceFxArgs =
     process.platform === 'win32'
-      ? [faceFxGameType(game), language, fonixPath, wavPath, resampledPath, lipPath, dialogueText]
-      : [faceFxGameType(game), language, fonixPath, resampledPath, lipPath, dialogueText];
+      ? [faceFxTitle, language, fonixPath, wavPath, resampledPath, lipPath, dialogueText]
+      : [faceFxTitle, language, fonixPath, resampledPath, lipPath, dialogueText];
 
   let stdout = '';
   let stderr = '';

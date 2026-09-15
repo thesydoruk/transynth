@@ -1,18 +1,13 @@
 export {
   ensureModStorageDir,
-  isInsideModStorage,
   modImportExtractDir,
   modImportLocalizeDir,
   modImportLocalizeRoot,
   modImportPackOutputDir,
-  modImportStorageKey,
   modNexusDownloadTempPath,
   modStorageRoot,
   modUploadTempPath,
   modUploadedFilePath,
   resolveModImportExtractRoot,
-  resolveModImportLocalizeDir,
-  resolveModImportLocalizeRoot,
   resolveModStoredPath,
-  sanitizeModDirName,
 } from './paths';

@@ -7,7 +7,7 @@ import { sha1Hex, sha1HexFile } from '../../../utils/hash';
 import { ensureDir } from '../../../utils/file';
 import { convertToFo4Wav } from '../../../voice/ffmpegAudio';
 
-export const cacheKeyForSource = async (sourcePath: string): Promise<string> => {
+const cacheKeyForSource = async (sourcePath: string): Promise<string> => {
   const stat = fs.statSync(sourcePath);
   return sha1Hex(`${sourcePath}|${stat.mtimeMs}|${stat.size}`);
 };

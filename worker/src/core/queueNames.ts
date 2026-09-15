@@ -19,7 +19,7 @@ export const ALL_QUEUE_NAMES = [VOICE_QUEUE_NAME, LLM_QUEUE_NAME, JOBS_QUEUE_NAM
 
 export type JobQueueName = (typeof ALL_QUEUE_NAMES)[number];
 
-export const LLM_JOB_KINDS = [
+const LLM_JOB_KINDS = [
   'llm-translate',
   'llm-verify',
   'skip-detect',

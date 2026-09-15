@@ -24,9 +24,7 @@ export const compactLlmItemFields = (item: CompactableItemFields): Record<string
 });
 
 /** RAG hints for the model: text + location only, no match_method / similarity. */
-export const compactLlmReferenceExample = (
-  example: LlmReferenceExample,
-): Record<string, unknown> => {
+const compactLlmReferenceExample = (example: LlmReferenceExample): Record<string, unknown> => {
   const structured = compactLlmPartsFields(example.parts, example.slots);
   const textFields = structured.parts
     ? {

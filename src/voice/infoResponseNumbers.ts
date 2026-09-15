@@ -150,7 +150,7 @@ const walkPlugin = (buf: Buffer, start: number, end: number, out: InfoVoiceSlots
 const emptySlots = (): InfoVoiceSlots => ({ responses: new Map(), sharedFrom: new Map() });
 
 /** Parse (or return cached) voiced INFO slots — response numbers and DNAM aliases. */
-export const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
+const loadInfoVoiceSlots = (pluginAbsPath: string): InfoVoiceSlots => {
   let abs: string;
   try {
     abs = fs.realpathSync(path.resolve(pluginAbsPath));

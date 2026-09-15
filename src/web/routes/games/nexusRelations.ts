@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 import { NexusModsError, NexusModsNotFoundError } from '../../../nexus/index';
-import { SUPPORTED_GAMES } from './catalogue';
+import { findSupportedGame } from './catalogue';
 import {
   fetchNexusModInfo,
   getNexus,
@@ -31,7 +31,7 @@ export const registerNexusRelationsRoutes = async (app: FastifyInstance) => {
 
     if (!CONFIG.nexusApiKey) return sendNexusKeyMissing(reply);
 
-    const game = SUPPORTED_GAMES.find((g) => g.id === gameId);
+    const game = findSupportedGame(gameId);
     if (!game) return reply.code(404).send({ error: 'Unknown game' });
 
     const modId = parseInt(rawModId, 10);
@@ -42,7 +42,7 @@ export const registerNexusRelationsRoutes = async (app: FastifyInstance) => {
     const count = Math.min(200, Math.max(1, parseInt(rawCount ?? '100', 10) || 100));
 
     try {
-      const result = await getNexus().getModRelations(game.domainName, game.nexusId, modId, {
+      const result = await getNexus().getModRelations(game.domainName!, game.nexusId!, modId, {
         count,
       });
 
@@ -58,7 +58,7 @@ export const registerNexusRelationsRoutes = async (app: FastifyInstance) => {
       if (err instanceof NexusModsNotFoundError || err instanceof NexusModsError) {
         log.warn(`Nexus relations fallback for ${gameId}/${modId}: ${err.message}`);
         try {
-          const rest = await fetchNexusModInfo(game.domainName, modId);
+          const rest = await fetchNexusModInfo(game.domainName!, modId);
           const sourceMod = mapRestModToView(rest, game);
           return reply.send({
             sourceMod,

@@ -5,7 +5,7 @@ export type VoiceFileEntry = {
   relPath: string;
   absolutePath: string;
   fileName: string;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   ext: 'fuz' | 'wav' | 'xwm';
 };
@@ -46,7 +46,7 @@ export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): V
         relPath: normalizeRelPath(path.join(voiceRelPrefix, relPath)),
         absolutePath: fullPath,
         fileName: entry.name,
-        formidLower6: match[1]!.substring(2).toUpperCase(),
+        lineKey: match[1]!.substring(2).toUpperCase(),
         variant: Number.parseInt(match[2]!, 10),
         ext: match[3]!.toLowerCase() as VoiceFileEntry['ext'],
       });
@@ -78,7 +78,7 @@ export const dedupeVoiceFiles = (entries: VoiceFileEntry[]): VoiceFileEntry[] =>
 
   for (const entry of entries) {
     const dir = entry.relPath.slice(0, entry.relPath.lastIndexOf('/') + 1).toLowerCase();
-    const key = `${dir}${entry.formidLower6}_${entry.variant}`;
+    const key = `${dir}${entry.lineKey}_${entry.variant}`;
     const existing = byKey.get(key);
     if (!existing || rank(entry.ext) > rank(existing.ext)) {
       byKey.set(key, entry);

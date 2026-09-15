@@ -24,7 +24,7 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from './voiceTtsPayloadVersion';
 import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 
 export type { SpeakerRefCacheEntry } from './pickVoiceTtsReference';
 
@@ -37,7 +37,7 @@ export type ProcessVoiceLocalizeEntryOptions = {
   localizeDir: string;
   prefix: string;
   tempRoot: string;
-  game: GameType;
+  game: GameId;
   ttsBaseUrl: string;
   referenceMode: TtsReferenceMode;
   synthesis: TtsSynthesisParams;
@@ -90,19 +90,19 @@ export const processVoiceLocalizeEntry = async (
 
   try {
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
-    const versionKey = voiceSynthesisStateKey(speakerKey, entry.formidLower6, entry.variant);
+    const versionKey = voiceSynthesisStateKey(speakerKey, entry.lineKey, entry.variant);
     const payloadVersion = voiceTtsPayloadVersionFromPrepared(prepared, tgtLang);
     const storedVersion = lookupVoiceSynthesisVersion(
       storedVersions,
       speakerKey,
-      entry.formidLower6,
+      entry.lineKey,
       entry.variant,
     );
     if (!force && isVoiceSynthesisCurrent(storedVersion, payloadVersion, fs.existsSync(fuzDest))) {
       return { kind: 'skipped', relPath: prefix + fuzRel };
     }
 
-    workDir = path.join(tempRoot, `${speakerKey}_${entry.formidLower6}_${entry.variant}`);
+    workDir = path.join(tempRoot, `${speakerKey}_${entry.lineKey}_${entry.variant}`);
     ensureDir(workDir);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
     const picked = await pickVoiceTtsReference({
@@ -148,7 +148,7 @@ export const processVoiceLocalizeEntry = async (
     if (!force && writeIfChanged(fuzDest, fuzData, baselinePath)) {
       await upsertVoiceSynthesisState(db, {
         modId,
-        formidLower6: entry.formidLower6,
+        lineKey: entry.lineKey,
         variant: entry.variant,
         speakerKey,
         targetLang: tgtLang,
@@ -164,7 +164,7 @@ export const processVoiceLocalizeEntry = async (
       fs.writeFileSync(fuzDest, fuzData);
       await upsertVoiceSynthesisState(db, {
         modId,
-        formidLower6: entry.formidLower6,
+        lineKey: entry.lineKey,
         variant: entry.variant,
         speakerKey,
         targetLang: tgtLang,

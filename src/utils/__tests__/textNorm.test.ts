@@ -71,35 +71,45 @@ describe('matchSourceCapitalization', () => {
 
 describe('normalizeAutoTranslation', () => {
   it('applies dashes then ALL CAPS when source requires it', () => {
-    expect(normalizeAutoTranslation('LOOKOUT DUTY', 'Чергова — варта')).toBe('ЧЕРГОВА - ВАРТА');
+    expect(normalizeAutoTranslation('LOOKOUT DUTY', 'Чергова — варта', 'fo4')).toBe(
+      'ЧЕРГОВА - ВАРТА',
+    );
   });
 
   it('only normalizes dashes when source is not ALL CAPS', () => {
-    expect(normalizeAutoTranslation('Lookout duty', 'Чергова — варта')).toBe('Чергова - варта');
+    expect(normalizeAutoTranslation('Lookout duty', 'Чергова — варта', 'fo4')).toBe(
+      'Чергова - варта',
+    );
   });
 
   it('normalizes guillemets together with dashes', () => {
-    expect(normalizeAutoTranslation('He said, "Go."', 'Він сказав: «Іди».')).toBe(
+    expect(normalizeAutoTranslation('He said, "Go."', 'Він сказав: «Іди».', 'fo4')).toBe(
       'Він сказав: "Іди".',
     );
   });
 
-  it('restores nested singles after folding inner guillemets to doubles', () => {
+  it('leaves Disco lockit markup to the Disco plugin', () => {
+    // Same call, two games, two right answers: `--` is an em dash in a Disco
+    // .po catalogue and three characters of nothing in a Bethesda string.
+    const source = 'All I ever wanted was to live with dignity -- to die with honour.';
+    const draft = 'Усе, чого я хотів, — це жити з гідністю — і померти з честю.';
+
+    expect(normalizeAutoTranslation(source, draft, 'disco')).toBe(
+      'Усе, чого я хотів, -- це жити з гідністю — і померти з честю.',
+    );
+    expect(normalizeAutoTranslation(source, draft, 'fo4')).toBe(
+      'Усе, чого я хотів, - це жити з гідністю - і померти з честю.',
+    );
+  });
+
+  it('restores nested singles for Disco after folding inner guillemets', () => {
     expect(
       normalizeAutoTranslation(
         `"If by 'fun stuff,' you mean alcohol."`,
         `"Якщо під «розвагами» ви маєте на увазі алкоголь."`,
+        'disco',
       ),
     ).toBe(`"Якщо під 'розвагами' ви маєте на увазі алкоголь."`);
-  });
-
-  it('keeps Disco lockit -- instead of folding the em dash to a hyphen', () => {
-    expect(
-      normalizeAutoTranslation(
-        'All I ever wanted was to live with dignity -- to die with honour.',
-        'Усе, чого я хотів, — це жити з гідністю — і померти з честю.',
-      ),
-    ).toBe('Усе, чого я хотів, -- це жити з гідністю — і померти з честю.');
   });
 });
 

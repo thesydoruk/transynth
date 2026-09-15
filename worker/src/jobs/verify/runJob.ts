@@ -30,6 +30,8 @@ export const runLlmVerifyJob = async (
     fixSuspicious?: boolean;
     /** Include reviewed/human translations in the scan. */
     includeConfirmed?: boolean;
+    /** Report verdicts without writing fixes or approvals — a preview run. */
+    dryRun?: boolean;
     signal: AbortSignal;
     isCancelled: () => boolean;
   },
@@ -39,6 +41,7 @@ export const runLlmVerifyJob = async (
   const autoApproveVerified = opts.autoApproveVerified === true;
   const fixSuspicious = opts.fixSuspicious === true;
   const includeConfirmed = opts.includeConfirmed === true;
+  const dryRun = opts.dryRun === true;
 
   let done = 0;
   let total = 0;
@@ -93,6 +96,7 @@ export const runLlmVerifyJob = async (
       autoApproveVerified,
       fixSuspicious,
       includeConfirmed,
+      dryRun,
       llmBatchSize: CONFIG.batchSize,
       dbChunkSize: CONFIG.dbChunkSize,
     });
@@ -107,6 +111,7 @@ export const runLlmVerifyJob = async (
         game: opts.game,
         autoApproveVerified,
         fixSuspicious,
+        dryRun,
         force: includeConfirmed,
         knownTotal: total,
         shouldCancel: opts.isCancelled,

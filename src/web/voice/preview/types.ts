@@ -5,7 +5,7 @@ import type { VoiceTtsSkipReason } from '../../../voice/prepareVoiceTtsText';
 export type { VoiceTtsSkipReason };
 
 export type VoiceLinePreview = {
-  formidLower6: string;
+  lineKey: string;
   infoFormidHex: string | null;
   variant: number;
   fileName: string;

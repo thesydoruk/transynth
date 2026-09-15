@@ -1,7 +1,7 @@
 import type { PexSourceLocateResult } from './pexSourceLocate';
 
 /** Prefix for JSON PEX context stored in `strings.context` at import time. */
-export const PEX_STORED_CONTEXT_PREFIX = 'pex-json:';
+const PEX_STORED_CONTEXT_PREFIX = 'pex-json:';
 
 export const serializePexStoredContext = (snippet: PexSourceLocateResult): string =>
   PEX_STORED_CONTEXT_PREFIX +

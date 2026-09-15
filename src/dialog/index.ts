@@ -7,7 +7,6 @@ export type {
 } from './gender';
 export {
   PLAYER_SPEAKER_KEY,
-  effectiveSpeakerGender,
   effectiveSpeakerGenderSql,
   isDefiniteGender,
   npcSpeakerKey,
@@ -15,6 +14,16 @@ export {
   resolveDialogLineParticipants,
   voiceFolderSpeakerKey,
 } from './gender';
+
+export type { PronounEvidence } from './pronounEvidence';
+export { collectPronounEvidence } from './pronounEvidence';
+
+export type { UkCalqueMatch, UkCalqueRule } from './ukrainianCalques';
+export {
+  describeUkrainianCalques,
+  findUkrainianCalques,
+  promptCalqueRules,
+} from './ukrainianCalques';
 
 export {
   genderFromVoiceTypeHeuristic,
@@ -25,16 +34,6 @@ export {
 } from './voiceTypeGender';
 
 export type { UkGenderConflict, UkGenderMarker } from './ukrainianGender';
-export { detectUkrainianGenderMarkers, findUkrainianGenderConflicts } from './ukrainianGender';
+export { findUkrainianGenderConflicts } from './ukrainianGender';
 
 export type { NarratorGender, NarratorGenderSource } from './narratorGender';
-export {
-  GENDER_DETECT_SOURCE_EXCERPT_MAX,
-  NARRATIVE_PATH_SUFFIXES,
-  NARRATIVE_RECORD_SIGNATURES,
-  effectiveNarratorGenderSql,
-  isNarrativeRecordPath,
-  narratorToSpeakerGender,
-  parseNarratorGender,
-} from './narratorGender';
-export { inferNarratorGenderHeuristic } from './narratorGenderHeuristics';

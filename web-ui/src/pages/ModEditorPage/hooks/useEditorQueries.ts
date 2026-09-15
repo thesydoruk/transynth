@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { api, type StringRow, type StringsResult, type StringFilterParams } from '../../../api';
-import { SUPPORTED_CONTENT_LANGUAGES } from '../../../langDefaults';
+import { DEFAULT_GAME_ID, SUPPORTED_CONTENT_LANGUAGES } from '../../../langDefaults';
 import { statusParamFromSelection, type StatusFilterValue } from '../statusFilter';
 import type { SortCol, SortDir, ColumnFilters } from '../components/StringGrid';
 import type { BottomTab } from '../components/DetailPanel';
@@ -109,7 +109,7 @@ export function useEditorQueries(params: UseEditorQueriesParams) {
   });
 
   /** Game identifier used to look up QA rules. Falls back to `"fo4"`. */
-  const qaRuleGame = (mod?.game ?? gameId ?? 'fo4').toLowerCase();
+  const qaRuleGame = (mod?.game ?? gameId ?? DEFAULT_GAME_ID).toLowerCase();
 
   /** Max-length QA rules for the resolved game. */
   const { data: maxLengthRules } = useQuery({

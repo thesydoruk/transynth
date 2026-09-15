@@ -1,5 +1,5 @@
 import type { Tx } from '../../../db/types';
-import { glossaryGameKey } from '../../../llm/prompts/resolveGame';
+import { glossaryGameKey } from '../../../games/glossaryKey';
 import type { GlossaryQaTerm, GlossaryTermRow } from './glossaryHelpers';
 
 /** Canonical terms for one game + language pair. Never the full cross-game table. */

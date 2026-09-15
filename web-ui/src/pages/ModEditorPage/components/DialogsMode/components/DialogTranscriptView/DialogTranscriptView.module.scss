@@ -239,7 +239,7 @@
   padding: 6px 8px 8px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-left: 3px solid hsl(var(--speaker-hue, 40) 45% 45%);
+  border-left: 3px solid hsl(var(--speaker-hue, 40) var(--speaker-rail-s) var(--speaker-rail-l));
   border-radius: 5px;
 }
 
@@ -270,7 +270,7 @@
 .speaker {
   font-size: 12px;
   font-weight: 700;
-  color: hsl(var(--speaker-hue, 40) 55% 68%);
+  color: hsl(var(--speaker-hue, 40) var(--speaker-text-s) var(--speaker-text-l));
 }
 
 .branchTag,
@@ -318,10 +318,29 @@
 
 .genderBadgeEditable {
   cursor: pointer;
+  padding-right: 2px;
+  border: 1px dashed var(--border);
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     background: var(--bg-card);
+    border-style: solid;
+    border-color: currentcolor;
   }
+
+  /* An unresolved gender is the one a translator should correct, so it asks. */
+  &[data-gender='unknown'] {
+    border-color: var(--warning);
+    color: var(--warning);
+  }
+}
+
+/** Says the badge opens a menu; the `<select>` itself is invisible on top. */
+.genderCaret {
+  margin-left: 1px;
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.7;
 }
 
 .genderSelect {

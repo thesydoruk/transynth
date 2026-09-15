@@ -1,4 +1,5 @@
 import type { QARule } from '../../api';
+import { DEFAULT_GAME_ID } from '../../langDefaults';
 
 export type QARuleFormData = {
   game: string;
@@ -12,7 +13,7 @@ export type QARuleFormData = {
 };
 
 export const EMPTY_QA_RULE_FORM: QARuleFormData = {
-  game: 'fo4',
+  game: DEFAULT_GAME_ID,
   rule_type: '',
   signature: '',
   path: '',

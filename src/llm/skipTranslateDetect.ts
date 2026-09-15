@@ -6,7 +6,7 @@ import { maskLlmTextFields } from './llmTextMask';
 import { parseLlmJson } from './jsonParse';
 import { buildSkipDetectResponseFormat } from './responseSchemas';
 import type { ChatCompletionMeta } from './provider';
-import type { GameType } from '../types';
+import type { GameId } from '../types';
 import { parseVerifyItemId } from './verifyTranslate';
 
 export type LlmSkipDetectVerdict = 'skip' | 'keep';
@@ -48,7 +48,7 @@ export interface LlmSkipDetectOptions {
   items: LlmSkipDetectItem[];
   model: string;
   srcLang: string;
-  game?: GameType | string | null;
+  game?: GameId | string | null;
   modName?: string | null;
   /** Aborts the in-flight LLM request when the owning job is stopped. */
   signal?: AbortSignal;
@@ -56,10 +56,7 @@ export interface LlmSkipDetectOptions {
 
 const VALID_VERDICTS = new Set<LlmSkipDetectVerdict>(['skip', 'keep']);
 
-export const buildSkipDetectSystemPrompt = (
-  srcLang: string,
-  game?: GameType | string | null,
-): string => {
+const buildSkipDetectSystemPrompt = (srcLang: string, game?: GameId | string | null): string => {
   const title = game ? `${game} / Bethesda` : 'Bethesda';
 
   return [

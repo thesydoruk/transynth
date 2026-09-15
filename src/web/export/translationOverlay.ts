@@ -1,7 +1,9 @@
+import { DEFAULT_GAME_ID } from '../../games/registry';
 import type { StringsType } from '../../formats/types/StringsType';
-import type { GameType } from '../../types';
+import type { GameId } from '../../types';
 import type { Tx } from '../../db';
-import { resolveStringsTableType, subrecordFieldFromPath } from '../../formats/strings/recorddefs';
+import { subrecordFieldFromPath } from '../../formats/strings/recorddefs';
+import { creationEngineTitle } from '../../games/creation-engine/registry';
 
 const emptyOverlays = (): Map<StringsType, Map<number, string>> =>
   new Map([
@@ -21,7 +23,7 @@ export const getTranslationOverlaysByType = async (
   modId: number,
   srcLang: string,
   targetLang: string,
-  game: GameType = 'fo4',
+  game: GameId = DEFAULT_GAME_ID,
 ): Promise<Map<StringsType, Map<number, string>>> => {
   const { rows } = await db.query(
     `SELECT DISTINCT ON (s.lstring_id, r.signature, r.path)
@@ -47,7 +49,7 @@ export const getTranslationOverlaysByType = async (
   }>) {
     const field = subrecordFieldFromPath(row.path);
     if (!row.signature || !field) continue;
-    const table = resolveStringsTableType(game, row.signature, field);
+    const table = creationEngineTitle(game).recorddefs.tableFor(row.signature, field);
     overlays.get(table)!.set(row.lstring_id, row.export_text);
   }
   return overlays;

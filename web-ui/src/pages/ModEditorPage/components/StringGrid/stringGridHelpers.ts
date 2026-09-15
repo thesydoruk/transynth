@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import type { StringRow } from '../../../../api';
 
-export const isPlayerPromptRow = (row: StringRow): boolean =>
+const isPlayerPromptRow = (row: StringRow): boolean =>
   row.signature === 'INFO' && (row.path?.split('\\').pop() ?? '') === 'RNAM';
 
 export const genderBadgeTitle = (row: StringRow, t: TFunction): string | undefined => {

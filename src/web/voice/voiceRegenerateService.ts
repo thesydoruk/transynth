@@ -7,11 +7,7 @@ import { ensureDir } from '../../utils/file';
 import { toDiskPath, resolveImportPackages } from '../../modImport';
 import { modImportLocalizeDir, resolveModImportExtractRoot } from '../../modStorage';
 import { loadImportedMod } from '../../modImport/importedMod';
-import { synthesizeDiscoVoiceLineBuffers } from '../../voice/disco/synthesizeDiscoVoiceLine';
-import {
-  synthesizeModVoiceLineBuffers,
-  type SynthesizeModVoiceLineOptions,
-} from '../../voice/synthesizeModVoiceLine';
+import { gamePlugin } from '../../games/registry';
 import {
   speakerKeyFromVoiceRelPath,
   upsertVoiceSynthesisState,
@@ -20,10 +16,7 @@ import { getAllProjectSettings } from '../services/projectSettings';
 import { convertAudioToPreviewWav } from './preview/audioCache';
 import { resolveModVoiceContext } from './preview';
 
-export const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
-
-/** Keep the current saved translation without applying a preview. */
-export const VOICE_REGENERATE_ORIGINAL_ID = VOICE_REGENERATE_KEEP_CURRENT_ID;
+const VOICE_REGENERATE_KEEP_CURRENT_ID = 'current';
 
 export type VoiceRegenerateParams = {
   line_reference: boolean;
@@ -43,7 +36,7 @@ type VoiceRegeneratePreviewMeta = {
 
 type VoiceRegenerateSessionMeta = {
   modId: number;
-  formidLower6: string;
+  lineKey: string;
   variant: number;
   srcLang: string;
   targetLang: string;
@@ -93,9 +86,7 @@ const writeSessionMeta = (
   fs.writeFileSync(metaPath(modId, sessionId), JSON.stringify(meta, null, 2));
 };
 
-export const voiceRegenerateParamsFromProjectSettings = async (
-  db: Tx,
-): Promise<VoiceRegenerateParams> => {
+const voiceRegenerateParamsFromProjectSettings = async (db: Tx): Promise<VoiceRegenerateParams> => {
   const settings = await getAllProjectSettings(db);
   return {
     line_reference: settings['voice.line_reference'],
@@ -107,7 +98,7 @@ export const initVoiceRegenerateSession = async (
   db: Tx,
   modId: number,
   sessionId: string,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   srcLang: string,
   targetLang: string,
@@ -125,7 +116,7 @@ export const initVoiceRegenerateSession = async (
   const defaultParams = await voiceRegenerateParamsFromProjectSettings(db);
   writeSessionMeta(modId, sessionId, {
     modId,
-    formidLower6,
+    lineKey,
     variant,
     srcLang,
     targetLang,
@@ -140,7 +131,7 @@ export const generateVoiceRegeneratePreview = async (
   db: Tx,
   modId: number,
   sessionId: string,
-  formidLower6: string,
+  lineKey: string,
   variant: number,
   srcLang: string,
   targetLang: string,
@@ -160,7 +151,7 @@ export const generateVoiceRegeneratePreview = async (
       db,
       modId,
       sessionId,
-      formidLower6,
+      lineKey,
       variant,
       srcLang,
       targetLang,
@@ -172,7 +163,7 @@ export const generateVoiceRegeneratePreview = async (
     return { ok: false, reason: 'session_missing', message: 'Regeneration session not found' };
   }
 
-  if (meta.formidLower6.toUpperCase() !== formidLower6.toUpperCase() || meta.variant !== variant) {
+  if (meta.lineKey.toUpperCase() !== lineKey.toUpperCase() || meta.variant !== variant) {
     return {
       ok: false,
       reason: 'session_mismatch',
@@ -188,50 +179,35 @@ export const generateVoiceRegeneratePreview = async (
   ensureDir(dir);
   const wavPath = path.join(dir, `${previewId}.wav`);
 
-  let destRel: string;
-  let payloadVersion: string;
-  let artifact: 'fuz' | 'wav';
-  let previewSpeakerKey: string | undefined;
-  let voiceSimilarity: number | null = null;
+  const voice = gamePlugin(mod.game).voice;
+  if (!voice) {
+    return { ok: false, reason: 'session_missing', message: 'This game has no voice support' };
+  }
 
-  if (mod.game === 'disco') {
-    const built = await synthesizeDiscoVoiceLineBuffers(db, {
-      modId,
-      pluginPath: resolved.ctx.pluginPath,
-      formidLower6,
-      variant,
-      srcLang,
-      tgtLang: targetLang,
-      referenceMode,
-    });
-    if (!built.ok) return built;
-    destRel = built.wavRel;
-    payloadVersion = built.payloadVersion;
-    artifact = 'wav';
-    previewSpeakerKey = built.speakerKey;
-    voiceSimilarity = built.voiceSimilarity;
-    fs.writeFileSync(wavPath, built.ttsWav);
+  const built = await voice.buildLinePreview(db, {
+    modId,
+    packageDir: resolved.ctx.packageDir,
+    pluginPath: resolved.ctx.pluginPath,
+    lineKey,
+    variant,
+    srcLang,
+    tgtLang: targetLang,
+    referenceMode,
+    speakerKey,
+  });
+  if (!built.ok) return built;
+
+  const { destRelPath: destRel, payloadVersion, artifact, speakerKey: previewSpeakerKey } = built;
+  const voiceSimilarity = built.voiceSimilarity;
+
+  if (built.artifact === 'wav') {
+    fs.writeFileSync(wavPath, built.audio);
   } else {
-    const built = await synthesizeModVoiceLineBuffers(db, {
-      modId,
-      packageDir: resolved.ctx.packageDir,
-      pluginPath: resolved.ctx.pluginPath,
-      formidLower6,
-      variant,
-      srcLang,
-      tgtLang: targetLang,
-      referenceMode,
-      speakerKey,
-    } satisfies SynthesizeModVoiceLineOptions);
-    if (!built.ok) return built;
-    destRel = built.fuzRel;
-    payloadVersion = built.payloadVersion;
-    artifact = 'fuz';
-    voiceSimilarity = built.voiceSimilarity;
-    const fuzPath = path.join(dir, `${previewId}.fuz`);
-    fs.writeFileSync(fuzPath, built.fuzData);
+    // The browser cannot play a `.fuz`; keep the real take and serve a WAV copy.
+    const takePath = path.join(dir, `${previewId}.${built.artifact}`);
+    fs.writeFileSync(takePath, built.audio);
     try {
-      await convertAudioToPreviewWav(fuzPath, wavPath);
+      await convertAudioToPreviewWav(takePath, wavPath);
     } catch (err) {
       return {
         ok: false,
@@ -344,7 +320,7 @@ export const commitVoiceRegenerateSession = async (
 
   await upsertVoiceSynthesisState(db, {
     modId,
-    formidLower6: meta.formidLower6,
+    lineKey: meta.lineKey,
     variant: meta.variant,
     speakerKey: preview.speakerKey?.trim() || speakerKeyFromVoiceRelPath(preview.fuzRel),
     targetLang: meta.targetLang,

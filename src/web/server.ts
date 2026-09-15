@@ -13,6 +13,8 @@
  * This file intentionally performs startup work at module top-level so it can
  * be run directly via `tsx src/web/server.ts` and watched in development.
  */
+// Registers the game plugins; every registry lookup below depends on it.
+import '../games';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import staticFiles from '@fastify/static';

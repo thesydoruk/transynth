@@ -43,12 +43,12 @@ export const loadVoicePromptSources = async (
   srcLang: string,
 ): Promise<Map<string, VoiceSourceDetailRow>> => {
   const { rows } = await db.query<{
-    formid_lower6: string;
+    line_key: string;
     info_formid_hex: string;
     string_id: number;
     source: string;
   }>(
-    `SELECT UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
+    `SELECT UPPER(SUBSTRING(r.formid_hex FROM 3)) AS line_key,
             r.formid_hex AS info_formid_hex,
             s.id AS string_id,
             s.text_raw AS source
@@ -64,7 +64,7 @@ export const loadVoicePromptSources = async (
   for (const row of rows) {
     const source = normalizeVoiceText(row.source);
     if (!source) continue;
-    const key = voiceTranslationMapKey(row.formid_lower6, PROMPT_VOICE_VARIANT);
+    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT);
     if (map.has(key)) continue;
     map.set(key, { source, infoFormidHex: row.info_formid_hex, stringId: row.string_id });
   }
@@ -79,7 +79,7 @@ export const loadVoicePromptTranslations = async (
   tgtLang: string,
 ): Promise<Map<string, VoiceTranslationRow>> => {
   const { rows } = await db.query<{
-    formid_lower6: string;
+    line_key: string;
     info_formid_hex: string;
     string_id: number;
     edid: string | null;
@@ -88,7 +88,7 @@ export const loadVoicePromptTranslations = async (
     status: string | null;
     translation: string;
   }>(
-    `SELECT UPPER(SUBSTRING(r.formid_hex FROM 3)) AS formid_lower6,
+    `SELECT UPPER(SUBSTRING(r.formid_hex FROM 3)) AS line_key,
             r.formid_hex AS info_formid_hex,
             s.id AS string_id,
             r.edid,
@@ -108,10 +108,10 @@ export const loadVoicePromptTranslations = async (
 
   const map = new Map<string, VoiceTranslationRow>();
   for (const row of rows) {
-    const key = voiceTranslationMapKey(row.formid_lower6, PROMPT_VOICE_VARIANT);
+    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT);
     if (map.has(key)) continue;
     map.set(key, {
-      formidLower6: row.formid_lower6,
+      lineKey: row.line_key,
       infoFormidHex: row.info_formid_hex,
       voiceVariant: PROMPT_VOICE_VARIANT,
       stringId: row.string_id,

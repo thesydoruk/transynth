@@ -1,6 +1,8 @@
 import {
   interfaceTranslateArchivePathForSlot,
   interfaceTranslateExportSlots,
+} from '../interfaceTranslateSlots';
+import {
   interfaceTranslateKeyFromRecordPath,
   interfaceTranslateLocaleFromPath,
   parseInterfaceTranslateBuffer,

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DialogLine } from '../../../../../../api';
 import { StatusBadge } from '../../../../../../components/StatusBadge';
+import { qaIssueTypeLabel } from '../../../QAPanel/qaIssueLabel';
+import { lineOrigin } from '../../lineOrigin';
+import { useDialogLineQa } from '../../hooks/useDialogLineQa';
 import type { DialogReviewStatus } from '../../hooks/useDialogLineSave';
 import type { DialogLineVoice } from '../../hooks/useDialogVoice';
 import { VoiceButtons } from './VoiceButtons';
@@ -22,6 +25,8 @@ export interface DialogLineRowProps {
   onSetStatus: (status: DialogReviewStatus) => void;
   /** Playback controls, or null when the line has no voice-over on disk. */
   voice: DialogLineVoice | null;
+  /** Language the QA findings are read for. */
+  targetLang: string;
 }
 
 /**
@@ -42,12 +47,20 @@ export const DialogLineRow = ({
   onCommit,
   onSetStatus,
   voice,
+  targetLang,
 }: DialogLineRowProps) => {
   const { t } = useTranslation();
   const rowRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const cancelledRef = useRef(false);
   const [draft, setDraft] = useState(line.translation ?? '');
+
+  // The count alone says a line is wrong but not how; the message names the
+  // word to change. Only the row under the cursor asks for it.
+  const origin = lineOrigin(line.provenance);
+  const qaIssues = useDialogLineQa(line.string_id, targetLang, {
+    enabled: focused && line.qa_issue_count > 0,
+  });
 
   useEffect(() => {
     if (editing) {
@@ -99,6 +112,11 @@ export const DialogLineRow = ({
           </span>
         )}
         <StatusBadge status={line.status} small />
+        {origin && (
+          <span className={styles.originTag} title={t(`dialogs.origin.${origin}Title`)}>
+            {t(`dialogs.origin.${origin}`)}
+          </span>
+        )}
         {line.qa_issue_count > 0 && (
           <span
             className={styles.qaBadge}
@@ -134,6 +152,12 @@ export const DialogLineRow = ({
 
       <p className={styles.source}>{line.source}</p>
 
+      {line.context && (
+        <p className={styles.context} title={t('dialogs.contextTitle')}>
+          {line.context}
+        </p>
+      )}
+
       {editing ? (
         <textarea
           ref={areaRef}
@@ -158,6 +182,22 @@ export const DialogLineRow = ({
         >
           {line.translation || t('dialogs.noTranslation')}
         </button>
+      )}
+
+      {focused && qaIssues.length > 0 && (
+        <ul className={styles.qaList}>
+          {qaIssues.map((issue) => (
+            <li
+              key={issue.id}
+              className={`${styles.qaItem} ${
+                issue.severity === 'error' ? styles.qaItemError : styles.qaItemWarning
+              }`}
+            >
+              <span className={styles.qaItemType}>{qaIssueTypeLabel(issue.issue_type, t)}</span>
+              <span>{issue.message}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

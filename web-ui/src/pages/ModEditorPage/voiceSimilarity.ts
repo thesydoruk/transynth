@@ -1,6 +1,6 @@
 /** Same floors as fish_studio `VOICE_RETRY_BELOW` / `VOICE_WARN_BELOW`. */
-export const VOICE_SIMILARITY_FAIL = 0.25;
-export const VOICE_SIMILARITY_WARN = 0.3;
+const VOICE_SIMILARITY_FAIL = 0.25;
+const VOICE_SIMILARITY_WARN = 0.3;
 
 export type VoiceSimilarityTone = 'fail' | 'warn' | 'ok';
 

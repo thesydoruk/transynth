@@ -27,29 +27,3 @@ export const englishVerifyPlaceholderRules = (): string[] => [
   '- Suggestion is a parts array (or null). Do not write raw %s / <Alias=…> / ¤PH0¤ inside a string.',
   '- WRONG: dropping or inventing a slot id, or leaking a raw token into a string part.',
 ];
-
-export const ukrainianVerifyPlaceholderRules = (): string[] => [
-  '### ЗБЕРЕЖЕННЯ СЛОТІВ І ТЕГІВ (КРИТИЧНО):',
-  '- Verify отримує "parts", "translation_parts" і опційно "slots" (лише kind).',
-  '- translation_parts і "suggestion" мають ту саму мультимножину індексів, що й parts.',
-  '- Suggestion — масив parts або null. Не пиши сирі %s / <Alias=…> / ¤PH0¤ у рядках.',
-  '- ПОМИЛКА: пропустити чи вигадати індекс або вставити сирий токен у текстовий фрагмент.',
-];
-
-export const ukrainianPlaceholderRules = (): string[] => [
-  '### ЗБЕРЕЖЕННЯ СЛОТІВ І ТЕГІВ (КРИТИЧНО):',
-  '- Вхід: "parts" (рядки + цілі індекси) і опційно "slots" з kind.',
-  '- У вихідних "parts" ті самі індекси, та сама кількість. Порядок можна змінити за граматикою української.',
-  '- Не пиши в рядках сирі %s, %d, {0}, <Alias=…>, <Global=…>, <font>, [Mod], ¤PH0¤, ¤FK0¤.',
-  '- UI-цінники "<20 Caps>": префікс "<20 " у слоті; "Caps" → "кришок" (род. мн. після числа); ">" не чіпай.',
-  '- Ремарки [Sarcasm], [Whispering] — текст для перекладу, НЕ слоти.',
-  '- [Mod], [Key], [Note], [Scrap] тощо — захищені UI-префікси (слоти).',
-  '',
-  '### ПРИКЛАДИ СЛОТІВ:',
-  '- ["Listen, ", 0, ", we need ", 1, " caps."] → ["Слухай, ", 0, ", нам потрібно ", 1, " кришок."]',
-  '- ["Call Subway ", 0, "Caps>"] → ["Викликати метро ", 0, "кришок>"] (слот 0 = "<20 ").',
-  '- [0, " entered ", 1] → переклади слова, збережи 0 і 1.',
-  '- ["T-51 Right Arm Armor"] (ARMO/FULL, без слотів) → ["Права рука T-51"] (лише якщо в source є Right/Left).',
-  '- ["Hellfire Mk.II Arm Armor"] → ["Хелфайр броня для рук Mk.II"] — НЕ вигадуй сторону.',
-  '- ПОМИЛКА: пропустити індекс, вигадати слот, вставити <Alias=Player> / %s / ¤PH0¤ у рядок.',
-];

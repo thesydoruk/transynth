@@ -24,7 +24,7 @@ export type TranslationStatus =
   | 'deleted';
 
 /** Set of all valid `TranslationStatus` string literals. */
-export const VALID_TRANSLATION_STATUSES = new Set<TranslationStatus>([
+const VALID_TRANSLATION_STATUSES = new Set<TranslationStatus>([
   'draft',
   'tm',
   'fuzzy',

@@ -99,8 +99,7 @@ export const buildSwf = (tags: Buffer[], compress = false): Buffer => {
   return Buffer.concat([header, compress ? deflateSync(body) : body]);
 };
 
-export const TAG_DEFINE_FONT3 = 75;
-export const TAG_DEFINE_FONT_NAME = 88;
+const TAG_DEFINE_FONT3 = 75;
 
 const outline = (records: GlyphShape['records']): Buffer =>
   encodeGlyphShape({ fillBits: 1, lineBits: 0, records });
@@ -114,8 +113,8 @@ const rect = (x: number, width: number, top: number): GlyphShape['records'] => [
 
 export const LATIN_I = 0x0069;
 export const LATIN_I_DIAERESIS = 0x00ef;
-export const RUSSIAN_E = 0x044d;
-export const GHE = 0x0433;
+const RUSSIAN_E = 0x044d;
+const GHE = 0x0433;
 export const UKRAINIAN_I = 0x0456;
 export const YI = 0x0457;
 export const IE = 0x0454;
