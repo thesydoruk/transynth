@@ -46,7 +46,11 @@ ${FO4_UK_ADAPT}
   {"id":115,"parts":["Fucking synths! Get out of here!"],"grup":"INFO","context":"Raider"},
   {"id":116,"parts":["Please remain still while I scan you."],"grup":"INFO","speaker":"X6-88","addressee":"Player"},
   {"id":117,"parts":["I was there when it happened."],"grup":"INFO","speaker":"Piper","speaker_gender":"female"},
-  {"id":118,"parts":["Get out of here!"],"grup":"INFO","context":"Raider"}
+  {"id":118,"parts":["Get out of here!"],"grup":"INFO","context":"Raider"},
+  {"id":119,"parts":["I agree..."],"grup":"INFO","field":"NAM1","speaker":"Player","speaker_gender":"any"},
+  {"id":120,"parts":["I will be here when you're ready."],"grup":"INFO","speaker":"Ada","addressee":"Player","addressee_gender":"any"},
+  {"id":121,"parts":["You check out on me?"],"grup":"INFO","speaker":"Hancock","addressee":"Player","addressee_gender":"any"},
+  {"id":122,"parts":["Sorry. I understand this is a lot..."],"grup":"INFO","speaker":"Nick Valentine","addressee":"Player"}
 ]}
 Вихід:
 {"items":[
@@ -58,7 +62,11 @@ ${FO4_UK_ADAPT}
   {"id":115,"parts":["Сучі синти! Валіть нахуй звідси!"]},
   {"id":116,"parts":["Прошу не рухатися, поки я вас сканую."]},
   {"id":117,"parts":["Я була там, коли це сталося."]},
-  {"id":118,"parts":["Валіть нахуй звідси!"]}
+  {"id":118,"parts":["Валіть нахуй звідси!"]},
+  {"id":119,"parts":["Гаразд."]},
+  {"id":120,"parts":["Я на місці, як зберешся."]},
+  {"id":121,"parts":["Ти що, вже не з нами?"]},
+  {"id":122,"parts":["Вибач. Розумію, забагато всього."]}
 ]}
 Рід і ти/ви — JSON вище: одне "parts", не слеш і не дві статі. Ще голос:
 
@@ -92,6 +100,11 @@ ${promptJsonItems([
     translation: 'Сусідів знову рейдери кошмарять. Треба допомогти.',
   },
   { source: 'Atom will take you!', speaker: 'Children of Atom', translation: 'Атом прийме тебе.' },
+  {
+    source: "Quit standin' there and finish it already. The hell are you waitin' for?",
+    speaker: 'Cait',
+    translation: 'Досить стояти, кінчай уже. На що ти, блять, чекаєш?',
+  },
 ])}`;
 
 export const FO4_UK_DIALOG_VERIFY_PROMPT = `Ти — LQA-редактор **розмовних діалогів** Fallout 4 (INFO). Ловиш підрядник, рід, ти/ви і збій голосу. Не перевіряй назви зброї за правилами афіксів.
@@ -114,6 +127,55 @@ ${FO4_UK_ADAPT_VERIFY}
 "suggestion" — масив parts (одна репліка) або null. Дві статі або слеш у suggestion — теж помилка.
 
 ${promptJsonItems([
+  {
+    parts: ['I agree...'],
+    translation_parts: ['Я згодна...'],
+    speaker: 'Player',
+    speaker_gender: 'any',
+    verdict: 'suspicious',
+    suggestion: ['Гаразд.'],
+  },
+  {
+    parts: ["I will be here when you're ready."],
+    translation_parts: ['Я буду тут, коли будеш готова.'],
+    speaker: 'Ada',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    verdict: 'suspicious',
+    suggestion: ['Я на місці, як зберешся.'],
+  },
+  {
+    parts: ['You check out on me?'],
+    translation_parts: ['Ти що, вже здувся?'],
+    speaker: 'Hancock',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    verdict: 'suspicious',
+    suggestion: ['Ти що, вже не з нами?'],
+  },
+  {
+    parts: ['Sorry. I understand this is a lot...'],
+    translation_parts: ['Вибачте. Розумію, це забагато...'],
+    speaker: 'Nick Valentine',
+    verdict: 'suspicious',
+    suggestion: ['Вибач. Розумію, забагато всього.'],
+  },
+  {
+    parts: ["You've certainly got the Institute's attention."],
+    translation_parts: ['Ти точно привернув увагу Інституту.'],
+    speaker: 'Preston',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    verdict: 'suspicious',
+    suggestion: ['Інститут уже звернув на тебе увагу.'],
+  },
+  {
+    parts: ['Know that the future is in safe hands.'],
+    translation_parts: ['Май на увазі: майбутнє у надійних руках.'],
+    speaker: 'Father',
+    verdict: 'suspicious',
+    suggestion: ['Знайте: майбутнє у надійних руках.'],
+  },
   {
     parts: ['Are you ready?'],
     translation_parts: ['Ти готовий?'],

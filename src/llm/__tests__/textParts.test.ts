@@ -1,5 +1,6 @@
 import {
   alignTextToSlots,
+  assembleTranslatedText,
   classifySlotKind,
   formatPartsTemplate,
   hasTranslatableParts,
@@ -81,6 +82,38 @@ describe('alignTextToSlots', () => {
     const source = splitTranslateSource('Hello <Alias=Player>');
     const aligned = alignTextToSlots('Привіт, <Alias=Player>', source.slots);
     expect(aligned).toEqual(['Привіт, ', 0]);
+  });
+});
+
+describe('assembleTranslatedText', () => {
+  const plain = { sourceParts: ['I agree...'] as const };
+
+  it('keeps a normal translation', () => {
+    expect(assembleTranslatedText(['Гаразд.'], undefined, plain.sourceParts)).toBe('Гаразд.');
+    expect(assembleTranslatedText(undefined, 'Гаразд.', plain.sourceParts)).toBe('Гаразд.');
+  });
+
+  it('drops a source part the model echoed before the translation', () => {
+    expect(
+      assembleTranslatedText(
+        ["I will be here when you're ready.", 'Я на місці, як зберешся.'],
+        undefined,
+        ["I will be here when you're ready."],
+      ),
+    ).toBe('Я на місці, як зберешся.');
+  });
+
+  it('strips a source prefix glued onto the translation', () => {
+    expect(
+      assembleTranslatedText(['This unit is ready to serve.Одиниця готова до служби.'], undefined, [
+        'This unit is ready to serve.',
+      ]),
+    ).toBe('Одиниця готова до служби.');
+  });
+
+  it('treats a pure source echo as missing, not as a translation', () => {
+    expect(assembleTranslatedText(['I agree...'], undefined, plain.sourceParts)).toBeNull();
+    expect(assembleTranslatedText(undefined, 'I agree...', plain.sourceParts)).toBeNull();
   });
 });
 

@@ -116,8 +116,16 @@ export const resolveDialogLineParticipants = (opts: {
   addresseeName: string | null;
   addresseeGender: SpeakerGender;
 }): DialogLineParticipants => {
+  // Topic dialog and companion idles rarely name the listener. An NPC line
+  // with no counterpart is spoken to the player — same default as import.
+  const implicitPlayer =
+    opts.addresseeKind === 'unknown' &&
+    !opts.addresseeName &&
+    !opts.nodeSpeakerIsPlayer &&
+    !opts.isPlayerPrompt;
+
   const counterpart =
-    opts.addresseeKind === 'player'
+    opts.addresseeKind === 'player' || implicitPlayer
       ? { name: PLAYER_LABEL, gender: opts.playerGender }
       : { name: opts.addresseeName, gender: opts.addresseeGender };
 

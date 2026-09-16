@@ -105,6 +105,16 @@ describe('FO4_UK_DIALOG_RECAST_PROMPT', () => {
     expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Будь обережною там. Будь обережним там.');
     expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Будьте обережні');
     expect(FO4_UK_DIALOG_RECAST_PROMPT).not.toContain('шкереберть');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Гаразд.');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Я згодна...');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('коли будеш готова.');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Я на місці, як зберешся.');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Ти що, вже не з нами?');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('готова» так само зламано');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Інститут уже звернув на тебе увагу');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('привернув увагу');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Знайте: майбутнє у надійних руках');
+    expect(FO4_UK_DIALOG_RECAST_PROMPT).toContain('Май на увазі');
   });
 });
 

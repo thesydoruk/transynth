@@ -122,6 +122,25 @@ describe('dialogParticipantsFromRow', () => {
     });
   });
 
+  it('marks an NPC NAM1 with no named addressee as spoken to the player', () => {
+    expect(
+      dialogParticipantsFromRow(
+        {
+          speaker_name: 'Ada',
+          speaker_gender: 'female',
+          addressee_kind: null,
+        },
+        'NAM1',
+        'fo4',
+      ),
+    ).toEqual({
+      speakerName: 'Ada',
+      speakerGender: 'female',
+      addresseeName: 'Player',
+      addresseeGender: 'any',
+    });
+  });
+
   it('marks NAM1 to the player when addressee_kind is player', () => {
     expect(
       dialogParticipantsFromRow(
@@ -138,6 +157,26 @@ describe('dialogParticipantsFromRow', () => {
       speakerGender: 'male',
       addresseeName: 'Player',
       addresseeGender: 'any',
+    });
+  });
+
+  it('does not invent a player addressee when the player is speaking', () => {
+    expect(
+      dialogParticipantsFromRow(
+        {
+          speaker_name: 'Player',
+          speaker_gender: 'any',
+          speaker_is_player: true,
+          addressee_kind: null,
+        },
+        'NAM1',
+        'fo4',
+      ),
+    ).toEqual({
+      speakerName: 'Player',
+      speakerGender: 'any',
+      addresseeName: null,
+      addresseeGender: 'unknown',
     });
   });
 

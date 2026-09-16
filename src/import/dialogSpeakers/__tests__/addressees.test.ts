@@ -64,6 +64,13 @@ describe('scene dialog', () => {
     expect(byNode(result).get(2)).toEqual({ nodeId: 2, kind: 'npc', speakerKey: 'npc:AAA' });
   });
 
+  it('addresses a one-alias scene to the player', () => {
+    const nodes = [node(1, 10, 'npc:ADA')];
+    const phases = [phase(1, 0, 5, 10)];
+
+    expect(byNode(resolveNodeAddressees(nodes, phases)).get(1)?.kind).toBe('player');
+  });
+
   it('gives up when three parties could be the audience', () => {
     const nodes = [node(1, 10, 'npc:AAA'), node(2, 11, 'npc:BBB'), node(3, 12, 'npc:CCC')];
     const phases = [phase(1, 0, 5, 10), phase(1, 1, 6, 11), phase(1, 2, 7, 12)];

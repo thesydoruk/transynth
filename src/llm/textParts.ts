@@ -99,26 +99,76 @@ export const splitMaskedUsingKeys = (
   return parts.length > 0 ? parts : [masked];
 };
 
+const hasLetter = (text: string): boolean => /\p{L}/u.test(text);
+
+/** Rebuild the source string the model was asked to translate. */
+const sourceTextFromParts = (
+  sourceParts?: readonly LlmTextPart[] | null,
+  restoreSlots?: readonly LlmTextSlot[] | null,
+): string | null => {
+  if (!sourceParts || sourceParts.length === 0) return null;
+  if (restoreSlots && restoreSlots.length > 0) return joinParts(sourceParts, restoreSlots);
+  if (sourceParts.some((part) => typeof part === 'number')) return null;
+  return sourceParts.filter((part): part is string => typeof part === 'string').join('');
+};
+
+/**
+ * Gemma often returns the English source and then the translation — either as
+ * two `parts` entries or glued into one string. Keep the translation half.
+ * A pure echo of the source is not a translation (caller treats null as missing).
+ */
+const stripEchoedSource = (text: string, source: string | null): string | null => {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+  if (source == null) return trimmed;
+  const src = source.trim();
+  if (src === '') return trimmed;
+  if (trimmed === src) return null;
+  if (!trimmed.startsWith(src)) return trimmed;
+  const rest = trimmed
+    .slice(src.length)
+    .replace(/^[\s"'«»„“”]+/u, '')
+    .trim();
+  return hasLetter(rest) ? rest : null;
+};
+
+const dropEchoedSourceParts = (parts: LlmTextPart[], source: string | null): LlmTextPart[] => {
+  if (source == null || parts.length === 0) return parts;
+  const src = source.trim();
+  if (src === '') return parts;
+  const first = parts[0];
+  if (typeof first === 'string' && first.trim() === src) return parts.slice(1);
+  if (parts.length === 1 && typeof first === 'string') {
+    const stripped = stripEchoedSource(first, source);
+    return stripped == null ? [] : [stripped];
+  }
+  return parts;
+};
+
 export const assembleTranslatedText = (
   rawParts: unknown,
   rawTranslation: unknown,
   sourceParts?: readonly LlmTextPart[] | null,
   restoreSlots?: readonly LlmTextSlot[] | null,
 ): string | null => {
+  const sourceText = sourceTextFromParts(sourceParts, restoreSlots);
   const parsedParts = parseLlmParts(rawParts);
   if (parsedParts) {
+    const parts = dropEchoedSourceParts(parsedParts, sourceText);
+    if (parts.length === 0) return null;
     if (restoreSlots && restoreSlots.length > 0 && sourceParts) {
-      const check = validateTranslatedParts(sourceParts, parsedParts, restoreSlots);
-      if (!check.ok) return null;
-      const joined = joinParts(parsedParts, restoreSlots);
-      return joined.trim() === '' ? null : joined;
+      const check = validateTranslatedParts(sourceParts, parts, restoreSlots);
+      if (check.ok) return stripEchoedSource(joinParts(parts, restoreSlots), sourceText);
+      if (parts.some((part) => typeof part === 'number')) return null;
+      const joined = parts.filter((part): part is string => typeof part === 'string').join('');
+      return stripEchoedSource(joined, sourceText);
     }
-    if (parsedParts.some((part) => typeof part === 'number')) return null;
-    const joined = parsedParts.filter((part): part is string => typeof part === 'string').join('');
-    return joined.trim() === '' ? null : joined;
+    if (parts.some((part) => typeof part === 'number')) return null;
+    const joined = parts.filter((part): part is string => typeof part === 'string').join('');
+    return stripEchoedSource(joined, sourceText);
   }
   if (typeof rawTranslation === 'string' && rawTranslation.trim() !== '') {
-    return rawTranslation;
+    return stripEchoedSource(rawTranslation, sourceText);
   }
   return null;
 };

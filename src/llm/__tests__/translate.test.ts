@@ -248,6 +248,49 @@ describe('parseLlmTranslateResponse', () => {
     ).toEqual([{ id: 1, translation: 'Слухай, <Alias=Player>, нам треба %d кришок.' }]);
   });
 
+  it('strips an echoed source part and keeps the translation', () => {
+    const raw = JSON.stringify({
+      items: [
+        {
+          id: 1,
+          parts: ["I will be here when you're ready.", 'Я на місці, як зберешся.'],
+        },
+      ],
+    });
+    expect(
+      parseLlmTranslateResponse(raw, [1], undefined, [
+        {
+          id: 1,
+          source: "I will be here when you're ready.",
+          sourceParts: ["I will be here when you're ready."],
+          grup: null,
+          edid: null,
+          field: null,
+          form_id: null,
+          context: null,
+        },
+      ]),
+    ).toEqual([{ id: 1, translation: 'Я на місці, як зберешся.' }]);
+  });
+
+  it('treats a source echo as a missing id', () => {
+    const raw = JSON.stringify({ items: [{ id: 1, parts: ['I agree...'] }] });
+    expect(() =>
+      parseLlmTranslateResponse(raw, [1], undefined, [
+        {
+          id: 1,
+          source: 'I agree...',
+          sourceParts: ['I agree...'],
+          grup: null,
+          edid: null,
+          field: null,
+          form_id: null,
+          context: null,
+        },
+      ]),
+    ).toThrow(LlmTranslateMissingIdsError);
+  });
+
   it('treats invalid slot multisets as missing ids', () => {
     const raw = JSON.stringify({ items: [{ id: 1, parts: ['Привіт, ', 0] }] });
     expect(() =>

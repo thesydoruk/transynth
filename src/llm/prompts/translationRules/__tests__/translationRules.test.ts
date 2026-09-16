@@ -172,6 +172,16 @@ describe('translationRules', () => {
     expect(dialogVerify).toContain('як зможеш');
     expect(dialogVerify).toContain('Бережи себе.');
     expect(dialogVerify).toContain('Будь обережною там. Будь обережним там.');
+    expect(dialog).toContain('Гаразд.');
+    expect(dialog).toContain('Я на місці, як зберешся.');
+    expect(dialog).toContain('чи не так?');
+    expect(dialog).toContain('одиниця');
+    expect(dialog).toContain('Вибач. Розумію, забагато всього.');
+    expect(dialog).toContain('Інститут уже звернув на тебе увагу');
+    expect(dialog).toContain('Знайте: майбутнє у надійних руках');
+    expect(dialog).toContain('На що ти, блять, чекаєш?');
+    expect(dialogVerify).toContain('Я згодна...');
+    expect(dialogVerify).toContain('коли будеш готова.');
     expect(sse).toContain('завжди «ви»');
     const enFo4 = buildEnglishTranslationRules('de', 'fo4');
     expect(enFo4).toContain('SECOND-PERSON REGISTER (Fallout 4)');

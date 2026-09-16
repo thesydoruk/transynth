@@ -133,6 +133,11 @@ const addresseeForSceneTurn = (
   const others = [...aliases.keys()].filter((id) => id !== aliasId);
   const counterparts = others.filter((id) => !aliasIsPlayer(id, aliases.get(id) ?? [], playerKeys));
 
+  // Companion idle / one-alias scene: the player is the implicit audience.
+  if (!speaking && others.length === 0) {
+    return { kind: 'player', speakerKey: null };
+  }
+
   // The player is in the scene and someone else is talking: they are the audience.
   if (!speaking && counterparts.length < others.length) {
     return { kind: 'player', speakerKey: null };

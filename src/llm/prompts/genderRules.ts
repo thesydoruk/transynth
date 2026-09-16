@@ -239,19 +239,144 @@ export const UK_GENDER_RECAST_ITEMS = [
     addressee_gender: 'female',
     translation: 'Заспокойся, ти вільна йти.',
   },
+  {
+    source: 'I agree...',
+    speaker: 'Player',
+    speaker_gender: 'any',
+    translation: 'Гаразд.',
+    bad: ['Я згоден...', 'Я згодна...', 'Згоден...', 'Згодна...'],
+  },
+  {
+    source: "Then I'm glad I opened the door.",
+    speaker: 'Player',
+    speaker_gender: 'any',
+    translation: 'Тоді добре, що двері відчинили.',
+    bad: ['Тоді я радий, що двері відчинені.', 'Тоді я рада, що відчинила двері.'],
+  },
+  {
+    source: 'Are you ready to proceed with the mission?',
+    speaker: 'Danse',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Ну що, до місії?',
+    bad: ['Ти готовий продовжувати місію?', 'Ти готова продовжувати місію?'],
+  },
+  {
+    source:
+      "You've certainly got the Institute's attention. I hope you're prepared for what comes next.",
+    speaker: 'Preston',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Інститут уже звернув на тебе увагу. Сподіваюся, ти напоготові.',
+    bad: [
+      'Ти точно привернув увагу Інституту.',
+      'ти привернула',
+      'Сподіваюся, ти готовий до того, що буде далі.',
+    ],
+  },
+  {
+    source: "I will be here when you're ready.",
+    speaker: 'Ada',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Я на місці, як зберешся.',
+    bad: ['Я буду тут, коли будеш готова.', 'коли будеш готовий', 'коли будете готові'],
+  },
+  {
+    source: 'You check out on me?',
+    speaker: 'Hancock',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Ти що, вже не з нами?',
+    bad: ['Ти що, вже здувся?', 'Ти що, вже здулася?'],
+  },
+  {
+    source: 'You came to visit!',
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Ти в гостях!',
+    bad: ['Ти прийшов у гості!', 'Ти прийшла в гості!'],
+  },
+  {
+    source: "I can't help but notice you're empty handed.",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Бачу, руки порожні.',
+    bad: ['Бачу, ти прийшов з порожніми руками.', 'прийшла з порожніми руками'],
+  },
+  {
+    source: "Hope you're ready to purge another target.",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Ну що, ще одна зачистка.',
+    bad: ['Сподіваюся, ти готовий до чергової зачистки.'],
+  },
+  {
+    source:
+      "Looking to trade? Or did you come here to admire the Commonwealth's largest collection of junk?",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Торгувати? Чи глянути на купу мотлоху в Співдружності?',
+    bad: ['Торгувати прийшов?', 'приперся подивитися'],
+  },
+  {
+    source: "You're one of the dumbest assholes I've ever had to deal with.",
+    addressee: 'Player',
+    addressee_gender: 'any',
+    translation: 'Ти з найтупіших мудаків, яких мені траплялося бачити.',
+    bad: ['Ти один із найтупіших мудаків', 'Ти одна з найтупіших'],
+  },
+  {
+    source: 'How could I let you rope me into this...',
+    speaker_gender: 'female',
+    translation: 'І як я тільки дала себе в це втягнути...',
+    bad: ['дозволив/ла', 'Як я тільки дозволив себе в це втягнути...'],
+  },
 ] as const;
 
-/**
- * How to hide gender on a shared Nate/Nora line. Patterns, not a banned-word list.
- * Flipping «був» → «була» is the same leak.
- */
-export const UK_WASTELAND_GENDER_RECAST_EXAMPLES = `### ЯК ХОВАТИ РІД (спільний рядок Нейта/Нори)
-Не міняй чоловічий рід на жіночий і навпаки. Перепиши **конструкцію**. У рядку не лишай «я + минулий», «ти + прикметник», «сам/сама».
+const UK_GENDER_RECAST_PREAMBLE = `### ЯК ХОВАТИ РІД (спільний рядок Нейта/Нори)
+Не міняй чоловічий рід на жіночий і навпаки. Перепиши **конструкцію**. У **всьому** рядку, не лише в останньому реченні: «привернув увагу» так само світиться, як «готовий». У рядку не лишай «я + минулий», «ти + прикметник/минулий» («привернув/заслужив/бував»), «сам/сама».
 Не вгадуй стать з імені, професії, звання, тону чи «ймовірності» — лише \`speaker_gender\` / \`addressee_gender\` / канонічний спліт у source.
 Спочатку **теперішній час** («чекаю», не «чекав»). Далі наказ, стан, іменник, результат. Канцелярит «попереджено» гірший за «тебе вже попереджали». Не міняй хто зробив що.
 Поле "translation" — **ОДНА** репліка вголос. "bad" — антиприклади, не варіанти для копіювання.
 Заборонено в translation: дві статі підряд, слеш «обережним/обережною», «ви»/«будьте» як милиця роду.
-Адресат-NPC з \`male\`/\`female\` — узгоджуй рід як звичайно. Рід мовця \`male\`/\`female\` не ховай.
+Адресат-NPC з \`male\`/\`female\` — узгоджуй рід як звичайно. Рід мовця \`male\`/\`female\` не ховай.`;
+
+/** Production leaks + test anchors. Recast/verify get the full list. */
+const UK_GENDER_RECAST_TRANSLATE_SOURCES = new Set([
+  "I've been waiting for you.",
+  "I haven't found anyone yet.",
+  'I was a soldier.',
+  'Are you ready?',
+  'Not Sure I Can',
+  'Be careful out there.',
+  'Be careful.',
+  "come along whenever you're ready",
+  "You're different.",
+  "You're a two-faced liar!",
+  'I agree...',
+  "Then I'm glad I opened the door.",
+  'Are you ready to proceed with the mission?',
+  "You've certainly got the Institute's attention. I hope you're prepared for what comes next.",
+  "I will be here when you're ready.",
+  'You check out on me?',
+  'How could I let you rope me into this...',
+]);
+
+const UK_GENDER_RECAST_TRANSLATE_ITEMS = UK_GENDER_RECAST_ITEMS.filter((item) =>
+  UK_GENDER_RECAST_TRANSLATE_SOURCES.has(item.source),
+);
+
+/**
+ * How to hide gender on a shared Nate/Nora line. Patterns, not a banned-word list.
+ * Flipping «був» → «була» is the same leak. Compact set for the translate prompt.
+ */
+export const UK_WASTELAND_GENDER_RECAST_EXAMPLES = `${UK_GENDER_RECAST_PREAMBLE}
+
+${promptJsonItems(UK_GENDER_RECAST_TRANSLATE_ITEMS)}`;
+
+/** Full few-shot set for the dialog-recast pass and verify. */
+export const UK_WASTELAND_GENDER_RECAST_EXAMPLES_FULL = `${UK_GENDER_RECAST_PREAMBLE}
 
 ${promptJsonItems(UK_GENDER_RECAST_ITEMS)}`;
 
@@ -274,8 +399,8 @@ const endearmentTranslate = (register: UkPlayerRegister): string => {
 const playerSecondPersonTranslate = (register: UkPlayerRegister): string => {
   if (register === 'wasteland-ty') {
     return `  - **Немає розвилки на стать** (\`any\` / RNAM / \`addressee_kind=player\` при порожньому gender) → не калькуй минулий час і прикметник («я був/згоден/звик», «ти готовий/міг», «знайшла», «сам»). Перепиши **весь** присудок: спочатку теперішній час без роду, далі наказ, стан, іменник, результат. Слэш «зробив/ла», дві статі в одному рядку («Будь обережною там. Будь обережним там.») і «ви»/«будьте» як милиця роду — заборонені. Не вгадуй стать з професії чи тону.
-  - \`addressee_gender: "any"\` (адресат — гравець, \`addressee: "Player"\`; gender часто \`null\` — дивись \`addressee_kind\`/ім'я) → **до гравця**: «Ну що, рушаємо?», «От і слушно», «Усе готово?», «Тоді рушай», «Схоже, тобі нелегко» — не «Ти готовий/виглядаєш стомленим».
-  - \`speaker_gender: "any"\` (\`speaker: "Player"\`) або \`kind=prompt\` / RNAM → **спільний рядок Нейта/Нори**: «Гаразд», «Передумано», «Так і є», «Це вже було звичкою», «Мені здавалося», «Зроблено», «Знаю» (теперішній), «До війни — армія». Не «Я сказав/згоден/радий/знав/звик/думав/повинен».
+  - \`addressee_gender: "any"\` / порожній gender при \`addressee_kind=player\` → **до гравця**. Не вгадуй Нору («готова») і не став чоловічий за замовчуванням («готовий/прийшов/здувся/привернув»). «Ну що, рушаємо?», «От і слушно», «Усе готово?», «Тоді рушай», «Схоже, тобі нелегко». Суб'єкт можна перенести («Інститут уже звернув на тебе увагу»), а не «ти привернув».
+  - \`speaker_gender: "any"\` (\`speaker: "Player"\`) або \`kind=prompt\` / RNAM → **спільний рядок Нейта/Нори**: «Гаразд», «Передумано», «Так і є», «Це вже було звичкою», «Мені здавалося», «Зроблено», «Знаю» (теперішній), «До війни — армія». Не «Я сказав/згоден/згодна/радий/знав/звик/думав/повинен».
   - \`speaker_gender: "male"/"female"\` при \`speaker: "Player"\` → **стать-специфічна версія** (окремий INFO: дружина/чоловік, Шон→мама/тато): рід першої особи. Тут нейтралізувати не треба.
   - Лишай рід, коли EN саме розщеплює рядок: sir/mum, Шон→мама/тато, Cooke→Paul, Silver Shroud→Mistress of Mysteries, Cito man/lady.
 ${UK_WASTELAND_GENDER_RECAST_EXAMPLES}`;
@@ -294,11 +419,11 @@ const playerSecondPersonVerify = (register: UkPlayerRegister): string => {
   if (register === 'wasteland-ty') {
     return `  - Немає розвилки: калька з родом («ти готовий», «я був/згоден/звик», слеш «зробив/ла», дві статі підряд, «ви»/«будьте» лише щоб сховати рід) → **"suspicious"**; suggestion — одна репліка без роду.
   - \`addressee_gender: "any"\` (\`addressee: "Player"\`) → **до гравця**: нейтральний «ти» або перефраз → "ok". «Ви» лише коли голос мовця цього вимагає (Інститут, штаб, Кодсворт-компаньйон).
-  - \`speaker_gender: "any"\` (\`speaker: "Player"\`) / RNAM → маркована перша особа («я згоден/знала/звик/думав», також «я до цього звик») → **"suspicious"**.
+  - \`speaker_gender: "any"\` (\`speaker: "Player"\`) / RNAM → маркована перша особа («я згоден/згодна/знала/звик/думав/радий», також «я до цього звик») → **"suspicious"**.
   - \`speaker_gender: "male"/"female"\` при \`speaker: "Player"\` → відповідний рід першої особи → "ok". Не вимагай нейтралізувати розвилку.
   - Канонічні спліти (sir/mum, Шон→мама/тато, Cooke→Paul, Silver Shroud→Mistress, Cito man/lady) — рід OK, не нейтралізуй.
   - Suggestion має переписати присудок, як у вдалих перефразах (не «був»→«була»).
-${UK_WASTELAND_GENDER_RECAST_EXAMPLES}`;
+${UK_WASTELAND_GENDER_RECAST_EXAMPLES_FULL}`;
   }
   return `  - \`addressee_gender: "any"\` (\`addressee: "Player"\`) → репліка **до гравця**: маркована друга особа однини («ти готовий/готова») → **"suspicious"**; «ви»+множина або безособовий перефраз → "ok".
   - \`speaker_gender: "any"\` (\`speaker: "Player"\`) → репліка **гравця**: маркована перша особа → **"suspicious"**, якщо це не стать-специфічна версія.
