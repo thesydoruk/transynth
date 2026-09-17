@@ -4,6 +4,13 @@
 const ALT_PREFIX_RE = /^alternative-(\d+)-/i;
 const FIXED_PREFIX_RE = /^fixed-/i;
 const TRAILING_ID_RE = /-(\d+)$/;
+/**
+ * Actor + ALL-CAPS conversation + entry id.
+ * Non-greedy actor so `Mega Rich Light-Bending Guy-CONTAINERYARD  GUY-12`
+ * does not split on the hyphen inside the name. Conversation titles in the
+ * pack start with a 3+ letter location/code (`YARD`, `INVENTORY`, `WHIRLING`).
+ */
+const ACTOR_CAPS_CONV_ID_RE = /^(.+?)-([A-Z]{3,}[A-Z0-9 \-']*)-(\d+)$/;
 
 export type DiscoWavStemParts = {
   /** Basename without extension (as on disk). */
@@ -88,6 +95,23 @@ export const parseDiscoWavStem = (
       alternativeIndex,
       mainStem,
     };
+  }
+
+  const caps = ACTOR_CAPS_CONV_ID_RE.exec(body);
+  if (caps) {
+    const actor = caps[1]!.trim();
+    const conversation = caps[2]!.trim();
+    const entryId = Number.parseInt(caps[3]!, 10);
+    if (actor && conversation) {
+      return {
+        stem,
+        actor,
+        conversation,
+        entryId,
+        alternativeIndex,
+        mainStem: `${actor}-${conversation}-${entryId}`,
+      };
+    }
   }
 
   const idMatch = TRAILING_ID_RE.exec(body);

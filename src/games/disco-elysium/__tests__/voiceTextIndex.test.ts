@@ -75,6 +75,51 @@ describe('parseDiscoWavStem', () => {
     expect(parsed?.entryId).toBe(12);
   });
 
+  it('keeps hyphenated actor names without a conversation catalog', () => {
+    const cases: Array<[string, string]> = [
+      [
+        'Mega Rich Light-Bending Guy-CONTAINERYARD  LIGHT BENDING GUY-287',
+        'Mega Rich Light-Bending Guy',
+      ],
+      [
+        'alternative-0-Mega Rich Light-Bending Guy-CONTAINERYARD  LIGHT BENDING GUY-287-0',
+        'Mega Rich Light-Bending Guy',
+      ],
+      ['Horse-Faced Woman-WHIRLING F1  MAN WITH SUNGLASSES-118', 'Horse-Faced Woman'],
+      [
+        'East-Insulindian Repeater Station-CHURCH  MAINFRAME-135',
+        'East-Insulindian Repeater Station',
+      ],
+      [
+        'A Brief Look at Infra-Materialism-INVENTORY  INFRA-MATERIALISM GUIDE-100',
+        'A Brief Look at Infra-Materialism',
+      ],
+      ['Half-Finished Paperwork-WHIRLING F2  KIM PAPERWORK-16', 'Half-Finished Paperwork'],
+      ['Coin-Operated Viewer-PLAZA  COIN-OPERATED VIEWER I-2', 'Coin-Operated Viewer'],
+      ['Knick-knacks Stand-FRITTE  KNICK-KNACKS STAND-2', 'Knick-knacks Stand'],
+      ['Sawed-off Street Light-PAWNSHOP  SAWED-OFF STREET LIGHT-103', 'Sawed-off Street Light'],
+      ['BADGE LTN-2JFR DU BOIS-INVENTORY  BADGE-94', 'BADGE LTN-2JFR DU BOIS'],
+      ['Door, Room -3-WHIRLING F2  KLAASJE DOOR-10', 'Door, Room -3'],
+      ['Door, Apartment -12-APT  CUNO DAD DOOR-19', 'Door, Apartment -12'],
+      [
+        'From A to Zrieek! A Guide To a Well-Behaved Cockatoo-BOOKSTORE  COCKATOO-2',
+        'From A to Zrieek! A Guide To a Well-Behaved Cockatoo',
+      ],
+      [
+        'Smallest Church in Saint-Saens-INVENTORY  SMALLEST CHURCH TAPE-11',
+        'Smallest Church in Saint-Saens',
+      ],
+      ['Saint-Batiste Pharmaceutics-FRITTE  APOTHECARY-2', 'Saint-Batiste Pharmaceutics'],
+      [
+        'Rack of Second-Hand Uniforms-PAWNSHOP  RACK OF SECOND-HAND UNIFORMS-108',
+        'Rack of Second-Hand Uniforms',
+      ],
+    ];
+    for (const [stem, actor] of cases) {
+      expect(discoSpeakerKeyFromStem(stem)).toBe(actor);
+    }
+  });
+
   it('strips alternative- prefixes for speaker keys', () => {
     expect(discoSpeakerKeyFromStem('alternative-0-Empathy-KINEEMA  SYLVIE-198-0')).toBe('Empathy');
   });

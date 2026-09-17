@@ -46,11 +46,22 @@ export const persistDiscoSpeakers = async (
   modId: number,
   wavStems: Iterable<string>,
 ): Promise<number> => {
-  const { speakers, lineCounts } = buildDiscoSpeakerRowsFromStems(wavStems);
+  const stems = [...wavStems];
+  const { speakers, lineCounts } = buildDiscoSpeakerRowsFromStems(stems);
   if (speakers.length === 0) {
     await db.query(`DELETE FROM dialog_speakers WHERE mod_id = $1`, [modId]);
     return 0;
   }
+
+  await db.query(
+    `UPDATE voice_clips vc
+        SET speaker_key = v.new_key
+       FROM UNNEST($2::text[], $3::text[]) AS v(clip_key, new_key)
+      WHERE vc.mod_id = $1
+        AND vc.clip_key = v.clip_key
+        AND vc.speaker_key IS DISTINCT FROM v.new_key`,
+    [modId, stems, stems.map((stem) => discoSpeakerKeyFromStem(stem))],
+  );
 
   await db.query(
     `INSERT INTO dialog_speakers(

@@ -18,4 +18,23 @@ describe('buildDiscoSpeakerRowsFromStems', () => {
       'Kim Kitsuragi',
     );
   });
+
+  it('does not split hyphenated actor names at the first dash', () => {
+    const { speakers, lineCounts } = buildDiscoSpeakerRowsFromStems([
+      'Mega Rich Light-Bending Guy-CONTAINERYARD  LIGHT BENDING GUY-287',
+      'alternative-0-Horse-Faced Woman-WHIRLING F1  MAN WITH SUNGLASSES-118-0',
+      'Door, Room -3-WHIRLING F2  KLAASJE DOOR-10',
+    ]);
+
+    expect(lineCounts.get('Mega Rich Light-Bending Guy')).toBe(1);
+    expect(lineCounts.get('Horse-Faced Woman')).toBe(1);
+    expect(lineCounts.get('Door, Room -3')).toBe(1);
+    expect(speakers.map((s) => s.speakerKey)).toEqual([
+      'Door, Room -3',
+      'Horse-Faced Woman',
+      'Mega Rich Light-Bending Guy',
+    ]);
+    expect(lineCounts.has('Mega Rich Light')).toBe(false);
+    expect(lineCounts.has('Horse')).toBe(false);
+  });
 });
