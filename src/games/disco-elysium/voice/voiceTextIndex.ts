@@ -4,17 +4,17 @@
  * Wav names are AssetName (`Kim Kitsuragi-YARD  HANGED MAN-324`); lockit msgctxt
  * is `Dialogue Text/0x…`. When actor+conversation have the same number of
  * Dialogue Text rows and main takes, pair PO order with entry-id order.
+ *
+ * Groups whose counts disagree — one unvoiced line is enough — are left for
+ * {@link ../voice/alignTakesByAsr}, which listens to the takes instead of
+ * counting them.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  discoAudioDir,
-  discoverDiscoLangFolders,
-  listPoFilesInDir,
-  listWavFilesRecursive,
-} from '../packLayout';
+import { discoAudioDir, discoverDiscoLangFolders, listWavFilesRecursive } from '../packLayout';
 import { discoDialogueMsgctxtKey } from '../import/poPath';
-import { scanDiscoPoSpokenLines, type DiscoPoSpokenLine } from './poVoiceMeta';
+import type { DiscoPoSpokenLine } from './poVoiceMeta';
+import { getDiscoSpokenPoLines } from './spokenPoLines';
 import {
   crushDiscoVoiceToken,
   discoWavStemAsciiScore,
@@ -26,6 +26,21 @@ export type DiscoVoiceTextRef = {
   field: string;
   articyId: string;
   msgctxtKey: string;
+};
+
+/** One wav take on disk, parsed. */
+export type DiscoVoiceTake = DiscoWavStemParts & { absPath: string };
+
+/** Takes and lockit rows of one actor in one conversation. */
+export type DiscoVoiceGroup = {
+  actor: string;
+  conversation: string;
+  /** Main takes, entry-id order. */
+  takes: DiscoVoiceTake[];
+  /** Alternate takes keyed by the main stem they belong to. */
+  alternates: Map<string, DiscoVoiceTake[]>;
+  /** `Dialogue Text` rows, lockit file order. */
+  lines: DiscoPoSpokenLine[];
 };
 
 const groupByActorConv = <T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> => {
@@ -108,12 +123,12 @@ const loadOptionalClipLibrary = (
   return out;
 };
 
-const wavEntryDedupeKey = (wav: DiscoWavStemParts): string =>
+const wavEntryDedupeKey = (wav: DiscoVoiceTake): string =>
   `${crushDiscoVoiceToken(wav.actor)}\0${crushDiscoVoiceToken(wav.conversation)}\0${wav.entryId}\0${wav.alternativeIndex ?? ''}`;
 
 /** One clip per actor+conversation+entry (ASCII filename wins over Mañana/latin-1 twins). */
-const dedupeWavsByEntry = (wavs: DiscoWavStemParts[]): DiscoWavStemParts[] => {
-  const best = new Map<string, DiscoWavStemParts>();
+const dedupeWavsByEntry = (wavs: DiscoVoiceTake[]): DiscoVoiceTake[] => {
+  const best = new Map<string, DiscoVoiceTake>();
   for (const wav of wavs) {
     const key = wavEntryDedupeKey(wav);
     const prev = best.get(key);
@@ -124,41 +139,104 @@ const dedupeWavsByEntry = (wavs: DiscoWavStemParts[]): DiscoWavStemParts[] => {
   return [...best.values()];
 };
 
-const zipEqualCount = (
-  spoken: DiscoPoSpokenLine[],
-  wavs: DiscoWavStemParts[],
+/** Ref for one take paired with one lockit row. */
+export const discoVoiceTextRefFor = (line: DiscoPoSpokenLine): DiscoVoiceTextRef => ({
+  field: line.field,
+  articyId: line.articyId,
+  msgctxtKey: discoDialogueMsgctxtKey(line.field, line.articyId),
+});
+
+/** Refs for the alternate takes hanging off one main take. */
+export const applyDiscoAlternateRefs = (
+  group: DiscoVoiceGroup,
+  take: DiscoVoiceTake,
+  line: DiscoPoSpokenLine,
   out: Map<string, DiscoVoiceTextRef>,
 ): void => {
-  const mains = wavs
-    .filter((w) => w.alternativeIndex == null)
-    .sort((a, b) => a.entryId - b.entryId);
-  const texts = spoken.filter((s) => s.field === 'Dialogue Text');
-  if (mains.length === 0 || mains.length !== texts.length) return;
+  for (const alt of group.alternates.get(take.mainStem) ?? []) {
+    const field = `Alternate${(alt.alternativeIndex ?? 0) + 1}`;
+    out.set(alt.stem, {
+      field,
+      articyId: line.articyId,
+      msgctxtKey: discoDialogueMsgctxtKey(field, line.articyId),
+    });
+  }
+};
 
-  const byMain = new Map<string, DiscoWavStemParts[]>();
-  for (const wav of wavs) {
-    if (wav.alternativeIndex == null) continue;
-    const list = byMain.get(wav.mainStem) ?? [];
-    list.push(wav);
-    byMain.set(wav.mainStem, list);
+/** Preferred (English) language folder of a pack, or null when it has none. */
+const preferredLangFolder = (extractRoot: string): string | null => {
+  const folders = discoverDiscoLangFolders(extractRoot);
+  if (folders.length === 0) return null;
+  const preferred =
+    folders.find((f) => f.locale === 'en') ??
+    folders.find((f) => /english/i.test(f.folderName)) ??
+    folders[0]!;
+  return preferred.absPath;
+};
+
+/**
+ * Takes and lockit rows of a pack, grouped by actor + conversation.
+ *
+ * Both sides are ordered the way the pack exported them: takes by entry id,
+ * rows by lockit file position. Within a conversation those two orders agree —
+ * Articy ids rise with entry ids — which is what makes pairing possible at all.
+ */
+export const buildDiscoVoiceGroups = (extractRoot: string): DiscoVoiceGroup[] => {
+  const langFolder = preferredLangFolder(extractRoot);
+  if (!langFolder) return [];
+
+  const spoken = getDiscoSpokenPoLines(langFolder);
+  const conversations = new Set(spoken.map((s) => s.conversation).filter(Boolean));
+
+  const wavs: DiscoVoiceTake[] = [];
+  for (const abs of listWavFilesRecursive(discoAudioDir(langFolder))) {
+    const stem = path.basename(abs, path.extname(abs));
+    if (stem.includes('\uFFFD')) continue;
+    const parsed = parseDiscoWavStem(stem, conversations);
+    if (parsed) wavs.push({ ...parsed, absPath: abs });
   }
 
-  for (let i = 0; i < mains.length; i++) {
-    const wav = mains[i]!;
-    const text = texts[i]!;
-    out.set(wav.stem, {
-      field: text.field,
-      articyId: text.articyId,
-      msgctxtKey: discoDialogueMsgctxtKey(text.field, text.articyId),
-    });
-    for (const alt of byMain.get(wav.mainStem) ?? []) {
-      const field = `Alternate${(alt.alternativeIndex ?? 0) + 1}`;
-      out.set(alt.stem, {
-        field,
-        articyId: text.articyId,
-        msgctxtKey: discoDialogueMsgctxtKey(field, text.articyId),
-      });
+  const spokenBy = groupByActorConv(spoken, (s) => actorConvKey(s.actorKey, s.conversationKey));
+  const wavBy = groupByActorConv(dedupeWavsByEntry(wavs), (w) =>
+    actorConvKey(crushDiscoVoiceToken(w.actor), crushDiscoVoiceToken(w.conversation)),
+  );
+
+  const groups: DiscoVoiceGroup[] = [];
+  for (const [key, groupWavs] of wavBy) {
+    const groupSpoken = spokenBy.get(key);
+    if (!groupSpoken) continue;
+    const takes = groupWavs
+      .filter((w) => w.alternativeIndex == null)
+      .sort((a, b) => a.entryId - b.entryId);
+    const alternates = new Map<string, DiscoVoiceTake[]>();
+    for (const wav of groupWavs) {
+      if (wav.alternativeIndex == null) continue;
+      const list = alternates.get(wav.mainStem) ?? [];
+      list.push(wav);
+      alternates.set(wav.mainStem, list);
     }
+    groups.push({
+      actor: takes[0]?.actor ?? groupWavs[0]?.actor ?? '',
+      conversation: takes[0]?.conversation ?? groupWavs[0]?.conversation ?? '',
+      takes,
+      alternates,
+      lines: groupSpoken.filter((s) => s.field === 'Dialogue Text'),
+    });
+  }
+  return groups;
+};
+
+/** True when take count and lockit row count agree, so order alone can pair them. */
+export const discoGroupZipsByCount = (group: DiscoVoiceGroup): boolean =>
+  group.takes.length > 0 && group.takes.length === group.lines.length;
+
+const zipEqualCount = (group: DiscoVoiceGroup, out: Map<string, DiscoVoiceTextRef>): void => {
+  if (!discoGroupZipsByCount(group)) return;
+  for (let i = 0; i < group.takes.length; i++) {
+    const take = group.takes[i]!;
+    const line = group.lines[i]!;
+    out.set(take.stem, discoVoiceTextRefFor(line));
+    applyDiscoAlternateRefs(group, take, line, out);
   }
 };
 
@@ -186,39 +264,13 @@ export const invalidateDiscoVoiceTextIndex = (extractRoot?: string): void => {
 
 /** Wav stem → spoken PO field + Articy id. */
 export const buildDiscoVoiceTextIndex = (extractRoot: string): Map<string, DiscoVoiceTextRef> => {
-  const folders = discoverDiscoLangFolders(extractRoot);
-  if (folders.length === 0) return new Map();
-  const preferred =
-    folders.find((f) => f.locale === 'en') ??
-    folders.find((f) => /english/i.test(f.folderName)) ??
-    folders[0]!;
+  const langFolder = preferredLangFolder(extractRoot);
+  if (!langFolder) return new Map();
 
-  const fromLibrary = loadOptionalClipLibrary(extractRoot, preferred.absPath);
+  const fromLibrary = loadOptionalClipLibrary(extractRoot, langFolder);
   if (fromLibrary.size > 0) return fromLibrary;
 
-  const spoken = listPoFilesInDir(preferred.absPath).flatMap((poPath) =>
-    scanDiscoPoSpokenLines(poPath),
-  );
-  const conversations = new Set(spoken.map((s) => s.conversation).filter(Boolean));
-  const audioDir = discoAudioDir(preferred.absPath);
-  const wavs: DiscoWavStemParts[] = [];
-  for (const abs of listWavFilesRecursive(audioDir)) {
-    const stem = path.basename(abs, path.extname(abs));
-    if (stem.includes('\uFFFD')) continue;
-    const parsed = parseDiscoWavStem(stem, conversations);
-    if (parsed) wavs.push(parsed);
-  }
-
-  const spokenBy = groupByActorConv(spoken, (s) => actorConvKey(s.actorKey, s.conversationKey));
-  const wavBy = groupByActorConv(dedupeWavsByEntry(wavs), (w) =>
-    actorConvKey(crushDiscoVoiceToken(w.actor), crushDiscoVoiceToken(w.conversation)),
-  );
-
   const out = new Map<string, DiscoVoiceTextRef>();
-  for (const [key, groupWavs] of wavBy) {
-    const groupSpoken = spokenBy.get(key);
-    if (!groupSpoken) continue;
-    zipEqualCount(groupSpoken, groupWavs, out);
-  }
+  for (const group of buildDiscoVoiceGroups(extractRoot)) zipEqualCount(group, out);
   return out;
 };

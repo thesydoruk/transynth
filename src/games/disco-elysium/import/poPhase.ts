@@ -18,8 +18,10 @@ import {
 } from './poLocales';
 import { persistDiscoSpeakers } from './speakers';
 import { persistDiscoVoiceClips } from '../voice/persistVoiceClips';
+import { alignDiscoVoiceClips } from '../voice/reindexVoiceTakes';
 import { getDiscoConversationNames } from '../voice/spokenPoLines';
 import { isDiscoDialogueWavStem } from '../voice/voiceStem';
+import { probeAudioIntelHealth } from '../../../audioIntel/health';
 import { commitExtrasStop, extrasStopRequested } from '../../../import/mod/run/extrasStop';
 import type { ModImportRunContext } from '../../contract';
 
@@ -30,6 +32,49 @@ const trackImportBatch = (ctx: ModImportRunContext, results: ModImportBulkResult
 
 /** Composite key without the `PO\\` prefix, used for translation overlays. */
 const overlayKeyFromPath = (recordPath: string): string => recordPath.replace(/^PO\\/, '');
+
+/**
+ * Give text to the takes the count-zip could not pair.
+ *
+ * Transcribing a few thousand clips runs tens of minutes (the Final Cut pack
+ * takes ~40), which is fine inside an import job and nowhere else. Never fatal:
+ * a pack imports with unmatched clips today, and that is still the outcome when
+ * audio-intel is down.
+ */
+const alignUnmatchedDiscoClips = async (
+  ctx: ModImportRunContext,
+  modId: number,
+  extractRoot: string,
+): Promise<void> => {
+  const health = await probeAudioIntelHealth().catch(() => ({ ok: false as const, error: '' }));
+  if (!health.ok) {
+    logImport.info(
+      `[Mod Import #${ctx.job.id}] Disco voice alignment skipped: audio-intel unavailable`,
+    );
+    return;
+  }
+  try {
+    const result = await alignDiscoVoiceClips(ctx.db, modId, extractRoot, {
+      shouldAbort: () => ctx.state.cancel || ctx.state.pause,
+      onProgress: (done, total) => {
+        if (done % 500 === 0) {
+          logImport.info(
+            `[Mod Import #${ctx.job.id}] Disco voice alignment: transcribed ${done}/${total}`,
+          );
+        }
+      },
+    });
+    logImport.info(
+      `[Mod Import #${ctx.job.id}] Disco voice alignment: ${result.matched}/${result.unmatched} unmatched clip(s) matched across ${result.groups} conversation(s)`,
+    );
+  } catch (err) {
+    logImport.warn(
+      `[Mod Import #${ctx.job.id}] Disco voice alignment failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+};
 
 export const importDiscoPoStringRows = async (ctx: ModImportRunContext): Promise<void> => {
   const importModId = ctx.importModId;
@@ -130,4 +175,10 @@ export const importDiscoPoStringRows = async (ctx: ModImportRunContext): Promise
   logImport.info(
     `[Mod Import #${ctx.job.id}] Disco PO source locale "${sourceLocale}": ${rows.length} strings`,
   );
+
+  // Last: the catalogue is what the editor needs first, and this listens to a
+  // few thousand clips.
+  if (!extrasStopRequested(ctx)) {
+    await alignUnmatchedDiscoClips(ctx, importModId, extractRoot);
+  }
 };

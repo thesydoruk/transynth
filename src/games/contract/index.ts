@@ -30,6 +30,8 @@ export type {
   VoiceLinePreviewBuild,
   VoiceLocalizeRequest,
   VoiceLocalizeSink,
+  VoiceReindexRequest,
+  VoiceReindexResult,
   SourceTakeLocation,
   VoiceTake,
   VoiceTakeQuery,

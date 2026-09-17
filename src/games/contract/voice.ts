@@ -115,6 +115,28 @@ export type SourceTakeLocation = {
  * TTS, and whether the engine wants a lip-sync file next to the audio. A game
  * with no voice support simply leaves `voice` unset on its plugin.
  */
+export type VoiceReindexRequest = {
+  modId: number;
+  pluginPath: string;
+  /** Re-read take rows and speakers from the pack. Default true. */
+  rebuild?: boolean;
+  /** Listen to the takes still without a line. Default true. */
+  matchByAudio?: boolean;
+  /** Progress of the listening pass, which is the slow half. */
+  onProgress?: (done: number, total: number) => void;
+};
+
+export type VoiceReindexResult = {
+  /** Take rows the pack now has. */
+  takes: number;
+  speakers: number;
+  /** Takes that had no line before this ran. */
+  unmatched: number;
+  /** Of those, the ones that came away with a line. */
+  matched: number;
+  transcribed: number;
+};
+
 export type GameVoiceAdapter = {
   /** Extension of a localized take on disk, e.g. `.fuz` or `.wav`. */
   readonly sourceExtension: string;
@@ -207,4 +229,16 @@ export type GameVoiceAdapter = {
     db: Tx,
     request: { modId: number; pluginPath: string; srcLang: string; targetLang: string },
   ): Promise<VoiceLineCatalog | VoiceLineCatalogError>;
+
+  /**
+   * Re-derive an imported mod's take index from the pack on disk: which files
+   * are takes at all, who speaks them, and which line each one carries.
+   *
+   * Maintenance only — import does this itself, and nothing in the editor calls
+   * it. A game implements it when that mapping is *inferred* rather than
+   * declared in the files, so a mod imported under older rules can be corrected
+   * in place instead of re-imported. A game whose takes name their own line has
+   * nothing to re-derive and leaves this out.
+   */
+  reindexTakes?(db: Tx, request: VoiceReindexRequest): Promise<VoiceReindexResult>;
 };

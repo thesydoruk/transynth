@@ -51,7 +51,7 @@ const insertClipChunk = async (
 };
 
 /** Map spoken PO msgctxt keys (and raw wav-stem EDIDs) to `records.id`. */
-const loadDiscoSpokenRecordIdsByMsgctxt = async (
+export const loadDiscoSpokenRecordIdsByMsgctxt = async (
   db: Tx,
   modId: number,
 ): Promise<Map<string, number>> => {

@@ -13,6 +13,7 @@ import { discoVoiceSpeakerKey, discoverDiscoVoiceFiles } from './discoverDiscoVo
 import { loadDiscoVoiceSources } from './loadDiscoVoiceSources';
 import { loadDiscoVoiceTranslations } from './loadDiscoVoiceTranslations';
 import { loadDiscoVoiceCatalog } from './lineCatalog';
+import { reindexDiscoVoiceTakes } from './reindexVoiceTakes';
 import { countDiscoVoiceLocalizeWork, localizeDiscoVoicePackage } from './localizeDiscoVoice';
 import { resolveDiscoClipEntryByFormid, resolveDiscoVoiceFilesFromClips } from './resolveClipEntry';
 import { resolveDiscoVoiceExtractRoot } from './discoverDiscoVoiceFiles';
@@ -159,4 +160,8 @@ export const discoVoiceAdapter: GameVoiceAdapter = {
   },
 
   loadLineCatalog: (db, request) => loadDiscoVoiceCatalog(db, request),
+
+  // A `.wav` here names its actor and conversation, not its lockit row, so the
+  // take↔line mapping is inferred at import and can be re-derived later.
+  reindexTakes: (db, request) => reindexDiscoVoiceTakes(db, request),
 };

@@ -27,6 +27,7 @@
     "voice:purge-skipped": "tsx scripts/purgeSkippedVoice.ts",
     "voice:backfill-clips": "tsx scripts/backfillVoiceClips.ts",
     "voice:backfill-hashes": "tsx scripts/backfillVoiceHashes.ts",
+    "voice:reindex-takes": "tsx scripts/reindexVoiceTakes.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --cache",

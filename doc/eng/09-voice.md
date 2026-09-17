@@ -16,6 +16,7 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Dialogs playback](#dialogs-playback)
 - [Running synthesis](#running-synthesis)
 - [Disco: what gets spoken](#disco-what-gets-spoken)
+- [Disco: which line a take belongs to](#disco-which-line-a-take-belongs-to)
 - [Settings](#settings)
 - [Clip and response index](#clip-and-response-index)
 - [Known limitations](#known-limitations)
@@ -127,6 +128,42 @@ Before TTS, Disco also:
   and glossary see the same canon as the LLM.
 
 Lockit markup details: [LLM Translation](06-llm-translation.md#disco-lockit).
+
+---
+
+## Disco: which line a take belongs to
+
+`Audio/` is one flat folder holding the takes **and** the soundtrack, ambience
+and foley. Only a file named `{Actor}-{CONVERSATION}-{entry id}` for a
+conversation the lockit knows counts as dialogue, so `city-birds-01` and
+`01 Instrument of Surrender` never show up in Voice as lines without text.
+
+A take carries no lockit id. Within one actor and one conversation, takes
+(entry-id order) and `Dialogue Text` rows (lockit file order) run in step, so
+equal counts pair them one for one.
+
+A single unvoiced line breaks that count, and the conversation would then have
+no text at all — hundreds of lines for a main character. Those conversations
+are transcribed with **audio-intel** and each take is matched to the row it
+actually says, leaving a gap where a row has no take. A take whose best row
+still shares under 30% of its words keeps no text: blank beats the wrong line.
+Matches made this way carry `game_data.match = {"by": "asr", "score": …}`.
+
+Import does this on its own. A pack imported before this existed is fixed in
+place — clip rows and speakers rebuilt from the pack, then the unmatched takes
+transcribed:
+
+```
+npm run voice:reindex-takes              # every mod whose game infers it
+npm run voice:reindex-takes -- --mod=12  # one of them
+npm run voice:reindex-takes -- --no-audio   # rebuild rows, skip listening
+npm run voice:reindex-takes -- --keep-rows  # listen only, no rebuild
+```
+
+On the Final Cut pack this listens to ~4 800 clips and takes around 40 minutes;
+transcripts are cached, so a second run costs nothing. It recovers about 98% of
+them — what stays blank is mostly `alternative-N` takes whose main take found no
+row.
 
 ---
 
