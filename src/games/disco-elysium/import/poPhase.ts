@@ -18,6 +18,8 @@ import {
 } from './poLocales';
 import { persistDiscoSpeakers } from './speakers';
 import { persistDiscoVoiceClips } from '../voice/persistVoiceClips';
+import { getDiscoConversationNames } from '../voice/spokenPoLines';
+import { isDiscoDialogueWavStem } from '../voice/voiceStem';
 import { commitExtrasStop, extrasStopRequested } from '../../../import/mod/run/extrasStop';
 import type { ModImportRunContext } from '../../contract';
 
@@ -90,8 +92,16 @@ export const importDiscoPoStringRows = async (ctx: ModImportRunContext): Promise
     ctx.onProgress?.(ctx.imported.value, ctx.imported.value);
   }
 
-  const speakerCount = await persistDiscoSpeakers(ctx.db, importModId, sourceBundle.wavStems);
-  logImport.info(`[Mod Import #${ctx.job.id}] Disco speakers: ${speakerCount} from Audio/ stems`);
+  // Soundtrack and foley share Audio/ with the takes; `acele-mb25` is not a
+  // character, and a speaker named after one would sit in the navigator forever.
+  const conversations = getDiscoConversationNames(sourceBundle.folder.absPath);
+  const dialogueStems = [...sourceBundle.wavStems].filter((stem) =>
+    isDiscoDialogueWavStem(stem, conversations),
+  );
+  const speakerCount = await persistDiscoSpeakers(ctx.db, importModId, dialogueStems);
+  logImport.info(
+    `[Mod Import #${ctx.job.id}] Disco speakers: ${speakerCount} from ${dialogueStems.length} dialogue take(s)`,
+  );
   const clipCount = await persistDiscoVoiceClips(ctx.db, importModId, extractRoot);
   logImport.info(`[Mod Import #${ctx.job.id}] Disco voice clips: ${clipCount} wav↔lockit rows`);
 

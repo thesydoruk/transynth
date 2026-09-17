@@ -8,7 +8,13 @@ import { discoAudioDir, discoverDiscoLangFolders, listWavFilesRecursive } from '
 import { resolveDiscoExtractRoot } from '../import/poLocales';
 import { resolveModImportExtractRoot } from '../../../modStorage';
 import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
-import { crushDiscoVoiceToken, discoSpeakerKeyFromStem, discoWavStemAsciiScore } from './voiceStem';
+import { getDiscoConversationNames } from './spokenPoLines';
+import {
+  crushDiscoVoiceToken,
+  discoSpeakerKeyFromStem,
+  discoWavStemAsciiScore,
+  isDiscoDialogueWavStem,
+} from './voiceStem';
 
 export { discoSpeakerKeyFromStem } from './voiceStem';
 
@@ -75,7 +81,12 @@ export const discoVoiceFileEntryFromClip = (
   };
 };
 
-/** Prefer English language folder Audio/, else first folder that has wavs. */
+/**
+ * Prefer English language folder Audio/, else first folder that has wavs.
+ *
+ * Only dialogue takes: the same folder holds the soundtrack and every door and
+ * footstep in the game, and those have no line to localize.
+ */
 export const discoverDiscoVoiceFiles = (extractRoot: string): VoiceFileEntry[] => {
   const folders = discoverDiscoLangFolders(extractRoot);
   if (folders.length === 0) return [];
@@ -84,6 +95,7 @@ export const discoverDiscoVoiceFiles = (extractRoot: string): VoiceFileEntry[] =
     folders.find((f) => f.locale === 'en') ??
     folders.find((f) => /english/i.test(f.folderName)) ??
     folders[0]!;
+  const conversations = getDiscoConversationNames(preferred.absPath);
 
   const candidates = [preferred, ...folders.filter((f) => f.absPath !== preferred.absPath)];
   for (const folder of candidates) {
@@ -95,6 +107,7 @@ export const discoverDiscoVoiceFiles = (extractRoot: string): VoiceFileEntry[] =
     for (const absPath of wavs) {
       const stem = path.basename(absPath, path.extname(absPath));
       if (stem.includes('\uFFFD')) continue;
+      if (!isDiscoDialogueWavStem(stem, conversations)) continue;
       const relUnderAudio = path.relative(audioDir, absPath).split(path.sep).join('/');
       const entry: VoiceFileEntry = {
         relPath: normalizeRelPath(`Audio/${relUnderAudio}`),

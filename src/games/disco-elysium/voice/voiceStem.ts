@@ -59,13 +59,36 @@ const stripAlternativePrefix = (
   return { rest: stem.slice(m[0].length), alternativeIndex: Number.parseInt(m[1]!, 10) };
 };
 
+const NO_CONVERSATIONS: ReadonlySet<string> = new Set();
+
+/**
+ * Trimmed conversation titles as a lookup, memoized per catalogue.
+ *
+ * Every wav in the pack is parsed against the same catalogue — 48 000 stems
+ * against 4 000 titles — so rebuilding it per stem is the difference between
+ * opening the voice tab and waiting for it.
+ */
+const catalogCache = new WeakMap<object, ReadonlySet<string>>();
+const conversationLookup = (names: Iterable<string>): ReadonlySet<string> => {
+  const cacheKey = typeof names === 'object' && names !== null ? (names as object) : null;
+  const hit = cacheKey ? catalogCache.get(cacheKey) : undefined;
+  if (hit) return hit;
+  const lookup = new Set<string>();
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (trimmed) lookup.add(trimmed);
+  }
+  if (cacheKey) catalogCache.set(cacheKey, lookup);
+  return lookup;
+};
+
 /**
  * Split a wav stem using known conversation titles (longest match) so actor
  * names that contain hyphens still parse.
  */
 export const parseDiscoWavStem = (
   stem: string,
-  conversationNames: Iterable<string> = [],
+  conversationNames: Iterable<string> = NO_CONVERSATIONS,
 ): DiscoWavStemParts | null => {
   const { rest: withoutFixed } = stripFixedPrefix(stem.trim());
   const { rest: afterAlt, alternativeIndex } = stripAlternativePrefix(withoutFixed);
@@ -75,26 +98,27 @@ export const parseDiscoWavStem = (
     if (trail) body = body.slice(0, trail.index);
   }
 
-  const catalog = [...new Set([...conversationNames].map((n) => n.trim()).filter(Boolean))].sort(
-    (a, b) => b.length - a.length,
-  );
-  for (const conv of catalog) {
-    const needle = `-${conv}-`;
-    const idx = body.indexOf(needle);
-    if (idx <= 0) continue;
-    const actor = body.slice(0, idx).trim();
-    const afterConv = body.slice(idx + needle.length);
-    const idMatch = /^(\d+)$/.exec(afterConv);
-    if (!actor || !idMatch) continue;
-    const mainStem = `${actor}-${conv}-${idMatch[1]}`;
-    return {
-      stem,
-      actor,
-      conversation: conv,
-      entryId: Number.parseInt(idMatch[1]!, 10),
-      alternativeIndex,
-      mainStem,
-    };
+  // `{actor}-{conversation}-{entryId}`: the actor may hold hyphens, so try each
+  // split point, longest conversation first, and keep the one the pack knows.
+  const catalog = conversationLookup(conversationNames);
+  const trailingId = catalog.size > 0 ? TRAILING_ID_RE.exec(body) : null;
+  if (trailingId) {
+    const left = body.slice(0, trailingId.index);
+    for (let i = 1; i < left.length - 1; i++) {
+      if (left[i] !== '-') continue;
+      const conv = left.slice(i + 1);
+      if (!catalog.has(conv)) continue;
+      const actor = left.slice(0, i).trim();
+      if (!actor) continue;
+      return {
+        stem,
+        actor,
+        conversation: conv,
+        entryId: Number.parseInt(trailingId[1]!, 10),
+        alternativeIndex,
+        mainStem: `${actor}-${conv}-${trailingId[1]}`,
+      };
+    }
   }
 
   const caps = ACTOR_CAPS_CONV_ID_RE.exec(body);
@@ -131,6 +155,26 @@ export const parseDiscoWavStem = (
     alternativeIndex,
     mainStem,
   };
+};
+
+/**
+ * True when a wav under `Audio/` is a dialogue take rather than music, ambience
+ * or foley.
+ *
+ * `Audio/` is flat and holds the whole soundtrack: `city-birds-01`,
+ * `door-open-01`, `01 Instrument of Surrender`, `MOZOVIAN SOCIO-ECONOMICS_TITLE`.
+ * A take carries an actor, a conversation the lockit knows, and an entry id;
+ * nothing else does, so an unknown conversation is the signal. Without a
+ * conversation catalogue there is nothing to check against and every wav counts
+ * — better a soundtrack file in the list than a missing line.
+ */
+export const isDiscoDialogueWavStem = (
+  stem: string,
+  conversationNames: ReadonlySet<string>,
+): boolean => {
+  if (conversationNames.size === 0) return true;
+  const parsed = parseDiscoWavStem(stem, conversationNames);
+  return parsed != null && conversationNames.has(parsed.conversation);
 };
 
 /** Speaker folder token from asset name (`alternative-0-Kim-YARD-1-0` → `Kim`). */
