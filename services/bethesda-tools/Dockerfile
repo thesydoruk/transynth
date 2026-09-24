@@ -12,6 +12,8 @@ RUN dpkg --add-architecture i386 \
   && rm -rf /var/lib/apt/lists/*
 
 # Always the latest GitHub release of thesydoruk/FaceFXWrapper.
+# Release zips are built on Windows with `\` separators: unzip still extracts
+# them but exits 1 ("warning"), so 1 is accepted and the find below checks.
 RUN mkdir -p /opt/bethesda \
   && node --input-type=module -e '\
     const res = await fetch("https://api.github.com/repos/thesydoruk/FaceFXWrapper/releases/latest");\
@@ -31,7 +33,7 @@ RUN mkdir -p /opt/bethesda \
     writeFileSync("/tmp/FaceFXWrapper.zip", Buffer.from(await zip.arrayBuffer()));\
     process.stdout.write(`FaceFXWrapper ${release.tag_name}\\n`);\
   ' \
-  && unzip -o /tmp/FaceFXWrapper.zip -d /tmp/facefx \
+  && { unzip -o /tmp/FaceFXWrapper.zip -d /tmp/facefx || [ $? -eq 1 ]; } \
   && exe="$(find /tmp/facefx -name FaceFXWrapper.exe -print -quit)" \
   && test -n "$exe" \
   && mv "$exe" /opt/bethesda/FaceFXWrapper.exe \
