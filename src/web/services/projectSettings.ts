@@ -19,6 +19,11 @@ import {
   DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
   DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
 } from '../../pipeline/settings';
+import {
+  clampTtsRetries,
+  clampTtsRetryBelow,
+  TTS_SYNTHESIS_DEFAULTS,
+} from '../../tts/ttsSynthesisParams';
 import { normalizeGameTtsSettings, type GameTtsSettingsMap } from '../../voice/gameTtsSettings';
 
 /* ── Setting keys and value types ───────────────────────────────────────── */
@@ -51,6 +56,10 @@ export type ProjectSettingKey =
   | 'voice.game_tts'
   /** Max concurrent Fish Speech TTS HTTP requests (1–32). */
   | 'voice.tts_max_parallel_fish_speech'
+  /** ECAPA cosine below which the first take is not accepted (0–1, 0 = never retry on voice). */
+  | 'voice.synth_retry_below'
+  /** Extra takes generated after a failing first take, best one kept (0–8, 0 = keep the first). */
+  | 'voice.synth_retries'
   /**
    * vLLM chat pool (`[{host, maxParallel, apiKey}, …]`).
    * Empty = fall back to env `VLLM_SERVERS` / `VLLM_BASE_URL`.
@@ -74,6 +83,8 @@ export type ProjectSettings = {
   'voice.line_reference': boolean;
   'voice.game_tts': GameTtsSettingsMap;
   'voice.tts_max_parallel_fish_speech': number;
+  'voice.synth_retry_below': number;
+  'voice.synth_retries': number;
   'llm.vllm_servers': VllmServerEntry[];
   'pipeline.dependency_wait_timeout_sec': number;
   'pipeline.health_check_interval_sec': number;
@@ -103,6 +114,8 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'voice.line_reference': true,
   'voice.game_tts': {},
   'voice.tts_max_parallel_fish_speech': 1,
+  'voice.synth_retry_below': TTS_SYNTHESIS_DEFAULTS.retryBelow,
+  'voice.synth_retries': TTS_SYNTHESIS_DEFAULTS.retries,
   'llm.vllm_servers': [],
   'pipeline.dependency_wait_timeout_sec': DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
   'pipeline.health_check_interval_sec': DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
@@ -133,6 +146,8 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
   );
   result['llm.vllm_servers'] = normalizeVllmServerEntries(result['llm.vllm_servers']);
   result['voice.game_tts'] = normalizeGameTtsSettings(result['voice.game_tts']);
+  result['voice.synth_retry_below'] = clampTtsRetryBelow(result['voice.synth_retry_below']);
+  result['voice.synth_retries'] = clampTtsRetries(result['voice.synth_retries']);
   result['pipeline.dependency_wait_timeout_sec'] = clampDependencyWaitTimeoutSec(
     result['pipeline.dependency_wait_timeout_sec'],
   );

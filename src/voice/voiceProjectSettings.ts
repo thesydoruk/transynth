@@ -10,7 +10,7 @@ export const voiceReferenceModeFromProjectSettings = (
   settings: ProjectSettings,
 ): TtsReferenceMode => (settings['voice.line_reference'] ? 'line' : 'speaker');
 
-/** Map persisted project settings to Fish Speech per-game xtts-engine match flags. */
+/** Map persisted project settings to synthesis params: per-game match flags plus the retry policy. */
 export const voiceSynthesisFromProjectSettings = (
   settings: ProjectSettings,
   game?: string | null,
@@ -19,6 +19,8 @@ export const voiceSynthesisFromProjectSettings = (
   return {
     matchLoudness: true,
     matchTiming: match.matchTiming,
+    retryBelow: settings['voice.synth_retry_below'],
+    retries: settings['voice.synth_retries'],
   };
 };
 

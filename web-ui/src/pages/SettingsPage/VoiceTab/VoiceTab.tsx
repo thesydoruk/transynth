@@ -11,11 +11,15 @@ import { VOICE_SETTINGS_DEFAULTS } from './voiceSettingsConfig';
 type ProjectSettings = {
   'voice.line_reference': boolean;
   'voice.tts_max_parallel_fish_speech': number;
+  'voice.synth_retry_below': number;
+  'voice.synth_retries': number;
 };
 
 const DEFAULTS: ProjectSettings = {
   'voice.line_reference': VOICE_SETTINGS_DEFAULTS.line_reference,
   'voice.tts_max_parallel_fish_speech': 1,
+  'voice.synth_retry_below': 0.3,
+  'voice.synth_retries': 4,
 };
 
 /** Fish Speech synthesis settings — server URL read-only, reference mode editable. */
@@ -86,6 +90,31 @@ export const VoiceTab = () => {
             max={32}
             step={1}
             onCommit={(value) => update({ key: 'voice.tts_max_parallel_fish_speech', value })}
+          />
+        </div>
+      </div>
+
+      <div className={parentS.section}>
+        <h2 className={parentS.sectionTitle}>{t('settings.voice.sectionSynthesis')}</h2>
+        <p className={parentS.fieldNote}>{t('settings.voice.sectionSynthesisDesc')}</p>
+        <div className={controlS.settingsList}>
+          <VoiceSlider
+            label={t('settings.voice.synthRetryBelow')}
+            description={t('settings.voice.synthRetryBelowDesc')}
+            value={settings['voice.synth_retry_below']}
+            min={0}
+            max={1}
+            step={0.05}
+            onCommit={(value) => update({ key: 'voice.synth_retry_below', value })}
+          />
+          <VoiceSlider
+            label={t('settings.voice.synthRetries')}
+            description={t('settings.voice.synthRetriesDesc')}
+            value={settings['voice.synth_retries']}
+            min={0}
+            max={8}
+            step={1}
+            onCommit={(value) => update({ key: 'voice.synth_retries', value })}
           />
         </div>
       </div>

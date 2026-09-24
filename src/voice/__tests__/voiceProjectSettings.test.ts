@@ -21,6 +21,8 @@ describe('voiceProjectSettings', () => {
     expect(voiceSynthesisFromProjectSettings(SETTING_DEFAULTS, 'fo4')).toEqual({
       matchLoudness: true,
       matchTiming: true,
+      retryBelow: 0.3,
+      retries: 4,
     });
     expect(
       voiceSynthesisFromProjectSettings(
@@ -33,6 +35,8 @@ describe('voiceProjectSettings', () => {
     ).toEqual({
       matchLoudness: true,
       matchTiming: false,
+      retryBelow: 0.3,
+      retries: 4,
     });
     expect(
       voiceSynthesisFromProjectSettings(
@@ -45,7 +49,18 @@ describe('voiceProjectSettings', () => {
     ).toEqual({
       matchLoudness: true,
       matchTiming: true,
+      retryBelow: 0.3,
+      retries: 4,
     });
+  });
+
+  it('carries the retry policy from Settings → Voice → Synthesis', () => {
+    expect(
+      voiceSynthesisFromProjectSettings(
+        { ...SETTING_DEFAULTS, 'voice.synth_retries': 2, 'voice.synth_retry_below': 0.5 },
+        'fo4',
+      ),
+    ).toMatchObject({ retries: 2, retryBelow: 0.5 });
   });
 
   it('maps Fish Speech concurrency from project settings', () => {

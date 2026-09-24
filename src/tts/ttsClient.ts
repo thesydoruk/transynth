@@ -3,6 +3,7 @@ import { log } from '../logger';
 import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
 import { ttsPool } from './ttsRequestPool';
+import { pickBestTake, takeNeedsRetry, type TtsTake } from './ttsRetry';
 import {
   appendTtsSynthesisFormFields,
   resolveTtsSynthesisParams,
@@ -32,15 +33,19 @@ export const readVoiceSimilarity = (headers: Headers): number | null => {
 export type TtsSynthesizeResult = {
   wav: Buffer;
   voiceSimilarity: number | null;
+  /** How many takes were generated for this line (1 = the first was good enough). */
+  takes: number;
+};
+
+const previewText = (text: string): string => {
+  const clipped = text.trim().replace(/\s+/g, ' ');
+  return clipped.length > TTS_WARNING_TEXT_LIMIT
+    ? `${clipped.slice(0, TTS_WARNING_TEXT_LIMIT)}…`
+    : clipped;
 };
 
 const logSynthWarning = (warning: string, text: string): void => {
-  const clipped = text.trim().replace(/\s+/g, ' ');
-  const preview =
-    clipped.length > TTS_WARNING_TEXT_LIMIT
-      ? `${clipped.slice(0, TTS_WARNING_TEXT_LIMIT)}…`
-      : clipped;
-  log.warn('TTS suspicious take kept', { warning, text: preview });
+  log.warn('TTS suspicious take kept', { warning, text: previewText(text) });
 };
 
 export type TtsReferenceInput = {
@@ -129,13 +134,13 @@ const readReferenceClips = (
   });
 };
 
-const synthesizeWavHttp = async (
+/** One POST /v1/synthesize: one take, with what the server saw about it. */
+const requestTake = async (
   text: string,
-  reference: string | TtsReferenceInput[],
-  options: TtsSynthesizeOptions = {},
-): Promise<TtsSynthesizeResult> => {
-  const clips = readReferenceClips(reference, options.speakerText);
-  const baseUrl = (options.baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
+  clips: TtsFormReference[],
+  baseUrl: string,
+  options: TtsSynthesizeOptions,
+): Promise<TtsTake> => {
   const form = buildSynthesisForm(text, clips, options);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 300_000);
@@ -152,12 +157,11 @@ const synthesizeWavHttp = async (
       const detail = await response.text().catch(() => '');
       throw new Error(`TTS HTTP ${response.status}: ${detail || response.statusText}`);
     }
-    const warning = readSynthWarning(response.headers);
-    if (warning) logSynthWarning(warning, text);
     const arrayBuffer = await response.arrayBuffer();
     return {
       wav: Buffer.from(arrayBuffer),
       voiceSimilarity: readVoiceSimilarity(response.headers),
+      warning: readSynthWarning(response.headers),
     };
   } finally {
     options.signal?.removeEventListener('abort', onAbort);
@@ -169,7 +173,13 @@ const throwIfAborted = (signal?: AbortSignal): void => {
   if (signal?.aborted) throw new DOMException('Voice generation cancelled', 'AbortError');
 };
 
-/** Queue a Fish Speech synthesis request on the global concurrency pool. */
+/**
+ * Synthesize one line, retrying on the client when the first take is not good enough.
+ *
+ * Each take is its own pooled request. A take the server flagged (silence,
+ * cutoff) or whose voice scored below `retryBelow` triggers `retries` more
+ * takes; the best of all of them is kept (see `ttsRetry`).
+ */
 export const synthesizeWav = async (
   text: string,
   reference: string | TtsReferenceInput[],
@@ -178,8 +188,28 @@ export const synthesizeWav = async (
   throwIfAborted(options.signal);
   await ensureDependencyHealthy('tts');
   throwIfAborted(options.signal);
-  return ttsPool.run(() => {
-    throwIfAborted(options.signal);
-    return synthesizeWavHttp(text, reference, options);
-  });
+  const clips = readReferenceClips(reference, options.speakerText);
+  const baseUrl = (options.baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
+  const { retryBelow, retries } = resolveTtsSynthesisParams(options.synthesis);
+  const nextTake = () =>
+    ttsPool.run(() => {
+      throwIfAborted(options.signal);
+      return requestTake(text, clips, baseUrl, options);
+    });
+
+  const takes: TtsTake[] = [await nextTake()];
+  if (takeNeedsRetry(takes[0], retryBelow)) {
+    for (let i = 0; i < retries; i += 1) takes.push(await nextTake());
+  }
+  const best = pickBestTake(takes);
+  if (takes.length > 1) {
+    log.info('TTS retried a take', {
+      takes: takes.length,
+      kept: best.voiceSimilarity,
+      first: takes[0].voiceSimilarity,
+      text: previewText(text),
+    });
+  }
+  if (best.warning) logSynthWarning(best.warning, text);
+  return { wav: best.wav, voiceSimilarity: best.voiceSimilarity, takes: takes.length };
 };
