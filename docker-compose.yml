@@ -32,7 +32,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: transynth:${IMAGE_TAG:-latest}
+    image: ${TRANSYNTH_IMAGE:-transynth}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # Node as PID 1 never reaps orphaned ffmpeg grandchildren.
     init: true
@@ -84,7 +84,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: transynth:${IMAGE_TAG:-latest}
+    image: ${TRANSYNTH_IMAGE:-transynth}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # Node as PID 1 never reaps orphaned ffmpeg grandchildren.
     init: true
@@ -134,7 +134,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: transynth:${IMAGE_TAG:-latest}
+    image: ${TRANSYNTH_IMAGE:-transynth}:${IMAGE_TAG:-latest}
     init: true
     env_file:
       - .env

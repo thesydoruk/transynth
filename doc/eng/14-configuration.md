@@ -332,7 +332,48 @@ Vite service in production.
 4. **Backups:** run `./scripts/backup.sh` on a schedule (cron/Task Scheduler).
    Never `docker compose down -v` on a machine that holds translation data.
 5. **Deploy** by `git pull` and rebuilding the `web` image. `web` and `worker`
-   share that image — restart both.
+   share that image — restart both. Or let the host deploy itself — below.
+
+### Continuous Deployment
+
+CI (`.github/workflows/ci.yml`) runs the checks on every pull request and every
+push to `main`. When they pass on `main`, it publishes
+`ghcr.io/<owner>/transynth:<commit sha>` (plus `:latest`), and
+`ghcr.io/<owner>/transynth-bethesda-tools` when `services/bethesda-tools`
+changed. The host pulls — CI never connects to it, so it can stay on a LAN.
+
+`scripts/deploy.sh` runs on the host every two minutes from a systemd timer.
+When `origin/main` has a new commit whose image is published, it checks the
+commit out, backs up the database if `sql/` changed, pulls, runs
+`npm run db:init`, recreates the services and waits for `web` to turn
+healthy. If any step fails it restores the previous commit and image and
+skips that commit until the next push. The schema is **not** rolled back, so a
+migration must keep the previous release working.
+
+One-time host setup:
+
+1. Make both packages public (GitHub → Packages → package settings), or
+   `docker login ghcr.io` on the host with a `read:packages` token.
+2. Turn the deploy directory into a clean checkout:
+   `git remote set-url origin https://github.com/<owner>/transynth.git`,
+   `git fetch origin`, `git checkout --detach origin/main`.
+3. Add to `.env`:
+
+   ```bash
+   TRANSYNTH_IMAGE=ghcr.io/<owner>/transynth
+   BETHESDA_TOOLS_IMAGE=ghcr.io/<owner>/transynth-bethesda-tools:latest
+   # Postgres outside this Compose project (default: scripts/backup.sh auto-detect)
+   DEPLOY_BACKUP_CONTAINER=<postgres container>
+   ```
+
+4. Run `bash scripts/deploy.sh` once by hand and watch it finish.
+5. Install `docker/systemd/transynth-deploy.{service,timer}` into
+   `/etc/systemd/system` (adjust `WorkingDirectory`), then
+   `systemctl enable --now transynth-deploy.timer`.
+
+The log is `journalctl -u transynth-deploy`. Roll back with
+`bash scripts/deploy.sh <older commit>`; retry a failed commit with
+`--force`. See the header of `scripts/deploy.sh` for all settings.
 
 ---
 

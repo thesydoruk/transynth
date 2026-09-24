@@ -1,7 +1,20 @@
 name: CI
 
+# Pull requests run the checks. Every green commit on main also publishes
+# ghcr.io/<owner>/transynth:<commit sha>; the production host picks that
+# image up with scripts/deploy.sh (see doc/deployment.md).
 on:
   pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -49,3 +62,71 @@ jobs:
 
       - name: web-ui build
         run: npm run web:build
+
+  image:
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      APP_IMAGE: ghcr.io/${{ github.repository }}
+      TOOLS_IMAGE: ghcr.io/${{ github.repository }}-bethesda-tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Wine sidecar is slow to build and slow to restart, so it is only
+      # republished when its sources change (or it has never been published).
+      - name: Did bethesda-tools change?
+        id: tools
+        run: |
+          before='${{ github.event.before }}'
+          if ! docker manifest inspect "$TOOLS_IMAGE:latest" >/dev/null 2>&1 \
+            || [ '${{ github.event_name }}' != push ] \
+            || ! git cat-file -e "$before^{commit}" 2>/dev/null \
+            || ! git diff --quiet "$before" "$GITHUB_SHA" -- services/bethesda-tools; then
+            echo build=true >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish bethesda-tools image
+        if: steps.tools.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: services/bethesda-tools
+          push: true
+          tags: |
+            ${{ env.TOOLS_IMAGE }}:latest
+            ${{ env.TOOLS_IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=bethesda-tools
+          cache-to: type=gha,mode=max,scope=bethesda-tools
+
+      # Published last: deploy.sh treats this tag as "CI is done for <sha>".
+      - name: Publish transynth image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.APP_IMAGE }}:latest
+            ${{ env.APP_IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=transynth
+          cache-to: type=gha,mode=max,scope=transynth

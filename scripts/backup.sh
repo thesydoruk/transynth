@@ -7,15 +7,18 @@
 #   ./scripts/backup.sh                   # auto-detect: Docker if running, else local
 #   ./scripts/backup.sh --docker          # force Docker Compose mode
 #   ./scripts/backup.sh --local           # force local pg_dump
+#   ./scripts/backup.sh --container NAME  # pg_dump inside a Postgres container
+#                                         # that is not part of this Compose project
 #
 # Output: ${DATA_DIR:-./data}/backups/transynth_YYYYMMDD_HHMMSS.sql.gz
+#         (BACKUP_FILE=path overrides it; the dump is checked with gzip -t)
 # ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 BACKUP_DIR="${DATA_DIR:-./data}/backups"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-BACKUP_FILE="${BACKUP_DIR}/transynth_${TIMESTAMP}.sql.gz"
+BACKUP_FILE="${BACKUP_FILE:-${BACKUP_DIR}/transynth_${TIMESTAMP}.sql.gz}"
 
 # Load .env if present
 if [ -f .env ]; then
@@ -25,7 +28,7 @@ fi
 # shellcheck source=scripts/_db_from_url.sh
 source "$(dirname "$0")/_db_from_url.sh"
 
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$(dirname "$BACKUP_FILE")"
 
 # Determine mode: --docker, --local, or auto-detect
 MODE="${1:-auto}"
@@ -33,6 +36,11 @@ MODE="${1:-auto}"
 use_docker() {
   echo "Backing up via Docker Compose..."
   docker compose exec -T db pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
+}
+
+use_container() {
+  echo "Backing up via docker exec $1..."
+  docker exec "$1" pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
 }
 
 use_local() {
@@ -43,6 +51,13 @@ use_local() {
 case "$MODE" in
   --docker) use_docker ;;
   --local)  use_local ;;
+  --container)
+    if [ -z "${2:-}" ]; then
+      echo "Usage: $0 --container NAME" >&2
+      exit 1
+    fi
+    use_container "$2"
+    ;;
   auto)
     if docker compose ps --services --filter status=running 2>/dev/null | grep -q '^db$'; then
       use_docker
@@ -51,9 +66,10 @@ case "$MODE" in
     fi
     ;;
   *)
-    echo "Usage: $0 [--docker|--local]" >&2
+    echo "Usage: $0 [--docker|--local|--container NAME]" >&2
     exit 1
     ;;
 esac
 
+gzip -t "$BACKUP_FILE"
 echo "Backup saved to: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"

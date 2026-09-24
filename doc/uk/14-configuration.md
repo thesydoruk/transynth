@@ -304,7 +304,50 @@ gunzip -c backup.sql.gz | docker compose exec -T db psql -U transynth transynth
 4. **Бекапи:** запускайте `./scripts/backup.sh` за розкладом (cron/Task
    Scheduler). Ніколи `docker compose down -v` на машині з даними перекладів.
 5. **Деплой** — `git pull` і перезбірка образу `web`. `web` і `worker` ділять
-   цей образ — перезапускайте обидва.
+   цей образ — перезапускайте обидва. Або хай хост деплоїть себе сам — нижче.
+
+### Безперервний деплой
+
+CI (`.github/workflows/ci.yml`) запускає перевірки на кожен pull request і
+кожен push у `main`. Коли на `main` вони зелені, CI публікує
+`ghcr.io/<owner>/transynth:<sha коміту>` (і `:latest`), а
+`ghcr.io/<owner>/transynth-bethesda-tools` — коли змінився
+`services/bethesda-tools`. Хост тягне образ сам — CI до нього не
+підключається, тож хост може лишатися в локальній мережі.
+
+`scripts/deploy.sh` запускається на хості кожні дві хвилини з таймера systemd.
+Коли в `origin/main` з'являється новий коміт з опублікованим образом, скрипт
+переходить на цей коміт, робить бекап бази, якщо змінився `sql/`, тягне
+образи, запускає `npm run db:init`, перестворює сервіси й чекає, поки `web`
+стане healthy. Якщо будь-який крок падає, повертає попередній коміт і образ і
+пропускає цей коміт до наступного push. Схема **не** відкочується, тож
+міграція має лишати попередній реліз робочим.
+
+Одноразове налаштування хоста:
+
+1. Зробіть обидва пакети публічними (GitHub → Packages → налаштування
+   пакета) або виконайте на хості `docker login ghcr.io` з токеном
+   `read:packages`.
+2. Перетворіть каталог деплою на чистий checkout:
+   `git remote set-url origin https://github.com/<owner>/transynth.git`,
+   `git fetch origin`, `git checkout --detach origin/main`.
+3. Додайте в `.env`:
+
+   ```bash
+   TRANSYNTH_IMAGE=ghcr.io/<owner>/transynth
+   BETHESDA_TOOLS_IMAGE=ghcr.io/<owner>/transynth-bethesda-tools:latest
+   # Postgres поза цим Compose-проєктом (типово — авто-визначення scripts/backup.sh)
+   DEPLOY_BACKUP_CONTAINER=<контейнер postgres>
+   ```
+
+4. Один раз запустіть `bash scripts/deploy.sh` вручну й дочекайтеся кінця.
+5. Скопіюйте `docker/systemd/transynth-deploy.{service,timer}` у
+   `/etc/systemd/system` (підправте `WorkingDirectory`), потім
+   `systemctl enable --now transynth-deploy.timer`.
+
+Лог — `journalctl -u transynth-deploy`. Відкат —
+`bash scripts/deploy.sh <старіший коміт>`; повторити коміт, що впав, —
+`--force`. Усі налаштування описані в заголовку `scripts/deploy.sh`.
 
 ---
 

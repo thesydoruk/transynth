@@ -1,0 +1,15 @@
+# Pull-based deploy of Transynth; see scripts/deploy.sh and doc/eng/14-configuration.md.
+# Install: copy both units to /etc/systemd/system, fix WorkingDirectory, then
+#   systemctl daemon-reload && systemctl enable --now transynth-deploy.timer
+# Log: journalctl -u transynth-deploy
+[Unit]
+Description=Deploy the newest green Transynth commit
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/Source/transynth
+ExecStart=/usr/bin/bash scripts/deploy.sh
+# A schema change triggers a full database dump first.
+TimeoutStartSec=2h
