@@ -87,6 +87,7 @@ export const useVoiceRegenerateSession = (
         createdAt: new Date().toISOString(),
         audioUrl: result.audioUrl,
         params: result.params,
+        voiceSimilarity: result.voiceSimilarity ?? null,
       };
       setPreviews((current) => [...current, preview]);
       setSelectedId(preview.id);

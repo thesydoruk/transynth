@@ -114,6 +114,8 @@ export type VoiceRegeneratePreview = {
   createdAt: string;
   audioUrl: string;
   params: VoiceRegenerateParams;
+  /** ECAPA cosine of this attempt against the source take; null when not scored. */
+  voiceSimilarity: number | null;
 };
 
 /** Per-line synthesis event from GET /api/mods/:id/voice/live. */

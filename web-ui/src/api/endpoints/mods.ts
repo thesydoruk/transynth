@@ -136,6 +136,7 @@ export const modsEndpoints = {
       attempt: number;
       audioUrl: string;
       params: VoiceRegenerateParams;
+      voiceSimilarity: number | null;
     }>(`/api/mods/${modId}/voice/regenerate/${sessionId}/preview`, {
       method: 'POST',
       body: JSON.stringify(body),

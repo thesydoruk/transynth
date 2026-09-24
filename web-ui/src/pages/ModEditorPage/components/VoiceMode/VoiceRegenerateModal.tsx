@@ -122,6 +122,7 @@ export const VoiceRegenerateModal = ({
                   <h3 className={s.sectionTitle}>{t('modEditor.voiceRegenerateCompareTitle')}</h3>
                   <CompareTrackList
                     tracks={compareTracks}
+                    currentSimilarity={line.voiceSimilarity}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     playingTrack={playingTrack}

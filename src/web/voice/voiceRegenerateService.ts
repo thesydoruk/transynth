@@ -50,6 +50,7 @@ export type VoiceRegeneratePreviewResult =
       attempt: number;
       audioUrl: string;
       params: VoiceRegenerateParams;
+      voiceSimilarity: number | null;
     }
   | { ok: false; reason: string; message: string };
 
@@ -237,6 +238,7 @@ export const generateVoiceRegeneratePreview = async (
     attempt,
     audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${previewId}.wav`,
     params,
+    voiceSimilarity,
   };
 };
 

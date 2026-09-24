@@ -2,11 +2,14 @@ import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../../../../components/Button';
 import { VOICE_REGENERATE_KEEP_CURRENT_ID } from '../../../../SettingsPage/VoiceTab/voiceSettingsConfig';
+import { VoiceSimilarityScore } from '../../VoiceSimilarityScore';
 import { compareTrackKey, type CompareTrack } from '../compareTrack';
 import s from '../VoiceRegenerateModal.module.scss';
 
 type CompareTrackListProps = {
   tracks: CompareTrack[];
+  /** Stored score of the dub already on disk, shown on the "current" row. */
+  currentSimilarity: number | null;
   selectedId: string;
   onSelect: (id: string) => void;
   playingTrack: string | null;
@@ -17,6 +20,7 @@ type CompareTrackListProps = {
 
 export const CompareTrackList = ({
   tracks,
+  currentSimilarity,
   selectedId,
   onSelect,
   playingTrack,
@@ -46,6 +50,12 @@ export const CompareTrackList = ({
             : track.kind === 'current'
               ? t('modEditor.voiceRegenerateCurrent')
               : t('modEditor.voiceRegenerateAttempt', { n: track.preview.attempt });
+        const similarity =
+          track.kind === 'source'
+            ? null
+            : track.kind === 'current'
+              ? currentSimilarity
+              : track.preview.voiceSimilarity;
 
         return (
           <li
@@ -74,6 +84,9 @@ export const CompareTrackList = ({
                 </span>
               )}
             </div>
+            <span className={s.compareScore}>
+              <VoiceSimilarityScore score={similarity} />
+            </span>
             <Button
               variant={isPlaying ? 'primary' : 'secondary'}
               size="sm"

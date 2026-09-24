@@ -82,6 +82,7 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
           createdAt: preview.createdAt,
           audioUrl: `/api/mods/${modId}/voice/regenerate/${sessionId}/${preview.id}.wav`,
           params: preview.params,
+          voiceSimilarity: preview.voiceSimilarity ?? null,
         })),
       });
     },
