@@ -54,8 +54,9 @@ describe('resolveVoiceExecutable', () => {
   it('runs .exe directly on Windows', () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
     const exe = 'C:\\tools\\xWMAEncode.exe';
+    // path.resolve stays POSIX when the platform is only faked on Linux.
     expect(resolveVoiceExecutable(exe)).toEqual({
-      command: exe,
+      command: path.resolve(exe),
       argsPrefix: [],
     });
   });

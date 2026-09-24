@@ -22,10 +22,15 @@ const VANILLA_FONT_CONFIG = [
   'validNameChars "abcABC"',
 ].join('\r\n');
 
-/** Lay out a mod package with the given files under `Interface/`. */
+/**
+ * Lay out a mod package with the given files under `Interface/`. The mod sits
+ * one level down: archive discovery falls back to the plugin's parent folder,
+ * which must be ours, not the whole system temp dir.
+ */
 const stageMod = (files: Record<string, Buffer | string>): string => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'transynth-fonts-'));
-  tempDirs.push(dir);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'transynth-fonts-'));
+  tempDirs.push(root);
+  const dir = path.join(root, 'mod');
   fs.mkdirSync(path.join(dir, 'Interface'), { recursive: true });
   for (const [fileName, data] of Object.entries(files)) {
     fs.writeFileSync(path.join(dir, 'Interface', fileName), data);
