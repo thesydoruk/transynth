@@ -12,6 +12,8 @@
 #
 # Output: ${DATA_DIR:-./data}/backups/transynth_YYYYMMDD_HHMMSS.sql.gz
 #         (BACKUP_FILE=path overrides it; the dump is checked with gzip -t)
+#         gzip -1: a large database dumps several times faster than at the
+#         default level, for only a slightly bigger file.
 # ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -35,17 +37,17 @@ MODE="${1:-auto}"
 
 use_docker() {
   echo "Backing up via Docker Compose..."
-  docker compose exec -T db pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
+  docker compose exec -T db pg_dump -U "$DB_USER" "$DB_NAME" | gzip -1 > "$BACKUP_FILE"
 }
 
 use_container() {
   echo "Backing up via docker exec $1..."
-  docker exec "$1" pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
+  docker exec "$1" pg_dump -U "$DB_USER" "$DB_NAME" | gzip -1 > "$BACKUP_FILE"
 }
 
 use_local() {
   echo "Backing up via local pg_dump..."
-  pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
+  pg_dump -U "$DB_USER" "$DB_NAME" | gzip -1 > "$BACKUP_FILE"
 }
 
 case "$MODE" in
