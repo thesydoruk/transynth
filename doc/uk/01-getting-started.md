@@ -97,6 +97,10 @@ docker compose run --rm web npm run db:init
 Примітки:
 
 - Сервіс `web` віддає і Fastify API, і зібраний React UI на порту `3000`.
+- `docker compose up -d` збирає образи з коду. Щоб узяти готові образи
+  релізу з GHCR, склонуйте тег релізу, додайте в `.env`
+  `TRANSYNTH_IMAGE=ghcr.io/thesydoruk/transynth` і `IMAGE_TAG=<версія>`, потім
+  `docker compose pull` — див. [README](../../README.md#10-minute-start-docker).
 - Імпорт, переклад і озвучка йдуть у **`worker`** через **Redis**.
   `docker compose up -d` піднімає обидва. `npm run dev` потребує доступний
   `REDIS_URL` (типово `redis://localhost:6379`), інакше джоби стоять.

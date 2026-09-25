@@ -1,0 +1,75 @@
+name: Release images
+
+# A vX.Y.Z tag gives version tags (X.Y.Z and X.Y) to the images CI already
+# built and tested for that commit on main. Nothing is rebuilt, so a release
+# image is byte-for-byte what was deployed. Run it by hand to tag an older
+# release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, e.g. v0.7.0
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  tag-images:
+    runs-on: ubuntu-latest
+    # CI may still be building the commit when its tag is pushed.
+    timeout-minutes: 75
+    env:
+      APP_IMAGE: ghcr.io/${{ github.repository }}
+      TOOLS_IMAGE: ghcr.io/${{ github.repository }}-bethesda-tools
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Check the tag
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not a vX.Y.Z release tag"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for the image CI built for this commit
+        run: |
+          sha="$(git rev-parse HEAD)"
+          for _ in $(seq 1 70); do
+            if docker manifest inspect "$APP_IMAGE:$sha" > /dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 60
+          done
+          echo "::error::$APP_IMAGE:$sha was never published. Did CI pass on main for this commit?"
+          exit 1
+
+      - name: Tag the images
+        run: |
+          sha="$(git rev-parse HEAD)"
+          version="${TAG#v}"
+          minor="${version%.*}"
+          docker buildx imagetools create \
+            -t "$APP_IMAGE:$version" -t "$APP_IMAGE:$minor" "$APP_IMAGE:$sha"
+          # bethesda-tools is only rebuilt when it changes: take this commit's
+          # build if there is one, else the one current at release time.
+          tools="$TOOLS_IMAGE:$sha"
+          if ! docker manifest inspect "$tools" > /dev/null 2>&1; then
+            tools="$TOOLS_IMAGE:latest"
+          fi
+          docker buildx imagetools create \
+            -t "$TOOLS_IMAGE:$version" -t "$TOOLS_IMAGE:$minor" "$tools"

@@ -106,6 +106,10 @@ docker compose run --rm web npm run db:init
 Notes:
 
 - The `web` service serves both the Fastify API and the built React UI on port `3000`.
+- `docker compose up -d` builds the images from source. To use the released
+  images from GHCR instead, clone the release tag and add
+  `TRANSYNTH_IMAGE=ghcr.io/thesydoruk/transynth` and `IMAGE_TAG=<version>` to
+  `.env`, then `docker compose pull` — see the [README](../../README.md#10-minute-start-docker).
 - Imports, translate, and voice run in the **`worker`** against **Redis**.
   `docker compose up -d` starts both. `npm run dev` needs a reachable `REDIS_URL`
   (default `redis://localhost:6379`) or jobs sit idle.

@@ -31,16 +31,30 @@ One operator. No accounts and no login.
 
 You need Docker Desktop and (for AI) a vLLM or OpenAI endpoint.
 
+Every release is published as a ready-made image on GHCR, so nothing has to be built:
+
 ```bash
-git clone https://github.com/thesydoruk/transynth.git
+git clone --branch v0.7.0 https://github.com/thesydoruk/transynth.git
 cd transynth
 cp .env.example .env
 # Optional: set VLLM_MODEL / OPENAI_API_KEY
+echo "TRANSYNTH_IMAGE=ghcr.io/thesydoruk/transynth" >> .env
+echo "IMAGE_TAG=0.7.0" >> .env
+docker compose pull
 docker compose up -d
 docker compose run --rm web npm run db:init
 ```
 
 Open [http://localhost:3000](http://localhost:3000). You land on the **Games** catalogue. Pick a title, then import a mod.
+
+Keep `IMAGE_TAG` and the checked-out tag on the same version — the Compose files and the image belong together. To upgrade, check out the new tag, change `IMAGE_TAG`, then `docker compose pull`, `docker compose up -d` and `docker compose run --rm web npm run db:init` again. Images:
+
+- `ghcr.io/thesydoruk/transynth` — web, worker and CLI.
+- `ghcr.io/thesydoruk/transynth-bethesda-tools` — the FaceFX / xWMA sidecar. With the `embedded-bethesda-tools` profile, also set `BETHESDA_TOOLS_IMAGE=ghcr.io/thesydoruk/transynth-bethesda-tools:0.7.0`, or `docker compose pull` stops at its local-only default name.
+
+Tags: `0.7.0` (a release), `0.7` (newest patch of that release), `latest` (tip of `main`, not a release).
+
+To build from source instead, skip the two `echo` lines and run `docker compose up -d --build`.
 
 `.env.example` starts embedded Postgres (`COMPOSE_PROFILES=embedded-db`). Add `embedded-vllm`, `embedded-embed`, `embedded-audio-intel`, and/or `embedded-bethesda-tools` for in-stack Gemma / Arctic embed / Whisper / FaceFX+xWMA. Production with external Postgres / vLLM / Whisper / tools: omit those profiles and start `web worker redis`. Details: [Getting Started](doc/eng/01-getting-started.md).
 
