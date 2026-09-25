@@ -1,7 +1,13 @@
 import type { Tx } from '../../../../../src/db';
 import { CONFIG } from '../../../../../src/config';
 import { rewriteVerifyTranslationsFromSource } from '../../../../../src/llm/verifySourceRewrite';
-import { editVerifyFixes, repairProvenGenderLeaks } from './editVerifyFixes';
+import { findGenderLeaks } from '../../../../../src/llm/genderGuard';
+import {
+  editVerifyFixes,
+  repairProvenGenderLeaks,
+  verifyRowToTranslateItem,
+} from './editVerifyFixes';
+import type { GenderPreRepair } from './preRepairGenderLeaks';
 import { preferBetterTranslations } from '../../../../../src/llm/preferBetterTranslation';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
 import { logVerify } from '../../../../../src/logging/loggers';
@@ -43,6 +49,100 @@ export type BatchPersistContext = {
     action: 'approved' | 'fixed' | 'issue',
     detail?: string | null,
   ) => void;
+};
+
+/**
+ * Write the wordings the gender pass produced before the audit.
+ *
+ * Synchronous on purpose, and ahead of the audit: the audit's own persist job
+ * may approve these rows, and an approval that raced a not-yet-written repair
+ * would promote the leaking text. Only the ids that reached the database are
+ * returned; the caller audits the original wording for any other.
+ */
+export const persistPreRepairs = async (
+  ctx: BatchPersistContext,
+  repairs: readonly GenderPreRepair[],
+): Promise<Set<number>> => {
+  const persisted = new Set<number>();
+  if (ctx.dryRun) return persisted;
+  for (const fix of repairs) {
+    try {
+      await upsertTranslation(ctx.db, fix.stringId, fix.text, 'auto', ctx.opts.targetLang);
+      ctx.counters.fixed++;
+      ctx.logAction(fix.row, 'fixed', fix.text);
+      persisted.add(fix.stringId);
+    } catch (err) {
+      ctx.counters.errors++;
+      logVerify.warn('verify gender pre-repair persist failed', {
+        modId: ctx.opts.modId,
+        stringId: fix.stringId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return persisted;
+};
+
+/**
+ * Which fixes to write, and why the others are not.
+ *
+ * A fix for a proven defect is accepted when the detector that proved the
+ * defect no longer objects — a comparison by the model would only add noise
+ * to a question already answered. A fix that is advice has to win the
+ * comparison against the incumbent, and a comparison that could not be made
+ * is a loss.
+ */
+const decideFixes = async (
+  ctx: BatchPersistContext,
+  fixes: VerifyBatchPersistJob['fixes'],
+  editedFixes: ReadonlyMap<number, string>,
+): Promise<Map<number, string | null>> => {
+  const { opts, model } = ctx;
+  const verdicts = new Map<number, string | null>();
+  const textOf = (fix: VerifyBatchPersistJob['fixes'][number]): string =>
+    editedFixes.get(fix.stringId) ?? fix.text;
+
+  for (const fix of fixes.filter((entry) => entry.proven)) {
+    const leaks = findGenderLeaks(
+      textOf(fix),
+      verifyRowToTranslateItem(fix.row, opts.game),
+      opts.targetLang,
+    );
+    verdicts.set(
+      fix.stringId,
+      leaks.length > 0 ? 'Rewrite still commits to a gender the line must not.' : null,
+    );
+  }
+
+  const advisory = fixes.filter((entry) => !entry.proven);
+  if (advisory.length === 0) return verdicts;
+  const preferred = await preferBetterTranslations(
+    advisory.map((fix) => ({
+      item: {
+        id: fix.stringId,
+        source: fix.row.source,
+        translation: fix.row.translation,
+        ...parseRecordLocation(fix.row.signature, fix.row.path),
+        edid: fix.row.edid,
+        context: fix.row.context,
+      },
+      candidate: textOf(fix),
+    })),
+    {
+      model,
+      srcLang: opts.srcLang,
+      targetLang: opts.targetLang,
+      game: opts.game,
+      ...(opts.signal ? { signal: opts.signal } : {}),
+    },
+  );
+  for (const fix of advisory) {
+    verdicts.set(
+      fix.stringId,
+      preferred.has(fix.stringId) ? null : 'Rewrite did not beat the current translation.',
+    );
+  }
+  return verdicts;
 };
 
 export const scheduleBatchPersist = (
@@ -118,31 +218,15 @@ export const scheduleBatchPersist = (
           ...(opts.signal ? { signal: opts.signal } : {}),
         });
 
-        // Last gate: the rewrite has to beat what is already there. Judging a
-        // line on its own does not reproduce, so the pass that decides whether
-        // to write is a comparison, and a tie leaves the row alone.
-        const candidates = job.fixes.map((fix) => ({
-          item: {
-            id: fix.stringId,
-            source: fix.row.source,
-            translation: fix.row.translation,
-            ...parseRecordLocation(fix.row.signature, fix.row.path),
-            edid: fix.row.edid,
-            context: fix.row.context,
-          },
-          candidate: editedFixes.get(fix.stringId) ?? fix.text,
-        }));
-        const preferred = await preferBetterTranslations(candidates, {
-          model,
-          srcLang: opts.srcLang,
-          targetLang: opts.targetLang,
-          game: opts.game,
-          ...(opts.signal ? { signal: opts.signal } : {}),
-        });
+        // Last gate. Judging a line on its own does not reproduce, so advice
+        // is written only when it beats what is already there, and a tie
+        // leaves the row alone; a proven defect answers to its detector.
+        const rejected = await decideFixes(ctx, job.fixes, editedFixes);
 
         for (const fix of job.fixes) {
-          if (!preferred.has(fix.stringId)) {
-            ctx.logAction(fix.row, 'issue', 'Rewrite did not beat the current translation.');
+          const reason = rejected.get(fix.stringId);
+          if (reason) {
+            ctx.logAction(fix.row, 'issue', reason);
             continue;
           }
           const text = editedFixes.get(fix.stringId) ?? fix.text;

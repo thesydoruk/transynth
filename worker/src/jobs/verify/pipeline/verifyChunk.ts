@@ -10,7 +10,7 @@ import {
 } from '../../../../../src/llm/verifyTranslate';
 import { isLlmResponseTruncatedError } from '../../../../../src/llm/translate';
 import { fetchReferenceExamplesBatch, type RagRetrievalOptions } from '../../../../../src/llm/rag';
-import { enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
+import { enqueueBisected, enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
 import { withRequestDeadline } from '../../../../../src/llm/requestDeadline';
 import { isLlmTimeoutError } from '../../../../../src/llm/retry';
 import { logVerify } from '../../../../../src/logging/loggers';
@@ -21,7 +21,8 @@ import { mergeNarratorGender } from '../../translate/batch/mergeNarratorGender';
 import { mcmKeyFromRecordPath, resolveMcmLlmContext } from '../../../../../src/formats/mcm';
 import { relevantGlossaryEntries, type GlossaryEntryWithRe } from '../../shared/glossaryForLlm';
 import { buildBatchPersistJob } from './buildBatchPersistJob';
-import { scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
+import { persistPreRepairs, scheduleBatchPersist, type BatchPersistContext } from './batchPersist';
+import { keepPersistedPreRepairs, preRepairGenderLeaks } from './preRepairGenderLeaks';
 import {
   rowNeedsLongTextVerify,
   verifyLongTextAfterTruncation,
@@ -136,6 +137,42 @@ const buildVerifyItems = (
   });
 };
 
+/**
+ * Send the rows the detector can prove wrong to the gender pass, write what
+ * it fixed, and return the chunk as the audit should see it. A dry run
+ * changes nothing and reports the rows as they are.
+ */
+const repairBeforeAudit = async (
+  ctx: VerifyChunkContext,
+  rows: VerifyStringRow[],
+  ragByStringId: RagByStringId,
+): Promise<{ rows: VerifyStringRow[]; genderRepairAttempted: ReadonlySet<number> }> => {
+  if (ctx.dryRun || ctx.shouldCancel?.()) return { rows, genderRepairAttempted: new Set() };
+
+  const items = buildVerifyItems(rows, ragByStringId, ctx.opts.game, ctx.mcmSiblingTexts);
+  const outcome = await preRepairGenderLeaks(rows, items, {
+    model: ctx.model,
+    srcLang: ctx.opts.srcLang,
+    targetLang: ctx.opts.targetLang,
+    game: ctx.opts.game,
+    modName: ctx.opts.modName,
+    ...(ctx.opts.signal ? { signal: ctx.opts.signal } : {}),
+  });
+  if (outcome.repaired.length === 0) {
+    return { rows, genderRepairAttempted: outcome.attempted };
+  }
+
+  const persisted = await persistPreRepairs(ctx.persistCtx, outcome.repaired);
+  const kept = keepPersistedPreRepairs(outcome, persisted);
+  logVerify.info('gender leaks repaired before the audit', {
+    modId: ctx.opts.modId,
+    leaking: outcome.attempted.size,
+    repaired: kept.repaired.length,
+    stringIds: kept.repaired.map((fix) => fix.stringId),
+  });
+  return { rows: kept.rows, genderRepairAttempted: kept.attempted };
+};
+
 export const verifyChunkOnce = async (
   ctx: VerifyChunkContext,
   llmChunk: VerifyStringRow[],
@@ -143,13 +180,23 @@ export const verifyChunkOnce = async (
   enqueueSplit: (parts: readonly (readonly VerifyStringRow[])[]) => void,
 ): Promise<void> => {
   const longRows = llmChunk.filter((row) => rowNeedsLongTextVerify(row));
-  const normalRows = llmChunk.filter((row) => !rowNeedsLongTextVerify(row));
+  const shortRows = llmChunk.filter((row) => !rowNeedsLongTextVerify(row));
 
   if (longRows.length > 0) {
     await verifyLongRows(ctx, longRows, ragByStringId);
   }
-  if (normalRows.length === 0) return;
+  if (shortRows.length === 0) return;
 
+  // What the detector can prove is repaired before the model is asked, so the
+  // audit judges the wording that will be approved rather than one already
+  // known to be wrong. Persisted here, ahead of the audit, and every path
+  // below — the partial-result split, the timeout halves — carries the
+  // repaired rows, whose text the database already holds.
+  const { rows: normalRows, genderRepairAttempted } = await repairBeforeAudit(
+    ctx,
+    shortRows,
+    ragByStringId,
+  );
   const items = buildVerifyItems(normalRows, ragByStringId, ctx.opts.game, ctx.mcmSiblingTexts);
   const glossary = await relevantGlossaryEntries(
     ctx.glossaryAll,
@@ -184,6 +231,7 @@ export const verifyChunkOnce = async (
         ctx.fixSuspicious,
         ctx.dryRun,
         ctx.collectIssue,
+        genderRepairAttempted,
       ),
     );
   } catch (err) {
@@ -225,6 +273,7 @@ export const verifyChunkOnce = async (
             ctx.fixSuspicious,
             ctx.dryRun,
             ctx.collectIssue,
+            genderRepairAttempted,
           ),
         );
       }
@@ -240,11 +289,11 @@ export const verifyChunkOnce = async (
       throw err;
     }
     if (isLlmTimeoutError(err) && normalRows.length > 1) {
-      logVerify.warn('LLM verify batch timeout — solo retry', {
+      logVerify.warn('LLM verify batch timeout — retrying in halves', {
         chunkSize: normalRows.length,
         stringIds: normalRows.map((row) => row.string_id),
       });
-      enqueueSoloChunks(normalRows, enqueueSplit);
+      enqueueBisected(normalRows, enqueueSplit);
       return;
     }
     throw err;

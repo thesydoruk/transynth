@@ -13,8 +13,12 @@
  * That makes the pass self-terminating: once nothing it proposes beats what is
  * already there, the row is done and stops churning.
  *
- * Best effort. If the call fails or returns nothing usable, every candidate is
- * kept — the behaviour without this pass.
+ * When the call fails or returns nothing usable, nothing is written: a rewrite
+ * that could not be shown to be better stays a proposal. It used to be the
+ * other way round — every candidate was kept — which meant the gate was open
+ * exactly when the server was saturated, and the production logs show it
+ * failing four hundred times in three days. A proven defect is not held here
+ * at all; its fix is judged by the detector that found the defect.
  */
 import { chatWithFallback } from './index';
 import { parseLlmItemId, parseLlmJson } from './jsonParse';
@@ -86,7 +90,8 @@ const parseChoices = (raw: string): Map<number, 'current' | 'candidate'> => {
 
 /**
  * The ids whose candidate beat the text already in place. An id missing from
- * the answer keeps its current translation.
+ * the answer keeps its current translation, and so does every id when the
+ * comparison itself could not be made.
  */
 export const preferBetterTranslations = async (
   rows: PreferTranslationItem[],
@@ -120,11 +125,10 @@ export const preferBetterTranslations = async (
     }
     return winners;
   } catch (err) {
-    logLlm.warn('translation comparison failed; keeping every candidate', {
+    logLlm.warn('translation comparison failed; keeping the current translations', {
       itemCount: rows.length,
       err: err instanceof Error ? err.message : String(err),
     });
-    for (const { item } of rows) winners.add(item.id);
     return winners;
   }
 };

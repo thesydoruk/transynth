@@ -159,6 +159,37 @@ describe('buildBatchPersistJob advisory routing', () => {
     expect(job.fixes.map((fix) => fix.stringId)).toEqual([1]);
   });
 
+  it('does not send a row the pass already saw before the audit', () => {
+    const job = buildBatchPersistJob(
+      [row()],
+      [result({ defects: ['gender_leak'] })],
+      opts,
+      false,
+      false,
+      undefined,
+      new Set([1]),
+    );
+    expect(job.genderRepairs).toEqual([]);
+    expect(job.okStringIds).toEqual([]);
+  });
+
+  it('marks a fix for a proven defect so it answers to the detector, not the comparison', () => {
+    const proven = build(
+      [result({ defects: ['gender_leak'], suggestion: 'Ну що, рушаємо?' })],
+      true,
+    );
+    expect(proven.fixes[0]?.proven).toBe(true);
+
+    const advice = build([result({ suggestion: 'Ну що, рушаємо?' })], true);
+    expect(advice.fixes[0]?.proven).toBe(false);
+
+    const modelOnly = build(
+      [result({ verdict: 'incorrect', suggestion: 'Ну що, рушаємо?' })],
+      false,
+    );
+    expect(modelOnly.fixes[0]?.proven).toBe(false);
+  });
+
   it('does not send a row blocked by something other than gender', () => {
     const job = build([result({ defects: ['protected_token_mismatch'] })]);
     expect(job.genderRepairs).toEqual([]);

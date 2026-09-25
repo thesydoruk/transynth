@@ -82,7 +82,17 @@ export type VerifyBatchPersistJob = {
   advisories: Array<{ stringId: number; message: string }>;
   /** Proven gender leaks the auditor gave no wording for. */
   genderRepairs: VerifyStringRow[];
-  fixes: Array<{ stringId: number; text: string; row: VerifyStringRow }>;
+  fixes: Array<{
+    stringId: number;
+    text: string;
+    row: VerifyStringRow;
+    /**
+     * The row was held by a defect the system proved. Such a fix is judged by
+     * the detector that found the defect, not by the model's comparison —
+     * the comparison exists to stop advice from churning a line for ever.
+     */
+    proven: boolean;
+  }>;
   rewrites: Array<{ item: LlmVerifyItem; row: VerifyStringRow }>;
   issues: LlmVerifyIssue[];
   rowById: Map<number, VerifyStringRow>;

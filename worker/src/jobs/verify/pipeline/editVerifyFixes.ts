@@ -48,7 +48,11 @@ export type EditVerifyFixesOpts = {
   signal?: AbortSignal;
 };
 
-const toTranslateItem = (row: VerifyStringRow, game?: string | null): LlmTranslateItem => {
+/** A verify row as a translate item: source, location and participants. */
+export const verifyRowToTranslateItem = (
+  row: VerifyStringRow,
+  game?: string | null,
+): LlmTranslateItem => {
   const { grup, field } = parseRecordLocation(row.signature, row.path);
   const isDialogueLine = gamePlugin(game).dialog?.isSpokenSignature(grup) ?? false;
   const participants = mergeNarratorGender(
@@ -68,7 +72,8 @@ const toTranslateItem = (row: VerifyStringRow, game?: string | null): LlmTransla
   };
 };
 
-const toValidationItem = (row: VerifyStringRow): LlmVerifyItem => {
+/** A verify row as the item the suggestion guards validate against. */
+const verifyRowToValidationItem = (row: VerifyStringRow): LlmVerifyItem => {
   const { grup, field } = parseRecordLocation(row.signature, row.path);
   return {
     id: row.string_id,
@@ -96,7 +101,7 @@ export const editVerifyFixes = async (
   // family and scene the chunk was built for.
   const [{ row: first }] = fixes as [VerifyFixDraft, ...VerifyFixDraft[]];
   const translateOpts: LlmTranslateOptions = {
-    items: fixes.map((fix) => toTranslateItem(fix.row, opts.game)),
+    items: fixes.map((fix) => verifyRowToTranslateItem(fix.row, opts.game)),
     model: opts.model,
     srcLang: opts.srcLang,
     targetLang: opts.targetLang,
@@ -131,7 +136,7 @@ export const editVerifyFixes = async (
     const text = result.translation.trim();
     if (!text || text === fix.text) continue;
 
-    const check = validateVerifySuggestion(toValidationItem(fix.row), text, opts.game);
+    const check = validateVerifySuggestion(verifyRowToValidationItem(fix.row), text, opts.game);
     if (!check.ok) {
       // 'noop' here means the editor walked the fix back to the text verify had
       // just rejected; every other reason is a broken suggestion.
@@ -172,7 +177,7 @@ export const repairProvenGenderLeaks = async (
   const repaired = new Map<number, string>();
   if (rows.length === 0) return repaired;
 
-  const items = rows.map((row) => toTranslateItem(row, opts.game));
+  const items = rows.map((row) => verifyRowToTranslateItem(row, opts.game));
   const itemById = new Map(items.map((item) => [item.id, item]));
   const translateOpts: LlmTranslateOptions = {
     items,
@@ -206,7 +211,7 @@ export const repairProvenGenderLeaks = async (
     const text = row.translation.trim();
     if (!text || text === source.translation.trim()) continue;
 
-    const check = validateVerifySuggestion(toValidationItem(source), text, opts.game);
+    const check = validateVerifySuggestion(verifyRowToValidationItem(source), text, opts.game);
     if (!check.ok) continue;
     if (findGenderLeaks(text, item, opts.targetLang).length > 0) continue;
 

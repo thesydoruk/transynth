@@ -76,15 +76,15 @@ describe('preferBetterTranslations', () => {
     });
   });
 
-  it('keeps every candidate when the comparison call fails', async () => {
+  it('keeps the current translations when the comparison call fails', async () => {
     chatWithFallback.mockRejectedValue(new Error('LLM down') as never);
     const winners = await preferBetterTranslations(rows([1, 2]), opts);
-    expect([...winners].sort()).toEqual([1, 2]);
+    expect(winners.size).toBe(0);
   });
 
-  it('keeps every candidate when the answer is unusable', async () => {
+  it('keeps the current translations when the answer is unusable', async () => {
     chatWithFallback.mockResolvedValue(chatResult('not json at all') as never);
     const winners = await preferBetterTranslations(rows([1, 2]), opts);
-    expect([...winners].sort()).toEqual([1, 2]);
+    expect(winners.size).toBe(0);
   });
 });

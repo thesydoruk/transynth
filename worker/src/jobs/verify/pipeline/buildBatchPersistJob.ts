@@ -1,6 +1,5 @@
-import { isNarratorGenderTrusted } from '../../../../../src/dialog/narratorGender';
-import { gamePlugin } from '../../../../../src/games/registry';
 import { isBlockingVerifyResult, type LlmVerifyItem } from '../../../../../src/llm/verifyTranslate';
+import { isGenderLeakProvenForRow } from './provenGender';
 import { resolveVerifyFixAction } from '../../../../../src/llm/verifySuggestionGuards';
 import { logVerify } from '../../../../../src/logging/loggers';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
@@ -26,13 +25,9 @@ type VerifyResults = Awaited<
 >;
 
 /**
- * Drop a gender finding that rests on a guess about who narrates a record.
- *
- * On a spoken line the gender comes from the game's own dialogue data and the
- * finding stands. On a terminal entry or a book nobody recorded an author, so
- * the gender was inferred — and a wrong inference does more than block a
- * correct line: it invites the repair pass to rewrite it into a wrong one. The
- * objection is kept as advice; it just stops counting as proof.
+ * Drop a gender finding that rests on a guess about who narrates a record
+ * (see {@link isGenderLeakProvenForRow}). The objection is kept as advice; it
+ * just stops counting as proof.
  */
 const withoutGuessedGenderDefect = (
   result: VerifyResults[number],
@@ -41,13 +36,15 @@ const withoutGuessedGenderDefect = (
   game?: string | null,
 ): VerifyResults[number] => {
   if (!result.defects?.includes('gender_leak')) return result;
-  if (gamePlugin(game).dialog?.isSpokenSignature(grup) ?? false) return result;
-  if (isNarratorGenderTrusted(row.narrator_gender_source, row.narrator_gender_override)) {
-    return result;
-  }
+  if (isGenderLeakProvenForRow(row, grup, game)) return result;
   return { ...result, defects: result.defects.filter((defect) => defect !== 'gender_leak') };
 };
 
+/**
+ * @param genderRepairAttempted - Rows the specialist gender pass already saw
+ * before the audit in this same run. A leak it left standing then will not
+ * yield to the same pass a minute later, so those rows are not sent again.
+ */
 export const buildBatchPersistJob = (
   llmChunk: VerifyStringRow[],
   results: VerifyResults,
@@ -55,6 +52,7 @@ export const buildBatchPersistJob = (
   fixSuspicious: boolean,
   dryRun: boolean,
   collectIssue?: (issue: LlmVerifyIssue) => void,
+  genderRepairAttempted?: ReadonlySet<number>,
 ): VerifyBatchPersistJob => {
   const rowById = new Map(llmChunk.map((row) => [row.string_id, row]));
   const okStringIds: number[] = [];
@@ -137,7 +135,12 @@ export const buildBatchPersistJob = (
     collectIssue?.(issue);
 
     if (!dryRun && effectiveFix.kind === 'apply') {
-      fixes.push({ stringId: result.id, text: effectiveFix.suggestion, row });
+      fixes.push({
+        stringId: result.id,
+        text: effectiveFix.suggestion,
+        row,
+        proven: blocking && (graded.defects?.length ?? 0) > 0,
+      });
     } else if (!dryRun && effectiveFix.kind === 'rewrite_from_source') {
       rewrites.push({ item: itemForValidation, row });
     } else if (effectiveFix.kind === 'approve_as_ok') {
@@ -145,7 +148,13 @@ export const buildBatchPersistJob = (
     } else if (blocking && effectiveFix.kind === 'flag_only') {
       // Proven wrong with no wording offered. Without this the row can be
       // neither repaired nor approved, and simply stays blocked for ever.
-      if (!dryRun && graded.defects?.includes('gender_leak')) genderRepairs.push(row);
+      if (
+        !dryRun &&
+        graded.defects?.includes('gender_leak') &&
+        !genderRepairAttempted?.has(result.id)
+      ) {
+        genderRepairs.push(row);
+      }
     } else if (!blocking && effectiveFix.kind === 'flag_only') {
       // Nothing was proven and nothing was rewritten, so the row stands as it
       // is. Keep the objection against it and let it go to review: holding it
