@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — 2026-09-25
+
+Transynth deploys itself, and Disco's voice list is whole:
+
+- **Green commits on `main` deploy themselves.** CI runs the checks on every pull request and push, and on a green `main` publishes `ghcr.io/thesydoruk/transynth:<commit>` plus the bethesda-tools sidecar when it changed. The host pulls: `scripts/deploy.sh`, run every two minutes from a systemd timer, checks the commit out, backs up the database when `sql/` changed, applies the schema, restarts and waits for `web` to report healthy — and puts the previous commit and image back if any step fails. Nothing reaches into the host, so it can stay on a LAN. Self-hosters can pull the same images instead of building them. See [Configuration](uk/14-configuration.md#безперервний-деплой).
+- **The test suite runs on Linux**, which it never had, and that found a real bug: Vortex groups on a Linux server were labelled with the client's whole Windows path instead of the staging folder.
+- **Disco's unpaired takes have their text back.** A take is matched to its lockit row by position, and only when a conversation's counts agreed exactly — one unvoiced line blanked the whole conversation, 5,177 dialogue clips in all. Those conversations are now transcribed and each take is matched to the row it actually says; 4,736 of the 4,810 orphaned takes found their line, and a match below 0.30 stays blank rather than wrong. `npm run voice:reindex-takes` repairs a mod imported before this.
+- **Disco's soundtrack is out of the voice list.** The score, ambience and door sounds share the dialogue folder and were indexed as 1,693 voice lines with invented speakers like `ambience` and `ants`. Actor names with hyphens (Mega Rich Light-Bending Guy and a dozen others) are no longer cut in half.
+- **Voice synthesis retries a weak take.** When a take comes back silent, cut off or below the clone-similarity threshold, Transynth asks for more takes and keeps the best — configured in Settings → Voice → Synthesis. The regenerate dialog shows the clone score next to every attempt.
+- **Fewer leaks in Fallout 4 dialogue.** English echoed back in a model's answer is stripped, an unnamed NPC's addressee is treated as the player, and the gender and register examples were tightened from a live review.
+- **Database backups are several times faster** (`gzip -1`), and `scripts/backup.sh --container NAME` dumps a Postgres that is not part of the Compose project.
+
 ## 0.6.0 — 2026-09-15
 
 A game is a plugin, and Ukrainian that reads like Ukrainian:
