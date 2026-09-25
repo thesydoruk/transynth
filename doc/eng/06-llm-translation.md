@@ -249,8 +249,17 @@ row out of review. Approval blocks only on a defect the system proved
 `incorrect`. A bare `suspicious` is written to `qa_issues` as `llm_review` and
 shown in the editor; the row goes on. A fix that repeats a wording the row
 already had is refused; advice rewrites at most five times; a new wording has
-to beat the incumbent. A proven defect is never capped. `dryRun` on the
-endpoint reports verdicts and writes nothing.
+to beat the incumbent in a comparison the model makes between the two, and a
+comparison that fails keeps the incumbent. A proven defect is never capped and
+never put to that comparison: its fix is accepted when the detector that
+proved the defect no longer objects. `dryRun` on the endpoint reports verdicts
+and writes nothing.
+
+A defect the detector can prove is repaired **before** the audit, not after
+it: the leaking rows of a batch go to the gender pass first, the repaired
+wording is written, and the model then judges the text that will actually be
+approved. One verify run can take a line from leaking to `reviewed`; it used
+to take two, with an audit call spent on text already known to be wrong.
 
 ### The gender guard
 
@@ -270,15 +279,18 @@ points where the wrong line can still be stopped:
      passive, a noun instead of «я»;
    - **addressee** — an NPC talking at the player: turn the action into an
      event, a possessive or a thing. This is most of the leaks.
-     The branches run one after another, not in parallel. A repair is kept only
-     if the leak is actually gone — swapping masculine for feminine on a player
-     line, `зробив/ла`, or hiding behind «ви» all fail the same check and the
-     original draft stands.
-2. **During verify.** A gender leak is a proven defect: it blocks approval and
-   the row goes to the same repair pass. A verdict of `ok` on a leaking line is
-   downgraded, and a suggested fix that would introduce a leak is dropped. An
-   inferred narrator gender (heuristic or LLM) is no longer evidence — only a
-   person's own decision gates a narration row.
+     The branches run one after another, not in parallel. The two neutralising
+     prompts are asked for up to three rewordings in the same call, and the
+     detector takes the first one that is actually clean — swapping masculine
+     for feminine on a player line, `зробив/ла`, or hiding behind «ви» all fail
+     the same check. On 60 real leaking lines that took the pass from 55 to 59
+     clean. A line no variant clears keeps its draft.
+2. **During verify.** A gender leak is a proven defect. A leaking line goes to
+   the same repair pass before the model audits it, so the audit sees the
+   repaired wording; a line the pass could not fix blocks approval. A verdict
+   of `ok` on a leaking line is downgraded, and a suggested fix that would
+   introduce a leak is dropped. An inferred narrator gender (heuristic or LLM)
+   is no longer evidence — only a person's own decision gates a narration row.
 
 Anything that survives both still surfaces as QA `gender_mismatch`. The guard
 runs only when the target language is `uk`.
@@ -397,11 +409,14 @@ Voice cuts mixed lines from ASR — see [Voice](09-voice.md#disco-what-gets-spok
 
 ## Glossary Injection
 
-The pipeline injects **up to 80 glossary terms** (web UI) or **up to 100 terms**
-(CLI) into the system prompt, giving the model a reference for preferred
-translations of key game terminology.
+Each LLM batch carries **up to 24 glossary terms** in its request payload: the
+terms whose English form occurs in the batch's source text, then up to eight
+nearest neighbours by embedding for wording the exact match missed. The
+glossary's term vectors are built once per process, in batches the embedding
+server accepts, and a failed build is remembered for ten minutes rather than
+retried on every batch. The full glossary never goes into a prompt.
 
-Example injected into system prompt:
+Example of what the model sees:
 
 ```
 brotherhood of steel → Братство Сталі

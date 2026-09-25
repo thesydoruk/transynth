@@ -22,7 +22,7 @@ import { parseLlmItemId, parseLlmJson } from './jsonParse';
 import { compactLlmItemFields } from './llmPayloadCompact';
 import { participantPayloadFields } from './dialogParticipants';
 import { logLlm } from '../logging/loggers';
-import { buildTranslateResponseFormat } from './responseSchemas';
+import { buildGenderRepairResponseFormat } from './responseSchemas';
 import { alignTextToSlots, assembleTranslatedText, compactLlmPartsFields } from './textParts';
 import type { LlmTranslateOptions, LlmTranslateResult } from './translate';
 
@@ -163,10 +163,31 @@ const exampleBlock = (examples: readonly WorkedExample[]): string => {
     )
     .join(',\n');
   const output = examples
-    .map((example, index) => line({ id: index + 1, parts: [example.repaired] }))
+    .map((example, index) => line({ id: index + 1, variants: [[example.repaired]] }))
     .join(',\n');
   return `{"items":[\n${input}\n]}\n{"items":[\n${output}\n]}`;
 };
+
+/**
+ * How many rewordings the neutralising prompts may offer per line.
+ *
+ * The pass used to ask for one wording and keep it only if the detector
+ * passed it, which left one in six lines unrepaired — not because the model
+ * cannot neutralise a line, but because its first attempt patched the verb
+ * or kept the marker somewhere else. Asking for a few attempts in the same
+ * call and letting the detector choose costs no extra request, and is a
+ * different mechanism from adding rules to the prompt, which measurably makes
+ * this model hand more lines back untouched.
+ *
+ * Measured on 60 real leaking Fallout 4 lines against gemma4:26b-a4b, same
+ * detector on both sides: one wording 55/60 clean (five handed back
+ * untouched), three variants 59/60 (one untouched).
+ */
+const GENDER_REPAIR_VARIANTS = 3;
+
+const NEUTRAL_OUTPUT_FORMAT = `Вихід: лише JSON {"items":[{"id":<number>,"variants":[[...],[...],[...]]}]}. Для кожного id — до ${GENDER_REPAIR_VARIANTS} різних перефраз, кожна окремим масивом parts; найприродніша перша. Ті самі id, той самий порядок. Без markdown. Числа в parts — слоти з входу.`;
+
+const AGREEMENT_OUTPUT_FORMAT = `Вихід: лише JSON {"items":[{"id":<number>,"variants":[[...]]}]}. Один масив parts на id. Ті самі id, той самий порядок. Без markdown. Числа в parts — слоти з входу.`;
 
 /**
  * Techniques for a line the player speaks about themselves.
@@ -208,7 +229,7 @@ const neutralPrompt = (
 }
 
 Вхід: JSON з "items" (id, parts/source, translation_parts/translation, problem, speaker, speaker_gender, addressee, addressee_gender).
-Вихід: лише JSON {"items":[{"id":<number>,"parts":[...]}]}. Ті самі id, той самий порядок. Без markdown. Числа в parts — слоти з входу.
+${NEUTRAL_OUTPUT_FORMAT}
 
 ### ЩО РОБИТИ
 - Збережи **зміст, голос мовця, регістр і лайку**. Слова й довжина — вільні. Рядок може стати довшим, може взяти інші слова, може переставити акценти: це художня адаптація, а не буквальний переклад. Довша природна репліка краща за коротку дерев'яну.
@@ -220,7 +241,7 @@ ${role === 'speaker' ? SPEAKER_TECHNIQUES : ADDRESSEE_TECHNIQUES}
 - **Жива мова, не канцелярит.** «Замислився?» → «Голову ламаєш?», а не «У замислах?».
 - Рід у словах про ІНШИХ чіпати не треба: «Ерл був мертвий» лишається як є.
 - Заборонено: міняти чоловічий рід на жіночий і навпаки, слеш «зробив/ла», дві статі підряд, «ви»/«будьте» як милиця роду.
-- Одна репліка на виході. Не давай кількох варіантів і не склеюй їх.
+- Кожна перефраза — одна цілісна репліка. Не склеюй варіанти в один рядок.
 - Без змін повертай лише тоді, коли жоден прийом не дав природної репліки. Це рідкість.
 
 ### ПРИКЛАДИ
@@ -271,7 +292,7 @@ export const UK_GENDER_AGREEMENT_EXAMPLES: readonly GenderAgreementExample[] = [
 const UK_GENDER_AGREEMENT_PROMPT = `Ти — редактор українського перекладу. У кожному рядку названі форми стоять не в тому роді; потрібний рід указаний у полі "problem".
 
 Вхід: JSON з "items" (id, parts/source, translation_parts/translation, problem, speaker, speaker_gender, addressee, addressee_gender).
-Вихід: лише JSON {"items":[{"id":<number>,"parts":[...]}]}. Ті самі id, той самий порядок. Без markdown. Числа в parts — слоти з входу.
+${AGREEMENT_OUTPUT_FORMAT}
 
 ### ЩО РОБИТИ
 - Постав названі форми в рід, указаний у "problem". Це заміна закінчення: «вирішив» → «вирішила», «готовий» → «готова», «сам» → «сама», «була здивована» → «був здивований».
@@ -345,46 +366,65 @@ const buildRepairPayload = (opts: LlmTranslateOptions, targets: RepairTarget[]):
   }),
 });
 
-const parseRepairItems = (raw: string, targets: RepairTarget[]): Map<number, string> => {
+/** The rewordings offered for each line, in the order the model ranked them. */
+const parseRepairItems = (raw: string, targets: RepairTarget[]): Map<number, string[]> => {
   const parsed = parseLlmJson(raw);
   const items = (parsed as { items?: unknown }).items;
-  const byId = new Map<number, string>();
+  const byId = new Map<number, string[]>();
   if (!Array.isArray(items)) return byId;
 
   for (const entry of items) {
     if (!entry || typeof entry !== 'object') continue;
-    const row = entry as { id?: unknown; translation?: unknown; parts?: unknown };
+    const row = entry as {
+      id?: unknown;
+      variants?: unknown;
+      translation?: unknown;
+      parts?: unknown;
+    };
     const id = parseLlmItemId(row.id);
     if (id == null) continue;
     const target = targets.find((candidate) => candidate.item.id === id);
     if (!target) continue;
-    const assembled = assembleTranslatedText(
-      row.parts,
-      row.translation,
-      target.item.sourceParts,
-      target.item.restoreSlots,
-    );
-    if (assembled == null || !assembled.trim()) continue;
-    byId.set(id, assembled);
+
+    // A model that ignores the schema and answers with one `parts` array is
+    // read as having offered one variant.
+    const rawVariants = Array.isArray(row.variants) ? row.variants : [row.parts ?? row.translation];
+    const variants: string[] = [];
+    for (const variant of rawVariants) {
+      const assembled = assembleTranslatedText(
+        Array.isArray(variant) ? variant : undefined,
+        typeof variant === 'string' ? variant : undefined,
+        target.item.sourceParts,
+        target.item.restoreSlots,
+      );
+      if (assembled != null && assembled.trim()) variants.push(assembled);
+    }
+    if (variants.length > 0) byId.set(id, variants);
   }
   return byId;
 };
 
-/** Keep a repair only when it actually removed the leak. */
+/**
+ * Take, for each line, the first offered rewording that actually removed the
+ * leak; a line none of them clears keeps its draft.
+ */
 export const mergeGenderRepair = (
   draft: LlmTranslateResult[],
   targets: RepairTarget[],
-  repaired: Map<number, string>,
+  repaired: Map<number, string[]>,
   targetLang: string,
 ): LlmTranslateResult[] => {
   const targetById = new Map(targets.map((target) => [target.item.id, target]));
 
   return draft.map((row) => {
-    const next = repaired.get(row.id);
+    const variants = repaired.get(row.id);
     const target = targetById.get(row.id);
-    if (next == null || !target || next === row.translation) return row;
-    if (findGenderLeaks(next, target.item, targetLang).length > 0) return row;
-    return { id: row.id, translation: next };
+    if (!variants || !target) return row;
+    const clean = variants.find(
+      (next) =>
+        next !== row.translation && findGenderLeaks(next, target.item, targetLang).length === 0,
+    );
+    return clean == null ? row : { id: row.id, translation: clean };
   });
 };
 
@@ -400,14 +440,19 @@ const repairOneKind = async (
   draft: LlmTranslateResult[],
   targets: RepairTarget[],
   kind: RepairKind,
-): Promise<Map<number, string>> => {
-  const empty = new Map<number, string>();
+): Promise<Map<number, string[]>> => {
+  const empty = new Map<number, string[]>();
   if (targets.length === 0) return empty;
 
   try {
     const { content, meta } = await chatWithFallback({
       model: opts.model,
-      responseFormat: buildTranslateResponseFormat(targets.length),
+      // Agreement is one right answer; concealment has several, and the
+      // detector, not the model, decides which of them holds.
+      responseFormat: buildGenderRepairResponseFormat(
+        targets.length,
+        kind === 'agreement' ? 1 : GENDER_REPAIR_VARIANTS,
+      ),
       signal: opts.signal,
       logMeta: {
         operation: `gender-${kind}`,
@@ -466,17 +511,25 @@ export const repairGenderLeaks = async (
 
   // One branch at a time. Fired together they treble the calls in flight for a
   // single batch, and the LLM pool is two wide — the queue then times them out.
-  const answers = new Map<number, string>();
+  const answers = new Map<number, string[]>();
   for (const [index, kind] of kinds.entries()) {
-    for (const [id, text] of await repairOneKind(opts, draft, byKind[index]!, kind)) {
-      answers.set(id, text);
+    for (const [id, variants] of await repairOneKind(opts, draft, byKind[index]!, kind)) {
+      answers.set(id, variants);
     }
   }
   if (answers.size === 0) return draft;
 
   const repaired = mergeGenderRepair(draft, targets, answers, opts.targetLang);
-  const fixed = repaired.filter((row, i) => row.translation !== draft[i]?.translation).length;
+  let fixed = 0;
+  let byLaterVariant = 0;
+  for (const [i, row] of repaired.entries()) {
+    if (row.translation === draft[i]?.translation) continue;
+    fixed++;
+    if ((answers.get(row.id)?.indexOf(row.translation) ?? 0) > 0) byLaterVariant++;
+  }
   const shape = kinds.map((kind, index) => `${byKind[index]!.length} ${kind}`).join(', ');
-  logLlm.info(`gender repair: ${fixed}/${targets.length} line(s) fixed (${shape})`);
+  logLlm.info(
+    `gender repair: ${fixed}/${targets.length} line(s) fixed, ${byLaterVariant} by a later variant (${shape})`,
+  );
   return repaired;
 };

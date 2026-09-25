@@ -88,6 +88,51 @@ export const buildVerifyResponseSchema = (itemCount: number): Record<string, unk
   additionalProperties: false,
 });
 
+/**
+ * JSON Schema for the gender-repair pass: up to `variantCount` rewordings per
+ * line, each a parts array, so the detector can pick the first clean one.
+ */
+const buildGenderRepairResponseSchema = (
+  itemCount: number,
+  variantCount: number,
+): Record<string, unknown> => ({
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      ...boundedArray(itemCount),
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          variants: {
+            type: 'array',
+            minItems: 1,
+            maxItems: Math.max(1, variantCount),
+            items: llmPartsArraySchema(),
+          },
+        },
+        required: ['id', 'variants'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['items'],
+  additionalProperties: false,
+});
+
+export const buildGenderRepairResponseFormat = (
+  itemCount: number,
+  variantCount: number,
+): LlmJsonSchemaFormat => ({
+  type: 'json_schema',
+  json_schema: {
+    name: 'gender_repair_batch',
+    strict: true,
+    schema: buildGenderRepairResponseSchema(itemCount, variantCount),
+  },
+});
+
 export const buildTranslateResponseFormat = (
   itemCount: number,
   maxTranslationLength?: number,

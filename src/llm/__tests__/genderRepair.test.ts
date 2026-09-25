@@ -20,7 +20,7 @@ describe('mergeGenderRepair', () => {
   it('takes a repair that removed the leak', () => {
     const draft = draftOf([[1, 'Я подбав про них.']]);
     const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
-    const merged = mergeGenderRepair(draft, targets, new Map([[1, 'Про них подбали.']]), 'uk');
+    const merged = mergeGenderRepair(draft, targets, new Map([[1, ['Про них подбали.']]]), 'uk');
     expect(merged).toEqual([{ id: 1, translation: 'Про них подбали.' }]);
   });
 
@@ -28,7 +28,7 @@ describe('mergeGenderRepair', () => {
     const draft = draftOf([[1, 'Я подбав про них.']]);
     const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
     // Swapping the gender is exactly what the repair prompt forbids.
-    const merged = mergeGenderRepair(draft, targets, new Map([[1, 'Я подбала про них.']]), 'uk');
+    const merged = mergeGenderRepair(draft, targets, new Map([[1, ['Я подбала про них.']]]), 'uk');
     expect(merged).toEqual(draft);
   });
 
@@ -38,20 +38,46 @@ describe('mergeGenderRepair', () => {
       [2, 'Стимпак'],
     ]);
     const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
-    const merged = mergeGenderRepair(draft, targets, new Map([[1, 'Про них подбали.']]), 'uk');
+    const merged = mergeGenderRepair(draft, targets, new Map([[1, ['Про них подбали.']]]), 'uk');
     expect(merged[1]).toEqual({ id: 2, translation: 'Стимпак' });
   });
 
   it('ignores a repair for an id that was never a target', () => {
     const draft = draftOf([[7, 'Я подбав про них.']]);
-    const merged = mergeGenderRepair(draft, [], new Map([[7, 'Про них подбали.']]), 'uk');
+    const merged = mergeGenderRepair(draft, [], new Map([[7, ['Про них подбали.']]]), 'uk');
     expect(merged).toEqual(draft);
   });
 
   it('is a no-op when the model echoed the draft back', () => {
     const draft = draftOf([[1, 'Я подбав про них.']]);
     const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
-    const merged = mergeGenderRepair(draft, targets, new Map([[1, 'Я подбав про них.']]), 'uk');
+    const merged = mergeGenderRepair(draft, targets, new Map([[1, ['Я подбав про них.']]]), 'uk');
+    expect(merged).toEqual(draft);
+  });
+});
+
+describe('mergeGenderRepair with several variants', () => {
+  it('takes the first variant the detector passes, not the first offered', () => {
+    const draft = draftOf([[1, 'Я подбав про них.']]);
+    const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
+    const merged = mergeGenderRepair(
+      draft,
+      targets,
+      new Map([[1, ['Я про них подбав.', 'Я подбала про них.', 'Про них подбали.']]]),
+      'uk',
+    );
+    expect(merged).toEqual([{ id: 1, translation: 'Про них подбали.' }]);
+  });
+
+  it('keeps the draft when every variant still leaks', () => {
+    const draft = draftOf([[1, 'Я подбав про них.']]);
+    const targets = [target(1, 'I took care of them.', 'Я подбав про них.')];
+    const merged = mergeGenderRepair(
+      draft,
+      targets,
+      new Map([[1, ['Я про них подбав.', 'Я подбала про них.']]]),
+      'uk',
+    );
     expect(merged).toEqual(draft);
   });
 });

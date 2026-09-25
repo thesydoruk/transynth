@@ -157,3 +157,29 @@ describe('findUkrainianGenderConflicts', () => {
     ]);
   });
 });
+
+describe('consonant-stem reflexive past', () => {
+  it('reads «-кся» / «-гся» as a masculine past form', () => {
+    expect(detectUkrainianGenderMarkers('Ти що, відволікся?')).toEqual([
+      { person: 2, gender: 'male', form: 'відволікся' },
+    ]);
+    expect(detectUkrainianGenderMarkers('Я домігся свого.')).toEqual([
+      { person: 1, gender: 'male', form: 'домігся' },
+    ]);
+  });
+
+  it('flags the subjectless form on a line addressed to the player', () => {
+    expect(
+      findUkrainianGenderConflicts('Що, відволікся?', {
+        speakerGender: 'female',
+        addresseeGender: 'any',
+      }),
+    ).toEqual([{ role: 'addressee', expected: 'any', found: 'male', form: 'відволікся' }]);
+  });
+
+  it('still reads the feminine counterpart as feminine', () => {
+    expect(detectUkrainianGenderMarkers('Ти відволіклася.')).toEqual([
+      { person: 2, gender: 'female', form: 'відволіклася' },
+    ]);
+  });
+});

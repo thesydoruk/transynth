@@ -44,6 +44,8 @@ const FILLERS = new Set([
   'ж',
   'же',
   'й',
+  // «Ти що, здурів?», «Я що, схожий на брехуна?» — the particle, not the pronoun.
+  'що',
 ]);
 
 /**
@@ -321,6 +323,15 @@ export type UkGenderMarker = {
   form: string;
 };
 
+/**
+ * Masculine reflexive past of a consonant-stem verb: «відволікся», «домігся»,
+ * «зрікся», «берігся». The regular -вся rule cannot see these, and no noun or
+ * adjective ends in -кся / -гся, so the tail alone is decisive. The feminine
+ * «відволіклася» is already the ordinary -лася case.
+ */
+const isConsonantStemReflexivePast = (token: string): boolean =>
+  token.length >= 5 && (token.endsWith('кся') || token.endsWith('гся'));
+
 const classifyForm = (token: string): 'male' | 'female' | null => {
   if (FEMININE_PREDICATIVES.has(token)) return 'female';
   if (MASCULINE_PREDICATIVES.has(token)) return 'male';
@@ -333,6 +344,7 @@ const classifyForm = (token: string): 'male' | 'female' | null => {
   // «ти єдиний» and «ти інший» pin the addressee down as surely as a verb.
   if (token.length >= 5 && (token.endsWith('ий') || token.endsWith('ій'))) return 'male';
   if (token.length >= 4 && (token.endsWith('вся') || token.endsWith('всь'))) return 'male';
+  if (isConsonantStemReflexivePast(token)) return 'male';
   if (token.length >= 3 && token.endsWith('в')) return 'male';
 
   return null;
@@ -355,8 +367,15 @@ const anchorPerson = (token: string): 1 | 2 | null => {
  */
 const isWordToken = (value: string): boolean => /^[а-яіїєґёa-z'’]+$/i.test(value);
 
+/**
+ * «Ти що, здурів?» — the comma after «що» is intonation, not a clause break,
+ * and the predicate behind it agrees with «ти». Dropped before tokenising so
+ * the pronoun's scan can reach the verb; «що» itself is a filler.
+ */
+const TY_SHCHO_COMMA_RE = /(?<![\p{L}])(я|ти)\s+що\s*,/gu;
+
 export const detectUkrainianGenderMarkers = (text: string): UkGenderMarker[] => {
-  const raw = text.toLowerCase().match(TOKEN_RE) ?? [];
+  const raw = text.toLowerCase().replace(TY_SHCHO_COMMA_RE, '$1 що').match(TOKEN_RE) ?? [];
   type Piece = { kind: 'word' | 'other'; value: string };
   const pieces: Piece[] = raw.map((value) => ({
     kind: isWordToken(value) ? 'word' : 'other',
@@ -554,6 +573,7 @@ const looksLikeMasculineUnanchored = (token: string): boolean => {
   if (MASCULINE_PREDICATIVES.has(token)) return true;
   if (MASCULINE_IRREGULAR_PAST.has(token)) return true;
   if (token.length >= 5 && (token.endsWith('вся') || token.endsWith('всь'))) return true;
+  if (isConsonantStemReflexivePast(token)) return true;
   if (token.length < 4 || !token.endsWith('в')) return false;
   if (token.endsWith('ів') || token.endsWith('їв')) return MASCULINE_PAST_IV.has(token);
   return MASCULINE_PAST_TAILS.some((tail) => token.endsWith(tail));
