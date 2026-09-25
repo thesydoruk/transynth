@@ -5,7 +5,11 @@ import type { GameId } from '../types';
 import { normalizeAutoTranslation } from '../utils/textNorm';
 import { unmask } from '../utils/placeholders';
 import { applyTranslateSplit, isMaskedLlmText, splitTranslateSource } from './textParts';
-import { translateStrings } from './translate';
+import {
+  isLlmTranslateMissingIdsError,
+  translateStrings,
+  type LlmTranslateResult,
+} from './translate';
 import type { LlmVerifyItem } from './verifyTranslate';
 import {
   isRewriteUnchangedConfirmation,
@@ -33,19 +37,45 @@ export type VerifySourceRewriteOutcome = {
   confirmedUnchanged: number[];
 };
 
-export const rewriteVerifyTranslationsFromSource = async (
-  opts: VerifySourceRewriteOpts,
-): Promise<VerifySourceRewriteOutcome> => {
-  if (opts.items.length === 0) return { rewritten: [], confirmedUnchanged: [] };
-
-  const splitById = new Map(
+const splitSources = (opts: VerifySourceRewriteOpts) =>
+  new Map(
     opts.items.map((item) => [
       item.id,
       splitTranslateSource(item.source, opts.game, { grup: item.grup, field: item.field }),
     ]),
   );
 
-  const translations = await translateStrings({
+export const rewriteVerifyTranslationsFromSource = async (
+  opts: VerifySourceRewriteOpts,
+): Promise<VerifySourceRewriteOutcome> => {
+  if (opts.items.length === 0) return { rewritten: [], confirmedUnchanged: [] };
+
+  const splitById = splitSources(opts);
+
+  // One row the model returns blank must not sink the whole batch. On the
+  // production host the same handful of long sources came back empty on every
+  // run, and each time took the twenty-odd rows sharing their batch down with
+  // them — a failure that repeated itself thirty times over per row.
+  let translations: readonly LlmTranslateResult[];
+  try {
+    translations = await translateSourceItems(opts, splitById);
+  } catch (err) {
+    if (!isLlmTranslateMissingIdsError(err)) throw err;
+    logVerify.warn('verify source rewrite: model returned no translation for some rows', {
+      missingIds: [...err.missingIds],
+      translated: err.partialResults.length,
+    });
+    translations = err.partialResults;
+  }
+
+  return collectRewrites(opts, translations, splitById);
+};
+
+const translateSourceItems = (
+  opts: VerifySourceRewriteOpts,
+  splitById: ReturnType<typeof splitSources>,
+): Promise<LlmTranslateResult[]> =>
+  translateStrings({
     items: opts.items.map((item) =>
       applyTranslateSplit(
         {
@@ -71,6 +101,11 @@ export const rewriteVerifyTranslationsFromSource = async (
     signal: opts.signal,
   });
 
+const collectRewrites = (
+  opts: VerifySourceRewriteOpts,
+  translations: readonly LlmTranslateResult[],
+  splitById: ReturnType<typeof splitSources>,
+): VerifySourceRewriteOutcome => {
   const rewritten: VerifySourceRewriteResult[] = [];
   const confirmedUnchanged: number[] = [];
   for (const row of translations) {

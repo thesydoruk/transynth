@@ -48,6 +48,31 @@ describe('runLlmChunkWithRecovery', () => {
     expect(calls).toContainEqual([2]);
   });
 
+  it('retries a timed-out chunk in halves before reaching single rows', async () => {
+    const calls: number[][] = [];
+    const runOnce = jest.fn(async (chunk: readonly { id: number }[]) => {
+      calls.push(chunk.map((item) => item.id));
+      if (chunk.length > 2) throw timeoutErr();
+    });
+
+    await runLlmChunkWithRecovery({
+      chunk: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+      runOnce,
+      maxAttempts: 1,
+      onFailure: () => {},
+      log: silentLog,
+      operation: 'test',
+      itemIds: (c) => c.map((item) => item.id),
+    });
+
+    // One timeout, two halves that fit — never four solo requests.
+    expect(calls).toEqual([
+      [1, 2, 3, 4],
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
   it('calls onFailure for a single-item chunk that keeps failing', async () => {
     const onFailure = jest.fn<(failed: readonly { id: number }[], message: string) => void>();
     await runLlmChunkWithRecovery({

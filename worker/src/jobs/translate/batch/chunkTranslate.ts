@@ -6,7 +6,7 @@ import {
   isLlmTranslateMissingIdsError,
 } from '../../../../../src/llm/translate';
 import { isLlmTimeoutError } from '../../../../../src/llm/retry';
-import { enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
+import { enqueueBisected, enqueueSoloChunks } from '../../../../../src/llm/chunkRecovery';
 import { fetchReferenceExamplesBatch, type RagRetrievalOptions } from '../../../../../src/llm/rag';
 import { logTranslate } from '../../../../../src/logging/loggers';
 import { Semaphore } from '../../../../../src/utils/concurrency';
@@ -263,11 +263,11 @@ export const translateChunkOnce = async (
       throw err;
     }
     if (isLlmTimeoutError(err) && normalEntries.length > 1) {
-      logTranslate.warn('LLM translate batch timeout — solo retry', {
+      logTranslate.warn('LLM translate batch timeout — retrying in halves', {
         chunkSize: normalEntries.length,
         itemIds: normalEntries.map((entry) => entry.stringId),
       });
-      enqueueSoloChunks(normalEntries, enqueueSplit);
+      enqueueBisected(normalEntries, enqueueSplit);
       return;
     }
     throw err;

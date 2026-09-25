@@ -6,7 +6,12 @@ import { isLlmTranslateMissingIdsError } from '../translate';
 import { isLlmVerifyMissingIdsError } from '../verifyTranslate';
 import { llmChatPipelineConcurrency } from '../requestPool';
 import { mapWithConcurrency } from '../../utils/concurrency';
-import { chunkBackoffMs, chunkItemId, isMissingTranslationChunkError } from './helpers';
+import {
+  bisectChunk,
+  chunkBackoffMs,
+  chunkItemId,
+  isMissingTranslationChunkError,
+} from './helpers';
 import type { RunLlmChunkWithRecoveryOptions } from './types';
 
 const splitChunkParallel = async <T>(
@@ -52,15 +57,14 @@ export const runLlmChunkWithRecovery = async <T>(
 
     if (isLlmTimeoutError(err)) {
       if (chunk.length > 1) {
-        log.warn(`${operation} chunk split to single rows (timeout)`, {
+        // Halves, not single rows: a timeout is the server saturated, and a
+        // fan-out into one request per row is what saturates it further.
+        log.warn(`${operation} chunk split in half (timeout)`, {
           reason: message,
           chunkSize: chunk.length,
           itemIds: itemIds(chunk),
         });
-        await splitChunkParallel(
-          opts,
-          chunk.map((item) => [item]),
-        );
+        await splitChunkParallel(opts, bisectChunk(chunk));
         return;
       }
       log.error(`${operation} chunk failed (timeout)`, {

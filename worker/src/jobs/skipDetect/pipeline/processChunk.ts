@@ -7,7 +7,11 @@ import {
   type LlmSkipDetectItemResult,
 } from '../../../../../src/llm/skipTranslateDetect';
 import { parseRecordLocation } from '../../../../../src/utils/recordLocation';
-import { enqueueSoloChunks, runLlmChunkWithRecovery } from '../../../../../src/llm/chunkRecovery';
+import {
+  enqueueBisected,
+  enqueueSoloChunks,
+  runLlmChunkWithRecovery,
+} from '../../../../../src/llm/chunkRecovery';
 import { withRequestDeadline } from '../../../../../src/llm/requestDeadline';
 import { isLlmTimeoutError } from '../../../../../src/llm/retry';
 import { logVerify } from '../../../../../src/logging/loggers';
@@ -57,15 +61,18 @@ const mergeLlmSkipHits = (
   }
 };
 
+const scanRowsOf = (
+  llmItems: readonly LlmSkipDetectItem[],
+  rows: Map<number, ScanStringRow>,
+): ScanStringRow[] =>
+  llmItems.map((item) => rows.get(item.id)).filter((row): row is ScanStringRow => row != null);
+
 const enqueueSoloSkipDetectRows = (
   llmItems: readonly LlmSkipDetectItem[],
   rows: Map<number, ScanStringRow>,
   enqueueSplit: (parts: readonly (readonly ScanStringRow[])[]) => void,
 ): void => {
-  const scanRows = llmItems
-    .map((item) => rows.get(item.id))
-    .filter((row): row is ScanStringRow => row != null);
-  enqueueSoloChunks(scanRows, enqueueSplit);
+  enqueueSoloChunks(scanRowsOf(llmItems, rows), enqueueSplit);
 };
 
 export const processSkipDetectChunk = async (
@@ -159,12 +166,12 @@ export const processSkipDetectChunk = async (
               throw err;
             }
             if (isLlmTimeoutError(err) && llmItems.length > 1) {
-              logVerify.warn('LLM skip-detect batch timeout — solo retry', {
+              logVerify.warn('LLM skip-detect batch timeout — retrying in halves', {
                 chunkSize: llmItems.length,
                 itemIds: llmItems.map((item) => item.id),
               });
               if (enqueueSplit) {
-                enqueueSoloSkipDetectRows(llmItems, rows, enqueueSplit);
+                enqueueBisected(scanRowsOf(llmItems, rows), enqueueSplit);
               }
               return;
             }
