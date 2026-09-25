@@ -325,12 +325,14 @@ CI (`.github/workflows/ci.yml`) запускає перевірки на кож�
 
 Одноразове налаштування хоста:
 
-1. Зробіть обидва пакети публічними (GitHub → Packages → налаштування
-   пакета) або виконайте на хості `docker login ghcr.io` з токеном
-   `read:packages`.
-2. Перетворіть каталог деплою на чистий checkout:
+1. Пакети з публічного репозиторію публічні. Для приватного виконайте на
+   хості `docker login ghcr.io` з токеном `read:packages`.
+2. Перетворіть каталог деплою на чистий checkout, яким володіє користувач
+   сервісу (root) — юніт не має `HOME`, тож виняток `safe.directory` у
+   глобальному git-конфігу не діє:
    `git remote set-url origin https://github.com/<owner>/transynth.git`,
-   `git fetch origin`, `git checkout --detach origin/main`.
+   `git fetch origin`, `git checkout --detach origin/main`,
+   `chown -R -h root:root .`.
 3. Додайте в `.env`:
 
    ```bash

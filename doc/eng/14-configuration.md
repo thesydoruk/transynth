@@ -352,11 +352,14 @@ migration must keep the previous release working.
 
 One-time host setup:
 
-1. Make both packages public (GitHub → Packages → package settings), or
+1. Packages published from a public repo are public. For a private one,
    `docker login ghcr.io` on the host with a `read:packages` token.
-2. Turn the deploy directory into a clean checkout:
+2. Turn the deploy directory into a clean checkout, owned by the user the
+   service runs as (root) — the unit has no `HOME`, so a `safe.directory`
+   exception in the global git config does not apply:
    `git remote set-url origin https://github.com/<owner>/transynth.git`,
-   `git fetch origin`, `git checkout --detach origin/main`.
+   `git fetch origin`, `git checkout --detach origin/main`,
+   `chown -R -h root:root .`.
 3. Add to `.env`:
 
    ```bash
