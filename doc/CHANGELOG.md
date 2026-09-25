@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0 — 2026-09-25
+
+Verify settles a line in one run, and the LLM pipeline stops working against itself under load:
+
+- **A proven gender leak is repaired before the audit, not after it.** The leaking rows of a batch go to the gender pass first, the repaired wording is written, and the model then judges the text that will actually be approved. One verify run takes a line from leaking to `reviewed`; it used to take two, with an audit call spent on text the detector already knew was wrong. A line the pass cannot fix still blocks, and is not sent to the same pass again in the same run.
+- **The gender pass offers three rewordings and the detector picks the first clean one.** Asking for one wording left one line in six unrepaired — the model's first attempt patched the verb or left a marker elsewhere. Measured on 60 real leaking Fallout 4 lines with the same detector on both sides: 55 clean before, 59 after. The detector also reads «відволікся» and «ти що, здурів?».
+- **A fix for a proven defect answers to its detector; advice answers to the comparison.** A defect the system proved no longer goes through the model's "which is better" call — it is accepted when the detector stops objecting. The comparison stays for advice, and when it fails nothing is written: it used to keep every candidate, opening the gate exactly when the server was saturated (403 times in three days of production logs).
+- **Glossary embeddings work for the first time.** The glossary's two thousand terms were sent to the embedding server as one request, refused with HTTP 413, and asked again on every batch — 54,558 refusals in three days, a wasted round trip per LLM call, and the semantic fill never ran. Terms are now embedded in batches, once per process; a failed build is remembered for ten minutes.
+- **A timed-out batch retries in halves, not as one request per row.** Twenty-five solo requests each carrying the same ten-thousand-token system prompt were the worst reply to a saturated server; the logs show 204 batch timeouts turning into thousands of solo calls that timed out in their turn. Translate, verify and skip-detect now bisect.
+- **A source rewrite keeps the rows the model did translate.** One row returned blank used to fail the whole batch, and the same few long sources sank their neighbours on every run.
+
+See [LLM translation](uk/06-llm-translation.md#що-блокує-підтвердження).
+
 ## 0.7.0 — 2026-09-25
 
 Transynth deploys itself, and Disco's voice list is whole:
