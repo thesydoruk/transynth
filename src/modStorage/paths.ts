@@ -78,6 +78,18 @@ const isInsideModStorage = (absPath: string): boolean => isInsideRoot(absPath, m
 const isInsideVortexUploads = (absPath: string): boolean =>
   isInsideRoot(absPath, PATHS.vortexUploads);
 
+/**
+ * True when a path is a file Transynth stored itself (mod uploads or Vortex
+ * packs), so deleting the mod may delete it. Scanned plugins are registered in
+ * place — their paths point into the user's game or mod folder and must survive.
+ */
+export const isOwnedModStoragePath = (absPath: string): boolean => {
+  const resolved = path.resolve(absPath);
+  if (resolved === path.resolve(modStorageRoot())) return false;
+  if (resolved === path.resolve(PATHS.vortexUploads)) return false;
+  return isInsideModStorage(resolved) || isInsideVortexUploads(resolved);
+};
+
 const startWalkDir = (absPath: string): string =>
   fs.existsSync(absPath) && fs.statSync(absPath).isDirectory() ? absPath : path.dirname(absPath);
 

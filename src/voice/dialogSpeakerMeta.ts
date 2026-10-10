@@ -1,15 +1,16 @@
 /**
- * Speaker metadata for Disco Elysium packs.
+ * Speaker names and genders for the voice tab, from `dialog_speakers`.
  *
- * A Disco speaker is a name (`Kim Kitsuragi`) recorded at import from the wav
- * stems, not a voice-type folder, so both lookups are keyed by that name.
+ * For a game whose voice clips are keyed by a speaker the import named —
+ * Disco Elysium's wav-stem actor, The Witcher 3's scene voice tag — rather
+ * than by a voice-type folder, both lookups are keyed by `speaker_key`.
  */
-import type { Tx } from '../../../db';
-import { effectiveSpeakerGenderSql, parseSpeakerGender, type SpeakerGender } from '../../../dialog';
-import type { VoiceFolderGender } from '../../../web/voice/preview/speakerGender';
+import type { Tx } from '../db';
+import { effectiveSpeakerGenderSql, parseSpeakerGender, type SpeakerGender } from '../dialog';
+import type { VoiceFolderGender } from '../web/voice/preview/speakerGender';
 
-/** Gender keyed by Disco speaker name, from `dialog_speakers`. */
-export const loadDiscoSpeakerGenders = async (
+/** Gender keyed by speaker key; there is no folder whose name could disagree. */
+export const loadDialogSpeakerGenders = async (
   db: Tx,
   modId: number,
 ): Promise<Map<string, VoiceFolderGender>> => {
@@ -24,7 +25,6 @@ export const loadDiscoSpeakerGenders = async (
   for (const row of rows) {
     result.set(row.speaker_key, {
       gender: parseSpeakerGender(row.effective_gender) as SpeakerGender,
-      // Disco has no per-folder gender that could disagree with the record.
       folderGender: 'unknown',
       mismatch: false,
     });
@@ -32,8 +32,8 @@ export const loadDiscoSpeakerGenders = async (
   return result;
 };
 
-/** Display names from persisted Disco speakers. */
-export const loadDiscoSpeakerNames = async (
+/** Display names of a mod's speakers, keyed by speaker key. */
+export const loadDialogSpeakerNames = async (
   db: Tx,
   modId: number,
 ): Promise<Map<string, string>> => {

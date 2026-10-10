@@ -16,6 +16,7 @@ automatically, reducing repetitive effort and improving consistency.
 - [Manually Applying TM Suggestions](#manually-applying-tm-suggestions)
 - [RAG Examples Tab in the Detail Panel](#rag-examples-tab-in-the-detail-panel)
 - [How Translations Enter the TM](#how-translations-enter-the-tm)
+- [Reference Base](#reference-base)
 
 ---
 
@@ -179,6 +180,68 @@ text; unsafe candidates are skipped. This propagation assigns status **`tm`**.
 
 **CSV imports** use the same `upsertTranslation` path, so they respect the
 same one-per-string rule and also trigger propagation.
+
+---
+
+## Reference Base
+
+The TM is a query over **other mods'** translations. Deleting a mod takes its
+strings, translations, RAG examples and synthesized voice with it, and the
+memory forgets everything the mod taught it.
+
+The reference base is the part of the memory that must outlive a mod. It is a
+separate table, `reference_translations`, shared by all games, with no foreign
+key to `mods` or `strings`. A row holds the game, the language pair, the three
+TM anchors (FormID + field path, EDID + field path, normalized text), the source
+text, the translation and its origin (mod, version and status at promotion
+time). Editions that ship the same text share one base, as they share one
+glossary: Skyrim LE reads Skyrim SE's.
+
+### How translations become reference
+
+Only **`reviewed`** and **`human`** translations are promoted — the statuses the
+RAG index trusts. Three ways in:
+
+- **From the editor.** Right-click a row or a selection → **Mark as reference**.
+  Only approved rows among the selection are promoted; the rest are skipped
+  silently.
+- **On mod delete.** The delete dialog ("rows only" and "mod and all rows", and
+  the batch delete) has a **Keep reviewed translations in the reference base**
+  checkbox, on by default. The snapshot is taken before the rows are purged.
+- **Automatically on approval.** Settings → Workflow → **Promote approved
+  translations to the reference base**. Every translation that becomes
+  `reviewed` or `human` (save, status change, verify) is then copied at once.
+  Off by default.
+
+Promoting the same anchor again updates the row. The exception is a row edited
+by hand on the Reference page: a promotion never overwrites it.
+
+### How reference rows are read
+
+TM auto-apply looks for each of the three methods in two places: the reference
+base and live mods. Within a method a reference row beats a live mod on the
+same anchor. The one exception is a live mod whose source text is byte-for-byte
+identical while the reference row is only a `text_norm` match: exactness comes
+first. A translation taken from the reference base for a byte-for-byte identical
+source text is written as **`reviewed`** at once: the reference row was
+reviewed already, a second pass would defeat the base. A number-transplant
+match is new text and stays `tm`. Such rows carry `tm_reference_<method>`
+provenance, so the history shows the translation came from the reference base.
+
+Voice is not copied from the reference base: TM carries synthesized takes only
+from a live donor mod.
+
+### The Reference page
+
+Game hub → **Reference base** card (`/games/<game>/reference`). The page offers:
+
+- a language-pair filter and a search across source, translation and EDID;
+- adding a pair by hand (no anchors — such a row matches by normalized text only);
+- inline editing of source and translation, and row deletion;
+- a **Promote reviewed translations from** panel for one mod or all mods of the game.
+
+The Origin column shows where a row came from — manual, promoted, kept on
+delete, auto on approve — and the name of the source mod.
 
 ---
 

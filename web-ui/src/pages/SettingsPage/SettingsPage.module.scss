@@ -335,3 +335,43 @@
 }
 
 /* center/error moved to LlmTab/LlmTab.module.scss */
+
+/* ── Phones: tabs become a scrolling strip above one column of fields ───── */
+
+@media (max-width: 720px) {
+  .page {
+    padding: 16px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    scroll-padding-inline: 16px;
+    /* Fades the right edge so a cut-off tab reads as "more this way". */
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+
+  .navItem {
+    width: auto;
+    flex: none;
+    white-space: nowrap;
+    padding: 10px 12px;
+  }
+
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .fieldGrid > .fieldLabel:not(:first-child) {
+    margin-top: 10px;
+  }
+}

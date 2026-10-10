@@ -21,6 +21,9 @@ export type {
   ModImportRunContext,
   DialogSpeakerRefresh,
   DialogSpeakerRefreshContext,
+  FolderImportFile,
+  FolderImportOptions,
+  FolderImportUnit,
 } from './importing';
 export type { ExportedZip, GameExportAdapter, ModExportContext } from './exporting';
 export type {

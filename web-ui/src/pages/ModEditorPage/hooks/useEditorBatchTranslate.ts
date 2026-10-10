@@ -38,7 +38,7 @@ export function useEditorBatchTranslate({
   const translateInFlight = useRef(false);
 
   const showTranslateResultToast = useCallback(
-    (mode: 'llm' | 'tm', count: number) => {
+    (mode: 'llm' | 'tm', count: number, approved = 0) => {
       if (count > 0) {
         if (mode === 'llm') {
           toast.success(t('modEditor.translateDone', { count }), {
@@ -47,6 +47,8 @@ export function useEditorBatchTranslate({
               onClick: () => onDraftFilter?.(),
             },
           });
+        } else if (approved > 0) {
+          toast.success(t('modEditor.tmApplyDoneApproved', { count, approved }));
         } else {
           toast.success(t('modEditor.tmApplyDone', { count }));
         }
@@ -102,6 +104,7 @@ export function useEditorBatchTranslate({
 
       try {
         let doneCount = 0;
+        let approvedCount = 0;
         for (let i = 0; i < ids.length; i += TRANSLATE_CHUNK) {
           const chunk = ids.slice(i, i + TRANSLATE_CHUNK);
           if (mode === 'llm') {
@@ -116,6 +119,7 @@ export function useEditorBatchTranslate({
           } else {
             const result = await api.strings.batchApplyTm(chunk, srcLang, targetLang, modId);
             doneCount += result.applied;
+            approvedCount += result.approved ?? 0;
           }
           updateProgress(Math.min(i + chunk.length, ids.length));
         }
@@ -124,7 +128,7 @@ export function useEditorBatchTranslate({
         qc.invalidateQueries({ queryKey: ['voice-speakers', modId] });
         qc.invalidateQueries({ queryKey: ['voice-speaker-lines', modId] });
         void refetchStats();
-        showTranslateResultToast(mode, doneCount);
+        showTranslateResultToast(mode, doneCount, approvedCount);
         if (!explicitIds) clearSelection();
         upsertAppJob({
           id: appJobId,

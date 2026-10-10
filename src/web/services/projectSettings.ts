@@ -40,6 +40,8 @@ export type ProjectSettingKey =
   | 'workflow.propagate_to_identical'
   /** When true, strings flagged as ignored are hidden in the editor by default. */
   | 'workflow.hide_ignored_by_default'
+  /** When true, a translation that becomes reviewed/human is copied into the per-game reference base. */
+  | 'workflow.promote_reference_on_approve'
   /** When true, QA checks whether source and translation end with the same punctuation type. */
   | 'qa.end_punct_match'
   /** Minimum word count required in a translation (0 = disabled). */
@@ -75,6 +77,7 @@ export type ProjectSettings = {
   'workflow.auto_approve_on_save': boolean;
   'workflow.propagate_to_identical': boolean;
   'workflow.hide_ignored_by_default': boolean;
+  'workflow.promote_reference_on_approve': boolean;
   'qa.end_punct_match': boolean;
   'qa.min_word_count': number;
   'import.skip_tes4': boolean;
@@ -106,6 +109,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'workflow.auto_approve_on_save': false,
   'workflow.propagate_to_identical': true,
   'workflow.hide_ignored_by_default': false,
+  'workflow.promote_reference_on_approve': false,
   'qa.end_punct_match': true,
   'qa.min_word_count': 1,
   'import.skip_tes4': false,

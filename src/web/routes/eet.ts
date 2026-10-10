@@ -7,6 +7,9 @@ import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
+import { CONFIG } from '../../config';
+import { DEFAULT_GAME_ID, gamePlugin, isGameId } from '../../games/registry';
+import type { GameId } from '../../types';
 import { log } from '../../logger';
 import {
   ensureImportSchema,
@@ -14,6 +17,7 @@ import {
   getImportJob,
   deleteImportJob,
   registerEetFile,
+  eetNamesOtherGame,
   updateJobLanguages,
   markImportJobFailed,
 } from '../../import/eet';
@@ -24,6 +28,7 @@ import {
   pauseQueuedImport,
 } from '../../../worker/src/api/importJobs';
 import { startJobSse } from '../../../worker/src/api/startJobSse';
+import { parseRouteId } from './parseRouteId';
 import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 
 import { PATHS } from '../../paths';
@@ -57,50 +62,71 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // ── Upload EET file ───────────────────────────────────────────────────────
-  app.post('/api/eet/upload', async (req, reply) => {
-    const data = await req.file();
-    if (!data) return reply.status(400).send({ error: 'No file uploaded' });
+  // The game and languages come from the page the file was uploaded on, as for
+  // a mod upload. The file's header names its own game too; when that name
+  // proves a different game the upload is refused rather than filed under the
+  // wrong one or quietly moved to a page the user is not looking at.
+  app.post<{ Querystring: { game?: string; srcLang?: string; tgtLang?: string } }>(
+    '/api/eet/upload',
+    async (req, reply) => {
+      const data = await req.file();
+      if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
-    const origName = data.filename;
-    if (!origName.toLowerCase().endsWith('.eet')) {
-      return reply.status(400).send({ error: 'Only .eet files are accepted' });
-    }
-
-    // Save to temp, then rename to avoid partial uploads
-    const tmpPath = path.join(
-      EET_UPLOAD_DIR,
-      `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
-    );
-    ensureUploadDir();
-
-    try {
-      await pipeline(data.file, fs.createWriteStream(tmpPath));
-
-      const finalPath = eetFilePath(origName);
-      fs.renameSync(tmpPath, finalPath);
-
-      const buf = fs.readFileSync(finalPath);
-      const job = await registerEetFile(db, origName, buf);
-
-      return reply.status(201).send({ ...job, running: false });
-    } catch (err: unknown) {
-      // Clean up temp file on error
-      try {
-        fs.unlinkSync(tmpPath);
-      } catch {
-        /* ignore */
+      const origName = data.filename;
+      if (!origName.toLowerCase().endsWith('.eet')) {
+        return reply.status(400).send({ error: 'Only .eet files are accepted' });
       }
-      log.error(`EET upload failed: ${err instanceof Error ? err.message : err}`);
-      return reply.status(500).send({ error: 'Upload failed' });
-    }
-  });
+      const game: GameId = isGameId(req.query.game) ? req.query.game : DEFAULT_GAME_ID;
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
+
+      // Save to temp, then rename to avoid partial uploads
+      const tmpPath = path.join(
+        EET_UPLOAD_DIR,
+        `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
+      );
+      ensureUploadDir();
+
+      try {
+        await pipeline(data.file, fs.createWriteStream(tmpPath));
+
+        // Checked before the rename, which would replace an earlier upload of
+        // the same name that a job may still point at.
+        const buf = fs.readFileSync(tmpPath);
+        const fileGame = parseEetHeader(buf).gameName;
+        if (eetNamesOtherGame(fileGame, game)) {
+          fs.unlinkSync(tmpPath);
+          return reply.status(400).send({
+            error: `${origName} is an EET file for ${fileGame}, not ${gamePlugin(game).catalogue.name}`,
+            code: 'eet-game-mismatch',
+            fileGame,
+          });
+        }
+
+        fs.renameSync(tmpPath, eetFilePath(origName));
+        const job = await registerEetFile(db, origName, buf, { game, srcLang, tgtLang });
+
+        return reply.status(201).send({ ...job, running: false });
+      } catch (err: unknown) {
+        // Clean up temp file on error
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {
+          /* ignore */
+        }
+        log.error(`EET upload failed: ${err instanceof Error ? err.message : err}`);
+        return reply.status(500).send({ error: 'Upload failed' });
+      }
+    },
+  );
 
   // ── Preview EET file records (paginated + filterable) ──────────────────────
   app.get<{
     Params: { id: string };
     Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
   }>('/api/eet/:id/preview', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
@@ -163,7 +189,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
   app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string } }>(
     '/api/eet/:id',
     async (req, reply) => {
-      const jobId = Number(req.params.id);
+      const jobId = parseRouteId(req.params.id);
+      if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
       const job = await getImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (await isImportQueued('eet-import', jobId))
@@ -179,7 +206,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/eet/:id/import', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
@@ -198,7 +226,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/pause', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await pauseQueuedImport('eet-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
@@ -206,7 +235,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/eet/:id/cancel', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await cancelQueuedImport('eet-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     const job = await getImportJob(db, jobId);
@@ -216,7 +246,8 @@ export const eetRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/api/eet/:id', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (await isImportQueued('eet-import', jobId))

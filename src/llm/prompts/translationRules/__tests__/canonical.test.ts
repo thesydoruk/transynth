@@ -104,11 +104,14 @@ describe('canonical terminology', () => {
       const verify = buildEnglishVerifySystemPrompt('en', 'pl', game);
       expect(translate).toContain(rules);
       expect(verify).toContain(verifyRules);
-      if (game !== 'disco') {
+      // A game that opts out of the shared rule bullets gets its own, and no
+      // Bethesda vocabulary leaks in from them.
+      const plugin = gamePlugin(game);
+      if (plugin.prompts.english.useCommonRules) {
         expect(verify).toContain('TEMPLATE CONSISTENCY (VERIFY)');
       } else {
         expect(verify).not.toContain('ESP/ESM');
-        expect(verify).toContain('Disco Elysium');
+        expect(verify).toContain(plugin.prompts.label);
       }
     }
   });

@@ -28,3 +28,21 @@
 .dividerActive {
   background: var(--accent);
 }
+
+/* Phones: the navigator sits above the content, as a short list of its own. */
+@media (max-width: 720px) {
+  .root {
+    flex-direction: column;
+  }
+
+  .navigatorPane {
+    width: auto !important;
+    height: 36%;
+    max-height: 220px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .divider {
+    display: none;
+  }
+}

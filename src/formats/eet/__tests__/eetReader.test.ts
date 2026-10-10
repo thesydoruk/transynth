@@ -6,9 +6,13 @@ import { parseEetHeader, iterEetRecords, parseEetFile } from '..';
 const SMALL_EET = path.resolve('test/DOOMThatGun_DE6A1ED8.eet');
 const LARGE_EET = path.resolve('test/BDD_Fallout4_EN-RU.eet');
 
+// The samples are not in the repository (test/ is gitignored). Without them
+// these tests show as skipped, not as passing without having checked anything.
+const withSmall = fs.existsSync(SMALL_EET) ? it : it.skip;
+const withLarge = fs.existsSync(LARGE_EET) ? it : it.skip;
+
 describe('parseEetHeader', () => {
-  it('parses v1 header (DOOMThatGun)', () => {
-    if (!fs.existsSync(SMALL_EET)) return;
+  withSmall('parses v1 header (DOOMThatGun)', () => {
     const buf = fs.readFileSync(SMALL_EET);
     const h = parseEetHeader(buf);
     expect(h.version).toBe(1);
@@ -17,8 +21,7 @@ describe('parseEetHeader', () => {
     expect(h.recordsOffset).toBeGreaterThan(0);
   });
 
-  it('parses v2 header (BDD)', () => {
-    if (!fs.existsSync(LARGE_EET)) return;
+  withLarge('parses v2 header (BDD)', () => {
     const buf = fs.readFileSync(LARGE_EET);
     const h = parseEetHeader(buf);
     expect(h.version).toBe(2);
@@ -33,8 +36,7 @@ describe('parseEetHeader', () => {
 });
 
 describe('iterEetRecords (v1 small file)', () => {
-  it('yields all records', () => {
-    if (!fs.existsSync(SMALL_EET)) return;
+  withSmall('yields all records', () => {
     const buf = fs.readFileSync(SMALL_EET);
     const header = parseEetHeader(buf);
     const records = [...iterEetRecords(buf, header.recordsOffset)];
@@ -42,8 +44,7 @@ describe('iterEetRecords (v1 small file)', () => {
     expect(records.length).toBe(61);
   });
 
-  it('records have expected fields', () => {
-    if (!fs.existsSync(SMALL_EET)) return;
+  withSmall('records have expected fields', () => {
     const buf = fs.readFileSync(SMALL_EET);
     const header = parseEetHeader(buf);
     const records = [...iterEetRecords(buf, header.recordsOffset)];
@@ -55,8 +56,7 @@ describe('iterEetRecords (v1 small file)', () => {
     expect(typeof first.status).toBe('number');
   });
 
-  it('signatures are 4-char ASCII strings', () => {
-    if (!fs.existsSync(SMALL_EET)) return;
+  withSmall('signatures are 4-char ASCII strings', () => {
     const buf = fs.readFileSync(SMALL_EET);
     const header = parseEetHeader(buf);
     const records = [...iterEetRecords(buf, header.recordsOffset)];
@@ -68,8 +68,7 @@ describe('iterEetRecords (v1 small file)', () => {
 });
 
 describe('parseEetFile', () => {
-  it('returns header + records for v1 file', () => {
-    if (!fs.existsSync(SMALL_EET)) return;
+  withSmall('returns header + records for v1 file', () => {
     const buf = fs.readFileSync(SMALL_EET);
     const result = parseEetFile(buf);
     expect(result.header.version).toBe(1);
@@ -78,8 +77,7 @@ describe('parseEetFile', () => {
 });
 
 describe('iterEetRecords (v2 large file)', () => {
-  it('yields declared record count', () => {
-    if (!fs.existsSync(LARGE_EET)) return;
+  withLarge('yields declared record count', () => {
     const buf = fs.readFileSync(LARGE_EET);
     const header = parseEetHeader(buf);
     const records = [...iterEetRecords(buf, header.recordsOffset)];

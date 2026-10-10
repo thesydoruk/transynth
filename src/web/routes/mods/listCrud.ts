@@ -10,6 +10,7 @@ import {
 } from '../../data/queries';
 import { getPexSourceSnippetForString } from '../../export/pexDecompileService';
 import { deleteModsCompletely } from '../../../import/mod/deleteMods';
+import { snapshotModsToReference } from '../../services/referenceHooks';
 import { log } from '../../../logger';
 import { CONFIG } from '../../../config';
 
@@ -75,51 +76,77 @@ export const registerListCrudRoutes = async (app: FastifyInstance, db: Tx) => {
   );
 
   // POST /api/mods/batch-delete — remove multiple mods in one DB transaction.
-  app.post<{ Body: { modIds?: number[] } }>('/api/mods/batch-delete', async (req, reply) => {
-    const modIds = req.body?.modIds;
-    if (!Array.isArray(modIds) || modIds.length === 0) {
-      return reply.code(400).send({ error: 'modIds must be a non-empty array' });
-    }
-    if (modIds.length > 100) {
-      return reply.code(400).send({ error: 'Too many mods in one batch (max 100)' });
-    }
-    if (!modIds.every((id) => Number.isInteger(id) && id > 0)) {
-      return reply.code(400).send({ error: 'Invalid mod id in modIds' });
-    }
+  app.post<{ Body: { modIds?: number[]; keepReference?: boolean } }>(
+    '/api/mods/batch-delete',
+    async (req, reply) => {
+      const modIds = req.body?.modIds;
+      if (!Array.isArray(modIds) || modIds.length === 0) {
+        return reply.code(400).send({ error: 'modIds must be a non-empty array' });
+      }
+      if (modIds.length > 100) {
+        return reply.code(400).send({ error: 'Too many mods in one batch (max 100)' });
+      }
+      if (!modIds.every((id) => Number.isInteger(id) && id > 0)) {
+        return reply.code(400).send({ error: 'Invalid mod id in modIds' });
+      }
 
-    const result = await deleteModsCompletely(db, modIds);
-    log.info(
-      `POST /api/mods/batch-delete deletedMods=${result.deletedMods} deletedRecords=${result.deletedRecords}`,
-    );
-    return reply.send({ ok: true, ...result });
-  });
+      const keepReference = req.body?.keepReference !== false;
+      const result = await deleteModsCompletely(db, modIds, { keepReference });
+      log.info(
+        `POST /api/mods/batch-delete deletedMods=${result.deletedMods} deletedRecords=${result.deletedRecords}`,
+      );
+      return reply.send({ ok: true, ...result });
+    },
+  );
 
   // DELETE /api/mods/:id/rows — remove all imported rows for a mod but keep the mod entry.
-  app.delete<{ Params: { id: string } }>('/api/mods/:id/rows', async (req, reply) => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+  app.delete<{ Params: { id: string }; Querystring: { keepReference?: string } }>(
+    '/api/mods/:id/rows',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) {
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      }
 
-    const mod = await getMod(db, id);
-    if (!mod) return reply.code(404).send({ error: 'Not found' });
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-    const result = await deleteModData(db, id, 'rows');
-    log.info(`DELETE /api/mods/${id}/rows deletedRecords=${result.deletedRecords}`);
-    return reply.send({ ok: true, deletedRecords: result.deletedRecords });
-  });
+      const referencePromoted =
+        req.query.keepReference === 'false' ? 0 : await snapshotModsToReference(db, [id]);
+      const result = await deleteModData(db, id, 'rows');
+      log.info(
+        `DELETE /api/mods/${id}/rows deletedRecords=${result.deletedRecords} referencePromoted=${referencePromoted}`,
+      );
+      return reply.send({ ok: true, deletedRecords: result.deletedRecords, referencePromoted });
+    },
+  );
 
   // DELETE /api/mods/:id — remove the mod entry and all related records/strings/translations.
-  app.delete<{ Params: { id: string } }>('/api/mods/:id', async (req, reply) => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1) return reply.code(400).send({ error: 'Invalid mod id' });
+  app.delete<{ Params: { id: string }; Querystring: { keepReference?: string } }>(
+    '/api/mods/:id',
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) {
+        return reply.code(400).send({ error: 'Invalid mod id' });
+      }
 
-    const mod = await getMod(db, id);
-    if (!mod) return reply.code(404).send({ error: 'Not found' });
+      const mod = await getMod(db, id);
+      if (!mod) return reply.code(404).send({ error: 'Not found' });
 
-    const result = await deleteModsCompletely(db, [id]);
-    if (result.deletedMods === 0) return reply.code(404).send({ error: 'Not found' });
-    log.info(`DELETE /api/mods/${id} deletedRecords=${result.deletedRecords}`);
-    return reply.send({ ok: true, deletedRecords: result.deletedRecords });
-  });
+      const result = await deleteModsCompletely(db, [id], {
+        keepReference: req.query.keepReference !== 'false',
+      });
+      if (result.deletedMods === 0) return reply.code(404).send({ error: 'Not found' });
+      log.info(
+        `DELETE /api/mods/${id} deletedRecords=${result.deletedRecords} referencePromoted=${result.referencePromoted}`,
+      );
+      return reply.send({
+        ok: true,
+        deletedRecords: result.deletedRecords,
+        referencePromoted: result.referencePromoted,
+      });
+    },
+  );
 
   // GET /api/mods/:id/langs — list all languages available in this mod
   app.get<{ Params: { id: string } }>('/api/mods/:id/langs', async (req, reply) => {

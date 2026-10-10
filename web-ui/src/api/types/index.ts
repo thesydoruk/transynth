@@ -7,6 +7,7 @@ export * from './strings';
 export * from './dialogs';
 export * from './stats';
 export * from './glossary';
+export * from './reference';
 export * from './tmApply';
 export * from './coherence';
 export * from './innr';

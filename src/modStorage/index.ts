@@ -6,6 +6,7 @@ export {
   modImportPackOutputDir,
   modNexusDownloadTempPath,
   modStorageRoot,
+  isOwnedModStoragePath,
   modUploadTempPath,
   modUploadedFilePath,
   resolveModImportExtractRoot,

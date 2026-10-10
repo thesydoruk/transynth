@@ -25,14 +25,15 @@ langpack into the tool so its strings are ready to translate.
 
 ## Supported File Types
 
-| File                     | Description                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, OB, MW, SSE, SLE)         |
-| `.zip` / `.7z` / `.rar`  | Bethesda: plugin + optional `.ba2` / `.bsa`. Disco: Final Cut `.po` + `.wav` pack (no plugin required)       |
-| `.eet`                   | Legacy project file — imports existing translations                                                          |
-| `.csv`                   | RFC 4180-style comma-separated translation table                                                             |
-| `.ba2`                   | Fallout 4/76 archive — discovered automatically next to the plugin or inside an uploaded archive             |
-| `.bsa`                   | Skyrim SE/LE and FO3/FNV archive — discovered automatically next to the plugin or inside an uploaded archive |
+| File                     | Description                                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.esp` / `.esm` / `.esl` | Bethesda mod plugin — primary source of translatable strings (FO4, FO76, FO3, FNV, OB, MW, SSE, SLE)                                                                                                   |
+| `.zip` / `.7z` / `.rar`  | Bethesda: plugin + optional `.ba2` / `.bsa`. Disco: Final Cut `.po` + `.wav` pack (no plugin required). The Witcher 3: `.w3strings` tables, with `.w3speech` and scene files when the archive has them |
+| game folder              | The Witcher 3: `npm run import:folder -- --game w3 --dir <install or mods folder> [--per-mod]` reads the tables, the speech container and the scenes (speakers) out of the game's own files            |
+| `.eet`                   | Legacy project file — imports existing translations                                                                                                                                                    |
+| `.csv`                   | RFC 4180-style comma-separated translation table                                                                                                                                                       |
+| `.ba2`                   | Fallout 4/76 archive — discovered automatically next to the plugin or inside an uploaded archive                                                                                                       |
+| `.bsa`                   | Skyrim SE/LE and FO3/FNV archive — discovered automatically next to the plugin or inside an uploaded archive                                                                                           |
 
 ---
 
@@ -398,9 +399,11 @@ EET imports are under **Advanced import** on the Mods page. They appear in the j
 
 Workflow:
 
-1. Upload a `.eet` file.
-2. Import starts automatically with current/default languages.
+1. Upload a `.eet` file from the Mods page of the game it belongs to.
+2. Import starts automatically with the page's game and your current **Source Language** / **Target Language**.
 3. Track progress in the jobs list.
+
+The mod is filed under the game whose page you uploaded from. An EET file also names its own game in its header (for example `Fallout 4` or `Skyrim`); when that name clearly means a different game, the upload is refused with a message naming the file's game, and nothing is imported. Upload it again from that game's page. Editions that share their text count as one game here — a `SkyrimSE` file is accepted on the Skyrim Legendary Edition page — and a name Transynth does not recognise is not checked.
 
 What is imported from EET:
 
@@ -450,9 +453,11 @@ Notes about the parser:
 
 Workflow:
 
-1. Upload the CSV file.
-2. Import starts automatically with current/default languages.
+1. Upload the CSV file from the Mods page of the game it belongs to.
+2. Import starts automatically with the page's game and your current **Source Language** / **Target Language**.
 3. Track progress in the jobs list.
+
+A CSV file does not say which game it is for, so the mod is filed under the game whose page you uploaded from. Uploading the same file again from another game's page moves the mod to that game.
 
 Status handling:
 
@@ -474,6 +479,9 @@ Conflict handling in the current UI:
 
 - **"File too large"**
   The web server limits multipart uploads only if `UPLOAD_MAX_FILE_SIZE_MB` is set. Unset means no practical application-level cap. You can also split oversized archives or upload only the needed plugin.
+
+- **"… is an EET file for …"**
+  The EET file's header names a different game from the page you uploaded it on. Open that game's Mods page and upload it there.
 
 - **"Unsupported format"**
   The current accepted upload types are `.eet`, `.csv`, `.esp`, `.esm`, `.esl`, `.zip`, `.7z`, and `.rar`. A bare `.ba2` file is not accepted by the upload API.

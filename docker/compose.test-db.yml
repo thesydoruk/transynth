@@ -1,0 +1,29 @@
+# Throwaway Postgres for `npm run test:db`.
+#
+#   npm run test:db:up     # start (data lives in RAM, gone on stop)
+#   npm run test:db
+#   npm run test:db:down
+#
+# Same image as the embedded production database (compose.db.yml): the schema
+# needs pgvector, pg_trgm and pgcrypto. A different port from the dev database
+# so the tests can never reach it by accident.
+name: transynth-test-db
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: transynth
+      POSTGRES_PASSWORD: transynth
+      POSTGRES_DB: postgres
+    ports:
+      - '55433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    # Durability is pointless for data that dies with the container.
+    command: postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U transynth']
+      interval: 1s
+      timeout: 3s
+      retries: 30

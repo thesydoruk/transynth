@@ -1,10 +1,10 @@
-import type { CSSProperties, MouseEvent, RefObject } from 'react';
+import type { MouseEvent, RefObject } from 'react';
 import type { TFunction } from 'i18next';
-import type { StringGridColKey } from '../../hooks/useStringGridColumnWidths';
+import type { StringGridColKey, StringGridColProps } from '../../hooks/useStringGridColumnWidths';
 import type { ColumnFilters, SortCol, SortDir } from './StringGrid.types';
 import styles from './StringGrid.module.scss';
 
-type ColStyle = (col: StringGridColKey) => CSSProperties;
+type ColProps = (col: StringGridColKey) => StringGridColProps;
 type StartResize = (col: StringGridColKey, event: MouseEvent) => void;
 
 type StringGridHeaderProps = {
@@ -21,7 +21,7 @@ type StringGridHeaderProps = {
   columnFilters: ColumnFilters;
   allSelected: boolean;
   selectAllCheckRef: RefObject<HTMLInputElement | null>;
-  colStyle: ColStyle;
+  colProps: ColProps;
   startResize: StartResize;
   onSort: (col: SortCol) => void;
   onToggleAll: () => void;
@@ -42,7 +42,7 @@ export const StringGridHeader = ({
   columnFilters,
   allSelected,
   selectAllCheckRef,
-  colStyle,
+  colProps,
   startResize,
   onSort,
   onToggleAll,
@@ -51,7 +51,7 @@ export const StringGridHeader = ({
   const sortableHeader = (col: SortCol, label: string) => (
     <div
       className={`${styles.th} ${styles.sortable}`}
-      style={colStyle(col)}
+      {...colProps(col)}
       onClick={() => onSort(col)}
     >
       {label}
@@ -67,7 +67,7 @@ export const StringGridHeader = ({
       <div className={styles.gridHeader}>
         <div className={`${styles.th} ${styles.colCheck}`} />
         {showGender && (
-          <div className={styles.th} style={colStyle('gender')} title={t('modEditor.genderCol')}>
+          <div className={styles.th} {...colProps('gender')} title={t('modEditor.genderCol')}>
             {t('modEditor.genderColShort')}
             <span
               className={styles.resizeHandle}
@@ -84,7 +84,7 @@ export const StringGridHeader = ({
           'transl',
           t('modEditor.translationText', { lang: targetLang.toUpperCase() }),
         )}
-        <div className={styles.th} style={colStyle('act')}>
+        <div className={styles.th} {...colProps('act')}>
           {t('modEditor.actions')}
           <span
             className={styles.resizeHandle}
@@ -103,8 +103,8 @@ export const StringGridHeader = ({
             title={t('modEditor.selectAllMatching')}
           />
         </div>
-        {showGender && <div style={colStyle('gender')} />}
-        <div style={colStyle('grup')}>
+        {showGender && <div {...colProps('gender')} />}
+        <div {...colProps('grup')}>
           <input
             className={styles.filterInput}
             placeholder={sigLabel}
@@ -113,7 +113,7 @@ export const StringGridHeader = ({
           />
         </div>
         {showFormId && (
-          <div style={colStyle('formid')}>
+          <div {...colProps('formid')}>
             <input
               className={styles.filterInput}
               placeholder={t('modEditor.formId')}
@@ -122,7 +122,7 @@ export const StringGridHeader = ({
             />
           </div>
         )}
-        <div style={colStyle('edid')}>
+        <div {...colProps('edid')}>
           <input
             className={styles.filterInput}
             placeholder={edidLabel}
@@ -130,7 +130,7 @@ export const StringGridHeader = ({
             onChange={(event) => onColumnFilterChange('edid', event.target.value)}
           />
         </div>
-        <div style={colStyle('field')}>
+        <div {...colProps('field')}>
           <input
             className={styles.filterInput}
             placeholder={fieldLabel}
@@ -138,7 +138,7 @@ export const StringGridHeader = ({
             onChange={(event) => onColumnFilterChange('field', event.target.value)}
           />
         </div>
-        <div style={colStyle('src')}>
+        <div {...colProps('src')}>
           <input
             className={styles.filterInput}
             placeholder={t('modEditor.sourceText', { lang: srcLang.toUpperCase() })}
@@ -146,7 +146,7 @@ export const StringGridHeader = ({
             onChange={(event) => onColumnFilterChange('src', event.target.value)}
           />
         </div>
-        <div style={colStyle('transl')}>
+        <div {...colProps('transl')}>
           <input
             className={styles.filterInput}
             placeholder={t('modEditor.translationText', { lang: targetLang.toUpperCase() })}
@@ -154,7 +154,7 @@ export const StringGridHeader = ({
             onChange={(event) => onColumnFilterChange('transl', event.target.value)}
           />
         </div>
-        <div style={colStyle('act')} />
+        <div {...colProps('act')} />
       </div>
     </>
   );

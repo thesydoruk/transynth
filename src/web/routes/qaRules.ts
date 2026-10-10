@@ -16,6 +16,9 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
   const VALID_RULE_TYPES = ['forbidden_chars', 'max_length'] as const;
   /** Allowed severity values for validation. */
   const VALID_SEVERITIES = ['warning', 'error'] as const;
+  /** A max_length value is digits only: parseInt('32px') would quietly store 32px. */
+  const isPositiveIntegerText = (value: unknown): boolean =>
+    /^\d+$/.test(String(value).trim()) && Number(value) > 0;
 
   // ── GET /api/qa-rules — list all rules (optionally filtered) ────────────
   app.get<{ Querystring: { game?: string; ruleType?: string; isActive?: string } }>(
@@ -107,13 +110,10 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
         .send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
     }
     // For max_length rules, value must be a positive integer
-    if (rule_type === 'max_length') {
-      const parsed = parseInt(value, 10);
-      if (Number.isNaN(parsed) || parsed <= 0) {
-        return reply
-          .code(400)
-          .send({ error: 'For max_length rules, value must be a positive integer' });
-      }
+    if (rule_type === 'max_length' && !isPositiveIntegerText(value)) {
+      return reply
+        .code(400)
+        .send({ error: 'For max_length rules, value must be a positive integer' });
     }
 
     log.info(
@@ -175,9 +175,15 @@ export const qaRulesRoutes = async (app: FastifyInstance, db: Tx) => {
         .code(400)
         .send({ error: `severity must be one of: ${VALID_SEVERITIES.join(', ')}` });
     }
-    if (body.rule_type === 'max_length' && body.value !== undefined) {
-      const parsed = parseInt(body.value, 10);
-      if (Number.isNaN(parsed) || parsed <= 0) {
+    // The value has to fit the rule's type even when only the value changes.
+    if (body.value !== undefined || body.rule_type === 'max_length') {
+      const { rows: current } = await db.query<{ rule_type: string; value: string }>(
+        `SELECT rule_type, value FROM qa_rules WHERE id = $1`,
+        [id],
+      );
+      const ruleType = body.rule_type ?? current[0]?.rule_type;
+      const value = body.value ?? current[0]?.value;
+      if (ruleType === 'max_length' && !isPositiveIntegerText(value)) {
         return reply
           .code(400)
           .send({ error: 'For max_length rules, value must be a positive integer' });

@@ -28,6 +28,8 @@ export const useModDeleteActions = ({
   } | null>(null);
   const [clearingModId, setClearingModId] = useState<number | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  /** Copy reviewed/human translations into the reference base before a purge. */
+  const [keepReference, setKeepReference] = useState(true);
 
   const requestDeleteMods = useCallback((modsToDelete: Array<{ id: number; name: string }>) => {
     if (modsToDelete.length === 0) return;
@@ -54,7 +56,10 @@ export const useModDeleteActions = ({
     const { mods: modsToDelete } = pendingDeleteAll;
     setDeletingAll(true);
     try {
-      const result = await api.mods.removeBatch(modsToDelete.map((mod) => mod.id));
+      const result = await api.mods.removeBatch(
+        modsToDelete.map((mod) => mod.id),
+        keepReference,
+      );
       if (result.deletedMods === 0) {
         throw new Error('No mods were deleted');
       }
@@ -74,11 +79,11 @@ export const useModDeleteActions = ({
   };
 
   const confirmDeleteMod = useCallback(
-    async (deleteData: ModImportDeleteDataMode) => {
+    async (deleteData: ModImportDeleteDataMode, keep = true) => {
       if (!deleteModalJob) return;
       setDeletingModJobId(deleteModalJob.id);
       try {
-        await api.modImport.remove(deleteModalJob.id, deleteData);
+        await api.modImport.remove(deleteModalJob.id, deleteData, keep);
         setDeleteModalJob(null);
         refreshAll();
       } catch (err) {
@@ -102,6 +107,8 @@ export const useModDeleteActions = ({
     setPendingDeleteAll,
     clearingModId,
     deletingAll,
+    keepReference,
+    setKeepReference,
     requestDeleteMods,
     confirmClearRows,
     confirmDeleteAll,

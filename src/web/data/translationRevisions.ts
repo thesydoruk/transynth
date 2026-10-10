@@ -50,4 +50,8 @@ export const bulkRecordTranslationRevisions = async (
 
 /** History note for TM bulk writes (auto-apply vs propagation). */
 export const tmRevisionNoteForProvenance = (provenance: string): string =>
-  provenance === 'propagation' ? 'tm_propagation' : 'tm';
+  provenance === 'propagation'
+    ? 'tm_propagation'
+    : provenance.startsWith('tm_reference')
+      ? 'tm_reference'
+      : 'tm';

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright device tests
+/test-results/
+/playwright-report/
+/.e2e-dist/

@@ -16,6 +16,7 @@ import { api, type ActivityEntry, type Mod } from '../../api';
 import { modListQueryKey } from '../../langDefaults';
 import { PaginationControls } from '../../components/PaginationControls';
 import s from './ActivityPage.module.scss';
+import { TableScroll } from '../../components/TableScroll';
 
 /** Number of entries per page. */
 const PAGE_SIZE = 50;
@@ -181,41 +182,43 @@ export const ActivityPage = ({ embedded = false }: { embedded?: boolean }) => {
       {entries.length === 0 ? (
         <div className={s.empty}>{t('activity.noActivity')}</div>
       ) : (
-        <table className={s.table}>
-          <thead>
-            <tr>
-              <th>{t('activity.time')}</th>
-              <th>{t('activity.user')}</th>
-              <th>{t('activity.action')}</th>
-              <th>{t('activity.entity')}</th>
-              <th>{t('activity.details')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((e: ActivityEntry) => (
-              <tr key={e.id}>
-                <td>{new Date(e.created_at).toLocaleString()}</td>
-                <td>{e.display_name ?? '—'}</td>
-                <td>
-                  <span className={s.actionBadge}>
-                    {t(`activity.actions.${e.action}`, { defaultValue: e.action })}
-                  </span>
-                </td>
-                <td>
-                  {e.entity_type
-                    ? [
-                        t(`activity.entities.${e.entity_type}`, { defaultValue: e.entity_type }),
-                        e.entity_id != null ? `#${e.entity_id}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' ')
-                    : '—'}
-                </td>
-                <td className={s.details}>{e.details ? JSON.stringify(e.details) : '—'}</td>
+        <TableScroll minWidth={640}>
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>{t('activity.time')}</th>
+                <th>{t('activity.user')}</th>
+                <th>{t('activity.action')}</th>
+                <th>{t('activity.entity')}</th>
+                <th>{t('activity.details')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map((e: ActivityEntry) => (
+                <tr key={e.id}>
+                  <td>{new Date(e.created_at).toLocaleString()}</td>
+                  <td>{e.display_name ?? '—'}</td>
+                  <td>
+                    <span className={s.actionBadge}>
+                      {t(`activity.actions.${e.action}`, { defaultValue: e.action })}
+                    </span>
+                  </td>
+                  <td>
+                    {e.entity_type
+                      ? [
+                          t(`activity.entities.${e.entity_type}`, { defaultValue: e.entity_type }),
+                          e.entity_id != null ? `#${e.entity_id}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
+                      : '—'}
+                  </td>
+                  <td className={s.details}>{e.details ? JSON.stringify(e.details) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
 
       {/* Pagination */}

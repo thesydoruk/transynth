@@ -130,6 +130,20 @@ describe('isPexLiteralTranslatable', () => {
     ).toBe(false);
   });
 
+  it('treats every Debug.Trace variant as debug-only', () => {
+    for (const hint of ['Debug.TraceUser', 'Debug.TraceFunction', 'Debug.TraceAndBox']) {
+      expect(isPexLiteralTranslatable('trace me', [usage(hint)], null)).toBe(false);
+    }
+  });
+
+  // The PSC path already calls MessageBox player-facing; the bytecode path
+  // read "Debug.MessageBox" as "Debug.Message" and dropped the text.
+  it('keeps a literal shown in a message box when only bytecode is known', () => {
+    expect(isPexLiteralTranslatable('Choose your reward', [usage('Debug.MessageBox')], null)).toBe(
+      true,
+    );
+  });
+
   it('falls back to bytecode and keeps non-debug usage', () => {
     expect(isPexLiteralTranslatable('Built workshop ready!', [usage(null)], null)).toBe(true);
   });

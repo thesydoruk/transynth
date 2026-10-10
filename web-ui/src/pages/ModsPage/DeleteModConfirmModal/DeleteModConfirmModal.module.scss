@@ -47,3 +47,9 @@
     line-height: 1.35;
   }
 }
+
+/** Keep-in-reference checkbox under the delete modes. */
+.keepRow {
+  composes: optionRow;
+  margin-top: 10px;
+}

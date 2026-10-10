@@ -44,6 +44,8 @@ export interface UseAutosaveParams {
  */
 export function useAutosave({ activeRow, draftTranslation, onSave, onClear }: UseAutosaveParams) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** A change is waiting for the debounce: typed, and neither saved nor dropped. */
+  const pending = useRef(false);
 
   /*
    * Refs keep the latest values accessible from the stable callbacks below
@@ -63,6 +65,7 @@ export function useAutosave({ activeRow, draftTranslation, onSave, onClear }: Us
    * Useful when the caller handles the save itself (e.g. Ctrl+S).
    */
   const cancelAutosave = useCallback(() => {
+    pending.current = false;
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
@@ -93,9 +96,11 @@ export function useAutosave({ activeRow, draftTranslation, onSave, onClear }: Us
     const original = activeRow.translation ?? '';
     if (draftTranslation === original) return;
 
-    cancelAutosave();
+    if (timer.current) clearTimeout(timer.current);
+    pending.current = true;
     timer.current = setTimeout(() => {
       timer.current = null;
+      pending.current = false;
       const row = rowRef.current;
       const text = draftRef.current;
       if (!row) return;
@@ -103,8 +108,23 @@ export function useAutosave({ activeRow, draftTranslation, onSave, onClear }: Us
       else saveRef.current(row.string_id, text);
     }, 800);
 
-    return () => cancelAutosave();
-  }, [activeRow, draftTranslation, cancelAutosave]);
+    // The next keystroke restarts the timer; the pending flag survives it.
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+    };
+  }, [activeRow, draftTranslation]);
+
+  /*
+   * Leaving the editor (a nav link, the back button) inside the debounce
+   * window would otherwise drop what was just typed: save it on the way out.
+   */
+  useEffect(
+    () => () => {
+      if (pending.current) flushAutosave();
+    },
+    [flushAutosave],
+  );
 
   return { flushAutosave, cancelAutosave };
 }

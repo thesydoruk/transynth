@@ -229,7 +229,7 @@ const FO4_UK_CALQUE_ITEMS = [
   },
 ] as const;
 
-export const FO4_UK_CALQUE_EXAMPLES = `### КАЛЬКА Й «ЮНІТ»
+const FO4_UK_CALQUE_EXAMPLES = `### КАЛЬКА Й «ЮНІТ»
 Хвостик tag-question («isn't it? / do you? / right?») не калькуй як «чи не так?». «Are you alright?» — «Усе гаразд?», не «ти в порядку». Робот / Інститут "unit" — «одиниця», не «юніт».
 
 ${promptJsonItems(FO4_UK_CALQUE_ITEMS)}`;

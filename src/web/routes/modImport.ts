@@ -11,6 +11,7 @@ import type { GameId } from '../../types';
 import { log } from '../../logger';
 import { deleteModData } from '../data/queries';
 import { deleteModsCompletely, scheduleModDeleteFileCleanup } from '../../import/mod/deleteMods';
+import { snapshotModsToReference } from '../services/referenceHooks';
 import {
   ensureModImportSchema,
   listModImportJobs,
@@ -32,6 +33,7 @@ import {
   pauseQueuedImport,
 } from '../../../worker/src/api/importJobs';
 import { startJobSse } from '../../../worker/src/api/startJobSse';
+import { parseRouteId } from './parseRouteId';
 
 export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   await ensureModImportSchema(db);
@@ -103,7 +105,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string } }>(
     '/api/mod-import/:id',
     async (req, reply) => {
-      const jobId = Number(req.params.id);
+      const jobId = parseRouteId(req.params.id);
+      if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
       const job = await getModImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (await isImportQueued('mod-import', jobId))
@@ -122,7 +125,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Restart completed/failed/paused job ──────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/restart', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (await isImportQueued('mod-import', jobId))
@@ -134,7 +138,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/mod-import/:id/import', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getModImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
@@ -153,7 +158,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/pause', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await pauseQueuedImport('mod-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
@@ -161,7 +167,8 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/mod-import/:id/cancel', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await cancelQueuedImport('mod-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     const job = await getModImportJob(db, jobId);
@@ -172,10 +179,12 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{
     Params: { id: string };
-    Querystring: { deleteData?: 'job' | 'rows' | 'mod' };
+    Querystring: { deleteData?: 'job' | 'rows' | 'mod'; keepReference?: string };
   }>('/api/mod-import/:id', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const deleteData = req.query.deleteData ?? 'mod';
+    const keepReference = req.query.keepReference !== 'false';
     if (!['job', 'rows', 'mod'].includes(deleteData)) {
       return reply.status(400).send({ error: 'Invalid deleteData mode' });
     }
@@ -195,11 +204,12 @@ export const modImportRoutes = async (app: FastifyInstance, db: Tx) => {
 
     // DB first — large mods were timing out when CASCADE ran after slow fs.rmSync.
     if (job.mod_id != null && deleteData === 'mod') {
-      await deleteModsCompletely(db, [job.mod_id]);
+      await deleteModsCompletely(db, [job.mod_id], { keepReference });
       return { ok: true };
     }
 
     if (job.mod_id != null && deleteData === 'rows') {
+      if (keepReference) await snapshotModsToReference(db, [job.mod_id]);
       await deleteModData(db, job.mod_id, 'rows');
     }
 

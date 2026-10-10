@@ -9,6 +9,25 @@
   line-height: 1.5;
 }
 
+/** Optional controls (checkboxes) between the message and the footer. */
+.extra {
+  padding: 0 20px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+
+  label {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+
+  input {
+    margin-top: 2px;
+    accent-color: var(--accent);
+  }
+}
+
 /** Footer button row. */
 .footer {
   display: flex;

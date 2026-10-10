@@ -66,6 +66,7 @@ export const PLACEHOLDER_PATTERN_PARTS = [
   String.raw`<Alias=[^>]+>`,
   String.raw`<Global=[^>]+>`,
   String.raw`<\d[\d,]*\s+`,
+  String.raw`<<[^<>]+>>`,
   String.raw`<(?!\d[\d,]*\s+[Cc]aps>)[^>]+>`,
   String.raw`\[(?:${UI_BRACKET_TAGS.map(escapeRegex).join('|')})\]`,
   String.raw`\[\*[A-Za-z]+\]`,
@@ -77,6 +78,7 @@ export const PLACEHOLDER_PATTERN_PARTS = [
   String.raw`%\d*\$?[sdif]`,
   String.raw`\{[0-9]+\}`,
   String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
+  String.raw`\$[A-Za-z0-9_]+\$`,
   String.raw`\$[A-Za-z_][A-Za-z0-9_]*`,
 ] as const;
 
@@ -91,6 +93,8 @@ export const PLACEHOLDER_PATTERN_PARTS = [
  * - `{name}` — named format tokens.
  * - UI bracket tags (`[Mod]`, `[*Class]`, form refs) — not stage directions like `[Sarcasm]`.
  * - `<tag>` — XML/HTML-like and Bethesda alias/token/global tags; UI cost prefixes like `<20 ` stay masked while the currency word is translated.
+ * - `<<Name>>` — double-angle input/colour tokens (The Witcher 3's `<<Examine>>`), whole.
+ * - `$I$` — dollar-delimited variables (The Witcher 3's `$I$`, `$F$`), both dollars.
  * - `$Identifier` — script-style variable references.
  */
 export const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERN_PARTS.join('|'), 'g');

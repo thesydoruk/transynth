@@ -2,5 +2,5 @@ import { req } from '../client';
 import type { ActiveModAiJob } from '../types';
 
 export const modAiJobsEndpoints = {
-  listActive: () => req<ActiveModAiJob[]>('/api/ai-jobs/active'),
+  listActive: (init?: RequestInit) => req<ActiveModAiJob[]>('/api/ai-jobs/active', init),
 };

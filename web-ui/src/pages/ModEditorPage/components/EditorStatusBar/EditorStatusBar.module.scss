@@ -24,3 +24,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Phones: the counts are in the mod list; here they only cost a second line. */
+@media (max-width: 720px) {
+  .stats {
+    display: none;
+  }
+}

@@ -15,6 +15,9 @@ export type StringGridColKey =
 
 export type StringGridColumnWidths = Record<StringGridColKey, number | null>;
 
+/** Props every cell of a grid column spreads onto its element. */
+export type StringGridColProps = { style: CSSProperties; 'data-col': StringGridColKey };
+
 const DEFAULT_STRING_GRID_COLUMN_WIDTHS: StringGridColumnWidths = {
   gender: 28,
   grup: 52,
@@ -109,15 +112,23 @@ export const useStringGridColumnWidths = () => {
     [persistWidths],
   );
 
-  const colStyle = useCallback(
-    (col: StringGridColKey): CSSProperties => {
+  /**
+   * Width plus a `data-col` tag. The tag lets the grid's stylesheet drop the
+   * metadata columns when the grid is narrow (tablet, phone), so source and
+   * translation stay on screen; the text columns' floor is a CSS variable for
+   * the same reason.
+   */
+  const colProps = useCallback(
+    (col: StringGridColKey): StringGridColProps => {
       const w = colWidths[col];
-      return w !== null
-        ? { flex: `0 0 ${w}px`, overflow: 'hidden' }
-        : { flex: 1, minWidth: 180, overflow: 'hidden' };
+      const style: CSSProperties =
+        w !== null
+          ? { flex: `0 0 ${w}px`, overflow: 'hidden' }
+          : { flex: 1, minWidth: 'var(--grid-text-min, 180px)', overflow: 'hidden' };
+      return { style, 'data-col': col };
     },
     [colWidths],
   );
 
-  return { colWidths, colStyle, startResize };
+  return { colWidths, colProps, startResize };
 };

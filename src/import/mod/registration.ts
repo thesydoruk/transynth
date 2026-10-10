@@ -154,9 +154,58 @@ export const registerArchiveFile = async (
 
   await extractArchive(archivePath, extractDir);
 
+  return registerExtractedModDirectory(db, {
+    fileName,
+    fileHash,
+    extractDir,
+    srcLang,
+    tgtLang,
+    game,
+    scan,
+    container: { fileName, archivePath },
+  });
+};
+
+export type RegisterExtractedModDirectoryOptions = {
+  /** Shown as the job's file name; also what the mod is called until renamed. */
+  fileName: string;
+  /** Identity of the content, so registering the same files twice resumes one job. */
+  fileHash: string;
+  /**
+   * A tree the import owns. Deleting the mod removes it, so it must live under
+   * mod storage (`modImportExtractDir`), never be a game install or a user's
+   * own folder — copy files there first.
+   */
+  extractDir: string;
+  srcLang: string;
+  tgtLang: string;
+  game?: GameId;
+  scan?: ModScanContext;
+  /** The archive the tree came from, when it came from one. */
+  container?: { fileName: string; archivePath: string };
+};
+
+/**
+ * Register a directory that is already laid out like an extracted upload —
+ * what `registerArchiveFile` does after unpacking, for callers that staged the
+ * files themselves (a CLI importing a game folder, say).
+ */
+export const registerExtractedModDirectory = async (
+  db: Tx,
+  options: RegisterExtractedModDirectoryOptions,
+): Promise<ModImportJob> => {
+  const { fileName, fileHash, extractDir, srcLang, tgtLang, scan } = options;
+  const game = options.game ?? DEFAULT_GAME_ID;
+
+  const existing = await getModImportJobByFileHash(db, fileHash);
+  if (existing) {
+    await patchModImportScanContext(db, fileHash, scan);
+    return (await getModImportJobByFileHash(db, fileHash))!;
+  }
+
   const manifest = extractGameArchivesForImport({
     extractRoot: extractDir,
-    container: { fileName, archivePath },
+    ...(options.container ? { container: options.container } : {}),
     scopeDirs: [extractDir],
   });
 

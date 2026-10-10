@@ -24,13 +24,15 @@ type ModsPageModalsProps = {
   clearingModId: number | null;
   pendingDeleteAll: { mods: Array<{ id: number; name: string }> } | null;
   deletingAll: boolean;
+  keepReference: boolean;
+  onKeepReferenceChange: (value: boolean) => void;
   refreshAll: () => void;
   doStart: (kind: 'eet' | 'csv' | 'mod', jobId: number) => Promise<boolean>;
   onCloseEetPreview: () => void;
   onCloseCsvPreview: () => void;
   onCloseReimport: () => void;
   onCloseDeleteModal: () => void;
-  onConfirmDeleteMod: (deleteData: ModImportDeleteDataMode) => void;
+  onConfirmDeleteMod: (deleteData: ModImportDeleteDataMode, keepReference: boolean) => void;
   onCloseDeleteSimple: () => void;
   onClosePendingClear: () => void;
   onConfirmClearRows: () => void;
@@ -49,6 +51,8 @@ export const ModsPageModals = ({
   clearingModId,
   pendingDeleteAll,
   deletingAll,
+  keepReference,
+  onKeepReferenceChange,
   refreshAll,
   doStart,
   onCloseEetPreview,
@@ -104,8 +108,8 @@ export const ModsPageModals = ({
           fileName={deleteModalJob.file_name}
           deleting={deletingModJobId === deleteModalJob.id}
           onClose={onCloseDeleteModal}
-          onConfirm={(deleteData) => {
-            void onConfirmDeleteMod(deleteData);
+          onConfirm={(deleteData, keep) => {
+            void onConfirmDeleteMod(deleteData, keep);
           }}
         />
       )}
@@ -156,7 +160,17 @@ export const ModsPageModals = ({
           onConfirm={() => {
             void onConfirmDeleteAll();
           }}
-        />
+        >
+          <label>
+            <input
+              type="checkbox"
+              checked={keepReference}
+              disabled={deletingAll}
+              onChange={(e) => onKeepReferenceChange(e.target.checked)}
+            />
+            <span>{t('mods.deleteAllKeepReference')}</span>
+          </label>
+        </ConfirmModal>
       )}
     </>
   );

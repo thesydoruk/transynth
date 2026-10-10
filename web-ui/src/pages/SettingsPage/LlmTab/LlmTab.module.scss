@@ -139,6 +139,16 @@
   color: var(--text-bright);
   font-weight: 600;
   font-family: monospace;
+  overflow-wrap: anywhere;
+}
+
+/* Phones: each label sits above its value instead of beside it. */
+@media (max-width: 720px) {
+  .checksGrid,
+  .serverBlock {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
 }
 
 /* ── Status badges ────────────────────────────────────────────────────────── */

@@ -30,7 +30,9 @@ const SCRIPT_META_RE = /^\s*(?:Scriptname|extends|import)\b/i;
 const PEX_PLAYER_FACING_CALL_RE =
   /\b(?:MessageBox(?:\.\w+)?|Notification|Show(?:Message|Subtitle|Title|RankMenu)|AddTopic|Say|SetObjective(?:Displayed|Completed)?|SetStage|DisplayMessage|ShowBarterMenu|ShowGiftMenu|ShowWarning|ShowTutorial|AddHUDMessage|ShowQuestStage|ShowCustomMessage|AddText|SetText|AddHUDMessage|ShowFloatingMessage)\s*\(/i;
 
-const DEBUG_USAGE_HINT_RE = /^Debug\.(?:Trace(?:Stack|This)?|Message|Warning|Assert)/i;
+// Anchored at both ends: an open prefix matched Debug.MessageBox — the
+// player-facing popup — as "Debug.Message" and dropped its text from import.
+const DEBUG_USAGE_HINT_RE = /^Debug\.(?:Trace\w*|Message|Warning|Assert\w*)$/i;
 
 const COMMA_IDENTIFIER_LIST_RE = /^[A-Za-z0-9_]+(?:,\s*[A-Za-z0-9_]+)+$/;
 

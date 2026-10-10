@@ -12,6 +12,7 @@ const PLACEHOLDER_PATTERN_PARTS = [
   String.raw`<Alias=[^>]+>`,
   String.raw`<Global=[^>]+>`,
   String.raw`<\d[\d,]*\s+`,
+  String.raw`<<[^<>]+>>`,
   String.raw`<(?!\d[\d,]*\s+[Cc]aps>)[^>]+>`,
   String.raw`\[(?:Other|Mod|SS2|NoteMisc|Note|Scrap|Valuable|NonHuman|SS2C2|SS|Underwear|HolotapeV|Key|FullOutfit|FullArmor|Vegetables|PerkMag|FO76|IR|Beer|Leaf|SS2C3|Click|CQ|Accept|Password|Activate|Nuka|Hat|pagebreak|SetCustom|Conversion|HolotapeT|Skilled|Gifted|Hi-Tech Farm|Requires Gifted Endurance)\]`,
   String.raw`\[\*[A-Za-z]+\]`,
@@ -23,6 +24,7 @@ const PLACEHOLDER_PATTERN_PARTS = [
   String.raw`%\d*\$?[sdif]`,
   String.raw`\{[0-9]+\}`,
   String.raw`\{[A-Za-z_][A-Za-z0-9_]*\}`,
+  String.raw`\$[A-Za-z0-9_]+\$`,
   String.raw`\$[A-Za-z_][A-Za-z0-9_]*`,
 ] as const;
 

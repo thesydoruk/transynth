@@ -254,3 +254,22 @@
 .error {
   color: var(--danger);
 }
+
+/* Phones: narrower gutters, and the upload controls wrap instead of overflowing. */
+@media (max-width: 720px) {
+  .page {
+    padding: 16px;
+  }
+
+  .uploadBar {
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+
+  /* A native file input cannot shrink below its own button and label, so it
+     gets a row to itself and the action buttons sit under it. */
+  .fileInput {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

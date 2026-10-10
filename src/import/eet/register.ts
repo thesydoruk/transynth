@@ -7,6 +7,7 @@
  */
 import { parseEetHeader, iterEetRecords } from '../../formats/eet';
 import { upsertMod, type Tx } from '../../db';
+import type { GameId } from '../../types';
 import { sha1Hex } from '../../utils/hash';
 import { getOrCreateJob, type ImportJob } from './jobs';
 
@@ -19,16 +20,19 @@ import { getOrCreateJob, type ImportJob } from './jobs';
  * @param db - Database handle.
  * @param fileName - Original uploaded file name (used for display/mod naming).
  * @param buf - Raw EET file contents.
- * @param srcLang - Source language code for ingested strings.
- * @param tgtLang - Target language code for ingested translations.
+ * @param options.game - Game the mod is filed under. No default: one once filed
+ *   every upload under Fallout 4. Uploading the same file again files its mod
+ *   under the game given this time. Whether the header's own game name agrees
+ *   is the caller's check (`eetNamesOtherGame`).
+ * @param options.srcLang - Source language code for ingested strings.
+ * @param options.tgtLang - Target language code for ingested translations.
  * @returns Created or existing job descriptor.
  */
 export const registerEetFile = async (
   db: Tx,
   fileName: string,
   buf: Buffer,
-  srcLang = 'en',
-  tgtLang = 'uk',
+  { game, srcLang = 'en', tgtLang = 'uk' }: { game: GameId; srcLang?: string; tgtLang?: string },
 ): Promise<ImportJob> => {
   const fileHash = sha1Hex(buf);
   const header = parseEetHeader(buf);
@@ -41,7 +45,7 @@ export const registerEetFile = async (
   }
 
   const modName = fileName.replace(/\.eet$/i, '');
-  const modId = await upsertMod(db, modName, `eet-upload/${fileName}`, fileHash);
+  const modId = await upsertMod(db, modName, `eet-upload/${fileName}`, fileHash, game);
 
   return getOrCreateJob(db, fileName, fileHash, modId, totalRecords, srcLang, tgtLang);
 };

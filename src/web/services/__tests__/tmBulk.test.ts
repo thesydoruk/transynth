@@ -2,6 +2,7 @@ import {
   exactTmVoiceSourceModIds,
   tmConfidenceForMethod,
   tmProvenanceForMethod,
+  tmStatusForMatch,
   type TmBulkMatch,
 } from '../tmBulk';
 
@@ -22,6 +23,7 @@ describe('exactTmVoiceSourceModIds', () => {
     confidence: 0.95,
     sourceModId: 10,
     exactSourceText: true,
+    fromReference: false,
     ...overrides,
   });
 
@@ -38,6 +40,28 @@ describe('exactTmVoiceSourceModIds', () => {
         5,
       ),
     ).toEqual([10, 11]);
+  });
+});
+
+describe('tmStatusForMatch', () => {
+  const base: TmBulkMatch = {
+    stringId: 1,
+    text: 'Привіт.',
+    method: 'anchor',
+    confidence: 0.95,
+    sourceModId: null,
+    exactSourceText: true,
+    fromReference: true,
+  };
+
+  it('approves an exact hit from the reference base at once', () => {
+    expect(tmStatusForMatch(base)).toBe('reviewed');
+    expect(tmProvenanceForMethod('anchor', true)).toBe('tm_reference_anchor');
+  });
+
+  it('keeps a number transplant and any live-mod hit as tm', () => {
+    expect(tmStatusForMatch({ ...base, method: 'numeric', exactSourceText: false })).toBe('tm');
+    expect(tmStatusForMatch({ ...base, fromReference: false, sourceModId: 4 })).toBe('tm');
   });
 });
 

@@ -5,6 +5,7 @@ import { api, type SystemLogEntry, type SystemLogLevel, type SystemLogSource } f
 import { PageHeader } from '../../components/PageHeader';
 import { PaginationControls } from '../../components/PaginationControls';
 import s from './SystemLogPage.module.scss';
+import { TableScroll } from '../../components/TableScroll';
 
 const PAGE_SIZE = 50;
 const REFETCH_MS = 5_000;
@@ -91,34 +92,36 @@ export const SystemLogPage = () => {
       ) : entries.length === 0 ? (
         <div className={s.empty}>{t('systemLog.empty')}</div>
       ) : (
-        <table className={s.table}>
-          <thead>
-            <tr>
-              <th>{t('systemLog.time')}</th>
-              <th>{t('systemLog.levelLabel')}</th>
-              <th>{t('systemLog.sourceLabel')}</th>
-              <th>{t('systemLog.message')}</th>
-              <th>{t('systemLog.job')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => (
-              <tr key={entry.id}>
-                <td className={s.time}>{new Date(entry.created_at).toLocaleString()}</td>
-                <td>
-                  <span className={levelClass(entry.level)}>
-                    {t(`systemLog.level.${entry.level}`)}
-                  </span>
-                </td>
-                <td>
-                  <span className={s.badge}>{t(`systemLog.source.${entry.source}`)}</span>
-                </td>
-                <td className={s.message}>{entry.message}</td>
-                <td className={s.job}>{jobLabel(entry)}</td>
+        <TableScroll minWidth={860}>
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>{t('systemLog.time')}</th>
+                <th>{t('systemLog.levelLabel')}</th>
+                <th>{t('systemLog.sourceLabel')}</th>
+                <th>{t('systemLog.message')}</th>
+                <th>{t('systemLog.job')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td className={s.time}>{new Date(entry.created_at).toLocaleString()}</td>
+                  <td>
+                    <span className={levelClass(entry.level)}>
+                      {t(`systemLog.level.${entry.level}`)}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={s.badge}>{t(`systemLog.source.${entry.source}`)}</span>
+                  </td>
+                  <td className={s.message}>{entry.message}</td>
+                  <td className={s.job}>{jobLabel(entry)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
 
       {totalPages > 1 && (

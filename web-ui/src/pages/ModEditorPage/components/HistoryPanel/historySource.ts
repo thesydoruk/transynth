@@ -30,7 +30,8 @@ export const resolveHistorySource = (entry: TranslationHistoryEntry): HistorySou
   }
   if (entry.status === 'deleted') return 'clear';
   if (entry.provenance === 'propagation') return 'tm_propagation';
-  if (entry.provenance?.startsWith('tm_auto')) return 'tm';
+  if (entry.provenance?.startsWith('tm_auto') || entry.provenance?.startsWith('tm_reference'))
+    return 'tm';
   if (entry.provenance === 'auto_generated') return 'llm';
   if (entry.provenance === 'human_edit') return 'save';
   return 'unknown';

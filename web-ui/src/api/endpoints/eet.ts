@@ -1,20 +1,41 @@
 import { BASE, req } from '../client';
+import { uploadQuery, type ImportFileUploadOptions } from './importFileUpload';
 import type { EetImportJob, EetPreviewResult, EetProgressEvent } from '../types';
+
+/** The server refused an EET upload because its header names another game. */
+export class EetGameMismatchError extends Error {
+  /** The game name the file's header gives, e.g. `Skyrim`. */
+  readonly fileGame: string;
+
+  constructor(message: string, fileGame: string) {
+    super(message);
+    this.name = 'EetGameMismatchError';
+    this.fileGame = fileGame;
+  }
+}
 
 export const eetEndpoints = {
   list: () => req<EetImportJob[]>('/api/eet'),
 
-  upload: async (file: File): Promise<EetImportJob> => {
+  upload: async (file: File, options?: ImportFileUploadOptions): Promise<EetImportJob> => {
     const form = new FormData();
     form.append('file', file);
-    const res = await fetch(`${BASE}/api/eet/upload`, {
+    const res = await fetch(`${BASE}/api/eet/upload${uploadQuery(options)}`, {
       method: 'POST',
       body: form,
       credentials: 'include',
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        fileGame?: string;
+      };
+      const message = body.error ?? `HTTP ${res.status}`;
+      if (body.code === 'eet-game-mismatch' && body.fileGame) {
+        throw new EetGameMismatchError(message, body.fileGame);
+      }
+      throw new Error(message);
     }
     return res.json() as Promise<EetImportJob>;
   },

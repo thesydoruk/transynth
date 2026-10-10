@@ -238,9 +238,16 @@ export const EditorToolbar = ({
           {t('modEditor.innrEditor')}
         </Link>
       )}
-      <Button onClick={onShortcuts} variant="secondary" size="sm" title={t('modEditor.shortcuts')}>
-        ?
-      </Button>
+      <span className={styles.desktopOnly}>
+        <Button
+          onClick={onShortcuts}
+          variant="secondary"
+          size="sm"
+          title={t('modEditor.shortcuts')}
+        >
+          ?
+        </Button>
+      </span>
 
       {pageMode === 'strings' && selectedCount > 0 && (
         <>

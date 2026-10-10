@@ -109,6 +109,7 @@ const applyTMSubChunk = async (
   game: GameId,
 ): Promise<{
   applied: number;
+  approved: number;
   byMethod: Record<TmMatchMethod, number>;
   sourceModIds: number[];
 }> =>
@@ -126,7 +127,7 @@ const applyTMChunk = async (
   sourceModIds: Set<number>,
   workers: number,
   game: GameId,
-): Promise<number> => {
+): Promise<{ applied: number; approved: number }> => {
   const pool = db as pg.Pool;
   const subChunks = splitChunk(chunk, workers);
   const partials = await mapWithConcurrency(subChunks, workers, (subChunk) =>
@@ -134,13 +135,15 @@ const applyTMChunk = async (
   );
 
   let applied = 0;
+  let approved = 0;
   for (const partial of partials) {
     applied += partial.applied;
+    approved += partial.approved;
     mergeByMethod(byMethod, partial.byMethod);
     for (const id of partial.sourceModIds) sourceModIds.add(id);
   }
 
-  return applied;
+  return { applied, approved };
 };
 
 const reuseVoiceAfterTm = async (
@@ -182,6 +185,8 @@ export const applyTMToMod = async (
   handlers?: TmApplyHandlers,
 ): Promise<{
   applied: number;
+  /** Of `applied`, rows approved at once because they came from the reference base. */
+  approved: number;
   skipped: number;
   byMethod: Record<string, number>;
   voiceCopied: number;
@@ -194,6 +199,7 @@ export const applyTMToMod = async (
   );
 
   let applied = 0;
+  let approved = 0;
   let processed = 0;
   const game = await gameForMod(db, modId);
   const byMethod: Record<TmMatchMethod, number> = {
@@ -218,7 +224,7 @@ export const applyTMToMod = async (
     );
     if (chunk.length === 0) break;
 
-    const chunkApplied = await applyTMChunk(
+    const chunkResult = await applyTMChunk(
       db,
       modId,
       targetLang,
@@ -229,7 +235,9 @@ export const applyTMToMod = async (
       workers,
       game,
     );
+    const chunkApplied = chunkResult.applied;
     applied += chunkApplied;
+    approved += chunkResult.approved;
     processed += chunk.length;
     afterStringId = chunk[chunk.length - 1]!.id;
 
@@ -246,7 +254,7 @@ export const applyTMToMod = async (
     ? 0
     : await reuseVoiceAfterTm(db, modId, targetLang, [...sourceModIds]);
 
-  return { applied, skipped: processed - applied, byMethod, voiceCopied };
+  return { applied, approved, skipped: processed - applied, byMethod, voiceCopied };
 };
 
 /**
@@ -263,6 +271,7 @@ export const applyTMToStringIds = async (
   srcLang = CONFIG.defaultSrcLang,
 ): Promise<{
   applied: number;
+  approved: number;
   skipped: number;
   byMethod: Record<TmMatchMethod, number>;
   voiceCopied: number;
@@ -270,6 +279,7 @@ export const applyTMToStringIds = async (
   if (stringIds.length === 0) {
     return {
       applied: 0,
+      approved: 0,
       skipped: 0,
       byMethod: { anchor: 0, edid: 0, text_norm: 0, numeric: 0 },
       voiceCopied: 0,
@@ -301,10 +311,11 @@ export const applyTMToStringIds = async (
   const workers = CONFIG.tmApplyWorkers;
   const sourceModIds = new Set<number>();
   let applied = 0;
+  let approved = 0;
 
   for (let i = 0; i < rows.length; i += CONFIG.dbChunkSize) {
     const chunk = rows.slice(i, i + CONFIG.dbChunkSize);
-    applied += await applyTMChunk(
+    const chunkResult = await applyTMChunk(
       db,
       modId,
       targetLang,
@@ -315,10 +326,12 @@ export const applyTMToStringIds = async (
       workers,
       game,
     );
+    applied += chunkResult.applied;
+    approved += chunkResult.approved;
   }
 
   const voiceCopied = await reuseVoiceAfterTm(db, modId, targetLang, [...sourceModIds]);
-  return { applied, skipped: stringIds.length - applied, byMethod, voiceCopied };
+  return { applied, approved, skipped: stringIds.length - applied, byMethod, voiceCopied };
 };
 
 // ── Translation propagation ───────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
+import { parseRouteId } from '../parseRouteId';
 import {
   clearVoiceSpeakerReferenceForMod,
   generateVoiceTranslationForMod,
@@ -19,8 +20,8 @@ import { attachVoiceLiveSse } from '../../voice/voiceLiveHub';
 export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods/:id/voice/live — per-line synthesis events for the voice editor.
   app.get<{ Params: { id: string } }>('/api/mods/:id/voice/live', async (req, reply) => {
-    const modId = Number(req.params.id);
-    if (!Number.isInteger(modId) || modId < 1) {
+    const modId = parseRouteId(req.params.id);
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     attachVoiceLiveSse(req, reply, modId);
@@ -31,8 +32,8 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { id: string };
     Querystring: { srcLang?: string; targetLang?: string; speakerKey?: string };
   }>('/api/mods/:id/voice/lines', async (req, reply) => {
-    const modId = Number(req.params.id);
-    if (!Number.isInteger(modId) || modId < 1) {
+    const modId = parseRouteId(req.params.id);
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
 
@@ -68,8 +69,8 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { id: string };
     Querystring: { targetLang?: string };
   }>('/api/mods/:id/voice/availability', async (req, reply) => {
-    const modId = Number(req.params.id);
-    if (!Number.isInteger(modId) || modId < 1) {
+    const modId = parseRouteId(req.params.id);
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
 
@@ -86,10 +87,10 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { id: string; lineKey: string; variant: string };
     Querystring: { speakerKey?: string };
   }>('/api/mods/:id/voice/audio/:lineKey/:variant', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!isVoiceFormidKey(lineKey)) {
@@ -124,10 +125,10 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { id: string; lineKey: string; variant: string };
     Querystring: { speakerKey?: string };
   }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!isVoiceFormidKey(lineKey)) {
@@ -162,10 +163,10 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { id: string; lineKey: string; variant: string };
     Querystring: { srcLang?: string; targetLang?: string; speakerKey?: string };
   }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!isVoiceFormidKey(lineKey)) {
@@ -205,8 +206,8 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
     Querystring: { srcLang?: string; targetLang?: string };
     Body: { speakerKey?: string; lineKey?: string; variant?: number };
   }>('/api/mods/:id/voice/speaker-ref', async (req, reply) => {
-    const modId = Number(req.params.id);
-    if (!Number.isInteger(modId) || modId < 1) {
+    const modId = parseRouteId(req.params.id);
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
 
@@ -247,8 +248,8 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   app.delete<{ Params: { id: string; speakerKey: string } }>(
     '/api/mods/:id/voice/speaker-ref/:speakerKey',
     async (req, reply) => {
-      const modId = Number(req.params.id);
-      if (!Number.isInteger(modId) || modId < 1) {
+      const modId = parseRouteId(req.params.id);
+      if (modId === null) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
 

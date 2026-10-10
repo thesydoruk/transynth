@@ -121,10 +121,25 @@ const KNOWN_PLUGIN_IMPORTERS = [
   'src/web/export/translationOverlay.ts',
 ];
 
-describe('plugin internals stay inside the plugin', () => {
-  it('grows no new importer of a plugin outside src/games', () => {
-    const importsPlugin = /from\s+'[^']*games\/(?:creation-engine|disco-elysium)[^']*'/;
+/**
+ * Every plugin directory under `src/games/`, read from disk rather than listed,
+ * so a newly added game is covered without anyone remembering to add it.
+ */
+const PLUGIN_DIRS = fs
+  .readdirSync(path.join(ROOT, 'src', 'games'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && !['contract', '__tests__'].includes(entry.name))
+  .map((entry) => entry.name);
 
+const importsPlugin = new RegExp(
+  String.raw`from\s+'[^']*games\/(?:${PLUGIN_DIRS.join('|')})[/'][^']*'`,
+);
+
+describe('plugin internals stay inside the plugin', () => {
+  it('finds the plugin directories it guards', () => {
+    expect(PLUGIN_DIRS).toEqual(expect.arrayContaining(['creation-engine', 'disco-elysium']));
+  });
+
+  it('grows no new importer of a plugin outside src/games', () => {
     const offenders = nonPluginFiles()
       // A test may reach for a concrete title as a fixture; production code may not.
       .filter(({ rel }) => !isTest(rel))
@@ -138,7 +153,6 @@ describe('plugin internals stay inside the plugin', () => {
   it('keeps the known list honest — every entry still importing a plugin', () => {
     // Stops the list outliving the debt: once a module is moved or cleaned up,
     // its line here has to go too.
-    const importsPlugin = /from\s+'[^']*games\/(?:creation-engine|disco-elysium)[^']*'/;
     const stale = KNOWN_PLUGIN_IMPORTERS.filter((rel) => {
       const abs = path.join(ROOT, rel);
       return !fs.existsSync(abs) || !importsPlugin.test(fs.readFileSync(abs, 'utf8'));

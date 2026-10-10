@@ -20,8 +20,11 @@ const readStoredHeight = (): number => {
 };
 
 const clampHeight = (height: number, centerColHeight: number): number => {
-  const maxHeight = Math.max(MIN_DETAIL_PANEL_HEIGHT, centerColHeight - MIN_GRID_HEIGHT);
-  return Math.min(maxHeight, Math.max(MIN_DETAIL_PANEL_HEIGHT, height));
+  // On a phone the column can be shorter than the panel's usual floor; the
+  // panel then gives way so a few grid rows stay visible above it.
+  const minHeight = Math.min(MIN_DETAIL_PANEL_HEIGHT, Math.round(centerColHeight * 0.6));
+  const maxHeight = Math.max(minHeight, centerColHeight - MIN_GRID_HEIGHT);
+  return Math.min(maxHeight, Math.max(minHeight, height));
 };
 
 /** Persisted, draggable height for the mod-editor detail panel. */
@@ -71,13 +74,14 @@ export const useDetailPanelHeight = (centerColRef: RefObject<HTMLElement | null>
   }, [centerColRef, persistHeight]);
 
   const startDetailPanelResize = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.PointerEvent) => {
       e.preventDefault();
       const startY = e.clientY;
       const startHeight = heightRef.current;
       setIsResizing(true);
 
-      const onMove = (ev: MouseEvent): void => {
+      // Pointer events, not mouse events, so a finger can drag the divider too.
+      const onMove = (ev: PointerEvent): void => {
         const delta = startY - ev.clientY;
         applyHeight(startHeight + delta);
       };
@@ -85,12 +89,14 @@ export const useDetailPanelHeight = (centerColRef: RefObject<HTMLElement | null>
       const onUp = (): void => {
         setIsResizing(false);
         persistHeight(heightRef.current);
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
       };
 
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
     },
     [applyHeight, persistHeight],
   );

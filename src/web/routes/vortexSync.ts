@@ -36,6 +36,7 @@ import {
 import { isVortexExportOrder } from '../../vortex/exportOrder';
 import type { VortexExportOrder, VortexPlanPayload } from '../../vortex/types';
 import type { GameId } from '../../types';
+import { parseRouteId } from './parseRouteId';
 
 const requireCliToken = async (
   req: { headers: { authorization?: string } },
@@ -75,7 +76,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   app.get<{ Params: { id: string } }>('/api/vortex/groups/:id', async (req, reply) => {
-    const id = Number(req.params.id);
+    const id = parseRouteId(req.params.id);
+    if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
     const group = await getVortexGroup(db, id);
     if (!group) return reply.code(404).send({ error: 'Group not found' });
     const releases = await listGameReleases(db, id);
@@ -83,7 +85,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   app.get<{ Params: { id: string } }>('/api/vortex/groups/:id/mods', async (req, reply) => {
-    const id = Number(req.params.id);
+    const id = parseRouteId(req.params.id);
+    if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
     const group = await getVortexGroup(db, id);
     if (!group) return reply.code(404).send({ error: 'Group not found' });
     const channelRaw = (req.query as { channel?: string }).channel ?? 'all';
@@ -98,7 +101,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   app.get<{ Params: { id: string } }>('/api/vortex/groups/:id/latest-run', async (req, reply) => {
-    const id = Number(req.params.id);
+    const id = parseRouteId(req.params.id);
+    if (id === null) return reply.code(400).send({ error: 'Invalid group id' });
     const group = await getVortexGroup(db, id);
     if (!group) return reply.code(404).send({ error: 'Group not found' });
     const run = await getLatestVortexSyncRun(db, id);
@@ -135,7 +139,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   app.put<{ Params: { runId: string; unitId: string } }>(
     '/api/vortex/sync/:runId/packs/:unitId',
     async (req, reply) => {
-      const runId = Number(req.params.runId);
+      const runId = parseRouteId(req.params.runId);
+      if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
       const run = await getVortexSyncRun(db, runId);
       if (!run) return reply.code(404).send({ error: 'Run not found' });
       const data = await req.file();
@@ -180,7 +185,8 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
     Params: { runId: string };
     Body: { from?: string; to?: string; exportOrder?: VortexExportOrder };
   }>('/api/vortex/sync/:runId/start', async (req, reply) => {
-    const runId = Number(req.params.runId);
+    const runId = parseRouteId(req.params.runId);
+    if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
     const run = await getVortexSyncRun(db, runId);
     if (!run) return reply.code(404).send({ error: 'Run not found' });
     if (req.body?.exportOrder !== undefined && !isVortexExportOrder(req.body.exportOrder)) {
@@ -217,13 +223,17 @@ export const vortexSyncRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   app.get<{ Params: { runId: string } }>('/api/vortex/sync/:runId', async (req, reply) => {
-    const run = await getVortexSyncRun(db, Number(req.params.runId));
+    const runId = parseRouteId(req.params.runId);
+    if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
+    const run = await getVortexSyncRun(db, runId);
     if (!run) return reply.code(404).send({ error: 'Run not found' });
     return run;
   });
 
   app.get<{ Params: { runId: string } }>('/api/vortex/sync/:runId/langpack', async (req, reply) => {
-    const run = await getVortexSyncRun(db, Number(req.params.runId));
+    const runId = parseRouteId(req.params.runId);
+    if (runId === null) return reply.code(400).send({ error: 'Invalid run id' });
+    const run = await getVortexSyncRun(db, runId);
     if (!run?.export_archive_id) return reply.code(404).send({ error: 'Langpack not ready' });
     const archive = await getExportArchive(db, run.export_archive_id);
     if (!archive || archive.status !== 'completed' || !archive.rel_path) {

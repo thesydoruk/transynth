@@ -1,0 +1,76 @@
+.scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  > table {
+    min-width: var(--table-min-width, 0);
+  }
+}
+
+/* Only while the table can scroll — on a wide screen a pinned column is just a column. */
+@media (max-width: 1100px) {
+  .stickyActions > table :is(th, td):last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--table-sticky-bg, var(--bg-body));
+    box-shadow: -10px 0 10px -10px rgb(0 0 0 / 35%);
+  }
+}
+
+/*
+ * Phones: a row of five columns in 320px is unreadable however it scrolls, so
+ * each row is drawn as a card. The header row goes; a cell's label, when it
+ * has one, is printed in front of its value instead.
+ */
+@media (max-width: 720px) {
+  .cards > table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cards > table thead {
+    display: none;
+  }
+
+  .cards > table,
+  .cards > table tbody,
+  .cards > table tr,
+  .cards > table td {
+    display: block;
+  }
+
+  .cards > table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cards > table td {
+    padding: 3px 4px;
+    border: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .cards > table td:empty {
+    display: none;
+  }
+
+  .cards > table td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  /* The buttons sit in a row of their own at the end of the card. */
+  .cards > table td:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 6px;
+    position: static;
+    box-shadow: none;
+    background: none;
+  }
+}

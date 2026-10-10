@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
+import { parseRouteId } from '../parseRouteId';
 import {
   commitVoiceRegenerateSession,
   discardVoiceRegenerateSession,
@@ -19,11 +20,11 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
     Params: { id: string; lineKey: string; variant: string };
     Body: { sessionId?: string; srcLang?: string; targetLang?: string };
   }>('/api/mods/:id/voice/regenerate/:lineKey/:variant/session', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
     const variant = Number.parseInt(req.params.variant, 10);
     const sessionId = req.body?.sessionId?.trim();
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!isVoiceFormidKey(lineKey)) {
@@ -57,9 +58,9 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   app.get<{ Params: { id: string; sessionId: string } }>(
     '/api/mods/:id/voice/regenerate/:sessionId',
     async (req, reply) => {
-      const modId = Number(req.params.id);
+      const modId = parseRouteId(req.params.id);
       const sessionId = req.params.sessionId.trim();
-      if (!Number.isInteger(modId) || modId < 1) {
+      if (modId === null) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
 
@@ -100,12 +101,12 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
       params?: VoiceRegenerateParams;
     };
   }>('/api/mods/:id/voice/regenerate/:sessionId/preview', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const sessionId = req.params.sessionId.trim();
     const lineKey = req.body?.lineKey?.trim();
     const variant = req.body?.variant;
     const params = req.body?.params;
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!lineKey || !isVoiceFormidKey(lineKey)) {
@@ -142,10 +143,10 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   app.get<{ Params: { id: string; sessionId: string; previewId: string } }>(
     '/api/mods/:id/voice/regenerate/:sessionId/:previewId.wav',
     async (req, reply) => {
-      const modId = Number(req.params.id);
+      const modId = parseRouteId(req.params.id);
       const sessionId = req.params.sessionId.trim();
       const previewId = req.params.previewId.replace(/\.wav$/i, '').trim();
-      if (!Number.isInteger(modId) || modId < 1) {
+      if (modId === null) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
 
@@ -162,10 +163,10 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
     Params: { id: string; sessionId: string };
     Body: { previewId?: string };
   }>('/api/mods/:id/voice/regenerate/:sessionId/commit', async (req, reply) => {
-    const modId = Number(req.params.id);
+    const modId = parseRouteId(req.params.id);
     const sessionId = req.params.sessionId.trim();
     const previewId = req.body?.previewId?.trim();
-    if (!Number.isInteger(modId) || modId < 1) {
+    if (modId === null) {
       return reply.code(400).send({ error: 'Invalid mod id' });
     }
     if (!previewId) {
@@ -183,9 +184,9 @@ export const registerVoiceRegenerateRoutes = async (app: FastifyInstance, db: Tx
   app.delete<{ Params: { id: string; sessionId: string } }>(
     '/api/mods/:id/voice/regenerate/:sessionId',
     async (req, reply) => {
-      const modId = Number(req.params.id);
+      const modId = parseRouteId(req.params.id);
       const sessionId = req.params.sessionId.trim();
-      if (!Number.isInteger(modId) || modId < 1) {
+      if (modId === null) {
         return reply.code(400).send({ error: 'Invalid mod id' });
       }
 

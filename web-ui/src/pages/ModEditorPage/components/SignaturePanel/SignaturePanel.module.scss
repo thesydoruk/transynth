@@ -30,3 +30,24 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+/* Phones: a scrolling strip of record types above the grid, not a column beside it. */
+@media (max-width: 720px) {
+  .leftPanel {
+    display: flex;
+    width: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sigRow {
+    flex: none;
+    gap: 8px;
+    align-items: baseline;
+    padding: 10px 12px;
+    border-bottom: none;
+    border-right: 1px solid var(--bg-row-alt);
+  }
+}

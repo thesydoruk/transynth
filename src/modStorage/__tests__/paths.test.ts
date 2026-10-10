@@ -2,6 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from '@jest/globals';
 import { PATHS } from '../../paths';
 import {
+  isOwnedModStoragePath,
   modImportExtractDir,
   modImportLocalizeDir,
   modImportLocalizeRoot,
@@ -30,6 +31,16 @@ describe('modStorage paths', () => {
     expect(modImportPackOutputDir(extractRoot)).toBe(
       path.join(root, '_output', '_extracted_abc123'),
     );
+  });
+
+  it('owns only files strictly inside mod storage or Vortex uploads', () => {
+    const root = modStorageRoot();
+    expect(isOwnedModStoragePath(path.join(root, 'Uploaded.esp'))).toBe(true);
+    expect(isOwnedModStoragePath(path.join(PATHS.vortexUploads, '1', 'h', 'A.esp'))).toBe(true);
+    expect(isOwnedModStoragePath(root)).toBe(false);
+    expect(isOwnedModStoragePath(PATHS.vortexUploads)).toBe(false);
+    expect(isOwnedModStoragePath(path.join(root, '..', 'Escaped.esp'))).toBe(false);
+    expect(isOwnedModStoragePath(path.resolve('/Games/Skyrim/Data/Skyrim.esm'))).toBe(false);
   });
 
   it('returns null when localize dir does not exist yet', () => {

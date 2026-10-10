@@ -1,4 +1,5 @@
 import type { Tx } from '../../../db';
+import { scheduleReferencePromote } from '../../services/referenceHooks';
 import { CONFIG } from '../../../config';
 import type { TranslationStatus } from '../statusMachine';
 
@@ -18,6 +19,7 @@ export const approveVerifiedTranslations = async (
         AND status IN ('draft', 'tm', 'fuzzy', 'auto')`,
     [stringIds, targetLang],
   );
+  if ((rowCount ?? 0) > 0) scheduleReferencePromote(db, stringIds, 'reviewed', targetLang);
   return rowCount ?? 0;
 };
 
@@ -46,5 +48,6 @@ export const setTranslationsStatus = async (
         AND t.target_lang = $2`,
     [stringIds, targetLang, status, provenance],
   );
+  if ((rowCount ?? 0) > 0) scheduleReferencePromote(db, stringIds, status, targetLang);
   return rowCount ?? 0;
 };

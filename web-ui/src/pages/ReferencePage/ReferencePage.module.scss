@@ -1,0 +1,319 @@
+/* ── ReferencePage — SCSS Module ─────────────────────────────────────────── */
+
+.page {
+  padding: 24px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbarAdd {
+  composes: toolbar;
+  margin-bottom: 16px;
+}
+
+.filterLabel {
+  color: var(--text-dim);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.select {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.input {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.inputPair {
+  composes: input;
+  max-width: 360px;
+}
+
+.total {
+  color: var(--text-faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.arrow {
+  color: var(--text-faint);
+  font-size: 15px;
+}
+
+.btnAdd {
+  background: var(--accent);
+  color: var(--accent-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btnAdd:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* ── Promote panel ───────────────────────────────────────────────────── */
+
+.promotePanel {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+}
+
+.promoteLabel {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btnPromote {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btnPromote:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.promoteResult {
+  color: var(--success);
+  font-size: 12px;
+}
+
+.promoteHint {
+  flex-basis: 100%;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.th:nth-child(3),
+.th:nth-child(4) {
+  width: 15%;
+}
+
+.th:last-child {
+  width: 130px;
+}
+
+.tr {
+  border-bottom: 1px solid var(--bg-card);
+}
+
+.td {
+  padding: 8px;
+  vertical-align: top;
+  color: var(--text);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.tdSource {
+  composes: td;
+  color: var(--text-bright);
+}
+
+.tdTranslation {
+  composes: td;
+  color: var(--glossary-filled);
+}
+
+.tdMeta {
+  composes: td;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.originBadge {
+  display: inline-block;
+  background: var(--badge-lang-bg);
+  color: var(--badge-lang-text);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.originMod {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.inlineInput {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.btnRow {
+  background: var(--primary);
+  color: var(--primary-on);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btnRowGhost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btnRowGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnDelete {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* ── Empty state and pager ───────────────────────────────────────────── */
+
+.center {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.emptyState {
+  composes: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.emptyLead {
+  margin: 0;
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+.emptyHint {
+  color: var(--text-faint);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.emptyActions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.pager {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.pagerText {
+  color: var(--text-dim);
+  font-size: 12px;
+}

@@ -92,6 +92,11 @@ At a high level, the system supports these flows:
 ## Tooling and Quality
 
 - Root Jest covers `src/` and `worker/`. `web-ui` uses Vitest (`*.test.ts` / `*.test.tsx`).
+- `*.db.test.ts` run against a real Postgres (`npm run test:db`, after `npm run test:db:up`
+  starts a throwaway one); `npm test` skips them, so the unit suite needs no database.
+- `web-ui/e2e/` holds Playwright device tests (`npm --prefix web-ui run test:devices`):
+  every page on desktop, tablet and phone viewports in Chromium and WebKit, against
+  a fake API, so they need no backend.
 - Tests are colocated near code in local `__tests__/` folders or `*.test.ts(x)` next to the source.
 - `tsx` is used to run TypeScript files directly in development and CLI flows.
 - `concurrently` is used in development orchestration scripts.

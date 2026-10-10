@@ -46,6 +46,10 @@ export interface DetailPanelProps {
   translAreaRef: React.RefObject<HTMLTextAreaElement | null>;
 
   onDraftChange: (text: string) => void;
+  /** Opens the row menu at a viewport point. */
+  onOpenActions: (x: number, y: number) => void;
+  /** Leaves the row. Only the phone layout shows the control for it. */
+  onClose: () => void;
   onSave: () => void;
   onCopySource: () => void;
   onTabChange: (tab: BottomTab) => void;
@@ -75,6 +79,8 @@ export const DetailPanel = ({
   history,
   translAreaRef,
   onDraftChange,
+  onOpenActions,
+  onClose,
   onSave,
   onCopySource,
   onTabChange,
@@ -105,8 +111,24 @@ export const DetailPanel = ({
     capabilities.usesRecordPaths &&
     (activeRow.signature === 'BOOK' || /<[a-zA-Z]/.test(activeRow.source));
 
+  const openActions = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // The menu closes on the next window click; keep this one from being it.
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    onOpenActions(r.left, r.bottom + 4);
+  };
+
   return (
     <div ref={detailPanelRef} className={styles.detailPanel}>
+      {/* Phones show the panel as a full-screen sheet; this is its way back. */}
+      <div className={styles.sheetHeader}>
+        <button type="button" className={styles.sheetBack} onClick={onClose}>
+          ← {t('modEditor.backToList')}
+        </button>
+        <span className={styles.sheetTitle} title={activeRow.edid ?? ''}>
+          {activeRow.context ?? activeRow.edid ?? activeRow.formid_hex}
+        </span>
+      </div>
       <div className={styles.detailPanels}>
         {/* Source text — PEX rows show decompiled script instead of a duplicate source field */}
         <div className={styles.textPanel}>
@@ -152,10 +174,19 @@ export const DetailPanel = ({
         <div className={styles.textPanel}>
           <div className={styles.panelLabel}>
             {t('modEditor.translationTextLabel', { lang: targetLang.toUpperCase() })}
+            <button
+              type="button"
+              className={styles.actionsBtn}
+              onClick={openActions}
+              title={t('modEditor.rowActions')}
+              aria-label={t('modEditor.rowActions')}
+            >
+              ⋯
+            </button>
             {showBookEditor && (
               <button
                 className={styles.btnSec}
-                style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: '12px' }}
+                style={{ padding: '2px 10px', fontSize: '12px' }}
                 onClick={onOpenBookEditor}
                 title={t('bookEditor.openBtn')}
               >

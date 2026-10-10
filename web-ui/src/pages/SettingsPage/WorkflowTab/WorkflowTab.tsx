@@ -19,6 +19,7 @@ type ProjectSettings = {
   'workflow.auto_approve_on_save': boolean;
   'workflow.propagate_to_identical': boolean;
   'workflow.hide_ignored_by_default': boolean;
+  'workflow.promote_reference_on_approve': boolean;
   'qa.end_punct_match': boolean;
   'qa.min_word_count': number;
   'import.skip_tes4': boolean;
@@ -32,6 +33,7 @@ const DEFAULTS: ProjectSettings = {
   'workflow.auto_approve_on_save': false,
   'workflow.propagate_to_identical': true,
   'workflow.hide_ignored_by_default': false,
+  'workflow.promote_reference_on_approve': false,
   'qa.end_punct_match': true,
   'qa.min_word_count': 1,
   'import.skip_tes4': false,
@@ -142,6 +144,23 @@ export const WorkflowTab = () => {
                 type="checkbox"
                 checked={settings['workflow.hide_ignored_by_default']}
                 onChange={() => handleToggle('workflow.hide_ignored_by_default')}
+              />
+              <span className={s.toggleTrack} />
+            </label>
+          </div>
+
+          <div className={s.settingRow}>
+            <div className={s.settingInfo}>
+              <span className={s.settingLabel}>{t('settings.workflow.promoteReference')}</span>
+              <span className={parentS.fieldNote}>
+                {t('settings.workflow.promoteReferenceDesc')}
+              </span>
+            </div>
+            <label className={s.toggle}>
+              <input
+                type="checkbox"
+                checked={settings['workflow.promote_reference_on_approve']}
+                onChange={() => handleToggle('workflow.promote_reference_on_approve')}
               />
               <span className={s.toggleTrack} />
             </label>

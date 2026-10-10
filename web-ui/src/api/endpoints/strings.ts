@@ -213,6 +213,8 @@ export const stringsEndpoints = {
     req<{
       ok: boolean;
       applied: number;
+      /** Of `applied`, rows approved at once because they came from the reference base. */
+      approved: number;
       skipped: number;
       byMethod: Record<string, number>;
     }>(`/api/strings/tm-apply`, {

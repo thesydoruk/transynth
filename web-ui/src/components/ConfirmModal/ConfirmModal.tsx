@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../Button';
 import { ModalShell } from '../ModalShell';
@@ -14,6 +15,8 @@ export interface ConfirmModalProps {
   pending?: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  /** Optional controls rendered between the message and the buttons. */
+  children?: ReactNode;
 }
 
 /**
@@ -39,6 +42,7 @@ export const ConfirmModal = ({
   pending = false,
   onConfirm,
   onClose,
+  children,
 }: ConfirmModalProps) => {
   const { t } = useTranslation();
 
@@ -55,6 +59,7 @@ export const ConfirmModal = ({
       <p id="confirm-modal-body" className={s.body}>
         {message}
       </p>
+      {children && <div className={s.extra}>{children}</div>}
 
       <div className={s.footer}>
         <Button variant="secondary" onClick={onClose} disabled={pending}>

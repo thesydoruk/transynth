@@ -148,3 +148,53 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+
+/*
+ * Tablets and phones: one row cannot hold the toolbar, and clipping it hid the
+ * mod name and the AI buttons first. The mod header takes its own row and the
+ * rest wraps below it.
+ */
+@media (max-width: 1100px) {
+  .toolbar {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .modHeader {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  /* A divider at the start of a wrapped row separates nothing. */
+  .sep {
+    display: none;
+  }
+}
+
+/* Phones: every toolbar row is a row less of grid. The status bar at the
+   bottom already carries the same counts as the progress block. */
+@media (max-width: 720px) {
+  .toolbar {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .progressSection {
+    display: none;
+  }
+}
+
+/* Phones: the language pair is in the top bar and in Settings, and keyboard
+   shortcuts mean nothing to a finger. The remaining controls get tap height. */
+@media (max-width: 720px) {
+  .langLabel,
+  .desktopOnly {
+    display: none;
+  }
+
+  .modeButton,
+  .btnSec,
+  .filterSelect {
+    min-height: 32px;
+  }
+}

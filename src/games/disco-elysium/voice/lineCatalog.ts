@@ -34,7 +34,7 @@ import {
 import { loadDiscoVoiceClipSummaries } from './loadVoiceClips';
 import { DISCO_VOICE_MARKUP } from './markup';
 import { ensureDiscoVoiceClips } from './persistVoiceClips';
-import { loadDiscoSpeakerGenders, loadDiscoSpeakerNames } from '../web/voiceList';
+import { loadDialogSpeakerGenders, loadDialogSpeakerNames } from '../../../voice/dialogSpeakerMeta';
 import { discoVoiceKeyFromFileName } from './takeFiles';
 
 /** Text of every clip, joined to the record it was matched to at import. */
@@ -157,9 +157,9 @@ export const loadDiscoVoiceCatalog = async (
     await Promise.all([
       loadDiscoVoiceClipSummaries(db, modId),
       loadClipText(db, modId, srcLang, targetLang),
-      loadDiscoSpeakerNames(db, modId),
+      loadDialogSpeakerNames(db, modId),
       loadVoiceSpeakerRefs(db, modId),
-      loadDiscoSpeakerGenders(db, modId),
+      loadDialogSpeakerGenders(db, modId),
       loadVoiceSimilarityMap(db, modId, targetLang),
     ]);
 

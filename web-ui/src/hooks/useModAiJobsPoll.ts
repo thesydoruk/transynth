@@ -10,6 +10,8 @@ import {
 import type { ActiveModAiJob } from '../api';
 
 const TERMINAL_TTL_MS = 20_000;
+/** Give up on a hung `/api/ai-jobs/active` so the next poll can try again. */
+const ACTIVE_JOBS_REQUEST_TIMEOUT_MS = 10_000;
 const clearTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** Local stop intent — poll must not resurrect these as running from a stale queue row. */
@@ -66,16 +68,24 @@ const fetchTerminalStatus = async (
   }
 };
 
-/** Poll backend for running mod AI jobs and reconcile local store state. */
+/**
+ * Poll backend for running mod AI jobs and reconcile local store state.
+ *
+ * The next poll is scheduled only after the previous one settles: a hung
+ * request must not pile up behind itself and starve the browser's per-host
+ * connection pool (every other API call on the page then waits forever).
+ */
 export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
+    let nextPoll: ReturnType<typeof setTimeout> | undefined;
+    let inFlight: AbortController | null = null;
 
-    const reconcile = async () => {
+    const reconcile = async (signal: AbortSignal) => {
       try {
-        const active: ActiveModAiJob[] = await api.modAiJobs.listActive();
+        const active: ActiveModAiJob[] = await api.modAiJobs.listActive({ signal });
         if (cancelled) return;
 
         const activeKeys = new Set(active.map((j: ActiveModAiJob) => `${j.modId}:${j.kind}`));
@@ -107,7 +117,12 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
             continue;
           }
 
-          if (local && HELD_LOCAL_STATUSES.has(local.status)) continue;
+          // Held only for the same job: a new run of this kind on this mod (another
+          // tab, a re-queue) must show at once, not hide behind the last run's
+          // badge — whose clear timer was just cancelled above.
+          if (local && HELD_LOCAL_STATUSES.has(local.status) && local.jobId === job.jobId) {
+            continue;
+          }
 
           upsertModAiJob(job.modId, job.kind, {
             status: 'running',
@@ -161,11 +176,24 @@ export const useModAiJobsPoll = (enabled = true, intervalMs = 3000) => {
       }
     };
 
-    void reconcile();
-    const timer = window.setInterval(() => void reconcile(), intervalMs);
+    const poll = async () => {
+      const controller = new AbortController();
+      inFlight = controller;
+      const timeout = window.setTimeout(() => controller.abort(), ACTIVE_JOBS_REQUEST_TIMEOUT_MS);
+      try {
+        await reconcile(controller.signal);
+      } finally {
+        window.clearTimeout(timeout);
+        inFlight = null;
+      }
+      if (!cancelled) nextPoll = window.setTimeout(() => void poll(), intervalMs);
+    };
+
+    void poll();
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      window.clearTimeout(nextPoll);
+      inFlight?.abort();
     };
   }, [enabled, intervalMs]);
 };

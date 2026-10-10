@@ -67,8 +67,77 @@ jobs:
       - name: web-ui build
         run: npm run web:build
 
+  # SQL against a real Postgres: the same pgvector image production runs.
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: transynth
+          POSTGRES_PASSWORD: transynth
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U transynth"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://transynth:transynth@localhost:5432/transynth_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Database tests
+        run: npm run test:db
+
+  # The web UI on a desktop, tablets and phones down to 320px, in Chromium
+  # and WebKit. The API is faked, so this needs only the web-ui install.
+  devices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web-ui/package-lock.json
+
+      - name: Install web-ui dependencies
+        run: npm --prefix web-ui ci
+
+      - name: Install browsers
+        working-directory: web-ui
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Device tests
+        run: npm --prefix web-ui run test:devices
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-test-report
+          path: web-ui/playwright-report
+          retention-days: 7
+
   image:
-    needs: check
+    needs: [check, database, devices]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60

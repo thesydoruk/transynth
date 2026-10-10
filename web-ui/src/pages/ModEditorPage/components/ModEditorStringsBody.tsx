@@ -34,7 +34,7 @@ export interface ModEditorStringsBodyProps {
   columnFilters: ColumnFilters;
   detailPanelHeight: number;
   isResizing: boolean;
-  startDetailPanelResize: (e: React.MouseEvent) => void;
+  startDetailPanelResize: (e: React.PointerEvent) => void;
   draftTranslation: string;
   activeTab: BottomTab;
   saveIndicator: 'idle' | 'saving' | 'saved';
@@ -51,6 +51,9 @@ export interface ModEditorStringsBodyProps {
   onSort: (col: SortCol) => void;
   onColumnFilterChange: (col: keyof ColumnFilters, value: string) => void;
   onContextMenu: (e: React.MouseEvent, row: StringRow) => void;
+  /** Opens the row menu at a point — the detail panel's actions button. */
+  onOpenRowActions: (row: StringRow, x: number, y: number) => void;
+  onRowClose: () => void;
   onClear: (row: StringRow) => void;
   onDraftChange: (text: string) => void;
   onSave: () => void;
@@ -105,6 +108,8 @@ export const ModEditorStringsBody = ({
   onSort,
   onColumnFilterChange,
   onContextMenu,
+  onOpenRowActions,
+  onRowClose,
   onClear,
   onDraftChange,
   onSave,
@@ -168,7 +173,7 @@ export const ModEditorStringsBody = ({
           <>
             <div
               className={`${styles.detailPanelResizeHandle} ${isResizing ? styles.detailPanelResizeHandleActive : ''}`}
-              onMouseDown={startDetailPanelResize}
+              onPointerDown={startDetailPanelResize}
               role="separator"
               aria-orientation="horizontal"
               aria-label={t('modEditor.resizeDetailPanel')}
@@ -192,6 +197,8 @@ export const ModEditorStringsBody = ({
                 translAreaRef={translAreaRef}
                 capabilities={capabilities}
                 onDraftChange={onDraftChange}
+                onOpenActions={(x, y) => onOpenRowActions(activeRow, x, y)}
+                onClose={onRowClose}
                 onSave={onSave}
                 onCopySource={onCopySource}
                 onTabChange={onTabChange}

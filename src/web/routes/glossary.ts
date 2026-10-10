@@ -62,7 +62,10 @@ export const glossaryRoutes = async (app: FastifyInstance, db: Tx) => {
       game,
       source = 'manual',
     } = req.body ?? {};
-    if (!term) return reply.code(400).send({ error: 'term is required' });
+    // A blank term would be stored as '' and match every string in QA.
+    if (typeof term !== 'string' || !term.trim()) {
+      return reply.code(400).send({ error: 'term is required' });
+    }
     const gameKey = glossaryGameKey(game);
     log.info(
       `POST /api/glossary term="${term}" translation="${translation ?? ''}" ${srcLang}→${tgtLang} game=${gameKey}`,

@@ -60,3 +60,10 @@
 .pctFuzzy {
   color: var(--text-dim);
 }
+
+@media (max-width: 720px) {
+  .selectCheckbox {
+    width: 20px;
+    height: 20px;
+  }
+}

@@ -113,10 +113,11 @@ export const modImportEndpoints = {
     req<{ ok: boolean }>(`/api/mod-import/${jobId}/pause`, { method: 'POST' }),
   cancel: (jobId: number) =>
     req<{ ok: boolean }>(`/api/mod-import/${jobId}/cancel`, { method: 'POST' }),
-  remove: (jobId: number, deleteData: ModImportDeleteDataMode = 'mod') =>
-    req<{ ok: boolean }>(`/api/mod-import/${jobId}?deleteData=${deleteData}`, {
-      method: 'DELETE',
-    }),
+  remove: (jobId: number, deleteData: ModImportDeleteDataMode = 'mod', keepReference = true) =>
+    req<{ ok: boolean }>(
+      `/api/mod-import/${jobId}?deleteData=${deleteData}&keepReference=${keepReference}`,
+      { method: 'DELETE' },
+    ),
   restart: (jobId: number) =>
     req<ModImportJob>(`/api/mod-import/${jobId}/restart`, { method: 'POST' }),
 

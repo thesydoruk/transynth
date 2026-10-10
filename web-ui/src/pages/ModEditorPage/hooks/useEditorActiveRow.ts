@@ -54,6 +54,12 @@ export function useEditorActiveRow({
     [flushAutosave],
   );
 
+  /** Leaves the row: the phone sheet's back button, nothing else needs it. */
+  const handleRowClose = useCallback(() => {
+    flushAutosave();
+    setActiveRow(null);
+  }, [flushAutosave]);
+
   const handleCopySource = useCallback(() => {
     if (!activeRow) return;
     setDraftTranslation(activeRow.source);
@@ -102,6 +108,7 @@ export function useEditorActiveRow({
     startDetailPanelResize,
     handleRowSelect,
     handleRowOpen,
+    handleRowClose,
     handleCopySource,
     handleClear,
     handleSave,

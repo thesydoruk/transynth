@@ -21,6 +21,34 @@
   overflow: hidden;
 }
 
+/*
+ * Phones: the top bar scrolls away (see App.module.scss), so the editor takes
+ * the whole screen, and the record-type list sits above the grid.
+ */
+@media (max-width: 720px) {
+  .root {
+    height: 100dvh;
+  }
+
+  .body {
+    flex-direction: column;
+  }
+
+  /* A split pane has no room here: the open row takes the whole screen and
+     the sheet header's back button returns to the list. */
+  .detailPanelResizeHandle {
+    display: none;
+  }
+
+  .detailPanelSizer {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    height: auto !important;
+    background: var(--bg-panel);
+  }
+}
+
 /* Center column */
 .centerCol {
   flex: 1;

@@ -189,3 +189,9 @@
   color: var(--text-faint);
   border-top: 1px solid var(--border);
 }
+
+@media (max-width: 720px) {
+  .footer {
+    display: none;
+  }
+}

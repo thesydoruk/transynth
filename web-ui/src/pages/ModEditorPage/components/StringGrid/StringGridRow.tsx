@@ -1,15 +1,15 @@
-import type { CSSProperties, MouseEvent } from 'react';
+import { useRef, type MouseEvent } from 'react';
 import type { TFunction } from 'i18next';
 import type { StringRow } from '../../../../api';
 import { StatusBadge } from '../../../../components/StatusBadge';
 import { GenderBadge } from '../../../../components/GenderBadge';
 import { formatRowFieldLabel, type EditorCapabilities } from '../../editorCapabilities';
-import type { StringGridColKey } from '../../hooks/useStringGridColumnWidths';
+import type { StringGridColKey, StringGridColProps } from '../../hooks/useStringGridColumnWidths';
 import { rowBg, rowTextColor } from '../../utils';
 import { genderBadgeTitle } from './stringGridHelpers';
 import styles from './StringGrid.module.scss';
 
-type ColStyle = (col: StringGridColKey) => CSSProperties;
+type ColProps = (col: StringGridColKey) => StringGridColProps;
 
 type StringGridRowProps = {
   row: StringRow;
@@ -21,7 +21,7 @@ type StringGridRowProps = {
   showFormId: boolean;
   capabilities: EditorCapabilities;
   t: TFunction;
-  colStyle: ColStyle;
+  colProps: ColProps;
   measureElement: (node: Element | null) => void;
   onRowSelect: (row: StringRow) => void;
   onRowOpen: (row: StringRow) => void;
@@ -41,7 +41,7 @@ export const StringGridRow = ({
   showFormId,
   capabilities,
   t,
-  colStyle,
+  colProps,
   measureElement,
   onRowSelect,
   onRowOpen,
@@ -55,6 +55,9 @@ export const StringGridRow = ({
     ? (row.path?.split('\\').pop() ?? '')
     : (row.path ?? '');
   const fieldLabel = formatRowFieldLabel(row.path, capabilities);
+  // A mouse selects on click and opens on double-click; a finger has no
+  // double-click worth relying on, so a tap opens the row straight away.
+  const tapped = useRef(false);
 
   return (
     <div
@@ -66,7 +69,10 @@ export const StringGridRow = ({
         background: rowBg(displayStatus),
         color: rowTextColor(displayStatus),
       }}
-      onClick={() => onRowSelect(row)}
+      onPointerDown={(event) => {
+        tapped.current = event.pointerType === 'touch';
+      }}
+      onClick={() => (tapped.current ? onRowOpen(row) : onRowSelect(row))}
       onDoubleClick={() => onRowOpen(row)}
       onContextMenu={(event) => onContextMenu(event, row)}
     >
@@ -77,30 +83,30 @@ export const StringGridRow = ({
         <input type="checkbox" checked={isSelected} onChange={() => undefined} />
       </div>
       {showGender && (
-        <div className={styles.tdGender} style={colStyle('gender')}>
+        <div className={styles.tdGender} {...colProps('gender')}>
           <GenderBadge gender={row.line_gender} title={genderBadgeTitle(row, t)} compact />
         </div>
       )}
-      <div className={styles.tdSig} style={colStyle('grup')}>
+      <div className={styles.tdSig} {...colProps('grup')}>
         {row.signature}
       </div>
       {showFormId && (
-        <div className={styles.tdFid} style={colStyle('formid')}>
+        <div className={styles.tdFid} {...colProps('formid')}>
           {row.formid_hex}
         </div>
       )}
-      <div className={styles.tdEdidCell} style={colStyle('edid')} title={row.edid ?? ''}>
+      <div className={styles.tdEdidCell} {...colProps('edid')} title={row.edid ?? ''}>
         {row.edid ?? ''}
       </div>
-      <div className={styles.tdField} style={colStyle('field')} title={fieldTitle}>
+      <div className={styles.tdField} {...colProps('field')} title={fieldTitle}>
         {fieldLabel}
       </div>
-      <div className={styles.tdText} style={colStyle('src')} title={row.source}>
+      <div className={styles.tdText} {...colProps('src')} title={row.source}>
         {row.source}
       </div>
       <div
         className={row.translation ? styles.tdTranslFilled : styles.tdTranslEmpty}
-        style={colStyle('transl')}
+        {...colProps('transl')}
         title={row.translation ?? ''}
       >
         {row.translation ?? '—'}
@@ -108,7 +114,7 @@ export const StringGridRow = ({
       </div>
       <div
         className={`${styles.td} ${styles.colAct}`}
-        style={colStyle('act')}
+        {...colProps('act')}
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.actionBtnRow}>

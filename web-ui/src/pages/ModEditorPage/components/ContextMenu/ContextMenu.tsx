@@ -21,6 +21,7 @@ export interface ContextMenuProps {
   onBatchTranslate: () => void;
   onBatchApplyTm: () => void;
   onRowTranslate: (row: StringRow, mode: 'llm' | 'tm') => void;
+  onMarkReference: (row: StringRow) => void;
   onSetSkip: (row: StringRow, skip: boolean) => void;
   onSetStatus: (row: StringRow, status: ContextMenuStatus) => void;
 }
@@ -40,6 +41,7 @@ export const ContextMenu = ({
   onBatchTranslate,
   onBatchApplyTm,
   onRowTranslate,
+  onMarkReference,
   onSetSkip,
   onSetStatus,
 }: ContextMenuProps) => {
@@ -85,8 +87,8 @@ export const ContextMenu = ({
     const rect = el.getBoundingClientRect();
     let x = anchor.x;
     let y = anchor.y;
-    if (x + rect.width > window.innerWidth) x = Math.max(0, x - rect.width);
-    if (y + rect.height > window.innerHeight) y = Math.max(0, y - rect.height);
+    if (x + rect.width > window.innerWidth) x = Math.max(0, window.innerWidth - rect.width - 4);
+    if (y + rect.height > window.innerHeight) y = Math.max(4, window.innerHeight - rect.height - 4);
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
     el.style.opacity = '1';
@@ -129,6 +131,12 @@ export const ContextMenu = ({
       >
         <span className={`${styles.ctxIcon} ${styles.ctxIconBlue}`}>⚡</span>
         <span className={styles.ctxLabel}>{labelForCount('ctx.applyLlm', 'ctx.bulkApplyLlm')}</span>
+      </button>
+      <button className={styles.ctxItem} onClick={() => onMarkReference(row)}>
+        <span className={`${styles.ctxIcon} ${styles.ctxIconGreen}`}>★</span>
+        <span className={styles.ctxLabel}>
+          {labelForCount('ctx.markReference', 'ctx.bulkMarkReference')}
+        </span>
       </button>
       <div className={styles.ctxSep} />
       <div className={styles.ctxGroupLabel}>{t('ctx.statusSection')}</div>

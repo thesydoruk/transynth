@@ -4,3 +4,7 @@ package-lock.json
 web-ui/package-lock.json
 *.sqlite
 data
+web-ui/test-results
+web-ui/playwright-report
+web-ui/.e2e-dist
+src/games/witcher3/mimic/mimic-model.json

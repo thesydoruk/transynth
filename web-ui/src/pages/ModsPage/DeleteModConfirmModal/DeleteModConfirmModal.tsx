@@ -10,7 +10,7 @@ interface DeleteModConfirmModalProps {
   fileName: string;
   deleting: boolean;
   onClose: () => void;
-  onConfirm: (deleteData: ModImportDeleteDataMode) => void;
+  onConfirm: (deleteData: ModImportDeleteDataMode, keepReference: boolean) => void;
 }
 
 /**
@@ -25,6 +25,7 @@ export const DeleteModConfirmModal = ({
 }: DeleteModConfirmModalProps) => {
   const { t } = useTranslation();
   const [deleteData, setDeleteData] = useState<ModImportDeleteDataMode>('job');
+  const [keepReference, setKeepReference] = useState(true);
 
   return (
     <ModalShell
@@ -82,13 +83,32 @@ export const DeleteModConfirmModal = ({
             </span>
           </label>
         </div>
+
+        {deleteData !== 'job' && (
+          <label className={s.keepRow}>
+            <input
+              type="checkbox"
+              checked={keepReference}
+              disabled={deleting}
+              onChange={(e) => setKeepReference(e.target.checked)}
+            />
+            <span>
+              <strong>{t('imports.deleteModKeepReference')}</strong>
+              <small>{t('imports.deleteModKeepReferenceHint')}</small>
+            </span>
+          </label>
+        )}
       </div>
 
       <div className={parentS.footer}>
         <Button variant="secondary" onClick={onClose} disabled={deleting}>
           {t('common.cancel')}
         </Button>
-        <Button variant="danger" onClick={() => onConfirm(deleteData)} disabled={deleting}>
+        <Button
+          variant="danger"
+          onClick={() => onConfirm(deleteData, keepReference)}
+          disabled={deleting}
+        >
           {deleting ? t('common.loading') : t('common.delete')}
         </Button>
       </div>

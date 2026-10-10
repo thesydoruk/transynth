@@ -49,8 +49,11 @@
   font-weight: 600;
   font-size: 14px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+  /* Archive names are one long word; let them break instead of overrunning the row. */
+  overflow-wrap: anywhere;
 }
 
 .meta {
@@ -131,4 +134,23 @@
   background: color-mix(in srgb, #9c27b0 18%, transparent);
   color: #ce93d8;
   border: 1px solid color-mix(in srgb, #9c27b0 40%, transparent);
+}
+
+/* Tablets and phones: the progress and actions drop below the name instead of crushing it. */
+@media (max-width: 900px) {
+  .row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .rowLeft {
+    flex: 1 1 100%;
+  }
+
+  .rowRight {
+    flex: 1 1 100%;
+    flex-shrink: 1;
+    justify-content: flex-start;
+  }
 }

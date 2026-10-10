@@ -3,6 +3,7 @@ import { CONFIG } from '../../../config';
 import { normalizeAutoTranslationQuotes } from '../../../utils/textNorm';
 import { recordTranslationRevision } from '../translationRevisions';
 import { scheduleRagSync } from '../../services/ragHooks';
+import { scheduleReferencePromote } from '../../services/referenceHooks';
 import type { TranslationStatus } from '../statusMachine';
 import { refreshQAIssues } from './qaIssues';
 import { markStringsAsSkip } from './translationsSkip';
@@ -63,6 +64,7 @@ export const upsertTranslation = async (
   await refreshQAIssues(db, stringId, targetLang);
 
   scheduleRagSync(db, translationId);
+  scheduleReferencePromote(db, [stringId], status, targetLang);
 
   return { id: translationId, text, status };
 };

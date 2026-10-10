@@ -3,6 +3,7 @@ import type { Tx } from '../../../db';
 import { upsertTranslation, deleteTranslation, getStringPropagationKeys } from '../../data/queries';
 import { getAllProjectSettings } from '../../services/projectSettings';
 import { propagateTranslation } from '../../services/tm';
+import { isValidTranslationStatus } from '../../data/statusMachine';
 import { CONFIG } from '../../../config';
 
 export const registerTranslationRoutes = async (app: FastifyInstance, db: Tx) => {
@@ -23,6 +24,17 @@ export const registerTranslationRoutes = async (app: FastifyInstance, db: Tx) =>
     const { text, status = 'draft', targetLang = CONFIG.defaultTgtLang } = req.body ?? {};
     if (typeof text !== 'string') {
       return reply.code(400).send({ error: 'text is required' });
+    }
+    // No CHECK on translations.status: an unknown value would be stored and then
+    // match no editor filter, so the line would vanish from every view.
+    // The body type is a promise, not a check: read what actually arrived.
+    const rawStatus: unknown = status;
+    if (
+      typeof rawStatus !== 'string' ||
+      !isValidTranslationStatus(rawStatus) ||
+      rawStatus === 'deleted'
+    ) {
+      return reply.code(400).send({ error: 'Invalid status' });
     }
 
     if (text.trim() === '') {

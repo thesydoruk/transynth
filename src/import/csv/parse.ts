@@ -1,4 +1,4 @@
-import { parseCsvLine } from '../../utils/csv';
+import { iterCsvRows } from '../../utils/csv';
 import type { CsvRecord } from './types';
 
 const parseCsvRecordFields = (
@@ -30,20 +30,18 @@ const parseCsvRecordFields = (
   };
 };
 
-const parseCsvHeader = (headerLine: string) => {
-  const cols = parseCsvLine(headerLine);
+type CsvColumns = Parameters<typeof parseCsvRecordFields>[1];
+
+const parseCsvHeader = (cols: string[]): CsvColumns => {
   const idx = (name: string) => cols.findIndex((c) => c.toLowerCase() === name.toLowerCase());
   return {
-    cols,
-    fields: {
-      iFormId: idx('FormID'),
-      iSig: idx('Signature'),
-      iEdid: idx('EDID'),
-      iPath: idx('Path'),
-      iSource: idx('Source'),
-      iTarget: idx('Target'),
-      iStatus: idx('Status'),
-    },
+    iFormId: idx('FormID'),
+    iSig: idx('Signature'),
+    iEdid: idx('EDID'),
+    iPath: idx('Path'),
+    iSource: idx('Source'),
+    iTarget: idx('Target'),
+    iStatus: idx('Status'),
   };
 };
 
@@ -51,36 +49,24 @@ const parseCsvHeader = (headerLine: string) => {
  * Parse CSV text into structured {@link CsvRecord} objects.
  *
  * The header row is used to locate columns by name (case-insensitive). Unknown
- * or missing columns are treated as empty strings / defaults.
+ * or missing columns are treated as empty strings / defaults. A quoted field
+ * may span several lines (RFC 4180).
  */
-export const parseCsvRecords = (text: string): CsvRecord[] => {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return [];
-
-  const headerLine = lines.shift()!;
-  const { fields } = parseCsvHeader(headerLine);
-
-  const records: CsvRecord[] = [];
-  for (const line of lines) {
-    records.push(parseCsvRecordFields(parseCsvLine(line), fields));
-  }
-  return records;
-};
+export const parseCsvRecords = (text: string): CsvRecord[] => [...iterCsvRecords(text)];
 
 /**
  * Iterate parsed CSV records one-by-one.
  *
- * This generator mirrors {@link parseCsvRecords} but yields records lazily so
- * callers can preview data without allocating the entire record list.
+ * Yields records lazily so callers can preview data without allocating the
+ * entire record list.
  */
 export function* iterCsvRecords(text: string): Generator<CsvRecord> {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return;
-
-  const headerLine = lines.shift()!;
-  const { fields } = parseCsvHeader(headerLine);
-
-  for (const line of lines) {
-    yield parseCsvRecordFields(parseCsvLine(line), fields);
+  let fields: CsvColumns | null = null;
+  for (const row of iterCsvRows(text)) {
+    if (!fields) {
+      fields = parseCsvHeader(row);
+      continue;
+    }
+    yield parseCsvRecordFields(row, fields);
   }
 }

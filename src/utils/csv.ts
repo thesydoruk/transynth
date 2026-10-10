@@ -2,54 +2,54 @@
 // Handles quoted fields and escaped double quotes ("").
 
 /**
- * Parse a single CSV line into an array of field values (RFC 4180).
- * Supports: quoted fields, commas inside quotes, escaped quotes ("").
+ * Split CSV text into records (RFC 4180), each an array of field values.
+ *
+ * Records are not lines: a quoted field may span lines — book pages and long
+ * dialogue do — and its line breaks are kept as written. Blank lines between
+ * records are skipped.
  */
-export const parseCsvLine = (line: string): string[] => {
-  const fields: string[] = [];
-  let pos = 0;
-  const len = line.length;
+export function* iterCsvRows(text: string): Generator<string[]> {
+  let row: string[] = [];
+  let field = '';
+  let rowStarted = false;
+  let inQuotes = false;
 
-  while (pos <= len) {
-    if (pos >= len) break;
-
-    if (line[pos] === '"') {
-      // Quoted field
-      let val = '';
-      pos++; // skip opening quote
-      while (pos < len) {
-        if (line[pos] === '"' && pos + 1 < len && line[pos + 1] === '"') {
-          val += '"';
-          pos += 2;
-        } else if (line[pos] === '"') {
-          pos++; // skip closing quote
-          break;
-        } else {
-          val += line[pos++];
-        }
-      }
-      fields.push(val);
-    } else {
-      // Unquoted field
-      const commaIdx = line.indexOf(',', pos);
-      if (commaIdx === -1) {
-        fields.push(line.slice(pos));
-        return fields;
-      }
-      fields.push(line.slice(pos, commaIdx));
-      pos = commaIdx;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (inQuotes) {
+      if (c !== '"') field += c;
+      else if (text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else inQuotes = false;
+      continue;
     }
-
-    if (pos < len && line[pos] === ',') {
-      pos++;
-      if (pos >= len) fields.push(''); // trailing comma → empty field
+    if (c === '"') {
+      inQuotes = true;
+      rowStarted = true;
+    } else if (c === ',') {
+      row.push(field);
+      field = '';
+      rowStarted = true;
+    } else if (c === '\r' || c === '\n') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      if (rowStarted) {
+        row.push(field);
+        yield row;
+      }
+      row = [];
+      field = '';
+      rowStarted = false;
     } else {
-      break;
+      field += c;
+      rowStarted = true;
     }
   }
-
-  return fields;
-};
+  if (rowStarted) {
+    row.push(field);
+    yield row;
+  }
+}
 
 /** Encode fields into a single CSV line (RFC 4180 — all fields quoted). */
 export const csvRow = (fields: string[]): string => {

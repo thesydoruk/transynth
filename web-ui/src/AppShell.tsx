@@ -12,6 +12,7 @@ import {
   ModEditorPage,
   ModsPage,
   NotFoundPage,
+  ReferencePage,
   SettingsPage,
   SystemLogPage,
 } from './pages';
@@ -40,6 +41,7 @@ export const AppShell = () => {
           <Route path="/games/:gameId/mods/:modId/innr" element={<INNRPage />} />
           <Route path="/games/:gameId/diff" element={<DiffPage />} />
           <Route path="/games/:gameId/coherence" element={<CoherencePage />} />
+          <Route path="/games/:gameId/reference" element={<ReferencePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/system-log" element={<SystemLogPage />} />

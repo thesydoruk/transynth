@@ -22,14 +22,14 @@ Create the translation files that players install to play the mod in your langua
 
 The pipeline can produce four types of output:
 
-| Format           | File                                   | Purpose                                                                           |
-| ---------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
-| **STRINGS**      | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine                               |
-| **Patched ESP**  | `.esp` / `.esm`                        | Mod plugin with translations embedded directly                                    |
-| **BA2 Archive**  | `.ba2`                                 | Fallout 4/76 archive containing translated STRINGS files                          |
-| **BSA Archive**  | `.bsa`                                 | Skyrim SE/LE and FO3/FNV archive containing translated STRINGS files              |
-| **Langpack ZIP** | `{stem}_{lang}_langpack.zip`           | Bethesda: changed STRINGS / ESP / PEX. Disco: translated `.po` + localized `.wav` |
-| **Full mod ZIP** | `{stem}_{lang}.zip`                    | Bethesda: BA2/BSA (+ patched ESP when needed)                                     |
+| Format           | File                                   | Purpose                                                                                                                                                                                                                      |
+| ---------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STRINGS**      | `.strings`, `.dlstrings`, `.ilstrings` | External string table files read by the game engine                                                                                                                                                                          |
+| **Patched ESP**  | `.esp` / `.esm`                        | Mod plugin with translations embedded directly                                                                                                                                                                               |
+| **BA2 Archive**  | `.ba2`                                 | Fallout 4/76 archive containing translated STRINGS files                                                                                                                                                                     |
+| **BSA Archive**  | `.bsa`                                 | Skyrim SE/LE and FO3/FNV archive containing translated STRINGS files                                                                                                                                                         |
+| **Langpack ZIP** | `{stem}_{lang}_langpack.zip`           | Bethesda: changed STRINGS / ESP / PEX. Disco: translated `.po` + localized `.wav`. The Witcher 3: the target `.w3strings` table per content folder (`ua.w3strings` for Ukrainian); the voice pack is `npm run w3:voice-pack` |
+| **Full mod ZIP** | `{stem}_{lang}.zip`                    | Bethesda: BA2/BSA (+ patched ESP when needed)                                                                                                                                                                                |
 
 ---
 

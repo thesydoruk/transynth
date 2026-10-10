@@ -91,6 +91,11 @@
 ## Tooling і quality
 
 - Кореневий Jest покриває `src/` і `worker/`. У `web-ui` — Vitest (`*.test.ts` / `*.test.tsx`).
+- `*.db.test.ts` виконуються на справжньому Postgres (`npm run test:db`; одноразовий сервер
+  піднімає `npm run test:db:up`); `npm test` їх пропускає, тож юніт-тестам база не потрібна.
+- У `web-ui/e2e/` — Playwright-тести пристроїв (`npm --prefix web-ui run test:devices`):
+  кожна сторінка на десктопі, планшеті й телефонах у Chromium і WebKit, проти
+  фейкового API, тож бекенд для них не потрібен.
 - Тести лежать поруч із кодом у `__tests__/` або як `*.test.ts(x)` біля джерела.
 - `tsx` використовується для прямого запуску TypeScript-файлів у development і
   CLI workflow.

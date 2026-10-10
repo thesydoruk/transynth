@@ -2,7 +2,8 @@
 
 Synthesize localized voice-over from reviewed translations. Transynth clones
 the original speaker with an external **Fish Speech** service, then wraps the
-audio for Bethesda games (FUZ / LIP) or writes WAV files for Disco Elysium.
+audio for Bethesda games (FUZ / LIP), writes WAV files for Disco Elysium, and
+rebuilds `.w3speech` voice files for The Witcher 3.
 
 You need a legal copy of the game (and usually the Creation Kit) for lip-sync
 tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
@@ -17,6 +18,7 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
 - [Running synthesis](#running-synthesis)
 - [Disco: what gets spoken](#disco-what-gets-spoken)
 - [Disco: which line a take belongs to](#disco-which-line-a-take-belongs-to)
+- [The Witcher 3: voice](#the-witcher-3-voice)
 - [Settings](#settings)
 - [Clip and response index](#clip-and-response-index)
 - [Known limitations](#known-limitations)
@@ -164,6 +166,64 @@ On the Final Cut pack this listens to ~4 800 clips and takes around 40 minutes;
 transcripts are cached, so a second run costs nothing. It recovers about 98% of
 them — what stays blank is mostly `alternative-N` takes whose main take found no
 row.
+
+---
+
+## The Witcher 3: voice
+
+The game keeps every voiced line in one container per language,
+`content/content0/enpc.w3speech` (64 718 lines, 4.2 GB for English): each row
+an Opus take plus the mouth animation made for it, keyed by the string id of
+its line. Import it from the install so the container comes along:
+
+```
+npm run import:folder -- --game w3 --dir "<game folder>" --langs en,ua
+```
+
+**Speakers.** The import reads who says each line from the game's own scene
+files (`.w2scene` in the `.bundle` archives; a folder import stages just those,
+not the archives): the speaker's voice tag, who they are speaking to, and each
+tag's sex from `scene_voice_tags.csv`. On the Remastered game every voiced line
+gets a speaker — 1,724 of them, all but 26 with a gender. Spoken lines become
+`W3D` records whose speaker and addressee genders reach the translator; the
+voice tab lists the takes by speaker.
+
+The voice job clones every line from **its own take** and asks Fish Speech to
+keep its timing; a line too short to clone from alone also gets its speaker's
+reference take (the one picked in the voice tab, or auto-selected) or their
+longer takes. Each result is stored under the localize directory as `<id>.wav`
+beside the game's two blocks for it: the Opus take (encoded with libopus; no
+Wwise) and the mouth animation.
+
+**Mouth animation.** The animation is predicted from the new audio, frame by
+frame, by a small model that ships with the plugin
+(`src/games/witcher3/mimic/mimic-model.json`). It was learned from the game
+itself — the animation CD PROJEKT RED made for every English take of the
+Remastered release — and explains about half the variance of the held-out
+tracks, with the jaw at 0.97 correlation. To retrain it from your own install:
+
+```
+npm run w3:mimic-dataset -- --speech "<game>/content/content0/enpc.w3speech" --out data/w3-mimic
+python tools/witcher3-lipsync/train.py data/w3-mimic        # numpy + torch, CPU is fine
+```
+
+A copy at `<TOOLS_DIR>/witcher3/mimic-model.json`, or the file named by
+`W3_MIMIC_MODEL_PATH`, is used instead of the bundled one. Without any readable
+model, the original line's animation is stretched to the new length.
+
+**Into the game.** The game has no Ukrainian voice slot, so the pack takes the
+Brazilian Portuguese one:
+
+```
+npm run w3:voice-pack -- --mod <id> --out <dir>
+```
+
+writes `<dir>/content/content0/brpc.w3speech` — the original lines with the
+synthesized ones swapped in. Copy it into the game's `content/content0`, then
+choose Brazilian Portuguese as the voice language (or set `SpeechLanguage=BR`
+under `[Localization]` in `Documents/The Witcher 3/user.settings`). The file
+contains the game's own audio for every line not replaced: it is for your own
+install, not for redistribution.
 
 ---
 

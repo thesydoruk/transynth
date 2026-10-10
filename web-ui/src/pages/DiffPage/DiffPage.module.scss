@@ -286,3 +286,14 @@
 .changeChanged {
   color: var(--warning);
 }
+
+@media (max-width: 720px) {
+  .fieldCol {
+    flex: 1 1 100%;
+  }
+
+  .select {
+    min-width: 0;
+    width: 100%;
+  }
+}

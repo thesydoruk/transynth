@@ -6,10 +6,17 @@ type GameHubNavProps = {
   gameId: string;
   isModsLoading: boolean;
   modCount: number;
+  /** Rows in this game's reference base; null while loading. */
+  referenceCount: number | null;
 };
 
-/** Translate / Discover / Quality / Terms — Release lives in the panel above. */
-export const GameHubNav = ({ gameId, isModsLoading, modCount }: GameHubNavProps) => {
+/** Translate / Discover / Quality / Reference / Terms — Release lives in the panel above. */
+export const GameHubNav = ({
+  gameId,
+  isModsLoading,
+  modCount,
+  referenceCount,
+}: GameHubNavProps) => {
   const { t } = useTranslation();
 
   return (
@@ -39,6 +46,19 @@ export const GameHubNav = ({ gameId, isModsLoading, modCount }: GameHubNavProps)
         <h2 className={s.navTitle}>{t('gameHub.coherenceLink')}</h2>
         <p className={s.navDesc}>{t('gameHub.coherenceDesc')}</p>
         <span className={s.navMeta}>{t('gameHub.coherenceMeta')}</span>
+      </Link>
+
+      <Link to={`/games/${gameId}/reference`} className={s.navCard}>
+        <span className={s.navKicker}>{t('gameHub.workflowReference')}</span>
+        <h2 className={s.navTitle}>{t('gameHub.referenceLink')}</h2>
+        <p className={s.navDesc}>{t('gameHub.referenceDesc')}</p>
+        <span className={s.navMeta}>
+          {referenceCount === null
+            ? t('common.loading')
+            : referenceCount > 0
+              ? t('gameHub.referenceMeta', { count: referenceCount })
+              : t('gameHub.referenceMetaEmpty')}
+        </span>
       </Link>
 
       <Link to="/glossary" className={s.navCard}>

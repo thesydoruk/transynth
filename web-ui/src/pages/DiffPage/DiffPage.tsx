@@ -8,6 +8,7 @@ import { useContentLangs } from '../../hooks/useContentLangs';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ReleaseChecklist } from './components';
 import s from './DiffPage.module.scss';
+import { TableScroll } from '../../components/TableScroll';
 
 const CHANGE_LABELS: Record<string, string> = {
   added: 'diff.added',
@@ -300,36 +301,38 @@ export const DiffPage = () => {
               </div>
             </div>
           ) : (
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  <th className={s.th}>{t('diff.change')}</th>
-                  <th className={s.th}>{t('modEditor.formId')}</th>
-                  <th className={s.th}>{t('diff.type')}</th>
-                  <th className={s.thWide}>{t('diff.sourceEn')}</th>
-                  <th className={s.thWide}>{t('diff.translation')}</th>
-                  <th className={s.th}>{t('csvImport.statusCol')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allEntries.map((entry, i) => (
-                  <tr key={i} className={ROW_CLASS[entry.changeType] ?? ''}>
-                    <td className={`${s.tdChange} ${CHANGE_CLASS[entry.changeType] ?? ''}`}>
-                      {entry.changeType}
-                    </td>
-                    <td className={s.tdFormId}>{entry.formid_hex}</td>
-                    <td className={s.tdSig}>{entry.signature}</td>
-                    <td className={s.tdText}>{entry.source}</td>
-                    <td className={s.tdTransl}>
-                      {entry.translation ?? <span className={s.noTransl}>—</span>}
-                    </td>
-                    <td className={s.td}>
-                      <StatusBadge status={entry.status} small />
-                    </td>
+            <TableScroll minWidth={640}>
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    <th className={s.th}>{t('diff.change')}</th>
+                    <th className={s.th}>{t('modEditor.formId')}</th>
+                    <th className={s.th}>{t('diff.type')}</th>
+                    <th className={s.thWide}>{t('diff.sourceEn')}</th>
+                    <th className={s.thWide}>{t('diff.translation')}</th>
+                    <th className={s.th}>{t('csvImport.statusCol')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {allEntries.map((entry, i) => (
+                    <tr key={i} className={ROW_CLASS[entry.changeType] ?? ''}>
+                      <td className={`${s.tdChange} ${CHANGE_CLASS[entry.changeType] ?? ''}`}>
+                        {entry.changeType}
+                      </td>
+                      <td className={s.tdFormId}>{entry.formid_hex}</td>
+                      <td className={s.tdSig}>{entry.signature}</td>
+                      <td className={s.tdText}>{entry.source}</td>
+                      <td className={s.tdTransl}>
+                        {entry.translation ?? <span className={s.noTransl}>—</span>}
+                      </td>
+                      <td className={s.td}>
+                        <StatusBadge status={entry.status} small />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </>
       )}

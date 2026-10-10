@@ -98,6 +98,8 @@ export const ModsPage = () => {
 
   const upload = useModUpload({
     gameId,
+    srcLang,
+    tgtLang: targetLang,
     doStart,
     startModImportJob: importRunner.startModImportJob,
     refreshAll,
@@ -259,6 +261,8 @@ export const ModsPage = () => {
         clearingModId={deleteActions.clearingModId}
         pendingDeleteAll={deleteActions.pendingDeleteAll}
         deletingAll={deleteActions.deletingAll}
+        keepReference={deleteActions.keepReference}
+        onKeepReferenceChange={deleteActions.setKeepReference}
         refreshAll={refreshAll}
         doStart={doStart}
         onCloseEetPreview={() => setEetPreviewId(null)}

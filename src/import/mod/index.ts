@@ -19,6 +19,10 @@ export {
 export { MOD_IMPORT_DEFAULT_SOURCE_LOCALE } from './localeHelpers';
 export { isArchive, isPlugin, discoverModFiles, listModFilesInDirectory } from './discovery';
 
-export { registerPluginFile, registerArchiveFile } from './registration';
+export {
+  registerPluginFile,
+  registerArchiveFile,
+  registerExtractedModDirectory,
+} from './registration';
 export { markFailed } from './jobStatus';
 export { alignmentKeyedStrings } from './alignment';

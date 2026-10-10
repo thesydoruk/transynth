@@ -2,7 +2,7 @@
  * Settings — flat list: General, LLM, Voice, Workflow, QA, Activity.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '../../components/PageHeader';
@@ -38,6 +38,12 @@ export const SettingsPage = () => {
     { id: 'activity', label: t('settings.tabs.activity') },
   ];
 
+  // On a phone the tabs are a scrolling strip; the active one must be in it.
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [tab]);
+
   const handleTabSelect = (nextTab: TabId) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
@@ -53,6 +59,7 @@ export const SettingsPage = () => {
           {tabs.map(({ id, label }) => (
             <button
               key={id}
+              ref={tab === id ? activeTabRef : undefined}
               className={`${s.navItem} ${tab === id ? s.navItemActive : ''}`}
               onClick={() => handleTabSelect(id)}
             >

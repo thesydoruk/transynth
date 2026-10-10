@@ -153,11 +153,14 @@ export const modsEndpoints = {
     req<{ ok: true }>(`/api/mods/${modId}/voice/regenerate/${sessionId}`, { method: 'DELETE' }),
   clearRows: (modId: number) =>
     req<ClearModRowsResult>(`/api/mods/${modId}/rows`, { method: 'DELETE' }),
-  remove: (modId: number) => req<ClearModRowsResult>(`/api/mods/${modId}`, { method: 'DELETE' }),
-  removeBatch: (modIds: number[]) =>
+  remove: (modId: number, keepReference = true) =>
+    req<ClearModRowsResult>(`/api/mods/${modId}?keepReference=${keepReference}`, {
+      method: 'DELETE',
+    }),
+  removeBatch: (modIds: number[], keepReference = true) =>
     req<DeleteModsBatchResult>(`/api/mods/batch-delete`, {
       method: 'POST',
-      body: JSON.stringify({ modIds }),
+      body: JSON.stringify({ modIds, keepReference }),
     }),
   langs: (id: number) => req<string[]>(`/api/mods/${id}/langs`),
   clearSameAsSource: (modId: number, srcLang = getSrcLang(), targetLang = getTgtLang()) =>

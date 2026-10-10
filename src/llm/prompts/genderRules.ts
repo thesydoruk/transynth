@@ -371,7 +371,7 @@ const UK_GENDER_RECAST_TRANSLATE_ITEMS = UK_GENDER_RECAST_ITEMS.filter((item) =>
  * How to hide gender on a shared Nate/Nora line. Patterns, not a banned-word list.
  * Flipping «був» → «була» is the same leak. Compact set for the translate prompt.
  */
-export const UK_WASTELAND_GENDER_RECAST_EXAMPLES = `${UK_GENDER_RECAST_PREAMBLE}
+const UK_WASTELAND_GENDER_RECAST_EXAMPLES = `${UK_GENDER_RECAST_PREAMBLE}
 
 ${promptJsonItems(UK_GENDER_RECAST_TRANSLATE_ITEMS)}`;
 

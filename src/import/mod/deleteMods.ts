@@ -8,6 +8,7 @@ import type { Tx } from '../../db';
 import { log } from '../../logger';
 import { PATHS } from '../../paths';
 import {
+  isOwnedModStoragePath,
   modImportLocalizeRoot,
   modImportPackOutputDir,
   modUploadedFilePath,
@@ -15,6 +16,7 @@ import {
 } from '../../modStorage';
 import { withPinnedModImportWriteLock } from '../locks';
 import { deleteModDataOnClient, deleteModGraphAndRow } from '../../web/data/queries/modsDelete';
+import { snapshotModsToReference } from '../../web/services/referenceHooks';
 import type { ModImportJob } from './types';
 
 type ModImportJobRow = Pick<ModImportJob, 'id' | 'file_name' | 'esp_path' | 'mod_id'> & {
@@ -60,28 +62,49 @@ const collectDeletePaths = (
   return { filePaths, extractedDirs };
 };
 
-/** Remove upload/extract/PEX cache files after mod rows are gone from the DB. */
+/**
+ * Remove upload/extract/PEX cache files for deleted mods. Plugin paths outside
+ * mod storage belong to the user (scan:mods registers them in place) and are
+ * left alone.
+ */
+export const removeModDeleteFiles = async (
+  jobs: ModImportJobRow[],
+  modAbsPaths: Map<number, string | null>,
+): Promise<void> => {
+  const { filePaths, extractedDirs } = collectDeletePaths(jobs, modAbsPaths);
+
+  for (const filePath of filePaths) {
+    if (!isOwnedModStoragePath(filePath)) {
+      log.debug(`deleteMods: keeping ${filePath} — outside mod storage`);
+      continue;
+    }
+    await fs.unlink(filePath).catch(() => undefined);
+  }
+  for (const dirPath of extractedDirs) {
+    await fs.rm(dirPath, { recursive: true, force: true }).catch(() => undefined);
+  }
+};
+
+/** Remove mod files off the event loop after mod rows are gone from the DB. */
 export const scheduleModDeleteFileCleanup = (
   jobs: ModImportJobRow[],
   modAbsPaths: Map<number, string | null>,
 ): void => {
-  const { filePaths, extractedDirs } = collectDeletePaths(jobs, modAbsPaths);
-
   setImmediate(() => {
-    void (async () => {
-      for (const filePath of filePaths) {
-        await fs.unlink(filePath).catch(() => undefined);
-      }
-      for (const dirPath of extractedDirs) {
-        await fs.rm(dirPath, { recursive: true, force: true }).catch(() => undefined);
-      }
-    })();
+    void removeModDeleteFiles(jobs, modAbsPaths);
   });
 };
 
 export type DeleteModsCompletelyResult = {
   deletedMods: number;
   deletedRecords: number;
+  /** Reviewed/human translations copied into the reference base before the purge. */
+  referencePromoted: number;
+};
+
+export type DeleteModsOptions = {
+  /** Copy reviewed/human translations into the reference base first. Default true. */
+  keepReference?: boolean;
 };
 
 /**
@@ -91,10 +114,11 @@ export type DeleteModsCompletelyResult = {
 export const deleteModsCompletely = async (
   db: Tx,
   modIds: number[],
+  options: DeleteModsOptions = {},
 ): Promise<DeleteModsCompletelyResult> => {
   const uniqueIds = [...new Set(modIds.filter((id) => Number.isInteger(id) && id > 0))];
   if (uniqueIds.length === 0) {
-    return { deletedMods: 0, deletedRecords: 0 };
+    return { deletedMods: 0, deletedRecords: 0, referencePromoted: 0 };
   }
 
   const started = Date.now();
@@ -107,8 +131,11 @@ export const deleteModsCompletely = async (
     }>(`SELECT id, abs_path, name FROM mods WHERE id = ANY($1::int[])`, [uniqueIds]);
     const existingIds = existingMods.map((row) => row.id);
     if (existingIds.length === 0) {
-      return { deletedMods: 0, deletedRecords: 0 };
+      return { deletedMods: 0, deletedRecords: 0, referencePromoted: 0 };
     }
+
+    const referencePromoted =
+      options.keepReference === false ? 0 : await snapshotModsToReference(client, existingIds);
 
     const modAbsPaths = new Map(existingMods.map((row) => [row.id, row.abs_path]));
     const { rows: importJobs } = await client.query<ModImportJobRow>(
@@ -125,9 +152,9 @@ export const deleteModsCompletely = async (
     scheduleModDeleteFileCleanup(importJobs, modAbsPaths);
 
     log.info(
-      `deleteModsCompletely modIds=${existingIds.join(',')} deletedRecords=${deletedRecords} ms=${Date.now() - started}`,
+      `deleteModsCompletely modIds=${existingIds.join(',')} deletedRecords=${deletedRecords} referencePromoted=${referencePromoted} ms=${Date.now() - started}`,
     );
 
-    return { deletedMods: existingIds.length, deletedRecords };
+    return { deletedMods: existingIds.length, deletedRecords, referencePromoted };
   });
 };

@@ -19,6 +19,7 @@ import { modProgress } from '../../utils/modProgress';
 import { formatModDisplayName } from '../ModsPage/modVersions';
 import { GameHubNav } from './GameHubNav';
 import s from './GameHubPage.module.scss';
+import { TableScroll } from '../../components/TableScroll';
 
 /**
  * Aggregate stats computed from all mods in the current game.
@@ -101,6 +102,13 @@ export const GameHubPage = () => {
   const { data: mods, isLoading: isModsLoading } = useQuery({
     queryKey: modListQueryKey(gameId, srcLang, targetLang),
     queryFn: () => api.mods.list(gameId, srcLang, targetLang),
+    enabled: !!gameId,
+  });
+
+  /** Rows in this game's reference base for the current language pair. */
+  const { data: referenceCount } = useQuery({
+    queryKey: ['reference', 'count', gameId, srcLang, targetLang],
+    queryFn: () => api.reference.count(gameId, srcLang, targetLang),
     enabled: !!gameId,
   });
 
@@ -221,39 +229,46 @@ export const GameHubPage = () => {
         </section>
       )}
 
-      <GameHubNav gameId={gameId} isModsLoading={isModsLoading} modCount={stats?.modCount ?? 0} />
+      <GameHubNav
+        gameId={gameId}
+        isModsLoading={isModsLoading}
+        modCount={stats?.modCount ?? 0}
+        referenceCount={referenceCount?.count ?? null}
+      />
 
       {/* Recent mods quick list */}
       {mods && mods.length > 0 && (
         <div className={s.recentSection}>
           <h2 className={s.sectionTitle}>{t('gameHub.recentMods')}</h2>
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('mods.name')}</th>
-                <th>{t('mods.strings')}</th>
-                <th>{t('mods.progress')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mods.slice(0, 10).map((mod) => {
-                const { stats } = modProgress(mod);
-                return (
-                  <tr key={mod.id}>
-                    <td>
-                      <Link to={`/games/${gameId}/mods/${mod.id}`} className={s.modLink}>
-                        {formatModDisplayName(mod)}
-                      </Link>
-                    </td>
-                    <td className={s.countCell}>{compactCountFmt.format(stats.total)}</td>
-                    <td>
-                      <ProgressBar stats={stats} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <TableScroll>
+            <table className={s.table}>
+              <thead>
+                <tr>
+                  <th>{t('mods.name')}</th>
+                  <th>{t('mods.strings')}</th>
+                  <th>{t('mods.progress')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mods.slice(0, 10).map((mod) => {
+                  const { stats } = modProgress(mod);
+                  return (
+                    <tr key={mod.id}>
+                      <td>
+                        <Link to={`/games/${gameId}/mods/${mod.id}`} className={s.modLink}>
+                          {formatModDisplayName(mod)}
+                        </Link>
+                      </td>
+                      <td className={s.countCell}>{compactCountFmt.format(stats.total)}</td>
+                      <td>
+                        <ProgressBar stats={stats} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </TableScroll>
           {mods.length > 10 && (
             <Link to={`/games/${gameId}/mods`} className={s.viewAll}>
               {t('gameHub.viewAllMods', { count: mods.length })}

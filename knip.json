@@ -16,6 +16,7 @@
     "services/**/*.ts"
   ],
   "ignore": ["web-ui/src/scss.d.ts"],
+  "jest": { "config": ["jest.config.js", "jest.db.config.js"] },
   "rules": {
     "types": "off",
     "unlisted": "off",

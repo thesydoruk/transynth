@@ -187,3 +187,21 @@
   border-top: 1px solid var(--border);
   background: var(--bg-panel);
 }
+
+/* Phones: chips and the search box wrap; the keyboard hints are for a keyboard. */
+@media (max-width: 720px) {
+  .controlRow {
+    flex-wrap: wrap;
+  }
+
+  .find {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .hints,
+  .refHint,
+  .subtitle {
+    display: none;
+  }
+}

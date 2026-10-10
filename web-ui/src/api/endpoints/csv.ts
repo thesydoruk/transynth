@@ -1,13 +1,14 @@
 import { BASE, req } from '../client';
+import { uploadQuery, type ImportFileUploadOptions } from './importFileUpload';
 import type { CsvImportJob, CsvPreviewResult, CsvProgressEvent } from '../types';
 
 export const csvEndpoints = {
   list: () => req<CsvImportJob[]>('/api/csv'),
 
-  upload: async (file: File): Promise<CsvImportJob> => {
+  upload: async (file: File, options?: ImportFileUploadOptions): Promise<CsvImportJob> => {
     const form = new FormData();
     form.append('file', file);
-    const res = await fetch(`${BASE}/api/csv/upload`, {
+    const res = await fetch(`${BASE}/api/csv/upload${uploadQuery(options)}`, {
       method: 'POST',
       body: form,
       credentials: 'include',

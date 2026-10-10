@@ -4,26 +4,26 @@ Self-hosted toolchain for **localizing game mods**: import a plugin or archive, 
 
 It is **open** (MIT). You run it on your machine; there is no cloud account. Anyone who can reach the HTTP port can use the app — see [SECURITY.md](SECURITY.md).
 
-The same pipeline — import, TM, LLM, review, QA, **voice**, export — runs off a **game plugin**. Bethesda and Disco Elysium are wired up today. Another title is a plugin directory, not a new product: no shared code branches on which game it is.
+The same pipeline — import, TM, LLM, review, QA, **voice**, export — runs off a **game plugin**. Bethesda, Disco Elysium and The Witcher 3 are wired up today. Another title is a plugin directory, not a new product: no shared code branches on which game it is.
 
-Voice lives in the same editor as the strings: speakers, reference audio, Fish Speech, and (for Bethesda) lip-sync tools. Localized takes export with the rest of the pack.
+Voice lives in the same editor as the strings: speakers, reference audio, Fish Speech, and lip-sync — Bethesda's tools for Bethesda games, an own mouth model for The Witcher 3. Localized takes export with the rest of the pack.
 
 First-class LLM prompts and glossaries are **Ukrainian** (`en → uk`). Other targets get a generic English prompt. The UI defaults to Ukrainian.
 
 ## Games
 
-Fallout 4, 76, 3, New Vegas · Oblivion · Morrowind · Skyrim SE / LE · Disco Elysium Final Cut.
+Fallout 4, 76, 3, New Vegas · Oblivion · Morrowind · Skyrim SE / LE · Disco Elysium Final Cut · The Witcher 3 (Remastered).
 
 A new game is one directory under `src/games/` implementing the plugin contract, plus one line registering it — see [Adding a Game](doc/eng/17-adding-a-game.md).
 
 ## What you get
 
-- **Import** — ESP/ESM/ESL, BA2/BSA, zip/7z/rar, Disco langpacks. MCM, Interface, and PEX text when they are in the tree.
+- **Import** — ESP/ESM/ESL, BA2/BSA, zip/7z/rar, Disco langpacks, Witcher 3 `.w3strings` with the game's speech and scenes (`npm run import:folder` reads an install or a mods folder). MCM, Interface, and PEX text when they are in the tree.
 - **Translation memory** — exact and anchor reuse, then human review.
 - **LLM** — local vLLM / Gemma, or OpenAI. Glossary in the prompt; placeholders stay intact.
 - **Editor** — string grid, dialogs, voice, QA, coherence, diff when the mod updates.
 - **Voice** — synthesize replicas from the translations you already reviewed.
-- **Export** — STRINGS, patched ESP, BA2/BSA, Disco langpacks, ZIP.
+- **Export** — STRINGS, patched ESP, BA2/BSA, Disco langpacks, Witcher 3 `.w3strings` and a `.w3speech` voice pack, ZIP.
 
 One operator. No accounts and no login.
 

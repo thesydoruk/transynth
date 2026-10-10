@@ -7,7 +7,8 @@ export type VoiceFileEntry = {
   fileName: string;
   lineKey: string;
   variant: number;
-  ext: 'fuz' | 'wav' | 'xwm';
+  /** `ogg` is a take a game stores inside a container, unpacked for playback. */
+  ext: 'fuz' | 'wav' | 'xwm' | 'ogg';
 };
 
 const VOICE_FILE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav|xwm)$/i;

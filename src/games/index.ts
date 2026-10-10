@@ -26,6 +26,7 @@ import {
   skyrimSpecialEdition,
 } from './creation-engine/titles/elderScrolls';
 import { discoElysiumPlugin } from './disco-elysium/plugin';
+import { witcher3Plugin } from './witcher3/plugin';
 import { registerGamePlugin } from './registry';
 
 /** Registration order is the order games appear in the catalogue. */
@@ -43,6 +44,7 @@ for (const title of [
 }
 
 registerGamePlugin(discoElysiumPlugin);
+registerGamePlugin(witcher3Plugin);
 
 export * from './registry';
 export type * from './contract';

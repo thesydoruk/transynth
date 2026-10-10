@@ -176,6 +176,8 @@ export const ModEditorPage = () => {
           onSort={filter.handleSort}
           onColumnFilterChange={filter.handleColumnFilterChange}
           onContextMenu={contextMenu.handleContextMenu}
+          onOpenRowActions={contextMenu.openContextMenuAt}
+          onRowClose={row.handleRowClose}
           onClear={row.handleClear}
           onDraftChange={row.setDraftTranslation}
           onSave={row.handleSave}
@@ -222,6 +224,7 @@ export const ModEditorPage = () => {
           onBatchTranslate={batchTranslate.handleBatchTranslate}
           onBatchApplyTm={batchTranslate.handleBatchApplyTm}
           onRowTranslate={batchTranslate.handleRowTranslate}
+          onMarkReference={contextMenu.ctxMarkReference}
           onSetSkip={contextMenu.ctxSetSkip}
           onSetStatus={contextMenu.ctxSetStatus}
         />

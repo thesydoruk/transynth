@@ -14,3 +14,4 @@ export {
   markFailed as markImportJobFailed,
 } from './jobs';
 export { registerEetFile } from './register';
+export { eetNamesOtherGame } from './gameName';

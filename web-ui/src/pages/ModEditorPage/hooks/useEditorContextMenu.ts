@@ -1,6 +1,8 @@
 import { useState, useCallback, type RefObject, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type StringFilterParams, type StringRow } from '../../../api';
+import { toast } from '../../../components/Toast';
 import type { ContextMenuStatus } from '../statusFilter';
 import { useEditorGridCachePatches } from './useEditorGridCachePatches';
 
@@ -50,6 +52,7 @@ export function useEditorContextMenu({
   handleRowSelect,
 }: UseEditorContextMenuParams) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; row: StringRow } | null>(null);
   const { patchClearedInCache, patchSkipInCache, patchStatusInCache } =
     useEditorGridCachePatches(modId);
@@ -59,6 +62,18 @@ export function useEditorContextMenu({
       e.preventDefault();
       handleRowSelect(row);
       setCtxMenu({ x: e.clientX, y: e.clientY, row });
+    },
+    [handleRowSelect],
+  );
+
+  /**
+   * The same menu from a button: a finger has no right-click, and even with a
+   * mouse the menu is easier to find this way.
+   */
+  const openContextMenuAt = useCallback(
+    (row: StringRow, x: number, y: number) => {
+      handleRowSelect(row);
+      setCtxMenu({ x, y, row });
     },
     [handleRowSelect],
   );
@@ -208,6 +223,29 @@ export function useEditorContextMenu({
     ],
   );
 
+  /** Copy reviewed/human translations of the target rows into the per-game reference base. */
+  const ctxMarkReference = useCallback(
+    async (row: StringRow) => {
+      try {
+        const ids = hasSelection ? await resolveSelectedIds() : [row.string_id];
+        let promoted = 0;
+        for (let i = 0; i < ids.length; i += SET_STATUS_CHUNK) {
+          const result = await api.reference.promote({
+            stringIds: ids.slice(i, i + SET_STATUS_CHUNK),
+            targetLang,
+          });
+          promoted += result.promoted;
+        }
+        qc.invalidateQueries({ queryKey: ['reference'] });
+        if (promoted > 0) toast.success(t('modEditor.referencePromoted', { count: promoted }));
+        else toast.info(t('modEditor.referencePromotedNone'));
+      } catch (err) {
+        toast.error(String(err));
+      }
+    },
+    [hasSelection, resolveSelectedIds, targetLang, qc, t],
+  );
+
   const ctxClear = useCallback(
     async (row: StringRow) => {
       if (hasSelection) {
@@ -270,12 +308,14 @@ export function useEditorContextMenu({
     ctxMenu,
     setCtxMenu,
     handleContextMenu,
+    openContextMenuAt,
     ctxMultiTarget,
     ctxTargetCount,
     applyTextTransform,
     ctxCopySource,
     ctxSetStatus,
     ctxSetSkip,
+    ctxMarkReference,
     ctxClear,
   };
 }

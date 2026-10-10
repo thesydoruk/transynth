@@ -8,14 +8,29 @@ Follow the [README](README.md) Docker or `npm run dev` path. Do not commit `.env
 
 ```bash
 npm test
+npm run test:db:up && npm run test:db
 npm --prefix web-ui test
+npm --prefix web-ui run test:devices
 ```
+
+`test:db` runs the `*.db.test.ts` files against a real Postgres — the same
+pgvector image production uses — so SQL is tested as SQL, not as a mocked call.
+`test:db:up` starts a throwaway one from `docker/compose.test-db.yml` on port 55433,
+data in RAM; `test:db:down` stops it. To use another server set `TEST_DATABASE_URL`;
+the suite drops and recreates that database on every run, so its name must end in
+`_test`. Fixtures and the per-test reset live in `src/testing/testDb.ts`.
+
+`test:devices` opens every page on a desktop, a laptop, an iPad both ways round and
+three phones down to 320px, in Chromium and WebKit, against a fake API
+(`web-ui/e2e/mockApi.ts`). Run `npx playwright install chromium webkit` in `web-ui/`
+once first. A page that grows wider than the screen, a top-bar control that falls off
+it or is too small to tap, or an editor line a finger cannot open fails the run.
 
 Prettier runs on commit. Do not add `--no-verify` unless you are fixing a hook that already failed.
 
 ## Before you open a PR
 
-Pull requests run Prettier, ESLint, `tsc`, `npm test`, `npm --prefix web-ui test`, and the web-ui build.
+Pull requests run Prettier, ESLint, `tsc`, `npm test`, the database tests, `npm --prefix web-ui test`, the device tests, and the web-ui build.
 
 - One concern per PR.
 - Tests for the behavior you changed, next to the source (`__tests__/` or `*.test.ts`).

@@ -333,7 +333,7 @@ INSERT INTO qa_rules (game, rule_type, value, severity, description)
 SELECT v.game, 'forbidden_chars', '©®™', 'warning',
   'Trademark symbols often missing from game UI fonts'
 FROM (
-  VALUES ('fo4'), ('fo76'), ('fo3'), ('fnv'), ('ob'), ('mw'), ('sse'), ('sle'), ('disco')
+  VALUES ('fo4'), ('fo76'), ('fo3'), ('fnv'), ('ob'), ('mw'), ('sse'), ('sle'), ('disco'), ('w3')
 ) AS v(game)
 WHERE NOT EXISTS (SELECT 1 FROM qa_rules);
 
@@ -577,6 +577,7 @@ CREATE TABLE IF NOT EXISTS project_settings (
 INSERT INTO project_settings(key, value) VALUES
   ('workflow.auto_approve_on_save',    'false'),
   ('workflow.propagate_to_identical',  'true'),
+  ('workflow.promote_reference_on_approve', 'false'),
   ('workflow.hide_ignored_by_default', 'false'),
   ('qa.end_punct_match',               'true'),
   ('qa.min_word_count',                '1'),
@@ -593,6 +594,53 @@ DELETE FROM project_settings WHERE key = 'llm.stress_place_thinking';
 
 -- xtts-engine match flags moved from global booleans to per-game `voice.game_tts`.
 DELETE FROM project_settings WHERE key IN ('voice.match_loudness', 'voice.match_timing');
+
+-- ── Reference translations ──────────────────────────────────────────────────
+-- The translation memory is a query over other mods' `translations`, so deleting
+-- a mod forgets everything it taught. This table is the part of the memory that
+-- must survive: one row per (game, language pair, anchor, source text), with no
+-- foreign key to `mods` or `strings`. Rows get here by promotion (an editor
+-- action, the delete-mod snapshot, the auto-promote setting) or by hand on the
+-- per-game Reference page. TM auto-apply reads it ahead of live mods.
+CREATE TABLE IF NOT EXISTS reference_translations (
+  id SERIAL PRIMARY KEY,
+  game TEXT NOT NULL,
+  src_lang TEXT NOT NULL,
+  tgt_lang TEXT NOT NULL,
+  -- TM anchors, empty when unknown (a row added by hand has none).
+  formid_hex TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL DEFAULT '',
+  edid TEXT NOT NULL DEFAULT '',
+  signature TEXT,
+  source_text TEXT NOT NULL,
+  text_norm TEXT NOT NULL,
+  translation TEXT NOT NULL,
+  -- manual | promote | delete_snapshot | auto_approve. A `manual` row was
+  -- edited on the Reference page and is never overwritten by a promotion.
+  origin TEXT NOT NULL DEFAULT 'manual',
+  origin_mod_name TEXT,
+  origin_mod_version TEXT,
+  origin_status TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS reference_translations_anchor_key
+  ON reference_translations(game, src_lang, tgt_lang, formid_hex, path, source_text);
+
+CREATE INDEX IF NOT EXISTS idx_reference_translations_text_norm
+  ON reference_translations(game, src_lang, tgt_lang, text_norm);
+
+CREATE INDEX IF NOT EXISTS idx_reference_translations_edid
+  ON reference_translations(game, src_lang, tgt_lang, edid, path)
+  WHERE edid <> '';
+
+CREATE INDEX IF NOT EXISTS idx_reference_translations_source_trgm
+  ON reference_translations USING gin (source_text gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_reference_translations_translation_trgm
+  ON reference_translations USING gin (translation gin_trgm_ops);
 
 -- ── Translation RAG index (pgvector) ────────────────────────────────────────
 -- Stores embeddings of reviewed/human translations for few-shot LLM context.

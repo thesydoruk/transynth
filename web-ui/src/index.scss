@@ -332,6 +332,23 @@ pre {
   font-family: ui-monospace, Consolas, monospace;
 }
 
+/* A select is as wide as its longest option — a full mod name — so cap every
+   form control at its container or it pushes a phone screen sideways. */
+select,
+input,
+textarea {
+  max-width: 100%;
+}
+
+/* Controls do not inherit the page font by default; some WebKit builds then
+   draw buttons and selects in a serif. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

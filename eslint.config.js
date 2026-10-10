@@ -9,6 +9,11 @@ export default tseslint.config(
       'node_modules/**',
       'data/**',
       'web-ui/dist/**',
+      // Worktrees of background Claude sessions: other checkouts, not this tree.
+      '.claude/**',
+      'web-ui/test-results/**',
+      'web-ui/playwright-report/**',
+      'web-ui/.e2e-dist/**',
       'coverage/**',
       '**/*.sqlite',
     ],

@@ -54,6 +54,22 @@ describe('maskPlaceholders', () => {
     expect(masked).toBe('¤PH0¤Bold¤PH1¤ text');
   });
 
+  it('masks a double-angle token whole, both closing brackets included', () => {
+    const { masked, mapping } = maskPlaceholders(
+      'press <<Examine>> and <<Color_Gwint>>decks<<End_Color>>.',
+    );
+    expect(masked).toBe('press ¤PH0¤ and ¤PH1¤decks¤PH2¤.');
+    expect(Object.values(mapping)).toEqual(['<<Examine>>', '<<Color_Gwint>>', '<<End_Color>>']);
+  });
+
+  it('masks a dollar-delimited variable with both dollars', () => {
+    const { masked, mapping } = maskPlaceholders(
+      'damage by $I$%, then $F$ more; $name stays a variable',
+    );
+    expect(masked).toBe('damage by ¤PH0¤%, then ¤PH1¤ more; ¤PH2¤ stays a variable');
+    expect(Object.values(mapping)).toEqual(['$I$', '$F$', '$name']);
+  });
+
   it('masks only the numeric prefix of UI cost tags so Caps stays translatable', () => {
     const { masked, mapping } = maskPlaceholders('Call Subway <20 Caps>');
     expect(masked).toBe('Call Subway ¤PH0¤Caps>');

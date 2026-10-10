@@ -8,6 +8,9 @@ import { pipeline } from 'node:stream/promises';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../db';
+import { CONFIG } from '../../config';
+import { DEFAULT_GAME_ID, isGameId } from '../../games/registry';
+import type { GameId } from '../../types';
 import { log } from '../../logger';
 import {
   ensureCsvImportSchema,
@@ -26,6 +29,7 @@ import {
   pauseQueuedImport,
 } from '../../../worker/src/api/importJobs';
 import { startJobSse } from '../../../worker/src/api/startJobSse';
+import { parseRouteId } from './parseRouteId';
 
 import { PATHS } from '../../paths';
 
@@ -57,48 +61,57 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
   });
 
   // ── Upload CSV file ───────────────────────────────────────────────────────
-  app.post('/api/csv/upload', async (req, reply) => {
-    const data = await req.file();
-    if (!data) return reply.status(400).send({ error: 'No file uploaded' });
+  // The game and languages come from the page the file was uploaded on, as for
+  // a mod upload; a CSV names no game of its own.
+  app.post<{ Querystring: { game?: string; srcLang?: string; tgtLang?: string } }>(
+    '/api/csv/upload',
+    async (req, reply) => {
+      const data = await req.file();
+      if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
-    const origName = data.filename;
-    if (!origName.toLowerCase().endsWith('.csv')) {
-      return reply.status(400).send({ error: 'Only .csv files are accepted' });
-    }
-
-    const tmpPath = path.join(
-      CSV_UPLOAD_DIR,
-      `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
-    );
-    ensureUploadDir();
-
-    try {
-      await pipeline(data.file, fs.createWriteStream(tmpPath));
-
-      const finalPath = csvFilePath(origName);
-      fs.renameSync(tmpPath, finalPath);
-
-      const text = fs.readFileSync(finalPath, 'utf8');
-      const job = await registerCsvFile(db, origName, text);
-
-      return reply.status(201).send({ ...job, running: false });
-    } catch (err: unknown) {
-      try {
-        fs.unlinkSync(tmpPath);
-      } catch {
-        /* ignore */
+      const origName = data.filename;
+      if (!origName.toLowerCase().endsWith('.csv')) {
+        return reply.status(400).send({ error: 'Only .csv files are accepted' });
       }
-      log.error(`CSV upload failed: ${err instanceof Error ? err.message : err}`);
-      return reply.status(500).send({ error: 'Upload failed' });
-    }
-  });
+      const game: GameId = isGameId(req.query.game) ? req.query.game : DEFAULT_GAME_ID;
+      const srcLang = req.query.srcLang ?? CONFIG.defaultSrcLang;
+      const tgtLang = req.query.tgtLang ?? CONFIG.defaultTgtLang;
+
+      const tmpPath = path.join(
+        CSV_UPLOAD_DIR,
+        `_upload_${crypto.randomBytes(8).toString('hex')}.tmp`,
+      );
+      ensureUploadDir();
+
+      try {
+        await pipeline(data.file, fs.createWriteStream(tmpPath));
+
+        const finalPath = csvFilePath(origName);
+        fs.renameSync(tmpPath, finalPath);
+
+        const text = fs.readFileSync(finalPath, 'utf8');
+        const job = await registerCsvFile(db, origName, text, { game, srcLang, tgtLang });
+
+        return reply.status(201).send({ ...job, running: false });
+      } catch (err: unknown) {
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {
+          /* ignore */
+        }
+        log.error(`CSV upload failed: ${err instanceof Error ? err.message : err}`);
+        return reply.status(500).send({ error: 'Upload failed' });
+      }
+    },
+  );
 
   // ── Preview CSV file records (paginated + filterable) ─────────────────────
   app.get<{
     Params: { id: string };
     Querystring: { page?: string; pageSize?: string; signature?: string; q?: string };
   }>('/api/csv/:id/preview', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
 
@@ -159,7 +172,8 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
   app.patch<{ Params: { id: string }; Body: { srcLang: string; tgtLang: string } }>(
     '/api/csv/:id',
     async (req, reply) => {
-      const jobId = Number(req.params.id);
+      const jobId = parseRouteId(req.params.id);
+      if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
       const job = await getCsvImportJob(db, jobId);
       if (!job) return reply.status(404).send({ error: 'Import job not found' });
       if (await isImportQueued('csv-import', jobId))
@@ -175,7 +189,8 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Start import (SSE stream) ─────────────────────────────────────────────
   app.get<{ Params: { id: string } }>('/api/csv/:id/import', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (job.status === 'completed') return reply.status(400).send({ error: 'Already completed' });
@@ -194,7 +209,8 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Pause import ──────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/pause', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await pauseQueuedImport('csv-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     return { ok: true };
@@ -202,7 +218,8 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Cancel import ─────────────────────────────────────────────────────────
   app.post<{ Params: { id: string } }>('/api/csv/:id/cancel', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     if (!(await cancelQueuedImport('csv-import', jobId)))
       return reply.status(400).send({ error: 'Import not running' });
     const job = await getCsvImportJob(db, jobId);
@@ -212,7 +229,8 @@ export const csvRoutes = async (app: FastifyInstance, db: Tx) => {
 
   // ── Delete import job + uploaded file ─────────────────────────────────────
   app.delete<{ Params: { id: string } }>('/api/csv/:id', async (req, reply) => {
-    const jobId = Number(req.params.id);
+    const jobId = parseRouteId(req.params.id);
+    if (jobId === null) return reply.status(400).send({ error: 'Invalid import job id' });
     const job = await getCsvImportJob(db, jobId);
     if (!job) return reply.status(404).send({ error: 'Import job not found' });
     if (await isImportQueued('csv-import', jobId))

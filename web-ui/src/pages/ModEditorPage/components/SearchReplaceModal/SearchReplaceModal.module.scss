@@ -30,6 +30,7 @@
 /** Button row at the bottom of the form. */
 .modalBtnRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
 }

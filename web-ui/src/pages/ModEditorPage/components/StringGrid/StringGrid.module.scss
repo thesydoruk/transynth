@@ -5,6 +5,51 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  container-type: inline-size;
+}
+
+/*
+ * The fixed columns add up to about 1000px, and the grid cannot scroll
+ * sideways, so a narrow grid used to push source and translation off its edge.
+ * As the grid narrows it drops metadata first — Field, EDID, then FormID and
+ * the hover-only action buttons, then the record type — so the two text
+ * columns always stay visible. Queried on the grid's own width, not the
+ * screen's, because the record-type panel and window size both eat into it.
+ */
+@container (max-width: 1020px) {
+  [data-col='field'] {
+    display: none;
+  }
+}
+
+@container (max-width: 860px) {
+  [data-col='edid'] {
+    display: none;
+  }
+}
+
+@container (max-width: 720px) {
+  /* Set on the cells: a container query cannot style the container itself. */
+  [data-col='src'],
+  [data-col='transl'] {
+    --grid-text-min: 120px;
+  }
+
+  [data-col='formid'],
+  [data-col='act'] {
+    display: none;
+  }
+}
+
+@container (max-width: 440px) {
+  [data-col='src'],
+  [data-col='transl'] {
+    --grid-text-min: 90px;
+  }
+
+  [data-col='grup'] {
+    display: none;
+  }
 }
 
 .center {
@@ -195,7 +240,7 @@
 .tdText {
   composes: td;
   flex: 1;
-  min-width: 180px;
+  min-width: var(--grid-text-min, 180px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -278,4 +323,10 @@
   color: var(--qa-hint-text);
   font-size: 10px;
   font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .filterInput {
+    min-height: 26px;
+  }
 }

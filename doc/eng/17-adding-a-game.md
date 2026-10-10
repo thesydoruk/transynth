@@ -101,6 +101,12 @@ it instead of testing for `INFO`.
      shared `finalizeModImport`. Honour `ctx.state.cancel` / `ctx.state.pause`
      between batches so a paused job resumes cleanly.
 
+   Optionally, `planFolderImport(dir, options)` lets `npm run import:folder`
+   read a game install or a folder of mods straight from disk: return the mods
+   the folder holds and the files each needs, with the paths they keep. The
+   script copies them into mod storage and imports the copy like an upload —
+   never the folder in place, since deleting a mod deletes its stored tree.
+
 4. **Export.** `collectLangpackEntries(ctx)` returns the loose localized files;
    `exportFullModZip(ctx)` returns the whole mod with translations applied. A
    game whose distribution shape is the same for both points them at one

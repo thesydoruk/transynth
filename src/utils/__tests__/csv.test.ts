@@ -1,44 +1,61 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseCsvLine, csvRow } from '../csv';
+import { iterCsvRows, csvRow } from '../csv';
 
-describe('parseCsvLine', () => {
+/** Every record of a CSV text, each as its field values. */
+const rows = (text: string): string[][] => [...iterCsvRows(text)];
+
+describe('iterCsvRows', () => {
   it('parses simple unquoted fields', () => {
-    expect(parseCsvLine('a,b,c')).toEqual(['a', 'b', 'c']);
+    expect(rows('a,b,c')).toEqual([['a', 'b', 'c']]);
   });
 
   it('parses quoted fields', () => {
-    expect(parseCsvLine('"hello","world"')).toEqual(['hello', 'world']);
+    expect(rows('"hello","world"')).toEqual([['hello', 'world']]);
   });
 
   it('handles commas inside quoted fields', () => {
-    expect(parseCsvLine('"one,two",three')).toEqual(['one,two', 'three']);
+    expect(rows('"one,two",three')).toEqual([['one,two', 'three']]);
   });
 
   it('handles escaped double-quotes (RFC 4180)', () => {
-    expect(parseCsvLine('"he said ""hi""",ok')).toEqual(['he said "hi"', 'ok']);
+    expect(rows('"he said ""hi""",ok')).toEqual([['he said "hi"', 'ok']]);
   });
 
   it('handles empty fields', () => {
-    expect(parseCsvLine('a,,c')).toEqual(['a', '', 'c']);
+    expect(rows('a,,c')).toEqual([['a', '', 'c']]);
   });
 
   it('handles trailing comma -> empty last field', () => {
-    expect(parseCsvLine('a,b,')).toEqual(['a', 'b', '']);
+    expect(rows('a,b,')).toEqual([['a', 'b', '']]);
   });
 
   it('handles single field', () => {
-    expect(parseCsvLine('hello')).toEqual(['hello']);
+    expect(rows('hello')).toEqual([['hello']]);
   });
 
   it('handles empty string', () => {
-    expect(parseCsvLine('')).toEqual([]);
+    expect(rows('')).toEqual([]);
   });
 
-  it('round-trips through csvRow -> parseCsvLine', () => {
+  it('splits records on any line ending and skips blank lines', () => {
+    expect(rows('a,b\r\nc,d\n\n\re,f\n')).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+      ['e', 'f'],
+    ]);
+  });
+
+  it('keeps line breaks inside a quoted field as written', () => {
+    expect(rows('"one\ntwo",x\r\n"three\r\nfour",y')).toEqual([
+      ['one\ntwo', 'x'],
+      ['three\r\nfour', 'y'],
+    ]);
+  });
+
+  it('round-trips through csvRow, line breaks included', () => {
     const original = ['FormID', 'NPC_ ', 'Property\\Value', 'He said "hello"', ''];
-    const line = csvRow(original);
-    const parsed = parseCsvLine(line);
-    expect(parsed).toEqual(original);
+    const multiLine = ['BOOK', 'Day one.\nThe raiders came.', ''];
+    expect(rows(`${csvRow(original)}\n${csvRow(multiLine)}`)).toEqual([original, multiLine]);
   });
 });
 

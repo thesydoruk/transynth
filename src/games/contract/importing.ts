@@ -78,6 +78,39 @@ export type DialogSpeakerRefresh = {
   recoveredSpeakers: number;
 };
 
+/** What the operator asked for when importing a folder on disk. */
+export type FolderImportOptions = {
+  /** Treat each subfolder as its own mod instead of the whole folder as one. */
+  perMod: boolean;
+  /** Read only these languages, in the game's own codes. Null reads all. */
+  langs: ReadonlySet<string> | null;
+  /** Name for a single-mod import; the plugin picks one when unset. */
+  name?: string;
+};
+
+/** One mod a folder import will register, and the files it needs. */
+export type FolderImportUnit = {
+  name: string;
+  /** The folder it was read from, recorded on the job as its source. */
+  sourceFolder: string;
+  /**
+   * Files to put into mod storage. `relPath` (forward slashes) is where each
+   * lands in the staged tree, which is then imported exactly like an extracted
+   * upload — so it must be the layout {@link GameImportAdapter.selectAnchor}
+   * and the export expect.
+   */
+  files: FolderImportFile[];
+};
+
+/**
+ * One staged file: a copy of `absPath`, or bytes the plugin produces with
+ * `read` — a file it takes out of a game archive, so the archive itself (most
+ * of it meshes and textures) never has to be copied.
+ */
+export type FolderImportFile =
+  | { relPath: string; absPath: string }
+  | { relPath: string; read: () => Buffer; size: number };
+
 /**
  * How one game gets text out of an uploaded mod and into the database.
  *
@@ -114,6 +147,16 @@ export type GameImportAdapter = {
    * batches and finish by calling the shared `finalizeModImport`.
    */
   ingest(ctx: ModImportRunContext): Promise<void>;
+
+  /**
+   * Plan an import from a folder on disk (`npm run import:folder`): which mods
+   * the folder holds and which of its files each one needs.
+   *
+   * The files are copied into mod storage before anything is read, never
+   * imported in place — deleting a mod deletes its stored tree, and that must
+   * not be someone's game install. Absent when a game is only ever uploaded.
+   */
+  planFolderImport?(dir: string, options: FolderImportOptions): FolderImportUnit[];
 
   /**
    * Re-derive who speaks and who is addressed for a mod already imported.

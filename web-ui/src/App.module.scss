@@ -48,6 +48,8 @@
 .contextBadge,
 .contextPlain {
   display: inline-flex;
+  min-width: 0;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
@@ -71,6 +73,8 @@
 .contextValue {
   color: var(--text-bright);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .spacer {
@@ -172,6 +176,44 @@
   cursor: pointer;
   line-height: 1;
   text-decoration: none;
+}
+
+/*
+ * Phones: the context pills drop to a second row so the controls keep the
+ * first, and every control grows to a size a thumb can hit. Two rows are too
+ * much screen to pin, so the bar scrolls away with the page.
+ */
+@media (max-width: 720px) {
+  .nav {
+    position: static;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 48px;
+    padding: 6px 12px;
+    gap: 6px 8px;
+  }
+
+  .brand {
+    margin-right: 0;
+  }
+
+  .contextStrip {
+    order: 1;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+
+  .themeBtn,
+  .iconBtn,
+  .iconBtnActive {
+    width: 36px;
+    height: 36px;
+  }
+
+  .langSwitch {
+    height: 36px;
+    max-width: 120px;
+  }
 }
 
 /** Main content area — fills the viewport below the 48px nav bar. */
