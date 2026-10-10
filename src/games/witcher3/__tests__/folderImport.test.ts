@@ -130,6 +130,27 @@ describe('scenes in a folder import', () => {
     expect(unit!.files.some((file) => file.relPath.endsWith('.xbm'))).toBe(false);
   });
 
+  it('plans scene files already lying loose, as a staged folder has them', () => {
+    writeTable('en', { 1: 'Hmm.' }, 'content', 'content0');
+    const scenes = path.join(root, 'scenes', 'quests', 'q001');
+    fs.mkdirSync(scenes, { recursive: true });
+    fs.writeFileSync(path.join(scenes, 'a.w2scene'), 'CR2W');
+    fs.writeFileSync(
+      path.join(root, 'scenes', 'scene_voice_tags.csv'),
+      'Voicetag;Sex;Pitch;Template;Id',
+    );
+    fs.writeFileSync(path.join(root, 'scenes', 'notes.txt'), 'not a scene');
+
+    const [unit] = planWitcher3FolderImport(root, { perMod: false, langs: null });
+    expect(unit!.files.map((file) => file.relPath)).toEqual([
+      'content/content0/en.w3strings',
+      'scenes/quests/q001/a.w2scene',
+      'scenes/scene_voice_tags.csv',
+    ]);
+    const loose = unit!.files.find((file) => file.relPath.endsWith('a.w2scene'));
+    expect(loose && 'absPath' in loose ? loose.absPath : null).toBe(path.join(scenes, 'a.w2scene'));
+  });
+
   it('leaves out a mod that has scenes but no string tables', async () => {
     const { buildBundle, sceneWith } = await import('./fixtures');
     fs.mkdirSync(path.join(root, 'modScenesOnly', 'content'), { recursive: true });

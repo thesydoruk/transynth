@@ -22,14 +22,19 @@
  *   --tgt-lang <code>    Target language stored on the job (default: TGT_LANG)
  *   --force              Re-import mods whose jobs are already completed
  *   --dry-run            Stage to a temp folder, report what would be imported, touch no DB
+ *   --stage-to <path>    Copy the files the import would use into <path> and stop, touch no DB.
+ *                        For when the game is on this machine and Transynth on another:
+ *                        move that folder over and run this command there with --dir <path>
  *
  * Examples (The Witcher 3):
  *   npm run import:folder -- --game w3 --dir "C:\Program Files (x86)\Steam\steamapps\common\The Witcher 3" --langs en,pl,ru --dry-run
  *   npm run import:folder -- --game w3 --dir "C:\Program Files (x86)\Steam\steamapps\common\The Witcher 3" --langs en,pl,ru
  *   npm run import:folder -- --game w3 --dir "D:\Games\The Witcher 3\mods" --per-mod
+ *   npm run import:folder -- --game w3 --dir "C:\...\The Witcher 3" --langs en,ua --stage-to D:\staging\witcher3
  *
  * The same files with a different --langs are a different import (and a
- * different mod): the selection is part of what is hashed.
+ * different mod): the selection is part of what is hashed. A staged folder
+ * imports under the same hash as the folder it was staged from.
  */
 // Registers the game plugins; the registry lookups below depend on it.
 import '../src/games';
@@ -74,6 +79,10 @@ const argv = await yargs(hideBin(process.argv))
   .option('tgt-lang', { type: 'string', default: CONFIG.defaultTgtLang })
   .option('force', { type: 'boolean', default: false, describe: 'Re-import completed jobs' })
   .option('dry-run', { type: 'boolean', default: false, describe: 'Report only; no DB writes' })
+  .option('stage-to', {
+    type: 'string',
+    describe: 'Copy the files the import would use here and stop; no DB writes',
+  })
   .help()
   .parse();
 
@@ -216,6 +225,24 @@ if (units.length === 0) {
 
 if (argv['dry-run']) {
   for (const unit of units) reportUnit(unit);
+  process.exit(0);
+}
+
+if (argv['stage-to']) {
+  // Every unit's paths already carry its folder name when importing per mod,
+  // so one target holds them all and imports with the same --per-mod flag.
+  const target = resolveDirectoryInput(argv['stage-to']);
+  ensureDir(target);
+  for (const unit of units) {
+    stageUnit(unit, target);
+    log.info(
+      `Staged "${unit.name}": ${unit.files.length} file(s), ${(totalBytes(unit) / 1048576).toFixed(1)} MiB → ${target}`,
+    );
+  }
+  log.info(
+    `Import there with: npm run import:folder -- --game ${plugin.id} --dir "${target}"` +
+      `${argv['per-mod'] ? ' --per-mod' : ''}${argv.langs ? ` --langs ${argv.langs}` : ''}`,
+  );
   process.exit(0);
 }
 

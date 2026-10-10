@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-10-10
+
+- **A Witcher 3 import staged on one machine, run on another.** The game sits on the player's PC and Transynth may run on a server without it. `npm run import:folder -- --game w3 --dir <game> --langs en,ua --stage-to <folder>` copies only what the import uses — the tables, the voice container and the scene files taken out of the bundles, 4.3 GB rather than the game's 59 — and the folder import now plans scene files lying loose in a folder as they are. Moved to the server and imported with the same command, the staged folder lands under the same paths and the same content hash as the game folder would.
+
 ## 0.9.0 — 2026-10-10
 
 The Witcher 3 (Remastered), text and voice:

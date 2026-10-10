@@ -15,7 +15,10 @@
  * the voice export rebuilds from), and the scene files that say who speaks
  * each line. Scenes are taken out of the `.bundle` archives and staged loose
  * under `scenes/` (253 MB for the game): the 2.1 GB of archives they come in
- * are mostly meshes and textures.
+ * are mostly meshes and textures. Scene files already lying loose in the folder
+ * are planned as they are, so a folder staged by `--stage-to` on the machine
+ * that has the game imports on a server that does not, with the same files
+ * under the same paths — and so the same content hash.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,8 +49,13 @@ const selectFiles = (
 const hasTables = (file: FolderImportFile): boolean =>
   file.relPath.toLowerCase().endsWith('.w3strings');
 
-const listBundlesUnder = (root: string, skipMods: boolean): string[] => {
-  const out: string[] = [];
+/** Files under `root` (root-relative, `/`-separated) that `wanted` accepts, sorted. */
+const listFilesUnder = (
+  root: string,
+  skipMods: boolean,
+  wanted: (relPath: string) => boolean,
+): { absPath: string; relPath: string }[] => {
+  const out: { absPath: string; relPath: string }[] = [];
   const walk = (dir: string, rel: string): void => {
     let entries: fs.Dirent[];
     try {
@@ -59,21 +67,28 @@ const listBundlesUnder = (root: string, skipMods: boolean): string[] => {
       const childRel = rel ? `${rel}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         if (!(skipMods && /^mods$/i.test(childRel))) walk(path.join(dir, entry.name), childRel);
-      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.bundle')) {
-        out.push(path.join(dir, entry.name));
+      } else if (entry.isFile() && wanted(childRel)) {
+        out.push({ absPath: path.join(dir, entry.name), relPath: childRel });
       }
     }
   };
   walk(root, '');
-  return out.sort();
+  return out.sort((a, b) => a.relPath.localeCompare(b.relPath));
 };
 
-/** Scene files and voice-tag tables inside the archives, staged under `<prefix>scenes/`. */
+const isBundle = (relPath: string): boolean => relPath.toLowerCase().endsWith('.bundle');
+const isSceneData = (relPath: string): boolean =>
+  isW3SceneFile(relPath) || isW3VoiceTagTable(relPath);
+
+/**
+ * Scene files and voice-tag tables: those inside the archives, staged under
+ * `<prefix>scenes/`, and those already loose under `root`, kept where they are.
+ */
 const sceneFiles = (root: string, prefix: string, skipMods: boolean): FolderImportFile[] => {
   const byPath = new Map<string, FolderImportFile>();
-  for (const bundle of listBundlesUnder(root, skipMods)) {
+  for (const { absPath: bundle } of listFilesUnder(root, skipMods, isBundle)) {
     for (const entry of readBundleIndex(bundle).entries) {
-      if (!isW3SceneFile(entry.path) && !isW3VoiceTagTable(entry.path)) continue;
+      if (!isSceneData(entry.path)) continue;
       const relPath = `${prefix}scenes/${entry.path}`;
       // A later archive's copy wins, as the game's own load order does.
       byPath.set(relPath, {
@@ -89,6 +104,11 @@ const sceneFiles = (root: string, prefix: string, skipMods: boolean): FolderImpo
         },
       });
     }
+  }
+  // A loose file is what an earlier staging wrote out of these same archives.
+  for (const file of listFilesUnder(root, skipMods, isSceneData)) {
+    const relPath = `${prefix}${file.relPath}`;
+    byPath.set(relPath, { relPath, absPath: file.absPath });
   }
   return [...byPath.values()];
 };
