@@ -13,6 +13,8 @@
  *   LLM / embedding provider settings (see .env.example)
  */
 import '../src/loadEnv';
+// Registers the game plugins; example selection resolves game-specific rules through the registry.
+import '../src/games';
 import { openDb, closeDb } from '../src/db';
 import { log } from '../src/logger';
 import { reindexAllTranslationExamples } from '../src/llm/rag';
