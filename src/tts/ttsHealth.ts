@@ -3,9 +3,12 @@ import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
 export type TtsHealthResult = { ok: true } | { ok: false; error: string };
 
 /** Probe Fish Speech `GET /health` without throwing. */
-export const probeTtsHealth = async (baseUrl?: string): Promise<TtsHealthResult> => {
+export const probeTtsHealth = async (
+  baseUrl?: string,
+  signal?: AbortSignal,
+): Promise<TtsHealthResult> => {
   const root = (baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
-  const response = await fetch(`${root}/health`).catch(() => null);
+  const response = await fetch(`${root}/health`, { signal }).catch(() => null);
   if (!response?.ok) {
     return { ok: false, error: `TTS health check failed (${root}/health)` };
   }

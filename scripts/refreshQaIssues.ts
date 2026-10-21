@@ -21,6 +21,8 @@
  *   npm run qa:refresh -- --mod-id 102 --target-lang uk
  */
 import '../src/loadEnv';
+// Registers the game plugins; the QA rules look up the game's glossary key through the registry.
+import '../src/games';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { CONFIG, validateConfig } from '../src/config';

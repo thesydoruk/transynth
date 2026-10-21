@@ -1104,6 +1104,7 @@
     "tabs": {
       "general": "General",
       "llm": "LLM / Auto-translate",
+      "services": "Services",
       "voice": "Voice",
       "qaRules": "QA Rules",
       "workflow": "Workflow",
@@ -1120,8 +1121,42 @@
       "themeDark": "Switch to dark",
       "themeLight": "Switch to light"
     },
+    "services": {
+      "refresh": "Refresh",
+      "refreshing": "Checking...",
+      "probedAt": "Probed at {{time}}",
+      "noEndpoints": "No endpoints configured.",
+      "host": "Host",
+      "maxParallel": "Parallel limit",
+      "managed": "Managed",
+      "managedYes": "yes",
+      "health": "Health",
+      "healthy": "healthy",
+      "unhealthy": "unhealthy",
+      "inFlight": "In flight",
+      "queued": "Queued",
+      "poolTotals": "Pool: {{inFlight}} in flight, {{queued}} queued, limit {{max}} ({{healthyMax}} on healthy hosts)",
+      "source": {
+        "settings": "settings",
+        "legacyLlm": "vLLM pool setting",
+        "env": "environment",
+        "asr": "same as audio-intel"
+      },
+      "editorSection": "Endpoints (services.endpoints)",
+      "editorDesc": "Overrides the environment and the vLLM pool setting for the kinds listed here. Applies without a restart.",
+      "row": "Endpoint {{index}}",
+      "kind": "Kind",
+      "apiKey": "API key",
+      "apiKeyUnchanged": "unchanged",
+      "apiKeyOptional": "optional",
+      "managedNote": "Managed by a controller; it writes this row, so it is read-only here.",
+      "add": "Add endpoint",
+      "remove": "Remove",
+      "save": "Save",
+      "saving": "Saving..."
+    },
     "llm": {
-      "readonlyNote": "Provider and model names come from the server .env file. The vLLM chat pool below is stored in project settings and applies without a restart.",
+      "readonlyNote": "Provider and model names come from the server .env file. The vLLM chat pool below is stored in project settings and applies without a restart. The Services tab can override every endpoint.",
       "readinessSection": "Readiness",
       "readiness": {
         "ok": "ready",

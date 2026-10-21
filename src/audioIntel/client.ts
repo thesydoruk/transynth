@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveAudioIntelBaseUrl } from './baseUrl';
+import { servicePool } from '../services/pools';
 import type { AudioIntelSpeechSegment, AudioIntelTranscript } from './types';
 
 export type TranscribeWavOptions = {
@@ -62,7 +62,17 @@ export const transcribeWav = async (
   wavPath: string,
   options: TranscribeWavOptions = {},
 ): Promise<AudioIntelTranscript> => {
-  const root = (options.baseUrl ?? resolveAudioIntelBaseUrl()).replace(/\/$/, '');
+  // The `asr` pool picks the host and bounds concurrency; an explicit baseUrl bypasses it.
+  if (options.baseUrl) return transcribeWavAt(options.baseUrl, wavPath, options);
+  return servicePool('asr').run((host) => transcribeWavAt(host, wavPath, options));
+};
+
+const transcribeWavAt = async (
+  baseUrl: string,
+  wavPath: string,
+  options: TranscribeWavOptions,
+): Promise<AudioIntelTranscript> => {
+  const root = baseUrl.replace(/\/$/, '');
   const bytes = fs.readFileSync(wavPath);
   const form = new FormData();
   form.append('file', new Blob([bytes], { type: 'audio/wav' }), path.basename(wavPath));

@@ -13,6 +13,7 @@
 import type { Tx } from '../../db';
 import { clampRagMaxExamples } from '../../llm/ragConstants';
 import { normalizeVllmServerEntries, type VllmServerEntry } from '../../llm/vllmServerConfig';
+import { normalizeServiceEndpoints, type ServiceEndpoint } from '../../services/kinds';
 import {
   clampDependencyWaitTimeoutSec,
   clampHealthCheckIntervalSec,
@@ -67,6 +68,11 @@ export type ProjectSettingKey =
    * Empty = fall back to env `VLLM_SERVERS` / `VLLM_BASE_URL`.
    */
   | 'llm.vllm_servers'
+  /**
+   * Every external service endpoint (`[{kind, host, maxParallel, apiKey, managed}, …]`).
+   * Rows of a kind replace that kind's env fallback; `llm` rows replace `llm.vllm_servers`.
+   */
+  | 'services.endpoints'
   /** How long jobs wait for LLM/TTS health before failing (seconds). */
   | 'pipeline.dependency_wait_timeout_sec'
   /** Pause between failed LLM/TTS health probes (seconds). */
@@ -89,6 +95,7 @@ export type ProjectSettings = {
   'voice.synth_retry_below': number;
   'voice.synth_retries': number;
   'llm.vllm_servers': VllmServerEntry[];
+  'services.endpoints': ServiceEndpoint[];
   'pipeline.dependency_wait_timeout_sec': number;
   'pipeline.health_check_interval_sec': number;
 };
@@ -121,6 +128,7 @@ export const SETTING_DEFAULTS: ProjectSettings = {
   'voice.synth_retry_below': TTS_SYNTHESIS_DEFAULTS.retryBelow,
   'voice.synth_retries': TTS_SYNTHESIS_DEFAULTS.retries,
   'llm.vllm_servers': [],
+  'services.endpoints': [],
   'pipeline.dependency_wait_timeout_sec': DEFAULT_DEPENDENCY_WAIT_TIMEOUT_SEC,
   'pipeline.health_check_interval_sec': DEFAULT_HEALTH_CHECK_INTERVAL_SEC,
 };
@@ -149,6 +157,7 @@ export const getAllProjectSettings = async (db: Tx): Promise<ProjectSettings> =>
     result['voice.tts_max_parallel_fish_speech'],
   );
   result['llm.vllm_servers'] = normalizeVllmServerEntries(result['llm.vllm_servers']);
+  result['services.endpoints'] = normalizeServiceEndpoints(result['services.endpoints']);
   result['voice.game_tts'] = normalizeGameTtsSettings(result['voice.game_tts']);
   result['voice.synth_retry_below'] = clampTtsRetryBelow(result['voice.synth_retry_below']);
   result['voice.synth_retries'] = clampTtsRetries(result['voice.synth_retries']);
@@ -182,6 +191,9 @@ export const setProjectSetting = async (
   }
   if (key === 'llm.vllm_servers') {
     stored = normalizeVllmServerEntries(value) as ProjectSettings[ProjectSettingKey];
+  }
+  if (key === 'services.endpoints') {
+    stored = normalizeServiceEndpoints(value) as ProjectSettings[ProjectSettingKey];
   }
   if (key === 'voice.game_tts') {
     stored = normalizeGameTtsSettings(value) as ProjectSettings[ProjectSettingKey];

@@ -19,7 +19,10 @@ describe('audio-intel health', () => {
       ok: true,
       json: async () => ({ status: 'ok', model: 'large-v3' }),
     } as Response);
-    await expect(probeAudioIntelHealth('http://ai:8080')).resolves.toEqual({ ok: true });
+    await expect(probeAudioIntelHealth('http://ai:8080')).resolves.toEqual({
+      ok: true,
+      body: { status: 'ok', model: 'large-v3' },
+    });
   });
 
   it('checkAudioIntelHealth throws the probe error', async () => {

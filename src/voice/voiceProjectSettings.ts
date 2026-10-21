@@ -1,6 +1,6 @@
 import type { Tx } from '../db';
 import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
-import { syncTtsPoolLimit } from '../tts/ttsRequestPool';
+import { syncServiceRegistryFromProjectSettings } from '../services/registry';
 import { getAllProjectSettings, type ProjectSettings } from '../web/services/projectSettings';
 import { gameTtsMatchFor } from './gameTtsSettings';
 import type { TtsReferenceMode } from './voiceToolPaths';
@@ -24,9 +24,14 @@ export const voiceSynthesisFromProjectSettings = (
   };
 };
 
-/** Push Fish Speech concurrency limit from project settings into the global pool. */
+/**
+ * Push the service endpoints from project settings into the registry (and so into the
+ * TTS, audio-intel and tools pools). The name is historical: it used to set only the
+ * Fish Speech limit, which is still what `voice.tts_max_parallel_fish_speech` does for
+ * the env-configured TTS host.
+ */
 export const syncTtsPoolFromProjectSettings = (settings: ProjectSettings): void => {
-  syncTtsPoolLimit(settings['voice.tts_max_parallel_fish_speech']);
+  syncServiceRegistryFromProjectSettings(settings);
 };
 
 /** Fish Speech concurrency limit from project settings. */

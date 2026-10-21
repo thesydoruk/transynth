@@ -33,6 +33,13 @@ const sleepWithSignal = (ms: number, signal: AbortSignal): Promise<void> =>
     signal.addEventListener('abort', onAbort, { once: true });
   });
 
+/** System-log source for a wait: the two dedicated sources, `job` for everything else. */
+const logSourceFor = (service: DependencyService): 'llm' | 'tts' | 'job' => {
+  if (service === 'llm' || service === 'embed') return 'llm';
+  if (service === 'tts') return 'tts';
+  return 'job';
+};
+
 const remainingAttemptsAfterFail = (
   deadlineMs: number,
   nowMs: number,
@@ -52,7 +59,7 @@ const logWait = async (
 ): Promise<void> => {
   await writeLog(runtime.db, {
     level,
-    source: details.service === 'tts' ? 'tts' : 'llm',
+    source: logSourceFor(details.service as DependencyService),
     message,
     jobId: runtime.jobId,
     jobKind: runtime.kind,

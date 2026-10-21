@@ -78,8 +78,9 @@ services:
         limits:
           memory: ${WEB_MEMORY_LIMIT:-2g}
 
-  # Background job worker — three BullMQ queues in one process: general
-  # (imports / TM apply), serial LLM, and serial voice synthesis.
+  # Background job worker — one BullMQ queue per resource in one process: `cpu`
+  # (imports / TM apply), serial `llm`, `tts`, `asr`, `separate`. WORKER_QUEUES
+  # narrows a worker to some of them (a second worker next to a GPU host).
   worker:
     build:
       context: .

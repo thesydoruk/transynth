@@ -191,6 +191,38 @@ You do not need to set it manually when running the full stack with `docker comp
 
 ---
 
+## Services and Queues
+
+Every external service the pipeline calls — the vLLM chat pool, embeddings, Fish Speech,
+audio-intel (transcription and, on the same instance, separation jobs) and the
+bethesda-tools sidecar — is an **endpoint of a kind** in one registry:
+
+| Kind       | Env bootstrap                    | Called for                            |
+| ---------- | -------------------------------- | ------------------------------------- |
+| `llm`      | `VLLM_SERVERS` / `VLLM_BASE_URL` | translate, verify, skip/gender detect |
+| `embed`    | `VLLM_EMBED_BASE_URL`            | RAG indexing and retrieval            |
+| `tts`      | `TTS_BASE_URL`                   | voice synthesis                       |
+| `asr`      | `AUDIO_INTEL_BASE_URL`           | Disco spoken spans, take alignment    |
+| `separate` | (the `asr` hosts)                | separation jobs (`separate=true`)     |
+| `tools`    | `BETHESDA_TOOLS_URL`             | FaceFX LIP, xWMA                      |
+
+Resolution per kind, first non-empty wins: rows of that kind in the project setting
+`services.endpoints` (**Settings → Services**), then for `llm` the older `llm.vllm_servers`
+setting, then the environment. A row is `{kind, host, maxParallel, apiKey, managed}`;
+several rows of one kind form a pool: each call goes to the least-loaded healthy host under
+that host's limit, a host that refuses connections leaves the pool until its health probe
+passes, and a job that needs an unavailable kind waits (`pipeline.dependency_wait_timeout_sec`)
+before failing. `GET /api/services` returns every kind with its endpoints, where they come
+from, a fresh health verdict and pool load.
+
+Jobs are routed by **resource**: `worker/src/core/jobKinds.ts` declares for every job kind
+the queue it runs on and the service kinds it needs. The `cpu` queue (imports, TM apply,
+exports) runs `JOB_CONCURRENCY` jobs at once; `llm`, `tts`, `asr` and `separate` are serial,
+one job each, so a service sees one job at a time while its pool parallelises inside the
+job. `JOB_CONCURRENCY_<QUEUE>` overrides one queue; `WORKER_QUEUES=tts,asr` makes a worker
+process serve only those queues, so a worker can sit next to the GPU host that runs them.
+Queue names are unchanged (`transynth-jobs`, `-llm`, `-voice`, plus `-asr`, `-separate`).
+
 ## Server Settings
 
 | Variable                  | Default        | Description                                                                                                     |
