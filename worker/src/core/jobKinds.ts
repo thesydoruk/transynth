@@ -36,7 +36,9 @@ export const JOB_KIND_SPECS: Record<JobKind, JobKindSpec> = {
   'skip-detect': { queue: 'llm', needs: ['llm'] },
   'gender-detect': { queue: 'llm', needs: ['llm'] },
   'batch-translate': { queue: 'llm', needs: ['llm', 'embed'] },
-  'voice-generate': { queue: 'tts', needs: ['tts', 'asr', 'tools'] },
+  // audio-intel (Disco spoken spans) and bethesda-tools (LIP/xWMA) are per-game extras a
+  // voice job may call; they wait on their own health when used, not as declared demand.
+  'voice-generate': { queue: 'tts', needs: ['tts'] },
   'tm-apply': { queue: 'cpu', needs: [] },
   'apply-imported': { queue: 'cpu', needs: [] },
   'mod-import': { queue: 'cpu', needs: [] },

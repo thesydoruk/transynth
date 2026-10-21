@@ -43,6 +43,7 @@
     "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --maxWorkers=1 --workerIdleMemoryLimit=1536MB",
     "start:prod": "node --import tsx/esm src/web/server.ts",
     "start:worker": "npm --prefix worker start",
+    "fleet": "tsx scripts/fleet.ts",
     "web": "tsx src/web/server.ts",
     "web:dev": "tsx watch src/web/server.ts",
     "worker": "npm --prefix worker start",
@@ -72,6 +73,7 @@
     "pg": "^8.20.0",
     "tsx": "^4.21.0",
     "undici": "^6.19.8",
+    "yaml": "^2.9.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
