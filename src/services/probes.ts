@@ -1,7 +1,9 @@
 /**
  * One readiness probe per service kind, in the shape the pools expect.
  *
- * - `llm` / `embed`: OpenAI-compatible `GET /v1/models` (vLLM, TEI, OpenAI).
+ * - `llm`: OpenAI-compatible `GET /v1/models` (vLLM, OpenAI).
+ * - `embed`: `GET /health` first (text-embeddings-inference has no `/v1/models`),
+ *   then `GET /v1/models` for OpenAI-compatible servers (vLLM, OpenAI).
  * - `tts`: Fish Speech `GET /health`, not ready while the engine loads.
  * - `asr`: audio-intel `GET /health`.
  * - `separate`: the same `GET /health`, but the instance must run a batch lane
@@ -39,17 +41,38 @@ const probeToolsHealth = async (host: string, timeoutMs: number): Promise<Health
   }
 };
 
+/** `/health` lives at the server root, so drop an OpenAI-style `/v1` suffix from the host. */
+const rootOf = (host: string): string => host.replace(/\/+$/, '').replace(/\/v1$/, '');
+
+/**
+ * Embedding server: TEI answers `GET /health` (200 once the model is loaded) and 404 on
+ * `/v1/models`; vLLM and OpenAI answer `/v1/models`. Try the cheap root check first.
+ */
+const probeEmbedHealth = async (
+  endpoint: ServiceEndpoint,
+  timeoutMs: number,
+): Promise<HealthProbeResult> => {
+  const healthOk = await withTimeout(timeoutMs, async (signal) => {
+    const response = await fetch(`${rootOf(endpoint.host)}/health`, { method: 'GET', signal });
+    return response.ok;
+  }).catch(() => false);
+  if (healthOk) return { ok: true };
+  const modelsOk = await probeVllmServerHealth(endpoint.host, endpoint.apiKey, timeoutMs);
+  return modelsOk ? { ok: true } : { ok: false, error: `health check failed (${endpoint.host})` };
+};
+
 /** Probe one endpoint of its kind; never throws. */
 export const probeServiceEndpoint = async (
   endpoint: ServiceEndpoint,
   timeoutMs: number,
 ): Promise<HealthProbeResult> => {
   switch (endpoint.kind) {
-    case 'llm':
-    case 'embed': {
+    case 'llm': {
       const ok = await probeVllmServerHealth(endpoint.host, endpoint.apiKey, timeoutMs);
       return ok ? { ok: true } : { ok: false, error: `health check failed (${endpoint.host})` };
     }
+    case 'embed':
+      return probeEmbedHealth(endpoint, timeoutMs);
     case 'tts':
       return withTimeout(timeoutMs, (signal) => probeTtsHealth(endpoint.host, signal)).catch(
         () => ({ ok: false, error: `TTS unreachable (${endpoint.host})` }),
