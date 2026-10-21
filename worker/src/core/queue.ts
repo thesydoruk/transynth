@@ -14,7 +14,7 @@ import { ALL_QUEUE_NAMES, queueNameForKind } from './queueNames';
 import { readJobSnapshot, writeJobSnapshot } from './snapshots';
 
 export { fromBullJobId, toBullJobId } from './jobId';
-export { JOBS_QUEUE_NAME, LLM_QUEUE_NAME, VOICE_QUEUE_NAME, queueNameForKind } from './queueNames';
+export { queueNameForKind } from './queueNames';
 
 /** States that still occupy the queue — used by duplicate-start (409) guards. */
 const UNFINISHED_STATES: JobType[] = [
@@ -111,9 +111,12 @@ export const listUnfinishedJobs = async (kinds?: readonly JobKind[]): Promise<Jo
   return jobs;
 };
 
-export const listActiveJobs = async (): Promise<Job<JobData>[]> => {
+/** Active jobs on the given queues (default: every queue). */
+export const listActiveJobs = async (
+  queueNames: readonly string[] = ALL_QUEUE_NAMES,
+): Promise<Job<JobData>[]> => {
   const batches = await Promise.all(
-    ALL_QUEUE_NAMES.map((name) => getQueueByName(name).getJobs(['active'])),
+    queueNames.map((name) => getQueueByName(name).getJobs(['active'])),
   );
   return batches.flat().filter((job): job is Job<JobData> => job != null);
 };

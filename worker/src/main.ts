@@ -4,7 +4,9 @@
  * Entry: `npm --prefix worker start` (Docker: same image as web, different command).
  *
  * Flow:
- *   1. BullMQ claims a job from Redis (`transynth-jobs` / `-llm` / `-voice`).
+ *   1. BullMQ claims a job from Redis (one queue per resource: `transynth-jobs` for
+ *      CPU work, `-llm`, `-voice`, `-asr`, `-separate`; `WORKER_QUEUES` picks which
+ *      queues this process serves).
  *   2. `processJob` builds a JobContext and runs the registered handler.
  *   3. Progress goes out as `job.updateProgress` → QueueEvents → API SSE.
  *   4. Snapshots land in Redis for status GETs / reopened modals.
@@ -29,7 +31,8 @@ import { shutdownWine } from '../../src/wine/windowsToolExec';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
 import { subscribeJobControl } from './core/controlChannel';
 import { installVoiceLivePublisher } from './core/voiceLiveChannel';
-import { JOBS_QUEUE_NAME, LLM_QUEUE_NAME, VOICE_QUEUE_NAME } from './core/queue';
+import { listActiveJobs } from './core/queue';
+import { queueConcurrency, servedQueueIds, QUEUE_NAME_BY_ID } from './core/jobKinds';
 import { migrateJobsToDedicatedQueues } from './core/migrateJobQueues';
 import { recoverOrphanedLlmJobs, requeueStalledLlmJob } from './core/recoverLlmJobs';
 import {
@@ -51,9 +54,19 @@ const db = openDb();
 
 installVoiceLivePublisher();
 
+// Only the queues this process serves: a worker that serves `cpu` alone must not fail
+// and re-enqueue an `llm` job that a live `llm` worker is still running.
+const servedIds = servedQueueIds();
+const servedNames = servedIds.map((id) => QUEUE_NAME_BY_ID[id]);
+const activeOnServedQueues = () => listActiveJobs(servedNames);
+
 await migrateJobsToDedicatedQueues();
-await recoverOrphanedVoiceGenerateJobs();
-await recoverOrphanedLlmJobs();
+if (servedIds.includes('tts')) {
+  await recoverOrphanedVoiceGenerateJobs({ getActiveJobs: activeOnServedQueues });
+}
+if (servedIds.includes('llm')) {
+  await recoverOrphanedLlmJobs({ getActiveJobs: activeOnServedQueues });
+}
 
 const startQueueWorker = (
   queueName: string,
@@ -85,16 +98,22 @@ const startQueueWorker = (
   return worker;
 };
 
-const workers = [
-  startQueueWorker(JOBS_QUEUE_NAME, 'worker', CONFIG.jobConcurrency),
-  startQueueWorker(LLM_QUEUE_NAME, 'llm-worker', 1),
-  startQueueWorker(VOICE_QUEUE_NAME, 'voice-worker', 1),
-];
+const workers = servedIds.map((id) =>
+  startQueueWorker(
+    QUEUE_NAME_BY_ID[id],
+    `${id}-worker`,
+    queueConcurrency(id, process.env, CONFIG.jobConcurrency),
+  ),
+);
 
 // Separate Redis connection that listens for Stop / Pause from the API.
 const unsubscribeControl = await subscribeJobControl(controlActiveRun);
 
-logJobs.info(`Job workers started (jobs=${CONFIG.jobConcurrency}, llm=1, voice=1)`);
+logJobs.info(
+  `Job workers started: ${servedIds
+    .map((id) => `${id}=${queueConcurrency(id, process.env, CONFIG.jobConcurrency)}`)
+    .join(', ')}`,
+);
 
 let shuttingDown = false;
 const shutdown = async (): Promise<void> => {
