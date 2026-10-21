@@ -1,7 +1,7 @@
 import { CONFIG } from '../config';
 import { llmChatPool } from '../llm/requestPool';
 import { probeVllmServerHealth } from '../llm/vllmServerHealth';
-import { probeTtsHealth } from '../tts/ttsHealth';
+import { servicePool } from '../services/pools';
 import type { DependencyService } from './errors';
 
 export type HealthProbeResult = { ok: true } | { ok: false; error: string };
@@ -22,4 +22,5 @@ const probeLlmHealth = async (): Promise<HealthProbeResult> => {
 /** Live readiness probe for the service a job is about to call. */
 export const probeDependencyHealth = async (
   service: DependencyService,
-): Promise<HealthProbeResult> => (service === 'tts' ? probeTtsHealth() : probeLlmHealth());
+): Promise<HealthProbeResult> =>
+  service === 'llm' ? probeLlmHealth() : servicePool(service).probeHealth();

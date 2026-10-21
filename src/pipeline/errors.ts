@@ -1,4 +1,7 @@
-export type DependencyService = 'llm' | 'tts';
+import { SERVICE_LABELS, type ServiceKind } from '../services/kinds';
+
+/** A service a job may have to wait for; every registry kind can be one. */
+export type DependencyService = ServiceKind;
 
 /** Thrown when LLM or TTS stays unhealthy for the full wait window. */
 export class DependencyUnavailableError extends Error {
@@ -7,7 +10,7 @@ export class DependencyUnavailableError extends Error {
 
   constructor(service: DependencyService, spentAttempts: number, lastError: string) {
     super(
-      `${service === 'llm' ? 'LLM' : 'TTS'} still unavailable after ${spentAttempts} health checks: ${lastError}`,
+      `${SERVICE_LABELS[service]} still unavailable after ${spentAttempts} health checks: ${lastError}`,
     );
     this.name = 'DependencyUnavailableError';
     this.service = service;

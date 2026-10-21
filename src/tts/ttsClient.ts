@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import { log } from '../logger';
 import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
-import { resolveTtsBaseUrl } from '../voice/voiceToolPaths';
 import { ttsPool } from './ttsRequestPool';
 import { pickBestTake, takeNeedsRetry, type TtsTake } from './ttsRetry';
 import {
@@ -189,12 +188,13 @@ export const synthesizeWav = async (
   await ensureDependencyHealthy('tts');
   throwIfAborted(options.signal);
   const clips = readReferenceClips(reference, options.speakerText);
-  const baseUrl = (options.baseUrl ?? resolveTtsBaseUrl()).replace(/\/$/, '');
+  const explicitBaseUrl = options.baseUrl?.replace(/\/$/, '');
   const { retryBelow, retries } = resolveTtsSynthesisParams(options.synthesis);
+  // The pool picks the least-loaded healthy TTS host unless the caller pinned one.
   const nextTake = () =>
-    ttsPool.run(() => {
+    ttsPool.run((poolBaseUrl) => {
       throwIfAborted(options.signal);
-      return requestTake(text, clips, baseUrl, options);
+      return requestTake(text, clips, explicitBaseUrl ?? poolBaseUrl, options);
     });
 
   const takes: TtsTake[] = [await nextTake()];

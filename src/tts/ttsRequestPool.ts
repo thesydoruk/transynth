@@ -1,59 +1,34 @@
 /**
- * Global pool for Fish Speech TTS HTTP requests (`POST /v1/synthesize`).
+ * Fish Speech requests go through the `tts` service pool.
  *
- * Limit is configured in project settings (Settings → Voice) and synced at
- * startup and whenever that setting changes.
+ * Endpoints come from the service registry: `services.endpoints` rows of kind `tts`,
+ * else `TTS_BASE_URL` with the limit from Settings → Voice
+ * (`voice.tts_max_parallel_fish_speech`). Several TTS servers are therefore several
+ * rows, each with its own limit, and a server that refuses connections leaves the pool
+ * until its health probe passes again.
  */
-import { SETTING_DEFAULTS } from '../web/services/projectSettings';
-import { Semaphore } from '../utils/concurrency';
+import { servicePool, type UrlPool } from '../services/pools';
+import type { ServicePoolStats } from '../services/pool';
 
-export type TtsRequestPoolStats = {
-  inFlight: number;
-  queued: number;
-  max: number;
-};
+export type TtsRequestPoolStats = ServicePoolStats;
 
-/** Bounded-concurrency wrapper for TTS HTTP requests. */
-export class TtsRequestPool {
-  private pool: Semaphore;
+const pool = (): UrlPool => servicePool('tts');
 
-  constructor(maxParallel: number) {
-    this.pool = new Semaphore(maxParallel);
-  }
-
-  syncLimit(maxParallel: number): void {
-    this.pool.setMaxConcurrency(maxParallel);
-  }
-
-  get maxParallel(): number {
-    return this.pool.maxConcurrency;
-  }
-
-  /** Worker count for voice batch jobs — overlaps prep I/O with the next TTS slot. */
-  pipelineConcurrency(): number {
-    return this.maxParallel + 1;
-  }
-
+/** Shared TTS pool — used by {@link synthesizeWav}. */
+export const ttsPool = {
+  /** Run one request on the least-loaded healthy TTS host; `fn` gets its base URL. */
+  run<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
+    return pool().run((baseUrl) => fn(baseUrl));
+  },
   get stats(): TtsRequestPoolStats {
-    return {
-      inFlight: this.pool.activeCount,
-      queued: this.pool.queuedCount,
-      max: this.pool.maxConcurrency,
-    };
-  }
-
-  run<T>(fn: () => Promise<T>): Promise<T> {
-    return this.pool.run(fn);
-  }
-}
-
-/** Shared TTS HTTP pool — used by {@link synthesizeWav}. */
-export const ttsPool = new TtsRequestPool(SETTING_DEFAULTS['voice.tts_max_parallel_fish_speech']);
-
-/** Apply project-settings limit to the global TTS pool. */
-export const syncTtsPoolLimit = (maxParallel: number): void => {
-  ttsPool.syncLimit(maxParallel);
+    return pool().stats;
+  },
+  /** Sum of per-host limits. */
+  get maxParallel(): number {
+    return pool().maxParallel;
+  },
+  probeHealth: () => pool().probeHealth(),
 };
 
-/** Worker count for mod voice batch synthesis. */
-export const ttsPipelineConcurrency = (): number => ttsPool.pipelineConcurrency();
+/** Worker count for voice batch jobs — overlaps prep I/O with the next TTS slot. */
+export const ttsPipelineConcurrency = (): number => ttsPool.maxParallel + 1;

@@ -23,6 +23,11 @@ import {
   redactVllmServerEntries,
   retainVllmApiKeys,
 } from '../../llm/vllmServerConfig';
+import {
+  normalizeServiceEndpoints,
+  redactServiceEndpoints,
+  retainServiceApiKeys,
+} from '../../services/kinds';
 import { normalizeGameTtsSettings } from '../../voice/gameTtsSettings';
 import { syncTtsPoolFromProjectSettings } from '../../voice/voiceProjectSettings';
 import { log } from '../../logger';
@@ -34,6 +39,7 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
     return reply.send({
       ...settings,
       'llm.vllm_servers': redactVllmServerEntries(settings['llm.vllm_servers']),
+      'services.endpoints': redactServiceEndpoints(settings['services.endpoints']),
     });
   });
 
@@ -73,6 +79,26 @@ export const projectSettingsRoutes = async (app: FastifyInstance, db: Tx) => {
       await setProjectSetting(db, key, normalized);
       syncLlmPoolFromProjectSettings(await getAllProjectSettings(db));
       return reply.send({ key, value: redactVllmServerEntries(normalized) });
+    }
+
+    if (key === 'services.endpoints') {
+      if (!Array.isArray(value)) {
+        return reply.code(400).send({ error: 'Expected array for key "services.endpoints"' });
+      }
+      const incoming = normalizeServiceEndpoints(value);
+      if (value.length > 0 && incoming.length === 0) {
+        return reply.code(400).send({
+          error: 'Each endpoint needs a known kind and an http(s) host',
+        });
+      }
+      const current = await getAllProjectSettings(db);
+      const normalized = retainServiceApiKeys(incoming, current['services.endpoints']);
+      log.info(`Project setting updated: ${key} (${normalized.length} endpoints)`);
+      await setProjectSetting(db, key, normalized);
+      const fresh = await getAllProjectSettings(db);
+      syncLlmPoolFromProjectSettings(fresh);
+      syncTtsPoolFromProjectSettings(fresh);
+      return reply.send({ key, value: redactServiceEndpoints(normalized) });
     }
 
     if (key === 'voice.game_tts') {
