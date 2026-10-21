@@ -32,6 +32,7 @@ import { voiceGenerateEndpoints } from './endpoints/voiceGenerate';
 import { modAiJobsEndpoints } from './endpoints/modAiJobs';
 import { exportsEndpoints } from './endpoints/exports';
 import { vortexEndpoints } from './endpoints/vortex';
+import { servicesEndpoints } from './endpoints/services';
 
 export const api = {
   mods: modsEndpoints,
@@ -62,4 +63,5 @@ export const api = {
   modAiJobs: modAiJobsEndpoints,
   exports: exportsEndpoints,
   vortex: vortexEndpoints,
+  services: servicesEndpoints,
 };

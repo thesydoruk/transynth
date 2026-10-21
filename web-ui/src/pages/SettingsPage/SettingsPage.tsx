@@ -10,13 +10,14 @@ import { ActivityPage } from '../ActivityPage';
 import { QARulesPage } from '../QARulesPage';
 import { GeneralTab } from './GeneralTab';
 import { LlmTab } from './LlmTab';
+import { ServicesTab } from './ServicesTab';
 import { VoiceTab } from './VoiceTab';
 import { WorkflowTab } from './WorkflowTab';
 import s from './SettingsPage.module.scss';
 
-type TabId = 'general' | 'llm' | 'voice' | 'workflow' | 'qaRules' | 'activity';
+type TabId = 'general' | 'llm' | 'services' | 'voice' | 'workflow' | 'qaRules' | 'activity';
 
-const TAB_IDS: TabId[] = ['general', 'llm', 'voice', 'workflow', 'qaRules', 'activity'];
+const TAB_IDS: TabId[] = ['general', 'llm', 'services', 'voice', 'workflow', 'qaRules', 'activity'];
 
 const isTabId = (value: string | null): value is TabId => TAB_IDS.some((id) => id === value);
 
@@ -32,6 +33,7 @@ export const SettingsPage = () => {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'general', label: t('settings.tabs.general') },
     { id: 'llm', label: t('settings.tabs.llm') },
+    { id: 'services', label: t('settings.tabs.services') },
     { id: 'voice', label: t('settings.tabs.voice') },
     { id: 'workflow', label: t('settings.tabs.workflow') },
     { id: 'qaRules', label: t('settings.tabs.qaRules') },
@@ -71,6 +73,7 @@ export const SettingsPage = () => {
         <div className={s.content}>
           {tab === 'general' && <GeneralTab />}
           {tab === 'llm' && <LlmTab />}
+          {tab === 'services' && <ServicesTab />}
           {tab === 'voice' && <VoiceTab />}
           {tab === 'workflow' && <WorkflowTab />}
           {tab === 'qaRules' && <QARulesPage embedded />}
