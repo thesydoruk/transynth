@@ -1,0 +1,53 @@
+/* FleetPanel — GPU cards, managed services, demand, recent controller actions. */
+
+.gpu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.bar {
+  position: relative;
+  flex: 1 1 160px;
+  max-width: 320px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.barCommitted,
+.barUsed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.barCommitted {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.barUsed {
+  height: 50%;
+  background: var(--accent);
+}
+
+.buttons {
+  white-space: nowrap;
+
+  > * + * {
+    margin-left: 4px;
+  }
+}
+
+.subTitle {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
