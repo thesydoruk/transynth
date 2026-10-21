@@ -26,6 +26,27 @@ describe('voiceReferenceEligibilityFromSources', () => {
   });
 });
 
+describe('voiceReferenceEligibilityFromSources with origin', () => {
+  const originSources = new Map<string, VoiceSourceRow>([
+    [voiceTranslationMapKey('002CBA', 1, 'fallout4.esm'), { source: 'Hello there.' }],
+  ]);
+  const isEligible = voiceReferenceEligibilityFromSources(originSources);
+
+  it('matches only the origin that owns the text', () => {
+    expect(isEligible('002CBA', 1, 'fallout4.esm')).toBe(true);
+    expect(isEligible('002CBA', 1, 'dlcrobot.esm')).toBe(false);
+    expect(isEligible('002CBA', 1)).toBe(false);
+  });
+
+  it('passes the pick origin through', () => {
+    const pick = { lineKey: '002CBA', variant: 1, originPlugin: 'fallout4.esm' };
+    expect(isVoiceReferencePickEligible(pick, isEligible)).toBe(true);
+    expect(
+      isVoiceReferencePickEligible({ ...pick, originPlugin: 'dlcrobot.esm' }, isEligible),
+    ).toBe(false);
+  });
+});
+
 describe('isVoiceReferencePickEligible', () => {
   const isEligible = voiceReferenceEligibilityFromSources(sources);
 

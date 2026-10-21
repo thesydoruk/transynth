@@ -35,11 +35,16 @@ const makeVoiceRow = (lineKey: string, source: string, translation: string) => (
 const makeOverlayDb = (
   rows: Array<{ lstring_id: number; signature: string; path: string; export_text: string }>,
   voiceRows: Array<ReturnType<typeof makeVoiceRow>> = [],
+  /** `mods.abs_path` of the exported mod — voice rows take their origin from its plugin. */
+  pluginPath: string | null = null,
 ): Tx => {
   return {
     query: async (sql: string) => {
       if (sql.includes('line_key') || sql.includes('voice_ordinal')) {
         return { rows: voiceRows };
+      }
+      if (sql.includes('abs_path FROM mods WHERE id')) {
+        return { rows: pluginPath ? [{ abs_path: pluginPath }] : [] };
       }
       if (sql.includes('FROM mods')) {
         return { rows: [] };
@@ -198,10 +203,14 @@ describe('localized export golden corpus', () => {
     fs.writeFileSync(voicePath, Buffer.from('fake-fuz'));
     fs.writeFileSync(skipPath, Buffer.from('grunt-fuz'));
 
-    const db = makeOverlayDb(LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows, [
-      makeVoiceRow('123456', 'Hello, traveler.', 'Привіт, мандрівнику.'),
-      makeVoiceRow('0219CF', 'Oof!', 'Оф!'),
-    ]);
+    const db = makeOverlayDb(
+      LOCALIZED_EXPORT_GOLDEN_CORPUS.translationOverlayRows,
+      [
+        makeVoiceRow('123456', 'Hello, traveler.', 'Привіт, мандрівнику.'),
+        makeVoiceRow('0219CF', 'Oof!', 'Оф!'),
+      ],
+      pluginPath,
+    );
 
     const { zipBuffer } = await exportLangpackZip(
       db,

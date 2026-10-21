@@ -62,11 +62,18 @@ export const listVoiceAvailabilityForMod = async (
   const similarities: Record<string, number> = {};
 
   for (const entry of discoverVoiceEntries(resolved.ctx)) {
+    // Result keys stay `FORMID6:variant` (no origin): the dialogs editor builds them that way.
     const key = voiceTranslationMapKey(entry.lineKey, entry.variant);
+    const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);
     source.push(key);
-    const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
+    const row = lookupVoiceTranslation(
+      translations,
+      entry.lineKey,
+      entry.variant,
+      entry.originPlugin,
+    );
     const skipReason = resolveVoiceLineSkipReason(
-      sources.get(key)?.source ?? row?.source,
+      sources.get(mapKey)?.source ?? row?.source,
       row?.translation ?? '',
       row?.edid,
     );
@@ -80,6 +87,7 @@ export const listVoiceAvailabilityForMod = async (
       voiceSpeakerKey(entry, voiceRootRel),
       entry.lineKey,
       entry.variant,
+      entry.originPlugin,
     );
     if (score != null) {
       const previous = similarities[key];
@@ -100,6 +108,7 @@ export const listVoiceAvailabilityForMod = async (
       voiceSpeakerKey(entry, voiceRootRel),
       entry.lineKey,
       entry.variant,
+      entry.originPlugin,
     );
     if (!isVoiceSynthesisCurrent(storedVersion, payloadVersion, true)) {
       stale.push(key);

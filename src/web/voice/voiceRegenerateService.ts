@@ -12,6 +12,7 @@ import {
   speakerKeyFromVoiceRelPath,
   upsertVoiceSynthesisState,
 } from '../../voice/voiceSynthesisState';
+import { originFromVoiceRelPath } from '../../voice/voiceOrigin';
 import { getAllProjectSettings } from '../services/projectSettings';
 import { convertAudioToPreviewWav } from './preview/audioCache';
 import { resolveModVoiceContext } from './preview';
@@ -40,6 +41,7 @@ type VoiceRegenerateSessionMeta = {
   variant: number;
   srcLang: string;
   targetLang: string;
+  originPlugin?: string | null;
   previews: VoiceRegeneratePreviewMeta[];
 };
 
@@ -103,6 +105,7 @@ export const initVoiceRegenerateSession = async (
   variant: number,
   srcLang: string,
   targetLang: string,
+  originPlugin?: string | null,
 ): Promise<
   | { ok: true; defaultParams: VoiceRegenerateParams }
   | { ok: false; reason: string; message: string }
@@ -121,6 +124,7 @@ export const initVoiceRegenerateSession = async (
     variant,
     srcLang,
     targetLang,
+    originPlugin: originPlugin || null,
     previews: [],
   });
 
@@ -138,6 +142,7 @@ export const generateVoiceRegeneratePreview = async (
   targetLang: string,
   params: VoiceRegenerateParams,
   speakerKey?: string,
+  originPlugin?: string | null,
 ): Promise<VoiceRegeneratePreviewResult> => {
   if (!SESSION_ID_RE.test(sessionId)) {
     return { ok: false, reason: 'invalid_session', message: 'Invalid session id' };
@@ -156,6 +161,7 @@ export const generateVoiceRegeneratePreview = async (
       variant,
       srcLang,
       targetLang,
+      originPlugin,
     );
     if (!init.ok) return init;
     meta = readSessionMeta(modId, sessionId);
@@ -195,6 +201,7 @@ export const generateVoiceRegeneratePreview = async (
     tgtLang: targetLang,
     referenceMode,
     speakerKey,
+    originPlugin: originPlugin || meta.originPlugin || null,
   });
   if (!built.ok) return built;
 
@@ -325,6 +332,7 @@ export const commitVoiceRegenerateSession = async (
     lineKey: meta.lineKey,
     variant: meta.variant,
     speakerKey: preview.speakerKey?.trim() || speakerKeyFromVoiceRelPath(preview.fuzRel),
+    originPlugin: originFromVoiceRelPath(preview.fuzRel) ?? '',
     targetLang: meta.targetLang,
     ttsTextVersion: preview.payloadVersion,
     voiceSimilarity: preview.voiceSimilarity,

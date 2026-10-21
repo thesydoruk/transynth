@@ -1,4 +1,5 @@
 import type { Tx } from '../db';
+import { normalizeVoiceOrigin } from './voiceOrigin';
 
 export type VoiceSynthesisStateRow = {
   modId: number;
@@ -7,6 +8,11 @@ export type VoiceSynthesisStateRow = {
   targetLang: string;
   /** Voice-type folder; empty only for rows migrated from the old primary key. */
   speakerKey: string;
+  /**
+   * Plugin that owns the line (lower-cased file name). Empty for rows written
+   * before origins existed and for games without the notion.
+   */
+  originPlugin?: string | null;
   ttsTextVersion: string;
   /** ECAPA cosine vs the clone prompt; omitted when the TTS host did not send it. */
   voiceSimilarity?: number | null;
@@ -30,44 +36,57 @@ export const normalizeVoiceSpeakerKey = (speakerKey: string | null | undefined):
   speakerKey?.trim() ?? '';
 
 /**
- * Map key for one physical take: speaker folder + FormID + response number.
+ * Map key for one physical take: origin + speaker folder + FormID + response number.
  *
  * Nate and Nora share a FormID; without the folder they overwrite each other's
- * "already synthesized" stamp.
+ * "already synthesized" stamp. Two masters of a patch can share a lower-6
+ * FormID; without the origin so would they.
  */
 export const voiceSynthesisStateKey = (
   speakerKey: string | null | undefined,
   lineKey: string,
   variant: number,
-): string => `${normalizeVoiceSpeakerKey(speakerKey)}:${lineKey.toUpperCase()}:${variant}`;
+  origin?: string | null,
+): string => {
+  const base = `${normalizeVoiceSpeakerKey(speakerKey)}:${lineKey.toUpperCase()}:${variant}`;
+  const normalizedOrigin = normalizeVoiceOrigin(origin);
+  return normalizedOrigin ? `${normalizedOrigin}/${base}` : base;
+};
 
 /**
- * Stored TTS version for this take. Prefers the per-speaker stamp; if that
- * row was never written, falls back to a pre-speaker_key legacy row (`''`).
+ * The entry of a {@link voiceSynthesisStateKey} map for this take, trying the
+ * most specific stamp first and then the rows older code wrote: without an
+ * origin, and without a speaker folder.
  *
  * Nate/Nora can share the legacy stamp — the `.fuz` on disk still decides
  * whether that speaker's take is present.
  */
-export const lookupVoiceSynthesisVersion = (
-  storedVersions: ReadonlyMap<string, string>,
-  speakerKey: string | null | undefined,
-  lineKey: string,
-  variant: number,
-): string | null => lookupVoiceSynthesisEntry(storedVersions, speakerKey, lineKey, variant);
-
-/** The per-speaker entry of a {@link voiceSynthesisStateKey} map, else the legacy (`''`) one. */
 export const lookupVoiceSynthesisEntry = <T>(
   stored: ReadonlyMap<string, T>,
   speakerKey: string | null | undefined,
   lineKey: string,
   variant: number,
+  origin?: string | null,
 ): T | null => {
-  const exact = stored.get(voiceSynthesisStateKey(speakerKey, lineKey, variant));
+  const exact = stored.get(voiceSynthesisStateKey(speakerKey, lineKey, variant, origin));
   if (exact !== undefined) return exact;
+  if (normalizeVoiceOrigin(origin)) {
+    const noOrigin = stored.get(voiceSynthesisStateKey(speakerKey, lineKey, variant));
+    if (noOrigin !== undefined) return noOrigin;
+  }
   const speaker = normalizeVoiceSpeakerKey(speakerKey);
   if (!speaker) return null;
   return stored.get(voiceSynthesisStateKey('', lineKey, variant)) ?? null;
 };
+
+/** Stored TTS version for this take, or null when never synthesized. */
+export const lookupVoiceSynthesisVersion = (
+  storedVersions: ReadonlyMap<string, string>,
+  speakerKey: string | null | undefined,
+  lineKey: string,
+  variant: number,
+  origin?: string | null,
+): string | null => lookupVoiceSynthesisEntry(storedVersions, speakerKey, lineKey, variant, origin);
 
 /** Speaker folder from `Sound/Voice/<plugin>/<Speaker>/<FormID>_<N>.fuz`. */
 export const speakerKeyFromVoiceRelPath = (relPath: string): string => {
@@ -83,6 +102,7 @@ export const loadVoiceSynthesisVersion = async (
   variant: number,
   targetLang: string,
   speakerKey: string,
+  origin?: string | null,
 ): Promise<string | null> => {
   const { rows } = await db.query<{ tts_text_version: string }>(
     `SELECT tts_text_version
@@ -92,7 +112,8 @@ export const loadVoiceSynthesisVersion = async (
        AND variant = $3
        AND target_lang = $4
        AND (speaker_key = $5 OR speaker_key = '')
-     ORDER BY (speaker_key = $5) DESC
+       AND (origin_plugin = $6 OR origin_plugin = '')
+     ORDER BY (origin_plugin = $6) DESC, (speaker_key = $5) DESC
      LIMIT 1`,
     [
       modId,
@@ -100,6 +121,7 @@ export const loadVoiceSynthesisVersion = async (
       variant,
       targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(speakerKey),
+      normalizeVoiceOrigin(origin),
     ],
   );
   return rows[0]?.tts_text_version ?? null;
@@ -115,9 +137,10 @@ export const loadVoiceSynthesisVersionMap = async (
     line_key: string;
     variant: number;
     speaker_key: string;
+    origin_plugin: string;
     tts_text_version: string;
   }>(
-    `SELECT line_key, variant, speaker_key, tts_text_version
+    `SELECT line_key, variant, speaker_key, origin_plugin, tts_text_version
      FROM voice_synthesis_state
      WHERE mod_id = $1 AND target_lang = $2`,
     [modId, targetLang.trim().toLowerCase()],
@@ -125,7 +148,7 @@ export const loadVoiceSynthesisVersionMap = async (
   const out = new Map<string, string>();
   for (const row of rows) {
     out.set(
-      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant),
+      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant, row.origin_plugin),
       row.tts_text_version,
     );
   }
@@ -141,9 +164,10 @@ export const loadVoiceSimilarityMap = async (
     line_key: string;
     variant: number;
     speaker_key: string;
+    origin_plugin: string;
     voice_similarity: number;
   }>(
-    `SELECT line_key, variant, speaker_key, voice_similarity
+    `SELECT line_key, variant, speaker_key, origin_plugin, voice_similarity
      FROM voice_synthesis_state
      WHERE mod_id = $1 AND target_lang = $2 AND voice_similarity IS NOT NULL`,
     [modId, targetLang.trim().toLowerCase()],
@@ -151,7 +175,7 @@ export const loadVoiceSimilarityMap = async (
   const out: VoiceSimilarityMap = new Map();
   for (const row of rows) {
     out.set(
-      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant),
+      voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant, row.origin_plugin),
       Number(row.voice_similarity),
     );
   }
@@ -163,7 +187,8 @@ export const lookupVoiceSimilarity = (
   speakerKey: string | null | undefined,
   lineKey: string,
   variant: number,
-): number | null => lookupVoiceSynthesisEntry(stored, speakerKey, lineKey, variant);
+  origin?: string | null,
+): number | null => lookupVoiceSynthesisEntry(stored, speakerKey, lineKey, variant, origin);
 
 /** All stamps for a mod/lang, keyed by {@link voiceSynthesisStateKey}. */
 export const loadVoiceSynthesisStampMap = async (
@@ -175,18 +200,20 @@ export const loadVoiceSynthesisStampMap = async (
     line_key: string;
     variant: number;
     speaker_key: string;
+    origin_plugin: string;
     tts_text_version: string;
     voice_similarity: number | string | null;
     resynth_run_id: number | null;
   }>(
-    `SELECT line_key, variant, speaker_key, tts_text_version, voice_similarity, resynth_run_id
+    `SELECT line_key, variant, speaker_key, origin_plugin, tts_text_version, voice_similarity,
+            resynth_run_id
      FROM voice_synthesis_state
      WHERE mod_id = $1 AND target_lang = $2`,
     [modId, targetLang.trim().toLowerCase()],
   );
   const out: VoiceSynthesisStampMap = new Map();
   for (const row of rows) {
-    out.set(voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant), {
+    out.set(voiceSynthesisStateKey(row.speaker_key, row.line_key, row.variant, row.origin_plugin), {
       ttsTextVersion: row.tts_text_version,
       voiceSimilarity: row.voice_similarity == null ? null : Number(row.voice_similarity),
       resynthRunId: row.resynth_run_id,
@@ -201,10 +228,10 @@ export const upsertVoiceSynthesisState = async (
 ): Promise<void> => {
   await db.query(
     `INSERT INTO voice_synthesis_state (
-       mod_id, line_key, variant, target_lang, speaker_key, tts_text_version,
+       mod_id, line_key, variant, target_lang, speaker_key, origin_plugin, tts_text_version,
        voice_similarity, resynth_run_id, synthesized_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-     ON CONFLICT (mod_id, line_key, variant, target_lang, speaker_key)
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+     ON CONFLICT (mod_id, origin_plugin, line_key, variant, target_lang, speaker_key)
      DO UPDATE SET
        tts_text_version = EXCLUDED.tts_text_version,
        synthesized_at = NOW(),
@@ -216,27 +243,50 @@ export const upsertVoiceSynthesisState = async (
       row.variant,
       row.targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(row.speakerKey),
+      normalizeVoiceOrigin(row.originPlugin),
       row.ttsTextVersion,
       row.voiceSimilarity ?? null,
       row.resynthRunId ?? null,
     ],
   );
+  // The take now has its own stamp; a row this speaker's take had before origins existed
+  // would linger beside it and be counted twice (low-similarity count, revisions). The
+  // shared no-speaker row stays: Nate and Nora may both still fall back to it.
+  if (normalizeVoiceOrigin(row.originPlugin) && normalizeVoiceSpeakerKey(row.speakerKey)) {
+    await db.query(
+      `DELETE FROM voice_synthesis_state
+       WHERE mod_id = $1 AND line_key = $2 AND variant = $3 AND target_lang = $4
+         AND speaker_key = $5 AND origin_plugin = ''`,
+      [
+        row.modId,
+        row.lineKey.toUpperCase(),
+        row.variant,
+        row.targetLang.trim().toLowerCase(),
+        normalizeVoiceSpeakerKey(row.speakerKey),
+      ],
+    );
+  }
 };
 
 /**
  * Record that a low-similarity run looked at this take and kept the old file.
- * Marks the legacy (`''`) row too, since the lookup falls back to it.
+ * Marks the legacy rows too (no speaker folder, no origin), since the lookup
+ * falls back to them.
  */
 export const markVoiceResynthHandled = async (
   db: Tx,
-  take: Pick<VoiceSynthesisStateRow, 'modId' | 'lineKey' | 'variant' | 'targetLang' | 'speakerKey'>,
+  take: Pick<
+    VoiceSynthesisStateRow,
+    'modId' | 'lineKey' | 'variant' | 'targetLang' | 'speakerKey' | 'originPlugin'
+  >,
   runId: number,
 ): Promise<void> => {
   await db.query(
     `UPDATE voice_synthesis_state
      SET resynth_run_id = $6
      WHERE mod_id = $1 AND line_key = $2 AND variant = $3 AND target_lang = $4
-       AND speaker_key IN ($5, '')`,
+       AND speaker_key IN ($5, '')
+       AND origin_plugin IN ($7, '')`,
     [
       take.modId,
       take.lineKey.toUpperCase(),
@@ -244,6 +294,7 @@ export const markVoiceResynthHandled = async (
       take.targetLang.trim().toLowerCase(),
       normalizeVoiceSpeakerKey(take.speakerKey),
       runId,
+      normalizeVoiceOrigin(take.originPlugin),
     ],
   );
 };

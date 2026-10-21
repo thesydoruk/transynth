@@ -234,7 +234,35 @@ describe('settleVoiceResynthTake', () => {
     expect(writeFile).toHaveBeenCalledTimes(1);
     expect(queries).toHaveLength(1);
     expect(queries[0].sql).toMatch(/INSERT INTO voice_synthesis_state/);
-    expect(queries[0].args).toEqual([33, '005825', 1, 'uk', NORA, 'v-current', 0.47, 900]);
+    expect(queries[0].args).toEqual([33, '005825', 1, 'uk', NORA, '', 'v-current', 0.47, 900]);
+  });
+
+  it("finds a patch take's stamp under its pre-origin row and replaces that row", async () => {
+    const { db, queries } = fakeDb();
+    const ctx = context([[key, stamp({ voiceSimilarity: 0.31 })]]);
+    await expect(
+      settleVoiceResynthTake(
+        db,
+        ctx,
+        { ...take, originPlugin: 'Fallout4.esm' },
+        { payloadVersion: 'v-current', newSimilarity: 0.47 },
+        jest.fn(),
+      ),
+    ).resolves.toEqual({ kind: 'replaced' });
+    expect(queries).toHaveLength(2);
+    expect(queries[0].args).toEqual([
+      33,
+      '005825',
+      1,
+      'uk',
+      NORA,
+      'fallout4.esm',
+      'v-current',
+      0.47,
+      900,
+    ]);
+    expect(queries[1].sql).toMatch(/DELETE FROM voice_synthesis_state[\s\S]*origin_plugin = ''/);
+    expect(queries[1].args).toEqual([33, '005825', 1, 'uk', NORA]);
   });
 
   it('keeps the file and only marks the run when the take did not improve', async () => {
@@ -253,7 +281,7 @@ describe('settleVoiceResynthTake', () => {
     expect(writeFile).not.toHaveBeenCalled();
     expect(queries).toHaveLength(1);
     expect(queries[0].sql).toMatch(/UPDATE voice_synthesis_state\s+SET resynth_run_id/);
-    expect(queries[0].args).toEqual([33, '005825', 1, 'uk', NORA, 900]);
+    expect(queries[0].args).toEqual([33, '005825', 1, 'uk', NORA, 900, '']);
   });
 
   it('judges a stale stamp as stale and replaces it regardless of the score', async () => {

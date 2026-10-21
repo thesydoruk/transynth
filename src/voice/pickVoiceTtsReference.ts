@@ -45,7 +45,7 @@ const referenceTextForPick = (
   pick: ResolvedSpeakerReference['pick'],
 ): string | null => {
   if (isManualVoiceReferencePick(pick)) return null;
-  return lookupVoiceSource(sources, pick.lineKey, pick.variant);
+  return lookupVoiceSource(sources, pick.lineKey, pick.variant, pick.originPlugin);
 };
 
 const resolveCachedSpeakerRef = async (input: {
@@ -71,7 +71,8 @@ const resolveCachedSpeakerRef = async (input: {
     packageDir: input.packageDir,
     pluginRelPath: input.pluginRelPath,
     isEligible: voiceReferenceEligibilityFromSources(input.voiceSources),
-    getSourceText: (lineKey, variant) => lookupVoiceSource(input.voiceSources, lineKey, variant),
+    getSourceText: (lineKey, variant, origin) =>
+      lookupVoiceSource(input.voiceSources, lineKey, variant, origin),
     markup: input.markup,
   });
   if (resolved) {

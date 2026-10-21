@@ -14,6 +14,8 @@ export type VoiceLinePreview = {
    * response number, so playback and dubbing need it to pick the right file.
    */
   speakerKey: string;
+  /** Plugin folder under Sound/Voice the take lives in (lower-case); null when unknown. */
+  originPlugin?: string | null;
   /** Source string row id — null for orphan audio with no dialogue record. */
   stringId: number | null;
   translationId: number | null;

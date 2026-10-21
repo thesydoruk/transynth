@@ -15,6 +15,7 @@ type RefRow = {
   line_key: string;
   variant: number;
   auto_score: number | null;
+  origin_plugin: string;
 };
 
 const createMockDb = () => {
@@ -36,6 +37,7 @@ const createMockDb = () => {
         line_key: params[2] as string,
         variant: params[3] as number,
         auto_score: (params[4] as number | null) ?? null,
+        origin_plugin: (params[5] as string | undefined) ?? '',
       });
       return { rows: [] };
     }
@@ -50,7 +52,11 @@ const createMockDb = () => {
 
     if (sql.includes('SELECT line_key, variant')) {
       const row = rows.get(`${modId}:${speakerKey}`);
-      return { rows: row ? [{ line_key: row.line_key, variant: row.variant }] : [] };
+      return {
+        rows: row
+          ? [{ line_key: row.line_key, variant: row.variant, origin_plugin: row.origin_plugin }]
+          : [],
+      };
     }
 
     throw new Error(`Unexpected SQL in mock db: ${sql}`);
@@ -80,6 +86,17 @@ describe('voiceSpeakerRefs', () => {
     });
   });
 
+  it('round-trips the origin plugin of a pick', async () => {
+    await setVoiceSpeakerRef(db, modId, 'Piper', {
+      lineKey: '002cba',
+      variant: 1,
+      originPlugin: 'Fallout4.esm',
+    });
+    await expect(loadVoiceSpeakerRefs(db, modId)).resolves.toEqual({
+      Piper: { lineKey: '002CBA', variant: 1, originPlugin: 'fallout4.esm' },
+    });
+  });
+
   it('clears a speaker pick', async () => {
     await setVoiceSpeakerRef(db, modId, 'AlexanderBrown', { lineKey: '002CBA', variant: 4 });
     await clearVoiceSpeakerRef(db, modId, 'AlexanderBrown');
@@ -90,6 +107,16 @@ describe('voiceSpeakerRefs', () => {
     const pick = { lineKey: '002CBA', variant: 2 };
     expect(voiceSpeakerRefMatches(pick, '002cba', 2)).toBe(true);
     expect(voiceSpeakerRefMatches(pick, '002CBA', 3)).toBe(false);
+  });
+
+  it('requires equal origins when both the pick and the query have one', () => {
+    const pick = { lineKey: '002CBA', variant: 1, originPlugin: 'fallout4.esm' };
+    expect(voiceSpeakerRefMatches(pick, '002CBA', 1, 'Fallout4.esm')).toBe(true);
+    expect(voiceSpeakerRefMatches(pick, '002CBA', 1, 'dlcrobot.esm')).toBe(false);
+    expect(voiceSpeakerRefMatches(pick, '002CBA', 1)).toBe(true);
+    expect(
+      voiceSpeakerRefMatches({ lineKey: '002CBA', variant: 1 }, '002CBA', 1, 'dlcrobot.esm'),
+    ).toBe(true);
   });
 
   it('migrates legacy speaker-refs.json into the database', async () => {

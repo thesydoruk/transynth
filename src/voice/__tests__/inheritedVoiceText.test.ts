@@ -10,12 +10,14 @@ const masterA: MasterModRef = {
   modId: 10,
   modName: 'Fusion City Rising',
   pluginName: 'AA FusionCityRising.esp',
+  absPath: '/data/AA FusionCityRising.esp',
 };
 
 const masterB: MasterModRef = {
   modId: 11,
   modName: 'Fallout 4',
   pluginName: 'Fallout4.esm',
+  absPath: '/data/Fallout4.esm',
 };
 
 describe('lookupInheritedVoiceLine', () => {
@@ -27,7 +29,7 @@ describe('lookupInheritedVoiceLine', () => {
           masterA.modId,
           new Map([
             [
-              voiceTranslationMapKey('0067F7', 1),
+              voiceTranslationMapKey('0067F7', 1, 'aa fusioncityrising.esp'),
               { source: 'Parent line', infoFormidHex: '030067F7', stringId: 101 },
             ],
           ]),
@@ -56,7 +58,7 @@ describe('lookupInheritedVoiceLine', () => {
           masterB.modId,
           new Map([
             [
-              voiceTranslationMapKey('008EC5', 1),
+              voiceTranslationMapKey('008EC5', 1, 'fallout4.esm'),
               { source: 'Vanilla line', infoFormidHex: '00008EC5', stringId: 202 },
             ],
           ]),
@@ -79,7 +81,7 @@ describe('lookupInheritedVoiceLine', () => {
           masterA.modId,
           new Map([
             [
-              voiceTranslationMapKey('002CBA', 1),
+              voiceTranslationMapKey('002CBA', 1, 'aa fusioncityrising.esp'),
               { source: 'Hello', infoFormidHex: '03002CBA', stringId: 303 },
             ],
           ]),
@@ -90,7 +92,7 @@ describe('lookupInheritedVoiceLine', () => {
           masterA.modId,
           new Map([
             [
-              voiceTranslationMapKey('002CBA', 1),
+              voiceTranslationMapKey('002CBA', 1, 'aa fusioncityrising.esp'),
               {
                 lineKey: '002CBA',
                 infoFormidHex: '03002CBA',

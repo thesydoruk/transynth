@@ -79,6 +79,7 @@ const cleanVoiceFolderName = (name: string): string => {
  * @returns Map from lower-6-hex FormID → raw voice folder name.
  */
 const buildVoiceFolderMap = (espPath: string): Map<string, string> => {
+  // Keyed by lower-6 only: speaker display names, last-wins across origins.
   const map = new Map<string, string>();
   const modDir = path.dirname(espPath);
   const pluginName = path.basename(espPath);

@@ -1,10 +1,20 @@
 import type { VoiceFileEntry } from '../discoverVoiceFiles';
+import { speakerFromVoiceRelPath } from '../voiceOrigin';
 
 const normalizeRelPath = (relPath: string): string => relPath.replace(/\\/g, '/');
 
-/** NPC voice folder under `Sound/Voice/<plugin>/` (e.g. `AlexanderBrown`). */
+/**
+ * NPC voice folder of a take (e.g. `AlexanderBrown`).
+ *
+ * Inside a `Sound/Voice/<origin>/` tree it is the folder below the origin,
+ * whichever origin that is — a patch's take under `Sound/Voice/Fallout4.esm/`
+ * has a speaker just like one under the patch's own folder. `voiceRootRel`
+ * only matters for trees that are not laid out that way.
+ */
 export const voiceSpeakerKey = (entry: VoiceFileEntry, voiceRootRel: string): string => {
   const rel = normalizeRelPath(entry.relPath);
+  const fromTree = speakerFromVoiceRelPath(rel);
+  if (fromTree != null) return fromTree;
   const prefix = `${normalizeRelPath(voiceRootRel)}/`;
   if (!rel.startsWith(prefix)) return '';
   const rest = rel.slice(prefix.length);

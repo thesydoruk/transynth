@@ -12,6 +12,7 @@
  * single response number 1.
  */
 import type { Tx } from '../db';
+import type { VoiceOriginResolver } from './voiceOrigin';
 import {
   INFO_NAM1_RECORD_PATHS,
   INFO_PROMPT_RECORD_PATHS,
@@ -41,6 +42,7 @@ export const loadVoicePromptSources = async (
   db: Tx,
   modId: number,
   srcLang: string,
+  origins: VoiceOriginResolver,
 ): Promise<Map<string, VoiceSourceDetailRow>> => {
   const { rows } = await db.query<{
     line_key: string;
@@ -64,9 +66,15 @@ export const loadVoicePromptSources = async (
   for (const row of rows) {
     const source = normalizeVoiceText(row.source);
     if (!source) continue;
-    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT);
+    const originPlugin = origins.originOfFormid(row.info_formid_hex);
+    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT, originPlugin);
     if (map.has(key)) continue;
-    map.set(key, { source, infoFormidHex: row.info_formid_hex, stringId: row.string_id });
+    map.set(key, {
+      source,
+      infoFormidHex: row.info_formid_hex,
+      originPlugin,
+      stringId: row.string_id,
+    });
   }
   return map;
 };
@@ -77,6 +85,7 @@ export const loadVoicePromptTranslations = async (
   modId: number,
   srcLang: string,
   tgtLang: string,
+  origins: VoiceOriginResolver,
 ): Promise<Map<string, VoiceTranslationRow>> => {
   const { rows } = await db.query<{
     line_key: string;
@@ -108,11 +117,13 @@ export const loadVoicePromptTranslations = async (
 
   const map = new Map<string, VoiceTranslationRow>();
   for (const row of rows) {
-    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT);
+    const originPlugin = origins.originOfFormid(row.info_formid_hex);
+    const key = voiceTranslationMapKey(row.line_key, PROMPT_VOICE_VARIANT, originPlugin);
     if (map.has(key)) continue;
     map.set(key, {
       lineKey: row.line_key,
       infoFormidHex: row.info_formid_hex,
+      originPlugin,
       voiceVariant: PROMPT_VOICE_VARIANT,
       stringId: row.string_id,
       translationId: row.translation_id,

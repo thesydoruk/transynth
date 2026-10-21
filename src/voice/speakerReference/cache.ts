@@ -16,6 +16,10 @@ import { isUsableWavFile, wavDurationSec } from './pcm';
 const isReusableSpeakerReference = (wavPath: string): boolean =>
   isUsableWavFile(wavPath) && wavDurationSec(wavPath) >= MIN_REFERENCE_DURATION_SEC;
 
+/** Cache-safe id of one take: origin keeps two plugins' equal lower-6 apart. */
+export const entryReferenceId = (entry: VoiceFileEntry): string =>
+  `${entry.originPlugin ? `${entry.originPlugin}_` : ''}${entry.lineKey}_${entry.variant}`;
+
 export const sourceDigest = (sourcePath: string): string => {
   const stat = fs.statSync(sourcePath);
   return sha1Hex(`${sourcePath}|${stat.mtimeMs}|${stat.size}`);
@@ -36,7 +40,7 @@ export const getOrDecodeEntryReferenceWav = async (
   entryCacheDir: string,
   workDir: string,
 ): Promise<string> => {
-  const base = `${entry.lineKey}_${entry.variant}`;
+  const base = entryReferenceId(entry);
   const outPath = path.join(entryCacheDir, `${base}.wav`);
   const markerPath = path.join(entryCacheDir, `${base}.source`);
   const digest = sourceDigest(entry.absolutePath);
@@ -112,7 +116,7 @@ const decodeEntryToReferenceWav = async (
     return;
   }
 
-  const sourceAudioPath = path.join(tempDir, `${entry.lineKey}_${entry.variant}.src.audio`);
+  const sourceAudioPath = path.join(tempDir, `${entryReferenceId(entry)}.src.audio`);
   if (entry.ext === 'fuz') {
     const xwm = extractXwmFromFuzFile(entry.absolutePath);
     fs.writeFileSync(`${sourceAudioPath}.xwm`, xwm);

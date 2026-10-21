@@ -19,3 +19,33 @@ describe('expandSharedResponseAliases', () => {
     expect(map.get(voiceTranslationMapKey('22B5CD', 1))).toEqual({ source: 'own' });
   });
 });
+
+describe('expandSharedResponseAliases with origins', () => {
+  const key = (formid: string, variant: number, origin: string) =>
+    voiceTranslationMapKey(formid, variant, origin);
+
+  it('aliases within the same origin using origin-qualified sharedFrom', () => {
+    const map = new Map([
+      [key('1AC372', 1, 'fallout4.esm'), { source: 'I do.' }],
+      [key('1AC372', 2, 'fallout4.esm'), { source: 'Yes.' }],
+    ]);
+    expandSharedResponseAliases(map, new Map([['fallout4.esm/22B5CD', 'fallout4.esm/1AC372']]));
+
+    expect(map.get('fallout4.esm/22B5CD:1')).toEqual({ source: 'I do.' });
+    expect(map.get('fallout4.esm/22B5CD:2')).toEqual({ source: 'Yes.' });
+  });
+
+  it('does not borrow from the same FormID under another origin', () => {
+    const map = new Map([[key('1AC372', 1, 'dlcrobot.esm'), { source: 'robot' }]]);
+    expandSharedResponseAliases(map, new Map([['fallout4.esm/22B5CD', 'fallout4.esm/1AC372']]));
+
+    expect(map.has('fallout4.esm/22B5CD:1')).toBe(false);
+  });
+
+  it('follows a pointer into another origin', () => {
+    const map = new Map([[key('1AC372', 1, 'fallout4.esm'), { source: 'I do.' }]]);
+    expandSharedResponseAliases(map, new Map([['patch.esp/000001', 'fallout4.esm/1AC372']]));
+
+    expect(map.get('patch.esp/000001:1')).toEqual({ source: 'I do.' });
+  });
+});

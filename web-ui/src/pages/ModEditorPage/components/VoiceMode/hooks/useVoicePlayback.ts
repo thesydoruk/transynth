@@ -14,8 +14,20 @@ export const useVoicePlayback = (modId: number) => {
     async (line: VoiceLinePreview, kind: PlayKind) => {
       const url =
         kind === 'source'
-          ? voiceAudioUrl(modId, line.lineKey, line.variant, line.speakerKey)
-          : voiceTranslationAudioUrl(modId, line.lineKey, line.variant, line.speakerKey);
+          ? voiceAudioUrl(
+              modId,
+              line.lineKey,
+              line.variant,
+              line.speakerKey,
+              line.originPlugin ?? undefined,
+            )
+          : voiceTranslationAudioUrl(
+              modId,
+              line.lineKey,
+              line.variant,
+              line.speakerKey,
+              line.originPlugin ?? undefined,
+            );
 
       play(
         playTrackKey(kind, line),

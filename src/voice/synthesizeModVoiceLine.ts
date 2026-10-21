@@ -10,12 +10,7 @@ import { isDependencyUnavailableError } from '../pipeline/errors';
 import { getJobRuntime } from '../pipeline/jobRuntime';
 import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { checkTtsHealth, synthesizeWav, type TtsSynthesisParams } from '../tts/ttsClient';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-  type VoiceFileEntry,
-} from './discoverVoiceFiles';
+import { dedupeVoiceFiles, discoverVoiceFiles, resolveVoiceRootRel } from './discoverVoiceFiles';
 import {
   loadVoiceSources,
   loadVoiceTranslations,
@@ -42,7 +37,11 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from './voiceTtsPayloadVersion';
 import { resolveTtsBaseUrl, resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
+import { originFromVoiceRelPath } from './voiceOrigin';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
+import { fillMissingVoiceKeys } from './voiceTextRows';
+import { findMasterBackedTake, type MasterBackedTake } from './voiceWorkList';
+import { findVoiceEntry } from '../web/voice/preview/voiceEntries';
 
 export type SynthesizeModVoiceLineResult =
   | { ok: true; relPath: string; skipped: boolean }
@@ -62,6 +61,8 @@ export type SynthesizeModVoiceLineOptions = {
   tgtLang: string;
   /** Voice folder to dub; required to pick a side when several share the line. */
   speakerKey?: string;
+  /** Plugin that owns the line; required when two origins share the lower-6 FormID. */
+  originPlugin?: string | null;
   game?: GameId;
   referenceMode?: TtsReferenceMode;
   ttsBaseUrl?: string;
@@ -81,22 +82,6 @@ export type SynthesizeModVoiceLineBuffersResult =
     }
   | { ok: false; reason: string; message: string };
 
-const findVoiceEntry = (
-  entries: VoiceFileEntry[],
-  lineKey: string,
-  variant: number,
-  voiceRootRel: string,
-  speakerKey?: string,
-): VoiceFileEntry | undefined => {
-  const wantSpeaker = speakerKey?.trim();
-  return entries.find((entry) => {
-    if (entry.lineKey.toUpperCase() !== lineKey.toUpperCase()) return false;
-    if (entry.variant !== variant) return false;
-    if (!wantSpeaker) return true;
-    return voiceSpeakerKey(entry, voiceRootRel) === wantSpeaker;
-  });
-};
-
 /** Synthesize one voiced line and return raw TTS WAV plus packed FUZ without writing to disk. */
 export const synthesizeModVoiceLineBuffers = async (
   db: Tx,
@@ -105,22 +90,41 @@ export const synthesizeModVoiceLineBuffers = async (
   const pluginRel = pluginRelPath(opts.packageDir, opts.pluginPath);
   const voiceRootRel = resolveVoiceRootRel(pluginRel);
   const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(opts.packageDir, pluginRel));
-  const entry = findVoiceEntry(
-    voiceFiles,
-    opts.lineKey,
-    opts.variant,
+  let entry = findVoiceEntry(voiceFiles, opts.lineKey, opts.variant, {
     voiceRootRel,
-    opts.speakerKey,
-  );
+    speakerKey: opts.speakerKey,
+    originPlugin: opts.originPlugin,
+  });
+  // A line this mod overrides but did not record: dub against the master's take.
+  let masterBacked: MasterBackedTake | null = null;
+  if (!entry && opts.originPlugin) {
+    masterBacked = await findMasterBackedTake(db, {
+      modId: opts.modId,
+      pluginPath: opts.pluginPath,
+      originPlugin: opts.originPlugin,
+      lineKey: opts.lineKey,
+      variant: opts.variant,
+      speakerKey: opts.speakerKey,
+      srcLang: opts.srcLang,
+      tgtLang: opts.tgtLang,
+    });
+    entry = masterBacked?.entry;
+  }
   if (!entry) {
     return { ok: false, reason: 'line_not_found', message: 'Voice line not found' };
   }
 
   const translations = await loadVoiceTranslations(db, opts.modId, opts.srcLang, opts.tgtLang);
-  const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
+  const row = lookupVoiceTranslation(
+    translations,
+    entry.lineKey,
+    entry.variant,
+    entry.originPlugin,
+  );
   if (!row?.translation?.trim()) {
     return { ok: false, reason: 'no_translation', message: 'No translation for this voice line' };
   }
+  const referenceSource = masterBacked?.referenceSource ?? row.source;
 
   // The version stamp must hash the line-source transcript, exactly like the
   // batch path (processVoiceLocalizeEntry) — otherwise takes committed here are
@@ -128,7 +132,7 @@ export const synthesizeModVoiceLineBuffers = async (
   const prepared = prepareVoiceTtsText({
     lineSource: row.source,
     translation: row.translation,
-    speakerSource: row.source,
+    speakerSource: referenceSource,
     edid: row.edid,
   });
   if (prepared.action === 'skip') {
@@ -165,14 +169,25 @@ export const synthesizeModVoiceLineBuffers = async (
     ensureDir(workDir);
 
     const voiceSources = await loadVoiceSources(db, opts.modId, opts.srcLang);
+    if (masterBacked) {
+      fillMissingVoiceKeys(
+        voiceSources,
+        await loadVoiceSources(db, masterBacked.context.master.modId, opts.srcLang),
+      );
+    }
     const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
     const lineEnglishWav = await prepareReferenceAudio(entry, workDir);
+    const siblingPool = masterBacked
+      ? masterBacked.context.bySpeaker
+      : groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
     const siblings = speakerKey
-      ? (groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel)
+      ? (siblingPool
           .get(speakerKey)
           ?.filter(
             (candidate) =>
-              candidate.lineKey !== entry.lineKey || candidate.variant !== entry.variant,
+              candidate.lineKey !== entry.lineKey ||
+              candidate.variant !== entry.variant ||
+              candidate.originPlugin !== entry.originPlugin,
           ) ?? [])
       : [];
     const picked = await pickVoiceTtsReference({
@@ -183,7 +198,7 @@ export const synthesizeModVoiceLineBuffers = async (
       speakerKey: speakerKey || null,
       entry,
       lineEnglishWav,
-      lineSource: row.source,
+      lineSource: referenceSource,
       referenceMode,
       voiceSources,
       getSiblingEntries: () => siblings,
@@ -195,7 +210,7 @@ export const synthesizeModVoiceLineBuffers = async (
       prepared.text,
       picked.clips.map((clip) => ({
         wavPath: clip.wavPath,
-        speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? row.source) || undefined,
+        speakerText: stripVoiceNonSpeechBlocks(clip.speakerText ?? referenceSource) || undefined,
       })),
       {
         baseUrl: ttsBaseUrl,
@@ -264,6 +279,7 @@ export const synthesizeModVoiceLine = async (
             opts.variant,
             opts.tgtLang,
             opts.speakerKey?.trim() || speakerKeyFromVoiceRelPath(fuzRel),
+            originFromVoiceRelPath(fuzRel),
           );
           const current = isVoiceSynthesisCurrent(
             storedVersion,
@@ -293,6 +309,7 @@ export const synthesizeModVoiceLine = async (
 
   const fuzDest = toDiskPath(opts.localizeDir, built.fuzRel);
   const speakerKey = opts.speakerKey?.trim() || speakerKeyFromVoiceRelPath(built.fuzRel);
+  const originPlugin = originFromVoiceRelPath(built.fuzRel);
   const baselinePath = fs.existsSync(fuzDest) ? fuzDest : null;
   if (!opts.force && writeIfChanged(fuzDest, built.fuzData, baselinePath)) {
     await upsertVoiceSynthesisState(db, {
@@ -300,6 +317,7 @@ export const synthesizeModVoiceLine = async (
       lineKey: opts.lineKey,
       variant: opts.variant,
       speakerKey,
+      originPlugin,
       targetLang: opts.tgtLang,
       ttsTextVersion: built.payloadVersion,
       voiceSimilarity: built.voiceSimilarity,
@@ -314,6 +332,7 @@ export const synthesizeModVoiceLine = async (
       lineKey: opts.lineKey,
       variant: opts.variant,
       speakerKey,
+      originPlugin,
       targetLang: opts.tgtLang,
       ttsTextVersion: built.payloadVersion,
       voiceSimilarity: built.voiceSimilarity,

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { readPluginMasterNames } from '../pluginHeader';
+import { parseTes4MasterNames, readPluginMasterNames } from '../pluginHeader';
 
 const subrecord = (sig: string, text: string): Buffer => {
   const data = Buffer.from(`${text}\0`, 'utf8');
@@ -44,5 +44,24 @@ describe('readPluginMasterNames', () => {
   it('rejects a file that does not start with TES4', () => {
     const file = writePlugin('TES3', [subrecord('MAST', 'Morrowind.esm')]);
     expect(() => readPluginMasterNames(file)).toThrow(/expected TES4/);
+  });
+});
+
+describe('parseTes4MasterNames', () => {
+  it('lists MAST names in order from raw TES4 data, ignoring other subrecords', () => {
+    const data = Buffer.concat([
+      subrecord('CNAM', 'Bethesda'),
+      subrecord('MAST', 'Fallout4.esm'),
+      subrecord('SNAM', 'description'),
+      subrecord('MAST', 'DLCRobot.esm'),
+    ]);
+    expect(parseTes4MasterNames(data)).toEqual(['Fallout4.esm', 'DLCRobot.esm']);
+  });
+
+  it('is empty without masters and stops at the given length', () => {
+    expect(parseTes4MasterNames(Buffer.alloc(0))).toEqual([]);
+    const first = subrecord('MAST', 'Fallout4.esm');
+    const data = Buffer.concat([first, subrecord('MAST', 'DLCRobot.esm')]);
+    expect(parseTes4MasterNames(data, first.length)).toEqual(['Fallout4.esm']);
   });
 });

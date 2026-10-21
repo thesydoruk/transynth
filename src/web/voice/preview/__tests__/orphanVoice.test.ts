@@ -17,6 +17,7 @@ const master: MasterModRef = {
   modId: 7,
   modName: 'Fallout 4',
   pluginName: 'Fallout4.esm',
+  absPath: '/data/Fallout4.esm',
 };
 
 describe('collectVoiceSourceFormids', () => {

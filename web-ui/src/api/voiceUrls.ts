@@ -15,9 +15,11 @@ export const voiceAudioUrl = (
   lineKey: string,
   variant: number,
   speakerKey?: string,
+  originPlugin?: string,
 ): string =>
   appendQuery(`${BASE}/api/mods/${modId}/voice/audio/${lineKey}/${variant}`, {
     speakerKey,
+    originPlugin,
   });
 
 /** Dubbed take. Always cache-busted — regenerate overwrites the same path. */
@@ -26,9 +28,11 @@ export const voiceTranslationAudioUrl = (
   lineKey: string,
   variant: number,
   speakerKey?: string,
+  originPlugin?: string,
 ): string =>
   appendQuery(`${BASE}/api/mods/${modId}/voice/translation-audio/${lineKey}/${variant}`, {
     speakerKey,
+    originPlugin,
     t: String(Date.now()),
   });
 

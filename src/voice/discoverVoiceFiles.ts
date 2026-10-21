@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { normalizeVoiceOrigin } from './voiceOrigin';
 
 export type VoiceFileEntry = {
   relPath: string;
@@ -9,6 +10,11 @@ export type VoiceFileEntry = {
   variant: number;
   /** `ogg` is a take a game stores inside a container, unpacked for playback. */
   ext: 'fuz' | 'wav' | 'xwm' | 'ogg';
+  /**
+   * Plugin that owns the line, lower-cased: the folder under `Sound/Voice/`.
+   * Set for Creation Engine takes; games without an origin notion leave it out.
+   */
+  originPlugin?: string;
 };
 
 const VOICE_FILE_RE = /^([0-9A-Fa-f]{8})_(\d+)\.(fuz|wav|xwm)$/i;
@@ -26,35 +32,54 @@ export const resolveVoiceRootRel = (pluginRelPath: string): string => {
   return normalizeRelPath(path.join(pluginDir, 'Sound', 'Voice', pluginFileName));
 };
 
-/** Scan `<plugin-dir>/Sound/Voice/<plugin>/` for voiced dialogue files. */
+/** `Sound/Voice/` next to the plugin — the parent of every origin folder. */
+const resolveVoiceTreeRel = (pluginRelPath: string): string =>
+  normalizeRelPath(path.dirname(resolveVoiceRootRel(pluginRelPath)));
+
+/**
+ * Scan `<plugin-dir>/Sound/Voice/<origin>/` for voiced dialogue files.
+ *
+ * Every origin folder is walked, not only the plugin's own: a patch keeps its
+ * fixed takes under the master it overrides (`Sound/Voice/Fallout4.esm/…`),
+ * and the game looks them up there. Folder names are matched by what they are,
+ * so a folder whose case differs from the plugin file name is found too.
+ */
 export const discoverVoiceFiles = (packageDir: string, pluginRelPath: string): VoiceFileEntry[] => {
-  const voiceRelPrefix = resolveVoiceRootRel(pluginRelPath);
-  const voiceRoot = path.join(packageDir, ...voiceRelPrefix.split('/'));
-  if (!fs.existsSync(voiceRoot)) return [];
+  const treeRel = resolveVoiceTreeRel(pluginRelPath);
+  const treeRoot = path.join(packageDir, ...treeRel.split('/'));
+  if (!fs.existsSync(treeRoot)) return [];
 
   const entries: VoiceFileEntry[] = [];
-  const walk = (currentDir: string, relDir: string): void => {
+  const walk = (currentDir: string, relDir: string, origin: string): void => {
     for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
-      const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
+      const relPath = `${relDir}/${entry.name}`;
       const fullPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        walk(fullPath, relPath);
+        walk(fullPath, relPath, origin);
         continue;
       }
       const match = entry.name.match(VOICE_FILE_RE);
       if (!match) continue;
       entries.push({
-        relPath: normalizeRelPath(path.join(voiceRelPrefix, relPath)),
+        relPath,
         absolutePath: fullPath,
         fileName: entry.name,
         lineKey: match[1]!.substring(2).toUpperCase(),
         variant: Number.parseInt(match[2]!, 10),
         ext: match[3]!.toLowerCase() as VoiceFileEntry['ext'],
+        originPlugin: origin,
       });
     }
   };
 
-  walk(voiceRoot, '');
+  for (const originDir of fs.readdirSync(treeRoot, { withFileTypes: true })) {
+    if (!originDir.isDirectory()) continue;
+    walk(
+      path.join(treeRoot, originDir.name),
+      `${treeRel}/${originDir.name}`,
+      normalizeVoiceOrigin(originDir.name),
+    );
+  }
   entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
   return entries;
 };

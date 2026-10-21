@@ -6,6 +6,7 @@ import {
 
 const dest = (overrides: Partial<ReuseVoiceDestLine> = {}): ReuseVoiceDestLine => ({
   speakerKey: 'MaleBoston',
+  originPlugin: 'mod.esp',
   sourceText: 'Hello there.',
   translation: 'Привіт.',
   destRelPath: 'Sound/Voice/Mod.esp/MaleBoston/00011111_1.fuz',
@@ -19,6 +20,7 @@ const dest = (overrides: Partial<ReuseVoiceDestLine> = {}): ReuseVoiceDestLine =
 
 const source = (overrides: Partial<ReuseVoiceSourceLine> = {}): ReuseVoiceSourceLine => ({
   speakerKey: 'MaleBoston',
+  originPlugin: 'mod.esp',
   sourceText: 'Hello there.',
   translation: 'Привіт.',
   localizedAbsPath: '/src/_localize/Sound/Voice/Mod.esp/MaleBoston/00011111_1.fuz',

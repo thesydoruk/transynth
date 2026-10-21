@@ -24,16 +24,18 @@ export const parseVoiceLiveSseEvent = (raw: string): VoiceLiveSseEvent | null =>
 };
 
 export const voiceLiveLineKey = (event: {
+  originPlugin?: string | null;
   speakerKey: string;
   lineKey: string;
   variant: number;
-}): string => `${event.speakerKey}:${event.lineKey}:${event.variant}`;
+}): string => `${event.originPlugin ?? ''}/${event.speakerKey}:${event.lineKey}:${event.variant}`;
 
 const sameLine = (
   line: VoiceLinePreview,
-  event: Pick<VoiceLiveLineEvent, 'speakerKey' | 'lineKey' | 'variant'>,
+  event: Pick<VoiceLiveLineEvent, 'speakerKey' | 'lineKey' | 'variant' | 'originPlugin'>,
 ): boolean =>
   line.speakerKey === event.speakerKey &&
+  (line.originPlugin ?? '') === (event.originPlugin ?? '') &&
   line.lineKey.toLowerCase() === event.lineKey.toLowerCase() &&
   line.variant === event.variant;
 

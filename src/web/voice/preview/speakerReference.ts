@@ -5,6 +5,8 @@ import {
   setVoiceSpeakerRef,
   type VoiceSpeakerRefPick,
 } from '../../../voice/voiceSpeakerRefs';
+import type { VoiceFileEntry } from '../../../voice/discoverVoiceFiles';
+import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import { isOrphanVoiceEntry } from './buildVoiceLinePreview';
 import { resolveModVoiceContext } from './context';
 import { getVoiceListContext } from './voiceListContext';
@@ -24,6 +26,7 @@ export const setVoiceSpeakerReferenceForMod = async (
   variant: number,
   srcLang: string = CONFIG.defaultSrcLang,
   targetLang: string = CONFIG.defaultTgtLang,
+  originPlugin?: string | null,
 ): Promise<VoiceSpeakerRefResult> => {
   const trimmedSpeaker = speakerKey.trim();
   if (!trimmedSpeaker) {
@@ -39,15 +42,22 @@ export const setVoiceSpeakerReferenceForMod = async (
   }
 
   const wanted = lineKey.toUpperCase();
+  const wantOrigin = normalizeVoiceOrigin(originPlugin);
+  const originMatches = (candidate: VoiceFileEntry): boolean =>
+    !wantOrigin || (candidate.originPlugin ?? '') === wantOrigin;
   const entry = catalog.voiceFiles.find(
     (candidate) =>
       candidate.lineKey.toUpperCase() === wanted &&
       candidate.variant === variant &&
+      originMatches(candidate) &&
       catalog.speakerKeyOf(candidate) === trimmedSpeaker,
   );
   if (!entry) {
     const existsElsewhere = catalog.voiceFiles.some(
-      (candidate) => candidate.lineKey.toUpperCase() === wanted && candidate.variant === variant,
+      (candidate) =>
+        candidate.lineKey.toUpperCase() === wanted &&
+        candidate.variant === variant &&
+        originMatches(candidate),
     );
     return existsElsewhere
       ? {
@@ -70,6 +80,7 @@ export const setVoiceSpeakerReferenceForMod = async (
   const pick: VoiceSpeakerRefPick = {
     lineKey: entry.lineKey,
     variant: entry.variant,
+    originPlugin: entry.originPlugin ?? null,
   };
   await setVoiceSpeakerRef(db, modId, trimmedSpeaker, pick);
   return { ok: true, referencePick: pick };

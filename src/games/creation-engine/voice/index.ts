@@ -25,8 +25,8 @@ import {
 import {
   loadVoiceSourcesDetailed,
   loadVoiceTranslations,
-  lookupVoiceTranslation,
 } from '../../../voice/loadVoiceTranslations';
+import { findMasterBackedTake, loadVoiceWorkList } from '../../../voice/voiceWorkList';
 import { voiceSpeakerKey } from '../../../voice/speakerReference';
 import {
   synthesizeModVoiceLine,
@@ -38,7 +38,7 @@ import { resolveVoicePackageContext } from '../../../web/voice/preview/context';
 import { discoverVoiceEntries, findVoiceEntry } from '../../../web/voice/preview/voiceEntries';
 import type { GameVoiceAdapter } from '../../contract';
 import { loadCreationEngineVoiceCatalog } from './lineCatalog';
-import { creationEngineVoiceKeyFromFileName } from './takeFiles';
+import { creationEngineVoiceKeyFromRelPath } from './takeFiles';
 import { countCreationEngineVoiceWork, localizeCreationEngineVoice } from './localize';
 
 export const creationEngineVoiceAdapter: GameVoiceAdapter = {
@@ -47,7 +47,7 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
 
   isLocalizedVoicePath: (normalizedRelPath) => /(^|\/)sound\/voice(\/|$)/.test(normalizedRelPath),
 
-  voiceKeyFromFileName: creationEngineVoiceKeyFromFileName,
+  voiceKeyFromRelPath: creationEngineVoiceKeyFromRelPath,
 
   localizedTakeRelPath: (entry) => outputLocalizedFuzRelPath(entry),
 
@@ -60,22 +60,25 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
     const pkg = resolveImportPackages(extractDir, targetLang, pluginPath)[0];
     if (!pkg) return [];
 
-    const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-    const voiceRootRel = resolveVoiceRootRel(pluginRel);
-    const translations = await loadVoiceTranslations(db, modId, srcLang, targetLang);
+    const work = await loadVoiceWorkList(db, {
+      modId,
+      packageDir: pkg.packageDir,
+      pluginPath: pkg.pluginPath,
+      srcLang,
+      tgtLang: targetLang,
+    });
     const wanted = speakerKey?.trim() || '';
 
     const takes: VoiceTake[] = [];
-    for (const entry of dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel))) {
-      const speaker = voiceSpeakerKey(entry, voiceRootRel);
+    for (const { entry, row } of work.items) {
+      const speaker = voiceSpeakerKey(entry, work.voiceRootRel);
       if (wanted && speaker !== wanted) continue;
-      const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
       takes.push({
         entry,
         speakerKey: speaker,
         destRelPath: outputLocalizedFuzRelPath(entry),
-        source: row?.source ?? '',
-        translation: row?.translation ?? '',
+        source: row.source,
+        translation: row.translation,
       });
     }
     return takes;
@@ -112,6 +115,7 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
       srcLang: request.srcLang,
       tgtLang: request.tgtLang,
       speakerKey: request.speakerKey,
+      originPlugin: request.originPlugin,
     }),
 
   buildLinePreview: async (db, request) => {
@@ -125,6 +129,7 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
       tgtLang: request.tgtLang,
       referenceMode: request.referenceMode,
       speakerKey: request.speakerKey,
+      originPlugin: request.originPlugin,
     });
     if (!built.ok) return built;
     return {
@@ -137,15 +142,29 @@ export const creationEngineVoiceAdapter: GameVoiceAdapter = {
     };
   },
 
-  findLineEntry: async (_db, { pluginPath, lineKey, variant, speakerKey }) => {
+  findLineEntry: async (
+    db,
+    { modId, pluginPath, lineKey, variant, speakerKey, originPlugin, srcLang, targetLang },
+  ) => {
     const ctx = resolveVoicePackageContext(pluginPath, CONFIG.defaultTgtLang);
     if (!ctx) return null;
-    return (
-      findVoiceEntry(discoverVoiceEntries(ctx), lineKey, variant, {
-        voiceRootRel: resolveVoiceRootRel(ctx.pluginRel),
-        speakerKey,
-      }) ?? null
-    );
+    const own = findVoiceEntry(discoverVoiceEntries(ctx), lineKey, variant, {
+      voiceRootRel: resolveVoiceRootRel(ctx.pluginRel),
+      speakerKey,
+      originPlugin,
+    });
+    if (own || !originPlugin) return own ?? null;
+    const backed = await findMasterBackedTake(db, {
+      modId,
+      pluginPath,
+      originPlugin,
+      lineKey,
+      variant,
+      speakerKey,
+      srcLang: srcLang ?? CONFIG.defaultSrcLang,
+      tgtLang: targetLang ?? CONFIG.defaultTgtLang,
+    });
+    return backed?.entry ?? null;
   },
 
   loadLineCatalog: (db, request) => loadCreationEngineVoiceCatalog(db, request),

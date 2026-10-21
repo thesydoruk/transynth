@@ -167,7 +167,7 @@ export const loadDiscoVoiceCatalog = async (
     discoVoiceFileEntryFromClip(langFolder, clip),
   );
   const translationAudio = buildTranslationAudioSet(ctx.localizeDir, {
-    voiceKeyFromFileName: discoVoiceKeyFromFileName,
+    voiceKeyFromRelPath: (relPath) => discoVoiceKeyFromFileName(relPath.split('/').pop() ?? ''),
   });
 
   return {

@@ -15,10 +15,11 @@ import { openDb, closeDb } from '../src/db';
 import { CONFIG } from '../src/config';
 import { log } from '../src/logger';
 import { loadImportedMod } from '../src/modImport/importedMod';
+import { voiceKeyFromLocalizedRelPath } from '../src/voice/exportableVoiceKeys';
+import type { GameId } from '../src/types';
 import {
   loadVoiceSourcesDetailed,
   loadVoiceTranslations,
-  voiceTranslationMapKey,
   type VoiceSourceDetailRow,
   type VoiceTranslationRow,
 } from '../src/voice/loadVoiceTranslations';
@@ -55,6 +56,7 @@ const collectSkipReasons = (
 };
 
 const unlinkLocalizedSkipClips = (
+  game: GameId,
   localizeDir: string | null,
   skipReasons: Map<string, VoiceTtsSkipReason>,
   byReason: Record<VoiceTtsSkipReason, number>,
@@ -71,7 +73,8 @@ const unlinkLocalizedSkipClips = (
       }
       const match = entry.name.match(LOCALIZED_VOICE_RE);
       if (!match) continue;
-      const key = voiceTranslationMapKey(match[1]!.slice(-6), Number.parseInt(match[2]!, 10));
+      const key = voiceKeyFromLocalizedRelPath(path.relative(localizeDir, fullPath), game);
+      if (!key) continue;
       const reason = skipReasons.get(key);
       if (!reason || !fs.existsSync(fullPath)) continue;
       fs.unlinkSync(fullPath);
@@ -118,17 +121,26 @@ try {
     const skipReasons = collectSkipReasons(sources, translations);
     if (skipReasons.size === 0) continue;
 
-    filesRemoved += unlinkLocalizedSkipClips(resolved.ctx.localizeDir, skipReasons, byReason);
+    filesRemoved += unlinkLocalizedSkipClips(
+      imported.game,
+      resolved.ctx.localizeDir,
+      skipReasons,
+      byReason,
+    );
 
     for (const key of skipReasons.keys()) {
-      const [lineKey, variantText] = key.split(':');
-      const variant = Number.parseInt(variantText ?? '', 10);
-      if (!lineKey || !Number.isFinite(variant)) continue;
+      // key = `<origin>/<FORMID6>:<variant>`
+      const colon = key.lastIndexOf(':');
+      const slash = key.indexOf('/');
+      const origin = key.slice(0, Math.max(slash, 0));
+      const lineKey = key.slice(slash + 1, colon);
+      const variant = Number.parseInt(key.slice(colon + 1), 10);
+      if (slash < 0 || !lineKey || !Number.isFinite(variant)) continue;
       const { rowCount } = await db.query(
         `DELETE FROM voice_synthesis_state
          WHERE mod_id = $1 AND target_lang = $2
-           AND line_key = $3 AND variant = $4`,
-        [mod.id, lang, lineKey.toUpperCase(), variant],
+           AND line_key = $3 AND variant = $4 AND origin_plugin = $5`,
+        [mod.id, lang, lineKey.toUpperCase(), variant, origin],
       );
       dbRowsRemoved += rowCount ?? 0;
     }

@@ -28,6 +28,7 @@ import { decodeAudioToReferenceWav } from './ffmpegAudio';
 import { pickVoiceTtsReference } from './pickVoiceTtsReference';
 import { prepareReferenceAudio } from './prepareReferenceAudio';
 import type { SpeakerRefCacheEntry } from './processVoiceLocalizeEntry';
+import { normalizeVoiceOrigin } from './voiceOrigin';
 import { normalizeVoiceSpeakerKey } from './voiceSynthesisState';
 import { loadVoiceProjectSettings } from './voiceProjectSettings';
 
@@ -53,10 +54,11 @@ export type BackfillVoiceSimilarityOptions = {
   log?: (message: string) => void;
 };
 
-type PendingRow = { lineKey: string; variant: number; speakerKey: string };
+type PendingRow = { lineKey: string; variant: number; speakerKey: string; originPlugin: string };
 
-const stateKey = (speakerKey: string, lineKey: string, variant: number): string =>
-  `${normalizeVoiceSpeakerKey(speakerKey)}|${lineKey.toUpperCase()}|${variant}`;
+/** Stamp key of a take; rows written before origins existed carry `''` and match on the rest. */
+const stateKey = (speakerKey: string, lineKey: string, variant: number, origin = ''): string =>
+  `${normalizeVoiceOrigin(origin)}|${normalizeVoiceSpeakerKey(speakerKey)}|${lineKey.toUpperCase()}|${variant}`;
 
 /** The take as WAV: a FUZ carries xWMA behind its LIP block, a WAV take is itself. */
 const decodeTakeToWav = async (takePath: string, workDir: string): Promise<Buffer> => {
@@ -97,8 +99,9 @@ export const backfillVoiceSimilarity = async (
     line_key: string;
     variant: number;
     speaker_key: string;
+    origin_plugin: string;
   }>(
-    `SELECT line_key, variant, speaker_key
+    `SELECT line_key, variant, speaker_key, origin_plugin
        FROM voice_synthesis_state
       WHERE mod_id = $1 AND target_lang = $2 AND voice_similarity IS NULL`,
     [modId, targetLang],
@@ -123,7 +126,11 @@ export const backfillVoiceSimilarity = async (
   const takeByKey = new Map<string, (typeof takes)[number]>();
   const entriesBySpeaker = new Map<string, VoiceFileEntry[]>();
   for (const take of takes) {
-    takeByKey.set(stateKey(take.speakerKey, take.entry.lineKey, take.entry.variant), take);
+    const { lineKey, variant, originPlugin } = take.entry;
+    takeByKey.set(stateKey(take.speakerKey, lineKey, variant, originPlugin), take);
+    // A legacy row has no origin; the first take with the same speaker/line/variant answers it.
+    const legacy = stateKey(take.speakerKey, lineKey, variant);
+    if (!takeByKey.has(legacy)) takeByKey.set(legacy, take);
     const list = entriesBySpeaker.get(take.speakerKey) ?? [];
     list.push(take.entry);
     entriesBySpeaker.set(take.speakerKey, list);
@@ -137,13 +144,18 @@ export const backfillVoiceSimilarity = async (
 
   const scoreOne = async (row: PendingRow): Promise<void> => {
     if (stop) return;
-    const take = takeByKey.get(stateKey(row.speakerKey, row.lineKey, row.variant));
+    const take = takeByKey.get(
+      stateKey(row.speakerKey, row.lineKey, row.variant, row.originPlugin),
+    );
     const takePath = take ? path.join(paths.localizeDir, take.destRelPath) : null;
     if (!take || !takePath || !fs.existsSync(takePath)) {
       base.missing += 1;
       return;
     }
-    const workDir = path.join(tempRoot, `${row.speakerKey}_${row.lineKey}_${row.variant}`);
+    const workDir = path.join(
+      tempRoot,
+      `${row.originPlugin}_${row.speakerKey}_${row.lineKey}_${row.variant}`,
+    );
     ensureDir(workDir);
     try {
       const lineEnglishWav = await prepareReferenceAudio(take.entry, workDir);
@@ -181,8 +193,16 @@ export const backfillVoiceSimilarity = async (
         `UPDATE voice_synthesis_state
             SET voice_similarity = $5
           WHERE mod_id = $1 AND target_lang = $2 AND line_key = $3 AND variant = $4
-            AND speaker_key = $6 AND voice_similarity IS NULL`,
-        [modId, targetLang, row.lineKey.toUpperCase(), row.variant, similarity, row.speakerKey],
+            AND speaker_key = $6 AND origin_plugin = $7 AND voice_similarity IS NULL`,
+        [
+          modId,
+          targetLang,
+          row.lineKey.toUpperCase(),
+          row.variant,
+          similarity,
+          row.speakerKey,
+          row.originPlugin,
+        ],
       );
       base.scored += 1;
       if (options.limit && base.scored >= options.limit) stop = true;
@@ -203,7 +223,12 @@ export const backfillVoiceSimilarity = async (
     async function* rows(): AsyncGenerator<PendingRow> {
       for (const row of pending) {
         if (stop) return;
-        yield { lineKey: row.line_key, variant: row.variant, speakerKey: row.speaker_key };
+        yield {
+          lineKey: row.line_key,
+          variant: row.variant,
+          speakerKey: row.speaker_key,
+          originPlugin: row.origin_plugin,
+        };
       }
     }
     await runPoolOverAsyncIterable(rows(), workers, scoreOne);

@@ -43,9 +43,9 @@ export const addInheritedExportableVoiceKeys = (
   }
 };
 
-/** Map a localized clip filename to `FORMID6:variant`, or null if it is not a take. */
-export const voiceKeyFromLocalizedFileName = (fileName: string, game: GameId): string | null =>
-  gamePlugin(game).voice?.voiceKeyFromFileName(fileName) ?? null;
+/** Map a localized clip path (relative to the localize tree) to its voice key, or null if it is not a take. */
+export const voiceKeyFromLocalizedRelPath = (relPath: string, game: GameId): string | null =>
+  gamePlugin(game).voice?.voiceKeyFromRelPath(relPath) ?? null;
 
 /** Keys (`FORMID6:variant`) whose localized clips may be packed into an export. */
 export const loadExportableVoiceKeys = async (

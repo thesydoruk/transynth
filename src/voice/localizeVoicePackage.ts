@@ -8,21 +8,10 @@ import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
 import { ttsPipelineConcurrency } from '../tts/ttsRequestPool';
 import { runPoolOverAsyncIterable } from '../utils/concurrency';
 import type { TtsReferenceMode } from './voiceToolPaths';
-import {
-  dedupeVoiceFiles,
-  discoverVoiceFiles,
-  resolveVoiceRootRel,
-  type VoiceFileEntry,
-} from './discoverVoiceFiles';
-import {
-  loadVoiceSources,
-  loadVoiceTranslations,
-  lookupVoiceTranslation,
-  voiceTranslationMapKey,
-  type VoiceTranslationRow,
-} from './loadVoiceTranslations';
+import { resolveVoiceRootRel } from './discoverVoiceFiles';
+import { voiceTranslationMapKey } from './loadVoiceTranslations';
 import { migrateVoiceSpeakerRefsFromJsonIfNeeded } from './voiceSpeakerRefs';
-import { groupVoiceFilesBySpeaker, voiceSpeakerKey } from './speakerReference';
+import { voiceSpeakerKey } from './speakerReference';
 import {
   prepareVoiceTtsText,
   voiceTtsSkipMessage,
@@ -40,10 +29,9 @@ import { processVoiceLocalizeEntry, type SpeakerRefCacheEntry } from './processV
 import type { ModVoiceGenerateScope } from './localizeModImportVoice';
 import type { GameId } from '../types';
 import { emitVoiceLive } from './voiceLiveEvents';
+import { loadVoiceWorkList, type VoiceWorkSource } from './voiceWorkList';
 
-type VoiceLocalizeWorkItem = {
-  entry: VoiceFileEntry;
-  row: VoiceTranslationRow;
+type VoiceLocalizeWorkItem = VoiceWorkSource & {
   prepared: Extract<PrepareVoiceTtsTextResult, { action: 'synthesize' }>;
 };
 
@@ -64,7 +52,7 @@ export const localizeVoicePackage = async (
     synthesis: TtsSynthesisParams;
     /** Set for a `low-similarity` job. */
     resynth?: VoiceResynthParams;
-    /** When set, only these `FORMID6:variant` keys are synthesized. */
+    /** When set, only these `<origin>/FORMID6:variant` keys are synthesized. */
     onlyKeys?: ReadonlySet<string>;
     /** When set, only voice files under this NPC folder are synthesized. */
     speakerKey?: string;
@@ -79,9 +67,15 @@ export const localizeVoicePackage = async (
 ): Promise<void> => {
   const prefix = pkg.folder ? `${pkg.folder}/` : '';
   const pluginRel = pluginRelPath(pkg.packageDir, pkg.pluginPath);
-  const translations = await loadVoiceTranslations(db, modId, srcLang, tgtLang);
-  const voiceSources = await loadVoiceSources(db, modId, srcLang);
-  const voiceFiles = dedupeVoiceFiles(discoverVoiceFiles(pkg.packageDir, pluginRel));
+  const work = await loadVoiceWorkList(db, {
+    modId,
+    packageDir: pkg.packageDir,
+    pluginPath: pkg.pluginPath,
+    srcLang,
+    tgtLang,
+    prefix,
+  });
+  skipped.push(...work.skipped);
   const storedVersions = options.dryRun
     ? new Map<string, string>()
     : await loadVoiceSynthesisVersionMap(db, modId, tgtLang);
@@ -89,27 +83,17 @@ export const localizeVoicePackage = async (
     ? await loadVoiceResynthContext(db, modId, tgtLang, options.resynth)
     : undefined;
 
-  if (voiceFiles.length === 0) {
-    log.info(`No voice files under ${prefix}${resolveVoiceRootRel(pluginRel)}`);
+  if (work.items.length === 0) {
+    log.info(`No voice lines to synthesize under ${prefix}${resolveVoiceRootRel(pluginRel)}`);
     return;
   }
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-voice-'));
   let eligibleSeen = 0;
 
-  const voiceRootRel = resolveVoiceRootRel(pluginRel);
+  const voiceRootRel = work.voiceRootRel;
   const speakerFilter = options.speakerKey?.trim() || '';
   const speakerRefCache = new Map<string, SpeakerRefCacheEntry>();
-  let voiceFilesBySpeaker: Map<string, VoiceFileEntry[]> | undefined;
-
-  const getSiblingEntries = (speaker: string, current: VoiceFileEntry): VoiceFileEntry[] => {
-    if (!voiceFilesBySpeaker) {
-      voiceFilesBySpeaker = groupVoiceFilesBySpeaker(voiceFiles, voiceRootRel);
-    }
-    return (voiceFilesBySpeaker.get(speaker) ?? []).filter(
-      (candidate) => candidate.lineKey !== current.lineKey || candidate.variant !== current.variant,
-    );
-  };
 
   // Short lines keep the original clip first and may append a speaker default.
   if (!options.dryRun) {
@@ -120,25 +104,20 @@ export const localizeVoicePackage = async (
     options.onEligibleStep?.();
   };
 
-  const takeNextWorkItem = (entry: VoiceFileEntry): VoiceLocalizeWorkItem | 'stop' | null => {
+  const takeNextWorkItem = (source: VoiceWorkSource): VoiceLocalizeWorkItem | 'stop' | null => {
     if (options.limit != null && eligibleSeen >= options.limit) return 'stop';
+    const { entry, row } = source;
 
-    const entryKey = voiceTranslationMapKey(entry.lineKey, entry.variant);
+    const entryKey = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);
     if (options.onlyKeys && !options.onlyKeys.has(entryKey)) return null;
     if (speakerFilter && voiceSpeakerKey(entry, voiceRootRel) !== speakerFilter) return null;
-
-    const row = lookupVoiceTranslation(translations, entry.lineKey, entry.variant);
-    if (!row) {
-      skipped.push(`${prefix}${entry.relPath} (no translation for variant ${entry.variant})`);
-      return null;
-    }
 
     const fuzRel = outputLocalizedFuzRelPath(entry);
     const fuzDest = toDiskPath(pkg.localizeDir, fuzRel);
     const prepared = prepareVoiceTtsText({
       lineSource: row.source,
       translation: row.translation,
-      speakerSource: row.source,
+      speakerSource: source.referenceSource ?? row.source,
       edid: row.edid,
     });
     if (prepared.action === 'skip') {
@@ -153,11 +132,13 @@ export const localizeVoicePackage = async (
       speakerKey,
       lineKey: entry.lineKey,
       variant: entry.variant,
+      origin: entry.originPlugin,
       storedVersion: lookupVoiceSynthesisVersion(
         storedVersions,
         speakerKey,
         entry.lineKey,
         entry.variant,
+        entry.originPlugin,
       ),
       payloadVersion: voiceTtsPayloadVersionFromPrepared(prepared, tgtLang),
       fileExists: fs.existsSync(fuzDest),
@@ -165,20 +146,21 @@ export const localizeVoicePackage = async (
     if (!due) return null;
 
     if (options.dryRun) {
-      log.info(`[dry-run] ${prefix}${fuzRel} ← "${prepared.text.slice(0, 80)}..."`);
+      const via = source.masterBacked ? ` [ref: ${source.masterBacked.master.pluginName}]` : '';
+      log.info(`[dry-run] ${prefix}${fuzRel}${via} ← "${prepared.text.slice(0, 80)}..."`);
       eligibleSeen += 1;
       finishEligibleStep();
       return null;
     }
 
     eligibleSeen += 1;
-    return { entry, row, prepared };
+    return { ...source, prepared };
   };
 
   async function* workItems(): AsyncGenerator<VoiceLocalizeWorkItem> {
-    for (const entry of voiceFiles) {
+    for (const source of work.items) {
       if (options.shouldCancel?.()) return;
-      const next = takeNextWorkItem(entry);
+      const next = takeNextWorkItem(source);
       if (next === 'stop') return;
       if (next) yield next;
     }
@@ -201,9 +183,9 @@ export const localizeVoicePackage = async (
       tgtLang,
       force: options.force,
       resynth,
-      voiceSources,
+      voiceSources: work.voiceSources,
       speakerRefCache,
-      getSiblingEntries,
+      getSiblingEntries: work.siblingsOf,
       storedVersions,
       signal: options.signal,
     };
@@ -211,17 +193,21 @@ export const localizeVoicePackage = async (
     await runPoolOverAsyncIterable(
       workItems(),
       ttsPipelineConcurrency(),
-      async ({ entry, row, prepared }) => {
+      async ({ entry, row, prepared, referenceSource }) => {
         const speakerKey = voiceSpeakerKey(entry, voiceRootRel);
         const live = {
           modId,
           speakerKey,
           lineKey: entry.lineKey,
           variant: entry.variant,
+          originPlugin: entry.originPlugin ?? null,
         };
         emitVoiceLive({ type: 'line_started', ...live });
         try {
-          const result = await processVoiceLocalizeEntry(entry, row, prepared, entryOptions);
+          const result = await processVoiceLocalizeEntry(entry, row, prepared, {
+            ...entryOptions,
+            referenceSource,
+          });
           finishEligibleStep();
           if (result.kind === 'written') {
             written.push(result.relPath);

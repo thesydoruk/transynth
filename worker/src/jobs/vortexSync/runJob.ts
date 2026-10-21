@@ -23,6 +23,7 @@ import {
   isVortexExportOrder,
   orderVortexLangpackModIds,
 } from '../../../../src/vortex/exportOrder';
+import { readPluginMastersOf } from '../../../../src/vortex/pluginMasters';
 import type { ServerVortexStage } from '../../../../src/vortex/stages';
 import type { VortexExportOrder, VortexPlanUnit } from '../../../../src/vortex/types';
 import type { JobResult } from '../../types';
@@ -208,7 +209,11 @@ export const runVortexSyncJob = async (
           log.info(`Vortex export: ${enabled.length}/${refs.length} deployed Vortex mod(s)`);
         }
         const applyFileOrder = !exportOrder || exportOrder.applyOrder !== false;
-        const modIds = orderVortexLangpackModIds(enabled, applyFileOrder ? exportOrder : null);
+        const modIds = orderVortexLangpackModIds(
+          enabled,
+          applyFileOrder ? exportOrder : null,
+          readPluginMastersOf,
+        );
         const sourceFolders = Object.fromEntries(enabled.map((row) => [row.id, row.source_folder]));
         if (exportOrder) {
           log.info(

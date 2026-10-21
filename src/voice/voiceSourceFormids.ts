@@ -1,9 +1,12 @@
 import { type InheritedVoiceLookup } from './inheritedVoiceText';
 
-/** FormID part of a `FORMID6:variant` voice key. */
-const keyFormid = (key: string): string => key.split(':')[0] ?? '';
+/** `<origin>/<FORMID6>` part of an origin-qualified `<origin>/<FORMID6>:<variant>` voice key. */
+const keyFormid = (key: string): string => {
+  const colon = key.lastIndexOf(':');
+  return colon < 0 ? key : key.slice(0, colon);
+};
 
-/** FormIDs with NAM1 text, from local rows plus every imported master. */
+/** Origin-qualified FormIDs (`<origin>/<FORMID6>`) with NAM1 text, from local rows plus every imported master. */
 export const collectVoiceSourceFormids = (
   sources: Map<string, unknown>,
   translations: Map<string, unknown>,

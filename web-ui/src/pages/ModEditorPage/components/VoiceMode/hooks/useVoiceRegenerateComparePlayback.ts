@@ -49,9 +49,21 @@ export const useVoiceRegenerateComparePlayback = (
 
       const url =
         track.kind === 'source'
-          ? voiceAudioUrl(modId, line.lineKey, line.variant, line.speakerKey)
+          ? voiceAudioUrl(
+              modId,
+              line.lineKey,
+              line.variant,
+              line.speakerKey,
+              line.originPlugin ?? undefined,
+            )
           : track.kind === 'current'
-            ? voiceTranslationAudioUrl(modId, line.lineKey, line.variant, line.speakerKey)
+            ? voiceTranslationAudioUrl(
+                modId,
+                line.lineKey,
+                line.variant,
+                line.speakerKey,
+                line.originPlugin ?? undefined,
+              )
             : voiceRegeneratePreviewUrl(modId, sessionId, track.preview.id);
 
       audio.src = url;

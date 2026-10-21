@@ -13,6 +13,7 @@ export type VoiceLiveLineEvent = {
   speakerKey: string;
   lineKey: string;
   variant: number;
+  originPlugin?: string | null;
   voiceSimilarity?: number | null;
 };
 
@@ -57,6 +58,9 @@ export const parseVoiceLiveEvent = (value: unknown): VoiceLiveLineEvent | null =
     lineKey,
     variant,
   };
+  if (typeof raw.originPlugin === 'string' && raw.originPlugin) {
+    event.originPlugin = raw.originPlugin;
+  }
   if (raw.type === 'line_done' && 'voiceSimilarity' in raw) {
     const score = raw.voiceSimilarity;
     event.voiceSimilarity = typeof score === 'number' && Number.isFinite(score) ? score : null;
@@ -65,7 +69,8 @@ export const parseVoiceLiveEvent = (value: unknown): VoiceLiveLineEvent | null =
 };
 
 export const voiceLiveLineKey = (event: {
+  originPlugin?: string | null;
   speakerKey: string;
   lineKey: string;
   variant: number;
-}): string => `${event.speakerKey}:${event.lineKey}:${event.variant}`;
+}): string => `${event.originPlugin ?? ''}/${event.speakerKey}:${event.lineKey}:${event.variant}`;

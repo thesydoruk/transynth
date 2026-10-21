@@ -7,7 +7,7 @@ import { resolveModImportExtractRoot } from '../../modStorage/paths';
 import type { GameId } from '../../types';
 import {
   loadExportableVoiceKeys,
-  voiceKeyFromLocalizedFileName,
+  voiceKeyFromLocalizedRelPath,
 } from '../../voice/exportableVoiceKeys';
 
 export type LocalizedVoiceExportEntry = {
@@ -35,9 +35,9 @@ const matchesExtension = (fileName: string, extensions: string[]): boolean => {
   return extensions.some((ext) => lower.endsWith(ext.toLowerCase()));
 };
 
-const isAllowedVoiceFile = (fileName: string, options: CollectLocalizedVoiceOptions): boolean => {
+const isAllowedVoiceFile = (relPath: string, options: CollectLocalizedVoiceOptions): boolean => {
   if (!options.exportableKeys) return true;
-  const key = voiceKeyFromLocalizedFileName(fileName, options.game ?? DEFAULT_GAME_ID);
+  const key = voiceKeyFromLocalizedRelPath(relPath, options.game ?? DEFAULT_GAME_ID);
   return key != null && options.exportableKeys.has(key);
 };
 
@@ -69,7 +69,7 @@ export const collectLocalizedVoiceFiles = (
           continue;
         }
         if (!matchesExtension(entry.name, extensions)) continue;
-        if (!isAllowedVoiceFile(entry.name, options)) continue;
+        if (!isAllowedVoiceFile(relPath, options)) continue;
         const packageRel = normalizeZipPath(relPath);
         const transformed = options.zipPathTransform
           ? options.zipPathTransform(packageRel)

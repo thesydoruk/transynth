@@ -94,8 +94,41 @@ describe('collectLocalizedVoiceFiles', () => {
     fs.writeFileSync(junkPath, Buffer.from('junk'));
 
     const files = collectLocalizedVoiceFiles(pluginPath, 'uk', {
-      exportableKeys: new Set(['123456:1']),
+      exportableKeys: new Set(['mymod.esp/123456:1']),
     });
     expect(files.map((file) => file.name)).toEqual(['Sound/Voice/MyMod.esp/NPC/00123456_1.fuz']);
+  });
+
+  it('exports a patch take written under its master origin only for the master-origin key', () => {
+    const extractRoot = path.join(modStorageRoot(), `_extracted_voice_origin_${Date.now()}`);
+    tempDirs.push(extractRoot);
+    fs.mkdirSync(extractRoot, { recursive: true });
+
+    const pluginPath = path.join(extractRoot, 'Unofficial Fallout 4 Patch.esp');
+    fs.writeFileSync(pluginPath, Buffer.from('TES4', 'ascii'));
+
+    const localizeDir = modImportLocalizeDir(extractRoot, 'uk');
+    const takePath = path.join(
+      localizeDir,
+      'Sound',
+      'Voice',
+      'Fallout4.esm',
+      'MaleRough',
+      '00012345_1.fuz',
+    );
+    fs.mkdirSync(path.dirname(takePath), { recursive: true });
+    fs.writeFileSync(takePath, Buffer.from('take'));
+
+    const kept = collectLocalizedVoiceFiles(pluginPath, 'uk', {
+      exportableKeys: new Set(['fallout4.esm/012345:1']),
+    });
+    expect(kept.map((file) => file.name)).toEqual([
+      'Sound/Voice/Fallout4.esm/MaleRough/00012345_1.fuz',
+    ]);
+
+    const dropped = collectLocalizedVoiceFiles(pluginPath, 'uk', {
+      exportableKeys: new Set(['unofficial fallout 4 patch.esp/012345:1']),
+    });
+    expect(dropped).toEqual([]);
   });
 });

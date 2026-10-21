@@ -1,8 +1,9 @@
 /**
  * Shared row shapes and SQL fragments for the text behind a voiced line.
  *
- * Voice files are named `<FormID>_<responseNumber>.fuz`, so every loader keys its
- * result by lower-6 FormID + response number (see {@link voiceTranslationMapKey}).
+ * Voice files are named `<FormID>_<responseNumber>.fuz` under the folder of the
+ * plugin that owns the line, so every loader keys its result by origin plugin +
+ * lower-6 FormID + response number (see {@link voiceTranslationMapKey}).
  *
  * Two record paths can carry the spoken text:
  *
@@ -11,9 +12,13 @@
  *                 when the INFO has no `NAM1` of its own
  */
 
+import { originFormidKey } from './voiceOrigin';
+
 export type VoiceTranslationRow = {
   lineKey: string;
   infoFormidHex: string;
+  /** Plugin that owns the INFO (lower-cased file name); see `voiceOrigin.ts`. */
+  originPlugin?: string;
   voiceVariant: number;
   stringId: number;
   translationId: number | null;
@@ -30,6 +35,8 @@ export type VoiceSourceRow = {
 
 export type VoiceSourceDetailRow = VoiceSourceRow & {
   infoFormidHex: string;
+  /** Plugin that owns the INFO (lower-cased file name); see `voiceOrigin.ts`. */
+  originPlugin?: string;
   stringId: number;
   /** INFO EDID when the loader has it — used to drop `CA_Interject_Stub_*`. */
   edid?: string | null;
@@ -57,9 +64,19 @@ export const infoNam1RecordsSql = (recordAlias: string, pathParam: string): stri
 export const infoPromptRecordsSql = (recordAlias: string, pathParam: string): string =>
   infoSubrecordSql(recordAlias, pathParam, 'RNAM');
 
-/** Map key for voice file `00002CBA_4.fuz` → formid lower-6 + variant (`002CBA:4`). */
-export const voiceTranslationMapKey = (lineKey: string, variant: number): string =>
-  `${lineKey.toUpperCase()}:${variant}`;
+/**
+ * Map key for voice file `Sound/Voice/Fallout4.esm/…/00002CBA_4.fuz` →
+ * origin + formid lower-6 + variant (`fallout4.esm/002CBA:4`).
+ *
+ * Without an origin the key is the bare `002CBA:4`; games whose takes have no
+ * owning plugin (Disco, Witcher 3) use that form. Creation Engine maps are
+ * always origin-qualified, so every lookup against them must pass the origin.
+ */
+export const voiceTranslationMapKey = (
+  lineKey: string,
+  variant: number,
+  origin?: string | null,
+): string => `${originFormidKey(origin, lineKey)}:${variant}`;
 
 /** Trim voice text; whitespace-only values are treated as missing. */
 export const normalizeVoiceText = (text: string | null | undefined): string | null => {
@@ -96,6 +113,9 @@ const resolveSharedSource = (
 /**
  * Give INFOs that borrow their responses via `DNAM` the text of the INFO they
  * point at, so their own `.fuz` files stop looking orphaned.
+ *
+ * `sharedFrom` maps `<origin>/<FORMID6>` to `<origin>/<FORMID6>`, the same
+ * group prefix the map keys carry before the `:variant` suffix.
  *
  * Existing keys are never overwritten — a record's own response always wins.
  */

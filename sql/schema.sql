@@ -791,9 +791,12 @@ CREATE TABLE IF NOT EXISTS voice_speaker_refs (
   line_key      TEXT NOT NULL,
   variant       INTEGER NOT NULL CHECK (variant >= 1),
   auto_score    DOUBLE PRECISION,
+  origin_plugin TEXT NOT NULL DEFAULT '',
   updated_at    TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (mod_id, speaker_key)
 );
+
+ALTER TABLE voice_speaker_refs ADD COLUMN IF NOT EXISTS origin_plugin TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_voice_speaker_refs_mod
   ON voice_speaker_refs(mod_id);
@@ -807,16 +810,20 @@ CREATE TABLE IF NOT EXISTS voice_synthesis_state (
   variant          INTEGER NOT NULL CHECK (variant >= 1),
   target_lang      TEXT NOT NULL,
   speaker_key      TEXT NOT NULL DEFAULT '',
+  origin_plugin    TEXT NOT NULL DEFAULT '',
   tts_text_version TEXT NOT NULL,
   synthesized_at   TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (mod_id, line_key, variant, target_lang, speaker_key)
+  PRIMARY KEY (mod_id, origin_plugin, line_key, variant, target_lang, speaker_key)
 );
 
--- Existing DBs created the table without speaker_key (Nate/Nora shared one row).
+-- Existing DBs created the table without speaker_key (Nate/Nora shared one row)
+-- and without origin_plugin (a patch's overrides of two masters could share a
+-- lower-6 FormID). Rows from before carry '' and are read as a fallback.
 ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS speaker_key TEXT NOT NULL DEFAULT '';
+ALTER TABLE voice_synthesis_state ADD COLUMN IF NOT EXISTS origin_plugin TEXT NOT NULL DEFAULT '';
 ALTER TABLE voice_synthesis_state DROP CONSTRAINT IF EXISTS voice_synthesis_state_pkey;
 ALTER TABLE voice_synthesis_state ADD CONSTRAINT voice_synthesis_state_pkey
-  PRIMARY KEY (mod_id, line_key, variant, target_lang, speaker_key);
+  PRIMARY KEY (mod_id, origin_plugin, line_key, variant, target_lang, speaker_key);
 
 CREATE INDEX IF NOT EXISTS idx_voice_synthesis_state_mod_lang
   ON voice_synthesis_state(mod_id, target_lang);

@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Tx } from '../../../db';
 import { CONFIG } from '../../../config';
 import { isVoiceFormidKey } from '../../../voice/voiceFormidKey';
+import { normalizeVoiceOrigin } from '../../../voice/voiceOrigin';
 import { parseRouteId } from '../parseRouteId';
 import {
   clearVoiceSpeakerReferenceForMod,
@@ -16,6 +17,10 @@ import {
   setVoiceSpeakerReferenceForMod,
 } from '../../voice/preview';
 import { attachVoiceLiveSse } from '../../voice/voiceLiveHub';
+
+/** The optional `originPlugin` query value: trimmed, lower-cased, empty -> undefined. */
+const originQuery = (value: string | undefined): string | undefined =>
+  normalizeVoiceOrigin(value) || undefined;
 
 export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods/:id/voice/live — per-line synthesis events for the voice editor.
@@ -85,7 +90,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // `speakerKey` disambiguates lines recorded by more than one voice type.
   app.get<{
     Params: { id: string; lineKey: string; variant: string };
-    Querystring: { speakerKey?: string };
+    Querystring: { speakerKey?: string; originPlugin?: string };
   }>('/api/mods/:id/voice/audio/:lineKey/:variant', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
@@ -106,6 +111,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       lineKey,
       variant,
       req.query.speakerKey?.trim(),
+      originQuery(req.query.originPlugin),
     );
     if (!result.ok) {
       const status =
@@ -123,7 +129,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // GET /api/mods/:id/voice/translation-audio/:lineKey/:variant — stream synthesized TTS WAV.
   app.get<{
     Params: { id: string; lineKey: string; variant: string };
-    Querystring: { speakerKey?: string };
+    Querystring: { speakerKey?: string; originPlugin?: string };
   }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
@@ -144,6 +150,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       lineKey,
       variant,
       req.query.speakerKey?.trim(),
+      originQuery(req.query.originPlugin),
     );
     if (!result.ok) {
       const status =
@@ -161,7 +168,12 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   // POST /api/mods/:id/voice/translation-audio/:lineKey/:variant — synthesize one line.
   app.post<{
     Params: { id: string; lineKey: string; variant: string };
-    Querystring: { srcLang?: string; targetLang?: string; speakerKey?: string };
+    Querystring: {
+      srcLang?: string;
+      targetLang?: string;
+      speakerKey?: string;
+      originPlugin?: string;
+    };
   }>('/api/mods/:id/voice/translation-audio/:lineKey/:variant', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
     const lineKey = req.params.lineKey.trim();
@@ -186,6 +198,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       srcLang,
       targetLang,
       req.query.speakerKey?.trim(),
+      originQuery(req.query.originPlugin),
     );
     if (!result.ok) {
       const status =
@@ -204,7 +217,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
   app.put<{
     Params: { id: string };
     Querystring: { srcLang?: string; targetLang?: string };
-    Body: { speakerKey?: string; lineKey?: string; variant?: number };
+    Body: { speakerKey?: string; lineKey?: string; variant?: number; originPlugin?: string };
   }>('/api/mods/:id/voice/speaker-ref', async (req, reply) => {
     const modId = parseRouteId(req.params.id);
     if (modId === null) {
@@ -230,6 +243,7 @@ export const registerVoiceRoutes = async (app: FastifyInstance, db: Tx) => {
       variant,
       req.query.srcLang?.trim() || CONFIG.defaultSrcLang,
       req.query.targetLang?.trim() || CONFIG.defaultTgtLang,
+      typeof req.body?.originPlugin === 'string' ? req.body.originPlugin : null,
     );
     if (!result.ok) {
       const status =

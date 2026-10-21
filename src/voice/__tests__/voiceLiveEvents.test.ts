@@ -22,6 +22,12 @@ describe('parseVoiceLiveEvent', () => {
     expect(parseVoiceLiveEvent({ ...valid, variant: 0 })).toBeNull();
   });
 
+  it('carries the origin plugin when present', () => {
+    const withOrigin = { ...valid, originPlugin: 'fallout4.esm' };
+    expect(parseVoiceLiveEvent(withOrigin)).toEqual(withOrigin);
+    expect(parseVoiceLiveEvent({ ...valid, originPlugin: 7 })?.originPlugin).toBeUndefined();
+  });
+
   it('keeps voiceSimilarity only on successful writes', () => {
     expect(
       parseVoiceLiveEvent({ ...valid, type: 'line_started' })?.voiceSimilarity,
@@ -33,7 +39,15 @@ describe('parseVoiceLiveEvent', () => {
 describe('voiceLiveLineKey', () => {
   it('joins speaker, formid and variant', () => {
     expect(voiceLiveLineKey({ speakerKey: 'Nora', lineKey: '005825', variant: 2 })).toBe(
-      'Nora:005825:2',
+      '/Nora:005825:2',
     );
+    expect(
+      voiceLiveLineKey({
+        originPlugin: 'a.esm',
+        speakerKey: 'Nora',
+        lineKey: '005825',
+        variant: 2,
+      }),
+    ).toBe('a.esm/Nora:005825:2');
   });
 });

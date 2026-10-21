@@ -12,6 +12,7 @@ import {
   canSynthesizeVoiceLine,
   resolveVoiceLineSkipReason,
 } from '../../../voice/prepareVoiceTtsText';
+import { originFormidKey } from '../../../voice/voiceOrigin';
 import { voiceSpeakerRefMatches } from '../../../voice/voiceSpeakerRefs';
 import { lookupVoiceSimilarity } from '../../../voice/voiceSynthesisState';
 import type { VoiceLineCatalog } from '../../../voice/lineCatalog';
@@ -25,16 +26,21 @@ import type { VoiceLinePreview, VoiceSpeakerSummary } from './types';
  * @param sourceFormids - {@link VoiceLineCatalog.sourceFormids}
  */
 export const isOrphanVoiceEntry = (sourceFormids: Set<string>, entry: VoiceFileEntry): boolean =>
-  !sourceFormids.has(entry.lineKey.toUpperCase());
+  !sourceFormids.has(originFormidKey(entry.originPlugin, entry.lineKey));
 
 export const buildVoiceLinePreview = (
   context: VoiceLineCatalog,
   entry: VoiceFileEntry,
   speakerKey: string,
 ): VoiceLinePreview => {
-  const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant);
+  const mapKey = voiceTranslationMapKey(entry.lineKey, entry.variant, entry.originPlugin);
   const sourceRow = context.sources.get(mapKey);
-  const translationRow = lookupVoiceTranslation(context.translations, entry.lineKey, entry.variant);
+  const translationRow = lookupVoiceTranslation(
+    context.translations,
+    entry.lineKey,
+    entry.variant,
+    entry.originPlugin,
+  );
   const referencePick = context.speakerRefs[speakerKey] ?? null;
   const hasAudio = context.hasLocalizedTake(entry);
   const translationText = normalizeVoiceText(translationRow?.translation) ?? '';
@@ -55,6 +61,7 @@ export const buildVoiceLinePreview = (
       context.inheritedLookup,
       entry.lineKey,
       entry.variant,
+      entry.originPlugin,
     );
     if (inherited) {
       source = inherited.source;
@@ -66,6 +73,13 @@ export const buildVoiceLinePreview = (
       isInheritedAudio = true;
       inheritedFrom = formatInheritedFromLabel(inherited.master);
     }
+  }
+
+  // The mod's own text over a master's recording: the dub lands in this mod.
+  const backedBy = context.masterBackedOf?.(entry) ?? null;
+  if (backedBy) {
+    isInheritedAudio = true;
+    inheritedFrom = formatInheritedFromLabel(backedBy);
   }
 
   const isOrphanAudio = isOrphanVoiceEntry(context.sourceFormids, entry);
@@ -88,13 +102,14 @@ export const buildVoiceLinePreview = (
     variant: entry.variant,
     fileName: entry.fileName,
     speakerKey,
+    originPlugin: entry.originPlugin ?? null,
     stringId: isOrphanAudio ? null : stringId,
     translationId,
     status,
     source,
     translation,
     isReference: referencePick
-      ? voiceSpeakerRefMatches(referencePick, entry.lineKey, entry.variant)
+      ? voiceSpeakerRefMatches(referencePick, entry.lineKey, entry.variant, entry.originPlugin)
       : false,
     isInheritedAudio,
     inheritedFrom,
@@ -103,7 +118,13 @@ export const buildVoiceLinePreview = (
     canGenerateVoice: synthesizable && !hasAudio,
     ttsSkipReason,
     voiceSimilarity: hasAudio
-      ? lookupVoiceSimilarity(context.voiceSimilarities, speakerKey, entry.lineKey, entry.variant)
+      ? lookupVoiceSimilarity(
+          context.voiceSimilarities,
+          speakerKey,
+          entry.lineKey,
+          entry.variant,
+          entry.originPlugin,
+        )
       : null,
   };
 };
