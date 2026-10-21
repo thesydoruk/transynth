@@ -223,6 +223,24 @@ job. `JOB_CONCURRENCY_<QUEUE>` overrides one queue; `WORKER_QUEUES=tts,asr` make
 process serve only those queues, so a worker can sit next to the GPU host that runs them.
 Queue names are unchanged (`transynth-jobs`, `-llm`, `-voice`, plus `-asr`, `-separate`).
 
+### Fleet controller
+
+On one GPU the services do not all fit at once, so something has to swap them by demand.
+`npm run fleet` (compose profile `fleet`) is that something. `fleet.yml` (see
+`fleet.example.yml`) lists hosts (a docker context over ssh, the GPUs with their VRAM, which
+kinds are allowed) and services (one compose service on one host and GPU, its `url`, the
+VRAM it holds, a `priority`, `idleUnloadSec`, `startTimeoutSec`). Every `pollSec` the
+controller reads the queues, probes `/health` of each service, and applies four rules: a
+wanted kind with no healthy provider gets its highest-priority service started if the VRAM
+fits; if not, residents that nobody wants, that carry no load, that idled past their own
+limit and rank lower are stopped first; nothing else is stopped. Services that are up and
+healthy are written into `services.endpoints` as `managed` rows, so routing follows the
+controller; hand-written rows stay. `GET /api/fleet` returns the last snapshot (services,
+GPUs with committed and measured VRAM, demand, the action log); `POST
+/api/fleet/services/<name>/start|stop` holds a service up or down for an hour, `DELETE
+/api/fleet/services/<name>/override` hands it back to the scheduler. Nothing is installed
+on the hosts: Docker, the NVIDIA toolkit and the checked-out compose projects suffice.
+
 ## Server Settings
 
 | Variable                  | Default        | Description                                                                                                     |
