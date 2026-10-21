@@ -4,6 +4,7 @@ import { api } from '../../../api';
 import type { ServiceSource } from '../../../api';
 import { Button } from '../../../components/Button';
 import parentS from '../SettingsPage.module.scss';
+import { FleetPanel } from './FleetPanel';
 import { ServicesEditor, type SavedServiceRow } from './ServicesEditor';
 import s from './ServicesTab.module.scss';
 
@@ -46,6 +47,8 @@ export const ServicesTab = () => {
 
   return (
     <>
+      <FleetPanel />
+
       <div className={s.toolbar}>
         <Button
           variant="secondary"

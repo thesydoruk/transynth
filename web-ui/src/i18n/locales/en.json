@@ -1155,6 +1155,45 @@
       "save": "Save",
       "saving": "Saving..."
     },
+    "fleet": {
+      "title": "Fleet",
+      "offline": "The fleet controller is not running (start it with npm run fleet or the compose profile fleet).",
+      "controller": {
+        "online": "controller online",
+        "offline": "controller offline"
+      },
+      "gpuLoad": "committed {{committed}} / used {{used}} / total {{total}} MB",
+      "service": "Service",
+      "kinds": "Kinds",
+      "location": "Host / GPU",
+      "status": "Status",
+      "vram": "VRAM, MB",
+      "priority": "Priority",
+      "idle": "Idle, s",
+      "override": "Override",
+      "statuses": {
+        "running": "running",
+        "starting": "starting",
+        "stopping": "stopping",
+        "stopped": "stopped",
+        "missing": "missing",
+        "failed": "failed"
+      },
+      "manual": {
+        "start": "forced on",
+        "stop": "forced off"
+      },
+      "start": "Start",
+      "stop": "Stop",
+      "scheduler": "Scheduler",
+      "demand": "Demand",
+      "demandKind": "{{kind}}: {{waiting}} waiting, {{active}} active",
+      "noDemand": "none",
+      "actions": "Recent actions",
+      "noActions": "No actions yet.",
+      "ok": "ok",
+      "failed": "failed"
+    },
     "llm": {
       "readonlyNote": "Provider and model names come from the server .env file. The vLLM chat pool below is stored in project settings and applies without a restart. The Services tab can override every endpoint.",
       "readinessSection": "Readiness",

@@ -129,6 +129,36 @@ services:
       timeout: 3s
       retries: 5
 
+  # Fleet controller (profile `fleet`): starts and stops GPU services on the hosts in
+  # fleet.yml by queue demand, through docker contexts over ssh. Mount the inventory
+  # and an ssh key; `docker context create` the hosts inside this container's config.
+  fleet:
+    profiles: [fleet]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ${TRANSYNTH_IMAGE:-transynth}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    command: ['npm', 'run', 'fleet']
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REDIS_URL: redis://redis:6379
+      FLEET_CONFIG: /app/fleet.yml
+    volumes:
+      - ./data:/app/data
+      - ./fleet.yml:/app/fleet.yml:ro
+      - ${FLEET_SSH_DIR:-./data/fleet-ssh}:/root/.ssh:ro
+      - ${FLEET_DOCKER_CONFIG:-./data/fleet-docker}:/root/.docker
+    depends_on:
+      redis:
+        condition: service_healthy
+
   # One-shot jobs (translate, scan:mods, …). Not started by `docker compose up`.
   cli:
     profiles: [tools]

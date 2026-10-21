@@ -26,3 +26,4 @@ ml_*/
 # Homelab GPU / vLLM stacks (not the Transynth app)
 docker-compose.ai-translate.yml
 docker-compose.ai-translate-heretic.yml
+fleet.yml

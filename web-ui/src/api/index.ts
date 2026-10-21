@@ -33,6 +33,7 @@ import { modAiJobsEndpoints } from './endpoints/modAiJobs';
 import { exportsEndpoints } from './endpoints/exports';
 import { vortexEndpoints } from './endpoints/vortex';
 import { servicesEndpoints } from './endpoints/services';
+import { fleetEndpoints } from './endpoints/fleet';
 
 export const api = {
   mods: modsEndpoints,
@@ -64,4 +65,5 @@ export const api = {
   exports: exportsEndpoints,
   vortex: vortexEndpoints,
   services: servicesEndpoints,
+  fleet: fleetEndpoints,
 };

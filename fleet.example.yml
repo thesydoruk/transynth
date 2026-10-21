@@ -1,0 +1,61 @@
+# Fleet inventory for `npm run fleet` (copy to fleet.yml, or point FLEET_CONFIG at it).
+#
+# A host is a Linux box with Docker, the NVIDIA toolkit and the compose projects checked
+# out. The controller reaches it through a docker context over ssh (no agent on the host):
+#   docker context create gaming-pc --docker "host=ssh://valerii@192.168.50.140"
+# `ssh` is the same target, used only for nvidia-smi readings (optional).
+#
+# A service is one compose service on one host, pinned to one GPU. `vramMb` is what it
+# holds once up (for vLLM that is whatever --gpu-memory-utilization asks for, not a
+# measurement). `priority` decides who leaves when the card is contended: lower goes
+# first, and only after `idleUnloadSec` without demand. `url` is how transynth reaches
+# the service; while it is up and healthy the controller writes it into
+# Settings → Services as a managed row.
+
+pollSec: 15
+
+hosts:
+  - name: gaming-pc
+    context: gaming-pc
+    ssh: valerii@192.168.50.140
+    gpus:
+      - { index: 0, name: RTX 5090, vramMb: 32607 }
+    allow: [llm, embed, tts, asr, separate]
+
+services:
+  - name: gemma
+    kinds: [llm]
+    host: gaming-pc
+    gpu: 0
+    compose:
+      { dir: /home/valerii/Source/fallout4-localization-project, service: vllm-gemma-4-26b-a4b }
+    url: http://192.168.50.140:8011
+    maxParallel: 4
+    vramMb: 18000 # set --gpu-memory-utilization so this is true, or nothing else fits
+    priority: 10
+    idleUnloadSec: 300
+    startTimeoutSec: 600
+
+  - name: fish-speech
+    kinds: [tts]
+    host: gaming-pc
+    gpu: 0
+    compose: { dir: /home/valerii/Source/xtts-engine, service: server }
+    url: http://192.168.50.140:8080
+    maxParallel: 2
+    vramMb: 9000 # measure once with nvidia-smi under load
+    priority: 5
+    idleUnloadSec: 300
+    startTimeoutSec: 900
+
+  - name: audio-intel
+    kinds: [asr, separate]
+    host: gaming-pc
+    gpu: 0
+    compose: { dir: /home/valerii/Source/audio-intel, service: audio-intel }
+    url: http://192.168.50.140:8080
+    maxParallel: 2
+    vramMb: 8000 # Whisper large-v3 + pyannote + PANNs; Demucs/SepFormer on top when separating
+    priority: 7
+    idleUnloadSec: 600
+    startTimeoutSec: 600

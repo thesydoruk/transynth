@@ -22,3 +22,4 @@ export * from './pexVoice';
 export * from './exports';
 export * from './vortex';
 export * from './services';
+export * from './fleet';
