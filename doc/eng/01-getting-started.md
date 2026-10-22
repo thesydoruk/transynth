@@ -184,9 +184,9 @@ An external Whisper server: omit the profile and keep `AUDIO_INTEL_BASE_URL`.
 ### Optional: embedded bethesda-tools
 
 Same opt-in: profile `embedded-bethesda-tools` starts FaceFX and xWMAEncode
-from `docker/compose.bethesda-tools.yml`. FaceFXWrapper is fetched at image
-build. Fonix and xWMAEncode still need `data/tools/voice/`
-(`npm run tools:install`).
+from `docker/compose.bethesda-tools.yml`. FaceFXWrapper and xWMAEncode are
+fetched at image build. Only `FonixData.cdf` still needs `data/tools/voice/`
+(`npm run tools:install --game-dir …` copies it from the game or Creation Kit).
 
 ```env
 COMPOSE_PROFILES=embedded-db,embedded-bethesda-tools

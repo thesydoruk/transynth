@@ -1,5 +1,5 @@
 # Standalone host (split deploy). Same image as the embedded Compose profile.
-# Latest FaceFXWrapper.exe is baked at image build. Mount FonixData.cdf and xWMAEncode.exe at ./tools.
+# FaceFXWrapper.exe and xWMAEncode.exe are baked at image build. Mount FonixData.cdf at ./tools.
 services:
   bethesda-tools:
     build:

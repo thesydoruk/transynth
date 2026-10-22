@@ -175,8 +175,9 @@ Healthcheck: `curl -s http://localhost:8014/health`. Пізніше один с�
 ### Опційно: вбудований bethesda-tools
 
 Той самий opt-in: профіль `embedded-bethesda-tools` піднімає FaceFX і xWMAEncode
-з `docker/compose.bethesda-tools.yml`. FaceFXWrapper качається на білді образу.
-Потрібні Fonix і xWMAEncode в `data/tools/voice/` (`npm run tools:install`).
+з `docker/compose.bethesda-tools.yml`. FaceFXWrapper і xWMAEncode качаються на
+білді образу. У `data/tools/voice/` потрібен лише `FonixData.cdf`
+(`npm run tools:install --game-dir …` копіює його з гри чи Creation Kit).
 
 ```env
 COMPOSE_PROFILES=embedded-db,embedded-bethesda-tools

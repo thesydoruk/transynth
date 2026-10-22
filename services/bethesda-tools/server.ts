@@ -39,7 +39,12 @@ const WINESERVER = process.env.WINESERVER_PATH ?? 'wineserver';
 const FFMPEG = process.env.FFMPEG_PATH ?? 'ffmpeg';
 const FACEFX_EXE = '/opt/bethesda/FaceFXWrapper.exe';
 const FONIX = process.env.FONIX_DATA_PATH ?? path.join(TOOLS_DIR, 'FonixData.cdf');
-const XWMA_EXE = process.env.XWMA_ENCODE_PATH ?? path.join(TOOLS_DIR, 'xWMAEncode.exe');
+/** Baked into the image from the DirectX SDK; a copy mounted with Fonix still wins the env. */
+const XWMA_EXE =
+  process.env.XWMA_ENCODE_PATH ??
+  (fs.existsSync('/opt/bethesda/xWMAEncode.exe')
+    ? '/opt/bethesda/xWMAEncode.exe'
+    : path.join(TOOLS_DIR, 'xWMAEncode.exe'));
 
 const faceFxGameType = (game: string): string => {
   switch (game) {

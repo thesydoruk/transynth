@@ -46,9 +46,10 @@ tools. See [THIRD_PARTY.md](../THIRD_PARTY.md).
    `USEnglish`. LIP and xWMA run in `bethesda-tools`
    (`BETHESDA_TOOLS_URL`, or profile `embedded-bethesda-tools`).
 6. **Voice tools** on disk: the `bethesda-tools` image downloads the latest
-   FaceFXWrapper at build. `npm run tools:install` (or the `tools` Compose profile)
-   copies Fonix data and xWMAEncode into `data/tools/voice/` for the sidecar
-   to mount.
+   FaceFXWrapper and xWMAEncode (from the DirectX SDK) at build. Only
+   `FonixData.cdf` is yours to supply: `npm run tools:install --game-dir …` (or
+   the `tools` Compose profile) copies it into `data/tools/voice/` for the
+   sidecar to mount.
 
 Disco Elysium does not use FaceFX. Synthesized lines are WAV files inside the
 exported Final Cut langpack. Per-line regenerate also goes through WAV, not
