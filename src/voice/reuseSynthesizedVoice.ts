@@ -214,7 +214,9 @@ const copyOneTake = async (
     variant: match.dest.variant,
     targetLang,
     speakerKey: match.dest.speakerKey,
-    ttsTextVersion: match.source.ttsTextVersion ?? ttsVersionForLine(match.dest, targetLang),
+    // The donor's stamp equals this by construction (the matcher checked it); stamp the
+    // dest from its own text so the take is "current" exactly while that text stands.
+    ttsTextVersion: ttsVersionForLine(match.dest, targetLang),
     voiceSimilarity: match.source.voiceSimilarity,
   });
   return true;
@@ -295,7 +297,9 @@ const reuseSynthesizedVoiceUnsafe = async (
         isReusableVoiceText(line.sourceText) &&
         isReusableVoiceText(line.translation),
     );
-    const textMatches = matchReusableVoiceLines(stillNeeded, donorLines);
+    const textMatches = matchReusableVoiceLines(stillNeeded, donorLines, (line) =>
+      ttsVersionForLine(line, lang),
+    );
     const hashes = await resolveVoiceSourceFileHashes(
       db,
       textMatches.flatMap((pair) => [
