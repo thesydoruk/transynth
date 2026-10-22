@@ -9,8 +9,8 @@
 #   1. fetches origin/$DEPLOY_BRANCH; stops if that commit is already deployed
 #      (IMAGE_TAG in .env) or its image is not published yet
 #   2. checks the commit out and, if sql/ changed, backs up the database
-#   3. pulls images and applies the schema (npm run db:init)
-#   4. recreates the services and waits for web to report healthy
+#   3. pulls images, stops the services and applies the schema (npm run db:init)
+#   4. starts the services on the new image and waits for web to report healthy
 #   5. on failure: puts the previous commit and image back and remembers the
 #      failed commit, so the timer does not retry it every tick
 #
@@ -145,10 +145,16 @@ main() {
     die 'image pull failed; nothing was changed'
   fi
 
+  # The schema file is one transaction over every table, and an app session
+  # holding a row lock on one of them deadlocks against it (seen twice in one
+  # day: "deadlock detected", deploy rolled back). Nothing of the app may run
+  # while it applies; the services come back with `up -d` below (or in rollback).
+  log 'stopping the services for the schema step'
+  docker compose stop worker fleet web
   log 'applying schema (npm run db:init)'
   if ! docker compose run --rm web npm run db:init; then
-    rollback
-    die 'db:init failed; services were not restarted'
+    rollback restart
+    die 'db:init failed; the previous release was started again'
   fi
 
   docker compose up -d

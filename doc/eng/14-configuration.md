@@ -416,8 +416,10 @@ changed. The host pulls — CI never connects to it, so it can stay on a LAN.
 
 `scripts/deploy.sh` runs on the host every minute from a systemd timer.
 When `origin/main` has a new commit whose image is published, it checks the
-commit out, backs up the database if `sql/` changed, pulls, runs
-`npm run db:init`, recreates the services and waits for `web` to turn
+commit out, backs up the database if `sql/` changed, pulls, stops the services
+(the schema file is one transaction over every table and deadlocks against a
+running app session otherwise), runs `npm run db:init`, starts the services on
+the new image and waits for `web` to turn
 healthy. If any step fails it restores the previous commit and image and
 skips that commit until the next push. The schema is **not** rolled back, so a
 migration must keep the previous release working.
