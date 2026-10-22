@@ -23,6 +23,7 @@ import {
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
 } from './voiceTtsPayloadVersion';
+import { withLiveRetryPolicy } from './voiceProjectSettings';
 import { resolveTtsLanguage, type TtsReferenceMode } from './voiceToolPaths';
 import type { GameId } from '../types';
 
@@ -131,7 +132,7 @@ export const processVoiceLocalizeEntry = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(tgtLang),
-        synthesis,
+        synthesis: await withLiveRetryPolicy(db, synthesis),
         signal,
       },
     );

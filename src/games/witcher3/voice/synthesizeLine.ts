@@ -28,6 +28,7 @@ import {
   voiceTtsPayloadVersionFromPrepared,
 } from '../../../voice/voiceTtsPayloadVersion';
 import { pickVoiceTtsReference } from '../../../voice/pickVoiceTtsReference';
+import { withLiveRetryPolicy } from '../../../voice/voiceProjectSettings';
 import { resolveTtsLanguage } from '../../../voice/voiceToolPaths';
 import { decodeOpusWemToWav } from '../audio/opusWem';
 import type { MimicModel } from '../mimic/model';
@@ -157,7 +158,7 @@ export const synthesizeW3LineBuffers = async (
       {
         baseUrl: options.ttsBaseUrl,
         language: resolveTtsLanguage(options.tgtLang),
-        synthesis: options.synthesis,
+        synthesis: await withLiveRetryPolicy(options.db, options.synthesis),
         signal: options.signal,
       },
     );

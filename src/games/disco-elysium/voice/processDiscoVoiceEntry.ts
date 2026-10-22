@@ -31,6 +31,7 @@ import {
   isVoiceSynthesisCurrent,
   voiceTtsPayloadVersionFromPrepared,
 } from '../../../voice/voiceTtsPayloadVersion';
+import { withLiveRetryPolicy } from '../../../voice/voiceProjectSettings';
 import { resolveTtsLanguage, type TtsReferenceMode } from '../../../voice/voiceToolPaths';
 import { discoVoiceSpeakerKey } from './discoverDiscoVoiceFiles';
 import { outputLocalizedWavRelPath } from './voicePaths';
@@ -139,7 +140,7 @@ export const processDiscoVoiceEntry = async (
       {
         baseUrl: ttsBaseUrl,
         language: resolveTtsLanguage(tgtLang),
-        synthesis,
+        synthesis: await withLiveRetryPolicy(db, synthesis),
         signal,
       },
     );
