@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { log } from '../logger';
 import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { ttsPool } from './ttsRequestPool';
-import { pickBestTake, takeNeedsRetry, type TtsTake } from './ttsRetry';
+import { collectTakes, pickBestTake, type TtsTake } from './ttsRetry';
 import {
   appendTtsSynthesisFormFields,
   resolveTtsSynthesisParams,
@@ -176,8 +176,9 @@ const throwIfAborted = (signal?: AbortSignal): void => {
  * Synthesize one line, retrying on the client when the first take is not good enough.
  *
  * Each take is its own pooled request. A take the server flagged (silence,
- * cutoff) or whose voice scored below `retryBelow` triggers `retries` more
- * takes; the best of all of them is kept (see `ttsRetry`).
+ * cutoff) or whose voice scored below `retryBelow` triggers another take, up
+ * to `retries` of them, stopping at the first that passes; the best of all of
+ * them is kept (see `ttsRetry`).
  */
 export const synthesizeWav = async (
   text: string,
@@ -197,10 +198,7 @@ export const synthesizeWav = async (
       return requestTake(text, clips, explicitBaseUrl ?? poolBaseUrl, options);
     });
 
-  const takes: TtsTake[] = [await nextTake()];
-  if (takeNeedsRetry(takes[0], retryBelow)) {
-    for (let i = 0; i < retries; i += 1) takes.push(await nextTake());
-  }
+  const takes = await collectTakes(nextTake, { retryBelow, retries });
   const best = pickBestTake(takes);
   if (takes.length > 1) {
     log.info('TTS retried a take', {

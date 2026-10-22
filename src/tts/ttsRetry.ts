@@ -20,6 +20,27 @@ export const takeNeedsRetry = (take: TtsTake, retryBelow: number): boolean => {
   return take.voiceSimilarity != null && take.voiceSimilarity < retryBelow;
 };
 
+/**
+ * Generate takes until one passes the gate or the retry budget is spent.
+ *
+ * The first take is always made. Each further take is made only while the latest one
+ * still needs a retry, so a line whose second take is good costs two requests, not
+ * `retries + 1`. The caller picks the best of what came back with {@link pickBestTake}.
+ */
+export const collectTakes = async <T extends TtsTake>(
+  nextTake: () => Promise<T>,
+  policy: { retryBelow: number; retries: number },
+): Promise<T[]> => {
+  const takes: T[] = [await nextTake()];
+  while (
+    takes.length <= policy.retries &&
+    takeNeedsRetry(takes[takes.length - 1], policy.retryBelow)
+  ) {
+    takes.push(await nextTake());
+  }
+  return takes;
+};
+
 const takeRank = (take: TtsTake): [number, number] => [
   take.warning ? 0 : 1,
   take.voiceSimilarity ?? -1,

@@ -1280,7 +1280,7 @@
       "synthRetryBelow": "Voice similarity threshold",
       "synthRetryBelowDesc": "ECAPA cosine of the take against the clone prompt (0–1). A first take below this, or one the server flagged, is retried. 0 retries only flagged takes.",
       "synthRetries": "Retries",
-      "synthRetriesDesc": "Extra takes to generate when the first one is not good enough (0–8); the best of all takes is kept. 0 keeps the first take.",
+      "synthRetriesDesc": "How many extra takes to allow when a take is not good enough (0–8); generation stops at the first take that passes, and the best of all takes is kept. 0 keeps the first take.",
       "backend": "Model backend",
       "backendXtts": "XTTS v2",
       "backendXttsDesc": "Coqui XTTS v2 — use the fine-tuned Ukrainian checkpoint configured on the TTS server (xtts.use_finetuned: true).",
