@@ -67,7 +67,8 @@ services:
       services: [audio-intel]
     url: http://192.168.50.140:8090
     maxParallel: 2
-    vramMb: 8000 # Whisper large-v3 + pyannote + PANNs; Demucs/SepFormer on top when separating
+    # Measured 2026-10-22: 7.7 GB resident (two large-v3 copies), 12.1 GB peak while separating.
+    vramMb: 12500
     priority: 7
     idleUnloadSec: 600
     startTimeoutSec: 600
