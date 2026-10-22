@@ -84,3 +84,31 @@ describe('matchReusableVoiceLines', () => {
     expect(matches[0]?.dest.lineKey).toBe('0ABCDE');
   });
 });
+
+describe('matchReusableVoiceLines donor staleness', () => {
+  const expected = (line: { translation: string }) => `v:${line.translation}`;
+
+  it('uses a donor whose stamp matches the version of its current text', () => {
+    const matches = matchReusableVoiceLines(
+      [dest()],
+      [source({ ttsTextVersion: 'v:Привіт.' })],
+      expected,
+    );
+    expect(matches).toHaveLength(1);
+  });
+
+  it('skips a donor whose take was made from an older translation', () => {
+    const matches = matchReusableVoiceLines(
+      [dest()],
+      [source({ ttsTextVersion: 'v:Вітаю.' }), source({ ttsTextVersion: null })],
+      expected,
+    );
+    expect(matches).toHaveLength(0);
+  });
+
+  it('keeps the old behaviour when no version check is given', () => {
+    expect(
+      matchReusableVoiceLines([dest()], [source({ ttsTextVersion: 'whatever' })]),
+    ).toHaveLength(1);
+  });
+});
