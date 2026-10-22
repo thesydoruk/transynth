@@ -227,9 +227,12 @@ Queue names are unchanged (`transynth-jobs`, `-llm`, `-voice`, plus `-asr`, `-se
 
 On one GPU the services do not all fit at once, so something has to swap them by demand.
 `npm run fleet` (compose profile `fleet`) is that something. `fleet.yml` (see
-`fleet.example.yml`) lists hosts (a docker context over ssh, the GPUs with their VRAM, which
-kinds are allowed) and services (one compose service on one host and GPU, its `url`, the
-VRAM it holds, a `priority`, `idleUnloadSec`, `startTimeoutSec`). Every `pollSec` the
+`fleet.example.yml`) lists hosts (an `ssh` target, the GPUs with their VRAM, which kinds are
+allowed) and services (one or more compose services of one project on one host and GPU,
+the compose `files` to load, its `url`, the VRAM it holds, a `priority`, `idleUnloadSec`,
+`startTimeoutSec`). The controller runs `docker compose` on the host over ssh, because
+compose reads its files where it runs; a docker `context` instead of `ssh` only works for a
+host whose compose files the controller can read itself. Every `pollSec` the
 controller reads the queues, probes `/health` of each service, and applies four rules: a
 wanted kind with no healthy provider gets its highest-priority service started if the VRAM
 fits; if not, residents that nobody wants, that carry no load, that idled past their own
@@ -239,7 +242,9 @@ controller; hand-written rows stay. `GET /api/fleet` returns the last snapshot (
 GPUs with committed and measured VRAM, demand, the action log); `POST
 /api/fleet/services/<name>/start|stop` holds a service up or down for an hour, `DELETE
 /api/fleet/services/<name>/override` hands it back to the scheduler. Nothing is installed
-on the hosts: Docker, the NVIDIA toolkit and the checked-out compose projects suffice.
+on the hosts: Docker, the NVIDIA toolkit, the checked-out compose projects and an ssh key
+for the controller suffice. The ssh target is resolved by the controller's own
+`~/.ssh/config`, so inside the `fleet` container mount that file and the key read-only.
 
 ## Server Settings
 
