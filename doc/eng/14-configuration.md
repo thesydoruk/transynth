@@ -239,7 +239,8 @@ so a service no queue declares still comes up), probes `/health` of each service
 applies four rules: a
 wanted kind with no healthy provider gets its highest-priority service started if the VRAM
 fits; if not, residents that nobody wants, that carry no load, that idled past their own
-limit and rank lower are stopped first; nothing else is stopped. A service without `gpu`
+limit are stopped, lowest priority first; nothing else is stopped (priority orders the
+eviction, it never protects an idle resident). A service without `gpu`
 is CPU-only (bethesda-tools): it takes no VRAM and contends with nothing, and `keep: true`
 holds a service up whether or not a queue needs it, since nothing declares `tools` as
 demand. Several entries of one kind on several hosts are several instances; the pool
