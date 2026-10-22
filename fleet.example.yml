@@ -20,7 +20,7 @@ hosts:
     ssh: valerii@192.168.50.140
     gpus:
       - { index: 0, name: RTX 5090, vramMb: 32607 }
-    allow: [llm, embed, tts, asr, separate]
+    allow: [llm, embed, tts, asr, separate, tools]
 
 services:
   # vLLM Gemma 4 26B-A4B at --gpu-memory-utilization 0.90: ~29.3 GB, nothing fits beside it.
@@ -72,3 +72,20 @@ services:
     priority: 7
     idleUnloadSec: 600
     startTimeoutSec: 600
+
+  # bethesda-tools (FaceFX LIP, xWMA under Wine) is CPU-only: no `gpu`, no VRAM, so it
+  # contends with nothing and `keep: true` holds it up whether or not a job needs it. Nothing
+  # declares `tools` as demand (voice jobs call it as an extra), so without `keep` the
+  # controller would never start it. One entry per instance; the `tools` pool spreads calls
+  # over every healthy one, next to the instance configured by env on the pipeline host.
+  - name: bethesda-tools
+    kinds: [tools]
+    host: gaming-pc
+    keep: true
+    compose:
+      dir: /home/valerii/bethesda-tools
+      services: [bethesda-tools]
+    url: http://192.168.50.140:3210
+    maxParallel: 8
+    priority: 1
+    startTimeoutSec: 300

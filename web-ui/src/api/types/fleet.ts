@@ -18,7 +18,7 @@ export type FleetServiceView = {
   manual: FleetOverride | null;
   kinds: ServiceKind[];
   host: string;
-  gpu: string;
+  gpu: number | null;
   url: string;
   vramMb: number;
   priority: number;

@@ -102,7 +102,7 @@ export const FleetPanel = () => {
                   <td className={s.mono}>{svc.name}</td>
                   <td>{svc.kinds.join(', ')}</td>
                   <td className={s.mono}>
-                    {svc.host} / {svc.gpu}
+                    {svc.host} / {svc.gpu == null ? 'cpu' : `gpu${svc.gpu}`}
                   </td>
                   <td>
                     <span className={statusClass(svc)} title={svc.lastError ?? undefined}>

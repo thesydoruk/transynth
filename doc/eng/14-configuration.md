@@ -236,9 +236,14 @@ host whose compose files the controller can read itself. Every `pollSec` the
 controller reads the queues, probes `/health` of each service, and applies four rules: a
 wanted kind with no healthy provider gets its highest-priority service started if the VRAM
 fits; if not, residents that nobody wants, that carry no load, that idled past their own
-limit and rank lower are stopped first; nothing else is stopped. Services that are up and
-healthy are written into `services.endpoints` as `managed` rows, so routing follows the
-controller; hand-written rows stay. Web and worker re-read those settings every
+limit and rank lower are stopped first; nothing else is stopped. A service without `gpu`
+is CPU-only (bethesda-tools): it takes no VRAM and contends with nothing, and `keep: true`
+holds a service up whether or not a queue needs it, since nothing declares `tools` as
+demand. Several entries of one kind on several hosts are several instances; the pool
+spreads calls over every healthy one. Services that are up and
+healthy are written into `services.endpoints` as `managed` rows. Managed rows add to
+whatever the kind already has (hand-written rows, the legacy vLLM list, env), so a server
+configured by hand keeps serving next to the ones the controller runs. Web and worker re-read those settings every
 `SERVICES_SETTINGS_POLL_SEC` (30 s) so the rows take effect without a restart. `GET /api/fleet` returns the last snapshot (services,
 GPUs with committed and measured VRAM, demand, the action log); `POST
 /api/fleet/services/<name>/start|stop` holds a service up or down for an hour, `DELETE

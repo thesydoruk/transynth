@@ -62,7 +62,8 @@ const isWanted = (
   service: FleetService,
   wanted: Set<ServiceKind>,
   state: ServiceState | undefined,
-): boolean => state?.manual === 'start' || service.kinds.some((kind) => wanted.has(kind));
+): boolean =>
+  state?.manual === 'start' || service.keep || service.kinds.some((kind) => wanted.has(kind));
 
 /** VRAM a GPU has committed to services that are up or coming up. */
 const committedMb = (
@@ -98,7 +99,9 @@ export const planFleet = ({ inventory, states, demand, nowMs }: PlanInput): Flee
   }
 
   // Kinds that are wanted and have no healthy provider up (or coming up).
-  const needKinds: Array<{ kind: ServiceKind; reason: string }> = [];
+  // `service` pins the need to one inventory entry (operator start, `keep`); a kind-level
+  // need takes the best candidate that provides the kind.
+  const needKinds: Array<{ kind: ServiceKind; reason: string; service?: string }> = [];
   for (const kind of wanted) {
     const providers = inventory.services.filter((s) => s.kinds.includes(kind));
     const covered = providers.some((s) => {
@@ -119,8 +122,19 @@ export const planFleet = ({ inventory, states, demand, nowMs }: PlanInput): Flee
   }
   for (const service of inventory.services) {
     const state = byName.get(service.name);
-    if (state?.manual === 'start' && !(state.status === 'running' || state.status === 'starting')) {
-      needKinds.push({ kind: service.kinds[0]!, reason: `${service.name} requested by operator` });
+    const down = !state || state.status === 'stopped' || state.status === 'missing';
+    if (state?.manual === 'start' && down) {
+      needKinds.push({
+        kind: service.kinds[0]!,
+        reason: `${service.name} requested by operator`,
+        service: service.name,
+      });
+    } else if (service.keep && down && state?.manual !== 'stop') {
+      needKinds.push({
+        kind: service.kinds[0]!,
+        reason: `${service.name} is kept up`,
+        service: service.name,
+      });
     }
   }
 
@@ -136,14 +150,18 @@ export const planFleet = ({ inventory, states, demand, nowMs }: PlanInput): Flee
       })
       .filter((s) => byName.get(s.name)?.manual !== 'stop')
       .sort((a, b) => b.priority - a.priority);
-    const candidate =
-      candidates.find((s) => byName.get(s.name)?.manual === 'start') ?? candidates[0];
+    const candidate = need.service
+      ? candidates.find((s) => s.name === need.service)
+      : (candidates.find((s) => byName.get(s.name)?.manual === 'start') ?? candidates[0]);
     if (!candidate || started.has(candidate.name)) continue;
 
-    const capacity = gpuCapacityMb(inventory, candidate.host, candidate.gpu);
-    const committed = committedMb(inventory, byName, candidate.host, candidate.gpu);
+    // A CPU service takes no VRAM and contends with nothing.
+    const capacity =
+      candidate.gpu == null ? 0 : gpuCapacityMb(inventory, candidate.host, candidate.gpu);
+    const committed =
+      candidate.gpu == null ? 0 : committedMb(inventory, byName, candidate.host, candidate.gpu);
     const free = capacity - committed;
-    if (candidate.vramMb <= free) {
+    if (candidate.gpu == null || candidate.vramMb <= free) {
       actions.push({ type: 'start', service: candidate.name, reason: need.reason });
       started.add(candidate.name);
       byName.set(candidate.name, {

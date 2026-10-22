@@ -23,7 +23,7 @@ import { planFleet, type Demand, type FleetAction, type ServiceState } from './s
 export type FleetServiceView = ServiceState & {
   kinds: FleetService['kinds'];
   host: string;
-  gpu: number;
+  gpu: number | null;
   url: string;
   vramMb: number;
   priority: number;
