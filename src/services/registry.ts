@@ -71,10 +71,26 @@ export class ServiceRegistry {
     this.sources = sources;
   }
 
-  /** Resolved endpoints of one kind (see the module comment for the order). */
+  /**
+   * Resolved endpoints of one kind: the hand-written rows of `services.endpoints` if any,
+   * else the legacy llm list, else env (`separate` borrows the asr hosts) — plus every
+   * `managed` row the fleet controller wrote for the kind. Managed rows add capacity, they
+   * never hide a server configured by hand; a managed row for a host that is also
+   * configured replaces that row, so the controller's limit wins while it runs the host.
+   */
   endpoints(kind: ServiceKind): ServiceEndpoint[] {
     const configured = this.sources.configured.filter((e) => e.kind === kind);
-    if (configured.length > 0) return configured;
+    const managed = configured.filter((e) => e.managed);
+    const manual = configured.filter((e) => !e.managed);
+    const base = manual.length > 0 ? manual : this.fallbackEndpoints(kind);
+    if (managed.length === 0) return base;
+    const byHost = new Map<string, ServiceEndpoint>();
+    for (const e of base) byHost.set(e.host, e);
+    for (const e of managed) byHost.set(e.host, e);
+    return [...byHost.values()];
+  }
+
+  private fallbackEndpoints(kind: ServiceKind): ServiceEndpoint[] {
     if (kind === 'llm' && this.sources.legacyLlm.length > 0) {
       return this.sources.legacyLlm.map((s) => entry('llm', s.host, s.maxParallel, s.apiKey));
     }
@@ -86,9 +102,9 @@ export class ServiceRegistry {
     return this.sources.env.filter((e) => e.kind === kind);
   }
 
-  /** Which source currently answers for a kind (for the UI). */
+  /** Which source the hand-written part of a kind comes from (for the UI). */
   sourceOf(kind: ServiceKind): 'settings' | 'legacy-llm' | 'env' | 'asr' {
-    if (this.sources.configured.some((e) => e.kind === kind)) return 'settings';
+    if (this.sources.configured.some((e) => e.kind === kind && !e.managed)) return 'settings';
     if (kind === 'llm' && this.sources.legacyLlm.length > 0) return 'legacy-llm';
     if (kind === 'separate' && !this.sources.env.some((e) => e.kind === 'separate')) return 'asr';
     return 'env';
