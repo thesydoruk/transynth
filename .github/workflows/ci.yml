@@ -178,12 +178,16 @@ jobs:
 
   # The web UI on a desktop, tablets and phones down to 320px, in Chromium
   # and WebKit. The API is faked, so this needs only the web-ui install.
-  # Two shards halve the wall time; the browser download is cached.
+  # The job runs in Playwright's own image, which ships the browsers: the
+  # download from Playwright's CDN took 15-20 minutes on some days. Keep the
+  # image tag at web-ui's @playwright/test version. Two shards halve the wall time.
   devices:
     needs: gate
     if: github.event_name != 'push' || needs.gate.outputs.tested != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
     strategy:
       fail-fast: false
       matrix:
@@ -199,16 +203,6 @@ jobs:
 
       - name: Install web-ui dependencies
         run: npm --prefix web-ui ci
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web-ui/package-lock.json') }}
-
-      - name: Install browsers
-        working-directory: web-ui
-        run: npx playwright install --with-deps chromium webkit
 
       - name: Device tests (shard ${{ matrix.shard }} of 2)
         run: npm --prefix web-ui run test:devices -- --shard=${{ matrix.shard }}/2
