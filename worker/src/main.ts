@@ -28,7 +28,6 @@ import { syncLlmPoolFromProjectSettings } from '../../src/llm/llmProjectSettings
 import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSettings';
 import { startServiceSettingsWatcher } from '../../src/services/settingsWatcher';
 import { getAllProjectSettings } from '../../src/web/services/projectSettings';
-import { shutdownWine } from '../../src/wine/windowsToolExec';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
 import { subscribeJobControl } from './core/controlChannel';
 import { installVoiceLivePublisher } from './core/voiceLiveChannel';
@@ -145,7 +144,6 @@ const shutdown = async (): Promise<void> => {
   await unsubscribeControl();
   await closeSharedRedis();
   await closeDb();
-  shutdownWine();
   closeLogStreams();
   process.exit(0);
 };

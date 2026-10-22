@@ -114,7 +114,6 @@ const KNOWN_PLUGIN_IMPORTERS = [
   'src/locale/exportSlots.ts',
   'src/modImport/bethesdaArchivePaths.ts',
   'src/modImport/packBethesdaArchives.ts',
-  'src/voice/faceFx/lipCore.ts',
   'src/web/export/archiveExportPlan.ts',
   'src/web/export/exportArchives.ts',
   'src/web/export/sourceStringsLoader.ts',

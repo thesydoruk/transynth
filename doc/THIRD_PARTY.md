@@ -14,10 +14,8 @@ You need a legal copy of the relevant game (and usually the Creation Kit) to use
 
 ## Downloaded by `npm run tools:install`
 
-| Tool             | Source                                                                                      | License (upstream)  | Notes                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| ffmpeg (Windows) | [BtbN FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) `win64-gpl`                     | GPL (that build)    | Only fetched when ffmpeg is not already on `PATH`. Linux/Docker use the distro `ffmpeg` package instead.            |
-| xWMAEncode.exe   | Microsoft DirectX SDK (June 2010), Internet Archive copy, if not copied from a game install | Microsoft SDK terms | Windows-native runs only (Docker has it in the image). Prefer `--game-dir` when the game or CK tools folder has it. |
+Nothing any more: the script only copies `FonixData.cdf` from a game or Creation Kit install.
+ffmpeg is the distro package in the web and worker images (`FFMPEG_PATH` overrides it).
 
 ## You must supply (not redistributed)
 

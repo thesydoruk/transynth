@@ -25,7 +25,7 @@ Get Transynth running on your machine for the first time.
 - **Local runtime:** Node.js 20+ is the practical minimum; Node.js 24 matches the Docker image used by this project.
 - **Package manager:** npm (the repository ships with `package.json` / `package-lock.json`; pnpm is not required).
 - **Database:** PostgreSQL 15+ for a local install. The Docker stack uses `pgvector/pgvector:pg17`.
-- **Operating systems:** Windows, macOS, and Linux are all suitable for the web application. Windows is the most practical host if you also work with Fallout modding tools outside this pipeline.
+- **Operating systems:** Linux is the host everything runs on, in Docker; the Bethesda voice tools (FaceFX, xWMAEncode) run under Wine inside the `bethesda-tools` sidecar, so no Windows machine is needed. Windows and macOS can run the web application for development.
 - **Language:** first-class LLM prompts and glossaries are English → Ukrainian. Other targets use a generic English prompt. The UI defaults to Ukrainian. This is not a language-neutral platform.
 
 ## Supported Games

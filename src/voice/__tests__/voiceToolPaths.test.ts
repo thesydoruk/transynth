@@ -1,19 +1,18 @@
 import { resolveFfmpegPath, resolveTtsLanguage } from '../voiceToolPaths';
 
 describe('resolveFfmpegPath', () => {
-  const platform = process.platform;
   const ffmpegPath = process.env.FFMPEG_PATH;
 
   afterEach(() => {
-    Object.defineProperty(process, 'platform', { value: platform });
     if (ffmpegPath === undefined) delete process.env.FFMPEG_PATH;
     else process.env.FFMPEG_PATH = ffmpegPath;
   });
 
-  it('uses system ffmpeg on Linux even when ffmpeg.exe is bundled in data/tools', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
+  it('is the ffmpeg on PATH unless FFMPEG_PATH points elsewhere', () => {
     delete process.env.FFMPEG_PATH;
     expect(resolveFfmpegPath()).toBe('ffmpeg');
+    process.env.FFMPEG_PATH = '/opt/ffmpeg/bin/ffmpeg';
+    expect(resolveFfmpegPath()).toBe('/opt/ffmpeg/bin/ffmpeg');
   });
 });
 

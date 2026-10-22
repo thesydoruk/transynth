@@ -10,8 +10,8 @@ export type InstallToolsOptions = {
 };
 
 /**
- * Install disk voice tools (Fonix, xWMA, ffmpeg).
- * FaceFXWrapper and Champollion are baked into Docker images.
+ * Install the one disk voice tool, `FonixData.cdf`. FaceFXWrapper, xWMAEncode and
+ * Champollion are baked into the Docker images.
  */
 export const installTools = async (opts?: InstallToolsOptions): Promise<InstallToolsResult> => {
   const gameDirs = opts?.gameDir?.trim() ? [opts.gameDir.trim()] : [];

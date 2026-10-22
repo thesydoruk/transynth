@@ -5,7 +5,6 @@
     "web-ui/src/main.tsx",
     "services/bethesda-tools/server.ts",
     "scripts/*.ts",
-    "src/voice/faceFx/runner.ts",
     "**/__tests__/**/*.test.{ts,tsx}"
   ],
   "project": [
