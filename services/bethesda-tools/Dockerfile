@@ -9,6 +9,7 @@ RUN dpkg --add-architecture i386 \
     curl \
     ca-certificates \
     unzip \
+    p7zip-full \
   && rm -rf /var/lib/apt/lists/*
 
 # Always the latest GitHub release of thesydoruk/FaceFXWrapper.
@@ -38,6 +39,18 @@ RUN mkdir -p /opt/bethesda \
   && test -n "$exe" \
   && mv "$exe" /opt/bethesda/FaceFXWrapper.exe \
   && rm -rf /tmp/FaceFXWrapper.zip /tmp/facefx
+
+# xWMAEncode.exe from the Microsoft DirectX SDK (June 2010). Microsoft's download
+# URL went 404 in 2026; the Internet Archive keeps the same installer (599 MB), which
+# 7-Zip opens as a cabinet, so only the one file is pulled out. The installer's
+# checksum pins what the build accepts.
+ARG DXSDK_URL=https://archive.org/download/dxsdk_jun10/DXSDK_Jun10.exe
+ARG DXSDK_SHA256=9f818a977c32b254af5d649a4cec269ed8762f8a49ae67a9f01101a7237ae61a
+RUN curl -fsSL --retry 3 -o /tmp/DXSDK_Jun10.exe "$DXSDK_URL" \
+  && echo "$DXSDK_SHA256  /tmp/DXSDK_Jun10.exe" | sha256sum -c - \
+  && 7z e -y -o/opt/bethesda /tmp/DXSDK_Jun10.exe DXSDK/Utilities/bin/x86/xWMAEncode.exe >/dev/null \
+  && test -s /opt/bethesda/xWMAEncode.exe \
+  && rm -f /tmp/DXSDK_Jun10.exe
 
 WORKDIR /app
 COPY package.json ./

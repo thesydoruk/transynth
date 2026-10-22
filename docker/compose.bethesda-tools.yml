@@ -4,8 +4,8 @@
 # Host: http://localhost:8015 — GET /health, POST /v1/lip, POST /v1/xwm.
 # From web/worker: DOCKER_BETHESDA_TOOLS_URL=http://bethesda-tools:3210
 #
-# Latest thesydoruk/FaceFXWrapper release is downloaded at image build.
-# Mounts data/tools/voice for FonixData.cdf and xWMAEncode.exe only.
+# Latest thesydoruk/FaceFXWrapper release and xWMAEncode (DirectX SDK) are
+# downloaded at image build. Mounts data/tools/voice for FonixData.cdf only.
 # Wine prefix is a named volume so the container owns it.
 
 services:

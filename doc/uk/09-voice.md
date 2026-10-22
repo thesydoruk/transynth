@@ -44,8 +44,9 @@
    LIP і xWMA — у `bethesda-tools`
    (`BETHESDA_TOOLS_URL` або профіль `embedded-bethesda-tools`).
 6. **Інструменти на диску:** образ `bethesda-tools` качає останній
-   FaceFXWrapper на білді. `npm run tools:install` (або профіль Compose `tools`) кладе
-   Fonix і xWMAEncode у `data/tools/voice/` для маунту sidecar.
+   FaceFXWrapper і xWMAEncode (з DirectX SDK) на білді. Від вас лише
+   `FonixData.cdf`: `npm run tools:install --game-dir …` (або профіль Compose `tools`)
+   копіює його у `data/tools/voice/` для маунту sidecar.
 
 Disco Elysium не використовує FaceFX. Синтезовані репліки — WAV у експортованому
 мовному пакеті Final Cut. Перегенерація одного рядка теж іде через WAV, не

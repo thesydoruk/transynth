@@ -19,9 +19,12 @@ import { discoverGameVoiceAssets, pickFirstGameAsset } from './discoverGameVoice
 
 const FFMPEG_DOWNLOAD_URL =
   'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip';
-/** Official Microsoft DirectX SDK (June 2010) — xWMAEncode lives inside (~570 MB). */
-const DXSDK_JUN10_DOWNLOAD_URL =
-  'https://download.microsoft.com/download/A/E/7/AE743F1C-BA16-4A70-B571-8CF6A3388B44/DXSDK_Jun10.exe';
+/**
+ * Microsoft DirectX SDK (June 2010) — xWMAEncode lives inside (~570 MB). Microsoft's own
+ * download URL stopped answering in 2026 (404), so this is the Internet Archive's copy
+ * of the same installer; the `bethesda-tools` image fetches it the same way.
+ */
+const DXSDK_JUN10_DOWNLOAD_URL = 'https://archive.org/download/dxsdk_jun10/DXSDK_Jun10.exe';
 const DXSDK_CACHE_NAME = 'DXSDK_Jun10.exe';
 
 export type InstallVoiceToolsResult = {
