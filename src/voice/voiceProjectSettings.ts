@@ -1,7 +1,15 @@
 import type { Tx } from '../db';
-import type { TtsSynthesisParams } from '../tts/ttsSynthesisParams';
+import {
+  clampTtsRetries,
+  clampTtsRetryBelow,
+  type TtsSynthesisParams,
+} from '../tts/ttsSynthesisParams';
 import { syncServiceRegistryFromProjectSettings } from '../services/registry';
-import { getAllProjectSettings, type ProjectSettings } from '../web/services/projectSettings';
+import {
+  getAllProjectSettings,
+  SETTING_DEFAULTS,
+  type ProjectSettings,
+} from '../web/services/projectSettings';
 import { gameTtsMatchFor } from './gameTtsSettings';
 import type { TtsReferenceMode } from './voiceToolPaths';
 
@@ -21,6 +29,35 @@ export const voiceSynthesisFromProjectSettings = (
     matchTiming: match.matchTiming,
     retryBelow: settings['voice.synth_retry_below'],
     retries: settings['voice.synth_retries'],
+  };
+};
+
+/**
+ * The retry policy as it is in the database right now.
+ *
+ * A voice job loads its settings once at start, but the threshold and the retry budget
+ * are tuned while a job runs, by watching takes come in. Every line therefore re-reads
+ * these two keys just before synthesis, so a change on the settings page applies to
+ * the next line without restarting the job. The match flags stay per job.
+ */
+export const withLiveRetryPolicy = async (
+  db: Tx,
+  synthesis: TtsSynthesisParams,
+): Promise<TtsSynthesisParams> => {
+  const { rows } = await db.query<{ key: string; value: unknown }>(
+    `SELECT key, value FROM project_settings
+      WHERE key IN ('voice.synth_retry_below', 'voice.synth_retries')`,
+  );
+  let retryBelow = SETTING_DEFAULTS['voice.synth_retry_below'];
+  let retries = SETTING_DEFAULTS['voice.synth_retries'];
+  for (const row of rows) {
+    if (row.key === 'voice.synth_retry_below') retryBelow = Number(row.value);
+    if (row.key === 'voice.synth_retries') retries = Number(row.value);
+  }
+  return {
+    ...synthesis,
+    retryBelow: clampTtsRetryBelow(retryBelow),
+    retries: clampTtsRetries(retries),
   };
 };
 
