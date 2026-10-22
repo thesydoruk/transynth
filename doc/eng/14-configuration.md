@@ -240,7 +240,10 @@ limit and rank lower are stopped first; nothing else is stopped. A service witho
 is CPU-only (bethesda-tools): it takes no VRAM and contends with nothing, and `keep: true`
 holds a service up whether or not a queue needs it, since nothing declares `tools` as
 demand. Several entries of one kind on several hosts are several instances; the pool
-spreads calls over every healthy one. Services that are up and
+spreads calls over every healthy one. The host the controller runs on can be in the inventory
+too, with `gpus: []`, reached over ssh like any other; that is how bethesda-tools runs only
+through the fleet (its compose profile left out of `COMPOSE_PROFILES`, `BETHESDA_TOOLS_URL`
+unset). Services that are up and
 healthy are written into `services.endpoints` as `managed` rows. Managed rows add to
 whatever the kind already has (hand-written rows, the legacy vLLM list, env), so a server
 configured by hand keeps serving next to the ones the controller runs. Web and worker re-read those settings every
