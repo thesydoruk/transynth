@@ -130,8 +130,9 @@ services:
       retries: 5
 
   # Fleet controller (profile `fleet`): starts and stops GPU services on the hosts in
-  # fleet.yml by queue demand, through docker contexts over ssh. Mount the inventory
-  # and an ssh key; `docker context create` the hosts inside this container's config.
+  # fleet.yml by queue demand, running `docker compose` on each host over ssh. Mount the
+  # inventory and an ssh dir (key, known_hosts, optional config) for the hosts' `ssh`
+  # targets; the docker config mount only matters for a host reached by docker context.
   fleet:
     profiles: [fleet]
     build:
