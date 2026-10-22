@@ -8,9 +8,14 @@ import {
   formatDependencyWaitRecovered,
 } from './messages';
 import { probeDependencyHealth, type HealthProbeResult } from './probes';
+import { signalServiceWant } from '../fleet/want';
+import { log } from '../logger';
+import { getSharedRedis } from '../../worker/src/core/connection';
 
 export type WaitForHealthyDeps = {
   probe?: (service: DependencyService) => Promise<HealthProbeResult>;
+  /** Tells the fleet controller a job needs the service; defaults to the Redis want key. */
+  want?: (service: DependencyService) => Promise<void>;
   now?: () => number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   writeLog?: typeof writeSystemLog;
@@ -38,6 +43,24 @@ const logSourceFor = (service: DependencyService): 'llm' | 'tts' | 'job' => {
   if (service === 'llm' || service === 'embed') return 'llm';
   if (service === 'tts') return 'tts';
   return 'job';
+};
+
+/**
+ * The fleet controller reads the want key as demand. Redis being away must neither fail
+ * nor stall the job, so the write gets a second and is otherwise forgotten.
+ */
+const signalWant = async (service: DependencyService): Promise<void> => {
+  try {
+    await Promise.race([
+      signalServiceWant(getSharedRedis(), service),
+      new Promise<void>((resolve) => setTimeout(resolve, 1000).unref()),
+    ]);
+  } catch (err) {
+    log.warn('fleet: could not signal service want', {
+      service,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 };
 
 const remainingAttemptsAfterFail = (
@@ -74,6 +97,7 @@ const waitUntilHealthy = async (
   deps: WaitForHealthyDeps = {},
 ): Promise<void> => {
   const probe = deps.probe ?? probeDependencyHealth;
+  const want = deps.want ?? signalWant;
   const now = deps.now ?? Date.now;
   const sleep = deps.sleep ?? sleepWithSignal;
   const writeLog = deps.writeLog ?? writeSystemLog;
@@ -90,6 +114,9 @@ const waitUntilHealthy = async (
     }
 
     spentAttempts += 1;
+    // Before every probe, so the controller sees the need even when the first probe
+    // fails, and the want stays alive for as long as the job keeps waiting.
+    await want(service);
     const result = await probe(service);
     if (result.ok) {
       if (spentAttempts > 1) {

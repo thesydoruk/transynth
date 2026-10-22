@@ -22,4 +22,15 @@ describe('fleet demand', () => {
     expect(demand.asr).toBeUndefined(); // no job kind needs asr yet (stage 3 adds media kinds)
     expect(demand.tools).toBeUndefined();
   });
+
+  it('counts a kind a job signals it is waiting for as one active job', async () => {
+    const demand = await readDemand(
+      async (queue) =>
+        queue === 'transynth-llm' ? { waiting: 0, active: 2 } : { waiting: 0, active: 0 },
+      async () => ['asr', 'llm'],
+    );
+    expect(demand.asr).toEqual({ waiting: 0, active: 1 });
+    expect(demand.llm).toEqual({ waiting: 0, active: 3 });
+    expect(demand.tts).toEqual({ waiting: 0, active: 0 });
+  });
 });

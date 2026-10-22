@@ -233,7 +233,10 @@ the compose `files` to load, its `url`, the VRAM it holds, a `priority`, `idleUn
 `startTimeoutSec`). The controller runs `docker compose` on the host over ssh, because
 compose reads its files where it runs; a docker `context` instead of `ssh` only works for a
 host whose compose files the controller can read itself. Every `pollSec` the
-controller reads the queues, probes `/health` of each service, and applies four rules: a
+controller reads the queues (and the kinds jobs signal they are waiting for: a Disco voice
+job or import transcribing with audio-intel writes `transynth:fleet:want:asr` while it waits,
+so a service no queue declares still comes up), probes `/health` of each service, and
+applies four rules: a
 wanted kind with no healthy provider gets its highest-priority service started if the VRAM
 fits; if not, residents that nobody wants, that carry no load, that idled past their own
 limit and rank lower are stopped first; nothing else is stopped. A service without `gpu`

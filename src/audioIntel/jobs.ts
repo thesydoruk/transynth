@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { servicePool } from '../services/pools';
 import { parseAudioIntelTranscript } from './client';
 import type { AudioIntelTranscript } from './types';
@@ -69,8 +70,9 @@ const jobFromBody = (host: string, body: Record<string, unknown>): SeparationJob
 export const submitSeparation = async (
   mediaPath: string,
   options: SubmitSeparationOptions = {},
-): Promise<SeparationJob> =>
-  servicePool('separate').run(async (host) => {
+): Promise<SeparationJob> => {
+  await ensureDependencyHealthy('separate');
+  return servicePool('separate').run(async (host) => {
     const form = new FormData();
     const bytes = fs.readFileSync(mediaPath);
     form.append('file', new Blob([bytes]), path.basename(mediaPath));
@@ -95,6 +97,7 @@ export const submitSeparation = async (
     const body = (await response.json()) as Record<string, unknown>;
     return jobFromBody(host, body);
   });
+};
 
 /** `GET /v1/jobs/{id}`; the result is attached once the job is done. */
 export const getSeparationJob = async (

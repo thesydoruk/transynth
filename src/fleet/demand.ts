@@ -26,9 +26,14 @@ export const kindsNeededByQueue = (queue: JobQueueId): ServiceKind[] => {
   return [...out];
 };
 
-/** Fold queue counts into demand per kind (`readCounts` is injected for tests). */
+/**
+ * Fold queue counts into demand per kind, plus the kinds jobs signal themselves while they
+ * wait for a service their queue does not declare (`want.ts`); such a want counts as one
+ * active job. Both readers are injected for tests.
+ */
 export const readDemand = async (
   readCounts: (queueName: string) => Promise<QueueCounts>,
+  readWants: () => Promise<ServiceKind[]> = async () => [],
 ): Promise<Demand> => {
   const demand: Demand = {};
   for (const queue of JOB_QUEUE_IDS) {
@@ -41,6 +46,11 @@ export const readDemand = async (
       row.active += counts.active;
       demand[kind] = row;
     }
+  }
+  for (const kind of await readWants()) {
+    const row = demand[kind] ?? { waiting: 0, active: 0 };
+    row.active += 1;
+    demand[kind] = row;
   }
   return demand;
 };

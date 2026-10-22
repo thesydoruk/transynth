@@ -1,4 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
+
+const noWant = async () => {};
 import { DependencyUnavailableError } from '../errors';
 import { runWithJobRuntime, type JobRuntime } from '../jobRuntime';
 import { ensureDependencyHealthy } from '../waitForHealthy';
@@ -24,7 +26,7 @@ const makeRuntime = (overrides: Partial<JobRuntime> = {}): JobRuntime => ({
 describe('ensureDependencyHealthy', () => {
   it('is a no-op outside a job runtime', async () => {
     const probe = jest.fn(async () => ({ ok: true as const }));
-    await ensureDependencyHealthy('llm', { probe });
+    await ensureDependencyHealthy('llm', { want: noWant, probe });
     expect(probe).not.toHaveBeenCalled();
   });
 
@@ -32,7 +34,7 @@ describe('ensureDependencyHealthy', () => {
     const probe = jest.fn(async () => ({ ok: true as const }));
     const writeLog = jest.fn(async () => undefined);
     await runWithJobRuntime(makeRuntime(), () =>
-      ensureDependencyHealthy('llm', { probe, writeLog }),
+      ensureDependencyHealthy('llm', { want: noWant, probe, writeLog }),
     );
     expect(probe).toHaveBeenCalledTimes(1);
     expect(writeLog).not.toHaveBeenCalled();
@@ -52,6 +54,7 @@ describe('ensureDependencyHealthy', () => {
 
     await runWithJobRuntime(runtime, () =>
       ensureDependencyHealthy('llm', {
+        want: noWant,
         probe,
         writeLog,
         now: () => now,
@@ -79,6 +82,7 @@ describe('ensureDependencyHealthy', () => {
     await expect(
       runWithJobRuntime(runtime, () =>
         ensureDependencyHealthy('tts', {
+          want: noWant,
           probe,
           writeLog,
           now: () => now,
@@ -105,8 +109,8 @@ describe('ensureDependencyHealthy', () => {
 
     const pending = runWithJobRuntime(runtime, () =>
       Promise.all([
-        ensureDependencyHealthy('llm', { probe, writeLog: async () => undefined }),
-        ensureDependencyHealthy('llm', { probe, writeLog: async () => undefined }),
+        ensureDependencyHealthy('llm', { want: noWant, probe, writeLog: async () => undefined }),
+        ensureDependencyHealthy('llm', { want: noWant, probe, writeLog: async () => undefined }),
       ]),
     );
 
@@ -114,5 +118,20 @@ describe('ensureDependencyHealthy', () => {
     expect(probe).toHaveBeenCalledTimes(1);
     resolveProbe?.({ ok: true });
     await pending;
+  });
+});
+
+describe('ensureDependencyHealthy want signal', () => {
+  it('signals the want before every probe while waiting', async () => {
+    const probe = jest.fn(
+      async (): Promise<{ ok: true } | { ok: false; error: string }> => ({ ok: true }),
+    );
+    probe.mockResolvedValueOnce({ ok: false, error: 'down' }).mockResolvedValueOnce({ ok: true });
+    const want = jest.fn(async (_service: string) => {});
+    await runWithJobRuntime(makeRuntime({ waitTimeoutMs: 10_000, healthIntervalMs: 1 }), () =>
+      ensureDependencyHealthy('asr', { probe, want, writeLog: async () => undefined }),
+    );
+    expect(want).toHaveBeenCalledTimes(2);
+    expect(want).toHaveBeenCalledWith('asr');
   });
 });

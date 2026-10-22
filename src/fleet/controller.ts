@@ -12,7 +12,7 @@
  * is down. Idle time is counted per service from the moment its kinds left demand.
  */
 import type { HealthProbeResult } from '../services/pool';
-import type { ServiceEndpoint } from '../services/kinds';
+import type { ServiceEndpoint, ServiceKind } from '../services/kinds';
 import type { FleetOverride } from './channel';
 import type { QueueCounts } from './demand';
 import { readDemand } from './demand';
@@ -55,6 +55,8 @@ export type FleetSnapshot = {
 
 export type FleetControllerDeps = {
   readCounts: (queueName: string) => Promise<QueueCounts>;
+  /** Kinds jobs are waiting for right now (`want.ts`); optional for tests. */
+  readWants?: () => Promise<ServiceKind[]>;
   probe: (endpoint: ServiceEndpoint, timeoutMs: number) => Promise<HealthProbeResult>;
   readEndpoints: () => Promise<ServiceEndpoint[]>;
   writeEndpoints: (rows: ServiceEndpoint[]) => Promise<void>;
@@ -104,7 +106,7 @@ export class FleetController {
 
   async tick(): Promise<FleetSnapshot> {
     const nowMs = this.now();
-    const demand = await readDemand(this.deps.readCounts);
+    const demand = await readDemand(this.deps.readCounts, this.deps.readWants);
     const overrides = await this.deps.readOverrides(this.inventory.services.map((s) => s.name));
     await this.observe(demand, overrides, nowMs);
     const actions = planFleet({
