@@ -59,7 +59,7 @@ services:
       dir: /home/valerii/Source/xtts-dataset-builder
       services: [vllm, server]
     url: http://192.168.50.140:8080
-    maxParallel: 2
+    maxParallel: 12 # the server allows 24 (FISH_SPEECH_MAX_CONCURRENT_REQUESTS); vLLM batches them
     vramMb: 25600
     priority: 5
     idleUnloadSec: 300
