@@ -14,7 +14,24 @@ import type { VoiceLineCatalogResult } from '../../../voice/lineCatalog';
 
 export type { VoiceLineCatalog, VoiceLineCatalogError } from '../../../voice/lineCatalog';
 
-type CacheEntry = { revision: string; result: Promise<VoiceLineCatalogResult> };
+type CacheEntry = { revision: string; builtAt: number; result: Promise<VoiceLineCatalogResult> };
+
+/**
+ * While a voice job runs, every take bumps the revision, and a rebuild is seconds of
+ * walking the voice tree. Serving a build this young instead keeps the editor usable;
+ * the live SSE patches the few lines that changed in the meantime, and an explicit
+ * `invalidateVoiceListContext` (after mutations) still drops the entry at once.
+ */
+export const CATALOG_REBUILD_MIN_INTERVAL_MS = 15_000;
+
+/** Reuse the cached build when its revision matches or it is younger than the interval. */
+export const canReuseCatalog = (
+  hit: { revision: string; builtAt: number } | undefined,
+  revision: string,
+  nowMs: number,
+): boolean =>
+  hit != null &&
+  (hit.revision === revision || nowMs - hit.builtAt < CATALOG_REBUILD_MIN_INTERVAL_MS);
 
 const cache = new Map<string, CacheEntry>();
 
@@ -104,7 +121,7 @@ export const getVoiceListContext = async (
   const revision = await loadVoiceListRevision(db, modId, resolvedTargetLang);
   const key = cacheKey(modId, srcLang, resolvedTargetLang);
   const hit = cache.get(key);
-  if (hit && hit.revision === revision) return hit.result;
+  if (canReuseCatalog(hit, revision, Date.now())) return hit!.result;
 
   const result = buildVoiceListContext(db, modId, srcLang, resolvedTargetLang).then((loaded) => {
     if (!loaded.ok) {
@@ -113,7 +130,7 @@ export const getVoiceListContext = async (
     }
     return loaded;
   });
-  cache.set(key, { revision, result });
+  cache.set(key, { revision, builtAt: Date.now(), result });
   return result;
 };
 

@@ -46,6 +46,11 @@ import {
  */
 const PLAYER_VOICE_LABEL_RE = /^Player (Female|Male)$/i;
 
+const hasVoiceClips = async (db: Tx, modId: number): Promise<boolean> => {
+  const { rows } = await db.query(`SELECT 1 FROM voice_clips WHERE mod_id = $1 LIMIT 1`, [modId]);
+  return rows.length > 0;
+};
+
 export const loadCreationEngineVoiceCatalog = async (
   db: Tx,
   request: { modId: number; pluginPath: string; srcLang: string; targetLang: string },
@@ -57,8 +62,11 @@ export const loadCreationEngineVoiceCatalog = async (
     return { ok: false, reason: 'plugin_missing', message: 'Plugin file not found on disk' };
   await fillVoiceLocalizeDirFromImport(db, modId, ctx);
 
+  // The import indexes voice clips; mods imported before that table existed get one
+  // backfill here. Rewriting the index on every catalog build (every new take bumps the
+  // revision) cost a minute of UPDATE/DELETE/INSERT over a hundred thousand rows.
   try {
-    await persistBethesdaVoiceClips(db, modId, srcLang);
+    if (!(await hasVoiceClips(db, modId))) await persistBethesdaVoiceClips(db, modId, srcLang);
   } catch (err) {
     log.warn(
       `Voice clips: ensure failed for mod ${modId}: ${err instanceof Error ? err.message : String(err)}`,
