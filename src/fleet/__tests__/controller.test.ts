@@ -15,9 +15,9 @@ hosts:
     gpus: [{ index: 0, name: card, vramMb: 20000 }]
 services:
   - { name: fish, kinds: [tts], host: box, gpu: 0, url: http://fish:8080, vramMb: 9000, priority: 5,
-      idleUnloadSec: 30, startTimeoutSec: 20, maxParallel: 2, compose: { dir: /x, service: fish } }
+      idleUnloadSec: 30, startTimeoutSec: 20, maxParallel: 2, compose: { dir: /x, files: [], project: null, services: [fish] } }
   - { name: gemma, kinds: [llm], host: box, gpu: 0, url: http://gemma:8000, vramMb: 12000,
-      priority: 7, idleUnloadSec: 30, startTimeoutSec: 20, compose: { dir: /x, service: gemma } }
+      priority: 7, idleUnloadSec: 30, startTimeoutSec: 20, compose: { dir: /x, files: [], project: null, services: [gemma] } }
 `);
 
 class FakeDriver implements HostDriver {

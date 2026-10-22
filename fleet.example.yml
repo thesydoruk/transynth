@@ -1,13 +1,14 @@
 # Fleet inventory for `npm run fleet` (copy to fleet.yml, or point FLEET_CONFIG at it).
 #
 # A host is a Linux box with Docker, the NVIDIA toolkit and the compose projects checked
-# out. The controller reaches it through a docker context over ssh (no agent on the host):
-#   docker context create gaming-pc --docker "host=ssh://valerii@192.168.50.140"
-# `ssh` is the same target, used only for nvidia-smi readings (optional).
+# out. The controller runs `docker compose` *on the host* over ssh (`ssh` is `user@host`
+# or an alias from the controller's ~/.ssh/config; key auth, no prompts), and reads
+# `nvidia-smi` the same way. Nothing is installed on the host. `context` (a docker
+# context) is only for a host whose compose files the controller can read itself.
 #
-# A service is one compose service on one host, pinned to one GPU. `vramMb` is what it
-# holds once up (for vLLM that is whatever --gpu-memory-utilization asks for, not a
-# measurement). `priority` decides who leaves when the card is contended: lower goes
+# A service is one or more compose services on one host, pinned to one GPU. `vramMb` is
+# what it holds once up (for vLLM that is whatever --gpu-memory-utilization asks for, not
+# a measurement). `priority` decides who leaves when the card is contended: lower goes
 # first, and only after `idleUnloadSec` without demand. `url` is how transynth reaches
 # the service; while it is up and healthy the controller writes it into
 # Settings → Services as a managed row.
@@ -16,46 +17,58 @@ pollSec: 15
 
 hosts:
   - name: gaming-pc
-    context: gaming-pc
     ssh: valerii@192.168.50.140
     gpus:
       - { index: 0, name: RTX 5090, vramMb: 32607 }
     allow: [llm, embed, tts, asr, separate]
 
 services:
+  # vLLM Gemma 4 26B-A4B at --gpu-memory-utilization 0.90: ~29.3 GB, nothing fits beside it.
+  # The project keeps several compose files; `files` lists every one to load (compose
+  # reads only the files named once `-f` is used), relative to `dir`.
   - name: gemma
     kinds: [llm]
     host: gaming-pc
     gpu: 0
     compose:
-      { dir: /home/valerii/Source/fallout4-localization-project, service: vllm-gemma-4-26b-a4b }
+      dir: /home/valerii/Source/fallout4-localization-project
+      files: [docker-compose.ai-translate.yml]
+      services: [vllm-gemma-4-26b-a4b]
     url: http://192.168.50.140:8011
     maxParallel: 4
-    vramMb: 18000 # set --gpu-memory-utilization so this is true, or nothing else fits
+    vramMb: 29400
     priority: 10
     idleUnloadSec: 300
     startTimeoutSec: 600
 
+  # Fish Speech is an engine (`vllm`, --gpu-memory-utilization 0.72) plus a gateway
+  # (`server`, depends on the engine being healthy). Measured 2026-10-22: 25.5 GB together.
   - name: fish-speech
     kinds: [tts]
     host: gaming-pc
     gpu: 0
-    compose: { dir: /home/valerii/Source/xtts-engine, service: server }
+    compose:
+      dir: /home/valerii/Source/xtts-dataset-builder
+      services: [vllm, server]
     url: http://192.168.50.140:8080
     maxParallel: 2
-    vramMb: 9000 # measure once with nvidia-smi under load
+    vramMb: 25600
     priority: 5
     idleUnloadSec: 300
     startTimeoutSec: 900
 
+  # audio-intel ≥ 2.2 with SEPARATE_ENABLED=1 serves both asr and separate.
   - name: audio-intel
     kinds: [asr, separate]
     host: gaming-pc
     gpu: 0
-    compose: { dir: /home/valerii/Source/audio-intel, service: audio-intel }
-    url: http://192.168.50.140:8080
+    compose:
+      dir: /home/valerii/Source/audio-intel
+      services: [audio-intel]
+    url: http://192.168.50.140:8090
     maxParallel: 2
-    vramMb: 8000 # Whisper large-v3 + pyannote + PANNs; Demucs/SepFormer on top when separating
+    # Measured 2026-10-22: 7.7 GB resident (two large-v3 copies), 12.1 GB peak while separating.
+    vramMb: 12500
     priority: 7
     idleUnloadSec: 600
     startTimeoutSec: 600

@@ -12,7 +12,7 @@ services:
   - name: s1
     kinds: [llm]
     host: a
-    compose: { dir: /opt/s1, service: s1 }
+    compose: { dir: /opt/s1, files: [], project: null, services: [s1] }
     url: http://a:8000/
     vramMb: 500
 `;
@@ -36,7 +36,7 @@ describe('parseFleetInventory', () => {
       priority: 0,
       idleUnloadSec: 300,
       startTimeoutSec: 600,
-      compose: { dir: '/opt/s1', project: null, service: 's1' },
+      compose: { dir: '/opt/s1', files: [], project: null, services: ['s1'] },
     });
   });
 
@@ -53,7 +53,7 @@ describe('parseFleetInventory', () => {
     );
     expect(() =>
       parseFleetInventory(
-        `${base}  - name: s1\n    kinds: [tts]\n    host: a\n    compose: { dir: /x, service: y }\n    url: http://x\n    vramMb: 1\n`,
+        `${base}  - name: s1\n    kinds: [tts]\n    host: a\n    compose: { dir: /x, files: [], project: null, services: [y] }\n    url: http://x\n    vramMb: 1\n`,
       ),
     ).toThrow('duplicate service s1');
     expect(() => parseFleetInventory('hosts: []')).toThrow('no hosts');

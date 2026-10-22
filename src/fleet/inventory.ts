@@ -15,10 +15,16 @@ export type FleetGpu = { index: number; name: string; vramMb: number };
 
 export type FleetHost = {
   name: string;
-  /** Docker context name (`docker context create <name> --docker host=ssh://…`). */
-  context: string;
-  /** ssh target for `nvidia-smi` readings, e.g. `user@host`; omit to skip readings. */
+  /**
+   * ssh target (`user@host` or an alias from `~/.ssh/config`): compose runs on the host
+   * through it, and `nvidia-smi` is read the same way. The usual case.
+   */
   ssh: string | null;
+  /**
+   * Docker context name, for a host whose compose files the controller can read itself
+   * (the controller runs on that box). Used only when `ssh` is not set.
+   */
+  context: string | null;
   gpus: FleetGpu[];
   /** Service kinds allowed on this host; a service of another kind is a config error. */
   allow: ServiceKind[];
@@ -30,7 +36,14 @@ export type FleetService = {
   kinds: ServiceKind[];
   host: string;
   gpu: number;
-  compose: { dir: string; project: string | null; service: string };
+  compose: {
+    dir: string;
+    /** Extra `-f` files, relative to `dir` (a project with several compose files). */
+    files: string[];
+    project: string | null;
+    /** Compose services started and stopped together (an engine and its gateway). */
+    services: string[];
+  };
   /** How the pipeline reaches it when it is up; becomes a managed registry row. */
   url: string;
   maxParallel: number;
@@ -94,10 +107,14 @@ const parseHost = (raw: Record<string, unknown>): FleetHost => {
       vramMb: asInt(gpu.vramMb, `host ${name} gpus[${i}].vramMb`),
     };
   });
+  const ssh = typeof raw.ssh === 'string' && raw.ssh.trim() ? raw.ssh.trim() : null;
+  const contextRaw = raw.context ?? raw.docker;
+  const context = typeof contextRaw === 'string' && contextRaw.trim() ? contextRaw.trim() : null;
+  if (!ssh && !context) throw new Error(`fleet: host ${name} needs ssh (or a docker context)`);
   return {
     name,
-    context: asString(raw.context ?? raw.docker, `host ${name}.context`),
-    ssh: typeof raw.ssh === 'string' && raw.ssh.trim() ? raw.ssh.trim() : null,
+    ssh,
+    context,
     gpus,
     allow: raw.allow == null ? [...SERVICE_KINDS] : asKinds(raw.allow, `host ${name}.allow`),
   };
@@ -121,6 +138,14 @@ const parseService = (raw: Record<string, unknown>, hosts: FleetHost[]): FleetSe
     );
   }
   const compose = (raw.compose ?? {}) as Record<string, unknown>;
+  const servicesRaw = compose.services ?? compose.service;
+  const composeServices = (Array.isArray(servicesRaw) ? servicesRaw : [servicesRaw]).map((s) =>
+    asString(s, `service ${name}.compose.services`),
+  );
+  const filesRaw = compose.files ?? compose.file;
+  const composeFiles = (
+    Array.isArray(filesRaw) ? filesRaw : filesRaw == null ? [] : [filesRaw]
+  ).map((f) => asString(f, `service ${name}.compose.files`));
   return {
     name,
     kinds,
@@ -128,8 +153,9 @@ const parseService = (raw: Record<string, unknown>, hosts: FleetHost[]): FleetSe
     gpu,
     compose: {
       dir: asString(compose.dir, `service ${name}.compose.dir`),
+      files: composeFiles,
       project: typeof compose.project === 'string' && compose.project ? compose.project : null,
-      service: asString(compose.service, `service ${name}.compose.service`),
+      services: composeServices,
     },
     url: asString(raw.url, `service ${name}.url`).replace(/\/+$/, ''),
     maxParallel: Math.max(

@@ -9,11 +9,11 @@ hosts:
     gpus: [{ index: 0, name: card, vramMb: 32000 }]
 services:
   - { name: gemma, kinds: [llm], host: gpu-box, gpu: 0, url: http://g:1, vramMb: 18000, priority: 10,
-      idleUnloadSec: 60, compose: { dir: /x, service: gemma } }
+      idleUnloadSec: 60, compose: { dir: /x, files: [], project: null, services: [gemma] } }
   - { name: fish, kinds: [tts], host: gpu-box, gpu: 0, url: http://f:1, vramMb: 9000, priority: 5,
-      idleUnloadSec: 60, compose: { dir: /x, service: fish } }
+      idleUnloadSec: 60, compose: { dir: /x, files: [], project: null, services: [fish] } }
   - { name: audio, kinds: [asr, separate], host: gpu-box, gpu: 0, url: http://a:1, vramMb: 8000,
-      priority: 7, idleUnloadSec: 60, compose: { dir: /x, service: audio } }
+      priority: 7, idleUnloadSec: 60, compose: { dir: /x, files: [], project: null, services: [audio] } }
 `);
 
 const state = (name: string, over: Partial<ServiceState> = {}): ServiceState => ({
