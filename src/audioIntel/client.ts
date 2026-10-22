@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ensureDependencyHealthy } from '../pipeline/waitForHealthy';
 import { servicePool } from '../services/pools';
 import type { AudioIntelSpeechSegment, AudioIntelTranscript } from './types';
 
@@ -64,6 +65,9 @@ export const transcribeWav = async (
 ): Promise<AudioIntelTranscript> => {
   // The `asr` pool picks the host and bounds concurrency; an explicit baseUrl bypasses it.
   if (options.baseUrl) return transcribeWavAt(options.baseUrl, wavPath, options);
+  // Inside a job, wait for a healthy audio-intel like TTS and LLM calls do: the fleet
+  // controller brings one up when a job signals the need, which can take minutes.
+  await ensureDependencyHealthy('asr');
   return servicePool('asr').run((host) => transcribeWavAt(host, wavPath, options));
 };
 

@@ -22,6 +22,8 @@ import { alignDiscoVoiceClips } from '../voice/reindexVoiceTakes';
 import { getDiscoConversationNames } from '../voice/spokenPoLines';
 import { isDiscoDialogueWavStem } from '../voice/voiceStem';
 import { probeAudioIntelHealth } from '../../../audioIntel/health';
+import { isAbortError } from '../../../llm/retry';
+import { ensureDependencyHealthy } from '../../../pipeline/waitForHealthy';
 import { commitExtrasStop, extrasStopRequested } from '../../../import/mod/run/extrasStop';
 import type { ModImportRunContext } from '../../contract';
 
@@ -46,6 +48,11 @@ const alignUnmatchedDiscoClips = async (
   modId: number,
   extractRoot: string,
 ): Promise<void> => {
+  // Audio-intel may be down until the fleet brings it up for this job; wait for it the
+  // way voice jobs wait for TTS, then fall back to skipping if it never came.
+  await ensureDependencyHealthy('asr').catch((err: unknown) => {
+    if (isAbortError(err)) throw err;
+  });
   const health = await probeAudioIntelHealth().catch(() => ({ ok: false as const, error: '' }));
   if (!health.ok) {
     logImport.info(

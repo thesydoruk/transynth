@@ -18,6 +18,7 @@ import { FleetController } from '../src/fleet/controller';
 import { bullQueueCounts } from '../src/fleet/demand';
 import { ShellHostDriver } from '../src/fleet/driver';
 import { loadFleetInventory } from '../src/fleet/inventory';
+import { readServiceWants } from '../src/fleet/want';
 import { log } from '../src/logger';
 import { probeServiceEndpoint } from '../src/services/probes';
 import { getAllProjectSettings, setProjectSetting } from '../src/web/services/projectSettings';
@@ -39,6 +40,7 @@ const db = openDb();
 const redis = getSharedRedis();
 const controller = new FleetController(inventory, new ShellHostDriver(), {
   readCounts: bullQueueCounts,
+  readWants: () => readServiceWants(redis),
   probe: probeServiceEndpoint,
   readEndpoints: async () => (await getAllProjectSettings(db))['services.endpoints'],
   writeEndpoints: (rows) => setProjectSetting(db, 'services.endpoints', rows),
