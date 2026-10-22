@@ -49,10 +49,12 @@ RUN npm run build
 # ── Stage 4: production runtime ───────────────────────────────────────────────
 FROM node:24-slim AS runtime
 
-# ffmpeg for voice WAV prep. FaceFX / xWMA run in bethesda-tools. Champollion is native.
+# ffmpeg for voice WAV prep; openssh-client for the fleet controller, which runs
+# `docker compose` on the GPU hosts over ssh. FaceFX / xWMA run in bethesda-tools.
+# Champollion is native.
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ffmpeg \
+    ffmpeg openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=champollion /out/Champollion /usr/local/bin/Champollion
