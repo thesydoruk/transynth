@@ -6,7 +6,9 @@ import { log } from '../../logger';
 import { ensureDir } from '../../utils/file';
 import { resolveFaceFxWrapperPath, resolveFonixDataPath } from '../voiceToolPaths';
 import { FACEFX_TIMEOUT_MS, type FaceFxLipRequest, type FaceFxLipResult } from './lipCore';
-import { generateLipViaRemote, resolveBethesdaToolsUrl } from '../bethesdaTools';
+import { generateLipViaRemote } from '../bethesdaTools';
+import { ensureDependencyHealthy } from '../../pipeline/waitForHealthy';
+import { servicePool } from '../../services/pools';
 
 const tsxCliPath = (): string => path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
@@ -81,15 +83,20 @@ export const generateLipFile = async (
 ): Promise<void> => {
   ensureDir(path.dirname(lipPath));
 
-  const remoteUrl = resolveBethesdaToolsUrl();
-  if (remoteUrl) {
-    await generateLipViaRemote(remoteUrl, game, sourceWavPath, lipPath, dialogueText);
+  // bethesda-tools instances come from the `tools` pool: the fleet's managed rows and,
+  // when set, BETHESDA_TOOLS_URL. Inside a job, wait for one the way TTS calls do.
+  const tools = servicePool('tools');
+  if (tools.hosts().length > 0) {
+    await ensureDependencyHealthy('tools');
+    await tools.run((host) =>
+      generateLipViaRemote(host, game, sourceWavPath, lipPath, dialogueText),
+    );
     log.debug(`FaceFX remote ${path.basename(lipPath)}`);
     return;
   }
 
   if (process.platform !== 'win32') {
-    throw new Error('BETHESDA_TOOLS_URL is not set');
+    throw new Error('No bethesda-tools instance: none in the fleet and BETHESDA_TOOLS_URL unset');
   }
 
   const request: FaceFxLipRequest = {
