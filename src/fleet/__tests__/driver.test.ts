@@ -7,6 +7,7 @@ const service = (compose: Partial<FleetService['compose']>): FleetService => ({
   kinds: ['tts'],
   host: 'h',
   gpu: 0,
+  keep: false,
   compose: { dir: '/srv/x', files: [], project: null, services: ['x'], ...compose },
   url: 'http://x',
   maxParallel: 1,

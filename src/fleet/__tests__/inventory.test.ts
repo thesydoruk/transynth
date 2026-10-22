@@ -59,3 +59,28 @@ describe('parseFleetInventory', () => {
     expect(() => parseFleetInventory('hosts: []')).toThrow('no hosts');
   });
 });
+
+const cpuBase = base.replace('allow: [llm, tts]', 'allow: [llm, tts, tools]');
+
+describe('parseFleetInventory CPU services', () => {
+  it('accepts a service without gpu as CPU-only with no VRAM, and keep', () => {
+    const inv = parseFleetInventory(
+      `${cpuBase}  - name: tools\n    kinds: [tools]\n    host: a\n    keep: true\n    compose: { dir: /x, service: t }\n    url: http://t\n`,
+    );
+    expect(inv.services[1]).toMatchObject({ name: 'tools', gpu: null, vramMb: 0, keep: true });
+    expect(inv.services[0]).toMatchObject({ keep: false });
+  });
+
+  it('puts a service with vramMb but no gpu on gpu 0', () => {
+    const inv = parseFleetInventory(
+      `${cpuBase}  - name: t
+    kinds: [tools]
+    host: a
+    compose: { dir: /x, service: t }
+    url: http://t
+    vramMb: 5
+`,
+    );
+    expect(inv.services[1]).toMatchObject({ gpu: 0, vramMb: 5, keep: false });
+  });
+});

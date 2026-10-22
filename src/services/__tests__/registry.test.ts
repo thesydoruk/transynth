@@ -83,3 +83,49 @@ describe('ServiceRegistry', () => {
     expect(changed).toEqual([]);
   });
 });
+
+describe('ServiceRegistry managed rows', () => {
+  it('adds managed rows to the env or legacy rows instead of replacing them', () => {
+    const registry = new ServiceRegistry({
+      configured: [
+        { kind: 'llm', host: 'http://gpu5090:8011', maxParallel: 4, apiKey: '', managed: true },
+        { kind: 'tools', host: 'http://gpu5090:3210', maxParallel: 8, apiKey: '', managed: true },
+      ],
+      legacyLlm: [{ host: 'http://pipeline:8011', maxParallel: 8, apiKey: '' }],
+      env: [
+        {
+          kind: 'tools',
+          host: 'http://bethesda-tools:3210',
+          maxParallel: 8,
+          apiKey: '',
+          managed: false,
+        },
+      ],
+    });
+    expect(registry.endpoints('llm').map((e) => e.host)).toEqual([
+      'http://pipeline:8011',
+      'http://gpu5090:8011',
+    ]);
+    expect(registry.endpoints('tools').map((e) => e.host)).toEqual([
+      'http://bethesda-tools:3210',
+      'http://gpu5090:3210',
+    ]);
+    expect(registry.sourceOf('llm')).toBe('legacy-llm');
+    expect(registry.sourceOf('tools')).toBe('env');
+  });
+
+  it('lets a managed row replace a hand-written row for the same host', () => {
+    const registry = new ServiceRegistry({
+      configured: [
+        { kind: 'tts', host: 'http://fish:8080', maxParallel: 20, apiKey: '', managed: false },
+        { kind: 'tts', host: 'http://fish:8080', maxParallel: 2, apiKey: '', managed: true },
+      ],
+      legacyLlm: [],
+      env: [],
+    });
+    expect(registry.endpoints('tts')).toEqual([
+      { kind: 'tts', host: 'http://fish:8080', maxParallel: 2, apiKey: '', managed: true },
+    ]);
+    expect(registry.sourceOf('tts')).toBe('settings');
+  });
+});

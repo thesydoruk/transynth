@@ -35,7 +35,10 @@ export type FleetService = {
   /** Kinds this one container serves (audio-intel serves `asr` and `separate`). */
   kinds: ServiceKind[];
   host: string;
-  gpu: number;
+  /** GPU index on the host, or null for a CPU service (no VRAM accounting). */
+  gpu: number | null;
+  /** Keep it up whenever possible, demand or not (bethesda-tools, which nothing "needs"). */
+  keep: boolean;
   compose: {
     dir: string;
     /** Extra `-f` files, relative to `dir` (a project with several compose files). */
@@ -131,12 +134,15 @@ const parseService = (raw: Record<string, unknown>, hosts: FleetHost[]): FleetSe
       throw new Error(`fleet: service ${name} is kind ${kind}, not allowed on host ${hostName}`);
     }
   }
-  const gpu = asInt(raw.gpu, `service ${name}.gpu`, 0);
-  if (!host.gpus.some((g) => g.index === gpu)) {
+  // No `gpu` and no `vramMb` is a CPU service; `vramMb` alone lands on gpu 0 as before.
+  const gpu =
+    raw.gpu != null ? asInt(raw.gpu, `service ${name}.gpu`) : raw.vramMb != null ? 0 : null;
+  if (gpu != null && !host.gpus.some((g) => g.index === gpu)) {
     throw new Error(
       `fleet: service ${name} wants gpu ${gpu}, host ${hostName} has none with that index`,
     );
   }
+  const vramMb = asInt(raw.vramMb, `service ${name}.vramMb`, gpu == null ? 0 : undefined);
   const compose = (raw.compose ?? {}) as Record<string, unknown>;
   const servicesRaw = compose.services ?? compose.service;
   const composeServices = (Array.isArray(servicesRaw) ? servicesRaw : [servicesRaw]).map((s) =>
@@ -151,6 +157,7 @@ const parseService = (raw: Record<string, unknown>, hosts: FleetHost[]): FleetSe
     kinds,
     host: hostName,
     gpu,
+    keep: raw.keep === true,
     compose: {
       dir: asString(compose.dir, `service ${name}.compose.dir`),
       files: composeFiles,
@@ -163,7 +170,7 @@ const parseService = (raw: Record<string, unknown>, hosts: FleetHost[]): FleetSe
       asInt(raw.maxParallel, `service ${name}.maxParallel`, DEFAULTS.maxParallel),
     ),
     apiKey: typeof raw.apiKey === 'string' ? raw.apiKey : '',
-    vramMb: asInt(raw.vramMb, `service ${name}.vramMb`),
+    vramMb,
     priority: asInt(raw.priority, `service ${name}.priority`, DEFAULTS.priority),
     idleUnloadSec: asInt(
       raw.idleUnloadSec,

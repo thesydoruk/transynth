@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { parseFleetInventory } from '../inventory';
 import { planFleet, type ServiceState } from '../scheduler';
 
-const inventory = parseFleetInventory(`
+const YAML = `
 hosts:
   - name: gpu-box
     context: gpu-box
@@ -14,7 +14,12 @@ services:
       idleUnloadSec: 60, compose: { dir: /x, files: [], project: null, services: [fish] } }
   - { name: audio, kinds: [asr, separate], host: gpu-box, gpu: 0, url: http://a:1, vramMb: 8000,
       priority: 7, idleUnloadSec: 60, compose: { dir: /x, files: [], project: null, services: [audio] } }
-`);
+`;
+const inventory = parseFleetInventory(YAML);
+const TOOLS = `  - { name: tools, kinds: [tools], host: gpu-box, keep: true, url: http://t:1, priority: 1,
+      compose: { dir: /x, files: [], project: null, services: [tools] } }
+`;
+const cpuInventory = parseFleetInventory(YAML + TOOLS);
 
 const state = (name: string, over: Partial<ServiceState> = {}): ServiceState => ({
   name,
@@ -154,5 +159,44 @@ describe('planFleet', () => {
       nowMs: NOW,
     });
     expect(actions).toEqual([{ type: 'start', service: 'audio', reason: expect.any(String) }]);
+  });
+});
+
+describe('planFleet with CPU and kept services', () => {
+  it('starts a kept CPU service regardless of demand and VRAM, and never evicts it', () => {
+    const full = planFleet({
+      inventory: cpuInventory,
+      states: [state('gemma', { status: 'running', healthy: true }), state('tools')],
+      demand: { llm: { waiting: 1, active: 0 } },
+      nowMs: NOW,
+    });
+    expect(full).toEqual([{ type: 'start', service: 'tools', reason: 'tools is kept up' }]);
+
+    const quiet = planFleet({
+      inventory: cpuInventory,
+      states: [state('tools', { status: 'missing' })],
+      demand: {},
+      nowMs: NOW,
+    });
+    expect(quiet).toEqual([{ type: 'start', service: 'tools', reason: 'tools is kept up' }]);
+
+    const up = planFleet({
+      inventory: cpuInventory,
+      states: [state('tools', { status: 'running', healthy: true, idleSinceMs: NOW - 10_000_000 })],
+      demand: {},
+      nowMs: NOW,
+    });
+    expect(up).toEqual([]);
+  });
+
+  it('respects an operator stop on a kept service', () => {
+    expect(
+      planFleet({
+        inventory,
+        states: [state('tools', { manual: 'stop' })],
+        demand: {},
+        nowMs: NOW,
+      }),
+    ).toEqual([]);
   });
 });
