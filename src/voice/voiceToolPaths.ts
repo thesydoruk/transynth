@@ -1,12 +1,9 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS, resolveDir } from '../paths';
 
+/** Where `npm run tools:install` puts `FonixData.cdf` for the bethesda-tools sidecar to mount. */
 export const voiceToolsDir = (): string =>
   resolveDir(process.env.VOICE_TOOLS_DIR ?? path.join(PATHS.toolsDir, 'voice'));
-
-export const resolveFaceFxWrapperPath = (): string =>
-  path.join(voiceToolsDir(), 'FaceFXWrapper.exe');
 
 export const resolveFonixDataPath = (): string => {
   const configured = process.env.FONIX_DATA_PATH?.trim();
@@ -14,21 +11,8 @@ export const resolveFonixDataPath = (): string => {
   return path.join(voiceToolsDir(), 'FonixData.cdf');
 };
 
-export const resolveXwmaEncodePath = (): string => {
-  const configured = process.env.XWMA_ENCODE_PATH?.trim();
-  if (configured) return configured;
-  return path.join(voiceToolsDir(), 'xWMAEncode.exe');
-};
-
-export const resolveFfmpegPath = (): string => {
-  const configured = process.env.FFMPEG_PATH?.trim();
-  if (configured) return configured;
-  if (process.platform === 'win32') {
-    const bundled = path.join(voiceToolsDir(), 'ffmpeg.exe');
-    if (fs.existsSync(bundled)) return bundled;
-  }
-  return 'ffmpeg';
-};
+/** The distro's ffmpeg (the web and worker images install it), or `FFMPEG_PATH`. */
+export const resolveFfmpegPath = (): string => process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
 
 export const resolveTtsBaseUrl = (): string => {
   const explicit = process.env.TTS_BASE_URL?.trim();

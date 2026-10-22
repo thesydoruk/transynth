@@ -1,21 +1,18 @@
 #!/usr/bin/env tsx
 /**
- * Install bundled external tools used by the localization pipeline.
+ * Copy `FonixData.cdf` into data/tools/voice for the bethesda-tools sidecar.
  *
- * Components:
- *   - FonixData.cdf + xWMAEncode.exe (game copy, or xWMAEncode from Microsoft DirectX SDK download)
- *   - ffmpeg (Windows static build when not on PATH)
- *
- * FaceFXWrapper is baked into the bethesda-tools image.
+ * Bethesda ships the Fonix phoneme data with the game and the Creation Kit and it is not
+ * redistributed, so it is copied from an install. FaceFXWrapper and xWMAEncode are baked
+ * into the bethesda-tools image; ffmpeg is the distro package.
  *
  * Usage:
- *   npm run tools:install
+ *   npm run tools:install -- --game-dir /path/to/Fallout4   (or the Creation Kit)
  *   npm run tools:install -- --force
- *   npm run tools:install -- --game-dir "C:\Program Files (x86)\Steam\steamapps\common\Fallout 4"
  *
  * Options:
- *   --force     Reinstall even when the bundled versions are already present
- *   --game-dir  Fallout 4 / Creation Kit install (FonixData.cdf, xWMAEncode.exe)
+ *   --force     Copy again even when FonixData.cdf is already present
+ *   --game-dir  Fallout 4 / Creation Kit install; CREATION_KIT_DIR and FONIX_DATA_PATH also work
  */
 // Registers the game plugins; the registry lookups below depend on it.
 import '../src/games';
@@ -30,11 +27,11 @@ const argv = await yargs(hideBin(process.argv))
   .option('force', {
     type: 'boolean',
     default: false,
-    description: 'Reinstall all bundled tools',
+    description: 'Copy FonixData.cdf again even when it is present',
   })
   .option('game-dir', {
     type: 'string',
-    describe: 'Game install directory (FonixData.cdf, xWMAEncode.exe)',
+    describe: 'Game or Creation Kit install directory holding FonixData.cdf',
   })
   .help()
   .parse();
@@ -46,12 +43,10 @@ try {
   });
 
   if (result.voice.skipped) {
-    log.info(`Voice tools already installed in ${result.voice.installDir}`);
+    log.info(`FonixData.cdf already in ${result.voice.installDir}`);
   } else {
-    log.info(`Installed voice tools → ${result.voice.installDir}`);
+    log.info(`Voice tools dir: ${result.voice.installDir}`);
     log.info(`  FonixData.cdf: ${result.voice.fonixPath}`);
-    log.info(`  xWMAEncode:    ${result.voice.xwmaPath}`);
-    log.info(`  ffmpeg:        ${result.voice.ffmpegPath}`);
   }
 
   for (const warning of result.voice.warnings) {
