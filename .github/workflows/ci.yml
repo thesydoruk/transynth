@@ -3,6 +3,10 @@ name: CI
 # Pull requests run the checks. Every green commit on main also publishes
 # ghcr.io/<owner>/transynth:<commit sha>; the production host picks that
 # image up with scripts/deploy.sh (see doc/deployment.md).
+#
+# A merge whose tree is exactly the tree a green pull-request run already
+# tested skips the checks on main and goes straight to the image, so a merge
+# reaches the host in the time one image build takes.
 on:
   pull_request:
   push:
@@ -17,15 +21,49 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  # On main: did a pull-request run already pass on exactly this tree? A merge
+  # commit of an up-to-date branch has the same tree as the branch head, and
+  # that head's PR run is the proof. A diverged merge (tree differs) or a direct
+  # push gets the full checks.
+  gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
+    outputs:
+      tested: ${{ steps.probe.outputs.tested }}
     steps:
       - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+        with:
+          fetch-depth: 2
 
-      # Speaker-reference tests cut real WAVs, as the runtime image does.
-      - name: Install ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Look for a green pull-request run on this tree
+        id: probe
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tested=false
+          head_tree="$(git rev-parse 'HEAD^{tree}')"
+          pr_head="$(git rev-parse -q --verify 'HEAD^2' || true)"
+          if [ -n "$pr_head" ] && [ "$(git rev-parse "$pr_head^{tree}")" = "$head_tree" ]; then
+            run="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI --event pull_request \
+                     --commit "$pr_head" --status success --limit 1 --json databaseId \
+                     -q '.[0].databaseId')"
+            if [ -n "$run" ]; then
+              tested=true
+              echo "tree $head_tree already passed in run $run (PR head $pr_head)"
+            fi
+          fi
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
+
+  # Format, lint, types, and the web UI's own tests and build.
+  check:
+    needs: gate
+    if: github.event_name != 'push' || needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -58,17 +96,51 @@ jobs:
       - name: Typecheck
         run: npm run build
 
-      - name: Tests
-        run: npm test
-
       - name: web-ui tests
         run: npm --prefix web-ui test
 
       - name: web-ui build
         run: npm run web:build
 
+  # Unit tests on their own runner, two Jest workers (the memory limit per
+  # worker keeps the ESM runtime bounded; one worker is only for small boxes).
+  tests:
+    needs: gate
+    if: github.event_name != 'push' || needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Speaker-reference tests cut real WAVs, as the runtime image does.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            worker/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+        env:
+          HUSKY: '0'
+
+      - name: Install worker dependencies
+        run: npm --prefix worker ci
+        env:
+          HUSKY: '0'
+
+      - name: Tests
+        run: npm test -- --maxWorkers=2
+
   # SQL against a real Postgres: the same pgvector image production runs.
   database:
+    needs: gate
+    if: github.event_name != 'push' || needs.gate.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -106,9 +178,16 @@ jobs:
 
   # The web UI on a desktop, tablets and phones down to 320px, in Chromium
   # and WebKit. The API is faked, so this needs only the web-ui install.
+  # Two shards halve the wall time; the browser download is cached.
   devices:
+    needs: gate
+    if: github.event_name != 'push' || needs.gate.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
 
@@ -121,24 +200,38 @@ jobs:
       - name: Install web-ui dependencies
         run: npm --prefix web-ui ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web-ui/package-lock.json') }}
+
       - name: Install browsers
         working-directory: web-ui
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Device tests
-        run: npm --prefix web-ui run test:devices
+      - name: Device tests (shard ${{ matrix.shard }} of 2)
+        run: npm --prefix web-ui run test:devices -- --shard=${{ matrix.shard }}/2
 
       - name: Upload report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: device-test-report
+          name: device-test-report-${{ matrix.shard }}
           path: web-ui/playwright-report
           retention-days: 7
 
+  # Published for every green main commit; skipped checks (already-tested
+  # tree) count as green, a failed or cancelled one does not.
   image:
-    needs: [check, database, devices]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [gate, check, tests, database, devices]
+    if: >-
+      always()
+      && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && needs.gate.result == 'success'
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
