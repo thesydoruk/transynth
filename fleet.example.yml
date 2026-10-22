@@ -22,6 +22,14 @@ hosts:
       - { index: 0, name: RTX 5090, vramMb: 32607 }
     allow: [llm, embed, tts, asr, separate, tools]
 
+  # The pipeline host itself: no GPU in the fleet (its services stay configured by env),
+  # only the CPU-side bethesda-tools. The controller runs here and reaches the host over
+  # ssh like any other (root's key in its own authorized_keys, host key in known_hosts).
+  - name: pipeline
+    ssh: root@192.168.50.161
+    gpus: []
+    allow: [tools]
+
 services:
   # vLLM Gemma 4 26B-A4B at --gpu-memory-utilization 0.90: ~29.3 GB, nothing fits beside it.
   # The project keeps several compose files; `files` lists every one to load (compose
@@ -85,7 +93,22 @@ services:
     compose:
       dir: /home/valerii/bethesda-tools
       services: [bethesda-tools]
-    url: http://192.168.50.140:3210
+    url: http://192.168.50.140:3211
+    maxParallel: 8
+    priority: 1
+    startTimeoutSec: 300
+
+  # bethesda-tools on the pipeline host is part of the transynth compose project (profile
+  # embedded-bethesda-tools, not in COMPOSE_PROFILES any more): naming the service enables
+  # its profile, so the fleet is the only thing that starts it.
+  - name: bethesda-tools-pipeline
+    kinds: [tools]
+    host: pipeline
+    keep: true
+    compose:
+      dir: /root/Source/transynth
+      services: [bethesda-tools]
+    url: http://192.168.50.161:8015
     maxParallel: 8
     priority: 1
     startTimeoutSec: 300
