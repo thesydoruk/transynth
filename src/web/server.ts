@@ -60,6 +60,7 @@ import { vortexSyncRoutes } from './routes/vortexSync';
 import { getAllProjectSettings } from './services/projectSettings';
 import { syncLlmPoolFromProjectSettings } from '../llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../voice/voiceProjectSettings';
+import { startServiceSettingsWatcher } from '../services/settingsWatcher';
 import { closeJobsQueue } from '../../worker/src/core/queue';
 import { closeJobsQueueEvents } from '../../worker/src/core/queueEvents';
 import { closeSharedRedis } from '../../worker/src/core/connection';
@@ -109,6 +110,15 @@ const db = openDb();
   syncTtsPoolFromProjectSettings(projectSettings);
   syncLlmPoolFromProjectSettings(projectSettings);
 }
+// The fleet controller writes managed rows into `services.endpoints` from its own process.
+const stopSettingsWatcher = startServiceSettingsWatcher({
+  read: () => getAllProjectSettings(db),
+  apply: (settings) => {
+    syncTtsPoolFromProjectSettings(settings);
+    syncLlmPoolFromProjectSettings(settings);
+  },
+  log,
+});
 
 installVoiceLivePublisher();
 
@@ -182,6 +192,7 @@ try {
  */
 const shutdown = async () => {
   log.info('Shutting down...');
+  stopSettingsWatcher();
   await app.close();
   await closeVoiceLiveHub();
   await closeJobsQueueEvents();

@@ -26,6 +26,7 @@ import { logJobs } from '../../src/logging/loggers';
 import { ensureDataDirs } from '../../src/paths';
 import { syncLlmPoolFromProjectSettings } from '../../src/llm/llmProjectSettings';
 import { syncTtsPoolFromProjectSettings } from '../../src/voice/voiceProjectSettings';
+import { startServiceSettingsWatcher } from '../../src/services/settingsWatcher';
 import { getAllProjectSettings } from '../../src/web/services/projectSettings';
 import { shutdownWine } from '../../src/wine/windowsToolExec';
 import { closeSharedRedis, createRedisConnection } from './core/connection';
@@ -45,12 +46,21 @@ import { cancelAllActiveRuns, controlActiveRun, processJob } from './processor';
 ensureDataDirs();
 const db = openDb();
 
-// TTS / LLM pool limits come from project_settings — refresh once at boot.
+// TTS / LLM pool limits come from project_settings — refresh at boot, then watch for
+// rows other processes write (the fleet controller's managed endpoints).
 {
   const projectSettings = await getAllProjectSettings(db);
   syncTtsPoolFromProjectSettings(projectSettings);
   syncLlmPoolFromProjectSettings(projectSettings);
 }
+const stopSettingsWatcher = startServiceSettingsWatcher({
+  read: () => getAllProjectSettings(db),
+  apply: (settings) => {
+    syncTtsPoolFromProjectSettings(settings);
+    syncLlmPoolFromProjectSettings(settings);
+  },
+  log: logJobs,
+});
 
 installVoiceLivePublisher();
 
@@ -120,6 +130,7 @@ const shutdown = async (): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
   logJobs.info('Job worker shutting down...');
+  stopSettingsWatcher();
   // Abort in-flight work so worker.close() does not wait out an hours-long run.
   cancelAllActiveRuns();
   await Promise.all(

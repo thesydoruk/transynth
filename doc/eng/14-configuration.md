@@ -238,7 +238,8 @@ wanted kind with no healthy provider gets its highest-priority service started i
 fits; if not, residents that nobody wants, that carry no load, that idled past their own
 limit and rank lower are stopped first; nothing else is stopped. Services that are up and
 healthy are written into `services.endpoints` as `managed` rows, so routing follows the
-controller; hand-written rows stay. `GET /api/fleet` returns the last snapshot (services,
+controller; hand-written rows stay. Web and worker re-read those settings every
+`SERVICES_SETTINGS_POLL_SEC` (30 s) so the rows take effect without a restart. `GET /api/fleet` returns the last snapshot (services,
 GPUs with committed and measured VRAM, demand, the action log); `POST
 /api/fleet/services/<name>/start|stop` holds a service up or down for an hour, `DELETE
 /api/fleet/services/<name>/override` hands it back to the scheduler. Nothing is installed
