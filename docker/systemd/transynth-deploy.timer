@@ -1,9 +1,9 @@
 [Unit]
-Description=Check for a new Transynth build every 2 minutes
+Description=Check for a new Transynth build every minute
 
 [Timer]
 OnBootSec=5min
-OnUnitInactiveSec=2min
+OnUnitInactiveSec=1min
 
 [Install]
 WantedBy=timers.target

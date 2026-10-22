@@ -404,13 +404,17 @@ Vite service in production.
 
 ### Continuous Deployment
 
-CI (`.github/workflows/ci.yml`) runs the checks on every pull request and every
-push to `main`. When they pass on `main`, it publishes
+CI (`.github/workflows/ci.yml`) runs the checks on every pull request: format,
+lint and types, the unit tests, the SQL tests and the device tests run as
+separate jobs side by side. A push to `main` whose tree is exactly the tree a
+green pull-request run already tested (a merge of an up-to-date branch) skips
+the checks and goes straight to the image; a diverged merge or a direct push
+runs them again. On a green `main` commit CI publishes
 `ghcr.io/<owner>/transynth:<commit sha>` (plus `:latest`), and
 `ghcr.io/<owner>/transynth-bethesda-tools` when `services/bethesda-tools`
 changed. The host pulls — CI never connects to it, so it can stay on a LAN.
 
-`scripts/deploy.sh` runs on the host every two minutes from a systemd timer.
+`scripts/deploy.sh` runs on the host every minute from a systemd timer.
 When `origin/main` has a new commit whose image is published, it checks the
 commit out, backs up the database if `sql/` changed, pulls, runs
 `npm run db:init`, recreates the services and waits for `web` to turn
