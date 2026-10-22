@@ -9,8 +9,7 @@
  * 2. A wanted kind with no running healthy service gets the highest-priority service
  *    that provides it, if its VRAM fits on its GPU next to what already runs or starts.
  * 3. If it does not fit, services on that GPU that nobody wants, that carry no load,
- *    that have idled past their own limit and that rank below the newcomer are stopped,
- *    lowest priority first, until it would fit. The start follows on a later tick once
+ *    that have idled past their own limit are stopped, lowest priority first, until it would fit. The start follows on a later tick once
  *    the VRAM is actually free.
  * 4. Nothing else is stopped: a resident service that nobody is contending with stays.
  *
@@ -175,7 +174,9 @@ export const planFleet = ({ inventory, states, demand, nowMs }: PlanInput): Flee
       continue;
     }
 
-    // Evict: idle, unloaded, unwanted, lower-priority residents on the same GPU.
+    // Evict: idle, unloaded, unwanted residents on the same GPU, lowest priority first.
+    // Priority orders who goes first; it does not protect a resident nobody wants, or an
+    // idle Gemma (10) would sit on the card for ever while voice jobs wait for Fish (5).
     const victims = inventory.services
       .filter(
         (s) => s.host === candidate.host && s.gpu === candidate.gpu && s.name !== candidate.name,
@@ -184,7 +185,6 @@ export const planFleet = ({ inventory, states, demand, nowMs }: PlanInput): Flee
         const st = byName.get(s.name);
         if (!st || st.status !== 'running' || stopping.has(s.name)) return false;
         if (isWanted(s, wanted, st) || st.inFlight > 0) return false;
-        if (s.priority >= candidate.priority) return false;
         return st.idleSinceMs != null && nowMs - st.idleSinceMs >= s.idleUnloadSec * 1000;
       })
       .sort((a, b) => a.priority - b.priority);

@@ -88,7 +88,7 @@ describe('planFleet', () => {
     expect(after).toEqual([{ type: 'start', service: 'audio', reason: expect.any(String) }]);
   });
 
-  it('never evicts a wanted, busy, higher-priority or still-fresh service', () => {
+  it('never evicts a wanted, busy or still-fresh service', () => {
     const base = { status: 'running' as const, healthy: true };
     const cases: Array<[string, ServiceState[], object]> = [
       [
@@ -198,5 +198,26 @@ describe('planFleet with CPU and kept services', () => {
         nowMs: NOW,
       }),
     ).toEqual([]);
+  });
+});
+
+describe('planFleet evicts an idle higher-priority resident', () => {
+  it('stops an idle, unwanted Gemma (10) to make room for a wanted Fish (5)', () => {
+    const actions = planFleet({
+      inventory: {
+        ...inventory,
+        services: inventory.services.map((s) => (s.name === 'fish' ? { ...s, vramMb: 20000 } : s)),
+      },
+      states: [
+        state('gemma', { status: 'running', healthy: true, idleSinceMs: NOW - 600_000 }),
+        state('fish'),
+        state('audio'),
+      ],
+      demand: { tts: { waiting: 0, active: 1 } },
+      nowMs: NOW,
+    });
+    expect(actions).toEqual([
+      { type: 'stop', service: 'gemma', reason: expect.stringContaining('for fish') },
+    ]);
   });
 });
