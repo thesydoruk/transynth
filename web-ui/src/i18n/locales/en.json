@@ -975,6 +975,7 @@
       "duplicate_inconsistency": "Inconsistent translation",
       "gender_mismatch": "Gender agreement",
       "calque": "Calque from English",
+      "tone_tag": "Tone prompt without brackets",
       "llm_review": "Reviewer note"
     }
   },

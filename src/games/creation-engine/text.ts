@@ -43,6 +43,7 @@ const creationEngineRecordKind = (
 
 export const createCreationEngineTextAdapter = (title: CreationEngineTitle): GameTextAdapter => ({
   functionKeywords: title.functionKeywords,
+  toneTagPrompts: title.toneTagPrompts,
   recordKind: creationEngineRecordKind,
   maskMarkup: (text) => ({ masked: text, mapping: {} }),
   restoreCensoredSpeech: (text) => text,
