@@ -38,6 +38,19 @@ export type EnglishPromptSections = {
 };
 
 /**
+ * What the game shows on the map, in the menus and over characters' heads
+ * (characters, places, factions, quests), EN → UK.
+ *
+ * Unlike the glossary these are prompt hints only: QA checks a glossary term
+ * as a substring, which an inflected name does not survive.
+ */
+export type GameNameCanon = {
+  names: Readonly<Record<string, string>>;
+  /** One-word names the game's own text mostly uses as ordinary words (Red, Guard). */
+  generic: readonly string[];
+};
+
+/**
  * Prompts, rules, and terminology for one game.
  *
  * Ukrainian gets a hand-written standalone prompt per game; every other
@@ -61,6 +74,8 @@ export type GamePromptAdapter = {
   resolveFamily?: (grup: string | null | undefined, field?: string | null) => LlmPromptFamily;
   /** Canonical EN→UK terminology for prompts and glossary seeding. */
   glossary: GlossaryEntry[];
+  /** Names as the game displays them, fed to the Ukrainian prompt next to the glossary. */
+  nameCanon?: GameNameCanon;
   /**
    * Optional second LLM pass over a finished draft, e.g. FO4's Ukrainian
    * dialogue gender/register recast.

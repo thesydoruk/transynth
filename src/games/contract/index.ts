@@ -13,7 +13,12 @@ export type {
   VerifyGuardItem,
   VerifyGuardVerdict,
 } from './text';
-export type { EnglishPromptSections, GamePromptAdapter, GamePromptRules } from './prompts';
+export type {
+  EnglishPromptSections,
+  GameNameCanon,
+  GamePromptAdapter,
+  GamePromptRules,
+} from './prompts';
 export type {
   AnchorDescription,
   GameImportAdapter,
