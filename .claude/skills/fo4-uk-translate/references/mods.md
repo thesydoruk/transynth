@@ -26,8 +26,8 @@
   дорослі теми. Тон зберігати, не пом'якшувати й не вульгаризувати понад оригінал.
 - **Xander's Aid** — квестовий мод із компаньйоном; діалоги, термінали.
 - **Creation Club** (Hellfire, Tesla Cannon, Enclave, X-02, Heavy Flamer, Halloween, Remnants,
-  Grenade…) — назви предметів і модів за шаблонами [items-ui.md](items-ui.md) («<Частина>:
-  <прикметник> …», легендарні префікси); MESG-довідки на «ти».
+  Grenade…) — назви предметів і модів за шаблонами [items-ui.md](items-ui.md) ("<Частина>:
+  <прикметник> …", легендарні префікси); MESG-довідки на "ти".
 - **FallUI** (Inventory, Confirm, Map, HUD, Workbench, Sleep) — інтерфейс: коротко, як в UI
   FO4; плейсхолдери й токени (`$…`, `{…}`, `%…`, `<…>`) недоторканні; скорочення як у
   ванільному UI (АР, ОД, РАД); регістр як в оригіналі.
@@ -35,20 +35,20 @@
 
 ## Канон, що склався у модах
 
-- Промпти до компаньйона: «Your Thoughts?» → «Що думаєш?»; «Wait Here» → «Чекай тут»;
-  «Let's Trade» → «Давай поторгуємося» (канон FO4).
-- «Cheers.» як прощання → «Бувай.»; ремарка «Grunts...» → «Бурчить...».
-- **Depravity**: Fallon's → «Фаллона», Fallon Company → компанія «Фаллон», Eden → Еден (ж.),
-  May → Мей, Alerios → Алеріос, Raina → Рейна (на «ви» до гравця), Cito → Сіто (ламана мова,
+- Промпти до компаньйона: "Your Thoughts?" → "Що думаєш?"; "Wait Here" → "Чекай тут";
+  "Let's Trade" → "Давай поторгуємося" (канон FO4).
+- "Cheers." як прощання → "Бувай."; ремарка "Grunts..." → "Бурчить...".
+- **Depravity**: Fallon's → "Фаллона", Fallon Company → компанія "Фаллон", Eden → Еден (ж.),
+  May → Мей, Alerios → Алеріос, Raina → Рейна (на "ви" до гравця), Cito → Сіто (ламана мова,
   як у Стронга), Sheng → Шенг, Taryn → Тейрін, Harley → Гарлі, Ivan → Іван, Isabel → Ізабель,
   DC Security → Охорона Даймонд-сіті, Drinking Buddy → Пивний товариш.
-- **FCR**: Fusion City → Ф'южн-сіті, Club Fusion → клуб «Ф'южн», Ini-Tec → Іні-Тек, Spike →
-  Спайк (супермутант, ламана мова як у Стронга; «Смачна Людина»), Peter → Пітер (на «ти»),
-  Dana / Dana Feyton → Дана (компаньйонка на «ти»), Sword of Atom → Меч Атома (фракція),
+- **FCR**: Fusion City → Ф'южн-сіті, Club Fusion → клуб "Ф'южн", Ini-Tec → Іні-Тек, Spike →
+  Спайк (супермутант, ламана мова як у Стронга; "Смачна Людина"), Peter → Пітер (на "ти"),
+  Dana / Dana Feyton → Дана (компаньйонка на "ти"), Sword of Atom → Меч Атома (фракція),
   Lumbergh → Ламберг, Hunter (ім'я) → Гантер.
 - **Xander's Aid**: Xander → Ксандер, Firelance — латиницею, Alien → прибулець.
 - **Creation Club**: Hellfire → Хелфайр, Pyro → Пайро, Tesla Cannon → Тесла-гармата,
-  De-Capitalist → Де-Капіталіст, Picket Fences → «Штахетник»; P.A.M. — латиницею.
+  De-Capitalist → Де-Капіталіст, Picket Fences → "Штахетник"; P.A.M. — латиницею.
 
-Відкриті питання, які вирішує користувач (не вирішуй сам): Operation Morningwood, «Speak of the
-Devil», обсяг і модель для SS2 — див. `doc/reviews/fo4-uk-2026-10-21/`.
+Відкриті питання, які вирішує користувач (не вирішуй сам): Operation Morningwood, "Speak of the
+Devil", обсяг і модель для SS2 — див. `doc/reviews/fo4-uk-2026-10-21/`.
