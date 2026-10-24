@@ -75,6 +75,8 @@ describe('buildModBatches', () => {
         { status: 'skip' },
       ),
     };
+    // The importer fills path_simplified; the dialog queries match on it.
+    await db().query(`UPDATE records SET path_simplified = path WHERE mod_id = $1`, [modId]);
     await db().query(
       `INSERT INTO qa_issues(src_string_id, target_lang, issue_type, severity, message)
        VALUES ($1, 'uk', 'calque', 'warning', 'Calque: x'), ($1, 'uk', 'length_delta', 'warning', 'ignored')`,
