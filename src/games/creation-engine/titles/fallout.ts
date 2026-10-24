@@ -33,6 +33,7 @@ import { FO3_UK_GLOSSARY } from '../data/glossary/fo3-uk';
 import { FO4_UK_GLOSSARY } from '../data/glossary/fo4-uk';
 import { FO76_UK_GLOSSARY } from '../data/glossary/fo76-uk';
 import { FNV_UK_GLOSSARY } from '../data/glossary/fnv-uk';
+import { FO4_UK_NAME_CANON } from '../data/names';
 
 import { fo4UkTranslatePrompt, fo4UkVerifyPrompt } from '../prompts/fo4/families';
 import { resolveFo4PromptFamily } from '../prompts/fo4/families/resolve';
@@ -104,6 +105,7 @@ export const fallout4: CreationEngineTitle = {
     verifyUk: (family) => fo4UkVerifyPrompt(family ?? 'item'),
     rules: fo4Rules,
     glossary: FO4_UK_GLOSSARY,
+    nameCanon: FO4_UK_NAME_CANON,
     english: creationEngineEnglishSections('Fallout 4'),
     resolveFamily: resolveFo4PromptFamily,
     recast: {
