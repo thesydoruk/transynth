@@ -20,9 +20,6 @@ ml_*/
 # Runtime data (logs, uploads, cache, postgres, backups)
 /data/
 
-# Local Cursor rules and skills (not part of the public project)
-.cursor/
-
 # Local Claude Code state and host notes
 CLAUDE.local.md
 .claude/worktrees/
